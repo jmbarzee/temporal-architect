@@ -43,7 +43,7 @@ Use sub-agents to read all source in parallel:
 - One agent for `tools/visualizer/src/` — all TypeScript files, evaluating against all four rubric lenses
 - One agent for the context files: `tools/visualizer/spec/TREE_VIEW.md`, `tools/visualizer/spec/GRAPH_VIEW.md`, `AST_REVISIONS.md`
 
-Agents should work from source code only. Do not run the visualizer or evaluate visual output — that is the domain of `/project:review-visualizer-spec`.
+Agents should work from source code only. Do not run the visualizer or evaluate visual output — that is the domain of `/project:review-quality-visualizer-spec`.
 
 ### Phase 2: Catalog
 
@@ -76,4 +76,4 @@ TypeScript changes here are almost always `Internal` unless they expose a new AP
 - **Focus on the consumer side.** Don't re-review the Go parser internals.
 - **Flag contract mismatches explicitly.** If the TS expects a field the parser no longer emits, that is a blocker.
 - **No backwards compatibility.** Pre-v1. Propose clean fixes.
-- **Visual design and UX are out of scope.** Those belong in `/project:review-visualizer-spec`.
+- **Visual design and UX are out of scope.** Those belong in `/project:review-quality-visualizer-spec`.

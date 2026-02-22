@@ -20,10 +20,9 @@ Before launching any reviews, ask the user:
    - "Resume" — groups are already identified, provide the plan file or describe current state
    - "Post-change" — changes were made, now need documentation and propagation only
 2. Which **layers** should be reviewed this cycle?
-   - Parser internals (`/review-parser-internals`)
-   - Parser output / JSON contract (`/review-parser-output`)
-   - Visualizer TypeScript (`/review-visualizer`)
-   - Skills alignment (`/review-skill-dsl-alignment`)
+   - Parser internals (`/review-quality-parser`)
+   - Parser output / JSON contract (`/review-alignment-parser-visualizer`)
+   - Visualizer TypeScript (`/review-quality-visualizer`)
    - All of the above
 
 Present the proposed review scope and **wait for confirmation** before starting.

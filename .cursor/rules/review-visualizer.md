@@ -1,1 +1,0 @@
-../../.claude/commands/review-visualizer.md

@@ -57,15 +57,21 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 | Command | Purpose |
 |---------|---------|
 | `dev-cycle` | Full orchestrated loop: review → group → execute → document → propagate |
-| `review-parser-internals` | Deep review of Go parser, AST, resolver implementation |
-| `review-parser-output` | Review JSON contract from the consumer's perspective |
-| `review-visualizer` | Review TypeScript visualizer against current JSON contract |
-| `review-visualizer-spec` | Review visualizer from a product and UX perspective |
-| `review-dsl-spec` | Review DSL coverage and representation against Temporal primitives |
-| `review-skill` | Review a single skill for craft, focus, and density |
-| `review-skill-dsl-alignment` | Align skill content with current DSL and parser state |
+| **Quality Reviews** | |
+| `review-quality-parser` | Go parser, AST, resolver — code quality and design |
+| `review-quality-visualizer` | Visualizer TypeScript — code quality and contract consumption |
+| `review-quality-dsl-spec` | DSL design — coverage and representation against Temporal primitives |
+| `review-quality-visualizer-spec` | Visualizer — product and UX against spec |
+| `review-quality-skill` | Single skill — craft, focus, and information density |
+| **Alignment Reviews** | |
+| `review-alignment-parser` | Align parser implementation to `LANGUAGE_SPEC.md` |
+| `review-alignment-parser-visualizer` | Align visualizer to parser JSON contract |
+| `review-alignment-visualizer` | Align visualizer implementation to visualizer spec |
+| `review-alignment-design-skill` | Align design skill to parser (constructs, errors, AST) |
+| `review-alignment-author-skills` | Align author-go skill to design skill and Temporal SDK |
+| **Execution & Propagation** | |
 | `address-review` | Execute an approved review group (inner loop) |
-| `propagate-changes` | Identify downstream review commands needed after parser changes |
+| `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
 
 **Start here for a new cycle:** `/project:dev-cycle`
 **Start here for targeted work:** pick the specific review command for the layer you're focused on.

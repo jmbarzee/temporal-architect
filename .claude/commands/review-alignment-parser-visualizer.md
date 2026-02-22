@@ -94,7 +94,7 @@ JSON contract changes are almost always `Schema`. Note any that affect parser be
 
 ## Constraints
 
-- **Focus on the output, not the implementation.** This review is about what the JSON *contains*, not how the Go code produces it. Implementation concerns belong in `/review-parser-internals`.
+- **Focus on the output, not the implementation.** This review is about what the JSON *contains*, not how the Go code produces it. Implementation concerns belong in `/review-quality-parser`.
 - **Test with real output.** Don't infer JSON structure from Go code alone — run the CLI and inspect actual output.
 - **No backwards compatibility.** This is pre-v1. If the JSON shape should change, say so. Document breaking changes for the TS team.
 - **Stay at the boundary.** Don't review TypeScript code. Don't review Go internals beyond what's needed to understand the output.
