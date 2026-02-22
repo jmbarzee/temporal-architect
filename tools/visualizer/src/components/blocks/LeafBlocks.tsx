@@ -72,20 +72,32 @@ export function SimpleBlock({ keyword, className }: { keyword: string; className
 export function PromiseBlock({ stmt }: { stmt: PromiseStmt }) {
   // Determine the async target description
   let target = ''
-  if (stmt.activity) {
-    target = `activity ${stmt.activity}(${stmt.activityArgs || ''})`
-  } else if (stmt.workflow) {
-    target = `workflow ${stmt.workflow}(${stmt.workflowArgs || ''})`
-  } else if (stmt.nexus) {
-    target = `nexus ${stmt.nexus} ${stmt.nexusService || ''}.${stmt.nexusOperation || ''}(${stmt.nexusArgs || ''})`
-  } else if (stmt.timer) {
-    target = `timer(${stmt.timer})`
-  } else if (stmt.signal) {
-    const params = stmt.signalParams ? `(${stmt.signalParams})` : ''
-    target = `signal ${stmt.signal}${params}`
-  } else if (stmt.update) {
-    const params = stmt.updateParams ? `(${stmt.updateParams})` : ''
-    target = `update ${stmt.update}${params}`
+  switch (stmt.target.kind) {
+    case 'activity':
+      target = `activity ${stmt.target.activity!.name}(${stmt.target.activity!.args || ''})`
+      break
+    case 'workflow':
+      target = `workflow ${stmt.target.workflow!.name}(${stmt.target.workflow!.args || ''})`
+      break
+    case 'nexus':
+      target = `nexus ${stmt.target.nexus!.endpoint} ${stmt.target.nexus!.service}.${stmt.target.nexus!.operation}(${stmt.target.nexus!.args || ''})`
+      break
+    case 'timer':
+      target = `timer(${stmt.target.timer!.duration})`
+      break
+    case 'signal': {
+      const params = stmt.target.signal!.params ? `(${stmt.target.signal!.params})` : ''
+      target = `signal ${stmt.target.signal!.name}${params}`
+      break
+    }
+    case 'update': {
+      const params = stmt.target.update!.params ? `(${stmt.target.update!.params})` : ''
+      target = `update ${stmt.target.update!.name}${params}`
+      break
+    }
+    case 'ident':
+      target = stmt.target.ident!.name
+      break
   }
 
   return (

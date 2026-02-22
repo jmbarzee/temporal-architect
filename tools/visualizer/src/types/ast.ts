@@ -19,8 +19,18 @@ export interface FileError {
   stderr?: string
 }
 
+// Summary counts emitted by the parser
+export interface SummaryMetadata {
+  namespaces: number
+  workers: number
+  workflows: number
+  activities: number
+  nexusServices: number
+}
+
 // Top-level file
 export interface TWFFile {
+  summary?: SummaryMetadata
   definitions: Definition[]
   // Added for focused-file visualization
   focusedFile?: string
@@ -178,6 +188,7 @@ export interface ActivityCall extends Position {
   args: string
   result?: string
   options?: string
+  resolved?: ResolvedRef
 }
 
 export type WorkflowCallMode = 'child' | 'detach'
@@ -189,6 +200,7 @@ export interface WorkflowCall extends Position {
   args: string
   result?: string
   options?: string
+  resolved?: ResolvedRef
 }
 
 // Options block (key-value pairs used by nexus calls, namespaces, etc.)
@@ -219,38 +231,43 @@ export interface NexusCall extends Position {
   resolvedOperation?: ResolvedRef
 }
 
-// Single await statement: await timer/signal/update/activity/workflow/nexus/ident
-export type AwaitStmtKind = 'timer' | 'signal' | 'update' | 'activity' | 'workflow' | 'nexus' | 'ident'
+// Async target: discriminated union by kind, with per-kind sub-objects
+export type AsyncTargetKind = 'timer' | 'signal' | 'update' | 'activity' | 'workflow' | 'nexus' | 'ident'
 
+export interface TimerTarget { duration: string }
+export interface SignalTarget { name: string; params?: string }
+export interface UpdateTarget { name: string; params?: string }
+export interface ActivityTarget { name: string; args?: string; result?: string; resolved?: ResolvedRef }
+export interface WorkflowTarget { name: string; mode: string; args?: string; result?: string; resolved?: ResolvedRef }
+export interface NexusTarget {
+  endpoint: string
+  service: string
+  operation: string
+  args?: string
+  result?: string
+  detach?: boolean
+  resolvedEndpoint?: ResolvedRef
+  resolvedEndpointNamespace?: string
+  resolvedService?: ResolvedRef
+  resolvedOperation?: ResolvedRef
+}
+export interface IdentTarget { name: string; result?: string }
+
+export interface AsyncTarget {
+  kind: AsyncTargetKind
+  timer?: TimerTarget
+  signal?: SignalTarget
+  update?: UpdateTarget
+  activity?: ActivityTarget
+  workflow?: WorkflowTarget
+  nexus?: NexusTarget
+  ident?: IdentTarget
+}
+
+// Single await statement: await timer/signal/update/activity/workflow/nexus/ident
 export interface AwaitStmt extends Position {
   type: 'await'
-  kind: AwaitStmtKind
-  timer?: string
-  signal?: string
-  signalParams?: string
-  update?: string
-  updateParams?: string
-  activity?: string
-  activityArgs?: string
-  activityResult?: string
-  workflow?: string
-  workflowMode?: string
-  workflowArgs?: string
-  workflowResult?: string
-  // Nexus await
-  nexus?: string
-  nexusService?: string
-  nexusOperation?: string
-  nexusArgs?: string
-  nexusResult?: string
-  nexusDetach?: boolean
-  nexusResolvedEndpoint?: ResolvedRef
-  nexusResolvedEndpointNamespace?: string
-  nexusResolvedService?: ResolvedRef
-  nexusResolvedOperation?: ResolvedRef
-  // Ident await (promise or condition reference)
-  ident?: string
-  identResult?: string
+  target: AsyncTarget
 }
 
 // await all: waits for all operations to complete
@@ -259,45 +276,10 @@ export interface AwaitAllBlock extends Position {
   body: Statement[]
 }
 
-// await one case: signal, update, timer, activity, workflow, nested await all, or ident
-export type AwaitOneCaseKind = 'signal' | 'update' | 'timer' | 'activity' | 'workflow' | 'nexus' | 'await_all' | 'ident'
-
+// await one case: target-based cases use AsyncTarget; await_all uses nested awaitAll
 export interface AwaitOneCase extends Position {
-  kind: AwaitOneCaseKind
-  // Signal case
-  signal?: string
-  signalParams?: string
-  // Update case
-  update?: string
-  updateParams?: string
-  // Timer case
-  timer?: string
-  // Activity case
-  activity?: string
-  activityArgs?: string
-  activityResult?: string
-  // Workflow case
-  workflow?: string
-  workflowMode?: string
-  workflowArgs?: string
-  workflowResult?: string
-  // Nexus case
-  nexus?: string
-  nexusService?: string
-  nexusOperation?: string
-  nexusArgs?: string
-  nexusResult?: string
-  nexusDetach?: boolean
-  nexusResolvedEndpoint?: ResolvedRef
-  nexusResolvedEndpointNamespace?: string
-  nexusResolvedService?: ResolvedRef
-  nexusResolvedOperation?: ResolvedRef
-  // Await all case (nested)
+  target?: AsyncTarget
   awaitAll?: AwaitAllBlock
-  // Ident case (promise or condition reference)
-  ident?: string
-  identResult?: string
-  // Body executed when this case wins (optional - can be empty)
   body: Statement[]
 }
 
@@ -370,25 +352,7 @@ export interface Comment extends Position {
 export interface PromiseStmt extends Position {
   type: 'promise'
   name: string
-  // Async target (exactly one set)
-  timer?: string
-  signal?: string
-  signalParams?: string
-  update?: string
-  updateParams?: string
-  activity?: string
-  activityArgs?: string
-  workflow?: string
-  workflowArgs?: string
-  // Nexus target
-  nexus?: string
-  nexusService?: string
-  nexusOperation?: string
-  nexusArgs?: string
-  nexusResolvedEndpoint?: ResolvedRef
-  nexusResolvedEndpointNamespace?: string
-  nexusResolvedService?: ResolvedRef
-  nexusResolvedOperation?: ResolvedRef
+  target: AsyncTarget
 }
 
 // Set a condition to true
