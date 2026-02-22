@@ -1,75 +1,83 @@
-# Propagate Breaking Changes
+# Propagate Changes
 
-Given breaking changes documented in `AST_REVISIONS.md`, assess and plan the updates needed across all downstream components.
+Read completed CHANGES files and fan out targeted reviews to all affected downstream layers.
 
-This command answers: "the parser changed — what else needs to change, and in what order?"
+This command answers: "changes were made — what else needs to review and update?"
 
 ## Dependency Map
 
-Changes propagate along this graph. Each edge has a contract:
+Changes propagate along this graph. Each edge has a contract type:
 
 ```
-Parser (tools/lsp/)
-  ├─► Visualizer (tools/visualizer/)
-  │     contract: JSON output of `twf parse` and `twf symbols`
-  ├─► LSP Server (tools/lsp/internal/server/)
-  │     contract: Go AST types and resolver API
-  ├─► Skill: Design (skills/design/)
-  │     contract: DSL syntax and semantics (LANGUAGE_SPEC.md)
-  │     └─► Skill: Author-Go (skills/author-go/)
-  │           contract: Design skill semantics + Go SDK mapping
-  └─► VS Code Extension (packages/vscode/)
-        contract: LSP protocol responses
+DSL grammar (LANGUAGE_SPEC.md)
+  └─► Parser (tools/lsp/)
+        │  Grammar → DSL_CHANGES.md triggers: review-skill-dsl-alignment, review-skill (design)
+        │  Schema  → PARSER_OUTPUT_CHANGES.md triggers: review-visualizer, review-visualizer-spec
+        │  API     → triggers: review-visualizer (TS types)
+        ├─► LSP Server (tools/lsp/internal/server/)
+        │     API/Semantic → triggers: review-parser-internals
+        ├─► Visualizer (tools/visualizer/)
+        │     Schema → triggers: review-visualizer, review-visualizer-spec
+        ├─► Skill: Design (skills/design/)
+        │     Grammar/Semantic → triggers: review-skill-dsl-alignment
+        │     └─► Skill: Author-Go (skills/author-go/)
+        │           Grammar/Semantic → triggers: review-skill-dsl-alignment
+        └─► VS Code Extension (packages/vscode/)
+              Schema/API → flag for manual review (no automated command)
 ```
 
 ## Workflow
 
-### Phase 1: Read Breaking Changes
+### Phase 1: Read CHANGES File
 
-Read `AST_REVISIONS.md` in full. Identify:
-- Each breaking change (AST field removed/renamed, JSON schema change, parser behavior change)
-- Each change marked as complete vs. planned
-- The type of break: **API** (Go types), **Schema** (JSON output), **Semantic** (behavior), **Grammar** (DSL syntax)
+A specific CHANGES file must be provided in context (e.g., `PARSER_CHANGES.md`). If none is provided, list all `*_CHANGES.md` files at the repo root and ask the user to select one.
 
-### Phase 2: Impact Assessment
+Read the specified file and extract:
+- Source review command
+- Changes by type: `Grammar`, `Schema`, `API`, `Semantic`, `Internal`
+- Specific changes listed under each type
 
-For each breaking change, evaluate impact per downstream layer.
-Use sub-agents in parallel — one per downstream:
-- **Visualizer agent**: does this break the TypeScript types or rendering logic?
-- **LSP Server agent**: does this break any server-side AST traversal or construction?
-- **Skills agent**: does this change what the design skill documents or what author-go maps?
-- **Extension agent**: does this affect LSP responses the extension depends on?
+If the file contains only `Internal` changes, report that and stop — no downstream reviews are needed.
 
-Each agent returns: [change ID] → [impact: none | minor | breaking] + specific location
+### Phase 2: Build Propagation Map
 
-### Phase 3: Synthesis
+For each non-internal change, map to downstream layers using the dependency graph above. Build a table:
 
-Build a propagation table:
+| CHANGES file | Change type | Downstream layer | Review command |
+|---|---|---|---|
+| PARSER_REVISIONS | Schema | Visualizer | review-visualizer |
+| DSL_REVISIONS | Grammar | Skills | review-skill-dsl-alignment |
+| ... | | | |
 
-| Change | Visualizer | LSP Server | Skill: Design | Skill: Author-Go | Extension |
-|--------|-----------|------------|---------------|------------------|-----------|
-| ...    | none      | breaking   | none          | none             | none      |
+Deduplicate: if the same review command is triggered by multiple change files, merge the context — one sub-agent handles all relevant changes for that layer.
 
-Identify which downstream layers need work and in what order (upstream fixes before downstream consumers).
+### Phase 3: Fan Out
 
-### Phase 4: Plan
+Launch one sub-agent per downstream review. Each sub-agent:
+1. Runs the specified review command
+2. Receives the relevant changes as additional context: "Focus this review on the impact of these specific changes: [list]"
+3. Follows the review command's full workflow — Explore → Catalog → Group → Write REVISIONS file
 
-Present a prioritized list of downstream update tasks.
-For each task:
-- Which layer is affected
-- Which specific files need changes
-- Whether this can be done in parallel with other tasks
-- Which downstream review command to run afterward to validate
+Sub-agents run in parallel where the downstream layers are independent.
 
-**STOP. Present the propagation plan and wait for approval.**
+**Do not wait for sub-agents to complete before reporting Phase 3 has started.**
 
-### Phase 5: Execute
+### Phase 4: Report
 
-One layer at a time, in dependency order. After each layer:
-- Run the relevant build/test (`go build ./...`, `npm run build`, `twf check`)
-- Cross-reference against the propagation table to confirm the break is resolved
+When all sub-agents complete, report:
+- Which REVISIONS files were created
+- Which layers had no impact (changes didn't affect them)
+- Any VS Code Extension impacts that need manual review
+- Recommended order for running `/project:address-review` on each REVISIONS file
+
+**STOP. Present the report and wait for the user to begin addressing each new revision file.**
+
+### Phase 5: Clean Up
+
+After the user confirms the propagation report is complete, delete the CHANGES file that was processed. It has served its purpose.
 
 ## Constraints
-- **This command is assessment-and-planning only** until approved in Phase 4.
-- **Don't modify `AST_REVISIONS.md`** during this process — it's the input, not the output.
-- **After completing propagation**, update `AST_REVISIONS.md` to mark changes as fully propagated.
+- **CHANGES files are inputs, not outputs.** Don't modify them. Don't create new ones here.
+- **Sub-agents write REVISIONS files, not you.** Your output is the propagation report.
+- **Internal-only changes stop here.** No downstream reviews needed.
+- **Don't re-run reviews for layers that already have an open REVISIONS file.** Check for existing `*_REVISIONS.md` at root before launching a sub-agent for that layer.

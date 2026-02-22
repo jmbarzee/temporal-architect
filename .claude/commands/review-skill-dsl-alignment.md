@@ -47,7 +47,19 @@ Use sub-agents in parallel — one per skill topic area:
 [Standard finding format. Theme suggestions: "missing coverage", "stale construct", "check failure", "mapping gap", "example quality"]
 
 ### Phase 4: Group & Prioritize
-**STOP. Present plan and wait for approval. To execute, invoke `/project:address-review`.**
+
+Group by theme. Order check failures and stale constructs first; coverage gaps before quality improvements.
+
+### Phase 5: Write to `SKILL_ALIGNMENT_REVISIONS.md`
+
+Write the grouped plan to `SKILL_ALIGNMENT_REVISIONS.md` at the repo root:
+- Brief summary: what drifted, what's still accurate, `twf check` result summary
+- One `## Group N: Title` section per group
+- Each group: findings addressed, files touched, change type (`Internal`), parallelism notes
+
+Skill content changes are always `Internal`.
+
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
 
 ## Constraints
 - **Use `twf check` extensively.** Don't trust example correctness by reading alone.

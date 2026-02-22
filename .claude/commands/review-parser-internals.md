@@ -82,7 +82,21 @@ Cross-reference against `AST_REVISIONS.md`. Drop findings that are already track
   - Estimated scope (which files are touched)
   - What can be parallelized within the group
 
-**STOP here. Present the plan and wait for approval. To execute, invoke `/project:address-review`.**
+### Phase 4: Write to `PARSER_REVISIONS.md`
+
+Write the grouped plan to `PARSER_REVISIONS.md` at the repo root:
+- Brief summary: scope of this review, what was found
+- One `## Group N: Title` section per group
+- Each group: findings addressed, files touched, change type (`Grammar` | `Schema` | `API` | `Semantic` | `Internal`), parallelism notes
+
+The **change type** field is used by `/project:propagate-changes` to route downstream reviews. Classify accurately:
+- `Grammar` — DSL syntax changes
+- `Schema` — JSON output shape changes
+- `API` — Go type or interface changes
+- `Semantic` — behavior changes with no type signature change
+- `Internal` — refactors with no downstream contract impact
+
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
 
 ## Constraints
 

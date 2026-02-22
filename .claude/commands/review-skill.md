@@ -89,7 +89,18 @@ Group by theme. Order by:
 3. Example and grounding issues
 4. Minor density and structure improvements
 
-**STOP. Present the grouped plan and wait for approval. To execute, invoke `/project:address-review`.**
+### Phase 4: Write to `SKILL_{NAME}_REVISIONS.md`
+
+Derive `{NAME}` from the skill path (e.g., `skills/design` → `SKILL_DESIGN_REVISIONS.md`).
+
+Write the grouped plan to `SKILL_{NAME}_REVISIONS.md` at the repo root:
+- Brief summary: skill under review, overall quality assessment
+- One `## Group N: Title` section per group
+- Each group: findings addressed, files touched, change type (`Internal`), parallelism notes
+
+Skill changes are always `Internal` — they don't propagate downstream via the dependency graph.
+
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
 
 ## Constraints
 - **Evaluate against the skill's own stated goal.** `README.md` defines intent. Judge the skill against that, not against what you think it should do.

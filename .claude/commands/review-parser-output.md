@@ -81,7 +81,16 @@ Present findings grouped by severity:
 3. **Noise** — unnecessary data that inflates payloads or confuses consumers
 4. **Style** — inconsistencies that don't break anything but hurt DX
 
-**STOP here. Present findings and wait for approval. To execute changes, invoke `/project:address-review`.**
+### Phase 5: Write to `PARSER_OUTPUT_REVISIONS.md`
+
+Write the grouped plan to `PARSER_OUTPUT_REVISIONS.md` at the repo root:
+- Brief summary: scope of this review, what was found
+- One `## Group N: Title` section per group
+- Each group: findings addressed, files touched, change type (`Schema` | `Semantic` | `Internal`), parallelism notes
+
+JSON contract changes are almost always `Schema`. Note any that affect parser behavior without a shape change as `Semantic`.
+
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
 
 ## Constraints
 

@@ -78,7 +78,16 @@ Each group should have:
 - Whether it would be a breaking change to existing `.twf` files
 - Any validated `POSSIBLE_DSL_FEATURES.md` proposals that belong here
 
-**STOP. Present the grouped plan and wait for approval. To execute language changes, invoke `/project:address-review`.**
+### Phase 5: Write to `DSL_REVISIONS.md`
+
+Write the grouped plan to `DSL_REVISIONS.md` at the repo root:
+- Brief summary: coverage state, what was found, which possible features were validated
+- One `## Group N: Title` section per group
+- Each group: gaps addressed, change type (`Grammar` | `Semantic`), whether it breaks existing `.twf` files, parser work required
+
+DSL changes are `Grammar` if they require syntax changes, `Semantic` if they clarify or correct meaning without changing syntax.
+
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
 
 ## Constraints
 - **Spec lens only.** Don't review parser implementation, AST structure, or resolver behavior — those belong in `/project:review-parser-internals`.

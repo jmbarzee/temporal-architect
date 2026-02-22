@@ -54,7 +54,7 @@ Present a brief summary:
 
 **Step 5: Document**
 
-Update `AST_REVISIONS.md`:
+Update the revision file for this review (identified from context — e.g., `PARSER_REVISIONS.md`):
 - Mark this group as completed
 - Add any new findings surfaced during execution as new tracked items
 
@@ -62,7 +62,60 @@ Update `AST_REVISIONS.md`:
 
 Ask: proceed to the next group, or stop here?
 
-If stopping: note which groups remain and confirm they are still recorded in `AST_REVISIONS.md` for the next session.
+If stopping: note which groups remain. They are recorded in the revision file for the next session.
+
+---
+
+## After the Last Group
+
+When all groups are complete (or the user decides to close the cycle), perform this sequence:
+
+**Step A: Final review**
+
+Present a consolidated summary of all changes made across all groups. **Wait for user approval.**
+
+**Step B: Write CHANGES file**
+
+Derive the CHANGES filename from the revision file (e.g., `PARSER_REVISIONS.md` → `PARSER_CHANGES.md`).
+
+Write `{NAME}_CHANGES.md` at the repo root:
+
+```
+# {Layer} Changes
+
+**Source review:** `review-{x}`
+**Revision file:** `{NAME}_REVISIONS.md`
+
+## Summary
+[1-2 sentences on what changed overall]
+
+## Changes by Type
+
+### Grammar
+[DSL syntax changes — list each with file:location]
+
+### Schema
+[JSON output shape changes — list each with field path]
+
+### API
+[Go type or interface changes — list each with type name]
+
+### Semantic
+[Behavior changes with no signature change — list each with description]
+
+### Internal
+[Refactors with no downstream contract impact — list each briefly]
+```
+
+Only include sections where changes occurred. Empty sections are omitted.
+
+**Step C: Delete revision file**
+
+Delete `{NAME}_REVISIONS.md`. The CHANGES file is now the record of this cycle.
+
+**Step D: Propagate**
+
+Inform the user: run `/project:propagate-changes` to assess downstream impact from the CHANGES file.
 
 ## Constraints
 

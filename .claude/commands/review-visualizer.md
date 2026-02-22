@@ -57,7 +57,19 @@ Each finding must include:
 Cross-reference against `AST_REVISIONS.md`. Note any TypeScript code that will break due to planned parser changes.
 
 ### Phase 3: Group & Prioritize
-**STOP. Present plan and wait for approval. To execute, invoke `/project:address-review`.**
+
+Group findings by theme. Order by critical severity first, then contract mismatches before internal quality.
+
+### Phase 4: Write to `VISUALIZER_REVISIONS.md`
+
+Write the grouped plan to `VISUALIZER_REVISIONS.md` at the repo root:
+- Brief summary: scope of this review, what was found
+- One `## Group N: Title` section per group
+- Each group: findings addressed, files touched, change type (`Schema` | `Internal`), parallelism notes
+
+TypeScript changes here are almost always `Internal` unless they expose a new API surface to the extension.
+
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
 
 ## Constraints
 - **Source code only.** Don't run the visualizer or evaluate visual output — stay in `tools/visualizer/src/`.
