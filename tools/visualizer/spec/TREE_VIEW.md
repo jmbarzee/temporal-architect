@@ -134,7 +134,7 @@ Body:
 - Header shows name and entry count
 - Body contains two sections:
   - **Workers** — each renders as a worker-colored sub-entry that, when expanded, shows the full worker body (workflow/activity/service ref lists)
-  - **Nexus endpoints** — each renders as a nexus-colored sub-entry (not expandable)
+  - **Nexus endpoints** — each renders as a nexus-colored sub-entry (not expandable). These are deployment routing entries (endpoint name + task queue), distinct from nexus service *definitions* which are registered on workers and contain operations. A nexus call references both: the endpoint (where to route) and the service + operation (what to call).
 
 ### Worker (`workerDef`)
 - Medium grey color palette
@@ -260,7 +260,7 @@ Buttons only appear when the action has at least one valid target. If a definiti
 
 ### Data requirements
 
-The visualizer builds a **reverse reference index** client-side from the AST's forward references. For each definition, the index maps its name to the set of call sites (workflow + statement location) that reference it. This is computed from the same data already used by `DefinitionContext` — no parser changes needed.
+The visualizer builds a **reverse reference index** client-side from the AST's forward references. For each definition, the index maps its name to the set of call sites (workflow + statement location) that reference it. Names are unique per definition type (the resolver enforces this), so the key is the simple name — no qualified naming needed. This is computed from the same data already used by `DefinitionContext` — no parser changes needed.
 
 
 ## Visual Design

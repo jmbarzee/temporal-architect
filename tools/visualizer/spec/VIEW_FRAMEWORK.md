@@ -122,7 +122,7 @@ When the AST updates (file save → parser re-run → new `TWFFile` delivered to
 
 ### Identity Matching
 
-Definitions and nodes are matched across AST versions **by name**. A definition with the same name in the new AST is considered the same item. Renames are treated as a removal of the old name plus an addition of the new name.
+Definitions and nodes are matched across AST versions **by name**. A definition with the same name in the new AST is considered the same item, even if it moved between containers (e.g., a workflow re-registered on a different worker). Renames are treated as a removal of the old name plus an addition of the new name.
 
 ### State Preserved Across Reloads
 

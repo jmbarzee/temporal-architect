@@ -71,6 +71,8 @@ The containment hierarchy assumes every Level 3 node belongs to a Worker and eve
 - Orphan Level 3 nodes (no worker) are visible when Level 3 is selected.
 - When their level is not in the selected range, orphans are hidden like any other node at that level.
 
+**Seeding:** Orphan nodes have no parent to seed from. On initial appearance or live reload addition, seed them at the center of the viewport. The simulation's charge repulsion will push them to a natural position.
+
 **Data:** Orphan status is derivable from the AST — a definition is orphan if no worker or namespace references it. No parser changes needed.
 
 ---
@@ -308,14 +310,14 @@ In both modes:
 - All other nodes and edges dim (reduce opacity to ~20–30%).
 - Show a **tooltip** with the hovered node's full name and type.
 
-The transitive chain follows edges at the **currently visible** abstraction level. If only Namespace-level is shown, the chain follows Namespace → Namespace edges. If all levels are shown, it follows the finest-grained edges available.
+The transitive chain follows only edges at the **currently visible** abstraction level — it does not project hidden lower-level edges upward. If only Namespace-level is shown, the chain follows Namespace → Namespace derived edges. If all levels are shown, it follows the finest-grained Level 3 edges. This is consistent with filter-as-source-of-truth: the user sees relationships between what's visible, not inferred relationships from hidden data.
 
 ### Selection
 
 Clicking a node selects it. A selected node:
 - Stays highlighted even after the cursor moves away.
 - Retains the dependency highlight from hover (downstream by default, upstream if modifier was held during click).
-- Optionally reveals an info panel showing the node's properties (name, type, parent, connected nodes, callers, callees).
+- **Future:** An info panel showing the node's properties (name, type, parent, connected nodes, callers, callees). Trigger, layout, and lifecycle TBD.
 - Click the background or press Escape to deselect.
 
 ### Multi-Select (future consideration)
