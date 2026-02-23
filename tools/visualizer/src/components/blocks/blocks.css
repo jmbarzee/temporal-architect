@@ -602,6 +602,11 @@
   border-style: dashed;
 }
 
+/* Detach on await stmt blocks (workflow/nexus targets with fire-and-forget mode) */
+.block-await-stmt.block-mode-detach {
+  border-style: dashed;
+}
+
 /* Nexus Service Definition — heaviest pink */
 .block-nexus-service-def {
   background: var(--block-nexus-service-bg);
@@ -948,6 +953,17 @@
 
 .block-raw>.block-header {
   color: var(--block-raw-text);
+}
+
+/* Comment - Light grey */
+.block-comment {
+  background: var(--block-raw-bg);
+  border: 1px solid var(--block-raw-border);
+}
+
+.block-comment>.block-header {
+  color: var(--block-raw-text);
+  font-style: italic;
 }
 
 /* Promise - Cyan/Teal (async non-blocking) */

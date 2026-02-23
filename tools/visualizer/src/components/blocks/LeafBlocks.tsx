@@ -2,6 +2,7 @@ import type {
   ReturnStmt,
   CloseStmt,
   RawStmt,
+  Comment,
   PromiseStmt,
   SetStmt,
   UnsetStmt,
@@ -50,6 +51,20 @@ export function RawBlock({ stmt }: { stmt: RawStmt }) {
         <span className="block-toggle-placeholder" />
         <span className="block-icon">{THEME.raw.icon}</span>
         <span className="block-code">{stmt.text}</span>
+      </div>
+    </div>
+  )
+}
+
+// Comment
+export function CommentBlock({ stmt }: { stmt: Comment }) {
+  return (
+    <div className="block block-comment collapsed">
+      <div className="block-header">
+        <span className="block-toggle-placeholder" />
+        <span className="block-icon">{THEME.raw.icon}</span>
+        <span className="block-keyword">comment</span>
+        <span className="block-signature" title={stmt.text}>{stmt.text}</span>
       </div>
     </div>
   )

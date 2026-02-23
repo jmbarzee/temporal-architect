@@ -52,7 +52,7 @@ function WorkflowDefBlock({ def }: { def: WorkflowDef }) {
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
           <span className="block-icon"><ThemeIcon kind="workflow" /></span>
           <span className="block-keyword">workflow</span>
-          <span className="block-signature">{signature}</span>
+          <span className="block-signature" title={signature}>{signature}</span>
         </div>
 
         {expanded && (
@@ -75,7 +75,7 @@ function ActivityDefBlock({ def }: { def: ActivityDef }) {
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <span className="block-icon"><ThemeIcon kind="activity" /></span>
         <span className="block-keyword">activity</span>
-        <span className="block-signature">{signature}</span>
+        <span className="block-signature" title={signature}>{signature}</span>
       </div>
 
       {expanded && (
@@ -100,7 +100,7 @@ function WorkerDefBlock({ def }: { def: WorkerDef }) {
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <span className="block-icon">{THEME.worker.icon}</span>
         <span className="block-keyword">worker</span>
-        <span className="block-signature">{def.name} ({totalRefs} types)</span>
+        <span className="block-signature" title={`${def.name} (${totalRefs} types)`}>{def.name} ({totalRefs} types)</span>
       </div>
 
       {expanded && (
@@ -191,7 +191,7 @@ function NamespaceDefBlock({ def }: { def: NamespaceDef }) {
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <span className="block-icon block-icon-namespace">{THEME.namespace.icon}</span>
         <span className="block-keyword">namespace</span>
-        <span className="block-signature">{def.name} ({totalEntries} entries)</span>
+        <span className="block-signature" title={`${def.name} (${totalEntries} entries)`}>{def.name} ({totalEntries} entries)</span>
       </div>
 
       {expanded && (
@@ -284,7 +284,7 @@ function NexusServiceDefBlock({ def }: { def: NexusServiceDef }) {
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <span className="block-icon block-icon-nexus-service">{THEME.nexusService.icon}</span>
         <span className="block-keyword">service</span>
-        <span className="block-signature">{def.name} ({opCount} operation{opCount !== 1 ? 's' : ''})</span>
+        <span className="block-signature" title={`${def.name} (${opCount} operation${opCount !== 1 ? 's' : ''})`}>{def.name} ({opCount} operation{opCount !== 1 ? 's' : ''})</span>
       </div>
 
       {expanded && (

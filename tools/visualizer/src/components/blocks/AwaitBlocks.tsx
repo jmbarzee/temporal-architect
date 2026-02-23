@@ -83,12 +83,15 @@ function getAwaitStmtDisplay(
   handlers: { signals: Map<string, any>; updates: Map<string, any> },
 ): { icon: string; keyword: string; signature: string; blockClass: string; expandableDef?: { body?: Statement[] }; nexusAsyncWorkflow?: WorkflowDef; nexusSyncBody?: Statement[]; isUnresolved: boolean } {
   const target = getAwaitTargetDisplay(stmt.target, context, handlers)
+  // Detached await targets (workflow or nexus) get dashed border styling
+  const isDetach = (stmt.target.kind === 'workflow' && stmt.target.workflow?.mode === 'detach')
+    || (stmt.target.kind === 'nexus' && stmt.target.nexus?.detach)
   return {
     ...target,
     // Activity/workflow/nexus use SVG icons at block level, not text icons
     icon: (stmt.target.kind === 'activity' || stmt.target.kind === 'workflow' || stmt.target.kind === 'nexus') ? '' : target.icon,
     keyword: target.keyword ? `await ${target.keyword}` : 'await',
-    blockClass: `block-await-stmt block-await-stmt-${stmt.target.kind}`,
+    blockClass: `block-await-stmt block-await-stmt-${stmt.target.kind}${isDetach ? ' block-mode-detach' : ''}`,
   }
 }
 

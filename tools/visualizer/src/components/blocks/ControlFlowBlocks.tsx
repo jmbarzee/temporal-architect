@@ -81,6 +81,7 @@ export function IfBlock({ stmt }: { stmt: IfStmt }) {
       {expanded && (
         <div className="block-body">
           <div className="block-branch">
+            <div className="branch-label">then:</div>
             {(stmt.body || []).map((s) => (
               <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
             ))}

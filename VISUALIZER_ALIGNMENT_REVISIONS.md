@@ -35,35 +35,15 @@ Added `WorkflowCallHandlerScope` wrapper in `CallBlocks.tsx` that builds a `Hand
 
 ---
 
-## Group 2: Tree View — Rendering Gaps
+## Group 2: Tree View — Rendering Gaps ✅
 
-**Tier:** Core | **Blocked:** No | **Type:** Internal
+**Tier:** Core | **Blocked:** No | **Type:** Internal | **Status:** Completed
 
-Small rendering omissions that affect spec compliance.
-
-### Features addressed
-
-1. **Comment blocks not rendered** — `StatementBlock.tsx` returns `null` for `comment` type. Spec lists comment as a light-grey leaf block that should render with its text. Add a `CommentBlock` component.
-
-2. **Missing hover tooltip on block signatures** — No `title` attribute on any `<span className="block-signature">` in `DefinitionBlock.tsx` or block components. When signatures are truncated by CSS ellipsis, the full text is permanently unreadable. Add `title={signature}` to all signature spans.
-
-3. **Detach dashed border missing on await targets** — `AwaitBlocks.tsx` `getAwaitStmtDisplay` does not apply `block-mode-detach` class for detached workflow/nexus targets inside await statements. Only the keyword text changes ("detach workflow"), but no dashed border is applied. Top-level call blocks correctly apply the dashed border. Add `block-mode-detach` class when the await target has detach mode.
-
-4. **If block missing `then:` branch label** — `ControlFlowBlocks.tsx` renders an `else:` label via `.branch-label` but no corresponding `then:` label on the first branch. The asymmetry is inconsistent with spec intent. Add a `then:` label.
-
-5. **Namespace endpoint entries missing routing target** — Spec describes endpoints as "deployment routing entries (endpoint name + task queue)." Implementation only shows `endpointName`. If the AST provides additional routing fields, they should render.
-
-### Files touched
-- `tools/visualizer/src/components/blocks/StatementBlock.tsx` — route `comment` to new component
-- `tools/visualizer/src/components/blocks/LeafBlocks.tsx` — add `CommentBlock`
-- `tools/visualizer/src/components/blocks/DefinitionBlock.tsx` — add `title` to signature spans
-- `tools/visualizer/src/components/blocks/CallBlocks.tsx` — add `title` to signature spans
-- `tools/visualizer/src/components/blocks/AwaitBlocks.tsx` — add detach class to await target blocks
-- `tools/visualizer/src/components/blocks/ControlFlowBlocks.tsx` — add `then:` branch label
-- `tools/visualizer/src/components/blocks/blocks.css` — comment block styling
-
-### Parallelism
-Self-contained. All items independent of each other. No dependencies on other groups.
+1. Added `CommentBlock` in `LeafBlocks.tsx` (light grey, italic, renders comment text), routed from `StatementBlock.tsx`.
+2. Added `title={signature}` to all `block-signature` spans in `DefinitionBlock.tsx` and `CallBlocks.tsx`.
+3. Added `block-mode-detach` class to `getAwaitStmtDisplay` for detached workflow/nexus await targets + CSS rule in `blocks.css`.
+4. Added `then:` branch label in `ControlFlowBlocks.tsx` to match existing `else:` label.
+5. Skipped: namespace endpoint task queue — AST `NamespaceEndpoint` type has no task queue field; data not available.
 
 ---
 
