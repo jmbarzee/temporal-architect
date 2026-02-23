@@ -60,12 +60,83 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Workflow Canvas */
+/* View Shell */
+.view-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Tab Bar */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.tab-bar-btn {
+  padding: 10px 20px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.tab-bar-btn:hover {
+  color: var(--color-text);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.tab-bar-btn.active {
+  color: var(--color-workflow);
+  border-bottom-color: var(--color-workflow);
+}
+
+.vscode-dark .tab-bar-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Workflow Canvas (Tree View content area) */
 .workflow-canvas {
   flex: 1;
   overflow: auto;
   padding: 24px;
   background: var(--color-bg-gradient);
+}
+
+/* Graph View Placeholder */
+.graph-view-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-gradient);
+}
+
+.graph-view-placeholder-content {
+  text-align: center;
+}
+
+.graph-view-placeholder-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.graph-view-placeholder-hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
 }
 
 /* === Canvas Header === */

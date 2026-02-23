@@ -84,26 +84,16 @@ Implemented:
 
 ---
 
-## Group 6: View Framework — Tab Switching & View Shell
+## Group 6: View Framework — Tab Switching & View Shell ✅
 
-**Tier:** Core | **Blocked:** No (structurally) | **Type:** Internal
+**Tier:** Core | **Blocked:** No (structurally) | **Type:** Internal | **Status:** Completed
 
-The entire tab/view framework is absent. This is the prerequisite for Graph View and cross-view navigation.
-
-### Features addressed
-
-1. **No tab bar** — No tab bar, no view switching, no per-view state preservation.
-2. **No Graph View placeholder** — Tree View renders directly; no second view slot.
-3. **No cross-view navigation infrastructure** — No "Show in [View]" action, no filter adjustment on switch, no flash-on-arrival.
-
-### Files touched
-- `tools/visualizer/src/components/WorkflowCanvas.tsx` — refactor into view-shell + tab bar + view slot
-- New: `tools/visualizer/src/components/TreeView.tsx` — extract current tree rendering
-- New: `tools/visualizer/src/components/GraphView.tsx` — placeholder graph view component
-- `tools/visualizer/src/styles/index.css` — tab bar styles
-
-### Parallelism
-Prerequisite for Groups 7-10. Can be developed independently of Groups 1-5.
+Refactored `WorkflowCanvas.tsx` into a view shell with tab switching:
+1. `WorkflowCanvas.tsx` now serves as the view shell — manages AST, `DefinitionContext`, tab state, and renders a tab bar with Tree/Graph buttons. All context type exports preserved for downstream imports.
+2. Created `TreeView.tsx` — extracted all tree-specific state (header filters, expand/collapse, keyboard nav, reverse-reference index, navigateTo, flash) and rendering (header, errors header, definition list).
+3. Created `GraphView.tsx` — placeholder component showing definition count and "coming soon" message.
+4. Added tab bar styles to `index.css` (`.view-shell`, `.tab-bar`, `.tab-bar-btn` with active/hover/dark states).
+5. Cross-view navigation infrastructure ("Show in [View]") deferred — requires Graph View implementation (Groups 8-10).
 
 ---
 
