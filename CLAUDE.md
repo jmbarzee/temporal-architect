@@ -72,6 +72,9 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 | **Execution & Propagation** | |
 | `address-review` | Execute an approved review group (inner loop) |
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
+| **Design Ideation** | |
+| `expand-idea` | Expand a one-sentence idea into a full Temporal architecture vision with draft `.twf` |
 
 **Start here for a new cycle:** `/project:dev-cycle`
 **Start here for targeted work:** pick the specific review command for the layer you're focused on.
+**Start here for a new design:** `/project:expand-idea`
