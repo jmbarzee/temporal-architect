@@ -488,7 +488,6 @@ class WorkflowVisualizerPanel {
       try {
         const { stdout, stderr } = await execFileAsync(parserCommand, [
           ...baseArgs,
-          "--json",
           file,
         ]);
 

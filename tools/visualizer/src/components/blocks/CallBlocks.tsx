@@ -5,6 +5,7 @@ import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowC
 import { THEME, ThemeIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
+import { ContextualNavButtons } from './ContextualNav'
 
 // Activity Call - expandable to show activity definition body directly
 export function ActivityCallBlock({ stmt }: { stmt: ActivityCall }) {
@@ -17,6 +18,7 @@ export function ActivityCallBlock({ stmt }: { stmt: ActivityCall }) {
 
   return (
     <div className={`block block-activity ${expanded ? 'expanded' : 'collapsed'} ${!isDefined ? 'block-unresolved' : ''}`}>
+      {isDefined && <ContextualNavButtons showDefinition={{ name: stmt.name, type: 'activityDef' }} />}
       <div className="block-header" onClick={toggle}>
         {isDefined ? (
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
@@ -56,6 +58,7 @@ export function WorkflowCallBlock({ stmt }: { stmt: WorkflowCall }) {
 
   return (
     <div className={`block block-workflow-call block-mode-${stmt.mode} ${expanded ? 'expanded' : 'collapsed'} ${!isDefined ? 'block-unresolved' : ''}`}>
+      {isDefined && <ContextualNavButtons showDefinition={{ name: stmt.name, type: 'workflowDef' }} />}
       <div className="block-header" onClick={toggle}>
         {isDefined ? (
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
@@ -124,6 +127,7 @@ export function NexusCallBlock({ stmt }: { stmt: NexusCall }) {
 
   return (
     <div className={`block block-nexus-call ${stmt.detach ? 'block-mode-detach' : ''} ${expanded ? 'expanded' : 'collapsed'} ${!isDefined && stmt.service ? 'block-unresolved' : ''}`}>
+      {serviceDef && <ContextualNavButtons showDefinition={{ name: stmt.service, type: 'nexusServiceDef' }} />}
       <div className="block-header" onClick={toggle}>
         {isExpandable ? (
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>

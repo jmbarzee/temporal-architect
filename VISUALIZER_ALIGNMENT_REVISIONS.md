@@ -70,40 +70,17 @@ Implemented:
 
 ---
 
-## Group 5: Tree View — Contextual Navigation Buttons
+## Group 5: Tree View — Contextual Navigation Buttons ✅
 
-**Tier:** Core | **Blocked:** No | **Type:** Internal
+**Tier:** Core | **Blocked:** No | **Type:** Internal | **Status:** Completed
 
-The entire feature is missing: reverse reference index, hover action buttons, scroll-to-target, and multi-target popover.
-
-### Features addressed
-
-1. **No reverse reference index** — `DefinitionContext` is forward-only (name → definition). No reverse index mapping each definition name to the set of call sites that reference it.
-
-2. **No contextual navigation buttons** — No hover-triggered action buttons on any block header. No "Show callers", "Show worker", "Show namespace", "Show definition" buttons.
-
-3. **No scroll + expand ancestry + flash behavior** — No programmatic scroll-to-element, no ancestry expansion API, no flash animation. Block expand state is managed locally via `useToggle` with no external control surface.
-
-4. **No multi-target popover** — No popover component for selecting among multiple targets.
-
-5. **No "Show in Graph" action** — Placeholder until Graph View exists, but the button slot and callback infrastructure are absent.
-
-### Implementation approach
-1. Build reverse index alongside `DefinitionContext` in `WorkflowCanvas`, distribute via new context
-2. Create `ContextualNavButtons` component — reads both contexts, renders per block type
-3. Add programmatic expand + scroll + flash capability (requires refs and imperative control API)
-4. Add multi-target popover component
-5. Wire "Show in Graph" callback from app shell (disabled until Graph View exists)
-
-### Files touched
-- `tools/visualizer/src/components/WorkflowCanvas.tsx` — build reverse index, add to context
-- New: `tools/visualizer/src/components/blocks/ContextualNav.tsx` — nav button + popover component
-- `tools/visualizer/src/components/blocks/DefinitionBlock.tsx` — render nav buttons on definition headers
-- `tools/visualizer/src/components/blocks/CallBlocks.tsx` — render "Show definition" button on call headers
-- `tools/visualizer/src/components/blocks/blocks.css` — button positioning, popover styles
-
-### Parallelism
-Depends on scroll-to + expand-ancestry logic (new infrastructure). "Show in Graph" is a placeholder until Graph View exists. Otherwise self-contained.
+Implemented:
+1. Built `NavigationContext` with reverse-reference index (`callers`, `workerOf`, `namespaceOf` maps) computed via recursive AST statement walker in `WorkflowCanvas.tsx`. Keys use `${defType}:${name}` format for type-safe lookups.
+2. Created `ContextualNavButtons` component in new `ContextualNav.tsx` — hover-activated action buttons (Callers, Worker, NS, Def) positioned absolutely at top-right of block header.
+3. Added `navigateTo` callback: finds target in `visibleDefinitions`, expands it, scrolls into view, focuses, and flashes with CSS animation.
+4. Multi-target popover for buttons with >1 target — outside-click and Escape dismiss.
+5. Wired nav buttons into all 5 definition block types (`DefinitionBlock.tsx`) and all 3 call block types (`CallBlocks.tsx`).
+6. Skipped: "Show in Graph" — deferred until Graph View exists (Group 9+).
 
 ---
 

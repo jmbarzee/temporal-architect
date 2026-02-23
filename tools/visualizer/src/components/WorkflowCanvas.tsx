@@ -1,5 +1,5 @@
 import React from 'react'
-import type { TWFFile, Definition, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl, FileError } from '../types/ast'
+import type { TWFFile, Definition, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl, FileError, Statement, AsyncTarget } from '../types/ast'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
 import { SearchIcon } from './icons/GearIcons'
 import { THEME, DEF_TYPE_CONFIGS, DEF_TYPE_ORDER } from '../theme/temporal-theme'
@@ -38,6 +38,26 @@ export const HandlerContext = React.createContext<HandlerContext>({
   updates: new Map(),
 })
 
+// Reverse reference index for contextual navigation
+export interface CallerRef {
+  defName: string
+  defType: string
+}
+
+export interface NavigationContextType {
+  callers: Map<string, CallerRef[]>
+  workerOf: Map<string, string[]>
+  namespaceOf: Map<string, string[]>
+  navigateTo: (name: string, defType: string) => void
+}
+
+export const NavigationContext = React.createContext<NavigationContextType>({
+  callers: new Map(),
+  workerOf: new Map(),
+  namespaceOf: new Map(),
+  navigateTo: () => {},
+})
+
 const DEFAULT_VISIBLE_TYPES = new Set(
   DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type)
 )
@@ -54,6 +74,7 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
 
   // Track per-definition expand state for keyboard toggle (keyed by def identity)
   const [expandedDefs, setExpandedDefs] = React.useState<Set<string>>(new Set())
+  const [flashKey, setFlashKey] = React.useState<string | null>(null)
 
   // Build lookup maps for definitions (all files for expansion support)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -78,6 +99,110 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
     }
 
     return { workflows, activities, workers, nexusServices, namespaces }
+  }, [ast])
+
+  // Build reverse reference index for contextual navigation
+  const navIndex = React.useMemo(() => {
+    const callers = new Map<string, CallerRef[]>()
+    const workerOf = new Map<string, string[]>()
+    const namespaceOf = new Map<string, string[]>()
+
+    function addCaller(key: string, caller: CallerRef) {
+      const list = callers.get(key) || []
+      if (!list.some(c => c.defName === caller.defName && c.defType === caller.defType)) {
+        list.push(caller)
+        callers.set(key, list)
+      }
+    }
+
+    function addTo(map: Map<string, string[]>, key: string, value: string) {
+      const list = map.get(key) || []
+      if (!list.includes(value)) {
+        list.push(value)
+        map.set(key, list)
+      }
+    }
+
+    function walkTarget(target: AsyncTarget, callerDef: Definition) {
+      if (target.activity) addCaller(`activityDef:${target.activity.name}`, { defName: callerDef.name, defType: callerDef.type })
+      if (target.workflow) addCaller(`workflowDef:${target.workflow.name}`, { defName: callerDef.name, defType: callerDef.type })
+      if (target.nexus) addCaller(`nexusServiceDef:${target.nexus.service}`, { defName: callerDef.name, defType: callerDef.type })
+    }
+
+    function walkStmts(stmts: Statement[], callerDef: Definition) {
+      for (const stmt of stmts) {
+        switch (stmt.type) {
+          case 'activityCall':
+            addCaller(`activityDef:${stmt.name}`, { defName: callerDef.name, defType: callerDef.type })
+            break
+          case 'workflowCall':
+            addCaller(`workflowDef:${stmt.name}`, { defName: callerDef.name, defType: callerDef.type })
+            break
+          case 'nexusCall':
+            addCaller(`nexusServiceDef:${stmt.service}`, { defName: callerDef.name, defType: callerDef.type })
+            break
+          case 'await':
+            walkTarget(stmt.target, callerDef)
+            break
+          case 'promise':
+            walkTarget(stmt.target, callerDef)
+            break
+          case 'awaitAll':
+            walkStmts(stmt.body || [], callerDef)
+            break
+          case 'awaitOne':
+            for (const c of stmt.cases || []) {
+              if (c.target) walkTarget(c.target, callerDef)
+              if (c.awaitAll) walkStmts(c.awaitAll.body || [], callerDef)
+              walkStmts(c.body || [], callerDef)
+            }
+            break
+          case 'if':
+            walkStmts(stmt.body || [], callerDef)
+            walkStmts(stmt.elseBody || [], callerDef)
+            break
+          case 'for':
+            walkStmts(stmt.body || [], callerDef)
+            break
+          case 'switch':
+            for (const c of stmt.cases || []) walkStmts(c.body || [], callerDef)
+            if (stmt.default) walkStmts(stmt.default, callerDef)
+            break
+        }
+      }
+    }
+
+    for (const def of ast.definitions) {
+      if (def.type === 'workflowDef') {
+        walkStmts(def.body || [], def)
+        for (const s of def.signals || []) walkStmts(s.body || [], def)
+        for (const q of def.queries || []) walkStmts(q.body || [], def)
+        for (const u of def.updates || []) walkStmts(u.body || [], def)
+      } else if (def.type === 'activityDef') {
+        walkStmts(def.body || [], def)
+      } else if (def.type === 'nexusServiceDef') {
+        for (const op of def.operations || []) {
+          if (op.opType === 'async' && op.workflowName) {
+            addCaller(`workflowDef:${op.workflowName}`, { defName: def.name, defType: def.type })
+          }
+          if (op.body) walkStmts(op.body, def)
+        }
+      }
+
+      // Containment: workerOf
+      if (def.type === 'workerDef') {
+        for (const ref of def.workflows || []) addTo(workerOf, `workflowDef:${ref.name}`, def.name)
+        for (const ref of def.activities || []) addTo(workerOf, `activityDef:${ref.name}`, def.name)
+        for (const ref of def.services || []) addTo(workerOf, `nexusServiceDef:${ref.name}`, def.name)
+      }
+
+      // Containment: namespaceOf
+      if (def.type === 'namespaceDef') {
+        for (const w of def.workers || []) addTo(namespaceOf, `workerDef:${w.workerName}`, def.name)
+      }
+    }
+
+    return { callers, workerOf, namespaceOf }
   }, [ast])
 
   // Extract all unique source files from definitions
@@ -237,6 +362,29 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
     })
   }, [])
 
+  // Navigate to a definition by name+type: expand, scroll, flash
+  const navigateTo = React.useCallback((name: string, defType: string) => {
+    const index = visibleDefinitions.findIndex(d => d.name === name && d.type === defType)
+    if (index === -1) return
+
+    const key = defKey(visibleDefinitions[index])
+    setExpandedDefs(prev => new Set(prev).add(key))
+    setFocusedIndex(index)
+
+    setTimeout(() => {
+      treeItemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      treeItemRefs.current[index]?.focus()
+    }, 50)
+
+    setFlashKey(key)
+    setTimeout(() => setFlashKey(null), 1000)
+  }, [visibleDefinitions])
+
+  const navigationValue = React.useMemo<NavigationContextType>(() => ({
+    ...navIndex,
+    navigateTo,
+  }), [navIndex, navigateTo])
+
   // Tree keyboard navigation handler
   const handleTreeKeyDown = React.useCallback((e: React.KeyboardEvent) => {
     const count = visibleDefinitions.length
@@ -313,6 +461,7 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
 
   return (
     <DefinitionContext.Provider value={context}>
+    <NavigationContext.Provider value={navigationValue}>
       <div className="workflow-canvas">
         {/* === Filter Header === */}
         <div className="canvas-header">
@@ -423,6 +572,7 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
                   tabIndex={i === focusedIndex ? 0 : -1}
                   ref={el => { treeItemRefs.current[i] = el }}
                   onFocus={() => setFocusedIndex(i)}
+                  className={flashKey === key ? 'flash-target' : undefined}
                 >
                   <DefinitionBlock definition={def} expanded={isExpanded} onToggle={() => toggleDefExpand(key)} />
                 </div>
@@ -431,6 +581,7 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
           </div>
         )}
       </div>
+    </NavigationContext.Provider>
     </DefinitionContext.Provider>
   )
 }

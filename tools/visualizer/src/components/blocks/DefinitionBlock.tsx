@@ -5,6 +5,7 @@ import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowC
 import { THEME, ThemeIcon, WORKER_REF_THEME } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
+import { ContextualNavButtons } from './ContextualNav'
 import './blocks.css'
 
 interface DefinitionBlockProps {
@@ -57,6 +58,7 @@ function WorkflowDefBlock({ def, controlledExpanded, onToggle }: { def: Workflow
   return (
     <HandlerContext.Provider value={handlerContext}>
       <div className={`block block-workflow ${expanded ? 'expanded' : 'collapsed'}`}>
+        <ContextualNavButtons defName={def.name} defType="workflowDef" />
         <div className="block-header" onClick={toggle}>
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
           <span className="block-icon"><ThemeIcon kind="workflow" /></span>
@@ -82,6 +84,7 @@ function ActivityDefBlock({ def, controlledExpanded, onToggle }: { def: Activity
 
   return (
     <div className={`block block-activity-def ${expanded ? 'expanded' : 'collapsed'}`}>
+      <ContextualNavButtons defName={def.name} defType="activityDef" />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <span className="block-icon"><ThemeIcon kind="activity" /></span>
@@ -109,6 +112,7 @@ function WorkerDefBlock({ def, controlledExpanded, onToggle }: { def: WorkerDef 
 
   return (
     <div className={`block block-worker-def ${expanded ? 'expanded' : 'collapsed'}`}>
+      <ContextualNavButtons defName={def.name} defType="workerDef" />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <span className="block-icon">{THEME.worker.icon}</span>
@@ -202,6 +206,7 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle }: { def: Namespa
 
   return (
     <div className={`block block-namespace-def ${expanded ? 'expanded' : 'collapsed'}`}>
+      <ContextualNavButtons defName={def.name} defType="namespaceDef" />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <span className="block-icon block-icon-namespace">{THEME.namespace.icon}</span>
@@ -297,6 +302,7 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle }: { def: Nexu
 
   return (
     <div className={`block block-nexus-service-def ${expanded ? 'expanded' : 'collapsed'}`}>
+      <ContextualNavButtons defName={def.name} defType="nexusServiceDef" />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <span className="block-icon block-icon-nexus-service">{THEME.nexusService.icon}</span>
