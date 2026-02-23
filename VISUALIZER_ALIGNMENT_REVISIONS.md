@@ -111,26 +111,13 @@ Implemented state preservation across AST reloads:
 
 ---
 
-## Group 8: Graph View — Data Model & Graph Construction
+## Group 8: Graph View — Data Model & Graph Construction ✅
 
-**Tier:** Core | **Blocked:** No | **Type:** Internal
+**Tier:** Core | **Blocked:** No | **Type:** Internal | **Status:** Completed
 
-Build the graph data model from AST definitions. Foundation for all graph rendering.
-
-### Features addressed
-- Node types (3-level hierarchy): Namespace (L1), Worker (L2), Workflow/Activity/NexusService (L3)
-- Containment edges: L3→Worker, Worker→Namespace
-- Dependency edges: cross-worker calls (workflow→workflow, workflow→activity, workflow→workflow via nexus)
-- Derived edges: Worker→Worker and Namespace→Namespace projected from L3
-- Graph construction order (6-step pipeline)
-- Orphan definitions (uncontained nodes)
-
-### Files touched
-- New: `tools/visualizer/src/graph/model.ts` — graph node/edge types, containment hierarchy
-- New: `tools/visualizer/src/graph/build.ts` — AST→graph construction, orphan detection, edge coarsening
-
-### Parallelism
-Prerequisite for Groups 9-10. Independent of Groups 1-5. Requires Group 6 only for integration.
+Created graph data model and AST→graph construction pipeline:
+1. `model.ts` — `GraphNode` (id, level, nodeType, name, parentId, orphan), `GraphEdge` (edgeType, source/target with levels, nexus metadata), `Graph` (nodes Map + edges array), helper functions `nodeId()` and `nodeLevel()`.
+2. `build.ts` — `buildGraph(ast)` implementing the spec's 6-step pipeline: namespace nodes → worker nodes with namespace containment → L3 nodes from worker registrations + orphan detection → cross-worker dependency edges (direct calls, nexus traced to backing workflows) → Worker→Worker projection → Namespace→Namespace projection. Self-loops discarded at each projection step.
 
 ---
 
