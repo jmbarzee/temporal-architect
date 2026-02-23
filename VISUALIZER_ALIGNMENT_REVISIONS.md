@@ -137,32 +137,18 @@ Level transitions use instant visibility + reheat + parent seeding (animated for
 
 ---
 
-## Group 10: Graph View — Interaction Layer
+## Group 10: Graph View — Interaction Layer ✅
 
-**Tier:** Core | **Blocked:** No | **Type:** Internal
+**Tier:** Core | **Blocked:** No | **Type:** Internal | **Status:** Completed
 
-Hover, selection, search, filtering, keyboard navigation, and control panel.
+Implemented the full graph interaction layer:
+1. `highlight.ts` — `getTransitiveDeps()` BFS traversal following dependency edges downstream or upstream; `getHighlightedEdgeIds()` for edges along the traversal path.
+2. `GraphControlPanel.tsx` — Collapsible panel with 8 force sliders (3 charge + 5 link) grouped by type, play/pause and reheat buttons. Slider changes propagate live to running simulation.
+3. `GraphCanvas.tsx` — Added hover detection (pointer-move hit test), click-to-select/background-deselect, opacity dimming (20% for non-highlighted), selection ring, focus ring, search match ring, offscreen culling (100px margin).
+4. `GraphView.tsx` — Full interaction wiring: hover/select/focus state, Shift-key tracking for upstream deps, file filter chips, search bar with hidden match badge, search results dropdown with click-to-center, errors header (GraphErrorsHeader component), keyboard handler (Tab/Shift+Tab/Enter/Escape/Arrows/+/-/F/Space/?), shortcuts reference panel, control panel integration.
+5. `index.css` — Styles for file chips, search bar/results, errors header, control panel (absolute-positioned), shortcuts panel, all with dark theme variants.
 
-### Features addressed
-- Transitive dependency highlighting (hover downstream, Shift+hover upstream, ~20-30% opacity dimming)
-- Selection (click to select, background/Escape to deselect)
-- Control panel: level selector, 8 force sliders, play/pause/reheat
-- Search and filtering: source file chips, name search, hidden match badges
-- Search result selection: click match to center and select
-- Errors header (shared pattern)
-- Keyboard navigation: Tab/Shift+Tab focus, Enter select, arrows pan, +/- zoom, F fit, `/` search, Space toggle sim, `?` shortcuts
-- Hotkey discoverability: tooltip hint, `?` reference panel
-- Nexus edge scope highlighting
-- Offscreen culling
-
-### Files touched
-- New: `tools/visualizer/src/components/GraphControlPanel.tsx` — sliders, play/pause, reheat
-- New: `tools/visualizer/src/graph/highlight.ts` — transitive dependency traversal
-- `tools/visualizer/src/components/GraphCanvas.tsx` — hover/select/keyboard handlers, search integration
-- `tools/visualizer/src/components/GraphView.tsx` — filter bar, search bar, errors header
-
-### Parallelism
-Depends on Groups 8-9. Many sub-features can be parallelized internally.
+Deferred: Nexus edge scope highlighting (highlighting all edges sharing a nexus service/endpoint on hover) — requires additional edge metadata UI that would benefit from user testing first.
 
 ---
 
