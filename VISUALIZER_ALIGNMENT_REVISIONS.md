@@ -57,41 +57,16 @@ Added `WorkflowCallHandlerScope` wrapper in `CallBlocks.tsx` that builds a `Hand
 
 ---
 
-## Group 4: Tree View — Keyboard Navigation & Accessibility
+## Group 4: Tree View — Keyboard Navigation & Accessibility ✅
 
-**Tier:** Core | **Blocked:** No | **Type:** Internal
+**Tier:** Core | **Blocked:** No | **Type:** Internal | **Status:** Completed
 
-The entire keyboard navigation and ARIA system is absent.
-
-### Features addressed
-
-1. **No keyboard event handling on block items** — Up/Down/Left/Right/Enter/Home/End key bindings are completely missing. No `onKeyDown` handler on any block element.
-
-2. **Block headers not keyboard-reachable** — All block headers are `<div>` elements with no `tabIndex`. They are absent from the tab order entirely.
-
-3. **No focus ring CSS** — No `:focus-visible` styles on any block, button, or interactive element. The only focus-related CSS is `outline: none` on the search input.
-
-4. **No ARIA markup** — Zero `role="tree"`, `role="treeitem"`, `aria-expanded`, or `aria-level` attributes anywhere.
-
-5. **Tab cycling incomplete** — Tab moves through header buttons but skips the entire block list since blocks have no `tabIndex`.
-
-6. **Escape only works inside search input** — No global Escape handler for clearing selection or closing popovers outside search.
-
-### Implementation approach
-- Add roving `tabIndex` focus management to the block tree
-- Add `onKeyDown` handler on the tree container for arrow keys, Enter, Home/End
-- Add `role="tree"` to container, `role="treeitem"` + `aria-expanded` + `aria-level` to each block
-- Add `:focus-visible` CSS for all interactive elements
-- Add global Escape handler
-
-### Files touched
-- `tools/visualizer/src/components/WorkflowCanvas.tsx` — tree-level keyboard handler, focus management, ARIA on container
-- `tools/visualizer/src/components/blocks/DefinitionBlock.tsx` — `role="treeitem"`, `aria-expanded`, `aria-level`, `tabIndex`
-- `tools/visualizer/src/components/blocks/blocks.css` — `:focus-visible` styles
-- `tools/visualizer/src/styles/index.css` — global focus ring token
-
-### Parallelism
-Self-contained. No dependencies on other groups.
+Implemented:
+1. `role="tree"` container with `onKeyDown` handler for Up/Down/Left/Right/Enter/Home/End/Escape.
+2. `role="treeitem"` wrappers with `aria-expanded`, `aria-level={1}`, roving `tabIndex` (focused=0, others=-1).
+3. Controlled expand state: `WorkflowCanvas` manages `expandedDefs` Set, passed to `DefinitionBlock` via `expanded`/`onToggle` props. Sub-blocks fall back to internal `useToggle` when not controlled.
+4. `:focus-visible` CSS with `--focus-ring-color` variable (blue in light, lighter blue in dark).
+5. Global Escape handler closes search when tree is focused.
 
 ---
 

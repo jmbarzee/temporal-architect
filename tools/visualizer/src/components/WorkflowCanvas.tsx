@@ -49,6 +49,11 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
   const [searchQuery, setSearchQuery] = React.useState('')
   const [visibleTypes, setVisibleTypes] = React.useState<Set<string>>(DEFAULT_VISIBLE_TYPES)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
+  const [focusedIndex, setFocusedIndex] = React.useState(-1)
+  const treeItemRefs = React.useRef<(HTMLDivElement | null)[]>([])
+
+  // Track per-definition expand state for keyboard toggle (keyed by def identity)
+  const [expandedDefs, setExpandedDefs] = React.useState<Set<string>>(new Set())
 
   // Build lookup maps for definitions (all files for expansion support)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -214,6 +219,98 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [searchActive])
 
+  // Keep refs array sized to visible definitions
+  React.useEffect(() => {
+    treeItemRefs.current = treeItemRefs.current.slice(0, visibleDefinitions.length)
+  }, [visibleDefinitions.length])
+
+  // Helper: get stable key for a definition
+  const defKey = (def: Definition) => `${def.sourceFile || ''}-${def.type}-${def.name}`
+
+  // Toggle expand state for a definition (used by keyboard Enter/Right/Left)
+  const toggleDefExpand = React.useCallback((key: string) => {
+    setExpandedDefs(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  // Tree keyboard navigation handler
+  const handleTreeKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+    const count = visibleDefinitions.length
+    if (count === 0) return
+
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault()
+        const next = focusedIndex < count - 1 ? focusedIndex + 1 : focusedIndex
+        setFocusedIndex(next)
+        treeItemRefs.current[next]?.focus()
+        break
+      }
+      case 'ArrowUp': {
+        e.preventDefault()
+        const prev = focusedIndex > 0 ? focusedIndex - 1 : 0
+        setFocusedIndex(prev)
+        treeItemRefs.current[prev]?.focus()
+        break
+      }
+      case 'ArrowRight': {
+        e.preventDefault()
+        if (focusedIndex >= 0 && focusedIndex < count) {
+          const key = defKey(visibleDefinitions[focusedIndex])
+          if (!expandedDefs.has(key)) {
+            setExpandedDefs(prev => new Set(prev).add(key))
+          }
+        }
+        break
+      }
+      case 'ArrowLeft': {
+        e.preventDefault()
+        if (focusedIndex >= 0 && focusedIndex < count) {
+          const key = defKey(visibleDefinitions[focusedIndex])
+          if (expandedDefs.has(key)) {
+            setExpandedDefs(prev => {
+              const next = new Set(prev)
+              next.delete(key)
+              return next
+            })
+          }
+        }
+        break
+      }
+      case 'Enter': {
+        e.preventDefault()
+        if (focusedIndex >= 0 && focusedIndex < count) {
+          toggleDefExpand(defKey(visibleDefinitions[focusedIndex]))
+        }
+        break
+      }
+      case 'Home': {
+        e.preventDefault()
+        setFocusedIndex(0)
+        treeItemRefs.current[0]?.focus()
+        break
+      }
+      case 'End': {
+        e.preventDefault()
+        const last = count - 1
+        setFocusedIndex(last)
+        treeItemRefs.current[last]?.focus()
+        break
+      }
+      case 'Escape': {
+        e.preventDefault()
+        if (searchActive) {
+          toggleSearch()
+        }
+        break
+      }
+    }
+  }, [visibleDefinitions, focusedIndex, expandedDefs, searchActive, toggleSearch, toggleDefExpand])
+
   return (
     <DefinitionContext.Provider value={context}>
       <div className="workflow-canvas">
@@ -313,9 +410,25 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
         ) : visibleDefinitions.length === 0 && hasErrors ? (
           null /* Only errors, no content — errors header is shown above */
         ) : (
-          visibleDefinitions.map((def) => (
-            <DefinitionBlock key={`${def.sourceFile || ''}-${def.type}-${def.name}`} definition={def} />
-          ))
+          <div role="tree" aria-label="Definition list" onKeyDown={handleTreeKeyDown}>
+            {visibleDefinitions.map((def, i) => {
+              const key = defKey(def)
+              const isExpanded = expandedDefs.has(key)
+              return (
+                <div
+                  key={key}
+                  role="treeitem"
+                  aria-expanded={isExpanded}
+                  aria-level={1}
+                  tabIndex={i === focusedIndex ? 0 : -1}
+                  ref={el => { treeItemRefs.current[i] = el }}
+                  onFocus={() => setFocusedIndex(i)}
+                >
+                  <DefinitionBlock definition={def} expanded={isExpanded} onToggle={() => toggleDefExpand(key)} />
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
     </DefinitionContext.Provider>

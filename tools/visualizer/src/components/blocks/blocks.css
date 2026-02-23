@@ -281,6 +281,17 @@
   padding: 4px 0 4px 12px;
 }
 
+/* Focus ring for keyboard navigation */
+[role="treeitem"]:focus {
+  outline: none;
+}
+
+[role="treeitem"]:focus-visible {
+  outline: 2px solid var(--focus-ring-color, #4A90D9);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
 /* When expanded, add subtle shadow */
 .block.expanded {
   box-shadow: 0 2px 8px var(--shadow-color);

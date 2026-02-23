@@ -9,28 +9,37 @@ import './blocks.css'
 
 interface DefinitionBlockProps {
   definition: Definition
+  expanded?: boolean
+  onToggle?: () => void
 }
 
-export function DefinitionBlock({ definition }: DefinitionBlockProps) {
+export function DefinitionBlock({ definition, expanded, onToggle }: DefinitionBlockProps) {
   switch (definition.type) {
     case 'workflowDef':
-      return <WorkflowDefBlock def={definition} />
+      return <WorkflowDefBlock def={definition} controlledExpanded={expanded} onToggle={onToggle} />
     case 'activityDef':
-      return <ActivityDefBlock def={definition} />
+      return <ActivityDefBlock def={definition} controlledExpanded={expanded} onToggle={onToggle} />
     case 'workerDef':
-      return <WorkerDefBlock def={definition} />
+      return <WorkerDefBlock def={definition} controlledExpanded={expanded} onToggle={onToggle} />
     case 'namespaceDef':
-      return <NamespaceDefBlock def={definition} />
+      return <NamespaceDefBlock def={definition} controlledExpanded={expanded} onToggle={onToggle} />
     case 'nexusServiceDef':
-      return <NexusServiceDefBlock def={definition} />
+      return <NexusServiceDefBlock def={definition} controlledExpanded={expanded} onToggle={onToggle} />
     default:
       return null
   }
 }
 
-function WorkflowDefBlock({ def }: { def: WorkflowDef }) {
+interface ControlledExpandProps {
+  controlledExpanded?: boolean
+  onToggle?: () => void
+}
+
+function WorkflowDefBlock({ def, controlledExpanded, onToggle }: { def: WorkflowDef } & ControlledExpandProps) {
   const signature = formatWorkflowSignature(def)
-  const [expanded, toggle] = useToggle()
+  const [internalExpanded, internalToggle] = useToggle()
+  const expanded = controlledExpanded ?? internalExpanded
+  const toggle = onToggle ?? internalToggle
 
   // Build handler context for this workflow
   const handlerContext = React.useMemo<HandlerContext>(() => {
@@ -65,8 +74,10 @@ function WorkflowDefBlock({ def }: { def: WorkflowDef }) {
   )
 }
 
-function ActivityDefBlock({ def }: { def: ActivityDef }) {
-  const [expanded, toggle] = useToggle()
+function ActivityDefBlock({ def, controlledExpanded, onToggle }: { def: ActivityDef } & ControlledExpandProps) {
+  const [internalExpanded, internalToggle] = useToggle()
+  const expanded = controlledExpanded ?? internalExpanded
+  const toggle = onToggle ?? internalToggle
   const signature = formatActivitySignature(def)
 
   return (
@@ -89,8 +100,10 @@ function ActivityDefBlock({ def }: { def: ActivityDef }) {
   )
 }
 
-function WorkerDefBlock({ def }: { def: WorkerDef }) {
-  const [expanded, toggle] = useToggle()
+function WorkerDefBlock({ def, controlledExpanded, onToggle }: { def: WorkerDef } & ControlledExpandProps) {
+  const [internalExpanded, internalToggle] = useToggle()
+  const expanded = controlledExpanded ?? internalExpanded
+  const toggle = onToggle ?? internalToggle
 
   const totalRefs = (def.workflows?.length || 0) + (def.activities?.length || 0) + (def.services?.length || 0)
 
@@ -180,8 +193,10 @@ function WorkerRefItem({ ref_, refType }: { ref_: WorkerRef; refType: 'workflow'
   )
 }
 
-function NamespaceDefBlock({ def }: { def: NamespaceDef }) {
-  const [expanded, toggle] = useToggle()
+function NamespaceDefBlock({ def, controlledExpanded, onToggle }: { def: NamespaceDef } & ControlledExpandProps) {
+  const [internalExpanded, internalToggle] = useToggle()
+  const expanded = controlledExpanded ?? internalExpanded
+  const toggle = onToggle ?? internalToggle
 
   const totalEntries = (def.workers?.length || 0) + (def.endpoints?.length || 0)
 
@@ -274,8 +289,10 @@ function formatWorkflowSignature(def: WorkflowDef): string {
   return sig
 }
 
-function NexusServiceDefBlock({ def }: { def: NexusServiceDef }) {
-  const [expanded, toggle] = useToggle()
+function NexusServiceDefBlock({ def, controlledExpanded, onToggle }: { def: NexusServiceDef } & ControlledExpandProps) {
+  const [internalExpanded, internalToggle] = useToggle()
+  const expanded = controlledExpanded ?? internalExpanded
+  const toggle = onToggle ?? internalToggle
   const opCount = def.operations?.length || 0
 
   return (
