@@ -149,6 +149,27 @@ body {
   overflow: hidden;
 }
 
+/* Transition indicator: subtle flash when AST refreshes */
+.canvas-header.refresh-flash {
+  animation: refreshFlash 0.6s ease;
+}
+
+@keyframes refreshFlash {
+  0% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+  30% { box-shadow: 0 0 0 2px rgba(139, 126, 200, 0.4), 0 1px 4px rgba(0, 0, 0, 0.06); }
+  100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+}
+
+.vscode-dark .canvas-header.refresh-flash {
+  animation: refreshFlashDark 0.6s ease;
+}
+
+@keyframes refreshFlashDark {
+  0% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+  30% { box-shadow: 0 0 0 2px rgba(168, 155, 216, 0.4), 0 1px 4px rgba(0, 0, 0, 0.06); }
+  100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+}
+
 /* --- Files Section --- */
 .header-files-section {
   padding: 10px 14px;

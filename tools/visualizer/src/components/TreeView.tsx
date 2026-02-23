@@ -29,6 +29,18 @@ export function TreeView({ ast, onOpenFile }: TreeViewProps) {
   const [expandedDefs, setExpandedDefs] = React.useState<Set<string>>(new Set())
   const [flashKey, setFlashKey] = React.useState<string | null>(null)
 
+  // Transition indicator: flash header when AST updates
+  const [refreshFlash, setRefreshFlash] = React.useState(false)
+  const prevAstRef = React.useRef(ast)
+  React.useEffect(() => {
+    if (prevAstRef.current !== ast && prevAstRef.current !== null) {
+      setRefreshFlash(true)
+      const timer = setTimeout(() => setRefreshFlash(false), 600)
+      return () => clearTimeout(timer)
+    }
+    prevAstRef.current = ast
+  }, [ast])
+
   // Build reverse reference index for contextual navigation
   const navIndex = React.useMemo(() => {
     const callers = new Map<string, CallerRef[]>()
@@ -152,6 +164,15 @@ export function TreeView({ ast, onOpenFile }: TreeViewProps) {
       setSelectedFiles(new Set())
     }
   }, [ast.focusedFile])
+
+  // Stale file cleanup: remove selected files that no longer exist in the AST
+  React.useEffect(() => {
+    const fileSet = new Set(allFiles)
+    setSelectedFiles(prev => {
+      const pruned = new Set([...prev].filter(f => fileSet.has(f)))
+      return pruned.size === prev.size ? prev : pruned
+    })
+  }, [allFiles])
 
   // Toggle a file in the selection
   const toggleFile = (file: string) => {
@@ -277,8 +298,17 @@ export function TreeView({ ast, onOpenFile }: TreeViewProps) {
     treeItemRefs.current = treeItemRefs.current.slice(0, visibleDefinitions.length)
   }, [visibleDefinitions.length])
 
-  // Helper: get stable key for a definition
-  const defKey = (def: Definition) => `${def.sourceFile || ''}-${def.type}-${def.name}`
+  // Helper: get stable key for a definition (by type+name, not file — survives file moves)
+  const defKey = (def: Definition) => `${def.type}:${def.name}`
+
+  // Expand state cleanup: remove entries for definitions that no longer exist
+  React.useEffect(() => {
+    const validKeys = new Set(ast.definitions.map(d => `${d.type}:${d.name}`))
+    setExpandedDefs(prev => {
+      const pruned = new Set([...prev].filter(k => validKeys.has(k)))
+      return pruned.size === prev.size ? prev : pruned
+    })
+  }, [ast.definitions])
 
   // Toggle expand state for a definition (used by keyboard Enter/Right/Left)
   const toggleDefExpand = React.useCallback((key: string) => {
@@ -391,7 +421,7 @@ export function TreeView({ ast, onOpenFile }: TreeViewProps) {
     <NavigationContext.Provider value={navigationValue}>
       <div className="workflow-canvas">
         {/* === Filter Header === */}
-        <div className="canvas-header">
+        <div className={`canvas-header${refreshFlash ? ' refresh-flash' : ''}`}>
           {/* Files Section — only show if there are files */}
           {hasFiles && (
             <>

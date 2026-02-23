@@ -97,29 +97,17 @@ Refactored `WorkflowCanvas.tsx` into a view shell with tab switching:
 
 ---
 
-## Group 7: View Framework — Live Reload
+## Group 7: View Framework — Live Reload ✅
 
-**Tier:** Core | **Blocked:** No | **Type:** Internal
+**Tier:** Core | **Blocked:** No | **Type:** Internal | **Status:** Completed
 
-State preservation across AST reloads is absent. Every AST update replaces all state.
-
-### Features addressed
-
-1. **No identity matching** — `setAst(message.data)` replaces the AST wholesale. No diff by definition name.
-2. **Filter selections not preserved** — `selectedFiles` resets on every new AST (via `useEffect` on `ast.focusedFile`).
-3. **Search query not preserved** — `searchQuery` is local state, lost on AST replacement.
-4. **Expand/collapse not preserved** — Relies on React key stability (`${sourceFile}-${type}-${name}`), which may work incidentally but is not explicit preservation logic. Fails when list order changes.
-5. **Scroll position not preserved** — No scroll restoration logic.
-6. **No stale file cleanup** — Stale file selections persist silently when files disappear from new AST.
-7. **No transition indicator** — No visual signal that the AST has been refreshed.
-
-### Files touched
-- `tools/visualizer/src/components/WorkflowCanvas.tsx` — identity-matching diff logic, state preservation hooks, transition indicator
-- `tools/visualizer/src/components/blocks/DefinitionBlock.tsx` — externalized expand state keyed by name
-- `tools/visualizer/src/styles/index.css` — transition indicator animation
-
-### Parallelism
-Independent of Groups 1-5. Benefits from Group 6 (view shell) being in place.
+Implemented state preservation across AST reloads:
+1. Changed expand state identity key from `${sourceFile}-${type}-${name}` to `${type}:${name}` — definitions survive file moves, matching spec's "by name" identity rule.
+2. Added stale file cleanup `useEffect` — prunes `selectedFiles` when files disappear from AST.
+3. Added expand state cleanup `useEffect` — prunes `expandedDefs` when definitions disappear from AST.
+4. Added transition indicator — `refreshFlash` state triggers a subtle purple glow animation on the canvas-header when AST updates.
+5. Search query and scroll position were already preserved (local state not reset by AST prop changes). No changes needed.
+6. Filter selections already preserved for same `focusedFile`. Stale cleanup (item 2) handles the remaining gap.
 
 ---
 
