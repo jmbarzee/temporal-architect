@@ -1,4 +1,4 @@
-# Propagate Changes
+# Fan Out Reviews from CHANGES File
 
 Read completed CHANGES files and fan out targeted reviews to all affected downstream layers.
 

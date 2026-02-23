@@ -1,4 +1,4 @@
-# Visualizer Spec Review
+# Review Visualizer Product & UX Against Spec
 
 Review the visualizer from a product and user experience perspective. Identify feature gaps, UX improvements, and missing spec coverage.
 

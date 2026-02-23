@@ -1,4 +1,4 @@
-# Development Cycle
+# Orchestrate Full Development Cycle
 
 Orchestrate a full development cycle across the repository — from review through execution, documentation, and downstream propagation.
 

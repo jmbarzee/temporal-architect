@@ -1,4 +1,4 @@
-# Address Review
+# Execute Approved Review Group
 
 Execute the groups produced by a review command. This command owns the inner loop: plan → approve → execute → validate → document → repeat.
 

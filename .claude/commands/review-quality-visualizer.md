@@ -1,4 +1,4 @@
-# Visualizer Code Review
+# Review Visualizer TypeScript Code Quality
 
 Review the React + TypeScript implementation in `tools/visualizer/src/`.
 

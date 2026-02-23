@@ -1,4 +1,4 @@
-# Skill Review
+# Review Single Skill: Craft, Focus & Density
 
 Review an AI skill for quality, focus, and effectiveness. Evaluate whether the skill makes an AI maximally capable at its stated goal.
 

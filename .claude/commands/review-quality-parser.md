@@ -1,4 +1,4 @@
-# Parser Internals Code Review
+# Review Parser, AST & Resolver Code Quality
 
 Review the Go implementation in `tools/lsp/` — the parser pipeline (`parser/`), LSP server (`internal/server/`), and CLI (`cmd/twf/`).
 

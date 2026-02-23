@@ -1,51 +1,71 @@
-# Author Skills Alignment Review
-
-Align author-go (and any future author-* skills) to the design skill and the Temporal SDK. Both are authoritative — the author skill documentation is the target.
+# Align Author-Go Skill to Design Skill + Temporal SDK
 
 This command answers: "does the author-go skill provide a complete and accurate mapping from every design skill construct to correct, current Temporal Go SDK code?"
+
+Both sources are authoritative — a mapping that exists but uses an outdated SDK call is as broken as a missing mapping.
 
 Skill craft belongs in `/project:review-quality-skill`. This command is solely coverage and accuracy alignment across two authoritative sources.
 
 ## Context
 
 - `skills/design/SKILL.md` and `skills/design/reference/` — authoritative: every construct the design skill can produce
-- Temporal Go SDK via **Temporal docs MCP server** — authoritative: current SDK API, patterns, and idioms
+- Temporal Go SDK via **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowledge_sources`) — authoritative: current SDK API, patterns, and idioms
 - `skills/author-go/README.md` — declared scope of the skill
 - `skills/author-go/SKILL.md` and `skills/author-go/reference/` — the target under review
 - `AST_REVISIONS.md` — changes in flight that may introduce new design constructs requiring new Go mappings
 - `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md` — if present, read to avoid re-reporting known gaps
 
-## Dependencies to Check
-
-The author-go skill has two authoritative dependencies, both must be satisfied:
-
-1. **Design skill coverage**: every construct the design skill produces must have a corresponding Go mapping — workflows, activities, workers, namespaces, nexus services, all statement types, all options, all async patterns
-2. **SDK accuracy**: every Go mapping must reflect the current Temporal Go SDK — correct types, function signatures, context propagation, determinism constraints, error handling patterns
-
 ## Workflow
 
-### Phase 1: Explore
+### Phase 1: Orient
 
-Use sub-agents in parallel:
-- **Design skill agent**: Read `skills/design/SKILL.md` and all `skills/design/reference/` files. Build a complete inventory of every construct and semantic the design skill documents.
-- **SDK agent**: Use the Temporal docs MCP server to inventory the current Go SDK surface relevant to the design skill constructs: workflow registration, activity registration, signal/query/update handlers, timers, promises, child workflows, nexus, heartbeats, task queues, workers.
-- **Author skill agent**: Read `skills/author-go/SKILL.md` and all `skills/author-go/reference/` files. For each design construct and SDK pattern, determine: mapped, partial, missing, or incorrect?
+Briefly scan the design skill reference file list and the author-go reference file list. Confirm the comparison units below still apply — add topics for new design constructs with no author-go coverage, drop topics for constructs that no longer exist. Note which topics will need Temporal docs MCP server lookups to verify SDK accuracy.
 
-### Phase 2: Catalog
+**Standard comparison units:**
 
-For each design construct:
-- **Design coverage**: `mapped` | `partial` | `missing` — does a Go mapping exist?
-- **SDK accuracy**: `current` | `outdated` | `incorrect` — does the mapping match the actual SDK?
+| # | Topic | Source (design skill + SDK concept) | Target (author-go) |
+|---|-------|-------------------------------------|-------------------|
+| 1 | Workflow definition & signatures | `notation-reference.md`, `primitives-reference.md`; SDK: `workflow.Context`, workflow function signatures, error returns | `workflow-def.md` |
+| 2 | Activity definition & execution boundaries | `core-principles.md`, `notation-reference.md`; SDK: `context.Context`, `RegisterActivity`, struct method pattern | `activity-def.md` |
+| 3 | Activity calls (sync & promise) | `notation-reference.md`, `notation-examples.md`; SDK: `ExecuteActivity`, `workflow.Future`, `.Get()` | `activity-call.md`, `promise.md` |
+| 4 | Child workflow execution (sync, promise, detach) | `topics/child-workflows.md`; SDK: `ExecuteChildWorkflow`, `ChildWorkflowOptions`, `ParentClosePolicy.ABANDON` | `workflow-call.md`, `promise.md`, `detach.md` |
+| 5 | Signal handlers & ambient reception | `topics/signals-queries-updates.md`; SDK: `GetSignalChannel`, `workflow.Go`, `ReceiveChannel` looping pattern | `signal-handler.md`, `await-one.md` |
+| 6 | Query & update handlers | `topics/signals-queries-updates.md`; SDK: `SetQueryHandler`, `SetUpdateHandlerWithOptions`, `UpdateHandlerOptions` | `query-handler.md`, `update-handler.md` |
+| 7 | Timers & conditions | `topics/timers-scheduling.md`, `topics/promises-conditions.md`; SDK: `workflow.Sleep`, `workflow.Await`, `workflow.NewTimer` | `await-timer.md`, `condition.md` |
+| 8 | Await all / await one (selector patterns) | `notation-examples.md`, `topics/promises-conditions.md`; SDK: `workflow.Go`, `workflow.NewSelector`, `AddFuture`, `AddReceive` | `await-all.md`, `await-one.md` |
+| 9 | Activity options, retry & timeouts | `topics/activities-advanced.md`; SDK: `ActivityOptions`, `RetryPolicy`, `WithActivityOptions` | `options.md`, `activity-call.md` |
+| 10 | Nexus operations & service definitions | `topics/nexus.md`; SDK: `workflow.NewNexusClient`, `ExecuteOperation`, `temporalnexus.NewWorkflowRunOperation`, `RegisterNexusService` | `nexus.md`, `nexus-service-def.md`, `worker.md` |
+| 11 | Control flow (if, for, switch) | `notation-reference.md`, `notation-examples.md`; direct Go mapping + determinism constraints | `control-flow.md` |
+| 12 | Workflow termination & continuation | `topics/long-running.md`; SDK: `workflow.NewContinueAsNewError`, error return patterns | `close.md` |
+
+### Phase 2: Parallel Alignment
+
+Launch one sub-agent per topic. Each sub-agent reads the relevant **design skill sections AND the author-go sections** for its topic, **and searches the Temporal docs MCP server** for the current SDK API for that topic, then answers:
+
+- Is this DSL construct mapped in author-go? (`mapped` / `partial` / `missing`)
+- Is the mapping accurate to the current SDK? (`current` / `outdated` / `incorrect`)
+- Are all DSL variants covered (e.g., all three execution modes for child workflows)?
+- Does the Go code in the skill use the correct SDK functions and call signatures?
+
+Sub-agents run in parallel. **Every sub-agent reads both sides** — design skill and author-go — AND queries the Temporal docs MCP server for its topic.
+
+### Phase 3: Catalog
+
+Merge all findings. For each issue:
+- **Design coverage**: `mapped` | `partial` | `missing`
+- **SDK accuracy**: `current` | `outdated` | `incorrect`
 - **Gap**: what's absent, stale, or wrong
 - **Severity**: `critical` (common construct unmapped, or SDK usage that would produce broken code) | `moderate` | `minor`
 
-### Phase 3: Group & Prioritize
+Drop anything already tracked in `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md`.
+
+### Phase 4: Group & Prioritize
 
 Group by construct family. Order: incorrect SDK usage first (produces broken code), then missing mappings for common constructs, then coverage gaps, then minor accuracy issues.
 
-### Phase 4: Write to `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md`
+### Phase 5: Write to `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md`
 
-Write the grouped plan to `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md` at the repo root:
+Write the grouped plan at the repo root:
 - Brief summary: coverage state, SDK accuracy state
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Internal`), parallelism notes
@@ -53,8 +73,10 @@ Write the grouped plan to `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md` at the repo roo
 **STOP after writing. Present a summary and wait for approval. To execute, invoke `/project:address-review`.**
 
 ## Constraints
-- **Both authorities must be satisfied.** A mapping that exists but uses outdated SDK is as broken as a missing mapping.
+
+- **Both authorities must be satisfied.** A mapping that exists but uses an outdated SDK is as broken as a missing mapping.
 - **Use the Temporal docs MCP server.** Don't evaluate SDK accuracy from memory — the SDK evolves.
-- **Incorrect mappings before missing ones.** Wrong guidance actively harms users; missing guidance is a gap they can work around.
-- **Don't redesign the DSL or change the design skill.** If a design construct has no clean Go mapping, flag it for discussion — don't invent a workaround.
-- **Future author-* skills**: if other author skills exist (e.g., `author-typescript`), run a parallel sub-agent for each using the same rubric against the relevant SDK.
+- **Sub-agents are scoped by topic, not by artifact.** Every sub-agent reads both design skill and author-go, and queries the SDK.
+- **Incorrect SDK mappings before missing ones.** Wrong guidance actively harms users; missing guidance is a gap they can work around.
+- **Don't redesign the DSL or change the design skill.** If a design construct has no clean Go mapping, flag it — don't invent a workaround.
+- **Prefer improving existing examples over creating new ones.** More docs ≠ better docs.

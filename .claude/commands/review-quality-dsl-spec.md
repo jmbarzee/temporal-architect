@@ -1,4 +1,4 @@
-# DSL Spec Review
+# Review DSL Coverage Against Temporal Primitives
 
 Review the TWF language design against Temporal's actual primitives and patterns. Evaluate whether the DSL adequately represents the application domain — not whether the parser implements it correctly.
 
