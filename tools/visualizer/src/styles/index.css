@@ -113,30 +113,135 @@ body {
   background: var(--color-bg-gradient);
 }
 
-/* Graph View Placeholder */
-.graph-view-placeholder {
+/* === Graph View === */
+.graph-view {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   background: var(--color-bg-gradient);
+  overflow: hidden;
 }
 
-.graph-view-placeholder-content {
-  text-align: center;
+.graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  gap: 12px;
 }
 
-.graph-view-placeholder-title {
-  font-size: 18px;
+.graph-header-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.graph-header-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.graph-header-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-sans);
+}
+
+.graph-header-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-workflow);
+}
+
+.graph-header-btn.active {
+  color: var(--color-workflow);
+  border-color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.08);
+}
+
+.vscode-dark .graph-header-btn.active {
+  background: rgba(168, 155, 216, 0.12);
+}
+
+/* Graph Canvas Container */
+.graph-canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.graph-canvas-container canvas {
+  display: block;
+  cursor: grab;
+}
+
+.graph-canvas-container canvas:active {
+  cursor: grabbing;
+}
+
+/* Level Selector */
+.level-selector {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.level-seg {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  font-family: var(--font-sans);
+  touch-action: none;
+}
+
+.level-seg:last-child {
+  border-right: none;
+}
+
+.level-seg:hover {
+  background: rgba(139, 126, 200, 0.06);
+}
+
+.level-seg-active {
+  background: rgba(139, 126, 200, 0.12);
+  color: var(--color-workflow);
   font-weight: 600;
-  color: var(--color-text-muted);
-  margin-bottom: 8px;
 }
 
-.graph-view-placeholder-hint {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  opacity: 0.7;
+.level-seg-min {
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+.level-seg-max {
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+.vscode-dark .level-seg:hover {
+  background: rgba(168, 155, 216, 0.08);
+}
+
+.vscode-dark .level-seg-active {
+  background: rgba(168, 155, 216, 0.18);
 }
 
 /* === Canvas Header === */

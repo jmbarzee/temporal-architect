@@ -121,30 +121,19 @@ Created graph data model and AST→graph construction pipeline:
 
 ---
 
-## Group 9: Graph View — Simulation, Rendering & Semantic Zoom
+## Group 9: Graph View — Simulation, Rendering & Semantic Zoom ✅
 
-**Tier:** Core | **Blocked:** No | **Type:** Internal
+**Tier:** Core | **Blocked:** No | **Type:** Internal | **Status:** Completed
 
-Force-directed layout, visual encoding, viewport controls, and semantic zoom.
+Implemented the full graph rendering pipeline:
+1. `simulation.ts` — `Simulation` class with charge/link/center forces, 8 per-level strength parameters (`ForceParams`), alpha cooling, `tick()`/`reheat()`/`isStable()`/`pinNode()`/`unpinNode()`, child seeding at parent positions.
+2. `viewport.ts` — `Viewport` interface with `worldToScreen`/`screenToWorld`/`zoomAt`/`fitToView` transforms.
+3. `GraphCanvas.tsx` — Canvas 2D renderer with requestAnimationFrame loop. Nodes: rounded rect (namespace), rect (worker), circle (L3) with theme colors and name labels. Edges: solid+arrowhead for dependencies, dashed for containment, pink for nexus. Orphan dashed outline. Mouse handlers for wheel zoom, drag pan, node drag, double-click center+zoom.
+4. `LevelSelector.tsx` — 3-segment range selector (NS/Worker/Defs) with pointer events for click-single and drag-range selection. 6 valid contiguous combinations.
+5. `GraphView.tsx` — Replaced placeholder with full wiring: `buildGraph` → `Simulation` → `GraphCanvas` + `LevelSelector`, level-range filtering via visibility matrix, auto fit-to-view after warmup, level-transition node seeding + reheat, play/pause/fit controls.
+6. `index.css` — Replaced placeholder CSS with graph-view, graph-header, graph-canvas-container, and level-selector styles.
 
-### Features addressed
-- Force simulation: charge, link, center forces with `requestAnimationFrame`
-- Per-level strength parameters (3 charge + 5 link)
-- Simulation lifecycle: initialize → tick → cool → reheat
-- Viewport controls: scroll/pinch zoom, click-drag pan, node drag, double-click center+zoom, fit-to-view
-- Semantic zoom: 3-segment range selector, 6 valid level combinations, visibility matrix
-- Level transitions: animated reveal/hide with force strength interpolation
-- Node visual encoding: shape by type, color + icon matching tree view, name labels
-- Edge visual encoding: solid + arrowhead for dependencies, dashed for containment, distinct nexus edges
-
-### Files touched
-- New: `tools/visualizer/src/graph/simulation.ts` — force simulation, strength parameters, lifecycle
-- New: `tools/visualizer/src/graph/viewport.ts` — pan, zoom, fit-to-view, node drag
-- New: `tools/visualizer/src/components/GraphCanvas.tsx` — rendering, animation loop, node/edge visuals
-- New: `tools/visualizer/src/components/LevelSelector.tsx` — 3-segment range selector UI
-
-### Parallelism
-Depends on Group 8 (data model). Independent of Groups 1-5.
+Level transitions use instant visibility + reheat + parent seeding (animated force interpolation deferred per spec allowance).
 
 ---
 
