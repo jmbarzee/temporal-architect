@@ -396,6 +396,12 @@ body {
   font-size: 14px;
 }
 
+.no-workflows-hint {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
 /* Loading, error, and empty states */
 .loading-container,
 .error-container,

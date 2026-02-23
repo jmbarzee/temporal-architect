@@ -195,6 +195,25 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
   const hasErrors = errors.length > 0
   const noFilesSelected = selectedFiles.size === 0
 
+  // Global keyboard shortcut: "/" or Ctrl+F opens search
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if user is already typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === '/' || (e.ctrlKey && e.key === 'f')) {
+        e.preventDefault()
+        if (!searchActive) {
+          setSearchActive(true)
+          setTimeout(() => searchInputRef.current?.focus(), 50)
+        } else {
+          searchInputRef.current?.focus()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [searchActive])
+
   return (
     <DefinitionContext.Provider value={context}>
       <div className="workflow-canvas">
@@ -286,14 +305,13 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
         )}
 
         {/* Definitions */}
-        {visibleDefinitions.length === 0 ? (
+        {visibleDefinitions.length === 0 && !hasErrors ? (
           <div className="no-workflows">
-            <p>
-              {searchQuery
-                ? 'No matching definitions found'
-                : 'No definitions found for the selected types and files'}
-            </p>
+            <p>No definitions match the current filters.</p>
+            <p className="no-workflows-hint">Try adjusting the type toggles or file filter above.</p>
           </div>
+        ) : visibleDefinitions.length === 0 && hasErrors ? (
+          null /* Only errors, no content — errors header is shown above */
         ) : (
           visibleDefinitions.map((def) => (
             <DefinitionBlock key={`${def.sourceFile || ''}-${def.type}-${def.name}`} definition={def} />
@@ -309,7 +327,7 @@ function ErrorsHeader({ shownFileErrors, hiddenFileErrors }: {
   shownFileErrors: FileError[]
   hiddenFileErrors: FileError[]
 }) {
-  const [expanded, setExpanded] = React.useState(false)
+  const [expanded, setExpanded] = React.useState(true)
   const totalErrors = shownFileErrors.length + hiddenFileErrors.length
 
   // Build summary text

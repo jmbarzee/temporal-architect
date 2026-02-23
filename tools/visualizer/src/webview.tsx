@@ -73,7 +73,7 @@ function WebviewApp() {
   if (!ast) {
     return (
       <div className="loading-container">
-        <p>Loading workflow...</p>
+        <p>Open a <code>.twf</code> file or connect to the extension to get started.</p>
       </div>
     )
   }

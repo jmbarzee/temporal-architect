@@ -47,30 +47,13 @@ Added `WorkflowCallHandlerScope` wrapper in `CallBlocks.tsx` that builds a `Hand
 
 ---
 
-## Group 3: Tree View — Header & Filter Polish
+## Group 3: Tree View — Header & Filter Polish ✅
 
-**Tier:** Core | **Blocked:** No | **Type:** Internal
+**Tier:** Core | **Blocked:** No | **Type:** Internal | **Status:** Completed
 
-Minor gaps in header control behavior.
-
-### Features addressed
-
-1. **Search keyboard shortcut missing** — No global keydown listener for `/` or `Ctrl+F` to open the search bar. Only the icon button click works.
-
-2. **Empty state messages don't match spec** — Three cases need fixing:
-   - Webview no-AST state shows "Loading workflow..." with spinner instead of spec message: "Open a `.twf` file or connect to the extension to get started."
-   - No-filter-match message doesn't include "adjust filters" hint.
-   - "Only parse errors" case not distinguished — placeholder text renders alongside errors header instead of showing only the errors header.
-
-3. **Errors header defaults collapsed instead of expanded** — `ErrorsHeader` initializes `expanded` to `false`. Spec says it defaults to expanded when errors are present.
-
-### Files touched
-- `tools/visualizer/src/components/WorkflowCanvas.tsx` — add `/` and `Ctrl+F` keydown handler; fix empty state messages; fix errors header default state
-- `tools/visualizer/src/webview.tsx` — update no-AST message text
-- `tools/visualizer/src/App.tsx` — update no-AST message text (if applicable)
-
-### Parallelism
-Self-contained. No dependencies on other groups.
+1. Added global `/` and `Ctrl+F` keydown handler in `WorkflowCanvas.tsx` to open search bar.
+2. Fixed empty state messages: webview no-AST says "Open a .twf file..."; no-filter-match says "No definitions match the current filters." with hint; errors-only case renders nothing below errors header.
+3. Changed `ErrorsHeader` default state from `false` to `true` (expanded when errors present).
 
 ---
 
