@@ -59,29 +59,16 @@ src/
 
 ## Header and filtering
 
-The canvas header is a card at the top of the view containing three sections separated by dividers:
+The tree view uses the unified filter bar described in [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar. The bar contains file chips, type toggles, and a search input — visually identical to the graph view's filter bar, with independent state.
 
-### File filter
-- Shown only when definitions have `sourceFile` metadata (multi-file ASTs)
-- Renders a horizontal row of **filter chips**, one per source file
-- Three states: **selected** (active filter), **unselected** (excluded), **all-included** (no files explicitly selected, so everything is shown)
-- Clicking a chip toggles it; multiple files can be selected simultaneously
-- When exactly one file is selected, the VS Code webview sends an `openFile` message to focus that file in the editor
-
-### Definition type toggles
-- A row of toggle buttons, one per definition type: Namespaces, Workers, Nexus Services, Workflows, Activities
-- Each button shows the type's icon and label
-- Active toggles use the type's accent color; inactive toggles are muted
-- Default state: Workers and Workflows are on; Namespaces, Nexus Services, and Activities are off
-
-### Search
-- A collapsible search bar toggled by a magnifying glass button
-- Filters the visible definitions by name (case-insensitive substring match)
-- Escape key closes the search bar and clears the query
+Tree-view-specific behaviors:
+- Toggling a type off hides all definitions of that type from the list (no edge graduation — that's graph-specific).
+- Search filters the visible definitions by name (case-insensitive substring match). Non-matching definitions are hidden, not dimmed.
+- When exactly one file chip is selected, the VS Code webview sends an `openFile` message to focus that file in the editor.
 
 ### Errors header
 - Shown only when the AST contains parse errors
-- A collapsible bar below the main header with error count
+- A collapsible bar below the filter bar with error count
 - Errors are grouped by "shown files" (matching the file filter) and "hidden files"
 - Each error displays the file name and the error/stderr message
 
@@ -125,6 +112,28 @@ Body:
 - Top-level definition blocks (workflow, worker, namespace) start collapsed
 - Control flow blocks (if, for, switch, await all, await one) start expanded
 - Default initial state varies by block type
+
+
+## Block Summaries
+
+Collapsed definition headers display a **summary annotation** — a short, muted string after the signature that communicates the block's structural shape without expanding it. Summaries are derived from the AST at render time. See [PRODUCT.md](./PRODUCT.md) § Glanceable summaries for the design principle.
+
+### Summary Content by Definition Type
+
+| Type | Summary | Example |
+|------|---------|---------|
+| Workflow | statement count · call count · handler count | `12 steps · 3 calls · 2 handlers` |
+| Activity | statement count | `5 steps` |
+| Worker | registration breakdown by type | `3 workflows · 1 activity` |
+| Namespace | worker count · endpoint count | `4 workers · 2 endpoints` |
+| NexusService | operation count by type | `2 async · 1 sync` |
+
+### Presentation
+
+- Summaries appear as secondary text — smaller font size, muted color — to the right of the signature, separated by a visual gap.
+- When a block is expanded, the summary is hidden (the body itself is the detail).
+- Counts of zero are omitted (a workflow with no handlers shows `12 steps · 3 calls`, not `12 steps · 3 calls · 0 handlers`).
+- Summaries are not interactive — they're read-only annotations.
 
 
 ## Definition types
@@ -266,6 +275,19 @@ The visualizer builds a **reverse reference index** client-side from the AST's f
 ## Visual Design
 
 Color palette, icon system, theming, and border conventions are defined in [PRODUCT.md](./PRODUCT.md) § Visual Identity.
+
+
+## Scale Behavior
+
+See [PRODUCT.md](./PRODUCT.md) § Density management for the cross-cutting principle.
+
+The tree view is a flat list of definitions filtered by type, source file, and search. At moderate scale (20–50 definitions), filters are sufficient. At larger scale:
+
+- **Virtualized rendering** — Only render definition blocks visible in the scroll viewport (plus a small overscan buffer). Off-screen blocks are replaced by placeholder elements at the correct height. This keeps DOM size bounded regardless of definition count.
+- **Grouped headers** — When many definitions are visible, consider grouping by source file with collapsible file-level headers. This adds a navigation layer between "everything" and "individual definition" without changing the filter model.
+- **Search-first discovery** — At scale, browsing becomes impractical. The search bar becomes the primary navigation tool. Search should feel instant (no debounce delay at <500 definitions) and highlight matches in-place.
+
+These are progressive enhancements — the current flat-list-with-filters approach works well at the expected scale of most TWF projects. Add virtualization and grouping when real usage demonstrates the need.
 
 
 ## Live Reload

@@ -19,9 +19,9 @@ Features identified during spec-to-implementation alignment that are not yet imp
 | Multi-Select Modifier (Tree) | Shift/Ctrl click for multi-selection in tree view |
 | Bulk Expand/Collapse | `Ctrl+Shift+Right/Left` to expand/collapse all at current level |
 | Multi-Select (Graph) | Select multiple nodes in graph view |
-| Selection Info Panel | Detail panel shown when a graph node is selected |
-| Level 3 Per-Type Visibility Toggle | Show/hide workflow vs activity vs nexus at L3 independently |
+| Selection Info Panel | Detail panel shown when a graph node is selected (now specced in GRAPH_VIEW.md § Info Panel) |
+| Unified Filter Bar | Replace graph level selector with shared type toggles + edge graduation (now specced in VIEW_FRAMEWORK.md § Unified Filter Bar, GRAPH_VIEW.md § Type Filtering) |
 | Force Parameter Presets | Named presets for simulation force parameters |
 | Nexus Edge Scope Highlighting | Highlight all edges sharing a nexus service/endpoint on hover |
-| Animated Level Transitions | Smooth force interpolation when changing level range (currently instant visibility + reheat) |
+| Animated Type Transitions | Smooth force interpolation when toggling types (now specced in GRAPH_VIEW.md § Type Transitions) |
 | Barnes-Hut Approximation | Perf optimization for large graphs — O(n log n) charge force |

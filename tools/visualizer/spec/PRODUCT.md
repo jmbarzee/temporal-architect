@@ -5,7 +5,7 @@ The TWF Visualizer renders Temporal workflow definitions from the `.twf` DSL as 
 Two views compose into a single product:
 
 - **Tree View** — a collapsible, color-coded block list. Answers questions about individual definitions: their logic, inputs/outputs, handlers, and call structure. The familiar interaction model (expand/collapse) makes it the default view on first load.
-- **Graph View** — a force-directed dependency graph with semantic zoom. Answers questions about system architecture: which namespaces depend on which, how workers compose, and where workflows call across boundaries. A "power view" the user discovers via the tab bar.
+- **Graph View** — a force-directed dependency graph with type filtering and edge graduation. Answers questions about system architecture: which namespaces depend on which, how workers compose, and where workflows call across boundaries. A "power view" the user discovers via the tab bar.
 
 The views share a visual identity, filtering vocabulary, and interaction patterns. Cross-view navigation lets the user follow a definition from one perspective to the other without losing context.
 
@@ -39,7 +39,7 @@ The visualizer answers two categories of developer questions:
 
 ### Progressive disclosure
 
-Collapse by default, expand on demand. Tree blocks start collapsed; the user drills into what interests them. The graph's semantic zoom starts at a high level of abstraction; the user zooms into finer detail. Information density is always under user control.
+Collapse by default, expand on demand. Tree blocks start collapsed; the user drills into what interests them. The graph's type toggles default to a sparse view (Workers and Workflows only); the user enables additional types to add detail. Information density is always under user control.
 
 ### Filter-as-source-of-truth
 
@@ -56,6 +56,16 @@ Highlight what matters; push everything else to the background. Hover a graph no
 ### Direct manipulation
 
 Drag nodes, scrub sliders, click to expand — all with immediate visual feedback. The graph's force simulation responds live to slider changes. Tree blocks expand and collapse on click. The control panel's sliders visibly animate during level transitions. The user acts on the visualization directly, not through menus or dialogs.
+
+### Glanceable summaries
+
+Every item — a collapsed tree block, a graph node, a filter chip — should communicate its structural role without requiring interaction. A collapsed workflow header that reads "MyWorkflow(params) → Type" tells you the signature; a summary annotation like "12 steps · 3 calls · 2 handlers" tells you the shape. A graph node labeled "OrderService" tells you the name; a badge showing "→3 ←5" tells you its connectivity.
+
+Summaries are secondary information — smaller, muted, never competing with the primary label. They answer "is this worth drilling into?" and reduce the need for speculative expand/collapse. Each view defines its own summary content (see TREE_VIEW.md § Block Summaries and GRAPH_VIEW.md § Node Summaries).
+
+### Density management
+
+The visualizer must remain useful as the system it displays grows. Filters and progressive disclosure handle moderate scale, but large projects (100+ definitions, 50+ visible graph nodes) require explicit density strategies: label elision at zoom levels, detail reduction at distance, and virtualized rendering for long lists. Each view defines its own density thresholds (see TREE_VIEW.md § Scale Behavior and GRAPH_VIEW.md § Performance Considerations). The goal is graceful degradation — the experience gets simpler at high density, never broken.
 
 
 ## Visual Identity

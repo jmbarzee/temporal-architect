@@ -19,3 +19,6 @@ tools/lsp/twf
 
 # Claude settings
 .claude/settings.local.json
+
+# skills used to build examples
+examples/.claude/skills

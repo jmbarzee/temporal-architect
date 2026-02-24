@@ -16,7 +16,7 @@ The views use a **tab switching** model. One view is active at a time. Each view
 
 A tab bar at the top of the visualizer with two tabs: **Tree** and **Graph**. The active tab is visually highlighted. Clicking a tab switches the active view.
 
-**State on switch:** Each view preserves its own state across tab switches. Switching from Tree to Graph and back returns the Tree to exactly where it was — scroll position, expanded blocks, filter selections, search query. Same for Graph: zoom level, node positions, semantic zoom selection, simulation state.
+**State on switch:** Each view preserves its own state across tab switches. Switching from Tree to Graph and back returns the Tree to exactly where it was — scroll position, expanded blocks, filter selections, search query. Same for Graph: zoom level, node positions, type toggle selections, simulation state.
 
 
 ## "Show in [View]" Action
@@ -36,32 +36,54 @@ When the user invokes "Show in [target view]" on an item:
 2. **Adjust filters** — Make the minimum filter changes needed to ensure the item is visible in the target view:
    - If the item's type is toggled off, toggle it on.
    - If the item's source file is filtered out, add it to the file selection.
-   - If the semantic zoom level (graph) excludes the item's level, adjust the range to include it.
    - Do not clear other active filters — only expand, never narrow.
-3. **Animate filter bar** — The filter controls animate to reflect the changes (chips activate, toggles flip, level selector bubble slides). This gives the user a visual explanation of what changed.
+   Because the filter bar is visually identical in both views, the user sees familiar controls change — a toggle lights up, a chip activates. This continuity across views reduces disorientation.
+3. **Animate filter bar** — The filter controls animate to reflect the changes (toggles flip, chips activate). This gives the user a visual explanation of what changed.
 4. **Animate view to target:**
    - **Tree View:** Smooth scroll to the target definition. Expand the target block's ancestry (any collapsed parents that contain it). Expand the target block itself.
-   - **Graph View:** Pan and zoom to center the target node. Lock viewport focus on the target node until the simulation stabilizes (the node stops moving). The user can break the lock by manually panning.
+   - **Graph View:** Pan and zoom to center the target node **and its immediate neighbors** — a local-first orientation. Lock viewport focus on the target node until the simulation stabilizes (the node stops moving). The user can break the lock by manually panning or zooming out to see broader context.
 5. **Flash target** — After the view has settled, briefly highlight the target item (a pulse or glow effect) to draw the eye.
+
+### Orientation
+
+The transition should go **local → context**, not context → find-the-needle. When navigating to the graph, the user first sees the target node and its neighborhood (close zoom), then optionally zooms out to see the broader graph. When navigating to the tree, the user first sees the target block expanded and centered, then optionally scrolls to see siblings.
+
+This local-first approach means the user lands oriented — they see the thing they asked about immediately, in its immediate relationships, before the full complexity of the target view is revealed.
 
 ### Filter-as-Source-of-Truth
 
 Filters are always authoritative. "Show in [view]" never bypasses filters — it adjusts them. The user can always see exactly what's filtered and manually change it. The animation of the filter bar in step 3 makes the adjustment visible and reversible.
 
 
-## Shared Filter Vocabulary
+## Unified Filter Bar
 
-Both views support filtering by:
-- **Source file** — which `.twf` files contribute definitions
-- **Name search** — find definitions by name
+Both views display the same visual filter bar with the same three filter dimensions:
 
-Each view adds its own filter dimensions:
-- **Tree View:** Definition type toggles (Namespace, Worker, Workflow, Activity, NexusService)
-- **Graph View:** Semantic zoom level selector (which hierarchy levels are visible)
+```
+[file chips...] | [NS] [Worker] [Wf] [Act] [Nxs] | [🔍 search]
+```
 
-Filter state is **independent per view** by default. Each view's filters can diverge without affecting the other.
+**Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the filter narrows to a single file, the extension opens that file in the editor.
 
-**Future:** A mechanism for the user to align filter state across views (e.g., "apply these filters to both views"). The right interaction pattern for this will depend on observed usage. Candidates include a sync toggle, a filter bar action, or a tab modifier. To be designed after cross-view navigation is in use.
+**Type toggles** — Five toggle buttons, one per definition type, using the type's color: NS (dark grey), Worker (medium grey), Wf (purple), Act (blue), Nxs (pink). Each toggle shows/hides all items of that type. Both views use the same five toggles — the graph no longer has a separate level selector.
+
+**Name search** — Text input (toggled by `/` or `Ctrl+F`). Case-insensitive substring match against definition/node names. In the tree, non-matching definitions are hidden. In the graph, non-matching nodes dim while matches highlight.
+
+### Independent State
+
+Filter state is **independent per view**. Each view's toggles, file chips, and search can diverge without affecting the other. The visual bar looks the same in both views, but the active toggles may differ.
+
+Default state is the same for both views: Workers and Workflows **ON**; Namespaces, Activities, and NexusServices **OFF**. No search active.
+
+### Hidden Match Badges
+
+When a search is active, filter controls that are hiding matches show **badge overlays** with the count of hidden matches. For example: if the Wf toggle is off and 3 workflows match the search, the Wf button shows a "3" badge. This lets users discover hidden matches and decide whether to adjust filters. See GRAPH_VIEW.md § Search and Hidden Matches for full behavior.
+
+### Graph-Specific: Edge Graduation
+
+The graph adds one behavior on top of the shared filter bar: when a type is toggled off, edges **graduate** across hidden layers rather than disappearing. See GRAPH_VIEW.md § Edge Graduation for the rules. The tree view simply hides definitions whose type is toggled off.
+
+**Future:** A mechanism for the user to sync filter state across views (e.g., "apply these filters to both views"). To be designed after cross-view navigation is in use.
 
 
 ## Visual Consistency
@@ -77,7 +99,7 @@ Both views use the same color palette, icon system, and theming. See [PRODUCT.md
 - No search query active.
 
 ### Graph View
-- Semantic zoom: **Levels 1–2** (Namespaces + Workers) on first switch to Graph. This gives the system overview without the visual density of all Level 3 nodes.
+- Type toggles: same defaults as Tree View — Workers and Workflows **ON**; Namespaces, Activities, and NexusServices **OFF**.
 - No search query active.
 - Force simulation running with default strength parameters.
 
@@ -101,7 +123,7 @@ When the AST contains parse errors, both views surface them in the same way.
 
 ### Errors Header
 
-A collapsible bar between the header controls (filter chips, type toggles, search, level selector) and the view content (tree block list or graph canvas). The bar shows:
+A collapsible bar between the filter bar and the view content (tree block list or graph canvas). The bar shows:
 
 - **Error count** — total number of parse errors.
 - **Error grouping** — errors are split into two groups:
@@ -146,7 +168,7 @@ Definitions and nodes are matched across AST versions **by name**. A definition 
 |-------|----------|
 | Node positions | Preserved for nodes that still exist. Simulation does not restart for surviving nodes. |
 | Viewport (zoom/pan) | Preserved. |
-| Semantic zoom level | Preserved. |
+| Type toggle selections | Preserved. |
 | Force parameters | Preserved (slider values unchanged). |
 
 ### Additions and Removals
