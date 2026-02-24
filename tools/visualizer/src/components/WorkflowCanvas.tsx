@@ -48,6 +48,7 @@ export interface NavigationContextType {
   workerOf: Map<string, string[]>
   namespaceOf: Map<string, string[]>
   navigateTo: (name: string, defType: string) => void
+  showInGraph?: (name: string, defType: string) => void
 }
 
 export const NavigationContext = React.createContext<NavigationContextType>({
@@ -57,10 +58,17 @@ export const NavigationContext = React.createContext<NavigationContextType>({
   navigateTo: () => {},
 })
 
+// Cross-view navigation target
+export interface CrossViewTarget {
+  name: string
+  defType: string
+}
+
 type ActiveView = 'tree' | 'graph'
 
 export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
   const [activeView, setActiveView] = React.useState<ActiveView>('tree')
+  const [pendingNavigation, setPendingNavigation] = React.useState<CrossViewTarget | null>(null)
 
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -87,6 +95,22 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
     return { workflows, activities, workers, nexusServices, namespaces }
   }, [ast])
 
+  // Cross-view navigation: "Show in Graph" from tree
+  const showInGraph = React.useCallback((name: string, defType: string) => {
+    setPendingNavigation({ name, defType })
+    setActiveView('graph')
+  }, [])
+
+  // Cross-view navigation: "Show in Tree" from graph
+  const showInTree = React.useCallback((name: string, defType: string) => {
+    setPendingNavigation({ name, defType })
+    setActiveView('tree')
+  }, [])
+
+  const clearPendingNavigation = React.useCallback(() => {
+    setPendingNavigation(null)
+  }, [])
+
   return (
     <DefinitionContext.Provider value={context}>
       <div className="view-shell">
@@ -106,9 +130,20 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
         </div>
 
         {activeView === 'tree' ? (
-          <TreeView ast={ast} onOpenFile={onOpenFile} />
+          <TreeView
+            ast={ast}
+            onOpenFile={onOpenFile}
+            onShowInGraph={showInGraph}
+            pendingNavigation={pendingNavigation}
+            onNavigationConsumed={clearPendingNavigation}
+          />
         ) : (
-          <GraphView ast={ast} />
+          <GraphView
+            ast={ast}
+            onShowInTree={showInTree}
+            pendingNavigation={pendingNavigation}
+            onNavigationConsumed={clearPendingNavigation}
+          />
         )}
       </div>
     </DefinitionContext.Provider>

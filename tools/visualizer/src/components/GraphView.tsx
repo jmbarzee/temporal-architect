@@ -3,6 +3,7 @@
 
 import React from 'react'
 import type { TWFFile, FileError } from '../types/ast'
+import type { CrossViewTarget } from './WorkflowCanvas'
 import type { ForceParams } from '../graph/simulation'
 import { buildGraph } from '../graph/build'
 import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
@@ -15,14 +16,39 @@ import { GraphCanvas } from './GraphCanvas'
 import { LevelSelector } from './LevelSelector'
 import type { LevelRange } from './LevelSelector'
 import { GraphControlPanel } from './GraphControlPanel'
+import type { ForceSection } from './GraphControlPanel'
 import { SearchIcon } from './icons/GearIcons'
 import { THEME } from '../theme/temporal-theme'
 
 interface GraphViewProps {
   ast: TWFFile
+  onShowInTree?: (name: string, defType: string) => void
+  pendingNavigation?: CrossViewTarget | null
+  onNavigationConsumed?: () => void
 }
 
-export function GraphView({ ast }: GraphViewProps) {
+// Map AST defType to graph node level
+function defTypeToLevel(defType: string): 1 | 2 | 3 {
+  switch (defType) {
+    case 'namespaceDef': return 1
+    case 'workerDef': return 2
+    default: return 3
+  }
+}
+
+// Map AST defType to graph nodeType
+function defTypeToNodeType(defType: string): string {
+  switch (defType) {
+    case 'namespaceDef': return 'namespace'
+    case 'workerDef': return 'worker'
+    case 'workflowDef': return 'workflow'
+    case 'activityDef': return 'activity'
+    case 'nexusServiceDef': return 'nexusService'
+    default: return 'workflow'
+  }
+}
+
+export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationConsumed }: GraphViewProps) {
   // --- Core state ---
   const [levelRange, setLevelRange] = React.useState<LevelRange>([1, 2])
   const [viewport, setViewport] = React.useState<Viewport>(DEFAULT_VIEWPORT)
@@ -32,12 +58,19 @@ export function GraphView({ ast }: GraphViewProps) {
   const dragNodeRef = React.useRef<string | null>(null)
   const initialFitDone = React.useRef(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
+  const pendingCenterRef = React.useRef<{ nodeId: string } | null>(null)
+  const lastComRef = React.useRef<{ x: number; y: number } | null>(null)
 
   // --- Interaction state ---
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null)
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
   const [shiftHeld, setShiftHeld] = React.useState(false)
+
+  // --- Force field visualization ---
+  const [showForceFields, setShowForceFields] = React.useState(false)
+  const [activeSection, setActiveSection] = React.useState<ForceSection>(null)
+  const [activeChargeLevel, setActiveChargeLevel] = React.useState<number | null>(null)
 
   // --- Filter state ---
   const [selectedFiles, setSelectedFiles] = React.useState<Set<string>>(new Set())
@@ -53,6 +86,7 @@ export function GraphView({ ast }: GraphViewProps) {
   React.useEffect(() => {
     simRef.current = new Simulation(graph, forceParams)
     initialFitDone.current = false
+    lastComRef.current = null
     setRunning(true)
     setSelectedNodeId(null)
     setHoveredNodeId(null)
@@ -142,6 +176,23 @@ export function GraphView({ ast }: GraphViewProps) {
       const sim = simRef.current
       if (sim) {
         sim.tick(visibleIds)
+
+        // Track center-of-mass drift and compensate viewport
+        if (visibleNodes.length > 0 && initialFitDone.current && !pendingCenterRef.current && !selectedNodeId) {
+          let comX = 0, comY = 0
+          for (const node of visibleNodes) { comX += node.x; comY += node.y }
+          comX /= visibleNodes.length; comY /= visibleNodes.length
+          const prev = lastComRef.current
+          if (prev) {
+            const dx = comX - prev.x
+            const dy = comY - prev.y
+            if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+              setViewport(vp => ({ ...vp, x: vp.x - dx * vp.scale, y: vp.y - dy * vp.scale }))
+            }
+          }
+          lastComRef.current = { x: comX, y: comY }
+        }
+
         if (!initialFitDone.current && sim.alpha < 0.3) {
           const container = containerRef.current
           if (container) {
@@ -149,8 +200,27 @@ export function GraphView({ ast }: GraphViewProps) {
             if (width > 0 && height > 0) {
               setViewport(fitToView(visibleNodes, width, height))
               initialFitDone.current = true
+              lastComRef.current = null
             }
           }
+        }
+        // Handle pending cross-view center after warmup
+        if (initialFitDone.current && pendingCenterRef.current) {
+          const targetNode = sim.getNode(pendingCenterRef.current.nodeId)
+          if (targetNode) {
+            const container = containerRef.current
+            if (container) {
+              const { width, height } = container.getBoundingClientRect()
+              setViewport(prev => ({
+                scale: Math.max(prev.scale, 1.2),
+                x: width / 2 - targetNode.x * Math.max(prev.scale, 1.2),
+                y: height / 2 - targetNode.y * Math.max(prev.scale, 1.2),
+              }))
+              setSelectedNodeId(targetNode.id)
+            }
+          }
+          pendingCenterRef.current = null
+          lastComRef.current = null
         }
         if (sim.isStable()) setRunning(false)
       }
@@ -159,7 +229,7 @@ export function GraphView({ ast }: GraphViewProps) {
     }
     frameId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(frameId)
-  }, [running, visibleIds, visibleNodes])
+  }, [running, visibleIds, visibleNodes, selectedNodeId])
 
   // Reheat on level range change
   const prevRange = React.useRef(levelRange)
@@ -185,13 +255,11 @@ export function GraphView({ ast }: GraphViewProps) {
     }
   }, [levelRange])
 
-  // Propagate force param changes to simulation
+  // Propagate force param changes to simulation (no auto-reheat — user controls when to restart)
   const handleParamChange = React.useCallback((key: keyof ForceParams, value: number) => {
     setForceParams(prev => {
       const next = { ...prev, [key]: value }
       simRef.current?.setParams(next)
-      simRef.current?.reheat(0.3)
-      setRunning(true)
       return next
     })
   }, [])
@@ -297,6 +365,41 @@ export function GraphView({ ast }: GraphViewProps) {
   const focusedNodeId = focusedIndex >= 0 && focusedIndex < visibleNodes.length
     ? visibleNodes[focusedIndex].id
     : null
+
+  // Cross-view navigation: handle pending navigation from Tree → Graph
+  React.useEffect(() => {
+    if (!pendingNavigation) return
+    const { name, defType } = pendingNavigation
+
+    // Ensure the target level is within the visible range
+    const targetLevel = defTypeToLevel(defType)
+    setLevelRange(prev => {
+      const [minL, maxL] = prev
+      if (targetLevel >= minL && targetLevel <= maxL) return prev
+      // Expand range to include target level
+      return [Math.min(minL, targetLevel), Math.max(maxL, targetLevel)] as LevelRange
+    })
+
+    // Ensure the target's source file is visible
+    const targetNodeType = defTypeToNodeType(defType)
+    const sim = simRef.current
+    if (sim) {
+      const targetNode = sim.nodes.find(n => n.name === name && n.nodeType === targetNodeType)
+      if (targetNode?.sourceFile && selectedFiles.size > 0 && !selectedFiles.has(targetNode.sourceFile)) {
+        setSelectedFiles(prev => new Set(prev).add(targetNode.sourceFile!))
+      }
+      if (targetNode) {
+        pendingCenterRef.current = { nodeId: targetNode.id }
+        // If simulation is stable, reheat briefly so the animation loop runs to handle centering
+        if (!running) {
+          simRef.current?.reheat(0.1)
+          setRunning(true)
+        }
+      }
+    }
+
+    onNavigationConsumed?.()
+  }, [pendingNavigation]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shift key tracking
   React.useEffect(() => {
@@ -458,6 +561,24 @@ export function GraphView({ ast }: GraphViewProps) {
         </div>
 
         <div className="graph-header-info">
+          {selectedNodeId && onShowInTree && (() => {
+            const node = simRef.current?.getNode(selectedNodeId)
+            if (!node) return null
+            const defType = node.nodeType === 'namespace' ? 'namespaceDef'
+              : node.nodeType === 'worker' ? 'workerDef'
+              : node.nodeType === 'activity' ? 'activityDef'
+              : node.nodeType === 'nexusService' ? 'nexusServiceDef'
+              : 'workflowDef'
+            return (
+              <button
+                className="graph-header-btn"
+                onClick={() => onShowInTree(node.name, defType)}
+                title="Show in Tree view"
+              >
+                Show in Tree
+              </button>
+            )
+          })()}
           <span className="graph-header-count">
             {nodeCount} node{nodeCount !== 1 ? 's' : ''}, {edgeCount} edge{edgeCount !== 1 ? 's' : ''}
           </span>
@@ -511,6 +632,10 @@ export function GraphView({ ast }: GraphViewProps) {
         focusedNodeId={focusedNodeId}
         searchMatchIds={visibleMatchIds}
         running={running}
+        showForceFields={showForceFields}
+        forceParams={forceParams}
+        activeSection={activeSection}
+        activeChargeLevel={activeChargeLevel}
       />
 
       {/* Control panel */}
@@ -520,6 +645,10 @@ export function GraphView({ ast }: GraphViewProps) {
         running={running}
         onToggleRunning={handleToggleRunning}
         onReheat={handleReheat}
+        showForceFields={showForceFields}
+        onToggleForceFields={() => setShowForceFields(v => !v)}
+        onActiveSection={setActiveSection}
+        onActiveChargeLevel={setActiveChargeLevel}
       />
 
       {/* Shortcuts panel */}

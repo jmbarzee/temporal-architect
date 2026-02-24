@@ -30,6 +30,19 @@ export interface ForceParams {
   distWorkerToWorker: number
   distWorkerToL3: number
   distL3ToL3: number
+  // Simulation dynamics
+  alphaDecay: number
+  alphaMin: number
+  velocityDecay: number
+  // Stability controls
+  chargeSoftening: number  // added to dist² in charge calc — prevents singularity at close range
+  // Category multipliers — master knobs that scale all forces in a group
+  pushMultiplier: number   // scales all charge (repulsion) forces
+  pullMultiplier: number   // scales all link (attraction) forces
+  distanceMultiplier: number // scales all rest distances
+  // Force shape — exponents
+  chargeExponent: number   // power of distance in charge falloff (2 = inverse-square)
+  linkExponent: number     // power of displacement in spring force (1 = linear/Hooke)
 }
 
 export const DEFAULT_PARAMS: ForceParams = {
@@ -47,6 +60,15 @@ export const DEFAULT_PARAMS: ForceParams = {
   distWorkerToWorker: 150,
   distWorkerToL3: 80,
   distL3ToL3: 100,
+  alphaDecay: 0.005,
+  alphaMin: 0.001,
+  velocityDecay: 0.6,
+  chargeSoftening: 900,
+  pushMultiplier: 1.0,
+  pullMultiplier: 1.0,
+  distanceMultiplier: 1.0,
+  chargeExponent: 2.0,
+  linkExponent: 1.0,
 }
 
 function chargeForLevel(params: ForceParams, level: NodeLevel): number {
@@ -62,7 +84,7 @@ interface EdgeCategory {
   distance: number
 }
 
-function edgeCategory(params: ForceParams, edge: GraphEdge): EdgeCategory {
+export function edgeCategory(params: ForceParams, edge: GraphEdge): EdgeCategory {
   if (edge.edgeType === 'containment') {
     if (edge.sourceLevel === 3 && edge.targetLevel === 2) {
       return { strength: params.linkWorkerToL3, distance: params.distWorkerToL3 }
@@ -80,18 +102,12 @@ export class Simulation {
   edges: GraphEdge[]
   params: ForceParams
   alpha: number
-  alphaDecay: number
-  alphaMin: number
-  velocityDecay: number
 
   private nodeMap: Map<string, SimNode>
 
   constructor(graph: Graph, params?: Partial<ForceParams>) {
     this.params = { ...DEFAULT_PARAMS, ...params }
     this.alpha = 1.0
-    this.alphaDecay = 0.005
-    this.alphaMin = 0.001
-    this.velocityDecay = 0.6
 
     // Initialize SimNodes with random positions around center
     this.nodes = []
@@ -128,7 +144,7 @@ export class Simulation {
   }
 
   tick(visibleIds?: Set<string>): void {
-    if (this.alpha < this.alphaMin) return
+    if (this.alpha < this.params.alphaMin) return
 
     const active = visibleIds
       ? this.nodes.filter(n => visibleIds.has(n.id))
@@ -139,27 +155,38 @@ export class Simulation {
       : this.edges
 
     // Charge force (repulsion between all visible node pairs)
+    // force = pushMultiplier * strength / effectiveDist^chargeExponent
+    // effectiveDist = sqrt(dist² + softening)  — prevents singularity
+    const softening = this.params.chargeSoftening
+    const pushMul = this.params.pushMultiplier
+    const chargeExp = this.params.chargeExponent
     for (let i = 0; i < active.length; i++) {
       for (let j = i + 1; j < active.length; j++) {
         const a = active[i]
         const b = active[j]
         let dx = b.x - a.x
         let dy = b.y - a.y
-        let dist2 = dx * dx + dy * dy
-        if (dist2 < 1) { dist2 = 1; dx = Math.random() - 0.5; dy = Math.random() - 0.5 }
-        const dist = Math.sqrt(dist2)
+        const dist2 = dx * dx + dy * dy
+        if (dist2 < 0.01) { dx = Math.random() - 0.5; dy = Math.random() - 0.5 }
+        const rawDist = Math.sqrt(dist2 + 0.01)
+        const effectiveDist = Math.sqrt(dist2 + softening)
         const chargeA = chargeForLevel(this.params, a.level)
         const chargeB = chargeForLevel(this.params, b.level)
         const strength = (chargeA + chargeB) / 2
-        const force = this.alpha * strength / dist2
-        const fx = force * (dx / dist)
-        const fy = force * (dy / dist)
+        // Negate: strength is negative (convention), but force must be positive for repulsion
+        const force = -(this.alpha * pushMul * strength / Math.pow(effectiveDist, chargeExp))
+        const fx = force * (dx / rawDist)
+        const fy = force * (dy / rawDist)
         if (!a.pinned) { a.vx -= fx; a.vy -= fy }
         if (!b.pinned) { b.vx += fx; b.vy += fy }
       }
     }
 
     // Link force (attraction between connected nodes)
+    // force = pullMultiplier * strength * sign(disp) * |disp|^linkExponent / dist
+    const pullMul = this.params.pullMultiplier
+    const linkExp = this.params.linkExponent
+    const distMul = this.params.distanceMultiplier
     for (const edge of activeEdges) {
       const source = this.nodeMap.get(edge.sourceId)
       const target = this.nodeMap.get(edge.targetId)
@@ -171,8 +198,11 @@ export class Simulation {
       if (dist < 0.1) { dist = 0.1; dx = Math.random() - 0.5; dy = Math.random() - 0.5 }
 
       const cat = edgeCategory(this.params, edge)
-      const displacement = dist - cat.distance
-      const force = this.alpha * cat.strength * displacement / dist
+      const restDist = cat.distance * distMul
+      const disp = dist - restDist
+      const absDisp = Math.abs(disp)
+      const sign = disp >= 0 ? 1 : -1
+      const force = this.alpha * pullMul * cat.strength * sign * Math.pow(absDisp, linkExp) / dist
       const fx = force * dx
       const fy = force * dy
 
@@ -180,26 +210,29 @@ export class Simulation {
       if (!target.pinned) { target.vx -= fx; target.vy -= fy }
     }
 
-    // Center force
+    // Gravity toward center of mass (effective mutual attraction, O(n))
+    let cx = 0, cy = 0
+    for (const node of active) { cx += node.x; cy += node.y }
+    cx /= active.length; cy /= active.length
     for (const node of active) {
       if (!node.pinned) {
-        node.vx -= node.x * this.alpha * this.params.centerStrength
-        node.vy -= node.y * this.alpha * this.params.centerStrength
+        node.vx -= (node.x - cx) * this.alpha * this.params.centerStrength
+        node.vy -= (node.y - cy) * this.alpha * this.params.centerStrength
       }
     }
 
     // Apply velocity and damping
     for (const node of active) {
       if (!node.pinned) {
-        node.vx *= this.velocityDecay
-        node.vy *= this.velocityDecay
+        node.vx *= this.params.velocityDecay
+        node.vy *= this.params.velocityDecay
         node.x += node.vx
         node.y += node.vy
       }
     }
 
     // Cool
-    this.alpha = Math.max(this.alpha - this.alphaDecay, 0)
+    this.alpha = Math.max(this.alpha - this.params.alphaDecay, 0)
   }
 
   reheat(alpha = 0.5): void {
@@ -207,7 +240,7 @@ export class Simulation {
   }
 
   isStable(): boolean {
-    return this.alpha < this.alphaMin
+    return this.alpha < this.params.alphaMin
   }
 
   pinNode(id: string, x: number, y: number): void {

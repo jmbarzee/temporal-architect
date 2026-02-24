@@ -2,7 +2,9 @@
 // Implements GRAPH_VIEW.md § Visual Encoding, § Viewport Controls, § Interaction States.
 
 import React from 'react'
-import type { SimNode } from '../graph/simulation'
+import type { SimNode, ForceParams } from '../graph/simulation'
+import { edgeCategory } from '../graph/simulation'
+import type { ForceSection } from './GraphControlPanel'
 import type { GraphEdge } from '../graph/model'
 import type { Viewport } from '../graph/viewport'
 import { worldToScreen, screenToWorld, zoomAt, fitToView } from '../graph/viewport'
@@ -52,6 +54,28 @@ interface GraphCanvasProps {
   focusedNodeId: string | null
   searchMatchIds: Set<string> | null
   running: boolean
+  showForceFields: boolean
+  forceParams: ForceParams
+  activeSection: ForceSection
+  activeChargeLevel: number | null
+}
+
+// All data the draw function needs, stored in a ref to avoid effect teardown
+interface DrawData {
+  nodes: SimNode[]
+  edges: GraphEdge[]
+  nodeMap: Map<string, SimNode>
+  viewport: Viewport
+  highlightedNodes: Set<string> | null
+  highlightedEdges: Set<string> | null
+  selectedNodeId: string | null
+  focusedNodeId: string | null
+  searchMatchIds: Set<string> | null
+  showForceFields: boolean
+  forceParams: ForceParams
+  activeSection: ForceSection
+  activeChargeLevel: number | null
+  running: boolean
 }
 
 export function GraphCanvas({
@@ -60,7 +84,7 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   selectedNodeId, focusedNodeId, searchMatchIds,
-  running,
+  running, showForceFields, forceParams, activeSection, activeChargeLevel,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -73,6 +97,25 @@ export function GraphCanvas({
     moved: boolean
   } | null>(null)
 
+  // Build node lookup for edge rendering
+  const nodeMap = React.useMemo(() => {
+    const m = new Map<string, SimNode>()
+    for (const n of nodes) m.set(n.id, n)
+    return m
+  }, [nodes])
+
+  // --- Ref-based draw data (updated every render, read by draw loop) ---
+  const drawData = React.useRef<DrawData>({
+    nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
+    selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
+    forceParams, activeSection, activeChargeLevel, running,
+  })
+  drawData.current = {
+    nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
+    selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
+    forceParams, activeSection, activeChargeLevel, running,
+  }
+
   // Resize observer
   React.useEffect(() => {
     const container = containerRef.current
@@ -84,13 +127,6 @@ export function GraphCanvas({
     ro.observe(container)
     return () => ro.disconnect()
   }, [])
-
-  // Build node lookup for edge rendering
-  const nodeMap = React.useMemo(() => {
-    const m = new Map<string, SimNode>()
-    for (const n of nodes) m.set(n.id, n)
-    return m
-  }, [nodes])
 
   // Hit test: find node under screen coordinates
   const hitTest = React.useCallback((sx: number, sy: number): SimNode | null => {
@@ -191,38 +227,50 @@ export function GraphCanvas({
     }
   }, [hitTest, nodes, size, onViewportChange, onDoubleClickNode])
 
-  // Render loop
+  // --- Render loop ---
+  // Uses a ref for all draw data so the effect only tears down on size change.
+  // A dirty flag triggers single-frame redraws when paused.
+  const dirtyRef = React.useRef(true)
+
+  // Mark dirty on any visual change (runs every render, but just sets a flag)
+  React.useEffect(() => { dirtyRef.current = true })
+
+  // Main draw effect — only depends on size (canvas allocation)
   React.useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || size.w === 0) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    let frameId: number
-    const hasHighlight = highlightedNodes !== null && highlightedNodes.size > 0
+    // Allocate canvas bitmap once per resize
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = size.w * dpr
+    canvas.height = size.h * dpr
 
-    const draw = () => {
-      const dpr = window.devicePixelRatio || 1
-      canvas.width = size.w * dpr
-      canvas.height = size.h * dpr
+    let loopId = 0
+    let active = true
+
+    const drawFrame = () => {
+      const d = drawData.current
+      const { w, h } = size
+      const hasHighlight = d.highlightedNodes !== null && d.highlightedNodes.size > 0
+
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.clearRect(0, 0, size.w, size.h)
+      ctx.clearRect(0, 0, w, h)
 
       // Draw edges
-      for (const edge of edges) {
-        const src = nodeMap.get(edge.sourceId)
-        const tgt = nodeMap.get(edge.targetId)
+      for (const edge of d.edges) {
+        const src = d.nodeMap.get(edge.sourceId)
+        const tgt = d.nodeMap.get(edge.targetId)
         if (!src || !tgt) continue
 
-        const [sx, sy] = worldToScreen(viewport, src.x, src.y)
-        const [tx, ty] = worldToScreen(viewport, tgt.x, tgt.y)
+        const [sx, sy] = worldToScreen(d.viewport, src.x, src.y)
+        const [tx, ty] = worldToScreen(d.viewport, tgt.x, tgt.y)
 
-        // Offscreen culling
-        if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > size.w + CULL_MARGIN ||
-            Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > size.h + CULL_MARGIN) continue
+        if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
+            Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
-        // Dimming for highlight mode
-        const edgeHighlighted = highlightedEdges?.has(edge.id) ?? false
+        const edgeHighlighted = d.highlightedEdges?.has(edge.id) ?? false
         ctx.globalAlpha = hasHighlight && !edgeHighlighted ? DIM_ALPHA : 1
 
         ctx.beginPath()
@@ -248,7 +296,7 @@ export function GraphCanvas({
         if (edge.edgeType !== 'containment') {
           const angle = Math.atan2(ty - sy, tx - sx)
           const nodeSize = NODE_SIZES[tgt.level]
-          const offset = (nodeSize.w / 2) * viewport.scale + 2
+          const offset = (nodeSize.w / 2) * d.viewport.scale + 2
           const ax = tx - Math.cos(angle) * offset
           const ay = ty - Math.sin(angle) * offset
           ctx.beginPath()
@@ -269,22 +317,166 @@ export function GraphCanvas({
         ctx.globalAlpha = 1
       }
 
+      // --- Force field visualizations ---
+      const pushActive = d.activeSection === 'push'
+      const pullActive = d.activeSection === 'pull'
+      const gravityActive = d.activeSection === 'gravity'
+
+      // PUSH: charge field rings
+      if (d.showForceFields || pushActive) {
+        const soft = d.forceParams.chargeSoftening
+        const exp = d.forceParams.chargeExponent
+        const halfExp = exp / 2
+        const softPow = Math.pow(Math.max(soft, 1), halfExp)
+        const thresholds = [0.75, 0.50, 0.25]
+        const levelFilter = pushActive ? d.activeChargeLevel : null
+
+        for (const node of d.nodes) {
+          const [sx, sy] = worldToScreen(d.viewport, node.x, node.y)
+          const maxRing = 400 * d.viewport.scale
+          if (sx + maxRing < 0 || sx - maxRing > w ||
+              sy + maxRing < 0 || sy - maxRing > h) continue
+
+          const levelMatch = levelFilter === null || node.level === levelFilter
+          const highlighted = pushActive && levelMatch
+          const dimmed = pushActive && !levelMatch
+          const baseAlpha = highlighted ? 0.22 : dimmed ? 0.04 : 0.08
+          const stepAlpha = highlighted ? 0.04 : dimmed ? 0.01 : 0.02
+
+          const color = NODE_COLORS[node.nodeType] || '#999'
+          ctx.strokeStyle = color
+
+          for (let ti = 0; ti < thresholds.length; ti++) {
+            const t = thresholds[ti]
+            const inner = Math.pow(softPow / t, 2 / exp) - soft
+            if (inner <= 0) continue
+            const dd = Math.sqrt(inner)
+            const r = dd * d.viewport.scale
+            if (r < 2 || r > 2000) continue
+
+            ctx.beginPath()
+            ctx.arc(sx, sy, r, 0, Math.PI * 2)
+            ctx.globalAlpha = baseAlpha + ti * stepAlpha
+            ctx.lineWidth = highlighted ? 1.5 : 1
+            ctx.stroke()
+          }
+        }
+        ctx.globalAlpha = 1
+      }
+
+      // PULL: edge tension coloring
+      if (pullActive) {
+        const distMul = d.forceParams.distanceMultiplier
+        for (const edge of d.edges) {
+          const src = d.nodeMap.get(edge.sourceId)
+          const tgt = d.nodeMap.get(edge.targetId)
+          if (!src || !tgt) continue
+
+          const [sx, sy] = worldToScreen(d.viewport, src.x, src.y)
+          const [tx, ty] = worldToScreen(d.viewport, tgt.x, tgt.y)
+          if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
+              Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
+
+          const cat = edgeCategory(d.forceParams, edge)
+          const restDist = cat.distance * distMul
+          const dx = tgt.x - src.x
+          const dy = tgt.y - src.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          const ratio = dist / Math.max(restDist, 0.1)
+
+          let tensionColor: string
+          if (ratio > 1.15) {
+            tensionColor = '#F59E0B'
+          } else if (ratio < 0.85) {
+            tensionColor = '#3B82F6'
+          } else {
+            tensionColor = '#22C55E'
+          }
+
+          ctx.beginPath()
+          ctx.moveTo(sx, sy)
+          ctx.lineTo(tx, ty)
+          ctx.strokeStyle = tensionColor
+          ctx.globalAlpha = 0.5
+          ctx.lineWidth = 3
+          ctx.setLineDash([])
+          ctx.stroke()
+
+          const angle = Math.atan2(dy, dx)
+          const perpX = -Math.sin(angle)
+          const perpY = Math.cos(angle)
+          const tickLen = 5
+          const restScreen = restDist * d.viewport.scale
+          if (restScreen > 10 && restScreen < Math.sqrt((tx - sx) ** 2 + (ty - sy) ** 2) * 2) {
+            const mx1 = sx + Math.cos(angle) * restScreen
+            const my1 = sy + Math.sin(angle) * restScreen
+            ctx.beginPath()
+            ctx.moveTo(mx1 - perpX * tickLen, my1 - perpY * tickLen)
+            ctx.lineTo(mx1 + perpX * tickLen, my1 + perpY * tickLen)
+            ctx.strokeStyle = '#22C55E'
+            ctx.globalAlpha = 0.7
+            ctx.lineWidth = 1.5
+            ctx.stroke()
+            const mx2 = tx - Math.cos(angle) * restScreen
+            const my2 = ty - Math.sin(angle) * restScreen
+            ctx.beginPath()
+            ctx.moveTo(mx2 - perpX * tickLen, my2 - perpY * tickLen)
+            ctx.lineTo(mx2 + perpX * tickLen, my2 + perpY * tickLen)
+            ctx.stroke()
+          }
+        }
+        ctx.globalAlpha = 1
+        ctx.setLineDash([])
+      }
+
+      // GRAVITY: center-of-mass crosshair
+      if (gravityActive && d.nodes.length > 0) {
+        let comX = 0, comY = 0
+        for (const node of d.nodes) { comX += node.x; comY += node.y }
+        comX /= d.nodes.length; comY /= d.nodes.length
+        const [cx, cy] = worldToScreen(d.viewport, comX, comY)
+
+        const crossSize = 12
+        ctx.strokeStyle = '#8B7EC8'
+        ctx.lineWidth = 2
+        ctx.globalAlpha = 0.6
+        ctx.beginPath()
+        ctx.moveTo(cx - crossSize, cy); ctx.lineTo(cx + crossSize, cy)
+        ctx.moveTo(cx, cy - crossSize); ctx.lineTo(cx, cy + crossSize)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(cx, cy, crossSize * 0.7, 0, Math.PI * 2)
+        ctx.stroke()
+
+        ctx.globalAlpha = 0.08
+        ctx.lineWidth = 1
+        ctx.setLineDash([3, 6])
+        for (const node of d.nodes) {
+          const [sx, sy] = worldToScreen(d.viewport, node.x, node.y)
+          ctx.beginPath()
+          ctx.moveTo(sx, sy)
+          ctx.lineTo(cx, cy)
+          ctx.stroke()
+        }
+        ctx.setLineDash([])
+        ctx.globalAlpha = 1
+      }
+
       // Draw nodes
       ctx.font = LABEL_FONT
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
 
-      for (const node of nodes) {
-        const [sx, sy] = worldToScreen(viewport, node.x, node.y)
+      for (const node of d.nodes) {
+        const [sx, sy] = worldToScreen(d.viewport, node.x, node.y)
         const s = NODE_SIZES[node.level]
         const hw = s.w / 2
         const hh = s.h / 2
 
-        // Offscreen culling
-        if (sx + hw < -CULL_MARGIN || sx - hw > size.w + CULL_MARGIN ||
-            sy + hh < -CULL_MARGIN || sy - hh > size.h + CULL_MARGIN) continue
+        if (sx + hw < -CULL_MARGIN || sx - hw > w + CULL_MARGIN ||
+            sy + hh < -CULL_MARGIN || sy - hh > h + CULL_MARGIN) continue
 
-        const nodeHighlighted = highlightedNodes?.has(node.id) ?? false
+        const nodeHighlighted = d.highlightedNodes?.has(node.id) ?? false
         ctx.globalAlpha = hasHighlight && !nodeHighlighted ? DIM_ALPHA : 1
 
         const color = NODE_COLORS[node.nodeType] || '#999'
@@ -317,7 +509,7 @@ export function GraphCanvas({
         }
 
         // Search match ring
-        if (searchMatchIds?.has(node.id)) {
+        if (d.searchMatchIds?.has(node.id)) {
           ctx.save()
           ctx.strokeStyle = SEARCH_MATCH_COLOR
           ctx.lineWidth = 2
@@ -334,7 +526,7 @@ export function GraphCanvas({
         }
 
         // Selection ring
-        if (node.id === selectedNodeId) {
+        if (node.id === d.selectedNodeId) {
           ctx.save()
           ctx.strokeStyle = SELECTION_RING_COLOR
           ctx.lineWidth = 2.5
@@ -351,7 +543,7 @@ export function GraphCanvas({
         }
 
         // Focus ring
-        if (node.id === focusedNodeId) {
+        if (node.id === d.focusedNodeId) {
           ctx.save()
           ctx.strokeStyle = FOCUS_RING_COLOR
           ctx.lineWidth = 2
@@ -376,15 +568,23 @@ export function GraphCanvas({
         const label = truncateLabel(ctx, node.name, maxLabelW)
         ctx.fillText(label, sx, labelY)
       }
-
-      if (running) {
-        frameId = requestAnimationFrame(draw)
-      }
     }
 
-    frameId = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(frameId)
-  }, [nodes, edges, nodeMap, viewport, size, running, highlightedNodes, highlightedEdges, selectedNodeId, focusedNodeId, searchMatchIds])
+    // Animation loop: runs continuously when simulation is running.
+    // When paused, a single frame is drawn on demand via the dirty flag.
+    const loop = () => {
+      if (!active) return
+      const isRunning = drawData.current.running
+      if (isRunning || dirtyRef.current) {
+        dirtyRef.current = false
+        drawFrame()
+      }
+      loopId = requestAnimationFrame(loop)
+    }
+    loopId = requestAnimationFrame(loop)
+
+    return () => { active = false; cancelAnimationFrame(loopId) }
+  }, [size]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={containerRef} className="graph-canvas-container">

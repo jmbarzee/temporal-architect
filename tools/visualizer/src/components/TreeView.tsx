@@ -1,6 +1,6 @@
 import React from 'react'
 import type { TWFFile, Definition, FileError, Statement, AsyncTarget } from '../types/ast'
-import type { CallerRef, NavigationContextType } from './WorkflowCanvas'
+import type { CallerRef, NavigationContextType, CrossViewTarget } from './WorkflowCanvas'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
 import { SearchIcon } from './icons/GearIcons'
@@ -9,13 +9,16 @@ import { THEME, DEF_TYPE_CONFIGS, DEF_TYPE_ORDER } from '../theme/temporal-theme
 interface TreeViewProps {
   ast: TWFFile
   onOpenFile?: (file: string) => void
+  onShowInGraph?: (name: string, defType: string) => void
+  pendingNavigation?: CrossViewTarget | null
+  onNavigationConsumed?: () => void
 }
 
 const DEFAULT_VISIBLE_TYPES = new Set(
   DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type)
 )
 
-export function TreeView({ ast, onOpenFile }: TreeViewProps) {
+export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, onNavigationConsumed }: TreeViewProps) {
   // --- Header state ---
   const [selectedFiles, setSelectedFiles] = React.useState<Set<string>>(new Set())
   const [searchActive, setSearchActive] = React.useState(false)
@@ -341,7 +344,33 @@ export function TreeView({ ast, onOpenFile }: TreeViewProps) {
   const navigationValue = React.useMemo<NavigationContextType>(() => ({
     ...navIndex,
     navigateTo,
-  }), [navIndex, navigateTo])
+    showInGraph: onShowInGraph,
+  }), [navIndex, navigateTo, onShowInGraph])
+
+  // Handle cross-view navigation: adjust filters to make target visible, then navigate
+  React.useEffect(() => {
+    if (!pendingNavigation) return
+    const { name, defType } = pendingNavigation
+
+    // Ensure the target's type is visible
+    if (!visibleTypes.has(defType)) {
+      setVisibleTypes(prev => new Set(prev).add(defType))
+    }
+
+    // Ensure the target's source file is in selection (if file filtering is active)
+    const targetDef = ast.definitions.find(d => d.name === name && d.type === defType)
+    if (targetDef?.sourceFile && selectedFiles.size > 0 && !selectedFiles.has(targetDef.sourceFile)) {
+      setSelectedFiles(prev => new Set(prev).add(targetDef.sourceFile!))
+    }
+
+    // Delay navigateTo to allow filter state to settle and visibleDefinitions to recompute
+    const timer = setTimeout(() => {
+      navigateTo(name, defType)
+      onNavigationConsumed?.()
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [pendingNavigation]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tree keyboard navigation handler
   const handleTreeKeyDown = React.useCallback((e: React.KeyboardEvent) => {

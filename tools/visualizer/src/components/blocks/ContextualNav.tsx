@@ -52,13 +52,23 @@ export function ContextualNavButtons({ defName, defType, showDefinition }: Conte
     }
   }
 
-  if (actions.length === 0) return null
+  // "Show in Graph" for any definition
+  const showGraph = defName && defType && nav.showInGraph
+    ? () => nav.showInGraph!(defName, defType)
+    : null
+
+  if (actions.length === 0 && !showGraph) return null
 
   return (
     <div className="ctx-nav-buttons" onClick={e => e.stopPropagation()}>
       {actions.map(action => (
         <NavButton key={action.label} action={action} onNavigate={nav.navigateTo} />
       ))}
+      {showGraph && (
+        <button className="ctx-nav-btn" onClick={showGraph} title="Show in Graph view">
+          Graph
+        </button>
+      )}
     </div>
   )
 }

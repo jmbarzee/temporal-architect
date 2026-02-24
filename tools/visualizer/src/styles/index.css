@@ -472,11 +472,16 @@ body {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 10;
-  max-width: 260px;
+  max-width: 280px;
+  max-height: calc(100% - 70px);
+  display: flex;
+  flex-direction: column;
 }
 
 .graph-control-panel-toggle {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   padding: 6px 12px;
   border: none;
@@ -487,14 +492,54 @@ body {
   cursor: pointer;
   text-align: left;
   font-family: var(--font-sans);
+  flex-shrink: 0;
 }
 
 .graph-control-panel-toggle:hover {
   color: var(--color-text);
 }
 
+.graph-control-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.graph-control-help-btn:hover {
+  background: var(--color-text-muted);
+  color: var(--color-surface);
+}
+
+.graph-control-help-popover {
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.graph-control-help-text {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+  font-family: var(--font-sans);
+  margin: 0;
+}
+
 .graph-control-panel-body {
   padding: 0 12px 10px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .graph-control-group {
@@ -508,6 +553,120 @@ body {
   letter-spacing: 0.5px;
   color: var(--color-text-muted);
   margin-bottom: 4px;
+}
+
+/* Equation-oriented sections */
+.graph-control-equation-section {
+  margin-top: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.graph-control-equation-section:hover {
+  opacity: 1;
+}
+
+.graph-control-equation-section:last-of-type {
+  border-bottom: none;
+}
+
+.graph-control-equation-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.graph-control-equation-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text);
+}
+
+.graph-control-equation-subtitle {
+  font-size: 9px;
+  color: var(--color-text-muted);
+}
+
+.graph-control-equation-formula {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  margin: 0 0 4px;
+  white-space: pre-wrap;
+}
+
+.graph-control-equation-body {
+  padding-left: 2px;
+}
+
+/* Sub-header for labeled columns within a section */
+.graph-control-sub-header {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.graph-control-sub-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+/* Pull edge row — two sliders side by side */
+.graph-control-pull-edge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.graph-control-pull-edge-label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  min-width: 40px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.graph-control-pull-slider {
+  flex: 1;
+  min-width: 0;
+}
+
+.graph-control-pull-value {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  min-width: 24px;
+  text-align: right;
+}
+
+/* Force field checkbox */
+.graph-control-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.graph-control-checkbox input[type="checkbox"] {
+  accent-color: var(--color-workflow);
+  cursor: pointer;
 }
 
 .graph-control-slider {
