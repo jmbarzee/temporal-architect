@@ -35,7 +35,7 @@
 
 ## Group 1: Replace Level Selector with Unified Type Toggle Bar
 
-**Status:** stale
+**Status:** completed
 **Spec:** VIEW_FRAMEWORK.md § Unified Filter Bar; GRAPH_VIEW.md § Type Filtering
 **Files:**
 - `tools/visualizer/src/components/GraphView.tsx`
@@ -76,7 +76,7 @@ The graph's existing file chip and search controls stay in place; only the middl
 
 ## Group 2: Graph Defaults — Workers + Workflows ON
 
-**Status:** stale
+**Status:** completed
 **Spec:** VIEW_FRAMEWORK.md § Initial Defaults
 **Files:**
 - `tools/visualizer/src/components/GraphView.tsx`
@@ -91,7 +91,7 @@ Verify: after Group 1, confirm the initial graph render shows Worker and Workflo
 
 ## Group 3: Edge Graduation
 
-**Status:** stale
+**Status:** completed
 **Spec:** GRAPH_VIEW.md § Edge Graduation; GRAPH_VIEW.md § Type Filtering (table of visible-type examples)
 **Files:**
 - `tools/visualizer/src/components/GraphView.tsx` — replace visibility filter memo
@@ -140,7 +140,7 @@ The graduated edges have the same `edgeType` as their source edges (containment 
 
 ## Group 4: Cross-View Orientation — Local-First Graph Navigation
 
-**Status:** stale
+**Status:** completed
 **Spec:** VIEW_FRAMEWORK.md § Orientation; VIEW_FRAMEWORK.md § "Show in [View]" Action step 4
 **Files:**
 - `tools/visualizer/src/components/GraphView.tsx`
@@ -171,7 +171,7 @@ Note: the spec also calls for a viewport lock on the target node until the simul
 
 ## Group 5: Glanceable Summaries — Tree Blocks and Graph Nodes
 
-**Status:** missing
+**Status:** completed
 **Spec:** TREE_VIEW.md § Block Summaries; GRAPH_VIEW.md § Node Summaries; PRODUCT.md § Glanceable summaries
 **Files:**
 - `tools/visualizer/src/components/blocks/DefinitionBlock.tsx` — tree block summaries

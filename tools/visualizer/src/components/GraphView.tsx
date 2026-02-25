@@ -13,12 +13,10 @@ import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { getTransitiveDeps, getHighlightedEdgeIds } from '../graph/highlight'
 import { GraphCanvas } from './GraphCanvas'
-import { LevelSelector } from './LevelSelector'
-import type { LevelRange } from './LevelSelector'
 import { GraphControlPanel } from './GraphControlPanel'
 import type { ForceSection } from './GraphControlPanel'
 import { SearchIcon } from './icons/GearIcons'
-import { THEME } from '../theme/temporal-theme'
+import { THEME, DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -27,12 +25,70 @@ interface GraphViewProps {
   onNavigationConsumed?: () => void
 }
 
-// Map AST defType to graph node level
-function defTypeToLevel(defType: string): 1 | 2 | 3 {
-  switch (defType) {
-    case 'namespaceDef': return 1
-    case 'workerDef': return 2
-    default: return 3
+// Map graph nodeType to AST defType (for visibility filter)
+function nodeTypeToDefType(nodeType: string): string {
+  switch (nodeType) {
+    case 'namespace': return 'namespaceDef'
+    case 'worker': return 'workerDef'
+    case 'workflow': return 'workflowDef'
+    case 'activity': return 'activityDef'
+    case 'nexusService': return 'nexusServiceDef'
+    default: return 'workflowDef'
+  }
+}
+
+// Walk parentId chain to find nearest ancestor that is in visibleIds
+function findNearestVisibleAncestor(
+  nodeId: string,
+  visibleIds: Set<string>,
+  getNode: (id: string) => SimNode | undefined
+): string | null {
+  const node = getNode(nodeId)
+  if (!node) return null
+  let id: string | undefined = node.parentId
+  while (id) {
+    if (visibleIds.has(id)) return id
+    const parent = getNode(id)
+    id = parent?.parentId
+  }
+  return null
+}
+
+// Compute a glanceable summary string for a graph node from the visible edge set
+function computeGraphNodeSummary(
+  node: SimNode,
+  visibleEdges: { edgeType: string; sourceId: string; targetId: string }[],
+  nodeMap: Map<string, SimNode>
+): string {
+  if (node.level === 1) {
+    const count = visibleEdges.filter(e => e.edgeType === 'containment' && e.targetId === node.id).length
+    return count > 0 ? `${count} worker${count !== 1 ? 's' : ''}` : ''
+  } else if (node.level === 2) {
+    let wf = 0, act = 0, nxs = 0
+    for (const e of visibleEdges) {
+      if (e.edgeType !== 'containment' || e.targetId !== node.id) continue
+      const child = nodeMap.get(e.sourceId)
+      if (!child) continue
+      if (child.nodeType === 'workflow') wf++
+      else if (child.nodeType === 'activity') act++
+      else if (child.nodeType === 'nexusService') nxs++
+    }
+    const parts: string[] = []
+    if (wf > 0) parts.push(`${wf}wf`)
+    if (act > 0) parts.push(`${act}act`)
+    if (nxs > 0) parts.push(`${nxs}nxs`)
+    return parts.join(' · ')
+  } else {
+    let out = 0, inc = 0
+    for (const e of visibleEdges) {
+      if (e.edgeType === 'containment') continue
+      if (e.sourceId === node.id) out++
+      if (e.targetId === node.id) inc++
+    }
+    const parts: string[] = []
+    if (out > 0) parts.push(`→${out}`)
+    if (inc > 0) parts.push(`←${inc}`)
+    return parts.join(' ')
   }
 }
 
@@ -50,7 +106,9 @@ function defTypeToNodeType(defType: string): string {
 
 export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationConsumed }: GraphViewProps) {
   // --- Core state ---
-  const [levelRange, setLevelRange] = React.useState<LevelRange>([1, 2])
+  const [visibleTypes, setVisibleTypes] = React.useState<Set<string>>(
+    new Set(DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type))
+  )
   const [viewport, setViewport] = React.useState<Viewport>(DEFAULT_VIEWPORT)
   const [running, setRunning] = React.useState(true)
   const [forceParams, setForceParams] = React.useState<ForceParams>({ ...DEFAULT_PARAMS })
@@ -111,27 +169,72 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     })
   }, [allFiles])
 
-  // Filter visible nodes and edges by level range + file filter
-  const { visibleNodes, visibleEdges, visibleIds } = React.useMemo(() => {
+  // Filter visible nodes by type toggles + file filter
+  const { visibleNodes, visibleEdges, visibleIds, nodeSummaries } = React.useMemo(() => {
     const sim = simRef.current
-    if (!sim) return { visibleNodes: [] as SimNode[], visibleEdges: [], visibleIds: new Set<string>() }
+    if (!sim) return { visibleNodes: [] as SimNode[], visibleEdges: [], visibleIds: new Set<string>(), nodeSummaries: new Map<string, string>() }
 
-    const [minL, maxL] = levelRange
     const hasFileFilter = selectedFiles.size > 0
     const ids = new Set<string>()
     const vNodes: SimNode[] = []
 
     for (const node of sim.nodes) {
-      if (node.level < minL || node.level > maxL) continue
+      if (!visibleTypes.has(nodeTypeToDefType(node.nodeType))) continue
       if (hasFileFilter && node.sourceFile && !selectedFiles.has(node.sourceFile)) continue
       ids.add(node.id)
       vNodes.push(node)
     }
 
-    const vEdges = sim.edges.filter(e => ids.has(e.sourceId) && ids.has(e.targetId))
+    // Graduate edges across hidden types.
+    // Containment: if child visible but parent hidden, walk up to nearest visible ancestor.
+    // Dependency: if either endpoint hidden, project to nearest visible ancestor; deduplicate.
+    const getNode = (id: string) => sim.getNode(id)
+    const graduatedEdges: typeof sim.edges = []
+    const depEdgeKeys = new Map<string, (typeof sim.edges)[0]>()
 
-    return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids }
-  }, [levelRange, selectedFiles, graph]) // eslint-disable-line react-hooks/exhaustive-deps
+    for (const edge of sim.edges) {
+      const srcVisible = ids.has(edge.sourceId)
+      const tgtVisible = ids.has(edge.targetId)
+
+      if (edge.edgeType === 'containment') {
+        if (!srcVisible) continue  // hidden child — drop
+        if (tgtVisible) {
+          graduatedEdges.push(edge)  // both visible — keep as-is
+        } else {
+          // parent hidden — walk up to nearest visible ancestor
+          const ancestor = findNearestVisibleAncestor(edge.targetId, ids, getNode)
+          if (ancestor) {
+            graduatedEdges.push({ ...edge, targetId: ancestor, id: `grad:${edge.id}` })
+          }
+          // else child floats free — no containment edge
+        }
+      } else {
+        // dependency or nexusDependency — project both endpoints
+        const resolvedSrc = srcVisible ? edge.sourceId
+          : findNearestVisibleAncestor(edge.sourceId, ids, getNode)
+        const resolvedTgt = tgtVisible ? edge.targetId
+          : findNearestVisibleAncestor(edge.targetId, ids, getNode)
+        if (!resolvedSrc || !resolvedTgt || resolvedSrc === resolvedTgt) continue
+        const key = `${resolvedSrc}→${resolvedTgt}`
+        if (!depEdgeKeys.has(key)) {
+          depEdgeKeys.set(key, { ...edge, sourceId: resolvedSrc, targetId: resolvedTgt, id: `grad:${key}` })
+        }
+      }
+    }
+
+    const vEdges = [...graduatedEdges, ...depEdgeKeys.values()]
+
+    // Compute per-node summaries from the graduated visible edge set
+    const vNodeMap = new Map<string, SimNode>()
+    for (const n of vNodes) vNodeMap.set(n.id, n)
+    const nodeSummaries = new Map<string, string>()
+    for (const node of vNodes) {
+      const s = computeGraphNodeSummary(node, vEdges, vNodeMap)
+      if (s) nodeSummaries.set(node.id, s)
+    }
+
+    return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, nodeSummaries }
+  }, [visibleTypes, selectedFiles, graph]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Search matches (against all nodes, not just visible)
   const { visibleMatchIds, hiddenMatchCount } = React.useMemo(() => {
@@ -231,29 +334,36 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     return () => cancelAnimationFrame(frameId)
   }, [running, visibleIds, visibleNodes, selectedNodeId])
 
-  // Reheat on level range change
-  const prevRange = React.useRef(levelRange)
+  // Seed newly visible nodes at their nearest visible ancestor, then reheat
+  const prevVisibleTypes = React.useRef(visibleTypes)
   React.useEffect(() => {
-    if (prevRange.current[0] !== levelRange[0] || prevRange.current[1] !== levelRange[1]) {
-      const sim = simRef.current
-      if (sim) {
-        for (const node of sim.nodes) {
-          if (node.level >= levelRange[0] && node.level <= levelRange[1]) {
-            if (node.level < prevRange.current[0] || node.level > prevRange.current[1]) {
-              if (node.parentId) {
-                const parent = sim.getNode(node.parentId)
-                if (parent) sim.seedAt(node.id, parent.x, parent.y)
-              }
+    const prev = prevVisibleTypes.current
+    if (prev === visibleTypes) return
+    const sim = simRef.current
+    if (sim) {
+      // Find nodes that just became visible
+      for (const node of sim.nodes) {
+        const defType = nodeTypeToDefType(node.nodeType)
+        if (visibleTypes.has(defType) && !prev.has(defType)) {
+          // Seed at nearest visible ancestor
+          let ancestorId = node.parentId
+          while (ancestorId) {
+            const ancestor = sim.getNode(ancestorId)
+            if (!ancestor) break
+            if (visibleTypes.has(nodeTypeToDefType(ancestor.nodeType))) {
+              sim.seedAt(node.id, ancestor.x, ancestor.y)
+              break
             }
+            ancestorId = ancestor.parentId
           }
         }
-        sim.reheat(0.5)
-        setRunning(true)
-        initialFitDone.current = false
       }
-      prevRange.current = levelRange
+      sim.reheat(0.5)
+      setRunning(true)
+      initialFitDone.current = false
     }
-  }, [levelRange])
+    prevVisibleTypes.current = visibleTypes
+  }, [visibleTypes])
 
   // Propagate force param changes to simulation (no auto-reheat — user controls when to restart)
   const handleParamChange = React.useCallback((key: keyof ForceParams, value: number) => {
@@ -323,6 +433,16 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     setRunning(true)
   }, [])
 
+  // Type toggle
+  const toggleType = (type: string) => {
+    setVisibleTypes(prev => {
+      const next = new Set(prev)
+      if (next.has(type)) next.delete(type)
+      else next.add(type)
+      return next
+    })
+  }
+
   // File filter toggle
   const toggleFile = (file: string) => {
     setSelectedFiles(prev => {
@@ -371,13 +491,12 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     if (!pendingNavigation) return
     const { name, defType } = pendingNavigation
 
-    // Ensure the target level is within the visible range
-    const targetLevel = defTypeToLevel(defType)
-    setLevelRange(prev => {
-      const [minL, maxL] = prev
-      if (targetLevel >= minL && targetLevel <= maxL) return prev
-      // Expand range to include target level
-      return [Math.min(minL, targetLevel), Math.max(maxL, targetLevel)] as LevelRange
+    // Ensure the target type is visible (enable if toggled off)
+    setVisibleTypes(prev => {
+      if (prev.has(defType)) return prev
+      const next = new Set(prev)
+      next.add(defType)
+      return next
     })
 
     // Ensure the target's source file is visible
@@ -515,36 +634,61 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
 
   return (
     <div className="graph-view" ref={containerRef}>
-      {/* Graph Header: filters + controls */}
-      <div className="graph-header">
-        <div className="graph-header-left">
-          <LevelSelector range={levelRange} onChange={setLevelRange} />
-
-          {hasFiles && (
-            <div className="graph-file-chips">
-              {allFiles.map(file => {
-                const fileName = file.split('/').pop() || file
-                const isSelected = selectedFiles.has(file)
-                const cls = noFilesSelected
-                  ? 'graph-file-chip all-included'
-                  : `graph-file-chip ${isSelected ? 'selected' : ''}`
-                return (
-                  <button key={file} className={cls} onClick={() => toggleFile(file)} title={file}>
-                    {fileName}
-                  </button>
-                )
-              })}
+      {/* Shared Filter Bar — identical structure to Tree View */}
+      <div className="canvas-header">
+        {hasFiles && (
+          <>
+            <div className="header-files-section">
+              <div className="header-files-row">
+                {allFiles.map(file => {
+                  const fileName = file.split('/').pop() || file
+                  const isSelected = selectedFiles.has(file)
+                  const chipClass = noFilesSelected
+                    ? 'header-file-tag all-included'
+                    : `header-file-tag ${isSelected ? 'selected' : ''}`
+                  return (
+                    <button key={file} className={chipClass} onClick={() => toggleFile(file)} title={file}>
+                      <span className="header-file-icon">📄</span>
+                      <span className="header-file-name">{fileName}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          )}
+            <div className="header-divider" />
+          </>
+        )}
 
-          <div className={`graph-search ${searchActive ? 'active' : ''}`}>
-            <button className="graph-search-toggle" onClick={toggleSearch} title="Search nodes (/)">
-              <SearchIcon size={13} />
+        <div className="header-types-section">
+          <div className="header-types-row">
+            {DEF_TYPE_CONFIGS.map(cfg => {
+              const isActive = visibleTypes.has(cfg.type)
+              return (
+                <button
+                  key={cfg.type}
+                  className={`header-type-tag ${isActive ? 'active' : ''} header-type-${cfg.type}`}
+                  onClick={() => toggleType(cfg.type)}
+                  title={isActive ? `Hide ${cfg.label.toLowerCase()}` : `Show ${cfg.label.toLowerCase()}`}
+                >
+                  <span className="header-type-icon">{cfg.icon}</span>
+                  <span className="header-type-label">{cfg.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="header-divider" />
+
+        <div className="header-controls-section">
+          <div className={`header-search ${searchActive ? 'active' : ''}`}>
+            <button className="header-search-toggle" onClick={toggleSearch} title="Search nodes (/)">
+              <SearchIcon size={14} />
             </button>
             {searchActive && (
               <input
                 ref={searchInputRef}
-                className="graph-search-input"
+                className="header-search-input"
                 type="text"
                 placeholder="Search nodes..."
                 value={searchQuery}
@@ -553,44 +697,40 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
               />
             )}
             {hiddenMatchCount > 0 && (
-              <span className="graph-search-badge" title={`${hiddenMatchCount} match${hiddenMatchCount !== 1 ? 'es' : ''} hidden by filters`}>
+              <span className="header-search-badge" title={`${hiddenMatchCount} match${hiddenMatchCount !== 1 ? 'es' : ''} hidden by filters`}>
                 +{hiddenMatchCount}
               </span>
             )}
           </div>
         </div>
+      </div>
 
-        <div className="graph-header-info">
-          {selectedNodeId && onShowInTree && (() => {
-            const node = simRef.current?.getNode(selectedNodeId)
-            if (!node) return null
-            const defType = node.nodeType === 'namespace' ? 'namespaceDef'
-              : node.nodeType === 'worker' ? 'workerDef'
-              : node.nodeType === 'activity' ? 'activityDef'
-              : node.nodeType === 'nexusService' ? 'nexusServiceDef'
-              : 'workflowDef'
-            return (
-              <button
-                className="graph-header-btn"
-                onClick={() => onShowInTree(node.name, defType)}
-                title="Show in Tree view"
-              >
-                Show in Tree
-              </button>
-            )
-          })()}
-          <span className="graph-header-count">
-            {nodeCount} node{nodeCount !== 1 ? 's' : ''}, {edgeCount} edge{edgeCount !== 1 ? 's' : ''}
-          </span>
-          <button className="graph-header-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
-          <button
-            className={`graph-header-btn ${running ? 'active' : ''}`}
-            onClick={handleToggleRunning}
-            title={running ? 'Pause simulation (Space)' : 'Resume simulation (Space)'}
-          >
-            {running ? 'Pause' : 'Play'}
-          </button>
-        </div>
+      {/* Graph Toolbar — view-specific controls */}
+      <div className="graph-toolbar">
+        <span className="graph-toolbar-count">
+          {nodeCount} node{nodeCount !== 1 ? 's' : ''}, {edgeCount} edge{edgeCount !== 1 ? 's' : ''}
+        </span>
+        {selectedNodeId && onShowInTree && (() => {
+          const node = simRef.current?.getNode(selectedNodeId)
+          if (!node) return null
+          return (
+            <button
+              className="graph-toolbar-btn"
+              onClick={() => onShowInTree(node.name, nodeTypeToDefType(node.nodeType))}
+              title="Show in Tree view"
+            >
+              Show in Tree
+            </button>
+          )
+        })()}
+        <button className="graph-toolbar-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
+        <button
+          className={`graph-toolbar-btn ${running ? 'active' : ''}`}
+          onClick={handleToggleRunning}
+          title={running ? 'Pause simulation (Space)' : 'Resume simulation (Space)'}
+        >
+          {running ? 'Pause' : 'Play'}
+        </button>
       </div>
 
       {/* Search results dropdown */}
@@ -636,6 +776,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
         forceParams={forceParams}
         activeSection={activeSection}
         activeChargeLevel={activeChargeLevel}
+        nodeSummaries={nodeSummaries}
       />
 
       {/* Control panel */}

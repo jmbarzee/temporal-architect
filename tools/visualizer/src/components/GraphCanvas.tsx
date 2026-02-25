@@ -58,6 +58,7 @@ interface GraphCanvasProps {
   forceParams: ForceParams
   activeSection: ForceSection
   activeChargeLevel: number | null
+  nodeSummaries: Map<string, string>
 }
 
 // All data the draw function needs, stored in a ref to avoid effect teardown
@@ -75,6 +76,7 @@ interface DrawData {
   forceParams: ForceParams
   activeSection: ForceSection
   activeChargeLevel: number | null
+  nodeSummaries: Map<string, string>
   running: boolean
 }
 
@@ -85,6 +87,7 @@ export function GraphCanvas({
   highlightedNodes, highlightedEdges,
   selectedNodeId, focusedNodeId, searchMatchIds,
   running, showForceFields, forceParams, activeSection, activeChargeLevel,
+  nodeSummaries,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -108,12 +111,12 @@ export function GraphCanvas({
   const drawData = React.useRef<DrawData>({
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
     selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
-    forceParams, activeSection, activeChargeLevel, running,
+    forceParams, activeSection, activeChargeLevel, nodeSummaries, running,
   })
   drawData.current = {
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
     selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
-    forceParams, activeSection, activeChargeLevel, running,
+    forceParams, activeSection, activeChargeLevel, nodeSummaries, running,
   }
 
   // Resize observer
@@ -567,6 +570,19 @@ export function GraphCanvas({
         ctx.fillStyle = hasHighlight && !nodeHighlighted ? 'rgba(51,51,51,0.2)' : '#333'
         const label = truncateLabel(ctx, node.name, maxLabelW)
         ctx.fillText(label, sx, labelY)
+
+        // Summary secondary label — elided at low zoom
+        if (d.viewport.scale >= 0.5) {
+          const summary = d.nodeSummaries.get(node.id)
+          if (summary) {
+            ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+            ctx.globalAlpha = hasHighlight && !nodeHighlighted ? DIM_ALPHA * 0.55 : 0.55
+            ctx.fillStyle = '#333'
+            const summaryY = node.level === 3 ? labelY + 13 : labelY + 14
+            ctx.fillText(summary, sx, summaryY)
+            ctx.font = LABEL_FONT
+          }
+        }
       }
     }
 

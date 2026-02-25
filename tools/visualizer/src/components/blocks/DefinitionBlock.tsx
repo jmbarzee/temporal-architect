@@ -64,6 +64,7 @@ function WorkflowDefBlock({ def, controlledExpanded, onToggle }: { def: Workflow
           <span className="block-icon"><ThemeIcon kind="workflow" /></span>
           <span className="block-keyword">workflow</span>
           <span className="block-signature" title={signature}>{signature}</span>
+          {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
         </div>
 
         {expanded && (
@@ -90,6 +91,7 @@ function ActivityDefBlock({ def, controlledExpanded, onToggle }: { def: Activity
         <span className="block-icon"><ThemeIcon kind="activity" /></span>
         <span className="block-keyword">activity</span>
         <span className="block-signature" title={signature}>{signature}</span>
+        {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
       </div>
 
       {expanded && (
@@ -118,6 +120,7 @@ function WorkerDefBlock({ def, controlledExpanded, onToggle }: { def: WorkerDef 
         <span className="block-icon">{THEME.worker.icon}</span>
         <span className="block-keyword">worker</span>
         <span className="block-signature" title={`${def.name} (${totalRefs} types)`}>{def.name} ({totalRefs} types)</span>
+        {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
       </div>
 
       {expanded && (
@@ -212,6 +215,7 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle }: { def: Namespa
         <span className="block-icon block-icon-namespace">{THEME.namespace.icon}</span>
         <span className="block-keyword">namespace</span>
         <span className="block-signature" title={`${def.name} (${totalEntries} entries)`}>{def.name} ({totalEntries} entries)</span>
+        {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
       </div>
 
       {expanded && (
@@ -286,6 +290,41 @@ function NamespaceEndpointEntry({ entry }: { entry: NamespaceEndpoint }) {
   )
 }
 
+function computeSummary(def: Definition): string {
+  const parts: string[] = []
+  if (def.type === 'workflowDef') {
+    const steps = def.body?.length || 0
+    const calls = (def.body || []).filter(s =>
+      s.type === 'activityCall' || s.type === 'workflowCall' || s.type === 'nexusCall'
+    ).length
+    const handlers = (def.signals?.length || 0) + (def.queries?.length || 0) + (def.updates?.length || 0)
+    if (steps > 0) parts.push(`${steps} step${steps !== 1 ? 's' : ''}`)
+    if (calls > 0) parts.push(`${calls} call${calls !== 1 ? 's' : ''}`)
+    if (handlers > 0) parts.push(`${handlers} handler${handlers !== 1 ? 's' : ''}`)
+  } else if (def.type === 'activityDef') {
+    const steps = def.body?.length || 0
+    if (steps > 0) parts.push(`${steps} step${steps !== 1 ? 's' : ''}`)
+  } else if (def.type === 'workerDef') {
+    const wf = def.workflows?.length || 0
+    const act = def.activities?.length || 0
+    const svc = def.services?.length || 0
+    if (wf > 0) parts.push(`${wf} workflow${wf !== 1 ? 's' : ''}`)
+    if (act > 0) parts.push(`${act} activit${act !== 1 ? 'ies' : 'y'}`)
+    if (svc > 0) parts.push(`${svc} service${svc !== 1 ? 's' : ''}`)
+  } else if (def.type === 'namespaceDef') {
+    const w = def.workers?.length || 0
+    const e = def.endpoints?.length || 0
+    if (w > 0) parts.push(`${w} worker${w !== 1 ? 's' : ''}`)
+    if (e > 0) parts.push(`${e} endpoint${e !== 1 ? 's' : ''}`)
+  } else if (def.type === 'nexusServiceDef') {
+    const asyncOps = (def.operations || []).filter(o => o.opType === 'async').length
+    const syncOps = (def.operations || []).filter(o => o.opType === 'sync').length
+    if (asyncOps > 0) parts.push(`${asyncOps} async`)
+    if (syncOps > 0) parts.push(`${syncOps} sync`)
+  }
+  return parts.join(' · ')
+}
+
 function formatWorkflowSignature(def: WorkflowDef): string {
   let sig = `${def.name}(${def.params})`
   if (def.returnType) {
@@ -308,6 +347,7 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle }: { def: Nexu
         <span className="block-icon block-icon-nexus-service">{THEME.nexusService.icon}</span>
         <span className="block-keyword">service</span>
         <span className="block-signature" title={`${def.name} (${opCount} operation${opCount !== 1 ? 's' : ''})`}>{def.name} ({opCount} operation{opCount !== 1 ? 's' : ''})</span>
+        {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
       </div>
 
       {expanded && (
