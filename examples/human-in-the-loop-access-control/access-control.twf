@@ -1,0 +1,778 @@
+# =============================================================================
+# Access Control Request System — Temporal Workflow Architecture
+# =============================================================================
+#
+# Governs the lifecycle of access to enterprise resources: request, approval,
+# provisioning, certification, and revocation.
+#
+# Key design decisions:
+# - AccessRequest is an entity workflow (long-lived, signal-driven) because
+#   grants persist months/years and require ongoing lifecycle events.
+# - ApprovalChain is a child workflow — multi-level approval with escalation
+#   timers is a multi-step orchestration with its own failure boundary.
+# - ProvisionAll/DeprovisionAll are fan-out child workflows — each target
+#   system has independent retry/timeout needs and natural parallelism.
+# - ProvisionEntitlement/DeprovisionEntitlement are per-target-system child
+#   workflows whose heavy connector activities route to a separate queue.
+# - Every state transition emits an audit event via activity (not detached)
+#   because audit completeness is a hard compliance requirement.
+# - CertificationCampaign uses continue-as-new because campaigns span weeks
+#   and process hundreds of thousands of review decisions.
+
+
+# =============================================================================
+# AccessRequest — Central entity workflow (one per request)
+# =============================================================================
+
+workflow AccessRequest(req: AccessRequestInput, grantState: GrantState) -> (AccessRequestResult):
+    state:
+        condition revoked
+
+    signal Revoke(reason: string):
+        revokeReason = reason
+        set revoked
+
+    signal Renew(newExpiration: Expiration):
+        renewalExpiration = newExpiration
+
+    query GetStatus() -> (AccessRequestStatus):
+        return AccessRequestStatus{requestId: req.requestId, phase: phase, provisioningStatus: provisioningStatus}
+
+    # --- Phase 1: Risk Assessment ---
+    phase = "SUBMITTED"
+    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "SUBMITTED", actor: req.requesterId})
+
+    activity EvaluatePolicy(req) -> policyResult
+        options:
+            start_to_close_timeout: 10s
+
+    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "RISK_ASSESSED", detail: policyResult})
+    phase = "RISK_ASSESSED"
+
+    # --- Phase 2: Auto-decision or Approval ---
+    if (policyResult.autoDecision == "REJECT"):
+        activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "AUTO_REJECTED"})
+        close complete(AccessRequestResult{requestId: req.requestId, outcome: "DENIED", reason: policyResult.rejectReason})
+
+    if (policyResult.autoDecision == "APPROVE"):
+        activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "AUTO_APPROVED"})
+    else:
+        phase = "PENDING_APPROVAL"
+        workflow ApprovalChain(req.requestId, req.beneficiaryId, policyResult.approvalChain, policyResult.sodConflicts) -> approvalResult
+
+        if (approvalResult.decision == "DENIED"):
+            activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "DENIED", actor: approvalResult.decidedBy})
+            close complete(AccessRequestResult{requestId: req.requestId, outcome: "DENIED", reason: approvalResult.reason})
+
+        activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "APPROVED", actor: approvalResult.decidedBy})
+
+    # --- Phase 3: Provisioning ---
+    phase = "PROVISIONING"
+    workflow ProvisionAll(req.requestId, req.beneficiaryId, req.lineItems) -> provisioningStatus
+
+    if (provisioningStatus.allFailed):
+        activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "PROVISIONING_FAILED"})
+        close complete(AccessRequestResult{requestId: req.requestId, outcome: "PROVISIONING_FAILED"})
+
+    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "PROVISIONED", detail: provisioningStatus})
+
+    # --- Phase 4: Active grant — wait for revocation, renewal, or expiry ---
+    phase = "ACTIVE"
+    grantState = GrantState{requestId: req.requestId, provisioningStatus: provisioningStatus}
+    eventCount = 0
+
+    for:
+        if (req.expiration.timeBound):
+            await one:
+                signal Revoke:
+                    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "REVOKED", reason: revokeReason})
+                    workflow DeprovisionAll(req.requestId, req.beneficiaryId, req.lineItems) -> deprovisionStatus
+                    close complete(AccessRequestResult{requestId: req.requestId, outcome: "DEPROVISIONED"})
+                signal Renew:
+                    activity EvaluateRenewalPolicy(req, renewalExpiration) -> renewalPolicy
+                    if (renewalPolicy.approved):
+                        req.expiration = renewalExpiration
+                        activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "RENEWED"})
+                    else:
+                        activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "RENEWAL_DENIED"})
+                timer(req.expiration.remainingDuration):
+                    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "EXPIRED"})
+                    workflow DeprovisionAll(req.requestId, req.beneficiaryId, req.lineItems) -> deprovisionStatus
+                    close complete(AccessRequestResult{requestId: req.requestId, outcome: "EXPIRED"})
+        else:
+            await one:
+                signal Revoke:
+                    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "REVOKED", reason: revokeReason})
+                    workflow DeprovisionAll(req.requestId, req.beneficiaryId, req.lineItems) -> deprovisionStatus
+                    close complete(AccessRequestResult{requestId: req.requestId, outcome: "DEPROVISIONED"})
+
+        eventCount = eventCount + 1
+        if (eventCount >= 500):
+            close continue_as_new(req, grantState)
+
+
+# =============================================================================
+# ApprovalChain — Multi-level sequential approval with escalation
+# =============================================================================
+# Flattened single loop: tracks current level index and escalation count.
+# The loop exits via close (denied or all levels complete).
+# Update handlers validate against the currently assigned approver.
+
+workflow ApprovalChain(requestId: string, beneficiaryId: string, chain: ApprovalChainConfig, sodConflicts: SodConflicts) -> (ApprovalChainResult):
+    state:
+        condition levelDecided
+
+    update SubmitDecision(decision: ApprovalDecision) -> (ApprovalDecisionResult):
+        activity ValidateApprover(decision.approverId, assignedApprover, requestId) -> validation
+        if (validation.authorized):
+            lastDecision = decision
+            set levelDecided
+            return ApprovalDecisionResult{accepted: true}
+        else:
+            return ApprovalDecisionResult{accepted: false, reason: validation.reason}
+
+    update Delegate(delegation: DelegationRequest) -> (DelegationResult):
+        activity ValidateDelegation(delegation, beneficiaryId, currentLevel) -> dv
+        if (dv.authorized):
+            assignedApprover = delegation.delegateId
+            activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "DELEGATED", actor: delegation.delegatorId, detail: delegation.delegateId})
+            activity NotifyApprover(assignedApprover, requestId, beneficiaryId, sodConflicts, currentLevel)
+            return DelegationResult{accepted: true}
+        else:
+            return DelegationResult{accepted: false, reason: dv.reason}
+
+    update RequestMoreInfo(question: string) -> (MoreInfoResult):
+        activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "MORE_INFO_REQUESTED", detail: question})
+        activity NotifyRequester(requestId, beneficiaryId, question)
+        return MoreInfoResult{accepted: true}
+
+    query GetApprovalProgress() -> (ApprovalProgress):
+        return ApprovalProgress{requestId: requestId, currentLevelIdx: currentLevelIdx, assignedApprover: assignedApprover}
+
+    currentLevelIdx = 0
+    escalationCount = 0
+    assignedApprover = chain.firstApprover
+
+    for:
+        currentLevel = chain.getLevel(currentLevelIdx)
+        unset levelDecided
+
+        activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "APPROVAL_ASSIGNED", actor: assignedApprover})
+        activity NotifyApprover(assignedApprover, requestId, beneficiaryId, sodConflicts, currentLevel)
+
+        await one:
+            levelDecided:
+                activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "APPROVAL_DECIDED", actor: assignedApprover, detail: lastDecision})
+                if (lastDecision.verdict == "DENIED"):
+                    close complete(ApprovalChainResult{decision: "DENIED", decidedBy: assignedApprover, reason: lastDecision.reason})
+                # Approved at this level — advance
+                currentLevelIdx = currentLevelIdx + 1
+                escalationCount = 0
+                if (currentLevelIdx >= chain.levelCount):
+                    close complete(ApprovalChainResult{decision: "APPROVED", decidedBy: assignedApprover})
+                assignedApprover = chain.getLevel(currentLevelIdx).approverId
+            timer(currentLevel.escalationTimeout):
+                escalationCount = escalationCount + 1
+                if (escalationCount > currentLevel.maxEscalations):
+                    activity ResolveFallbackApprover(currentLevel) -> fallback
+                    assignedApprover = fallback.approverId
+                    activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "ESCALATED_TO_FALLBACK", detail: fallback})
+                else:
+                    activity ResolveEscalationTarget(assignedApprover, escalationCount) -> target
+                    assignedApprover = target.approverId
+                    activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "ESCALATED", detail: target})
+
+
+# =============================================================================
+# ProvisionAll — Fan-out provisioning across all line items
+# =============================================================================
+
+workflow ProvisionAll(requestId: string, beneficiaryId: string, lineItems: RequestLineItems) -> (ProvisioningStatus):
+    await all:
+        for (lineItem in lineItems.items):
+            workflow ProvisionEntitlement(requestId, beneficiaryId, lineItem) -> lineItem.result
+    activity AggregateProvisioningResults(requestId, lineItems) -> status
+    close complete(status)
+
+
+# =============================================================================
+# DeprovisionAll — Fan-out deprovisioning across all line items
+# =============================================================================
+
+workflow DeprovisionAll(requestId: string, beneficiaryId: string, lineItems: RequestLineItems) -> (DeprovisioningStatus):
+    await all:
+        for (lineItem in lineItems.items):
+            workflow DeprovisionEntitlement(requestId, beneficiaryId, lineItem) -> lineItem.result
+    activity AggregateDeprovisionResults(requestId, lineItems) -> status
+    close complete(status)
+
+
+# =============================================================================
+# ProvisionEntitlement — Per-target-system provisioning (execute + verify)
+# =============================================================================
+# Idempotent. Falls back to manual ITSM ticket when automated retries exhaust.
+
+workflow ProvisionEntitlement(requestId: string, beneficiaryId: string, lineItem: RequestLineItem) -> (ProvisionResult):
+    signal ManualProvisioningComplete():
+        manualDone = true
+
+    activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "PROVISIONING_STARTED", detail: lineItem})
+
+    activity ExecuteProvisioning(beneficiaryId, lineItem) -> execResult
+        options:
+            task_queue: "access-control-connectors"
+            start_to_close_timeout: 2m
+            retry_policy:
+                maximum_attempts: 5
+
+    if (execResult.success):
+        activity VerifyProvisioning(beneficiaryId, lineItem) -> verification
+            options:
+                task_queue: "access-control-connectors"
+                start_to_close_timeout: 1m
+                retry_policy:
+                    maximum_attempts: 3
+        activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "PROVISIONED", detail: lineItem})
+        close complete(ProvisionResult{success: true, lineItem: lineItem})
+
+    # Automated provisioning failed — fall back to manual ITSM ticket
+    activity CreateManualProvisioningTicket(requestId, beneficiaryId, lineItem) -> ticket
+        options:
+            task_queue: "access-control-connectors"
+    activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "MANUAL_PROVISIONING_CREATED", detail: ticket})
+
+    for:
+        await one:
+            signal ManualProvisioningComplete:
+                activity VerifyProvisioning(beneficiaryId, lineItem) -> verification
+                    options:
+                        task_queue: "access-control-connectors"
+                activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "MANUAL_PROVISIONING_COMPLETED"})
+                close complete(ProvisionResult{success: true, lineItem: lineItem, manual: true})
+            timer(lineItem.manualFulfillmentSla):
+                activity EscalateManualProvisioning(ticket)
+                    options:
+                        task_queue: "access-control-connectors"
+                activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "MANUAL_PROVISIONING_ESCALATED"})
+
+
+# =============================================================================
+# DeprovisionEntitlement — Per-target-system deprovisioning
+# =============================================================================
+# Must not give up — orphaned access is a compliance violation.
+# Retries aggressively, then escalates to human and waits indefinitely.
+
+workflow DeprovisionEntitlement(requestId: string, beneficiaryId: string, lineItem: RequestLineItem) -> (DeprovisionResult):
+    signal ManualDeprovisioningComplete():
+        manualDone = true
+
+    activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "DEPROVISIONING_STARTED", detail: lineItem})
+
+    activity ExecuteDeprovisioning(beneficiaryId, lineItem) -> execResult
+        options:
+            task_queue: "access-control-connectors"
+            start_to_close_timeout: 2m
+            retry_policy:
+                maximum_attempts: 10
+
+    if (execResult.success):
+        activity VerifyDeprovisioning(beneficiaryId, lineItem) -> verification
+            options:
+                task_queue: "access-control-connectors"
+                start_to_close_timeout: 1m
+                retry_policy:
+                    maximum_attempts: 3
+        activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "DEPROVISIONED", detail: lineItem})
+        close complete(DeprovisionResult{success: true, lineItem: lineItem})
+
+    # Automated deprovisioning failed — escalate to human, wait indefinitely
+    activity CreateManualDeprovisioningTicket(requestId, beneficiaryId, lineItem) -> ticket
+        options:
+            task_queue: "access-control-connectors"
+    activity AlertSecurityTeam(requestId, beneficiaryId, lineItem)
+        options:
+            task_queue: "access-control-connectors"
+    activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "DEPROVISIONING_ESCALATED_TO_MANUAL"})
+
+    for:
+        await one:
+            signal ManualDeprovisioningComplete:
+                activity VerifyDeprovisioning(beneficiaryId, lineItem) -> verification
+                    options:
+                        task_queue: "access-control-connectors"
+                activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "MANUALLY_DEPROVISIONED"})
+                close complete(DeprovisionResult{success: true, lineItem: lineItem, manual: true})
+            timer(24h):
+                activity EscalateManualDeprovisioning(ticket)
+                    options:
+                        task_queue: "access-control-connectors"
+                activity EmitAuditEvent(AuditEvent{requestId: requestId, action: "DEPROVISIONING_RE_ESCALATED"})
+
+
+# =============================================================================
+# BreakGlassRequest — Emergency access with compressed approval
+# =============================================================================
+# Immediate provisioning in parallel with approval. Auto-expires.
+# Mandatory post-hoc review — system guarantees it completes.
+
+workflow BreakGlassRequest(req: BreakGlassInput) -> (BreakGlassResult):
+    state:
+        condition breakGlassApproved
+        condition postIncidentReviewed
+
+    update BreakGlassApproval(decision: ApprovalDecision) -> (ApprovalDecisionResult):
+        activity ValidateBreakGlassApprover(decision.approverId, req.onCallApproverId) -> validation
+        if (validation.authorized):
+            set breakGlassApproved
+            return ApprovalDecisionResult{accepted: true}
+        else:
+            return ApprovalDecisionResult{accepted: false, reason: validation.reason}
+
+    update SubmitPostIncidentReview(review: PostIncidentReview) -> (ReviewResult):
+        activity ValidatePostIncidentReview(review) -> reviewValidation
+        activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "BREAK_GLASS_REVIEWED", actor: review.reviewerId})
+        set postIncidentReviewed
+        return ReviewResult{accepted: reviewValidation.valid}
+
+    query GetBreakGlassStatus() -> (BreakGlassStatus):
+        return BreakGlassStatus{requestId: req.requestId, phase: phase}
+
+    phase = "REQUESTED"
+    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "BREAK_GLASS_REQUESTED", actor: req.requesterId})
+
+    # Start provisioning immediately — don't wait for approval
+    promise provisionResult <- workflow ProvisionEntitlement(req.requestId, req.requesterId, req.entitlement)
+
+    # Notify on-call approver with 15-minute window
+    activity NotifyBreakGlassApprover(req.onCallApproverId, req)
+
+    await one:
+        breakGlassApproved:
+            activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "BREAK_GLASS_APPROVED"})
+        timer(15m):
+            activity AlertSecurityTeamBreakGlass(req)
+            activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "BREAK_GLASS_AUTO_GRANTED"})
+
+    await provisionResult -> provision
+    phase = "ACTIVE"
+    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "BREAK_GLASS_ACTIVE"})
+
+    # Auto-expire after access duration (30-60 minutes typical)
+    await timer(req.accessDuration)
+
+    phase = "EXPIRED"
+    activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "BREAK_GLASS_EXPIRED"})
+    workflow DeprovisionEntitlement(req.requestId, req.requesterId, req.entitlement) -> deprovisionResult
+
+    # Mandatory post-hoc review — do not close until review completes
+    phase = "PENDING_REVIEW"
+    activity NotifyPostIncidentReviewers(req)
+
+    for:
+        await one:
+            postIncidentReviewed:
+                close complete(BreakGlassResult{requestId: req.requestId, outcome: "COMPLETED", reviewComplete: true})
+            timer(48h):
+                activity EscalatePostIncidentReview(req)
+                activity EmitAuditEvent(AuditEvent{requestId: req.requestId, action: "POST_INCIDENT_REVIEW_ESCALATED"})
+
+
+# =============================================================================
+# OffboardIdentity — HR termination (leaver event)
+# =============================================================================
+# Critical path: disable auth first (minutes), then deprovision everything.
+# Must guarantee completeness — no orphaned access.
+
+workflow OffboardIdentity(identity: IdentityRef, grants: ActiveGrants, pendingTasks: PendingApprovalTasks) -> (OffboardResult):
+    query GetOffboardProgress() -> (OffboardProgress):
+        return OffboardProgress{identityId: identity.id, phase: phase}
+
+    phase = "INITIATED"
+    activity EmitAuditEvent(AuditEvent{action: "OFFBOARD_INITIATED", detail: identity})
+
+    # Step 1: Disable authentication immediately (SSO, VPN, OAuth tokens)
+    activity DisableAuthentication(identity) -> authDisableResult
+        options:
+            task_queue: "access-control-connectors"
+            start_to_close_timeout: 2m
+            retry_policy:
+                maximum_attempts: 10
+    activity EmitAuditEvent(AuditEvent{action: "AUTH_DISABLED", detail: identity})
+    phase = "AUTH_DISABLED"
+
+    # Step 2: Reassign pending approval tasks to managers
+    for (task in pendingTasks.items):
+        activity ReassignApprovalTask(task, identity.managerId)
+
+    # Step 3: Transfer ownership of shared resources
+    activity IdentifySharedResources(identity) -> sharedResources
+    for (resource in sharedResources.items):
+        activity TransferResourceOwnership(resource, identity.managerId)
+
+    # Step 4: Deprovision all access grants in parallel
+    phase = "DEPROVISIONING"
+    workflow DeprovisionAll(identity.id, identity.id, grants.lineItems) -> deprovisionStatus
+
+    if (deprovisionStatus.anyFailed):
+        activity AlertSecurityTeamIncompleteOffboard(identity, deprovisionStatus)
+        activity EmitAuditEvent(AuditEvent{action: "OFFBOARD_INCOMPLETE", detail: deprovisionStatus})
+
+    # Step 5: Archive identity record
+    activity ArchiveIdentity(identity)
+    activity EmitAuditEvent(AuditEvent{action: "OFFBOARD_COMPLETED", detail: identity})
+    phase = "COMPLETED"
+
+    close complete(OffboardResult{identityId: identity.id, deprovisionStatus: deprovisionStatus})
+
+
+# =============================================================================
+# TransferIdentity — Role change (mover event)
+# =============================================================================
+# Delta calculation: new role entitlements minus old role.
+# Additions auto-provisioned via AccessRequest. Removals go through
+# micro-certification — new manager confirms or they auto-revoke after 7 days.
+
+workflow TransferIdentity(identity: IdentityRef, oldRole: Role, newRole: Role, existingGrants: ActiveGrants) -> (TransferResult):
+    state:
+        condition allMicroCertsComplete
+
+    update SubmitMicroCertDecision(decision: CertDecision) -> (CertDecisionResult):
+        activity EmitAuditEvent(AuditEvent{action: "MICRO_CERT_DECISION", actor: decision.reviewerId, detail: decision})
+        microCertCompletedCount = microCertCompletedCount + 1
+        if (decision.verdict == "REVOKE"):
+            workflow DeprovisionEntitlement(decision.grantRequestId, identity.id, decision.lineItem) -> depResult
+        if (microCertCompletedCount >= microCertTotalCount):
+            set allMicroCertsComplete
+        return CertDecisionResult{accepted: true}
+
+    query GetTransferProgress() -> (TransferProgress):
+        return TransferProgress{identityId: identity.id, phase: phase}
+
+    phase = "CALCULATING_DELTA"
+    activity EmitAuditEvent(AuditEvent{action: "TRANSFER_INITIATED", detail: identity})
+
+    activity CalculateRoleDelta(oldRole, newRole, existingGrants) -> delta
+    activity EmitAuditEvent(AuditEvent{action: "DELTA_CALCULATED", detail: delta})
+
+    # Phase 1: Provision new birthright entitlements
+    phase = "PROVISIONING_NEW"
+    for (entitlement in delta.toAdd):
+        workflow AccessRequest(AccessRequestInput{requesterId: identity.managerId, beneficiaryId: identity.id, lineItems: entitlement, type: "BIRTHRIGHT_TRANSFER"}, GrantState{})
+
+    # Phase 2: Micro-certification for entitlements to potentially remove
+    phase = "MICRO_CERTIFICATION"
+    microCertCompletedCount = 0
+    microCertTotalCount = delta.reviewItems.count
+
+    if (microCertTotalCount > 0):
+        activity NotifyManagerForMicroCert(identity.managerId, identity, delta.reviewItems)
+
+        await one:
+            allMicroCertsComplete:
+                activity EmitAuditEvent(AuditEvent{action: "ALL_MICRO_CERTS_COMPLETE"})
+            timer(7d):
+                # Auto-revoke any undecided items after 7 days
+                activity AutoRevokeUndecidedItems(identity, delta.reviewItems, microCertCompletedCount) -> revokedItems
+                activity EmitAuditEvent(AuditEvent{action: "MICRO_CERT_AUTO_REVOKED", detail: revokedItems})
+
+    activity EmitAuditEvent(AuditEvent{action: "TRANSFER_COMPLETED", detail: identity})
+    phase = "COMPLETED"
+    close complete(TransferResult{identityId: identity.id, added: delta.toAdd, removed: delta.reviewItems})
+
+
+# =============================================================================
+# CertificationCampaign — Periodic access review (SOX, SOC 2)
+# =============================================================================
+# Long-lived (weeks). Uses continue-as-new for history management.
+# Decisions arrive via update handler throughout the campaign window.
+
+workflow CertificationCampaign(campaign: CampaignConfig, progress: CampaignProgress) -> (CampaignResult):
+    state:
+        condition allReviewsComplete
+
+    update SubmitCertificationDecision(decision: CertDecision) -> (CertDecisionResult):
+        activity ValidateCertificationReviewer(decision.reviewerId, decision.grantId, campaign) -> validation
+        if (validation.authorized):
+            activity EmitAuditEvent(AuditEvent{action: "CERT_DECISION", actor: decision.reviewerId, detail: decision})
+            progress.completedItems = progress.completedItems + 1
+            if (decision.verdict == "REVOKE"):
+                progress.revokedItems = progress.revokedItems + 1
+                activity SignalAccessRequestRevoke(decision.grantRequestId, "CERTIFICATION_REVOCATION")
+            if (decision.timeTaken < 2):
+                progress.rubberStampFlags = progress.rubberStampFlags + 1
+            if (progress.completedItems >= progress.totalItems):
+                set allReviewsComplete
+            return CertDecisionResult{accepted: true}
+        else:
+            return CertDecisionResult{accepted: false, reason: validation.reason}
+
+    query GetCampaignProgress() -> (CampaignProgressReport):
+        return CampaignProgressReport{campaignId: campaign.id, totalItems: progress.totalItems, completedItems: progress.completedItems}
+
+    # Generate review items on first execution (not after continue-as-new)
+    if (progress.totalItems == 0):
+        activity GenerateReviewItems(campaign) -> reviewItems
+        progress.totalItems = reviewItems.count
+        activity EmitAuditEvent(AuditEvent{action: "CAMPAIGN_STARTED", detail: campaign})
+
+    # Wait for completion or send periodic reminders
+    for:
+        await one:
+            allReviewsComplete:
+                activity GenerateCampaignReport(campaign, progress) -> report
+                activity EmitAuditEvent(AuditEvent{action: "CAMPAIGN_COMPLETED", detail: report})
+                close complete(CampaignResult{campaignId: campaign.id, report: report})
+            timer(campaign.reminderInterval):
+                activity SendCampaignReminders(campaign, progress)
+                activity EmitAuditEvent(AuditEvent{action: "CAMPAIGN_REMINDERS_SENT"})
+
+        if (progress.historyEvents >= 1000):
+            close continue_as_new(campaign, progress)
+
+
+# =============================================================================
+# Activities
+# =============================================================================
+
+# --- Policy & Risk Assessment ---
+
+activity EvaluatePolicy(req: AccessRequestInput) -> (PolicyResult):
+    # Evaluate SoD rules against beneficiary's current grants AND in-flight requests
+    # Compute risk score, determine approval chain, check for duplicates
+    # Must acquire advisory lock on beneficiary's grant set for SoD atomicity
+    policy.evaluate(req)
+
+activity EvaluateRenewalPolicy(req: AccessRequestInput, newExpiration: Expiration) -> (RenewalPolicyResult):
+    # Lightweight re-evaluation: verify original conditions still hold
+    policy.evaluateRenewal(req, newExpiration)
+
+# --- Approval ---
+
+activity NotifyApprover(approverId: string, requestId: string, beneficiaryId: string, sodConflicts: SodConflicts, level: ApprovalLevel):
+    # Send via email, Slack/Teams, and in-app with risk context and SoD warnings
+    notifications.notifyApprover(approverId, requestId, beneficiaryId, sodConflicts, level)
+
+activity NotifyRequester(requestId: string, beneficiaryId: string, question: string):
+    notifications.notifyRequester(requestId, beneficiaryId, question)
+
+activity ValidateApprover(submitterId: string, assignedApproverId: string, requestId: string) -> (ApproverValidation):
+    # Verify submitter is the currently assigned approver (prevents race with delegation)
+    auth.validateApprover(submitterId, assignedApproverId, requestId)
+
+activity ValidateDelegation(delegation: DelegationRequest, beneficiaryId: string, level: ApprovalLevel) -> (DelegationValidation):
+    # Validate delegate is authorized; prevent self-approval; enforce max 1 delegation level
+    auth.validateDelegation(delegation, beneficiaryId, level)
+
+activity ResolveEscalationTarget(currentApproverId: string, escalationCount: int) -> (EscalationTarget):
+    # Look up approver's manager chain for escalation
+    org.resolveEscalation(currentApproverId, escalationCount)
+
+activity ResolveFallbackApprover(level: ApprovalLevel) -> (EscalationTarget):
+    org.resolveFallback(level)
+
+# --- Provisioning ---
+
+activity ExecuteProvisioning(beneficiaryId: string, lineItem: RequestLineItem) -> (ProvisionExecResult):
+    # Route to target-system-specific connector:
+    #   AD/LDAP: modify group membership
+    #   Okta: assign app/group via Management API
+    #   AWS IAM: attach policy via STS
+    #   PostgreSQL: execute GRANT statement
+    #   SCIM 2.0: POST/PATCH /Users or /Groups
+    # Must be idempotent: check current state before applying
+    connectors.provision(beneficiaryId, lineItem)
+
+activity VerifyProvisioning(beneficiaryId: string, lineItem: RequestLineItem) -> (ProvisionVerification):
+    # Read back target system state to confirm access was applied
+    connectors.verify(beneficiaryId, lineItem)
+
+activity CreateManualProvisioningTicket(requestId: string, beneficiaryId: string, lineItem: RequestLineItem) -> (ManualTicket):
+    # Create ITSM ticket (ServiceNow RITM / Jira) for manual fulfillment
+    itsm.createProvisioningTicket(requestId, beneficiaryId, lineItem)
+
+activity EscalateManualProvisioning(ticket: ManualTicket):
+    itsm.escalateTicket(ticket)
+
+# --- Deprovisioning ---
+
+activity ExecuteDeprovisioning(beneficiaryId: string, lineItem: RequestLineItem) -> (DeprovisionExecResult):
+    # Remove access from target system; idempotent (handle already-removed gracefully)
+    connectors.deprovision(beneficiaryId, lineItem)
+
+activity VerifyDeprovisioning(beneficiaryId: string, lineItem: RequestLineItem) -> (DeprovisionVerification):
+    connectors.verifyRemoved(beneficiaryId, lineItem)
+
+activity CreateManualDeprovisioningTicket(requestId: string, beneficiaryId: string, lineItem: RequestLineItem) -> (ManualTicket):
+    itsm.createDeprovisioningTicket(requestId, beneficiaryId, lineItem)
+
+activity EscalateManualDeprovisioning(ticket: ManualTicket):
+    itsm.escalateDeprovisioningTicket(ticket)
+
+# --- Aggregation ---
+
+activity AggregateProvisioningResults(requestId: string, lineItems: RequestLineItems) -> (ProvisioningStatus):
+    aggregate(requestId, lineItems)
+
+activity AggregateDeprovisionResults(requestId: string, lineItems: RequestLineItems) -> (DeprovisioningStatus):
+    aggregate(requestId, lineItems)
+
+# --- Offboard ---
+
+activity DisableAuthentication(identity: IdentityRef) -> (AuthDisableResult):
+    # Disable SSO sessions, revoke OAuth tokens, disable VPN certificates
+    # Targets: all identity providers (Okta, Entra ID, on-prem AD)
+    auth.disableAllSessions(identity)
+
+activity ReassignApprovalTask(task: PendingApprovalTask, newOwnerId: string):
+    approvals.reassign(task, newOwnerId)
+
+activity IdentifySharedResources(identity: IdentityRef) -> (SharedResources):
+    resources.findOwnedByIdentity(identity)
+
+activity TransferResourceOwnership(resource: SharedResource, newOwnerId: string):
+    resources.transferOwnership(resource, newOwnerId)
+
+activity ArchiveIdentity(identity: IdentityRef):
+    # Archive per retention policy (SOX: 7 years, HIPAA: 6 years)
+    identityStore.archive(identity)
+
+activity AlertSecurityTeamIncompleteOffboard(identity: IdentityRef, status: DeprovisioningStatus):
+    alerts.criticalOffboardIncomplete(identity, status)
+
+# --- Transfer ---
+
+activity CalculateRoleDelta(oldRole: Role, newRole: Role, existingGrants: ActiveGrants) -> (RoleDelta):
+    # Compare entitlement sets: additions, removals, and items needing review
+    roles.calculateDelta(oldRole, newRole, existingGrants)
+
+activity NotifyManagerForMicroCert(managerId: string, identity: IdentityRef, reviewItems: ReviewItems):
+    notifications.notifyMicroCert(managerId, identity, reviewItems)
+
+activity AutoRevokeUndecidedItems(identity: IdentityRef, reviewItems: ReviewItems, completedCount: int) -> (RevokedItems):
+    # Identify items not yet decided and trigger deprovisioning for each
+    certification.autoRevokeUndecided(identity, reviewItems, completedCount)
+
+# --- Certification ---
+
+activity GenerateReviewItems(campaign: CampaignConfig) -> (ReviewItems):
+    # Query active grants matching campaign scope; assign to reviewers
+    certification.generateItems(campaign)
+
+activity ValidateCertificationReviewer(reviewerId: string, grantId: string, campaign: CampaignConfig) -> (ReviewerValidation):
+    certification.validateReviewer(reviewerId, grantId, campaign)
+
+activity SendCampaignReminders(campaign: CampaignConfig, progress: CampaignProgress):
+    certification.sendReminders(campaign, progress)
+
+activity GenerateCampaignReport(campaign: CampaignConfig, progress: CampaignProgress) -> (CampaignReport):
+    # Timestamped audit artifact with rubber-stamping analysis
+    certification.generateReport(campaign, progress)
+
+activity SignalAccessRequestRevoke(requestId: string, reason: string):
+    # Send Revoke signal to the existing AccessRequest workflow by ID
+    temporal.signalWorkflow(requestId, "Revoke", reason)
+
+# --- Break Glass ---
+
+activity NotifyBreakGlassApprover(approverId: string, req: BreakGlassInput):
+    # Urgent: push notification, SMS, phone call
+    notifications.urgentBreakGlass(approverId, req)
+
+activity ValidateBreakGlassApprover(submitterId: string, assignedApproverId: string) -> (ApproverValidation):
+    auth.validateBreakGlassApprover(submitterId, assignedApproverId)
+
+activity AlertSecurityTeamBreakGlass(req: BreakGlassInput):
+    alerts.breakGlassAutoGrant(req)
+
+activity NotifyPostIncidentReviewers(req: BreakGlassInput):
+    notifications.notifyPostIncidentReview(req)
+
+activity ValidatePostIncidentReview(review: PostIncidentReview) -> (ReviewValidation):
+    certification.validatePostIncidentReview(review)
+
+activity EscalatePostIncidentReview(req: BreakGlassInput):
+    notifications.escalatePostIncidentReview(req)
+
+# --- Audit ---
+
+activity EmitAuditEvent(event: AuditEvent):
+    # Append to immutable, tamper-evident audit log
+    # Critical path: if audit write fails, the operation fails
+    # Idempotent via event correlation ID
+    auditLog.append(event)
+
+# --- Security Alerts ---
+
+activity AlertSecurityTeam(requestId: string, beneficiaryId: string, lineItem: RequestLineItem):
+    alerts.deprovisioningFailure(requestId, beneficiaryId, lineItem)
+
+
+# =============================================================================
+# Workers & Deployment Topology
+# =============================================================================
+# All workflow orchestration runs on one core queue (signal-heavy, I/O-light).
+# External system I/O (provisioning connectors, ITSM, auth disable) runs on
+# a separate connectors queue for independent scaling and failure isolation.
+# Activity calls that target connectors use explicit task_queue routing.
+
+worker coreWorker:
+    workflow AccessRequest
+    workflow ApprovalChain
+    workflow BreakGlassRequest
+    workflow ProvisionAll
+    workflow DeprovisionAll
+    workflow ProvisionEntitlement
+    workflow DeprovisionEntitlement
+    workflow OffboardIdentity
+    workflow TransferIdentity
+    workflow CertificationCampaign
+    activity EvaluatePolicy
+    activity EvaluateRenewalPolicy
+    activity NotifyApprover
+    activity NotifyRequester
+    activity ValidateApprover
+    activity ValidateDelegation
+    activity ResolveEscalationTarget
+    activity ResolveFallbackApprover
+    activity AggregateProvisioningResults
+    activity AggregateDeprovisionResults
+    activity NotifyBreakGlassApprover
+    activity ValidateBreakGlassApprover
+    activity AlertSecurityTeamBreakGlass
+    activity NotifyPostIncidentReviewers
+    activity ValidatePostIncidentReview
+    activity EscalatePostIncidentReview
+    activity ReassignApprovalTask
+    activity IdentifySharedResources
+    activity TransferResourceOwnership
+    activity ArchiveIdentity
+    activity AlertSecurityTeamIncompleteOffboard
+    activity CalculateRoleDelta
+    activity NotifyManagerForMicroCert
+    activity AutoRevokeUndecidedItems
+    activity GenerateReviewItems
+    activity ValidateCertificationReviewer
+    activity SendCampaignReminders
+    activity GenerateCampaignReport
+    activity SignalAccessRequestRevoke
+    activity EmitAuditEvent
+
+worker connectorWorker:
+    activity ExecuteProvisioning
+    activity VerifyProvisioning
+    activity CreateManualProvisioningTicket
+    activity EscalateManualProvisioning
+    activity ExecuteDeprovisioning
+    activity VerifyDeprovisioning
+    activity CreateManualDeprovisioningTicket
+    activity EscalateManualDeprovisioning
+    activity AlertSecurityTeam
+    activity DisableAuthentication
+
+namespace accessControl:
+    worker coreWorker
+        options:
+            task_queue: "access-control-core"
+    worker connectorWorker
+        options:
+            task_queue: "access-control-connectors"
