@@ -17,6 +17,13 @@ namespace default:
 ## Go
 
 ```go
+import (
+    "log"
+
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+)
+
 func main() {
     c, err := client.Dial(client.Options{})
     if err != nil {
@@ -42,7 +49,7 @@ func main() {
 - `RegisterWorkflow(func)` — one call per workflow in the worker's type set
 - `RegisterActivity(struct)` — register the activity struct (all exported methods become activities) or individual functions
 - `worker.InterruptCh()` for graceful shutdown on SIGINT/SIGTERM
-- Multiple workers in same namespace — multiple `worker.New` calls with different task queues in the same `main()`
+- Multiple `worker` blocks in the DSL with different task queues → multiple `worker.New` calls in the same `main()`
 - For nexus services on the same worker, see [nexus-service-def.md](./nexus-service-def.md)
 
 ## When to use: struct vs function registration

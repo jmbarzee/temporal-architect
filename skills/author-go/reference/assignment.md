@@ -15,6 +15,13 @@ status := "awaiting_payment"
 
 // Reassignment (variable already declared):
 status = "processing"
+
+// Struct assignment from activity result or constructor:
+order := Order{Status: "new", Items: items}
+
+// Slice/map:
+var results []ProcessResult
+totals := make(map[string]int)
 ```
 
 ## Notes

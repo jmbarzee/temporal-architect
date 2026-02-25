@@ -32,7 +32,7 @@ detach nexus NotificationsEndpoint NotificationsService.SendConfirmation(order.c
 ```go
 c := workflow.NewNexusClient("NotificationsEndpoint", "NotificationsService")
 c.ExecuteOperation(ctx, "SendConfirmation", sendConfirmationInput, workflow.NexusOperationOptions{})
-// No .Get() — fire-and-forget
+// No .Get() — fire-and-forget. The operation starts when the schedule command is processed
 ```
 
 ## Notes
@@ -42,6 +42,7 @@ c.ExecuteOperation(ctx, "SendConfirmation", sendConfirmationInput, workflow.Nexu
 - Always call `GetChildWorkflowExecution().Get()` to confirm the child started — without this, the child may never spawn if the parent completes first
 - Do not call `.Get()` on the child workflow future itself (that would wait for completion)
 - The child workflow runs independently and its success/failure does not affect the parent
+- **Nexus fire-and-forget caveat:** omitting `.Get()` is an emergent pattern, not a first-class SDK mode. The caller workflow must not complete before the `ScheduleNexusOperation` command is processed, or the operation may not start. When the handler workflow completes, it attempts a callback to the (already-completed) caller, producing an ignorable error
 
 ## When to use
 

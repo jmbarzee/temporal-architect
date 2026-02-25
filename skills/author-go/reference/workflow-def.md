@@ -11,6 +11,8 @@ workflow ProcessOrder(order: Order) -> (Result):
 ## Go
 
 ```go
+import "go.temporal.io/sdk/workflow"
+
 func ProcessOrder(ctx workflow.Context, order Order) (Result, error) {
     // body
     return Result{Status: "done"}, nil
@@ -21,7 +23,6 @@ func ProcessOrder(ctx workflow.Context, order Order) (Result, error) {
 
 - Every workflow returns `error` as the last return value, even if the DSL has no return type (signature becomes `func Name(ctx workflow.Context, params...) error`)
 - `workflow.Context` is always the first parameter
-- No return type in DSL → `func Name(ctx workflow.Context, params...) error`
 - Multiple return types `-> (A, B)` → `func Name(ctx workflow.Context, ...) (A, B, error)`
 
 ## Determinism constraints

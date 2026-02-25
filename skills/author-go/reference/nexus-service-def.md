@@ -23,7 +23,9 @@ var ProcessPaymentOperation = temporalnexus.NewWorkflowRunOperation(
     ProcessPaymentOp,
     ProcessPaymentWorkflow,
     func(ctx context.Context, input PaymentRequest, options nexus.StartOperationOptions) (client.StartWorkflowOptions, error) {
-        return client.StartWorkflowOptions{}, nil
+        return client.StartWorkflowOptions{
+            ID: "payment-" + input.OrderID, // business-meaningful ID for deduplication
+        }, nil
     },
 )
 ```

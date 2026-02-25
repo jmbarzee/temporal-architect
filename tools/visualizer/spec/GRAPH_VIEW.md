@@ -461,39 +461,20 @@ In both modes:
 - The hovered node and all highlighted nodes are shown at full opacity.
 - All edges along the traversal path are highlighted (arrowheads reinforced at full opacity).
 - All other nodes and edges dim (reduce opacity to ~20–30%).
-- Show a **tooltip** with the hovered node's full name and type.
-- A **direction indicator** reflects the current traversal mode: a subtle label near the hovered node reading "dependencies" (default) or "dependents" (Shift held). This reinforces which direction the highlight is following and makes the Shift modifier's effect discoverable.
+- Show a **hover info tooltip** anchored near the hovered node containing:
+  1. Node name, type icon + label, parent (worker for L3, namespace for L2), source file.
+  2. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
+  3. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
 
 The transitive chain follows only **visible edges** — including graduated edges when intermediate types are hidden. If only Namespace is enabled, the chain follows Namespace → Namespace derived edges. If Namespace and Workflow are enabled (Workers hidden), the chain follows graduated containment and L3 dependency edges. This is consistent with filter-as-source-of-truth: the user sees relationships between what's visible, not inferred relationships from hidden data.
 
 ### Selection
 
-Clicking a node selects it. A selected node:
-- Stays highlighted even after the cursor moves away.
-- Retains the dependency highlight from hover (downstream by default, upstream if modifier was held during click).
-- Opens the **info panel** (see below).
-- Click the background or press Escape to deselect and dismiss the panel.
+Deferred. See [VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Node Selection. The hover info tooltip (§ Hover: Dependency Highlighting) serves the immediate identity and connection discoverability need without requiring persistent selection state.
 
 ### Info Panel
 
-The info panel is the structured complement to hover highlighting. Hover answers "let me see the shape of this dependency chain." The info panel answers "let me understand the scope." It serves user questions Q7 (what depends on what), Q8 (blast radius), and Q10 (where is this used).
-
-**Content** (top to bottom):
-
-1. **Identity** — Node name, type icon + label, parent (worker name for L3, namespace name for L2), source file.
-2. **Connections** — Immediate dependency counts: N outgoing ("depends on"), M incoming ("depended on by"). Counts broken down by level when mixed (e.g., "→ 3 workflows, 1 activity across 2 workers").
-3. **Blast radius** — Transitive upstream count: "If this changes, N definitions across M workers in K namespaces are affected." Computed from the same transitive traversal used for Shift+hover highlighting.
-4. **Navigation** — Clickable list of connected nodes (click to select that node instead). "Show in Tree" action.
-
-**Layout:** A panel anchored to one side of the canvas (right or bottom), sized to avoid occluding the selected node. The panel does not overlay the graph — it compresses the canvas area. On narrow viewports, it could overlay with a close button.
-
-**Lifecycle:**
-- Appears when a node is selected (click or Enter on focused node).
-- Updates immediately if a different node is selected.
-- Dismisses on deselect (click background, press Escape).
-- Persists across simulation ticks — the selected node may move, but the panel stays open.
-
-**Not yet implemented.** This section describes the target experience. The transitive traversal and dependency counts are already computed for hover highlighting and can be reused.
+Deferred alongside selection. See [VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Node Selection.
 
 ### Multi-Select (future consideration)
 

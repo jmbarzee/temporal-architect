@@ -22,11 +22,11 @@ Resolve in priority order:
 The ground truth is the call site — the method you will call in the activity body.
 
 1. **Identify the method** — which function or method on the dependency will the activity call?
-2. **Read the method signature** — `go doc <package>.Method` gives you the exact parameter and return types
+2. **Read the method signature** — `go doc <package>.Method` gives you the exact parameter and return types. If `go doc` is unavailable (dependency not yet in `go.mod`, docs sparse, or offline), fall back to: read source on pkg.go.dev, inspect the dependency source directly, or ask the user
 3. **Read each parameter type** — `go doc <package>.ParamType` gives you the fields you need to populate. Verify every field type the same way — the field name alone can be misleading (e.g., a `Tools` field may accept a union wrapper type, not the type you'd guess from the name)
 4. **Follow the chain until you reach primitives or types you recognize** — stop when every type in the call is verified
 
-A dependency is resolved when you can write the full call expression with concrete types:
+Dependency APIs are version-specific — verify types against the version in `go.mod`, not trained knowledge. A dependency is resolved when you can write the full call expression with concrete types:
 ```
 client.Messages.New(ctx, anthropic.MessageNewParams{
     Model:    anthropic.Model(model),     // verified: Model is a string typedef
@@ -55,11 +55,13 @@ type Result struct {
 }
 
 // Primitive mapping
-// string  → string
-// int     → int
-// decimal → float64
-// bool    → bool
-// []Type  → []Type
+// string   → string
+// int      → int
+// decimal  → float64
+// bool     → bool
+// []Type   → []Type
+// duration → time.Duration (e.g., 5m → 5*time.Minute)
+// time     → time.Time
 ```
 
 ## Notes

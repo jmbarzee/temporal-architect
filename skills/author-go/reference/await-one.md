@@ -125,7 +125,9 @@ sel.AddFuture(myFuture, func(f workflow.Future) {
 // condition promise — use a goroutine that signals a channel
 condCh := workflow.NewChannel(ctx)
 workflow.Go(ctx, func(gCtx workflow.Context) {
-    _ = workflow.Await(gCtx, func() bool { return myCondition })
+    if err := workflow.Await(gCtx, func() bool { return myCondition }); err != nil {
+        return // context cancelled — don't send
+    }
     condCh.Send(gCtx, true)
 })
 sel.AddReceive(condCh, func(ch workflow.ReceiveChannel, more bool) {
@@ -141,7 +143,21 @@ sel.AddReceive(condCh, func(ch workflow.ReceiveChannel, more bool) {
 - Uncancelled timers remain active and generate unnecessary workflow tasks when they fire
 - Empty case bodies (just the colon in DSL) → handler function with only the `Receive`/`Get` call, no additional logic
 - For `close` inside a case body: set a variable in the handler, check it after `sel.Select`, then return
-- Nested `await all:` inside `await one:` → wrap the `await all` logic in a future via `workflow.Go` + channel, add as `AddReceive`
+- Nested `await all:` inside `await one:` → wrap the `await all` logic in a goroutine that signals a channel on completion, add as `AddReceive`:
+  ```go
+  allDoneCh := workflow.NewChannel(ctx)
+  workflow.Go(ctx, func(gCtx workflow.Context) {
+      wg := workflow.NewWaitGroup(gCtx)
+      wg.Go(gCtx, func(gCtx2 workflow.Context) { /* activity A */ })
+      wg.Go(gCtx, func(gCtx2 workflow.Context) { /* activity B */ })
+      wg.Wait(gCtx)
+      allDoneCh.Send(gCtx, true)
+  })
+  sel.AddReceive(allDoneCh, func(ch workflow.ReceiveChannel, more bool) {
+      ch.Receive(ctx, nil)
+      // all activities completed
+  })
+  ```
 
 ## When to use: single Select vs loop
 

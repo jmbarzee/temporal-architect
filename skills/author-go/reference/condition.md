@@ -37,7 +37,7 @@ func ClusterManager(ctx workflow.Context, config Config) error {
 - `set name` → `name = true`
 - `unset name` → `name = false`
 - `await name` → `workflow.Await(ctx, func() bool { return name })`
-- Conditions in `await one:` become selector cases via `workflow.AwaitWithTimeout` or a separate goroutine — see [await-one.md](./await-one.md)
+- Conditions in `await one:` become selector cases via a goroutine that awaits the condition and sends to a channel — see the "condition promise" pattern in [await-one.md](./await-one.md)
 
 ## Pitfalls
 

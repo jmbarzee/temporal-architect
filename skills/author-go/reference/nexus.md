@@ -25,6 +25,7 @@ if err := fut.Get(ctx, &paymentResult); err != nil {
 - For nexus options (timeouts), see [options.md](./options.md)
 - For fire-and-forget nexus: see [detach.md](./detach.md)
 - For nexus service definitions and handler registration: see [nexus-service-def.md](./nexus-service-def.md)
+- Prefer referencing operation name constants from the service contract (see [nexus-service-def.md](./nexus-service-def.md#naming-contract)) rather than bare strings — keeps caller and handler in sync
 
 ## When to use Nexus vs child workflow
 
