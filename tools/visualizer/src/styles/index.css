@@ -178,6 +178,16 @@ body {
   background: rgba(168, 155, 216, 0.12);
 }
 
+/* Graph Canvas Area — flex child that holds the canvas + tooltip overlay */
+.graph-canvas-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Graph Canvas Container — immediately follows the toolbar */
 .graph-canvas-container {
   flex: 1;
@@ -192,6 +202,89 @@ body {
 
 .graph-canvas-container canvas:active {
   cursor: grabbing;
+}
+
+/* Hover Info Tooltip */
+.graph-hover-tooltip {
+  position: absolute;
+  transform: translate(14px, -50%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  pointer-events: none;
+  z-index: 20;
+  min-width: 140px;
+  max-width: 220px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.vscode-dark .graph-hover-tooltip {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.tooltip-identity {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.tooltip-type-icon {
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tooltip-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tooltip-parent {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tooltip-file {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.tooltip-connections {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tooltip-conn-out,
+.tooltip-conn-in {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+
+.tooltip-direction {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
 }
 
 

@@ -8,7 +8,7 @@ import type { ForceParams } from '../graph/simulation'
 import { buildGraph } from '../graph/build'
 import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
 import type { SimNode } from '../graph/simulation'
-import { DEFAULT_VIEWPORT, fitToView } from '../graph/viewport'
+import { DEFAULT_VIEWPORT, fitToView, worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { getTransitiveDeps, getHighlightedEdgeIds } from '../graph/highlight'
@@ -754,30 +754,40 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
         <GraphErrorsHeader shownFileErrors={shownFileErrors} hiddenFileErrors={hiddenFileErrors} />
       )}
 
-      {/* Canvas */}
-      <GraphCanvas
-        nodes={visibleNodes}
-        edges={visibleEdges}
-        viewport={viewport}
-        onViewportChange={setViewport}
-        onNodeDragStart={handleNodeDragStart}
-        onNodeDragMove={handleNodeDragMove}
-        onNodeDragEnd={handleNodeDragEnd}
-        onDoubleClickNode={handleDoubleClickNode}
-        onHoverNode={setHoveredNodeId}
-        onSelectNode={setSelectedNodeId}
-        highlightedNodes={highlightedNodes}
-        highlightedEdges={highlightedEdges}
-        selectedNodeId={selectedNodeId}
-        focusedNodeId={focusedNodeId}
-        searchMatchIds={visibleMatchIds}
-        running={running}
-        showForceFields={showForceFields}
-        forceParams={forceParams}
-        activeSection={activeSection}
-        activeChargeLevel={activeChargeLevel}
-        nodeSummaries={nodeSummaries}
-      />
+      {/* Canvas + hover tooltip overlay */}
+      <div className="graph-canvas-area">
+        <GraphCanvas
+          nodes={visibleNodes}
+          edges={visibleEdges}
+          viewport={viewport}
+          onViewportChange={setViewport}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDragMove={handleNodeDragMove}
+          onNodeDragEnd={handleNodeDragEnd}
+          onDoubleClickNode={handleDoubleClickNode}
+          onHoverNode={setHoveredNodeId}
+          onSelectNode={setSelectedNodeId}
+          highlightedNodes={highlightedNodes}
+          highlightedEdges={highlightedEdges}
+          hoveredNodeId={hoveredNodeId}
+          selectedNodeId={selectedNodeId}
+          focusedNodeId={focusedNodeId}
+          searchMatchIds={visibleMatchIds}
+          running={running}
+          showForceFields={showForceFields}
+          forceParams={forceParams}
+          activeSection={activeSection}
+          activeChargeLevel={activeChargeLevel}
+          nodeSummaries={nodeSummaries}
+        />
+        <GraphHoverTooltip
+          hoveredNodeId={hoveredNodeId}
+          simRef={simRef}
+          visibleEdges={visibleEdges}
+          viewport={viewport}
+          shiftHeld={shiftHeld}
+        />
+      </div>
 
       {/* Control panel */}
       <GraphControlPanel
@@ -813,6 +823,53 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+interface GraphHoverTooltipProps {
+  hoveredNodeId: string | null
+  simRef: React.RefObject<Simulation | null>
+  visibleEdges: { edgeType: string; sourceId: string; targetId: string }[]
+  viewport: Viewport
+  shiftHeld: boolean
+}
+
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, shiftHeld }: GraphHoverTooltipProps) {
+  if (!hoveredNodeId) return null
+  const sim = simRef.current
+  if (!sim) return null
+  const node = sim.getNode(hoveredNodeId)
+  if (!node) return null
+
+  const parentName = node.parentId ? sim.getNode(node.parentId)?.name : undefined
+  const cfg = DEF_TYPE_CONFIGS.find(c => c.type === nodeTypeToDefType(node.nodeType))
+  const fileName = node.sourceFile?.split('/').pop()
+
+  let outgoing = 0, incoming = 0
+  for (const e of visibleEdges) {
+    if (e.edgeType === 'containment') continue
+    if (e.sourceId === hoveredNodeId) outgoing++
+    if (e.targetId === hoveredNodeId) incoming++
+  }
+
+  const [sx, sy] = worldToScreen(viewport, node.x, node.y)
+
+  return (
+    <div className="graph-hover-tooltip" style={{ left: sx, top: sy }}>
+      <div className="tooltip-identity">
+        {cfg && <span className="tooltip-type-icon">{cfg.icon}</span>}
+        <span className="tooltip-name">{node.name}</span>
+      </div>
+      {parentName && <div className="tooltip-parent">{parentName}</div>}
+      {fileName && <div className="tooltip-file">{fileName}</div>}
+      {(outgoing > 0 || incoming > 0) && (
+        <div className="tooltip-connections">
+          {outgoing > 0 && <span className="tooltip-conn-out">→{outgoing}</span>}
+          {incoming > 0 && <span className="tooltip-conn-in">←{incoming}</span>}
+        </div>
+      )}
+      <div className="tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
     </div>
   )
 }

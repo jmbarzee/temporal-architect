@@ -26,16 +26,21 @@ const SELECTION_RING_COLOR = '#8B7EC8'
 const SEARCH_MATCH_COLOR = '#F59E0B'
 const DIM_ALPHA = 0.2
 
-// Node sizes by level
+// Node sizes by level — all nodes render as circles; w/h = 2r for hit testing and culling
 const NODE_SIZES: Record<number, { w: number; h: number; r: number }> = {
-  1: { w: 80, h: 40, r: 12 },
-  2: { w: 60, h: 30, r: 4 },
-  3: { w: 20, h: 20, r: 10 },
+  1: { w: 36, h: 36, r: 18 },
+  2: { w: 26, h: 26, r: 13 },
+  3: { w: 18, h: 18, r: 9 },
 }
 
 const LABEL_FONT = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 const ARROWHEAD_SIZE = 8
 const CULL_MARGIN = 100
+
+// Zoom elision thresholds
+const SUMMARY_ELIDE_SCALE = 0.5   // hide summary badges below this scale
+const LABEL_ELIDE_SCALE = 0.25    // hide name labels below this scale (except hovered/selected)
+const DETAIL_REDUCE_SCALE = 0.1   // drop decorative rings below this scale
 
 interface GraphCanvasProps {
   nodes: SimNode[]
@@ -50,6 +55,7 @@ interface GraphCanvasProps {
   onSelectNode: (id: string | null) => void
   highlightedNodes: Set<string> | null
   highlightedEdges: Set<string> | null
+  hoveredNodeId: string | null
   selectedNodeId: string | null
   focusedNodeId: string | null
   searchMatchIds: Set<string> | null
@@ -69,6 +75,7 @@ interface DrawData {
   viewport: Viewport
   highlightedNodes: Set<string> | null
   highlightedEdges: Set<string> | null
+  hoveredNodeId: string | null
   selectedNodeId: string | null
   focusedNodeId: string | null
   searchMatchIds: Set<string> | null
@@ -85,7 +92,7 @@ export function GraphCanvas({
   onNodeDragStart, onNodeDragMove, onNodeDragEnd,
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
-  selectedNodeId, focusedNodeId, searchMatchIds,
+  hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, showForceFields, forceParams, activeSection, activeChargeLevel,
   nodeSummaries,
 }: GraphCanvasProps) {
@@ -110,12 +117,12 @@ export function GraphCanvas({
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
-    selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
+    hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
     forceParams, activeSection, activeChargeLevel, nodeSummaries, running,
   })
   drawData.current = {
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
-    selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
+    hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
     forceParams, activeSection, activeChargeLevel, nodeSummaries, running,
   }
 
@@ -131,15 +138,13 @@ export function GraphCanvas({
     return () => ro.disconnect()
   }, [])
 
-  // Hit test: find node under screen coordinates
+  // Hit test: find node under screen coordinates (circular distance check)
   const hitTest = React.useCallback((sx: number, sy: number): SimNode | null => {
     const [wx, wy] = screenToWorld(viewport, sx, sy)
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i]
-      const s = NODE_SIZES[n.level]
-      const hw = (s.w / 2) / viewport.scale + 4
-      const hh = (s.h / 2) / viewport.scale + 4
-      if (Math.abs(wx - n.x) <= hw && Math.abs(wy - n.y) <= hh) return n
+      const r = NODE_SIZES[n.level].r / viewport.scale + 4
+      if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
   }, [nodes, viewport])
@@ -485,29 +490,19 @@ export function GraphCanvas({
         const color = NODE_COLORS[node.nodeType] || '#999'
         ctx.fillStyle = color
 
-        if (node.level === 3) {
-          ctx.beginPath()
-          ctx.arc(sx, sy, s.r, 0, Math.PI * 2)
-          ctx.fill()
-        } else {
-          drawRoundedRect(ctx, sx - hw, sy - hh, s.w, s.h, s.r)
-          ctx.fill()
-        }
+        ctx.beginPath()
+        ctx.arc(sx, sy, s.r, 0, Math.PI * 2)
+        ctx.fill()
 
-        // Orphan indicator
-        if (node.orphan) {
+        // Orphan indicator — dropped at very low zoom (decorative noise at that scale)
+        if (node.orphan && d.viewport.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.setLineDash([3, 3])
           ctx.strokeStyle = color
           ctx.lineWidth = 1.5
-          if (node.level === 3) {
-            ctx.beginPath()
-            ctx.arc(sx, sy, s.r + 3, 0, Math.PI * 2)
-            ctx.stroke()
-          } else {
-            drawRoundedRect(ctx, sx - hw - 3, sy - hh - 3, s.w + 6, s.h + 6, s.r + 2)
-            ctx.stroke()
-          }
+          ctx.beginPath()
+          ctx.arc(sx, sy, s.r + 3, 0, Math.PI * 2)
+          ctx.stroke()
           ctx.restore()
         }
 
@@ -517,14 +512,9 @@ export function GraphCanvas({
           ctx.strokeStyle = SEARCH_MATCH_COLOR
           ctx.lineWidth = 2
           ctx.setLineDash([])
-          if (node.level === 3) {
-            ctx.beginPath()
-            ctx.arc(sx, sy, s.r + 4, 0, Math.PI * 2)
-            ctx.stroke()
-          } else {
-            drawRoundedRect(ctx, sx - hw - 4, sy - hh - 4, s.w + 8, s.h + 8, s.r + 3)
-            ctx.stroke()
-          }
+          ctx.beginPath()
+          ctx.arc(sx, sy, s.r + 4, 0, Math.PI * 2)
+          ctx.stroke()
           ctx.restore()
         }
 
@@ -534,53 +524,44 @@ export function GraphCanvas({
           ctx.strokeStyle = SELECTION_RING_COLOR
           ctx.lineWidth = 2.5
           ctx.setLineDash([])
-          if (node.level === 3) {
-            ctx.beginPath()
-            ctx.arc(sx, sy, s.r + 5, 0, Math.PI * 2)
-            ctx.stroke()
-          } else {
-            drawRoundedRect(ctx, sx - hw - 5, sy - hh - 5, s.w + 10, s.h + 10, s.r + 4)
-            ctx.stroke()
-          }
+          ctx.beginPath()
+          ctx.arc(sx, sy, s.r + 5, 0, Math.PI * 2)
+          ctx.stroke()
           ctx.restore()
         }
 
-        // Focus ring
-        if (node.id === d.focusedNodeId) {
+        // Focus ring — dropped at very low zoom (dashes too small to read)
+        if (node.id === d.focusedNodeId && d.viewport.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.strokeStyle = FOCUS_RING_COLOR
           ctx.lineWidth = 2
           ctx.setLineDash([2, 2])
-          if (node.level === 3) {
-            ctx.beginPath()
-            ctx.arc(sx, sy, s.r + 7, 0, Math.PI * 2)
-            ctx.stroke()
-          } else {
-            drawRoundedRect(ctx, sx - hw - 7, sy - hh - 7, s.w + 14, s.h + 14, s.r + 5)
-            ctx.stroke()
-          }
+          ctx.beginPath()
+          ctx.arc(sx, sy, s.r + 7, 0, Math.PI * 2)
+          ctx.stroke()
           ctx.restore()
         }
 
         ctx.globalAlpha = 1
 
-        // Label
-        const maxLabelW = node.level === 3 ? 60 : s.w - 8
-        const labelY = node.level === 3 ? sy + s.r + 12 : sy
-        ctx.fillStyle = hasHighlight && !nodeHighlighted ? 'rgba(51,51,51,0.2)' : '#333'
-        const label = truncateLabel(ctx, node.name, maxLabelW)
-        ctx.fillText(label, sx, labelY)
+        // Labels — elided at low zoom; always shown for hovered/selected node
+        const maxLabelW = Math.max(s.r * 4, 48)
+        const labelY = sy + s.r + 12
+        const isActiveNode = node.id === d.hoveredNodeId || node.id === d.selectedNodeId
+        if (d.viewport.scale >= LABEL_ELIDE_SCALE || isActiveNode) {
+          ctx.fillStyle = hasHighlight && !nodeHighlighted ? 'rgba(51,51,51,0.2)' : '#333'
+          ctx.fillText(truncateLabel(ctx, node.name, maxLabelW), sx, labelY)
 
-        // Summary secondary label — elided at low zoom
-        if (d.viewport.scale >= 0.5) {
-          const summary = d.nodeSummaries.get(node.id)
-          if (summary) {
-            ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-            ctx.globalAlpha = hasHighlight && !nodeHighlighted ? DIM_ALPHA * 0.55 : 0.55
-            ctx.fillStyle = '#333'
-            const summaryY = node.level === 3 ? labelY + 13 : labelY + 14
-            ctx.fillText(summary, sx, summaryY)
-            ctx.font = LABEL_FONT
+          // Summary — elided before name labels
+          if (d.viewport.scale >= SUMMARY_ELIDE_SCALE) {
+            const summary = d.nodeSummaries.get(node.id)
+            if (summary) {
+              ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+              ctx.globalAlpha = hasHighlight && !nodeHighlighted ? DIM_ALPHA * 0.55 : 0.55
+              ctx.fillStyle = '#333'
+              ctx.fillText(summary, sx, labelY + 13)
+              ctx.font = LABEL_FONT
+            }
           }
         }
       }
@@ -617,19 +598,6 @@ export function GraphCanvas({
   )
 }
 
-function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.lineTo(x + w - r, y)
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
-  ctx.lineTo(x + w, y + h - r)
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
-  ctx.lineTo(x + r, y + h)
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
-  ctx.lineTo(x, y + r)
-  ctx.quadraticCurveTo(x, y, x + r, y)
-  ctx.closePath()
-}
 
 function truncateLabel(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
   if (ctx.measureText(text).width <= maxWidth) return text

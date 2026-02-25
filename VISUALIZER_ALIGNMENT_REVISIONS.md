@@ -215,20 +215,9 @@ The spec states summaries are the first thing elided at low zoom — implement t
 
 ## Group 6: Info Panel for Selected Graph Nodes
 
-**Status:** missing
-**Spec:** GRAPH_VIEW.md § Interaction States — Selection, Info Panel
-**Files:**
-- new file: `tools/visualizer/src/components/GraphInfoPanel.tsx`
-- `tools/visualizer/src/components/GraphView.tsx` — wire panel into layout; compress canvas when panel is open
-**Parallelism:** Fully independent of Groups 1–4. Can be built in any order. The transitive traversal it needs (`getTransitiveDeps`) already exists in `tools/visualizer/src/graph/highlight.ts`.
-**Change type:** Semantic
-
-Currently clicking a node selects it (dependency highlight persists; "Show in Tree" button appears in the header) but no structured panel opens. The spec defines a panel anchored to one side of the canvas showing:
-
-1. **Identity** — name, type icon + label, parent name (worker for L3, namespace for L2), source file.
-2. **Connections** — immediate dependency counts: N outgoing ("depends on"), M incoming ("depended on by"), broken down by level when mixed.
-3. **Blast radius** — transitive upstream count: "If this changes, N definitions across M workers in K namespaces are affected." Reuse `getTransitiveDeps(nodeId, visibleEdges, visibleIds, 'upstream')`.
-4. **Navigation** — clickable list of connected nodes (click to select that node). "Show in Tree" action (already implemented in the header button; move into the panel).
+**Status:** deferred
+**Spec:** GRAPH_VIEW.md § Selection, § Info Panel — now stubs referencing VISUALIZER_DEFERRED.md § Node Selection
+**Reason:** Selection interaction model deferred in favor of hover-first approach. The hover info tooltip (Group 7, expanded) carries identity and connection info without requiring persistent selection state. See VISUALIZER_SPEC_CHANGES.md for full rationale.
 
 **Layout:** The panel anchors to the right side of the canvas and compresses the canvas area (not an overlay). When `selectedNodeId` is non-null, the `.graph-view` container switches to a row layout with the canvas on the left and the panel on the right. Deselecting (background click or Escape) removes the panel and restores the full-width canvas.
 
@@ -242,32 +231,35 @@ The metrics (connection counts, blast radius traversal) reuse data already compu
 
 ---
 
-## Group 7: Dependency Direction Indicator Label
+## Group 7: Hover Info Tooltip
 
-**Status:** missing
-**Spec:** GRAPH_VIEW.md § Interaction States — Hover: Dependency Highlighting (direction indicator)
+**Status:** completed
+**Spec:** GRAPH_VIEW.md § Interaction States — Hover: Dependency Highlighting (hover info tooltip)
 **Files:**
-- `tools/visualizer/src/components/GraphCanvas.tsx`
-- `tools/visualizer/src/components/GraphView.tsx` — add `shiftHeld` to `GraphCanvasProps`
-**Parallelism:** Small, independent. Can be done alongside any other group.
+- `tools/visualizer/src/components/GraphView.tsx` — render tooltip overlay div, pass `hoveredNodeId` + computed tooltip data
+- `tools/visualizer/src/components/GraphCanvas.tsx` — expose hovered node screen position for tooltip anchoring (or pass via prop); pass `shiftHeld` for direction indicator
+**Parallelism:** Independent of Group 8. Can be done in any order.
 **Change type:** Semantic
 
-When a node is hovered and `highlightedNodes` is active, the spec requires a subtle text label near the hovered node reading "dependencies" (default, downstream) or "dependents" (Shift held, upstream). This makes the Shift modifier discoverable.
+When a node is hovered and `highlightedNodes` is active, show a **hover info tooltip** anchored near the hovered node (DOM overlay above the canvas, not canvas-rendered) containing:
 
-`shiftHeld` is already tracked in `GraphView` state but is not passed to `GraphCanvas`. Add it to `GraphCanvasProps` and pass it through. In the canvas draw loop, after drawing the hovered node's name label, draw an additional small label:
+1. Node name, type icon + label, parent (worker for L3, namespace for L2), source file.
+2. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
+3. Direction indicator: "dependencies" (default) or "dependents" (Shift held). Makes the Shift modifier discoverable.
 
-```
-"dependencies"   (when shiftHeld is false and highlightedNodes is active)
-"dependents"     (when shiftHeld is true and highlightedNodes is active)
-```
+**Implementation approach:**
+- The tooltip is a positioned `<div>` rendered in `GraphView` above the canvas, not drawn on the canvas itself. This keeps it selectable/styled as HTML.
+- `GraphCanvas` needs to expose the hovered node's screen position so `GraphView` can position the tooltip. Either: (a) pass a `onHoverNodePos` callback alongside `onHoverNode`, or (b) compute position from world coordinates in `GraphView` using `worldToScreen(viewport, node.x, node.y)`.
+- Option (b) is simpler — `GraphView` already has the hovered node's world position from `simRef.current.getNode(hoveredNodeId)` and the current `viewport`. No canvas changes needed beyond ensuring `shiftHeld` is available.
+- Tooltip data (parent name, connection counts) can be derived from `visibleEdges` and `visibleNodes` — no new traversals needed beyond what's already computed.
 
-Style: approximately `9px`, opacity `0.5`, below the name label or offset to the side. No background fill.
+`shiftHeld` is already tracked in `GraphView` state. Pass it through to the tooltip render logic.
 
 ---
 
 ## Group 8: Density Management — Label Elision and Zoom-Dependent Detail
 
-**Status:** missing
+**Status:** completed
 **Spec:** GRAPH_VIEW.md § Performance Considerations — Visual Density; PRODUCT.md § Density management
 **Files:**
 - `tools/visualizer/src/components/GraphCanvas.tsx`
