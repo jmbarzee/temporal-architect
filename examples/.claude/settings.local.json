@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(cd /Users/jbarzee/go/src/github.com/jmbarzee/temporal-skills && twf check examples/document-ingestion-pipeline/document-ingestion-pipeline.twf 2>&1)"
-    ]
-  }
-}
