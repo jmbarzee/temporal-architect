@@ -1,0 +1,410 @@
+# Document Ingestion Pipeline
+# Fault-tolerant, multi-stage processing with human-in-the-loop review
+# Scope: MVP+ (single OCR provider, configurable review routing, batch support)
+
+# ─── Main Pipeline ───────────────────────────────────────────────────────────
+
+workflow ProcessDocument(submission: Submission) -> (ProcessingResult):
+    state:
+        stage = "received"
+
+    query GetStatus() -> (DocumentStatus):
+        return DocumentStatus{stage}
+
+    # Ingest: persist raw bytes, create record, acknowledge submitter
+    activity IngestDocument(submission) -> document
+        options:
+            start_to_close_timeout: 2m
+    stage = "scanning"
+
+    # Malware scan before any content processing
+    activity ScanMalware(document) -> scanResult
+        options:
+            start_to_close_timeout: 60s
+    if (scanResult.infected):
+        activity QuarantineDocument(document, scanResult)
+        close complete(ProcessingResult{document, status: "quarantined"})
+
+    # Normalize to canonical internal format
+    stage = "normalizing"
+    activity NormalizeDocument(document) -> normResult
+        options:
+            start_to_close_timeout: 5m
+
+    # Sub-documents (email attachments) enter pipeline independently
+    for (subDoc in normResult.subDocuments):
+        detach workflow ProcessDocument(subDoc.asSubmission)
+
+    # OCR / text extraction — async, rate-limited bottleneck
+    stage = "extracting_text"
+    workflow ExtractText(normResult.normalizedDoc) -> textResult
+
+    # Classify document type from taxonomy
+    stage = "classifying"
+    activity ClassifyDocument(normResult.normalizedDoc, textResult) -> classification
+
+    if (classification.confidence < 0.80):
+        stage = "awaiting_classification_review"
+        workflow HumanReview(document, "classification", classification) -> classReview
+            options:
+                task_queue: "review"
+        activity ApplyClassificationReview(classification, classReview) -> classification
+
+    # Extract structured fields using type-specific model
+    stage = "extracting_fields"
+    activity ExtractFields(normResult.normalizedDoc, textResult, classification) -> extraction
+
+    if (extraction.needsReview):
+        stage = "awaiting_extraction_review"
+        workflow HumanReview(document, "extraction", extraction) -> extractReview
+            options:
+                task_queue: "review"
+        activity ApplyExtractionReview(extraction, extractReview) -> extraction
+
+    # Validate against business rules and external references
+    stage = "validating"
+    activity ValidateExtraction(extraction, classification) -> validation
+
+    if (validation.hasFailures):
+        stage = "awaiting_validation_review"
+        workflow HumanReview(document, "validation", validation) -> validReview
+            options:
+                task_queue: "review"
+        activity ApplyValidationReview(validation, validReview) -> validation
+
+    # Deduplicate — exact hash and near-duplicate detection
+    stage = "deduplicating"
+    activity CheckDuplicates(document, extraction) -> dedupResult
+
+    if (dedupResult.isNearDuplicate):
+        stage = "awaiting_dedup_review"
+        workflow HumanReview(document, "deduplication", dedupResult) -> dedupReview
+            options:
+                task_queue: "review"
+        activity ApplyDedupReview(dedupResult, dedupReview) -> dedupResult
+
+    if (dedupResult.discard):
+        stage = "completed"
+        close complete(ProcessingResult{document, status: "duplicate_discarded"})
+
+    # Route to downstream business systems
+    stage = "routing"
+    activity RouteDocument(document, extraction, classification) -> deliveryResult
+        options:
+            start_to_close_timeout: 2m
+            retry_policy:
+                maximum_attempts: 5
+                initial_interval: 5s
+                backoff_coefficient: 2.0
+
+    stage = "completed"
+    close complete(ProcessingResult{document, deliveryResult, status: "completed"})
+
+
+# ─── OCR Child Workflow ──────────────────────────────────────────────────────
+# Isolates async OCR polling from the main pipeline.
+# PollOCRResult fails-and-retries with backoff until the Textract async job
+# completes. schedule_to_close_timeout caps the total polling window.
+
+workflow ExtractText(document: NormalizedDocument) -> (TextExtractionResult):
+    activity StartOCRJob(document) -> ocrJobId
+        options:
+            start_to_close_timeout: 30s
+            retry_policy:
+                maximum_attempts: 10
+                initial_interval: 2s
+                backoff_coefficient: 2.0
+                maximum_interval: 30s
+
+    activity PollOCRResult(ocrJobId) -> ocrResult
+        options:
+            start_to_close_timeout: 30s
+            schedule_to_close_timeout: 10m
+            retry_policy:
+                maximum_attempts: 30
+                initial_interval: 5s
+                backoff_coefficient: 1.5
+                maximum_interval: 60s
+
+    close complete(ocrResult)
+
+
+# ─── Human Review Child Workflow ─────────────────────────────────────────────
+# Generic review workflow parameterized by type. The update handler lets the
+# review UI submit corrections and get acknowledgment back.
+
+workflow HumanReview(document: Document, reviewType: string, context: any) -> (ReviewResult):
+    state:
+        condition reviewCompleted
+        reviewResult = null
+
+    query GetReviewStatus() -> (ReviewStatus):
+        return ReviewStatus{reviewType, status: "awaiting_review"}
+
+    update SubmitReview(action: ReviewerAction) -> (ReviewAck):
+        activity RecordReviewerAction(task, action) -> result
+        reviewResult = result
+        set reviewCompleted
+        return ReviewAck{accepted: true}
+
+    activity CreateReviewTask(document, reviewType, context) -> task
+
+    await one:
+        reviewCompleted:
+            close complete(reviewResult)
+        timer(48h):
+            activity EscalateReviewTask(task)
+            await reviewCompleted
+            close complete(reviewResult)
+
+
+# ─── Batch Processing ────────────────────────────────────────────────────────
+
+workflow ProcessBatch(batch: Batch) -> (BatchResult):
+    query GetBatchProgress() -> (BatchProgress):
+        return BatchProgress{total: batch.submissions.length, completed: completedCount}
+
+    activity AcknowledgeBatch(batch) -> batchRecord
+
+    await all:
+        for (submission in batch.submissions):
+            workflow ProcessDocument(submission) -> result
+
+    close complete(BatchResult{batchRecord, results})
+
+
+# ─── Retention Management ────────────────────────────────────────────────────
+# Long-running workflow per document. Sleeps until retention expires,
+# checks legal holds, purges when clear.
+
+workflow ManageRetention(document: Document, policy: RetentionPolicy) -> (RetentionResult):
+    signal PlaceLegalHold(holdId: string, reason: string):
+        activity RecordLegalHold(document, holdId, reason)
+
+    signal ReleaseLegalHold(holdId: string):
+        activity RemoveLegalHold(document, holdId)
+
+    await timer(policy.retentionDuration)
+
+    activity CheckLegalHolds(document) -> holdStatus
+
+    if (holdStatus.isHeld):
+        for:
+            await signal ReleaseLegalHold
+            activity CheckLegalHolds(document) -> holdStatus
+            if (not holdStatus.isHeld):
+                break
+
+    activity PurgeDocument(document)
+    close complete(RetentionResult{status: "purged"})
+
+
+# ─── Bulk Reprocessing ───────────────────────────────────────────────────────
+# Resumable bulk re-processing. Continues-as-new to avoid unbounded history.
+
+workflow BulkReprocess(filter: ReprocessFilter, cursor: string) -> (ReprocessResult):
+    query GetProgress() -> (ReprocessProgress):
+        return ReprocessProgress{filter, cursor, processedCount}
+
+    activity FindDocumentBatch(filter, cursor) -> docBatch
+
+    if (docBatch.documents.length == 0):
+        close complete(ReprocessResult{status: "complete", totalProcessed: processedCount})
+
+    await all:
+        for (doc in docBatch.documents):
+            workflow ProcessDocument(doc.asResubmission) -> result
+
+    close continue_as_new(filter, docBatch.nextCursor)
+
+
+# ─── Activity Definitions ────────────────────────────────────────────────────
+
+activity IngestDocument(submission: Submission) -> (Document):
+    # Validate submission envelope (permissions, size limits, metadata)
+    # Compute content hash; deduplicate against existing records
+    # Persist raw bytes to S3 with tenant-scoped prefix and encryption key
+    # Create Document record and audit event in same database transaction
+    persist(submission.bytes, tenantPrefix(submission))
+
+activity ScanMalware(document: Document) -> (ScanResult):
+    # Stream document bytes to ClamAV via INSTREAM command
+    # Record scan result with scanner signature version
+    scan(document.bytes)
+
+activity QuarantineDocument(document: Document, scanResult: ScanResult):
+    # Move document to quarantine storage prefix
+    # Emit audit event "document.quarantined"
+    # Notify operations team
+    quarantine(document, scanResult)
+
+activity NormalizeDocument(document: Document) -> (NormalizationResult):
+    # Detect format (PDF, TIFF, Office, email, image)
+    # Render Office files to PDF
+    # Split multi-page TIFF into individual page images
+    # Decompose email eml/msg into body + attachment sub-documents
+    # Flag PDF with embedded text to skip OCR
+    # Create Page records
+    normalize(document)
+
+activity StartOCRJob(document: NormalizedDocument) -> (string):
+    # Submit pages to Textract StartDocumentAnalysis
+    textract.startDocumentAnalysis(document.pages)
+
+activity PollOCRResult(jobId: string) -> (TextExtractionResult):
+    # Call Textract GetDocumentAnalysis
+    # Raise error when job incomplete (triggers retry with backoff)
+    # Aggregate per-page results with confidence scores
+    textract.getDocumentAnalysis(jobId)
+
+activity ClassifyDocument(document: NormalizedDocument, text: TextExtractionResult) -> (ClassificationResult):
+    # Run classification model against extracted text and layout features
+    # Produce top-N type predictions with confidence scores
+    # Detect multi-document packets and flag for splitting
+    classificationModel.predict(text, document.layout)
+
+activity ExtractFields(document: NormalizedDocument, text: TextExtractionResult, classification: ClassificationResult) -> (ExtractionResult):
+    # Load extraction model matching classification.documentType
+    # Extract key-value pairs, tables, named entities
+    # Assign per-field confidence scores with source bounding boxes
+    # Flag fields below confidence threshold
+    extractionModel.extract(text, classification.documentType)
+
+activity ValidateExtraction(extraction: ExtractionResult, classification: ClassificationResult) -> (ValidationResult):
+    # Check required field presence
+    # Check format conformance (dates, currency, SSN patterns)
+    # Check cross-field consistency (line items sum to total)
+    # Run external reference lookups (NPI registry, policy system)
+    validationRules.evaluate(extraction, classification)
+
+activity CheckDuplicates(document: Document, extraction: ExtractionResult) -> (DeduplicationResult):
+    # Compute SHA256 of normalized text (exact match)
+    # Compute MinHash/LSH signature (near-duplicate)
+    # Lookup dedup index and attach match details
+    dedupIndex.lookup(sha256(extraction.text), minhash(extraction.text))
+
+activity RouteDocument(document: Document, extraction: ExtractionResult, classification: ClassificationResult) -> (DeliveryResult):
+    # Evaluate routing rules matching classification.documentType
+    # Transform to consumer-specific format per target
+    # Deliver via consumer interface (API, SFTP, webhook)
+    # Track per-consumer delivery status
+    routingEngine.deliver(document, extraction, classification)
+
+activity CreateReviewTask(document: Document, reviewType: string, context: any) -> (ReviewTask):
+    # Determine review queue from reviewType and document classification
+    # Assign priority based on SLA pressure
+    # Create ReviewTask record
+    reviewQueue.createTask(document, reviewType, context)
+
+activity RecordReviewerAction(task: ReviewTask, action: ReviewerAction) -> (ReviewResult):
+    # Persist reviewer corrections as new result version (immutable)
+    # Mark review task as completed
+    # Feed corrections to active learning pipeline
+    reviewQueue.recordAction(task, action)
+
+activity EscalateReviewTask(task: ReviewTask):
+    # Reassign to senior reviewer or supervisor queue
+    # Increase priority
+    # Notify queue manager
+    reviewQueue.escalate(task)
+
+activity ApplyClassificationReview(original: ClassificationResult, review: ReviewResult) -> (ClassificationResult):
+    # Produce corrected ClassificationResult from reviewer action
+    mergeClassification(original, review.corrections)
+
+activity ApplyExtractionReview(original: ExtractionResult, review: ReviewResult) -> (ExtractionResult):
+    # Produce corrected ExtractionResult from reviewer field corrections
+    # Version the new extraction (original preserved)
+    mergeExtraction(original, review.corrections)
+
+activity ApplyValidationReview(original: ValidationResult, review: ReviewResult) -> (ValidationResult):
+    # Apply reviewer overrides with reason codes
+    mergeValidation(original, review.overrides)
+
+activity ApplyDedupReview(original: DeduplicationResult, review: ReviewResult) -> (DeduplicationResult):
+    # Apply reviewer decision: link-and-discard, replace, or keep-both
+    mergeDedup(original, review.decision)
+
+activity AcknowledgeBatch(batch: Batch) -> (BatchRecord):
+    # Create batch record with manifest
+    batchStore.acknowledge(batch)
+
+activity RecordLegalHold(document: Document, holdId: string, reason: string):
+    # Create legal hold record
+    holdStore.place(document, holdId, reason)
+
+activity RemoveLegalHold(document: Document, holdId: string):
+    # Remove legal hold record
+    holdStore.release(document, holdId)
+
+activity CheckLegalHolds(document: Document) -> (HoldStatus):
+    # Check tenant-level and document-type-level holds
+    holdStore.getActiveHolds(document)
+
+activity PurgeDocument(document: Document):
+    # Verify no active legal holds (fail on violation)
+    # Delete document bytes from storage
+    # Delete all derived artifacts (pages, extractions, results)
+    # Destroy tenant-scoped encryption key shard
+    # Audit event "document.purged" survives (content anonymized)
+    purgeEngine.destroy(document)
+
+activity FindDocumentBatch(filter: ReprocessFilter, cursor: string) -> (DocumentBatch):
+    # Fetch documents matching filter criteria
+    # Paginate into batch with continuation cursor
+    documentStore.findBatch(filter, cursor)
+
+
+# ─── Workers ─────────────────────────────────────────────────────────────────
+# Pipeline worker handles the full document lifecycle.
+# Review worker scales independently (human-wait-time workloads).
+# Retention worker handles long-running timer-based workflows.
+
+worker pipelineWorker:
+    workflow ProcessDocument
+    workflow ProcessBatch
+    workflow BulkReprocess
+    workflow ExtractText
+    activity IngestDocument
+    activity ScanMalware
+    activity QuarantineDocument
+    activity NormalizeDocument
+    activity StartOCRJob
+    activity PollOCRResult
+    activity ClassifyDocument
+    activity ExtractFields
+    activity ValidateExtraction
+    activity CheckDuplicates
+    activity RouteDocument
+    activity ApplyClassificationReview
+    activity ApplyExtractionReview
+    activity ApplyValidationReview
+    activity ApplyDedupReview
+    activity AcknowledgeBatch
+    activity FindDocumentBatch
+
+worker reviewWorker:
+    workflow HumanReview
+    activity CreateReviewTask
+    activity RecordReviewerAction
+    activity EscalateReviewTask
+
+worker retentionWorker:
+    workflow ManageRetention
+    activity RecordLegalHold
+    activity RemoveLegalHold
+    activity CheckLegalHolds
+    activity PurgeDocument
+
+# ─── Namespace ───────────────────────────────────────────────────────────────
+
+namespace documentProcessing:
+    worker pipelineWorker
+        options:
+            task_queue: "pipeline"
+    worker reviewWorker
+        options:
+            task_queue: "review"
+    worker retentionWorker
+        options:
+            task_queue: "retention"
