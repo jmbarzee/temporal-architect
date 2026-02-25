@@ -4,8 +4,9 @@
     {
       "type": "npm",
       "script": "compile",
+      "path": "packages/vscode",
       "problemMatcher": "$tsc",
-      "label": "npm: compile",
+      "label": "npm: compile - packages/vscode",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -14,9 +15,10 @@
     {
       "type": "npm",
       "script": "watch",
+      "path": "packages/vscode",
       "problemMatcher": "$tsc-watch",
       "isBackground": true,
-      "label": "npm: watch",
+      "label": "npm: watch - packages/vscode",
       "group": "build"
     }
   ]
