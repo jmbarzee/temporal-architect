@@ -66,9 +66,9 @@ Each group should have:
 - Description of the target experience (what the user sees and does)
 - Feasibility note: is the data available from the parser? Does it require new spec additions?
 
-### Phase 4: Write to `VISUALIZER_SPEC_REVISIONS.md`
+### Phase 4: Write to `changes/visualizer-spec/quality_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `VISUALIZER_SPEC_REVISIONS.md` at the repo root:
+Write the grouped plan to `changes/visualizer-spec/quality_REVISIONS_{NNN}.md` (create the `changes/visualizer-spec/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: what's working, what's missing, what's blocked on parser data
 - One `## Group N: Title` section per feature set
 - Each group: user questions addressed, target experience, data requirements, spec additions needed, change type (`Schema` | `Internal`)

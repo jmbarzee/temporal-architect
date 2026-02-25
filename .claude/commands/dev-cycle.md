@@ -1,13 +1,11 @@
 # Orchestrate Full Development Cycle
 
-Orchestrate a full development cycle across the repository — from review through execution, documentation, and downstream propagation.
-
-Use this command when you want to run the complete loop, not just a single review. It drives the process described in the project's development loop, coordinating the specific review commands and propagation steps in sequence with appropriate approval gates.
+Generate the initial REVISIONS files that feed the automated workflow loop. This command is the human entry point — it runs scoped reviews to discover work, then hands off to the orchestrator (or manual `address-review` + `propagate-changes` invocations).
 
 ## The Loop
 
 ```
-[Identify] → [Group] → [Iterate Groups] → [Document] → [Propagate] → [Repeat or Close]
+[Scope] → [Discover] → [Group] → [Write REVISIONS] → hand off to workflow or manual execution
 ```
 
 ## Workflow
@@ -17,76 +15,52 @@ Use this command when you want to run the complete loop, not just a single revie
 Before launching any reviews, ask the user:
 1. What is the **starting point**? Options:
    - "Fresh cycle" — full review from scratch
-   - "Resume" — groups are already identified, provide the plan file or describe current state
-   - "Post-change" — changes were made, now need documentation and propagation only
+   - "Resume" — check `changes/` for existing REVISIONS files and report current state
+   - "Targeted" — specific component(s) only
 2. Which **layers** should be reviewed this cycle?
+   - DSL spec (`/review-quality-dsl-spec`)
    - Parser internals (`/review-quality-parser`)
-   - Parser output / JSON contract (`/review-alignment-parser-visualizer`)
+   - Parser alignment (`/review-alignment-parser`)
+   - Parser-visualizer contract (`/review-alignment-parser-visualizer`)
+   - Visualizer spec (`/review-quality-visualizer-spec`)
    - Visualizer TypeScript (`/review-quality-visualizer`)
+   - Visualizer alignment (`/review-alignment-visualizer`)
+   - Design skill (`/review-quality-skill` for design)
+   - Design skill alignment (`/review-alignment-design-skill`)
+   - Author-go skill (`/review-quality-skill` for author-go)
+   - Author-go alignment (`/review-alignment-author-skills`)
    - All of the above
 
 Present the proposed review scope and **wait for confirmation** before starting.
 
 ### Phase 2: Discovery (Parallel)
 
-Launch the confirmed review commands as parallel sub-agents. Each sub-agent runs its full Phase 1 + Phase 2 (Explore + Catalog) and returns a structured finding list. Do NOT have sub-agents proceed to execution — catalog only.
+Launch the confirmed review commands as parallel sub-agents. Each sub-agent runs its full workflow through to writing REVISIONS files in `changes/{component}/`.
 
-Collect all findings from all sub-agents.
+Collect summaries from all sub-agents.
 
-### Phase 3: Unified Catalog & Grouping
+### Phase 3: Report
 
-Merge all findings into a single cross-layer catalog. Deduplicate (the same root cause may surface in multiple layers). Apply themes across layers — a theme like "resolver error model" may span parser internals, LSP server, and visualizer.
+Present:
+- Which REVISIONS files were created, by component
+- Total groups and findings across all components
+- Suggested execution order (respecting the dependency DAG)
+- Whether to proceed manually (`/project:address-review` per REVISIONS file) or hand off to the automated orchestrator
 
-Group by theme with cross-layer impact noted. Order by:
-1. Foundation-first (parser before visualizer, design skill before author-go)
-2. Critical severity before moderate
-3. High parallelism groups before sequential ones
+**STOP. Wait for user to decide next steps.**
 
-Present the unified grouped plan.
+If the user wants to continue manually, recommend running `/project:address-review` with the specific REVISIONS file paths, followed by `/project:propagate-changes` after each component's CHANGES file is written.
 
-**STOP. Wait for user approval and group selection before any execution.**
+If the user wants to run the automated workflow, the REVISIONS files in `changes/` are the input — start the DevCycleWorkflow.
 
-### Phase 4: Execute Groups
-
-Work through approved groups, one at a time:
-1. Announce which group is starting
-2. If the group spans multiple independent files/layers, spawn parallel sub-agents for execution
-3. Validate: run `go build ./...`, `go test ./...`, `twf check`, `npm run build` as appropriate
-4. Present a brief diff summary
-5. Ask: "Continue to next group, or stop here?"
-
-### Phase 5: Document
-
-After completing all approved groups:
-1. Update `AST_REVISIONS.md` — mark completed items, add new breaking changes found
-2. Create a brief session summary: what was changed, what was skipped, what remains
-3. List any skipped groups with rationale
-
-**STOP. Present the session summary for review.**
-
-### Phase 6: Assess Next Cycle
-
-Based on what changed:
-1. Run `/propagate-changes` to assess downstream impact
-2. Recommend which review commands should be run in the next cycle
-3. Identify any groups that were skipped and should carry forward
-
-Present the next-cycle recommendation.
-
-**STOP. User decides whether to continue or close the cycle.**
-
-## Approval Gates (Summary)
+## Approval Gates
 
 | Gate | What you see | Decision |
 |------|-------------|----------|
 | Phase 1 end | Proposed review scope | Confirm or narrow scope |
-| Phase 3 end | Unified grouped plan | Approve groups, reorder, drop |
-| Phase 4 (each group) | Diff summary | Continue or pause |
-| Phase 5 end | Session summary | Accept documentation |
-| Phase 6 end | Next-cycle recommendations | Continue cycle or close |
+| Phase 3 end | Discovery report | Manual execution, automated workflow, or close |
 
 ## Constraints
-- **Never skip an approval gate.** The value of this command is structured human oversight, not automation.
-- **Prefer narrow scope over broad.** It's better to finish 3 groups well than start 8 and finish none.
-- **One thing changes at a time.** Don't let a group balloon. If a fix surfaces new work, add it to the next cycle, don't expand the current group.
-- **State is persistent.** After each gate, write current state to `AST_REVISIONS.md` so the cycle can be resumed in a new session if needed.
+- **This command generates REVISIONS files only.** It does not execute changes, write CHANGES files, or propagate. Those are the domain of `address-review`, `propagate-changes`, and the orchestrator workflow.
+- **Prefer narrow scope over broad.** It's better to review 2-3 focused layers than all 11 at once.
+- **Respect the dependency DAG.** If parser changes are likely, review the parser first — downstream reviews may be invalidated by parser changes.

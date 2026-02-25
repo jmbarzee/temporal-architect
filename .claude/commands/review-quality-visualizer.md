@@ -10,6 +10,7 @@ Before starting, read:
 - `AST_REVISIONS.md` — understand the current parser contract, what's changing
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View requirements and current implementation
 - `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View requirements and planned behavior
+- All existing files in `changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
 
 ## Review Rubric
 
@@ -60,9 +61,9 @@ Cross-reference against `AST_REVISIONS.md`. Note any TypeScript code that will b
 
 Group findings by theme. Order by critical severity first, then contract mismatches before internal quality.
 
-### Phase 4: Write to `VISUALIZER_REVISIONS.md`
+### Phase 4: Write to `changes/visualizer/quality_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `VISUALIZER_REVISIONS.md` at the repo root:
+Write the grouped plan to `changes/visualizer/quality_REVISIONS_{NNN}.md` (create the `changes/visualizer/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: scope of this review, what was found
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Schema` | `Internal`), parallelism notes

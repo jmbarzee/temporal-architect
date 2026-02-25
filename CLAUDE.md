@@ -14,8 +14,10 @@ tools/lsp/              Go parser, resolver, validator, LSP server
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
   cmd/twf/              CLI binary (check, parse, symbols, lsp)
 tools/visualizer/       React + TypeScript webview (Tree View, Graph View)
+tools/orchestrator/     Temporal workflow spec for automated dev-cycle
 packages/               VS Code / Cursor extension
 skills/                 AI skill definitions (design, author-go)
+changes/                Ephemeral coordination files (REVISIONS + CHANGES per component)
 ```
 
 ## Project Status
@@ -56,7 +58,7 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 
 | Command | Purpose |
 |---------|---------|
-| `dev-cycle` | Full orchestrated loop: review → group → execute → document → propagate |
+| `dev-cycle` | Scope and launch reviews → write REVISIONS to `changes/` |
 | **Quality Reviews** | |
 | `review-quality-parser` | Go parser, AST, resolver — code quality and design |
 | `review-quality-visualizer` | Visualizer TypeScript — code quality and contract consumption |
@@ -72,6 +74,7 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 | **Execution & Propagation** | |
 | `address-review` | Execute an approved review group (inner loop) |
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
+| `summarize-changes` | Scan `changes/` and produce consolidated report |
 | **Design Ideation** | |
 | `expand-idea` | Expand a one-sentence idea into a full Temporal architecture vision with draft `.twf` |
 

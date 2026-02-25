@@ -12,7 +12,7 @@ Skill craft and structure belong in `/project:review-quality-skill`. This comman
 - `skills/design/README.md` — declared goal and scope of the skill
 - `skills/design/SKILL.md` and `skills/design/reference/` — the target under review
 - `AST_REVISIONS.md` — changes in flight that may introduce new constructs requiring pre-emptive documentation
-- `DESIGN_SKILL_ALIGNMENT_REVISIONS.md` — if present, read to avoid re-reporting known gaps
+- All existing files in `changes/design-skill/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -52,15 +52,15 @@ Merge all findings. For each issue:
 - **Gap**: what's absent, inaccurate, or outdated
 - **Severity**: `critical` (common construct or frequent error, undocumented) | `moderate` | `minor`
 
-Drop anything already tracked in `DESIGN_SKILL_ALIGNMENT_REVISIONS.md`.
+Drop anything already tracked in existing `changes/design-skill/*_REVISIONS_*.md` or `changes/design-skill/CHANGES_*.md` files.
 
 ### Phase 4: Group & Prioritize
 
 Group by construct family. Order: stale content first (actively misleads users), then missing critical constructs, then partial coverage, then minor gaps.
 
-### Phase 5: Write to `DESIGN_SKILL_ALIGNMENT_REVISIONS.md`
+### Phase 5: Write to `changes/design-skill/alignment_REVISIONS_{NNN}.md`
 
-Write the grouped plan at the repo root:
+Write the grouped plan to `changes/design-skill/alignment_REVISIONS_{NNN}.md` (create the `changes/design-skill/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: coverage state, stale content found, `twf check` result summary
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Internal`), parallelism notes

@@ -13,8 +13,8 @@ Changes propagate along this graph. Each edge has a contract type:
 ```
 DSL grammar (LANGUAGE_SPEC.md)
   └─► Parser (tools/lsp/)
-        │  Grammar → DSL_CHANGES.md triggers: review-alignment-design-skill
-        │  Schema  → PARSER_OUTPUT_CHANGES.md triggers: review-quality-visualizer, review-quality-visualizer-spec
+        │  Grammar → changes/dsl/ triggers: review-alignment-design-skill
+        │  Schema  → changes/parser/ triggers: review-quality-visualizer, review-quality-visualizer-spec
         │  API     → triggers: review-quality-visualizer (TS types)
         ├─► LSP Server (tools/lsp/internal/server/)
         │     API/Semantic → triggers: review-quality-parser
@@ -32,33 +32,33 @@ DSL grammar (LANGUAGE_SPEC.md)
 
 ### Phase 1: Read CHANGES File
 
-A specific CHANGES file must be provided in context (e.g., `PARSER_CHANGES.md`). If none is provided, list all `*_CHANGES.md` files at the repo root and ask the user to select one.
+A specific CHANGES file path must be provided (e.g., `changes/parser/CHANGES_001.md`). If none is provided, scan all `changes/*/CHANGES_*.md` files and ask the user to select one.
 
 Read the specified file and extract:
 - Source review command
 - Changes by type: `Grammar`, `Schema`, `API`, `Semantic`, `Internal`
 - Specific changes listed under each type
 
-If the file contains only `Internal` changes, report that, delete the CHANGES file, and stop — no downstream reviews are needed.
+If the file contains only `Internal` changes, report that and stop — no downstream reviews are needed. Do **not** delete the CHANGES file.
 
 ### Phase 2: Build Propagation Map
 
 For each non-internal change, map to downstream layers using the dependency graph above. Build a table:
 
-| CHANGES file | Change type | Downstream layer | Review command |
+| CHANGES file | Change type | Downstream component | Review command |
 |---|---|---|---|
-| PARSER_REVISIONS | Schema | Visualizer | review-quality-visualizer |
-| DSL_REVISIONS | Grammar | Skills | review-alignment-design-skill |
+| changes/parser/CHANGES_001.md | Schema | visualizer | review-quality-visualizer |
+| changes/dsl/CHANGES_001.md | Grammar | design-skill | review-alignment-design-skill |
 | ... | | | |
 
-Deduplicate: if the same review command is triggered by multiple change files, merge the context — one sub-agent handles all relevant changes for that layer.
+Deduplicate: if the same review command is triggered by multiple change types, merge the context — one sub-agent handles all relevant changes for that layer.
 
 ### Phase 3: Fan Out
 
 Launch one sub-agent per downstream review. Each sub-agent:
 1. Runs the specified review command
 2. Receives the relevant changes as additional context: "Focus this review on the impact of these specific changes: [list]"
-3. Follows the review command's full workflow — Explore → Catalog → Group → Write REVISIONS file
+3. Follows the review command's full workflow — Explore → Catalog → Group → Write REVISIONS file to `changes/{downstream-component}/`
 
 Sub-agents run in parallel where the downstream layers are independent.
 
@@ -68,20 +68,17 @@ Sub-agents run in parallel where the downstream layers are independent.
 
 When all sub-agents complete:
 
-1. Delete the CHANGES file. It has been fully consumed — the REVISIONS files are now the active artifacts.
-2. Report:
-   - Which REVISIONS files were created
+1. Report:
+   - Which REVISIONS files were created (in `changes/{component}/`)
    - Which layers had no impact (changes didn't affect them)
-   - Which layers were skipped because an open REVISIONS file already exists
+   - Which layers were skipped because an open REVISIONS file already exists in their `changes/{component}/` directory
    - Any VS Code Extension impacts that need manual review
    - Recommended order for running `/project:address-review` on each REVISIONS file
-
-If every triggered review was skipped (all layers already have open REVISIONS files), report that — no new work was queued, but the CHANGES file is still deleted.
 
 **STOP. Present the report and wait for the user to begin addressing each new revision file.**
 
 ## Constraints
-- **CHANGES files are inputs, not outputs.** Don't modify them. Don't create new ones here.
-- **Sub-agents write REVISIONS files, not you.** Your output is the propagation report.
+- **CHANGES files persist.** Do not delete CHANGES files. They are the historical record.
+- **Sub-agents write REVISIONS files to `changes/{downstream-component}/`, not you.** Your output is the propagation report.
 - **Internal-only changes stop here.** No downstream reviews needed.
-- **Don't re-run reviews for layers that already have an open REVISIONS file.** Check for existing `*_REVISIONS.md` at root before launching a sub-agent for that layer.
+- **Don't re-run reviews for layers that already have open REVISIONS files.** Check for existing `*_REVISIONS_*.md` in the downstream component's `changes/` directory before launching a sub-agent for that layer.

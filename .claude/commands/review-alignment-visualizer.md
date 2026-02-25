@@ -11,7 +11,7 @@ Code quality belongs in `/project:review-quality-visualizer`. Spec design belong
 - `tools/visualizer/spec/` (all other files) — product patterns, priority tiers, view framework
 - `tools/visualizer/src/` — TypeScript implementation (target under review)
 - `AST_REVISIONS.md` — parser changes in flight that may affect data availability
-- `VISUALIZER_ALIGNMENT_REVISIONS.md` — if present, read to avoid re-reporting known gaps
+- All existing files in `changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -56,15 +56,15 @@ Merge all findings. For each issue:
 - **Tier**: priority tier from the spec's product eval plan
 - **Data dependency**: if `blocked`, describe the parser JSON fields required
 
-Drop anything already tracked in `VISUALIZER_ALIGNMENT_REVISIONS.md`.
+Drop anything already tracked in existing `changes/visualizer/*_REVISIONS_*.md` or `changes/visualizer/CHANGES_*.md` files.
 
 ### Phase 4: Group & Prioritize
 
 Group by feature area. Order by tier first, then unblocked work before blocked.
 
-### Phase 5: Write to `VISUALIZER_ALIGNMENT_REVISIONS.md`
+### Phase 5: Write to `changes/visualizer/alignment_REVISIONS_{NNN}.md`
 
-Write the grouped plan at the repo root:
+Write the grouped plan to `changes/visualizer/alignment_REVISIONS_{NNN}.md` (create the `changes/visualizer/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: coverage state by tier, how many features are blocked on parser data
 - One `## Group N: Title` section per group
 - Each group: spec features addressed, files touched, change type (`Internal`), blocked status, parallelism notes

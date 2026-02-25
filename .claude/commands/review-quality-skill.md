@@ -89,11 +89,15 @@ Group by theme. Order by:
 3. Example and grounding issues
 4. Minor density and structure improvements
 
-### Phase 4: Write to `SKILL_{NAME}_REVISIONS.md`
+### Phase 4: Write to `changes/{component}/quality_REVISIONS_{NNN}.md`
 
-Derive `{NAME}` from the skill path (e.g., `skills/design` → `SKILL_DESIGN_REVISIONS.md`).
+Derive the component name from the skill path:
+- `skills/design` → `design-skill`
+- `skills/author-go` → `author-go-skill`
 
-Write the grouped plan to `SKILL_{NAME}_REVISIONS.md` at the repo root:
+Write the grouped plan to `changes/{component}/quality_REVISIONS_{NNN}.md` (create the directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+
+Also read all existing files in `changes/{component}/` before starting — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed.
 - Brief summary: skill under review, overall quality assessment
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Internal`), parallelism notes

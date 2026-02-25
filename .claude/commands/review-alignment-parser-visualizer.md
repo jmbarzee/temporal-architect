@@ -11,7 +11,7 @@ This is a boundary review — the parser's JSON output is the contract between G
 - `tools/visualizer/src/` — TypeScript consumers (secondary target — how types are actually used)
 - `tools/visualizer/spec/TREE_VIEW.md` and `GRAPH_VIEW.md` — what the consumers need to provide
 - `AST_REVISIONS.md` — changes in flight that will affect the contract
-- `PARSER_OUTPUT_REVISIONS.md` — if present, read to avoid re-reporting known gaps
+- All existing files in `changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -54,15 +54,15 @@ Merge all findings. For each issue:
 - **Gap**: the specific field, type, or variant that diverges
 - **Severity**: `critical` (would cause runtime errors or silent data loss) | `moderate` | `minor`
 
-Drop anything already tracked in `PARSER_OUTPUT_REVISIONS.md`.
+Drop anything already tracked in existing `changes/visualizer/*_REVISIONS_*.md` or `changes/visualizer/CHANGES_*.md` files.
 
 ### Phase 4: Group & Prioritize
 
 Group by concern type (discriminated union gaps, type mismatches, optionality drift, missing fields). Order: critical mismatches first, then missing fields, then minor drift.
 
-### Phase 5: Write to `PARSER_OUTPUT_REVISIONS.md`
+### Phase 5: Write to `changes/visualizer/parser-output_REVISIONS_{NNN}.md`
 
-Write the grouped plan at the repo root:
+Write the grouped plan to `changes/visualizer/parser-output_REVISIONS_{NNN}.md` (create the `changes/visualizer/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: contract health, number and severity of mismatches found
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Schema` | `Internal`), parallelism notes

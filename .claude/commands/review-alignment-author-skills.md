@@ -13,7 +13,7 @@ Skill craft belongs in `/project:review-quality-skill`. This command is solely c
 - `skills/author-go/README.md` — declared scope of the skill
 - `skills/author-go/SKILL.md` and `skills/author-go/reference/` — the target under review
 - `AST_REVISIONS.md` — changes in flight that may introduce new design constructs requiring new Go mappings
-- `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md` — if present, read to avoid re-reporting known gaps
+- All existing files in `changes/author-go-skill/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -57,15 +57,15 @@ Merge all findings. For each issue:
 - **Gap**: what's absent, stale, or wrong
 - **Severity**: `critical` (common construct unmapped, or SDK usage that would produce broken code) | `moderate` | `minor`
 
-Drop anything already tracked in `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md`.
+Drop anything already tracked in existing `changes/author-go-skill/*_REVISIONS_*.md` or `changes/author-go-skill/CHANGES_*.md` files.
 
 ### Phase 4: Group & Prioritize
 
 Group by construct family. Order: incorrect SDK usage first (produces broken code), then missing mappings for common constructs, then coverage gaps, then minor accuracy issues.
 
-### Phase 5: Write to `AUTHOR_SKILLS_ALIGNMENT_REVISIONS.md`
+### Phase 5: Write to `changes/author-go-skill/alignment_REVISIONS_{NNN}.md`
 
-Write the grouped plan at the repo root:
+Write the grouped plan to `changes/author-go-skill/alignment_REVISIONS_{NNN}.md` (create the `changes/author-go-skill/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: coverage state, SDK accuracy state
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Internal`), parallelism notes

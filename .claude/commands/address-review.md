@@ -6,7 +6,9 @@ Invoke this after any review command has produced a grouped finding plan and you
 
 ## Input
 
-The grouped plan from the review command should be present in conversation context. If it is not, ask the user to paste it or point to the file where it was written.
+**Option 1: Explicit REVISIONS file paths.** If specific REVISIONS files are provided (e.g., `changes/parser/quality_REVISIONS_001.md`, `changes/parser/alignment_REVISIONS_001.md`), read those files and merge their grouped plans into one execution sequence.
+
+**Option 2: Conversation context.** The grouped plan from the review command should be present in conversation context. If it is not, ask the user to paste it or point to the REVISIONS file(s) in `changes/{component}/`.
 
 Each group in the plan should have:
 - A theme name
@@ -54,7 +56,7 @@ Present a brief summary:
 
 **Step 5: Document**
 
-Update the revision file for this review (identified from context — e.g., `PARSER_REVISIONS.md`):
+Update the REVISIONS file(s) being processed:
 - Mark this group as completed
 - Add any new findings surfaced during execution as new tracked items
 
@@ -62,7 +64,7 @@ Update the revision file for this review (identified from context — e.g., `PAR
 
 Ask: proceed to the next group, or stop here?
 
-If stopping: note which groups remain. They are recorded in the revision file for the next session.
+If stopping: note which groups remain. They are recorded in the REVISIONS file(s) for the next session.
 
 ---
 
@@ -76,15 +78,15 @@ Present a consolidated summary of all changes made across all groups. **Wait for
 
 **Step B: Write CHANGES file**
 
-Derive the CHANGES filename from the revision file (e.g., `PARSER_REVISIONS.md` → `PARSER_CHANGES.md`).
+Determine the component from the REVISIONS file path (e.g., `changes/parser/quality_REVISIONS_001.md` → component is `parser`).
 
-Write `{NAME}_CHANGES.md` at the repo root:
+Write `changes/{component}/CHANGES_{NNN}.md` using the next available sequence number:
 
 ```
-# {Layer} Changes
+# {Component} Changes
 
-**Source review:** `review-{x}`
-**Revision file:** `{NAME}_REVISIONS.md`
+**Source review(s):** [list review commands that produced the consumed REVISIONS files]
+**REVISIONS file(s):** [list consumed REVISIONS files]
 
 ## Summary
 [1-2 sentences on what changed overall]
@@ -109,13 +111,9 @@ Write `{NAME}_CHANGES.md` at the repo root:
 
 Only include sections where changes occurred. Empty sections are omitted.
 
-**Step C: Delete revision file**
+**Step C: Delete consumed REVISIONS files**
 
-Delete `{NAME}_REVISIONS.md`. The CHANGES file is now the record of this cycle.
-
-**Step D: Propagate**
-
-Inform the user: run `/project:propagate-changes` to assess downstream impact from the CHANGES file.
+Delete all `*_REVISIONS_*.md` files that were processed. The CHANGES file is now the record of this cycle.
 
 ## Constraints
 
