@@ -120,8 +120,12 @@ func (v *validationCtx) checkEmptyDefinitions() {
 	}
 	for _, act := range v.activities {
 		if !hasNonCommentStmts(act.Body) {
+			msg := fmt.Sprintf("activity %s has an empty body", act.Name)
+			if len(act.Body) > 0 {
+				msg = fmt.Sprintf("activity %s body contains only comments — add at least one statement", act.Name)
+			}
 			v.errs = append(v.errs, &Error{
-				Msg:      fmt.Sprintf("activity %s has an empty body", act.Name),
+				Msg:      msg,
 				Line:     act.Line,
 				Column:   act.Column,
 				Severity: "warning",

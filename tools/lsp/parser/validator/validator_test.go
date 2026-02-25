@@ -57,14 +57,14 @@ func TestEmptyWorkflowWarning(t *testing.T) {
 	}
 }
 
-func TestEmptyActivityWarning(t *testing.T) {
-	input := `activity EmptyActivity(x: int) -> (int):
+func TestCommentOnlyActivityWarning(t *testing.T) {
+	input := `activity CommentOnly(x: int) -> (int):
     # nothing here
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
-	if !hasWarning(errs, "activity EmptyActivity has an empty body") {
-		t.Error("expected warning about empty activity body")
+	if !hasWarning(errs, "activity CommentOnly body contains only comments") {
+		t.Error("expected warning about comment-only activity body")
 	}
 }
 
