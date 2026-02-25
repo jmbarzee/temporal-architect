@@ -65,3 +65,9 @@ payFuture := c.ExecuteOperation(ctx, "ProcessPayment", payment, workflow.NexusOp
 - Nexus promises → `workflow.Future` from `NexusClient.ExecuteOperation`; same `.Get` pattern as activity/workflow futures
 - Updates are handler-driven, not future-driven — they don't produce futures directly. To race an update completion, use a channel set by the update handler (see [update-handler.md](./update-handler.md))
 - Promises used in `await one:` are added as selector cases — see [await-one.md](./await-one.md)
+
+## When to use
+
+- Use a promise (deferred `.Get`) when other work can proceed before the result is needed — the call starts immediately and runs concurrently with subsequent workflow code
+- Use an inline blocking call (`.Get()` immediately) when the result is needed before any further work. This is the simpler pattern and should be the default
+- Promises are essential for `await all:` (parallel fan-out) and `await one:` (racing) patterns

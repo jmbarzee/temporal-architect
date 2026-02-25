@@ -44,3 +44,16 @@ func main() {
 - `worker.InterruptCh()` for graceful shutdown on SIGINT/SIGTERM
 - Multiple workers in same namespace — multiple `worker.New` calls with different task queues in the same `main()`
 - For nexus services on the same worker, see [nexus-service-def.md](./nexus-service-def.md)
+
+## When to use: struct vs function registration
+
+- **Struct registration** (`w.RegisterActivity(&Activities{...})`): standard pattern. All exported methods on the struct become activities. Use when activities share dependencies (DB connections, API clients) injected via the struct
+- **Individual function registration** (`w.RegisterActivity(SomeFunc)`): use when activities span multiple structs with different dependency sets, or for standalone functions with no dependencies
+- `RegisterActivityWithOptions` with `Name` sets a prefix for struct methods or overrides the name for individual functions
+- Registration panics if two activities share the same type name. Use `DisableAlreadyRegisteredCheck: true` in tests only
+- If a struct has exported methods that don't match the activity signature `(context.Context, ...) (..., error)`, registration panics. Set `SkipInvalidStructFunctions: true` to skip them
+
+## Pitfalls
+
+- **All workers on the same task queue must register the exact same Workflow Types and Activity Types.** If a worker picks up a task for an unregistered type, it fails that task. The task returns to the queue and can be picked up by another worker — the workflow does not fail, but latency increases and resources are wasted
+- When the DSL has multiple `worker` blocks with different type sets, they must use different task queues

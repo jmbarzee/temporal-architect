@@ -75,6 +75,17 @@ Filter state is **independent per view**. Each view's toggles, file chips, and s
 
 Default state is the same for both views: Workers and Workflows **ON**; Namespaces, Activities, and NexusServices **OFF**. No search active.
 
+### Layout Stack
+
+The layout stack is identical in both views:
+
+1. **Filter bar** (`canvas-header`) — shared; visually identical across views. File chips, type toggles, search.
+2. **View toolbar** — view-specific controls directly below the filter bar. The graph view has a toolbar with node/edge count, Fit, and Play/Pause quick-access. The tree view has no separate toolbar (it has no simulation state to surface).
+3. **Errors header** — present only when parse errors exist. Same collapsible pattern in both views.
+4. **Content** — tree block list or graph canvas, filling remaining space.
+
+This stack order is fixed. The filter is always first, so users always know where to find it regardless of which view they're in.
+
 ### Hidden Match Badges
 
 When a search is active, filter controls that are hiding matches show **badge overlays** with the count of hidden matches. For example: if the Wf toggle is off and 3 workflows match the search, the Wf button shows a "3" badge. This lets users discover hidden matches and decide whether to adjust filters. See GRAPH_VIEW.md § Search and Hidden Matches for full behavior.

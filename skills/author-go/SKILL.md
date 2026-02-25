@@ -11,7 +11,7 @@ Generate functioning Go code from `.twf` (Temporal Workflow Format) files using 
 
 ## Core Principles
 
-**Root-down generation.** Start from root workflows (no parent), work down to children, then activities, then types. Each layer is constrained by what the layer above needs. This is the general direction, not a strict sequence — when a decision can't be made confidently, mark it as open, continue with what you know, and revisit when context is clearer.
+**Root-down generation.** Start from root workflows (no parent), work down to children, then activities, then types. Each layer is constrained by what the layer above needs. Defer unknowns, revisit later.
 
 **Write only what is needed.** No speculative fields, no extra types, no over-generation. The minimum bridge between DSL intent and working Go.
 
@@ -19,7 +19,8 @@ Generate functioning Go code from `.twf` (Temporal Workflow Format) files using 
 
 **Iterative type resolution.** Work from certainty outward. Explicit signatures first, then derive from constructors/field access, then defer the rest. Revisit deferred types as surrounding code solidifies. See [types.md](./reference/types.md).
 
-**User as decision-maker.** The skill owns execution; the user owns consequential choices. Handle mechanical mappings, SDK boilerplate, and compilation fixes autonomously. Surface dependency choices, ambiguous domain logic, and architectural direction to the user — present specific options with tradeoffs, not open-ended questions. Revising a previously confirmed decision (type, interface, dependency) always requires user approval: present what was decided, what new information conflicts, and proposed alternatives.
+**User as decision-maker.** The skill owns execution; the user owns consequential choices. Handle mechanical mappings, SDK boilerplate, and compilation fixes autonomously. Surface dependency choices, ambiguous domain logic, and architectural direction to the user — present specific options with tradeoffs, not open-ended questions. Revising a previously confirmed decision always requires user approval.
+> Example: "For ProcessPayment, should I use stripe-go (official SDK, matches your existing stripe dependency) or a generic HTTP client (more flexible, but more boilerplate)?"
 
 ---
 
@@ -29,34 +30,11 @@ Generate functioning Go code from `.twf` (Temporal Workflow Format) files using 
 
 - Read `.twf` files in scope
 - Examine `go.mod`, existing project code, and conventions
-- Ask the user about project context, domain, key dependencies — brief, targeted questions, not an interrogation
+- Ask the user about project context, domain, key dependencies — brief, targeted questions
 
 ### 2. Dependency Resolution
 
-Scan all activities in the `.twf` and identify external integration points. Most activities are thin wrappers around calls to external systems — the activity itself is simple, but the dependency behind it is not.
-
-For each activity:
-- **Categorize:** external API call, storage operation, protocol client, or pure logic
-- **Check existing code:** does the project already have a client/library for this?
-- **Check `go.mod`:** is a relevant SDK already imported?
-- **If unresolved:** suggest specific options with tradeoffs to the user
-- **Read the chosen dependency's API:** identify the method the activity will call, then trace its signature to concrete types. See [types.md](./reference/types.md) for the full resolution strategy.
-
-This step does not need to resolve everything. If a dependency choice is unclear or blocked on another decision, defer it and continue. But resolve as many as possible early — it prevents expensive rework later.
-
-**Deliverable:** a dependency map, presented to the user for confirmation before Layer 1 begins.
-
-A dependency is resolved when you can write the call expression with verified types. The map should include the method, every parameter type, and the return type — all confirmed from `go doc` or source, not inferred from names.
-
-```
-Example dependency map:
-  ProcessPayment → stripe-go
-    paymentintent.New(params *stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)
-  SendEmail → sendgrid-go
-    client.SendWithContext(ctx, mail *sgmail.SGMailV3) (*rest.Response, error)
-  GetOrder → database/sql (no external dependency)
-  CalculateTotal → pure logic (no dependency)
-```
+Identify external integration points for each activity and resolve to concrete types. See [dependency-resolution.md](./reference/dependency-resolution.md) for the full process. Deliverable: a dependency map confirmed by the user before generation begins.
 
 ### 3. Planning
 
@@ -68,66 +46,32 @@ Example dependency map:
 
 ### 4. Generate + Verify Incrementally
 
-General direction is root-down, with build checks between layers:
+Root-down, with build checks between layers. Consult [reference files](#reference-index) for DSL→Go mapping at each layer.
 
-```
-  ┌──────────────────────────────────────┐
-  │ 1. Types + signatures  → go build    │
-  │ 2. Workflow bodies     → go build    │
-  │ 3. Activity impl       → go build    │
-  │ 4. Worker wiring       → go build    │
-  │ 5. Final               → go vet      │
-  └──────────────────────────────────────┘
-```
+| Layer | What | Check | Key references |
+|-------|------|-------|----------------|
+| 1. Types + signatures | Structs, interfaces, function signatures (empty bodies, zero-value returns). Dependency map informs interface shapes | `go build` | [types.md](./reference/types.md) |
+| 2. Workflow bodies | Orchestration logic: activity calls, child workflows, signals, timers, selectors | `go build` | [workflow-def.md](./reference/workflow-def.md), [activity-call.md](./reference/activity-call.md) |
+| 3. Activity impl | Thin activity methods + concrete implementations behind interfaces | `go build` | [activity-def.md](./reference/activity-def.md) |
+| 4. Worker wiring | `cmd/` entry point: construct dependencies, wire activity struct, register types, start worker | `go build` | [worker.md](./reference/worker.md), [nexus-service-def.md](./reference/nexus-service-def.md) |
+| 5. Final | Full correctness check | `go vet` | — |
 
-**Layer 1 — Types + signatures:** Generate type structs, interfaces, and workflow/activity function signatures (empty bodies returning zero values). Use the dependency map to inform interface shapes — they should reflect real SDK capabilities, not guesses. Run `go build`.
-
-**Layer 2 — Workflow bodies:** Fill in orchestration logic (activity calls, child workflows, signals, timers, selectors). Run `go build`.
-
-**Layer 3 — Activity implementations:** See [Activity Implementation Pattern](#activity-implementation-pattern). Produce the thin activity methods and concrete implementations behind the interfaces. Run `go build`.
-
-**Layer 4 — Worker wiring:** Generate the `cmd/` entry point: construct dependencies, wire into activity struct, register workflows/activities/nexus services, start the worker. Use TWF `worker` and `namespace` blocks (when present) to determine task queues and type registrations. See [worker.md](./reference/worker.md) and [nexus-service-def.md](./reference/nexus-service-def.md). Run `go build`.
-
-**Layer 5 — Final:** Run `go vet` for correctness.
-
-At each layer: consult [reference files](#reference-index) for DSL→Go mapping.
-
-Revising a confirmed decision requires user approval. Present: what was decided, what new information conflicts, and proposed options.
-
-After generation: present the code to the user for review. Incorporate feedback before considering the task done.
-
-### When to Ask the User
-
-**Handle yourself:** mechanical DSL→Go mappings, SDK boilerplate, type derivation from explicit signatures, standard options translation, compilation fixes.
-
-**Ask the user:** dependency/library choices, activity implementation details beyond what the SDK dictates, ambiguous type resolution, domain logic not captured in the DSL, any revision to a previously confirmed decision.
-
-**How to ask:** present specific options with tradeoffs, not open-ended questions.
-> Example: "For ProcessPayment, should I use stripe-go (official SDK, matches your existing stripe dependency) or a generic HTTP client (more flexible, but more boilerplate)?"
+After generation: present the code to the user for review.
 
 ---
 
 ## Activity Implementation Pattern
 
-Activities follow a thin-wrapper pattern with dependency injection:
-
-1. **Activity struct** holds interfaces as fields (one per external dependency)
-2. **Activity methods** are thin translation layers: validate inputs, call the interface, translate the output
-3. **Interfaces** are shaped by what activities need, informed by real SDK capabilities from the dependency map
-4. **Concrete implementations** of those interfaces contain the real SDK integration — client construction, request/response conversion, error handling
-
-The skill generates all four pieces. Activity methods and interfaces are mechanical. Concrete implementations require SDK knowledge from the dependency resolution step.
+See [activity-def.md](./reference/activity-def.md#activity-implementation-pattern) for the full pattern (struct, methods, interfaces, concrete implementations).
 
 ---
 
 ## Output Conventions
 
-- Go files live alongside `.twf` sources or in a location the user specifies
-- Each `.twf` maps to a Go package
-- Within a package: one file per workflow, shared types file if needed, activity files grouped logically
+- Each `.twf` maps to a Go package; Go files live alongside `.twf` sources or where the user specifies
+- One file per workflow, shared types file if needed, activity files grouped logically
 - Package names derived from `.twf` filename (snake_case)
-- Follow existing project conventions for naming, error handling, and imports
-- Worker entry point goes in `cmd/` following Go conventions
+- Worker entry point in `cmd/`
 
 ---
 
@@ -180,7 +124,6 @@ Read only what the current generation step requires.
 | DSL Construct | Go Mapping | File |
 |---------------|------------|------|
 | `options: ...` | `ActivityOptions` / `ChildWorkflowOptions` | [options.md](./reference/options.md) |
-| `nexus Endpoint Service.Op(args) -> result` | Nexus operation | [nexus.md](./reference/nexus.md) |
 | `detach workflow ...` | Fire-and-forget (no `.Get`) | [detach.md](./reference/detach.md) |
 | `if`/`for`/`switch`/`break`/`continue` | Go equivalents | [control-flow.md](./reference/control-flow.md) |
 | `close complete`/`fail`/`continue_as_new` | `return` / `workflow.NewContinueAsNewError` | [close.md](./reference/close.md) |

@@ -14,21 +14,27 @@ await one:
 ## Go
 
 ```go
+timerCtx, cancelTimer := workflow.WithCancel(ctx)
+
 sel := workflow.NewSelector(ctx)
 
 sel.AddReceive(paymentReceivedCh, func(ch workflow.ReceiveChannel, more bool) {
     var sig PaymentReceivedSignal
     ch.Receive(ctx, &sig)
     status = "processing"
+    cancelTimer()
 })
 
-timerFuture := workflow.NewTimer(ctx, 24*time.Hour)
+timerFuture := workflow.NewTimer(timerCtx, 24*time.Hour)
 sel.AddFuture(timerFuture, func(f workflow.Future) {
     if err := f.Get(ctx, nil); err != nil {
-        // timer cancelled
+        // timer cancelled — signal won the race
         return
     }
-    _ = workflow.ExecuteActivity(ctx, CancelOrder, orderId).Get(ctx, nil)
+    err := workflow.ExecuteActivity(ctx, CancelOrder, orderId).Get(ctx, nil)
+    if err != nil {
+        // handle activity error
+    }
     // close fail handled after selector
 })
 
@@ -49,7 +55,10 @@ sel.AddReceive(signalCh, func(ch workflow.ReceiveChannel, more bool) {
 **Timer case** — `sel.AddFuture(workflow.NewTimer(...), handler)`
 ```go
 sel.AddFuture(workflow.NewTimer(ctx, duration), func(f workflow.Future) {
-    _ = f.Get(ctx, nil)
+    if err := f.Get(ctx, nil); err != nil {
+        // timer cancelled
+        return
+    }
     // case body
 })
 ```
@@ -58,7 +67,10 @@ sel.AddFuture(workflow.NewTimer(ctx, duration), func(f workflow.Future) {
 ```go
 sel.AddFuture(workflow.ExecuteActivity(ctx, DoWork, args), func(f workflow.Future) {
     var result ResultType
-    _ = f.Get(ctx, &result)
+    if err := f.Get(ctx, &result); err != nil {
+        // handle error
+        return
+    }
     // case body
 })
 ```
@@ -67,7 +79,10 @@ sel.AddFuture(workflow.ExecuteActivity(ctx, DoWork, args), func(f workflow.Futur
 ```go
 sel.AddFuture(workflow.ExecuteChildWorkflow(ctx, Child, args), func(f workflow.Future) {
     var result ResultType
-    _ = f.Get(ctx, &result)
+    if err := f.Get(ctx, &result); err != nil {
+        // handle error
+        return
+    }
     // case body
 })
 ```
@@ -77,7 +92,10 @@ sel.AddFuture(workflow.ExecuteChildWorkflow(ctx, Child, args), func(f workflow.F
 c := workflow.NewNexusClient("PaymentsEndpoint", "PaymentsService")
 sel.AddFuture(c.ExecuteOperation(ctx, "ProcessPayment", input, workflow.NexusOperationOptions{}), func(f workflow.Future) {
     var result PaymentResult
-    _ = f.Get(ctx, &result)
+    if err := f.Get(ctx, &result); err != nil {
+        // handle error
+        return
+    }
     // case body
 })
 ```
@@ -97,7 +115,10 @@ sel.AddReceive(updateDoneCh, func(ch workflow.ReceiveChannel, more bool) {
 // future promise
 sel.AddFuture(myFuture, func(f workflow.Future) {
     var result ResultType
-    _ = f.Get(ctx, &result)
+    if err := f.Get(ctx, &result); err != nil {
+        // handle error
+        return
+    }
     // case body
 })
 
@@ -116,7 +137,22 @@ sel.AddReceive(condCh, func(ch workflow.ReceiveChannel, more bool) {
 ## Notes
 
 - `sel.Select(ctx)` blocks until exactly one case fires — the first to complete wins
-- Cancellation of losing cases is automatic for timers and child workflows when the parent context is cancelled
+- `Select` does not cancel losing cases. Cancel timers and child workflows explicitly using `workflow.WithCancel` + calling the cancel function in the winning handler (see primary example above)
+- Uncancelled timers remain active and generate unnecessary workflow tasks when they fire
 - Empty case bodies (just the colon in DSL) → handler function with only the `Receive`/`Get` call, no additional logic
 - For `close` inside a case body: set a variable in the handler, check it after `sel.Select`, then return
 - Nested `await all:` inside `await one:` → wrap the `await all` logic in a future via `workflow.Go` + channel, add as `AddReceive`
+
+## When to use: single Select vs loop
+
+- **Single `sel.Select(ctx)`** (as shown above): use for one-time races — "whichever happens first wins" (e.g., payment or timeout)
+- **`sel.Select(ctx)` in a loop**: use for event-driven workflows that process multiple events over time. Re-add cases each iteration or use persistent cases. Common for entity workflows that react to signals indefinitely
+  ```go
+  for {
+      sel := workflow.NewSelector(ctx)
+      sel.AddReceive(signalCh, func(ch workflow.ReceiveChannel, more bool) { ... })
+      sel.AddFuture(workflow.NewTimer(ctx, interval), func(f workflow.Future) { ... })
+      sel.Select(ctx)
+      if done { break }
+  }
+  ```

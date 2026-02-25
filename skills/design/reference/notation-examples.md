@@ -34,7 +34,7 @@ namespace default:
 
 ## Activity Body Detail
 
-Activity bodies are intentionally free-form (`raw_stmt`) — pseudocode or descriptive text representing SDK-level implementation. Detail level depends on how obvious the behavior is from name and signature:
+Activity bodies are intentionally free-form (`raw_stmt`) — pseudocode or descriptive text representing SDK-level implementation. Every activity needs at least one statement (comments alone are not enough). Detail level depends on how obvious the behavior is from name and signature:
 
 **Obvious** — minimal body:
 
@@ -43,22 +43,24 @@ activity SendEmail(to: string, body: string):
     send(to, body)
 ```
 
-**Non-obvious** — describe key operations and external systems:
+**Non-obvious** — comments describe intent, pseudocode anchors the body:
 
 ```twf
 activity ExecuteToolCalls(toolCalls: ToolCalls) -> (ToolResults):
     # Look up each tool by name in the tool registry
     # Execute calls in parallel where possible
     # If a tool is not found, return an error result (don't fail the activity)
+    registry.executeAll(toolCalls)
 ```
 
-**Complex contract** — describe error conditions, ordering, and idempotency requirements:
+**Complex contract** — describe error conditions, ordering, and idempotency:
 
 ```twf
 activity ReconcileInventory(warehouseId: string, expected: Inventory) -> (ReconcileResult):
     # Fetch current inventory, diff against expected, flag discrepancies
     # Must be idempotent — running twice with same input produces same flags
     # Warehouse API is rate-limited: max 10 requests/second
+    warehouse.reconcile(warehouseId, expected)
 ```
 
 ## Control Flow

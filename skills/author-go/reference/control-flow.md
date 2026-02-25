@@ -123,3 +123,29 @@ default:
 - `break` → `break`, `continue` → `continue` — direct mapping
 - DSL `else:` in switch → Go `default:`
 - DSL boolean operators: `and` → `&&`, `or` → `||`, `not` → `!`
+- All condition expressions (`if`, `for`, `switch`) must be deterministic — no `time.Now()`, `rand`, or non-deterministic function calls. See [workflow-def.md](./workflow-def.md) for the full constraint list
+
+## When to use: sequential vs parallel iteration
+
+- **Sequential** (`.Get()` inside loop): each iteration waits for the previous to complete. Use when order matters or when items depend on prior results
+  ```go
+  for _, item := range items {
+      err := workflow.ExecuteActivity(ctx, Process, item).Get(ctx, nil)
+      // blocks here — next iteration starts after this one completes
+  }
+  ```
+- **Parallel** (collect futures, `.Get()` after loop): all iterations start concurrently. Use when items are independent
+  ```go
+  var futures []workflow.Future
+  for _, item := range items {
+      futures = append(futures, workflow.ExecuteActivity(ctx, Process, item))
+  }
+  for _, f := range futures {
+      if err := f.Get(ctx, nil); err != nil { ... }
+  }
+  ```
+- The DSL does not distinguish these — infer from context. If unsure, ask the user
+
+## Pitfalls
+
+- **Manual retry loops** (the `for (retries < max)` pattern) are almost always inferior to SDK `RetryPolicy` on `ActivityOptions`. Use `RetryPolicy` for standard retry logic; reserve manual loops for non-standard control flow (e.g., retry with modified input, conditional retry based on error type)

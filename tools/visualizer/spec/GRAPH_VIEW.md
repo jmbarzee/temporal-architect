@@ -284,6 +284,19 @@ A button (or automatic behavior on level change) that adjusts the viewport to fr
 
 ---
 
+## Graph Toolbar
+
+A slim bar below the filter bar and above the errors header. Contains graph-specific state and quick-access controls that don't belong in the filter bar:
+
+- **Node / edge count** — `N nodes, M edges` (counts the currently visible/graduated set). Informational; updates reactively with filters.
+- **Fit** — fit the viewport to all visible nodes. Keyboard shortcut: `F`.
+- **Play / Pause** — quick-access toggle for simulation ticking. Same as the Play/Pause in the Control Panel; both are in sync. Keyboard shortcut: `Space`.
+- **Show in Tree** — contextual; appears only when a node is selected. Navigates to that node in the Tree View.
+
+The toolbar is always visible (not collapsible). It is compact — a single row, right-aligned controls.
+
+---
+
 ## Control Panel
 
 A collapsible overlay containing force parameters, simulation controls, and a force field visualization toggle. It serves two purposes: **tuning** (let users shape the layout) and **transparency** (make the physics legible by organizing controls around the equations that govern them).
@@ -405,7 +418,7 @@ This feedback loop embodies two design principles:
 
 ## Errors Header
 
-The graph view surfaces parse errors using the shared error handling pattern. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Error Handling. The error bar appears between the graph header controls (filter bar) and the graph canvas. The canvas still renders whatever valid nodes and edges exist in the partial AST.
+The graph view surfaces parse errors using the shared error handling pattern. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Error Handling. The error bar appears between the graph toolbar and the graph canvas. The canvas still renders whatever valid nodes and edges exist in the partial AST.
 
 ---
 

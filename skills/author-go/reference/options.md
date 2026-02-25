@@ -103,3 +103,17 @@ err := fut.Get(ctx, &paymentResult)
 - Option keys map: `start_to_close_timeout` → `StartToCloseTimeout`, `schedule_to_close_timeout` → `ScheduleToCloseTimeout`, `heartbeat_timeout` → `HeartbeatTimeout`
 - `retry_policy:` → `&temporal.RetryPolicy{...}` (pointer)
 - `NexusOperationOptions` fields: `ScheduleToCloseTimeout` (primary) and `CancellationType` (experimental). Options are passed inline — no context wrapping like activities
+
+## When to use each timeout
+
+- **`StartToCloseTimeout`** — maximum time for a single activity attempt. Resets on each retry. Primary mechanism for detecting worker crashes. Temporal recommends always setting this
+- **`ScheduleToCloseTimeout`** — total wall-clock time from when the activity is scheduled, including all retries. Does not reset. Use to cap total time when retries have exponential backoff
+- **`WorkflowExecutionTimeout`** — end-to-end timeout for the entire workflow execution including retries and Continue-As-New chains. Set on the client when starting the workflow, not in `ActivityOptions`
+- At least one of `StartToCloseTimeout` or `ScheduleToCloseTimeout` is required for activities — omitting both is a runtime error
+
+## Pitfalls
+
+- **`MaximumAttempts: 1`** means one attempt total — this disables retries. `MaximumAttempts: 0` (the default) means unlimited retries
+- **`BackoffCoefficient: 1.0`** produces fixed-interval retries (no exponential growth). The formula is `InitialInterval * BackoffCoefficient^(attempt-1)`
+- Activities retry by default (server default: initial interval 1s, backoff 2.0, max interval 100s, unlimited attempts). Workflows do not retry by default
+- If no `RetryPolicy` is specified on an activity, the server default applies — this is a common source of surprise

@@ -48,5 +48,37 @@ func ProcessLargeFile(ctx context.Context, fileId string) (ProcessResult, error)
 - `heartbeat(args)` → `activity.RecordHeartbeat(ctx, details...)` — activity-only, never in workflows
 - Heartbeat details are arbitrary; use a struct or map
 - Set `HeartbeatTimeout` in `ActivityOptions` on the calling side — see [options.md](./options.md)
-- To resume from heartbeat progress: `activity.GetHeartbeatDetails(ctx, &lastProgress)` at activity start
+- The SDK throttles heartbeats automatically (sent at `heartbeatTimeout * 0.8`, capped at 60s). No manual batching needed — call `RecordHeartbeat` as often as desired
 - The plain function shown above becomes a struct method in practice — see [activity-def.md](./activity-def.md) notes
+
+## Resume pattern
+
+Activities that heartbeat should resume from the last recorded progress on retry. Check for previous heartbeat details at activity start:
+
+```go
+func (a *Activities) ProcessLargeFile(ctx context.Context, fileId string) (ProcessResult, error) {
+    startIdx := 0
+    if activity.HasHeartbeatDetails(ctx) {
+        var lastIdx int
+        if err := activity.GetHeartbeatDetails(ctx, &lastIdx); err == nil {
+            startIdx = lastIdx + 1
+        }
+    }
+
+    file, err := a.download(ctx, fileId)
+    if err != nil {
+        return ProcessResult{}, err
+    }
+    for i := startIdx; i < len(file.Chunks); i++ {
+        if err := a.process(ctx, file.Chunks[i]); err != nil {
+            return ProcessResult{}, err
+        }
+        activity.RecordHeartbeat(ctx, i)
+    }
+    return ProcessResult{Success: true}, nil
+}
+```
+
+- `HasHeartbeatDetails` returns `false` on the first attempt (no prior failure)
+- Details come from the last heartbeat delivered to the server (post-throttling) — may be slightly behind the last `RecordHeartbeat` call
+- Heartbeat recording without a resume pattern is incomplete — the activity restarts from the beginning on every retry, wasting the progress tracking
