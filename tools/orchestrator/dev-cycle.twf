@@ -1,0 +1,220 @@
+# =============================================================================
+# Dev-Cycle Orchestrator
+# =============================================================================
+# Automates the review → execute → propagate loop across codebase components.
+# A human triggers an initial review scope, the system loops through waves of
+# parallel component processing until no REVISIONS files remain or limits hit.
+#
+# Key design decisions:
+# - DevCycleWorkflow owns the worktree and serializes all git commits because
+#   concurrent git operations in the same worktree corrupt state.
+# - ComponentCycleWorkflow is a child workflow (not inline activities) because
+#   each component's review+propagate is a multi-step unit with its own timeout
+#   and failure boundary — a stuck Claude Code invocation shouldn't block others.
+# - ScanRevisions is an activity (not workflow logic) because it reads the
+#   filesystem, which is non-deterministic I/O.
+# - Human approval between waves uses a condition+signal pattern: the main loop
+#   checks the config flag and awaits approval only when enabled.
+# - Commits happen after the wave completes (not mid-wave) because children
+#   within a wave are independent and don't read each other's output.
+
+
+# =============================================================================
+# DevCycleWorkflow — Main orchestrator (one per dev-cycle run)
+# =============================================================================
+# Owns the worktree, drives the scan→spawn→commit loop, enforces limits.
+# After each wave completes, commits are serialized one-per-child, then
+# a fresh scan discovers any REVISIONS created by propagation.
+
+workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
+    state:
+        condition waveApproved
+
+    signal ApproveWave():
+        set waveApproved
+
+    query GetStatus() -> (DevCycleStatus):
+        return DevCycleStatus{currentWave: waveNumber, activeChildren: activeChildCount, completedRounds: totalRounds, totalCommits: commitCount}
+
+    # --- Setup ---
+    activity CreateWorktree(config.branchName) -> worktreePath
+
+    waveNumber = 0
+    commitCount = 0
+    totalRounds = 0
+    totalChildrenSpawned = 0
+    activeChildCount = 0
+
+    # --- Initial review generation (when scope provided) ---
+    if (config.initialScope):
+        activity RunInitialReviews(worktreePath, config.initialScope) -> initialRevisionsCount
+
+    # --- Main loop: scan → spawn wave → commit results → repeat ---
+    for:
+        waveNumber = waveNumber + 1
+
+        if (waveNumber > config.maxWaves):
+            break
+
+        # Optional human gate between waves
+        if (config.requireApprovalBetweenWaves and waveNumber > 1):
+            unset waveApproved
+            activity NotifyWaveReady(waveNumber, worktreePath)
+            await waveApproved
+
+        activity ScanRevisions(worktreePath) -> pendingWork
+
+        if (pendingWork.isEmpty):
+            break
+
+        # Spawn children for all components with pending REVISIONS (parallel)
+        activeChildCount = pendingWork.componentCount
+        activity BuildWaveManifest(pendingWork, totalChildrenSpawned, config.maxChildWorkflows) -> waveManifest
+        totalChildrenSpawned = totalChildrenSpawned + waveManifest.count
+
+        # workflow_execution_timeout: 30m per child (set at SDK level)
+        await all:
+            for (entry in waveManifest.entries):
+                workflow ComponentCycleWorkflow(worktreePath, entry.component, entry.revisionsFiles) -> entry.result
+
+        # Serialize one commit per child after wave completes
+        activeChildCount = 0
+        for (entry in waveManifest.entries):
+            if (entry.result):
+                activity GitCommit(worktreePath, entry.result.commitMessage, entry.result.changedPaths) -> commitSha
+                commitCount = commitCount + 1
+                totalRounds = totalRounds + 1
+
+    # --- Finalization ---
+    activity InvokeClaudeCode(worktreePath, "summarize-changes", SummarizeArgs{}) -> summary
+    activity GitCommit(worktreePath, "summarize changes", summary.changedPaths) -> summarySha
+    commitCount = commitCount + 1
+
+    activity CleanupChangesDir(worktreePath)
+    activity GitCommit(worktreePath, "remove orchestration artifacts", ChangedPaths{paths: "changes/"}) -> cleanupSha
+    commitCount = commitCount + 1
+
+    if (config.createPR):
+        activity CreatePullRequest(worktreePath, config.branchName, summary.body) -> prURL
+
+    activity CleanupWorktree(worktreePath)
+
+    close complete(DevCycleResult{waves: waveNumber, commits: commitCount, rounds: totalRounds, prURL: prURL})
+
+
+# =============================================================================
+# ComponentCycleWorkflow — Process one component's REVISIONS (child workflow)
+# =============================================================================
+# Two sequential Claude Code invocations: address the review, then propagate
+# downstream. Isolated failure boundary — if propagation fails, the addressed
+# changes are still captured in the CHANGES file.
+
+workflow ComponentCycleWorkflow(worktreePath: string, component: Component, revisionsFiles: RevisionsFileList) -> (ComponentCycleResult):
+    query GetComponentStatus() -> (ComponentStatus):
+        return ComponentStatus{component: component.name, phase: phase}
+
+    phase = "addressing"
+    activity InvokeClaudeCode(worktreePath, "address-review", AddressReviewArgs{component: component, revisionsFiles: revisionsFiles}) -> addressResult
+
+    phase = "propagating"
+    activity InvokeClaudeCode(worktreePath, "propagate-changes", PropagateArgs{component: component, changesFile: addressResult.changesFile}) -> propagateResult
+
+    phase = "complete"
+    close complete(ComponentCycleResult{component: component.name, commitMessage: addressResult.commitMessage, changedPaths: addressResult.changedPaths})
+
+
+# =============================================================================
+# Activities
+# =============================================================================
+
+# --- Git Operations ---
+
+activity CreateWorktree(branchName: string) -> (string):
+    # Create a new git worktree on a fresh branch based on HEAD
+    # Returns the absolute path to the worktree directory
+    git.worktree.add(branchName)
+
+activity CleanupWorktree(worktreePath: string):
+    # Remove the git worktree and prune
+    git.worktree.remove(worktreePath)
+
+activity GitCommit(worktreePath: string, message: string, changedPaths: ChangedPaths) -> (string):
+    # Stage only the specified paths and commit
+    # Returns the commit SHA
+    # Idempotent: if no changes to stage, returns empty SHA
+    git.add(changedPaths.paths)
+    git.commit(message)
+
+# --- Filesystem Scanning ---
+
+activity ScanRevisions(worktreePath: string) -> (PendingWork):
+    # Walk changes/ directory, find all *_REVISIONS_*.md files
+    # Group by component subdirectory
+    # Returns empty PendingWork if no REVISIONS files found
+    scanDirectory(worktreePath, "changes/")
+
+activity BuildWaveManifest(pendingWork: PendingWork, alreadySpawned: int, maxChildren: int) -> (WaveManifest):
+    # Build the list of components to process this wave
+    # Respects the maxChildren limit by capping entries
+    # Returns WaveManifest with entries and count
+    buildManifest(pendingWork, alreadySpawned, maxChildren)
+
+# --- Claude Code Invocations ---
+
+activity InvokeClaudeCode(worktreePath: string, command: string, args: any) -> (ClaudeCodeResult):
+    # Spawn a Claude Code subprocess in the worktree directory
+    # command: "address-review", "propagate-changes", "summarize-changes", or review command name
+    # Captures exit code, stdout, and changed file paths
+    # Implementation: background goroutine heartbeats every 30s while subprocess runs,
+    # streaming stdout as heartbeat details for observability
+    claude.invoke(worktreePath, command, args)
+
+activity RunInitialReviews(worktreePath: string, scope: InitialScope) -> (int):
+    # For each component in scope, invoke the appropriate review command(s)
+    # Writes initial REVISIONS files into changes/{component}/
+    # Returns count of REVISIONS files created
+    # Implementation: heartbeats between each review invocation
+    runReviews(worktreePath, scope)
+
+# --- Notifications ---
+
+activity NotifyWaveReady(waveNumber: int, worktreePath: string):
+    # Notify human operator that a wave is ready for approval
+    # Could be Slack, email, or console output
+    notify(waveNumber, worktreePath)
+
+# --- Finalization ---
+
+activity CleanupChangesDir(worktreePath: string):
+    # Delete the entire changes/ directory from the worktree
+    # Called after summarize-changes has captured the full record
+    rm(worktreePath, "changes/")
+
+activity CreatePullRequest(worktreePath: string, branchName: string, body: string) -> (string):
+    # Push branch and create PR using gh CLI
+    # Returns the PR URL
+    gh.pr.create(branchName, body)
+
+
+# =============================================================================
+# Workers & Deployment
+# =============================================================================
+
+worker orchestratorWorker:
+    workflow DevCycleWorkflow
+    workflow ComponentCycleWorkflow
+    activity CreateWorktree
+    activity CleanupWorktree
+    activity GitCommit
+    activity ScanRevisions
+    activity BuildWaveManifest
+    activity InvokeClaudeCode
+    activity RunInitialReviews
+    activity NotifyWaveReady
+    activity CleanupChangesDir
+    activity CreatePullRequest
+
+namespace devCycle:
+    worker orchestratorWorker
+        options:
+            task_queue: "dev-cycle"
