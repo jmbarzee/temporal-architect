@@ -6,8 +6,8 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-func BulkReprocess(ctx workflow.Context, filter ReprocessFilter, cursor string) (ReprocessResult, error) {
-	processedCount := 0
+func BulkReprocess(ctx workflow.Context, filter ReprocessFilter, cursor string, previouslyProcessed int) (ReprocessResult, error) {
+	processedCount := previouslyProcessed
 
 	err := workflow.SetQueryHandler(ctx, "GetProgress", func() (ReprocessProgress, error) {
 		return ReprocessProgress{Filter: filter, Cursor: cursor, ProcessedCount: processedCount}, nil
@@ -16,12 +16,14 @@ func BulkReprocess(ctx workflow.Context, filter ReprocessFilter, cursor string) 
 		return ReprocessResult{}, err
 	}
 
+	var a *PipelineActivities
+
 	actCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 30 * time.Second,
 	})
 
 	var docBatch DocumentBatch
-	err = workflow.ExecuteActivity(actCtx, "FindDocumentBatch", filter, cursor).Get(actCtx, &docBatch)
+	err = workflow.ExecuteActivity(actCtx, a.FindDocumentBatch, filter, cursor).Get(actCtx, &docBatch)
 	if err != nil {
 		return ReprocessResult{}, err
 	}
@@ -47,5 +49,5 @@ func BulkReprocess(ctx workflow.Context, filter ReprocessFilter, cursor string) 
 	}
 
 	// Continue as new with next cursor
-	return ReprocessResult{}, workflow.NewContinueAsNewError(ctx, BulkReprocess, filter, docBatch.NextCursor)
+	return ReprocessResult{}, workflow.NewContinueAsNewError(ctx, BulkReprocess, filter, docBatch.NextCursor, processedCount)
 }

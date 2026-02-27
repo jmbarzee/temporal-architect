@@ -27,15 +27,16 @@ func main() {
 	stubBatchRepo := pipeline.NewStubBatchRepo()
 
 	pipelineActs := &pipeline.PipelineActivities{
-		S3:         stubS3,
-		Textract:   &pipeline.StubTextract{},
-		ClamAV:     &pipeline.StubClamAV{},
-		HTTP:       &pipeline.StubHTTP{},
-		SFTP:       &pipeline.StubSFTP{},
-		Documents:  stubDocRepo,
-		Batches:    stubBatchRepo,
-		Bucket:     "stub-bucket",
-		MLEndpoint: "http://localhost:8080",
+		S3:               stubS3,
+		Textract:         &pipeline.StubTextract{},
+		ClamAV:           &pipeline.StubClamAV{},
+		HTTP:             &pipeline.StubHTTP{},
+		SFTP:             &pipeline.StubSFTP{},
+		Documents:        stubDocRepo,
+		Batches:          stubBatchRepo,
+		Bucket:           "stub-bucket",
+		MLEndpoint:       "http://localhost:8080",
+		DeliveryEndpoint: "http://localhost:8081/deliver",
 	}
 
 	reviewActs := &pipeline.ReviewActivities{

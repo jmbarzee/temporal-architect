@@ -7,6 +7,7 @@ import (
 )
 
 func ProcessBatch(ctx workflow.Context, batch Batch) (BatchResult, error) {
+	var a *PipelineActivities
 	completedCount := 0
 
 	err := workflow.SetQueryHandler(ctx, "GetBatchProgress", func() (BatchProgress, error) {
@@ -20,7 +21,7 @@ func ProcessBatch(ctx workflow.Context, batch Batch) (BatchResult, error) {
 		StartToCloseTimeout: 30 * time.Second,
 	})
 	var batchRecord BatchRecord
-	err = workflow.ExecuteActivity(actCtx, "AcknowledgeBatch", batch).Get(actCtx, &batchRecord)
+	err = workflow.ExecuteActivity(actCtx, a.AcknowledgeBatch, batch).Get(actCtx, &batchRecord)
 	if err != nil {
 		return BatchResult{}, err
 	}

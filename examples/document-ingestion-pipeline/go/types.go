@@ -8,7 +8,7 @@ type Submission struct {
 	ID          string
 	TenantID    string
 	ContentType string
-	Bytes       []byte
+	Bytes       []byte // NOTE: production code should store bytes externally (e.g. S3) and pass only a reference, to avoid large payloads in Temporal workflow history.
 	Metadata    map[string]string
 }
 

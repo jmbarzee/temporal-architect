@@ -7,6 +7,8 @@ import (
 )
 
 func ManageRetention(ctx workflow.Context, document Document, policy RetentionPolicy) (RetentionResult, error) {
+	var a *RetentionActivities
+	logger := workflow.GetLogger(ctx)
 	actCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 30 * time.Second,
 	})
@@ -15,8 +17,12 @@ func ManageRetention(ctx workflow.Context, document Document, policy RetentionPo
 	placeCh := workflow.GetSignalChannel(ctx, "PlaceLegalHold")
 	releaseCh := workflow.GetSignalChannel(ctx, "ReleaseLegalHold")
 
+	// Background goroutines use cancellable context so we can stop them
+	// before the main goroutine needs to read from releaseCh directly.
+	bgCtx, cancelBg := workflow.WithCancel(ctx)
+
 	// Process PlaceLegalHold signals in background
-	workflow.Go(ctx, func(gCtx workflow.Context) {
+	workflow.Go(bgCtx, func(gCtx workflow.Context) {
 		for {
 			var signal struct {
 				HoldID string
@@ -26,12 +32,14 @@ func ManageRetention(ctx workflow.Context, document Document, policy RetentionPo
 			innerActCtx := workflow.WithActivityOptions(gCtx, workflow.ActivityOptions{
 				StartToCloseTimeout: 30 * time.Second,
 			})
-			_ = workflow.ExecuteActivity(innerActCtx, "RecordLegalHold", document, signal.HoldID, signal.Reason).Get(innerActCtx, nil)
+			if err := workflow.ExecuteActivity(innerActCtx, a.RecordLegalHold, document, signal.HoldID, signal.Reason).Get(innerActCtx, nil); err != nil {
+				logger.Error("RecordLegalHold failed", "holdID", signal.HoldID, "error", err)
+			}
 		}
 	})
 
 	// Process ReleaseLegalHold signals in background
-	workflow.Go(ctx, func(gCtx workflow.Context) {
+	workflow.Go(bgCtx, func(gCtx workflow.Context) {
 		for {
 			var signal struct {
 				HoldID string
@@ -40,7 +48,9 @@ func ManageRetention(ctx workflow.Context, document Document, policy RetentionPo
 			innerActCtx := workflow.WithActivityOptions(gCtx, workflow.ActivityOptions{
 				StartToCloseTimeout: 30 * time.Second,
 			})
-			_ = workflow.ExecuteActivity(innerActCtx, "RemoveLegalHold", document, signal.HoldID).Get(innerActCtx, nil)
+			if err := workflow.ExecuteActivity(innerActCtx, a.RemoveLegalHold, document, signal.HoldID).Get(innerActCtx, nil); err != nil {
+				logger.Error("RemoveLegalHold failed", "holdID", signal.HoldID, "error", err)
+			}
 		}
 	})
 
@@ -52,13 +62,16 @@ func ManageRetention(ctx workflow.Context, document Document, policy RetentionPo
 
 	// Check for legal holds
 	var holdStatus HoldStatus
-	err = workflow.ExecuteActivity(actCtx, "CheckLegalHolds", document).Get(actCtx, &holdStatus)
+	err = workflow.ExecuteActivity(actCtx, a.CheckLegalHolds, document).Get(actCtx, &holdStatus)
 	if err != nil {
 		return RetentionResult{}, err
 	}
 
-	// If held, wait for all holds to be released
+	// If held, stop background release handler and take over signal processing
+	// on the main goroutine to avoid dual-receiver race on releaseCh.
 	if holdStatus.IsHeld {
+		cancelBg()
+
 		for {
 			// Wait for a ReleaseLegalHold signal
 			var signal struct {
@@ -68,10 +81,12 @@ func ManageRetention(ctx workflow.Context, document Document, policy RetentionPo
 			releaseActCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 				StartToCloseTimeout: 30 * time.Second,
 			})
-			_ = workflow.ExecuteActivity(releaseActCtx, "RemoveLegalHold", document, signal.HoldID).Get(releaseActCtx, nil)
+			if err := workflow.ExecuteActivity(releaseActCtx, a.RemoveLegalHold, document, signal.HoldID).Get(releaseActCtx, nil); err != nil {
+				logger.Error("RemoveLegalHold failed", "holdID", signal.HoldID, "error", err)
+			}
 
 			// Re-check holds
-			err = workflow.ExecuteActivity(actCtx, "CheckLegalHolds", document).Get(actCtx, &holdStatus)
+			err = workflow.ExecuteActivity(actCtx, a.CheckLegalHolds, document).Get(actCtx, &holdStatus)
 			if err != nil {
 				return RetentionResult{}, err
 			}
@@ -82,7 +97,7 @@ func ManageRetention(ctx workflow.Context, document Document, policy RetentionPo
 	}
 
 	// Purge the document
-	err = workflow.ExecuteActivity(actCtx, "PurgeDocument", document).Get(actCtx, nil)
+	err = workflow.ExecuteActivity(actCtx, a.PurgeDocument, document).Get(actCtx, nil)
 	if err != nil {
 		return RetentionResult{}, err
 	}

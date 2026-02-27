@@ -8,6 +8,8 @@ import (
 )
 
 func ExtractText(ctx workflow.Context, document NormalizedDocument) (TextExtractionResult, error) {
+	var a *PipelineActivities
+
 	// Start OCR job with retry
 	startCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 30 * time.Second,
@@ -19,7 +21,7 @@ func ExtractText(ctx workflow.Context, document NormalizedDocument) (TextExtract
 		},
 	})
 	var ocrJobID string
-	err := workflow.ExecuteActivity(startCtx, "StartOCRJob", document).Get(startCtx, &ocrJobID)
+	err := workflow.ExecuteActivity(startCtx, a.StartOCRJob, document).Get(startCtx, &ocrJobID)
 	if err != nil {
 		return TextExtractionResult{}, err
 	}
@@ -36,7 +38,7 @@ func ExtractText(ctx workflow.Context, document NormalizedDocument) (TextExtract
 		},
 	})
 	var ocrResult TextExtractionResult
-	err = workflow.ExecuteActivity(pollCtx, "PollOCRResult", ocrJobID).Get(pollCtx, &ocrResult)
+	err = workflow.ExecuteActivity(pollCtx, a.PollOCRResult, ocrJobID).Get(pollCtx, &ocrResult)
 	if err != nil {
 		return TextExtractionResult{}, err
 	}

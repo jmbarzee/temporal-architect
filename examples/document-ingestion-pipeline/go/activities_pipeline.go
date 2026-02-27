@@ -20,20 +20,26 @@ import (
 )
 
 type PipelineActivities struct {
-	S3         S3API
-	Textract   TextractAPI
-	ClamAV     ClamAVScanner
-	HTTP       HTTPDoer
-	SFTP       SFTPUploader
-	Documents  DocumentRepo
-	Batches    BatchRepo
-	Bucket     string
-	MLEndpoint string
+	S3               S3API
+	Textract         TextractAPI
+	ClamAV           ClamAVScanner
+	HTTP             HTTPDoer
+	SFTP             SFTPUploader
+	Documents        DocumentRepo
+	Batches          BatchRepo
+	Bucket           string
+	MLEndpoint       string
+	DeliveryEndpoint string
 }
 
 func (a *PipelineActivities) IngestDocument(ctx context.Context, submission Submission) (Document, error) {
 	logger := activity.GetLogger(ctx)
 	logger.Info("IngestDocument", "submissionID", submission.ID, "tenantID", submission.TenantID)
+
+	// TODO: production ingest should validate content type, check file size limits, and extract metadata.
+	if len(submission.Bytes) == 0 {
+		return Document{}, fmt.Errorf("submission %s has empty content", submission.ID)
+	}
 
 	// Compute content hash
 	hash := sha256.Sum256(submission.Bytes)
@@ -90,7 +96,10 @@ func (a *PipelineActivities) ScanMalware(ctx context.Context, document Document)
 		return ScanResult{}, fmt.Errorf("clam scan: %w", err)
 	}
 
-	result := <-resultCh
+	result, ok := <-resultCh
+	if !ok || result == nil {
+		return ScanResult{}, fmt.Errorf("clam scan: channel closed without result")
+	}
 	infected := result.Status == clamd.RES_FOUND
 
 	return ScanResult{
@@ -145,6 +154,8 @@ func (a *PipelineActivities) NormalizeDocument(ctx context.Context, document Doc
 		return NormalizationResult{}, fmt.Errorf("read body: %w", err)
 	}
 
+	// TODO: production normalization should handle format conversion (TIFF→PDF, DOCX→PDF, etc.),
+	// multi-page splitting, and email attachment extraction for message/rfc822 content types.
 	// Detect format and normalize
 	hasEmbeddedText := document.ContentType == "application/pdf"
 	pages := []Page{{
@@ -177,6 +188,8 @@ func (a *PipelineActivities) StartOCRJob(ctx context.Context, document Normalize
 	logger := activity.GetLogger(ctx)
 	logger.Info("StartOCRJob", "documentID", document.DocumentID, "pages", len(document.Pages))
 
+	// TODO: production OCR should submit all pages, not just the first. Multi-page documents
+	// require iterating document.Pages and either batching or submitting separate jobs.
 	if len(document.Pages) == 0 {
 		return "", fmt.Errorf("no pages to process")
 	}
@@ -315,6 +328,8 @@ func (a *PipelineActivities) ValidateExtraction(ctx context.Context, extraction 
 	logger := activity.GetLogger(ctx)
 	logger.Info("ValidateExtraction", "documentType", classification.DocumentType, "fields", len(extraction.Fields))
 
+	// TODO: production validation should apply document-type-specific rules (e.g., date format
+	// checks, cross-field consistency, regex patterns for IDs) rather than only checking for empty values.
 	var failures []ValidationFailure
 
 	// Check required fields based on document type
@@ -352,6 +367,8 @@ func (a *PipelineActivities) RouteDocument(ctx context.Context, document Documen
 	logger := activity.GetLogger(ctx)
 	logger.Info("RouteDocument", "documentID", document.ID, "type", classification.DocumentType)
 
+	// TODO: production routing should evaluate configurable routing rules per document type and
+	// tenant, supporting multiple delivery targets (API, SFTP, email, webhook) with retry policies.
 	// Evaluate routing rules and deliver
 	var targets []DeliveryTarget
 
@@ -361,7 +378,7 @@ func (a *PipelineActivities) RouteDocument(ctx context.Context, document Documen
 		"documentType": classification.DocumentType,
 		"fields":       extraction.Fields,
 	})
-	req, err := http.NewRequestWithContext(ctx, "POST", a.MLEndpoint+"/deliver", bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", a.DeliveryEndpoint, bytes.NewReader(reqBody))
 	if err != nil {
 		return DeliveryResult{}, fmt.Errorf("build request: %w", err)
 	}

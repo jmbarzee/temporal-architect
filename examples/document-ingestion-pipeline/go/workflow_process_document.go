@@ -18,6 +18,8 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		return ProcessingResult{}, err
 	}
 
+	var a *PipelineActivities
+
 	defaultOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 30 * time.Second,
 	}
@@ -28,7 +30,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		StartToCloseTimeout: 2 * time.Minute,
 	})
 	var document Document
-	err = workflow.ExecuteActivity(ingestCtx, "IngestDocument", submission).Get(ingestCtx, &document)
+	err = workflow.ExecuteActivity(ingestCtx, a.IngestDocument, submission).Get(ingestCtx, &document)
 	if err != nil {
 		return ProcessingResult{}, err
 	}
@@ -39,12 +41,12 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		StartToCloseTimeout: 60 * time.Second,
 	})
 	var scanResult ScanResult
-	err = workflow.ExecuteActivity(scanCtx, "ScanMalware", document).Get(scanCtx, &scanResult)
+	err = workflow.ExecuteActivity(scanCtx, a.ScanMalware, document).Get(scanCtx, &scanResult)
 	if err != nil {
 		return ProcessingResult{}, err
 	}
 	if scanResult.Infected {
-		_ = workflow.ExecuteActivity(ctx, "QuarantineDocument", document, scanResult).Get(ctx, nil)
+		_ = workflow.ExecuteActivity(ctx, a.QuarantineDocument, document, scanResult).Get(ctx, nil)
 		return ProcessingResult{Document: document, Status: "quarantined"}, nil
 	}
 
@@ -54,7 +56,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		StartToCloseTimeout: 5 * time.Minute,
 	})
 	var normResult NormalizationResult
-	err = workflow.ExecuteActivity(normalizeCtx, "NormalizeDocument", document).Get(normalizeCtx, &normResult)
+	err = workflow.ExecuteActivity(normalizeCtx, a.NormalizeDocument, document).Get(normalizeCtx, &normResult)
 	if err != nil {
 		return ProcessingResult{}, err
 	}
@@ -64,7 +66,11 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		childCtx := workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 			ParentClosePolicy: enumspb.PARENT_CLOSE_POLICY_ABANDON,
 		})
-		workflow.ExecuteChildWorkflow(childCtx, ProcessDocument, subDoc.AsSubmission)
+		childFuture := workflow.ExecuteChildWorkflow(childCtx, ProcessDocument, subDoc.AsSubmission)
+		// Confirm child started — without this, child may never spawn if parent completes first
+		if err := childFuture.GetChildWorkflowExecution().Get(ctx, nil); err != nil {
+			return ProcessingResult{}, err
+		}
 	}
 
 	// OCR / text extraction
@@ -78,7 +84,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 	// Classify
 	stage = "classifying"
 	var classification ClassificationResult
-	err = workflow.ExecuteActivity(ctx, "ClassifyDocument", normResult.NormalizedDoc, textResult).Get(ctx, &classification)
+	err = workflow.ExecuteActivity(ctx, a.ClassifyDocument, normResult.NormalizedDoc, textResult).Get(ctx, &classification)
 	if err != nil {
 		return ProcessingResult{}, err
 	}
@@ -93,7 +99,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		if err != nil {
 			return ProcessingResult{}, err
 		}
-		err = workflow.ExecuteActivity(ctx, "ApplyClassificationReview", classification, classReview).Get(ctx, &classification)
+		err = workflow.ExecuteActivity(ctx, a.ApplyClassificationReview, classification, classReview).Get(ctx, &classification)
 		if err != nil {
 			return ProcessingResult{}, err
 		}
@@ -102,7 +108,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 	// Extract fields
 	stage = "extracting_fields"
 	var extraction ExtractionResult
-	err = workflow.ExecuteActivity(ctx, "ExtractFields", normResult.NormalizedDoc, textResult, classification).Get(ctx, &extraction)
+	err = workflow.ExecuteActivity(ctx, a.ExtractFields, normResult.NormalizedDoc, textResult, classification).Get(ctx, &extraction)
 	if err != nil {
 		return ProcessingResult{}, err
 	}
@@ -117,7 +123,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		if err != nil {
 			return ProcessingResult{}, err
 		}
-		err = workflow.ExecuteActivity(ctx, "ApplyExtractionReview", extraction, extractReview).Get(ctx, &extraction)
+		err = workflow.ExecuteActivity(ctx, a.ApplyExtractionReview, extraction, extractReview).Get(ctx, &extraction)
 		if err != nil {
 			return ProcessingResult{}, err
 		}
@@ -126,7 +132,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 	// Validate
 	stage = "validating"
 	var validation ValidationResult
-	err = workflow.ExecuteActivity(ctx, "ValidateExtraction", extraction, classification).Get(ctx, &validation)
+	err = workflow.ExecuteActivity(ctx, a.ValidateExtraction, extraction, classification).Get(ctx, &validation)
 	if err != nil {
 		return ProcessingResult{}, err
 	}
@@ -141,7 +147,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		if err != nil {
 			return ProcessingResult{}, err
 		}
-		err = workflow.ExecuteActivity(ctx, "ApplyValidationReview", validation, validReview).Get(ctx, &validation)
+		err = workflow.ExecuteActivity(ctx, a.ApplyValidationReview, validation, validReview).Get(ctx, &validation)
 		if err != nil {
 			return ProcessingResult{}, err
 		}
@@ -150,7 +156,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 	// Deduplicate
 	stage = "deduplicating"
 	var dedupResult DeduplicationResult
-	err = workflow.ExecuteActivity(ctx, "CheckDuplicates", document, extraction).Get(ctx, &dedupResult)
+	err = workflow.ExecuteActivity(ctx, a.CheckDuplicates, document, extraction).Get(ctx, &dedupResult)
 	if err != nil {
 		return ProcessingResult{}, err
 	}
@@ -165,7 +171,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		if err != nil {
 			return ProcessingResult{}, err
 		}
-		err = workflow.ExecuteActivity(ctx, "ApplyDedupReview", dedupResult, dedupReview).Get(ctx, &dedupResult)
+		err = workflow.ExecuteActivity(ctx, a.ApplyDedupReview, dedupResult, dedupReview).Get(ctx, &dedupResult)
 		if err != nil {
 			return ProcessingResult{}, err
 		}
@@ -187,7 +193,7 @@ func ProcessDocument(ctx workflow.Context, submission Submission) (ProcessingRes
 		},
 	})
 	var deliveryResult DeliveryResult
-	err = workflow.ExecuteActivity(routeCtx, "RouteDocument", document, extraction, classification).Get(routeCtx, &deliveryResult)
+	err = workflow.ExecuteActivity(routeCtx, a.RouteDocument, document, extraction, classification).Get(routeCtx, &deliveryResult)
 	if err != nil {
 		return ProcessingResult{}, err
 	}

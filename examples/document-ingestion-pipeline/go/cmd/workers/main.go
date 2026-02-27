@@ -78,18 +78,20 @@ func main() {
 
 	bucket := os.Getenv("S3_BUCKET")
 	mlEndpoint := os.Getenv("ML_ENDPOINT")
+	deliveryEndpoint := os.Getenv("DELIVERY_ENDPOINT")
 
 	// Activity structs
 	pipelineActs := &pipeline.PipelineActivities{
-		S3:         s3Client,
-		Textract:   textractClient,
-		ClamAV:     clamClient,
-		HTTP:       httpClient,
-		SFTP:       sftpUploader,
-		Documents:  docRepo,
-		Batches:    batchRepo,
-		Bucket:     bucket,
-		MLEndpoint: mlEndpoint,
+		S3:               s3Client,
+		Textract:         textractClient,
+		ClamAV:           clamClient,
+		HTTP:             httpClient,
+		SFTP:             sftpUploader,
+		Documents:        docRepo,
+		Batches:          batchRepo,
+		Bucket:           bucket,
+		MLEndpoint:       mlEndpoint,
+		DeliveryEndpoint: deliveryEndpoint,
 	}
 
 	reviewActs := &pipeline.ReviewActivities{
