@@ -1,0 +1,604 @@
+# =============================================================================
+# Resumable Loan Application — Temporal Workflow Architecture (MVP)
+# =============================================================================
+#
+# Orchestrates a single conventional mortgage from application intake through
+# clear-to-close handoff. MVP scope: web-only wizard, basic eligibility
+# (DTI/credit score), manual underwriting conditions, TRID timer enforcement.
+#
+# Key design decisions:
+# - LoanLifecycle is the top-level orchestrator (one per application). It does
+#   NOT use continue_as_new because steps are bounded (~40-50 history events).
+#   The long waits happen inside child workflows, not in the main body.
+# - IntakeWizard is a child workflow — multi-step, update-driven data
+#   collection with its own resumability lifecycle and nudge timers.
+# - DocumentCollection is a child workflow running parallel to processing —
+#   documents arrive asynchronously, expire independently, and the collection
+#   lifecycle is distinct from the underwriting decision lifecycle.
+# - ConditionLoop is a child workflow — iterative underwriter/borrower
+#   exchange with its own update handlers and non-monotonic progress.
+# - RateLockMonitor is started via update handler as a detached child —
+#   lock lifecycle is independent of the main loan processing flow.
+# - Every state transition emits an audit event (not detached) because
+#   audit completeness is a hard compliance requirement.
+# - TRID compliance is verified post-delivery with immutable audit record.
+#   Proactive deadline enforcement (parallel LE generation on 6-piece
+#   detection) is +1 scope.
+# - Cancellation is checked at phase boundaries. Immediate child cancellation
+#   via cross-workflow signaling is +1 scope.
+
+
+# =============================================================================
+# LoanLifecycle — Top-level orchestrator (one per application)
+# =============================================================================
+# Phases: INTAKE → PROCESSING → UNDERWRITING → CLEAR_TO_CLOSE
+# Cancellation checked between phases via condition flag.
+
+workflow LoanLifecycle(app: LoanApplicationInput) -> (LoanResult):
+    state:
+        condition cancelled
+
+    signal CancelApplication(reason: string):
+        cancelReason = reason
+        set cancelled
+
+    update RequestRateLock(lockRequest: RateLockRequest) -> (LockRequestResult):
+        activity LockRate(app.applicationId, lockRequest) -> lock
+        if (lock.success):
+            detach workflow RateLockMonitor(app.applicationId, lock)
+            activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "RATE_LOCKED", detail: lock})
+            return LockRequestResult{locked: true, rate: lock.rate, expiration: lock.expiration}
+        else:
+            return LockRequestResult{locked: false, reason: lock.reason}
+
+    query GetStatus() -> (LoanStatus):
+        return LoanStatus{applicationId: app.applicationId, phase: phase}
+
+    # --- Phase 1: Intake ---
+    phase = "INTAKE"
+    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "APPLICATION_STARTED", actor: app.borrowerEmail})
+
+    workflow IntakeWizard(app) -> intakeResult
+
+    if (intakeResult.abandoned):
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "ABANDONED"})
+        close complete(LoanResult{applicationId: app.applicationId, outcome: "ABANDONED"})
+
+    if (cancelled):
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "CANCELLED", reason: cancelReason})
+        close complete(LoanResult{applicationId: app.applicationId, outcome: "CANCELLED"})
+
+    # --- Phase 2: Processing (credit, eligibility, LE) ---
+    phase = "PROCESSING"
+    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "PROCESSING_STARTED"})
+
+    # Start document collection in parallel with credit/eligibility
+    promise docs <- workflow DocumentCollection(app.applicationId, app.borrowerEmail)
+
+    # Pull credit (idempotent — checks for existing unexpired report)
+    activity PullCredit(app.applicationId, intakeResult.borrowerData) -> creditResult
+        options:
+            start_to_close_timeout: 30s
+            retry_policy:
+                maximum_attempts: 3
+    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "CREDIT_PULLED"})
+
+    # Calculate DTI/LTV and evaluate eligibility
+    activity CalculateDTIAndLTV(intakeResult.borrowerData, creditResult) -> ratios
+    activity EvaluateEligibility(intakeResult.borrowerData, creditResult, ratios) -> eligibility
+
+    if (eligibility.decision == "DECLINE"):
+        activity SendAdverseActionNotice(app.applicationId, app.borrowerEmail, eligibility.reasons)
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "DECLINED", detail: eligibility})
+        close complete(LoanResult{applicationId: app.applicationId, outcome: "DECLINED"})
+
+    # Generate and deliver Loan Estimate
+    # TRID: must be delivered within 3 business days of 6-piece completion
+    activity GenerateLoanEstimate(app, creditResult, ratios) -> loanEstimate
+    activity DeliverDisclosure(app.applicationId, app.borrowerEmail, loanEstimate) -> leDelivery
+    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "LE_DELIVERED"})
+
+    # Verify TRID compliance (immutable audit record)
+    activity VerifyTridCompliance(app.applicationId, intakeResult.sixPieceTimestamp, leDelivery.timestamp) -> tridResult
+    if (not tridResult.compliant):
+        activity AlertComplianceViolation(app.applicationId, "TRID_LE_DEADLINE", tridResult)
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "TRID_VIOLATION", detail: tridResult})
+
+    if (cancelled):
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "CANCELLED", reason: cancelReason})
+        close complete(LoanResult{applicationId: app.applicationId, outcome: "CANCELLED"})
+
+    # --- Phase 3: Underwriting ---
+    phase = "UNDERWRITING"
+    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "UNDERWRITING_STARTED"})
+
+    # Submit to Fannie Mae DU
+    activity RunAutomatedUnderwriting(app, creditResult) -> ausFindings
+        options:
+            start_to_close_timeout: 60s
+            retry_policy:
+                maximum_attempts: 3
+    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "AUS_SUBMITTED", detail: ausFindings})
+
+    if (ausFindings.recommendation == "REFER" or ausFindings.recommendation == "CAUTION"):
+        # MVP: decline on Refer/Caution (manual underwriting is +1 scope)
+        activity SendAdverseActionNotice(app.applicationId, app.borrowerEmail, ausFindings.reasons)
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "DECLINED_AUS", detail: ausFindings})
+        close complete(LoanResult{applicationId: app.applicationId, outcome: "DECLINED"})
+
+    # Condition management loop
+    workflow ConditionLoop(app.applicationId, ausFindings.conditions) -> conditionResult
+
+    if (conditionResult.outcome == "CANCELLED"):
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "CANCELLED_IN_CONDITIONS"})
+        close complete(LoanResult{applicationId: app.applicationId, outcome: "CANCELLED"})
+
+    # Wait for document collection to complete before CTC
+    await docs -> docResult
+    if (not docResult.complete):
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "DOCS_INCOMPLETE_AT_CTC"})
+
+    if (cancelled):
+        activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "CANCELLED", reason: cancelReason})
+        close complete(LoanResult{applicationId: app.applicationId, outcome: "CANCELLED"})
+
+    # --- Phase 4: Clear-to-Close ---
+    phase = "CLEAR_TO_CLOSE"
+    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "CTC_REACHED"})
+
+    # MVP: hand off to external closing process (CD generation is +1 scope)
+    activity HandoffToClosing(app) -> closingRef
+    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "CLOSING_HANDOFF", detail: closingRef})
+    activity NotifyBorrowerMilestone(app.borrowerEmail, app.applicationId, "CLEAR_TO_CLOSE")
+
+    close complete(LoanResult{applicationId: app.applicationId, outcome: "CTC_HANDOFF", closingRef: closingRef})
+
+
+# =============================================================================
+# IntakeWizard — Resumable 8-step borrower data collection
+# =============================================================================
+# Each step submitted via update (caller gets validation result back).
+# Detects 6-piece rule completion (name, SSN, income, property address,
+# estimated value, loan amount) and records the timestamp for TRID tracking.
+# Nudge emails sent on 24-hour inactivity intervals; STALE at 30 days.
+
+workflow IntakeWizard(app: LoanApplicationInput) -> (IntakeResult):
+    state:
+        condition wizardComplete
+        condition stepSubmitted
+
+    update SubmitStep(step: WizardStep) -> (StepResult):
+        activity ValidateStep(step, currentData) -> validation
+        if (validation.valid):
+            activity SaveApplicationStep(app.applicationId, step) -> saved
+            currentData = saved.updatedData
+            completedSteps = completedSteps + 1
+            if (not sixPieceDetected and saved.sixPieceComplete):
+                sixPieceDetected = true
+                sixPieceTimestamp = saved.timestamp
+                activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "SIX_PIECE_DETECTED"})
+            if (completedSteps >= totalSteps):
+                set wizardComplete
+            set stepSubmitted
+            return StepResult{accepted: true, nextStep: saved.nextStep}
+        else:
+            return StepResult{accepted: false, errors: validation.errors}
+
+    update ResumeWizard(sessionToken: string) -> (ResumeResult):
+        activity AuthenticateResume(app.applicationId, sessionToken) -> auth
+        if (auth.valid):
+            activity LoadApplicationState(app.applicationId) -> resumeState
+            currentData = resumeState.data
+            completedSteps = resumeState.completedSteps
+            set stepSubmitted
+            return ResumeResult{valid: true, currentStep: state.nextStep, data: state.resumeData}
+        else:
+            return ResumeResult{valid: false}
+
+    query GetProgress() -> (WizardProgress):
+        return WizardProgress{completedSteps: completedSteps, totalSteps: totalSteps, sixPieceDetected: sixPieceDetected}
+
+    # Load any existing state (resume scenario)
+    activity LoadApplicationState(app.applicationId) -> existingState
+    currentData = existingState.data
+    completedSteps = existingState.completedSteps
+    totalSteps = 8
+    sixPieceDetected = existingState.sixPieceComplete
+    sixPieceTimestamp = existingState.sixPieceTimestamp
+    inactivityCount = 0
+
+    for:
+        unset stepSubmitted
+
+        await one:
+            wizardComplete:
+                activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "INTAKE_COMPLETE"})
+                close complete(IntakeResult{abandoned: false, borrowerData: currentData, sixPieceTimestamp: sixPieceTimestamp})
+            stepSubmitted:
+                # Borrower active — reset inactivity counter
+                inactivityCount = 0
+            timer(24h):
+                inactivityCount = inactivityCount + 1
+                if (inactivityCount >= 30):
+                    activity RecordAuditEvent(AuditEvent{applicationId: app.applicationId, action: "INTAKE_STALE"})
+                    close complete(IntakeResult{abandoned: true})
+                # Activity determines nudge type based on inactivity duration
+                # (1-day email, 3-day follow-up, 7-day LO outreach, etc.)
+                activity SendNudgeEmail(app.borrowerEmail, app.applicationId, completedSteps, inactivityCount)
+
+
+# =============================================================================
+# DocumentCollection — Parallel document management with expiration tracking
+# =============================================================================
+# Runs alongside processing/underwriting. Borrower uploads documents via
+# update. Processor reviews via update. Daily expiration checks detect stale
+# documents (pay stubs 30d, bank statements 60d, credit report 120d) and
+# alert borrower to upload fresh copies.
+
+workflow DocumentCollection(applicationId: string, borrowerEmail: string) -> (DocumentCollectionResult):
+    state:
+        condition allDocsComplete
+
+    update UploadDocument(upload: DocumentUpload) -> (UploadResult):
+        activity ValidateDocument(upload) -> validation
+        if (validation.valid):
+            activity StoreDocument(applicationId, upload) -> stored
+            activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "DOC_UPLOADED", detail: stored})
+            activity EvaluateDocumentCompleteness(applicationId) -> completeness
+            if (completeness.complete):
+                set allDocsComplete
+            return UploadResult{accepted: true, documentId: stored.documentId}
+        else:
+            return UploadResult{accepted: false, errors: validation.errors}
+
+    update ReviewDocument(review: DocumentReview) -> (ReviewResult):
+        activity ApplyDocumentReview(applicationId, review) -> applied
+        activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "DOC_REVIEWED", detail: applied})
+        activity EvaluateDocumentCompleteness(applicationId) -> completeness
+        if (completeness.complete):
+            set allDocsComplete
+        return ReviewResult{accepted: true, status: applied.status}
+
+    query GetDocumentStatus() -> (DocumentStatus):
+        return DocumentStatus{applicationId: applicationId}
+
+    for:
+        await one:
+            allDocsComplete:
+                close complete(DocumentCollectionResult{complete: true})
+            timer(24h):
+                # Daily expiration check
+                activity CheckDocumentExpiration(applicationId) -> expirations
+                if (expirations.hasExpired):
+                    # Expired docs invalidate completeness
+                    unset allDocsComplete
+                    activity SendDocumentRefreshAlert(borrowerEmail, applicationId, expirations.expiredDocs)
+                    activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "DOCS_EXPIRED", detail: expirations})
+
+
+# =============================================================================
+# ConditionLoop — Underwriter condition assignment and clearing
+# =============================================================================
+# Conditions come from AUS findings. Underwriter assigns/clears via update.
+# Progress is non-monotonic — underwriter may add new conditions during review.
+# Sends borrower reminders every 72 hours while conditions are outstanding.
+
+workflow ConditionLoop(applicationId: string, initialConditions: Conditions) -> (ConditionResult):
+    state:
+        condition allConditionsCleared
+        condition loopCancelled
+
+    update AssignCondition(newCondition: ConditionInput) -> (AssignResult):
+        activity RecordCondition(applicationId, newCondition) -> recorded
+        totalConditions = totalConditions + 1
+        unset allConditionsCleared
+        activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "CONDITION_ASSIGNED", detail: recorded})
+        return AssignResult{accepted: true, conditionId: recorded.conditionId}
+
+    update ClearCondition(clearance: ConditionClearance) -> (ClearResult):
+        activity ValidateConditionClearance(applicationId, clearance) -> validation
+        if (validation.valid):
+            activity MarkConditionCleared(applicationId, clearance) -> cleared
+            clearedCount = clearedCount + 1
+            activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "CONDITION_CLEARED", detail: clearance})
+            if (clearedCount >= totalConditions):
+                set allConditionsCleared
+            return ClearResult{accepted: true}
+        else:
+            return ClearResult{accepted: false, reason: validation.reason}
+
+    signal CancelConditions(reason: string):
+        cancelReason = reason
+        set loopCancelled
+
+    query GetConditionStatus() -> (ConditionStatus):
+        return ConditionStatus{applicationId: applicationId, total: totalConditions, cleared: clearedCount}
+
+    # Initialize from AUS findings
+    clearedCount = 0
+    totalConditions = 0
+    for (cond in initialConditions.items):
+        activity RecordCondition(applicationId, cond) -> recorded
+        totalConditions = totalConditions + 1
+
+    activity NotifyConditionsAssigned(applicationId, totalConditions)
+
+    for:
+        await one:
+            allConditionsCleared:
+                activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "ALL_CONDITIONS_CLEARED"})
+                close complete(ConditionResult{outcome: "CLEARED"})
+            loopCancelled:
+                close complete(ConditionResult{outcome: "CANCELLED", reason: cancelReason})
+            timer(72h):
+                activity SendConditionReminder(applicationId, totalConditions, clearedCount)
+
+
+# =============================================================================
+# RateLockMonitor — Rate lock expiration tracking and alerts
+# =============================================================================
+# Started as detached child from LoanLifecycle.RequestRateLock update.
+# Sends alert as expiration approaches, then reports expired.
+# Cancelled automatically when parent workflow completes (loan closes).
+
+workflow RateLockMonitor(applicationId: string, lock: RateLock) -> (RateLockResult):
+    state:
+        condition lockCancelled
+
+    signal CancelLock():
+        set lockCancelled
+
+    query GetLockStatus() -> (RateLockStatus):
+        return RateLockStatus{applicationId: applicationId, rate: lock.rate, expiration: lock.expiration}
+
+    activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "LOCK_MONITOR_STARTED", detail: lock})
+
+    # Wait for alert window or cancellation
+    await one:
+        lockCancelled:
+            activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "LOCK_CANCELLED"})
+            close complete(RateLockResult{outcome: "CANCELLED"})
+        timer(lock.alertDuration):
+            activity SendLockExpirationAlert(applicationId, lock)
+            activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "LOCK_EXPIRATION_ALERT"})
+
+            # Wait for expiration or cancellation
+            await one:
+                lockCancelled:
+                    activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "LOCK_CANCELLED"})
+                    close complete(RateLockResult{outcome: "CANCELLED"})
+                timer(lock.remainingDuration):
+                    activity RecordAuditEvent(AuditEvent{applicationId: applicationId, action: "LOCK_EXPIRED"})
+                    close complete(RateLockResult{outcome: "EXPIRED"})
+
+
+# =============================================================================
+# Activities
+# =============================================================================
+
+# --- Intake & Wizard ---
+
+activity ValidateStep(step: WizardStep, currentData: BorrowerData) -> (StepValidation):
+    # Progressive validation: some fields depend on prior answers
+    # (e.g., self-employment changes the income section)
+    validate(step, currentData)
+
+activity SaveApplicationStep(applicationId: string, step: WizardStep) -> (SaveResult):
+    # Persist step data; detect 6-piece rule completion
+    # Idempotent: re-saving same step overwrites previous version
+    # Returns updated data, next step indicator, and 6-piece status
+    db.saveStep(applicationId, step)
+
+activity LoadApplicationState(applicationId: string) -> (ApplicationState):
+    # Load persisted wizard state for resume
+    # Returns completed steps, current data, next step indicator
+    db.loadState(applicationId)
+
+activity AuthenticateResume(applicationId: string, sessionToken: string) -> (AuthResult):
+    # Validate session token for resume (prevents unauthorized access to PII)
+    auth.validateResumeToken(applicationId, sessionToken)
+
+# --- Credit ---
+
+activity PullCredit(applicationId: string, borrowerData: BorrowerData) -> (CreditResult):
+    # Tri-merge credit report via MeridianLink CreditAPI
+    # Idempotent: checks for existing unexpired report before pulling
+    # Hard inquiry — must not duplicate
+    # Returns FICO scores from all 3 bureaus, tradelines, liabilities
+    credit.pullTriMerge(applicationId, borrowerData)
+
+# --- Underwriting & Eligibility ---
+
+activity CalculateDTIAndLTV(borrowerData: BorrowerData, creditResult: CreditResult) -> (Ratios):
+    # Pure calculation: DTI from income/liabilities, LTV from loan/value
+    # Variable income (bonuses, overtime, commission) requires 2-year averaging
+    # Self-employment income requires Schedule C/K-1 analysis
+    underwriting.calculateRatios(borrowerData, creditResult)
+
+activity EvaluateEligibility(borrowerData: BorrowerData, creditResult: CreditResult, ratios: Ratios) -> (EligibilityResult):
+    # Check against conventional product matrix
+    # 43% DTI cap for QM, minimum credit score thresholds
+    # Returns decision (ELIGIBLE/DECLINE) with specific reasons
+    underwriting.evaluateEligibility(borrowerData, creditResult, ratios)
+
+activity RunAutomatedUnderwriting(app: LoanApplicationInput, creditResult: CreditResult) -> (AUSFindings):
+    # Submit to Fannie Mae DU via DU Messages API (MISMO ULAD)
+    # Returns recommendation (Approve/Eligible, Refer, Caution),
+    # conditions list, and rep & warranty relief eligibility
+    aus.submitToDU(app, creditResult)
+
+# --- Disclosures & Compliance ---
+
+activity GenerateLoanEstimate(app: LoanApplicationInput, creditResult: CreditResult, ratios: Ratios) -> (LoanEstimate):
+    # Produce TRID-compliant Loan Estimate document
+    # Calculates fees in 0%/10%/unlimited tolerance buckets
+    disclosures.generateLE(app, creditResult, ratios)
+
+activity DeliverDisclosure(applicationId: string, email: string, disclosure: LoanEstimate) -> (DeliveryRecord):
+    # Deliver disclosure electronically; record delivery method and timestamp
+    # Electronic delivery with e-consent: received date = delivery date
+    # Idempotent: checks for prior delivery of same disclosure version
+    disclosures.deliver(applicationId, email, disclosure)
+
+activity VerifyTridCompliance(applicationId: string, sixPieceTimestamp: Timestamp, deliveryTimestamp: Timestamp) -> (TridComplianceResult):
+    # Check LE delivery was within 3 business days of 6-piece completion
+    # Creates immutable audit record regardless of outcome
+    # Business day calculation excludes Sundays and federal holidays
+    compliance.verifyTridLE(applicationId, sixPieceTimestamp, deliveryTimestamp)
+
+activity SendAdverseActionNotice(applicationId: string, email: string, reasons: DeclineReasons):
+    # ECOA/Reg B: adverse action notice within 30 days with specific reasons
+    # Must include credit score disclosure if credit was a factor
+    # Idempotent via applicationId
+    disclosures.sendAdverseAction(applicationId, email, reasons)
+
+activity AlertComplianceViolation(applicationId: string, violationType: string, detail: TridComplianceResult):
+    # Urgent alert to compliance team for regulatory violation
+    compliance.alertViolation(applicationId, violationType, detail)
+
+# --- Documents ---
+
+activity ValidateDocument(upload: DocumentUpload) -> (DocumentValidation):
+    # Format check (PDF, JPG, PNG), file size, blur detection
+    # Reject password-protected PDFs, verify minimum page count
+    documents.validate(upload)
+
+activity StoreDocument(applicationId: string, upload: DocumentUpload) -> (StoredDocument):
+    # Store with versioning; set expiration based on document type
+    # Pay stubs: 30 days, bank statements: 60 days, credit report: 120 days
+    # Idempotent: same document re-upload creates new version
+    documents.store(applicationId, upload)
+
+activity ApplyDocumentReview(applicationId: string, review: DocumentReview) -> (ReviewApplied):
+    # Processor marks document as accepted/rejected with notes
+    documents.applyReview(applicationId, review)
+
+activity EvaluateDocumentCompleteness(applicationId: string) -> (CompletenessCheck):
+    # Check all required document types are uploaded and accepted
+    # Required docs depend on loan type and borrower profile
+    documents.evaluateCompleteness(applicationId)
+
+activity CheckDocumentExpiration(applicationId: string) -> (ExpirationCheck):
+    # Check each accepted document against its type-specific expiration window
+    documents.checkExpirations(applicationId)
+
+activity SendDocumentRefreshAlert(email: string, applicationId: string, expiredDocs: ExpiredDocuments):
+    # Email borrower listing which documents need fresh copies and why
+    notifications.sendDocRefresh(email, applicationId, expiredDocs)
+
+# --- Conditions ---
+
+activity RecordCondition(applicationId: string, condition: ConditionInput) -> (RecordedCondition):
+    # Persist condition with assignment timestamp and description
+    # Idempotent via condition identifier
+    conditions.record(applicationId, condition)
+
+activity ValidateConditionClearance(applicationId: string, clearance: ConditionClearance) -> (ClearanceValidation):
+    # Verify supporting documentation exists and is acceptable
+    # Check that the condition is currently outstanding (not already cleared)
+    conditions.validateClearance(applicationId, clearance)
+
+activity MarkConditionCleared(applicationId: string, clearance: ConditionClearance) -> (ClearedCondition):
+    # Mark condition as cleared with timestamp and cleared-by
+    # Idempotent: clearing an already-cleared condition is a no-op
+    conditions.markCleared(applicationId, clearance)
+
+activity NotifyConditionsAssigned(applicationId: string, conditionCount: int):
+    # Email borrower and processor with conditions list
+    notifications.sendConditionsAssigned(applicationId, conditionCount)
+
+activity SendConditionReminder(applicationId: string, totalConditions: int, clearedCount: int):
+    # Reminder to borrower/processor with outstanding condition count
+    # Rate-limited: won't re-send if a reminder was sent recently
+    notifications.sendConditionReminder(applicationId, totalConditions, clearedCount)
+
+# --- Rate Lock ---
+
+activity LockRate(applicationId: string, lockRequest: RateLockRequest) -> (LockResult):
+    # Call pricing engine (Optimal Blue, Polly, or internal) to lock rate
+    # Financial commitment: extensions cost 0.125%-0.375% per 15-day increment
+    # Idempotent: checks for existing active lock before creating new one
+    pricing.lockRate(applicationId, lockRequest)
+
+activity SendLockExpirationAlert(applicationId: string, lock: RateLock):
+    # Alert LO and borrower that rate lock is approaching expiration
+    notifications.sendLockAlert(applicationId, lock)
+
+# --- Closing ---
+
+activity HandoffToClosing(app: LoanApplicationInput) -> (ClosingReference):
+    # Create closing package reference for external closing process
+    # MVP: generates handoff record; CD generation and closing
+    # coordination are +1 scope
+    closing.createHandoff(app)
+
+# --- Notifications ---
+
+activity SendNudgeEmail(email: string, applicationId: string, completedSteps: int, inactivityDays: int):
+    # Contextual abandonment nudge based on progress and inactivity duration
+    # Day 1: gentle reminder, Day 3: follow-up, Day 7: LO outreach
+    # Idempotent and rate-limited to prevent spam
+    notifications.sendNudge(email, applicationId, completedSteps, inactivityDays)
+
+activity NotifyBorrowerMilestone(email: string, applicationId: string, milestone: string):
+    # Milestone notification (application received, CTC, etc.)
+    notifications.sendMilestone(email, applicationId, milestone)
+
+# --- Audit ---
+
+activity RecordAuditEvent(event: AuditEvent):
+    # Append to immutable, tamper-evident audit trail
+    # Critical path: if audit write fails, the operation fails
+    # Idempotent via event correlation ID
+    # Retained per ECOA/Reg B: 25 months minimum for denied/withdrawn
+    auditLog.append(event)
+
+
+# =============================================================================
+# Workers & Deployment Topology
+# =============================================================================
+# Single worker for MVP. All workflows and activities on one task queue.
+# Separate queues for credit bureau connectors, document processing, etc.
+# are +1 scope driven by scaling and failure isolation needs.
+
+worker loanWorker:
+    workflow LoanLifecycle
+    workflow IntakeWizard
+    workflow DocumentCollection
+    workflow ConditionLoop
+    workflow RateLockMonitor
+    activity ValidateStep
+    activity SaveApplicationStep
+    activity LoadApplicationState
+    activity AuthenticateResume
+    activity PullCredit
+    activity CalculateDTIAndLTV
+    activity EvaluateEligibility
+    activity RunAutomatedUnderwriting
+    activity GenerateLoanEstimate
+    activity DeliverDisclosure
+    activity VerifyTridCompliance
+    activity SendAdverseActionNotice
+    activity AlertComplianceViolation
+    activity ValidateDocument
+    activity StoreDocument
+    activity ApplyDocumentReview
+    activity EvaluateDocumentCompleteness
+    activity CheckDocumentExpiration
+    activity SendDocumentRefreshAlert
+    activity RecordCondition
+    activity ValidateConditionClearance
+    activity MarkConditionCleared
+    activity NotifyConditionsAssigned
+    activity SendConditionReminder
+    activity LockRate
+    activity SendLockExpirationAlert
+    activity HandoffToClosing
+    activity SendNudgeEmail
+    activity NotifyBorrowerMilestone
+    activity RecordAuditEvent
+
+namespace loanOrigination:
+    worker loanWorker
+        options:
+            task_queue: "loan-origination"
