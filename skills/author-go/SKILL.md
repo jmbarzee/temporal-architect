@@ -50,11 +50,13 @@ Root-down, with build checks between layers. Consult [reference files](#referenc
 
 | Layer | What | Check | Key references |
 |-------|------|-------|----------------|
-| 1. Types + signatures | Structs, interfaces, function signatures (empty bodies, zero-value returns). Dependency map informs interface shapes | `go build` | [types.md](./reference/types.md) |
+| 1a. Types + signatures | Structs, interfaces, function signatures (empty bodies, zero-value returns). Dependency map informs interface shapes | `go build` | [types.md](./reference/types.md) |
+| 1b. Activity stubs | Forward-declare all activity functions/methods with correct signatures, empty bodies, zero-value returns. This makes activity functions available as references for Layer 2 and enables the nil-pointer method pattern (`var a *Activities; workflow.ExecuteActivity(ctx, a.Foo, ...)`) | `go build` | [activity-def.md](./reference/activity-def.md) |
 | 2. Workflow bodies | Orchestration logic: activity calls, child workflows, signals, timers, selectors | `go build` | [workflow-def.md](./reference/workflow-def.md), [activity-call.md](./reference/activity-call.md) |
 | 3. Activity impl | Thin activity methods + concrete implementations behind interfaces | `go build` | [activity-def.md](./reference/activity-def.md) |
 | 4. Worker wiring | `cmd/` entry point: construct dependencies, wire activity struct, register types, start worker | `go build` | [worker.md](./reference/worker.md), [nexus-service-def.md](./reference/nexus-service-def.md) |
-| 5. Final | Full correctness check | `go vet` | — |
+| 5. Tests | One happy-path test per workflow using `testsuite.WorkflowTestSuite`. Catches: activity name resolution failures, serialization round-trip issues, update handler races, missing activity options | `go test` | — |
+| 6. Final | Full correctness check | `go vet` | — |
 
 After generation: present the code to the user for review.
 
@@ -64,12 +66,29 @@ After generation: present the code to the user for review.
 
 See [activity-def.md](./reference/activity-def.md#activity-implementation-pattern) for the full pattern (struct, methods, interfaces, concrete implementations).
 
+### Implementation Depth
+
+Activity bodies in `.twf` are pseudocode that may describe richer logic than the generated code implements. When simplifying an activity relative to its TWF description, emit a `// TODO:` comment referencing the elided logic so the gap is visible:
+
+```go
+func (a *Activities) ValidateExtraction(ctx context.Context, doc Document) (ValidationResult, error) {
+    // TODO: format conformance checks, cross-field consistency, external reference lookups (see TWF)
+    if doc.Text == "" {
+        return ValidationResult{Valid: false, Reason: "empty text"}, nil
+    }
+    return ValidationResult{Valid: true}, nil
+}
+```
+
+For **examples and prototypes**, shallow implementations with `// TODO:` markers are appropriate — the goal is demonstrating workflow orchestration, not domain logic. For **production code**, ask the user which activities need full implementations and which are stubs.
+
 ---
 
 ## Output Conventions
 
 - Each `.twf` maps to a Go package; Go files live alongside `.twf` sources or where the user specifies
 - One file per workflow, shared types file if needed, activity files grouped logically
+- One `_test.go` file per workflow (at minimum) with happy-path workflow tests
 - Package names derived from `.twf` filename (snake_case)
 - Worker entry point in `cmd/`
 
@@ -124,11 +143,17 @@ Read only what the current generation step requires.
 | DSL Construct | Go Mapping | File |
 |---------------|------------|------|
 | `options: ...` | `ActivityOptions` / `ChildWorkflowOptions` | [options.md](./reference/options.md) |
-| `detach workflow ...` | Fire-and-forget (no `.Get`) | [detach.md](./reference/detach.md) |
+| `detach workflow ...` | Fire-and-forget child (confirm start, skip result) | [detach.md](./reference/detach.md) |
 | `if`/`for`/`switch`/`break`/`continue` | Go equivalents | [control-flow.md](./reference/control-flow.md) |
 | `close complete`/`fail`/`continue_as_new` | `return` / `workflow.NewContinueAsNewError` | [close.md](./reference/close.md) |
 | `x = expr` | Variable declaration/assignment | [assignment.md](./reference/assignment.md) |
 | `heartbeat(details)` | `activity.RecordHeartbeat` | [heartbeat.md](./reference/heartbeat.md) |
+
+### Composite Patterns
+
+| Topic | File |
+|-------|------|
+| Update + condition + selector, signal + sleep + await | [composite-patterns.md](./reference/composite-patterns.md) |
 
 ### Types
 

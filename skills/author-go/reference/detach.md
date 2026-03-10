@@ -10,13 +10,14 @@ detach workflow NotifyCustomer(order.customer)
 
 ```go
 childCtx := workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-    ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
+    ParentClosePolicy: enumspb.PARENT_CLOSE_POLICY_ABANDON,
 })
 childFuture := workflow.ExecuteChildWorkflow(childCtx, NotifyCustomer, order.Customer)
-// Wait for child to start (not finish) — without this, parent completion may prevent child from spawning
+// DO NOT skip this — child may silently fail to spawn if parent completes first
 if err := childFuture.GetChildWorkflowExecution().Get(ctx, nil); err != nil {
     return Result{}, err
 }
+// Do NOT call childFuture.Get() — that waits for completion, defeating detach
 ```
 
 ## Detach with nexus

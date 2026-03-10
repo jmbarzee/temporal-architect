@@ -6,6 +6,20 @@
 activity ValidateOrder(order) -> validated
 ```
 
+## Common Mistakes
+
+```go
+// WRONG: string activity name — loses compile-time safety, breaks test discovery
+err := workflow.ExecuteActivity(ctx, "ValidateOrder", order).Get(ctx, &validated)
+
+// RIGHT: function reference — compiler verifies the function exists
+err := workflow.ExecuteActivity(ctx, ValidateOrder, order).Get(ctx, &validated)
+
+// RIGHT: method reference via nil pointer (struct pattern)
+var a *Activities
+err := workflow.ExecuteActivity(ctx, a.ValidateOrder, order).Get(ctx, &validated)
+```
+
 ## Go
 
 ```go

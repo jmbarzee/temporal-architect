@@ -11,6 +11,20 @@ await one:
         close fail(OrderResult{status: "cancelled"})
 ```
 
+## Common Mistakes
+
+```go
+// WRONG: forgetting to cancel the losing timer — generates unnecessary workflow tasks
+sel.Select(ctx)
+// timer still fires later, creating noise in history
+
+// RIGHT: cancel the timer in the winning handler
+sel.AddReceive(signalCh, func(ch workflow.ReceiveChannel, more bool) {
+    ch.Receive(ctx, nil)
+    cancelTimer() // cancel the losing timer
+})
+```
+
 ## Go
 
 ```go
