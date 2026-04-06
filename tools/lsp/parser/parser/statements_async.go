@@ -130,11 +130,11 @@ func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, erro
 	t := &ast.ActivityTarget{Activity: ast.Ref[*ast.ActivityDef]{Name: name.Literal}, Args: args.Literal}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
-		result, err := p.expect(token.IDENT)
+		result, err := p.parseDotQualifiedIdent()
 		if err != nil {
 			return nil, err
 		}
-		t.Result = result.Literal
+		t.Result = result
 	}
 	return t, nil
 }
@@ -171,11 +171,11 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 	}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
-		result, err := p.expect(token.IDENT)
+		result, err := p.parseDotQualifiedIdent()
 		if err != nil {
 			return nil, err
 		}
-		t.Result = result.Literal
+		t.Result = result
 	}
 	if mode == ast.CallDetach && t.Result != "" {
 		return nil, &ParseError{
@@ -220,11 +220,11 @@ func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.Ne
 	}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
-		result, err := p.expect(token.IDENT)
+		result, err := p.parseDotQualifiedIdent()
 		if err != nil {
 			return nil, err
 		}
-		t.Result = result.Literal
+		t.Result = result
 	}
 	if t.Detach && t.Result != "" {
 		return nil, &ParseError{
@@ -241,21 +241,23 @@ func parseIdentTarget(p *Parser, allowArrows bool) (*ast.IdentTarget, error) {
 	p.advance()
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
-		result, err := p.expect(token.IDENT)
+		result, err := p.parseDotQualifiedIdent()
 		if err != nil {
 			return nil, err
 		}
-		t.Result = result.Literal
+		t.Result = result
 	}
 	return t, nil
 }
 
 // parseParamBinding parses parameter binding after ARROW:
-// either IDENT (single param) or ARGS (multiple params in parens)
+// either IDENT[.IDENT]* (single param, possibly dot-qualified) or ARGS (multiple params in parens)
 func parseParamBinding(p *Parser) (string, error) {
 	if p.current.Type == token.IDENT {
-		result := p.current.Literal
-		p.advance()
+		result, err := p.parseDotQualifiedIdent()
+		if err != nil {
+			return "", err
+		}
 		return result, nil
 	} else if p.current.Type == token.ARGS {
 		result := p.current.Literal

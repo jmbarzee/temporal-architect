@@ -147,6 +147,17 @@ This preserves the full trail in git history (REVISIONS → CHANGES → summary)
 
 All limits are configurable via workflow input parameters.
 
+## Failure Handling
+
+Child workflow failures use the saga compensation pattern:
+
+1. **Activity retry** — `InvokeClaudeCode` has a retry policy for transient failures (subprocess crash, OOM). Temporal retries automatically.
+2. **Saga compensation** — When an activity ultimately fails, the child workflow rolls back file changes in LIFO order: remove downstream REVISIONS written by `propagate-changes`, then revert source edits and restore REVISIONS in `changes/{component}/`. The worktree is left clean.
+3. **Workflow retry** — The child workflow call has a retry policy. After compensation cleans up, Temporal retries the entire child on a clean worktree.
+4. **Ultimate failure** — If all retries are exhausted, the child fails. The parent skips it (no commit) and continues with successful children. The worktree is clean because compensation already ran.
+
+`InvokeClaudeCode` returns a non-zero exit code as an activity failure, not a result — this lets Temporal's retry policy handle it. Infrastructure failures (heartbeat timeout, worker crash) are also retried by Temporal.
+
 ## Starting Points
 
 Three ways to kick off the workflow:

@@ -32,11 +32,11 @@ func parseCallParts(p *Parser, optCtx OptionsContext) (*callParts, error) {
 	var result string
 	if p.current.Type == token.ARROW {
 		p.advance()
-		res, err := p.expect(token.IDENT)
+		res, err := p.parseDotQualifiedIdent()
 		if err != nil {
 			return nil, err
 		}
-		result = res.Literal
+		result = res
 	}
 
 	if p.current.Type == token.NEWLINE {

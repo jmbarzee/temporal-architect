@@ -111,6 +111,25 @@ func (p *Parser) skipBlankLinesAndComments() {
 	}
 }
 
+// parseDotQualifiedIdent consumes an IDENT and any following DOT IDENT pairs,
+// returning the full dot-qualified name (e.g., "item.result", "a.b.c").
+func (p *Parser) parseDotQualifiedIdent() (string, error) {
+	tok, err := p.expect(token.IDENT)
+	if err != nil {
+		return "", err
+	}
+	result := tok.Literal
+	for p.current.Type == token.DOT {
+		p.advance() // consume DOT
+		field, err := p.expect(token.IDENT)
+		if err != nil {
+			return "", err
+		}
+		result += "." + field.Literal
+	}
+	return result, nil
+}
+
 // parseOptionalOptionsLine checks for an options block after a call:
 // INDENT OPTIONS COLON NEWLINE INDENT entries DEDENT NEWLINE DEDENT
 // Returns the options block (nil if no options found).
