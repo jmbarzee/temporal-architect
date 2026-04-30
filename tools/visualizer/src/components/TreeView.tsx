@@ -301,12 +301,19 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
     treeItemRefs.current = treeItemRefs.current.slice(0, visibleDefinitions.length)
   }, [visibleDefinitions.length])
 
-  // Helper: get stable key for a definition (by type+name, not file — survives file moves)
-  const defKey = (def: Definition) => `${def.type}:${def.name}`
+  // Helper: get a stable, unique key for a definition.
+  //
+  // sourceFile is included so that two definitions with the same (type, name)
+  // originating in different files (a user-authored name collision, or any
+  // upstream duplication) render as independent React nodes with independent
+  // expand/focus state. Without sourceFile in the key, duplicates collide in
+  // React's reconciler and in expandedDefs, making them impossible to control
+  // independently and routing contextual navigation to only the first instance.
+  const defKey = (def: Definition) => `${def.type}:${def.name}:${def.sourceFile ?? ''}`
 
   // Expand state cleanup: remove entries for definitions that no longer exist
   React.useEffect(() => {
-    const validKeys = new Set(ast.definitions.map(d => `${d.type}:${d.name}`))
+    const validKeys = new Set(ast.definitions.map(defKey))
     setExpandedDefs(prev => {
       const pruned = new Set([...prev].filter(k => validKeys.has(k)))
       return pruned.size === prev.size ? prev : pruned

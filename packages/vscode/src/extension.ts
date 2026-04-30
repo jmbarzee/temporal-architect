@@ -109,7 +109,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const files = uris.map((u) => u.fsPath);
+      const files = dedupeFilePaths(uris.map((u) => u.fsPath));
       // No focused file - show all workflows
       await WorkflowVisualizerPanel.createOrShowForFolder(context.extensionUri, folderPath, files, undefined);
     }
@@ -225,6 +225,40 @@ async function copyDirRecursive(src: string, dest: string) {
   }
 }
 
+/**
+ * Canonicalize and deduplicate a list of file paths.
+ *
+ * Paths coming from different sources (vscode.workspace.findFiles vs
+ * editor.document.uri.fsPath vs a saved URI) can refer to the same file
+ * while being non-equal strings — differing in case on case-insensitive
+ * filesystems, in symlink resolution, or in path separator normalization.
+ * Without deduplication the parser is invoked twice on the same file and
+ * every definition appears twice downstream in the visualizer.
+ */
+function dedupeFilePaths(paths: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const caseInsensitive =
+    process.platform === "darwin" || process.platform === "win32";
+  for (const p of paths) {
+    let canonical: string;
+    try {
+      canonical = fs.realpathSync.native(p);
+    } catch {
+      canonical = path.resolve(p);
+    }
+    if (caseInsensitive) {
+      canonical = canonical.toLowerCase();
+    }
+    if (seen.has(canonical)) {
+      continue;
+    }
+    seen.add(canonical);
+    out.push(p);
+  }
+  return out;
+}
+
 function startLanguageClient(context: vscode.ExtensionContext) {
   const command = resolveTwfBinary(context);
 
@@ -293,12 +327,10 @@ class WorkflowVisualizerPanel {
     // Find all .twf files in the folder for context
     const pattern = new vscode.RelativePattern(folderPath, "*.twf");
     const uris = await vscode.workspace.findFiles(pattern);
-    const files = uris.map((u) => u.fsPath);
-
-    // Ensure the focused file is included
-    if (!files.includes(filePath)) {
-      files.push(filePath);
-    }
+    // Always include the focused file; dedupe canonicalizes away any string-level
+    // differences (symlinks, case) between findFiles results and filePath so the
+    // same physical file is never parsed twice.
+    const files = dedupeFilePaths([...uris.map((u) => u.fsPath), filePath]);
 
     await WorkflowVisualizerPanel.createOrShowForFolder(extensionUri, folderPath, files, filePath);
   }
@@ -369,11 +401,7 @@ class WorkflowVisualizerPanel {
     if (newFolderPath !== panel._folderPath) {
       const pattern = new vscode.RelativePattern(newFolderPath, "*.twf");
       const uris = await vscode.workspace.findFiles(pattern);
-      const files = uris.map((u) => u.fsPath);
-
-      if (!files.includes(filePath)) {
-        files.push(filePath);
-      }
+      const files = dedupeFilePaths([...uris.map((u) => u.fsPath), filePath]);
 
       panel._folderPath = newFolderPath;
       panel._files = files;
