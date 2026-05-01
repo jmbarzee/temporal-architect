@@ -8,7 +8,7 @@ import type { ForceParams } from '../graph/simulation'
 import { buildGraph } from '../graph/build'
 import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
 import type { SimNode } from '../graph/simulation'
-import { DEFAULT_VIEWPORT, fitToView, worldToScreen } from '../graph/viewport'
+import { DEFAULT_VIEWPORT, fitToView, worldToScreen, withWorldOffset } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { getTransitiveDeps, getHighlightedEdgeIds } from '../graph/highlight'
@@ -117,7 +117,13 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
   const initialFitDone = React.useRef(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const pendingCenterRef = React.useRef<{ nodeId: string } | null>(null)
+  // Accumulated COM-drift offset applied to world positions during draw (in world units).
+  // Tracked as a ref so the physics loop doesn't need to trigger a React re-render each tick.
+  const comOffsetRef = React.useRef({ x: 0, y: 0 })
   const lastComRef = React.useRef<{ x: number; y: number } | null>(null)
+  // Frame-rate indicator for debugging. Updated ~2×/sec from the physics loop.
+  const [fps, setFps] = React.useState(0)
+  const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
 
   // --- Interaction state ---
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null)
@@ -145,6 +151,8 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     simRef.current = new Simulation(graph, forceParams)
     initialFitDone.current = false
     lastComRef.current = null
+    comOffsetRef.current = { x: 0, y: 0 }
+    fpsTrackRef.current = { frames: 0, lastStamp: 0 }
     setRunning(true)
     setSelectedNodeId(null)
     setHoveredNodeId(null)
@@ -269,70 +277,109 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     return { highlightedNodes: nodes, highlightedEdges: edges }
   }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds])
 
-  // Animation loop
-  const [, forceRender] = React.useState(0)
-
+  // Physics animation loop.
+  //
+  // Decoupled from React rendering: the canvas has its own requestAnimationFrame
+  // draw loop that reads live SimNode.x/.y through a ref, so the physics tick does
+  // NOT need to trigger a React re-render each frame. We only touch React state
+  // for one-shot events (initial fit, pending cross-view center, stability, FPS).
+  // COM-drift compensation is applied via comOffsetRef, consumed by the canvas.
   React.useEffect(() => {
     if (!running) return
-    let frameId: number
+    let frameId = 0
+
     const loop = () => {
       const sim = simRef.current
-      if (sim) {
-        sim.tick(visibleIds)
+      if (!sim) return
 
-        // Track center-of-mass drift and compensate viewport
-        if (visibleNodes.length > 0 && initialFitDone.current && !pendingCenterRef.current && !selectedNodeId) {
-          let comX = 0, comY = 0
-          for (const node of visibleNodes) { comX += node.x; comY += node.y }
-          comX /= visibleNodes.length; comY /= visibleNodes.length
-          const prev = lastComRef.current
-          if (prev) {
-            const dx = comX - prev.x
-            const dy = comY - prev.y
-            if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
-              setViewport(vp => ({ ...vp, x: vp.x - dx * vp.scale, y: vp.y - dy * vp.scale }))
-            }
-          }
-          lastComRef.current = { x: comX, y: comY }
+      sim.tick(visibleIds)
+
+      // Accumulate center-of-mass drift into a ref. The canvas applies it to
+      // every world coordinate during draw, keeping the COM visually stationary
+      // without a per-frame setState cascade.
+      if (visibleNodes.length > 0 && initialFitDone.current && !pendingCenterRef.current && !selectedNodeId) {
+        let comX = 0, comY = 0
+        for (const node of visibleNodes) { comX += node.x; comY += node.y }
+        comX /= visibleNodes.length; comY /= visibleNodes.length
+        const prev = lastComRef.current
+        if (prev) {
+          comOffsetRef.current.x += comX - prev.x
+          comOffsetRef.current.y += comY - prev.y
         }
+        lastComRef.current = { x: comX, y: comY }
+      }
 
-        if (!initialFitDone.current && sim.alpha < 0.3) {
+      // Initial fit — once per sim instance, after warmup.
+      if (!initialFitDone.current && sim.alpha < 0.3) {
+        const container = containerRef.current
+        if (container) {
+          const { width, height } = container.getBoundingClientRect()
+          if (width > 0 && height > 0) {
+            setViewport(fitToView(visibleNodes, width, height))
+            initialFitDone.current = true
+            // Reset COM tracking so the first post-fit tick establishes a baseline.
+            lastComRef.current = null
+            comOffsetRef.current = { x: 0, y: 0 }
+          }
+        }
+      }
+
+      // Cross-view navigation: center on target after warmup.
+      if (initialFitDone.current && pendingCenterRef.current) {
+        const targetNode = sim.getNode(pendingCenterRef.current.nodeId)
+        if (targetNode) {
           const container = containerRef.current
           if (container) {
             const { width, height } = container.getBoundingClientRect()
-            if (width > 0 && height > 0) {
-              setViewport(fitToView(visibleNodes, width, height))
-              initialFitDone.current = true
-              lastComRef.current = null
-            }
+            setViewport(prev => ({
+              scale: Math.max(prev.scale, 1.2),
+              x: width / 2 - targetNode.x * Math.max(prev.scale, 1.2),
+              y: height / 2 - targetNode.y * Math.max(prev.scale, 1.2),
+            }))
+            setSelectedNodeId(targetNode.id)
           }
         }
-        // Handle pending cross-view center after warmup
-        if (initialFitDone.current && pendingCenterRef.current) {
-          const targetNode = sim.getNode(pendingCenterRef.current.nodeId)
-          if (targetNode) {
-            const container = containerRef.current
-            if (container) {
-              const { width, height } = container.getBoundingClientRect()
-              setViewport(prev => ({
-                scale: Math.max(prev.scale, 1.2),
-                x: width / 2 - targetNode.x * Math.max(prev.scale, 1.2),
-                y: height / 2 - targetNode.y * Math.max(prev.scale, 1.2),
-              }))
-              setSelectedNodeId(targetNode.id)
-            }
-          }
-          pendingCenterRef.current = null
-          lastComRef.current = null
-        }
-        if (sim.isStable()) setRunning(false)
+        pendingCenterRef.current = null
+        lastComRef.current = null
+        comOffsetRef.current = { x: 0, y: 0 }
       }
-      forceRender(c => c + 1)
+
+      // FPS meter — recompute ~2×/sec. setFps only fires on change, so this
+      // is the only routine state update from the loop in steady state.
+      const now = performance.now()
+      const track = fpsTrackRef.current
+      track.frames++
+      if (track.lastStamp === 0) track.lastStamp = now
+      const elapsed = now - track.lastStamp
+      if (elapsed >= 500) {
+        const measured = Math.round((track.frames * 1000) / elapsed)
+        setFps(prev => (prev === measured ? prev : measured))
+        track.frames = 0
+        track.lastStamp = now
+      }
+
+      if (sim.isStable()) {
+        setRunning(false)
+        return
+      }
+
       frameId = requestAnimationFrame(loop)
     }
+
     frameId = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(frameId)
+    return () => { if (frameId) cancelAnimationFrame(frameId) }
   }, [running, visibleIds, visibleNodes, selectedNodeId])
+
+  // While hovering a node during a running simulation, re-render at ~10fps so
+  // the DOM tooltip tracks the moving node. (Canvas nodes update at 60fps via
+  // mutable refs; the tooltip is a React-rendered DOM element that reads
+  // node.x/.y at render time.)
+  const [, setTooltipTick] = React.useState(0)
+  React.useEffect(() => {
+    if (!running || !hoveredNodeId) return
+    const id = window.setInterval(() => setTooltipTick(t => t + 1), 100)
+    return () => window.clearInterval(id)
+  }, [running, hoveredNodeId])
 
   // Seed newly visible nodes at their nearest visible ancestor, then reheat
   const prevVisibleTypes = React.useRef(visibleTypes)
@@ -361,6 +408,8 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
       sim.reheat(0.5)
       setRunning(true)
       initialFitDone.current = false
+      lastComRef.current = null
+      comOffsetRef.current = { x: 0, y: 0 }
     }
     prevVisibleTypes.current = visibleTypes
   }, [visibleTypes])
@@ -709,6 +758,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
       <div className="graph-toolbar">
         <span className="graph-toolbar-count">
           {nodeCount} node{nodeCount !== 1 ? 's' : ''}, {edgeCount} edge{edgeCount !== 1 ? 's' : ''}
+          {running && <span className="graph-toolbar-fps" title="Simulation frames per second">  ·  {fps} fps</span>}
         </span>
         {selectedNodeId && onShowInTree && (() => {
           const node = simRef.current?.getNode(selectedNodeId)
@@ -760,6 +810,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           nodes={visibleNodes}
           edges={visibleEdges}
           viewport={viewport}
+          comOffsetRef={comOffsetRef}
           onViewportChange={setViewport}
           onNodeDragStart={handleNodeDragStart}
           onNodeDragMove={handleNodeDragMove}
@@ -785,6 +836,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           simRef={simRef}
           visibleEdges={visibleEdges}
           viewport={viewport}
+          comOffsetRef={comOffsetRef}
           shiftHeld={shiftHeld}
         />
       </div>
@@ -832,10 +884,11 @@ interface GraphHoverTooltipProps {
   simRef: React.RefObject<Simulation | null>
   visibleEdges: { edgeType: string; sourceId: string; targetId: string }[]
   viewport: Viewport
+  comOffsetRef: React.MutableRefObject<{ x: number; y: number }>
   shiftHeld: boolean
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, shiftHeld }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, comOffsetRef, shiftHeld }: GraphHoverTooltipProps) {
   if (!hoveredNodeId) return null
   const sim = simRef.current
   if (!sim) return null
@@ -853,7 +906,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, shif
     if (e.targetId === hoveredNodeId) incoming++
   }
 
-  const [sx, sy] = worldToScreen(viewport, node.x, node.y)
+  const [sx, sy] = worldToScreen(withWorldOffset(viewport, comOffsetRef.current), node.x, node.y)
 
   return (
     <div className="graph-hover-tooltip" style={{ left: sx, top: sy }}>

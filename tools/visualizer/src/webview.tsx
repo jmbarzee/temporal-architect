@@ -18,6 +18,11 @@ function WebviewApp() {
   const [ast, setAst] = React.useState<TWFFile | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [showStyleGuide, setShowStyleGuide] = React.useState(false)
+  // Hash of the most recently committed AST. The extension re-posts the AST on
+  // every focus dance / save / explicit refresh; if the structure is unchanged
+  // we drop the message so React state — and therefore the graph simulation —
+  // doesn't get torn down for nothing.
+  const lastAstHashRef = React.useRef<string | null>(null)
 
   // Ctrl+Shift+G toggles style guide
   React.useEffect(() => {
@@ -35,9 +40,16 @@ function WebviewApp() {
     const handleMessage = (event: MessageEvent) => {
       const message = event.data
       if (message.type === 'ast') {
+        // Structural-equality skip: parser output is plain JSON with stable
+        // key order, so JSON.stringify suffices and is sub-millisecond at the
+        // sizes we deal with.
+        const hash = JSON.stringify(message.data)
+        if (hash === lastAstHashRef.current) return
+        lastAstHashRef.current = hash
         setAst(message.data)
         setError(null)
       } else if (message.type === 'error') {
+        lastAstHashRef.current = null
         setError(message.message)
         setAst(null)
       }

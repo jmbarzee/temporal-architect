@@ -109,8 +109,8 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const files = dedupeFilePaths(uris.map((u) => u.fsPath));
-      // No focused file - show all workflows
+      const files = uris.map((u) => u.fsPath);
+      // No focused file - show all workflows. _setFiles canonicalizes + dedupes.
       await WorkflowVisualizerPanel.createOrShowForFolder(context.extensionUri, folderPath, files, undefined);
     }
   );
@@ -312,9 +312,19 @@ class WorkflowVisualizerPanel {
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
   private _folderPath: string;
-  private _files: string[];
+  private _files: string[] = [];
   private _focusedFile: string | undefined;
   private _disposables: vscode.Disposable[] = [];
+
+  /**
+   * Sole mutator of _files. Canonicalizes + dedupes on the way in so the
+   * invariant "_files contains no path that refers to the same physical file
+   * as another entry" holds automatically, regardless of which call site
+   * constructed the list.
+   */
+  private _setFiles(files: string[]): void {
+    this._files = dedupeFilePaths(files);
+  }
 
   /**
    * Create or show the visualizer for a single file.
@@ -324,13 +334,12 @@ class WorkflowVisualizerPanel {
   public static async createOrShowForFile(extensionUri: vscode.Uri, filePath: string) {
     const folderPath = path.dirname(filePath);
 
-    // Find all .twf files in the folder for context
+    // Find all .twf files in the folder for context, plus the focused file
+    // (which findFiles can legitimately omit if the folder is outside the
+    // workspace or shadowed by an exclude). _setFiles handles dedup.
     const pattern = new vscode.RelativePattern(folderPath, "*.twf");
     const uris = await vscode.workspace.findFiles(pattern);
-    // Always include the focused file; dedupe canonicalizes away any string-level
-    // differences (symlinks, case) between findFiles results and filePath so the
-    // same physical file is never parsed twice.
-    const files = dedupeFilePaths([...uris.map((u) => u.fsPath), filePath]);
+    const files = [...uris.map((u) => u.fsPath), filePath];
 
     await WorkflowVisualizerPanel.createOrShowForFolder(extensionUri, folderPath, files, filePath);
   }
@@ -350,7 +359,7 @@ class WorkflowVisualizerPanel {
     if (WorkflowVisualizerPanel.currentPanel) {
       WorkflowVisualizerPanel.currentPanel._panel.reveal(column, true);
       WorkflowVisualizerPanel.currentPanel._folderPath = folderPath;
-      WorkflowVisualizerPanel.currentPanel._files = files;
+      WorkflowVisualizerPanel.currentPanel._setFiles(files);
       WorkflowVisualizerPanel.currentPanel._focusedFile = focusedFile;
       WorkflowVisualizerPanel.currentPanel._update();
       return;
@@ -388,6 +397,14 @@ class WorkflowVisualizerPanel {
   /**
    * Update the focused file and refresh the visualization.
    * Only updates if the new file is in the same folder or a .twf file.
+   *
+   * Short-circuits when neither the folder nor the focused file changed.
+   * `onDidChangeActiveTextEditor` re-fires every time the .twf editor regains
+   * focus — including the focus dance triggered by the webview's "refocus"
+   * message after every click. Without this guard each click in the
+   * visualizer would trigger a full reparse + AST repost, which in turn
+   * resets the GraphView's force simulation to fresh random positions on
+   * every interaction (manifests as ~1 Hz "teleport" frames).
    */
   public static async updateFocusedFile(filePath: string) {
     if (!WorkflowVisualizerPanel.currentPanel) {
@@ -396,15 +413,20 @@ class WorkflowVisualizerPanel {
 
     const panel = WorkflowVisualizerPanel.currentPanel;
     const newFolderPath = path.dirname(filePath);
+    const sameFolder = newFolderPath === panel._folderPath;
+    const sameFile = filePath === panel._focusedFile;
 
-    // If the file is in a different folder, reload the folder's files
-    if (newFolderPath !== panel._folderPath) {
+    if (sameFolder && sameFile) {
+      return;
+    }
+
+    if (!sameFolder) {
       const pattern = new vscode.RelativePattern(newFolderPath, "*.twf");
       const uris = await vscode.workspace.findFiles(pattern);
-      const files = dedupeFilePaths([...uris.map((u) => u.fsPath), filePath]);
+      const files = [...uris.map((u) => u.fsPath), filePath];
 
       panel._folderPath = newFolderPath;
-      panel._files = files;
+      panel._setFiles(files);
     }
 
     panel._focusedFile = filePath;
@@ -421,7 +443,7 @@ class WorkflowVisualizerPanel {
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._folderPath = folderPath;
-    this._files = files;
+    this._setFiles(files);
     this._focusedFile = focusedFile;
 
     // Set initial HTML content

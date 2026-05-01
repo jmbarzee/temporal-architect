@@ -97,6 +97,21 @@ export function edgeCategory(params: ForceParams, edge: GraphEdge): EdgeCategory
   return { strength: params.linkL3ToL3, distance: params.distL3ToL3 }
 }
 
+// Stability bounds — defenses against numerical instability cascades.
+//
+// MAX_VELOCITY: per-tick cap on a node's speed (world units / tick). A healthy
+// simulation produces speeds well below this; the cap exists only to break
+// runaway cascades where two nodes briefly overlap, get hit with a singular
+// force, fly apart, collide with a third, and so on. Picked an order of
+// magnitude larger than typical equilibrium speeds and an order of magnitude
+// smaller than what causes visible "teleport" frames.
+//
+// MAX_POSITION: hard bound on world coordinates. Final safety net so the canvas
+// 2D context never receives non-finite or astronomically-large coords (which
+// can OOM the GPU command buffer and crash the webview renderer).
+const MAX_VELOCITY = 50
+const MAX_POSITION = 1e6
+
 export class Simulation {
   nodes: SimNode[]
   edges: GraphEdge[]
@@ -166,9 +181,19 @@ export class Simulation {
         const b = active[j]
         let dx = b.x - a.x
         let dy = b.y - a.y
-        const dist2 = dx * dx + dy * dy
-        if (dist2 < 0.01) { dx = Math.random() - 0.5; dy = Math.random() - 0.5 }
-        const rawDist = Math.sqrt(dist2 + 0.01)
+        let dist2 = dx * dx + dy * dy
+        // Coincident nodes: pick a true random unit vector and reset dist²
+        // consistently. The previous formulation set dx,dy to random values in
+        // [-0.5, 0.5] but left dist² unchanged, so dx/rawDist (intended to be
+        // a unit vector) was ~5× too large and pumped huge forces into a
+        // degenerate frame, kicking off cascade explosions.
+        if (dist2 < 0.01) {
+          const angle = Math.random() * Math.PI * 2
+          dx = Math.cos(angle)
+          dy = Math.sin(angle)
+          dist2 = 1
+        }
+        const rawDist = Math.sqrt(dist2)
         const effectiveDist = Math.sqrt(dist2 + softening)
         const chargeA = chargeForLevel(this.params, a.level)
         const chargeB = chargeForLevel(this.params, b.level)
@@ -195,7 +220,18 @@ export class Simulation {
       let dx = target.x - source.x
       let dy = target.y - source.y
       let dist = Math.sqrt(dx * dx + dy * dy)
-      if (dist < 0.1) { dist = 0.1; dx = Math.random() - 0.5; dy = Math.random() - 0.5 }
+      // Coincident endpoints: use a true random unit vector and reset dist
+      // to its magnitude (1). The previous form left dist clamped at 0.1
+      // while randomizing dx,dy in [-0.5, 0.5], so the spring formula's
+      // 1/dist factor multiplied force by 10× *and* the (dx,dy) "direction"
+      // was up to 5× too large — together pumping ~50× the intended force
+      // into a single tick, the kernel of the cascade explosion.
+      if (dist < 0.1) {
+        const angle = Math.random() * Math.PI * 2
+        dx = Math.cos(angle)
+        dy = Math.sin(angle)
+        dist = 1
+      }
 
       const cat = edgeCategory(this.params, edge)
       const restDist = cat.distance * distMul
@@ -221,14 +257,45 @@ export class Simulation {
       }
     }
 
-    // Apply velocity and damping
+    // Apply velocity and damping with stability guards.
+    //
+    // Three layered defenses against numerical instability cascades:
+    //   1. NaN/Infinity guard — if any force computation produced a non-finite
+    //      value (e.g. division by an unexpected zero), reset that component
+    //      to zero rather than let it propagate into positions and reach the
+    //      canvas (where NaN/Infinity coords can crash the renderer).
+    //   2. Per-tick velocity clamp — explicit "node movement limit" that
+    //      breaks runaway cascades. A healthy sim never hits this; if it does,
+    //      we've absorbed a singular force without letting it ricochet.
+    //   3. Position hard bound — final safety net so positions can never
+    //      reach values that crash compositing.
+    const decay = this.params.velocityDecay
+    const maxV2 = MAX_VELOCITY * MAX_VELOCITY
     for (const node of active) {
-      if (!node.pinned) {
-        node.vx *= this.params.velocityDecay
-        node.vy *= this.params.velocityDecay
-        node.x += node.vx
-        node.y += node.vy
+      if (node.pinned) continue
+
+      node.vx *= decay
+      node.vy *= decay
+
+      if (!Number.isFinite(node.vx)) node.vx = 0
+      if (!Number.isFinite(node.vy)) node.vy = 0
+
+      const v2 = node.vx * node.vx + node.vy * node.vy
+      if (v2 > maxV2) {
+        const s = MAX_VELOCITY / Math.sqrt(v2)
+        node.vx *= s
+        node.vy *= s
       }
+
+      node.x += node.vx
+      node.y += node.vy
+
+      if (!Number.isFinite(node.x)) node.x = 0
+      if (!Number.isFinite(node.y)) node.y = 0
+      if (node.x < -MAX_POSITION) node.x = -MAX_POSITION
+      else if (node.x > MAX_POSITION) node.x = MAX_POSITION
+      if (node.y < -MAX_POSITION) node.y = -MAX_POSITION
+      else if (node.y > MAX_POSITION) node.y = MAX_POSITION
     }
 
     // Cool

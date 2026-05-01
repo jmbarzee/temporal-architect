@@ -150,6 +150,10 @@ body {
   margin-right: auto;
 }
 
+.graph-toolbar-fps {
+  opacity: 0.7;
+}
+
 .graph-toolbar-btn {
   padding: 3px 10px;
   font-size: 12px;

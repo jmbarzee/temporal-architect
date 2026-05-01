@@ -11,6 +11,9 @@ function App() {
   const [error, setError] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [showStyleGuide, setShowStyleGuide] = React.useState(false)
+  // See webview.tsx: skip AST messages that are structurally identical to the
+  // previous one so the graph simulation doesn't reset on every focus refresh.
+  const lastAstHashRef = React.useRef<string | null>(null)
 
   // Ctrl+Shift+G toggles style guide
   React.useEffect(() => {
@@ -29,9 +32,13 @@ function App() {
     const handleMessage = (event: MessageEvent) => {
       const message = event.data
       if (message.type === 'ast') {
+        const hash = JSON.stringify(message.data)
+        if (hash === lastAstHashRef.current) return
+        lastAstHashRef.current = hash
         setAst(message.data)
         setError(null)
       } else if (message.type === 'error') {
+        lastAstHashRef.current = null
         setError(message.message)
         setAst(null)
       }

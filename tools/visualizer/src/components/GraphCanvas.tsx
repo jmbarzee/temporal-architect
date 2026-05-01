@@ -7,7 +7,7 @@ import { edgeCategory } from '../graph/simulation'
 import type { ForceSection } from './GraphControlPanel'
 import type { GraphEdge } from '../graph/model'
 import type { Viewport } from '../graph/viewport'
-import { worldToScreen, screenToWorld, zoomAt, fitToView } from '../graph/viewport'
+import { worldToScreen, screenToWorld, zoomAt, fitToView, withWorldOffset } from '../graph/viewport'
 
 // Colors matching the tree view theme (light mode defaults)
 const NODE_COLORS: Record<string, string> = {
@@ -46,6 +46,9 @@ interface GraphCanvasProps {
   nodes: SimNode[]
   edges: GraphEdge[]
   viewport: Viewport
+  // Live COM-drift offset (world units). Read every draw frame so the physics
+  // loop can accumulate drift without triggering React re-renders.
+  comOffsetRef: React.MutableRefObject<{ x: number; y: number }>
   onViewportChange: (vp: Viewport) => void
   onNodeDragStart: (id: string, wx: number, wy: number) => void
   onNodeDragMove: (wx: number, wy: number) => void
@@ -73,6 +76,7 @@ interface DrawData {
   edges: GraphEdge[]
   nodeMap: Map<string, SimNode>
   viewport: Viewport
+  comOffsetRef: React.MutableRefObject<{ x: number; y: number }>
   highlightedNodes: Set<string> | null
   highlightedEdges: Set<string> | null
   hoveredNodeId: string | null
@@ -88,7 +92,7 @@ interface DrawData {
 }
 
 export function GraphCanvas({
-  nodes, edges, viewport, onViewportChange,
+  nodes, edges, viewport, comOffsetRef, onViewportChange,
   onNodeDragStart, onNodeDragMove, onNodeDragEnd,
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
@@ -116,12 +120,12 @@ export function GraphCanvas({
 
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
-    nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
+    nodes, edges, nodeMap, viewport, comOffsetRef, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
     forceParams, activeSection, activeChargeLevel, nodeSummaries, running,
   })
   drawData.current = {
-    nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
+    nodes, edges, nodeMap, viewport, comOffsetRef, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
     forceParams, activeSection, activeChargeLevel, nodeSummaries, running,
   }
@@ -138,16 +142,18 @@ export function GraphCanvas({
     return () => ro.disconnect()
   }, [])
 
-  // Hit test: find node under screen coordinates (circular distance check)
+  // Hit test: find node under screen coordinates (circular distance check).
+  // Uses the effective viewport so the live COM-drift offset is respected.
   const hitTest = React.useCallback((sx: number, sy: number): SimNode | null => {
-    const [wx, wy] = screenToWorld(viewport, sx, sy)
+    const effVp = withWorldOffset(viewport, comOffsetRef.current)
+    const [wx, wy] = screenToWorld(effVp, sx, sy)
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i]
       const r = NODE_SIZES[n.level].r / viewport.scale + 4
       if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
-  }, [nodes, viewport])
+  }, [nodes, viewport, comOffsetRef])
 
   // Mouse handlers
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
@@ -167,13 +173,14 @@ export function GraphCanvas({
 
     if (node) {
       dragState.current = { type: 'node', sx, sy, moved: false }
-      const [wx, wy] = screenToWorld(viewport, sx, sy)
+      const effVp = withWorldOffset(viewport, comOffsetRef.current)
+      const [wx, wy] = screenToWorld(effVp, sx, sy)
       onNodeDragStart(node.id, wx, wy)
     } else {
       dragState.current = { type: 'pan', startVp: { ...viewport }, sx, sy, moved: false }
     }
     canvasRef.current?.setPointerCapture(e.pointerId)
-  }, [viewport, hitTest, onNodeDragStart])
+  }, [viewport, hitTest, onNodeDragStart, comOffsetRef])
 
   const handlePointerMove = React.useCallback((e: React.PointerEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -198,10 +205,11 @@ export function GraphCanvas({
         y: dragState.current.startVp.y + dy,
       })
     } else if (dragState.current.type === 'node') {
-      const [wx, wy] = screenToWorld(viewport, cx, cy)
+      const effVp = withWorldOffset(viewport, comOffsetRef.current)
+      const [wx, wy] = screenToWorld(effVp, cx, cy)
       onNodeDragMove(wx, wy)
     }
-  }, [viewport, hitTest, onViewportChange, onNodeDragMove, onHoverNode])
+  }, [viewport, hitTest, onViewportChange, onNodeDragMove, onHoverNode, comOffsetRef])
 
   const handlePointerUp = React.useCallback((e: React.PointerEvent) => {
     const ds = dragState.current
@@ -263,6 +271,10 @@ export function GraphCanvas({
       const { w, h } = size
       const hasHighlight = d.highlightedNodes !== null && d.highlightedNodes.size > 0
 
+      // Build the effective viewport once per frame, folding in the live
+      // COM-drift offset so all world→screen projections share the same transform.
+      const vp = withWorldOffset(d.viewport, d.comOffsetRef.current)
+
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
 
@@ -272,8 +284,8 @@ export function GraphCanvas({
         const tgt = d.nodeMap.get(edge.targetId)
         if (!src || !tgt) continue
 
-        const [sx, sy] = worldToScreen(d.viewport, src.x, src.y)
-        const [tx, ty] = worldToScreen(d.viewport, tgt.x, tgt.y)
+        const [sx, sy] = worldToScreen(vp, src.x, src.y)
+        const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
 
         if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
             Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
@@ -304,7 +316,7 @@ export function GraphCanvas({
         if (edge.edgeType !== 'containment') {
           const angle = Math.atan2(ty - sy, tx - sx)
           const nodeSize = NODE_SIZES[tgt.level]
-          const offset = (nodeSize.w / 2) * d.viewport.scale + 2
+          const offset = (nodeSize.w / 2) * vp.scale + 2
           const ax = tx - Math.cos(angle) * offset
           const ay = ty - Math.sin(angle) * offset
           ctx.beginPath()
@@ -340,8 +352,8 @@ export function GraphCanvas({
         const levelFilter = pushActive ? d.activeChargeLevel : null
 
         for (const node of d.nodes) {
-          const [sx, sy] = worldToScreen(d.viewport, node.x, node.y)
-          const maxRing = 400 * d.viewport.scale
+          const [sx, sy] = worldToScreen(vp, node.x, node.y)
+          const maxRing = 400 * vp.scale
           if (sx + maxRing < 0 || sx - maxRing > w ||
               sy + maxRing < 0 || sy - maxRing > h) continue
 
@@ -359,7 +371,7 @@ export function GraphCanvas({
             const inner = Math.pow(softPow / t, 2 / exp) - soft
             if (inner <= 0) continue
             const dd = Math.sqrt(inner)
-            const r = dd * d.viewport.scale
+            const r = dd * vp.scale
             if (r < 2 || r > 2000) continue
 
             ctx.beginPath()
@@ -380,8 +392,8 @@ export function GraphCanvas({
           const tgt = d.nodeMap.get(edge.targetId)
           if (!src || !tgt) continue
 
-          const [sx, sy] = worldToScreen(d.viewport, src.x, src.y)
-          const [tx, ty] = worldToScreen(d.viewport, tgt.x, tgt.y)
+          const [sx, sy] = worldToScreen(vp, src.x, src.y)
+          const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
           if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
               Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
@@ -414,7 +426,7 @@ export function GraphCanvas({
           const perpX = -Math.sin(angle)
           const perpY = Math.cos(angle)
           const tickLen = 5
-          const restScreen = restDist * d.viewport.scale
+          const restScreen = restDist * vp.scale
           if (restScreen > 10 && restScreen < Math.sqrt((tx - sx) ** 2 + (ty - sy) ** 2) * 2) {
             const mx1 = sx + Math.cos(angle) * restScreen
             const my1 = sy + Math.sin(angle) * restScreen
@@ -442,7 +454,7 @@ export function GraphCanvas({
         let comX = 0, comY = 0
         for (const node of d.nodes) { comX += node.x; comY += node.y }
         comX /= d.nodes.length; comY /= d.nodes.length
-        const [cx, cy] = worldToScreen(d.viewport, comX, comY)
+        const [cx, cy] = worldToScreen(vp, comX, comY)
 
         const crossSize = 12
         ctx.strokeStyle = '#8B7EC8'
@@ -460,7 +472,7 @@ export function GraphCanvas({
         ctx.lineWidth = 1
         ctx.setLineDash([3, 6])
         for (const node of d.nodes) {
-          const [sx, sy] = worldToScreen(d.viewport, node.x, node.y)
+          const [sx, sy] = worldToScreen(vp, node.x, node.y)
           ctx.beginPath()
           ctx.moveTo(sx, sy)
           ctx.lineTo(cx, cy)
@@ -476,7 +488,7 @@ export function GraphCanvas({
       ctx.textBaseline = 'middle'
 
       for (const node of d.nodes) {
-        const [sx, sy] = worldToScreen(d.viewport, node.x, node.y)
+        const [sx, sy] = worldToScreen(vp, node.x, node.y)
         const s = NODE_SIZES[node.level]
         const hw = s.w / 2
         const hh = s.h / 2
@@ -495,7 +507,7 @@ export function GraphCanvas({
         ctx.fill()
 
         // Orphan indicator — dropped at very low zoom (decorative noise at that scale)
-        if (node.orphan && d.viewport.scale >= DETAIL_REDUCE_SCALE) {
+        if (node.orphan && vp.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.setLineDash([3, 3])
           ctx.strokeStyle = color
@@ -531,7 +543,7 @@ export function GraphCanvas({
         }
 
         // Focus ring — dropped at very low zoom (dashes too small to read)
-        if (node.id === d.focusedNodeId && d.viewport.scale >= DETAIL_REDUCE_SCALE) {
+        if (node.id === d.focusedNodeId && vp.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.strokeStyle = FOCUS_RING_COLOR
           ctx.lineWidth = 2
@@ -548,12 +560,12 @@ export function GraphCanvas({
         const maxLabelW = Math.max(s.r * 4, 48)
         const labelY = sy + s.r + 12
         const isActiveNode = node.id === d.hoveredNodeId || node.id === d.selectedNodeId
-        if (d.viewport.scale >= LABEL_ELIDE_SCALE || isActiveNode) {
+        if (vp.scale >= LABEL_ELIDE_SCALE || isActiveNode) {
           ctx.fillStyle = hasHighlight && !nodeHighlighted ? 'rgba(51,51,51,0.2)' : '#333'
           ctx.fillText(truncateLabel(ctx, node.name, maxLabelW), sx, labelY)
 
           // Summary — elided before name labels
-          if (d.viewport.scale >= SUMMARY_ELIDE_SCALE) {
+          if (vp.scale >= SUMMARY_ELIDE_SCALE) {
             const summary = d.nodeSummaries.get(node.id)
             if (summary) {
               ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
