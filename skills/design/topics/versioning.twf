@@ -1,22 +1,25 @@
 # Source: versioning.md
 # Patterns: versioning workflows by adding/removing/changing steps
-# Note: Use version flags passed as workflow parameters or from external config
+# Domain: each workflow demonstrates one versioning shape against a different
+# real workload (insurance underwriting, batch ETL job, enrichment pipeline)
+# so the version flags read naturally in their context.
+# Use version flags passed as workflow parameters or from external config.
 
 # --- Adding a step with version flag ---
 
-workflow OrderWorkflowAddStep(order: Order, enableFraudCheck: bool) -> (OrderResult):
-    activity ValidateOrder(order)
+workflow UnderwritingAddFraudCheck(policy: Policy, enableFraudCheck: bool) -> (PolicyResult):
+    activity ValidatePolicy(policy)
 
     # Version gate: new code only runs when flag is true
     if (enableFraudCheck):
-        activity FraudCheck(order)
+        activity FraudCheck(policy)
 
-    activity ProcessPayment(order) -> payment
-    close complete(OrderResult{status: "complete"})
+    activity BindPolicy(policy) -> binding
+    close complete(PolicyResult{status: "complete"})
 
 # --- Removing a step with version flag ---
 
-workflow OrderWorkflowRemoveStep(data: Data, useLegacyStep: bool) -> (Result):
+workflow BatchJobRemoveLegacyStep(data: Data, useLegacyStep: bool) -> (Result):
     activity Step1(data)
 
     # Keep legacy step for old executions
@@ -28,7 +31,7 @@ workflow OrderWorkflowRemoveStep(data: Data, useLegacyStep: bool) -> (Result):
 
 # --- Changing a step with version flag ---
 
-workflow OrderWorkflowChangeStep(data: Data, useImprovedProcessing: bool) -> (Result):
+workflow BatchJobChangeProcessor(data: Data, useImprovedProcessing: bool) -> (Result):
     activity Step1(data)
 
     # Use improved processing for new versions
@@ -42,7 +45,7 @@ workflow OrderWorkflowChangeStep(data: Data, useImprovedProcessing: bool) -> (Re
 
 # --- Reordering activities with version flag ---
 
-workflow ReorderWorkflow(data: Data, useNewOrder: bool) -> (Result):
+workflow BatchJobReorderSteps(data: Data, useNewOrder: bool) -> (Result):
     activity StepA(data)
 
     # Reorder steps B and C for new version
@@ -57,7 +60,7 @@ workflow ReorderWorkflow(data: Data, useNewOrder: bool) -> (Result):
 
 # --- Changing activity parameters with version flag ---
 
-workflow ParamChangeWorkflow(data: Data, useEnhancedParams: bool) -> (Result):
+workflow EnrichmentChangeParams(data: Data, useEnhancedParams: bool) -> (Result):
     # Call with different parameters based on version
     if (useEnhancedParams):
         activity EnhancedActivity(data, true) -> result
@@ -68,36 +71,36 @@ workflow ParamChangeWorkflow(data: Data, useEnhancedParams: bool) -> (Result):
 
 # --- Multiple version flags in one workflow ---
 
-workflow MultiVersionWorkflow(order: Order, config: VersionConfig) -> (OrderResult):
-    activity ValidateOrder(order)
+workflow UnderwritingMultiFlag(policy: Policy, config: VersionConfig) -> (PolicyResult):
+    activity ValidatePolicy(policy)
 
     # Version flag 1: Add fraud check
     if (config.enableFraudCheck):
-        activity FraudCheck(order)
+        activity FraudCheck(policy)
 
     # Version flag 2: Improved validation
     if (config.useImprovedValidation):
-        activity ImprovedValidation(order)
+        activity ImprovedValidation(policy)
 
-    activity ProcessPayment(order) -> payment
+    activity BindPolicy(policy) -> binding
 
     # Version flag 3: Remove legacy notification
     if (config.useLegacyNotify):
-        activity LegacyNotify(order)
+        activity LegacyNotify(policy)
 
-    activity FinalizeOrder(order) -> result
-    close complete(OrderResult{status: "complete"})
+    activity FinalizeOrder(policy) -> result
+    close complete(PolicyResult{status: "complete"})
 
 # --- Supporting activities ---
 
-activity ValidateOrder(order: Order):
-    validate(order)
+activity ValidatePolicy(policy: Policy):
+    validate(policy)
 
-activity FraudCheck(order: Order):
-    check_fraud(order)
+activity FraudCheck(policy: Policy):
+    check_fraud(policy)
 
-activity ProcessPayment(order: Order) -> (PaymentResult):
-    return charge(order)
+activity BindPolicy(policy: Policy) -> (PolicyBinding):
+    return bind(policy)
 
 activity Step1(data: Data):
     step1(data)
@@ -129,11 +132,42 @@ activity StepC(data: Data):
 activity EnhancedActivity(data: Data) -> (Result):
     return enhanced(data)
 
-activity ImprovedValidation(order: Order):
-    validate_improved(order)
+activity ImprovedValidation(policy: Policy):
+    validate_improved(policy)
 
-activity LegacyNotify(order: Order):
-    legacy_notify(order)
+activity LegacyNotify(policy: Policy):
+    legacy_notify(policy)
 
-activity FinalizeOrder(order: Order) -> (OrderResult):
-    return finalize(order)
+activity FinalizeOrder(policy: Policy) -> (PolicyResult):
+    return finalize(policy)
+
+# --- Worker and namespace ---
+
+worker versioningWorker:
+    workflow UnderwritingAddFraudCheck
+    workflow BatchJobRemoveLegacyStep
+    workflow BatchJobChangeProcessor
+    workflow BatchJobReorderSteps
+    workflow EnrichmentChangeParams
+    workflow UnderwritingMultiFlag
+    activity ValidatePolicy
+    activity FraudCheck
+    activity BindPolicy
+    activity Step1
+    activity Step2
+    activity Step3
+    activity LegacyStep
+    activity ImprovedProcessing
+    activity OldProcessing
+    activity StepA
+    activity StepB
+    activity StepC
+    activity EnhancedActivity
+    activity ImprovedValidation
+    activity LegacyNotify
+    activity FinalizeOrder
+
+namespace versioning:
+    worker versioningWorker
+        options:
+            task_queue: "versioning"

@@ -47,7 +47,7 @@ When a signal is awaited (via `await signal` or as an `await one` case), the exe
 This two-phase execution means:
 
 ```twf
-workflow OrderWorkflow(orderId: string):
+workflow OrderTrackingWorkflow(orderId: string):
     signal PaymentReceived(transactionId: string, amount: decimal):
         # Phase 1: Handler runs immediately on signal arrival
         paymentStatus = "received"
@@ -202,21 +202,21 @@ When the update wins the race, its handler body runs and returns a value to the 
 A common pattern has an update handler wait on workflow state using `condition`. The caller blocks until the condition becomes true, then receives a result reflecting the current state:
 
 ```twf
-workflow ClusterManager(config: Config):
+workflow JobCoordinator(config: JobConfig):
     state:
-        condition clusterStarted
+        condition jobReady
 
     signal Shutdown():
         shutdownRequested = true
 
-    update WaitUntilStarted() -> (ClusterState):
-        await clusterStarted
-        return ClusterState{started: true}
+    update WaitUntilReady() -> (JobState):
+        await jobReady
+        return JobState{ready: true}
 
-    # Main body provisions and starts the cluster
-    activity ProvisionCluster(config)
-    activity StartCluster(config)
-    set clusterStarted
+    # Main body provisions and starts the job runner
+    activity ProvisionJobRunner(config)
+    activity StartJobRunner(config)
+    set jobReady
 
     await signal Shutdown
     close complete
@@ -224,8 +224,8 @@ workflow ClusterManager(config: Config):
 
 In this pattern:
 1. The client calls the update and blocks waiting for a result
-2. The update handler starts running but yields on `await clusterStarted`
-3. The main workflow body mutates the condition via `set clusterStarted`
+2. The update handler starts running but yields on `await jobReady`
+3. The main workflow body mutates the condition via `set jobReady`
 4. The update handler resumes and returns a value
 5. The client receives the result
 

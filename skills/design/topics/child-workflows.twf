@@ -42,7 +42,7 @@ workflow DeployServices(app: App) -> (DeployResult):
 
 # --- Parallel children ---
 
-workflow ProcessBatch(items: []Item) -> (BatchResult):
+workflow ParallelItemBatch(items: []Item) -> (BatchResult):
     await all:
         for (item in items):
             workflow ProcessItem(item)
@@ -91,7 +91,7 @@ workflow ParentWithDetach(order: Order) -> (OrderResult):
     close complete(OrderResult{status: "done"})
 
 workflow NotifyCustomer(customer: Customer):
-    activity SendNotification(customer)
+    activity SendCustomerNotification(customer)
 
 # --- Supporting activities ---
 
@@ -131,5 +131,41 @@ activity SendEmail(email: string, message: string):
 activity ProcessOrder(order: Order) -> (OrderResult):
     return process(order)
 
-activity SendNotification(customer: Customer):
+activity SendCustomerNotification(customer: Customer):
     notify(customer)
+
+# --- Worker and namespace ---
+
+worker childWorkflowsWorker:
+    workflow ParentWorkflow
+    workflow ChildWorkflow
+    workflow DeployApplication
+    workflow DeployInfrastructure
+    workflow DeployServices
+    workflow ParallelItemBatch
+    workflow ProcessItem
+    workflow Onboarding
+    workflow CreateAccount
+    workflow EnterpriseSetup
+    workflow StandardSetup
+    workflow SendWelcomeEmail
+    workflow ParentWithDetach
+    workflow NotifyCustomer
+    activity ValidateInput
+    activity TransformData
+    activity ProvisionDatabase
+    activity RunMigrations
+    activity BuildArtifacts
+    activity DeployContainers
+    activity ProcessSingleItem
+    activity CreateUserRecord
+    activity ConfigureEnterprise
+    activity ConfigureStandard
+    activity SendEmail
+    activity ProcessOrder
+    activity SendCustomerNotification
+
+namespace deployment:
+    worker childWorkflowsWorker
+        options:
+            task_queue: "deployment"

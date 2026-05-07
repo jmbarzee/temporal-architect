@@ -14,9 +14,9 @@ nexus service NotificationsService:
 
 # --- Caller workflow using nexus ---
 
-workflow OrderWorkflow(order: Order) -> (OrderResult):
+workflow OrderCheckout(order: Order) -> (OrderResult):
     # Validate locally
-    activity ValidateOrder(order)
+    activity ValidateCheckout(order)
 
     # Call into payments via Nexus endpoint (child call)
     nexus PaymentsEndpoint PaymentsService.ProcessPayment(order.payment) -> paymentResult
@@ -60,7 +60,7 @@ workflow NexusWithTimeout(data: Data) -> (Result):
 
 # --- Supporting local activities ---
 
-activity ValidateOrder(order: Order):
+activity ValidateCheckout(order: Order):
     validate(order)
 
 activity DoLocalWork(data: Data) -> (LocalResult):
@@ -77,11 +77,11 @@ activity LookupPayment(paymentId: string) -> (PaymentStatus):
 workflow ProcessPaymentWorkflow(payment: Payment) -> (PaymentResult):
     activity ValidatePaymentDetails(payment)
     activity ChargePaymentMethod(payment) -> result
-    activity RecordTransaction(result)
+    activity RecordPaymentTransaction(result)
     close complete(PaymentResult{id: result.id})
 
 workflow SendConfirmationWorkflow(customer: Customer, paymentResult: PaymentResult):
-    activity SendEmail(customer.email, paymentResult)
+    activity SendPaymentConfirmation(customer.email, paymentResult)
     close complete
 
 # --- Supporting activities for target workflows ---
@@ -92,41 +92,41 @@ activity ValidatePaymentDetails(payment: Payment):
 activity ChargePaymentMethod(payment: Payment) -> (ChargeResult):
     return charge(payment)
 
-activity RecordTransaction(result: ChargeResult):
+activity RecordPaymentTransaction(result: ChargeResult):
     record(result)
 
-activity SendEmail(email: string, data: PaymentResult):
+activity SendPaymentConfirmation(email: string, data: PaymentResult):
     send(email, data)
 
 # --- Worker and namespace definitions ---
 
-worker paymentWorker:
+worker paymentProcessingWorker:
     workflow ProcessPaymentWorkflow
     activity ValidatePaymentDetails
     activity ChargePaymentMethod
-    activity RecordTransaction
+    activity RecordPaymentTransaction
     activity LookupPayment
     nexus service PaymentsService
 
 worker notificationWorker:
     workflow SendConfirmationWorkflow
-    activity SendEmail
+    activity SendPaymentConfirmation
     nexus service NotificationsService
 
-worker orderWorker:
-    workflow OrderWorkflow
+worker checkoutWorker:
+    workflow OrderCheckout
     workflow AsyncNexusCaller
     workflow NexusWithOptions
     workflow NexusWithTimeout
-    activity ValidateOrder
+    activity ValidateCheckout
     activity DoLocalWork
     activity AlertTimeout
 
 namespace orders:
-    worker orderWorker
+    worker checkoutWorker
         options:
-            task_queue: "orders"
-    worker paymentWorker
+            task_queue: "checkout"
+    worker paymentProcessingWorker
         options:
             task_queue: "payments"
     worker notificationWorker

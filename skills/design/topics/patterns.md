@@ -33,7 +33,7 @@ A discrete operation that drives toward completion.
 ```twf
 workflow OrderFulfillment(order: Order) -> (OrderResult):
     # Step 1: Validate
-    activity ValidateOrder(order) -> validated
+    activity ValidateRetailOrder(order) -> validated
     if not validated.success:
         close fail(OrderResult{status: "invalid", error: validated.error})
     
@@ -44,7 +44,7 @@ workflow OrderFulfillment(order: Order) -> (OrderResult):
     activity ProcessPayment(order.payment) -> payment
     
     # Step 4: Fulfill
-    activity ShipOrder(order, reservation)
+    activity ShipRetailOrder(order, reservation)
     
     # Step 5: Notify
     activity SendConfirmation(order.customer)
@@ -81,12 +81,12 @@ workflow AccountEntity(accountId: string, account: Account):
         await one:
             signal Deposit:
                 account.balance += signal.amount
-                activity RecordTransaction(accountId, "deposit", signal.amount)
+                activity RecordAccountTransaction(accountId, "deposit", signal.amount)
 
             signal Withdraw:
                 if account.balance >= signal.amount:
                     account.balance -= signal.amount
-                    activity RecordTransaction(accountId, "withdraw", signal.amount)
+                    activity RecordAccountTransaction(accountId, "withdraw", signal.amount)
 
             signal Close:
                 activity CloseAccount(accountId)
@@ -146,7 +146,7 @@ workflow BookingWorkflow(booking: Booking) -> BookingResult:
     # on failure: activity CancelHotel(hotel.id), activity CancelFlight(flight.id)
     
     # Step 4: Charge payment (compensate all on failure)
-    activity ChargePayment(booking.payment) -> payment
+    activity ChargeBookingPayment(booking.payment) -> payment
     # on failure: activity CancelCar(car.id), CancelHotel(...), CancelFlight(...)
     
     # All succeeded
@@ -394,7 +394,7 @@ Wait for external condition to be met.
 ### Pattern
 
 ```twf
-workflow WaitForResource(resourceId: string) -> (Resource):
+workflow AwaitResourceReady(resourceId: string) -> (Resource):
     backoff = 5s
     maxBackoff = 60s
 

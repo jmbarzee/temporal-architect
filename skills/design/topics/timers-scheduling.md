@@ -38,9 +38,9 @@ workflow OrderFulfillment(order: Order) -> (OrderResult):
     # Entire workflow must complete within deadline (SDK-level config)
     # workflow_timeout: 7d
 
-    activity ValidateOrder(order)
+    activity ValidateRetailOrder(order)
     await signal PaymentReceived
-    activity ShipOrder(order)
+    activity ShipRetailOrder(order)
     close complete(OrderResult{status: "completed"})
 ```
 

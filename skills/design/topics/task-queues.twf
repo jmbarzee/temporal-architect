@@ -61,14 +61,14 @@ activity GenerateThumbnail(video: Video) -> (Thumbnail):
 # PaymentService is registered on paymentWorker → hooked up via "payments" queue
 nexus service PaymentService:
     sync CheckPaymentStatus(paymentId: string) -> (PaymentStatus):
-        activity LookupPayment(paymentId) -> status
+        activity GetPaymentStatus(paymentId) -> status
         close complete(status)
 
 # AnalyticsService on a separate analytics worker → independent scaling
 nexus service AnalyticsService:
     async TrackEvent workflow TrackEventWorkflow
 
-activity LookupPayment(paymentId: string) -> (PaymentStatus):
+activity GetPaymentStatus(paymentId: string) -> (PaymentStatus):
     return lookup(paymentId)
 
 workflow TrackEventWorkflow(event: Event):
@@ -86,7 +86,7 @@ worker orderWorker:
 
 worker paymentWorker:
     activity ChargePayment
-    activity LookupPayment
+    activity GetPaymentStatus
     nexus service PaymentService
 
 worker analyticsWorker:

@@ -41,7 +41,7 @@ activity ExecuteApprovedAction(request: Request):
 
 # --- Workflow using async activity with timeout ---
 
-workflow ApprovalWorkflow(request: Request) -> (Decision):
+workflow PublishApprovalWorkflow(request: Request) -> (Decision):
     activity NotifyRequestCreated(request)
 
     # This blocks until external completion
@@ -56,7 +56,7 @@ workflow ApprovalWorkflow(request: Request) -> (Decision):
 
 # --- Workflow with various timeout configurations ---
 
-workflow TimeoutConfigDemo(data: Data) -> (Result):
+workflow LargeFileIngestion(data: Data) -> (Result):
     # Short operation, tight timeout
     activity QuickLookup(data.id) -> result1
         options:
@@ -87,3 +87,21 @@ activity QuickLookup(id: string) -> (LookupResult):
 
 activity UnreliableService(data: Data) -> (ServiceResult):
     return external_api.call(data)
+
+# --- Worker and namespace ---
+
+worker activitiesAdvancedWorker:
+    workflow PublishApprovalWorkflow
+    workflow LargeFileIngestion
+    activity ProcessLargeFile
+    activity ResumableProcess
+    activity RequestHumanApproval
+    activity NotifyRequestCreated
+    activity ExecuteApprovedAction
+    activity QuickLookup
+    activity UnreliableService
+
+namespace activitiesAdvanced:
+    worker activitiesAdvancedWorker
+        options:
+            task_queue: "activities-advanced"

@@ -1,19 +1,23 @@
 # Source: testing.md
 # Patterns: simple testable workflow/activity pairs
+# Domain: subscription renewals + leave-of-absence approvals + reminder cadences
+#         + status-tracked status flow + condition-driven subscription manager.
+# Each workflow is intentionally small and isolated so unit tests can drive
+# signals/updates and assert on activity calls in isolation.
 
-# --- Basic testable order workflow ---
+# --- Basic linear workflow: renewal processing ---
 
-workflow OrderWorkflow(order: Order) -> (OrderResult):
-    activity ValidateOrder(order) -> validated
+workflow RenewalProcessing(renewal: Renewal) -> (RenewalResult):
+    activity ValidateRenewalRequest(renewal) -> validated
     if (validated.success == false):
-        close fail(OrderResult{status: "invalid"})
+        close fail(RenewalResult{status: "invalid"})
 
-    activity ProcessPayment(order.payment) -> payment
-    activity ShipOrder(order)
+    activity ChargeRenewalPayment(renewal.payment) -> payment
+    activity ActivateRenewedPlan(renewal)
 
-    close complete(OrderResult{status: "completed", paymentId: payment.id})
+    close complete(RenewalResult{status: "completed", paymentId: payment.id})
 
-# --- Workflow with timer for testing ---
+# --- Workflow with timer: scheduled reminder cadence ---
 
 workflow ReminderWorkflow(userId: string):
     activity SendFirstReminder(userId)
@@ -27,9 +31,9 @@ workflow ReminderWorkflow(userId: string):
     activity SendFinalReminder(userId)
     close complete
 
-# --- Workflow with signals for testing ---
+# --- Workflow with signals: leave-of-absence approval ---
 
-workflow ApprovalWorkflow(request: Request) -> (Decision):
+workflow LeaveRequestApproval(request: LeaveRequest) -> (Decision):
     signal Approved(approver: string):
         approved = true
         approverName = approver
@@ -43,7 +47,7 @@ workflow ApprovalWorkflow(request: Request) -> (Decision):
     approverName = ""
     rejectReason = ""
 
-    activity NotifyApprovers(request)
+    activity NotifyManagers(request)
 
     await one:
         signal Approved:
@@ -53,7 +57,7 @@ workflow ApprovalWorkflow(request: Request) -> (Decision):
         timer(1h):
             close complete(Decision{status: "timeout"})
 
-# --- Workflow with query for testing ---
+# --- Workflow with query: status flow ---
 
 workflow StatusWorkflow(orderId: string) -> (OrderResult):
     query GetStatus() -> (string):
@@ -106,14 +110,14 @@ workflow SubscriptionManager(userId: string, sub: Subscription):
 
 # --- Supporting activities ---
 
-activity ValidateOrder(order: Order) -> (ValidationResult):
-    return validate(order)
+activity ValidateRenewalRequest(renewal: Renewal) -> (ValidationResult):
+    return validate(renewal)
 
-activity ProcessPayment(payment: Payment) -> (PaymentResult):
+activity ChargeRenewalPayment(payment: Payment) -> (PaymentResult):
     return charge(payment)
 
-activity ShipOrder(order: Order):
-    ship(order)
+activity ActivateRenewedPlan(renewal: Renewal):
+    activate(renewal)
 
 activity SendFirstReminder(userId: string):
     remind(userId, "first")
@@ -124,8 +128,8 @@ activity SendSecondReminder(userId: string):
 activity SendFinalReminder(userId: string):
     remind(userId, "final")
 
-activity NotifyApprovers(request: Request):
-    notify(request.approvers)
+activity NotifyManagers(request: LeaveRequest):
+    notify(request.managers)
 
 activity StartProcessing(orderId: string):
     start(orderId)
@@ -144,3 +148,30 @@ activity SendExpirationWarning(userId: string):
 
 activity CancelSubscription(userId: string):
     cancel(userId)
+
+# --- Worker and namespace ---
+
+worker testingWorker:
+    workflow RenewalProcessing
+    workflow ReminderWorkflow
+    workflow LeaveRequestApproval
+    workflow StatusWorkflow
+    workflow SubscriptionManager
+    activity ValidateRenewalRequest
+    activity ChargeRenewalPayment
+    activity ActivateRenewedPlan
+    activity SendFirstReminder
+    activity SendSecondReminder
+    activity SendFinalReminder
+    activity NotifyManagers
+    activity StartProcessing
+    activity ProcessItems
+    activity ValidatePayment
+    activity ExtendSubscription
+    activity SendExpirationWarning
+    activity CancelSubscription
+
+namespace testing:
+    worker testingWorker
+        options:
+            task_queue: "testing"

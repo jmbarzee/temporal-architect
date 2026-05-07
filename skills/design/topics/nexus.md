@@ -66,13 +66,13 @@ nexus service PaymentsService:
 Register services on workers and expose via endpoints in namespaces:
 
 ```twf
-worker paymentWorker:
+worker paymentProcessingWorker:
     workflow ProcessPaymentWorkflow
     activity LookupPayment
     nexus service PaymentsService
 
 namespace orders:
-    worker paymentWorker
+    worker paymentProcessingWorker
         options:
             task_queue: "payments"
     nexus endpoint PaymentsEndpoint

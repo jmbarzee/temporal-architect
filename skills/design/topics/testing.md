@@ -78,49 +78,49 @@ Test workflow logic by mocking activities. Use Temporal's test framework.
 ### Pattern
 
 ```twf
-workflow OrderWorkflow(order: Order) -> (OrderResult):
-    activity ValidateOrder(order) -> validated
+workflow RenewalProcessing(renewal: Renewal) -> (RenewalResult):
+    activity ValidateRenewalRequest(renewal) -> validated
     if not validated.success:
-        close fail(OrderResult{status: "invalid"})
+        close fail(RenewalResult{status: "invalid"})
 
-    activity ProcessPayment(order.payment) -> payment
-    activity ShipOrder(order)
+    activity ChargeRenewalPayment(renewal.payment) -> payment
+    activity ActivateRenewedPlan(renewal)
 
-    close complete(OrderResult{status: "completed", paymentId: payment.id})
+    close complete(RenewalResult{status: "completed", paymentId: payment.id})
 ```
 
 ```pseudo
 # Test
-test "OrderWorkflow completes successfully":
+test "RenewalProcessing completes successfully":
     env = TestWorkflowEnvironment()
     
     # Mock activities
-    env.mock_activity(ValidateOrder, returns: {success: true})
-    env.mock_activity(ProcessPayment, returns: {id: "pay-123"})
-    env.mock_activity(ShipOrder, returns: {})
+    env.mock_activity(ValidateRenewalRequest, returns: {success: true})
+    env.mock_activity(ChargeRenewalPayment, returns: {id: "pay-123"})
+    env.mock_activity(ActivateRenewedPlan, returns: {})
     
     # Execute workflow
-    result = env.execute_workflow(OrderWorkflow, Order{id: "order-1"})
+    result = env.execute_workflow(RenewalProcessing, Renewal{id: "renew-1"})
     
     # Assert result
     assert result.status == "completed"
     assert result.paymentId == "pay-123"
     
     # Assert activity calls
-    assert env.activity_called(ValidateOrder, with: Order{id: "order-1"})
-    assert env.activity_called(ProcessPayment)
-    assert env.activity_called(ShipOrder)
+    assert env.activity_called(ValidateRenewalRequest, with: Renewal{id: "renew-1"})
+    assert env.activity_called(ChargeRenewalPayment)
+    assert env.activity_called(ActivateRenewedPlan)
 
-test "OrderWorkflow returns invalid for failed validation":
+test "RenewalProcessing returns invalid for failed validation":
     env = TestWorkflowEnvironment()
     
-    env.mock_activity(ValidateOrder, returns: {success: false, error: "bad order"})
+    env.mock_activity(ValidateRenewalRequest, returns: {success: false, error: "bad renewal"})
     
-    result = env.execute_workflow(OrderWorkflow, Order{id: "order-1"})
+    result = env.execute_workflow(RenewalProcessing, Renewal{id: "renew-1"})
     
     assert result.status == "invalid"
-    assert not env.activity_called(ProcessPayment)  # Not called
-    assert not env.activity_called(ShipOrder)       # Not called
+    assert not env.activity_called(ChargeRenewalPayment)   # Not called
+    assert not env.activity_called(ActivateRenewedPlan)    # Not called
 ```
 
 ### What to Test in Workflows
@@ -149,18 +149,18 @@ Result: PASS (deterministic) or FAIL (non-determinism detected)
 
 ```pseudo
 # Record workflow history
-test "record OrderWorkflow history":
+test "record RenewalProcessing history":
     env = TestWorkflowEnvironment()
     # ... execute workflow ...
     history = env.get_workflow_history()
-    save_to_file("order_workflow_v1.history", history)
+    save_to_file("renewal_processing_v1.history", history)
 
 # Replay test
-test "OrderWorkflow replays deterministically":
-    history = load_from_file("order_workflow_v1.history")
+test "RenewalProcessing replays deterministically":
+    history = load_from_file("renewal_processing_v1.history")
     
     env = TestWorkflowEnvironment()
-    result = env.replay_workflow(OrderWorkflow, history)
+    result = env.replay_workflow(RenewalProcessing, history)
     
     assert result.replay_successful
     assert not result.non_determinism_errors
@@ -178,7 +178,7 @@ test "OrderWorkflow replays deterministically":
 ### Signal Testing
 
 ```twf
-workflow ApprovalWorkflow(request: Request) -> (Decision):
+workflow LeaveRequestApproval(request: LeaveRequest) -> (Decision):
     await one:
         signal Approved:
             close complete(Decision{status: "approved"})
@@ -190,11 +190,11 @@ workflow ApprovalWorkflow(request: Request) -> (Decision):
 
 ```pseudo
 # Test
-test "ApprovalWorkflow handles Approved signal":
+test "LeaveRequestApproval handles Approved signal":
     env = TestWorkflowEnvironment()
     
     # Start workflow
-    handle = env.start_workflow(ApprovalWorkflow, Request{id: "req-1"})
+    handle = env.start_workflow(LeaveRequestApproval, LeaveRequest{id: "req-1"})
     
     # Send signal
     env.signal_workflow(handle, Approved, {approver: "alice"})
@@ -203,10 +203,10 @@ test "ApprovalWorkflow handles Approved signal":
     result = env.get_workflow_result(handle)
     assert result.status == "approved"
 
-test "ApprovalWorkflow handles timeout":
+test "LeaveRequestApproval handles timeout":
     env = TestWorkflowEnvironment()
     
-    handle = env.start_workflow(ApprovalWorkflow, Request{id: "req-1"})
+    handle = env.start_workflow(LeaveRequestApproval, LeaveRequest{id: "req-1"})
     
     # Skip time forward
     env.skip_time(2h)
@@ -218,17 +218,18 @@ test "ApprovalWorkflow handles timeout":
 ### Query Testing
 
 ```twf
-workflow OrderWorkflow(order: Order) -> (OrderResult):
-    status = "pending"
-    
-    status = "processing"
-    activity ProcessOrder(order)
-    
-    status = "completed"
-    close complete(OrderResult{status: status})
+workflow StatusWorkflow(orderId: string) -> (OrderResult):
+    query GetStatus() -> (string):
+        return status
 
-query GetStatus() -> (string):
-    return status
+    status = "pending"
+    activity StartProcessing(orderId)
+
+    status = "processing"
+    activity ProcessItems(orderId)
+
+    status = "completed"
+    close complete(OrderResult{status: status, orderId: orderId})
 ```
 
 ```pseudo
@@ -237,9 +238,9 @@ test "GetStatus query returns current status":
     env = TestWorkflowEnvironment()
     
     # Mock activity to block
-    blocker = env.mock_activity(ProcessOrder, blocks: true)
+    blocker = env.mock_activity(ProcessItems, blocks: true)
     
-    handle = env.start_workflow(OrderWorkflow, Order{id: "1"})
+    handle = env.start_workflow(StatusWorkflow, "order-1")
     
     # Query while processing
     status = env.query_workflow(handle, GetStatus)
@@ -358,7 +359,7 @@ test_environment.start()
 ### Pattern
 
 ```pseudo
-test "OrderWorkflow end-to-end":
+test "RenewalProcessing end-to-end":
     # Use real Temporal client
     client = TemporalClient(address: "localhost:7233")
     
@@ -366,16 +367,16 @@ test "OrderWorkflow end-to-end":
     worker = Worker(
         client: client,
         task_queue: "test-queue",
-        workflows: [OrderWorkflow],
-        activities: [ValidateOrder, ProcessPayment, ShipOrder]
+        workflows: [RenewalProcessing],
+        activities: [ValidateRenewalRequest, ChargeRenewalPayment, ActivateRenewedPlan]
     )
     worker.start_async()
     
     # Execute workflow
     handle = client.start_workflow(
-        OrderWorkflow,
-        Order{id: "test-order-1"},
-        workflow_id: "test-order-1"
+        RenewalProcessing,
+        Renewal{id: "test-renew-1"},
+        workflow_id: "test-renew-1"
     )
     
     # Wait for result

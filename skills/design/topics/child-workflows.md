@@ -230,7 +230,7 @@ workflow DeployApplication(app: App) -> (DeployResult):
 ### Parallel Children
 
 ```twf
-workflow ProcessBatch(items: []Item) -> (BatchResult):
+workflow ParallelItemBatch(items: []Item) -> (BatchResult):
     # Start all children in parallel
     await all:
         for (item in items):

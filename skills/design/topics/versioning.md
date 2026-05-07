@@ -40,15 +40,15 @@ Add conditional logic to handle old vs new code paths during replay.
 ### Basic Pattern
 
 ```pseudo
-workflow OrderWorkflow(order: Order) -> (OrderResult):
-    activity ValidateOrder(order)
+workflow UnderwritingAddFraudCheck(policy: Policy) -> (PolicyResult):
+    activity ValidatePolicy(policy)
 
     # Version gate: new code only runs for new executions
     if patched("add-fraud-check"):
-        activity FraudCheck(order)  # New step, only for new workflows
+        activity FraudCheck(policy)  # New step, only for new workflows
     
-    activity ProcessPayment(order)
-    close complete(OrderResult{status: "complete"})
+    activity BindPolicy(policy)
+    close complete(PolicyResult{status: "complete"})
 ```
 
 ### How Patching Works
@@ -171,8 +171,8 @@ temporal task-queue update-build-ids add-new-default \
 worker = Worker(
     task_queue: "main-queue",
     build_id: "v2.0",
-    workflows: [OrderWorkflow],
-    activities: [ValidateOrder, ProcessPayment]
+    workflows: [UnderwritingAddFraudCheck],
+    activities: [ValidatePolicy, FraudCheck, BindPolicy]
 )
 ```
 
@@ -209,12 +209,12 @@ Create a new workflow type for breaking changes.
 
 ```twf
 # Version 1
-workflow OrderWorkflowV1(order: OrderV1) -> (ResultV1):
+workflow PolicyV1(policy: PolicyV1Input) -> (PolicyV1Result):
     # Original implementation
     ...
 
 # Version 2 (breaking changes)
-workflow OrderWorkflowV2(order: OrderV2) -> (ResultV2):
+workflow PolicyV2(policy: PolicyV2Input) -> (PolicyV2Result):
     # New implementation with different structure
     ...
 ```
@@ -225,11 +225,11 @@ workflow OrderWorkflowV2(order: OrderV2) -> (ResultV2):
 
 ```pseudo
 # API layer routes to appropriate version
-function startOrderWorkflow(order):
-    if order.version == 1:
-        return client.start(OrderWorkflowV1, convertToV1(order))
+function startPolicyWorkflow(policy):
+    if policy.version == 1:
+        return client.start(PolicyV1, convertToV1(policy))
     else:
-        return client.start(OrderWorkflowV2, convertToV2(order))
+        return client.start(PolicyV2, convertToV2(policy))
 ```
 
 ### When to Use Workflow Type Versioning
@@ -276,7 +276,7 @@ test "workflow handles both old and new path":
 ### 3. Document Versions
 
 ```text
-# Workflow: OrderWorkflow
+# Workflow: UnderwritingAddFraudCheck
 # 
 # Version History:
 # - 2024-01: Added fraud check (patch: add-fraud-check)

@@ -82,3 +82,19 @@ activity DailyMaintenance(user: User):
 
 activity PeriodicCheck(processor: Processor):
     check(processor)
+
+# --- Worker and namespace ---
+
+worker longRunningWorker:
+    workflow LongRunningProcessor
+    workflow UserEntity
+    activity ProcessEvent
+    activity LoadUser
+    activity PersistUser
+    activity DailyMaintenance
+    activity PeriodicCheck
+
+namespace longRunning:
+    worker longRunningWorker
+        options:
+            task_queue: "long-running"

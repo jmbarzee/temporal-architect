@@ -109,7 +109,7 @@ workflow ResilientProcess(data: Data) -> (Result):
 
 workflow CrossNamespaceAsync(payment: Payment) -> (Result):
     # Start nexus call without blocking
-    promise payHandle <- nexus PaymentsEndpoint PaymentsService.ProcessPayment(payment)
+    promise payHandle <- nexus BillingEndpoint BillingService.ChargePayment(payment)
 
     # Do local work
     activity PrepareReceipt(payment)
@@ -157,7 +157,7 @@ workflow SlowChild(data: Data) -> (ChildResult):
 activity DoSlowWork(data: Data) -> (WorkResult):
     return slowWork(data)
 
-workflow ProcessPaymentWorkflow(payment: Payment) -> (PaymentResult):
+workflow BillingChargeWorkflow(payment: Payment) -> (PaymentResult):
     activity ChargeCard(payment) -> result
     close complete(PaymentResult{id: result.id})
 
@@ -166,8 +166,8 @@ activity ChargeCard(payment: Payment) -> (ChargeResult):
 
 # --- Nexus service definition ---
 
-nexus service PaymentsService:
-    async ProcessPayment workflow ProcessPaymentWorkflow
+nexus service BillingService:
+    async ChargePayment workflow BillingChargeWorkflow
 
 # --- Worker and namespace definitions ---
 
@@ -191,18 +191,18 @@ worker promisesWorker:
     activity PrepareReceipt
     activity DoSlowWork
 
-worker paymentWorker:
-    workflow ProcessPaymentWorkflow
+worker billingWorker:
+    workflow BillingChargeWorkflow
     activity ChargeCard
-    nexus service PaymentsService
+    nexus service BillingService
 
 namespace promises:
     worker promisesWorker
         options:
             task_queue: "promises"
-    worker paymentWorker
+    worker billingWorker
         options:
-            task_queue: "payments"
-    nexus endpoint PaymentsEndpoint
+            task_queue: "billing"
+    nexus endpoint BillingEndpoint
         options:
-            task_queue: "payments"
+            task_queue: "billing"

@@ -126,7 +126,7 @@ activity RequestHumanApproval(request: ApprovalRequest) -> ApprovalResult:
 ### Workflow Using Async Activity
 
 ```twf
-workflow ApprovalWorkflow(request: Request) -> (Decision):
+workflow PublishApprovalWorkflow(request: Request) -> (Decision):
     activity NotifyRequestCreated(request)
 
     # This activity blocks until external completion

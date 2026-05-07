@@ -104,3 +104,26 @@ activity PollResource(resourceId: string) -> (ResourceStatus):
 
 activity FetchResource(resourceId: string) -> (Resource):
     return fetch(resourceId)
+
+# --- Worker and namespace ---
+
+worker schedulingWorker:
+    workflow DelayedNotification
+    workflow ProcessWithDeadline
+    workflow HealthMonitor
+    workflow WaitForResource
+    workflow WaitForCompletion
+    workflow LongPoller
+    activity SendNotification
+    activity LongOperation
+    activity Cleanup
+    activity CheckHealth
+    activity CheckResource
+    activity GetJobStatus
+    activity PollResource
+    activity FetchResource
+
+namespace scheduling:
+    worker schedulingWorker
+        options:
+            task_queue: "scheduling"

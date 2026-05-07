@@ -5,7 +5,7 @@
 
 workflow OrderFulfillment(order: Order) -> (OrderResult):
     # Step 1: Validate
-    activity ValidateOrder(order) -> validated
+    activity ValidateRetailOrder(order) -> validated
     if (validated.success == false):
         close fail(OrderResult{status: "invalid", error: validated.error})
 
@@ -16,7 +16,7 @@ workflow OrderFulfillment(order: Order) -> (OrderResult):
     activity ProcessPayment(order.payment) -> payment
 
     # Step 4: Fulfill
-    activity ShipOrder(order, reservation)
+    activity ShipRetailOrder(order, reservation)
 
     # Step 5: Notify
     activity SendConfirmation(order.customer)
@@ -43,7 +43,7 @@ workflow AccountEntity(accountId: string, account: Account):
         if (account.balance < amount):
             return TransferResult{success: false, error: "insufficient funds"}
         account.balance = account.balance - amount
-        activity RecordTransaction(accountId, "transfer")
+        activity RecordAccountTransaction(accountId, "transfer")
         return TransferResult{success: true}
 
     if (account == null):
@@ -55,9 +55,9 @@ workflow AccountEntity(accountId: string, account: Account):
     for:
         await one:
             signal Deposit:
-                activity RecordTransaction(accountId, "deposit")
+                activity RecordAccountTransaction(accountId, "deposit")
             signal Withdraw:
-                activity RecordTransaction(accountId, "withdraw")
+                activity RecordAccountTransaction(accountId, "withdraw")
             signal Close:
                 activity CloseAccount(accountId)
                 close complete
@@ -88,7 +88,7 @@ workflow BookingWorkflow(booking: Booking) -> (BookingResult):
         close fail(BookingResult{status: "car_failed"})
 
     # Step 4: Charge payment (compensate all if this fails)
-    activity ChargePayment(booking.payment) -> payment
+    activity ChargeBookingPayment(booking.payment) -> payment
     if (payment.failed):
         workflow CompensateBooking(flight.id, hotel.id, car.id)
         close fail(BookingResult{status: "payment_failed"})
@@ -193,7 +193,7 @@ workflow DocumentApproval(doc: Document) -> (ApprovalResult):
 
 # --- Polling ---
 
-workflow WaitForResource(resourceId: string) -> (Resource):
+workflow AwaitResourceReady(resourceId: string) -> (Resource):
     backoff = 5s
     maxBackoff = 60s
 
@@ -216,7 +216,7 @@ workflow WaitForResource(resourceId: string) -> (Resource):
 
 # --- Supporting activities ---
 
-activity ValidateOrder(order: Order) -> (ValidateResult):
+activity ValidateRetailOrder(order: Order) -> (ValidateResult):
     return validate(order)
 
 activity ReserveInventory(items: []Item) -> (Reservation):
@@ -225,7 +225,7 @@ activity ReserveInventory(items: []Item) -> (Reservation):
 activity ProcessPayment(payment: Payment) -> (PaymentResult):
     return charge(payment)
 
-activity ShipOrder(order: Order, reservation: Reservation):
+activity ShipRetailOrder(order: Order, reservation: Reservation):
     ship(order, reservation)
 
 activity SendConfirmation(customer: Customer):
@@ -234,7 +234,7 @@ activity SendConfirmation(customer: Customer):
 activity LoadAccount(accountId: string) -> (Account):
     return db.load(accountId)
 
-activity RecordTransaction(accountId: string, txType: string):
+activity RecordAccountTransaction(accountId: string, txType: string):
     db.record(accountId, txType)
 
 activity CloseAccount(accountId: string):
@@ -252,7 +252,7 @@ activity ReserveHotel(hotel: HotelSpec) -> (HotelReservation):
 activity ReserveCar(car: CarSpec) -> (CarReservation):
     return reserve(car)
 
-activity ChargePayment(payment: Payment) -> (PaymentResult):
+activity ChargeBookingPayment(payment: Payment) -> (PaymentResult):
     return charge(payment)
 
 activity CancelFlight(flightId: string):
@@ -299,3 +299,48 @@ activity CheckResourceStatus(resourceId: string) -> (ResourceStatus):
 
 activity GetResource(resourceId: string) -> (Resource):
     return fetch(resourceId)
+
+# --- Worker and namespace ---
+
+worker patternsWorker:
+    workflow OrderFulfillment
+    workflow AccountEntity
+    workflow BookingWorkflow
+    workflow CompensateBooking
+    workflow BatchProcessor
+    workflow DataPipeline
+    workflow DocumentApproval
+    workflow AwaitResourceReady
+    activity ValidateRetailOrder
+    activity ReserveInventory
+    activity ProcessPayment
+    activity ShipRetailOrder
+    activity SendConfirmation
+    activity LoadAccount
+    activity RecordAccountTransaction
+    activity CloseAccount
+    activity DailyReconciliation
+    activity ReserveFlight
+    activity ReserveHotel
+    activity ReserveCar
+    activity ChargeBookingPayment
+    activity CancelFlight
+    activity CancelHotel
+    activity CancelCar
+    activity ProcessBatchItem
+    activity AggregateResults
+    activity Ingest
+    activity Validate
+    activity Transform
+    activity Enrich
+    activity Load
+    activity NotifyReviewers
+    activity PublishDocument
+    activity ArchiveDocument
+    activity CheckResourceStatus
+    activity GetResource
+
+namespace patterns:
+    worker patternsWorker
+        options:
+            task_queue: "patterns"
