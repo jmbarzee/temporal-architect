@@ -1,11 +1,11 @@
 # Skill Revisions: Design
 
-**Source:** `reflect-skill` (two sessions merged)
-**Reflection files:** `REFLECTION_DESIGN.md` (consumed, both sessions)
+**Source:** `reflect-skill` (three sessions merged)
+**Reflection files:** `REFLECTION_DESIGN.md` (consumed, all sessions)
 
 ## Summary
 
-Two reflection sessions surfaced complementary issues. Session 1 (access-control design) found: the completion criteria validate notation correctness but not operational correctness, flat checklist items invite mental checkmarks without forcing decisions, and the topology guidance lacks a decision procedure. Session 2 (dev-cycle orchestrator design) found: the `heartbeat()` example teaches the wrong pattern, completion/handoff requirements live outside the design loop and get skipped, and TWF's happy-path fluency makes failure paths invisible. Merged revisions address all findings across 7 groups.
+Three reflection sessions surfaced complementary issues. Session 1 (access-control design) found: completion criteria validate notation not operational correctness, flat checklist items invite mental checkmarks, topology guidance lacks a decision procedure. Session 2 (dev-cycle orchestrator design) found: `heartbeat()` example teaches the wrong pattern, completion/handoff requirements live outside the design loop, TWF's happy-path fluency makes failure paths invisible. Session 3 (mortgage origination design) found: the design flow needs to guide progressive detail within TWF (structure first, then bodies), the skill lacks decomposition lenses for when topology isn't obvious, write-before-read needs calibration for DSL familiarity, file organization guidance is absent, and timer/pattern references lack observation-without-cancellation concepts. Merged revisions address all findings across 13 groups.
 
 ## Group 1: Heartbeat Instruction vs. Marker
 
@@ -162,3 +162,158 @@ Reframe existing checklist items as generative questions:
 
 *Conditionally Long-Lived Workflows (from session 1):*
 - If a workflow is short-lived on the happy path but enters an unbounded wait on a fallback path, consider `continue_as_new` protection for the fallback
+
+*Requirements Coverage (from session 3):*
+- Each operation described in the brief has a corresponding workflow, activity, or explicit deferral agreed with user
+- Critical invariants from the brief have structural enforcement mechanisms in the design (not just activity comments)
+
+*Termination Path Audit (from session 3):*
+- Each workflow termination path audited: what child workflows are running (promise, detached)? What external state was created that needs cleanup? Are detached children cancelled or orphaned?
+- For every `close complete` and `close fail`, trace active promises and detached children
+
+*Production Readiness (from session 3):*
+- Deployment topology designed for production scale — task queue separation matches actual scaling, isolation, and failure domain needs. Do not let brief scope tiers (MVP, etc.) override the skill's deployment guidance.
+
+## Group 8: Progressive Detail and Brief Reading
+
+**Findings:**
+- The skill's design flow goes straight from "receive description" to "write TWF." This led to a designer producing a 600-line detailed design covering ~60% of the brief's operations — detailed activity bodies and options blocks were filled in before the topology was settled, and scope was silently reduced without confirming with the user.
+- TWF already operates at the systems architecture level — adding a separate "pre-architecture phase" before writing TWF would be at odds with TWF's purpose as the thinking medium for architecture. But the skill should guide the designer to **start with structure**: workflow signatures, child relationships, handler surfaces. Get the topology right before filling in activity bodies, options, and deployment.
+- When reading the brief, the designer should scan for: operations (coverage targets), open questions, and scope. Open questions fall on a spectrum: resolve what you can from the brief's context and domain knowledge; surface questions where the answer depends on information the AI doesn't have (legal interpretation, product strategy, organizational preference). Default to designing the full system — do not silently reduce scope from brief annotations like "MVP."
+
+**Files touched:** `skills/design/SKILL.md` (design flow section)
+**Change type:** `Internal`
+**Parallelism:** Combine with Group 2 and Group 10 changes to SKILL.md.
+
+**Specific changes:**
+
+1. **Revise the design flow** to guide progressive detail within TWF. The flow stays as one loop, but with directional guidance on order of detail:
+
+   ```
+   Read brief → Write TWF (structure first) → twf check → fix/consult → repeat
+                                                              ↓
+                                                     Fill in detail → twf check → fix → repeat
+                                                              ↓
+                                                     Review → Handoff → Done
+   ```
+
+   The skill's direction (not a rigid mandate, but guidance the designer can self-navigate from):
+   - **Read the brief.** Scan for: operations (your coverage targets — each needs a definition or an explicit deferral agreed with the user), open questions (resolve what you can, surface what requires external input), scope (design for production scale, not a reduced scope unless the user confirms otherwise).
+   - **Start with structure.** Write workflow signatures, how they call each other, what signals/updates/queries they expose. Run `twf check --lenient`. Get the topology right before filling in details. If the topology isn't obvious, consult [decomposition-procedure.md](./reference/decomposition-procedure.md).
+   - **Then fill in detail.** Activity bodies, options blocks, deployment topology.
+   - **Review.** Walk the design checklist. Produce handoff.
+
+2. **Remove the rigid "intake phase" framing** from the earlier draft. The brief reading and structure-first guidance are directional — the designer should self-navigate based on complexity. For simple domains the topology is obvious and you write everything in one pass. For complex domains you sketch the shape first.
+
+## Group 9: Decomposition Lenses
+
+**Findings:**
+- The skill provides bottom-up guidance (activity vs child workflow) but nothing for the global architecture question: "Given a complex multi-phase domain, how do I decide the number and shape of the workflow graph?" This caused ~30 minutes of unstructured deliberation on a mortgage origination design.
+- Entity vs process is presented as mutually exclusive in pattern references, but real domains are often hybrids (long-lived/reactive AND drives toward completion). A loan application, insurance claim, and employee onboarding are all hybrids.
+- No guidance for concurrent concern classification. When a sub-process has its own timeline but is subordinate to a parent, the choice between child, detached child, and independent workflow is unguided. A 2x2 coupling table (parent needs result × survives parent) would resolve these decisions immediately.
+- These should be **reference material to consult when stuck**, not a mandated procedure. The skill stays light on process and trusts the designer to self-navigate; the decomposition lenses are there when the topology isn't obvious.
+
+**Files touched:** New `skills/design/reference/decomposition-procedure.md`, `skills/design/SKILL.md` (reference index)
+**Change type:** `Internal`
+**Parallelism:** Independent of other groups.
+
+**Specific changes:**
+
+1. **New reference file `decomposition-procedure.md`** — framed as lenses to apply when the workflow topology isn't obvious, not as a required procedure. Content:
+
+   - **Identity anchors.** What business entity do external systems address by ID? Each gets a top-level workflow.
+   - **Entity/process/hybrid.** Entity = long-lived, reactive, no natural end. Process = drives toward completion. Hybrid = both (typical for complex domains). "A hybrid is typically an entity workflow that internally orchestrates process-phase child workflows."
+   - **Concurrent concern coupling table.** For each concern running alongside the main flow:
+
+     | Parent needs result | Survives parent | Mechanism |
+     |---|---|---|
+     | Yes | No | Child workflow (sync or promise) |
+     | Yes | Yes | Independent workflow, parent polls/awaits signal |
+     | No | Yes | Detached child or independent workflow |
+     | No | No | Detached child |
+
+   - **History budget.** If total expected events across all phases exceeds a few thousand, align continue-as-new with phase boundaries. If phases have different actors, dependencies, and failure semantics, consider separate workflows per phase.
+   - **Signal surface vs child workflow.** Single state mutation from external event → signal/update handler. Multi-step logic with own timers/retries → child workflow.
+
+2. **Update SKILL.md** design flow (per Group 8) to reference this file: "If the topology isn't obvious, consult [decomposition-procedure.md](./reference/decomposition-procedure.md)." Add to reference index with trigger: "When to consult: workflow topology decisions — how many workflows, what shape, where to split."
+
+3. **Update pattern references** (wherever entity/process patterns are discussed) to acknowledge the hybrid pattern as the common case for complex domains.
+
+## Group 10: Write-First Self-Calibration
+
+**Findings:**
+- "Write before you read" fails for low DSL familiarity + large design surface. TWF is a novel DSL; first-attempt errors on a complex design would be syntactic noise, not design feedback. The iteration loop is dominated by grammar discovery rather than design discovery.
+- The fix from session 1 (Group 2) adds notation-reference as a prerequisite read. Session 3 surfaces a refinement: the calibration should also account for the *number of unfamiliar constructs* needed.
+
+**Files touched:** `skills/design/SKILL.md` (design flow section)
+**Change type:** `Internal`
+**Parallelism:** Merge with Group 2 changes (same paragraph).
+
+**Specific changes:**
+
+Refine the Group 2 replacement to include a second calibration question:
+
+> **Know the notation, then write before you read.** Two checks:
+> 1. If you haven't written TWF before, read [notation-reference.md](./reference/notation-reference.md) once — keyword grammar, indentation scoping, close statements. That's the only prerequisite.
+> 2. If the design requires constructs you haven't used before (promise, await one, condition flags, detach, update handlers with activities), scan [notation-examples.md](./reference/notation-examples.md) for those specific constructs.
+>
+> The goal: your first draft should produce *design* errors (wrong boundaries, missing patterns) rather than *syntax* errors (unknown keywords, malformed blocks). Then enter the core loop.
+
+## Group 11: Timer Observation Pattern
+
+**Findings:**
+- Every timer example in the skill shows timers as control flow — the timer branch fails the workflow or redirects execution. There is no example where a timer fires and the workflow continues the same work with enriched metadata.
+- The missing concept: timers as observation/data — a flag that enriches the eventual result rather than redirecting execution. This applies broadly to SLA monitoring, compliance deadlines, and escalation-without-cancellation.
+- The pattern: start a timer as a promise, let it resolve as a flag, check it when assembling results. Distinct from `await one` which is always a race-with-cancellation.
+
+**Files touched:** `skills/design/reference/notation-examples.md` (add example), possibly `skills/design/reference/anti-patterns.md`
+**Change type:** `Internal`
+**Parallelism:** Independent of other groups.
+
+**Specific changes:**
+
+1. Add a "Timer as Observation" subsection to the timer/async patterns area of `notation-examples.md`. Show the pattern:
+   ```
+   promise deadline <- timer(slaWindow)
+   # ... sequential work continues unaffected ...
+   activity DoWork(input) -> result
+   # Check if deadline passed while work was running
+   # (deadline promise may or may not have resolved)
+   ```
+
+2. Brief note distinguishing three timer uses: pure delay (`await timer`), termination race (`await one` with timer case that closes), and observation (promise timer as a flag). Keep it proportional — not a major new section, just a third category alongside existing patterns.
+
+3. If it fits naturally, add an anti-pattern entry: "Using `await one` for deadlines where work must still complete." Show that `await one` cancels the losing branch, which is wrong when the work is non-cancellable. But don't over-index on this — include only if the anti-pattern is broadly reusable.
+
+## Group 12: File Organization Guidance
+
+**Findings:**
+- The skill says nothing about file organization. Multi-file already works in the toolchain (resolver merges all files into a flat namespace). The decision is currently made by imitating whatever example is seen.
+- The skill should lean toward multi-file as the default for non-trivial designs. Domain-grouped files (workflow + its primary activities together) align with natural design structure.
+
+**Files touched:** `skills/design/SKILL.md` (brief note) or new `skills/design/reference/file-organization.md`
+**Change type:** `Internal`
+**Parallelism:** Independent of other groups.
+
+**Specific changes:**
+
+Add guidance (short section in SKILL.md or a brief reference file):
+- Multi-file is the default for designs with more than ~2-3 workflows. Single-file is fine for small designs.
+- Group by domain: a workflow and the activities it primarily calls belong in the same file. Shared activities (audit, notifications) go in a common file. Worker/namespace definitions go in a deployment file.
+- All files pass together to `twf check` — no imports needed, flat namespace. File boundaries are for human comprehension, not for the resolver.
+
+## Group 13: Entity/Process Spectrum in Pattern References
+
+**Findings:**
+- The pattern selection guidance treats entity and process as mutually exclusive categories. Complex domains (mortgage origination, insurance claims, employee onboarding) are hybrids — long-lived and reactive (entity-like) AND drive toward completion through phases (process-like).
+- Acknowledging the spectrum prevents extended deliberation on "which pattern is this?" when the answer is "both."
+
+**Files touched:** Wherever entity/process patterns are discussed (likely a patterns topic file or `reference/workflow-boundaries.md`)
+**Change type:** `Internal`
+**Parallelism:** Can be combined with Group 9 decomposition procedure work.
+
+**Specific changes:**
+
+1. Add a "Hybrid: Entity Shell + Process Phases" note to the pattern discussion. One sentence: "A hybrid that is long-lived and reactive but also drives toward completion through defined stages is typically an entity workflow (addressable by ID, handles signals/updates, may use continue-as-new) that internally orchestrates process phases as child workflows."
+
+2. If a pattern selection flowchart or decision tree exists, add a branch: "Long-lived AND drives toward completion? → Hybrid pattern."

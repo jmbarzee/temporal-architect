@@ -299,6 +299,30 @@ await all promises -> results
 
 **Why deferred:** `await all:` with inline operations covers most parallel patterns. Dynamic collection adds significant type system and resolver complexity.
 
+### Completion-Order Promise Iteration
+
+Iterate over a set of promises, yielding results in completion order (not declaration order). This enables processing results as they arrive while all operations run in parallel.
+
+```twf
+# Spawn N children in parallel
+for (entry in manifest.entries):
+    promise entry.child <- workflow ProcessComponent(entry.component)
+
+# Process results as each child completes (completion order, not spawn order)
+for await (result in manifest.entries):
+    activity CommitResult(result)
+```
+
+**Why needed:** The `await all:` block is all-or-nothing — no intermediate processing until every operation finishes. Sequential `await p` for each promise blocks in declaration order, not completion order. `await one:` requires static cases and cancels non-winners. There is no construct for "yield the next completion from a dynamic set of pending promises."
+
+**Real-world pattern:** An orchestrator spawns N parallel child workflows and needs to process each result (e.g., commit changes) as it arrives rather than waiting for the slowest child. The current workaround is wave-based batching with `await all:`, which sacrifices completion-order processing for expressibility.
+
+**Analogues:** JavaScript `Promise.race` in a shrinking-set loop, Go `select` over channels, Python `asyncio.as_completed()`.
+
+**Open questions:** What is the iteration target — a named collection of promises, or inline declarations? Should the syntax be `for await` (new keyword combination) or something like `await each`? How does the resolver track the shrinking set? What happens if one promise in the set fails — skip it and continue, or halt the iteration?
+
+**Discovered during:** Design of `tools/orchestrator/dev-cycle.twf` — the orchestrator needed to spawn parallel child workflows and commit each result as it completed, but no TWF construct could express this without either losing completion-order semantics or implying cancellation of siblings.
+
 ---
 
 ## Annotations
@@ -347,6 +371,36 @@ activity ChargePayment(order: Order) -> (Payment):
 
 ---
 
+## Known Parser Issues
+
+### Dot-Qualified Result Bindings Break Options Parsing
+
+When a workflow or activity call uses a dot-qualified result binding (`-> item.result`) AND is followed by an `options:` block, the parser fails with `unexpected token DEDENT at top level`. The issue is that `parseCallParts` only consumes a single IDENT after `->` (capturing `item`), leaving `.result` as unconsumed tokens. This prevents `parseOptionalOptionsLine` from seeing the INDENT token for the options block — it sees DOT instead and returns nil. The orphaned INDENT/DEDENT tokens for the unparsed options block then propagate through the body parsers and eventually escape to the top level.
+
+```twf
+# This SHOULD parse per the grammar but fails with DEDENT error:
+workflow FanOut(items: Items) -> (Result):
+    await all:
+        for (item in items.list):
+            workflow ProcessItem(item) -> item.result
+                options:
+                    task_queue: "other-queue"
+    activity Aggregate(items) -> status
+    close complete(status)
+```
+
+**Reproduction:** The `activity Aggregate(...)` line triggers `parse error at 7:5: unexpected token DEDENT at top level`. Removing either the dot-qualified result (`-> item.result` → `-> result`) or the `options:` block makes it parse correctly. Both conditions are required to trigger the bug.
+
+**Root cause:** In `parseCallParts` (statements_calls.go), after consuming ARROW, the parser calls `p.expect(token.IDENT)` which captures only `item`. The DOT and second IDENT `result` remain in the token stream. The subsequent `parseOptionalOptionsLine` checks `p.current.Type != token.INDENT` (it's DOT), returns nil, and the options INDENT/DEDENT pair is never matched. The unmatched tokens cascade through raw statement fallback and body parser exit paths.
+
+**Fix:** Extend result binding parsing in `parseCallParts` to consume dot-qualified identifiers: after the initial IDENT, check for DOT followed by IDENT and append to the result string.
+
+**Impact:** Cannot use dot-qualified result bindings (e.g., `-> lineItem.result`) on calls that also have `options:` blocks. The workaround is to use a plain result binding (`-> result`) and assign to the dotted path separately, or omit the options block.
+
+**Discovered during:** Design of `examples/human-in-the-loop-access-control/access-control.twf`
+
+---
+
 ## Design Quality Linting
 
 ### `twf lint` Command
@@ -364,6 +418,9 @@ A design-quality pass beyond syntax/resolution validation (`twf check`) to catch
 | Unbounded tool/retry loops | Safety | Loops calling activities with no iteration bound |
 | Missing queries | Observability | Stateful workflow with no query handlers for inspection |
 | Large activity fan-out | Performance | Many parallel activities without task queue routing |
+| Sequential child workflow loop | Performance | `for` loop with synchronous child workflow calls — usually should be parallel (`await all: for:` or promises) |
+| Blocking update handler | UX | Update handler calls child workflow or long-running activity — caller blocks for entire duration |
+| Fallback-path history growth | History | Workflow is short-lived on happy path but enters unbounded wait loop on fallback (e.g., manual ITSM fulfillment) without continue-as-new protection |
 
 **Why difficult:** TWF is intentionally high-level. Many checks require understanding *intent*, not just structure. For example, a `for:` loop without `continue_as_new` might be intentional for short-lived workflows. Linting would need heuristics or configurable rules, not hard errors.
 
