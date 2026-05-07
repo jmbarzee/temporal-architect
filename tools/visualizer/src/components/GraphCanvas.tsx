@@ -3,11 +3,11 @@
 
 import React from 'react'
 import type { SimNode, ForceParams } from '../graph/simulation'
-import { edgeCategory } from '../graph/simulation'
+import { edgeCategory, chargeForType, bandForType, ALL_NODE_TYPES } from '../graph/simulation'
 import type { ForceSection } from './GraphControlPanel'
-import type { GraphEdge } from '../graph/model'
+import type { GraphEdge, NodeType } from '../graph/model'
 import type { Viewport } from '../graph/viewport'
-import { worldToScreen, screenToWorld, zoomAt, fitToView, withWorldOffset } from '../graph/viewport'
+import { worldToScreen, screenToWorld, zoomAt, fitToView } from '../graph/viewport'
 
 // Colors matching the tree view theme (light mode defaults)
 const NODE_COLORS: Record<string, string> = {
@@ -46,9 +46,6 @@ interface GraphCanvasProps {
   nodes: SimNode[]
   edges: GraphEdge[]
   viewport: Viewport
-  // Live COM-drift offset (world units). Read every draw frame so the physics
-  // loop can accumulate drift without triggering React re-renders.
-  comOffsetRef: React.MutableRefObject<{ x: number; y: number }>
   onViewportChange: (vp: Viewport) => void
   onNodeDragStart: (id: string, wx: number, wy: number) => void
   onNodeDragMove: (wx: number, wy: number) => void
@@ -66,7 +63,8 @@ interface GraphCanvasProps {
   showForceFields: boolean
   forceParams: ForceParams
   activeSection: ForceSection
-  activeChargeLevel: number | null
+  activeChargeType: NodeType | null
+  activeGravityType: NodeType | null
   nodeSummaries: Map<string, string>
 }
 
@@ -76,7 +74,6 @@ interface DrawData {
   edges: GraphEdge[]
   nodeMap: Map<string, SimNode>
   viewport: Viewport
-  comOffsetRef: React.MutableRefObject<{ x: number; y: number }>
   highlightedNodes: Set<string> | null
   highlightedEdges: Set<string> | null
   hoveredNodeId: string | null
@@ -86,19 +83,20 @@ interface DrawData {
   showForceFields: boolean
   forceParams: ForceParams
   activeSection: ForceSection
-  activeChargeLevel: number | null
+  activeChargeType: NodeType | null
+  activeGravityType: NodeType | null
   nodeSummaries: Map<string, string>
   running: boolean
 }
 
 export function GraphCanvas({
-  nodes, edges, viewport, comOffsetRef, onViewportChange,
+  nodes, edges, viewport, onViewportChange,
   onNodeDragStart, onNodeDragMove, onNodeDragEnd,
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, showForceFields, forceParams, activeSection, activeChargeLevel,
-  nodeSummaries,
+  running, showForceFields, forceParams, activeSection, activeChargeType,
+  activeGravityType, nodeSummaries,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -120,14 +118,14 @@ export function GraphCanvas({
 
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
-    nodes, edges, nodeMap, viewport, comOffsetRef, highlightedNodes, highlightedEdges,
+    nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
-    forceParams, activeSection, activeChargeLevel, nodeSummaries, running,
+    forceParams, activeSection, activeChargeType, activeGravityType, nodeSummaries, running,
   })
   drawData.current = {
-    nodes, edges, nodeMap, viewport, comOffsetRef, highlightedNodes, highlightedEdges,
+    nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
-    forceParams, activeSection, activeChargeLevel, nodeSummaries, running,
+    forceParams, activeSection, activeChargeType, activeGravityType, nodeSummaries, running,
   }
 
   // Resize observer
@@ -143,17 +141,15 @@ export function GraphCanvas({
   }, [])
 
   // Hit test: find node under screen coordinates (circular distance check).
-  // Uses the effective viewport so the live COM-drift offset is respected.
   const hitTest = React.useCallback((sx: number, sy: number): SimNode | null => {
-    const effVp = withWorldOffset(viewport, comOffsetRef.current)
-    const [wx, wy] = screenToWorld(effVp, sx, sy)
+    const [wx, wy] = screenToWorld(viewport, sx, sy)
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i]
       const r = NODE_SIZES[n.level].r / viewport.scale + 4
       if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
-  }, [nodes, viewport, comOffsetRef])
+  }, [nodes, viewport])
 
   // Mouse handlers
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
@@ -173,14 +169,13 @@ export function GraphCanvas({
 
     if (node) {
       dragState.current = { type: 'node', sx, sy, moved: false }
-      const effVp = withWorldOffset(viewport, comOffsetRef.current)
-      const [wx, wy] = screenToWorld(effVp, sx, sy)
+      const [wx, wy] = screenToWorld(viewport, sx, sy)
       onNodeDragStart(node.id, wx, wy)
     } else {
       dragState.current = { type: 'pan', startVp: { ...viewport }, sx, sy, moved: false }
     }
     canvasRef.current?.setPointerCapture(e.pointerId)
-  }, [viewport, hitTest, onNodeDragStart, comOffsetRef])
+  }, [viewport, hitTest, onNodeDragStart])
 
   const handlePointerMove = React.useCallback((e: React.PointerEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -205,11 +200,10 @@ export function GraphCanvas({
         y: dragState.current.startVp.y + dy,
       })
     } else if (dragState.current.type === 'node') {
-      const effVp = withWorldOffset(viewport, comOffsetRef.current)
-      const [wx, wy] = screenToWorld(effVp, cx, cy)
+      const [wx, wy] = screenToWorld(viewport, cx, cy)
       onNodeDragMove(wx, wy)
     }
-  }, [viewport, hitTest, onViewportChange, onNodeDragMove, onHoverNode, comOffsetRef])
+  }, [viewport, hitTest, onViewportChange, onNodeDragMove, onHoverNode])
 
   const handlePointerUp = React.useCallback((e: React.PointerEvent) => {
     const ds = dragState.current
@@ -271,9 +265,10 @@ export function GraphCanvas({
       const { w, h } = size
       const hasHighlight = d.highlightedNodes !== null && d.highlightedNodes.size > 0
 
-      // Build the effective viewport once per frame, folding in the live
-      // COM-drift offset so all world→screen projections share the same transform.
-      const vp = withWorldOffset(d.viewport, d.comOffsetRef.current)
+      // World coordinates are anchored by hierarchical gravity, so the canvas
+      // can project directly through the user's viewport — no per-frame
+      // re-centering offset is needed.
+      const vp = d.viewport
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
@@ -342,41 +337,78 @@ export function GraphCanvas({
       const pullActive = d.activeSection === 'pull'
       const gravityActive = d.activeSection === 'gravity'
 
-      // PUSH: charge field rings
+      // PUSH: charge field rings.
+      //
+      // Rings are placed at distances where the force on a unit test particle
+      // crosses absolute thresholds (FORCE_THRESHOLDS, in raw force units).
+      // Solving F = pushMul·|q| / (d² + soft)^(exp/2) = T for d gives
+      //   d = sqrt((pushMul·|q| / T)^(2/exp) − soft)
+      // which is real only when the threshold is reachable for that node's
+      // charge. As a result, stronger charges show larger rings (more reach),
+      // and the weakest types may render only the outermost ring — exactly
+      // the visual the user intuits when they tune a per-type charge.
+      const FORCE_THRESHOLDS = [0.2, 0.5, 1.5]
       if (d.showForceFields || pushActive) {
         const soft = d.forceParams.chargeSoftening
         const exp = d.forceParams.chargeExponent
-        const halfExp = exp / 2
-        const softPow = Math.pow(Math.max(soft, 1), halfExp)
-        const thresholds = [0.75, 0.50, 0.25]
-        const levelFilter = pushActive ? d.activeChargeLevel : null
+        const pushMul = d.forceParams.pushMultiplier
+        const typeFilter = pushActive ? d.activeChargeType : null
 
         for (const node of d.nodes) {
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
-          const maxRing = 400 * vp.scale
+          const maxRing = 2000
           if (sx + maxRing < 0 || sx - maxRing > w ||
               sy + maxRing < 0 || sy - maxRing > h) continue
 
-          const levelMatch = levelFilter === null || node.level === levelFilter
-          const highlighted = pushActive && levelMatch
-          const dimmed = pushActive && !levelMatch
-          const baseAlpha = highlighted ? 0.22 : dimmed ? 0.04 : 0.08
-          const stepAlpha = highlighted ? 0.04 : dimmed ? 0.01 : 0.02
+          const typeMatch = typeFilter === null || node.nodeType === typeFilter
+          const highlighted = pushActive && typeMatch
+          const dimmed = pushActive && !typeMatch
+          const baseAlpha = highlighted ? 0.24 : dimmed ? 0.04 : 0.10
+          const stepAlpha = highlighted ? 0.05 : dimmed ? 0.01 : 0.025
 
           const color = NODE_COLORS[node.nodeType] || '#999'
           ctx.strokeStyle = color
 
-          for (let ti = 0; ti < thresholds.length; ti++) {
-            const t = thresholds[ti]
-            const inner = Math.pow(softPow / t, 2 / exp) - soft
+          const effectiveCharge = Math.abs(chargeForType(d.forceParams, node.nodeType)) * pushMul
+          if (effectiveCharge <= 0) continue
+
+          // First pass: collect every reachable ring radius. We need them up
+          // front so we can fill out to the outermost reachable distance
+          // before stroking the rings on top — matching the "fill + edges"
+          // idiom used by the gravity bands.
+          const ringRadii: number[] = []
+          for (let ti = 0; ti < FORCE_THRESHOLDS.length; ti++) {
+            const T = FORCE_THRESHOLDS[ti]
+            const ratio = effectiveCharge / T
+            const inner = Math.pow(ratio, 2 / Math.max(exp, 0.01)) - soft
             if (inner <= 0) continue
             const dd = Math.sqrt(inner)
             const r = dd * vp.scale
             if (r < 2 || r > 2000) continue
+            ringRadii.push(r)
+          }
 
+          if (ringRadii.length === 0) continue
+
+          // Faint disc fill out to the outermost reachable ring. Per-node fill
+          // alpha is intentionally low so that overlapping nodes don't blow out
+          // contrast — the visual cue is colour, not brightness.
+          ctx.fillStyle = color
+          ctx.globalAlpha = highlighted ? 0.14 : dimmed ? 0.02 : 0.05
+          ctx.beginPath()
+          ctx.arc(sx, sy, ringRadii[0], 0, Math.PI * 2)
+          ctx.fill()
+
+          // Outline rings on top. Outer rings (lower threshold T, larger d,
+          // weaker force) draw fainter than inner rings — preserves the
+          // "field fades with distance" reading.
+          ctx.strokeStyle = color
+          for (let ri = 0; ri < ringRadii.length; ri++) {
+            const r = ringRadii[ri]
+            const ringIdxFromInner = ringRadii.length - 1 - ri
             ctx.beginPath()
             ctx.arc(sx, sy, r, 0, Math.PI * 2)
-            ctx.globalAlpha = baseAlpha + ti * stepAlpha
+            ctx.globalAlpha = baseAlpha + ringIdxFromInner * stepAlpha
             ctx.lineWidth = highlighted ? 1.5 : 1
             ctx.stroke()
           }
@@ -449,36 +481,52 @@ export function GraphCanvas({
         ctx.setLineDash([])
       }
 
-      // GRAVITY: center-of-mass crosshair
-      if (gravityActive && d.nodes.length > 0) {
-        let comX = 0, comY = 0
-        for (const node of d.nodes) { comX += node.x; comY += node.y }
-        comX /= d.nodes.length; comY /= d.nodes.length
-        const [cx, cy] = worldToScreen(vp, comX, comY)
+      // GRAVITY: vertical X anchor + per-type Y bands.
+      //
+      // The X anchor is a dashed vertical line at world x = 0; it shows where
+      // X gravity pulls every node. The Y bands are horizontal stripes drawn
+      // in each node type's colour — inside the band there is no Y gravity,
+      // outside it nodes are pulled toward the nearest edge.
+      if (gravityActive) {
+        const [zeroSx] = worldToScreen(vp, 0, 0)
 
-        const crossSize = 12
-        ctx.strokeStyle = '#8B7EC8'
-        ctx.lineWidth = 2
-        ctx.globalAlpha = 0.6
-        ctx.beginPath()
-        ctx.moveTo(cx - crossSize, cy); ctx.lineTo(cx + crossSize, cy)
-        ctx.moveTo(cx, cy - crossSize); ctx.lineTo(cx, cy + crossSize)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.arc(cx, cy, crossSize * 0.7, 0, Math.PI * 2)
-        ctx.stroke()
+        // Bands first (so they sit behind the anchor line).
+        for (const t of ALL_NODE_TYPES) {
+          const band = bandForType(d.forceParams, t)
+          const [, sy1] = worldToScreen(vp, 0, band.yMin)
+          const [, sy2] = worldToScreen(vp, 0, band.yMax)
+          if (sy2 < 0 || sy1 > h) continue
 
-        ctx.globalAlpha = 0.08
-        ctx.lineWidth = 1
-        ctx.setLineDash([3, 6])
-        for (const node of d.nodes) {
-          const [sx, sy] = worldToScreen(vp, node.x, node.y)
+          const isActive = d.activeGravityType === t
+          const isDimmed = d.activeGravityType !== null && !isActive
+
+          ctx.fillStyle = NODE_COLORS[t] || '#999'
+          ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
+          ctx.fillRect(0, sy1, w, sy2 - sy1)
+
+          // Top and bottom edges of the band (subtle), brighter when active.
+          ctx.strokeStyle = NODE_COLORS[t] || '#999'
+          ctx.globalAlpha = isActive ? 0.55 : isDimmed ? 0.08 : 0.22
+          ctx.lineWidth = isActive ? 1.5 : 1
+          ctx.setLineDash([])
           ctx.beginPath()
-          ctx.moveTo(sx, sy)
-          ctx.lineTo(cx, cy)
+          ctx.moveTo(0, sy1); ctx.lineTo(w, sy1)
+          ctx.moveTo(0, sy2); ctx.lineTo(w, sy2)
           ctx.stroke()
         }
-        ctx.setLineDash([])
+
+        // X anchor line.
+        if (zeroSx > -CULL_MARGIN && zeroSx < w + CULL_MARGIN) {
+          ctx.strokeStyle = '#8B7EC8'
+          ctx.globalAlpha = 0.5
+          ctx.lineWidth = 1.5
+          ctx.setLineDash([6, 6])
+          ctx.beginPath()
+          ctx.moveTo(zeroSx, 0); ctx.lineTo(zeroSx, h)
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
+
         ctx.globalAlpha = 1
       }
 

@@ -24,6 +24,8 @@ export interface GraphEdge {
   targetId: string
   sourceLevel: NodeLevel
   targetLevel: NodeLevel
+  sourceNodeType: NodeType
+  targetNodeType: NodeType
   // Nexus metadata (nexusDependency edges only)
   nexusEndpoint?: string
   nexusService?: string

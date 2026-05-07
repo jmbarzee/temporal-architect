@@ -8,7 +8,8 @@ import type { ForceParams } from '../graph/simulation'
 import { buildGraph } from '../graph/build'
 import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
 import type { SimNode } from '../graph/simulation'
-import { DEFAULT_VIEWPORT, fitToView, worldToScreen, withWorldOffset } from '../graph/viewport'
+import type { NodeType } from '../graph/model'
+import { DEFAULT_VIEWPORT, fitToView, worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { getTransitiveDeps, getHighlightedEdgeIds } from '../graph/highlight'
@@ -117,10 +118,6 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
   const initialFitDone = React.useRef(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const pendingCenterRef = React.useRef<{ nodeId: string } | null>(null)
-  // Accumulated COM-drift offset applied to world positions during draw (in world units).
-  // Tracked as a ref so the physics loop doesn't need to trigger a React re-render each tick.
-  const comOffsetRef = React.useRef({ x: 0, y: 0 })
-  const lastComRef = React.useRef<{ x: number; y: number } | null>(null)
   // Frame-rate indicator for debugging. Updated ~2×/sec from the physics loop.
   const [fps, setFps] = React.useState(0)
   const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
@@ -134,7 +131,8 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
   // --- Force field visualization ---
   const [showForceFields, setShowForceFields] = React.useState(false)
   const [activeSection, setActiveSection] = React.useState<ForceSection>(null)
-  const [activeChargeLevel, setActiveChargeLevel] = React.useState<number | null>(null)
+  const [activeChargeType, setActiveChargeType] = React.useState<NodeType | null>(null)
+  const [activeGravityType, setActiveGravityType] = React.useState<NodeType | null>(null)
 
   // --- Filter state ---
   const [selectedFiles, setSelectedFiles] = React.useState<Set<string>>(new Set())
@@ -150,8 +148,6 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
   React.useEffect(() => {
     simRef.current = new Simulation(graph, forceParams)
     initialFitDone.current = false
-    lastComRef.current = null
-    comOffsetRef.current = { x: 0, y: 0 }
     fpsTrackRef.current = { frames: 0, lastStamp: 0 }
     setRunning(true)
     setSelectedNodeId(null)
@@ -212,7 +208,14 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           // parent hidden — walk up to nearest visible ancestor
           const ancestor = findNearestVisibleAncestor(edge.targetId, ids, getNode)
           if (ancestor) {
-            graduatedEdges.push({ ...edge, targetId: ancestor, id: `grad:${edge.id}` })
+            const ancestorNode = getNode(ancestor)
+            graduatedEdges.push({
+              ...edge,
+              targetId: ancestor,
+              targetLevel: ancestorNode?.level ?? edge.targetLevel,
+              targetNodeType: ancestorNode?.nodeType ?? edge.targetNodeType,
+              id: `grad:${edge.id}`,
+            })
           }
           // else child floats free — no containment edge
         }
@@ -225,7 +228,18 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
         if (!resolvedSrc || !resolvedTgt || resolvedSrc === resolvedTgt) continue
         const key = `${resolvedSrc}→${resolvedTgt}`
         if (!depEdgeKeys.has(key)) {
-          depEdgeKeys.set(key, { ...edge, sourceId: resolvedSrc, targetId: resolvedTgt, id: `grad:${key}` })
+          const srcNode = getNode(resolvedSrc)
+          const tgtNode = getNode(resolvedTgt)
+          depEdgeKeys.set(key, {
+            ...edge,
+            sourceId: resolvedSrc,
+            targetId: resolvedTgt,
+            sourceLevel: srcNode?.level ?? edge.sourceLevel,
+            targetLevel: tgtNode?.level ?? edge.targetLevel,
+            sourceNodeType: srcNode?.nodeType ?? edge.sourceNodeType,
+            targetNodeType: tgtNode?.nodeType ?? edge.targetNodeType,
+            id: `grad:${key}`,
+          })
         }
       }
     }
@@ -283,7 +297,8 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
   // draw loop that reads live SimNode.x/.y through a ref, so the physics tick does
   // NOT need to trigger a React re-render each frame. We only touch React state
   // for one-shot events (initial fit, pending cross-view center, stability, FPS).
-  // COM-drift compensation is applied via comOffsetRef, consumed by the canvas.
+  // Hierarchical gravity (X anchor + per-type Y bands) keeps world coordinates
+  // stable, so we no longer compensate for COM drift on the canvas side.
   React.useEffect(() => {
     if (!running) return
     let frameId = 0
@@ -294,22 +309,9 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
 
       sim.tick(visibleIds)
 
-      // Accumulate center-of-mass drift into a ref. The canvas applies it to
-      // every world coordinate during draw, keeping the COM visually stationary
-      // without a per-frame setState cascade.
-      if (visibleNodes.length > 0 && initialFitDone.current && !pendingCenterRef.current && !selectedNodeId) {
-        let comX = 0, comY = 0
-        for (const node of visibleNodes) { comX += node.x; comY += node.y }
-        comX /= visibleNodes.length; comY /= visibleNodes.length
-        const prev = lastComRef.current
-        if (prev) {
-          comOffsetRef.current.x += comX - prev.x
-          comOffsetRef.current.y += comY - prev.y
-        }
-        lastComRef.current = { x: comX, y: comY }
-      }
-
-      // Initial fit — once per sim instance, after warmup.
+      // Initial fit — once per sim instance, after warmup. With hierarchical
+      // gravity the world coordinates are anchored, so a one-shot fit is all
+      // we need; the graph won't drift out of frame as the simulation runs.
       if (!initialFitDone.current && sim.alpha < 0.3) {
         const container = containerRef.current
         if (container) {
@@ -317,9 +319,6 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           if (width > 0 && height > 0) {
             setViewport(fitToView(visibleNodes, width, height))
             initialFitDone.current = true
-            // Reset COM tracking so the first post-fit tick establishes a baseline.
-            lastComRef.current = null
-            comOffsetRef.current = { x: 0, y: 0 }
           }
         }
       }
@@ -340,8 +339,6 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           }
         }
         pendingCenterRef.current = null
-        lastComRef.current = null
-        comOffsetRef.current = { x: 0, y: 0 }
       }
 
       // FPS meter — recompute ~2×/sec. setFps only fires on change, so this
@@ -408,8 +405,6 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
       sim.reheat(0.5)
       setRunning(true)
       initialFitDone.current = false
-      lastComRef.current = null
-      comOffsetRef.current = { x: 0, y: 0 }
     }
     prevVisibleTypes.current = visibleTypes
   }, [visibleTypes])
@@ -810,7 +805,6 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           nodes={visibleNodes}
           edges={visibleEdges}
           viewport={viewport}
-          comOffsetRef={comOffsetRef}
           onViewportChange={setViewport}
           onNodeDragStart={handleNodeDragStart}
           onNodeDragMove={handleNodeDragMove}
@@ -828,7 +822,8 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           showForceFields={showForceFields}
           forceParams={forceParams}
           activeSection={activeSection}
-          activeChargeLevel={activeChargeLevel}
+          activeChargeType={activeChargeType}
+          activeGravityType={activeGravityType}
           nodeSummaries={nodeSummaries}
         />
         <GraphHoverTooltip
@@ -836,7 +831,6 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           simRef={simRef}
           visibleEdges={visibleEdges}
           viewport={viewport}
-          comOffsetRef={comOffsetRef}
           shiftHeld={shiftHeld}
         />
       </div>
@@ -851,7 +845,8 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
         showForceFields={showForceFields}
         onToggleForceFields={() => setShowForceFields(v => !v)}
         onActiveSection={setActiveSection}
-        onActiveChargeLevel={setActiveChargeLevel}
+        onActiveChargeType={setActiveChargeType}
+        onActiveGravityType={setActiveGravityType}
       />
 
       {/* Shortcuts panel */}
@@ -884,11 +879,10 @@ interface GraphHoverTooltipProps {
   simRef: React.RefObject<Simulation | null>
   visibleEdges: { edgeType: string; sourceId: string; targetId: string }[]
   viewport: Viewport
-  comOffsetRef: React.MutableRefObject<{ x: number; y: number }>
   shiftHeld: boolean
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, comOffsetRef, shiftHeld }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, shiftHeld }: GraphHoverTooltipProps) {
   if (!hoveredNodeId) return null
   const sim = simRef.current
   if (!sim) return null
@@ -906,7 +900,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, comO
     if (e.targetId === hoveredNodeId) incoming++
   }
 
-  const [sx, sy] = worldToScreen(withWorldOffset(viewport, comOffsetRef.current), node.x, node.y)
+  const [sx, sy] = worldToScreen(viewport, node.x, node.y)
 
   return (
     <div className="graph-hover-tooltip" style={{ left: sx, top: sy }}>

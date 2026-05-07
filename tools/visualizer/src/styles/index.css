@@ -13,6 +13,21 @@
   --color-signal: #E8A0BF;
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
+
+  /* Graph node-type palette. Mirrors NODE_COLORS in GraphCanvas.tsx so that
+     control-panel rows colour-match the things they govern on the canvas. */
+  --color-namespace: #7E8CA0;
+  --color-worker: #94A3B8;
+  --color-nexus: #EC4899;
+
+  /* Force-section accent palette for the control panel. Each section gets a
+     distinct hue that doesn't compete with the node-type colours: warm for
+     repulsion, cool for attraction, the same purple as the X anchor for
+     gravity, and a neutral slate for the temporal dynamics. */
+  --color-section-push: #E07B5B;
+  --color-section-pull: #5DA8C9;
+  --color-section-gravity: #8B7EC8;
+  --color-section-dynamics: #94A3B8;
   --color-bg: #f8fafc;
   --color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   --color-text: #1e293b;
@@ -595,6 +610,208 @@ body {
   color: var(--color-text-muted);
   min-width: 24px;
   text-align: right;
+}
+
+/* ── Type / section colour theming ─────────────────────────────────────────
+   A single shared system of CSS custom properties drives colour on every
+   row and section header in the control panel. This keeps the panel
+   visually coordinated with the canvas:
+     • Per-type rows (charges, bands, edge endpoints) read from --type-color
+     • Per-section headers (PUSH/PULL/GRAVITY/DYNAMICS) read from --section-color
+*/
+.graph-control-typed-namespace { --type-color: var(--color-namespace); }
+.graph-control-typed-worker { --type-color: var(--color-worker); }
+.graph-control-typed-workflow { --type-color: var(--color-workflow); }
+.graph-control-typed-activity { --type-color: var(--color-activity); }
+.graph-control-typed-nexusService { --type-color: var(--color-nexus); }
+
+/* Rows that carry a single node type get a coloured left-accent and tint
+   their label + slider thumb to match. Applied to both per-type charge
+   sliders (PUSH section) and gravity Y-band sliders (GRAVITY section). */
+.graph-control-typed-row {
+  padding-left: 6px;
+  border-left: 2px solid var(--type-color, transparent);
+}
+
+.graph-control-typed-row input[type="range"] {
+  accent-color: var(--type-color);
+}
+
+.graph-control-typed-row .graph-control-slider-label,
+.graph-control-typed-row .graph-control-band-label {
+  color: var(--type-color);
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+/* Edge endpoint markers — a pair of dots before each PULL edge label,
+   coloured by the source and target node types. NS↔NS shows two grey
+   dots, Wf↔Act shows purple+blue, etc. — visually echoing the
+   coloured nodes you're tuning the spring for. */
+.graph-control-edge-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 2px;
+  background: var(--type-color, var(--color-text-muted));
+  vertical-align: middle;
+  opacity: 0.85;
+}
+
+/* Section-header accents. Each EquationSection gets a coloured left rule
+   and a tinted title; subtitle and formula stay neutral so the colour
+   reads as a section landmark rather than visual noise. */
+.graph-control-section-push { --section-color: var(--color-section-push); }
+.graph-control-section-pull { --section-color: var(--color-section-pull); }
+.graph-control-section-gravity { --section-color: var(--color-section-gravity); }
+.graph-control-section-dynamics { --section-color: var(--color-section-dynamics); }
+
+.graph-control-equation-section.graph-control-section-push,
+.graph-control-equation-section.graph-control-section-pull,
+.graph-control-equation-section.graph-control-section-gravity,
+.graph-control-equation-section.graph-control-section-dynamics {
+  border-left: 3px solid var(--section-color);
+  padding-left: 8px;
+}
+
+.graph-control-equation-section.graph-control-section-push .graph-control-equation-title,
+.graph-control-equation-section.graph-control-section-pull .graph-control-equation-title,
+.graph-control-equation-section.graph-control-section-gravity .graph-control-equation-title,
+.graph-control-equation-section.graph-control-section-dynamics .graph-control-equation-title {
+  color: var(--section-color);
+}
+
+/* Gravity Y-band row — label, dual-handle slider, two readouts. */
+.graph-control-band-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.graph-control-band-label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  min-width: 40px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.graph-control-band-value {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* Dual-handle range slider. Two transparent native range inputs are stacked
+   on top of each other; the visible track and fill are separate elements
+   beneath them. Pointer events are enabled only on the thumbs so both are
+   independently grabbable. */
+.dual-range {
+  position: relative;
+  flex: 1;
+  height: 18px;
+  min-width: 0;
+}
+
+.dual-range-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.dual-range-fill {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  border-radius: 2px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background: #94A3B8;
+  opacity: 0.7;
+}
+
+.dual-range-namespace .dual-range-fill { background: #7E8CA0; }
+.dual-range-worker .dual-range-fill { background: #94A3B8; }
+.dual-range-workflow .dual-range-fill { background: #8B7EC8; }
+.dual-range-activity .dual-range-fill { background: #7CB9E8; }
+.dual-range-nexusService .dual-range-fill { background: #EC4899; }
+
+.dual-range-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+
+.dual-range-input::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 18px;
+}
+
+.dual-range-input::-moz-range-track {
+  background: transparent;
+  height: 18px;
+  border: none;
+}
+
+.dual-range-input::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-text-muted);
+  cursor: pointer;
+  margin-top: -1px;
+  position: relative;
+  z-index: 1;
+}
+
+.dual-range-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-text-muted);
+  cursor: pointer;
+}
+
+.dual-range-namespace .dual-range-input::-webkit-slider-thumb { border-color: #7E8CA0; }
+.dual-range-namespace .dual-range-input::-moz-range-thumb { border-color: #7E8CA0; }
+.dual-range-worker .dual-range-input::-webkit-slider-thumb { border-color: #94A3B8; }
+.dual-range-worker .dual-range-input::-moz-range-thumb { border-color: #94A3B8; }
+.dual-range-workflow .dual-range-input::-webkit-slider-thumb { border-color: #8B7EC8; }
+.dual-range-workflow .dual-range-input::-moz-range-thumb { border-color: #8B7EC8; }
+.dual-range-activity .dual-range-input::-webkit-slider-thumb { border-color: #7CB9E8; }
+.dual-range-activity .dual-range-input::-moz-range-thumb { border-color: #7CB9E8; }
+.dual-range-nexusService .dual-range-input::-webkit-slider-thumb { border-color: #EC4899; }
+.dual-range-nexusService .dual-range-input::-moz-range-thumb { border-color: #EC4899; }
+
+.dual-range-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+.dual-range-input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 
 /* Force field checkbox */

@@ -87,25 +87,36 @@ The graph is rendered using a **force-directed layout** (also called a force sim
 |-------------------|------------------|--------------------------------------------------------------------------|
 | **Charge (repulsion)** | Every node pair | Nodes repel each other, preventing overlap. Follows an inverse-square falloff (like electrostatic charge). |
 | **Link (attraction)**  | Connected node pairs | Edges act as springs pulling connected nodes toward a target distance.    |
-| **Center**        | All nodes        | A weak drift toward the viewport center to keep the graph from wandering. |
+| **Hierarchical gravity** | All nodes      | Two anchors that hold world coordinates in place: an X anchor pulls every node toward `x = 0`, and a per-node-type Y "rest band" exerts no force inside the band and pulls nodes toward the nearest band edge when outside it. The bands stack the hierarchy top-to-bottom (NS at the top, L3 at the bottom). |
 
 Each force has a **strength** parameter that controls its magnitude. These strengths are the primary tuning knobs for the layout.
 
+### Why a hierarchical anchor instead of center-of-mass gravity
+
+A force-directed graph is a free-floating cloud by default — it is held together but not held *anywhere*. The graph view's data has an inherent vertical hierarchy (namespace → worker → definition), and a manually-organised diagram of the same data would place namespaces and workers near the top, definitions toward the bottom. The hierarchical anchor encodes that structure in the layout itself: each node type lives in its own Y band, with no Y force inside the band and a pull toward the band's nearest edge outside it.
+
+The anchor also fixes the practical drift problem that comes with COM-based gravity. Because `x = 0` and the type-specific Y bands are absolute world coordinates, the simulation's centre of mass cannot wander out of frame; the canvas does not need to compensate by re-centering the viewport every tick. After the initial fit-to-view, the user's pan/zoom is the only thing that moves the camera.
+
 ### Force Parameters
 
-The simulation has **8 core force strengths** — one per force category — plus shape controls and dynamics that govern how those forces behave.
+The simulation exposes **one charge strength per node type** and **one spring (k + rest distance) per edge category**, plus shape controls and dynamics that govern how those forces behave.
 
-**Charge strengths** (3, one per level — negative values, repulsion):
-- Level 1 (Namespace) node repulsion
-- Level 2 (Worker) node repulsion
-- Level 3 (Workflow/Activity/NexusService) node repulsion
+**Charge strengths** (5, one per node type — negative values, repulsion):
+- Level 1: Namespace
+- Level 2: Worker
+- Level 3: Workflow
+- Level 3: Activity
+- Level 3: NexusService
 
-**Link strengths** (5, one per edge type — positive values, attraction):
-- Namespace ↔ Namespace (dependency)
-- Namespace ↔ Worker (containment)
-- Worker ↔ Worker (dependency)
-- Worker ↔ Level 3 (containment)
-- Level 3 ↔ Level 3 (dependency)
+The three Level 3 charges share a slider range so their magnitudes are directly comparable; this lets the user see at a glance whether one definition type repels harder than its peers.
+
+**Link strengths** (9, one per edge category — positive values, attraction). Containment edges connect a parent to one specific child type; dependency edges live within a single level and are split by endpoint type at L3:
+- Containment: `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`
+- Dependency: `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`, `Act↔Act`
+
+NexusService nodes do not appear as a dependency endpoint: nexus calls resolve to their backing workflow during graph construction, so the only edge involving a nexus node is its containment edge to its worker.
+
+All link sliders share a common k range and a common rest range, so the gradient across the hierarchy (loose-and-long at the top, tight-and-short at L3) is visually obvious.
 
 **Shape controls** modify the force curves:
 - Master multipliers (`push`, `pull`, `dist`) scale entire force categories
@@ -315,10 +326,12 @@ Master parameters that shape all charge (repulsion) forces:
 - `exp` — power of distance in charge falloff (2 = inverse-square)
 - `softening` — added to d² to prevent singularity at close range
 
-Per-level charge strengths (negative values = repulsion):
-- L1 Namespace charge
-- L2 Worker charge
-- L3 Definition charge
+Per-type charge strengths (negative values = repulsion):
+- L1 Namespace (`NS`)
+- L2 Worker (`Wk`)
+- L3 Workflow (`Wf`)
+- L3 Activity (`Act`)
+- L3 NexusService (`Nx`)
 
 **PULL** (connected pairs)
 
@@ -330,14 +343,19 @@ Master parameters that shape all link (attraction) forces:
 - `exp` — power of displacement in spring force (1 = linear/Hooke)
 - `dist` — master multiplier for all rest distances
 
-Per-edge spring constant (k) and rest distance, displayed as dual-slider rows:
-- NS↔NS, NS↔Worker, Worker↔Worker, Worker↔L3, L3↔L3
+Per-edge spring constant (k) and rest distance, displayed as dual-slider rows ordered top-of-tree → bottom-of-tree:
+- L1: `NS↔NS` (dep), `NS↔Wk` (cont)
+- L2: `Wk↔Wk` (dep), `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx` (cont)
+- L3: `Wf↔Wf`, `Wf↔Act`, `Act↔Act` (dep)
 
-**GRAVITY** (toward center of mass)
+**GRAVITY** (hierarchical anchor)
 
-    F = α × gravity × (pos − COM)
+    Fx = α × X × (0 − x)
+    Fy = α × Y × (band − y)   (only when y is outside band)
 
-- `gravity` — strength of drift toward center of mass
+- `X strength` — pull toward the vertical anchor at world `x = 0`
+- `Y strength` — pull toward the nearest edge of each node type's Y band
+- Per-node-type **Y band** (dual-handle slider) — the `[yMin, yMax]` window in which the type feels zero Y gravity. Five rows: `L1 NS`, `L2 Wk`, `L3 Wf`, `L3 Act`, `L3 Nx`. All five share a common Y range so the bands are directly comparable; defaults stack the hierarchy from top (`NS`) to bottom (the three L3 types share a single deep band).
 
 **DYNAMICS**
 
@@ -377,11 +395,11 @@ A toggle ("Show force fields") in the control panel enables a visual overlay on 
 
 When enabled, the canvas renders three overlay layers (drawn before nodes, after edges):
 
-**Charge field rings** — Concentric circle outlines around each node showing where the charge force drops to 75%, 50%, and 25% of its peak value. Ring radius is derived from the actual equation: `force(d) = charge / (d² + softening)^(exp/2)`, solved for d at each threshold. Ring color matches the node's type color at low opacity.
+**Charge field rings** — Concentric circle outlines around each node showing where the charge force drops below a fixed set of *absolute* thresholds. Ring radius is derived from the equation `force(d) = pushMul × |q| / (d² + softening)^(exp/2)`, solved for `d` at each threshold; rings whose threshold is unreachable for a node's charge (i.e. the threshold exceeds the node's peak force) are simply not drawn. Stronger charges therefore produce visibly larger rings — and a node type with too small a charge to reach the inner threshold renders only its outer rings, which is itself a useful signal that the type is under-charged. Ring colour matches the node's type colour at low opacity.
 
 **Spring tension coloring** — Edges colored by their current tension state: green when near rest distance, orange when compressed, blue when stretched. Color intensity scales with displacement magnitude.
 
-**Center-of-mass crosshair** — A subtle crosshair at the graph's center of mass with faint drift lines from each node toward the COM, showing the direction and magnitude of the gravity force.
+**Hierarchical gravity overlay** — A dashed vertical line at world `x = 0` shows the X anchor; a horizontal stripe in each node type's colour shows that type's Y rest band. Inside the stripe a node feels no Y force; outside it the node is pulled toward the nearest stripe edge. Hovering a single Y-band slider in the control panel highlights only that band and dims the others.
 
 ### When It's On
 
@@ -399,14 +417,18 @@ The control panel and canvas are linked: hovering a control section activates th
 |-----------------|-----------------|
 | **PUSH** | Charge field rings appear around all visible nodes |
 | **PULL** | Edges show tension coloring (green/orange/blue) |
-| **GRAVITY** | Center-of-mass crosshair with drift lines appears |
+| **GRAVITY** | X anchor line at `x = 0` plus per-type Y rest bands appear |
 | **DYNAMICS** | No canvas response (dynamics are temporal, not spatial) |
 
 When the user stops hovering, the visualization fades unless the persistent "Show force fields" toggle is on.
 
-### Per-Level Charge Highlighting
+### Per-Type Charge Highlighting
 
-Within the PUSH section, hovering an individual charge level slider (L1, L2, or L3) highlights only that level's field rings and dims the others. This lets the user see the reach and strength of one level's charge force in isolation — useful for understanding why nodes at different hierarchy levels settle at different distances.
+Within the PUSH section, hovering an individual charge slider (`NS`, `Wk`, `Wf`, `Act`, or `Nx`) highlights only that node type's field rings and dims the others. This lets the user see the reach and strength of one type's charge force in isolation — useful for understanding why nodes of different types settle at different distances.
+
+### Per-Type Y-Band Highlighting
+
+Within the GRAVITY section, hovering a single Y-band slider highlights only that node type's stripe on the canvas (full opacity) and dims the rest. This makes it easy to see exactly where one type's rest band sits relative to the others while you're moving its handles.
 
 ### Principle
 

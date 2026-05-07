@@ -5,6 +5,13 @@ import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
 import type { Graph, GraphNode, GraphEdge, NodeType } from './model'
 import { nodeId } from './model'
 
+// IDs are always "${nodeType}:${name}" — split on the first colon so names with
+// embedded colons (rare but possible) survive the round-trip.
+function nodeTypeFromId(id: string): NodeType {
+  const i = id.indexOf(':')
+  return (i < 0 ? id : id.slice(0, i)) as NodeType
+}
+
 export function buildGraph(ast: TWFFile): Graph {
   const nodes = new Map<string, GraphNode>()
   const edges: GraphEdge[] = []
@@ -14,8 +21,13 @@ export function buildGraph(ast: TWFFile): Graph {
     nodes.set(node.id, node)
   }
 
-  function addEdge(edge: Omit<GraphEdge, 'id'>) {
-    edges.push({ ...edge, id: `e${edgeSeq++}` })
+  function addEdge(edge: Omit<GraphEdge, 'id' | 'sourceNodeType' | 'targetNodeType'>) {
+    edges.push({
+      ...edge,
+      id: `e${edgeSeq++}`,
+      sourceNodeType: nodeTypeFromId(edge.sourceId),
+      targetNodeType: nodeTypeFromId(edge.targetId),
+    })
   }
 
   // Pre-index definitions by type+name for lookups

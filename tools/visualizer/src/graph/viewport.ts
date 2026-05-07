@@ -19,14 +19,6 @@ export function screenToWorld(vp: Viewport, sx: number, sy: number): [number, nu
   return [(sx - vp.x) / vp.scale, (sy - vp.y) / vp.scale]
 }
 
-// Apply an additive world-space offset to a viewport.
-// Nodes rendered with the returned viewport appear as if their world positions
-// were shifted by -offset. Used to compensate for center-of-mass drift without
-// mutating node positions or viewport state every frame.
-export function withWorldOffset(vp: Viewport, offset: { x: number; y: number }): Viewport {
-  return { scale: vp.scale, x: vp.x - offset.x * vp.scale, y: vp.y - offset.y * vp.scale }
-}
-
 // Zoom centered on a screen point
 export function zoomAt(vp: Viewport, sx: number, sy: number, factor: number): Viewport {
   const newScale = Math.max(0.1, Math.min(10, vp.scale * factor))
