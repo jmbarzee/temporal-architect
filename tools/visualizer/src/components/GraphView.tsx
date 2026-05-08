@@ -26,7 +26,10 @@ interface GraphViewProps {
   onNavigationConsumed?: () => void
 }
 
-// Map graph nodeType to AST defType (for visibility filter)
+// Map graph nodeType to AST defType (for visibility filter). nexusOperation
+// is not a top-level AST definition — it's nested inside nexusServiceDef —
+// so we use a synthetic 'nexusOperationDef' key. The chip in the type
+// filter is wired to this synthetic key the same as any real def type.
 function nodeTypeToDefType(nodeType: string): string {
   switch (nodeType) {
     case 'namespace': return 'namespaceDef'
@@ -34,6 +37,7 @@ function nodeTypeToDefType(nodeType: string): string {
     case 'workflow': return 'workflowDef'
     case 'activity': return 'activityDef'
     case 'nexusService': return 'nexusServiceDef'
+    case 'nexusOperation': return 'nexusOperationDef'
     default: return 'workflowDef'
   }
 }
@@ -53,6 +57,51 @@ function findNearestVisibleAncestor(
     id = parent?.parentId
   }
   return null
+}
+
+// Resolve a dependency-edge endpoint (source or target) to one or more
+// visible node ids. The default behaviour is "if visible, keep; otherwise
+// walk up to the nearest visible ancestor", which matches what containment
+// edges do. The exception is hidden nexus operations: we *splice through*
+// instead of ascending, because a hidden operation should be replaced by
+// the call relationship it sits on top of — caller → operation → backing
+// becomes caller → backing, not caller → worker.
+//
+// `side` controls which adjacent edges we follow when splicing: from the
+// target side we follow the operation's outgoing dep edges (one operation
+// can have several callees if it's a sync op with a body); from the source
+// side we follow incoming dep edges (one operation can have several
+// callers). This produces a Cartesian explosion in the rare case where a
+// hidden node has both many incoming and many outgoing edges, but the
+// graduation step's `depEdgeKeys` Map dedupes anything redundant.
+function resolveDepEndpoint(
+  nodeId: string,
+  visible: boolean,
+  side: 'src' | 'tgt',
+  sim: { edges: { edgeType: string; sourceId: string; targetId: string }[] },
+  visibleIds: Set<string>,
+  getNode: (id: string) => SimNode | undefined,
+): string[] {
+  if (visible) return [nodeId]
+  const node = getNode(nodeId)
+  if (node?.nodeType === 'nexusOperation') {
+    const out: string[] = []
+    for (const e of sim.edges) {
+      if (e.edgeType !== 'dependency') continue
+      const adjId = side === 'tgt'
+        ? (e.sourceId === nodeId ? e.targetId : null)  // outgoing — operation is source
+        : (e.targetId === nodeId ? e.sourceId : null)  // incoming — operation is target
+      if (!adjId) continue
+      // Recurse: a chain of hidden operations is unusual but cheap to walk.
+      // The recursion terminates because each step moves to a new node id.
+      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode)) {
+        out.push(r)
+      }
+    }
+    if (out.length > 0) return out
+  }
+  const ancestor = findNearestVisibleAncestor(nodeId, visibleIds, getNode)
+  return ancestor ? [ancestor] : []
 }
 
 // Compute a glanceable summary string for a graph node from the visible edge set
@@ -101,6 +150,7 @@ function defTypeToNodeType(defType: string): string {
     case 'workflowDef': return 'workflow'
     case 'activityDef': return 'activity'
     case 'nexusServiceDef': return 'nexusService'
+    case 'nexusOperationDef': return 'nexusOperation'
     default: return 'workflow'
   }
 }
@@ -220,26 +270,41 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
           // else child floats free — no containment edge
         }
       } else {
-        // dependency or nexusDependency — project both endpoints
-        const resolvedSrc = srcVisible ? edge.sourceId
-          : findNearestVisibleAncestor(edge.sourceId, ids, getNode)
-        const resolvedTgt = tgtVisible ? edge.targetId
-          : findNearestVisibleAncestor(edge.targetId, ids, getNode)
-        if (!resolvedSrc || !resolvedTgt || resolvedSrc === resolvedTgt) continue
-        const key = `${resolvedSrc}→${resolvedTgt}`
-        if (!depEdgeKeys.has(key)) {
-          const srcNode = getNode(resolvedSrc)
-          const tgtNode = getNode(resolvedTgt)
-          depEdgeKeys.set(key, {
-            ...edge,
-            sourceId: resolvedSrc,
-            targetId: resolvedTgt,
-            sourceLevel: srcNode?.level ?? edge.sourceLevel,
-            targetLevel: tgtNode?.level ?? edge.targetLevel,
-            sourceNodeType: srcNode?.nodeType ?? edge.sourceNodeType,
-            targetNodeType: tgtNode?.nodeType ?? edge.targetNodeType,
-            id: `grad:${key}`,
-          })
+        // dependency — project both endpoints to a visible node.
+        //
+        // Most endpoints just walk the parent chain to a visible ancestor.
+        // The exception is hidden nexusOperation nodes: we DO NOT want to
+        // ascend (caller → worker would lose the call relationship). Instead
+        // we splice through the operation to whatever the operation is
+        // calling — that gives caller → backing-workflow when the operation
+        // layer is filtered out, preserving the "this is a nexus call"
+        // pink styling via `nexusEndpoint` metadata copied from the
+        // original edge.
+        const resolvedSources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode)
+        const resolvedTargets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode)
+        for (const rs of resolvedSources) {
+          for (const rt of resolvedTargets) {
+            if (rs === rt) continue
+            const key = `${rs}→${rt}`
+            const existing = depEdgeKeys.get(key)
+            // Prefer the edge that carries `nexusEndpoint` so the spliced
+            // caller → backing case keeps its pink styling regardless of
+            // which side of the chain we processed first (the op → backing
+            // delegation has no endpoint; the caller → op call site does).
+            if (existing && existing.nexusEndpoint && !edge.nexusEndpoint) continue
+            const srcNode = getNode(rs)
+            const tgtNode = getNode(rt)
+            depEdgeKeys.set(key, {
+              ...edge,
+              sourceId: rs,
+              targetId: rt,
+              sourceLevel: srcNode?.level ?? edge.sourceLevel,
+              targetLevel: tgtNode?.level ?? edge.targetLevel,
+              sourceNodeType: srcNode?.nodeType ?? edge.sourceNodeType,
+              targetNodeType: tgtNode?.nodeType ?? edge.targetNodeType,
+              id: `grad:${key}`,
+            })
+          }
         }
       }
     }

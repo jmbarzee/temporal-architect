@@ -14,11 +14,25 @@
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
 
-  /* Graph node-type palette. Mirrors NODE_COLORS in GraphCanvas.tsx so that
-     control-panel rows colour-match the things they govern on the canvas. */
-  --color-namespace: #7E8CA0;
-  --color-worker: #94A3B8;
-  --color-nexus: #EC4899;
+  /* Graph node-type palette. Single source of truth for both the tree-view
+     CSS and the canvas renderer (GraphCanvas reads matching values from a
+     constant table, kept in lock-step with these vars). Workers and
+     namespaces sit on the same neutral axis but at noticeably different
+     warmth/lightness so they don't read as one shade of grey. The two
+     nexus colours are stratified the same way: service (parent) deeper,
+     operation (sub-element) lighter. Each fill has a paired border colour
+     ~3 stops darker so the canvas can outline nodes without picking colours
+     out of thin air. */
+  --color-namespace:        #475569;  /* slate-600 — deep, authoritative */
+  --color-namespace-border: #1E293B;
+  --color-worker:           #94A3B8;  /* slate-400 — silver */
+  --color-worker-border:    #475569;
+  --color-workflow-border:  #5D4F95;
+  --color-activity-border:  #4A8BC2;
+  --color-nexus:            #DB2777;  /* pink-600 — slightly deeper than before for service */
+  --color-nexus-border:     #831843;
+  --color-nexus-operation:  #F9A8D4;
+  --color-nexus-operation-border: #BE185D;
 
   /* Force-section accent palette for the control panel. Each section gets a
      distinct hue that doesn't compete with the node-type colours: warm for
@@ -47,7 +61,19 @@
 /* Dark theme - applied when VSCode is in dark mode */
 .vscode-dark,
 [data-theme="dark"] {
+  /* Brighter palette on dark backgrounds. Borders go ~2 stops darker than
+     the fill so they read as outlines rather than competing rims. */
   --color-workflow: #A89BD8;
+  --color-workflow-border:  #6B5BB0;
+  --color-activity-border:  #5DA8DD;
+  --color-namespace:        #94A3B8;
+  --color-namespace-border: #475569;
+  --color-worker:           #CBD5E1;
+  --color-worker-border:    #64748B;
+  --color-nexus:            #EC4899;
+  --color-nexus-border:     #9D174D;
+  --color-nexus-operation:  #F9A8D4;
+  --color-nexus-operation-border: #DB2777;
   --color-bg: #1e1e1e;
   --color-bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
   --color-text: #d4d4d4;
@@ -619,11 +645,12 @@ body {
      • Per-type rows (charges, bands, edge endpoints) read from --type-color
      • Per-section headers (PUSH/PULL/GRAVITY/DYNAMICS) read from --section-color
 */
-.graph-control-typed-namespace { --type-color: var(--color-namespace); }
-.graph-control-typed-worker { --type-color: var(--color-worker); }
-.graph-control-typed-workflow { --type-color: var(--color-workflow); }
-.graph-control-typed-activity { --type-color: var(--color-activity); }
-.graph-control-typed-nexusService { --type-color: var(--color-nexus); }
+.graph-control-typed-namespace      { --type-color: var(--color-namespace); }
+.graph-control-typed-worker         { --type-color: var(--color-worker); }
+.graph-control-typed-workflow       { --type-color: var(--color-workflow); }
+.graph-control-typed-activity       { --type-color: var(--color-activity); }
+.graph-control-typed-nexusService   { --type-color: var(--color-nexus); }
+.graph-control-typed-nexusOperation { --type-color: var(--color-nexus-operation); }
 
 /* Rows that carry a single node type get a coloured left-accent and tint
    their label + slider thumb to match. Applied to both per-type charge
@@ -1167,103 +1194,62 @@ body {
   line-height: 1;
 }
 
-/* Workflow type toggle */
-.header-type-tag.header-type-workflowDef:hover {
-  border-color: var(--color-workflow);
-  color: var(--color-workflow);
-  background: rgba(139, 126, 200, 0.06);
+/* All filter chips share the same hover / active recipe — the only thing
+   that varies per type is which palette variable drives the colour. The
+   --chip-tint and --chip-tint-bg pair is set per chip class below; the
+   shared rules read those vars so adding a new node type is "set the two
+   vars" not "duplicate fifteen lines of CSS". */
+.header-type-tag:hover {
+  border-color: var(--chip-tint, var(--color-border));
+  color: var(--chip-tint, var(--color-text-muted));
+  background: var(--chip-tint-bg-hover, transparent);
 }
-
-.header-type-tag.header-type-workflowDef.active {
-  border-color: var(--color-workflow);
-  background: rgba(139, 126, 200, 0.12);
-  color: var(--color-workflow);
+.header-type-tag.active {
+  border-color: var(--chip-tint, var(--color-border));
+  color: var(--chip-tint, var(--color-text-muted));
+  background: var(--chip-tint-bg-active, transparent);
   font-weight: 500;
 }
 
-/* Activity type toggle */
-.header-type-tag.header-type-activityDef:hover {
-  border-color: var(--color-activity, #7CB9E8);
-  color: var(--color-activity, #7CB9E8);
-  background: rgba(124, 185, 232, 0.06);
+.header-type-tag.header-type-workflowDef {
+  --chip-tint: var(--color-workflow);
+  --chip-tint-bg-hover: rgba(139, 126, 200, 0.06);
+  --chip-tint-bg-active: rgba(139, 126, 200, 0.12);
+}
+.header-type-tag.header-type-activityDef {
+  --chip-tint: var(--color-activity);
+  --chip-tint-bg-hover: rgba(124, 185, 232, 0.06);
+  --chip-tint-bg-active: rgba(124, 185, 232, 0.12);
+}
+.header-type-tag.header-type-workerDef {
+  --chip-tint: var(--color-worker);
+  --chip-tint-bg-hover: rgba(148, 163, 184, 0.06);
+  --chip-tint-bg-active: rgba(148, 163, 184, 0.12);
+}
+.header-type-tag.header-type-nexusServiceDef {
+  --chip-tint: var(--color-nexus);
+  --chip-tint-bg-hover: rgba(219, 39, 119, 0.06);
+  --chip-tint-bg-active: rgba(219, 39, 119, 0.12);
+}
+.header-type-tag.header-type-nexusOperationDef {
+  --chip-tint: var(--color-nexus-operation);
+  --chip-tint-bg-hover: rgba(249, 168, 212, 0.10);
+  --chip-tint-bg-active: rgba(249, 168, 212, 0.18);
+}
+.header-type-tag.header-type-namespaceDef {
+  --chip-tint: var(--color-namespace);
+  --chip-tint-bg-hover: rgba(71, 85, 105, 0.06);
+  --chip-tint-bg-active: rgba(71, 85, 105, 0.12);
 }
 
-.header-type-tag.header-type-activityDef.active {
-  border-color: var(--color-activity, #7CB9E8);
-  background: rgba(124, 185, 232, 0.12);
-  color: var(--color-activity, #7CB9E8);
-  font-weight: 500;
-}
-
-/* Worker type toggle */
-.header-type-tag.header-type-workerDef:hover {
-  border-color: #94A3B8;
-  color: #64748B;
-  background: rgba(148, 163, 184, 0.06);
-}
-
-.header-type-tag.header-type-workerDef.active {
-  border-color: #94A3B8;
-  background: rgba(148, 163, 184, 0.12);
-  color: #64748B;
-  font-weight: 500;
-}
-
-.vscode-dark .header-type-tag.header-type-workflowDef:hover,
-.vscode-dark .header-type-tag.header-type-workflowDef.active {
-  background: rgba(168, 155, 216, 0.15);
-}
-
-.vscode-dark .header-type-tag.header-type-activityDef:hover,
-.vscode-dark .header-type-tag.header-type-activityDef.active {
-  background: rgba(124, 185, 232, 0.15);
-}
-
-.vscode-dark .header-type-tag.header-type-workerDef:hover,
-.vscode-dark .header-type-tag.header-type-workerDef.active {
-  color: #94A3B8;
-  background: rgba(148, 163, 184, 0.15);
-}
-
-/* Nexus Service type toggle */
-.header-type-tag.header-type-nexusServiceDef:hover {
-  border-color: #EC4899;
-  color: #BE185D;
-  background: rgba(236, 72, 153, 0.06);
-}
-
-.header-type-tag.header-type-nexusServiceDef.active {
-  border-color: #EC4899;
-  background: rgba(236, 72, 153, 0.12);
-  color: #BE185D;
-  font-weight: 500;
-}
-
-.vscode-dark .header-type-tag.header-type-nexusServiceDef:hover,
-.vscode-dark .header-type-tag.header-type-nexusServiceDef.active {
-  color: #F9A8D4;
-  background: rgba(236, 72, 153, 0.15);
-}
-
-/* Namespace type toggle */
-.header-type-tag.header-type-namespaceDef:hover {
-  border-color: #7E8CA0;
-  color: #4A5568;
-  background: rgba(126, 140, 160, 0.06);
-}
-
-.header-type-tag.header-type-namespaceDef.active {
-  border-color: #7E8CA0;
-  background: rgba(126, 140, 160, 0.12);
-  color: #4A5568;
-  font-weight: 500;
-}
-
-.vscode-dark .header-type-tag.header-type-namespaceDef:hover,
-.vscode-dark .header-type-tag.header-type-namespaceDef.active {
-  color: #7E8CA0;
-  background: rgba(126, 140, 160, 0.15);
-}
+/* Dark mode bumps the active backgrounds a bit because the surface they
+   sit on is darker. */
+.vscode-dark .header-type-tag.header-type-workflowDef       { --chip-tint-bg-hover: rgba(168, 155, 216, 0.10); --chip-tint-bg-active: rgba(168, 155, 216, 0.18); }
+.vscode-dark .header-type-tag.header-type-activityDef       { --chip-tint-bg-hover: rgba(124, 185, 232, 0.10); --chip-tint-bg-active: rgba(124, 185, 232, 0.18); }
+.vscode-dark .header-type-tag.header-type-workerDef         { --chip-tint-bg-hover: rgba(203, 213, 225, 0.10); --chip-tint-bg-active: rgba(203, 213, 225, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexusServiceDef   { --chip-tint-bg-hover: rgba(236, 72, 153, 0.10);  --chip-tint-bg-active: rgba(236, 72, 153, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexusOperationDef { --chip-tint-bg-hover: rgba(249, 168, 212, 0.10); --chip-tint-bg-active: rgba(249, 168, 212, 0.18); }
+.vscode-dark .header-type-tag.header-type-namespaceDef      { --chip-tint-bg-hover: rgba(148, 163, 184, 0.10); --chip-tint-bg-active: rgba(148, 163, 184, 0.18); }
 
 /* No workflows message */
 .no-workflows {

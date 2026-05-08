@@ -122,19 +122,27 @@ worker checkoutWorker:
     activity DoLocalWork
     activity AlertTimeout
 
+# Three separate namespaces — the defining feature of Nexus.
+# Endpoints live in the target namespace alongside the workers that serve them.
+# The caller namespace (orders) just references endpoint names in its workflows.
+
+namespace payments:
+    worker paymentProcessingWorker
+        options:
+            task_queue: "payments"
+    nexus endpoint PaymentsEndpoint
+        options:
+            task_queue: "payments"
+
+namespace notifications:
+    worker notificationWorker
+        options:
+            task_queue: "notifications"
+    nexus endpoint NotificationsEndpoint
+        options:
+            task_queue: "notifications"
+
 namespace orders:
     worker checkoutWorker
         options:
             task_queue: "checkout"
-    worker paymentProcessingWorker
-        options:
-            task_queue: "payments"
-    worker notificationWorker
-        options:
-            task_queue: "notifications"
-    nexus endpoint PaymentsEndpoint
-        options:
-            task_queue: "payments"
-    nexus endpoint NotificationsEndpoint
-        options:
-            task_queue: "notifications"

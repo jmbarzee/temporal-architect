@@ -68,6 +68,9 @@ const PUSH_CHARGE_SLIDERS: ChargeSliderDef[] = [
   { key: 'chargeNexusService', nodeType: 'nexusService', label: 'L3 Nx',
     min: -200, max: 0, step: 5,
     tooltip: 'Nexus service node repulsion charge' },
+  { key: 'chargeNexusOperation', nodeType: 'nexusOperation', label: 'L3 Op',
+    min: -200, max: 0, step: 5,
+    tooltip: 'Nexus operation node repulsion charge' },
 ]
 
 // --- PULL section sliders ---
@@ -77,7 +80,7 @@ const PULL_MASTER_SLIDERS: SliderDef[] = [
     tooltip: 'Master multiplier for all spring forces' },
   { key: 'linkExponent', label: 'exp', min: 0.5, max: 3, step: 0.1,
     tooltip: 'Power of displacement in spring force. 1 = linear (Hooke)' },
-  { key: 'distanceMultiplier', label: 'dist', min: 0.1, max: 3, step: 0.1,
+  { key: 'distanceMultiplier', label: 'dist', min: 0.05, max: 3, step: 0.05,
     tooltip: 'Master multiplier for all rest distances' },
 ]
 
@@ -126,7 +129,10 @@ const PULL_EDGES: PullEdgeDef[] = [
   { label: 'Wk↔Nx', kKey: 'linkWorkerToNexus', restKey: 'distWorkerToNexus',
     sourceType: 'worker', targetType: 'nexusService',
     tooltip: 'Worker ↔ Nexus service containment' },
-  // Level 3
+  // Level 3 (intra-L3 containment + dependencies)
+  { label: 'Nx↔Op', kKey: 'linkNexusToOperation', restKey: 'distNexusToOperation',
+    sourceType: 'nexusService', targetType: 'nexusOperation',
+    tooltip: 'Nexus service ↔ Nexus operation containment' },
   { label: 'Wf↔Wf', kKey: 'linkWorkflowToWorkflow', restKey: 'distWorkflowToWorkflow',
     sourceType: 'workflow', targetType: 'workflow',
     tooltip: 'Workflow ↔ Workflow dependency' },
@@ -147,7 +153,7 @@ const PULL_EDGES: PullEdgeDef[] = [
 
 const GRAVITY_STRENGTH_SLIDERS: SliderDef[] = [
   { key: 'gravityX', label: 'X strength', min: 0, max: 0.2, step: 0.005,
-    tooltip: 'Pull toward the vertical anchor (world x = 0)' },
+    tooltip: 'Pull toward the nearest edge of the global X band' },
   { key: 'gravityY', label: 'Y strength', min: 0, max: 0.2, step: 0.005,
     tooltip: 'Pull toward the nearest edge of each node type\u2019s Y band' },
 ]
@@ -173,15 +179,18 @@ const GRAVITY_BAND_SLIDERS: GravityBandDef[] = [
   { label: 'L2 Wk', nodeType: 'worker',
     minKey: 'bandYMinWorker', maxKey: 'bandYMaxWorker',
     tooltip: 'Y band where worker nodes feel zero gravity' },
+  { label: 'L2 Nx', nodeType: 'nexusService',
+    minKey: 'bandYMinNexusService', maxKey: 'bandYMaxNexusService',
+    tooltip: 'Y band where nexus service nodes feel zero gravity' },
   { label: 'L3 Wf', nodeType: 'workflow',
     minKey: 'bandYMinWorkflow', maxKey: 'bandYMaxWorkflow',
     tooltip: 'Y band where workflow nodes feel zero gravity' },
-  { label: 'L3 Act', nodeType: 'activity',
+  { label: 'L3 Op', nodeType: 'nexusOperation',
+    minKey: 'bandYMinNexusOperation', maxKey: 'bandYMaxNexusOperation',
+    tooltip: 'Y band where nexus operation nodes feel zero gravity' },
+  { label: 'L4 Act', nodeType: 'activity',
     minKey: 'bandYMinActivity', maxKey: 'bandYMaxActivity',
     tooltip: 'Y band where activity nodes feel zero gravity' },
-  { label: 'L3 Nx', nodeType: 'nexusService',
-    minKey: 'bandYMinNexusService', maxKey: 'bandYMaxNexusService',
-    tooltip: 'Y band where nexus service nodes feel zero gravity' },
 ]
 
 // --- DYNAMICS section sliders ---
@@ -294,6 +303,25 @@ export function GraphControlPanel({
             {GRAVITY_STRENGTH_SLIDERS.map(s => (
               <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => onParamChange(s.key, v)} />
             ))}
+            <div className="graph-control-sub-header">
+              <span className="graph-control-sub-label">Axis</span>
+              <span className="graph-control-sub-label">X band (left \u2192 right)</span>
+            </div>
+            <div className="graph-control-band-row">
+              <span className="graph-control-band-label">X</span>
+              <DualRangeSlider
+                min={BAND_Y_MIN}
+                max={BAND_Y_MAX}
+                step={BAND_Y_STEP}
+                valueMin={params.bandXMin}
+                valueMax={params.bandXMax}
+                onChangeMin={v => onParamChange('bandXMin', v)}
+                onChangeMax={v => onParamChange('bandXMax', v)}
+                nodeType="namespace"
+              />
+              <span className="graph-control-band-value">{Math.round(params.bandXMin)}</span>
+              <span className="graph-control-band-value">{Math.round(params.bandXMax)}</span>
+            </div>
             <div className="graph-control-sub-header">
               <span className="graph-control-sub-label">Type</span>
               <span className="graph-control-sub-label">Y band (top \u2192 bottom)</span>

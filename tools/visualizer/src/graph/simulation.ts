@@ -19,6 +19,7 @@ export interface ForceParams {
   chargeWorkflow: number
   chargeActivity: number
   chargeNexusService: number
+  chargeNexusOperation: number
 
   // Spring constants (k) per edge category.
   // Containment (parent ↔ child):
@@ -26,6 +27,7 @@ export interface ForceParams {
   linkWorkerToWorkflow: number    // Worker ↔ Workflow
   linkWorkerToActivity: number    // Worker ↔ Activity
   linkWorkerToNexus: number       // Worker ↔ NexusService
+  linkNexusToOperation: number    // NexusService ↔ NexusOperation (intra-L3)
   // Dependency (caller → callee):
   linkNsToNs: number               // Namespace ↔ Namespace
   linkWorkerToWorker: number       // Worker ↔ Worker
@@ -38,6 +40,7 @@ export interface ForceParams {
   distWorkerToWorkflow: number
   distWorkerToActivity: number
   distWorkerToNexus: number
+  distNexusToOperation: number
   distNsToNs: number
   distWorkerToWorker: number
   distWorkflowToWorkflow: number
@@ -45,17 +48,23 @@ export interface ForceParams {
   distActivityToActivity: number
 
   // Hierarchical gravity. The graph has an inherent vertical hierarchy
-  // (namespace → worker → definition) so gravity is split into two axes:
+  // (namespace → worker → definition) so gravity is split into two axes,
+  // both expressed as global rest bands:
   //
-  //   X axis — every node is pulled toward x = 0. One global strength.
-  //   Y axis — each node type has a "rest band" [min, max]; the node
-  //            experiences zero Y force inside its band and is pulled toward
-  //            the nearest band edge when outside it. One global strength.
+  //   X axis — one global band [bandXMin, bandXMax]. Inside the band, no X
+  //            force; outside it, a pull toward the nearest edge. The band
+  //            is wider than zero so a graph with many top-level nodes can
+  //            spread horizontally instead of stacking on x = 0.
+  //   Y axis — each node type has its own band [yMin, yMax] for the same
+  //            reason — namespaces sit at the top, activities at the
+  //            bottom, with deliberate empty stripes in between.
   //
-  // This produces a layered layout (NS at top, L3 at bottom) that anchors
+  // This produces a layered layout (NS at top, L4 at bottom) that anchors
   // world coordinates rather than letting the centre drift.
   gravityX: number
   gravityY: number
+  bandXMin: number
+  bandXMax: number
   bandYMinNamespace: number
   bandYMaxNamespace: number
   bandYMinWorker: number
@@ -66,6 +75,8 @@ export interface ForceParams {
   bandYMaxActivity: number
   bandYMinNexusService: number
   bandYMaxNexusService: number
+  bandYMinNexusOperation: number
+  bandYMaxNexusOperation: number
 
   // Simulation dynamics
   alphaDecay: number
@@ -85,69 +96,106 @@ export interface ForceParams {
   linkExponent: number     // power of displacement in spring force (1 = linear/Hooke)
 }
 
-// Defaults reflect a hand-tuned starting point captured from interactive use:
-// gentle gradient of repulsion across the hierarchy (L1 strongest, L3 weakest),
-// looser springs at the top of the tree (NS↔NS) and tighter springs deeper
-// (Wf↔Wf), and a sub-quadratic charge falloff so neighbours stay legible while
-// distant nodes still get pushed apart.
+// Defaults are a hand-tuned baseline captured from interactive use across
+// the topic library and the example workflows. The model is intentionally
+// charge-dominant: repulsion does most of the layout work, the per-type Y
+// bands hold the hierarchy, and the link springs act as short tethers
+// rather than rigid rods. Concretely:
+//
+//   - pushMultiplier 2.6 + chargeExponent 1.4 + chargeSoftening 450
+//     produce strong, sharply-decaying repulsion that prevents node
+//     overlap and naturally fans siblings apart.
+//   - pullMultiplier 0.6 + distanceMultiplier 0.1 means every spring is
+//     ~6% of its old strength × ~10% of its old rest distance — enough to
+//     keep connected nodes near each other, not enough to fight the
+//     repulsion or the Y bands.
+//   - gravityY 0.145 is roughly 2.5× its old strength; the Y bands now
+//     carry the vertical structure of the layout. Bands are also wider
+//     than before so each tier has room without crowding its neighbours.
+//   - linkExponent stays at 1.0 (linear). A sub-linear shape was tested
+//     and made the high-fan-out side dominate harder, not less.
+//
+// The per-category sliders all still work; these are starting points the
+// user can drag from. Ranges in GraphControlPanel.tsx are wide enough that
+// every default sits in a comfortable middle of its slider.
 export const DEFAULT_PARAMS: ForceParams = {
-  // Charges (all negative = repulsion).
-  chargeNamespace: -450,
-  chargeWorker: -150,
-  chargeWorkflow: -50,
-  chargeActivity: -50,
-  chargeNexusService: -50,
+  // Charges (all negative = repulsion). Tuned to a roughly 8:3:1 gradient
+  // L1:L2:L3, with services and operations slightly stronger than their
+  // peer types so they stay clearly anchored to their bands.
+  chargeNamespace:      -640,
+  chargeWorker:         -220,
+  chargeNexusService:   -105,
+  chargeWorkflow:        -95,
+  chargeNexusOperation:  -85,
+  chargeActivity:        -80,
 
-  // Spring constants. Higher up the tree → weaker springs (the structure
-  // breathes); deeper in the tree → stiffer springs (siblings stay close).
-  linkNsToNs: 0.05,
-  linkNsToWorker: 0.20,
-  linkWorkerToWorker: 0.40,
-  linkWorkerToWorkflow: 0.60,
-  linkWorkerToActivity: 0.60,
-  linkWorkerToNexus: 0.60,
+  // Spring strengths. With pullMultiplier at 0.6 and distanceMultiplier at
+  // 0.1 every spring is a *light tether* — these k's mostly determine the
+  // ranking of which connections snap closest, not the absolute pull.
+  linkNsToNs:             0.05,
+  linkNsToWorker:         0.20,
+  linkWorkerToWorker:     0.40,
+  linkWorkerToWorkflow:   0.60,
+  linkWorkerToActivity:   0.30,
+  linkWorkerToNexus:      0.40,
+  linkNexusToOperation:   0.65,
   linkWorkflowToWorkflow: 0.75,
-  linkWorkflowToActivity: 0.75,
-  linkActivityToActivity: 0.75,
+  linkWorkflowToActivity: 0.45,
+  linkActivityToActivity: 0.55,
 
-  // Rest distances follow the same shape: bigger at the top, smaller at L3.
-  distNsToNs: 450,
-  distNsToWorker: 250,
-  distWorkerToWorker: 200,
-  distWorkerToWorkflow: 110,
-  distWorkerToActivity: 110,
-  distWorkerToNexus: 110,
-  distWorkflowToWorkflow: 70,
-  distWorkflowToActivity: 70,
-  distActivityToActivity: 70,
+  // Rest distances. These are pre-multiplier values; the panel's `dist`
+  // master multiplies them at simulation time (currently 0.1, so the
+  // effective rest length of a Wk↔Wf edge is 18 world units, etc.). The
+  // spread between rows still matters — it sets the *ordering* of which
+  // edges are willing to stretch furthest, not the absolute length.
+  distNsToNs:             340,
+  distNsToWorker:         250,
+  distWorkerToWorker:     200,
+  distWorkerToWorkflow:   180,
+  distWorkerToActivity:   280,
+  distWorkerToNexus:      180,
+  distNexusToOperation:   140,
+  distWorkflowToWorkflow: 120,
+  distWorkflowToActivity:  90,
+  distActivityToActivity:  60,
 
-  // Hierarchical gravity. Default Y bands stack the hierarchy top-to-bottom
-  // (smaller Y = higher on screen): NS up top, Worker just below, all three
-  // L3 types share a single deep band so they read as a single layer unless
-  // the user separates them.
-  gravityX: 0.04,
-  gravityY: 0.06,
-  bandYMinNamespace: -400,
-  bandYMaxNamespace: -250,
-  bandYMinWorker: -150,
-  bandYMaxWorker: -50,
-  bandYMinWorkflow: 100,
-  bandYMaxWorkflow: 250,
-  bandYMinActivity: 100,
-  bandYMaxActivity: 250,
-  bandYMinNexusService: 100,
-  bandYMaxNexusService: 250,
+  // Hierarchical gravity. Y bands carry the vertical structure of the
+  // layout — strong (gravityY = 0.145) and overlapping at the edges so
+  // adjacent tiers can soften their boundary instead of forming a hard
+  // stripe. The X band is asymmetric (0..380) because the canvas's
+  // initial fit-to-view re-centres anyway; what matters is the band
+  // width, which is generous enough to let wide fan-outs spread laterally.
+  gravityX: 0.05,
+  gravityY: 0.145,
+  bandXMin:    0,
+  bandXMax:  380,
+  bandYMinNamespace:      -340,
+  bandYMaxNamespace:      -120,
+  bandYMinWorker:         -200,
+  bandYMaxWorker:          120,
+  bandYMinNexusService:   -200,
+  bandYMaxNexusService:    110,
+  bandYMinNexusOperation:   10,
+  bandYMaxNexusOperation:  340,
+  bandYMinWorkflow:        100,
+  bandYMaxWorkflow:        460,
+  bandYMinActivity:        170,
+  bandYMaxActivity:        500,
 
-  alphaDecay: 0.005,
-  alphaMin: 0.001,
+  // Dynamics. alphaMin is well below the d3 default (0.001) so the
+  // simulation continues into its slow-cooling tail — layouts read as
+  // "settled" rather than freezing while springs are still measurably
+  // active. friction and cooling are stock.
+  alphaDecay:    0.005,
+  alphaMin:      0.0001,
   velocityDecay: 0.4,
 
-  chargeSoftening: 900,
-  pushMultiplier: 1.0,
-  pullMultiplier: 1.0,
-  distanceMultiplier: 1.0,
-  chargeExponent: 1.2,
-  linkExponent: 1.0,
+  chargeSoftening:    450,
+  pushMultiplier:     2.6,
+  pullMultiplier:     0.6,
+  distanceMultiplier: 0.1,
+  chargeExponent:     1.4,
+  linkExponent:       1.0,
 }
 
 export function chargeForType(params: ForceParams, nodeType: NodeType): number {
@@ -157,6 +205,7 @@ export function chargeForType(params: ForceParams, nodeType: NodeType): number {
     case 'workflow': return params.chargeWorkflow
     case 'activity': return params.chargeActivity
     case 'nexusService': return params.chargeNexusService
+    case 'nexusOperation': return params.chargeNexusOperation
   }
 }
 
@@ -177,11 +226,13 @@ export function bandForType(params: ForceParams, nodeType: NodeType): YBand {
       return { yMin: params.bandYMinActivity, yMax: params.bandYMaxActivity }
     case 'nexusService':
       return { yMin: params.bandYMinNexusService, yMax: params.bandYMaxNexusService }
+    case 'nexusOperation':
+      return { yMin: params.bandYMinNexusOperation, yMax: params.bandYMaxNexusOperation }
   }
 }
 
 export const ALL_NODE_TYPES: NodeType[] = [
-  'namespace', 'worker', 'workflow', 'activity', 'nexusService',
+  'namespace', 'worker', 'workflow', 'activity', 'nexusService', 'nexusOperation',
 ]
 
 interface EdgeCategory {
@@ -189,42 +240,57 @@ interface EdgeCategory {
   distance: number
 }
 
-// Categorize an edge by its endpoint node types. Containment edges always
-// have a Worker on one side; dependency edges live within a single level.
-// L3↔L3 dependency edges are split by the (workflow, activity) pair: nexus
-// calls resolve to their backing workflow during build, so nexusService nodes
-// never appear as a dependency endpoint.
+// Categorize an edge by its endpoint node types. Containment edges typically
+// have a Worker (L2) on one side, but with services living at L2 and
+// operations at L3 there are two intra/cross-level cases that need their
+// own springs: Worker ↔ Service (L2↔L2 hosting) and Service ↔ Operation
+// (L3↔L2 nesting). Dependency edges live within or across levels and
+// stratify by the endpoint types so deep call chains get gentler springs.
+// NexusOperation behaves like a workflow for dependency springs — it sits
+// on the call path and clusters with workflows.
 export function edgeCategory(params: ForceParams, edge: GraphEdge): EdgeCategory {
   const src = edge.sourceNodeType
   const tgt = edge.targetNodeType
 
   if (edge.edgeType === 'containment') {
-    // L3 → Worker (build.ts always emits L3 as source for these edges).
+    // NexusService ↔ NexusOperation (operations live one tier under their
+    // service — L3 child anchored to the L2 service that owns it).
+    if ((src === 'nexusOperation' && tgt === 'nexusService') ||
+        (src === 'nexusService' && tgt === 'nexusOperation')) {
+      return { strength: params.linkNexusToOperation, distance: params.distNexusToOperation }
+    }
+    // Worker ↔ NexusService (peer L2 nodes; service is hosted on a worker).
+    if ((src === 'nexusService' && tgt === 'worker') ||
+        (src === 'worker' && tgt === 'nexusService')) {
+      return { strength: params.linkWorkerToNexus, distance: params.distWorkerToNexus }
+    }
+    // L3/L4 → Worker (build.ts always emits the child as source).
     if (src === 'workflow' || tgt === 'workflow') {
       return { strength: params.linkWorkerToWorkflow, distance: params.distWorkerToWorkflow }
     }
     if (src === 'activity' || tgt === 'activity') {
       return { strength: params.linkWorkerToActivity, distance: params.distWorkerToActivity }
     }
-    if (src === 'nexusService' || tgt === 'nexusService') {
-      return { strength: params.linkWorkerToNexus, distance: params.distWorkerToNexus }
-    }
     // Worker → Namespace
     return { strength: params.linkNsToWorker, distance: params.distNsToWorker }
   }
 
-  // Dependency / nexusDependency
+  // Dependency
   if (src === 'namespace' || tgt === 'namespace') {
     return { strength: params.linkNsToNs, distance: params.distNsToNs }
   }
   if (src === 'worker' || tgt === 'worker') {
     return { strength: params.linkWorkerToWorker, distance: params.distWorkerToWorker }
   }
-  // L3↔L3: differentiate Wf↔Wf, Wf↔Act, Act↔Act.
-  if (src === 'workflow' && tgt === 'workflow') {
+  // L3↔L3: collapse nexusOperation to "workflow-equivalent" (it sits on the
+  // call path between caller and callee), then differentiate Wf↔Wf, Wf↔Act,
+  // Act↔Act.
+  const lsrc = src === 'nexusOperation' ? 'workflow' : src
+  const ltgt = tgt === 'nexusOperation' ? 'workflow' : tgt
+  if (lsrc === 'workflow' && ltgt === 'workflow') {
     return { strength: params.linkWorkflowToWorkflow, distance: params.distWorkflowToWorkflow }
   }
-  if (src === 'activity' && tgt === 'activity') {
+  if (lsrc === 'activity' && ltgt === 'activity') {
     return { strength: params.linkActivityToActivity, distance: params.distActivityToActivity }
   }
   // Mixed Wf/Act in either direction.
@@ -263,13 +329,15 @@ export class Simulation {
     // (the X anchor); Y is jittered within the band centre.
     this.nodes = []
     this.nodeMap = new Map()
+    const xCenter = (this.params.bandXMin + this.params.bandXMax) / 2
+    const xJitter = Math.max(40, (this.params.bandXMax - this.params.bandXMin) * 0.7)
     for (const node of graph.nodes.values()) {
       const band = bandForType(this.params, node.nodeType)
       const yCenter = (band.yMin + band.yMax) / 2
       const yJitter = Math.max(20, (band.yMax - band.yMin) / 2)
       const sim: SimNode = {
         ...node,
-        x: (Math.random() - 0.5) * 300,
+        x: xCenter + (Math.random() - 0.5) * xJitter,
         y: yCenter + (Math.random() - 0.5) * yJitter,
         vx: 0,
         vy: 0,
@@ -307,6 +375,21 @@ export class Simulation {
     const activeEdges = visibleIds
       ? this.edges.filter(e => visibleIds.has(e.sourceId) && visibleIds.has(e.targetId))
       : this.edges
+
+    // Per-tick node degree (count of incident active edges). Used below to
+    // scale each edge's contribution to its endpoints by relative degree:
+    // a worker with N children would otherwise accumulate N spring forces
+    // per tick and overshoot equilibrium, oscillating between two positions
+    // every frame (visible as a transparent / ghosted node when looking at
+    // the canvas at 60 fps). The d3-force-link "bias" formulation gives
+    // each high-degree endpoint a proportionally small share so the sum
+    // across its edges stays comparable to a single edge — the heavy node
+    // anchors, the lighter node orbits.
+    const degree = new Map<string, number>()
+    for (const edge of activeEdges) {
+      degree.set(edge.sourceId, (degree.get(edge.sourceId) ?? 0) + 1)
+      degree.set(edge.targetId, (degree.get(edge.targetId) ?? 0) + 1)
+    }
 
     // Charge force (repulsion between all visible node pairs)
     // force = pushMultiplier * strength / effectiveDist^chargeExponent
@@ -381,25 +464,42 @@ export class Simulation {
       const fx = force * dx
       const fy = force * dy
 
-      if (!source.pinned) { source.vx += fx; source.vy += fy }
-      if (!target.pinned) { target.vx -= fx; target.vy -= fy }
+      // Degree bias: split the edge's pull between endpoints in inverse
+      // proportion to their degree (= heavy nodes barely move, light nodes
+      // do most of the orbiting). This is the standard fix for stiff-spring
+      // oscillation under explicit Euler integration when one endpoint has
+      // many incident edges.
+      const sd = degree.get(edge.sourceId) ?? 1
+      const td = degree.get(edge.targetId) ?? 1
+      const bias = sd / (sd + td)
+
+      if (!source.pinned) { source.vx += fx * (1 - bias); source.vy += fy * (1 - bias) }
+      if (!target.pinned) { target.vx -= fx * bias; target.vy -= fy * bias }
     }
 
-    // Hierarchical gravity. X is anchored to 0 and Y is anchored to a per-type
-    // band (zero force inside the band). This anchors world coordinates rather
-    // than letting the centre of mass drift, which removes the need for the
-    // canvas-side COM compensation that older versions used.
+    // Hierarchical gravity. Both axes are anchored to a band with no force
+    // inside and a pull toward the nearest edge outside — Y is per-type
+    // (vertical hierarchy of node levels), X is global (just keeps things
+    // from drifting off-screen). Anchoring world coordinates this way
+    // removes the need for any canvas-side COM compensation.
     const gx = this.params.gravityX
     const gy = this.params.gravityY
+    const xMin = this.params.bandXMin
+    const xMax = this.params.bandXMax
     for (const node of active) {
       if (node.pinned) continue
-      node.vx -= node.x * this.alpha * gx
+      let xTarget: number | null = null
+      if (node.x < xMin) xTarget = xMin
+      else if (node.x > xMax) xTarget = xMax
+      if (xTarget !== null) {
+        node.vx -= (node.x - xTarget) * this.alpha * gx
+      }
       const band = bandForType(this.params, node.nodeType)
-      let target: number | null = null
-      if (node.y < band.yMin) target = band.yMin
-      else if (node.y > band.yMax) target = band.yMax
-      if (target !== null) {
-        node.vy -= (node.y - target) * this.alpha * gy
+      let yTarget: number | null = null
+      if (node.y < band.yMin) yTarget = band.yMin
+      else if (node.y > band.yMax) yTarget = band.yMax
+      if (yTarget !== null) {
+        node.vy -= (node.y - yTarget) * this.alpha * gy
       }
     }
 

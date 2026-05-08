@@ -56,15 +56,16 @@ activity TranscodeVideo(media: Media) -> (TranscodeResult):
 activity GenerateThumbnail(video: Video) -> (Thumbnail):
     return thumbnail(video)
 
-# --- Nexus services ---
+# --- Nexus services (exposed for external callers in other namespaces) ---
 
-# PaymentService is registered on paymentWorker → hooked up via "payments" queue
+# PaymentService: registered on paymentWorker, exposed via PaymentEndpoint in ecommerce namespace.
+# External callers (e.g., partner namespace below) reach it cross-namespace via the endpoint.
 nexus service PaymentService:
     sync CheckPaymentStatus(paymentId: string) -> (PaymentStatus):
         activity GetPaymentStatus(paymentId) -> status
         close complete(status)
 
-# AnalyticsService on a separate analytics worker → independent scaling
+# AnalyticsService: independent scaling on its own worker, same cross-namespace exposure pattern.
 nexus service AnalyticsService:
     async TrackEvent workflow TrackEventWorkflow
 
@@ -122,7 +123,8 @@ namespace ecommerce:
     worker standardShipWorker
         options:
             task_queue: "shipping-standard"
-    # Connected: PaymentEndpoint routes to "payments" queue where paymentWorker has PaymentService
+    # Endpoints live in the target namespace (ecommerce) alongside the workers that serve them.
+    # External callers in other namespaces (e.g., partner) reach these services cross-namespace.
     nexus endpoint PaymentEndpoint
         options:
             task_queue: "payments"
@@ -140,3 +142,19 @@ namespace media:
     worker gpuWorker
         options:
             task_queue: "gpu-transcode"
+
+# --- Cross-namespace caller ---
+# A partner service in a separate namespace reaches into ecommerce via Nexus endpoints.
+
+workflow PartnerCheckout(request: PartnerRequest) -> (PartnerResult):
+    nexus PaymentEndpoint PaymentService.CheckPaymentStatus(request.paymentId) -> status
+    detach nexus AnalyticsEndpoint AnalyticsService.TrackEvent(request.event)
+    close complete(PartnerResult{status: status})
+
+worker partnerWorker:
+    workflow PartnerCheckout
+
+namespace partner:
+    worker partnerWorker
+        options:
+            task_queue: "partner"

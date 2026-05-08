@@ -8,32 +8,119 @@ import type { ForceSection } from './GraphControlPanel'
 import type { GraphEdge, NodeType } from '../graph/model'
 import type { Viewport } from '../graph/viewport'
 import { worldToScreen, screenToWorld, zoomAt, fitToView } from '../graph/viewport'
+import { THEME } from '../theme/temporal-theme'
 
-// Colors matching the tree view theme (light mode defaults)
-const NODE_COLORS: Record<string, string> = {
-  namespace: '#7E8CA0',
-  worker: '#94A3B8',
-  workflow: '#8B7EC8',
-  activity: '#7CB9E8',
-  nexusService: '#EC4899',
+// Per-node-type style: fill colour, border colour, and icon glyph. Mirrors
+// the --color-{type} / --color-{type}-border CSS variables in styles/index.css
+// so tree-view chips and canvas nodes read as the same palette. Icon glyphs
+// are sourced from the central THEME so the canvas stays in lock-step with
+// the tree view's badge icons.
+//
+// Why duplicate the CSS values here instead of reading them at runtime?
+// Canvas 2D needs concrete colour strings; reading getComputedStyle every
+// frame would be wasted work, and the values rarely change (theme switch is
+// the only driver). When the CSS is edited these constants must follow.
+interface NodeStyle {
+  fill: string
+  border: string
+  icon: string
 }
 
-const NEXUS_EDGE_COLOR = '#EC4899'
-const DEPENDENCY_EDGE_COLOR = '#94A3B8'
-const CONTAINMENT_EDGE_COLOR = '#CBD5E1'
+const NODE_STYLES: Record<NodeType, NodeStyle> = {
+  namespace:      { fill: '#475569', border: '#1E293B', icon: THEME.namespace.icon },
+  worker:         { fill: '#94A3B8', border: '#475569', icon: THEME.worker.icon },
+  workflow:       { fill: '#8B7EC8', border: '#5D4F95', icon: THEME.workflow.icon },
+  activity:       { fill: '#7CB9E8', border: '#4A8BC2', icon: THEME.activity.icon },
+  nexusService:   { fill: '#DB2777', border: '#831843', icon: THEME.nexusService.icon },
+  nexusOperation: { fill: '#F9A8D4', border: '#BE185D', icon: THEME.nexusOperation.icon },
+}
+
+// Edges are categorised by structural role and tone-graded by level. The
+// nexus family carries the pink palette through every leg of a call:
+//   - opContainment (operation → service): deep service pink, dashed —
+//     "this operation is owned by this service".
+//   - workflowDep   (workflow → workflow): workflow purple — "this is a
+//     workflow making a call".
+//   - nexusCall     (workflow ↔ operation, both directions, including the
+//     spliced caller → backing edge that survives when operations are
+//     hidden): light operation pink — "this hop crosses the nexus call
+//     surface".
+//   - dependencyL{1,2,3,4}: plain greys, stratified by level.
+//   - containment: subtle slate dotted, the default for parent/child edges
+//     that aren't part of the nexus family.
+const EDGE_STYLE = {
+  containment:    { color: '#94A3B8', alpha: 0.35, dash: [3, 4], width: 1 },
+  opContainment:  { color: '#DB2777', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → service
+  dependencyL1:   { color: '#475569', alpha: 0.85, dash: [],     width: 1.8 }, // ns → ns
+  dependencyL2:   { color: '#64748B', alpha: 0.75, dash: [],     width: 1.6 }, // worker → worker
+  workflowDep:    { color: '#8B7EC8', alpha: 0.70, dash: [],     width: 1.4 }, // workflow → workflow
+  dependencyL3:   { color: '#94A3B8', alpha: 0.55, dash: [],     width: 1.4 }, // generic L3 (e.g. activity → workflow)
+  dependencyL4:   { color: '#94A3B8', alpha: 0.40, dash: [],     width: 1.2 }, // ends at activity (L4 leaf)
+  nexusCall:      { color: '#F472B6', alpha: 0.85, dash: [],     width: 1.5 }, // workflow ↔ operation, or spliced
+} as const
+
 const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#8B7EC8'
 const SEARCH_MATCH_COLOR = '#F59E0B'
 const DIM_ALPHA = 0.2
 
-// Node sizes by level — all nodes render as circles; w/h = 2r for hit testing and culling
-const NODE_SIZES: Record<number, { w: number; h: number; r: number }> = {
-  1: { w: 36, h: 36, r: 18 },
-  2: { w: 26, h: 26, r: 13 },
-  3: { w: 18, h: 18, r: 9 },
+// Node sizes by level — all nodes render as circles; w/h = 2r for hit testing
+// and culling. L1 and L2 share a size because they're both "container" tiers
+// (namespace contains workers; workers and services host the L3 layer);
+// L3 and L4 step down to make the leaves visually subordinate.
+const NODE_SIZES: Record<number, { w: number; h: number; r: number; iconSize: number }> = {
+  1: { w: 40, h: 40, r: 20, iconSize: 18 },
+  2: { w: 40, h: 40, r: 20, iconSize: 18 },
+  3: { w: 22, h: 22, r: 11, iconSize: 12 },
+  4: { w: 16, h: 16, r:  8, iconSize: 10 },
 }
 
 const LABEL_FONT = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+const ICON_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+
+// Read a CSS custom property off the document root with a fallback. Used to
+// keep canvas-drawn text in step with the surrounding DOM theme — the body
+// inherits `--color-text`, so labels feel out of place if we hard-code a
+// dark slate that turns invisible on the dark VS Code background.
+function cssVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return v || fallback
+}
+
+// Pick the right entry from EDGE_STYLE for a given edge.
+//
+// Order matters: the nexus family is checked first so it wins over any
+// generic dependency style. Op → Service containment is the only
+// containment edge that isn't slate; everything else slate-dotted. Workflow
+// → Workflow gets the workflow purple to make the call backbone visible
+// inside a tangle of greys. Spliced caller → backing edges are detected by
+// surviving `nexusEndpoint` metadata, so they keep the nexus colour even
+// once the operation node is filtered out.
+function edgeStyleFor(edge: GraphEdge, src: SimNode, tgt: SimNode): typeof EDGE_STYLE[keyof typeof EDGE_STYLE] {
+  if (edge.edgeType === 'containment') {
+    if (src.nodeType === 'nexusOperation' && tgt.nodeType === 'nexusService') {
+      return EDGE_STYLE.opContainment
+    }
+    return EDGE_STYLE.containment
+  }
+  // Both directions of the workflow ↔ operation hop, plus spliced
+  // caller → backing edges that retain the endpoint metadata.
+  if (
+    src.nodeType === 'nexusOperation' || tgt.nodeType === 'nexusOperation' ||
+    edge.nexusEndpoint != null
+  ) {
+    return EDGE_STYLE.nexusCall
+  }
+  if (src.nodeType === 'workflow' && tgt.nodeType === 'workflow') {
+    return EDGE_STYLE.workflowDep
+  }
+  const minLevel = Math.min(src.level, tgt.level)
+  if (minLevel === 1) return EDGE_STYLE.dependencyL1
+  if (minLevel === 2) return EDGE_STYLE.dependencyL2
+  if (tgt.level === 4 || src.level === 4) return EDGE_STYLE.dependencyL4
+  return EDGE_STYLE.dependencyL3
+}
 const ARROWHEAD_SIZE = 8
 const CULL_MARGIN = 100
 
@@ -265,6 +352,18 @@ export function GraphCanvas({
       const { w, h } = size
       const hasHighlight = d.highlightedNodes !== null && d.highlightedNodes.size > 0
 
+      // Resolve theme-tracking colours every frame. Cheap (CSS lookup +
+      // string trim per draw) and guarantees the canvas text follows a
+      // theme switch without needing a full effect teardown.
+      const labelColor = cssVar('--color-text', '#1e293b')
+      const labelMutedColor = cssVar('--color-text-muted', '#64748b')
+      // Dim variant keeps the same hue, just at low alpha. We synthesise it
+      // by appending an alpha to the resolved hex when possible; otherwise
+      // fall back to the existing rgba grey.
+      const labelDimColor = labelColor.startsWith('#') && labelColor.length === 7
+        ? labelColor + '33'  // ~20% alpha
+        : 'rgba(100,116,139,0.2)'
+
       // World coordinates are anchored by hierarchical gravity, so the canvas
       // can project directly through the user's viewport — no per-frame
       // re-centering offset is needed.
@@ -286,28 +385,25 @@ export function GraphCanvas({
             Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
         const edgeHighlighted = d.highlightedEdges?.has(edge.id) ?? false
-        ctx.globalAlpha = hasHighlight && !edgeHighlighted ? DIM_ALPHA : 1
+        const style = edgeStyleFor(edge, src, tgt)
+        const baseAlpha = style.alpha
+        // Highlights override the per-style alpha so the active subgraph
+        // pops; dim non-highlighted edges down to DIM_ALPHA.
+        ctx.globalAlpha = hasHighlight
+          ? (edgeHighlighted ? 1 : DIM_ALPHA)
+          : baseAlpha
 
         ctx.beginPath()
-        if (edge.edgeType === 'containment') {
-          ctx.setLineDash([4, 4])
-          ctx.strokeStyle = CONTAINMENT_EDGE_COLOR
-          ctx.lineWidth = 1
-        } else if (edge.edgeType === 'nexusDependency') {
-          ctx.setLineDash([])
-          ctx.strokeStyle = NEXUS_EDGE_COLOR
-          ctx.lineWidth = 1.5
-        } else {
-          ctx.setLineDash([])
-          ctx.strokeStyle = DEPENDENCY_EDGE_COLOR
-          ctx.lineWidth = 1.5
-        }
+        ctx.setLineDash([...style.dash])
+        ctx.strokeStyle = style.color
+        ctx.lineWidth = style.width
         ctx.moveTo(sx, sy)
         ctx.lineTo(tx, ty)
         ctx.stroke()
         ctx.setLineDash([])
 
-        // Arrowhead for dependency edges
+        // Arrowhead for dependency edges (containment is hierarchical, no
+        // direction is interesting to show).
         if (edge.edgeType !== 'containment') {
           const angle = Math.atan2(ty - sy, tx - sx)
           const nodeSize = NODE_SIZES[tgt.level]
@@ -325,7 +421,7 @@ export function GraphCanvas({
             ay - ARROWHEAD_SIZE * Math.sin(angle + Math.PI / 6),
           )
           ctx.closePath()
-          ctx.fillStyle = edge.edgeType === 'nexusDependency' ? NEXUS_EDGE_COLOR : DEPENDENCY_EDGE_COLOR
+          ctx.fillStyle = style.color
           ctx.fill()
         }
 
@@ -366,7 +462,7 @@ export function GraphCanvas({
           const baseAlpha = highlighted ? 0.24 : dimmed ? 0.04 : 0.10
           const stepAlpha = highlighted ? 0.05 : dimmed ? 0.01 : 0.025
 
-          const color = NODE_COLORS[node.nodeType] || '#999'
+          const color = NODE_STYLES[node.nodeType]?.fill ?? '#999'
           ctx.strokeStyle = color
 
           const effectiveCharge = Math.abs(chargeForType(d.forceParams, node.nodeType)) * pushMul
@@ -481,16 +577,18 @@ export function GraphCanvas({
         ctx.setLineDash([])
       }
 
-      // GRAVITY: vertical X anchor + per-type Y bands.
+      // GRAVITY: per-type Y bands + a global X band.
       //
-      // The X anchor is a dashed vertical line at world x = 0; it shows where
-      // X gravity pulls every node. The Y bands are horizontal stripes drawn
-      // in each node type's colour — inside the band there is no Y gravity,
-      // outside it nodes are pulled toward the nearest edge.
+      // Both axes are drawn the same way — a faint stripe with brighter
+      // edges marks the rest band, where there is zero force. Outside the
+      // stripe a node is pulled toward the nearest edge. With X as a band
+      // (rather than a single anchor at x = 0) the layout has room to
+      // breathe horizontally without the centre of mass collapsing.
       if (gravityActive) {
-        const [zeroSx] = worldToScreen(vp, 0, 0)
+        const [sxMin] = worldToScreen(vp, d.forceParams.bandXMin, 0)
+        const [sxMax] = worldToScreen(vp, d.forceParams.bandXMax, 0)
 
-        // Bands first (so they sit behind the anchor line).
+        // Y bands first (they stack the hierarchy and sit behind the X band).
         for (const t of ALL_NODE_TYPES) {
           const band = bandForType(d.forceParams, t)
           const [, sy1] = worldToScreen(vp, 0, band.yMin)
@@ -500,12 +598,12 @@ export function GraphCanvas({
           const isActive = d.activeGravityType === t
           const isDimmed = d.activeGravityType !== null && !isActive
 
-          ctx.fillStyle = NODE_COLORS[t] || '#999'
+          ctx.fillStyle = NODE_STYLES[t]?.fill ?? '#999'
           ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
           ctx.fillRect(0, sy1, w, sy2 - sy1)
 
           // Top and bottom edges of the band (subtle), brighter when active.
-          ctx.strokeStyle = NODE_COLORS[t] || '#999'
+          ctx.strokeStyle = NODE_STYLES[t]?.fill ?? '#999'
           ctx.globalAlpha = isActive ? 0.55 : isDimmed ? 0.08 : 0.22
           ctx.lineWidth = isActive ? 1.5 : 1
           ctx.setLineDash([])
@@ -515,15 +613,23 @@ export function GraphCanvas({
           ctx.stroke()
         }
 
-        // X anchor line.
-        if (zeroSx > -CULL_MARGIN && zeroSx < w + CULL_MARGIN) {
+        // X band: dashed verticals at xMin and xMax (matching strength to
+        // the dashed convention used previously for the x = 0 anchor).
+        const xBandVisible = sxMin < w + CULL_MARGIN && sxMax > -CULL_MARGIN
+        if (xBandVisible) {
           ctx.strokeStyle = '#8B7EC8'
           ctx.globalAlpha = 0.5
           ctx.lineWidth = 1.5
           ctx.setLineDash([6, 6])
           ctx.beginPath()
-          ctx.moveTo(zeroSx, 0); ctx.lineTo(zeroSx, h)
+          ctx.moveTo(sxMin, 0); ctx.lineTo(sxMin, h)
+          ctx.moveTo(sxMax, 0); ctx.lineTo(sxMax, h)
           ctx.stroke()
+          // Faint band fill between the two edges so the rest region reads
+          // as a stripe rather than two unrelated lines.
+          ctx.fillStyle = '#8B7EC8'
+          ctx.globalAlpha = 0.05
+          ctx.fillRect(sxMin, 0, sxMax - sxMin, h)
           ctx.setLineDash([])
         }
 
@@ -547,21 +653,39 @@ export function GraphCanvas({
         const nodeHighlighted = d.highlightedNodes?.has(node.id) ?? false
         ctx.globalAlpha = hasHighlight && !nodeHighlighted ? DIM_ALPHA : 1
 
-        const color = NODE_COLORS[node.nodeType] || '#999'
-        ctx.fillStyle = color
+        const style = NODE_STYLES[node.nodeType] ?? { fill: '#999', border: '#444', icon: '?' }
 
+        // Filled body + crisp border. The border is ~3 stops darker than the
+        // fill; 1.25px at the lowest zoom keeps the outline visible without
+        // turning small nodes into bullseyes.
         ctx.beginPath()
         ctx.arc(sx, sy, s.r, 0, Math.PI * 2)
+        ctx.fillStyle = style.fill
         ctx.fill()
+        ctx.lineWidth = Math.max(1, Math.min(2, vp.scale * 1.25))
+        ctx.strokeStyle = style.border
+        ctx.stroke()
+
+        // Icon glyph at the node centre (single unicode char). Only drawn
+        // once we're above the label-elision scale — at very low zoom the
+        // icon bleeds into the fill anyway and just adds noise.
+        if (vp.scale >= LABEL_ELIDE_SCALE && style.icon) {
+          ctx.save()
+          ctx.font = `${s.iconSize}px ${ICON_FONT_FAMILY}`
+          ctx.fillStyle = '#FFFFFF'
+          ctx.globalAlpha = (hasHighlight && !nodeHighlighted ? DIM_ALPHA : 1) * 0.92
+          ctx.fillText(style.icon, sx, sy + 0.5)
+          ctx.restore()
+        }
 
         // Orphan indicator — dropped at very low zoom (decorative noise at that scale)
         if (node.orphan && vp.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.setLineDash([3, 3])
-          ctx.strokeStyle = color
+          ctx.strokeStyle = style.fill
           ctx.lineWidth = 1.5
           ctx.beginPath()
-          ctx.arc(sx, sy, s.r + 3, 0, Math.PI * 2)
+          ctx.arc(sx, sy, s.r + 4, 0, Math.PI * 2)
           ctx.stroke()
           ctx.restore()
         }
@@ -609,7 +733,9 @@ export function GraphCanvas({
         const labelY = sy + s.r + 12
         const isActiveNode = node.id === d.hoveredNodeId || node.id === d.selectedNodeId
         if (vp.scale >= LABEL_ELIDE_SCALE || isActiveNode) {
-          ctx.fillStyle = hasHighlight && !nodeHighlighted ? 'rgba(51,51,51,0.2)' : '#333'
+          // Theme-aware text colour — picks up `--color-text` so labels are
+          // legible in both light and dark VS Code themes.
+          ctx.fillStyle = hasHighlight && !nodeHighlighted ? labelDimColor : labelColor
           ctx.fillText(truncateLabel(ctx, node.name, maxLabelW), sx, labelY)
 
           // Summary — elided before name labels
@@ -618,7 +744,7 @@ export function GraphCanvas({
             if (summary) {
               ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
               ctx.globalAlpha = hasHighlight && !nodeHighlighted ? DIM_ALPHA * 0.55 : 0.55
-              ctx.fillStyle = '#333'
+              ctx.fillStyle = labelMutedColor
               ctx.fillText(summary, sx, labelY + 13)
               ctx.font = LABEL_FONT
             }

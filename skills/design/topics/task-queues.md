@@ -16,6 +16,11 @@ worker orderTypes:
     workflow CancelOrder
     activity ChargePayment
     activity SendNotification
+
+worker paymentTypes:
+    activity ChargePayment
+    activity GetPaymentStatus
+    nexus service PaymentService
 ```
 
 Workers contain only type references — no deployment config. Naming: `lowerCamelCase`.
@@ -24,14 +29,22 @@ Workers contain only type references — no deployment config. Naming: `lowerCam
 
 ## Namespace Instantiation
 
-Namespaces instantiate workers with deployment options (task queue, concurrency limits, etc.):
+Namespaces instantiate workers with deployment options (task queue, concurrency limits, etc.) and expose nexus endpoints for external callers:
 
 ```twf
-namespace orders:
+namespace ecommerce:
     worker orderTypes
         options:
             task_queue: "orderProcessing"
             max_concurrent_activity_executions: 50
+    worker paymentTypes
+        options:
+            task_queue: "payments"
+    # Nexus endpoint lives in the target namespace alongside the worker that serves it.
+    # External callers in other namespaces reach PaymentService via this endpoint.
+    nexus endpoint PaymentEndpoint
+        options:
+            task_queue: "payments"
 ```
 
 The same worker type set can be reused across namespaces:
@@ -42,6 +55,10 @@ namespace staging:
         options:
             task_queue: "staging-orders"
 ```
+
+### Nexus Endpoints in Namespaces
+
+A `nexus endpoint` in a namespace declaration exposes a nexus service to callers in other namespaces. The endpoint's `task_queue` must match the queue where a worker with that nexus service is running. See [nexus.md](./nexus.md) for the full cross-namespace pattern.
 
 ### What the Resolver Validates
 

@@ -21,16 +21,25 @@ Nexus enables workflows in one Temporal namespace to call operations in another 
 ### Architecture
 
 ```text
-Caller Namespace
-  Caller Workflow
-    nexus Endpoint Service.Operation(args) -> result
+orders Namespace (Caller)
+  OrderCheckout Workflow
+    nexus PaymentsEndpoint PaymentsService.ProcessPayment(args) -> result
       |
-      v
-Target Namespace
-  Nexus Endpoint (task_queue routing)
-    Nexus Service Definition
-      async Operation -> starts target workflow
-      sync Operation  -> runs inline body
+      v  (cross-namespace)
+payments Namespace (Target)
+  PaymentsEndpoint (task_queue: "payments")
+    PaymentsService
+      async ProcessPayment -> starts ProcessPaymentWorkflow
+
+orders Namespace (Caller)
+  OrderCheckout Workflow
+    detach nexus NotificationsEndpoint NotificationsService.SendConfirmation(args)
+      |
+      v  (cross-namespace)
+notifications Namespace (Target)
+  NotificationsEndpoint (task_queue: "notifications")
+    NotificationsService
+      async SendConfirmation -> starts SendConfirmationWorkflow
 ```
 
 ### Components
@@ -63,7 +72,7 @@ nexus service PaymentsService:
 
 ### Deployment
 
-Register services on workers and expose via endpoints in namespaces:
+Each Nexus service lives in its own namespace. The endpoint is defined alongside the worker that serves it, in the target namespace. The caller namespace only hosts the workflows that invoke the endpoints.
 
 ```twf
 worker paymentProcessingWorker:
@@ -71,13 +80,20 @@ worker paymentProcessingWorker:
     activity LookupPayment
     nexus service PaymentsService
 
-namespace orders:
+# Target namespace: owns the service and exposes the endpoint
+namespace payments:
     worker paymentProcessingWorker
         options:
             task_queue: "payments"
     nexus endpoint PaymentsEndpoint
         options:
             task_queue: "payments"
+
+# Caller namespace: only has the workflows that call into payments
+namespace orders:
+    worker checkoutWorker
+        options:
+            task_queue: "checkout"
 ```
 
 ---
@@ -199,14 +215,16 @@ The resolver validates all nexus references:
 
 ### Nexus for Same-Namespace Calls
 
-```twf
-# BAD: Nexus overhead for local calls
-workflow A():
-    nexus LocalEndpoint LocalService.Operation(data) -> result
+Nexus adds routing and authorization overhead that is only justified across namespace boundaries. Calling a service in the same namespace should use a child workflow instead.
 
-# GOOD: Child workflow for same namespace
-workflow A():
-    workflow OperationWorkflow(data) -> result
+```twf
+# BAD: Nexus overhead for a call that stays inside the orders namespace
+workflow OrderCheckout(order: Order) -> (OrderResult):
+    nexus LocalEndpoint LocalService.Validate(order) -> result
+
+# GOOD: Child workflow — same namespace, same team, no boundary to cross
+workflow OrderCheckout(order: Order) -> (OrderResult):
+    workflow ValidateOrder(order) -> result
 ```
 
 ### Missing Timeout

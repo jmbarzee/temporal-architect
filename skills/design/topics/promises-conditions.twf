@@ -196,13 +196,18 @@ worker billingWorker:
     activity ChargeCard
     nexus service BillingService
 
-namespace promises:
-    worker promisesWorker
-        options:
-            task_queue: "promises"
+# Two namespaces: billing owns the service and exposes the endpoint;
+# promises is the caller — CrossNamespaceAsync reaches across the boundary.
+
+namespace billing:
     worker billingWorker
         options:
             task_queue: "billing"
     nexus endpoint BillingEndpoint
         options:
             task_queue: "billing"
+
+namespace promises:
+    worker promisesWorker
+        options:
+            task_queue: "promises"

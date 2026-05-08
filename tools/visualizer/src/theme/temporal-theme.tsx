@@ -57,11 +57,14 @@ export interface DefTypeConfig {
 }
 
 export const DEF_TYPE_CONFIGS: DefTypeConfig[] = [
-  { type: 'namespaceDef',    icon: THEME.namespace.icon,    label: 'Namespaces',     defaultOn: false },
-  { type: 'workerDef',       icon: THEME.worker.icon,       label: 'Workers',        defaultOn: true },
-  { type: 'nexusServiceDef', icon: THEME.nexusService.icon, label: 'Nexus Services', defaultOn: false },
-  { type: 'workflowDef',     icon: THEME.workflow.icon,     label: 'Workflows',      defaultOn: true },
-  { type: 'activityDef',     icon: THEME.activity.icon,     label: 'Activities',     defaultOn: false },
+  { type: 'namespaceDef',      icon: THEME.namespace.icon,      label: 'Namespaces',     defaultOn: false },
+  { type: 'workerDef',         icon: THEME.worker.icon,         label: 'Workers',        defaultOn: true },
+  { type: 'nexusServiceDef',   icon: THEME.nexusService.icon,   label: 'Nexus Services', defaultOn: false },
+  // Synthetic def type — operations live inside nexusServiceDef in the AST,
+  // but render as their own L3 nodes (parented to their service).
+  { type: 'nexusOperationDef', icon: THEME.nexusOperation.icon, label: 'Nexus Operations', defaultOn: false },
+  { type: 'workflowDef',       icon: THEME.workflow.icon,       label: 'Workflows',      defaultOn: true },
+  { type: 'activityDef',       icon: THEME.activity.icon,       label: 'Activities',     defaultOn: false },
 ]
 
 export const DEF_TYPE_ORDER = new Map(DEF_TYPE_CONFIGS.map((cfg, i) => [cfg.type, i]))

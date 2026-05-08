@@ -12,34 +12,48 @@ This view serves goals 6–9 (system architecture questions) from [PRODUCT.md](.
 
 ## Graph Data Model
 
-### Node Types (3 levels of a hierarchy)
+### Node Types (4 levels of a hierarchy)
 
-| Level | Node Type    | Derived From                            |
-|-------|--------------|-----------------------------------------|
-| 1     | **Namespace** | Namespace definition                   |
-| 2     | **Worker**    | Worker instantiation within a namespace |
-| 3     | **Workflow**  | Workflow registered on a worker         |
-| 3     | **Activity**  | Activity registered on a worker         |
-| 3     | **NexusService** | Nexus service registered on a worker |
+| Level | Node Type        | Derived From                            |
+|-------|------------------|-----------------------------------------|
+| 1     | **Namespace**    | Namespace definition                    |
+| 2     | **Worker**       | Worker instantiation within a namespace |
+| 2     | **NexusService** | Nexus service registered on a worker    |
+| 3     | **Workflow**     | Workflow registered on a worker         |
+| 3     | **NexusOperation** | Operation declared inside a nexus service |
+| 4     | **Activity**     | Activity registered on a worker         |
 
-Level 3 contains all definition types that are registered on a Worker. These form a strict containment hierarchy: every Level 3 node belongs to exactly one Worker, and every Worker belongs to exactly one Namespace.
+The hierarchy reads top-to-bottom as **organisation → orchestration → leaf work**:
 
-**Future:** Per-type visibility toggle at Level 3, allowing users to show/hide Workflows, Activities, and NexusServices independently.
+- **L1 Namespace** — the deployment container.
+- **L2 Worker** runs code; **L2 NexusService** exposes a callable API surface. Both are "hosting" units that sit beside each other in the same band; a service is registered on a worker, but neither contains the other in any deeper sense.
+- **L3 Workflow** orchestrates a long-running execution. **L3 NexusOperation** is the per-operation handle a service exposes; for async ops it delegates to a backing workflow, for sync ops it runs an inline body.
+- **L4 Activity** is the leaf of the call graph — work happens here but no further calls fan out.
+
+Splitting L3 and L4 lets the canvas's hierarchical Y-band gravity stack workflows and activities into separate horizontal stripes instead of crowding both into a single band.
+
+Workflows and activities attach directly to a Worker. Nexus services also live at L2 and attach to their hosting Worker. Nexus operations attach to their parent NexusService. Walking parents from any node terminates at a Namespace; for an operation that walk goes Operation → Service → Worker → Namespace.
 
 ### Fundamental Edges
 
-**Containment edges** come from registration:
+**Containment edges** come from registration / nesting:
 
-1. **Level 3 node → Worker** ("member of") — A workflow, activity, or nexus service is registered on a specific worker.
-2. **Worker → Namespace** ("member of") — A worker is instantiated within a specific namespace.
+1. **Workflow / Activity → Worker** ("registered on") — A workflow or activity is registered on a specific worker.
+2. **NexusService → Worker** ("hosted on") — An L2-to-L2 peer containment edge. The service is hosted on the worker but isn't "below" it in the level hierarchy.
+3. **NexusOperation → NexusService** ("member of") — An operation belongs to its declaring service (L3 child of an L2 parent).
+4. **Worker → Namespace** ("member of") — A worker is instantiated within a specific namespace.
 
-**Dependency edges** come from cross-boundary calls. Only calls that cross a Worker boundary are included — same-worker calls are implicit in the containment hierarchy.
+**Dependency edges** come from call sites in workflow / activity / sync-operation bodies, plus the implicit "operation delegates to backing workflow" relationship of an async operation. They are first-class semantic relationships and are drawn at Level 3 regardless of whether caller and callee share a Worker — co-location on a worker says nothing about whether one calls the other, so containment cannot stand in for a call edge.
 
-1. **Workflow → Workflow** ("calls") — A workflow calls or awaits another workflow on a different worker.
-2. **Workflow → Activity** ("calls") — A workflow calls an activity on a different worker.
-3. **Workflow → Workflow via nexus** ("calls via nexus") — A workflow calls a nexus operation whose backing workflow is on a different worker (or in a different namespace). The edge connects caller to backing workflow directly; the nexus service and operation are metadata on the edge, not intermediary nodes.
+1. **Workflow → Workflow** ("calls") — A workflow calls or awaits another workflow.
+2. **Workflow → Activity** ("calls") — A workflow calls an activity.
+3. **Workflow / Activity → NexusOperation** ("calls") — A call site `nexus Endpoint Service.Operation(args)` is an edge from the caller to the operation node. The endpoint is preserved as edge metadata for hover info.
+4. **NexusOperation → Workflow / Activity / NexusOperation** ("calls"), for sync operations — the body of a sync operation is walked just like a workflow body, with the operation as the caller.
+5. **NexusOperation → Workflow** ("delegates to"), for async operations — an async operation is implemented by a backing workflow; this edge is emitted from the operation declaration, not from any specific call site.
 
-Nexus edges are visually distinct from direct call edges. Hovering a nexus edge reveals the endpoint, service, and operation. Edges sharing a nexus service or endpoint can be highlighted together to show shared scope.
+Putting operations on the call path (caller → operation → callee) lets the user see who reaches each operation, what it routes to, and which service owns it, in a single subgraph. The shape (3 connections from each operation: parent service, callers, callee) is the user-visible payoff for promoting operations from edge metadata to first-class nodes.
+
+Multiple call sites between the same pair (caller, callee) collapse into a single dependency edge — the graph answers "does X reach Y?", not "how many times". When the same caller reaches an operation through more than one endpoint, the surviving deduplicated edge keeps a representative endpoint as hover metadata.
 
 ### Derived Edges (Graph Coarsening)
 
@@ -52,13 +66,17 @@ Higher-level dependency edges are **derived** by projecting Level 3 dependency e
 
 1. Build Namespace nodes from namespace definitions.
 2. Build Worker nodes from worker instantiations; attach each to its parent Namespace.
-3. Build Workflow, Activity, and NexusService nodes from registrations on each worker; attach each to its parent Worker.
-4. Resolve cross-worker dependency edges:
-   a. Workflow → Workflow edges from cross-worker workflow calls and awaits.
-   b. Workflow → Activity edges from cross-worker activity calls.
-   c. Workflow → Workflow (via nexus) edges by tracing nexus calls through to their backing workflows.
-5. Project Level 3 dependencies up to Worker-level; discard self-loops.
-6. Project Worker-level dependencies up to Namespace-level; discard self-loops.
+3. Build Workflow, Activity, and NexusService nodes from registrations on each worker; attach each to its parent Worker. Add orphan L3 nodes for definitions not registered on any worker.
+3b. Build NexusOperation nodes from each nexus service's `operations` list; attach each to its parent service via an intra-L3 containment edge. The operation inherits its service's worker for the purpose of step 5 projection (so an async operation whose service lives on Worker A and whose backing workflow lives on Worker B contributes an A→B worker dependency).
+4. Resolve Level 3 dependency edges:
+   a. Workflow → Workflow edges from workflow calls and awaits.
+   b. Workflow → Activity edges from activity calls.
+   c. Workflow / Activity → NexusOperation edges from nexus call sites (the operation is the target node; the endpoint is edge metadata).
+   d. NexusOperation → Workflow ("delegates to") edges from each async operation's backing workflow declaration.
+   e. NexusOperation → callee edges from each sync operation's body, walked the same way as a workflow body.
+   Deduplicate by (source, target) so a caller with multiple call sites against the same callee — including the same operation reached through multiple endpoints — yields one edge. Drop self-loops.
+5. Project Level 3 dependencies up to Worker-level; keep only cross-worker pairs (a same-worker projection collapses to a self-loop and is dropped).
+6. Project Worker-level dependencies up to Namespace-level; keep only cross-namespace pairs.
 
 ### Orphan Definitions
 
@@ -68,7 +86,7 @@ The containment hierarchy assumes every Level 3 node belongs to a Worker and eve
 
 **Type filtering behavior:**
 - Orphan workers (no namespace) are visible when the Worker type toggle is on.
-- Orphan Level 3 nodes (no worker) are visible when their specific type toggle (Wf, Act, or Nxs) is on.
+- Orphan L3/L4 nodes (no worker) are visible when their specific type toggle (Wf, Act, Nxs, or Op) is on. NexusOperation nodes inherit orphan status from their parent service: if the service is orphan, the operations are too.
 - Orphans follow the same toggle rules as any other node — they're shown or hidden by their type, not by containment.
 
 **Seeding:** Orphan nodes have no parent to seed from. On initial appearance or live reload addition, seed them at the center of the viewport. The simulation's charge repulsion will push them to a natural position.
@@ -87,7 +105,7 @@ The graph is rendered using a **force-directed layout** (also called a force sim
 |-------------------|------------------|--------------------------------------------------------------------------|
 | **Charge (repulsion)** | Every node pair | Nodes repel each other, preventing overlap. Follows an inverse-square falloff (like electrostatic charge). |
 | **Link (attraction)**  | Connected node pairs | Edges act as springs pulling connected nodes toward a target distance.    |
-| **Hierarchical gravity** | All nodes      | Two anchors that hold world coordinates in place: an X anchor pulls every node toward `x = 0`, and a per-node-type Y "rest band" exerts no force inside the band and pulls nodes toward the nearest band edge when outside it. The bands stack the hierarchy top-to-bottom (NS at the top, L3 at the bottom). |
+| **Hierarchical gravity** | All nodes      | Two rest bands that hold world coordinates in place: a global X band exerts no force inside `[bandXMin, bandXMax]` and pulls nodes back to the nearest edge outside it; a per-node-type Y band does the same vertically. Both axes use bands rather than point anchors so a graph with many top-level siblings can spread out instead of stacking on `x = 0`. The Y bands stack the hierarchy top-to-bottom (NS at the top, L4 activities at the bottom). |
 
 Each force has a **strength** parameter that controls its magnitude. These strengths are the primary tuning knobs for the layout.
 
@@ -95,26 +113,27 @@ Each force has a **strength** parameter that controls its magnitude. These stren
 
 A force-directed graph is a free-floating cloud by default — it is held together but not held *anywhere*. The graph view's data has an inherent vertical hierarchy (namespace → worker → definition), and a manually-organised diagram of the same data would place namespaces and workers near the top, definitions toward the bottom. The hierarchical anchor encodes that structure in the layout itself: each node type lives in its own Y band, with no Y force inside the band and a pull toward the band's nearest edge outside it.
 
-The anchor also fixes the practical drift problem that comes with COM-based gravity. Because `x = 0` and the type-specific Y bands are absolute world coordinates, the simulation's centre of mass cannot wander out of frame; the canvas does not need to compensate by re-centering the viewport every tick. After the initial fit-to-view, the user's pan/zoom is the only thing that moves the camera.
+The anchor also fixes the practical drift problem that comes with COM-based gravity. Because the X band and the type-specific Y bands are absolute world coordinates, the simulation's centre of mass cannot wander out of frame; the canvas does not need to compensate by re-centering the viewport every tick. After the initial fit-to-view, the user's pan/zoom is the only thing that moves the camera.
 
 ### Force Parameters
 
 The simulation exposes **one charge strength per node type** and **one spring (k + rest distance) per edge category**, plus shape controls and dynamics that govern how those forces behave.
 
-**Charge strengths** (5, one per node type — negative values, repulsion):
+**Charge strengths** (6, one per node type — negative values, repulsion):
 - Level 1: Namespace
 - Level 2: Worker
 - Level 3: Workflow
-- Level 3: Activity
 - Level 3: NexusService
+- Level 3: NexusOperation
+- Level 4: Activity
 
-The three Level 3 charges share a slider range so their magnitudes are directly comparable; this lets the user see at a glance whether one definition type repels harder than its peers.
+The L3 and L4 charges share a slider range so their magnitudes are directly comparable across the bottom of the hierarchy; this lets the user see at a glance whether one definition type repels harder than its peers.
 
-**Link strengths** (9, one per edge category — positive values, attraction). Containment edges connect a parent to one specific child type; dependency edges live within a single level and are split by endpoint type at L3:
-- Containment: `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`
+**Link strengths** (10, one per edge category — positive values, attraction). Containment edges connect a parent to one specific child type; dependency edges live within a single level and are split by endpoint type at L3:
+- Containment: `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`, `Nx↔Op` (intra-L3, operation under its service)
 - Dependency: `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`, `Act↔Act`
 
-NexusService nodes do not appear as a dependency endpoint: nexus calls resolve to their backing workflow during graph construction, so the only edge involving a nexus node is its containment edge to its worker.
+NexusOperation nodes participate in dependency edges as both source and target (caller → operation, operation → backing workflow, sync-op-body → callee). For spring-force purposes, an operation is treated as workflow-equivalent — it sits on the call path and clusters with workflows in the L3 band.
 
 All link sliders share a common k range and a common rest range, so the gradient across the hierarchy (loose-and-long at the top, tight-and-short at L3) is visually obvious.
 
@@ -353,7 +372,7 @@ Per-edge spring constant (k) and rest distance, displayed as dual-slider rows or
     Fx = α × X × (0 − x)
     Fy = α × Y × (band − y)   (only when y is outside band)
 
-- `X strength` — pull toward the vertical anchor at world `x = 0`
+- `X strength` — pull toward the nearest edge of the global X rest band
 - `Y strength` — pull toward the nearest edge of each node type's Y band
 - Per-node-type **Y band** (dual-handle slider) — the `[yMin, yMax]` window in which the type feels zero Y gravity. Five rows: `L1 NS`, `L2 Wk`, `L3 Wf`, `L3 Act`, `L3 Nx`. All five share a common Y range so the bands are directly comparable; defaults stack the hierarchy from top (`NS`) to bottom (the three L3 types share a single deep band).
 
@@ -399,7 +418,7 @@ When enabled, the canvas renders three overlay layers (drawn before nodes, after
 
 **Spring tension coloring** — Edges colored by their current tension state: green when near rest distance, orange when compressed, blue when stretched. Color intensity scales with displacement magnitude.
 
-**Hierarchical gravity overlay** — A dashed vertical line at world `x = 0` shows the X anchor; a horizontal stripe in each node type's colour shows that type's Y rest band. Inside the stripe a node feels no Y force; outside it the node is pulled toward the nearest stripe edge. Hovering a single Y-band slider in the control panel highlights only that band and dims the others.
+**Hierarchical gravity overlay** — A faint vertical stripe between world `bandXMin` and `bandXMax` (with dashed edges) shows the X rest band; a horizontal stripe in each node type's colour shows that type's Y rest band. Inside either stripe a node feels no force on that axis; outside it the node is pulled toward the nearest edge. Hovering a single Y-band slider in the control panel highlights only that band and dims the others.
 
 ### When It's On
 
@@ -417,7 +436,7 @@ The control panel and canvas are linked: hovering a control section activates th
 |-----------------|-----------------|
 | **PUSH** | Charge field rings appear around all visible nodes |
 | **PULL** | Edges show tension coloring (green/orange/blue) |
-| **GRAVITY** | X anchor line at `x = 0` plus per-type Y rest bands appear |
+| **GRAVITY** | Global X rest band (vertical stripe with dashed edges) plus per-type Y rest bands appear |
 | **DYNAMICS** | No canvas response (dynamics are temporal, not spatial) |
 
 When the user stops hovering, the visualization fades unless the persistent "Show force fields" toggle is on.

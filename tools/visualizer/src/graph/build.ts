@@ -90,7 +90,11 @@ export function buildGraph(ast: TWFFile): Graph {
   // Track which L3 definitions are registered on a worker
   const registeredL3 = new Set<string>()
 
-  // Map L3 name → worker name (for cross-worker edge detection in step 4)
+  // Map L3 nodeId → worker name. Used by step 5 to project L3 dependency
+  // edges up to worker-level (and discard same-worker self-loops). When an
+  // L3 node is registered on multiple workers, last-write-wins matches the
+  // node's parentId (also last-write-wins in step 3) so the projection stays
+  // consistent with the containment story shown in the canvas.
   const l3ToWorker = new Map<string, string>()
 
   for (const def of ast.definitions) {
@@ -117,10 +121,10 @@ export function buildGraph(ast: TWFFile): Graph {
       l3ToWorker.set(nId, def.name)
       const actDef = defsByType.get(`activityDef:${ref.name}`)
       addNode({
-        id: nId, level: 3, nodeType: nType, name: ref.name,
+        id: nId, level: 4, nodeType: nType, name: ref.name,
         sourceFile: actDef?.sourceFile, parentId: workerId, orphan: false,
       })
-      addEdge({ edgeType: 'containment', sourceId: nId, targetId: workerId, sourceLevel: 3, targetLevel: 2 })
+      addEdge({ edgeType: 'containment', sourceId: nId, targetId: workerId, sourceLevel: 4, targetLevel: 2 })
     }
 
     for (const ref of def.services || []) {
@@ -129,11 +133,15 @@ export function buildGraph(ast: TWFFile): Graph {
       registeredL3.add(`nexusServiceDef:${ref.name}`)
       l3ToWorker.set(nId, def.name)
       const nsDef = defsByType.get(`nexusServiceDef:${ref.name}`)
+      // Nexus services live at the hosting tier (L2) alongside workers — a
+      // service is a callable API surface registered on a worker, peer to
+      // the worker rather than nested below it. The containment edge is
+      // intra-L2 (service → worker) marking that hosting relationship.
       addNode({
-        id: nId, level: 3, nodeType: nType, name: ref.name,
+        id: nId, level: 2, nodeType: nType, name: ref.name,
         sourceFile: nsDef?.sourceFile, parentId: workerId, orphan: false,
       })
-      addEdge({ edgeType: 'containment', sourceId: nId, targetId: workerId, sourceLevel: 3, targetLevel: 2 })
+      addEdge({ edgeType: 'containment', sourceId: nId, targetId: workerId, sourceLevel: 2, targetLevel: 2 })
     }
   }
 
@@ -146,72 +154,118 @@ export function buildGraph(ast: TWFFile): Graph {
       })
     } else if (def.type === 'activityDef' && !registeredL3.has(`activityDef:${def.name}`)) {
       addNode({
-        id: nodeId('activity', def.name), level: 3, nodeType: 'activity', name: def.name,
+        id: nodeId('activity', def.name), level: 4, nodeType: 'activity', name: def.name,
         sourceFile: def.sourceFile, orphan: true,
       })
     } else if (def.type === 'nexusServiceDef' && !registeredL3.has(`nexusServiceDef:${def.name}`)) {
       addNode({
-        id: nodeId('nexusService', def.name), level: 3, nodeType: 'nexusService', name: def.name,
+        id: nodeId('nexusService', def.name), level: 2, nodeType: 'nexusService', name: def.name,
         sourceFile: def.sourceFile, orphan: true,
       })
     }
   }
 
-  // --- Step 4: Cross-worker dependency edges ---
-  // Pre-index nexus service operations for tracing nexus calls to backing workflows
-  const nexusOpToWorkflow = new Map<string, string>() // "service:operation" → workflowName
+  // --- Step 3b: NexusOperation nodes from nexus service definitions ---
+  //
+  // Each operation under a nexusServiceDef becomes its own L3 node, parented
+  // to the service via a containment edge. This puts the operation on the
+  // call path: caller workflow → operation → backing workflow becomes a
+  // three-node chain rather than a single direct "caller → backing" edge
+  // with the operation hidden as edge metadata. Sync operations have an
+  // inline body whose calls are walked in step 4 with the operation as the
+  // caller node.
+  function nexusOperationId(serviceName: string, opName: string): string {
+    return nodeId('nexusOperation', `${serviceName}.${opName}`)
+  }
+
   for (const def of ast.definitions) {
-    if (def.type === 'nexusServiceDef') {
-      for (const op of def.operations || []) {
-        if (op.opType === 'async' && op.workflowName) {
-          nexusOpToWorkflow.set(`${def.name}:${op.name}`, op.workflowName)
-        }
+    if (def.type !== 'nexusServiceDef') continue
+    const serviceId = nodeId('nexusService', def.name)
+    // The service may be orphan (not registered on any worker) — operations
+    // inherit that worker assignment (or lack thereof).
+    const ownerWorker = l3ToWorker.get(serviceId)
+    for (const op of def.operations || []) {
+      const opId = nexusOperationId(def.name, op.name)
+      addNode({
+        id: opId,
+        level: 3,
+        nodeType: 'nexusOperation',
+        name: op.name,
+        sourceFile: def.sourceFile,
+        parentId: serviceId,
+        orphan: !ownerWorker,
+      })
+      addEdge({ edgeType: 'containment', sourceId: opId, targetId: serviceId, sourceLevel: 3, targetLevel: 2 })
+      if (ownerWorker) {
+        l3ToWorker.set(opId, ownerWorker)
       }
     }
   }
 
-  function addDependencyIfCrossWorker(
-    sourceNodeId: string, targetNodeId: string,
-    nexusMeta?: { endpoint: string; service: string; operation: string }
-  ) {
-    const sourceWorker = l3ToWorker.get(sourceNodeId)
-    const targetWorker = l3ToWorker.get(targetNodeId)
-    // Only include cross-worker edges (same-worker is implicit in containment)
-    // Also include edges where either side is orphan (no worker)
-    if (sourceWorker && targetWorker && sourceWorker === targetWorker) return
-    // Skip if target node doesn't exist in graph
-    if (!nodes.has(targetNodeId)) return
+  // --- Step 4: L3 dependency edges (workflow / activity / operation → callee) ---
+  //
+  // Track L3 dependency edges to dedupe (e.g. a workflow that calls the same
+  // activity from multiple branches still produces a single edge in the
+  // graph). Nexus calls dedupe per (caller, operation) pair regardless of
+  // endpoint — the graph answers "does X reach Y?" not "via how many
+  // endpoints". The endpoint of a representative call site is preserved as
+  // hover metadata on the surviving edge.
+  const l3DepKeys = new Set<string>()
 
+  function addCallDependency(
+    sourceNodeId: string, targetNodeId: string,
+    endpoint?: string,
+  ) {
+    // Skip if target node doesn't exist in graph (e.g. unresolved reference)
+    if (!nodes.has(targetNodeId)) return
+    // Skip self-loops (e.g. a workflow that calls itself recursively — covered
+    // structurally by the workflow node, not a useful edge to draw)
+    if (sourceNodeId === targetNodeId) return
+
+    const key = `${sourceNodeId}→${targetNodeId}`
+    if (l3DepKeys.has(key)) return
+    l3DepKeys.add(key)
+
+    const src = nodes.get(sourceNodeId)
+    const tgt = nodes.get(targetNodeId)
     addEdge({
-      edgeType: nexusMeta ? 'nexusDependency' : 'dependency',
+      edgeType: 'dependency',
       sourceId: sourceNodeId,
       targetId: targetNodeId,
-      sourceLevel: 3,
-      targetLevel: 3,
-      ...(nexusMeta && {
-        nexusEndpoint: nexusMeta.endpoint,
-        nexusService: nexusMeta.service,
-        nexusOperation: nexusMeta.operation,
-      }),
+      sourceLevel: src?.level ?? 3,
+      targetLevel: tgt?.level ?? 3,
+      ...(endpoint && { nexusEndpoint: endpoint }),
     })
+  }
+
+  // Async operation → backing workflow ("operation is implemented by …").
+  // Done as part of step 4 so it goes through the same dedup / target-exists
+  // gate as call-site edges.
+  for (const def of ast.definitions) {
+    if (def.type !== 'nexusServiceDef') continue
+    for (const op of def.operations || []) {
+      if (op.opType === 'async' && op.workflowName) {
+        addCallDependency(
+          nexusOperationId(def.name, op.name),
+          nodeId('workflow', op.workflowName),
+        )
+      }
+    }
   }
 
   function walkTarget(target: AsyncTarget, callerNodeId: string) {
     if (target.activity) {
-      addDependencyIfCrossWorker(callerNodeId, nodeId('activity', target.activity.name))
+      addCallDependency(callerNodeId, nodeId('activity', target.activity.name))
     }
     if (target.workflow) {
-      addDependencyIfCrossWorker(callerNodeId, nodeId('workflow', target.workflow.name))
+      addCallDependency(callerNodeId, nodeId('workflow', target.workflow.name))
     }
     if (target.nexus) {
-      const backingWf = nexusOpToWorkflow.get(`${target.nexus.service}:${target.nexus.operation}`)
-      if (backingWf) {
-        addDependencyIfCrossWorker(callerNodeId, nodeId('workflow', backingWf), {
-          endpoint: target.nexus.endpoint,
-          service: target.nexus.service,
-          operation: target.nexus.operation,
-        })
-      }
+      addCallDependency(
+        callerNodeId,
+        nexusOperationId(target.nexus.service, target.nexus.operation),
+        target.nexus.endpoint,
+      )
     }
   }
 
@@ -219,20 +273,18 @@ export function buildGraph(ast: TWFFile): Graph {
     for (const stmt of stmts) {
       switch (stmt.type) {
         case 'activityCall':
-          addDependencyIfCrossWorker(callerNodeId, nodeId('activity', stmt.name))
+          addCallDependency(callerNodeId, nodeId('activity', stmt.name))
           break
         case 'workflowCall':
-          addDependencyIfCrossWorker(callerNodeId, nodeId('workflow', stmt.name))
+          addCallDependency(callerNodeId, nodeId('workflow', stmt.name))
           break
-        case 'nexusCall': {
-          const backingWf = nexusOpToWorkflow.get(`${stmt.service}:${stmt.operation}`)
-          if (backingWf) {
-            addDependencyIfCrossWorker(callerNodeId, nodeId('workflow', backingWf), {
-              endpoint: stmt.endpoint, service: stmt.service, operation: stmt.operation,
-            })
-          }
+        case 'nexusCall':
+          addCallDependency(
+            callerNodeId,
+            nexusOperationId(stmt.service, stmt.operation),
+            stmt.endpoint,
+          )
           break
-        }
         case 'await':
           walkTarget(stmt.target, callerNodeId)
           break
@@ -264,7 +316,10 @@ export function buildGraph(ast: TWFFile): Graph {
     }
   }
 
-  // Walk all workflow and activity bodies for dependency edges
+  // Walk all workflow, activity, and sync nexus operation bodies for
+  // dependency edges. The operation itself is the caller node for the calls
+  // it makes inside its sync body — this is what makes a sync operation
+  // node show outgoing edges to the activities/workflows it dispatches.
   for (const def of ast.definitions) {
     if (def.type === 'workflowDef') {
       const callerNodeId = nodeId('workflow', def.name)
@@ -277,13 +332,20 @@ export function buildGraph(ast: TWFFile): Graph {
       const callerNodeId = nodeId('activity', def.name)
       if (!nodes.has(callerNodeId)) continue
       walkStmts(def.body || [], callerNodeId)
+    } else if (def.type === 'nexusServiceDef') {
+      for (const op of def.operations || []) {
+        if (op.opType !== 'sync' || !op.body) continue
+        const callerNodeId = nexusOperationId(def.name, op.name)
+        if (!nodes.has(callerNodeId)) continue
+        walkStmts(op.body, callerNodeId)
+      }
     }
   }
 
-  // --- Step 5: Project L3 dependencies up to Worker→Worker; discard self-loops ---
+  // --- Step 5: Project L3/L4 dependencies up to Worker→Worker; discard self-loops ---
   const workerDeps = new Set<string>() // "sourceWorker→targetWorker"
   for (const edge of edges) {
-    if (edge.edgeType !== 'containment' && edge.sourceLevel === 3 && edge.targetLevel === 3) {
+    if (edge.edgeType !== 'containment' && edge.sourceLevel >= 3 && edge.targetLevel >= 3) {
       const srcWorker = l3ToWorker.get(edge.sourceId)
       const tgtWorker = l3ToWorker.get(edge.targetId)
       if (srcWorker && tgtWorker && srcWorker !== tgtWorker) {
