@@ -134,4 +134,5 @@ jobs:
             packages/vscode/*.vsix
             dist/twf-*
             dist/SHA256SUMS
+            scripts/install.sh
           generate_release_notes: true
