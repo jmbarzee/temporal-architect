@@ -4,6 +4,48 @@ Command-line interface for working with Temporal Workflow Format (.twf) files.
 
 ## Installation
 
+### Binary download (no Go required)
+
+Each [GitHub Release](https://github.com/jmbarzee/temporal-skills/releases) ships
+prebuilt archives for five platforms:
+
+```
+twf-vX.Y.Z-darwin-arm64.tar.gz
+twf-vX.Y.Z-darwin-amd64.tar.gz
+twf-vX.Y.Z-linux-amd64.tar.gz
+twf-vX.Y.Z-linux-arm64.tar.gz
+twf-vX.Y.Z-windows-amd64.zip
+```
+
+Each archive contains a single `twf` (or `twf.exe`) binary. A `SHA256SUMS`
+file is published alongside every release for checksum verification.
+
+**One-liner (macOS / Linux):**
+
+```bash
+curl -sSL https://github.com/jmbarzee/temporal-skills/releases/latest/download/install.sh | bash
+```
+
+To pin a specific version or change the install directory:
+
+```bash
+VERSION=v0.3.0 INSTALL_DIR=/usr/local/bin \
+  curl -sSL https://github.com/jmbarzee/temporal-skills/releases/download/v0.3.0/install.sh | bash
+```
+
+**Manual install:**
+
+```bash
+# Replace vX.Y.Z, GOOS, and GOARCH with the appropriate values
+curl -sSfLO https://github.com/jmbarzee/temporal-skills/releases/download/vX.Y.Z/twf-vX.Y.Z-GOOS-GOARCH.tar.gz
+curl -sSfLO https://github.com/jmbarzee/temporal-skills/releases/download/vX.Y.Z/SHA256SUMS
+grep "twf-vX.Y.Z-GOOS-GOARCH.tar.gz" SHA256SUMS | sha256sum --check
+tar -xzf twf-vX.Y.Z-GOOS-GOARCH.tar.gz
+mv twf ~/.local/bin/twf
+```
+
+### From source (requires Go)
+
 ```bash
 go install github.com/jmbarzee/temporal-skills/tools/lsp/cmd/twf@latest
 ```

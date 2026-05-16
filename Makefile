@@ -38,6 +38,20 @@ build-lsp:
 		go build -o ../../$(EXT_DIR)/bin/twf$(if $(filter windows,$(GOOS)),.exe) ./cmd/twf
 	@echo "Built twf for $(GOOS)/$(GOARCH)"
 
+## Package the twf binary into a standalone archive for release
+## Usage: make build-twf-archive VERSION=1.2.3 GOOS=darwin GOARCH=arm64
+build-twf-archive: build-lsp
+	@mkdir -p dist
+	@ARCHIVE=twf-v$(VERSION)-$(GOOS)-$(GOARCH); \
+	if [ "$(GOOS)" = "windows" ]; then \
+		cp $(EXT_DIR)/bin/twf.exe dist/twf.exe; \
+		cd dist && zip $$ARCHIVE.zip twf.exe && rm twf.exe; \
+	else \
+		cp $(EXT_DIR)/bin/twf dist/twf; \
+		cd dist && tar czf $$ARCHIVE.tar.gz twf && rm twf; \
+	fi
+	@echo "Packaged $$ARCHIVE"
+
 ## Build the visualizer webview into the extension
 build-visualizer:
 	cd tools/visualizer && npm run build:webview
@@ -151,5 +165,5 @@ release:
 
 ## Remove all build artifacts
 clean:
-	rm -rf $(EXT_DIR)/bin $(EXT_DIR)/dist $(EXT_DIR)/out $(EXT_DIR)/skills $(EXT_DIR)/*.vsix
+	rm -rf $(EXT_DIR)/bin $(EXT_DIR)/dist $(EXT_DIR)/out $(EXT_DIR)/skills $(EXT_DIR)/*.vsix dist/
 	@echo "Cleaned"

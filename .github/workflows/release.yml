@@ -80,6 +80,15 @@ jobs:
           name: vsix-${{ matrix.vsce_target }}
           path: packages/vscode/*.vsix
 
+      - name: Package twf archive
+        run: make build-twf-archive VERSION=${{ github.ref_name }} GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
+
+      - name: Upload twf archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: twf-${{ matrix.vsce_target }}
+          path: dist/twf-*
+
   publish:
     name: Publish
     needs: build
@@ -97,6 +106,17 @@ jobs:
           merge-multiple: true
           path: packages/vscode/
 
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: twf-*
+          merge-multiple: true
+          path: dist/
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd dist
+          sha256sum twf-* > SHA256SUMS
+
       - name: Publish to VS Code Marketplace
         run: make publish-vscode
         env:
@@ -110,5 +130,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: packages/vscode/*.vsix
+          files: |
+            packages/vscode/*.vsix
+            dist/twf-*
+            dist/SHA256SUMS
           generate_release_notes: true

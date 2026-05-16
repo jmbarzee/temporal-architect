@@ -329,7 +329,7 @@ Options blocks use indentation-based nesting (same as the rest of TWF). Each key
 
 Activity call options: `task_queue`, `schedule_to_close_timeout`, `schedule_to_start_timeout`, `start_to_close_timeout`, `heartbeat_timeout`, `request_eager_execution`, `retry_policy`, `priority`
 
-Workflow call options: `task_queue`, `workflow_execution_timeout`, `workflow_run_timeout`, `workflow_task_timeout`, `parent_close_policy`, `workflow_id_reuse_policy`, `cron_schedule`, `retry_policy`, `priority`
+Workflow call options: `task_queue`, `workflow_execution_timeout`, `workflow_run_timeout`, `workflow_task_timeout`, `parent_close_policy`, `workflow_id_reuse_policy`, `cron_schedule`, `retry_policy`, `priority`. `parent_close_policy` values: `TERMINATE` (default — child is killed when parent closes), `REQUEST_CANCEL` (child receives cancellation request), `ABANDON` (child continues independently). `workflow_id_reuse_policy` values: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, `TERMINATE_IF_RUNNING`.
 
 Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types`
 
@@ -552,7 +552,7 @@ await one:
 
 The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block.
 
-**Cancellation:** When one case completes, all other pending operations are automatically cancelled. Activities receive cancellation signals, child workflows are cancelled, and timers are stopped.
+**Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block. Operations started by non-winning cases (activities, child workflows, timers) are NOT cancelled — they continue running. These pending operations are cancelled only when the workflow run ends: via `close complete`, `close fail`, `close continue_as_new`, or external cancellation. For child workflows, the `parent_close_policy` option controls behavior at parent completion (TERMINATE, REQUEST_CANCEL, or ABANDON).
 
 ### Switch Block
 
