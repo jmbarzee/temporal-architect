@@ -17,6 +17,10 @@
 #   checks the config flag and awaits approval only when enabled.
 # - Commits happen after the wave completes (not mid-wave) because children
 #   within a wave are independent and don't read each other's output.
+# - Child workflow failures use saga compensation: on failure, rollback file
+#   changes in LIFO order, then let the workflow fail. Temporal's workflow
+#   retry policy retries the child on a clean worktree. The parent handles
+#   ultimate child failure per-child (see await all comment).
 
 
 # =============================================================================
@@ -38,6 +42,8 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
 
     # --- Setup ---
     activity CreateWorktree(config.branchName) -> worktreePath
+        options:
+            start_to_close_timeout: 1m
 
     waveNumber = 0
     commitCount = 0
@@ -48,6 +54,9 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
     # --- Initial review generation (when scope provided) ---
     if (config.initialScope):
         activity RunInitialReviews(worktreePath, config.initialScope) -> initialRevisionsCount
+            options:
+                start_to_close_timeout: 30m
+                heartbeat_timeout: 60s
 
     # --- Main loop: scan → spawn wave → commit results → repeat ---
     for:
@@ -60,9 +69,13 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
         if (config.requireApprovalBetweenWaves and waveNumber > 1):
             unset waveApproved
             activity NotifyWaveReady(waveNumber, worktreePath)
+                options:
+                    start_to_close_timeout: 30s
             await waveApproved
 
         activity ScanRevisions(worktreePath) -> pendingWork
+            options:
+                start_to_close_timeout: 30s
 
         if (pendingWork.isEmpty):
             break
@@ -70,9 +83,16 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
         # Spawn children for all components with pending REVISIONS (parallel)
         activeChildCount = pendingWork.componentCount
         activity BuildWaveManifest(pendingWork, totalChildrenSpawned, config.maxChildWorkflows) -> waveManifest
+            options:
+                start_to_close_timeout: 30s
         totalChildrenSpawned = totalChildrenSpawned + waveManifest.count
 
-        # workflow_execution_timeout: 30m per child (set at SDK level)
+        # Implementation: use individual child workflow futures with per-child
+        # error handling. A failed child (after saga compensation + workflow
+        # retry exhaustion) is skipped — its worktree changes were already
+        # rolled back by its saga compensation. Successful children proceed
+        # to the commit loop below.
+        # workflow_execution_timeout: 30m per child (parser bug P1 blocks options: here)
         await all:
             for (entry in waveManifest.entries):
                 workflow ComponentCycleWorkflow(worktreePath, entry.component, entry.revisionsFiles) -> entry.result
@@ -82,22 +102,45 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
         for (entry in waveManifest.entries):
             if (entry.result):
                 activity GitCommit(worktreePath, entry.result.commitMessage, entry.result.changedPaths) -> commitSha
+                    options:
+                        start_to_close_timeout: 30s
+                        retry_policy:
+                            maximum_attempts: 3
                 commitCount = commitCount + 1
                 totalRounds = totalRounds + 1
 
     # --- Finalization ---
     activity InvokeClaudeCode(worktreePath, "summarize-changes", SummarizeArgs{}) -> summary
+        options:
+            start_to_close_timeout: 30m
+            heartbeat_timeout: 60s
     activity GitCommit(worktreePath, "summarize changes", summary.changedPaths) -> summarySha
+        options:
+            start_to_close_timeout: 30s
+            retry_policy:
+                maximum_attempts: 3
     commitCount = commitCount + 1
 
     activity CleanupChangesDir(worktreePath)
+        options:
+            start_to_close_timeout: 30s
     activity GitCommit(worktreePath, "remove orchestration artifacts", ChangedPaths{paths: "changes/"}) -> cleanupSha
+        options:
+            start_to_close_timeout: 30s
+            retry_policy:
+                maximum_attempts: 3
     commitCount = commitCount + 1
 
     if (config.createPR):
         activity CreatePullRequest(worktreePath, config.branchName, summary.body) -> prURL
+            options:
+                start_to_close_timeout: 2m
+                retry_policy:
+                    maximum_attempts: 3
 
     activity CleanupWorktree(worktreePath)
+        options:
+            start_to_close_timeout: 1m
 
     close complete(DevCycleResult{waves: waveNumber, commits: commitCount, rounds: totalRounds, prURL: prURL})
 
@@ -110,14 +153,30 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
 # changes are still captured in the CHANGES file.
 
 workflow ComponentCycleWorkflow(worktreePath: string, component: Component, revisionsFiles: RevisionsFileList) -> (ComponentCycleResult):
+    # Saga compensation on failure (LIFO order):
+    #   2. Remove downstream REVISIONS written by propagate-changes
+    #   1. Revert source edits and restore REVISIONS in changes/{component}/
+    # Implementation: Go SDK saga pattern (AddCompensation/Compensate) or defer.
+    # Compensation ensures clean worktree state before workflow retry.
+
     query GetComponentStatus() -> (ComponentStatus):
         return ComponentStatus{component: component.name, phase: phase}
 
     phase = "addressing"
     activity InvokeClaudeCode(worktreePath, "address-review", AddressReviewArgs{component: component, revisionsFiles: revisionsFiles}) -> addressResult
+        options:
+            start_to_close_timeout: 30m
+            heartbeat_timeout: 60s
+            retry_policy:
+                maximum_attempts: 2
 
     phase = "propagating"
     activity InvokeClaudeCode(worktreePath, "propagate-changes", PropagateArgs{component: component, changesFile: addressResult.changesFile}) -> propagateResult
+        options:
+            start_to_close_timeout: 30m
+            heartbeat_timeout: 60s
+            retry_policy:
+                maximum_attempts: 2
 
     phase = "complete"
     close complete(ComponentCycleResult{component: component.name, commitMessage: addressResult.commitMessage, changedPaths: addressResult.changedPaths})
@@ -183,6 +242,16 @@ activity NotifyWaveReady(waveNumber: int, worktreePath: string):
     # Could be Slack, email, or console output
     notify(waveNumber, worktreePath)
 
+# --- Compensation ---
+
+activity RollbackComponent(worktreePath: string, component: Component):
+    # Revert all uncommitted changes in the component's scope:
+    #   git checkout -- <component.sourceScope> changes/{component.name}/
+    # Remove any untracked downstream REVISIONS written by propagate-changes:
+    #   git clean -fd changes/{downstream}/ for each downstream component
+    git.checkout(component.sourceScope, "changes/" + component.name)
+    git.clean(component.downstreamChangePaths)
+
 # --- Finalization ---
 
 activity CleanupChangesDir(worktreePath: string):
@@ -211,6 +280,7 @@ worker orchestratorWorker:
     activity InvokeClaudeCode
     activity RunInitialReviews
     activity NotifyWaveReady
+    activity RollbackComponent
     activity CleanupChangesDir
     activity CreatePullRequest
 
