@@ -1,29 +1,45 @@
 import React from 'react'
 import type { TWFFile, Definition, FileError, Statement, AsyncTarget } from '../types/ast'
 import type { CallerRef, NavigationContextType, CrossViewTarget } from './WorkflowCanvas'
+import type { FilterState, PinState, FilterDimension } from '../filter/types'
+import { filterStatesEqual } from '../filter/types'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
+import { PinToggle } from './PinToggle'
 import { SearchIcon } from './icons/GearIcons'
 import { THEME, DEF_TYPE_CONFIGS, DEF_TYPE_ORDER } from '../theme/temporal-theme'
 
 interface TreeViewProps {
   ast: TWFFile
-  onOpenFile?: (file: string) => void
   onShowInGraph?: (name: string, defType: string) => void
-  pendingNavigation?: CrossViewTarget | null
-  onNavigationConsumed?: () => void
+  filter: FilterState
+  onFilterChange: (next: FilterState) => void
+  pins: PinState
+  onPinsChange: (next: PinState) => void
+  searchQuery: string
+  searchActive: boolean
+  onSearchChange: (query: string, active: boolean) => void
+  pendingFocus: CrossViewTarget | null
+  onFocusConsumed: () => void
+  overriddenPins: Set<FilterDimension>
+  onOverriddenPinsConsumed: () => void
 }
 
-const DEFAULT_VISIBLE_TYPES = new Set(
-  DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type)
-)
-
-export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, onNavigationConsumed }: TreeViewProps) {
-  // --- Header state ---
-  const [selectedFiles, setSelectedFiles] = React.useState<Set<string>>(new Set())
-  const [searchActive, setSearchActive] = React.useState(false)
-  const [searchQuery, setSearchQuery] = React.useState('')
-  const [visibleTypes, setVisibleTypes] = React.useState<Set<string>>(DEFAULT_VISIBLE_TYPES)
+export function TreeView({
+  ast,
+  onShowInGraph,
+  filter,
+  onFilterChange,
+  pins,
+  onPinsChange,
+  searchQuery,
+  searchActive,
+  onSearchChange,
+  pendingFocus,
+  onFocusConsumed,
+  overriddenPins,
+  onOverriddenPinsConsumed,
+}: TreeViewProps) {
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
   const treeItemRefs = React.useRef<(HTMLDivElement | null)[]>([])
@@ -43,6 +59,34 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
     }
     prevAstRef.current = ast
   }, [ast])
+
+  // Track which filter chips/toggles were changed by an external filter
+  // update (i.e., a focus transition's reconciler expansion). These
+  // briefly animate (~400ms) to make the change visible. We diff the new
+  // filter against the previous one to find the changed keys.
+  const prevFilterRef = React.useRef<FilterState>(filter)
+  const [recentlyChanged, setRecentlyChanged] = React.useState<Set<string>>(new Set())
+  React.useEffect(() => {
+    const prev = prevFilterRef.current
+    if (filterStatesEqual(prev, filter)) return
+    const changed = new Set<string>()
+    for (const f of filter.selectedFiles) if (!prev.selectedFiles.has(f)) changed.add(`file:${f}`)
+    for (const t of filter.visibleTypes) if (!prev.visibleTypes.has(t)) changed.add(`type:${t}`)
+    prevFilterRef.current = filter
+    if (changed.size > 0) {
+      setRecentlyChanged(changed)
+      const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)
+      return () => clearTimeout(timer)
+    }
+  }, [filter])
+
+  // Pin-override flash: clear the overridden-pins set after ~600ms so
+  // the visual flash plays once per focus transition.
+  React.useEffect(() => {
+    if (overriddenPins.size === 0) return
+    const timer = setTimeout(onOverriddenPinsConsumed, 600)
+    return () => clearTimeout(timer)
+  }, [overriddenPins, onOverriddenPinsConsumed])
 
   // Build reverse reference index for contextual navigation
   const navIndex = React.useMemo(() => {
@@ -159,92 +203,51 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
     return Array.from(files).sort()
   }, [ast])
 
-  // Initialize selected files: focused file selected by default
-  React.useEffect(() => {
-    if (ast.focusedFile) {
-      setSelectedFiles(new Set([ast.focusedFile]))
-    } else {
-      setSelectedFiles(new Set())
-    }
-  }, [ast.focusedFile])
-
-  // Stale file cleanup: remove selected files that no longer exist in the AST
-  React.useEffect(() => {
-    const fileSet = new Set(allFiles)
-    setSelectedFiles(prev => {
-      const pruned = new Set([...prev].filter(f => fileSet.has(f)))
-      return pruned.size === prev.size ? prev : pruned
-    })
-  }, [allFiles])
-
   // Toggle a file in the selection
-  const toggleFile = (file: string) => {
-    setSelectedFiles(prev => {
-      const next = new Set(prev)
-      if (next.has(file)) {
-        next.delete(file)
-      } else {
-        next.add(file)
-      }
-      return next
-    })
-  }
-
-  // When file filter narrows to exactly one file, open it in the editor
-  React.useEffect(() => {
-    if (selectedFiles.size === 1 && onOpenFile) {
-      onOpenFile(selectedFiles.values().next().value!)
-    }
-  }, [selectedFiles, onOpenFile])
+  const toggleFile = React.useCallback((file: string) => {
+    const next = new Set(filter.selectedFiles)
+    if (next.has(file)) next.delete(file)
+    else next.add(file)
+    onFilterChange({ ...filter, selectedFiles: next })
+  }, [filter, onFilterChange])
 
   // Toggle search bar
-  const toggleSearch = () => {
+  const toggleSearch = React.useCallback(() => {
     if (searchActive) {
-      setSearchActive(false)
-      setSearchQuery('')
+      onSearchChange('', false)
     } else {
-      setSearchActive(true)
-      // Focus the input after it renders
+      onSearchChange(searchQuery, true)
       setTimeout(() => searchInputRef.current?.focus(), 50)
     }
-  }
+  }, [searchActive, searchQuery, onSearchChange])
 
   // Toggle a definition type in visibility
-  const toggleType = (type: string) => {
-    setVisibleTypes(prev => {
-      const next = new Set(prev)
-      if (next.has(type)) {
-        next.delete(type)
-      } else {
-        next.add(type)
-      }
-      return next
-    })
-  }
+  const toggleType = React.useCallback((type: string) => {
+    const next = new Set(filter.visibleTypes)
+    if (next.has(type)) next.delete(type)
+    else next.add(type)
+    onFilterChange({ ...filter, visibleTypes: next })
+  }, [filter, onFilterChange])
 
-  // Filter and group definitions for display
+  const togglePinFiles = React.useCallback(() => {
+    onPinsChange({ ...pins, files: !pins.files })
+  }, [pins, onPinsChange])
+  const togglePinTypes = React.useCallback(() => {
+    onPinsChange({ ...pins, types: !pins.types })
+  }, [pins, onPinsChange])
+
+  // Filter and group definitions for display. Search is NO LONGER a
+  // structural filter — non-matching definitions remain rendered but
+  // are visually dimmed (spec § Search Scope: non-destructive search).
   const visibleDefinitions = React.useMemo(() => {
-    const lowerQuery = searchQuery.toLowerCase()
-
     const filtered = ast.definitions.filter((def): def is Definition => {
-      // Type filter
-      if (!visibleTypes.has(def.type)) return false
-
-      // File filter: if any files are selected, only show from those files
-      // If none selected (all toggled off), show all
-      if (selectedFiles.size > 0 && def.sourceFile) {
-        if (!selectedFiles.has(def.sourceFile)) return false
+      if (!filter.visibleTypes.has(def.type)) return false
+      if (filter.selectedFiles.size > 0 && def.sourceFile) {
+        if (!filter.selectedFiles.has(def.sourceFile)) return false
       }
-
-      // Search filter
-      if (lowerQuery) {
-        if (!def.name.toLowerCase().includes(lowerQuery)) return false
-      }
-
       return true
     })
 
-    // Group by type in scope order (namespace → worker → nexus → workflow → activity)
     filtered.sort((a, b) => {
       const orderA = DEF_TYPE_ORDER.get(a.type) ?? 999
       const orderB = DEF_TYPE_ORDER.get(b.type) ?? 999
@@ -252,40 +255,69 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
     })
 
     return filtered
-  }, [ast.definitions, selectedFiles, visibleTypes, searchQuery])
+  }, [ast.definitions, filter])
+
+  // Search matches against the *visible* definition set. Matches outside
+  // the visible set (hidden by file/type filters) are surfaced as
+  // hidden-match badges on the corresponding filter controls below.
+  const { matchSet, matchIndices, hiddenMatchByType, hiddenMatchByFile } = React.useMemo(() => {
+    if (!searchQuery) {
+      return {
+        matchSet: null as Set<string> | null,
+        matchIndices: [] as number[],
+        hiddenMatchByType: new Map<string, number>(),
+        hiddenMatchByFile: new Map<string, number>(),
+      }
+    }
+    const lq = searchQuery.toLowerCase()
+    const set = new Set<string>()
+    const indices: number[] = []
+    visibleDefinitions.forEach((def, i) => {
+      if (def.name.toLowerCase().includes(lq)) {
+        set.add(defKey(def))
+        indices.push(i)
+      }
+    })
+    // Tally matches HIDDEN by structural filters, for badge overlays.
+    const byType = new Map<string, number>()
+    const byFile = new Map<string, number>()
+    for (const def of ast.definitions) {
+      if (!def.name.toLowerCase().includes(lq)) continue
+      const inType = filter.visibleTypes.has(def.type)
+      const inFile = filter.selectedFiles.size === 0 || (def.sourceFile ? filter.selectedFiles.has(def.sourceFile) : true)
+      if (!inType) byType.set(def.type, (byType.get(def.type) ?? 0) + 1)
+      else if (!inFile && def.sourceFile) byFile.set(def.sourceFile, (byFile.get(def.sourceFile) ?? 0) + 1)
+    }
+    return { matchSet: set, matchIndices: indices, hiddenMatchByType: byType, hiddenMatchByFile: byFile }
+  }, [searchQuery, visibleDefinitions, ast.definitions, filter])
 
   // Partition errors into "shown files" vs "hidden files" based on file filter
   const errors = ast.errors || []
   const { shownFileErrors, hiddenFileErrors } = React.useMemo(() => {
-    if (selectedFiles.size === 0) {
-      // No file filter active — all errors are "shown"
+    if (filter.selectedFiles.size === 0) {
       return { shownFileErrors: errors, hiddenFileErrors: [] as FileError[] }
     }
     const shown: FileError[] = []
     const hidden: FileError[] = []
     for (const e of errors) {
-      if (selectedFiles.has(e.file)) {
-        shown.push(e)
-      } else {
-        hidden.push(e)
-      }
+      if (filter.selectedFiles.has(e.file)) shown.push(e)
+      else hidden.push(e)
     }
     return { shownFileErrors: shown, hiddenFileErrors: hidden }
-  }, [errors, selectedFiles])
+  }, [errors, filter.selectedFiles])
 
   const hasFiles = allFiles.length > 0
   const hasErrors = errors.length > 0
-  const noFilesSelected = selectedFiles.size === 0
+  const noFilesSelected = filter.selectedFiles.size === 0
 
   // Global keyboard shortcut: "/" or Ctrl+F opens search
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if user is already typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === '/' || (e.ctrlKey && e.key === 'f')) {
         e.preventDefault()
         if (!searchActive) {
-          setSearchActive(true)
+          onSearchChange(searchQuery, true)
           setTimeout(() => searchInputRef.current?.focus(), 50)
         } else {
           searchInputRef.current?.focus()
@@ -294,7 +326,7 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [searchActive])
+  }, [searchActive, searchQuery, onSearchChange])
 
   // Keep refs array sized to visible definitions
   React.useEffect(() => {
@@ -304,12 +336,11 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
   // Helper: get a stable, unique key for a definition.
   //
   // sourceFile is included so that two definitions with the same (type, name)
-  // originating in different files (a user-authored name collision, or any
-  // upstream duplication) render as independent React nodes with independent
-  // expand/focus state. Without sourceFile in the key, duplicates collide in
-  // React's reconciler and in expandedDefs, making them impossible to control
-  // independently and routing contextual navigation to only the first instance.
-  const defKey = (def: Definition) => `${def.type}:${def.name}:${def.sourceFile ?? ''}`
+  // originating in different files render as independent React nodes with
+  // independent expand/focus state.
+  function defKey(def: Definition) {
+    return `${def.type}:${def.name}:${def.sourceFile ?? ''}`
+  }
 
   // Expand state cleanup: remove entries for definitions that no longer exist
   React.useEffect(() => {
@@ -354,30 +385,20 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
     showInGraph: onShowInGraph,
   }), [navIndex, navigateTo, onShowInGraph])
 
-  // Handle cross-view navigation: adjust filters to make target visible, then navigate
+  // Handle cross-view focus: the reconciler has already expanded the
+  // destination filter (in WorkflowCanvas) so the target is guaranteed
+  // visible. We only need to scroll to it and flash.
   React.useEffect(() => {
-    if (!pendingNavigation) return
-    const { name, defType } = pendingNavigation
-
-    // Ensure the target's type is visible
-    if (!visibleTypes.has(defType)) {
-      setVisibleTypes(prev => new Set(prev).add(defType))
-    }
-
-    // Ensure the target's source file is in selection (if file filtering is active)
-    const targetDef = ast.definitions.find(d => d.name === name && d.type === defType)
-    if (targetDef?.sourceFile && selectedFiles.size > 0 && !selectedFiles.has(targetDef.sourceFile)) {
-      setSelectedFiles(prev => new Set(prev).add(targetDef.sourceFile!))
-    }
-
-    // Delay navigateTo to allow filter state to settle and visibleDefinitions to recompute
+    if (!pendingFocus) return
+    const { name, defType } = pendingFocus
+    // Defer to let visibleDefinitions reflect any filter change that
+    // arrived in the same tick.
     const timer = setTimeout(() => {
       navigateTo(name, defType)
-      onNavigationConsumed?.()
-    }, 100)
-
+      onFocusConsumed()
+    }, 50)
     return () => clearTimeout(timer)
-  }, [pendingNavigation]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pendingFocus, navigateTo, onFocusConsumed])
 
   // Tree keyboard navigation handler
   const handleTreeKeyDown = React.useCallback((e: React.KeyboardEvent) => {
@@ -443,6 +464,17 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
         treeItemRefs.current[last]?.focus()
         break
       }
+      case 'n':
+      case 'N': {
+        if (matchIndices.length === 0) break
+        e.preventDefault()
+        const forward = e.key === 'n'
+        const next = nextMatchIndex(matchIndices, focusedIndex, forward)
+        setFocusedIndex(next)
+        treeItemRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        treeItemRefs.current[next]?.focus()
+        break
+      }
       case 'Escape': {
         e.preventDefault()
         if (searchActive) {
@@ -451,7 +483,17 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
         break
       }
     }
-  }, [visibleDefinitions, focusedIndex, expandedDefs, searchActive, toggleSearch, toggleDefExpand])
+  }, [visibleDefinitions, focusedIndex, expandedDefs, searchActive, toggleSearch, toggleDefExpand, matchIndices])
+
+  // Compute current-match position for the "N of M" indicator (only
+  // meaningful when the user has navigated via n/N to land on a match).
+  const currentMatchPosition = React.useMemo(() => {
+    if (!matchSet || matchIndices.length === 0 || focusedIndex < 0) return null
+    const def = visibleDefinitions[focusedIndex]
+    if (!def || !matchSet.has(defKey(def))) return null
+    const pos = matchIndices.indexOf(focusedIndex)
+    return pos >= 0 ? pos + 1 : null
+  }, [matchSet, matchIndices, focusedIndex, visibleDefinitions])
 
   return (
     <NavigationContext.Provider value={navigationValue}>
@@ -461,14 +503,18 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
           {/* Files Section — only show if there are files */}
           {hasFiles && (
             <>
-              <div className="header-files-section">
+              <div className={`header-files-section${pins.files ? ' section-pinned' : ''}`}>
                 <div className="header-files-row">
                   {allFiles.map(file => {
                     const fileName = file.split('/').pop() || file
-                    const isSelected = selectedFiles.has(file)
-                    const chipClass = noFilesSelected
-                      ? 'header-file-tag all-included'
-                      : `header-file-tag ${isSelected ? 'selected' : ''}`
+                    const isSelected = filter.selectedFiles.has(file)
+                    const isChanged = recentlyChanged.has(`file:${file}`)
+                    const hiddenCount = hiddenMatchByFile.get(file) ?? 0
+                    const chipClass = [
+                      'header-file-tag',
+                      noFilesSelected ? 'all-included' : (isSelected ? 'selected' : ''),
+                      isChanged ? 'recently-changed' : '',
+                    ].filter(Boolean).join(' ')
                     return (
                       <button
                         key={file}
@@ -478,33 +524,63 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
                       >
                         <span className="header-file-icon">📄</span>
                         <span className="header-file-name">{fileName}</span>
+                        {hiddenCount > 0 && (
+                          <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden in this file`}>
+                            {hiddenCount}
+                          </span>
+                        )}
                       </button>
                     )
                   })}
                 </div>
+                <PinToggle
+                  pinned={pins.files}
+                  onClick={togglePinFiles}
+                  flashing={overriddenPins.has('files')}
+                  label="Files"
+                />
               </div>
               <div className="header-divider" />
             </>
           )}
 
           {/* Definition Type Toggles */}
-          <div className="header-types-section">
+          <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
             <div className="header-types-row">
               {DEF_TYPE_CONFIGS.map(cfg => {
-                const isActive = visibleTypes.has(cfg.type)
+                const isActive = filter.visibleTypes.has(cfg.type)
+                const isChanged = recentlyChanged.has(`type:${cfg.type}`)
+                const hiddenCount = hiddenMatchByType.get(cfg.type) ?? 0
+                const cls = [
+                  'header-type-tag',
+                  isActive ? 'active' : '',
+                  `header-type-${cfg.type}`,
+                  isChanged ? 'recently-changed' : '',
+                ].filter(Boolean).join(' ')
                 return (
                   <button
                     key={cfg.type}
-                    className={`header-type-tag ${isActive ? 'active' : ''} header-type-${cfg.type}`}
+                    className={cls}
                     onClick={() => toggleType(cfg.type)}
                     title={isActive ? `Hide ${cfg.label.toLowerCase()}` : `Show ${cfg.label.toLowerCase()}`}
                   >
                     <span className="header-type-icon">{cfg.icon}</span>
                     <span className="header-type-label">{cfg.label}</span>
+                    {hiddenCount > 0 && (
+                      <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden by this filter`}>
+                        {hiddenCount}
+                      </span>
+                    )}
                   </button>
                 )
               })}
             </div>
+            <PinToggle
+              pinned={pins.types}
+              onClick={togglePinTypes}
+              flashing={overriddenPins.has('types')}
+              label="Types"
+            />
           </div>
           <div className="header-divider" />
 
@@ -525,57 +601,90 @@ export function TreeView({ ast, onOpenFile, onShowInGraph, pendingNavigation, on
                   type="text"
                   placeholder="Filter by name..."
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={e => onSearchChange(e.target.value, true)}
                   onKeyDown={e => {
                     if (e.key === 'Escape') toggleSearch()
                   }}
                 />
               )}
+              {searchActive && searchQuery && matchIndices.length > 0 && (
+                <span className="header-search-counter" title="Press n/N to jump between matches">
+                  {currentMatchPosition !== null
+                    ? `${currentMatchPosition} of ${matchIndices.length}`
+                    : `${matchIndices.length} match${matchIndices.length !== 1 ? 'es' : ''}`}
+                </span>
+              )}
+              {searchActive && searchQuery && matchIndices.length === 0 && (
+                <span className="header-search-counter empty">no matches</span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* === Errors Header === */}
-        {hasErrors && (
-          <ErrorsHeader
-            shownFileErrors={shownFileErrors}
-            hiddenFileErrors={hiddenFileErrors}
-          />
-        )}
+        {/* === Content — padded; scrolls independently of the sticky header === */}
+        <div className="workflow-canvas-content">
+          {hasErrors && (
+            <ErrorsHeader
+              shownFileErrors={shownFileErrors}
+              hiddenFileErrors={hiddenFileErrors}
+            />
+          )}
 
-        {/* Definitions */}
-        {visibleDefinitions.length === 0 && !hasErrors ? (
-          <div className="no-workflows">
-            <p>No definitions match the current filters.</p>
-            <p className="no-workflows-hint">Try adjusting the type toggles or file filter above.</p>
-          </div>
-        ) : visibleDefinitions.length === 0 && hasErrors ? (
-          null /* Only errors, no content — errors header is shown above */
-        ) : (
-          <div role="tree" aria-label="Definition list" onKeyDown={handleTreeKeyDown}>
-            {visibleDefinitions.map((def, i) => {
-              const key = defKey(def)
-              const isExpanded = expandedDefs.has(key)
-              return (
-                <div
-                  key={key}
-                  role="treeitem"
-                  aria-expanded={isExpanded}
-                  aria-level={1}
-                  tabIndex={i === focusedIndex ? 0 : -1}
-                  ref={el => { treeItemRefs.current[i] = el }}
-                  onFocus={() => setFocusedIndex(i)}
-                  className={flashKey === key ? 'flash-target' : undefined}
-                >
-                  <DefinitionBlock definition={def} expanded={isExpanded} onToggle={() => toggleDefExpand(key)} />
-                </div>
-              )
-            })}
-          </div>
-        )}
+          {visibleDefinitions.length === 0 && !hasErrors ? (
+            <div className="no-workflows">
+              <p>No definitions match the current filters.</p>
+              <p className="no-workflows-hint">Try adjusting the type toggles or file filter above.</p>
+            </div>
+          ) : visibleDefinitions.length === 0 && hasErrors ? (
+            null /* Only errors, no content — errors header is shown above */
+          ) : (
+            <div role="tree" aria-label="Definition list" onKeyDown={handleTreeKeyDown}>
+              {visibleDefinitions.map((def, i) => {
+                const key = defKey(def)
+                const isExpanded = expandedDefs.has(key)
+                const isDimmed = matchSet !== null && !matchSet.has(key)
+                const wrapClass = [
+                  flashKey === key ? 'flash-target' : '',
+                  isDimmed ? 'search-dimmed' : '',
+                ].filter(Boolean).join(' ')
+                return (
+                  <div
+                    key={key}
+                    role="treeitem"
+                    aria-expanded={isExpanded}
+                    aria-level={1}
+                    tabIndex={i === focusedIndex ? 0 : -1}
+                    ref={el => { treeItemRefs.current[i] = el }}
+                    onFocus={() => setFocusedIndex(i)}
+                    className={wrapClass || undefined}
+                  >
+                    <DefinitionBlock definition={def} expanded={isExpanded} onToggle={() => toggleDefExpand(key)} />
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </NavigationContext.Provider>
   )
+}
+
+// Find the next match index in `matchIndices` after `currentIndex`,
+// wrapping. If `forward` is false, find the previous one.
+function nextMatchIndex(matchIndices: number[], currentIndex: number, forward: boolean): number {
+  if (matchIndices.length === 0) return currentIndex
+  if (forward) {
+    for (const i of matchIndices) {
+      if (i > currentIndex) return i
+    }
+    return matchIndices[0]
+  } else {
+    for (let j = matchIndices.length - 1; j >= 0; j--) {
+      if (matchIndices[j] < currentIndex) return matchIndices[j]
+    }
+    return matchIndices[matchIndices.length - 1]
+  }
 }
 
 /** Collapsible errors header — shows compilation errors grouped by shown/hidden files */
@@ -586,7 +695,6 @@ function ErrorsHeader({ shownFileErrors, hiddenFileErrors }: {
   const [expanded, setExpanded] = React.useState(true)
   const totalErrors = shownFileErrors.length + hiddenFileErrors.length
 
-  // Build summary text
   const summaryParts: string[] = []
   if (shownFileErrors.length > 0) {
     summaryParts.push(`${shownFileErrors.length} in shown files`)

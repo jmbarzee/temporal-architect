@@ -5,6 +5,8 @@ import React from 'react'
 import type { TWFFile, FileError } from '../types/ast'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { ForceParams } from '../graph/simulation'
+import type { FilterState, PinState, FilterDimension } from '../filter/types'
+import { filterStatesEqual } from '../filter/types'
 import { buildGraph } from '../graph/build'
 import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
 import type { SimNode } from '../graph/simulation'
@@ -16,14 +18,25 @@ import { getTransitiveDeps, getHighlightedEdgeIds } from '../graph/highlight'
 import { GraphCanvas } from './GraphCanvas'
 import { GraphControlPanel } from './GraphControlPanel'
 import type { ForceSection } from './GraphControlPanel'
+import { PinToggle } from './PinToggle'
+import { GraphContextMenu, type ContextMenuItem } from './GraphContextMenu'
 import { SearchIcon } from './icons/GearIcons'
 import { THEME, DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface GraphViewProps {
   ast: TWFFile
   onShowInTree?: (name: string, defType: string) => void
-  pendingNavigation?: CrossViewTarget | null
-  onNavigationConsumed?: () => void
+  filter: FilterState
+  onFilterChange: (next: FilterState) => void
+  pins: PinState
+  onPinsChange: (next: PinState) => void
+  searchQuery: string
+  searchActive: boolean
+  onSearchChange: (query: string, active: boolean) => void
+  pendingFocus: CrossViewTarget | null
+  onFocusConsumed: () => void
+  overriddenPins: Set<FilterDimension>
+  onOverriddenPinsConsumed: () => void
 }
 
 // Map graph nodeType to AST defType (for visibility filter). nexusOperation
@@ -155,11 +168,27 @@ function defTypeToNodeType(defType: string): string {
   }
 }
 
-export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationConsumed }: GraphViewProps) {
+export function GraphView({
+  ast,
+  onShowInTree,
+  filter,
+  onFilterChange,
+  pins,
+  onPinsChange,
+  searchQuery,
+  searchActive,
+  onSearchChange,
+  pendingFocus,
+  onFocusConsumed,
+  overriddenPins,
+  onOverriddenPinsConsumed,
+}: GraphViewProps) {
+  // Filter state is now driven by props from WorkflowCanvas (spec § Filter
+  // State Model). Read the two structural dimensions through `filter`.
+  const visibleTypes = filter.visibleTypes
+  const selectedFiles = filter.selectedFiles
+
   // --- Core state ---
-  const [visibleTypes, setVisibleTypes] = React.useState<Set<string>>(
-    new Set(DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type))
-  )
   const [viewport, setViewport] = React.useState<Viewport>(DEFAULT_VIEWPORT)
   const [running, setRunning] = React.useState(true)
   const [forceParams, setForceParams] = React.useState<ForceParams>({ ...DEFAULT_PARAMS })
@@ -184,15 +213,46 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
   const [activeChargeType, setActiveChargeType] = React.useState<NodeType | null>(null)
   const [activeGravityType, setActiveGravityType] = React.useState<NodeType | null>(null)
 
-  // --- Filter state ---
-  const [selectedFiles, setSelectedFiles] = React.useState<Set<string>>(new Set())
-  const [searchActive, setSearchActive] = React.useState(false)
-  const [searchQuery, setSearchQuery] = React.useState('')
+  // --- Search ---
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
 
+  // --- Right-click context menu ---
+  const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; nodeId: string } | null>(null)
+
+  // --- Filter change tracking for transient animation on focus transitions ---
+  const prevFilterRef = React.useRef<FilterState>(filter)
+  const [recentlyChanged, setRecentlyChanged] = React.useState<Set<string>>(new Set())
+  React.useEffect(() => {
+    const prev = prevFilterRef.current
+    if (filterStatesEqual(prev, filter)) return
+    const changed = new Set<string>()
+    for (const f of filter.selectedFiles) if (!prev.selectedFiles.has(f)) changed.add(`file:${f}`)
+    for (const t of filter.visibleTypes) if (!prev.visibleTypes.has(t)) changed.add(`type:${t}`)
+    prevFilterRef.current = filter
+    if (changed.size > 0) {
+      setRecentlyChanged(changed)
+      const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)
+      return () => clearTimeout(timer)
+    }
+  }, [filter])
+
+  // Clear pin-override flash after ~600ms so the visual flash plays once.
+  React.useEffect(() => {
+    if (overriddenPins.size === 0) return
+    const timer = setTimeout(onOverriddenPinsConsumed, 600)
+    return () => clearTimeout(timer)
+  }, [overriddenPins, onOverriddenPinsConsumed])
+
   // Build graph from AST
   const graph = React.useMemo(() => buildGraph(ast), [ast])
+
+  // Bumped after each simulation (re)creation so memos that read from
+  // simRef.current can be invalidated. Without this signal the
+  // visibleNodes memo cached an empty result on first render — when
+  // simRef.current was still null — and never recomputed because its
+  // structural deps hadn't changed.
+  const [simVersion, setSimVersion] = React.useState(0)
 
   // Create or update simulation when graph changes
   React.useEffect(() => {
@@ -203,6 +263,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     setSelectedNodeId(null)
     setHoveredNodeId(null)
     setFocusedIndex(-1)
+    setSimVersion(v => v + 1)
   }, [graph]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Extract all unique source files from graph nodes
@@ -214,14 +275,8 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     return Array.from(files).sort()
   }, [graph])
 
-  // Stale file cleanup
-  React.useEffect(() => {
-    const fileSet = new Set(allFiles)
-    setSelectedFiles(prev => {
-      const pruned = new Set([...prev].filter(f => fileSet.has(f)))
-      return pruned.size === prev.size ? prev : pruned
-    })
-  }, [allFiles])
+  // Stale-file cleanup is now owned by WorkflowCanvas (it touches both views'
+  // filters consistently when the AST changes).
 
   // Filter visible nodes by type toggles + file filter
   const { visibleNodes, visibleEdges, visibleIds, nodeSummaries } = React.useMemo(() => {
@@ -321,14 +376,21 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     }
 
     return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, nodeSummaries }
-  }, [visibleTypes, selectedFiles, graph]) // eslint-disable-line react-hooks/exhaustive-deps
+    // simVersion is the signal that simRef.current has been (re)assigned;
+    // without it this memo would cache the first-render empty result
+    // (when the sim hadn't been created yet) and never recompute on the
+    // next render where the sim is finally available.
+  }, [visibleTypes, selectedFiles, graph, simVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Search matches (against all nodes, not just visible)
+  // Search matches against all nodes (not just visible). When search is
+  // active we return a Set even if empty so the canvas dims everything —
+  // an empty search with a query is "no matches yet, all non-matching",
+  // not "no search active".
   const { visibleMatchIds, hiddenMatchCount } = React.useMemo(() => {
     if (!searchQuery) return { visibleMatchIds: null as Set<string> | null, hiddenMatchCount: 0 }
     const lq = searchQuery.toLowerCase()
     const sim = simRef.current
-    if (!sim) return { visibleMatchIds: null, hiddenMatchCount: 0 }
+    if (!sim) return { visibleMatchIds: new Set<string>(), hiddenMatchCount: 0 }
 
     const visible = new Set<string>()
     let hidden = 0
@@ -341,7 +403,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
         }
       }
     }
-    return { visibleMatchIds: visible.size > 0 ? visible : null, hiddenMatchCount: hidden }
+    return { visibleMatchIds: visible, hiddenMatchCount: hidden }
   }, [searchQuery, visibleIds])
 
   // Transitive dependency highlighting
@@ -474,6 +536,24 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     prevVisibleTypes.current = visibleTypes
   }, [visibleTypes])
 
+  // Reheat when the file filter changes — gives the user visible motion
+  // confirming the change registered, and lets the now-visible /
+  // newly-hidden subset settle into a layout that reflects the new
+  // node population. Unlike type changes, we don't ancestor-seed (files
+  // aren't structural containers in the graph) and we don't refit the
+  // viewport (the user's pan/zoom should survive a file filter toggle).
+  const prevSelectedFiles = React.useRef(selectedFiles)
+  React.useEffect(() => {
+    const prev = prevSelectedFiles.current
+    if (prev === selectedFiles) return
+    const sim = simRef.current
+    if (sim) {
+      sim.reheat(0.3)
+      setRunning(true)
+    }
+    prevSelectedFiles.current = selectedFiles
+  }, [selectedFiles])
+
   // Propagate force param changes to simulation (no auto-reheat — user controls when to restart)
   const handleParamChange = React.useCallback((key: keyof ForceParams, value: number) => {
     setForceParams(prev => {
@@ -542,36 +622,55 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     setRunning(true)
   }, [])
 
-  // Type toggle
+  // Type toggle — emits an updated FilterState to the canvas.
   const toggleType = (type: string) => {
-    setVisibleTypes(prev => {
-      const next = new Set(prev)
-      if (next.has(type)) next.delete(type)
-      else next.add(type)
-      return next
-    })
+    const next = new Set(filter.visibleTypes)
+    if (next.has(type)) next.delete(type)
+    else next.add(type)
+    onFilterChange({ ...filter, visibleTypes: next })
   }
 
   // File filter toggle
   const toggleFile = (file: string) => {
-    setSelectedFiles(prev => {
-      const next = new Set(prev)
-      if (next.has(file)) next.delete(file)
-      else next.add(file)
-      return next
-    })
+    const next = new Set(filter.selectedFiles)
+    if (next.has(file)) next.delete(file)
+    else next.add(file)
+    onFilterChange({ ...filter, selectedFiles: next })
   }
 
-  // Search toggle
+  // Search toggle — emits to canvas. Search query is globally shared so
+  // clearing it on close affects both views (intentional: closing the
+  // search bar means "no active search anywhere").
   const toggleSearch = () => {
     if (searchActive) {
-      setSearchActive(false)
-      setSearchQuery('')
+      onSearchChange('', false)
     } else {
-      setSearchActive(true)
+      onSearchChange(searchQuery, true)
       setTimeout(() => searchInputRef.current?.focus(), 50)
     }
   }
+
+  // Pin togglers — emit the new PinState up.
+  const togglePinFiles = () => onPinsChange({ ...pins, files: !pins.files })
+  const togglePinTypes = () => onPinsChange({ ...pins, types: !pins.types })
+
+  // Right-click on a canvas node — open the context menu at the cursor.
+  const handleNodeContextMenu = React.useCallback((nodeId: string, clientX: number, clientY: number) => {
+    setContextMenu({ x: clientX, y: clientY, nodeId })
+  }, [])
+
+  const closeContextMenu = React.useCallback(() => setContextMenu(null), [])
+
+  // Build the menu items dynamically from the right-clicked node.
+  const contextMenuItems = React.useMemo<ContextMenuItem[]>(() => {
+    if (!contextMenu || !onShowInTree) return []
+    const node = simRef.current?.getNode(contextMenu.nodeId)
+    if (!node) return []
+    return [{
+      label: 'Show in Tree',
+      onClick: () => onShowInTree(node.name, nodeTypeToDefType(node.nodeType)),
+    }]
+  }, [contextMenu, onShowInTree])
 
   // Select node from search result
   const handleSelectSearchResult = (nodeId: string) => {
@@ -595,39 +694,27 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     ? visibleNodes[focusedIndex].id
     : null
 
-  // Cross-view navigation: handle pending navigation from Tree → Graph
+  // Cross-view focus: the reconciler in WorkflowCanvas has already
+  // expanded the destination filter so the target is visible. We only
+  // arrange the visual focus part — set up the center-on-target ref
+  // and reheat the simulation if it had stabilized.
   React.useEffect(() => {
-    if (!pendingNavigation) return
-    const { name, defType } = pendingNavigation
-
-    // Ensure the target type is visible (enable if toggled off)
-    setVisibleTypes(prev => {
-      if (prev.has(defType)) return prev
-      const next = new Set(prev)
-      next.add(defType)
-      return next
-    })
-
-    // Ensure the target's source file is visible
+    if (!pendingFocus) return
+    const { name, defType } = pendingFocus
     const targetNodeType = defTypeToNodeType(defType)
     const sim = simRef.current
     if (sim) {
       const targetNode = sim.nodes.find(n => n.name === name && n.nodeType === targetNodeType)
-      if (targetNode?.sourceFile && selectedFiles.size > 0 && !selectedFiles.has(targetNode.sourceFile)) {
-        setSelectedFiles(prev => new Set(prev).add(targetNode.sourceFile!))
-      }
       if (targetNode) {
         pendingCenterRef.current = { nodeId: targetNode.id }
-        // If simulation is stable, reheat briefly so the animation loop runs to handle centering
         if (!running) {
           simRef.current?.reheat(0.1)
           setRunning(true)
         }
       }
     }
-
-    onNavigationConsumed?.()
-  }, [pendingNavigation]) // eslint-disable-line react-hooks/exhaustive-deps
+    onFocusConsumed()
+  }, [pendingFocus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shift key tracking
   React.useEffect(() => {
@@ -699,7 +786,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
         case '/': {
           e.preventDefault()
           if (!searchActive) {
-            setSearchActive(true)
+            onSearchChange(searchQuery, true)
             setTimeout(() => searchInputRef.current?.focus(), 50)
           } else {
             searchInputRef.current?.focus()
@@ -720,7 +807,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [visibleNodes, focusedNodeId, selectedNodeId, searchActive, shortcutsOpen, handleFitToView, handleToggleRunning])
+  }, [visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, onSearchChange, shortcutsOpen, handleFitToView, handleToggleRunning])
 
   // Errors
   const errors = ast.errors || []
@@ -743,18 +830,60 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
 
   return (
     <div className="graph-view" ref={containerRef}>
+      {/* Canvas fills the full viewport beneath the floating overlay */}
+      <div className="graph-canvas-area">
+        <GraphCanvas
+          nodes={visibleNodes}
+          edges={visibleEdges}
+          viewport={viewport}
+          onViewportChange={setViewport}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDragMove={handleNodeDragMove}
+          onNodeDragEnd={handleNodeDragEnd}
+          onDoubleClickNode={handleDoubleClickNode}
+          onHoverNode={setHoveredNodeId}
+          onSelectNode={setSelectedNodeId}
+          onNodeContextMenu={handleNodeContextMenu}
+          highlightedNodes={highlightedNodes}
+          highlightedEdges={highlightedEdges}
+          hoveredNodeId={hoveredNodeId}
+          selectedNodeId={selectedNodeId}
+          focusedNodeId={focusedNodeId}
+          searchMatchIds={visibleMatchIds}
+          running={running}
+          showForceFields={showForceFields}
+          forceParams={forceParams}
+          activeSection={activeSection}
+          activeChargeType={activeChargeType}
+          activeGravityType={activeGravityType}
+          nodeSummaries={nodeSummaries}
+        />
+        <GraphHoverTooltip
+          hoveredNodeId={hoveredNodeId}
+          simRef={simRef}
+          visibleEdges={visibleEdges}
+          viewport={viewport}
+          shiftHeld={shiftHeld}
+        />
+      </div>
+
+      {/* Floating overlay: filter bar + toolbar + errors header */}
+      <div className="graph-overlay">
       {/* Shared Filter Bar — identical structure to Tree View */}
       <div className="canvas-header">
         {hasFiles && (
           <>
-            <div className="header-files-section">
+            <div className={`header-files-section${pins.files ? ' section-pinned' : ''}`}>
               <div className="header-files-row">
                 {allFiles.map(file => {
                   const fileName = file.split('/').pop() || file
                   const isSelected = selectedFiles.has(file)
-                  const chipClass = noFilesSelected
-                    ? 'header-file-tag all-included'
-                    : `header-file-tag ${isSelected ? 'selected' : ''}`
+                  const isChanged = recentlyChanged.has(`file:${file}`)
+                  const chipClass = [
+                    'header-file-tag',
+                    noFilesSelected ? 'all-included' : (isSelected ? 'selected' : ''),
+                    isChanged ? 'recently-changed' : '',
+                  ].filter(Boolean).join(' ')
                   return (
                     <button key={file} className={chipClass} onClick={() => toggleFile(file)} title={file}>
                       <span className="header-file-icon">📄</span>
@@ -763,19 +892,32 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
                   )
                 })}
               </div>
+              <PinToggle
+                pinned={pins.files}
+                onClick={togglePinFiles}
+                flashing={overriddenPins.has('files')}
+                label="Files"
+              />
             </div>
             <div className="header-divider" />
           </>
         )}
 
-        <div className="header-types-section">
+        <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
           <div className="header-types-row">
             {DEF_TYPE_CONFIGS.map(cfg => {
               const isActive = visibleTypes.has(cfg.type)
+              const isChanged = recentlyChanged.has(`type:${cfg.type}`)
+              const cls = [
+                'header-type-tag',
+                isActive ? 'active' : '',
+                `header-type-${cfg.type}`,
+                isChanged ? 'recently-changed' : '',
+              ].filter(Boolean).join(' ')
               return (
                 <button
                   key={cfg.type}
-                  className={`header-type-tag ${isActive ? 'active' : ''} header-type-${cfg.type}`}
+                  className={cls}
                   onClick={() => toggleType(cfg.type)}
                   title={isActive ? `Hide ${cfg.label.toLowerCase()}` : `Show ${cfg.label.toLowerCase()}`}
                 >
@@ -785,6 +927,12 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
               )
             })}
           </div>
+          <PinToggle
+            pinned={pins.types}
+            onClick={togglePinTypes}
+            flashing={overriddenPins.has('types')}
+            label="Types"
+          />
         </div>
 
         <div className="header-divider" />
@@ -801,7 +949,7 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
                 type="text"
                 placeholder="Search nodes..."
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => onSearchChange(e.target.value, true)}
                 onKeyDown={e => { if (e.key === 'Escape') toggleSearch() }}
               />
             )}
@@ -859,46 +1007,11 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
         </div>
       )}
 
-      {/* Errors header */}
+      {/* Errors header — last element inside the floating overlay */}
       {hasErrors && (
         <GraphErrorsHeader shownFileErrors={shownFileErrors} hiddenFileErrors={hiddenFileErrors} />
       )}
-
-      {/* Canvas + hover tooltip overlay */}
-      <div className="graph-canvas-area">
-        <GraphCanvas
-          nodes={visibleNodes}
-          edges={visibleEdges}
-          viewport={viewport}
-          onViewportChange={setViewport}
-          onNodeDragStart={handleNodeDragStart}
-          onNodeDragMove={handleNodeDragMove}
-          onNodeDragEnd={handleNodeDragEnd}
-          onDoubleClickNode={handleDoubleClickNode}
-          onHoverNode={setHoveredNodeId}
-          onSelectNode={setSelectedNodeId}
-          highlightedNodes={highlightedNodes}
-          highlightedEdges={highlightedEdges}
-          hoveredNodeId={hoveredNodeId}
-          selectedNodeId={selectedNodeId}
-          focusedNodeId={focusedNodeId}
-          searchMatchIds={visibleMatchIds}
-          running={running}
-          showForceFields={showForceFields}
-          forceParams={forceParams}
-          activeSection={activeSection}
-          activeChargeType={activeChargeType}
-          activeGravityType={activeGravityType}
-          nodeSummaries={nodeSummaries}
-        />
-        <GraphHoverTooltip
-          hoveredNodeId={hoveredNodeId}
-          simRef={simRef}
-          visibleEdges={visibleEdges}
-          viewport={viewport}
-          shiftHeld={shiftHeld}
-        />
-      </div>
+      </div>{/* /graph-overlay */}
 
       {/* Control panel */}
       <GraphControlPanel
@@ -913,6 +1026,16 @@ export function GraphView({ ast, onShowInTree, pendingNavigation, onNavigationCo
         onActiveChargeType={setActiveChargeType}
         onActiveGravityType={setActiveGravityType}
       />
+
+      {/* Right-click context menu */}
+      {contextMenu && contextMenuItems.length > 0 && (
+        <GraphContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={closeContextMenu}
+        />
+      )}
 
       {/* Shortcuts panel */}
       {shortcutsOpen && (

@@ -150,36 +150,84 @@ body {
 .workflow-canvas {
   flex: 1;
   overflow: auto;
-  padding: 24px;
   background: var(--color-bg-gradient);
+}
+
+/* Inner wrapper holds the padding so the sticky filter bar can sit
+   flush with the top of the scroll container. */
+.workflow-canvas-content {
+  padding: 24px;
+}
+
+/* Tree-view filter bar: flat sticky bar with translucent backdrop —
+   visually matches the Graph view's overlay treatment. Stays anchored
+   to the top of the scroll container as the user scrolls definitions. */
+.workflow-canvas > .canvas-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: none;
+  margin-bottom: 0;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* === Graph View === */
 .graph-view {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  position: relative;
   background: var(--color-bg-gradient);
   overflow: hidden;
 }
 
-/* Filter bar context override: flat bar (no card radius/shadow/margin) */
+/* Floating overlay: filter bar + toolbar + errors header. Sits above
+   the full-viewport canvas so zoomed content can extend visibly under
+   the overlay edges (spec § Overlay Layout). */
+.graph-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 30vh;
+  display: flex;
+  flex-direction: column;
+  /* Don't intercept canvas pan/zoom in any transparent gaps within the
+     overlay — only the actual control elements should capture events. */
+  pointer-events: none;
+}
+
+.graph-overlay > * {
+  pointer-events: auto;
+}
+
+/* Filter bar context override: flat bar (no card radius/shadow/margin)
+   and translucent backdrop so canvas content is visible underneath. */
 .graph-view .canvas-header {
   border-radius: 0;
   border: none;
   border-bottom: 1px solid var(--color-border);
   box-shadow: none;
   margin-bottom: 0;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-/* Graph Toolbar — view-specific controls below the filter bar */
+/* Graph Toolbar — view-specific controls, rendered inside the overlay. */
 .graph-toolbar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
   padding: 4px 14px;
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
@@ -223,11 +271,12 @@ body {
   background: rgba(168, 155, 216, 0.12);
 }
 
-/* Graph Canvas Area — flex child that holds the canvas + tooltip overlay */
+/* Graph Canvas Area — fills the full viewport. The floating overlay
+   sits on top of this via z-index, with bleed-under as the affordance
+   that zoomed content extends beyond the visible chrome. */
 .graph-canvas-area {
-  position: relative;
-  flex: 1;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -386,9 +435,11 @@ body {
   font-weight: 500;
 }
 
-/* Graph Errors Header */
+/* Graph Errors Header — translucent so it composes with the overlay */
 .graph-errors-header {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--color-error-border);
   flex-shrink: 0;
 }
@@ -992,13 +1043,29 @@ body {
 
 /* --- Files Section --- */
 .header-files-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 10px 14px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.header-files-section.section-pinned {
+  background: rgba(139, 126, 200, 0.04);
+  box-shadow: inset 2px 0 0 var(--color-workflow);
+}
+
+.vscode-dark .header-files-section.section-pinned {
+  background: rgba(168, 155, 216, 0.05);
 }
 
 .header-files-row {
+  flex: 1 1 auto;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
 .header-file-tag {
@@ -1159,13 +1226,29 @@ body {
 
 /* --- Definition Type Toggles --- */
 .header-types-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px 14px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.header-types-section.section-pinned {
+  background: rgba(139, 126, 200, 0.04);
+  box-shadow: inset 2px 0 0 var(--color-workflow);
+}
+
+.vscode-dark .header-types-section.section-pinned {
+  background: rgba(168, 155, 216, 0.05);
 }
 
 .header-types-row {
+  flex: 1 1 auto;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
 .header-type-tag {
@@ -1463,4 +1546,157 @@ body {
 
 .error-group-hidden .error-group-message {
   color: var(--color-text-muted);
+}
+
+
+/* ===========================================================
+   Shared-filter UI: pinning, search match counter,
+   hidden-match badges, focus-transition animation, search dim
+   =========================================================== */
+
+/* Per-dimension pin toggle on Files / Types sections */
+.pin-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.pin-toggle:hover {
+  opacity: 1;
+  color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.08);
+}
+
+.pin-toggle.pinned {
+  opacity: 1;
+  color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.12);
+  border-color: rgba(139, 126, 200, 0.35);
+}
+
+.vscode-dark .pin-toggle:hover {
+  background: rgba(168, 155, 216, 0.12);
+}
+
+.vscode-dark .pin-toggle.pinned {
+  background: rgba(168, 155, 216, 0.18);
+  border-color: rgba(168, 155, 216, 0.4);
+}
+
+/* Pin override flash on focus transitions (~600ms) */
+.pin-toggle.flashing {
+  animation: pinFlash 0.6s ease;
+}
+
+@keyframes pinFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); transform: scale(1); }
+  40%  { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); transform: scale(1.12); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); transform: scale(1); }
+}
+
+/* "N of M" / "N matches" search counter inside the search bar */
+.header-search-counter {
+  flex: 0 0 auto;
+  padding: 0 8px 0 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.header-search-counter.empty {
+  color: var(--color-warning, #F59E0B);
+}
+
+/* Tiny badge on file chips / type toggles showing how many search
+   matches are hidden by that filter. */
+.header-hidden-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.16);
+  border-radius: 8px;
+  line-height: 1;
+}
+
+/* Filter chip / toggle animation when changed by a focus transition's
+   reconciler expansion (~400ms). */
+.header-file-tag.recently-changed,
+.header-type-tag.recently-changed {
+  animation: filterChipFlash 0.45s ease;
+}
+
+@keyframes filterChipFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(139, 126, 200, 0.5); }
+  40%  { box-shadow: 0 0 0 4px rgba(139, 126, 200, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(139, 126, 200, 0); }
+}
+
+/* Tree-view: definition blocks dimmed because they don't match the
+   active search query (spec § Search Behavior — search dims, not hides). */
+.search-dimmed {
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.search-dimmed:hover {
+  opacity: 0.55;
+}
+
+
+/* Right-click context menu (graph nodes) */
+.graph-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 160px;
+  padding: 4px 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text);
+  user-select: none;
+}
+
+.graph-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 14px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.graph-context-menu-item:hover {
+  background: rgba(139, 126, 200, 0.12);
+  color: var(--color-workflow);
+}
+
+.vscode-dark .graph-context-menu-item:hover {
+  background: rgba(168, 155, 216, 0.16);
 }

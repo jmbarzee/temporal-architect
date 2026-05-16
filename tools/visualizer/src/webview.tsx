@@ -14,6 +14,10 @@ declare const acquireVsCodeApi: () => {
 
 const vscode = acquireVsCodeApi()
 
+// Cache the VS Code API on window so the filter storage shim can reuse it
+// (acquireVsCodeApi can only be called once per webview).
+;(window as unknown as { __twfVsCodeApi?: typeof vscode }).__twfVsCodeApi = vscode
+
 function WebviewApp() {
   const [ast, setAst] = React.useState<TWFFile | null>(null)
   const [error, setError] = React.useState<string | null>(null)

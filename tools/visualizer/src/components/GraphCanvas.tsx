@@ -61,7 +61,6 @@ const EDGE_STYLE = {
 
 const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#8B7EC8'
-const SEARCH_MATCH_COLOR = '#F59E0B'
 const DIM_ALPHA = 0.2
 
 // Node sizes by level — all nodes render as circles; w/h = 2r for hit testing
@@ -140,6 +139,10 @@ interface GraphCanvasProps {
   onDoubleClickNode: (id: string) => void
   onHoverNode: (id: string | null) => void
   onSelectNode: (id: string | null) => void
+  // Right-click on a node — emits the node id and the page-relative
+  // coordinates of the cursor so the parent can render a floating
+  // context menu at that location.
+  onNodeContextMenu?: (nodeId: string, clientX: number, clientY: number) => void
   highlightedNodes: Set<string> | null
   highlightedEdges: Set<string> | null
   hoveredNodeId: string | null
@@ -179,7 +182,7 @@ interface DrawData {
 export function GraphCanvas({
   nodes, edges, viewport, onViewportChange,
   onNodeDragStart, onNodeDragMove, onNodeDragEnd,
-  onDoubleClickNode, onHoverNode, onSelectNode,
+  onDoubleClickNode, onHoverNode, onSelectNode, onNodeContextMenu,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, showForceFields, forceParams, activeSection, activeChargeType,
@@ -324,6 +327,21 @@ export function GraphCanvas({
     }
   }, [hitTest, nodes, size, onViewportChange, onDoubleClickNode])
 
+  // Right-click on a node → open the floating context menu in the parent.
+  // We suppress the browser menu only when a node is hit; clicking the
+  // bare canvas still surfaces the default menu (useful for browser tools).
+  const handleContextMenu = React.useCallback((e: React.MouseEvent) => {
+    if (!onNodeContextMenu) return
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const sx = e.clientX - rect.left
+    const sy = e.clientY - rect.top
+    const node = hitTest(sx, sy)
+    if (node) {
+      e.preventDefault()
+      onNodeContextMenu(node.id, e.clientX, e.clientY)
+    }
+  }, [hitTest, onNodeContextMenu])
+
   // --- Render loop ---
   // Uses a ref for all draw data so the effect only tears down on size change.
   // A dirty flag triggers single-frame redraws when paused.
@@ -387,11 +405,16 @@ export function GraphCanvas({
         const edgeHighlighted = d.highlightedEdges?.has(edge.id) ?? false
         const style = edgeStyleFor(edge, src, tgt)
         const baseAlpha = style.alpha
+        // An edge is search-dimmed if a search is active and either
+        // endpoint isn't a match — keeps the visible chain readable
+        // without showing edges to dimmed nodes.
+        const edgeSearchDimmed = d.searchMatchIds !== null &&
+          (!d.searchMatchIds.has(edge.sourceId) || !d.searchMatchIds.has(edge.targetId))
         // Highlights override the per-style alpha so the active subgraph
-        // pops; dim non-highlighted edges down to DIM_ALPHA.
+        // pops; dim non-highlighted/non-matching edges down to DIM_ALPHA.
         ctx.globalAlpha = hasHighlight
           ? (edgeHighlighted ? 1 : DIM_ALPHA)
-          : baseAlpha
+          : (edgeSearchDimmed ? DIM_ALPHA : baseAlpha)
 
         ctx.beginPath()
         ctx.setLineDash([...style.dash])
@@ -651,7 +674,9 @@ export function GraphCanvas({
             sy + hh < -CULL_MARGIN || sy - hh > h + CULL_MARGIN) continue
 
         const nodeHighlighted = d.highlightedNodes?.has(node.id) ?? false
-        ctx.globalAlpha = hasHighlight && !nodeHighlighted ? DIM_ALPHA : 1
+        const searchDimmed = d.searchMatchIds !== null && !d.searchMatchIds.has(node.id)
+        const nodeDimmed = (hasHighlight && !nodeHighlighted) || searchDimmed
+        ctx.globalAlpha = nodeDimmed ? DIM_ALPHA : 1
 
         const style = NODE_STYLES[node.nodeType] ?? { fill: '#999', border: '#444', icon: '?' }
 
@@ -673,7 +698,7 @@ export function GraphCanvas({
           ctx.save()
           ctx.font = `${s.iconSize}px ${ICON_FONT_FAMILY}`
           ctx.fillStyle = '#FFFFFF'
-          ctx.globalAlpha = (hasHighlight && !nodeHighlighted ? DIM_ALPHA : 1) * 0.92
+          ctx.globalAlpha = (nodeDimmed ? DIM_ALPHA : 1) * 0.92
           ctx.fillText(style.icon, sx, sy + 0.5)
           ctx.restore()
         }
@@ -690,17 +715,9 @@ export function GraphCanvas({
           ctx.restore()
         }
 
-        // Search match ring
-        if (d.searchMatchIds?.has(node.id)) {
-          ctx.save()
-          ctx.strokeStyle = SEARCH_MATCH_COLOR
-          ctx.lineWidth = 2
-          ctx.setLineDash([])
-          ctx.beginPath()
-          ctx.arc(sx, sy, s.r + 4, 0, Math.PI * 2)
-          ctx.stroke()
-          ctx.restore()
-        }
+        // No search-match ring. Per spec § Search Behavior, search is
+        // expressed as opacity only (full vs. DIM_ALPHA above) — the
+        // ring vocabulary is reserved for other decoration.
 
         // Selection ring
         if (node.id === d.selectedNodeId) {
@@ -735,7 +752,7 @@ export function GraphCanvas({
         if (vp.scale >= LABEL_ELIDE_SCALE || isActiveNode) {
           // Theme-aware text colour — picks up `--color-text` so labels are
           // legible in both light and dark VS Code themes.
-          ctx.fillStyle = hasHighlight && !nodeHighlighted ? labelDimColor : labelColor
+          ctx.fillStyle = nodeDimmed ? labelDimColor : labelColor
           ctx.fillText(truncateLabel(ctx, node.name, maxLabelW), sx, labelY)
 
           // Summary — elided before name labels
@@ -743,7 +760,7 @@ export function GraphCanvas({
             const summary = d.nodeSummaries.get(node.id)
             if (summary) {
               ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              ctx.globalAlpha = hasHighlight && !nodeHighlighted ? DIM_ALPHA * 0.55 : 0.55
+              ctx.globalAlpha = nodeDimmed ? DIM_ALPHA * 0.55 : 0.55
               ctx.fillStyle = labelMutedColor
               ctx.fillText(summary, sx, labelY + 13)
               ctx.font = LABEL_FONT
@@ -779,6 +796,7 @@ export function GraphCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
       />
     </div>
   )

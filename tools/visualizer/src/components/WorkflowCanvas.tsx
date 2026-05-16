@@ -2,6 +2,10 @@ import React from 'react'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
 import { TreeView } from './TreeView'
 import { GraphView } from './GraphView'
+import type { FilterState, PinState, ViewTransition, FilterDimension } from '../filter/types'
+import { reconcileFilter } from '../filter/reconcile'
+import { loadState, saveState, type PersistedFilter } from '../filter/storage'
+import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface WorkflowCanvasProps {
   ast: TWFFile
@@ -58,7 +62,10 @@ export const NavigationContext = React.createContext<NavigationContextType>({
   navigateTo: () => {},
 })
 
-// Cross-view navigation target
+// Cross-view focus target — carries the visual-focus subject across a
+// focus transition. The filter expansion has already happened in the
+// reconciler by the time the destination view sees this; the view only
+// uses it to scroll/center/flash.
 export interface CrossViewTarget {
   name: string
   defType: string
@@ -66,9 +73,114 @@ export interface CrossViewTarget {
 
 type ActiveView = 'tree' | 'graph'
 
+const DEFAULT_VISIBLE_TYPES_ARRAY = DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type)
+
+function defaultFilter(ast: TWFFile): FilterState {
+  return {
+    selectedFiles: ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
+    visibleTypes: new Set(DEFAULT_VISIBLE_TYPES_ARRAY),
+  }
+}
+
+const DEFAULT_PINS: PinState = { files: false, types: false }
+
+function persistedToFilter(p: PersistedFilter | undefined, fallback: FilterState): FilterState {
+  if (!p) return fallback
+  return {
+    selectedFiles: new Set(p.selectedFiles),
+    visibleTypes: new Set(p.visibleTypes),
+  }
+}
+
+function filterToPersisted(f: FilterState): PersistedFilter {
+  return {
+    selectedFiles: Array.from(f.selectedFiles),
+    visibleTypes: Array.from(f.visibleTypes),
+  }
+}
+
 export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
+  // Load persisted state once on mount. Sets are restored as Set<string>
+  // from their array representation.
+  const persisted = React.useMemo(() => loadState(), [])
+
   const [activeView, setActiveView] = React.useState<ActiveView>('tree')
-  const [pendingNavigation, setPendingNavigation] = React.useState<CrossViewTarget | null>(null)
+
+  // Per-view structural filter state, lifted from each view so the
+  // reconciler at switch time has access to both.
+  const [treeFilter, setTreeFilter] = React.useState<FilterState>(() =>
+    persistedToFilter(persisted.treeFilter, defaultFilter(ast))
+  )
+  const [graphFilter, setGraphFilter] = React.useState<FilterState>(() =>
+    persistedToFilter(persisted.graphFilter, defaultFilter(ast))
+  )
+
+  // Per-view pin state — when a dimension is pinned, the manual reconciler
+  // skips it; focus transitions can still override pins (with a flash).
+  const [treePins, setTreePins] = React.useState<PinState>(() => persisted.treePins ?? DEFAULT_PINS)
+  const [graphPins, setGraphPins] = React.useState<PinState>(() => persisted.graphPins ?? DEFAULT_PINS)
+
+  // Globally-shared search state — one query applied identically to both
+  // views (spec § Search Scope). Search is non-destructive (dim, not hide)
+  // so sharing is safe.
+  const [searchQuery, setSearchQuery] = React.useState<string>(persisted.searchQuery ?? '')
+  const [searchActive, setSearchActive] = React.useState<boolean>(false)
+
+  // Pending-focus target for cross-view nav. Reconciler has already
+  // expanded the destination's filter by the time this is set; the
+  // destination view consumes it for scroll/center/flash only.
+  const [pendingFocus, setPendingFocus] = React.useState<CrossViewTarget | null>(null)
+
+  // Pin-override metadata: which dimensions the most recent focus
+  // transition bypassed in each view. The view consumes this on render
+  // to flash its pin icon, then calls back to clear.
+  const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<FilterDimension>>(new Set())
+  const [graphOverriddenPins, setGraphOverriddenPins] = React.useState<Set<FilterDimension>>(new Set())
+
+  // Persist on every relevant state change. localStorage in standalone;
+  // vscode.setState in webview (via the storage shim).
+  React.useEffect(() => {
+    saveState({
+      treeFilter: filterToPersisted(treeFilter),
+      graphFilter: filterToPersisted(graphFilter),
+      treePins,
+      graphPins,
+      searchQuery,
+    })
+  }, [treeFilter, graphFilter, treePins, graphPins, searchQuery])
+
+  // Stale file cleanup: when the AST changes, remove any selectedFiles
+  // entries that no longer exist in either view. Pins are not touched —
+  // a user who pinned the files dimension still has the dimension pinned
+  // even if its contents shrink to empty.
+  React.useEffect(() => {
+    const allFiles = new Set<string>()
+    for (const def of ast.definitions) {
+      if (def.sourceFile) allFiles.add(def.sourceFile)
+    }
+    const prune = (prev: FilterState): FilterState => {
+      const pruned = new Set([...prev.selectedFiles].filter(f => allFiles.has(f)))
+      if (pruned.size === prev.selectedFiles.size) return prev
+      return { ...prev, selectedFiles: pruned }
+    }
+    setTreeFilter(prune)
+    setGraphFilter(prune)
+  }, [ast.definitions])
+
+  // Focused-file auto-tracking (Tree only, preserves prior behavior).
+  // When the editor's focused file changes, narrow the Tree to it — but
+  // only when the Tree's files dimension is unpinned, since a pinned
+  // user explicitly opted out of tracking.
+  React.useEffect(() => {
+    if (treePins.files) return
+    if (ast.focusedFile) {
+      setTreeFilter(prev => {
+        const next = new Set([ast.focusedFile!])
+        if (prev.selectedFiles.size === 1 && prev.selectedFiles.has(ast.focusedFile!)) return prev
+        return { ...prev, selectedFiles: next }
+      })
+    }
+  }, [ast.focusedFile, treePins.files])
 
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -95,21 +207,76 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
     return { workflows, activities, workers, nexusServices, namespaces }
   }, [ast])
 
-  // Cross-view navigation: "Show in Graph" from tree
+  // The single entry point for all view switches. Reads the transition
+  // intent, runs the reconciler, applies the result, and flips the
+  // active view. See spec § View Transitions.
+  const switchView = React.useCallback((target: ActiveView, transition: ViewTransition) => {
+    // Same-view manual click is a no-op; same-view focus is impossible
+    // by construction (Show in [view] is always cross-view).
+    if (target === activeView && transition.kind === 'manual') return
+
+    const dest = target === 'tree' ? treeFilter : graphFilter
+    const source = target === 'tree' ? graphFilter : treeFilter
+    const destPins = target === 'tree' ? treePins : graphPins
+
+    const { filter: newFilter, overriddenPins } = reconcileFilter(dest, source, destPins, transition)
+
+    if (target === 'tree') {
+      if (newFilter !== dest) setTreeFilter(newFilter)
+      setTreeOverriddenPins(overriddenPins)
+    } else {
+      if (newFilter !== dest) setGraphFilter(newFilter)
+      setGraphOverriddenPins(overriddenPins)
+    }
+
+    if (transition.kind === 'focus') {
+      setPendingFocus({ name: transition.target.name, defType: transition.target.defType })
+    }
+
+    setActiveView(target)
+  }, [activeView, treeFilter, graphFilter, treePins, graphPins])
+
+  // Cross-view focus actions invoked by per-view UI (tree's "Show in
+  // Graph" contextual button, graph's right-click menu / toolbar button).
+  // Look up the target's sourceFile so the reconciler can expand the
+  // file filter if needed.
   const showInGraph = React.useCallback((name: string, defType: string) => {
-    setPendingNavigation({ name, defType })
-    setActiveView('graph')
-  }, [])
+    const def = ast.definitions.find(d => d.name === name && d.type === defType)
+    switchView('graph', {
+      kind: 'focus',
+      target: { name, defType, sourceFile: def?.sourceFile },
+    })
+  }, [ast.definitions, switchView])
 
-  // Cross-view navigation: "Show in Tree" from graph
   const showInTree = React.useCallback((name: string, defType: string) => {
-    setPendingNavigation({ name, defType })
-    setActiveView('tree')
+    const def = ast.definitions.find(d => d.name === name && d.type === defType)
+    switchView('tree', {
+      kind: 'focus',
+      target: { name, defType, sourceFile: def?.sourceFile },
+    })
+  }, [ast.definitions, switchView])
+
+  const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
+
+  const handleSearchChange = React.useCallback((query: string, active: boolean) => {
+    setSearchQuery(query)
+    setSearchActive(active)
   }, [])
 
-  const clearPendingNavigation = React.useCallback(() => {
-    setPendingNavigation(null)
+  const clearTreeOverriddenPins = React.useCallback(() => {
+    setTreeOverriddenPins(prev => prev.size === 0 ? prev : new Set())
   }, [])
+  const clearGraphOverriddenPins = React.useCallback(() => {
+    setGraphOverriddenPins(prev => prev.size === 0 ? prev : new Set())
+  }, [])
+
+  // When the Tree's file filter narrows to exactly one file, open it in
+  // the editor (VS Code webview behavior).
+  React.useEffect(() => {
+    if (treeFilter.selectedFiles.size === 1 && onOpenFile) {
+      onOpenFile(treeFilter.selectedFiles.values().next().value!)
+    }
+  }, [treeFilter.selectedFiles, onOpenFile])
 
   return (
     <DefinitionContext.Provider value={context}>
@@ -117,13 +284,13 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
         <div className="tab-bar">
           <button
             className={`tab-bar-btn ${activeView === 'tree' ? 'active' : ''}`}
-            onClick={() => setActiveView('tree')}
+            onClick={() => switchView('tree', { kind: 'manual' })}
           >
             Tree
           </button>
           <button
             className={`tab-bar-btn ${activeView === 'graph' ? 'active' : ''}`}
-            onClick={() => setActiveView('graph')}
+            onClick={() => switchView('graph', { kind: 'manual' })}
           >
             Graph
           </button>
@@ -132,17 +299,34 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
         {activeView === 'tree' ? (
           <TreeView
             ast={ast}
-            onOpenFile={onOpenFile}
             onShowInGraph={showInGraph}
-            pendingNavigation={pendingNavigation}
-            onNavigationConsumed={clearPendingNavigation}
+            filter={treeFilter}
+            onFilterChange={setTreeFilter}
+            pins={treePins}
+            onPinsChange={setTreePins}
+            searchQuery={searchQuery}
+            searchActive={searchActive}
+            onSearchChange={handleSearchChange}
+            pendingFocus={pendingFocus}
+            onFocusConsumed={clearPendingFocus}
+            overriddenPins={treeOverriddenPins}
+            onOverriddenPinsConsumed={clearTreeOverriddenPins}
           />
         ) : (
           <GraphView
             ast={ast}
             onShowInTree={showInTree}
-            pendingNavigation={pendingNavigation}
-            onNavigationConsumed={clearPendingNavigation}
+            filter={graphFilter}
+            onFilterChange={setGraphFilter}
+            pins={graphPins}
+            onPinsChange={setGraphPins}
+            searchQuery={searchQuery}
+            searchActive={searchActive}
+            onSearchChange={handleSearchChange}
+            pendingFocus={pendingFocus}
+            onFocusConsumed={clearPendingFocus}
+            overriddenPins={graphOverriddenPins}
+            onOverriddenPinsConsumed={clearGraphOverriddenPins}
           />
         )}
       </div>
