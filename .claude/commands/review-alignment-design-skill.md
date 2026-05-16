@@ -2,7 +2,7 @@
 
 This command answers: "does the design skill accurately and completely document what the parser actually accepts, emits, and rejects?"
 
-The parser is the ground truth — not `LANGUAGE_SPEC.md`. The spec and parser are kept in sync separately via `/project:review-alignment-parser`. The skill must reflect reality: what the parser parses, what errors it emits, what the resulting AST means.
+The parser is the ground truth — not `tools/spec/sections/`. The spec and parser are kept in sync separately via `/project:review-alignment-parser`. The skill must reflect reality: what the parser parses, what errors it emits, what the resulting AST means.
 
 Skill craft and structure belong in `/project:review-quality-skill`. This command is solely alignment: does the skill document everything the parser provides?
 

@@ -109,7 +109,7 @@ To revise an existing `.twf` file: run `twf symbols` to understand current struc
 
 ## TWF Syntax
 
-Full grammar: [`LANGUAGE_SPEC.md`](../../../tools/lsp/LANGUAGE_SPEC.md). Quick reference: [`notation-reference.md`](./reference/notation-reference.md). Examples: [`notation-examples.md`](./reference/notation-examples.md). Common errors: [`common-errors.md`](./reference/common-errors.md).
+Full grammar: [`tools/spec/sections/`](../../../tools/spec/sections/) (or run `twf spec` for the concatenated view; `twf spec --list` for slugs). Quick reference: [`notation-reference.md`](./reference/notation-reference.md). Examples: [`notation-examples.md`](./reference/notation-examples.md). Common errors: [`common-errors.md`](./reference/common-errors.md).
 
 All `.twf` must pass `twf check` before presenting to user. Activity bodies are free-form pseudocode — detail level depends on how obvious the behavior is (see [notation-examples.md](./reference/notation-examples.md#activity-body-detail)).
 

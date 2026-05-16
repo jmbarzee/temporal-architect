@@ -5,6 +5,9 @@ A DSL (`.twf`) and toolchain for designing, visualizing, and code-generating Tem
 ## Project Layout
 
 ```
+tools/spec/             Canonical TWF language specification (root of dep graph)
+  sections/             Per-topic markdown files (NN-slug.md)
+  spec.go               //go:embed sections/*.md + Sections/Get/All API
 tools/lsp/              Go parser, resolver, validator, LSP server
   parser/token/         Token types and lexer vocabulary
   parser/lexer/         Indentation-aware lexer
@@ -12,12 +15,13 @@ tools/lsp/              Go parser, resolver, validator, LSP server
   parser/ast/           AST node types, JSON serialization, walker
   parser/resolver/      Name resolution (string refs → pointers)
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
-  cmd/twf/              CLI binary (check, parse, symbols, lsp)
+  cmd/twf/              CLI binary (check, parse, symbols, spec, lsp)
 tools/visualizer/       React + TypeScript webview (Tree View, Graph View)
 tools/orchestrator/     Temporal workflow spec for automated dev-cycle
 packages/               VS Code / Cursor extension
 skills/                 AI skill definitions (design, author-go)
 changes/                Ephemeral coordination files (REVISIONS + CHANGES per component)
+go.work                 Workspace wiring tools/lsp + tools/spec as sibling modules
 ```
 
 ## Project Status
@@ -35,7 +39,7 @@ The current revision plan is tracked in [`AST_REVISIONS.md`](./AST_REVISIONS.md)
 Changes propagate downstream along this graph. Each edge has a named contract:
 
 ```
-DSL grammar (tools/lsp/LANGUAGE_SPEC.md)
+DSL grammar (tools/spec/sections/*.md)
   └─► Parser (tools/lsp/)
         │  contract: token types, AST node types, resolver error model
         ├─► LSP Server (tools/lsp/internal/server/)
@@ -43,12 +47,14 @@ DSL grammar (tools/lsp/LANGUAGE_SPEC.md)
         ├─► Visualizer (tools/visualizer/)
         │     contract: JSON output of `twf parse` and `twf symbols`
         ├─► Skill: Design (skills/design/)
-        │     contract: DSL syntax and semantics as in LANGUAGE_SPEC.md
+        │     contract: DSL syntax and semantics as in tools/spec/sections/
         │     └─► Skill: Author-Go (skills/author-go/)
         │           contract: Design skill semantics + Temporal Go SDK mapping
         └─► VS Code Extension (packages/vscode/)
               contract: LSP protocol responses + JSON output
 ```
+
+The spec is consumed three ways: (1) as embedded content via `twf spec [--list|<slug>]`, (2) as files in `tools/spec/sections/` for skill prompts and review commands, and (3) as the importable Go package `github.com/jmbarzee/temporal-skills/tools/spec`.
 
 When a layer changes, the contracts it exposes determine what needs to update downstream. AST field renames and JSON schema changes are the most common sources of cascading work.
 
@@ -66,7 +72,7 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 | `review-quality-visualizer-spec` | Visualizer — product and UX against spec |
 | `review-quality-skill` | Single skill — craft, focus, and information density |
 | **Alignment Reviews** | |
-| `review-alignment-parser` | Align parser implementation to `LANGUAGE_SPEC.md` |
+| `review-alignment-parser` | Align parser implementation to `tools/spec/sections/` |
 | `review-alignment-parser-visualizer` | Align visualizer to parser JSON contract |
 | `review-alignment-visualizer` | Align visualizer implementation to visualizer spec |
 | `review-alignment-design-skill` | Align design skill to parser (constructs, errors, AST) |

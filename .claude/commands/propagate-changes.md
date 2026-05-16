@@ -11,7 +11,7 @@ This command answers: "changes were made — what else needs to review and updat
 Changes propagate along this graph. Each edge has a contract type:
 
 ```
-DSL grammar (LANGUAGE_SPEC.md)
+DSL grammar (tools/spec/sections/*.md)
   └─► Parser (tools/lsp/)
         │  Grammar → changes/dsl/ triggers: review-alignment-design-skill
         │  Schema  → changes/parser/ triggers: review-quality-visualizer, review-quality-visualizer-spec

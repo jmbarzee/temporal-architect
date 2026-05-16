@@ -30,7 +30,7 @@ Each component maps to a directory scope, review commands, and downstream edges:
 
 | Component | Scope | Quality Review | Alignment Review(s) | Downstream |
 |-----------|-------|----------------|---------------------|------------|
-| `dsl` | `tools/lsp/LANGUAGE_SPEC.md` | `review-quality-dsl-spec` | — | parser |
+| `dsl` | `tools/spec/sections/` | `review-quality-dsl-spec` | — | parser |
 | `parser` | `tools/lsp/` | `review-quality-parser` | `review-alignment-parser` | visualizer, design-skill, vscode |
 | `visualizer-spec` | `tools/visualizer/spec/` | `review-quality-visualizer-spec` | — | visualizer |
 | `visualizer` | `tools/visualizer/` (minus spec/) | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — |

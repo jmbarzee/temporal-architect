@@ -45,4 +45,4 @@
 | `namespace name:` | Namespace definition (deployment with options) |
 | `nexus endpoint Name` (in namespace) | Nexus endpoint instantiation with task_queue |
 
-Full grammar: [`LANGUAGE_SPEC.md`](../../../tools/lsp/LANGUAGE_SPEC.md).
+Full grammar: [`tools/spec/sections/`](../../../tools/spec/sections/) (or run `twf spec`).

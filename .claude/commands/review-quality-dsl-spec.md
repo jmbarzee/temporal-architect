@@ -7,7 +7,7 @@ This review asks "does the DSL express Temporal well?" — not "does the parser 
 ## Context
 
 Before starting, read:
-- `tools/lsp/LANGUAGE_SPEC.md` — the current formal grammar and semantics (the artifact under review)
+- `tools/spec/sections/*.md` — the current formal grammar and semantics (the artifact under review). The whole spec can also be dumped via `twf spec`; individual sections via `twf spec <slug>`.
 - `AST_REVISIONS.md` — language changes in flight; don't re-report what's already planned
 - All existing files in `changes/dsl/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
 
@@ -43,7 +43,7 @@ Use the **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowl
 
 Use sub-agents in parallel:
 - **Temporal primitives agent**: Use the Temporal docs MCP server to enumerate Temporal's primitives, patterns, and SDK concepts. Build an inventory: for each concept, note its name, purpose, and any important nuances (e.g., update vs. signal semantics).
-- **DSL agent**: Read `tools/lsp/LANGUAGE_SPEC.md` in full. Build a parallel inventory: for each DSL construct, note its syntax, semantics, and what Temporal concept it maps to.
+- **DSL agent**: Read every file under `tools/spec/sections/` in canonical order (or run `twf spec` for the concatenated view). Build a parallel inventory: for each DSL construct, note its syntax, semantics, and what Temporal concept it maps to.
 
 ### Phase 2: Catalog
 

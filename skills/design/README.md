@@ -10,7 +10,7 @@
 - Does not: generate Go code (that's `author-go`), implement the parser, or modify the DSL
 
 **Authoritative references:**
-- `tools/lsp/LANGUAGE_SPEC.md` — DSL ground truth; consult for any syntax or construct question
+- `tools/spec/sections/` — DSL ground truth; consult for any syntax or construct question (also `twf spec` / `twf spec <slug>`)
 - Temporal docs MCP server — consult for Temporal primitive semantics before making design decisions
 
 **Entry point:** `SKILL.md` → `reference/` on demand → `topics/` for worked examples

@@ -20,6 +20,7 @@ Commands:
   parse     Output AST as JSON
   symbols   List workflows and activities
   deps      Show dependency graph
+  spec      Print the embedded TWF language specification
   lsp       Start the language server (stdio)
   help      Show this help
 
@@ -30,6 +31,8 @@ Examples:
   twf check workflow.twf
   twf parse workflow.twf
   twf symbols workflow.twf
+  twf spec --list
+  twf spec workflows
   twf lsp
 `
 
@@ -50,6 +53,8 @@ func main() {
 		os.Exit(symbolsCommand(os.Args[2:]))
 	case "deps":
 		os.Exit(depsCommand(os.Args[2:]))
+	case "spec":
+		os.Exit(specCommand(os.Args[2:]))
 	case "lsp":
 		lspCommand()
 	case "help", "--help", "-h":

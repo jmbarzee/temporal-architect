@@ -53,7 +53,7 @@ A skill is a context budget. Every word is an expenditure. These lenses evaluate
 - Run `twf check` against all `.twf` examples: do they pass?
 
 ### 7. Grounding
-- Are authoritative references (LANGUAGE_SPEC.md, Temporal docs MCP) used instead of relying on trained knowledge?
+- Are authoritative references (`tools/spec/sections/`, Temporal docs MCP) used instead of relying on trained knowledge?
 - Are there areas where the skill trusts the AI's memory for something that should be looked up?
 
 ### 8. Scope & Handoff

@@ -11,6 +11,6 @@
 
 **Authoritative references:**
 - Temporal docs MCP server — consult for current Go SDK API, especially for patterns that change across SDK versions
-- `tools/lsp/LANGUAGE_SPEC.md` — source of truth for DSL construct semantics when mapping to Go
+- `tools/spec/sections/` — source of truth for DSL construct semantics when mapping to Go (also `twf spec` / `twf spec <slug>`)
 
 **Entry point:** `SKILL.md` → `reference/` for specific construct mappings → consult Temporal docs MCP for SDK specifics

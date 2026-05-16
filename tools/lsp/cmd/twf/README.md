@@ -141,6 +141,38 @@ activity ProcessPayment(order: Order) -> (Payment)
 
 ---
 
+### `twf spec`
+
+Print the embedded TWF language specification. The spec content is baked
+into the binary at build time from `tools/spec/sections/`, so the version
+the CLI prints is guaranteed to match the parser version that validates
+your files.
+
+```bash
+twf spec               # full spec (all sections in canonical order)
+twf spec --list        # list slugs and titles
+twf spec workflows     # one section by slug
+```
+
+**Slugs** are the filenames in `tools/spec/sections/` minus the numeric
+prefix and the `.md` extension (e.g. `01-workflows.md` → `workflows`).
+
+**Examples:**
+```bash
+$ twf spec --list
+SLUG                    TITLE
+overview                Overview
+workflows               Workflow Definitions
+...
+
+$ twf spec nexus | head -3
+# Nexus Service Definitions
+
+Nexus services define typed operation groups for cross-namespace communication:
+```
+
+---
+
 ## Use Cases
 
 ### CI/CD Validation
@@ -221,4 +253,4 @@ The CLI uses the same parser and resolver as the LSP server, ensuring consistent
 
 ## See Also
 
-- [Language Specification](../../LANGUAGE_SPEC.md) - TWF syntax reference
+- [Language Specification](../../../spec/) - TWF syntax reference (also embedded in the binary; print with `twf spec`)
