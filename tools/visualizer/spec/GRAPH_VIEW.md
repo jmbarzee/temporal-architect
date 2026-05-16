@@ -314,14 +314,50 @@ A button (or automatic behavior on level change) that adjusts the viewport to fr
 
 ---
 
-## Graph Toolbar
+## Overlay Layout
 
-A slim bar below the filter bar and above the errors header. Contains graph-specific state and quick-access controls that don't belong in the filter bar:
+Unlike the Tree view, which stacks its filter bar, toolbar, and errors header above its scrollable content, the Graph view renders these three elements as a **single floating overlay layer** above the canvas. The graph canvas itself fills the full viewport behind them.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ filter bar     [pinning]  [graph toolbar]            │ │  ← overlay
+│ │ errors header (when present)                          │ │     (translucent or
+│ └──────────────────────────────────────────────────────┘ │      with backdrop)
+│                                                          │
+│              ▲                                           │
+│        ┌─────┴─────┐                                     │  ← canvas
+│        │ Worker A  │  ←──┐                               │     (fills full
+│        └─────┬─────┘     │                               │      viewport)
+│              ▼           │                               │
+│        ┌───────────┐   ┌─┴─────────┐                     │
+│        │ Workflow  │──▶│ Activity  │                     │
+│        └───────────┘   └───────────┘                     │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Why an Overlay
+
+Two reasons:
+
+1. **More canvas real estate.** The graph is a spatial workspace; every pixel of vertical space matters. Stacking three bars eats ~120px of viewport height for what is essentially configuration UI.
+2. **Bleed-under is an affordance.** When the user zooms in, graph content extends visibly under the edges of the overlay. This serves as a passive cue that there's more content out there — invite to pan or zoom out. It also matches the convention of spatial editors (Figma, Sketch, design tools) where toolbars float over an infinite canvas.
+
+### Visual Treatment
+
+- The overlay has a semi-transparent backdrop (matched to the surface color of the rest of the visualizer, with backdrop blur where available) so canvas content underneath remains visible but the controls stay legible.
+- The overlay never expands to occupy more than ~30% of the viewport height. If the errors header would push past that, it becomes internally scrollable.
+- Interaction over the overlay does not pan or zoom the canvas — mouse events on overlay controls are consumed by the controls.
+- The overlay does not occlude the bottom of the viewport. The Control Panel (§ Control Panel) anchors to its existing position (typically bottom-right).
+
+### Graph Toolbar Contents
+
+The graph toolbar — rendered as a row within the overlay, just below the filter bar — contains graph-specific state and quick-access controls that don't belong in the filter bar:
 
 - **Node / edge count** — `N nodes, M edges` (counts the currently visible/graduated set). Informational; updates reactively with filters.
 - **Fit** — fit the viewport to all visible nodes. Keyboard shortcut: `F`.
 - **Play / Pause** — quick-access toggle for simulation ticking. Same as the Play/Pause in the Control Panel; both are in sync. Keyboard shortcut: `Space`.
-- **Show in Tree** — contextual; appears only when a node is selected. Navigates to that node in the Tree View.
+- **Show in Tree** — contextual; appears only when a node is selected. Invokes the `focus(target)` view transition (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions).
 
 The toolbar is always visible (not collapsible). It is compact — a single row, right-aligned controls.
 
@@ -459,22 +495,31 @@ This feedback loop embodies two design principles:
 
 ## Errors Header
 
-The graph view surfaces parse errors using the shared error handling pattern. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Error Handling. The error bar appears between the graph toolbar and the graph canvas. The canvas still renders whatever valid nodes and edges exist in the partial AST.
+The graph view surfaces parse errors using the shared error handling pattern. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Error Handling. The errors bar renders within the floating overlay (see § Overlay Layout), beneath the graph toolbar. The canvas still renders whatever valid nodes and edges exist in the partial AST.
 
 ---
 
 ## Search and Filtering
 
-The graph view uses the unified filter bar shared with the tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar). All three filter dimensions — source file, definition type, and name search — work identically in both views, with independent state per view.
+The graph view uses the unified filter bar shared with the tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar). The two structural filter dimensions (files, types) are per-view and reconciled on every view switch; the search query is globally shared.
 
 The graph adds one graph-specific behavior: **edge graduation** (see § Type Filtering above). When a type is toggled off, edges graduate across hidden layers rather than simply disappearing. This means the graph always shows a coherent structure regardless of which types are visible.
 
+### Search Behavior
+
+Search is **non-destructive**: it never removes nodes from the visible set. Instead, when a query is active:
+
+- **Matching nodes** (visible AND name contains the query) render at full opacity.
+- **Non-matching visible nodes** dim to ~30% opacity. Their edges dim correspondingly.
+
+No ring, halo, or other decorative highlight is used to mark matches — full-vs-dim opacity is the entire visual treatment. (Ring decoration is reserved for other uses.)
+
 ### Search and Hidden Matches
 
-Search matches against **all** nodes, not just visible ones. The results are split:
+Search matches against **all** nodes, including those excluded by structural filters. The results split:
 
-- **Visible matches** — nodes that match the search AND pass the current type and file filters. These are highlighted in the graph.
-- **Hidden matches** — nodes that match the search but are excluded by filters (toggled-off type, filtered file). These are NOT shown in the graph.
+- **Visible matches** — nodes that match the search AND pass the current type and file filters. Rendered at full opacity in the graph.
+- **Hidden matches** — nodes that match the search but are excluded by structural filters (toggled-off type, filtered file). Not rendered in the graph.
 
 Hidden match counts appear as **badge overlays** on the filter controls that are hiding them:
 - If 3 matching workflows are hidden because the Workflow type toggle is off, the Wf toggle shows a badge: "3".

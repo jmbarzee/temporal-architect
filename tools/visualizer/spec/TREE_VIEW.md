@@ -59,11 +59,11 @@ src/
 
 ## Header and filtering
 
-The tree view uses the unified filter bar described in [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar. The bar contains file chips, type toggles, and a search input — visually identical to the graph view's filter bar, with independent state.
+The tree view uses the unified filter bar described in [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar. The bar contains file chips (with pin), type toggles (with pin), and a search input — visually identical to the graph view's filter bar. The structural filter dimensions (files, types) are per-view and reconciled on every view switch; the search query is globally shared.
 
 Tree-view-specific behaviors:
 - Toggling a type off hides all definitions of that type from the list (no edge graduation — that's graph-specific).
-- Search filters the visible definitions by name (case-insensitive substring match). Non-matching definitions are hidden, not dimmed.
+- Search is **non-destructive**: non-matching definition blocks dim to reduced opacity; matching definitions stay at full opacity. An `N of M` match-count indicator appears in the filter bar while a query is active. Press `n` / `N` to jump focus between matches (see § Keyboard Navigation).
 - When exactly one file chip is selected, the VS Code webview sends an `openFile` message to focus that file in the editor.
 
 ### Errors header
@@ -309,6 +309,7 @@ The tree view supports keyboard navigation following the same model as VS Code's
 | **Enter** | Toggle expand/collapse on focused block |
 | **Home / End** | Move focus to first / last visible block |
 | **/** or **Ctrl+F** | Open search bar and focus the search input |
+| **n / N** | Jump focus to next / previous search match (only when a search query is active) |
 | **Escape** | Close search bar (if open), clear selection, or close any open popover |
 | **Tab** | Move focus between header controls (file filter, type toggles, search) and the block list |
 
