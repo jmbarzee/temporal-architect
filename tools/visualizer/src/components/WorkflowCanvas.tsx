@@ -8,8 +8,23 @@ import { loadState, saveState, type PersistedFilter } from '../filter/storage'
 import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface WorkflowCanvasProps {
+  /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
+   * payload of the envelope) or constructed by a host application. */
   ast: TWFFile
+  /** Invoked when the user narrows the file filter to exactly one file —
+   * a hint to host applications (e.g. VS Code) to focus that file in their
+   * editor. Optional; ignored when not provided. */
   onOpenFile?: (file: string) => void
+  /** Invoked when the user interacts with the canvas in a way that implies
+   * "give focus back to the editor" (currently any click inside the canvas).
+   * Host applications wire this to whatever "refocus editor" means in their
+   * environment. Optional; no-op when not provided. */
+  onRefocus?: () => void
+  /** Optional className applied to the outer container; appended after the
+   * built-in `view-shell` class so consumers can layer overrides. */
+  className?: string
+  /** Optional inline style applied to the outer container. */
+  style?: React.CSSProperties
 }
 
 export interface DefinitionContext {
@@ -99,7 +114,7 @@ function filterToPersisted(f: FilterState): PersistedFilter {
   }
 }
 
-export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ ast, onOpenFile, onRefocus, className, style }: WorkflowCanvasProps) {
   // Load persisted state once on mount. Sets are restored as Set<string>
   // from their array representation.
   const persisted = React.useMemo(() => loadState(), [])
@@ -278,9 +293,13 @@ export function WorkflowCanvas({ ast, onOpenFile }: WorkflowCanvasProps) {
     }
   }, [treeFilter.selectedFiles, onOpenFile])
 
+  // Compose outer container className/style so consumers can layer overrides
+  // without losing the built-in layout class.
+  const shellClassName = className ? `view-shell ${className}` : 'view-shell'
+
   return (
     <DefinitionContext.Provider value={context}>
-      <div className="view-shell">
+      <div className={shellClassName} style={style} onClick={onRefocus}>
         <div className="tab-bar">
           <button
             className={`tab-bar-btn ${activeView === 'tree' ? 'active' : ''}`}

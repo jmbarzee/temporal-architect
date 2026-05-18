@@ -1,23 +1,66 @@
 {
-  "name": "twf-visualizer",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@temporal-skills/visualizer",
+  "version": "0.3.2",
+  "description": "React component for visualizing Temporal Workflow Format (.twf) ASTs as an interactive tree and force-directed graph.",
   "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/jmbarzee/temporal-skills/tree/main/tools/visualizer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmbarzee/temporal-skills",
+    "directory": "tools/visualizer"
+  },
+  "bugs": {
+    "url": "https://github.com/jmbarzee/temporal-skills/issues"
+  },
+  "keywords": [
+    "temporal",
+    "workflow",
+    "twf",
+    "visualizer",
+    "react",
+    "ast"
+  ],
+  "main": "./dist-lib/lib.js",
+  "module": "./dist-lib/lib.js",
+  "types": "./dist-lib/lib.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-lib/lib.d.ts",
+      "import": "./dist-lib/lib.js"
+    },
+    "./styles.css": "./dist-lib/styles.css"
+  },
+  "files": [
+    "dist-lib",
+    "README.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "build:webview": "vite build --config vite.webview.config.ts",
-    "preview": "vite preview"
+    "build:lib": "vite build --config vite.lib.config.ts",
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build:lib"
   },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.6.3",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vite-plugin-dts": "^5.0.0"
   }
 }

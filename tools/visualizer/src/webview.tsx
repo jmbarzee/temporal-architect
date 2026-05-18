@@ -99,9 +99,12 @@ function WebviewApp() {
   }
 
   return (
-    <div onClick={requestRefocus} style={{ height: '100%' }}>
-      <WorkflowCanvas ast={ast} onOpenFile={openFile} />
-    </div>
+    <WorkflowCanvas
+      ast={ast}
+      onOpenFile={openFile}
+      onRefocus={requestRefocus}
+      style={{ height: '100%' }}
+    />
   )
 }
 

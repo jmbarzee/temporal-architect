@@ -19,13 +19,34 @@ export interface FileError {
   stderr?: string
 }
 
-// Summary counts emitted by the parser
+// Diagnostic emitted by the parser/resolver/validator. Matches the wire
+// shape produced by `twf parse` and `twf <cmd> --json`. See
+// tools/lsp/cmd/twf/twf.schema.json for the authoritative schema.
+export type DiagnosticSeverity = 'error' | 'warning'
+export type DiagnosticKind = 'parse' | 'resolve' | 'validate'
+
+export interface Diagnostic {
+  severity: DiagnosticSeverity
+  kind: DiagnosticKind
+  code: string
+  file?: string
+  start: Position
+  end: Position
+  message: string
+  name?: string
+}
+
+// Summary counts emitted by the parser, plus rolled-up diagnostic totals.
 export interface SummaryMetadata {
   namespaces: number
   workers: number
   workflows: number
   activities: number
   nexusServices: number
+  // Diagnostic roll-up counts. Populated by the CLI envelope; absent in
+  // contexts that emit only the inner AST.
+  errors?: number
+  warnings?: number
 }
 
 // Top-level file
@@ -34,8 +55,12 @@ export interface TWFFile {
   definitions: Definition[]
   // Added for focused-file visualization
   focusedFile?: string
-  // Per-file parse errors and warnings
+  // Per-file parse errors and warnings (loader-side; pre-dates the
+  // diagnostics envelope and is preserved for backward compatibility).
   errors?: FileError[]
+  // Structured diagnostics emitted by `twf parse`. Present when the AST is
+  // loaded via the JSON envelope; absent when loaded from older shapes.
+  diagnostics?: Diagnostic[]
 }
 
 // Nexus service definition
