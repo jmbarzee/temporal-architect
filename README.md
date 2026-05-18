@@ -26,6 +26,8 @@ A Go binary providing parsing, validation, symbol extraction, and a full LSP ser
 | `twf check <file...>` | Parse and validate `.twf` files, reporting errors |
 | `twf parse <file...>` | Output the AST as JSON (always emits partial AST, even with errors) |
 | `twf symbols <file...>` | List workflows and activities with their signatures |
+| `twf deps <file...>` | Show the dependency graph between definitions |
+| `twf spec [--list \| <slug>]` | Print the embedded TWF language specification |
 | `twf lsp` | Start the language server over stdio |
 
 Options: `--json` (JSON output where applicable), `--lenient` (continue past resolve errors).
@@ -83,11 +85,16 @@ The TWF notation covers the core Temporal feature set:
 ## Repository Structure
 
 ```
-packages/    VS Code / Cursor extension
+packages/         VS Code / Cursor extension
 tools/
-  lsp/       Go parser, resolver, validator, and language server (twf CLI)
-  visualizer/React workflow visualizer (tree view + graph view)
-skills/      AI skill definitions (SKILL.md + reference docs)
+  spec/           Canonical TWF language spec (embedded markdown sections)
+  lsp/            Go parser, resolver, validator, and language server (twf CLI)
+  visualizer/     React workflow visualizer (tree view + graph view)
+  orchestrator/   Temporal workflow spec for the automated dev cycle
+skills/           AI skill definitions (SKILL.md + reference docs)
+scripts/          Build, install, and release helpers
+examples/         Example `.twf` files
+changes/          Ephemeral coordination files for in-flight revisions
 ```
 
 ## Development

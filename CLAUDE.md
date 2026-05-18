@@ -4,24 +4,28 @@ A DSL (`.twf`) and toolchain for designing, visualizing, and code-generating Tem
 
 ## Project Layout
 
+See [README — Repository Structure](./README.md#repository-structure) for the top-level tree. Additional internal detail relevant to working in this repo:
+
 ```
-tools/spec/             Canonical TWF language specification (root of dep graph)
-  sections/             Per-topic markdown files (NN-slug.md)
+tools/spec/
+  sections/             Per-topic markdown files (NN-slug.md) — the canonical grammar
   spec.go               //go:embed sections/*.md + Sections/Get/All API
-tools/lsp/              Go parser, resolver, validator, LSP server
+tools/lsp/
   parser/token/         Token types and lexer vocabulary
   parser/lexer/         Indentation-aware lexer
   parser/parser/        Recursive-descent parser → AST
   parser/ast/           AST node types, JSON serialization, walker
   parser/resolver/      Name resolution (string refs → pointers)
+  parser/validator/     Post-resolution semantic checks
+  parser/deps/          Dependency graph extraction
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
-  cmd/twf/              CLI binary (check, parse, symbols, spec, lsp)
-tools/visualizer/       React + TypeScript webview (Tree View, Graph View)
-tools/orchestrator/     Temporal workflow spec for automated dev-cycle
-packages/               VS Code / Cursor extension
-skills/                 AI skill definitions (design, author-go)
-changes/                Ephemeral coordination files (REVISIONS + CHANGES per component)
-go.work                 Workspace wiring tools/lsp + tools/spec as sibling modules
+  cmd/twf/              CLI binary (check, parse, symbols, deps, spec, lsp)
+scripts/
+  gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
+  install.sh            One-shot installer for the twf CLI + skills
+  version.sh            Release version bump helper
+changes/                Ephemeral coordination files (REVISIONS_NNN + CHANGES_NNN per component)
+go.work                 Workspace wiring tools/lsp, tools/spec, and scripts/gen-skills-manifest
 ```
 
 ## Project Status
@@ -30,9 +34,11 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Breaking changes are expected and welcome.** Do not waste effort on backwards compatibility shims, deprecated field aliases, or migration paths. When a better design emerges, adopt it directly.
 
-**Document breaking changes** in `AST_REVISIONS.md` so the visualizer team can propagate changes to the TypeScript layer. The parser's JSON output is the contract between Go and TypeScript — when it changes, both sides update together.
+**Coordinate breaking changes through the `changes/` directory.** Each component (`changes/dsl/`, `changes/parser/`, `changes/visualizer/`, `changes/orchestrator/`, `changes/design-skill/`, `changes/author-go-skill/`) owns a numbered series of `REVISIONS_NNN.md` (planned work) and `CHANGES_NNN.md` (completed work). The automated dev cycle drives this flow — see the [Development Commands](#development-commands) below, with `/project:dev-cycle` as the entry point and `/project:propagate-changes` for fanning a completed change out to downstream consumers.
 
-The current revision plan is tracked in [`AST_REVISIONS.md`](./AST_REVISIONS.md).
+Long-lived backlog and research docs that aren't per-cycle revisions live at the repo root (e.g. `POSSIBLE_DSL_FEATURES.md`, `VISUALIZER_DEFERRED.md`, `SKILL_IMPROVEMENTS.md`, `issues_blocking_downstream_adoption.md`, `packaging_and_distribution_research.md`).
+
+When the parser's JSON output changes, both the Go and TypeScript sides update together; that contract is what every downstream consumer (visualizer, VS Code extension, skills) reads.
 
 ## Dependency Map
 
@@ -81,6 +87,8 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 | `address-review` | Execute an approved review group (inner loop) |
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
 | `summarize-changes` | Scan `changes/` and produce consolidated report |
+| **Skill Authoring** | |
+| `reflect-skill` | Reflect on a recent task and propose updates to the responsible skill |
 | **Design Ideation** | |
 | `expand-idea` | Expand a one-sentence idea into a full Temporal architecture vision with draft `.twf` |
 

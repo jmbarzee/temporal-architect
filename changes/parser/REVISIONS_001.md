@@ -16,7 +16,7 @@ During design of `tools/orchestrator/dev-cycle.twf`, an `options:` block on a wo
 
 **Files touched:** `tools/lsp/parser/` (likely `parser.go` indentation/DEDENT handling)
 **Change type:** `Internal`
-**Parallelism:** Independent — no other revisions depend on this fix, though ORCHESTRATOR_REVISIONS Group 2 item D9 is blocked by it.
+**Parallelism:** Independent — no other revisions depend on this fix, though `changes/orchestrator/CHANGES_001.md` Group 2 item D9 (deferred re-application of `workflow_execution_timeout`) is blocked by it.
 
 **Specific changes:**
 
