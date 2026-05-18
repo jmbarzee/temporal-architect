@@ -38,19 +38,24 @@ build-lsp:
 		go build -o ../../$(EXT_DIR)/bin/twf$(if $(filter windows,$(GOOS)),.exe) ./cmd/twf
 	@echo "Built twf for $(GOOS)/$(GOARCH)"
 
-## Package the twf binary into a standalone archive for release
+## Package the twf binary into a standalone archive for release.
+## VERSION may be passed with or without a leading "v"; the archive is always
+## named twf-v<X.Y.Z>-<goos>-<goarch>.{tar.gz,zip}.
 ## Usage: make build-twf-archive VERSION=1.2.3 GOOS=darwin GOARCH=arm64
+##        make build-twf-archive VERSION=v1.2.3 GOOS=darwin GOARCH=arm64
 build-twf-archive: build-lsp
 	@mkdir -p dist
-	@ARCHIVE=twf-v$(VERSION)-$(GOOS)-$(GOARCH); \
+	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
+	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
+	ARCHIVE=twf-v$$VER-$(GOOS)-$(GOARCH); \
 	if [ "$(GOOS)" = "windows" ]; then \
 		cp $(EXT_DIR)/bin/twf.exe dist/twf.exe; \
 		cd dist && zip $$ARCHIVE.zip twf.exe && rm twf.exe; \
 	else \
 		cp $(EXT_DIR)/bin/twf dist/twf; \
 		cd dist && tar czf $$ARCHIVE.tar.gz twf && rm twf; \
-	fi
-	@echo "Packaged $$ARCHIVE"
+	fi; \
+	echo "Packaged $$ARCHIVE"
 
 ## Package the skills/ tree into a deterministic release asset.
 ## VERSION may be passed with or without a leading "v"; the archive is always
