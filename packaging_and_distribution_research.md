@@ -24,6 +24,14 @@ Excludes work already covered by
   `temporal-skills.dev`, no hosted MCP, no telemetry sink.
 - **Effort budget weighted toward packaging and publishing**, not
   authoring new content or running services.
+- **Everything publishes via GitHub Actions on a `v*` tag.** Lockstep
+  versioning across every artifact means one tag → one fan-out. The
+  existing `release.yml` is the trunk; every new target is a job in the
+  matrix. Manual `npm publish` / `twine upload` is not a target state.
+- **Brand rename is pending.** Names are chosen but the publishing
+  steps for `@temporal-skills/twf` and `twf-cli` ship **gated**
+  (dry-runnable, guarded behind a `RELEASE=true` env flag) until the
+  rename is settled.
 
 ---
 
@@ -368,16 +376,18 @@ Subsumes the existing `install.sh` for the npm-ecosystem audience
 (which is almost all of it) and is the right shape for the agentic
 runtimes (Claude Desktop, Cursor MCP configs).
 
-#### T2b. `temporal-skills` (or `twf-cli`) on PyPI — bin-wrapper wheels
+#### T2b. `twf-cli` on PyPI — bin-wrapper wheels
 
 Same pattern as biome but as platform-tagged wheels. `pip install
-temporal-skills` produces a `twf` on PATH. Unblocks the spec-builder
-Python project (and any future Python agent).
+twf-cli` produces a `twf` on PATH. Unblocks the spec-builder Python
+project (and any future Python agent).
 
-Supersedes (or alternatively complements) Issue 3 from
-`issues_blocking_downstream_adoption.md` — if `twf skill` is embedded
-(T1a), the skills tarball is no longer strictly needed for programmatic
-Python consumers; they can call `twf skill get design` instead.
+**Decision:** ship the skills tarball *in addition to* T1a embedding
+(per project owner). The two artifacts serve different consumers: the
+tarball is for runtimes/CI that need to read the markdown without
+running the binary (e.g. building prompt libraries, doc tooling); the
+embedded copy is for runtimes that have the binary and want it
+self-describing.
 
 #### T2c. Homebrew tap `jmbarzee/homebrew-twf`
 
@@ -391,17 +401,25 @@ These ride on top of Tier 1+2 and cost very little.
 
 #### T3a. Claude Code plugin marketplace at this repo
 
-Add `.claude-plugin/marketplace.json` at the repo root cataloging two
-plugins:
+Add `.claude-plugin/marketplace.json` at the repo root cataloging a
+**single combined plugin** (`temporal-skills`) that bundles:
 
-- `temporal-design` — bundles `skills/design/`, the relevant
-  `.claude/commands/`, and the MCP server config pointing at `npx -y
-  @temporal-skills/twf mcp`.
-- `temporal-author-go` — bundles `skills/author-go/` and its commands.
+- both skills (`skills/design/`, `skills/author-go/`)
+- the relevant `.claude/commands/`
+- an MCP server entry pointing at `npx -y @temporal-skills/twf mcp`
+  (or the equivalent binary path)
 
-Users install with `/plugin marketplace add jmbarzee/temporal-skills`.
+Users install with:
+
+```
+/plugin marketplace add jmbarzee/temporal-skills
+/plugin install temporal-skills@temporal-skills
+```
+
 The skills, commands, and MCP server we already have *all* become
-addressable from inside Claude Code with no new artifacts.
+addressable from inside Claude Code with no new artifacts. The plugin
+version field in `marketplace.json` is bumped in lockstep with the Git
+tag by `scripts/version.sh`.
 
 #### T3b. Rename/symlink `CLAUDE.md` → `AGENTS.md`
 
