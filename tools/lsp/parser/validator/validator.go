@@ -41,6 +41,48 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("validation error at %d:%d: %s", e.Line, e.Column, e.Msg)
 }
 
+// Code returns the symbolic, stable identifier for this validation kind.
+// Mirrors resolver.ResolveError.Code for the same downstream tooling contract.
+func (e *Error) Code() string { return e.Kind.String() }
+
+// String returns the symbolic name of a validator ErrorKind
+// (e.g. "MISSING_TASK_QUEUE"). Part of the diagnostic contract.
+func (k ErrorKind) String() string {
+	switch k {
+	case ErrEmptyWorkflow:
+		return "EMPTY_WORKFLOW"
+	case ErrEmptyActivity:
+		return "EMPTY_ACTIVITY"
+	case ErrEmptyWorker:
+		return "EMPTY_WORKER"
+	case ErrEmptyNamespace:
+		return "EMPTY_NAMESPACE"
+	case ErrMissingTaskQueue:
+		return "MISSING_TASK_QUEUE"
+	case ErrMissingEndpointTaskQueue:
+		return "MISSING_ENDPOINT_TASK_QUEUE"
+	case ErrUncoveredWorkflow:
+		return "UNCOVERED_WORKFLOW"
+	case ErrUncoveredActivity:
+		return "UNCOVERED_ACTIVITY"
+	case ErrUncoveredService:
+		return "UNCOVERED_SERVICE"
+	case ErrUninstantiatedWorker:
+		return "UNINSTANTIATED_WORKER"
+	case ErrTaskQueueIdentical:
+		return "TASK_QUEUE_IDENTICAL"
+	case ErrTaskQueueMismatch:
+		return "TASK_QUEUE_MISMATCH"
+	case ErrExplicitRoutingMismatch:
+		return "EXPLICIT_ROUTING_MISMATCH"
+	case ErrImplicitRoutingMismatch:
+		return "IMPLICIT_ROUTING_MISMATCH"
+	case ErrEndpointServiceLinkage:
+		return "ENDPOINT_SERVICE_LINKAGE"
+	}
+	return "UNKNOWN"
+}
+
 type validationCtx struct {
 	workflows     map[string]*ast.WorkflowDef
 	activities    map[string]*ast.ActivityDef

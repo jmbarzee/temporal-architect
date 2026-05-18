@@ -37,13 +37,13 @@ func publishDiagnostics(context *glsp.Context, doc *Document) error {
 	var diags []protocol.Diagnostic
 
 	for _, pe := range doc.ParseErrs {
-		diags = appendDiag(diags, pe.Line, pe.Column, "", pe.Msg)
+		diags = appendDiag(diags, pe.Line, pe.Column, "", pe.Code(), pe.Msg)
 	}
 	for _, re := range doc.ResolveErrs {
-		diags = appendDiag(diags, re.Line, re.Column, re.Severity, re.Msg)
+		diags = appendDiag(diags, re.Line, re.Column, re.Severity, re.Code(), re.Msg)
 	}
 	for _, ve := range doc.ValidateErrs {
-		diags = appendDiag(diags, ve.Line, ve.Column, ve.Severity, ve.Msg)
+		diags = appendDiag(diags, ve.Line, ve.Column, ve.Severity, ve.Code(), ve.Msg)
 	}
 
 	if diags == nil {
@@ -57,17 +57,24 @@ func publishDiagnostics(context *glsp.Context, doc *Document) error {
 	return nil
 }
 
-func appendDiag(diags []protocol.Diagnostic, line, column int, severity, msg string) []protocol.Diagnostic {
+// appendDiag appends an LSP diagnostic with the parser's symbolic code in the
+// LSP `Code` field. Editor clients can use it for hover-help routing,
+// suppress-by-code workflows, and external rule documentation links.
+func appendDiag(diags []protocol.Diagnostic, line, column int, severity, code, msg string) []protocol.Diagnostic {
 	sev := protocol.DiagnosticSeverityError
 	if severity == "warning" {
 		sev = protocol.DiagnosticSeverityWarning
 	}
-	return append(diags, protocol.Diagnostic{
+	d := protocol.Diagnostic{
 		Range:    posToRange(line, column),
 		Severity: ptrTo(sev),
 		Source:   ptrTo("twf"),
 		Message:  msg,
-	})
+	}
+	if code != "" {
+		d.Code = &protocol.IntegerOrString{Value: code}
+	}
+	return append(diags, d)
 }
 
 // lineRange converts 1-based start/end lines to an LSP 0-based range spanning those lines.

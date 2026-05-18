@@ -2,45 +2,57 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 )
 
-// parseCommand outputs the AST as JSON.
-// Always outputs partial AST even with errors (lenient by default).
-// Errors go to stderr, AST goes to stdout.
+// parseCommand emits the canonical JSON envelope for one or more .twf files.
+// It is always JSON; there is no text mode. Diagnostics travel inside the
+// envelope (not on stderr) and the exit code is 0 even when the AST is
+// partial — downstream tools rely on getting both the partial AST and the
+// diagnostics together.
+//
+// On hard I/O failures (e.g. file not found), it prints the error to stderr
+// and exits non-zero.
 func parseCommand(args []string) int {
-	fs := flag.NewFlagSet("parse", flag.ContinueOnError)
-	if err := fs.Parse(args); err != nil {
-		return 1
-	}
-
-	paths := fs.Args()
-	if len(paths) == 0 {
+	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, "usage: twf parse <file...>")
 		return 1
 	}
 
-	// Force lenient mode - always emit partial AST
-	file, errs, _ := parseFiles(paths, true)
-
-	// Output errors to stderr (but don't fail - we still emit JSON)
-	printErrors(errs)
-
-	if file == nil {
-		fmt.Println("null")
+	file, diags, err := parseFiles(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		return 1
 	}
 
-	// Output AST to stdout even if there were errors
-	data, err := json.MarshalIndent(file, "", "  ")
+	env := Envelope{
+		Summary:     summarize(file, diags),
+		Diagnostics: ensureSlice(diags),
+	}
+
+	// Marshal the AST through its own MarshalJSON so we get the existing
+	// `definitions` shape, then splice it into the envelope under the same
+	// top-level "definitions" key the visualizer already consumes.
+	fileBytes, err := json.Marshal(file)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "json marshal error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "marshal AST: %v\n", err)
+		return 1
+	}
+	var inner struct {
+		Definitions json.RawMessage `json:"definitions"`
+	}
+	if err := json.Unmarshal(fileBytes, &inner); err != nil {
+		fmt.Fprintf(os.Stderr, "splice AST: %v\n", err)
+		return 1
+	}
+	env.Definitions = inner.Definitions
+
+	data, err := json.MarshalIndent(env, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "marshal envelope: %v\n", err)
 		return 1
 	}
 	fmt.Println(string(data))
-
-	// Exit 0 even with parse/resolve errors - the visualizer needs the partial AST
 	return 0
 }

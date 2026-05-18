@@ -15,13 +15,20 @@ type resolvedRefJSON struct {
 	Column int    `json:"column"`
 }
 
-// FileSummary provides a count of each definition type in the file.
+// FileSummary provides a count of each definition type in the file plus
+// roll-up totals for diagnostics emitted while analyzing it.
 type FileSummary struct {
 	Namespaces    int `json:"namespaces"`
 	Workers       int `json:"workers"`
 	Workflows     int `json:"workflows"`
 	Activities    int `json:"activities"`
 	NexusServices int `json:"nexusServices"`
+
+	// Errors and Warnings are aggregate diagnostic counts injected by the
+	// CLI layer after analysis. The AST package itself does not populate
+	// them — they default to zero in the raw parser output.
+	Errors   int `json:"errors,omitempty"`
+	Warnings int `json:"warnings,omitempty"`
 }
 
 // FileJSON is the JSON-serializable representation of a File.

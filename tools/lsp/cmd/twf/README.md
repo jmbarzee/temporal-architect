@@ -60,84 +60,163 @@ go install ./cmd/twf
 
 ### `twf check`
 
-Parse and validate TWF files, reporting any errors.
+Validate TWF files. Prints diagnostics to stderr as human-readable text and
+exits non-zero if any diagnostic has severity `error`. **Text only** — for
+structured diagnostics, use `twf parse` (see below).
 
 ```bash
 twf check workflow.twf
 twf check *.twf
-twf check --lenient workflow.twf  # Continue even with resolve errors
+twf check --lenient workflow.twf   # exit 0 even on errors (warnings still print)
 ```
 
-**Output:**
-- Parse errors (syntax)
-- Resolve errors (undefined references, type mismatches)
-- Success message with counts
-
 **Exit codes:**
-- `0` - Success, no errors
-- `1` - Errors found
+- `0` - No errors (warnings allowed)
+- `1` - At least one error
 
 **Example:**
 ```bash
-$ twf check topics/skill-basics.twf
+$ twf check workflow.twf
 ✓ OK: 4 workflow(s), 10 activity(s)
+
+$ twf check broken.twf
+error [resolve/UNDEFINED_ACTIVITY] at broken.twf:2:3: undefined activity: Foo
+Partial parse: 1 workflow(s), 0 activity(s), 1 error(s), 0 warning(s)
 ```
 
 ---
 
 ### `twf parse`
 
-Output the Abstract Syntax Tree (AST) as JSON.
+Emit the canonical **JSON envelope** for one or more TWF files. Always JSON;
+no flag is required. Diagnostics ride inside the envelope alongside the AST,
+so a single call satisfies a "draft → validate → fix → revalidate" loop
+without scraping stderr.
 
 ```bash
 twf parse workflow.twf
-twf parse --lenient workflow.twf  # Parse even with resolve errors
+twf parse workflow.twf | jq '.diagnostics'
 ```
 
-**Output:** Complete AST in JSON format, suitable for:
-- Code generation
-- Analysis tools
-- AI assistants
-- Custom tooling
+**Output:** see the [Envelope](#json-envelope) section below for the shared
+shape. The payload key for `parse` is `definitions` (matching the existing
+AST shape).
 
-**Example:**
-```bash
-$ twf parse workflow.twf | jq '.definitions[0].name'
-"OrderWorkflow"
-```
+**Exit:** `0` even when the AST is partial. Hard I/O errors (file not found,
+permission denied) exit `1` with a human-readable error to stderr.
 
 ---
 
 ### `twf symbols`
 
-List all workflows and activities in the file.
+List the workflows and activities in the file(s).
 
 ```bash
-twf symbols workflow.twf
-twf symbols --json workflow.twf  # JSON output
+twf symbols workflow.twf            # text
+twf symbols --json workflow.twf     # JSON envelope with payload key `symbols`
 ```
 
 **Text output:**
 ```
 workflow ProcessOrder(order: Order) -> (Result)
 activity ValidateOrder(order: Order) -> (ValidateResult)
-activity ProcessPayment(order: Order) -> (Payment)
 ```
 
-**JSON output:**
-```json
-[
-  {
-    "kind": "workflow",
-    "name": "ProcessOrder",
-    "params": "order: Order",
-    "returnType": "Result",
-    "signals": ["PaymentReceived"],
-    "queries": ["GetStatus"],
-    "updates": ["UpdateAddress"]
-  }
-]
+**JSON output:** same envelope as `parse`, with the symbol list under
+`symbols` instead of `definitions`.
+
+---
+
+### `twf deps`
+
+Show the dependency graph of the input files.
+
+```bash
+twf deps workflow.twf              # text
+twf deps --json workflow.twf       # JSON envelope with payload key `graph`
 ```
+
+---
+
+## JSON envelope
+
+Every JSON-emitting subcommand (`parse`, `symbols --json`, `deps --json`)
+shares the same top-level shape:
+
+```json
+{
+  "summary": {
+    "namespaces": 0,
+    "workers": 1,
+    "workflows": 2,
+    "activities": 3,
+    "nexusServices": 0,
+    "errors": 1,
+    "warnings": 0
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "kind":     "resolve",
+      "code":     "UNDEFINED_ACTIVITY",
+      "file":     "workflow.twf",
+      "start":    { "line": 2, "column": 3 },
+      "end":      { "line": 2, "column": 3 },
+      "message":  "undefined activity: NotAnActivity",
+      "name":     "NotAnActivity"
+    }
+  ],
+  "definitions": [ /* parse */ ],
+  "symbols":     [ /* symbols --json */ ],
+  "graph":       { /* deps --json */ }
+}
+```
+
+Per command, exactly one of `definitions` / `symbols` / `graph` is present.
+
+### Diagnostic fields
+
+| Field      | Type     | Notes                                                                                            |
+|------------|----------|--------------------------------------------------------------------------------------------------|
+| `severity` | string   | `"error"` or `"warning"`. Exit code is driven by errors only.                                    |
+| `kind`     | string   | `"parse"`, `"resolve"`, or `"validate"`. Identifies the producing pipeline stage.                 |
+| `code`     | string   | Symbolic, stable identifier within a kind. Adding new codes is non-breaking; renaming is breaking. |
+| `file`     | string   | Source-file basename. May be empty in multi-file mode when the diagnostic isn't tied to a definition. |
+| `start`    | Position | 1-based line/column. Always present.                                                              |
+| `end`      | Position | 1-based line/column. Currently `end == start` for resolve/validate diagnostics; precision will improve over time without changing the schema. |
+| `message`  | string   | Human-readable text. Subject to change; pin to `code` for programmatic dispatch.                  |
+| `name`     | string   | Primary entity the diagnostic refers to (the undefined name, the duplicate name, …). Optional.    |
+
+### Diagnostic codes
+
+The complete list of `kind` + `code` combinations:
+
+**kind: `parse`**
+- `SYNTAX` — any parser failure (categorization is future work)
+
+**kind: `resolve`**
+- `DUPLICATE_WORKFLOW`, `DUPLICATE_ACTIVITY`, `DUPLICATE_WORKER`,
+  `DUPLICATE_NAMESPACE`, `DUPLICATE_NEXUS_SERVICE`, `DUPLICATE_ENDPOINT`
+- `UNDEFINED_ACTIVITY`, `UNDEFINED_WORKFLOW`, `UNDEFINED_SIGNAL`,
+  `UNDEFINED_UPDATE`, `UNDEFINED_CONDITION`, `UNDEFINED_PROMISE_OR_CONDITION`
+- `CONDITION_RESULT_BINDING`
+- `NEXUS_ASYNC_UNDEFINED_WORKFLOW`, `NEXUS_UNDEFINED_ENDPOINT`,
+  `NEXUS_UNRESOLVED_ENDPOINT`, `NEXUS_UNDEFINED_SERVICE`,
+  `NEXUS_UNRESOLVED_SERVICE`, `NEXUS_NO_OPERATION`
+- `WORKER_UNDEFINED_WORKFLOW`, `WORKER_UNDEFINED_ACTIVITY`,
+  `WORKER_UNDEFINED_NEXUS_SERVICE`, `NAMESPACE_UNDEFINED_WORKER`
+
+**kind: `validate`**
+- `EMPTY_WORKFLOW`, `EMPTY_ACTIVITY`, `EMPTY_WORKER`, `EMPTY_NAMESPACE`
+- `MISSING_TASK_QUEUE`, `MISSING_ENDPOINT_TASK_QUEUE`
+- `UNCOVERED_WORKFLOW`, `UNCOVERED_ACTIVITY`, `UNCOVERED_SERVICE`,
+  `UNINSTANTIATED_WORKER`
+- `TASK_QUEUE_IDENTICAL`, `TASK_QUEUE_MISMATCH`,
+  `EXPLICIT_ROUTING_MISMATCH`, `IMPLICIT_ROUTING_MISMATCH`,
+  `ENDPOINT_SERVICE_LINKAGE`
+
+The authoritative machine-readable schema is checked in at
+[`twf.schema.json`](./twf.schema.json).
 
 ---
 
@@ -224,8 +303,8 @@ done
 
 ## Options
 
-- `--json` - Output in JSON format (for `symbols` command)
-- `--lenient` - Continue even with resolve errors (useful for partial/incomplete code)
+- `--json` — Emit the JSON envelope (supported by `symbols` and `deps`; `parse` is always JSON).
+- `--lenient` — `check` only. Exit 0 even when errors are present (diagnostics still print).
 
 ---
 

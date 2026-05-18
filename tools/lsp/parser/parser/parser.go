@@ -19,6 +19,15 @@ func (e *ParseError) Error() string {
 	return fmt.Sprintf("parse error at %d:%d: %s", e.Line, e.Column, e.Msg)
 }
 
+// Code returns a stable, symbolic error code for downstream tooling.
+//
+// Today the parser emits ad-hoc, message-shaped errors and does not classify
+// them by kind. All parse errors therefore share the single code "SYNTAX".
+// Categorizing parse failures (e.g. UNEXPECTED_TOKEN, INVALID_INDENT) is a
+// future refinement; consumers should rely on the diagnostic's kind+code+message
+// for now and treat new codes as a non-breaking addition.
+func (e *ParseError) Code() string { return "SYNTAX" }
+
 type defParser func(p *Parser) (ast.Definition, error)
 type stmtParser func(p *Parser) (ast.Statement, error)
 

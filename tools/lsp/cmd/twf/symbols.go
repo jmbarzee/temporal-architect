@@ -121,36 +121,41 @@ func extractSymbols(file *ast.File) []symbolJSON {
 	return symbols
 }
 
-// symbolsCommand lists all workflows and activities.
-// Works with partial AST - lists what was successfully parsed.
+// symbolsCommand lists all workflows and activities found in the given files.
+//
+// Text mode (the default) prints a compact human view to stdout and writes
+// any diagnostics to stderr. JSON mode wraps the same data in the standard
+// twf envelope so consumers get diagnostics alongside the symbol list.
 func symbolsCommand(args []string) int {
 	fs := flag.NewFlagSet("symbols", flag.ContinueOnError)
-	jsonOutput := fs.Bool("json", false, "Output in JSON format")
-	lenient := fs.Bool("lenient", false, "Continue even with resolve errors")
+	jsonOutput := fs.Bool("json", false, "Output in JSON envelope (default: text)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
 	paths := fs.Args()
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf symbols [--json] [--lenient] <file...>")
+		fmt.Fprintln(os.Stderr, "usage: twf symbols [--json] <file...>")
 		return 1
 	}
 
-	file, errs, exitCode := parseFiles(paths, *lenient)
-
-	// Report errors to stderr but continue to show symbols
-	printErrors(errs)
-
-	// Show symbols from partial AST
-	if file != nil {
-		if *jsonOutput {
-			return printSymbolsJSON(file)
-		}
-		return printSymbolsText(file)
+	file, diags, err := parseFiles(paths)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		return 1
 	}
 
-	return exitCode
+	if *jsonOutput {
+		return printSymbolsJSON(file, diags)
+	}
+
+	for _, d := range diags {
+		fmt.Fprintln(os.Stderr, formatDiagnostic(d))
+	}
+	if file == nil {
+		return 1
+	}
+	return printSymbolsText(file)
 }
 
 func printSymbolsText(file *ast.File) int {
@@ -200,8 +205,23 @@ func printSymbolsText(file *ast.File) int {
 	return 0
 }
 
-func printSymbolsJSON(file *ast.File) int {
-	data, err := json.MarshalIndent(extractSymbols(file), "", "  ")
+// printSymbolsJSON emits the standard twf envelope with the symbol list as
+// its payload. Diagnostics ride along inside the envelope so callers never
+// need a second invocation to learn what went wrong with a partial parse.
+func printSymbolsJSON(file *ast.File, diags []Diagnostic) int {
+	var symbols []symbolJSON
+	if file != nil {
+		symbols = extractSymbols(file)
+	}
+	if symbols == nil {
+		symbols = []symbolJSON{}
+	}
+	env := Envelope{
+		Summary:     summarize(file, diags),
+		Diagnostics: ensureSlice(diags),
+		Symbols:     symbols,
+	}
+	data, err := json.MarshalIndent(env, "", "  ")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "json marshal error: %v\n", err)
 		return 1

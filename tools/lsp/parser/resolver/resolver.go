@@ -86,6 +86,66 @@ func (e *ResolveError) Error() string {
 	return fmt.Sprintf("resolve error at %d:%d: %s", e.Line, e.Column, e.Msg)
 }
 
+// Code returns the symbolic, stable identifier for this error kind.
+// It is suitable for emission in structured diagnostics and as an LSP
+// Diagnostic.Code, and forms a 1:1 mapping with the ErrorKind enum.
+func (e *ResolveError) Code() string { return e.Kind.String() }
+
+// String returns the symbolic name of an ErrorKind (e.g. "UNDEFINED_ACTIVITY").
+// These names are part of the diagnostic contract and should not change
+// without a coordinated bump across downstream consumers.
+func (k ErrorKind) String() string {
+	switch k {
+	case ErrDuplicateWorkflow:
+		return "DUPLICATE_WORKFLOW"
+	case ErrDuplicateActivity:
+		return "DUPLICATE_ACTIVITY"
+	case ErrDuplicateWorker:
+		return "DUPLICATE_WORKER"
+	case ErrDuplicateNamespace:
+		return "DUPLICATE_NAMESPACE"
+	case ErrDuplicateNexusService:
+		return "DUPLICATE_NEXUS_SERVICE"
+	case ErrDuplicateEndpoint:
+		return "DUPLICATE_ENDPOINT"
+	case ErrUndefinedActivity:
+		return "UNDEFINED_ACTIVITY"
+	case ErrUndefinedWorkflow:
+		return "UNDEFINED_WORKFLOW"
+	case ErrUndefinedSignal:
+		return "UNDEFINED_SIGNAL"
+	case ErrUndefinedUpdate:
+		return "UNDEFINED_UPDATE"
+	case ErrUndefinedCondition:
+		return "UNDEFINED_CONDITION"
+	case ErrUndefinedPromiseOrCondition:
+		return "UNDEFINED_PROMISE_OR_CONDITION"
+	case ErrConditionResultBinding:
+		return "CONDITION_RESULT_BINDING"
+	case ErrNexusAsyncUndefinedWorkflow:
+		return "NEXUS_ASYNC_UNDEFINED_WORKFLOW"
+	case ErrNexusUndefinedEndpoint:
+		return "NEXUS_UNDEFINED_ENDPOINT"
+	case ErrNexusUnresolvedEndpoint:
+		return "NEXUS_UNRESOLVED_ENDPOINT"
+	case ErrNexusUndefinedService:
+		return "NEXUS_UNDEFINED_SERVICE"
+	case ErrNexusUnresolvedService:
+		return "NEXUS_UNRESOLVED_SERVICE"
+	case ErrNexusNoOperation:
+		return "NEXUS_NO_OPERATION"
+	case ErrWorkerUndefinedWorkflow:
+		return "WORKER_UNDEFINED_WORKFLOW"
+	case ErrWorkerUndefinedActivity:
+		return "WORKER_UNDEFINED_ACTIVITY"
+	case ErrWorkerUndefinedNexusService:
+		return "WORKER_UNDEFINED_NEXUS_SERVICE"
+	case ErrNamespaceUndefinedWorker:
+		return "NAMESPACE_UNDEFINED_WORKER"
+	}
+	return "UNKNOWN"
+}
+
 
 // Resolve walks the AST, linking calls to their definitions.
 // Returns a list of errors (empty on success).

@@ -16,23 +16,28 @@ Usage:
   twf <command> [options] <file...>
 
 Commands:
-  check     Parse and validate TWF files
-  parse     Output AST as JSON
-  symbols   List workflows and activities
-  deps      Show dependency graph
+  check     Validate files; exit non-zero on error severity (text only)
+  parse     Emit the canonical JSON envelope (AST + diagnostics + summary)
+  symbols   List workflows and activities; --json for envelope output
+  deps      Show the dependency graph; --json for envelope output
   spec      Print the embedded TWF language specification
   lsp       Start the language server (stdio)
   help      Show this help
 
-Options:
-  --lenient  Continue even with resolve errors
+JSON envelope shape (parse / symbols --json / deps --json):
+  {
+    "summary":     { workflows, activities, errors, warnings, … },
+    "diagnostics": [ { severity, kind, code, file, start, end, message, name } ],
+    "definitions" | "symbols" | "graph": <command-specific payload>
+  }
 
 Examples:
   twf check workflow.twf
-  twf parse workflow.twf
-  twf symbols workflow.twf
+  twf check --lenient workflow.twf
+  twf parse workflow.twf | jq '.diagnostics'
+  twf symbols --json workflow.twf | jq '.symbols[].name'
+  twf deps workflow.twf
   twf spec --list
-  twf spec workflows
   twf lsp
 `
 

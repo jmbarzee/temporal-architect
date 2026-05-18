@@ -6,42 +6,62 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/deps"
 )
 
-// depsCommand extracts and outputs the dependency graph.
+// depsCommand extracts and outputs the dependency graph of the given files.
+//
+// Text mode prints a human-readable graph rendering and writes diagnostics
+// to stderr. JSON mode wraps the graph in the standard twf envelope so
+// downstream tooling gets diagnostics in the same payload.
 func depsCommand(args []string) int {
 	fs := flag.NewFlagSet("deps", flag.ContinueOnError)
-	jsonOutput := fs.Bool("json", false, "Output in JSON format")
-	lenient := fs.Bool("lenient", false, "Continue even with resolve errors")
+	jsonOutput := fs.Bool("json", false, "Output in JSON envelope (default: text)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
 	paths := fs.Args()
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf deps [--json] [--lenient] <file...>")
+		fmt.Fprintln(os.Stderr, "usage: twf deps [--json] <file...>")
 		return 1
 	}
 
-	file, errs, exitCode := parseFiles(paths, *lenient)
-
-	printErrors(errs)
-
-	if file == nil {
-		return exitCode
+	file, diags, err := parseFiles(paths)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		return 1
 	}
 
-	graph := deps.Extract(file)
+	var graph *deps.Graph
+	if file != nil {
+		graph = deps.Extract(file)
+	}
 
 	if *jsonOutput {
-		return printDepsJSON(graph)
+		return printDepsJSON(file, diags, graph)
+	}
+
+	for _, d := range diags {
+		fmt.Fprintln(os.Stderr, formatDiagnostic(d))
+	}
+	if graph == nil {
+		return 1
 	}
 	return printDepsText(graph)
 }
 
-func printDepsJSON(graph *deps.Graph) int {
-	data, err := json.MarshalIndent(graph, "", "  ")
+// printDepsJSON emits the standard twf envelope with the graph as its
+// payload. graph may be nil when parsing failed catastrophically; in that
+// case the envelope still carries diagnostics so callers can act on them.
+func printDepsJSON(file *ast.File, diags []Diagnostic, graph *deps.Graph) int {
+	env := Envelope{
+		Summary:     summarize(file, diags),
+		Diagnostics: ensureSlice(diags),
+		Graph:       graph,
+	}
+	data, err := json.MarshalIndent(env, "", "  ")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "json marshal error: %v\n", err)
 		return 1

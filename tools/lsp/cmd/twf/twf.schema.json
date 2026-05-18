@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jmbarzee/temporal-skills/tools/lsp/cmd/twf/twf.schema.json",
+  "title": "twf JSON envelope",
+  "description": "Stable wire contract emitted by `twf parse`, `twf symbols --json`, and `twf deps --json`. Adding optional fields or new diagnostic codes is non-breaking; renaming or removing them is breaking and requires coordinated bumps across downstream consumers.",
+  "type": "object",
+  "required": ["summary", "diagnostics"],
+  "additionalProperties": true,
+  "properties": {
+    "summary": { "$ref": "#/$defs/Summary" },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Diagnostic" }
+    },
+    "definitions": {
+      "description": "Present on `twf parse`. The AST definitions array. Item shape is intentionally permissive in this schema — see tools/visualizer/src/types/ast.ts for the discriminated union.",
+      "type": "array"
+    },
+    "symbols": {
+      "description": "Present on `twf symbols --json`. The symbol list (workflows, activities, workers, namespaces, nexus services).",
+      "type": "array"
+    },
+    "graph": {
+      "description": "Present on `twf deps --json`. The dependency graph object (edges, containment, coarsened views).",
+      "type": ["object", "null"]
+    }
+  },
+
+  "$defs": {
+    "Position": {
+      "type": "object",
+      "required": ["line", "column"],
+      "additionalProperties": false,
+      "properties": {
+        "line":   { "type": "integer", "minimum": 0 },
+        "column": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "required": ["namespaces", "workers", "workflows", "activities", "nexusServices"],
+      "additionalProperties": true,
+      "properties": {
+        "namespaces":     { "type": "integer", "minimum": 0 },
+        "workers":        { "type": "integer", "minimum": 0 },
+        "workflows":      { "type": "integer", "minimum": 0 },
+        "activities":     { "type": "integer", "minimum": 0 },
+        "nexusServices":  { "type": "integer", "minimum": 0 },
+        "errors":         { "type": "integer", "minimum": 0 },
+        "warnings":       { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Diagnostic": {
+      "type": "object",
+      "required": ["severity", "kind", "code", "start", "end", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "severity": { "type": "string", "enum": ["error", "warning"] },
+        "kind":     { "type": "string", "enum": ["parse", "resolve", "validate"] },
+        "code":     { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "file":     { "type": "string" },
+        "start":    { "$ref": "#/$defs/Position" },
+        "end":      { "$ref": "#/$defs/Position" },
+        "message":  { "type": "string" },
+        "name":     { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if":   { "properties": { "kind": { "const": "parse" } } },
+          "then": { "properties": { "code": { "enum": ["SYNTAX"] } } }
+        },
+        {
+          "if":   { "properties": { "kind": { "const": "resolve" } } },
+          "then": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "DUPLICATE_WORKFLOW",
+                  "DUPLICATE_ACTIVITY",
+                  "DUPLICATE_WORKER",
+                  "DUPLICATE_NAMESPACE",
+                  "DUPLICATE_NEXUS_SERVICE",
+                  "DUPLICATE_ENDPOINT",
+                  "UNDEFINED_ACTIVITY",
+                  "UNDEFINED_WORKFLOW",
+                  "UNDEFINED_SIGNAL",
+                  "UNDEFINED_UPDATE",
+                  "UNDEFINED_CONDITION",
+                  "UNDEFINED_PROMISE_OR_CONDITION",
+                  "CONDITION_RESULT_BINDING",
+                  "NEXUS_ASYNC_UNDEFINED_WORKFLOW",
+                  "NEXUS_UNDEFINED_ENDPOINT",
+                  "NEXUS_UNRESOLVED_ENDPOINT",
+                  "NEXUS_UNDEFINED_SERVICE",
+                  "NEXUS_UNRESOLVED_SERVICE",
+                  "NEXUS_NO_OPERATION",
+                  "WORKER_UNDEFINED_WORKFLOW",
+                  "WORKER_UNDEFINED_ACTIVITY",
+                  "WORKER_UNDEFINED_NEXUS_SERVICE",
+                  "NAMESPACE_UNDEFINED_WORKER"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if":   { "properties": { "kind": { "const": "validate" } } },
+          "then": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "EMPTY_WORKFLOW",
+                  "EMPTY_ACTIVITY",
+                  "EMPTY_WORKER",
+                  "EMPTY_NAMESPACE",
+                  "MISSING_TASK_QUEUE",
+                  "MISSING_ENDPOINT_TASK_QUEUE",
+                  "UNCOVERED_WORKFLOW",
+                  "UNCOVERED_ACTIVITY",
+                  "UNCOVERED_SERVICE",
+                  "UNINSTANTIATED_WORKER",
+                  "TASK_QUEUE_IDENTICAL",
+                  "TASK_QUEUE_MISMATCH",
+                  "EXPLICIT_ROUTING_MISMATCH",
+                  "IMPLICIT_ROUTING_MISMATCH",
+                  "ENDPOINT_SERVICE_LINKAGE"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

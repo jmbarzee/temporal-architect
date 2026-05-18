@@ -1,0 +1,6 @@
+activity ValidateOrder(order: Order) -> (ValidateResult):
+  return OK
+
+workflow ProcessOrder(order: Order) -> (Result):
+  activity ValidateOrder(order) -> v
+  return v

@@ -1,0 +1,3 @@
+workflow ProcessOrder(order: Order) -> (Result):
+  activity NotAnActivity()
+  return order
