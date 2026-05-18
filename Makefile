@@ -52,6 +52,19 @@ build-twf-archive: build-lsp
 	fi
 	@echo "Packaged $$ARCHIVE"
 
+## Package the skills/ tree into a deterministic release asset.
+## VERSION may be passed with or without a leading "v"; the archive is always
+## named skills-v<X.Y.Z>.tar.gz.
+## Usage: make build-skills-archive VERSION=1.2.3
+##        make build-skills-archive VERSION=v1.2.3
+build-skills-archive:
+	@mkdir -p dist
+	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
+	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
+	OUT=dist/skills-v$$VER.tar.gz; \
+	go run ./scripts/gen-skills-manifest --source skills --out $$OUT --version v$$VER; \
+	echo "Packaged $$OUT"
+
 ## Build the visualizer webview into the extension
 build-visualizer:
 	cd tools/visualizer && npm run build:webview

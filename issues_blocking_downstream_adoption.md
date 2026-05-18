@@ -10,11 +10,11 @@ each item live in [`architecture-mode-discovery.md`](architecture-mode-discovery
 
 | # | Title | Priority | Blocks Phase | Upstream landing |
 |---|---|---|---|---|
-| 1 | Attach native `twf` binaries as GitHub Release assets | Medium | none (improves Phase 1 install UX) | _not yet implemented upstream_ |
+| 1 | Attach native `twf` binaries as GitHub Release assets | Medium | none (improves Phase 1 install UX) | **landed** — see `.github/workflows/release.yml` (matrix `build-twf-archive`, `SHA256SUMS`, `scripts/install.sh`) |
 | 2 | Publish `@temporal-skills/visualizer` as an ESM React component on npm | Medium | none (Phase 2+ aspiration) | _not yet implemented upstream_ |
-| 3 | Publish skills bundle (`skills.tar.gz` or `temporal-skills-prompts` package) on each release | Low | none (Phase 2+ polish) | _not yet implemented upstream_ |
+| 3 | Publish skills bundle (`skills.tar.gz` or `temporal-skills-prompts` package) on each release | Low | none (Phase 2+ polish) | **landed (3a)** — see `scripts/gen-skills-manifest/` + `make build-skills-archive`; 3b PyPI distribution still open |
 | 4 | Add `twf check --json` for structured diagnostics | **High** | Phase 2 polish (Phase 2 ships without it but is brittle) | _not yet implemented upstream_ |
-| 5 | Relocate the language spec to `tools/spec/`, split into per-topic sections, embed in `twf`, expose via `twf spec` | Low | none (Phase 2+ DX) | _not yet implemented upstream_ |
+| 5 | Relocate the language spec to `tools/spec/`, split into per-topic sections, embed in `twf`, expose via `twf spec` | Low | none (Phase 2+ DX) | **landed** — see `tools/spec/` module and `twf spec` subcommand |
 
 When an item lands upstream, replace `_not yet implemented upstream_` with
 the corresponding commit / tag.
@@ -80,12 +80,21 @@ additive.
 
 ### Acceptance criteria
 
-- [ ] Each `v*` release has 5 `twf-*` archives attached.
-- [ ] An `install.sh` (or equivalent docs section) shows the canonical
+- [x] Each `v*` release has 5 `twf-*` archives attached.
+- [x] An `install.sh` (or equivalent docs section) shows the canonical
   one-liner.
-- [ ] Archive layout is documented in `tools/lsp/cmd/twf/README.md`.
-- [ ] SHA-256 checksums are published alongside (Release notes or a
+- [x] Archive layout is documented in `tools/lsp/cmd/twf/README.md`.
+- [x] SHA-256 checksums are published alongside (Release notes or a
   `SHA256SUMS` asset).
+
+### Status
+
+**Landed.** The release workflow (`.github/workflows/release.yml`)
+cross-builds `twf` per platform via the `Package twf archive` matrix step,
+uploads them as artifacts, regenerates a `SHA256SUMS` file in the publish
+job, and attaches `dist/twf-*`, `dist/SHA256SUMS`, and `scripts/install.sh`
+via `softprops/action-gh-release`. The install one-liner is documented in
+`tools/lsp/cmd/twf/README.md`.
 
 ### Downstream impact
 
@@ -242,11 +251,19 @@ JS/Python ecosystem grows around the skills.
 
 ### Acceptance criteria
 
-- [ ] `skills.tar.gz` attached to each `v*` release.
-- [ ] `MANIFEST.json` lists every shipped file with SHA-256.
-- [ ] The tarball's directory layout matches `skills/` in the repo at that
+- [x] `skills.tar.gz` attached to each `v*` release.
+- [x] `MANIFEST.json` lists every shipped file with SHA-256.
+- [x] The tarball's directory layout matches `skills/` in the repo at that
   tag.
 - [ ] (Optional) `temporal-skills-prompts` published to PyPI on each release.
+
+### Status
+
+**3a landed.** Generator at `scripts/gen-skills-manifest/`, packaged via
+`make build-skills-archive`, attached as `skills-vX.Y.Z.tar.gz` by the
+release workflow, and included in the same `SHA256SUMS` asset as the `twf`
+archives. The bundle's schema and verification snippet are documented in
+`skills/MANIFEST.md`. 3b (PyPI distribution) remains open.
 
 ### Downstream impact
 

@@ -96,6 +96,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/lsp/go.mod
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -112,10 +116,13 @@ jobs:
           merge-multiple: true
           path: dist/
 
+      - name: Package skills archive
+        run: make build-skills-archive VERSION=${{ github.ref_name }}
+
       - name: Generate SHA256SUMS
         run: |
           cd dist
-          sha256sum twf-* > SHA256SUMS
+          sha256sum twf-* skills-* > SHA256SUMS
 
       - name: Publish to VS Code Marketplace
         run: make publish-vscode
@@ -133,6 +140,7 @@ jobs:
           files: |
             packages/vscode/*.vsix
             dist/twf-*
+            dist/skills-*
             dist/SHA256SUMS
             scripts/install.sh
           generate_release_notes: true
