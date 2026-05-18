@@ -11,13 +11,40 @@ each item live in [`architecture-mode-discovery.md`](architecture-mode-discovery
 | # | Title | Priority | Blocks Phase | Upstream landing |
 |---|---|---|---|---|
 | 1 | Attach native `twf` binaries as GitHub Release assets | Medium | none (improves Phase 1 install UX) | **landed** — see `.github/workflows/release.yml` (matrix `build-twf-archive`, `SHA256SUMS`, `scripts/install.sh`) |
-| 2 | Publish `@temporal-skills/visualizer` as an ESM React component on npm | Medium | none (Phase 2+ aspiration) | _not yet implemented upstream_ |
+| 2 | Publish `@temporal-skills/visualizer` as an ESM React component on npm | Medium | none (Phase 2+ aspiration) | **landed** — see `tools/visualizer/vite.lib.config.ts` + `publish-visualizer` job; requires `NPM_TOKEN` secret in GitHub before first release |
 | 3 | Publish skills bundle (`skills.tar.gz` or `temporal-skills-prompts` package) on each release | Low | none (Phase 2+ polish) | **landed (3a)** — see `scripts/gen-skills-manifest/` + `make build-skills-archive`; 3b PyPI distribution still open |
-| 4 | Add `twf check --json` for structured diagnostics | **High** | Phase 2 polish (Phase 2 ships without it but is brittle) | _not yet implemented upstream_ |
+| 4 | Add structured diagnostics (uniform JSON envelope across `twf parse` / `symbols --json` / `deps --json`; `check` stays text) | **High** | Phase 2 polish (Phase 2 ships without it but is brittle) | **landed** — see `tools/lsp/cmd/twf/twf.schema.json` + `diagnostic.go`; symbolic codes mirror `resolver.ErrorKind` / `validator.ErrorKind` |
 | 5 | Relocate the language spec to `tools/spec/`, split into per-topic sections, embed in `twf`, expose via `twf spec` | Low | none (Phase 2+ DX) | **landed** — see `tools/spec/` module and `twf spec` subcommand |
 
 When an item lands upstream, replace `_not yet implemented upstream_` with
 the corresponding commit / tag.
+
+## Cross-cutting hygiene
+
+These didn't ship as their own numbered issues but were fixed in the same
+push that closed out the issues above. Recorded here for completeness.
+
+- **`LICENSE` at the repo root.** The project declared `"license": "MIT"`
+  in every `package.json` but had no actual `LICENSE` file. Now: MIT,
+  `Copyright (c) 2026 Jacob Barzee` at the repo root. The visualizer's
+  `package.json` uses a `prepack` hook (`cp ../../LICENSE LICENSE`) +
+  `postpack` cleanup to ship the same LICENSE in the npm tarball without
+  tracking a duplicate. `tools/visualizer/LICENSE` is gitignored.
+- **`Makefile` `build-twf-archive` double-`v` bug.** The recipe used
+  `twf-v$(VERSION)` and the CI passed `VERSION=${{ github.ref_name }}`
+  (already `v0.3.2`), producing `twf-vv0.3.2-darwin-arm64.tar.gz` —
+  unreachable by `scripts/install.sh`'s URL builder. No release had
+  shipped twf archives yet so the bug was latent. Fixed by stripping the
+  leading `v` from `$(VERSION)` before prepending it (matches the
+  `build-skills-archive` shim). Now accepts both `VERSION=0.3.2` and
+  `VERSION=v0.3.2`.
+- **`.gitignore` covers release staging.** Added `tools/visualizer/dist-lib/`,
+  `tools/visualizer/LICENSE` (the prepack copy), and top-level `dist/` so
+  the staging directory used by `build-twf-archive` and
+  `build-skills-archive` doesn't leak into commits.
+- **`release.yml` validate step.** Now asserts that both
+  `packages/vscode/package.json` and `tools/visualizer/package.json`
+  versions match the `v*` tag, not just the VS Code package.
 
 ---
 
@@ -176,12 +203,25 @@ their own timeline.
 
 ### Acceptance criteria
 
-- [ ] `npm install @temporal-skills/visualizer` works after a release.
-- [ ] `<Visualizer ast={...} />` renders correctly in a host Vite React app
-  with `react@18`.
-- [ ] CSS is shipped alongside (either as a sibling import
-  `@temporal-skills/visualizer/styles.css` or auto-injected).
-- [ ] AST types are exported and consumed via DTS.
+- [x] `npm install @temporal-skills/visualizer` works after a release.
+- [x] `<Visualizer ast={...} />` renders correctly in a host Vite React app with `react@18` (verified by an end-to-end consumer-install test: `npm pack` → install into a scratch project → `tsc --strict` against the public API).
+- [x] CSS is shipped as a sibling import (`@temporal-skills/visualizer/styles.css`).
+- [x] AST types are exported and consumed via DTS (bundled `.d.ts` rolled up from `src/lib.ts`).
+
+### Status
+
+**Landed.** Files added/changed:
+
+- `tools/visualizer/src/lib.ts` — public entry; exports `Visualizer` (= `WorkflowCanvas`) and the full AST + diagnostic type graph.
+- `tools/visualizer/vite.lib.config.ts` — library build with externalized `react`/`react-dom`, sibling `styles.css`, and `vite-plugin-dts` for declarations.
+- `tools/visualizer/package.json` — `name: "@temporal-skills/visualizer"`, ESM `exports`, `peerDependencies: { react, react-dom: "^18 || ^19" }`, `publishConfig.access: public`, `prepublishOnly` runs `build:lib`.
+- `tools/visualizer/src/components/WorkflowCanvas.tsx` — added `onRefocus`, `className`, `style` props per the issue spec.
+- `tools/visualizer/src/webview.tsx` — uses `onRefocus` instead of an outer wrapper div (no behavior change).
+- `tools/visualizer/README.md` — npm consumer docs.
+- `.github/workflows/release.yml` — new `publish-visualizer` job; validate step now asserts the visualizer package.json version also matches the tag.
+- `Makefile` — `build-visualizer-lib` target; `release` target now bumps both `packages/vscode/package.json` and `tools/visualizer/package.json` in lockstep.
+
+**External action required before first publish:** add `NPM_TOKEN` to the repository's GitHub Actions secrets (Settings → Secrets and variables → Actions). Without it, the new job will fail and the rest of the release will continue.
 
 ### Downstream impact
 
@@ -357,22 +397,45 @@ upstream's stderr, which is brittle because (a) error messages can include
 colons, parens, etc., that confound a single-line regex, and (b) the format
 is not part of any documented contract.
 
+### Status
+
+**Landed**, with a design refinement away from `twf check --json`.
+
+Instead of stapling `--json` onto `check`, structured diagnostics live in
+the **canonical JSON envelope** emitted by `twf parse`, and the same
+envelope shape is shared by `twf symbols --json` and `twf deps --json`:
+
+```json
+{
+  "summary":     { "workflows": …, "errors": …, "warnings": … },
+  "diagnostics": [ { "severity", "kind", "code", "file", "start", "end", "message", "name" } ],
+  "definitions" | "symbols" | "graph": …
+}
+```
+
+`twf check` stays text-only — it now prints `severity [kind/code] at file:L:C: message` and uses the same structured diagnostic pipeline internally. Downstream consumers that want structured output call `twf parse` (or `<cmd> --json`).
+
 ### Acceptance criteria
 
-- [ ] `twf check --json` emits the schema above with no stderr noise on the
-  happy path.
-- [ ] `--lenient` works the same way (zero exit, but diagnostics still
-  populated).
-- [ ] A regression test in `tools/lsp/cmd/twf/check_test.go` covers each
-  documented diagnostic kind.
-- [ ] (Optional) JSON Schema file checked in.
+- [x] `twf parse` emits the documented schema with no stderr noise on the happy path.
+- [x] `twf check --lenient` reports diagnostics but exits 0.
+- [x] Regression tests in `tools/lsp/cmd/twf/diagnostic_test.go` cover representative parse and resolve diagnostic kinds, the envelope shape, the empty-diagnostics-as-`[]` contract, and the text format.
+- [x] JSON Schema checked in at `tools/lsp/cmd/twf/twf.schema.json`.
+
+### Design notes
+
+- **Symbolic codes** (e.g. `UNDEFINED_ACTIVITY`, `MISSING_TASK_QUEUE`) over numeric ones — self-documenting, greppable, and friendly to LLM consumers reasoning over them.
+- **`end == start`** for resolve/validate diagnostics today; the schema commits to `end` being present so precision can improve later without breaking consumers.
+- **LSP server** also forwards the symbolic `Code` field through to editor clients, so VS Code/Cursor hover routing and rule-doc deep links work without a second contract.
 
 ### Downstream impact
 
 Spec-builder drops the regex-over-stderr fallback in
 `spec_builder_activities.run_twf_validate` and switches to
-`json.loads(stdout)`. No behavior change for users; this is a purely
-internal robustness upgrade.
+`json.loads(stdout)` against `twf parse`'s `diagnostics` field. No behavior
+change for users; this is a purely internal robustness upgrade. The
+symbolic `code` field lets the validate-loop dispatch on the diagnostic
+type without parsing messages.
 
 ---
 

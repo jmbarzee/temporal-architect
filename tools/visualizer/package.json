@@ -33,7 +33,8 @@
   },
   "files": [
     "dist-lib",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "sideEffects": [
     "**/*.css"
@@ -47,6 +48,8 @@
     "build:webview": "vite build --config vite.webview.config.ts",
     "build:lib": "vite build --config vite.lib.config.ts",
     "preview": "vite preview",
+    "prepack": "cp ../../LICENSE LICENSE",
+    "postpack": "rm -f LICENSE",
     "prepublishOnly": "npm run build:lib"
   },
   "peerDependencies": {

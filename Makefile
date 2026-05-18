@@ -73,7 +73,12 @@ build-skills-archive:
 ## Build the visualizer webview into the extension
 build-visualizer:
 	cd tools/visualizer && npm run build:webview
-	@echo "Built visualizer"
+	@echo "Built visualizer (webview bundle)"
+
+## Build the visualizer as a publishable npm library (ESM + types + sibling CSS)
+build-visualizer-lib:
+	cd tools/visualizer && npm run build:lib
+	@echo "Built visualizer (npm library)"
 
 ## Copy skills into the extension package
 build-skills:
@@ -171,7 +176,8 @@ release:
 	@if [ -z "$(NEW_VERSION)" ]; then exit 1; fi
 	@echo "Releasing v$(NEW_VERSION)"
 	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' $(EXT_DIR)/package.json && rm -f $(EXT_DIR)/package.json.bak
-	git add $(EXT_DIR)/package.json
+	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' tools/visualizer/package.json && rm -f tools/visualizer/package.json.bak
+	git add $(EXT_DIR)/package.json tools/visualizer/package.json
 	git commit -m "release: v$(NEW_VERSION)"
 	git tag "v$(NEW_VERSION)"
 	git push origin HEAD "v$(NEW_VERSION)"
