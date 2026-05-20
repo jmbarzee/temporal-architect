@@ -1,5 +1,20 @@
 name: Release
 
+# Orchestrator. Triggered by every `v*` tag push.
+#
+# All real work is in per-phase reusable workflows:
+#   _check-versions.yml          — assert every manifest matches the tag
+#   _build-binaries.yml          — matrix builds twf binary + VSIX + archives
+#   _build-skills-tarball.yml    — package skills/ as a release asset
+#   _publish-vsix.yml            — VS Code Marketplace + Open VSX
+#   _publish-npm-twf.yml         — @temporal-skills/twf wrapper + 5 sub-pkgs
+#   _publish-npm-visualizer.yml  — @temporal-skills/visualizer
+#   _publish-github-release.yml  — checksums + GitHub Release with all assets
+#
+# This file is intentionally thin: declare the dependency graph and pass
+# secrets to the reusables that need them. When adding a new publish channel,
+# add one job here that `uses:` the new reusable. Don't inline steps here.
+
 on:
   push:
     tags:
@@ -9,138 +24,56 @@ permissions:
   contents: write
 
 jobs:
-  validate:
-    name: Validate tag matches package.json
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  # ── Pre-flight ───────────────────────────────────────────────────────────
 
-      - name: Check version consistency
-        run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PKG_VERSION=$(node -p "require('./packages/vscode/package.json').version")
-          echo "Git tag:      v${TAG_VERSION}"
-          echo "package.json: ${PKG_VERSION}"
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::Tag v${TAG_VERSION} does not match package.json version ${PKG_VERSION}"
-            exit 1
-          fi
+  check-versions:
+    uses: ./.github/workflows/_check-versions.yml
+    with:
+      version: ${{ github.ref_name }}
 
-  build:
-    name: Build (${{ matrix.vsce_target }})
-    needs: validate
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - vsce_target: darwin-arm64
-            goos: darwin
-            goarch: arm64
-          - vsce_target: darwin-x64
-            goos: darwin
-            goarch: amd64
-          - vsce_target: linux-x64
-            goos: linux
-            goarch: amd64
-          - vsce_target: linux-arm64
-            goos: linux
-            goarch: arm64
-          - vsce_target: win32-x64
-            goos: windows
-            goarch: amd64
+  # ── Build (artifacts consumed by publish jobs) ───────────────────────────
 
-    steps:
-      - uses: actions/checkout@v4
+  build-binaries:
+    needs: check-versions
+    uses: ./.github/workflows/_build-binaries.yml
+    with:
+      version: ${{ github.ref_name }}
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: tools/lsp/go.mod
+  build-skills-tarball:
+    needs: check-versions
+    uses: ./.github/workflows/_build-skills-tarball.yml
+    with:
+      version: ${{ github.ref_name }}
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+  # ── Publish (one channel per job, run in parallel after their deps) ──────
 
-      - name: Install dependencies
-        run: |
-          cd packages/vscode && npm ci
-          cd ../../tools/visualizer && npm ci
+  publish-vsix:
+    needs: build-binaries
+    uses: ./.github/workflows/_publish-vsix.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+      OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}
 
-      - name: Build shared artifacts
-        run: |
-          make build-visualizer
-          make build-skills
-          make build-extension
+  publish-npm-twf:
+    needs: build-binaries
+    uses: ./.github/workflows/_publish-npm-twf.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Package platform VSIX
-        run: make package-platform VSCE_TARGET=${{ matrix.vsce_target }} GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
+  publish-npm-visualizer:
+    needs: check-versions
+    uses: ./.github/workflows/_publish-npm-visualizer.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Upload VSIX artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: vsix-${{ matrix.vsce_target }}
-          path: packages/vscode/*.vsix
-
-      - name: Package twf archive
-        run: make build-twf-archive VERSION=${{ github.ref_name }} GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
-
-      - name: Upload twf archive artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: twf-${{ matrix.vsce_target }}
-          path: dist/twf-*
-
-  publish:
-    name: Publish
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: tools/lsp/go.mod
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: vsix-*
-          merge-multiple: true
-          path: packages/vscode/
-
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: twf-*
-          merge-multiple: true
-          path: dist/
-
-      - name: Package skills archive
-        run: make build-skills-archive VERSION=${{ github.ref_name }}
-
-      - name: Generate SHA256SUMS
-        run: |
-          cd dist
-          sha256sum twf-* skills-* > SHA256SUMS
-
-      - name: Publish to VS Code Marketplace
-        run: make publish-vscode
-        env:
-          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
-
-      - name: Publish to Open VSX
-        run: make publish-ovsx
-        env:
-          OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            packages/vscode/*.vsix
-            dist/twf-*
-            dist/skills-*
-            dist/SHA256SUMS
-            scripts/install.sh
-          generate_release_notes: true
+  publish-github-release:
+    needs: [build-binaries, build-skills-tarball]
+    uses: ./.github/workflows/_publish-github-release.yml
+    with:
+      version: ${{ github.ref_name }}

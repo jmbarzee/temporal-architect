@@ -1,0 +1,91 @@
+name: _build-binaries
+
+# Reusable: matrix build of the twf binary + per-platform VSIX + twf archive.
+#
+# Outputs (as workflow artifacts, consumed by sibling reusables):
+#   vsix-<platform>           — packaged VSIX per platform
+#   twf-archive-<platform>    — twf-vX.Y.Z-<os>-<arch>.{tar.gz,zip} for GitHub Release
+#   twf-bin-<platform>        — raw twf binary for npm sub-package staging
+#
+# Pure build work; no publishing. Suitable for invocation from both release.yml
+# (to produce the artifacts a release ships) and ci.yml (to smoke-test that
+# every platform still builds, if/when we want that).
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+
+jobs:
+  binaries:
+    name: Build (${{ matrix.vsce_target }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - vsce_target: darwin-arm64
+            goos: darwin
+            goarch: arm64
+          - vsce_target: darwin-x64
+            goos: darwin
+            goarch: amd64
+          - vsce_target: linux-x64
+            goos: linux
+            goarch: amd64
+          - vsce_target: linux-arm64
+            goos: linux
+            goarch: arm64
+          - vsce_target: win32-x64
+            goos: windows
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/lsp/go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          cd packages/vscode && npm ci
+          cd ../../tools/visualizer && npm ci
+
+      - name: Build shared artifacts
+        run: |
+          make build-visualizer
+          make build-skills
+          make build-extension
+
+      - name: Package platform VSIX
+        run: make package-platform VSCE_TARGET=${{ matrix.vsce_target }} GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-${{ matrix.vsce_target }}
+          path: packages/vscode/*.vsix
+
+      - name: Upload raw twf binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: twf-bin-${{ matrix.vsce_target }}
+          path: |
+            packages/vscode/bin/twf
+            packages/vscode/bin/twf.exe
+          if-no-files-found: ignore
+
+      - name: Package twf archive
+        run: make build-twf-archive VERSION=${{ inputs.version }} GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
+
+      - name: Upload twf archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: twf-archive-${{ matrix.vsce_target }}
+          path: dist/twf-*

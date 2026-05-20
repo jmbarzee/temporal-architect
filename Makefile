@@ -131,7 +131,7 @@ package-all: build-visualizer build-skills build-extension
 
 # ── Publish targets ──────────────────────────────────────────────────────────
 
-.PHONY: publish-vscode publish-ovsx
+.PHONY: publish-vscode publish-ovsx publish-npm-platform publish-npm
 
 ## Publish all platform VSIXes to VS Code Marketplace
 publish-vscode:
@@ -152,6 +152,22 @@ publish-ovsx:
 		echo "Publishing $$vsix to Open VSX..."; \
 		npx ovsx publish $$vsix -p $(OVSX_TOKEN); \
 	done
+
+## Stage the freshly-built binary into one platform sub-package and `npm publish`.
+## Called per matrix entry in CI; can be run locally for one platform at a time.
+## Usage: make publish-npm-platform VSCE_TARGET=darwin-arm64 GOOS=darwin GOARCH=arm64
+publish-npm-platform:
+	@if [ -z "$(VSCE_TARGET)" ]; then echo "Error: VSCE_TARGET not set"; exit 1; fi
+	@ext=""; if [ "$(GOOS)" = "windows" ]; then ext=".exe"; fi; \
+		mkdir -p packages/npm/twf-$(VSCE_TARGET)/bin; \
+		cp $(EXT_DIR)/bin/twf$$ext packages/npm/twf-$(VSCE_TARGET)/bin/twf$$ext
+	cd packages/npm/twf-$(VSCE_TARGET) && npm publish
+
+## Publish the `@temporal-skills/twf` wrapper. Run AFTER all sub-packages have
+## published — npm rejects the wrapper if its optionalDependencies reference
+## versions that don't exist yet.
+publish-npm:
+	cd packages/npm/twf && npm publish
 
 # ── Release targets ──────────────────────────────────────────────────────────
 # Bump version, commit, tag, and push — triggers the release workflow.
@@ -177,7 +193,17 @@ release:
 	@echo "Releasing v$(NEW_VERSION)"
 	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' $(EXT_DIR)/package.json && rm -f $(EXT_DIR)/package.json.bak
 	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' tools/visualizer/package.json && rm -f tools/visualizer/package.json.bak
-	git add $(EXT_DIR)/package.json tools/visualizer/package.json
+	@# npm wrapper top-level version
+	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' packages/npm/twf/package.json && rm -f packages/npm/twf/package.json.bak
+	@# npm wrapper optionalDependencies exact-version pins (one sed per package)
+	@for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do \
+		sed -i.bak "s|\"@temporal-skills/twf-$$p\": *\"[^\"]*\"|\"@temporal-skills/twf-$$p\": \"$(NEW_VERSION)\"|" packages/npm/twf/package.json && rm -f packages/npm/twf/package.json.bak; \
+	done
+	@# npm platform sub-package versions
+	@for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do \
+		sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' packages/npm/twf-$$p/package.json && rm -f packages/npm/twf-$$p/package.json.bak; \
+	done
+	git add $(EXT_DIR)/package.json tools/visualizer/package.json packages/npm
 	git commit -m "release: v$(NEW_VERSION)"
 	git tag "v$(NEW_VERSION)"
 	git push origin HEAD "v$(NEW_VERSION)"
@@ -190,4 +216,5 @@ release:
 ## Remove all build artifacts
 clean:
 	rm -rf $(EXT_DIR)/bin $(EXT_DIR)/dist $(EXT_DIR)/out $(EXT_DIR)/skills $(EXT_DIR)/*.vsix dist/
+	rm -rf packages/npm/twf-*/bin packages/npm/twf*/LICENSE
 	@echo "Cleaned"

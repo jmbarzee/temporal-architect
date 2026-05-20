@@ -1,0 +1,49 @@
+{
+  "name": "@temporal-skills/twf",
+  "version": "0.3.2",
+  "description": "TWF (Temporal Workflow Format) CLI, language server, and MCP server.",
+  "license": "MIT",
+  "homepage": "https://github.com/jmbarzee/temporal-skills/tree/main/packages/npm/twf",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmbarzee/temporal-skills",
+    "directory": "packages/npm/twf"
+  },
+  "bugs": {
+    "url": "https://github.com/jmbarzee/temporal-skills/issues"
+  },
+  "keywords": [
+    "temporal",
+    "workflow",
+    "twf",
+    "dsl",
+    "mcp",
+    "lsp",
+    "cli"
+  ],
+  "bin": {
+    "twf": "bin/twf.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "prepack": "cp ../../../LICENSE LICENSE",
+    "postpack": "rm -f LICENSE"
+  },
+  "optionalDependencies": {
+    "@temporal-skills/twf-darwin-arm64": "0.3.2",
+    "@temporal-skills/twf-darwin-x64": "0.3.2",
+    "@temporal-skills/twf-linux-x64": "0.3.2",
+    "@temporal-skills/twf-linux-arm64": "0.3.2",
+    "@temporal-skills/twf-win32-x64": "0.3.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

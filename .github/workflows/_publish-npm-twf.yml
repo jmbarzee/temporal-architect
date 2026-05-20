@@ -1,0 +1,77 @@
+name: _publish-npm-twf
+
+# Reusable: publish @temporal-skills/twf and its 5 platform sub-packages.
+# Consumes twf-bin-* artifacts uploaded by _build-binaries.yml.
+#
+# Order: sub-packages publish first (in parallel via matrix), wrapper publishes
+# last. npm rejects the wrapper if its optionalDependencies reference versions
+# that don't exist yet.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+    secrets:
+      NPM_TOKEN:
+        description: "npm automation token with publish access to @temporal-skills/*."
+        required: true
+
+jobs:
+  publish-sub-packages:
+    name: Publish sub-pkg (${{ matrix.vsce_target }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - vsce_target: darwin-arm64
+            goos: darwin
+          - vsce_target: darwin-x64
+            goos: darwin
+          - vsce_target: linux-x64
+            goos: linux
+          - vsce_target: linux-arm64
+            goos: linux
+          - vsce_target: win32-x64
+            goos: windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Download raw twf binary
+        uses: actions/download-artifact@v4
+        with:
+          name: twf-bin-${{ matrix.vsce_target }}
+          path: packages/vscode/bin/
+
+      - name: Restore binary executable bit
+        if: matrix.goos != 'windows'
+        run: chmod +x packages/vscode/bin/twf
+
+      - name: Publish npm sub-package
+        run: make publish-npm-platform VSCE_TARGET=${{ matrix.vsce_target }} GOOS=${{ matrix.goos }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-wrapper:
+    name: Publish @temporal-skills/twf wrapper
+    needs: publish-sub-packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish wrapper
+        run: make publish-npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

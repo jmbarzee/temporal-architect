@@ -1,0 +1,46 @@
+name: _publish-vsix
+
+# Reusable: publish all platform VSIXes to VS Code Marketplace + Open VSX.
+# Consumes vsix-* artifacts uploaded by _build-binaries.yml.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+    secrets:
+      VSCE_TOKEN:
+        description: "VS Code Marketplace personal access token."
+        required: true
+      OVSX_TOKEN:
+        description: "Open VSX namespace token."
+        required: true
+
+jobs:
+  publish:
+    name: Publish VSIX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vsix-*
+          merge-multiple: true
+          path: packages/vscode/
+
+      - name: Publish to VS Code Marketplace
+        run: make publish-vscode
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+
+      - name: Publish to Open VSX
+        run: make publish-ovsx
+        env:
+          OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}

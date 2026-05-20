@@ -1,0 +1,42 @@
+name: _publish-npm-visualizer
+
+# Reusable: publish @temporal-skills/visualizer to npm.
+# Builds the library in-place (no artifact handoff from _build-binaries.yml).
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+    secrets:
+      NPM_TOKEN:
+        description: "npm automation token with publish access to @temporal-skills/*."
+        required: true
+
+jobs:
+  publish:
+    name: Publish @temporal-skills/visualizer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        working-directory: tools/visualizer
+        run: npm ci
+
+      - name: Build library
+        working-directory: tools/visualizer
+        run: npm run build:lib
+
+      - name: Publish
+        working-directory: tools/visualizer
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

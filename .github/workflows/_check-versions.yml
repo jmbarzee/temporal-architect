@@ -1,0 +1,47 @@
+name: _check-versions
+
+# Reusable: assert that every checked-in manifest's `version` field matches
+# a given version string (typically the git tag, with leading "v" stripped).
+# Release-only in practice — the only meaningful invocation is "does this
+# match the tag we're about to release as?"
+# Called by release.yml; not directly triggerable.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+
+jobs:
+  check:
+    name: Check version consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check every manifest matches the tag
+        run: |
+          TAG_VERSION="${VERSION#v}"
+          echo "Git tag: v${TAG_VERSION}"
+          fail=0
+          check_node() {
+            local label="$1" file="$2"
+            local actual
+            actual="$(node -p "require('./$file').version")"
+            echo "  ${label}: ${actual}"
+            if [ "$actual" != "$TAG_VERSION" ]; then
+              echo "::error file=${file}::version ${actual} does not match tag v${TAG_VERSION}"
+              fail=1
+            fi
+          }
+          check_node "packages/vscode"          packages/vscode/package.json
+          check_node "tools/visualizer"         tools/visualizer/package.json
+          check_node "npm wrapper"              packages/npm/twf/package.json
+          for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
+            check_node "npm $p" "packages/npm/twf-$p/package.json"
+          done
+          exit $fail
+        env:
+          VERSION: ${{ inputs.version }}

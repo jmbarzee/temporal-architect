@@ -1,0 +1,56 @@
+name: _publish-github-release
+
+# Reusable: create the GitHub Release with all downloadable assets +
+# SHA256SUMS. Consumes vsix-*, twf-archive-*, and skills-tarball artifacts
+# produced by _build-binaries.yml and _build-skills-tarball.yml.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vsix-*
+          merge-multiple: true
+          path: packages/vscode/
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: twf-archive-*
+          merge-multiple: true
+          path: dist/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: skills-tarball
+          path: dist/
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd dist
+          sha256sum twf-* skills-* > SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/vscode/*.vsix
+            dist/twf-*
+            dist/skills-*
+            dist/SHA256SUMS
+            scripts/install.sh
+          generate_release_notes: true

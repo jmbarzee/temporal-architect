@@ -1,0 +1,37 @@
+name: _build-skills-tarball
+
+# Reusable: package skills/ as a deterministic release asset.
+#
+# Outputs (as workflow artifacts):
+#   skills-tarball            — skills-vX.Y.Z.tar.gz with MANIFEST.json
+#
+# Platform-agnostic, no matrix. Runs in parallel with _build-binaries.yml when
+# called from release.yml.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+
+jobs:
+  package:
+    name: Package skills tarball
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/lsp/go.mod
+
+      - name: Build skills tarball
+        run: make build-skills-archive VERSION=${{ inputs.version }}
+
+      - name: Upload skills tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills-tarball
+          path: dist/skills-*

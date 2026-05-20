@@ -1,0 +1,8 @@
+# Binaries staged into platform sub-packages by CI (or `make publish-npm-platform`).
+# Never committed; rebuilt fresh each release.
+twf-*/bin/twf
+twf-*/bin/twf.exe
+
+# LICENSE file copied in by `prepack`, removed by `postpack`. Should never be
+# committed, but guard against accidental commit.
+twf*/LICENSE

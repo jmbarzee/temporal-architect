@@ -1,0 +1,28 @@
+{
+  "name": "@temporal-skills/twf-win32-x64",
+  "version": "0.3.2",
+  "description": "twf binary for win32/x64. Installed automatically by @temporal-skills/twf.",
+  "license": "MIT",
+  "homepage": "https://github.com/jmbarzee/temporal-skills/tree/main/packages/npm/twf-win32-x64",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmbarzee/temporal-skills",
+    "directory": "packages/npm/twf-win32-x64"
+  },
+  "bugs": {
+    "url": "https://github.com/jmbarzee/temporal-skills/issues"
+  },
+  "files": [
+    "bin",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prepack": "cp ../../../LICENSE LICENSE",
+    "postpack": "rm -f LICENSE"
+  },
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "publishConfig": {
+    "access": "public"
+  }
+}
