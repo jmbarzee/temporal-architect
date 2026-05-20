@@ -32,3 +32,5 @@ tools/orchestrator/.claude/settings.local.json
 
 # skills used to build examples
 examples/.claude/skills
+
+bump-brew

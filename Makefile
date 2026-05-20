@@ -129,9 +129,9 @@ package-all: build-visualizer build-skills build-extension
 	done
 	@echo "All platform packages built"
 
-# ── Publish targets ──────────────────────────────────────────────────────────
+# ── Publish targets — VSIX ──────────────────────────────────────────────────
 
-.PHONY: publish-vscode publish-ovsx publish-npm-platform publish-npm
+.PHONY: publish-vscode publish-ovsx
 
 ## Publish all platform VSIXes to VS Code Marketplace
 publish-vscode:
@@ -152,6 +152,53 @@ publish-ovsx:
 		echo "Publishing $$vsix to Open VSX..."; \
 		npx ovsx publish $$vsix -p $(OVSX_TOKEN); \
 	done
+
+# ── Homebrew tap ────────────────────────────────────────────────────────────
+
+.PHONY: publish-brew
+
+## Bump jmbarzee/homebrew-twf's Formula/twf.rb to point at this version's
+## GitHub Release archives. Runs AFTER the GitHub Release exists (so the
+## archives the formula references are downloadable).
+##
+## Required env: HOMEBREW_TAP_TOKEN (PAT with `repo` write on the tap).
+## Usage: make publish-brew VERSION=v0.3.2
+publish-brew:
+	@if [ -z "$(VERSION)" ];            then echo "Error: VERSION not set"; exit 1; fi
+	@if [ -z "$(HOMEBREW_TAP_TOKEN)" ]; then echo "Error: HOMEBREW_TAP_TOKEN not set"; exit 1; fi
+	go run ./scripts/bump-brew -version $(VERSION) -token $(HOMEBREW_TAP_TOKEN)
+
+# ── PyPI wheel ──────────────────────────────────────────────────────────────
+
+.PHONY: build-pypi-wheel publish-pypi
+
+## Stage the freshly-built binary into the PyPI package and build one
+## platform-tagged wheel. Called per matrix entry in CI.
+## Usage: make build-pypi-wheel PLATFORM_TAG=macosx_11_0_arm64 GOOS=darwin
+##
+## Requires `build` and `wheel` Python packages: `pip install build wheel`.
+build-pypi-wheel:
+	@if [ -z "$(PLATFORM_TAG)" ]; then echo "Error: PLATFORM_TAG not set"; exit 1; fi
+	@mkdir -p packages/pypi/twf-cli/src/twf_cli/_binary
+	@ext=""; if [ "$(GOOS)" = "windows" ]; then ext=".exe"; fi; \
+		cp $(EXT_DIR)/bin/twf$$ext packages/pypi/twf-cli/src/twf_cli/_binary/twf$$ext; \
+		chmod +x packages/pypi/twf-cli/src/twf_cli/_binary/twf$$ext 2>/dev/null || true
+	@# Build a py3-none-any wheel via hatchling, then retag to the target platform.
+	@# Hatchling's wheel target doesn't natively support cross-platform tags, so we
+	@# post-process with `wheel tags` (from the `wheel` package).
+	cd packages/pypi/twf-cli && rm -rf dist && python3 -m build --wheel
+	cd packages/pypi/twf-cli/dist && \
+		python3 -m wheel tags --remove --platform-tag $(PLATFORM_TAG) *.whl
+	@echo "Built wheel for $(PLATFORM_TAG)"
+
+## Upload all wheels in packages/pypi/twf-cli/dist/ to PyPI via twine.
+publish-pypi:
+	@if [ -z "$(TWINE_PASSWORD)" ]; then echo "Error: TWINE_PASSWORD not set"; exit 1; fi
+	twine upload --non-interactive packages/pypi/twf-cli/dist/*.whl
+
+# ── npm wrapper ─────────────────────────────────────────────────────────────
+
+.PHONY: publish-npm-platform publish-npm
 
 ## Stage the freshly-built binary into one platform sub-package and `npm publish`.
 ## Called per matrix entry in CI; can be run locally for one platform at a time.
@@ -203,7 +250,11 @@ release:
 	@for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do \
 		sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' packages/npm/twf-$$p/package.json && rm -f packages/npm/twf-$$p/package.json.bak; \
 	done
-	git add $(EXT_DIR)/package.json tools/visualizer/package.json packages/npm
+	@# PyPI package version (pyproject.toml top-level project.version)
+	@sed -i.bak 's/^version = "[^"]*"/version = "$(NEW_VERSION)"/' packages/pypi/twf-cli/pyproject.toml && rm -f packages/pypi/twf-cli/pyproject.toml.bak
+	@# Mirror the version into the package's __init__.py for `import twf_cli; twf_cli.__version__`
+	@sed -i.bak 's/^__version__ = "[^"]*"$$/__version__ = "$(NEW_VERSION)"/' packages/pypi/twf-cli/src/twf_cli/__init__.py && rm -f packages/pypi/twf-cli/src/twf_cli/__init__.py.bak
+	git add $(EXT_DIR)/package.json tools/visualizer/package.json packages/npm packages/pypi
 	git commit -m "release: v$(NEW_VERSION)"
 	git tag "v$(NEW_VERSION)"
 	git push origin HEAD "v$(NEW_VERSION)"
@@ -217,4 +268,5 @@ release:
 clean:
 	rm -rf $(EXT_DIR)/bin $(EXT_DIR)/dist $(EXT_DIR)/out $(EXT_DIR)/skills $(EXT_DIR)/*.vsix dist/
 	rm -rf packages/npm/twf-*/bin packages/npm/twf*/LICENSE
+	rm -rf packages/pypi/twf-cli/dist packages/pypi/twf-cli/src/twf_cli/_binary
 	@echo "Cleaned"

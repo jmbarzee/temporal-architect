@@ -9,7 +9,9 @@ name: Release
 #   _publish-vsix.yml            — VS Code Marketplace + Open VSX
 #   _publish-npm-twf.yml         — @temporal-skills/twf wrapper + 5 sub-pkgs
 #   _publish-npm-visualizer.yml  — @temporal-skills/visualizer
+#   _publish-pypi.yml            — twf-cli wheels × 5 + single twine upload
 #   _publish-github-release.yml  — checksums + GitHub Release with all assets
+#   _publish-brew.yml            — bump jmbarzee/homebrew-twf formula
 #
 # This file is intentionally thin: declare the dependency graph and pass
 # secrets to the reusables that need them. When adding a new publish channel,
@@ -64,6 +66,14 @@ jobs:
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  publish-pypi:
+    needs: build-binaries
+    uses: ./.github/workflows/_publish-pypi.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+
   publish-npm-visualizer:
     needs: check-versions
     uses: ./.github/workflows/_publish-npm-visualizer.yml
@@ -77,3 +87,12 @@ jobs:
     uses: ./.github/workflows/_publish-github-release.yml
     with:
       version: ${{ github.ref_name }}
+
+  publish-brew:
+    # Needs the GitHub Release to exist so the formula's URLs + SHAs are pinnable.
+    needs: publish-github-release
+    uses: ./.github/workflows/_publish-brew.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

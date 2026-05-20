@@ -36,12 +36,23 @@ jobs:
               fail=1
             fi
           }
+          check_pyproject() {
+            local label="$1" file="$2"
+            local actual
+            actual="$(python3 -c "import tomllib; print(tomllib.load(open('$file','rb'))['project']['version'])")"
+            echo "  ${label}: ${actual}"
+            if [ "$actual" != "$TAG_VERSION" ]; then
+              echo "::error file=${file}::version ${actual} does not match tag v${TAG_VERSION}"
+              fail=1
+            fi
+          }
           check_node "packages/vscode"          packages/vscode/package.json
           check_node "tools/visualizer"         tools/visualizer/package.json
           check_node "npm wrapper"              packages/npm/twf/package.json
           for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
             check_node "npm $p" "packages/npm/twf-$p/package.json"
           done
+          check_pyproject "pypi twf-cli" packages/pypi/twf-cli/pyproject.toml
           exit $fail
         env:
           VERSION: ${{ inputs.version }}

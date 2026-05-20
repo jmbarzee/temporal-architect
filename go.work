@@ -6,4 +6,5 @@ use (
 	./tools/lsp
 	./tools/spec
 	./scripts/gen-skills-manifest
+	./scripts/bump-brew
 )

@@ -1,0 +1,8 @@
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Bundled binary staged into the package at CI time (or `make build-pypi-wheel`).
+# Never committed; rebuilt fresh each release.
+src/twf_cli/_binary/

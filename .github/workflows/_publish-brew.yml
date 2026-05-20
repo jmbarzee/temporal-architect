@@ -1,0 +1,33 @@
+name: _publish-brew
+
+# Reusable: bump jmbarzee/homebrew-twf's Formula/twf.rb to point at this
+# version's GitHub Release archives. Runs AFTER _publish-github-release.yml
+# so the archives the formula references actually exist.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+    secrets:
+      HOMEBREW_TAP_TOKEN:
+        description: "GitHub PAT with `repo` write access on jmbarzee/homebrew-twf."
+        required: true
+
+jobs:
+  publish:
+    name: Bump Homebrew tap formula
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: scripts/bump-brew/go.mod
+
+      - name: Bump formula
+        run: make publish-brew VERSION=${{ inputs.version }}
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
