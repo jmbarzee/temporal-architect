@@ -6,7 +6,10 @@ A DSL (`.twf`) and toolchain for designing, visualizing, and code-generating Tem
 
 See [README — Repository Structure](./README.md#repository-structure) for the top-level tree. Additional internal detail relevant to working in this repo:
 
+The top-level layout splits **distribution** (what users receive) from **dev** (what builds and maintains it). Two paths are at the root because external tools dictate the location: `.claude-plugin/` (Claude Code marketplace) and `.claude/` (Claude Code config).
+
 ```
+# Distribution source
 tools/spec/
   sections/             Per-topic markdown files (NN-slug.md) — the canonical grammar
   spec.go               //go:embed sections/*.md + Sections/Get/All API
@@ -20,12 +23,27 @@ tools/lsp/
   parser/deps/          Dependency graph extraction
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
   cmd/twf/              CLI binary (check, parse, symbols, deps, spec, lsp)
-scripts/
+tools/visualizer/       React workflow visualizer (npm package + VSIX webview)
+skills/                 AI skill definitions (mirrored into the Claude Code plugin)
+
+# Distribution artifacts (per channel)
+packages/npm/           `@temporal-skills/twf` wrapper + 5 platform sub-packages
+packages/pypi/twf-cli/  `twf-cli` PyPI wheel (one per platform)
+packages/vscode/        VS Code / Cursor / Open VSX extension (VSIX)
+packages/install.sh     Curl-bash installer (no package manager required)
+.claude-plugin/         Claude Code marketplace plugin (root location forced by Claude Code)
+
+# Dev — release tooling and dev-cycle apparatus
+internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
-  install.sh            One-shot installer for the twf CLI + skills
-  version.sh            Release version bump helper
+  bump-brew/            Go tool that bumps the Homebrew tap formula on release
+  sync-plugin/          Go tool that mirrors skills/ into the Claude Code plugin
+internal/orchestrator/  Temporal workflow design for the automated dev cycle
+internal/version.sh     Release version bump helper
+
+# Coordination
 changes/                Ephemeral coordination files (REVISIONS_NNN + CHANGES_NNN per component)
-go.work                 Workspace wiring tools/lsp, tools/spec, and scripts/gen-skills-manifest
+go.work                 Workspace wiring tools/lsp, tools/spec, and internal/release/*
 ```
 
 ## Project Status
