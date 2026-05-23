@@ -13,8 +13,8 @@ Changes propagate along this graph. Each edge has a contract type:
 ```
 DSL grammar (tools/spec/sections/*.md)
   └─► Parser (tools/lsp/)
-        │  Grammar → changes/dsl/ triggers: review-alignment-design-skill
-        │  Schema  → changes/parser/ triggers: review-quality-visualizer, review-quality-visualizer-spec
+        │  Grammar → internal/changes/dsl/ triggers: review-alignment-design-skill
+        │  Schema  → internal/changes/parser/ triggers: review-quality-visualizer, review-quality-visualizer-spec
         │  API     → triggers: review-quality-visualizer (TS types)
         ├─► LSP Server (tools/lsp/internal/server/)
         │     API/Semantic → triggers: review-quality-parser
@@ -32,7 +32,7 @@ DSL grammar (tools/spec/sections/*.md)
 
 ### Phase 1: Read CHANGES File
 
-A specific CHANGES file path must be provided (e.g., `changes/parser/CHANGES_001.md`). If none is provided, scan all `changes/*/CHANGES_*.md` files and ask the user to select one.
+A specific CHANGES file path must be provided (e.g., `internal/changes/parser/CHANGES_001.md`). If none is provided, scan all `internal/changes/*/CHANGES_*.md` files and ask the user to select one.
 
 Read the specified file and extract:
 - Source review command
@@ -47,8 +47,8 @@ For each non-internal change, map to downstream layers using the dependency grap
 
 | CHANGES file | Change type | Downstream component | Review command |
 |---|---|---|---|
-| changes/parser/CHANGES_001.md | Schema | visualizer | review-quality-visualizer |
-| changes/dsl/CHANGES_001.md | Grammar | design-skill | review-alignment-design-skill |
+| internal/changes/parser/CHANGES_001.md | Schema | visualizer | review-quality-visualizer |
+| internal/changes/dsl/CHANGES_001.md | Grammar | design-skill | review-alignment-design-skill |
 | ... | | | |
 
 Deduplicate: if the same review command is triggered by multiple change types, merge the context — one sub-agent handles all relevant changes for that layer.
@@ -58,7 +58,7 @@ Deduplicate: if the same review command is triggered by multiple change types, m
 Launch one sub-agent per downstream review. Each sub-agent:
 1. Runs the specified review command
 2. Receives the relevant changes as additional context: "Focus this review on the impact of these specific changes: [list]"
-3. Follows the review command's full workflow — Explore → Catalog → Group → Write REVISIONS file to `changes/{downstream-component}/`
+3. Follows the review command's full workflow — Explore → Catalog → Group → Write REVISIONS file to `internal/changes/{downstream-component}/`
 
 Sub-agents run in parallel where the downstream layers are independent.
 
@@ -69,9 +69,9 @@ Sub-agents run in parallel where the downstream layers are independent.
 When all sub-agents complete:
 
 1. Report:
-   - Which REVISIONS files were created (in `changes/{component}/`)
+   - Which REVISIONS files were created (in `internal/changes/{component}/`)
    - Which layers had no impact (changes didn't affect them)
-   - Which layers were skipped because an open REVISIONS file already exists in their `changes/{component}/` directory
+   - Which layers were skipped because an open REVISIONS file already exists in their `internal/changes/{component}/` directory
    - Any VS Code Extension impacts that need manual review
    - Recommended order for running `/project:address-review` on each REVISIONS file
 
@@ -79,6 +79,6 @@ When all sub-agents complete:
 
 ## Constraints
 - **CHANGES files persist.** Do not delete CHANGES files. They are the historical record.
-- **Sub-agents write REVISIONS files to `changes/{downstream-component}/`, not you.** Your output is the propagation report.
+- **Sub-agents write REVISIONS files to `internal/changes/{downstream-component}/`, not you.** Your output is the propagation report.
 - **Internal-only changes stop here.** No downstream reviews needed.
-- **Don't re-run reviews for layers that already have open REVISIONS files.** Check for existing `*_REVISIONS_*.md` in the downstream component's `changes/` directory before launching a sub-agent for that layer.
+- **Don't re-run reviews for layers that already have open REVISIONS files.** Check for existing `*_REVISIONS_*.md` in the downstream component's `internal/changes/` directory before launching a sub-agent for that layer.

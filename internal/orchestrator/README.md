@@ -39,10 +39,10 @@ Each component maps to a directory scope, review commands, and downstream edges:
 
 ## File Conventions
 
-All coordination files live under `changes/` with component subdirectories:
+All coordination files live under `internal/changes/` with component subdirectories:
 
 ```
-changes/
+internal/changes/
   parser/
     quality_REVISIONS_001.md       ← pending (from review-quality-parser)
     alignment_REVISIONS_001.md     ← pending (from review-alignment-parser)
@@ -80,7 +80,7 @@ DevCycleWorkflow(initialScope):
   3. For each component with pending REVISIONS:
        spawn ComponentCycleWorkflow (parallel where independent)
   4. WaitForAny child completion
-  5. GitCommit child's changes (scoped to component directory + changes/)
+  5. GitCommit child's changes (scoped to component directory + internal/changes/)
   6. ScanRevisions → queue or spawn new children from propagation
   7. Repeat from 4 until: no children running AND no REVISIONS remain
   8. InvokeClaudeCode(summarize-changes)
@@ -122,7 +122,7 @@ The main workflow serializes all commits. No child workflow touches git directly
 
 Each child's work produces one commit scoped to:
 - The component's source directory (e.g., `tools/lsp/` for parser)
-- The `changes/` coordination directory
+- The `internal/changes/` coordination directory
 
 Git history reads as a sequence of component-scoped changes, making review straightforward.
 
@@ -130,7 +130,7 @@ Git history reads as a sequence of component-scoped changes, making review strai
 
 1. Run `summarize-changes` — reads all CHANGES files, generates consolidated summary
 2. Commit the summary
-3. Delete the entire `changes/` directory
+3. Delete the entire `internal/changes/` directory
 4. Commit the cleanup ("remove orchestration artifacts")
 5. Create PR using the summary as the PR description
 
@@ -152,7 +152,7 @@ All limits are configurable via workflow input parameters.
 Child workflow failures use the saga compensation pattern:
 
 1. **Activity retry** — `InvokeClaudeCode` has a retry policy for transient failures (subprocess crash, OOM). Temporal retries automatically.
-2. **Saga compensation** — When an activity ultimately fails, the child workflow rolls back file changes in LIFO order: remove downstream REVISIONS written by `propagate-changes`, then revert source edits and restore REVISIONS in `changes/{component}/`. The worktree is left clean.
+2. **Saga compensation** — When an activity ultimately fails, the child workflow rolls back file changes in LIFO order: remove downstream REVISIONS written by `propagate-changes`, then revert source edits and restore REVISIONS in `internal/changes/{component}/`. The worktree is left clean.
 3. **Workflow retry** — The child workflow call has a retry policy. After compensation cleans up, Temporal retries the entire child on a clean worktree.
 4. **Ultimate failure** — If all retries are exhausted, the child fails. The parent skips it (no commit) and continues with successful children. The worktree is clean because compensation already ran.
 
@@ -162,11 +162,11 @@ Child workflow failures use the saga compensation pattern:
 
 Three ways to kick off the workflow:
 
-1. **Manual review → workflow:** Run a review command manually (e.g., `/project:review-quality-parser`). It writes REVISIONS to `changes/parser/`. Then start DevCycleWorkflow — it picks up existing REVISIONS and begins the loop.
+1. **Manual review → workflow:** Run a review command manually (e.g., `/project:review-quality-parser`). It writes REVISIONS to `internal/changes/parser/`. Then start DevCycleWorkflow — it picks up existing REVISIONS and begins the loop.
 
 2. **Workflow with initial scope:** Start DevCycleWorkflow with an initial scope parameter (e.g., `["parser", "visualizer"]`). The workflow runs the appropriate review commands as the first wave, generating the initial REVISIONS files.
 
-3. **Resume from existing state:** If `changes/` already has REVISIONS and/or CHANGES files from a previous run, start DevCycleWorkflow — it scans `changes/` and resumes from the current state.
+3. **Resume from existing state:** If `internal/changes/` already has REVISIONS and/or CHANGES files from a previous run, start DevCycleWorkflow — it scans `internal/changes/` and resumes from the current state.
 
 ## Activities
 
@@ -174,6 +174,6 @@ Three ways to kick off the workflow:
 |----------|-------|--------|--------------|
 | `CreateWorktree` | branch name | worktree path | Creates git worktree |
 | `CleanupWorktree` | worktree path | — | Removes git worktree |
-| `ScanRevisions` | `changes/` path | `map[component][]revisionsFile` | None (read-only) |
+| `ScanRevisions` | `internal/changes/` path | `map[component][]revisionsFile` | None (read-only) |
 | `InvokeClaudeCode` | command name, args | exit code, stdout | Reads/writes files in worktree |
 | `GitCommit` | message, file paths | commit SHA | Creates git commit |

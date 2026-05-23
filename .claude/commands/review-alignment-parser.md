@@ -8,7 +8,7 @@ Parser quality and code health belong in `/project:review-quality-parser`. DSL d
 
 - `tools/spec/sections/*.md` — authoritative source of truth (per-topic split). `twf spec` prints the full concatenation; `twf spec <slug>` prints one section.
 - `tools/lsp/parser/` (`lexer/`, `parser/`, `ast/`, `resolver/`) — target under review
-- All existing files in `changes/parser/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
+- All existing files in `internal/changes/parser/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -53,15 +53,15 @@ Merge all findings. For each issue:
 - **Gap**: what's absent, wrong, or incomplete
 - **Severity**: `critical` (construct silently ignored or produces wrong AST) | `moderate` (partially handled) | `minor` (edge case or error message mismatch)
 
-Drop anything already tracked in existing `changes/parser/*_REVISIONS_*.md` or `changes/parser/CHANGES_*.md` files.
+Drop anything already tracked in existing `internal/changes/parser/*_REVISIONS_*.md` or `internal/changes/parser/CHANGES_*.md` files.
 
 ### Phase 4: Group & Prioritize
 
 Group by construct family. Order: `incorrect` first (silent misparse is worse than a missing construct), then `missing` critical constructs, then `partial`, then `minor`.
 
-### Phase 5: Write to `changes/parser/alignment_REVISIONS_{NNN}.md`
+### Phase 5: Write to `internal/changes/parser/alignment_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `changes/parser/alignment_REVISIONS_{NNN}.md` (create the `changes/parser/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/parser/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/parser/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: coverage state, what's missing or incorrect
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Grammar` | `API` | `Semantic`), parallelism notes

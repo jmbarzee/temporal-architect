@@ -1,12 +1,12 @@
 # Summarize Changes
 
-Scan the `changes/` directory tree and produce a consolidated report of all work done across the development cycle.
+Scan the `internal/changes/` directory tree and produce a consolidated report of all work done across the development cycle.
 
 ## Workflow
 
 ### Phase 1: Scan
 
-Read the `changes/` directory structure. For each component subdirectory, collect:
+Read the `internal/changes/` directory structure. For each component subdirectory, collect:
 - All `CHANGES_*.md` files (completed work)
 - All `*_REVISIONS_*.md` files (pending work)
 
@@ -58,7 +58,7 @@ parser/CHANGES_001.md (Grammar) → design-skill/alignment_REVISIONS_001.md → 
 
 ### Phase 4: Write Summary (optional)
 
-If requested, write a consolidated summary to `changes/SUMMARY.md` suitable for use as a PR description.
+If requested, write a consolidated summary to `internal/changes/SUMMARY.md` suitable for use as a PR description.
 
 The summary should include:
 - One-paragraph overview of the cycle
@@ -67,6 +67,6 @@ The summary should include:
 
 ## Constraints
 
-- **Read-only by default.** Only write `changes/SUMMARY.md` if explicitly requested or if running as part of the automated workflow.
+- **Read-only by default.** Only write `internal/changes/SUMMARY.md` if explicitly requested or if running as part of the automated workflow.
 - **Report what exists.** Don't evaluate quality or correctness of changes — just catalog them.
 - **Follow the file conventions.** REVISIONS = pending, CHANGES = completed. Don't interpret them differently.

@@ -1,6 +1,6 @@
 # Orchestrator Revisions: Filesystem Contention + Outcome Clarity
 
-**Source:** Originally `ORCHESTRATOR_REVISIONS.md` Groups 3 + 4 (extracted on migration into the `changes/` flow). Groups 1 + 2 from the original file are now `changes/orchestrator/CHANGES_001.md` (completed work).
+**Source:** Originally `ORCHESTRATOR_REVISIONS.md` Groups 3 + 4 (extracted on migration into the `internal/changes/` flow). Groups 1 + 2 from the original file are now `internal/changes/orchestrator/CHANGES_001.md` (completed work).
 **Reflection file:** `REFLECTION_DESIGN.md` (consumed)
 
 ## Summary
@@ -10,7 +10,7 @@ Two open design defects remain on `tools/orchestrator/dev-cycle.twf` after the i
 ## Group 1: Shared Worktree Contention
 
 **Findings:**
-- **D3** (High): Multiple `ComponentCycleWorkflow` children run `InvokeClaudeCode` subprocesses in the same worktree concurrently. The `propagate-changes` step writes REVISIONS files to `changes/{downstream}/` while another child's `address-review` might be reading from `changes/`. This is a filesystem race.
+- **D3** (High): Multiple `ComponentCycleWorkflow` children run `InvokeClaudeCode` subprocesses in the same worktree concurrently. The `propagate-changes` step writes REVISIONS files to `internal/changes/{downstream}/` while another child's `address-review` might be reading from `internal/changes/`. This is a filesystem race.
 - **D4** (Medium): The worktree is a local filesystem resource. All activities must run on the same host. This is a fundamental deployment constraint not documented anywhere.
 - **O2**: The README doesn't address filesystem contention between parallel children.
 
@@ -22,9 +22,9 @@ Two open design defects remain on `tools/orchestrator/dev-cycle.twf` after the i
 
 1. **`dev-cycle.twf`** — Add a comment block in the header documenting the co-location constraint: all activities must run on the same host because the worktree is a local filesystem resource. Consider whether the `session` pattern (Temporal sessions for host-affinity) should be noted.
 
-2. **`dev-cycle.twf`** — Address the filesystem race. The key insight: within a wave, children's `address-review` edits non-overlapping source directories (each component has its own scope), but `propagate-changes` writes to other components' `changes/` subdirectories. Two options:
+2. **`dev-cycle.twf`** — Address the filesystem race. The key insight: within a wave, children's `address-review` edits non-overlapping source directories (each component has its own scope), but `propagate-changes` writes to other components' `internal/changes/` subdirectories. Two options:
    - (a) Restructure so `propagate-changes` runs *after* the wave (in the parent), not inside the child. This eliminates the race but changes the architecture.
-   - (b) Document the invariant: `propagate-changes` writes only to `changes/{downstream}/`, and within a wave, no child reads from a downstream component's changes directory. The `BuildWaveManifest` activity must enforce this by never scheduling upstream and downstream components in the same wave.
+   - (b) Document the invariant: `propagate-changes` writes only to `internal/changes/{downstream}/`, and within a wave, no child reads from a downstream component's changes directory. The `BuildWaveManifest` activity must enforce this by never scheduling upstream and downstream components in the same wave.
 
 3. **`README.md`** — Add to "Parallel Execution" section: document the filesystem safety invariant (components in the same wave must have non-overlapping read/write scopes), and note the host co-location requirement.
 

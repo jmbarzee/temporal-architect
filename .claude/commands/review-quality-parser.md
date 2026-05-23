@@ -8,7 +8,7 @@ We value clear, elegant, functional code. The parser is the foundation of the de
 
 Before starting, read `AST_REVISIONS.md` for the current revision plan. Check which groups have been completed. Your review should focus on **what remains** and **what's new** — don't re-report issues that are already tracked.
 
-Also read all existing files in `changes/parser/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to understand what has already been found, addressed, or is in progress. Don't re-report issues tracked there.
+Also read all existing files in `internal/changes/parser/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to understand what has already been found, addressed, or is in progress. Don't re-report issues tracked there.
 
 If prior review documents exist in `tools/lsp/` (e.g., `OLD_CODE_REVIEW.md`), read them to understand what was already found and what was fixed. Surface any regressions or findings that were missed.
 
@@ -84,9 +84,9 @@ Cross-reference against `AST_REVISIONS.md`. Drop findings that are already track
   - Estimated scope (which files are touched)
   - What can be parallelized within the group
 
-### Phase 4: Write to `changes/parser/quality_REVISIONS_{NNN}.md`
+### Phase 4: Write to `internal/changes/parser/quality_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `changes/parser/quality_REVISIONS_{NNN}.md` (create the `changes/parser/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/parser/quality_REVISIONS_{NNN}.md` (create the `internal/changes/parser/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: scope of this review, what was found
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Grammar` | `Schema` | `API` | `Semantic` | `Internal`), parallelism notes

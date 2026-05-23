@@ -124,7 +124,7 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
     activity CleanupChangesDir(worktreePath)
         options:
             start_to_close_timeout: 30s
-    activity GitCommit(worktreePath, "remove orchestration artifacts", ChangedPaths{paths: "changes/"}) -> cleanupSha
+    activity GitCommit(worktreePath, "remove orchestration artifacts", ChangedPaths{paths: "internal/changes/"}) -> cleanupSha
         options:
             start_to_close_timeout: 30s
             retry_policy:
@@ -155,7 +155,7 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
 workflow ComponentCycleWorkflow(worktreePath: string, component: Component, revisionsFiles: RevisionsFileList) -> (ComponentCycleResult):
     # Saga compensation on failure (LIFO order):
     #   2. Remove downstream REVISIONS written by propagate-changes
-    #   1. Revert source edits and restore REVISIONS in changes/{component}/
+    #   1. Revert source edits and restore REVISIONS in internal/changes/{component}/
     # Implementation: Go SDK saga pattern (AddCompensation/Compensate) or defer.
     # Compensation ensures clean worktree state before workflow retry.
 
@@ -207,10 +207,10 @@ activity GitCommit(worktreePath: string, message: string, changedPaths: ChangedP
 # --- Filesystem Scanning ---
 
 activity ScanRevisions(worktreePath: string) -> (PendingWork):
-    # Walk changes/ directory, find all *_REVISIONS_*.md files
+    # Walk internal/changes/ directory, find all *_REVISIONS_*.md files
     # Group by component subdirectory
     # Returns empty PendingWork if no REVISIONS files found
-    scanDirectory(worktreePath, "changes/")
+    scanDirectory(worktreePath, "internal/changes/")
 
 activity BuildWaveManifest(pendingWork: PendingWork, alreadySpawned: int, maxChildren: int) -> (WaveManifest):
     # Build the list of components to process this wave
@@ -230,7 +230,7 @@ activity InvokeClaudeCode(worktreePath: string, command: string, args: any) -> (
 
 activity RunInitialReviews(worktreePath: string, scope: InitialScope) -> (int):
     # For each component in scope, invoke the appropriate review command(s)
-    # Writes initial REVISIONS files into changes/{component}/
+    # Writes initial REVISIONS files into internal/changes/{component}/
     # Returns count of REVISIONS files created
     # Implementation: heartbeats between each review invocation
     runReviews(worktreePath, scope)
@@ -246,18 +246,18 @@ activity NotifyWaveReady(waveNumber: int, worktreePath: string):
 
 activity RollbackComponent(worktreePath: string, component: Component):
     # Revert all uncommitted changes in the component's scope:
-    #   git checkout -- <component.sourceScope> changes/{component.name}/
+    #   git checkout -- <component.sourceScope> internal/changes/{component.name}/
     # Remove any untracked downstream REVISIONS written by propagate-changes:
-    #   git clean -fd changes/{downstream}/ for each downstream component
-    git.checkout(component.sourceScope, "changes/" + component.name)
+    #   git clean -fd internal/changes/{downstream}/ for each downstream component
+    git.checkout(component.sourceScope, "internal/changes/" + component.name)
     git.clean(component.downstreamChangePaths)
 
 # --- Finalization ---
 
 activity CleanupChangesDir(worktreePath: string):
-    # Delete the entire changes/ directory from the worktree
+    # Delete the entire internal/changes/ directory from the worktree
     # Called after summarize-changes has captured the full record
-    rm(worktreePath, "changes/")
+    rm(worktreePath, "internal/changes/")
 
 activity CreatePullRequest(worktreePath: string, branchName: string, body: string) -> (string):
     # Push branch and create PR using gh CLI

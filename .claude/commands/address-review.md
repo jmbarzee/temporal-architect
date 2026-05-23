@@ -6,9 +6,9 @@ Invoke this after any review command has produced a grouped finding plan and you
 
 ## Input
 
-**Option 1: Explicit REVISIONS file paths.** If specific REVISIONS files are provided (e.g., `changes/parser/quality_REVISIONS_001.md`, `changes/parser/alignment_REVISIONS_001.md`), read those files and merge their grouped plans into one execution sequence.
+**Option 1: Explicit REVISIONS file paths.** If specific REVISIONS files are provided (e.g., `internal/changes/parser/quality_REVISIONS_001.md`, `internal/changes/parser/alignment_REVISIONS_001.md`), read those files and merge their grouped plans into one execution sequence.
 
-**Option 2: Conversation context.** The grouped plan from the review command should be present in conversation context. If it is not, ask the user to paste it or point to the REVISIONS file(s) in `changes/{component}/`.
+**Option 2: Conversation context.** The grouped plan from the review command should be present in conversation context. If it is not, ask the user to paste it or point to the REVISIONS file(s) in `internal/changes/{component}/`.
 
 Each group in the plan should have:
 - A theme name
@@ -78,9 +78,9 @@ Present a consolidated summary of all changes made across all groups. **Wait for
 
 **Step B: Write CHANGES file**
 
-Determine the component from the REVISIONS file path (e.g., `changes/parser/quality_REVISIONS_001.md` → component is `parser`).
+Determine the component from the REVISIONS file path (e.g., `internal/changes/parser/quality_REVISIONS_001.md` → component is `parser`).
 
-Write `changes/{component}/CHANGES_{NNN}.md` using the next available sequence number:
+Write `internal/changes/{component}/CHANGES_{NNN}.md` using the next available sequence number:
 
 ```
 # {Component} Changes

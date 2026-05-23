@@ -1,6 +1,6 @@
 # Design Skill Revisions: Alignment to DSL Changes
 
-**Source:** `propagate-changes` from `changes/dsl/CHANGES_001.md`
+**Source:** `propagate-changes` from `internal/changes/dsl/CHANGES_001.md`
 **Focus:** `await one` cancellation semantics correction, `parent_close_policy` descriptions
 
 ## Summary

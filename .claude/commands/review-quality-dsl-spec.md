@@ -9,7 +9,7 @@ This review asks "does the DSL express Temporal well?" — not "does the parser 
 Before starting, read:
 - `tools/spec/sections/*.md` — the current formal grammar and semantics (the artifact under review). The whole spec can also be dumped via `twf spec`; individual sections via `twf spec <slug>`.
 - `AST_REVISIONS.md` — language changes in flight; don't re-report what's already planned
-- All existing files in `changes/dsl/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
+- All existing files in `internal/changes/dsl/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
 
 Use the **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowledge_sources`) as the authoritative reference for what Temporal offers. When evaluating whether the DSL covers a concept, search the docs — don't rely on memory.
 
@@ -79,9 +79,9 @@ Each group should have:
 - Whether it would be a breaking change to existing `.twf` files
 - Any validated `POSSIBLE_DSL_FEATURES.md` proposals that belong here
 
-### Phase 5: Write to `changes/dsl/quality_REVISIONS_{NNN}.md`
+### Phase 5: Write to `internal/changes/dsl/quality_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `changes/dsl/quality_REVISIONS_{NNN}.md` (create the `changes/dsl/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/dsl/quality_REVISIONS_{NNN}.md` (create the `internal/changes/dsl/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: coverage state, what was found, which possible features were validated
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, change type (`Grammar` | `Semantic`), whether it breaks existing `.twf` files, parser work required

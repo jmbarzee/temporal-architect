@@ -114,12 +114,12 @@ packages/
 # Dev — release tooling, dev-cycle orchestration, version helper
 internal/
   release/          Go tools that build / sync / publish distribution artifacts
+  changes/          Ephemeral coordination files for in-flight revisions
   orchestrator/     Temporal workflow design for the automated dev cycle
   version.sh        Release version bump helper
 
-# Reference / coordination
+# Reference
 examples/           Example `.twf` files
-changes/            Ephemeral coordination files for in-flight revisions
 ```
 
 ## Development

@@ -15,7 +15,7 @@ Generate the initial REVISIONS files that feed the automated workflow loop. This
 Before launching any reviews, ask the user:
 1. What is the **starting point**? Options:
    - "Fresh cycle" — full review from scratch
-   - "Resume" — check `changes/` for existing REVISIONS files and report current state
+   - "Resume" — check `internal/changes/` for existing REVISIONS files and report current state
    - "Targeted" — specific component(s) only
 2. Which **layers** should be reviewed this cycle?
    - DSL spec (`/review-quality-dsl-spec`)
@@ -35,7 +35,7 @@ Present the proposed review scope and **wait for confirmation** before starting.
 
 ### Phase 2: Discovery (Parallel)
 
-Launch the confirmed review commands as parallel sub-agents. Each sub-agent runs its full workflow through to writing REVISIONS files in `changes/{component}/`.
+Launch the confirmed review commands as parallel sub-agents. Each sub-agent runs its full workflow through to writing REVISIONS files in `internal/changes/{component}/`.
 
 Collect summaries from all sub-agents.
 
@@ -51,7 +51,7 @@ Present:
 
 If the user wants to continue manually, recommend running `/project:address-review` with the specific REVISIONS file paths, followed by `/project:propagate-changes` after each component's CHANGES file is written.
 
-If the user wants to run the automated workflow, the REVISIONS files in `changes/` are the input — start the DevCycleWorkflow.
+If the user wants to run the automated workflow, the REVISIONS files in `internal/changes/` are the input — start the DevCycleWorkflow.
 
 ## Approval Gates
 

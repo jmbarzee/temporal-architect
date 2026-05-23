@@ -14,7 +14,8 @@ For *what does ship*, see [`tools/`](../tools/) (source) and
 | [`release/gen-skills-manifest/`](./release/gen-skills-manifest/) | Go tool — emits `skills/MANIFEST.md` and the `skills-vX.Y.Z.tar.gz` release asset |
 | [`release/bump-brew/`](./release/bump-brew/) | Go tool — bumps `jmbarzee/homebrew-twf`'s `Formula/twf.rb` on release via the GitHub Contents API |
 | [`release/sync-plugin/`](./release/sync-plugin/) | Go tool — mirrors `skills/` into `.claude-plugin/plugins/temporal-skills/skills/`; CI runs `-check` to block drift |
-| [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate). Pairs with [`changes/`](../changes/) and [`.claude/commands/`](../.claude/commands/) |
+| [`changes/`](./changes/) | Ephemeral coordination files (REVISIONS_NNN + CHANGES_NNN per component) — pairs with [`.claude/commands/`](../.claude/commands/) |
+| [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate) |
 | [`version.sh`](./version.sh) | Shell helper for `make release` — computes the next semver from `git describe` |
 
 ## Why `internal/`

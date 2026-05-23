@@ -38,11 +38,10 @@ internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
   bump-brew/            Go tool that bumps the Homebrew tap formula on release
   sync-plugin/          Go tool that mirrors skills/ into the Claude Code plugin
+internal/changes/       Ephemeral coordination files (REVISIONS_NNN + CHANGES_NNN per component)
 internal/orchestrator/  Temporal workflow design for the automated dev cycle
 internal/version.sh     Release version bump helper
 
-# Coordination
-changes/                Ephemeral coordination files (REVISIONS_NNN + CHANGES_NNN per component)
 go.work                 Workspace wiring tools/lsp, tools/spec, and internal/release/*
 ```
 
@@ -52,7 +51,7 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Breaking changes are expected and welcome.** Do not waste effort on backwards compatibility shims, deprecated field aliases, or migration paths. When a better design emerges, adopt it directly.
 
-**Coordinate breaking changes through the `changes/` directory.** Each component (`changes/dsl/`, `changes/parser/`, `changes/visualizer/`, `changes/orchestrator/`, `changes/design-skill/`, `changes/author-go-skill/`) owns a numbered series of `REVISIONS_NNN.md` (planned work) and `CHANGES_NNN.md` (completed work). The automated dev cycle drives this flow — see the [Development Commands](#development-commands) below, with `/project:dev-cycle` as the entry point and `/project:propagate-changes` for fanning a completed change out to downstream consumers.
+**Coordinate breaking changes through the `internal/changes/` directory.** Each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/orchestrator/`, `internal/changes/design-skill/`, `internal/changes/author-go-skill/`) owns a numbered series of `REVISIONS_NNN.md` (planned work) and `CHANGES_NNN.md` (completed work). The automated dev cycle drives this flow — see the [Development Commands](#development-commands) below, with `/project:dev-cycle` as the entry point and `/project:propagate-changes` for fanning a completed change out to downstream consumers.
 
 Long-lived backlog and reference docs that aren't per-cycle revisions live at the repo root (e.g. `POSSIBLE_DSL_FEATURES.md`, `VISUALIZER_DEFERRED.md`, `SKILL_IMPROVEMENTS.md`, `issues_blocking_downstream_adoption.md`, `packaging.md`).
 
@@ -88,7 +87,7 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 
 | Command | Purpose |
 |---------|---------|
-| `dev-cycle` | Scope and launch reviews → write REVISIONS to `changes/` |
+| `dev-cycle` | Scope and launch reviews → write REVISIONS to `internal/changes/` |
 | **Quality Reviews** | |
 | `review-quality-parser` | Go parser, AST, resolver — code quality and design |
 | `review-quality-visualizer` | Visualizer TypeScript — code quality and contract consumption |
@@ -104,7 +103,7 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 | **Execution & Propagation** | |
 | `address-review` | Execute an approved review group (inner loop) |
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
-| `summarize-changes` | Scan `changes/` and produce consolidated report |
+| `summarize-changes` | Scan `internal/changes/` and produce consolidated report |
 | **Skill Authoring** | |
 | `reflect-skill` | Reflect on a recent task and propose updates to the responsible skill |
 | **Design Ideation** | |
