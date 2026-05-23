@@ -7,13 +7,22 @@ A language-agnostic DSL (`.twf`) for Temporal workflows — capturing workflow s
 1. **Document Temporal Architectures** — Describe production-scale systems with namespaces, workers, workflows, activities, and Nexus services in a single readable notation.
 2. **Facilitate AI-Driven Development** — Give AI agents a structured, parseable representation they can design against and translate into SDK code.
 
-## Install
+## Quick install
 
-Install **Temporal Workflow (.twf)** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) or [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax). The extension bundles:
+Pick the install line for your environment:
 
-- **AI Skills** — automatically installed to `~/.cursor/skills/` so Cursor's agent can use them immediately
-- **`twf` CLI** — parser, validator, and language server for `.twf` files, added to your terminal PATH
-- **Syntax highlighting** and **workflow visualization** for `.twf` files
+| Audience / tool | Install |
+|---|---|
+| **Cursor / VS Code** | Install **Temporal Workflow (.twf)** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) or [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax). Bundles the binary, AI skills (auto-installed to `~/.cursor/skills/`), and the workflow visualizer. |
+| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-skills` then `/plugin install temporal-skills@temporal-skills`. Bundles both skills and the `twf` MCP server. |
+| **Any MCP-compatible client** (Claude Desktop, Cursor MCP, Continue, Windsurf, Zed) | Add to your MCP client config: `{"twf": {"command": "npx", "args": ["-y", "@temporal-skills/twf", "mcp"]}}` |
+| **Node / JS / TS projects** | `npx -y @temporal-skills/twf check workflows.twf` (zero-install) or `npm install -g @temporal-skills/twf`. |
+| **Python projects** | `pip install twf-cli` |
+| **Homebrew** (macOS / Linux) | `brew install jmbarzee/twf/twf` |
+| **Direct binary** | `curl -sSL https://github.com/jmbarzee/temporal-skills/releases/latest/download/install.sh \| bash` |
+| **Go projects** | `go install github.com/jmbarzee/temporal-skills/tools/lsp/cmd/twf@latest` |
+
+All install paths converge on the same `twf` binary and the same embedded skills + spec.
 
 ## Tools
 
@@ -84,17 +93,33 @@ The TWF notation covers the core Temporal feature set:
 
 ## Repository Structure
 
+The top-level layout splits **distribution** (what users receive) from **dev** (what builds and maintains it).
+
 ```
-packages/         VS Code / Cursor extension
+# Distribution — source of what ships
 tools/
-  spec/           Canonical TWF language spec (embedded markdown sections)
-  lsp/            Go parser, resolver, validator, and language server (twf CLI)
-  visualizer/     React workflow visualizer (tree view + graph view)
-  orchestrator/   Temporal workflow spec for the automated dev cycle
-skills/           AI skill definitions (SKILL.md + reference docs)
-scripts/          Build, install, and release helpers
-examples/         Example `.twf` files
-changes/          Ephemeral coordination files for in-flight revisions
+  spec/             Canonical TWF language spec (embedded markdown sections)
+  lsp/              Go parser, resolver, validator, and language server (twf CLI)
+  visualizer/       React workflow visualizer (tree view + graph view)
+skills/             AI skill definitions (SKILL.md + reference docs)
+
+# Distribution — packaged artifacts
+packages/
+  npm/              `@temporal-skills/twf` wrapper + 5 platform sub-packages
+  pypi/twf-cli/     `twf-cli` PyPI wheel (one per platform)
+  vscode/           VS Code / Cursor / Open VSX extension (VSIX)
+  install.sh        Curl-bash installer (no package manager required)
+.claude-plugin/     Claude Code marketplace plugin (root location forced by Claude Code)
+
+# Dev — release tooling, dev-cycle orchestration, version helper
+internal/
+  release/          Go tools that build / sync / publish distribution artifacts
+  orchestrator/     Temporal workflow design for the automated dev cycle
+  version.sh        Release version bump helper
+
+# Reference / coordination
+examples/           Example `.twf` files
+changes/            Ephemeral coordination files for in-flight revisions
 ```
 
 ## Development

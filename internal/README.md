@@ -1,0 +1,37 @@
+# internal/
+
+**Dev-only tooling.** Nothing here ships to users — these are the
+tools, designs, and helpers used to *build, release, and maintain*
+the project itself.
+
+For *what does ship*, see [`tools/`](../tools/) (source) and
+[`packages/`](../packages/) (artifacts).
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| [`release/gen-skills-manifest/`](./release/gen-skills-manifest/) | Go tool — emits `skills/MANIFEST.md` and the `skills-vX.Y.Z.tar.gz` release asset |
+| [`release/bump-brew/`](./release/bump-brew/) | Go tool — bumps `jmbarzee/homebrew-twf`'s `Formula/twf.rb` on release via the GitHub Contents API |
+| [`release/sync-plugin/`](./release/sync-plugin/) | Go tool — mirrors `skills/` into `.claude-plugin/plugins/temporal-skills/skills/`; CI runs `-check` to block drift |
+| [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate). Pairs with [`changes/`](../changes/) and [`.claude/commands/`](../.claude/commands/) |
+| [`version.sh`](./version.sh) | Shell helper for `make release` — computes the next semver from `git describe` |
+
+## Why `internal/`
+
+The name is borrowed from Go's convention for "not importable from
+outside this module." That's literally true for the Go modules under
+`release/` — nothing in [`tools/`](../tools/) imports them, and they
+never become part of any shipped artifact.
+
+The non-Go contents (`orchestrator/dev-cycle.twf`, `version.sh`) follow
+the same spirit: they're things only people developing this repo touch,
+never things downstream consumers see.
+
+## Adding a new dev-only tool
+
+Go module → drop it under `internal/release/<name>/` (single Go module
+per tool, wired into [`go.work`](../go.work) — see
+[`packaging.md` § Conventions](../packaging.md#conventions)).
+Other tooling → at `internal/<name>` if it doesn't fit the release-tool
+shape.

@@ -321,7 +321,7 @@ for await (result in manifest.entries):
 
 **Open questions:** What is the iteration target — a named collection of promises, or inline declarations? Should the syntax be `for await` (new keyword combination) or something like `await each`? How does the resolver track the shrinking set? What happens if one promise in the set fails — skip it and continue, or halt the iteration?
 
-**Discovered during:** Design of `tools/orchestrator/dev-cycle.twf` — the orchestrator needed to spawn parallel child workflows and commit each result as it completed, but no TWF construct could express this without either losing completion-order semantics or implying cancellation of siblings.
+**Discovered during:** Design of `internal/orchestrator/dev-cycle.twf` — the orchestrator needed to spawn parallel child workflows and commit each result as it completed, but no TWF construct could express this without either losing completion-order semantics or implying cancellation of siblings.
 
 ---
 

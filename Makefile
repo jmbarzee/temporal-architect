@@ -67,7 +67,7 @@ build-skills-archive:
 	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
 	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
 	OUT=dist/skills-v$$VER.tar.gz; \
-	go run ./scripts/gen-skills-manifest --source skills --out $$OUT --version v$$VER; \
+	go run ./internal/release/gen-skills-manifest --source skills --out $$OUT --version v$$VER; \
 	echo "Packaged $$OUT"
 
 ## Build the visualizer webview into the extension
@@ -153,6 +153,17 @@ publish-ovsx:
 		npx ovsx publish $$vsix -p $(OVSX_TOKEN); \
 	done
 
+# ── Claude Code plugin ──────────────────────────────────────────────────────
+
+.PHONY: package-plugin
+
+## Regenerate the Claude Code plugin's copy of skills/ from the canonical
+## source at the repo root. Run this after editing skills/; CI fails PRs
+## whose plugin copy is out of sync. (`.claude/commands/` is intentionally
+## NOT mirrored — those are dev-cycle scaffolding for this repo.)
+package-plugin:
+	go run ./internal/release/sync-plugin
+
 # ── Homebrew tap ────────────────────────────────────────────────────────────
 
 .PHONY: publish-brew
@@ -166,7 +177,7 @@ publish-ovsx:
 publish-brew:
 	@if [ -z "$(VERSION)" ];            then echo "Error: VERSION not set"; exit 1; fi
 	@if [ -z "$(HOMEBREW_TAP_TOKEN)" ]; then echo "Error: HOMEBREW_TAP_TOKEN not set"; exit 1; fi
-	go run ./scripts/bump-brew -version $(VERSION) -token $(HOMEBREW_TAP_TOKEN)
+	go run ./internal/release/bump-brew -version $(VERSION) -token $(HOMEBREW_TAP_TOKEN)
 
 # ── PyPI wheel ──────────────────────────────────────────────────────────────
 
@@ -235,7 +246,7 @@ release-major:
 	$(MAKE) release TYPE=major
 
 release:
-	$(eval NEW_VERSION := $(shell bash scripts/version.sh "$(VERSION)" "$(TYPE)"))
+	$(eval NEW_VERSION := $(shell bash internal/version.sh "$(VERSION)" "$(TYPE)"))
 	@if [ -z "$(NEW_VERSION)" ]; then exit 1; fi
 	@echo "Releasing v$(NEW_VERSION)"
 	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' $(EXT_DIR)/package.json && rm -f $(EXT_DIR)/package.json.bak
@@ -254,7 +265,9 @@ release:
 	@sed -i.bak 's/^version = "[^"]*"/version = "$(NEW_VERSION)"/' packages/pypi/twf-cli/pyproject.toml && rm -f packages/pypi/twf-cli/pyproject.toml.bak
 	@# Mirror the version into the package's __init__.py for `import twf_cli; twf_cli.__version__`
 	@sed -i.bak 's/^__version__ = "[^"]*"$$/__version__ = "$(NEW_VERSION)"/' packages/pypi/twf-cli/src/twf_cli/__init__.py && rm -f packages/pypi/twf-cli/src/twf_cli/__init__.py.bak
-	git add $(EXT_DIR)/package.json tools/visualizer/package.json packages/npm packages/pypi
+	@# Claude Code plugin manifest (marketplace.json has no version field — source of truth is plugin.json)
+	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' .claude-plugin/plugins/temporal-skills/.claude-plugin/plugin.json && rm -f .claude-plugin/plugins/temporal-skills/.claude-plugin/plugin.json.bak
+	git add $(EXT_DIR)/package.json tools/visualizer/package.json packages/npm packages/pypi .claude-plugin
 	git commit -m "release: v$(NEW_VERSION)"
 	git tag "v$(NEW_VERSION)"
 	git push origin HEAD "v$(NEW_VERSION)"

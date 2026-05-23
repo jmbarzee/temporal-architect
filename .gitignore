@@ -28,9 +28,10 @@ tools/lsp/twf
 # Claude settings
 .claude/settings.local.json
 examples/.claude/settings.local.json
-tools/orchestrator/.claude/settings.local.json
+internal/orchestrator/.claude/settings.local.json
 
 # skills used to build examples
 examples/.claude/skills
 
 bump-brew
+sync-plugin

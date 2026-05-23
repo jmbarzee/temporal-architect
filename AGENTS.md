@@ -54,7 +54,7 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Coordinate breaking changes through the `changes/` directory.** Each component (`changes/dsl/`, `changes/parser/`, `changes/visualizer/`, `changes/orchestrator/`, `changes/design-skill/`, `changes/author-go-skill/`) owns a numbered series of `REVISIONS_NNN.md` (planned work) and `CHANGES_NNN.md` (completed work). The automated dev cycle drives this flow — see the [Development Commands](#development-commands) below, with `/project:dev-cycle` as the entry point and `/project:propagate-changes` for fanning a completed change out to downstream consumers.
 
-Long-lived backlog and research docs that aren't per-cycle revisions live at the repo root (e.g. `POSSIBLE_DSL_FEATURES.md`, `VISUALIZER_DEFERRED.md`, `SKILL_IMPROVEMENTS.md`, `issues_blocking_downstream_adoption.md`, `packaging_and_distribution_research.md`).
+Long-lived backlog and reference docs that aren't per-cycle revisions live at the repo root (e.g. `POSSIBLE_DSL_FEATURES.md`, `VISUALIZER_DEFERRED.md`, `SKILL_IMPROVEMENTS.md`, `issues_blocking_downstream_adoption.md`, `packaging.md`).
 
 When the parser's JSON output changes, both the Go and TypeScript sides update together; that contract is what every downstream consumer (visualizer, VS Code extension, skills) reads.
 

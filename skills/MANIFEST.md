@@ -113,6 +113,6 @@ make build-skills-archive VERSION=0.3.0          # → dist/skills-v0.3.0.tar.gz
 make build-skills-archive VERSION=v0.3.0         # equivalent
 ```
 
-The generator lives at `scripts/gen-skills-manifest/`. It walks `skills/`,
+The generator lives at `internal/release/gen-skills-manifest/`. It walks `skills/`,
 computes hashes, and writes the archive — no third-party deps beyond
 the Go standard library.

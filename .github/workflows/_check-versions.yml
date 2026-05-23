@@ -53,6 +53,7 @@ jobs:
             check_node "npm $p" "packages/npm/twf-$p/package.json"
           done
           check_pyproject "pypi twf-cli" packages/pypi/twf-cli/pyproject.toml
+          check_node "claude plugin" .claude-plugin/plugins/temporal-skills/.claude-plugin/plugin.json
           exit $fail
         env:
           VERSION: ${{ inputs.version }}

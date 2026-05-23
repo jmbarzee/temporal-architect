@@ -52,5 +52,5 @@ jobs:
             dist/twf-*
             dist/skills-*
             dist/SHA256SUMS
-            scripts/install.sh
+            packages/install.sh
           generate_release_notes: true

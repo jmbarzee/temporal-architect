@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: scripts/bump-brew/go.mod
+          go-version-file: internal/release/bump-brew/go.mod
 
       - name: Bump formula
         run: make publish-brew VERSION=${{ inputs.version }}

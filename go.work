@@ -3,8 +3,9 @@ go 1.24.0
 toolchain go1.24.2
 
 use (
+	./internal/release/bump-brew
+	./internal/release/gen-skills-manifest
+	./internal/release/sync-plugin
 	./tools/lsp
 	./tools/spec
-	./scripts/gen-skills-manifest
-	./scripts/bump-brew
 )
