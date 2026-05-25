@@ -9,6 +9,7 @@ name: Release
 #   _publish-vsix.yml            — VS Code Marketplace + Open VSX
 #   _publish-npm-twf.yml         — @temporal-skills/twf wrapper + 5 sub-pkgs
 #   _publish-npm-visualizer.yml  — @temporal-skills/visualizer
+#   _publish-npm-claude-plugin.yml — @temporal-skills/claude-plugin (Claude Code plugin payload)
 #   _publish-pypi.yml            — twf-cli wheels × 5 + single twine upload
 #   _publish-github-release.yml  — checksums + GitHub Release with all assets
 #   _publish-brew.yml            — bump jmbarzee/homebrew-twf formula
@@ -77,6 +78,14 @@ jobs:
   publish-npm-visualizer:
     needs: check-versions
     uses: ./.github/workflows/_publish-npm-visualizer.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-npm-claude-plugin:
+    needs: check-versions
+    uses: ./.github/workflows/_publish-npm-claude-plugin.yml
     with:
       version: ${{ github.ref_name }}
     secrets:

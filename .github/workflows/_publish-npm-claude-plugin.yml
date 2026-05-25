@@ -1,0 +1,45 @@
+name: _publish-npm-claude-plugin
+
+# Reusable: publish @temporal-skills/claude-plugin to npm.
+#
+# This is the payload package that Claude Code's marketplace mechanism
+# fetches when a user installs the temporal-skills plugin. The marketplace
+# catalog at .claude-plugin/marketplace.json declares the plugin's
+# components inline (strict: false) and points at this npm package as the
+# source of the skills/ payload.
+#
+# `make build-claude-plugin` rsyncs skills/ from the repo root into the
+# package's gitignored skills/ directory before publishing.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+    secrets:
+      NPM_TOKEN:
+        description: "npm automation token with publish access to @temporal-skills/*."
+        required: true
+
+jobs:
+  publish:
+    name: Publish @temporal-skills/claude-plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Stage skills payload
+        run: make build-claude-plugin
+
+      - name: Publish
+        working-directory: packages/npm/claude-plugin
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

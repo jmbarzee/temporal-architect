@@ -14,14 +14,17 @@ For the *source* that gets compiled into these artifacts, see
 |---|---|---|
 | [`npm/twf/`](./npm/twf/) | `@temporal-skills/twf` (wrapper) | Node / JS / TS, MCP clients |
 | [`npm/twf-{darwin-arm64,darwin-x64,linux-x64,linux-arm64,win32-x64}/`](./npm/) | Platform sub-packages | Resolved by npm via `optionalDependencies` |
+| [`npm/claude-plugin/`](./npm/claude-plugin/) | `@temporal-skills/claude-plugin` (skills payload) | Claude Code marketplace fetches this on `/plugin install` |
 | [`pypi/twf-cli/`](./pypi/twf-cli/) | PyPI wheel (one per platform) | Python ecosystem, spec-builder Temporal worker |
 | [`vscode/`](./vscode/) | VSIX (VS Code Marketplace + Open VSX) | Cursor, VS Code, Codium |
 | [`install.sh`](./install.sh) | Curl-bash one-liner | Anything POSIX with no package manager (Docker, minimal CI, dotfiles) |
 
-The Claude Code marketplace plugin is a **fifth distribution surface**
-that lives at [`/.claude-plugin/`](../.claude-plugin/) at the repo root,
-not here, because Claude Code's marketplace mechanism requires that
-exact path. Treat it as a sibling of `packages/` despite the location.
+The Claude Code marketplace catalog itself lives at
+[`/.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json) —
+a single 1KB file at the repo root because Claude Code's marketplace
+mechanism requires that exact path. The plugin's actual payload (skills,
+MCP server config) ships from [`npm/claude-plugin/`](./npm/claude-plugin/)
+just like every other package.
 
 ## Conventions
 

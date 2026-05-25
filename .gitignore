@@ -8,6 +8,10 @@ packages/vscode/bin/
 packages/vscode/skills/
 *.vsix
 
+# Claude Code plugin payload — built by `make build-claude-plugin`,
+# copied from the canonical skills/ at the repo root, never tracked.
+packages/npm/claude-plugin/skills/
+
 # Publish tokens (contains secrets)
 .env.publish
 
@@ -34,4 +38,3 @@ internal/orchestrator/.claude/settings.local.json
 examples/.claude/skills
 
 bump-brew
-sync-plugin

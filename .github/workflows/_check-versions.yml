@@ -53,7 +53,29 @@ jobs:
             check_node "npm $p" "packages/npm/twf-$p/package.json"
           done
           check_pyproject "pypi twf-cli" packages/pypi/twf-cli/pyproject.toml
-          check_node "claude plugin" .claude-plugin/plugins/temporal-skills/.claude-plugin/plugin.json
+          check_node "claude plugin npm package" packages/npm/claude-plugin/package.json
+          # Marketplace catalog: every "version" key must match the tag.
+          # The plugin entry's version is the user-facing version label.
+          # node -p evaluates a JS expr that finds all version strings recursively.
+          actual_versions="$(node -e "
+            const m = require('./.claude-plugin/marketplace.json');
+            const out = new Set();
+            const walk = (o) => {
+              if (o && typeof o === 'object') {
+                if (typeof o.version === 'string') out.add(o.version);
+                for (const v of Object.values(o)) walk(v);
+              }
+            };
+            walk(m);
+            console.log([...out].join(','));
+          ")"
+          echo "  marketplace.json versions: ${actual_versions}"
+          for v in $(echo "$actual_versions" | tr ',' ' '); do
+            if [ "$v" != "$TAG_VERSION" ]; then
+              echo "::error file=.claude-plugin/marketplace.json::version ${v} does not match tag v${TAG_VERSION}"
+              fail=1
+            fi
+          done
           exit $fail
         env:
           VERSION: ${{ inputs.version }}

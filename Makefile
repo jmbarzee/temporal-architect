@@ -155,14 +155,22 @@ publish-ovsx:
 
 # ── Claude Code plugin ──────────────────────────────────────────────────────
 
-.PHONY: package-plugin
+.PHONY: build-claude-plugin publish-npm-claude-plugin
 
-## Regenerate the Claude Code plugin's copy of skills/ from the canonical
-## source at the repo root. Run this after editing skills/; CI fails PRs
-## whose plugin copy is out of sync. (`.claude/commands/` is intentionally
-## NOT mirrored — those are dev-cycle scaffolding for this repo.)
-package-plugin:
-	go run ./internal/release/sync-plugin
+## Stage skills/ into the @temporal-skills/claude-plugin npm package.
+## The plugin's skills/ is a build artifact, not tracked — gitignored, copied
+## from the canonical skills/ at the repo root. Mirrors the build-skills
+## pattern that stages skills into the VSIX.
+build-claude-plugin:
+	@mkdir -p packages/npm/claude-plugin/skills
+	rsync -a --delete skills/ packages/npm/claude-plugin/skills/
+	@echo "Staged skills into packages/npm/claude-plugin/"
+
+## Publish @temporal-skills/claude-plugin to npm.
+## The Claude Code marketplace catalog (.claude-plugin/marketplace.json) points
+## at this package — Claude Code does `npm install` to fetch it on plugin install.
+publish-npm-claude-plugin: build-claude-plugin
+	cd packages/npm/claude-plugin && npm publish
 
 # ── Homebrew tap ────────────────────────────────────────────────────────────
 
@@ -265,8 +273,12 @@ release:
 	@sed -i.bak 's/^version = "[^"]*"/version = "$(NEW_VERSION)"/' packages/pypi/twf-cli/pyproject.toml && rm -f packages/pypi/twf-cli/pyproject.toml.bak
 	@# Mirror the version into the package's __init__.py for `import twf_cli; twf_cli.__version__`
 	@sed -i.bak 's/^__version__ = "[^"]*"$$/__version__ = "$(NEW_VERSION)"/' packages/pypi/twf-cli/src/twf_cli/__init__.py && rm -f packages/pypi/twf-cli/src/twf_cli/__init__.py.bak
-	@# Claude Code plugin manifest (marketplace.json has no version field — source of truth is plugin.json)
-	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' .claude-plugin/plugins/temporal-skills/.claude-plugin/plugin.json && rm -f .claude-plugin/plugins/temporal-skills/.claude-plugin/plugin.json.bak
+	@# Claude Code plugin: bump the npm package's package.json + the marketplace
+	@# entry's version field. (marketplace.json has two "version" keys — the
+	@# plugin entry's own version and could-be source pin; -g hits both. The
+	@# top-level marketplace doesn't carry a "version" key, so this is safe.)
+	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' packages/npm/claude-plugin/package.json && rm -f packages/npm/claude-plugin/package.json.bak
+	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/g' .claude-plugin/marketplace.json && rm -f .claude-plugin/marketplace.json.bak
 	git add $(EXT_DIR)/package.json tools/visualizer/package.json packages/npm packages/pypi .claude-plugin
 	git commit -m "release: v$(NEW_VERSION)"
 	git tag "v$(NEW_VERSION)"

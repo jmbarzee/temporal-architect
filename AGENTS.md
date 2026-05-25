@@ -24,20 +24,20 @@ tools/lsp/
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
   cmd/twf/              CLI binary (check, parse, symbols, deps, spec, lsp)
 tools/visualizer/       React workflow visualizer (npm package + VSIX webview)
-skills/                 AI skill definitions (mirrored into the Claude Code plugin)
+skills/                 AI skill definitions (canonical source; bundled into VSIX and the Claude Code plugin npm package at build time)
 
 # Distribution artifacts (per channel)
-packages/npm/           `@temporal-skills/twf` wrapper + 5 platform sub-packages
+packages/npm/twf*/      `@temporal-skills/twf` wrapper + 5 platform sub-packages
+packages/npm/claude-plugin/  `@temporal-skills/claude-plugin` (Claude Code plugin payload; skills/ is gitignored, copied at build time)
 packages/pypi/twf-cli/  `twf-cli` PyPI wheel (one per platform)
 packages/vscode/        VS Code / Cursor / Open VSX extension (VSIX)
 packages/install.sh     Curl-bash installer (no package manager required)
-.claude-plugin/         Claude Code marketplace plugin (root location forced by Claude Code)
+.claude-plugin/         Single-file Claude Code marketplace catalog (path forced by Claude Code; payload ships from packages/npm/claude-plugin/)
 
 # Dev — release tooling and dev-cycle apparatus
 internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
   bump-brew/            Go tool that bumps the Homebrew tap formula on release
-  sync-plugin/          Go tool that mirrors skills/ into the Claude Code plugin
 internal/changes/       Ephemeral coordination files (REVISIONS_NNN + CHANGES_NNN per component)
 internal/orchestrator/  Temporal workflow design for the automated dev cycle
 internal/version.sh     Release version bump helper

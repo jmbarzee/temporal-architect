@@ -44,15 +44,5 @@ jobs:
       - name: Verify VSIX packaging
         run: make package
 
-  verify-plugin-sync:
-    name: Verify Claude Code plugin is in sync
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: internal/release/sync-plugin/go.mod
-
-      - name: Check plugin copies match canonical sources
-        run: go run ./internal/release/sync-plugin -check
+      - name: Verify Claude Code plugin builds
+        run: make build-claude-plugin

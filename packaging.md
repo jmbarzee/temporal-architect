@@ -31,7 +31,7 @@ Distribution surfaces and where their sources live:
 | npm wrapper + 5 platform sub-packages | `packages/npm/` | `npx -y @temporal-skills/twf` (also the canonical MCP install line) | Node / TS, MCP clients |
 | PyPI wheels | `packages/pypi/twf-cli/` | `pip install twf-cli` | Python ecosystem, spec-builder Temporal worker |
 | Homebrew tap | recipe via `internal/release/bump-brew/` against `jmbarzee/homebrew-twf` | `brew install jmbarzee/twf/twf` | macOS / Linux desktop devs |
-| Claude Code plugin | `.claude-plugin/plugins/temporal-skills/` (skills mirrored from `skills/`) | `/plugin marketplace add jmbarzee/temporal-skills` | Claude Code users |
+| Claude Code plugin | `packages/npm/claude-plugin/` (npm package; catalog at `.claude-plugin/marketplace.json`) | `/plugin marketplace add jmbarzee/temporal-skills` | Claude Code users |
 | Skills tarball | `skills/` via `internal/release/gen-skills-manifest/` | `skills-vX.Y.Z.tar.gz` GitHub Release asset | Prompt-library builders, non-binary consumers |
 
 All channels converge on the same `twf` binary and the same embedded skills + spec.
@@ -46,12 +46,13 @@ release.yml (orchestrator)
   +-- _check-versions          assert every manifest's version equals the tag
   +-- _build-binaries          matrix: 5 platforms; twf binary, VSIX
   +-- _build-skills-tarball    deterministic skills-vX.Y.Z.tar.gz asset
-  +-- _publish-vsix            VS Code Marketplace + Open VSX
-  +-- _publish-npm-twf         @temporal-skills/twf + 5 platform sub-packages
-  +-- _publish-npm-visualizer  @temporal-skills/visualizer
-  +-- _publish-pypi            twf-cli wheels x 5 + twine upload
-  +-- _publish-brew            bump-brew -> jmbarzee/homebrew-twf formula
-  +-- _publish-github-release  SHA256SUMS + binary archives + skills tarball + install.sh
+  +-- _publish-vsix             VS Code Marketplace + Open VSX
+  +-- _publish-npm-twf          @temporal-skills/twf + 5 platform sub-packages
+  +-- _publish-npm-visualizer   @temporal-skills/visualizer
+  +-- _publish-npm-claude-plugin @temporal-skills/claude-plugin (Claude Code plugin payload)
+  +-- _publish-pypi             twf-cli wheels x 5 + twine upload
+  +-- _publish-brew             bump-brew -> jmbarzee/homebrew-twf formula
+  +-- _publish-github-release   SHA256SUMS + binary archives + skills tarball + install.sh
 ```
 
 Local mirror: every CI publish step has a matching `make publish-*` target. See [`Makefile`](./Makefile) for the full list.
@@ -96,16 +97,16 @@ Generalizes to wrapper + sub-package shapes (e.g. `@temporal-skills/twf`).
 @sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' <file> && rm -f <file>.bak
 ```
 
-`marketplace.json` carries no `version` field — Claude Code resolves it from the plugin's own `plugin.json`.
+`.claude-plugin/marketplace.json` carries `version` strings inline (the plugin entry uses Claude Code's `strict: false` mode and declares the plugin definition directly). The `release:` target's `sed -g` flag updates every `"version"` key in the file in lockstep.
 
 ### C4. Verb-noun Makefile naming
 
 Targets follow `<verb>-<thing>[-<variant>]`:
 
-- `build-lsp`, `build-visualizer`, `build-visualizer-lib`, `build-skills`, `build-extension`
+- `build-lsp`, `build-visualizer`, `build-visualizer-lib`, `build-skills`, `build-extension`, `build-claude-plugin`
 - `build-twf-archive`, `build-skills-archive`, `build-pypi-wheel`
-- `package-platform`, `package-all`, `package-plugin`
-- `publish-vscode`, `publish-ovsx`, `publish-npm-platform`, `publish-npm`, `publish-pypi`, `publish-brew`
+- `package-platform`, `package-all`
+- `publish-vscode`, `publish-ovsx`, `publish-npm-platform`, `publish-npm`, `publish-npm-claude-plugin`, `publish-pypi`, `publish-brew`
 
 ### C5. Manifest version validation
 
@@ -117,11 +118,13 @@ Targets follow `<verb>-<thing>[-<variant>]`:
 
 New publish channels follow the pattern: one new `_publish-<channel>.yml` file plus one `<channel>:` job in `release.yml`.
 
-### C7. Plugin source-of-truth boundary
+### C7. Claude Code plugin ships from npm; only the marketplace catalog stays at the root
 
-The `.claude-plugin/plugins/temporal-skills/skills/` directory is a **generated copy** of the canonical `skills/` at the repo root. The `sync-plugin` Go tool keeps it in sync. CI's `verify-plugin-sync` job blocks PRs that edit `skills/` without running `make package-plugin`.
+The Claude Code plugin payload (`@temporal-skills/claude-plugin`) lives at [`packages/npm/claude-plugin/`](./packages/npm/claude-plugin/) like every other npm package. Its `skills/` is a **build artifact** — `make build-claude-plugin` rsyncs the canonical `skills/` from the repo root into the package; the copy is gitignored.
 
-`.claude/commands/` is **not** mirrored into the plugin — those are dev-cycle scaffolding for this repo, not for downstream users.
+The marketplace catalog at `.claude-plugin/marketplace.json` is the only thing forced to live at the repo root. It uses `strict: false` to declare the plugin's components inline (skills path, MCP server config) and points at the npm package as the plugin source. Claude Code does `npm install` to fetch the payload at install time.
+
+`.claude/commands/` is intentionally **not** part of the plugin — those are dev-cycle scaffolding for this repo, not for downstream users.
 
 ---
 
@@ -219,7 +222,8 @@ Every place the brand appears, internally and externally. Walk this checklist wh
 | Visualizer publish output | `tools/visualizer/dist-lib/lib.js`, `tools/visualizer/src/lib.ts`, `tools/visualizer/vite.lib.config.ts` | Rebuild after manifest change. |
 | PyPI manifest | `packages/pypi/twf-cli/pyproject.toml` | `name` (if package name itself changes), `urls.Homepage`, `urls.Source`. |
 | Homebrew formula template | `internal/release/bump-brew/main.go` | `homepage` literal, URL template (repo path). |
-| Claude Code plugin | `.claude-plugin/marketplace.json`, `.claude-plugin/plugins/temporal-skills/.claude-plugin/plugin.json`, `.claude-plugin/plugins/temporal-skills/.mcp.json`, `.claude-plugin/plugins/temporal-skills/README.md` | `name`, `owner`, `homepage`, MCP server entry's npm package reference. Plugin directory name likely also renames. |
+| Claude Code plugin catalog | `.claude-plugin/marketplace.json` | `name`, `owner`, `homepage`, plugin source's npm package reference (`@temporal-skills/claude-plugin` → new scope). |
+| Claude Code plugin payload | `packages/npm/claude-plugin/package.json`, `packages/npm/claude-plugin/README.md` | `name`, `repository.url`, `homepage`. Package name change is the same scope rename as the rest of npm. |
 | VSIX extension | `packages/vscode/package.json` | `publisher` (if changing identity), `repository.url`. `name` (`twf-syntax`) likely stable. |
 | VSIX install instructions | `packages/vscode/README.md`, `packages/vscode/src/extension.ts` | Marketplace URL + `go install` URL. |
 | Install script | `packages/install.sh` | `REPO="jmbarzee/temporal-skills"` |
