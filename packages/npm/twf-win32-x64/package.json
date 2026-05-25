@@ -1,16 +1,16 @@
 {
-  "name": "@temporal-skills/twf-win32-x64",
+  "name": "@temporal-architect/twf-win32-x64",
   "version": "0.3.2",
-  "description": "twf binary for win32/x64. Installed automatically by @temporal-skills/twf.",
+  "description": "twf binary for win32/x64. Installed automatically by @temporal-architect/twf.",
   "license": "MIT",
-  "homepage": "https://github.com/jmbarzee/temporal-skills/tree/main/packages/npm/twf-win32-x64",
+  "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/packages/npm/twf-win32-x64",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jmbarzee/temporal-skills",
+    "url": "https://github.com/jmbarzee/temporal-architect",
     "directory": "packages/npm/twf-win32-x64"
   },
   "bugs": {
-    "url": "https://github.com/jmbarzee/temporal-skills/issues"
+    "url": "https://github.com/jmbarzee/temporal-architect/issues"
   },
   "files": [
     "bin",

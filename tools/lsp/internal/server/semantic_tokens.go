@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/lexer"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/token"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )

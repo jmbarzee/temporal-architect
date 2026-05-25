@@ -1,6 +1,6 @@
 # Packaging and Distribution
 
-How temporal-skills ships — the catalog of distribution channels, the conventions that govern packaging work, and the remaining milestones to close out the epic.
+How temporal-architect ships — the catalog of distribution channels, the conventions that govern packaging work, and the remaining milestones to close out the epic.
 
 ## Audiences
 
@@ -10,11 +10,11 @@ The packaging story serves three audiences:
 2. **AI-assisted human devs across IDEs** — Cursor, Claude Code, Continue, Windsurf, Codex CLI, Copilot, Zed, Aider. Want SKILL.md or rules-style files plus a callable CLI.
 3. **Programmatic consumers** — Python/TS scripts that drive an LLM and shell out to `twf`. Want a single install command and stable contracts.
 
-The bundle is intentionally small: **one binary** (`twf`), **one npm package** (`@temporal-skills/twf`), **one marketplace plugin** (Claude Code). Everything else is metadata pointing at those three.
+The bundle is intentionally small: **one binary** (`twf`), **one npm package** (`@temporal-architect/twf`), **one marketplace plugin** (Claude Code). Everything else is metadata pointing at those three.
 
 ## Constraints
 
-- **No paid hosting.** GitHub-native only: Releases, Pages, repos. No `temporal-skills.dev`, no hosted MCP, no telemetry sink.
+- **No paid hosting.** GitHub-native only: Releases, Pages, repos. No `temporal-architect.dev`, no hosted MCP, no telemetry sink.
 - **Effort weighted toward packaging and publishing**, not authoring new content or running services.
 - **Everything publishes via GitHub Actions on a `v*` tag.** Lockstep versioning across every artifact: one tag, one fan-out. The `release.yml` orchestrator is the trunk; every new target is a job in the matrix. No manual `npm publish` / `twine upload`.
 
@@ -28,10 +28,10 @@ Distribution surfaces and where their sources live:
 |---|---|---|---|
 | Go binary direct | `tools/lsp/` | `curl -sSL .../install.sh \| bash` or `go install .../tools/lsp/cmd/twf@latest` | Direct binary users |
 | VS Code / Cursor / Open VSX extension | `tools/lsp/`, `tools/visualizer/`, `skills/`, `packages/vscode/` | VSIX (5 platforms) on VS Code Marketplace + Open VSX | Cursor, VS Code, Codium devs |
-| npm wrapper + 5 platform sub-packages | `packages/npm/` | `npx -y @temporal-skills/twf` (also the canonical MCP install line) | Node / TS, MCP clients |
+| npm wrapper + 5 platform sub-packages | `packages/npm/` | `npx -y @temporal-architect/twf` (also the canonical MCP install line) | Node / TS, MCP clients |
 | PyPI wheels | `packages/pypi/twf-cli/` | `pip install twf-cli` | Python ecosystem, spec-builder Temporal worker |
 | Homebrew tap | recipe via `internal/release/bump-brew/` against `jmbarzee/homebrew-twf` | `brew install jmbarzee/twf/twf` | macOS / Linux desktop devs |
-| Claude Code plugin | `packages/npm/claude-plugin/` (npm package; catalog at `.claude-plugin/marketplace.json`) | `/plugin marketplace add jmbarzee/temporal-skills` | Claude Code users |
+| Claude Code plugin | `packages/npm/claude-plugin/` (npm package; catalog at `.claude-plugin/marketplace.json`) | `/plugin marketplace add jmbarzee/temporal-architect` | Claude Code users |
 | Skills tarball | `skills/` via `internal/release/gen-skills-manifest/` | `skills-vX.Y.Z.tar.gz` GitHub Release asset | Prompt-library builders, non-binary consumers |
 
 All channels converge on the same `twf` binary and the same embedded skills + spec.
@@ -47,9 +47,9 @@ release.yml (orchestrator)
   +-- _build-binaries          matrix: 5 platforms; twf binary, VSIX
   +-- _build-skills-tarball    deterministic skills-vX.Y.Z.tar.gz asset
   +-- _publish-vsix             VS Code Marketplace + Open VSX
-  +-- _publish-npm-twf          @temporal-skills/twf + 5 platform sub-packages
-  +-- _publish-npm-visualizer   @temporal-skills/visualizer
-  +-- _publish-npm-claude-plugin @temporal-skills/claude-plugin (Claude Code plugin payload)
+  +-- _publish-npm-twf          @temporal-architect/twf + 5 platform sub-packages
+  +-- _publish-npm-visualizer   @temporal-architect/visualizer
+  +-- _publish-npm-claude-plugin @temporal-architect/claude-plugin (Claude Code plugin payload)
   +-- _publish-pypi             twf-cli wheels x 5 + twine upload
   +-- _publish-brew             bump-brew -> jmbarzee/homebrew-twf formula
   +-- _publish-github-release   SHA256SUMS + binary archives + skills tarball + install.sh
@@ -80,14 +80,14 @@ New tools follow the same shape and add their directory to `go.work`'s `use` lis
 
 Each npm package's `package.json` is *both* the dev manifest *and* the publish manifest:
 
-- Scoped public name (e.g. `@temporal-skills/visualizer`).
+- Scoped public name (e.g. `@temporal-architect/visualizer`).
 - `"files"` allowlist — only ship build output, README, LICENSE; never source or devDeps.
 - `"prepublishOnly"` runs the build before `npm publish`.
 - `"prepack"` / `"postpack"` copy `LICENSE` from the repo root and clean up after.
 - `"peerDependencies"` (not `"dependencies"`) for consumer-managed runtime deps like React.
 - `"devDependencies"` stays for the dev workflow; doesn't ship because of the `files` allowlist.
 
-Generalizes to wrapper + sub-package shapes (e.g. `@temporal-skills/twf`).
+Generalizes to wrapper + sub-package shapes (e.g. `@temporal-architect/twf`).
 
 ### C3. Inline sed for version bumping
 
@@ -120,7 +120,7 @@ New publish channels follow the pattern: one new `_publish-<channel>.yml` file p
 
 ### C7. Claude Code plugin ships from npm; only the marketplace catalog stays at the root
 
-The Claude Code plugin payload (`@temporal-skills/claude-plugin`) lives at [`packages/npm/claude-plugin/`](./packages/npm/claude-plugin/) like every other npm package. Its `skills/` is a **build artifact** — `make build-claude-plugin` rsyncs the canonical `skills/` from the repo root into the package; the copy is gitignored.
+The Claude Code plugin payload (`@temporal-architect/claude-plugin`) lives at [`packages/npm/claude-plugin/`](./packages/npm/claude-plugin/) like every other npm package. Its `skills/` is a **build artifact** — `make build-claude-plugin` rsyncs the canonical `skills/` from the repo root into the package; the copy is gitignored.
 
 The marketplace catalog at `.claude-plugin/marketplace.json` is the only thing forced to live at the repo root. It uses `strict: false` to declare the plugin's components inline (skills path, MCP server config) and points at the npm package as the plugin source. Claude Code does `npm install` to fetch the payload at install time.
 
@@ -193,7 +193,7 @@ External event-driven. Two sub-phases:
 
 ### M6 — GitHub Pages docs site (optional polish)
 
-Static site from `tools/spec/sections/*.md` + `skills/**/*.md` + the standalone visualizer build, hosted at `<user>.github.io/temporal-skills/`. mkdocs-material or Docusaurus.
+Static site from `tools/spec/sections/*.md` + `skills/**/*.md` + the standalone visualizer build, hosted at `<user>.github.io/temporal-architect/`. mkdocs-material or Docusaurus.
 
 **Recommended:** defer until M1-M5 are settled. Lowest leverage in the plan.
 
@@ -215,19 +215,19 @@ Every place the brand appears, internally and externally. Walk this checklist wh
 
 | Category | Files | What to change |
 |---|---|---|
-| Go module paths | `tools/lsp/go.mod`, `tools/spec/go.mod`, all `internal/release/*/go.mod` | `github.com/jmbarzee/temporal-skills/*` → new. Triggers cascade through Go imports. |
+| Go module paths | `tools/lsp/go.mod`, `tools/spec/go.mod`, all `internal/release/*/go.mod` | `github.com/jmbarzee/temporal-architect/*` → new. Triggers cascade through Go imports. |
 | Go source imports | `tools/**/*.go`, `internal/release/**/*.go` | Mechanical: `goimports -w` after a `sed` pass. |
 | `go.work` | `go.work` | Module use-paths (if directories also move). |
 | npm manifests | `tools/visualizer/package.json` (shipped), `packages/npm/twf/package.json`, 5 sub-package manifests | `name`, `repository.url`, `repository.directory`, `homepage`. Sub-package `optionalDependencies` keys all change scope. |
 | Visualizer publish output | `tools/visualizer/dist-lib/lib.js`, `tools/visualizer/src/lib.ts`, `tools/visualizer/vite.lib.config.ts` | Rebuild after manifest change. |
 | PyPI manifest | `packages/pypi/twf-cli/pyproject.toml` | `name` (if package name itself changes), `urls.Homepage`, `urls.Source`. |
 | Homebrew formula template | `internal/release/bump-brew/main.go` | `homepage` literal, URL template (repo path). |
-| Claude Code plugin catalog | `.claude-plugin/marketplace.json` | `name`, `owner`, `homepage`, plugin source's npm package reference (`@temporal-skills/claude-plugin` → new scope). |
+| Claude Code plugin catalog | `.claude-plugin/marketplace.json` | `name`, `owner`, `homepage`, plugin source's npm package reference (`@temporal-architect/claude-plugin` → new scope). |
 | Claude Code plugin payload | `packages/npm/claude-plugin/package.json`, `packages/npm/claude-plugin/README.md` | `name`, `repository.url`, `homepage`. Package name change is the same scope rename as the rest of npm. |
 | VSIX extension | `packages/vscode/package.json` | `publisher` (if changing identity), `repository.url`. `name` (`twf-syntax`) likely stable. |
 | VSIX install instructions | `packages/vscode/README.md`, `packages/vscode/src/extension.ts` | Marketplace URL + `go install` URL. |
-| Install script | `packages/install.sh` | `REPO="jmbarzee/temporal-skills"` |
-| READMEs | `README.md`, `tools/README.md`, `tools/visualizer/README.md`, `tools/lsp/cmd/twf/README.md`, `tools/spec/README.md`, `skills/MANIFEST.md`, `skills/{design,author-go}/README.md`, `packages/README.md`, `internal/README.md`, `.claude-plugin/README.md` | All install lines, all `github.com/jmbarzee/temporal-skills` URLs, "Quick install" table. |
+| Install script | `packages/install.sh` | `REPO="jmbarzee/temporal-architect"` |
+| READMEs | `README.md`, `tools/README.md`, `tools/visualizer/README.md`, `tools/lsp/cmd/twf/README.md`, `tools/spec/README.md`, `skills/MANIFEST.md`, `skills/{design,author-go}/README.md`, `packages/README.md`, `internal/README.md`, `.claude-plugin/README.md` | All install lines, all `github.com/jmbarzee/temporal-architect` URLs, "Quick install" table. |
 | JSON schema | `tools/lsp/cmd/twf/twf.schema.json` | `$id` field references the repo URL. |
 | Repo-development guidance | `AGENTS.md` | Project-overview prose, file paths. |
 | Changelog | `CHANGELOG.md` | New entries use new URL; historical entries stay. |
@@ -237,8 +237,8 @@ Every place the brand appears, internally and externally. Walk this checklist wh
 
 **Mechanical strategy:**
 
-1. `find . -type f \( -name '*.go' -o -name '*.json' -o -name '*.md' -o -name '*.ts' -o -name '*.toml' \) -exec sed -i '' 's|jmbarzee/temporal-skills|<new-owner>/<new-repo>|g' {} +`
-2. Same for `@temporal-skills/` → `@<new-scope>/`.
+1. `find . -type f \( -name '*.go' -o -name '*.json' -o -name '*.md' -o -name '*.ts' -o -name '*.toml' \) -exec sed -i '' 's|jmbarzee/temporal-architect|<new-owner>/<new-repo>|g' {} +`
+2. Same for `@temporal-architect/` → `@<new-scope>/`.
 3. `goimports -w ./...` to normalize Go imports.
 4. Rebuild every npm package (publish output baked from manifest).
 5. Run full test suite + `release.yml` dry-run on a branch.
@@ -248,11 +248,11 @@ Every place the brand appears, internally and externally. Walk this checklist wh
 
 | Coordinate | Current | Rename behavior | Strategy |
 |---|---|---|---|
-| GitHub repo | `github.com/jmbarzee/temporal-skills` | Rename + URL redirect supported | Rename on GitHub; source-file URLs updated for cleanliness. |
+| GitHub repo | `github.com/jmbarzee/temporal-architect` | Rename + URL redirect supported | Rename on GitHub; source-file URLs updated for cleanliness. |
 | GitHub Releases | All historical | Tied to repo; survives rename | No action — redirect handles it. |
-| npm scope `@temporal-skills` | Shipped (visualizer) | **Immutable** — cannot rename | Create new scope; publish under it; mark old as `deprecate` with pointer. |
-| `@temporal-skills/visualizer` | Shipped | Cannot rename | Final `0.x` release + `npm deprecate`; first release under new scope. |
-| `@temporal-skills/twf` | Shipped after first `M-` release | If rename before first publish: claim new name | If after: same deprecate-and-republish pattern. |
+| npm scope `@temporal-architect` | Shipped (visualizer) | **Immutable** — cannot rename | Create new scope; publish under it; mark old as `deprecate` with pointer. |
+| `@temporal-architect/visualizer` | Shipped | Cannot rename | Final `0.x` release + `npm deprecate`; first release under new scope. |
+| `@temporal-architect/twf` | Shipped after first `M-` release | If rename before first publish: claim new name | If after: same deprecate-and-republish pattern. |
 | PyPI `twf-cli` | Pending first publish | **Immutable** | If rename before first publish: claim new name. If after: publish new name; yank old with redirect note. |
 | VS Code Marketplace `jmbarzee.twf-syntax` | Shipped | **Extension IDs immutable** (publisher.name) | New publisher + new extension; old becomes "deprecated, install [new]". |
 | Open VSX `jmbarzee/twf-syntax` | Shipped | Same as VS Code | Same strategy. |
@@ -280,8 +280,8 @@ Out-of-band steps required before the next tag push works end-to-end. None can b
 |---|---|---|
 | VS Code Marketplace | publisher `jmbarzee` | `VSCE_TOKEN` |
 | Open VSX | publisher `jmbarzee` | `OVSX_TOKEN` |
-| npm | scope `@temporal-skills` (claimed for visualizer) | `NPM_TOKEN` (reused for `@temporal-skills/twf*`) |
-| GitHub Releases | repo `jmbarzee/temporal-skills` | (built-in `GITHUB_TOKEN`) |
+| npm | scope `@temporal-architect` (claimed for visualizer) | `NPM_TOKEN` (reused for `@temporal-architect/twf*`) |
+| GitHub Releases | repo `jmbarzee/temporal-architect` | (built-in `GITHUB_TOKEN`) |
 
 ### Pending (block next tag push on the new channels)
 
@@ -323,7 +323,7 @@ When the brand rename ships, the following need re-registering on top of the coo
 | Homebrew tap repo | If owner changes: new tap repo; new `HOMEBREW_TAP_TOKEN`. |
 | Smithery | Re-submit with new install line; deprecate old. |
 
-The existing `@temporal-skills/visualizer` package on npm becomes a deprecated tombstone if the brand renames. Same dynamic for VS Code Marketplace and Open VSX extensions if publisher/extension IDs change. No way to forward-migrate installs at the registry layer.
+The existing `@temporal-architect/visualizer` package on npm becomes a deprecated tombstone if the brand renames. Same dynamic for VS Code Marketplace and Open VSX extensions if publisher/extension IDs change. No way to forward-migrate installs at the registry layer.
 
 ---
 

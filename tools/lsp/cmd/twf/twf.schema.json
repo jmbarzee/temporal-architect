@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/jmbarzee/temporal-skills/tools/lsp/cmd/twf/twf.schema.json",
+  "$id": "https://github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/twf.schema.json",
   "title": "twf JSON envelope",
   "description": "Stable wire contract emitted by `twf parse`, `twf symbols --json`, and `twf deps --json`. Adding optional fields or new diagnostic codes is non-breaking; renaming or removing them is breaking and requires coordinated bumps across downstream consumers.",
   "type": "object",

@@ -3711,7 +3711,7 @@ function no(e, t, s) {
     overriddenPins: a
   };
 }
-const Fn = "temporal-skills-visualizer-state";
+const Fn = "temporal-architect-visualizer-state";
 let rn = null, tt = !1;
 function kt() {
   if (tt) return rn;

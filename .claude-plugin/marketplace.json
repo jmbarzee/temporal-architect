@@ -1,27 +1,27 @@
 {
-  "name": "temporal-skills",
+  "name": "temporal-architect",
   "owner": { "name": "jmbarzee" },
   "description": "TWF design + Go authoring skills, plus the twf MCP server. Plugin payload ships from npm; this directory exists only because Claude Code reads marketplace.json from this fixed path.",
   "plugins": [
     {
-      "name": "temporal-skills",
+      "name": "temporal-architect",
       "source": {
         "source": "npm",
-        "package": "@temporal-skills/claude-plugin"
+        "package": "@temporal-architect/claude-plugin"
       },
       "strict": false,
       "version": "0.3.2",
       "description": "TWF design + Go authoring skills, plus the twf MCP server.",
       "author": { "name": "jmbarzee" },
       "license": "MIT",
-      "homepage": "https://github.com/jmbarzee/temporal-skills",
+      "homepage": "https://github.com/jmbarzee/temporal-architect",
       "keywords": ["temporal", "workflow", "twf", "dsl", "mcp", "lsp"],
       "category": "languages",
       "skills": ["./skills"],
       "mcpServers": {
         "twf": {
           "command": "npx",
-          "args": ["-y", "@temporal-skills/twf", "mcp"]
+          "args": ["-y", "@temporal-architect/twf", "mcp"]
         }
       }
     }

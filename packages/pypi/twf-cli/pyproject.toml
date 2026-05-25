@@ -21,9 +21,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/jmbarzee/temporal-skills"
-Source = "https://github.com/jmbarzee/temporal-skills"
-Issues = "https://github.com/jmbarzee/temporal-skills/issues"
+Homepage = "https://github.com/jmbarzee/temporal-architect"
+Source = "https://github.com/jmbarzee/temporal-architect"
+Issues = "https://github.com/jmbarzee/temporal-architect/issues"
 
 [project.scripts]
 twf = "twf_cli.__main__:main"

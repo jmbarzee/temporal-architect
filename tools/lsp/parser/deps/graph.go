@@ -1,7 +1,7 @@
 package deps
 
 import (
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
 // Node represents a definition in the dependency graph.

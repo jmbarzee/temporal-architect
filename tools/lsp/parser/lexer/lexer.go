@@ -1,7 +1,7 @@
 package lexer
 
 import (
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/token"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
 // Lexer tokenizes .twf source input with indentation-aware INDENT/DEDENT emission.

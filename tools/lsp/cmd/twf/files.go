@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/parser"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/resolver"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/validator"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 )
 
 // parseFiles reads and parses the given files, returning the merged AST and

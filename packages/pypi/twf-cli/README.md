@@ -40,7 +40,7 @@ Once installed:
 
 Works in any MCP-compatible client (Claude Desktop, Cursor MCP,
 Continue, Windsurf, Zed). See the
-[main project README](https://github.com/jmbarzee/temporal-skills) for
+[main project README](https://github.com/jmbarzee/temporal-architect) for
 the full MCP feature surface.
 
 ## Subprocess use from Python
@@ -60,9 +60,9 @@ ast = json.loads(result.stdout)
 
 ## Versioning
 
-Versions are synced to the upstream `temporal-skills` Git tag, so `0.3.x`
+Versions are synced to the upstream `temporal-architect` Git tag, so `0.3.x`
 of this package corresponds to `v0.3.x` of the toolchain.
 
 ## License
 
-MIT. See [LICENSE](https://github.com/jmbarzee/temporal-skills/blob/main/LICENSE).
+MIT. See [LICENSE](https://github.com/jmbarzee/temporal-architect/blob/main/LICENSE).

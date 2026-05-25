@@ -1,18 +1,18 @@
 # Upstream Specs for Architecture-Mode TWF Integration
 
 Coordinated upstream changes targeting
-[`jmbarzee/temporal-skills`](https://github.com/jmbarzee/temporal-skills)
+[`jmbarzee/temporal-architect`](https://github.com/jmbarzee/temporal-architect)
 that unblock or improve spec-builder's architecture-mode integration. These
 are written in GitHub-issue style (Context / Proposal / Acceptance criteria /
 Downstream impact) so they can either be filed as issues or dropped directly
-into a coding-agent prompt against the temporal-skills repo. Decisions backing
+into a coding-agent prompt against the temporal-architect repo. Decisions backing
 each item live in [`architecture-mode-discovery.md`](architecture-mode-discovery.md).
 
 | # | Title | Priority | Blocks Phase | Upstream landing |
 |---|---|---|---|---|
 | 1 | Attach native `twf` binaries as GitHub Release assets | Medium | none (improves Phase 1 install UX) | **landed** — see `.github/workflows/release.yml` (matrix `build-twf-archive`, `SHA256SUMS`, `scripts/install.sh`) |
-| 2 | Publish `@temporal-skills/visualizer` as an ESM React component on npm | Medium | none (Phase 2+ aspiration) | **landed** — see `tools/visualizer/vite.lib.config.ts` + `publish-visualizer` job; requires `NPM_TOKEN` secret in GitHub before first release |
-| 3 | Publish skills bundle (`skills.tar.gz` or `temporal-skills-prompts` package) on each release | Low | none (Phase 2+ polish) | **landed (3a)** — see `scripts/gen-skills-manifest/` + `make build-skills-archive`; 3b PyPI distribution still open |
+| 2 | Publish `@temporal-architect/visualizer` as an ESM React component on npm | Medium | none (Phase 2+ aspiration) | **landed** — see `tools/visualizer/vite.lib.config.ts` + `publish-visualizer` job; requires `NPM_TOKEN` secret in GitHub before first release |
+| 3 | Publish skills bundle (`skills.tar.gz` or `temporal-architect-prompts` package) on each release | Low | none (Phase 2+ polish) | **landed (3a)** — see `scripts/gen-skills-manifest/` + `make build-skills-archive`; 3b PyPI distribution still open |
 | 4 | Add structured diagnostics (uniform JSON envelope across `twf parse` / `symbols --json` / `deps --json`; `check` stays text) | **High** | Phase 2 polish (Phase 2 ships without it but is brittle) | **landed** — see `tools/lsp/cmd/twf/twf.schema.json` + `diagnostic.go`; symbolic codes mirror `resolver.ErrorKind` / `validator.ErrorKind` |
 | 5 | Relocate the language spec to `tools/spec/`, split into per-topic sections, embed in `twf`, expose via `twf spec` | Low | none (Phase 2+ DX) | **landed** — see `tools/spec/` module and `twf spec` subcommand |
 
@@ -62,7 +62,7 @@ want to call `twf parse` / `twf symbols --json` as a subprocess from a
 non-Go runtime, in dev environments and in CI. The two paths available today
 are:
 
-1. `go install github.com/jmbarzee/temporal-skills/tools/lsp/cmd/twf@<tag>` —
+1. `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@<tag>` —
    requires Go on every dev box and CI runner.
 2. Extract `bin/twf` from a platform-specific VSIX — fragile (different
    archive per platform, internal path not part of any contract).
@@ -86,7 +86,7 @@ Each archive contains a single `twf` (or `twf.exe`) executable.
 Optionally, a top-level install helper:
 
 ```bash
-curl -sSL https://github.com/jmbarzee/temporal-skills/releases/download/vX.Y.Z/install.sh | bash
+curl -sSL https://github.com/jmbarzee/temporal-architect/releases/download/vX.Y.Z/install.sh | bash
 ```
 
 that detects platform, downloads the right archive, verifies a SHA-256 sum,
@@ -132,7 +132,7 @@ download in its `make setup` step. CI drops the `go` setup step.
 
 ## Issue 2
 
-**Title.** `[visualizer] Publish @temporal-skills/visualizer as an ESM React component on npm`
+**Title.** `[visualizer] Publish @temporal-architect/visualizer as an ESM React component on npm`
 
 **Body.**
 
@@ -142,7 +142,7 @@ Downstream React apps (e.g. spec-builder's local GUI) want to embed the TWF
 visualizer as a real React component:
 
 ```tsx
-import { Visualizer } from '@temporal-skills/visualizer';
+import { Visualizer } from '@temporal-architect/visualizer';
 
 <Visualizer ast={parseOutput} onOpenFile={…} />
 ```
@@ -156,7 +156,7 @@ styling.
 
 ### Proposal
 
-Publish a new npm package `@temporal-skills/visualizer` whose default export
+Publish a new npm package `@temporal-architect/visualizer` whose default export
 is a React component:
 
 ```ts
@@ -180,7 +180,7 @@ extension-specific.
 
 ### Packaging
 
-- `package.json`: drop `private: true`, add `name: "@temporal-skills/visualizer"`,
+- `package.json`: drop `private: true`, add `name: "@temporal-architect/visualizer"`,
   `publishConfig.access: "public"`, `main`, `module`, `types`, peer-dep on
   `react@^18`.
 - Build outputs ESM via Vite library mode with externalized `react` /
@@ -203,9 +203,9 @@ their own timeline.
 
 ### Acceptance criteria
 
-- [x] `npm install @temporal-skills/visualizer` works after a release.
+- [x] `npm install @temporal-architect/visualizer` works after a release.
 - [x] `<Visualizer ast={...} />` renders correctly in a host Vite React app with `react@18` (verified by an end-to-end consumer-install test: `npm pack` → install into a scratch project → `tsc --strict` against the public API).
-- [x] CSS is shipped as a sibling import (`@temporal-skills/visualizer/styles.css`).
+- [x] CSS is shipped as a sibling import (`@temporal-architect/visualizer/styles.css`).
 - [x] AST types are exported and consumed via DTS (bundled `.d.ts` rolled up from `src/lib.ts`).
 
 ### Status
@@ -214,7 +214,7 @@ their own timeline.
 
 - `tools/visualizer/src/lib.ts` — public entry; exports `Visualizer` (= `WorkflowCanvas`) and the full AST + diagnostic type graph.
 - `tools/visualizer/vite.lib.config.ts` — library build with externalized `react`/`react-dom`, sibling `styles.css`, and `vite-plugin-dts` for declarations.
-- `tools/visualizer/package.json` — `name: "@temporal-skills/visualizer"`, ESM `exports`, `peerDependencies: { react, react-dom: "^18 || ^19" }`, `publishConfig.access: public`, `prepublishOnly` runs `build:lib`.
+- `tools/visualizer/package.json` — `name: "@temporal-architect/visualizer"`, ESM `exports`, `peerDependencies: { react, react-dom: "^18 || ^19" }`, `publishConfig.access: public`, `prepublishOnly` runs `build:lib`.
 - `tools/visualizer/src/components/WorkflowCanvas.tsx` — added `onRefocus`, `className`, `style` props per the issue spec.
 - `tools/visualizer/src/webview.tsx` — uses `onRefocus` instead of an outer wrapper div (no behavior change).
 - `tools/visualizer/README.md` — npm consumer docs.
@@ -233,7 +233,7 @@ less drift).
 
 ## Issue 3
 
-**Title.** `[skills] Publish skills bundle (skills.tar.gz or @temporal-skills/prompts) on each release`
+**Title.** `[skills] Publish skills bundle (skills.tar.gz or @temporal-architect/prompts) on each release`
 
 **Body.**
 
@@ -274,11 +274,11 @@ skills/
 A `MANIFEST.json` lets consumers detect supported skills and reject unknown
 versions cleanly.
 
-**3b. Python distribution `temporal-skills-prompts`.** A small PyPI package
+**3b. Python distribution `temporal-architect-prompts`.** A small PyPI package
 whose import surface is:
 
 ```python
-from temporal_skills_prompts import design, author_go
+from temporal_architect_prompts import design, author_go
 print(design.skill_md())                  # full SKILL.md content
 print(design.reference("primitives"))     # reference/primitives.md
 ```
@@ -295,7 +295,7 @@ JS/Python ecosystem grows around the skills.
 - [x] `MANIFEST.json` lists every shipped file with SHA-256.
 - [x] The tarball's directory layout matches `skills/` in the repo at that
   tag.
-- [ ] (Optional) `temporal-skills-prompts` published to PyPI on each release.
+- [ ] (Optional) `temporal-architect-prompts` published to PyPI on each release.
 
 ### Status
 
@@ -464,7 +464,7 @@ section" without regex over a 967-line monolith.
 Three coordinated changes:
 
 **1. Relocate the spec to its own module.** New module
-`github.com/jmbarzee/temporal-skills/tools/spec`, sibling to
+`github.com/jmbarzee/temporal-architect/tools/spec`, sibling to
 `tools/lsp/`. Wired through a repo-root `go.work` and a relative
 `replace ../spec` in `tools/lsp/go.mod`.
 

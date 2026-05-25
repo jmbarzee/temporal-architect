@@ -3,8 +3,8 @@ package server
 import (
 	"testing"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/parser"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 )
 
 // mustParseWorkflowBody parses a workflow with the given body and returns

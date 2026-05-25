@@ -1,4 +1,4 @@
-// Public entry point for `@temporal-skills/visualizer`.
+// Public entry point for `@temporal-architect/visualizer`.
 //
 // This file is the *only* surface npm consumers see. Anything not re-exported
 // here is an internal implementation detail and may change without a major

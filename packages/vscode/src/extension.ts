@@ -282,7 +282,7 @@ function startLanguageClient(context: vscode.ExtensionContext) {
   client.start().catch((err) => {
     vscode.window.showWarningMessage(
       `Failed to start TWF language server: ${err.message}. ` +
-      `Install it with: go install github.com/jmbarzee/temporal-skills/tools/lsp/cmd/twf@latest`
+      `Install it with: go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest`
     );
   });
 

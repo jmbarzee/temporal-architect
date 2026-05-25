@@ -1,4 +1,4 @@
-module github.com/jmbarzee/temporal-skills/tools/spec
+module github.com/jmbarzee/temporal-architect/tools/spec
 
 go 1.24.0
 

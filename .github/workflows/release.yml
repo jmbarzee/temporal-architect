@@ -7,9 +7,9 @@ name: Release
 #   _build-binaries.yml          — matrix builds twf binary + VSIX + archives
 #   _build-skills-tarball.yml    — package skills/ as a release asset
 #   _publish-vsix.yml            — VS Code Marketplace + Open VSX
-#   _publish-npm-twf.yml         — @temporal-skills/twf wrapper + 5 sub-pkgs
-#   _publish-npm-visualizer.yml  — @temporal-skills/visualizer
-#   _publish-npm-claude-plugin.yml — @temporal-skills/claude-plugin (Claude Code plugin payload)
+#   _publish-npm-twf.yml         — @temporal-architect/twf wrapper + 5 sub-pkgs
+#   _publish-npm-visualizer.yml  — @temporal-architect/visualizer
+#   _publish-npm-claude-plugin.yml — @temporal-architect/claude-plugin (Claude Code plugin payload)
 #   _publish-pypi.yml            — twf-cli wheels × 5 + single twine upload
 #   _publish-github-release.yml  — checksums + GitHub Release with all assets
 #   _publish-brew.yml            — bump jmbarzee/homebrew-twf formula

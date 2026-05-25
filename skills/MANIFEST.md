@@ -1,6 +1,6 @@
 # Skills Bundle Manifest
 
-Each `v*` release of `temporal-skills` attaches a deterministic tarball of
+Each `v*` release of `temporal-architect` attaches a deterministic tarball of
 the `skills/` tree as a GitHub Release asset, so downstream consumers
 (prompt builders, doc tooling, non-Go runtimes) can pin a single archive +
 checksum instead of vendoring individual files or scraping raw GitHub URLs.
@@ -91,8 +91,8 @@ This makes the bundle safe to checksum-pin in lockfiles and CI caches.
 
 ```bash
 # Download once
-curl -sSfLO https://github.com/jmbarzee/temporal-skills/releases/download/vX.Y.Z/skills-vX.Y.Z.tar.gz
-curl -sSfLO https://github.com/jmbarzee/temporal-skills/releases/download/vX.Y.Z/SHA256SUMS
+curl -sSfLO https://github.com/jmbarzee/temporal-architect/releases/download/vX.Y.Z/skills-vX.Y.Z.tar.gz
+curl -sSfLO https://github.com/jmbarzee/temporal-architect/releases/download/vX.Y.Z/SHA256SUMS
 
 # Verify tarball
 grep "skills-vX.Y.Z.tar.gz" SHA256SUMS | sha256sum --check

@@ -3,8 +3,8 @@ package parser
 import (
 	"strings"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/token"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
 // parseSwitchBlock parses: SWITCH ARGS COLON NEWLINE INDENT { switch_case } [ else ] DEDENT

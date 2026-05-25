@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/deps"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/deps"
 )
 
 // depsCommand extracts and outputs the dependency graph of the given files.

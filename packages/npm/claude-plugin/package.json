@@ -1,16 +1,16 @@
 {
-  "name": "@temporal-skills/claude-plugin",
+  "name": "@temporal-architect/claude-plugin",
   "version": "0.3.2",
-  "description": "Claude Code plugin payload for temporal-skills (TWF design + Go authoring skills, plus the twf MCP server).",
+  "description": "Claude Code plugin payload for temporal-architect (TWF design + Go authoring skills, plus the twf MCP server).",
   "license": "MIT",
-  "homepage": "https://github.com/jmbarzee/temporal-skills/tree/main/packages/npm/claude-plugin",
+  "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/packages/npm/claude-plugin",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jmbarzee/temporal-skills",
+    "url": "https://github.com/jmbarzee/temporal-architect",
     "directory": "packages/npm/claude-plugin"
   },
   "bugs": {
-    "url": "https://github.com/jmbarzee/temporal-skills/issues"
+    "url": "https://github.com/jmbarzee/temporal-architect/issues"
   },
   "keywords": [
     "claude-code",

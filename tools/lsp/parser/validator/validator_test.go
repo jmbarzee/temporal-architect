@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/parser"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/resolver"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 )
 
 func mustParseAndResolve(t *testing.T, input string) *ast.File {

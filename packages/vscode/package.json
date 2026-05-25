@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jmbarzee/temporal-skills"
+    "url": "https://github.com/jmbarzee/temporal-architect"
   },
   "engines": {
     "vscode": "^1.75.0"

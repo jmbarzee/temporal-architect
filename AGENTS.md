@@ -1,4 +1,4 @@
-# temporal-skills
+# temporal-architect
 
 A DSL (`.twf`) and toolchain for designing, visualizing, and code-generating Temporal workflows. See [README](./README.md) for full details.
 
@@ -27,8 +27,8 @@ tools/visualizer/       React workflow visualizer (npm package + VSIX webview)
 skills/                 AI skill definitions (canonical source; bundled into VSIX and the Claude Code plugin npm package at build time)
 
 # Distribution artifacts (per channel)
-packages/npm/twf*/      `@temporal-skills/twf` wrapper + 5 platform sub-packages
-packages/npm/claude-plugin/  `@temporal-skills/claude-plugin` (Claude Code plugin payload; skills/ is gitignored, copied at build time)
+packages/npm/twf*/      `@temporal-architect/twf` wrapper + 5 platform sub-packages
+packages/npm/claude-plugin/  `@temporal-architect/claude-plugin` (Claude Code plugin payload; skills/ is gitignored, copied at build time)
 packages/pypi/twf-cli/  `twf-cli` PyPI wheel (one per platform)
 packages/vscode/        VS Code / Cursor / Open VSX extension (VSIX)
 packages/install.sh     Curl-bash installer (no package manager required)
@@ -77,7 +77,7 @@ DSL grammar (tools/spec/sections/*.md)
               contract: LSP protocol responses + JSON output
 ```
 
-The spec is consumed three ways: (1) as embedded content via `twf spec [--list|<slug>]`, (2) as files in `tools/spec/sections/` for skill prompts and review commands, and (3) as the importable Go package `github.com/jmbarzee/temporal-skills/tools/spec`.
+The spec is consumed three ways: (1) as embedded content via `twf spec [--list|<slug>]`, (2) as files in `tools/spec/sections/` for skill prompts and review commands, and (3) as the importable Go package `github.com/jmbarzee/temporal-architect/tools/spec`.
 
 When a layer changes, the contracts it exposes determine what needs to update downstream. AST field renames and JSON schema changes are the most common sources of cascading work.
 

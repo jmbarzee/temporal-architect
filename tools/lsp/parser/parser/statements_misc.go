@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/token"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
 // parseSetStmt parses: SET IDENT NEWLINE

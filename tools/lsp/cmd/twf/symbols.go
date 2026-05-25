@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
 type subSymbol struct {

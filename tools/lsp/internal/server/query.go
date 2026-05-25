@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
 // findNodeAtLine returns the most specific AST node on the given line.

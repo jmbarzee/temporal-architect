@@ -41,7 +41,7 @@ These rules are enforced by `spec_test.go`. CI fails if any are violated.
 
 ## Consumers
 
-- **Embedded API** (`github.com/jmbarzee/temporal-skills/tools/spec`):
+- **Embedded API** (`github.com/jmbarzee/temporal-architect/tools/spec`):
   `Sections()`, `Get(slug)`, `All()`. Imported by `tools/lsp/cmd/twf` to
   back the `twf spec` subcommand.
 - **`twf spec` CLI:** prints the full spec, lists section slugs, or

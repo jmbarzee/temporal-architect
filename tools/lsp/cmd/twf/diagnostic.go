@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/parser"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/resolver"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/validator"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 )
 
 // Diagnostic is the wire-format diagnostic emitted in every JSON envelope

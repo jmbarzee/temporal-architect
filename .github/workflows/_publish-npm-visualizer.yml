@@ -1,6 +1,6 @@
 name: _publish-npm-visualizer
 
-# Reusable: publish @temporal-skills/visualizer to npm.
+# Reusable: publish @temporal-architect/visualizer to npm.
 # Builds the library in-place (no artifact handoff from _build-binaries.yml).
 
 on:
@@ -12,12 +12,12 @@ on:
         required: true
     secrets:
       NPM_TOKEN:
-        description: "npm automation token with publish access to @temporal-skills/*."
+        description: "npm automation token with publish access to @temporal-architect/*."
         required: true
 
 jobs:
   publish:
-    name: Publish @temporal-skills/visualizer
+    name: Publish @temporal-architect/visualizer
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

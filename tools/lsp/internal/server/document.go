@@ -3,10 +3,10 @@ package server
 import (
 	"sync"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/parser"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/resolver"
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/validator"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 )
 
 // Document holds the content and analysis results for a single open file.

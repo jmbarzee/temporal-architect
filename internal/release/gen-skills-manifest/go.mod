@@ -1,3 +1,3 @@
-module github.com/jmbarzee/temporal-skills/internal/release/gen-skills-manifest
+module github.com/jmbarzee/temporal-architect/internal/release/gen-skills-manifest
 
 go 1.24

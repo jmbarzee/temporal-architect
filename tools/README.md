@@ -13,9 +13,9 @@ release tooling, the dev-cycle orchestrator, helper scripts.
 
 | Path | Ships as | Contract |
 |---|---|---|
-| [`spec/`](./spec/) | Embedded markdown sections + Go module `github.com/jmbarzee/temporal-skills/tools/spec` | DSL grammar — single source of truth |
+| [`spec/`](./spec/) | Embedded markdown sections + Go module `github.com/jmbarzee/temporal-architect/tools/spec` | DSL grammar — single source of truth |
 | [`lsp/`](./lsp/) | `twf` binary (LSP server, parser, validator, CLI) | Token types, AST node types, resolver error model, `twf parse`/`symbols`/`check` JSON |
-| [`visualizer/`](./visualizer/) | `@temporal-skills/visualizer` npm package + VSIX webview | Consumes the LSP's parser-output JSON |
+| [`visualizer/`](./visualizer/) | `@temporal-architect/visualizer` npm package + VSIX webview | Consumes the LSP's parser-output JSON |
 
 ## Conventions
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
 func TestMinimalWorkflowDef(t *testing.T) {

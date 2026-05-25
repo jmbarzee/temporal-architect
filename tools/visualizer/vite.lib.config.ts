@@ -1,4 +1,4 @@
-// Library build config for `@temporal-skills/visualizer`.
+// Library build config for `@temporal-architect/visualizer`.
 //
 // This is the npm-publishable artifact: an ESM bundle with externalized React
 // peer dependencies, a single sibling stylesheet, and bundled `.d.ts` files

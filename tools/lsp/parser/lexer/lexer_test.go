@@ -3,7 +3,7 @@ package lexer
 import (
 	"testing"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/token"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
 func TestKeywords(t *testing.T) {

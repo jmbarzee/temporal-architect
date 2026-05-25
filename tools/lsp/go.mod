@@ -1,11 +1,11 @@
-module github.com/jmbarzee/temporal-skills/tools/lsp
+module github.com/jmbarzee/temporal-architect/tools/lsp
 
 go 1.24.0
 
 toolchain go1.24.2
 
 require (
-	github.com/jmbarzee/temporal-skills/tools/spec v0.0.0-00010101000000-000000000000
+	github.com/jmbarzee/temporal-architect/tools/spec v0.0.0-00010101000000-000000000000
 	github.com/tliron/commonlog v0.2.18
 	github.com/tliron/glsp v0.2.3-0.20250617204849-59d6e3155c81
 )
@@ -32,4 +32,4 @@ require (
 
 replace github.com/tliron/glsp => github.com/jmbarzee/glsp v0.0.0-20260211184817-15faee801506
 
-replace github.com/jmbarzee/temporal-skills/tools/spec => ../spec
+replace github.com/jmbarzee/temporal-architect/tools/spec => ../spec

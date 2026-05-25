@@ -1,17 +1,17 @@
 {
-  "name": "@temporal-skills/visualizer",
+  "name": "@temporal-architect/visualizer",
   "version": "0.3.2",
   "description": "React component for visualizing Temporal Workflow Format (.twf) ASTs as an interactive tree and force-directed graph.",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://github.com/jmbarzee/temporal-skills/tree/main/tools/visualizer",
+  "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/tools/visualizer",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jmbarzee/temporal-skills",
+    "url": "https://github.com/jmbarzee/temporal-architect",
     "directory": "tools/visualizer"
   },
   "bugs": {
-    "url": "https://github.com/jmbarzee/temporal-skills/issues"
+    "url": "https://github.com/jmbarzee/temporal-architect/issues"
   },
   "keywords": [
     "temporal",

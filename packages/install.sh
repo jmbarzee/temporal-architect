@@ -2,14 +2,14 @@
 # install.sh — download and install the twf CLI from a GitHub Release.
 #
 # Usage:
-#   curl -sSL https://github.com/jmbarzee/temporal-skills/releases/latest/download/install.sh | bash
+#   curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh | bash
 #
 # Environment variables (all optional):
 #   VERSION      — release tag to install, e.g. "v0.3.0" (default: latest)
 #   INSTALL_DIR  — directory to place the twf binary (default: ~/.local/bin)
 set -euo pipefail
 
-REPO="jmbarzee/temporal-skills"
+REPO="jmbarzee/temporal-architect"
 BINARY="twf"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 

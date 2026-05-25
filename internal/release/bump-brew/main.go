@@ -1,5 +1,5 @@
 // Command bump-brew updates a Homebrew tap's `Formula/twf.rb` to point at
-// a freshly-published GitHub Release of temporal-skills.
+// a freshly-published GitHub Release of temporal-architect.
 //
 // Flow:
 //  1. For each supported platform, download the matching twf-vX.Y.Z-<os>-<arch>.tar.gz
@@ -11,7 +11,7 @@
 // Usage:
 //
 //	bump-brew -version v0.3.2
-//	bump-brew -version v0.3.2 -tap jmbarzee/homebrew-twf -source jmbarzee/temporal-skills
+//	bump-brew -version v0.3.2 -tap jmbarzee/homebrew-twf -source jmbarzee/temporal-architect
 //	bump-brew -version v0.3.2 -dry-run                  # print formula, no push
 //	bump-brew -version v0.3.2 -out Formula/twf.rb       # write to file, no push
 //
@@ -97,7 +97,7 @@ end
 // FormulaData feeds the template.
 type FormulaData struct {
 	Version    string            // semver without leading "v"
-	SourceRepo string            // e.g. "jmbarzee/temporal-skills"
+	SourceRepo string            // e.g. "jmbarzee/temporal-architect"
 	SHAs       map[string]string // platform key (e.g. "darwin-arm64") → sha256 hex
 }
 
@@ -251,7 +251,7 @@ func main() {
 	)
 	flag.StringVar(&versionFlag, "version", "", "Release version, e.g. 'v0.3.2' (with or without leading v).")
 	flag.StringVar(&tap, "tap", "jmbarzee/homebrew-twf", "Homebrew tap repo to update.")
-	flag.StringVar(&source, "source", "jmbarzee/temporal-skills", "Source repo whose GitHub Release we're pinning to.")
+	flag.StringVar(&source, "source", "jmbarzee/temporal-architect", "Source repo whose GitHub Release we're pinning to.")
 	flag.StringVar(&token, "token", os.Getenv("GITHUB_TOKEN"), "GitHub token with write access to the tap repo (defaults to $GITHUB_TOKEN).")
 	flag.StringVar(&out, "out", "", "If set, write formula to this file instead of pushing to the tap.")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print formula to stdout instead of pushing.")

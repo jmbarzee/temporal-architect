@@ -3,7 +3,7 @@ package validator
 import (
 	"fmt"
 
-	"github.com/jmbarzee/temporal-skills/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
 // ErrorKind classifies a validation error for structured handling.

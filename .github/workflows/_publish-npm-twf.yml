@@ -1,6 +1,6 @@
 name: _publish-npm-twf
 
-# Reusable: publish @temporal-skills/twf and its 5 platform sub-packages.
+# Reusable: publish @temporal-architect/twf and its 5 platform sub-packages.
 # Consumes twf-bin-* artifacts uploaded by _build-binaries.yml.
 #
 # Order: sub-packages publish first (in parallel via matrix), wrapper publishes
@@ -16,7 +16,7 @@ on:
         required: true
     secrets:
       NPM_TOKEN:
-        description: "npm automation token with publish access to @temporal-skills/*."
+        description: "npm automation token with publish access to @temporal-architect/*."
         required: true
 
 jobs:
@@ -60,7 +60,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-wrapper:
-    name: Publish @temporal-skills/twf wrapper
+    name: Publish @temporal-architect/twf wrapper
     needs: publish-sub-packages
     runs-on: ubuntu-latest
     steps:

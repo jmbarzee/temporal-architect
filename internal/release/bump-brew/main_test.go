@@ -20,7 +20,7 @@ func fixtureSHAs() map[string]string {
 func TestRenderFormula_Basics(t *testing.T) {
 	got, err := renderFormula(FormulaData{
 		Version:    "0.3.2",
-		SourceRepo: "jmbarzee/temporal-skills",
+		SourceRepo: "jmbarzee/temporal-architect",
 		SHAs:       fixtureSHAs(),
 	})
 	if err != nil {
@@ -30,15 +30,15 @@ func TestRenderFormula_Basics(t *testing.T) {
 	wantSubstrings := []string{
 		`class Twf < Formula`,
 		`version "0.3.2"`,
-		`homepage "https://github.com/jmbarzee/temporal-skills"`,
+		`homepage "https://github.com/jmbarzee/temporal-architect"`,
 		// Per-platform URL + SHA blocks (Ruby formula contains exactly these tokens):
-		`url "https://github.com/jmbarzee/temporal-skills/releases/download/v0.3.2/twf-v0.3.2-darwin-arm64.tar.gz"`,
+		`url "https://github.com/jmbarzee/temporal-architect/releases/download/v0.3.2/twf-v0.3.2-darwin-arm64.tar.gz"`,
 		`sha256 "aaaa111111111111111111111111111111111111111111111111111111111111"`,
-		`url "https://github.com/jmbarzee/temporal-skills/releases/download/v0.3.2/twf-v0.3.2-darwin-amd64.tar.gz"`,
+		`url "https://github.com/jmbarzee/temporal-architect/releases/download/v0.3.2/twf-v0.3.2-darwin-amd64.tar.gz"`,
 		`sha256 "bbbb222222222222222222222222222222222222222222222222222222222222"`,
-		`url "https://github.com/jmbarzee/temporal-skills/releases/download/v0.3.2/twf-v0.3.2-linux-arm64.tar.gz"`,
+		`url "https://github.com/jmbarzee/temporal-architect/releases/download/v0.3.2/twf-v0.3.2-linux-arm64.tar.gz"`,
 		`sha256 "cccc333333333333333333333333333333333333333333333333333333333333"`,
-		`url "https://github.com/jmbarzee/temporal-skills/releases/download/v0.3.2/twf-v0.3.2-linux-amd64.tar.gz"`,
+		`url "https://github.com/jmbarzee/temporal-architect/releases/download/v0.3.2/twf-v0.3.2-linux-amd64.tar.gz"`,
 		`sha256 "dddd444444444444444444444444444444444444444444444444444444444444"`,
 		`bin.install "twf"`,
 	}
@@ -53,7 +53,7 @@ func TestRenderFormula_MissingSHARejected(t *testing.T) {
 	shas := fixtureSHAs()
 	delete(shas, "linux-arm64")
 	if _, err := renderFormula(FormulaData{
-		Version: "0.3.2", SourceRepo: "jmbarzee/temporal-skills", SHAs: shas,
+		Version: "0.3.2", SourceRepo: "jmbarzee/temporal-architect", SHAs: shas,
 	}); err == nil {
 		t.Errorf("expected error when a platform SHA is missing")
 	}
@@ -81,11 +81,11 @@ func TestArchiveURL(t *testing.T) {
 		platform Platform
 		want     string
 	}{
-		{Platform{"darwin", "arm64"}, "https://github.com/jmbarzee/temporal-skills/releases/download/v0.3.2/twf-v0.3.2-darwin-arm64.tar.gz"},
-		{Platform{"linux", "amd64"}, "https://github.com/jmbarzee/temporal-skills/releases/download/v0.3.2/twf-v0.3.2-linux-amd64.tar.gz"},
+		{Platform{"darwin", "arm64"}, "https://github.com/jmbarzee/temporal-architect/releases/download/v0.3.2/twf-v0.3.2-darwin-arm64.tar.gz"},
+		{Platform{"linux", "amd64"}, "https://github.com/jmbarzee/temporal-architect/releases/download/v0.3.2/twf-v0.3.2-linux-amd64.tar.gz"},
 	}
 	for _, c := range cases {
-		got := archiveURL("jmbarzee/temporal-skills", "0.3.2", c.platform)
+		got := archiveURL("jmbarzee/temporal-architect", "0.3.2", c.platform)
 		if got != c.want {
 			t.Errorf("archiveURL(%s): got %q, want %q", c.platform, got, c.want)
 		}

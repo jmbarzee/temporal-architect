@@ -1,9 +1,9 @@
 name: _publish-npm-claude-plugin
 
-# Reusable: publish @temporal-skills/claude-plugin to npm.
+# Reusable: publish @temporal-architect/claude-plugin to npm.
 #
 # This is the payload package that Claude Code's marketplace mechanism
-# fetches when a user installs the temporal-skills plugin. The marketplace
+# fetches when a user installs the temporal-architect plugin. The marketplace
 # catalog at .claude-plugin/marketplace.json declares the plugin's
 # components inline (strict: false) and points at this npm package as the
 # source of the skills/ payload.
@@ -20,12 +20,12 @@ on:
         required: true
     secrets:
       NPM_TOKEN:
-        description: "npm automation token with publish access to @temporal-skills/*."
+        description: "npm automation token with publish access to @temporal-architect/*."
         required: true
 
 jobs:
   publish:
-    name: Publish @temporal-skills/claude-plugin
+    name: Publish @temporal-architect/claude-plugin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

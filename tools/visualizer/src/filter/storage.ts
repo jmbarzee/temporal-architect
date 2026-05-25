@@ -8,7 +8,7 @@
 // Both backends serialize the same shape; Set<string> fields are stored
 // as plain arrays.
 
-const STORAGE_KEY = 'temporal-skills-visualizer-state'
+const STORAGE_KEY = 'temporal-architect-visualizer-state'
 
 export type PersistedFilter = {
   selectedFiles: string[]

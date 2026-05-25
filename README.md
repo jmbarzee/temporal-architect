@@ -1,4 +1,4 @@
-# temporal-skills
+# temporal-architect
 
 A language-agnostic DSL (`.twf`) for Temporal workflows — capturing workflow structure, activity boundaries, and Temporal primitives before writing SDK code.
 
@@ -14,13 +14,13 @@ Pick the install line for your environment:
 | Audience / tool | Install |
 |---|---|
 | **Cursor / VS Code** | Install **Temporal Workflow (.twf)** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) or [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax). Bundles the binary, AI skills (auto-installed to `~/.cursor/skills/`), and the workflow visualizer. |
-| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-skills` then `/plugin install temporal-skills@temporal-skills`. Bundles both skills and the `twf` MCP server. |
-| **Any MCP-compatible client** (Claude Desktop, Cursor MCP, Continue, Windsurf, Zed) | Add to your MCP client config: `{"twf": {"command": "npx", "args": ["-y", "@temporal-skills/twf", "mcp"]}}` |
-| **Node / JS / TS projects** | `npx -y @temporal-skills/twf check workflows.twf` (zero-install) or `npm install -g @temporal-skills/twf`. |
+| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-architect` then `/plugin install temporal-architect@temporal-architect`. Bundles both skills and the `twf` MCP server. |
+| **Any MCP-compatible client** (Claude Desktop, Cursor MCP, Continue, Windsurf, Zed) | Add to your MCP client config: `{"twf": {"command": "npx", "args": ["-y", "@temporal-architect/twf", "mcp"]}}` |
+| **Node / JS / TS projects** | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm install -g @temporal-architect/twf`. |
 | **Python projects** | `pip install twf-cli` |
 | **Homebrew** (macOS / Linux) | `brew install jmbarzee/twf/twf` |
-| **Direct binary** | `curl -sSL https://github.com/jmbarzee/temporal-skills/releases/latest/download/install.sh \| bash` |
-| **Go projects** | `go install github.com/jmbarzee/temporal-skills/tools/lsp/cmd/twf@latest` |
+| **Direct binary** | `curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh \| bash` |
+| **Go projects** | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` |
 
 All install paths converge on the same `twf` binary and the same embedded skills + spec.
 
@@ -105,7 +105,7 @@ skills/             AI skill definitions (SKILL.md + reference docs)
 
 # Distribution — packaged artifacts
 packages/
-  npm/              `@temporal-skills/twf` wrapper + 5 platform sub-packages
+  npm/              `@temporal-architect/twf` wrapper + 5 platform sub-packages
   pypi/twf-cli/     `twf-cli` PyPI wheel (one per platform)
   vscode/           VS Code / Cursor / Open VSX extension (VSIX)
   install.sh        Curl-bash installer (no package manager required)

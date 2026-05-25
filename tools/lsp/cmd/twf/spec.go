@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/jmbarzee/temporal-skills/tools/spec"
+	"github.com/jmbarzee/temporal-architect/tools/spec"
 )
 
 const specUsage = `twf spec - Print the embedded TWF language specification
@@ -21,7 +21,7 @@ Usage:
 
 // specCommand prints the embedded TWF language specification.
 //
-// The spec content lives in github.com/jmbarzee/temporal-skills/tools/spec
+// The spec content lives in github.com/jmbarzee/temporal-architect/tools/spec
 // and is baked into the binary at build time. This subcommand is a thin
 // shell over that package's public API.
 func specCommand(args []string) int {

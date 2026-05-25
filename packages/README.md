@@ -12,9 +12,9 @@ For the *source* that gets compiled into these artifacts, see
 
 | Path | Channel | Audience |
 |---|---|---|
-| [`npm/twf/`](./npm/twf/) | `@temporal-skills/twf` (wrapper) | Node / JS / TS, MCP clients |
+| [`npm/twf/`](./npm/twf/) | `@temporal-architect/twf` (wrapper) | Node / JS / TS, MCP clients |
 | [`npm/twf-{darwin-arm64,darwin-x64,linux-x64,linux-arm64,win32-x64}/`](./npm/) | Platform sub-packages | Resolved by npm via `optionalDependencies` |
-| [`npm/claude-plugin/`](./npm/claude-plugin/) | `@temporal-skills/claude-plugin` (skills payload) | Claude Code marketplace fetches this on `/plugin install` |
+| [`npm/claude-plugin/`](./npm/claude-plugin/) | `@temporal-architect/claude-plugin` (skills payload) | Claude Code marketplace fetches this on `/plugin install` |
 | [`pypi/twf-cli/`](./pypi/twf-cli/) | PyPI wheel (one per platform) | Python ecosystem, spec-builder Temporal worker |
 | [`vscode/`](./vscode/) | VSIX (VS Code Marketplace + Open VSX) | Cursor, VS Code, Codium |
 | [`install.sh`](./install.sh) | Curl-bash one-liner | Anything POSIX with no package manager (Docker, minimal CI, dotfiles) |

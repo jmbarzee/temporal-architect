@@ -157,7 +157,7 @@ publish-ovsx:
 
 .PHONY: build-claude-plugin publish-npm-claude-plugin
 
-## Stage skills/ into the @temporal-skills/claude-plugin npm package.
+## Stage skills/ into the @temporal-architect/claude-plugin npm package.
 ## The plugin's skills/ is a build artifact, not tracked — gitignored, copied
 ## from the canonical skills/ at the repo root. Mirrors the build-skills
 ## pattern that stages skills into the VSIX.
@@ -166,7 +166,7 @@ build-claude-plugin:
 	rsync -a --delete skills/ packages/npm/claude-plugin/skills/
 	@echo "Staged skills into packages/npm/claude-plugin/"
 
-## Publish @temporal-skills/claude-plugin to npm.
+## Publish @temporal-architect/claude-plugin to npm.
 ## The Claude Code marketplace catalog (.claude-plugin/marketplace.json) points
 ## at this package — Claude Code does `npm install` to fetch it on plugin install.
 publish-npm-claude-plugin: build-claude-plugin
@@ -229,7 +229,7 @@ publish-npm-platform:
 		cp $(EXT_DIR)/bin/twf$$ext packages/npm/twf-$(VSCE_TARGET)/bin/twf$$ext
 	cd packages/npm/twf-$(VSCE_TARGET) && npm publish
 
-## Publish the `@temporal-skills/twf` wrapper. Run AFTER all sub-packages have
+## Publish the `@temporal-architect/twf` wrapper. Run AFTER all sub-packages have
 ## published — npm rejects the wrapper if its optionalDependencies reference
 ## versions that don't exist yet.
 publish-npm:
@@ -263,7 +263,7 @@ release:
 	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' packages/npm/twf/package.json && rm -f packages/npm/twf/package.json.bak
 	@# npm wrapper optionalDependencies exact-version pins (one sed per package)
 	@for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do \
-		sed -i.bak "s|\"@temporal-skills/twf-$$p\": *\"[^\"]*\"|\"@temporal-skills/twf-$$p\": \"$(NEW_VERSION)\"|" packages/npm/twf/package.json && rm -f packages/npm/twf/package.json.bak; \
+		sed -i.bak "s|\"@temporal-architect/twf-$$p\": *\"[^\"]*\"|\"@temporal-architect/twf-$$p\": \"$(NEW_VERSION)\"|" packages/npm/twf/package.json && rm -f packages/npm/twf/package.json.bak; \
 	done
 	@# npm platform sub-package versions
 	@for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do \
