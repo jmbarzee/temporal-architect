@@ -406,7 +406,16 @@ export function GraphView({
     return { visibleMatchIds: visible, hiddenMatchCount: hidden }
   }, [searchQuery, visibleIds])
 
-  // Transitive dependency highlighting
+  // Transitive dependency highlighting.
+  //
+  // The active node's transitive dep chain is unioned with every sister
+  // copy of the same underlying definition (see
+  // `Graph.duplicateGroups`) so that hovering one copy keeps every
+  // other copy of the same activity / workflow / service / operation
+  // legible. That's the visual cue that links the duplicates: they
+  // share opacity with the hovered node while everything unrelated
+  // dims, telling the user "all of these green dots are the same
+  // thing, just on different workers".
   const { highlightedNodes, highlightedEdges } = React.useMemo(() => {
     const activeId = hoveredNodeId ?? selectedNodeId
     if (!activeId || !visibleIds.has(activeId)) {
@@ -414,9 +423,13 @@ export function GraphView({
     }
     const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
     const nodes = getTransitiveDeps(activeId, visibleEdges, visibleIds, direction)
+    // Sister copies of the active definition are intentionally NOT added to
+    // highlightedNodes here. They will be dimmed like any other off-chain node,
+    // but the canvas draws a full-color duplicate halo on them so the user can
+    // still identify that they share a definition with the active node.
     const edges = getHighlightedEdgeIds(nodes, visibleEdges)
     return { highlightedNodes: nodes, highlightedEdges: edges }
-  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds])
+  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, graph])
 
   // Physics animation loop.
   //
@@ -862,8 +875,10 @@ export function GraphView({
           hoveredNodeId={hoveredNodeId}
           simRef={simRef}
           visibleEdges={visibleEdges}
+          visibleIds={visibleIds}
           viewport={viewport}
           shiftHeld={shiftHeld}
+          duplicateGroups={graph.duplicateGroups}
         />
       </div>
 
@@ -1066,11 +1081,13 @@ interface GraphHoverTooltipProps {
   hoveredNodeId: string | null
   simRef: React.RefObject<Simulation | null>
   visibleEdges: { edgeType: string; sourceId: string; targetId: string }[]
+  visibleIds: Set<string>
   viewport: Viewport
   shiftHeld: boolean
+  duplicateGroups: Map<string, Set<string>>
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, shiftHeld }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups }: GraphHoverTooltipProps) {
   if (!hoveredNodeId) return null
   const sim = simRef.current
   if (!sim) return null
@@ -1088,6 +1105,18 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, shif
     if (e.targetId === hoveredNodeId) incoming++
   }
 
+  // Duplicate-copies indicator: if this definition has more than one
+  // node in the graph, show "N copies" so the user knows the highlight
+  // they're seeing is intentional ("this is one of several"). Count
+  // only sister copies that survive the current filter — a hidden copy
+  // isn't a copy from the user's current point of view.
+  const sisters = duplicateGroups.get(node.definitionKey)
+  const visibleCopies = sisters
+    ? Array.from(sisters).filter(id => visibleIds.has(id))
+    : [node.id]
+  const copyCount = visibleCopies.length
+  const copyIndex = copyCount > 1 ? visibleCopies.indexOf(node.id) + 1 : 0
+
   const [sx, sy] = worldToScreen(viewport, node.x, node.y)
 
   return (
@@ -1098,6 +1127,11 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, viewport, shif
       </div>
       {parentName && <div className="tooltip-parent">{parentName}</div>}
       {fileName && <div className="tooltip-file">{fileName}</div>}
+      {copyCount > 1 && (
+        <div className="tooltip-duplicates" title="This definition is registered on multiple workers. Hovering any copy highlights all copies.">
+          copy {copyIndex} of {copyCount}
+        </div>
+      )}
       {(outgoing > 0 || incoming > 0) && (
         <div className="tooltip-connections">
           {outgoing > 0 && <span className="tooltip-conn-out">→{outgoing}</span>}

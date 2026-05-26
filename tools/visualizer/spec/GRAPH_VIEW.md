@@ -23,6 +23,10 @@ This view serves goals 6–9 (system architecture questions) from [PRODUCT.md](.
 | 3     | **NexusOperation** | Operation declared inside a nexus service |
 | 4     | **Activity**     | Activity registered on a worker         |
 
+**Per-worker duplication.** L3 nodes (Workflow, Activity, NexusOperation) and L2 NexusService nodes are created **per worker registration** — an activity registered on three workers produces three distinct nodes, each parented to its respective worker. This makes the fact that a definition has multiple homes visible directly in the canvas, instead of collapsing it into a single node whose containment relationship to all-but-one of its workers is silently dropped.
+
+Each duplicate shares a stable `definitionKey` (the underlying `${nodeType}:${name}`, with the parent service name folded in for operations). The graph carries a `duplicateGroups: Map<definitionKey, Set<nodeId>>` index that the view uses during hover/select to keep sister copies visually grouped (see § Interaction States: Duplicate Highlighting). Definitions that are not registered on any worker remain orphan singletons (one node, no parent).
+
 The hierarchy reads top-to-bottom as **organisation → orchestration → leaf work**:
 
 - **L1 Namespace** — the deployment container.
@@ -43,11 +47,13 @@ Workflows and activities attach directly to a Worker. Nexus services also live a
 3. **NexusOperation → NexusService** ("member of") — An operation belongs to its declaring service (L3 child of an L2 parent).
 4. **Worker → Namespace** ("member of") — A worker is instantiated within a specific namespace.
 
-**Dependency edges** come from call sites in workflow / activity / sync-operation bodies, plus the implicit "operation delegates to backing workflow" relationship of an async operation. They are first-class semantic relationships and are drawn at Level 3 regardless of whether caller and callee share a Worker — co-location on a worker says nothing about whether one calls the other, so containment cannot stand in for a call edge.
+**Dependency edges** come from call sites in workflow and sync-operation bodies, plus the implicit "operation delegates to backing workflow" relationship of an async operation. They are first-class semantic relationships and are drawn at Level 3 regardless of whether caller and callee share a Worker — co-location on a worker says nothing about whether one calls the other, so containment cannot stand in for a call edge.
+
+Activities are **leaves of the call graph** — they do not emit dependency edges. Activities cannot call other activities or workflows; these are not Temporal primitives. Dependency edges only originate from workflows and nexus sync operations.
 
 1. **Workflow → Workflow** ("calls") — A workflow calls or awaits another workflow.
 2. **Workflow → Activity** ("calls") — A workflow calls an activity.
-3. **Workflow / Activity → NexusOperation** ("calls") — A call site `nexus Endpoint Service.Operation(args)` is an edge from the caller to the operation node. The endpoint is preserved as edge metadata for hover info.
+3. **Workflow → NexusOperation** ("calls") — A call site `nexus Endpoint Service.Operation(args)` is an edge from the calling workflow to the operation node. The endpoint is preserved as edge metadata for hover info.
 4. **NexusOperation → Workflow / Activity / NexusOperation** ("calls"), for sync operations — the body of a sync operation is walked just like a workflow body, with the operation as the caller.
 5. **NexusOperation → Workflow** ("delegates to"), for async operations — an async operation is implemented by a backing workflow; this edge is emitted from the operation declaration, not from any specific call site.
 
@@ -66,15 +72,15 @@ Higher-level dependency edges are **derived** by projecting Level 3 dependency e
 
 1. Build Namespace nodes from namespace definitions.
 2. Build Worker nodes from worker instantiations; attach each to its parent Namespace.
-3. Build Workflow, Activity, and NexusService nodes from registrations on each worker; attach each to its parent Worker. Add orphan L3 nodes for definitions not registered on any worker.
-3b. Build NexusOperation nodes from each nexus service's `operations` list; attach each to its parent service via an intra-L3 containment edge. The operation inherits its service's worker for the purpose of step 5 projection (so an async operation whose service lives on Worker A and whose backing workflow lives on Worker B contributes an A→B worker dependency).
-4. Resolve Level 3 dependency edges:
+3. Build Workflow, Activity, and NexusService nodes **per worker registration**; attach each copy to its respective Worker. An activity registered on three workers becomes three nodes with three containment edges; each node gets a worker-scoped id of the form `${nodeType}:${name}@${workerName}`. Add orphan L3 nodes (unscoped ids) for definitions not registered on any worker.
+3b. Build NexusOperation nodes from each nexus service's `operations` list. Because the parent service can itself be duplicated across workers, each operation is duplicated per service copy, with its containment edge pointing at the matching copy. An async operation whose service lives on Workers A and B and whose backing workflow lives on Worker C therefore contributes two A→C / B→C worker dependencies after step 5; same-worker pairings collapse to self-loops and are dropped as usual.
+4. Resolve Level 3/4 dependency edges from workflow and sync nexus operation bodies only. Activities are leaves and emit no dependency edges.
    a. Workflow → Workflow edges from workflow calls and awaits.
    b. Workflow → Activity edges from activity calls.
-   c. Workflow / Activity → NexusOperation edges from nexus call sites (the operation is the target node; the endpoint is edge metadata).
+   c. Workflow → NexusOperation edges from nexus call sites (the operation is the target node; the endpoint is edge metadata).
    d. NexusOperation → Workflow ("delegates to") edges from each async operation's backing workflow declaration.
    e. NexusOperation → callee edges from each sync operation's body, walked the same way as a workflow body.
-   Deduplicate by (source, target) so a caller with multiple call sites against the same callee — including the same operation reached through multiple endpoints — yields one edge. Drop self-loops.
+   When the caller and/or callee definition has multiple copies, the call site emits one edge per (caller copy, callee copy) pair — Temporal task-queue dispatch doesn't single out a primary copy, so each caller copy is treated as potentially reaching every callee copy. Deduplicate by (source nodeId, target nodeId) so a caller with multiple call sites against the same callee — including the same operation reached through multiple endpoints — yields one edge per pair. Drop self-loops.
 5. Project Level 3 dependencies up to Worker-level; keep only cross-worker pairs (a same-worker projection collapses to a self-loop and is dropped).
 6. Project Worker-level dependencies up to Namespace-level; keep only cross-namespace pairs.
 
@@ -129,9 +135,9 @@ The simulation exposes **one charge strength per node type** and **one spring (k
 
 The L3 and L4 charges share a slider range so their magnitudes are directly comparable across the bottom of the hierarchy; this lets the user see at a glance whether one definition type repels harder than its peers.
 
-**Link strengths** (10, one per edge category — positive values, attraction). Containment edges connect a parent to one specific child type; dependency edges live within a single level and are split by endpoint type at L3:
+**Link strengths** (9, one per edge category — positive values, attraction). Containment edges connect a parent to one specific child type; dependency edges live within or across levels and are split by endpoint type:
 - Containment: `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`, `Nx↔Op` (intra-L3, operation under its service)
-- Dependency: `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`, `Act↔Act`
+- Dependency: `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`
 
 NexusOperation nodes participate in dependency edges as both source and target (caller → operation, operation → backing workflow, sync-op-body → callee). For spring-force purposes, an operation is treated as workflow-equivalent — it sits on the call path and clusters with workflows in the L3 band.
 
@@ -401,7 +407,7 @@ Master parameters that shape all link (attraction) forces:
 Per-edge spring constant (k) and rest distance, displayed as dual-slider rows ordered top-of-tree → bottom-of-tree:
 - L1: `NS↔NS` (dep), `NS↔Wk` (cont)
 - L2: `Wk↔Wk` (dep), `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx` (cont)
-- L3: `Wf↔Wf`, `Wf↔Act`, `Act↔Act` (dep)
+- L3/L4: `Wf↔Wf`, `Wf↔Act` (dep)
 
 **GRAVITY** (hierarchical anchor)
 
@@ -549,8 +555,15 @@ In both modes:
 - All other nodes and edges dim (reduce opacity to ~20–30%).
 - Show a **hover info tooltip** anchored near the hovered node containing:
   1. Node name, type icon + label, parent (worker for L3, namespace for L2), source file.
-  2. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
-  3. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
+  2. **Duplicate-copies line** (only when the definition has more than one visible copy): `copy N of M`, where M is the number of sister copies currently visible. Makes the per-worker duplication explicit and tells the user the cross-canvas highlight on the other copies is intentional.
+  3. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
+  4. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
+
+### Duplicate Highlighting
+
+When the hovered or selected node belongs to a **duplicate group** (a definition that's been duplicated across multiple workers — see § Per-worker duplication), every sister copy is added to the highlighted set alongside the transitive dependency chain. The visual result: hovering any one copy of an activity registered on three workers keeps all three copies at full opacity while the rest of the graph dims. This is what links the duplicates visually — they don't have edges between each other (they're not "connected" in the dependency sense), but they share opacity with each other under hover, which is what tells the user "these are the same thing in different homes".
+
+Sister copies are added to the highlight set only when they pass the current type and file filters. A copy that's been hidden by the user's filters does not pop back into visibility on hover; the hover interaction extends what's already on screen, it doesn't override the filter.
 
 The transitive chain follows only **visible edges** — including graduated edges when intermediate types are hidden. If only Namespace is enabled, the chain follows Namespace → Namespace derived edges. If Namespace and Workflow are enabled (Workers hidden), the chain follows graduated containment and L3 dependency edges. This is consistent with filter-as-source-of-truth: the user sees relationships between what's visible, not inferred relationships from hidden data.
 

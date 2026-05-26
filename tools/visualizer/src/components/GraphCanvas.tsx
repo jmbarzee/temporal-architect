@@ -61,7 +61,7 @@ const EDGE_STYLE = {
 } as const
 
 const FOCUS_RING_COLOR = '#4A90D9'
-const SELECTION_RING_COLOR = '#8B7EC8'
+const SELECTION_RING_COLOR = '#FFFFFF'
 const DIM_ALPHA = 0.2
 
 // Node sizes by level — all nodes render as circles; w/h = 2r for hit testing
@@ -184,6 +184,13 @@ interface DrawData {
   activeGravityType: NodeType | null
   nodeSummaries: Map<string, string>
   running: boolean
+  // Set of node ids where the same underlying definition appears more than
+  // once in the visible set (different workers). Drawn with a colored halo.
+  dupNodeIds: Set<string>
+  // The definitionKey of the currently hovered or selected node, when that
+  // node belongs to a duplicate group. All visible nodes sharing this key
+  // receive the duplicate halo. Null when no dup node is active.
+  activeDupDefKey: string | null
 }
 
 export function GraphCanvas({
@@ -213,16 +220,42 @@ export function GraphCanvas({
     return m
   }, [nodes])
 
+  // IDs of nodes whose definition appears more than once in the visible set.
+  // Computed from the visible `nodes` prop so the halo tracks the current filter.
+  const dupNodeIds = React.useMemo(() => {
+    const countByDefKey = new Map<string, number>()
+    for (const n of nodes) countByDefKey.set(n.definitionKey, (countByDefKey.get(n.definitionKey) ?? 0) + 1)
+    const result = new Set<string>()
+    for (const n of nodes) {
+      if ((countByDefKey.get(n.definitionKey) ?? 0) > 1) result.add(n.id)
+    }
+    return result
+  }, [nodes])
+
+  // The definitionKey of the currently active (hovered or selected) node,
+  // when that node belongs to a duplicate group. Used by the draw loop to
+  // light up all sister copies with the duplicate halo, not just the active
+  // node itself.
+  const activeDupDefKey = React.useMemo(() => {
+    const activeId = hoveredNodeId ?? selectedNodeId
+    if (!activeId) return null
+    const activeNode = nodeMap.get(activeId)
+    if (!activeNode || !dupNodeIds.has(activeId)) return null
+    return activeNode.definitionKey
+  }, [hoveredNodeId, selectedNodeId, nodeMap, dupNodeIds])
+
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
     forceParams, activeSection, activeChargeType, activeGravityType, nodeSummaries, running,
+    dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
     forceParams, activeSection, activeChargeType, activeGravityType, nodeSummaries, running,
+    dupNodeIds, activeDupDefKey,
   }
 
   // Resize observer
@@ -726,26 +759,53 @@ export function GraphCanvas({
         // expressed as opacity only (full vs. DIM_ALPHA above) — the
         // ring vocabulary is reserved for other decoration.
 
-        // Selection ring
-        if (node.id === d.selectedNodeId) {
+        // Duplicate halo — colored ring in the node's own fill color drawn on
+        // every visible copy of a definition whenever ANY of those copies is
+        // hovered or selected. The halo always renders at full color (alpha
+        // 0.55) — it deliberately ignores nodeDimmed so it pops even when the
+        // rest of the node is faded by the highlight system.
+        //
+        // Sits at s.r + 5 (same gap from the node edge as the default
+        // selection ring) and uses a slightly thinner stroke so the two rings
+        // read as distinct even when they appear together.
+        const dupHaloActive = d.activeDupDefKey !== null &&
+          node.definitionKey === d.activeDupDefKey &&
+          vp.scale >= DETAIL_REDUCE_SCALE
+        if (dupHaloActive) {
           ctx.save()
-          ctx.strokeStyle = SELECTION_RING_COLOR
-          ctx.lineWidth = 2.5
+          ctx.strokeStyle = style.fill
+          ctx.lineWidth = 2
           ctx.setLineDash([])
+          ctx.globalAlpha = 0.55
           ctx.beginPath()
           ctx.arc(sx, sy, s.r + 5, 0, Math.PI * 2)
           ctx.stroke()
           ctx.restore()
         }
 
-        // Focus ring — dropped at very low zoom (dashes too small to read)
+        // Selection ring — white solid ring. Expands to s.r + 10 when the
+        // duplicate halo is also active, keeping the two rings clearly apart.
+        if (node.id === d.selectedNodeId) {
+          const selR = dupHaloActive ? s.r + 10 : s.r + 5
+          ctx.save()
+          ctx.strokeStyle = SELECTION_RING_COLOR
+          ctx.lineWidth = 2.5
+          ctx.setLineDash([])
+          ctx.beginPath()
+          ctx.arc(sx, sy, selR, 0, Math.PI * 2)
+          ctx.stroke()
+          ctx.restore()
+        }
+
+        // Focus ring — dropped at very low zoom (dashes too small to read).
+        // Sits at s.r + 9 so it clears the duplicate halo at s.r + 7.
         if (node.id === d.focusedNodeId && vp.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.strokeStyle = FOCUS_RING_COLOR
           ctx.lineWidth = 2
           ctx.setLineDash([2, 2])
           ctx.beginPath()
-          ctx.arc(sx, sy, s.r + 7, 0, Math.PI * 2)
+          ctx.arc(sx, sy, s.r + 9, 0, Math.PI * 2)
           ctx.stroke()
           ctx.restore()
         }

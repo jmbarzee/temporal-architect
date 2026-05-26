@@ -359,6 +359,20 @@ body {
   white-space: nowrap;
 }
 
+/* "copy N of M" line shown only when a definition is registered on
+   multiple workers and therefore renders as multiple nodes. Borrows the
+   workflow purple from the selection ring so the user can connect
+   "purple lights up around the sister nodes when I hover this one"
+   with "tooltip confirms there are multiple copies". */
+.tooltip-duplicates {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: #8B7EC8;
+  opacity: 0.85;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
 .tooltip-connections {
   display: flex;
   gap: 8px;

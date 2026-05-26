@@ -8,6 +8,7 @@ export interface GraphNode {
     sourceFile?: string;
     parentId?: string;
     orphan: boolean;
+    definitionKey: string;
 }
 export type EdgeType = 'containment' | 'dependency';
 export interface GraphEdge {
@@ -24,6 +25,10 @@ export interface GraphEdge {
 export interface Graph {
     nodes: Map<string, GraphNode>;
     edges: GraphEdge[];
+    duplicateGroups: Map<string, Set<string>>;
 }
 export declare function nodeId(nodeType: NodeType, name: string): string;
+export declare function workerScopedNodeId(nodeType: NodeType, name: string, workerName?: string): string;
+export declare function definitionKey(nodeType: NodeType, name: string): string;
+export declare function nexusOperationName(serviceName: string, opName: string): string;
 export declare function nodeLevel(nodeType: NodeType): NodeLevel;
