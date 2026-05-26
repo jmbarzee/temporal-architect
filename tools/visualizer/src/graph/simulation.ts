@@ -33,7 +33,6 @@ export interface ForceParams {
   linkWorkerToWorker: number       // Worker ↔ Worker
   linkWorkflowToWorkflow: number   // Workflow ↔ Workflow
   linkWorkflowToActivity: number   // Workflow ↔ Activity
-  linkActivityToActivity: number   // Activity ↔ Activity
 
   // Rest distances per edge category (mirror the link strengths above).
   distNsToWorker: number
@@ -45,7 +44,6 @@ export interface ForceParams {
   distWorkerToWorker: number
   distWorkflowToWorkflow: number
   distWorkflowToActivity: number
-  distActivityToActivity: number
 
   // Hierarchical gravity. The graph has an inherent vertical hierarchy
   // (namespace → worker → definition) so gravity is split into two axes,
@@ -141,7 +139,6 @@ export const DEFAULT_PARAMS: ForceParams = {
   linkNexusToOperation:   0.65,
   linkWorkflowToWorkflow: 0.75,
   linkWorkflowToActivity: 0.45,
-  linkActivityToActivity: 0.55,
 
   // Rest distances. These are pre-multiplier values; the panel's `dist`
   // master multiplies them at simulation time (currently 0.1, so the
@@ -157,7 +154,6 @@ export const DEFAULT_PARAMS: ForceParams = {
   distNexusToOperation:   140,
   distWorkflowToWorkflow: 120,
   distWorkflowToActivity:  90,
-  distActivityToActivity:  60,
 
   // Hierarchical gravity. Y bands carry the vertical structure of the
   // layout — strong (gravityY = 0.145) and overlapping at the edges so
@@ -283,17 +279,14 @@ export function edgeCategory(params: ForceParams, edge: GraphEdge): EdgeCategory
     return { strength: params.linkWorkerToWorker, distance: params.distWorkerToWorker }
   }
   // L3↔L3: collapse nexusOperation to "workflow-equivalent" (it sits on the
-  // call path between caller and callee), then differentiate Wf↔Wf, Wf↔Act,
-  // Act↔Act.
+  // call path between caller and callee), then differentiate Wf↔Wf and Wf↔Act.
+  // Act↔Act dependency edges do not exist — activities cannot call activities.
   const lsrc = src === 'nexusOperation' ? 'workflow' : src
   const ltgt = tgt === 'nexusOperation' ? 'workflow' : tgt
   if (lsrc === 'workflow' && ltgt === 'workflow') {
     return { strength: params.linkWorkflowToWorkflow, distance: params.distWorkflowToWorkflow }
   }
-  if (lsrc === 'activity' && ltgt === 'activity') {
-    return { strength: params.linkActivityToActivity, distance: params.distActivityToActivity }
-  }
-  // Mixed Wf/Act in either direction.
+  // Wf↔Act (in either direction) — the only L3/L4 dependency edge type.
   return { strength: params.linkWorkflowToActivity, distance: params.distWorkflowToActivity }
 }
 

@@ -49,14 +49,15 @@ const NODE_STYLES: Record<NodeType, NodeStyle> = {
 //   - containment: subtle slate dotted, the default for parent/child edges
 //     that aren't part of the nexus family.
 const EDGE_STYLE = {
-  containment:    { color: '#94A3B8', alpha: 0.35, dash: [3, 4], width: 1 },
-  opContainment:  { color: '#DB2777', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → service
-  dependencyL1:   { color: '#475569', alpha: 0.85, dash: [],     width: 1.8 }, // ns → ns
-  dependencyL2:   { color: '#64748B', alpha: 0.75, dash: [],     width: 1.6 }, // worker → worker
-  workflowDep:    { color: '#8B7EC8', alpha: 0.70, dash: [],     width: 1.4 }, // workflow → workflow
-  dependencyL3:   { color: '#94A3B8', alpha: 0.55, dash: [],     width: 1.4 }, // generic L3 (e.g. activity → workflow)
-  dependencyL4:   { color: '#94A3B8', alpha: 0.40, dash: [],     width: 1.2 }, // ends at activity (L4 leaf)
-  nexusCall:      { color: '#F472B6', alpha: 0.85, dash: [],     width: 1.5 }, // workflow ↔ operation, or spliced
+  containment:         { color: '#94A3B8', alpha: 0.35, dash: [3, 4], width: 1 },
+  opContainment:       { color: '#DB2777', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → service
+  dependencyL1:        { color: '#475569', alpha: 0.85, dash: [],     width: 1.8 }, // ns → ns
+  dependencyL2:        { color: '#64748B', alpha: 0.75, dash: [],     width: 1.6 }, // worker → worker
+  workflowDep:         { color: '#8B7EC8', alpha: 0.70, dash: [],     width: 1.4 }, // workflow → workflow
+  workflowToActivity:  { color: '#4A8BC2', alpha: 0.70, dash: [],     width: 1.4 }, // workflow → activity (activity blue)
+  dependencyL3:        { color: '#94A3B8', alpha: 0.55, dash: [],     width: 1.4 }, // generic L3 fallback
+  dependencyL4:        { color: '#94A3B8', alpha: 0.40, dash: [],     width: 1.2 }, // ends at activity (L4 leaf)
+  nexusCall:           { color: '#F472B6', alpha: 0.85, dash: [],     width: 1.5 }, // workflow ↔ operation, or spliced
 } as const
 
 const FOCUS_RING_COLOR = '#4A90D9'
@@ -113,6 +114,12 @@ function edgeStyleFor(edge: GraphEdge, src: SimNode, tgt: SimNode): typeof EDGE_
   }
   if (src.nodeType === 'workflow' && tgt.nodeType === 'workflow') {
     return EDGE_STYLE.workflowDep
+  }
+  if (
+    (src.nodeType === 'workflow' && tgt.nodeType === 'activity') ||
+    (src.nodeType === 'activity' && tgt.nodeType === 'workflow')
+  ) {
+    return EDGE_STYLE.workflowToActivity
   }
   const minLevel = Math.min(src.level, tgt.level)
   if (minLevel === 1) return EDGE_STYLE.dependencyL1

@@ -4,6 +4,7 @@
 
 Certain keywords are only valid in workflow context and produce errors in activity context:
 
+- `activity` - Activity calls (activities cannot call other activities — not a Temporal primitive)
 - `promise` - Non-blocking async operations
 - `condition` - Named boolean awaitables
 - `set`, `unset` - Condition mutation

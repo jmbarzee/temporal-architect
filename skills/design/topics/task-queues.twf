@@ -101,6 +101,20 @@ worker expressShipWorker:
 worker standardShipWorker:
     activity ShipOrder
 
+# Tiered registration: a workflow or nexus service hosted on multiple
+# workers, each on its OWN task queue (same pattern as expressShipWorker
+# / standardShipWorker above). The registered type set is shared across
+# the tier so the caller picks behaviour by routing to the right queue —
+# realtime vs batch analytics here, primary vs DR-region payments below.
+worker realtimeAnalyticsWorker:
+    workflow TrackEventWorkflow
+    activity RecordEvent
+
+worker paymentWorkerSecondary:
+    activity ChargePayment
+    activity GetPaymentStatus
+    nexus service PaymentService
+
 worker mediaWorker:
     workflow MediaPipeline
     activity GenerateThumbnail
@@ -117,6 +131,11 @@ namespace ecommerce:
     worker paymentWorker
         options:
             task_queue: "payments"
+    # Same registered type set as paymentWorker, on its own queue —
+    # callers route by region by picking the destination task queue.
+    worker paymentWorkerSecondary
+        options:
+            task_queue: "payments-secondary"
     worker expressShipWorker
         options:
             task_queue: "shipping-express"
@@ -131,6 +150,11 @@ namespace ecommerce:
     worker analyticsWorker
         options:
             task_queue: "analytics"
+    # Same registered type set as analyticsWorker, on its own queue —
+    # callers pick the realtime tier by dispatching to this queue.
+    worker realtimeAnalyticsWorker
+        options:
+            task_queue: "analytics-realtime"
     nexus endpoint AnalyticsEndpoint
         options:
             task_queue: "analytics"

@@ -139,9 +139,6 @@ const PULL_EDGES: PullEdgeDef[] = [
   { label: 'Wf↔Act', kKey: 'linkWorkflowToActivity', restKey: 'distWorkflowToActivity',
     sourceType: 'workflow', targetType: 'activity',
     tooltip: 'Workflow ↔ Activity dependency' },
-  { label: 'Act↔Act', kKey: 'linkActivityToActivity', restKey: 'distActivityToActivity',
-    sourceType: 'activity', targetType: 'activity',
-    tooltip: 'Activity ↔ Activity dependency' },
 ]
 
 // --- GRAVITY section sliders ---
