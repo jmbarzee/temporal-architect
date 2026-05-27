@@ -28,6 +28,12 @@ const vscode = acquireVsCodeApi()
 // an AST payload. We accept either shape and supply `parserGraph` as
 // undefined when it's absent — WorkflowCanvas's optional prop handles
 // the missing-graph case (empty graph view).
+//
+// Note: `ast.diagnostics` (structured warnings/errors from `twf parse`'s
+// envelope) and `ast.errors` (catastrophic parser-process failures) both
+// pass through this handler unchanged because we forward the AST payload
+// verbatim to React state. The headers in TreeView / GraphView consume
+// both fields directly.
 interface AstMessage {
   type: 'ast'
   data: TWFFile | { ast: TWFFile; parserGraph?: ParserGraph }

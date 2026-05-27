@@ -39,6 +39,15 @@
   --color-error-border: #fecaca;
   --color-error-text: #991b1b;
   --color-warning: #d97706;
+  /* Warning palette — used by the diagnostics header for rows with
+     severity: 'warning'. Distinct from --color-error so the user can
+     tell a validator warning (e.g. UNCOVERED_ACTIVITY) apart from a
+     parse failure at a glance. Hue matches --color-warning so it
+     composes with the existing header-hidden-badge yellow. */
+  --warning-fg: #92400e;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-accent: #d97706;
   --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --focus-ring-color: #4A90D9;
@@ -62,6 +71,12 @@
   --color-error-border: #7f1d1d;
   --color-error-text: #fca5a5;
   --color-warning: #fbbf24;
+  /* Dark-mode warning palette — bumped to readable amber on dark
+     backgrounds while preserving the warm/yellow hue family. */
+  --warning-fg: #fcd34d;
+  --warning-bg: #422006;
+  --warning-border: #78350f;
+  --warning-accent: #fbbf24;
   --focus-ring-color: #6CB0F0;
 }
 
@@ -1535,6 +1550,189 @@ body {
 
 .error-group-hidden .error-group-message {
   color: var(--color-text-muted);
+}
+
+/* === Diagnostic rows ===========================================
+   Validator/resolver/parse findings emitted in the JSON envelope by
+   `twf parse`. Composed alongside the FileError rows above so the
+   user sees both process failures and validator output in one place.
+   ============================================================= */
+
+/* Warnings-only header bar: same shape as .errors-header, but
+   colour-shifted from red → amber so the user can see at a glance
+   that everything in the header is informational (no parse failures). */
+.errors-header.severity-warnings-only {
+  border-color: var(--warning-border);
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.08);
+}
+
+.errors-header.severity-warnings-only .errors-header-bar:hover {
+  background: rgba(217, 119, 6, 0.04);
+}
+
+.errors-header.severity-warnings-only .errors-header-icon,
+.errors-header.severity-warnings-only .errors-header-title {
+  color: var(--warning-fg);
+}
+
+.errors-header.severity-warnings-only .errors-header-body {
+  border-top-color: var(--warning-border);
+}
+
+.vscode-dark .errors-header.severity-warnings-only .errors-header-bar:hover {
+  background: rgba(251, 191, 36, 0.06);
+}
+
+/* A single diagnostic row inside an ErrorGroup. Two-line layout:
+   [glyph] [CODE]  message
+                   file:line:col
+   Line 1 carries the severity glyph (✗ red / ⚠ amber), the diagnostic
+   code as a small monospace chip, and the message. Line 2 carries
+   the file + position in muted mono, indented to align with the
+   message column. */
+.diagnostic-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 6px 8px;
+  padding: 6px 14px 6px 28px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diagnostic-item:last-child {
+  border-bottom: none;
+}
+
+.diagnostic-item.severity-error {
+  border-bottom-color: var(--color-error-border);
+}
+
+.diagnostic-item.severity-warning {
+  border-bottom-color: var(--warning-border);
+}
+
+.diagnostic-glyph {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.diagnostic-item.severity-error .diagnostic-glyph {
+  color: var(--color-error);
+}
+
+.diagnostic-item.severity-warning .diagnostic-glyph {
+  color: var(--warning-accent);
+}
+
+.diagnostic-code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  text-transform: none;
+}
+
+.diagnostic-item.severity-error .diagnostic-code {
+  color: var(--color-error-text);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+}
+
+.diagnostic-item.severity-warning .diagnostic-code {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}
+
+.diagnostic-message {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.diagnostic-item.severity-warning .diagnostic-message {
+  color: var(--warning-fg);
+}
+
+.diagnostic-item.severity-error .diagnostic-message {
+  color: var(--color-error-text);
+}
+
+/* Location line spans across the glyph + code columns so it sits
+   under the message. Muted to read as secondary metadata. */
+.diagnostic-location {
+  grid-column: 3 / 4;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.error-group-hidden .diagnostic-message,
+.error-group-hidden .diagnostic-location {
+  opacity: 0.7;
+}
+
+/* Graph-view variant of the diagnostic row — narrower padding to
+   compose with the floating overlay's compact treatment, and inherits
+   the same severity palette. */
+.graph-diagnostic-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 4px 6px;
+  padding: 4px 16px 4px 28px;
+}
+
+.graph-diagnostic-item.severity-error .diagnostic-glyph {
+  color: var(--color-error);
+}
+
+.graph-diagnostic-item.severity-warning .diagnostic-glyph {
+  color: var(--warning-accent);
+}
+
+.graph-diagnostic-item .diagnostic-message {
+  font-size: 11px;
+}
+
+.graph-diagnostic-item .diagnostic-location {
+  font-size: 10px;
+}
+
+/* Severity-shaded graph header. Drops to the warning palette when
+   only warnings exist; keeps the error palette as the default. */
+.graph-errors-header.severity-warnings-only {
+  border-bottom-color: var(--warning-border);
+}
+
+.graph-errors-header.severity-warnings-only .graph-errors-icon,
+.graph-errors-header.severity-warnings-only .graph-errors-title {
+  color: var(--warning-fg);
+}
+
+.graph-errors-header.severity-warnings-only .graph-errors-body {
+  border-top-color: var(--warning-border);
+}
+
+.graph-errors-header.severity-warnings-only .graph-errors-bar:hover {
+  background: rgba(217, 119, 6, 0.03);
+}
+
+.vscode-dark .graph-errors-header.severity-warnings-only .graph-errors-bar:hover {
+  background: rgba(251, 191, 36, 0.06);
 }
 
 

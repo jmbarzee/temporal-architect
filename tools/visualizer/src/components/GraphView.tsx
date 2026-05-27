@@ -2,7 +2,7 @@
 // Wires together graph construction, simulation, viewport, rendering, and interaction.
 
 import React from 'react'
-import type { TWFFile, FileError } from '../types/ast'
+import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { ForceParams } from '../graph/simulation'
@@ -23,7 +23,7 @@ import type { ForceSection } from './GraphControlPanel'
 import { PinToggle } from './PinToggle'
 import { GraphContextMenu, type ContextMenuItem } from './GraphContextMenu'
 import { SearchIcon } from './icons/GearIcons'
-import { THEME, DEF_TYPE_CONFIGS, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
+import { DEF_TYPE_CONFIGS, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -905,21 +905,51 @@ export function GraphView({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, onSearchChange, shortcutsOpen, handleFitToView, handleToggleRunning])
 
-  // Errors
+  // Findings: process-level FileErrors (catastrophic parser failures)
+  // and structured Diagnostics (validator/resolver/parse warnings &
+  // errors from `twf parse`'s JSON envelope). Each is partitioned by
+  // the file-filter so the header can report the shown/hidden split.
   const errors = ast.errors || []
-  const { shownFileErrors, hiddenFileErrors } = React.useMemo(() => {
-    if (selectedFiles.size === 0) return { shownFileErrors: errors, hiddenFileErrors: [] as FileError[] }
-    const shown: FileError[] = []
-    const hidden: FileError[] = []
-    for (const e of errors) {
-      if (selectedFiles.has(e.file)) shown.push(e)
-      else hidden.push(e)
+  const diagnostics = ast.diagnostics || []
+  const {
+    shownFileErrors,
+    hiddenFileErrors,
+    shownDiagnostics,
+    hiddenDiagnostics,
+  } = React.useMemo(() => {
+    if (selectedFiles.size === 0) {
+      return {
+        shownFileErrors: errors,
+        hiddenFileErrors: [] as FileError[],
+        shownDiagnostics: diagnostics,
+        hiddenDiagnostics: [] as Diagnostic[],
+      }
     }
-    return { shownFileErrors: shown, hiddenFileErrors: hidden }
-  }, [errors, selectedFiles])
+    const sFE: FileError[] = []
+    const hFE: FileError[] = []
+    for (const e of errors) {
+      if (selectedFiles.has(e.file)) sFE.push(e)
+      else hFE.push(e)
+    }
+    const sD: Diagnostic[] = []
+    const hD: Diagnostic[] = []
+    for (const d of diagnostics) {
+      // Unstamped diagnostics surface in the shown group so a missing
+      // file path can't accidentally hide them. The extension stamps
+      // file paths, so this only triggers on adversarial input.
+      if (!d.file || selectedFiles.has(d.file)) sD.push(d)
+      else hD.push(d)
+    }
+    return {
+      shownFileErrors: sFE,
+      hiddenFileErrors: hFE,
+      shownDiagnostics: sD,
+      hiddenDiagnostics: hD,
+    }
+  }, [errors, diagnostics, selectedFiles])
 
   const hasFiles = allFiles.length > 0
-  const hasErrors = errors.length > 0
+  const hasHeaderContent = errors.length > 0 || diagnostics.length > 0
   const noFilesSelected = selectedFiles.size === 0
   const nodeCount = visibleNodes.length
   const edgeCount = visibleEdges.length
@@ -1106,8 +1136,13 @@ export function GraphView({
       )}
 
       {/* Errors header — last element inside the floating overlay */}
-      {hasErrors && (
-        <GraphErrorsHeader shownFileErrors={shownFileErrors} hiddenFileErrors={hiddenFileErrors} />
+      {hasHeaderContent && (
+        <GraphErrorsHeader
+          shownFileErrors={shownFileErrors}
+          hiddenFileErrors={hiddenFileErrors}
+          shownDiagnostics={shownDiagnostics}
+          hiddenDiagnostics={hiddenDiagnostics}
+        />
       )}
       </div>{/* /graph-overlay */}
 
@@ -1266,37 +1301,110 @@ function Shortcut({ keys, desc }: { keys: string; desc: string }) {
   )
 }
 
-function GraphErrorsHeader({ shownFileErrors, hiddenFileErrors }: {
+/**
+ * Floating-overlay variant of the errors header used by the Graph view.
+ * Renders both kinds of finding side-by-side:
+ *   - FileError (catastrophic parser-process failures)
+ *   - Diagnostic (structured validator/resolver/parse output) with
+ *     severity-aware glyphs and code chips.
+ *
+ * Layout is more compact than the tree-view header — the overlay is
+ * size-constrained (max-height: 30vh) and shares vertical space with
+ * the filter bar and toolbar. Body items render inline; the
+ * shown/hidden split appears as an in-body label between groups,
+ * not as separate ErrorGroup containers.
+ */
+function GraphErrorsHeader({
+  shownFileErrors, hiddenFileErrors,
+  shownDiagnostics, hiddenDiagnostics,
+}: {
   shownFileErrors: FileError[]
   hiddenFileErrors: FileError[]
+  shownDiagnostics: Diagnostic[]
+  hiddenDiagnostics: Diagnostic[]
 }) {
   const [expanded, setExpanded] = React.useState(true)
-  const total = shownFileErrors.length + hiddenFileErrors.length
+
+  const allDiagnostics = [...shownDiagnostics, ...hiddenDiagnostics]
+  const diagErrors = allDiagnostics.filter(d => d.severity === 'error').length
+  const diagWarnings = allDiagnostics.filter(d => d.severity === 'warning').length
+  const errorCount = shownFileErrors.length + hiddenFileErrors.length + diagErrors
+  const warningCount = diagWarnings
+  const headerSeverity: 'error' | 'warning' = errorCount > 0 ? 'error' : 'warning'
+  const headerIcon = headerSeverity === 'error' ? '\u2717' : '\u26A0'
+
+  const countParts: string[] = []
+  if (errorCount > 0) countParts.push(`${errorCount} ${errorCount === 1 ? 'error' : 'errors'}`)
+  if (warningCount > 0) countParts.push(`${warningCount} ${warningCount === 1 ? 'warning' : 'warnings'}`)
+  const countText = countParts.join(', ')
+
+  const shownTotal = shownFileErrors.length + shownDiagnostics.length
+  const hiddenTotal = hiddenFileErrors.length + hiddenDiagnostics.length
+
+  const shownErrDiags = shownDiagnostics.filter(d => d.severity === 'error')
+  const shownWarnDiags = shownDiagnostics.filter(d => d.severity === 'warning')
+  const hiddenErrDiags = hiddenDiagnostics.filter(d => d.severity === 'error')
+  const hiddenWarnDiags = hiddenDiagnostics.filter(d => d.severity === 'warning')
 
   return (
-    <div className="graph-errors-header">
+    <div className={`graph-errors-header${headerSeverity === 'warning' ? ' severity-warnings-only' : ''}`}>
       <div className="graph-errors-bar" onClick={() => setExpanded(!expanded)}>
         <span className="block-toggle">{expanded ? '\u25BC' : '\u25B6'}</span>
-        <span className="graph-errors-icon">{THEME.error.icon}</span>
-        <span className="graph-errors-title">
-          {total} {total === 1 ? 'error' : 'errors'}
-        </span>
+        <span className="graph-errors-icon">{headerIcon}</span>
+        <span className="graph-errors-title">{countText}</span>
       </div>
       {expanded && (
         <div className="graph-errors-body">
+          {shownTotal > 0 && hiddenTotal > 0 && (
+            <div className="error-group-label">Shown files ({shownTotal})</div>
+          )}
           {shownFileErrors.map((err, i) => (
-            <div key={`s${i}`} className="graph-error-item">
+            <div key={`sfe${i}`} className="graph-error-item">
               <span className="graph-error-file">{err.file.split('/').pop()}</span>
               <pre className="graph-error-msg">{err.stderr || err.error}</pre>
             </div>
           ))}
-          {hiddenFileErrors.length > 0 && (
-            <div className="graph-error-hidden-label">
-              {hiddenFileErrors.length} error{hiddenFileErrors.length !== 1 ? 's' : ''} in hidden files
-            </div>
+          {shownErrDiags.map((d, i) => (
+            <GraphDiagnosticRow key={`sed${i}`} diagnostic={d} />
+          ))}
+          {shownWarnDiags.map((d, i) => (
+            <GraphDiagnosticRow key={`swd${i}`} diagnostic={d} />
+          ))}
+          {hiddenTotal > 0 && (
+            <>
+              <div className="error-group-label">Hidden files ({hiddenTotal})</div>
+              {hiddenFileErrors.map((err, i) => (
+                <div key={`hfe${i}`} className="graph-error-item">
+                  <span className="graph-error-file">{err.file.split('/').pop()}</span>
+                  <pre className="graph-error-msg">{err.stderr || err.error}</pre>
+                </div>
+              ))}
+              {hiddenErrDiags.map((d, i) => (
+                <GraphDiagnosticRow key={`hed${i}`} diagnostic={d} />
+              ))}
+              {hiddenWarnDiags.map((d, i) => (
+                <GraphDiagnosticRow key={`hwd${i}`} diagnostic={d} />
+              ))}
+            </>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function GraphDiagnosticRow({ diagnostic }: { diagnostic: Diagnostic }) {
+  const glyph = diagnostic.severity === 'error' ? '\u2717' : '\u26A0'
+  const fileName = diagnostic.file ? diagnostic.file.split('/').pop() : undefined
+  const loc = fileName
+    ? `${fileName}:${diagnostic.start.line}:${diagnostic.start.column}`
+    : undefined
+  return (
+    <div className={`graph-diagnostic-item diagnostic-item severity-${diagnostic.severity}`}>
+      <span className="diagnostic-glyph" aria-hidden="true">{glyph}</span>
+      <span className="diagnostic-code">{diagnostic.code}</span>
+      <span className="diagnostic-message">{diagnostic.message}</span>
+      {loc && <span className="diagnostic-location">{loc}</span>}
     </div>
   )
 }

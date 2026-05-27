@@ -29,3 +29,4 @@ Deferred features and design ideas. Not committed to any cycle — just a place 
 | Nexus Edge Scope Highlighting | Highlight all edges sharing a nexus service/endpoint on hover |
 | Animated Type Transitions | Smooth force interpolation when toggling types (now specced in GRAPH_VIEW.md § Type Transitions) |
 | Barnes-Hut Approximation | Perf optimization for large graphs — O(n log n) charge force |
+| Diagnostic Summary Pill in Tab Bar | Originally Group 4 of REVISIONS_005. Render `N✗` / `N⚠` pills next to the Tree/Graph tab buttons sourced from `ast.summary.errors`/`warnings`. Deferred because the errors header already renders directly below the tab bar (minimal value-add), and a clickable variant ("expand the header") would require new cross-component state coordination between `WorkflowCanvas` and its child views. |

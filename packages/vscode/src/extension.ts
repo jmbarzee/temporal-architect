@@ -14,6 +14,27 @@ import {
 const execFileAsync = promisify(execFile);
 const copyFileAsync = promisify(fs.copyFile);
 
+// Wire-format diagnostic produced inside the JSON envelope by every
+// `twf` subcommand. Mirrors tools/lsp/cmd/twf/diagnostic.go and the
+// authoritative schema at tools/lsp/cmd/twf/twf.schema.json. Duplicated
+// here (rather than imported from the visualizer package) because the
+// extension is a separate npm package with its own tsconfig and does
+// not depend on the visualizer's library exports.
+interface TwfPosition {
+  line: number;
+  column: number;
+}
+interface TwfDiagnostic {
+  severity: "error" | "warning";
+  kind: "parse" | "resolve" | "validate" | "graph";
+  code: string;
+  file?: string;
+  start: TwfPosition;
+  end: TwfPosition;
+  message: string;
+  name?: string;
+}
+
 let client: LanguageClient | undefined;
 // Track the last active text editor for returning focus after webview clicks
 let lastActiveTextEditor: vscode.TextEditor | undefined;
@@ -583,6 +604,11 @@ class WorkflowVisualizerPanel {
     // Parse each file individually to track source files
     const allDefinitions: unknown[] = [];
     const allErrors: { file: string; error: string; stderr?: string }[] = [];
+    // Structured validator/resolver/parse diagnostics from `twf parse`'s
+    // JSON envelope. Distinct from `allErrors` (FileError), which is now
+    // reserved for catastrophic parser-process failures (missing binary,
+    // IO failure, malformed envelope).
+    const allDiagnostics: TwfDiagnostic[] = [];
 
     for (const file of this._files) {
       try {
@@ -591,12 +617,22 @@ class WorkflowVisualizerPanel {
           file,
         ]);
 
+        // Diagnostics ride in the envelope now; stderr from `twf parse`
+        // is expected to be empty on a successful run. Surface any
+        // non-empty stderr through the dev console for debugging but
+        // do NOT wrap it as a FileError — that path masqueraded
+        // structured warnings as parser failures and is now gone. Older
+        // `twf` binaries that still write warnings to stderr will fail
+        // to surface them in the UI; this is a known incompatibility
+        // documented against this code path.
         if (stderr) {
           console.warn("Parser stderr:", stderr);
-          allErrors.push({ file, error: `Parser warning`, stderr: stderr.trim() });
         }
 
-        const parsed = JSON.parse(stdout) as { definitions?: unknown[] };
+        const parsed = JSON.parse(stdout) as {
+          definitions?: unknown[];
+          diagnostics?: TwfDiagnostic[];
+        };
 
         // Add sourceFile to each definition
         if (parsed.definitions) {
@@ -605,8 +641,26 @@ class WorkflowVisualizerPanel {
             allDefinitions.push(def);
           }
         }
+
+        // Forward structured diagnostics into the webview payload.
+        // `twf parse` emits the path it was invoked with (absolute,
+        // matching the path the extension already passes); stamp a
+        // safety-net `file` on any diagnostic the producer left blank
+        // so the shown/hidden file-filter partition downstream has a
+        // valid key.
+        if (parsed.diagnostics) {
+          for (const diag of parsed.diagnostics) {
+            allDiagnostics.push({
+              ...diag,
+              file: diag.file && diag.file.length > 0 ? diag.file : file,
+            });
+          }
+        }
       } catch (err) {
-        // Collect per-file errors instead of silently swallowing them
+        // Catastrophic parser-process failures only: execFileAsync
+        // rejecting (binary missing, exec error) or JSON.parse
+        // throwing. Validator/resolver warnings are NOT errors and
+        // travel via parsed.diagnostics above.
         const errMsg = err instanceof Error ? err.message : String(err);
         const stderr = (err as { stderr?: string }).stderr;
         allErrors.push({
@@ -618,10 +672,14 @@ class WorkflowVisualizerPanel {
       }
     }
 
-    // Return combined AST with focusedFile metadata and any errors
+    // Return combined AST with focusedFile metadata, any process-level
+    // FileErrors, and the structured diagnostics envelope. The two are
+    // distinct: FileError covers parser-process failures; Diagnostic
+    // covers validator/resolver/parse findings inside a successful run.
     return {
       definitions: allDefinitions,
       errors: allErrors.length > 0 ? allErrors : undefined,
+      diagnostics: allDiagnostics.length > 0 ? allDiagnostics : undefined,
       focusedFile: this._focusedFile,
     };
   }

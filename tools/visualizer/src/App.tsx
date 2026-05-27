@@ -13,6 +13,16 @@ mountNodeTypeStyles()
 
 // Shape of the payload App accepts — either a bare AST (legacy /
 // AST-only fixtures) or the new `{ ast, parserGraph }` envelope.
+//
+// `ast.diagnostics` (structured validator/resolver findings from
+// `twf parse`'s JSON envelope) and `ast.errors` (catastrophic
+// parser-process failures) both ride through this function unchanged:
+// the standalone loader and the postMessage loader both forward the
+// payload verbatim into React state, so the headers in TreeView /
+// GraphView see both fields naturally. The JSON envelope from
+// `twf parse` (envelope.diagnostics) is the source of truth for
+// structured warnings in standalone mode — load it via ?ast=… or the
+// file picker and the warnings render in the errors header.
 function isWrappedPayload(d: unknown): d is { ast: TWFFile; parserGraph?: ParserGraph } {
   return d != null && typeof d === 'object' && 'ast' in (d as Record<string, unknown>) &&
     (d as { ast: unknown }).ast != null

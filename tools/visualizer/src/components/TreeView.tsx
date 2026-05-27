@@ -1,5 +1,5 @@
 import React from 'react'
-import type { TWFFile, Definition, FileError, Statement, AsyncTarget } from '../types/ast'
+import type { TWFFile, Definition, FileError, Diagnostic, Statement, AsyncTarget } from '../types/ast'
 import type { CallerRef, NavigationContextType, CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { filterStatesEqual } from '../filter/types'
@@ -7,7 +7,7 @@ import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
 import { PinToggle } from './PinToggle'
 import { SearchIcon } from './icons/GearIcons'
-import { THEME, DEF_TYPE_ORDER, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
+import { DEF_TYPE_ORDER, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 
 interface TreeViewProps {
   ast: TWFFile
@@ -300,21 +300,49 @@ export function TreeView({
 
   // Partition errors into "shown files" vs "hidden files" based on file filter
   const errors = ast.errors || []
-  const { shownFileErrors, hiddenFileErrors } = React.useMemo(() => {
+  const diagnostics = ast.diagnostics || []
+  const {
+    shownFileErrors,
+    hiddenFileErrors,
+    shownDiagnostics,
+    hiddenDiagnostics,
+  } = React.useMemo(() => {
     if (filter.selectedFiles.size === 0) {
-      return { shownFileErrors: errors, hiddenFileErrors: [] as FileError[] }
+      return {
+        shownFileErrors: errors,
+        hiddenFileErrors: [] as FileError[],
+        shownDiagnostics: diagnostics,
+        hiddenDiagnostics: [] as Diagnostic[],
+      }
     }
-    const shown: FileError[] = []
-    const hidden: FileError[] = []
+    const sFE: FileError[] = []
+    const hFE: FileError[] = []
     for (const e of errors) {
-      if (filter.selectedFiles.has(e.file)) shown.push(e)
-      else hidden.push(e)
+      if (filter.selectedFiles.has(e.file)) sFE.push(e)
+      else hFE.push(e)
     }
-    return { shownFileErrors: shown, hiddenFileErrors: hidden }
-  }, [errors, filter.selectedFiles])
+    const sD: Diagnostic[] = []
+    const hD: Diagnostic[] = []
+    for (const d of diagnostics) {
+      // Diagnostics without a `file` (rare — the parser should always
+      // stamp one) are surfaced in the shown group so they aren't
+      // accidentally hidden by file-filter narrowing.
+      if (!d.file || filter.selectedFiles.has(d.file)) sD.push(d)
+      else hD.push(d)
+    }
+    return {
+      shownFileErrors: sFE,
+      hiddenFileErrors: hFE,
+      shownDiagnostics: sD,
+      hiddenDiagnostics: hD,
+    }
+  }, [errors, diagnostics, filter.selectedFiles])
 
   const hasFiles = allFiles.length > 0
-  const hasErrors = errors.length > 0
+  // Render the errors header whenever there's anything to surface:
+  // a parser-process FileError or a structured Diagnostic of any
+  // severity. The header itself partitions counts by severity.
+  const hasHeaderContent = errors.length > 0 || diagnostics.length > 0
   const noFilesSelected = filter.selectedFiles.size === 0
 
   // Global keyboard shortcut: "/" or Ctrl+F opens search
@@ -630,20 +658,22 @@ export function TreeView({
 
         {/* === Content — padded; scrolls independently of the sticky header === */}
         <div className="workflow-canvas-content">
-          {hasErrors && (
+          {hasHeaderContent && (
             <ErrorsHeader
               shownFileErrors={shownFileErrors}
               hiddenFileErrors={hiddenFileErrors}
+              shownDiagnostics={shownDiagnostics}
+              hiddenDiagnostics={hiddenDiagnostics}
             />
           )}
 
-          {visibleDefinitions.length === 0 && !hasErrors ? (
+          {visibleDefinitions.length === 0 && !hasHeaderContent ? (
             <div className="no-workflows">
               <p>No definitions match the current filters.</p>
               <p className="no-workflows-hint">Try adjusting the type toggles or file filter above.</p>
             </div>
-          ) : visibleDefinitions.length === 0 && hasErrors ? (
-            null /* Only errors, no content — errors header is shown above */
+          ) : visibleDefinitions.length === 0 && hasHeaderContent ? (
+            null /* Only diagnostics, no content — errors header is shown above */
           ) : (
             <div role="tree" aria-label="Definition list" onKeyDown={handleTreeKeyDown}>
               {visibleDefinitions.map((def, i) => {
@@ -694,48 +724,90 @@ function nextMatchIndex(matchIndices: number[], currentIndex: number, forward: b
   }
 }
 
-/** Collapsible errors header — shows compilation errors grouped by shown/hidden files */
-function ErrorsHeader({ shownFileErrors, hiddenFileErrors }: {
+/**
+ * Collapsible errors header — surfaces two distinct kinds of finding:
+ *
+ *   1. FileError (parser-process failure): missing binary, IO error,
+ *      malformed JSON envelope. Always rendered as a parse-error row.
+ *   2. Diagnostic (validator/resolver/parse finding from `twf parse`'s
+ *      JSON envelope): carries severity, code, file, position, message.
+ *
+ * Each kind is partitioned by the file-filter into "shown" and "hidden"
+ * groups so users see exactly which findings the current filter is
+ * hiding from them. The header bar shows the rolled-up counts as
+ * "N errors, M warnings", switching to a warning palette when there
+ * are no errors and the only findings are warnings.
+ */
+function ErrorsHeader({
+  shownFileErrors, hiddenFileErrors,
+  shownDiagnostics, hiddenDiagnostics,
+}: {
   shownFileErrors: FileError[]
   hiddenFileErrors: FileError[]
+  shownDiagnostics: Diagnostic[]
+  hiddenDiagnostics: Diagnostic[]
 }) {
   const [expanded, setExpanded] = React.useState(true)
-  const totalErrors = shownFileErrors.length + hiddenFileErrors.length
 
-  const summaryParts: string[] = []
-  if (shownFileErrors.length > 0) {
-    summaryParts.push(`${shownFileErrors.length} in shown files`)
+  // Severity roll-up: process-level FileErrors count as errors; structured
+  // diagnostics contribute to either count based on their severity field.
+  const { errorCount, warningCount, headerSeverity } = React.useMemo(() => {
+    const allDiags = [...shownDiagnostics, ...hiddenDiagnostics]
+    const diagErrors = allDiags.filter(d => d.severity === 'error').length
+    const diagWarnings = allDiags.filter(d => d.severity === 'warning').length
+    const errCount = shownFileErrors.length + hiddenFileErrors.length + diagErrors
+    const warnCount = diagWarnings
+    const severity: 'error' | 'warning' = errCount > 0 ? 'error' : 'warning'
+    return { errorCount: errCount, warningCount: warnCount, headerSeverity: severity }
+  }, [shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics])
+
+  const countParts: string[] = []
+  if (errorCount > 0) countParts.push(`${errorCount} ${errorCount === 1 ? 'error' : 'errors'}`)
+  if (warningCount > 0) countParts.push(`${warningCount} ${warningCount === 1 ? 'warning' : 'warnings'}`)
+  const countText = countParts.join(', ')
+
+  // Append the shown/hidden breakdown when the file filter is splitting
+  // findings into both groups — gives the user a hint that filtered-out
+  // files have their own issues without forcing a chip toggle.
+  const shownTotal = shownFileErrors.length + shownDiagnostics.length
+  const hiddenTotal = hiddenFileErrors.length + hiddenDiagnostics.length
+  const splitParts: string[] = []
+  if (shownTotal > 0 && hiddenTotal > 0) {
+    splitParts.push(`${shownTotal} in shown files`)
+    splitParts.push(`${hiddenTotal} in hidden files`)
   }
-  if (hiddenFileErrors.length > 0) {
-    summaryParts.push(`${hiddenFileErrors.length} in hidden files`)
-  }
-  const summary = summaryParts.length > 1
-    ? ` (${summaryParts.join(', ')})`
-    : ''
+  const splitSuffix = splitParts.length > 0 ? ` (${splitParts.join(', ')})` : ''
+
+  // Top-bar glyph mirrors the most severe entry: ✗ when any errors are
+  // present, ⚠ otherwise. Distinct from per-row glyphs so the bar
+  // communicates "worst-case" at a glance.
+  const headerIcon = headerSeverity === 'error' ? '✗' : '⚠'
 
   return (
-    <div className="errors-header">
+    <div className={`errors-header${headerSeverity === 'warning' ? ' severity-warnings-only' : ''}`}>
       <div className="errors-header-bar" onClick={() => setExpanded(!expanded)}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="errors-header-icon">{THEME.error.icon}</span>
+        <span className="errors-header-icon">{headerIcon}</span>
         <span className="errors-header-title">
-          {totalErrors} {totalErrors === 1 ? 'error' : 'errors'}{summary}
+          {countText}{splitSuffix}
         </span>
       </div>
 
       {expanded && (
         <div className="errors-header-body">
-          {shownFileErrors.length > 0 && (
+          {(shownFileErrors.length > 0 || shownDiagnostics.length > 0) && (
             <ErrorGroup
               label="Shown files"
-              errors={shownFileErrors}
+              fileErrors={shownFileErrors}
+              diagnostics={shownDiagnostics}
               variant="shown"
             />
           )}
-          {hiddenFileErrors.length > 0 && (
+          {(hiddenFileErrors.length > 0 || hiddenDiagnostics.length > 0) && (
             <ErrorGroup
               label="Hidden files"
-              errors={hiddenFileErrors}
+              fileErrors={hiddenFileErrors}
+              diagnostics={hiddenDiagnostics}
               variant="hidden"
             />
           )}
@@ -745,23 +817,57 @@ function ErrorsHeader({ shownFileErrors, hiddenFileErrors }: {
   )
 }
 
-/** A group of errors under a sub-label */
-function ErrorGroup({ label, errors, variant }: {
+/**
+ * A group of findings under a sub-label. FileErrors render first
+ * (parse-process failures are the most impactful); then errors-severity
+ * diagnostics; then warnings. The grouping order ensures the user reads
+ * "what's broken" before "what might be off".
+ */
+function ErrorGroup({ label, fileErrors, diagnostics, variant }: {
   label: string
-  errors: FileError[]
+  fileErrors: FileError[]
+  diagnostics: Diagnostic[]
   variant: 'shown' | 'hidden'
 }) {
+  const errorDiagnostics = diagnostics.filter(d => d.severity === 'error')
+  const warningDiagnostics = diagnostics.filter(d => d.severity === 'warning')
+  const total = fileErrors.length + diagnostics.length
+
   return (
     <div className={`error-group error-group-${variant}`}>
       <div className="error-group-label">
-        {label} ({errors.length})
+        {label} ({total})
       </div>
-      {errors.map((err, i) => (
-        <div key={i} className="error-group-item">
+      {fileErrors.map((err, i) => (
+        <div key={`fe-${i}`} className="error-group-item">
           <div className="error-group-file">{err.file.split('/').pop()}</div>
           <pre className="error-group-message">{err.stderr || err.error}</pre>
         </div>
       ))}
+      {errorDiagnostics.map((d, i) => (
+        <DiagnosticRow key={`de-${i}`} diagnostic={d} />
+      ))}
+      {warningDiagnostics.map((d, i) => (
+        <DiagnosticRow key={`dw-${i}`} diagnostic={d} />
+      ))}
+    </div>
+  )
+}
+
+/** Single-line diagnostic row: glyph + code chip + message, with a
+ * secondary muted file:line:col line beneath the message column. */
+function DiagnosticRow({ diagnostic }: { diagnostic: Diagnostic }) {
+  const glyph = diagnostic.severity === 'error' ? '✗' : '⚠'
+  const fileName = diagnostic.file ? diagnostic.file.split('/').pop() : undefined
+  const loc = fileName
+    ? `${fileName}:${diagnostic.start.line}:${diagnostic.start.column}`
+    : undefined
+  return (
+    <div className={`diagnostic-item severity-${diagnostic.severity}`}>
+      <span className="diagnostic-glyph" aria-hidden="true">{glyph}</span>
+      <span className="diagnostic-code">{diagnostic.code}</span>
+      <span className="diagnostic-message">{diagnostic.message}</span>
+      {loc && <span className="diagnostic-location">{loc}</span>}
     </div>
   )
 }
