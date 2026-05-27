@@ -3,8 +3,9 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
-import { DEFAULT_PARAMS } from '../graph/simulation'
+import { DEFAULT_PARAMS, CHARGE_KEY, BAND_MIN_KEY, BAND_MAX_KEY } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor } from '../graph/node-types'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
@@ -49,32 +50,24 @@ interface ChargeSliderDef extends SliderDef {
   nodeType: NodeType
 }
 
-// Charges grouped by hierarchy depth. The 3 L3 types share a range so their
-// magnitudes are visually comparable; L1 and L2 use larger ranges scaled to
-// their (much heavier) defaults.
-const PUSH_CHARGE_SLIDERS: ChargeSliderDef[] = [
-  { key: 'chargeNamespace', nodeType: 'namespace', label: 'L1 NS',
-    min: -1000, max: 0, step: 10,
-    tooltip: 'Namespace node repulsion charge' },
-  { key: 'chargeNexusEndpoint', nodeType: 'nexusEndpoint', label: 'L1.5 Ep',
-    min: -400, max: 0, step: 10,
-    tooltip: 'Nexus endpoint node repulsion charge' },
-  { key: 'chargeWorker', nodeType: 'worker', label: 'L2 Wk',
-    min: -400, max: 0, step: 10,
-    tooltip: 'Worker node repulsion charge' },
-  { key: 'chargeWorkflow', nodeType: 'workflow', label: 'L3 Wf',
-    min: -200, max: 0, step: 5,
-    tooltip: 'Workflow node repulsion charge' },
-  { key: 'chargeActivity', nodeType: 'activity', label: 'L3 Act',
-    min: -200, max: 0, step: 5,
-    tooltip: 'Activity node repulsion charge' },
-  { key: 'chargeNexusService', nodeType: 'nexusService', label: 'L3 Nx',
-    min: -200, max: 0, step: 5,
-    tooltip: 'Nexus service node repulsion charge' },
-  { key: 'chargeNexusOperation', nodeType: 'nexusOperation', label: 'L3 Op',
-    min: -200, max: 0, step: 5,
-    tooltip: 'Nexus operation node repulsion charge' },
-]
+// Charge slider ranges, stratified by tier so the default value sits comfortably
+// in the middle of each slider's working range.
+function chargeSliderRange(t: NodeType): { min: number; max: number; step: number } {
+  const def = NODE_TYPE_REGISTRY[t]
+  if (def.tier === 'container' && def.ladder === 'main') return { min: -1000, max: 0, step: 10 }
+  if (def.tier === 'container' || (def.tier === 'host' && def.ladder === 'main')) return { min: -400, max: 0, step: 10 }
+  return { min: -200, max: 0, step: 5 }
+}
+
+// Enumerate charge sliders from the registry. Order follows ALL_NODE_TYPES
+// (top-of-hierarchy first) so the list reads as a vertical layout preview.
+const PUSH_CHARGE_SLIDERS: ChargeSliderDef[] = ALL_NODE_TYPES.map(t => ({
+  key: CHARGE_KEY[t],
+  nodeType: t,
+  label: sliderLabelFor(t),
+  ...chargeSliderRange(t),
+  tooltip: `${NODE_TYPE_REGISTRY[t].label} node repulsion charge`,
+}))
 
 // --- PULL section sliders ---
 
@@ -170,31 +163,15 @@ const BAND_Y_MIN = -600
 const BAND_Y_MAX = 600
 const BAND_Y_STEP = 10
 
-// Order matches the screen-space hierarchy (top → bottom), so the slider
-// stack itself reads as a vertical layout preview.
-const GRAVITY_BAND_SLIDERS: GravityBandDef[] = [
-  { label: 'L1 NS', nodeType: 'namespace',
-    minKey: 'bandYMinNamespace', maxKey: 'bandYMaxNamespace',
-    tooltip: 'Y band where namespace nodes feel zero gravity' },
-  { label: 'L1.5 Ep', nodeType: 'nexusEndpoint',
-    minKey: 'bandYMinNexusEndpoint', maxKey: 'bandYMaxNexusEndpoint',
-    tooltip: 'Y band where nexus endpoint nodes feel zero gravity' },
-  { label: 'L2 Wk', nodeType: 'worker',
-    minKey: 'bandYMinWorker', maxKey: 'bandYMaxWorker',
-    tooltip: 'Y band where worker nodes feel zero gravity' },
-  { label: 'L2 Nx', nodeType: 'nexusService',
-    minKey: 'bandYMinNexusService', maxKey: 'bandYMaxNexusService',
-    tooltip: 'Y band where nexus service nodes feel zero gravity' },
-  { label: 'L3 Wf', nodeType: 'workflow',
-    minKey: 'bandYMinWorkflow', maxKey: 'bandYMaxWorkflow',
-    tooltip: 'Y band where workflow nodes feel zero gravity' },
-  { label: 'L3 Op', nodeType: 'nexusOperation',
-    minKey: 'bandYMinNexusOperation', maxKey: 'bandYMaxNexusOperation',
-    tooltip: 'Y band where nexus operation nodes feel zero gravity' },
-  { label: 'L4 Act', nodeType: 'activity',
-    minKey: 'bandYMinActivity', maxKey: 'bandYMaxActivity',
-    tooltip: 'Y band where activity nodes feel zero gravity' },
-]
+// Enumerate band sliders from the registry. Order matches PUSH_CHARGE_SLIDERS
+// so both sections read as the same hierarchy, top to bottom.
+const GRAVITY_BAND_SLIDERS: GravityBandDef[] = ALL_NODE_TYPES.map(t => ({
+  label: sliderLabelFor(t),
+  nodeType: t,
+  minKey: BAND_MIN_KEY[t],
+  maxKey: BAND_MAX_KEY[t],
+  tooltip: `Y band where ${NODE_TYPE_REGISTRY[t].label.toLowerCase()} nodes feel zero gravity`,
+}))
 
 // --- DYNAMICS section sliders ---
 //

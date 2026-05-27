@@ -18,8 +18,7 @@ import type {
   ParserEdge,
   ParserGraph,
 } from '../types/parser-graph'
-import type { Graph, GraphEdge, GraphNode, NodeLevel, NodeType } from './model'
-import { nodeLevel } from './model'
+import type { Graph, GraphEdge, GraphNode, NodeType } from './model'
 
 // ---------------------------------------------------------------------------
 // definitionKey → AST definition map
@@ -131,7 +130,6 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
     const ast = astLookup.get(pn.definition)
     nodes.set(pn.id, {
       id: pn.id,
-      level: nodeLevel(nodeType),
       nodeType,
       name: displayNameFor(nodeType, name),
       sourceFile: ast?.sourceFile,
@@ -154,6 +152,48 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
   for (const ce of parserGraph.coarsenedEdges) {
     const view = coarsenedEdgeToViewEdge(ce, nodes, edgeSeq++)
     if (view) edges.push(view)
+  }
+
+  // --- Nexus operation ↔ endpoint composition edges ---
+  //
+  // An endpoint is a top-level routing alias that forwards calls to a
+  // specific (namespace, queue). An operation is deployed at a specific
+  // (namespace, queue). When those tuples match, the endpoint is one of
+  // the routes by which a caller can reach this operation.
+  //
+  // This relationship is structural (deployment topology) rather than
+  // observed (dispatch). It's emitted as a second containment-style edge
+  // alongside the operation's parent-service edge, so an operation has
+  // two visible "parents" in the graph: the service that owns it, and
+  // the endpoint(s) that front it. The parser doesn't emit these edges
+  // because they are deterministically derivable from node metadata;
+  // the visualizer derives them here so the model stays explicit.
+  const endpointsByDeployment = new Map<string, string[]>()
+  for (const node of nodes.values()) {
+    if (node.nodeType !== 'nexusEndpoint') continue
+    if (!node.namespace || !node.queue) continue
+    const key = `${node.namespace}|${node.queue}`
+    const list = endpointsByDeployment.get(key)
+    if (list) list.push(node.id)
+    else endpointsByDeployment.set(key, [node.id])
+  }
+  for (const node of nodes.values()) {
+    if (node.nodeType !== 'nexusOperation') continue
+    if (!node.namespace || !node.queue) continue
+    const matches = endpointsByDeployment.get(`${node.namespace}|${node.queue}`)
+    if (!matches) continue
+    for (const epId of matches) {
+      const ep = nodes.get(epId)
+      if (!ep) continue
+      edges.push({
+        id: `e${edgeSeq++}`,
+        edgeType: 'containment',
+        sourceId: node.id,
+        targetId: epId,
+        sourceNodeType: node.nodeType,
+        targetNodeType: ep.nodeType,
+      })
+    }
   }
 
   // --- Duplicate groups (definitionKey → every nodeId that represents it) ---
@@ -186,8 +226,6 @@ function parserEdgeToViewEdge(
     edgeType,
     sourceId: pe.from,
     targetId: pe.to,
-    sourceLevel: src.level,
-    targetLevel: tgt.level,
     sourceNodeType: src.nodeType,
     targetNodeType: tgt.nodeType,
   }
@@ -204,14 +242,11 @@ function coarsenedEdgeToViewEdge(
   const tgt = nodes.get(ce.to)
   if (!src || !tgt) return null
 
-  const level: NodeLevel = ce.tier === 'namespace' ? 1 : 2
   return {
     id: `e${seq}`,
     edgeType: 'dependency',
     sourceId: ce.from,
     targetId: ce.to,
-    sourceLevel: level,
-    targetLevel: level,
     sourceNodeType: src.nodeType,
     targetNodeType: tgt.nodeType,
   }

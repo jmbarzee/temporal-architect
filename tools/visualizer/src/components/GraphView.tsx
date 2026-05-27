@@ -12,6 +12,7 @@ import { buildGraph } from '../graph/build'
 import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
 import type { SimNode } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
+import { definitionFor, ALL_NODE_TYPES as _ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
 import { DEFAULT_VIEWPORT, fitToView, worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
@@ -22,7 +23,7 @@ import type { ForceSection } from './GraphControlPanel'
 import { PinToggle } from './PinToggle'
 import { GraphContextMenu, type ContextMenuItem } from './GraphContextMenu'
 import { SearchIcon } from './icons/GearIcons'
-import { THEME, DEF_TYPE_CONFIGS, NEXUS_GROUP_DEF_TYPES } from '../theme/temporal-theme'
+import { THEME, DEF_TYPE_CONFIGS, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -43,22 +44,22 @@ interface GraphViewProps {
   onOverriddenPinsConsumed: () => void
 }
 
-// Map graph nodeType to AST defType (for visibility filter). nexusOperation
-// and nexusEndpoint are not top-level AST definitions — operations are nested
-// inside nexusServiceDef, endpoints inside namespaceDef — so we use synthetic
-// 'nexusOperationDef' / 'nexusEndpointDef' keys. The chips in the type
-// filter are wired to these synthetic keys the same as any real def type.
+// Map graph nodeType → AST defType and back, derived from the registry.
+// Built once at module load; all 7 node types are covered by ALL_NODE_TYPES.
+const _NODE_TYPE_TO_DEF_TYPE = Object.fromEntries(
+  _ALL_NODE_TYPES.map(t => [t, NODE_TYPE_REGISTRY[t].defType])
+) as Record<string, string>
+
+const _DEF_TYPE_TO_NODE_TYPE = Object.fromEntries(
+  _ALL_NODE_TYPES.map(t => [NODE_TYPE_REGISTRY[t].defType, t])
+) as Record<string, string>
+
 function nodeTypeToDefType(nodeType: string): string {
-  switch (nodeType) {
-    case 'namespace': return 'namespaceDef'
-    case 'nexusEndpoint': return 'nexusEndpointDef'
-    case 'worker': return 'workerDef'
-    case 'workflow': return 'workflowDef'
-    case 'activity': return 'activityDef'
-    case 'nexusService': return 'nexusServiceDef'
-    case 'nexusOperation': return 'nexusOperationDef'
-    default: return 'workflowDef'
-  }
+  return _NODE_TYPE_TO_DEF_TYPE[nodeType] ?? 'workflowDef'
+}
+
+function defTypeToNodeType(defType: string): string {
+  return _DEF_TYPE_TO_NODE_TYPE[defType] ?? 'workflow'
 }
 
 // Walk parentId chain to find nearest ancestor that is in visibleIds
@@ -123,15 +124,18 @@ function resolveDepEndpoint(
   return ancestor ? [ancestor] : []
 }
 
-// Compute a glanceable summary string for a graph node from the visible edge set
+// Compute a glanceable summary string for a graph node from the visible edge set.
+// Dispatches on the registry's `summaryKind` so the logic is driven by node
+// type identity, not by the removed `level` field.
 function computeGraphNodeSummary(
   node: SimNode,
   visibleEdges: { edgeType: string; sourceId: string; targetId: string }[],
   nodeMap: Map<string, SimNode>
 ): string {
-  if (node.level === 1) {
-    // Count contained workers and endpoints separately so the user can read
-    // both at a glance (`5 workers · 2 endpoints`).
+  const { summaryKind } = definitionFor(node.nodeType)
+
+  if (summaryKind === 'containerCount') {
+    // Namespace: count contained workers and endpoints separately.
     let workers = 0, endpoints = 0
     for (const e of visibleEdges) {
       if (e.edgeType !== 'containment' || e.targetId !== node.id) continue
@@ -144,16 +148,14 @@ function computeGraphNodeSummary(
     if (workers > 0) parts.push(`${workers} worker${workers !== 1 ? 's' : ''}`)
     if (endpoints > 0) parts.push(`${endpoints} endpoint${endpoints !== 1 ? 's' : ''}`)
     return parts.join(' · ')
-  } else if (node.level === 1.5) {
-    // Endpoints have no outgoing edges (they're routing aliases). The
-    // useful summary is "how many calls land here?" — incoming dispatch
-    // edges via the routing.nexusEndpoint metadata. With endpoints
-    // promoted to nodes the dispatch edge points at the operation, not
-    // the endpoint — so this is computed downstream when we surface
-    // routing.nexusEndpoint on edges. For now, no summary at L1.5.
-    return ''
-  } else if (node.level === 2) {
-    let wf = 0, act = 0, nxs = 0
+  }
+
+  if (summaryKind === 'none') return ''
+
+  if (summaryKind === 'hostRegistrations') {
+    // Worker: count contained workflows, activities, and nexus services.
+    // NexusService: count contained nexus operations.
+    let wf = 0, act = 0, nxs = 0, ops = 0
     for (const e of visibleEdges) {
       if (e.edgeType !== 'containment' || e.targetId !== node.id) continue
       const child = nodeMap.get(e.sourceId)
@@ -161,58 +163,33 @@ function computeGraphNodeSummary(
       if (child.nodeType === 'workflow') wf++
       else if (child.nodeType === 'activity') act++
       else if (child.nodeType === 'nexusService') nxs++
+      else if (child.nodeType === 'nexusOperation') ops++
+    }
+    if (node.nodeType === 'nexusService') {
+      return ops > 0 ? `${ops} op${ops !== 1 ? 's' : ''}` : ''
     }
     const parts: string[] = []
     if (wf > 0) parts.push(`${wf}wf`)
     if (act > 0) parts.push(`${act}act`)
     if (nxs > 0) parts.push(`${nxs}nxs`)
     return parts.join(' · ')
-  } else {
-    let out = 0, inc = 0
-    for (const e of visibleEdges) {
-      if (e.edgeType === 'containment') continue
-      if (e.sourceId === node.id) out++
-      if (e.targetId === node.id) inc++
-    }
-    const parts: string[] = []
-    if (out > 0) parts.push(`→${out}`)
-    if (inc > 0) parts.push(`←${inc}`)
-    return parts.join(' ')
   }
-}
 
-// Graph-view filter entries. The three nexus def types (endpoint, service,
-// operation) are consolidated into one "Nexus" group chip so the filter bar
-// stays compact. Internally `visibleTypes` still tracks individual def-type
-// keys; the group is a UI concept only — no filter contract changes.
-interface FilterEntry {
-  id: string
-  icon: string
-  label: string
-  types: string[]
-}
-
-const GRAPH_FILTER_ENTRIES: FilterEntry[] = [
-  { id: 'namespaceDef',  icon: THEME.namespace.icon,     label: 'Namespaces', types: ['namespaceDef'] },
-  { id: 'workerDef',     icon: THEME.worker.icon,        label: 'Workers',    types: ['workerDef'] },
-  { id: 'nexus',         icon: THEME.nexusEndpoint.icon, label: 'Nexus',      types: [...NEXUS_GROUP_DEF_TYPES] },
-  { id: 'workflowDef',   icon: THEME.workflow.icon,      label: 'Workflows',  types: ['workflowDef'] },
-  { id: 'activityDef',   icon: THEME.activity.icon,      label: 'Activities', types: ['activityDef'] },
-]
-
-// Map AST defType to graph nodeType
-function defTypeToNodeType(defType: string): string {
-  switch (defType) {
-    case 'namespaceDef': return 'namespace'
-    case 'nexusEndpointDef': return 'nexusEndpoint'
-    case 'workerDef': return 'worker'
-    case 'workflowDef': return 'workflow'
-    case 'activityDef': return 'activity'
-    case 'nexusServiceDef': return 'nexusService'
-    case 'nexusOperationDef': return 'nexusOperation'
-    default: return 'workflow'
+  // summaryKind === 'degree'
+  let out = 0, inc = 0
+  for (const e of visibleEdges) {
+    if (e.edgeType === 'containment') continue
+    if (e.sourceId === node.id) out++
+    if (e.targetId === node.id) inc++
   }
+  const parts: string[] = []
+  if (out > 0) parts.push(`→${out}`)
+  if (inc > 0) parts.push(`←${inc}`)
+  return parts.join(' ')
 }
+
+// Graph-view filter entries — imported from temporal-theme.tsx so the Tree and
+// Graph views always show the same chip layout. See VIEW_FILTER_ENTRIES.
 
 export function GraphView({
   ast,
@@ -369,7 +346,6 @@ export function GraphView({
             graduatedEdges.push({
               ...edge,
               targetId: ancestor,
-              targetLevel: ancestorNode?.level ?? edge.targetLevel,
               targetNodeType: ancestorNode?.nodeType ?? edge.targetNodeType,
               id: `grad:${edge.id}`,
             })
@@ -405,8 +381,6 @@ export function GraphView({
               ...edge,
               sourceId: rs,
               targetId: rt,
-              sourceLevel: srcNode?.level ?? edge.sourceLevel,
-              targetLevel: tgtNode?.level ?? edge.targetLevel,
               sourceNodeType: srcNode?.nodeType ?? edge.sourceNodeType,
               targetNodeType: tgtNode?.nodeType ?? edge.targetNodeType,
               id: `grad:${key}`,
@@ -1029,7 +1003,7 @@ export function GraphView({
 
         <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
           <div className="header-types-row">
-            {GRAPH_FILTER_ENTRIES.map(entry => {
+            {VIEW_FILTER_ENTRIES.map(entry => {
               const isActive = entry.types.some(t => visibleTypes.has(t))
               const isChanged = entry.types.some(t => recentlyChanged.has(`type:${t}`))
               const cls = [
@@ -1042,7 +1016,7 @@ export function GraphView({
                 <button
                   key={entry.id}
                   className={cls}
-                  onClick={() => toggleTypeGroup(entry.types)}
+                  onClick={() => toggleTypeGroup([...entry.types])}
                   title={isActive ? `Hide ${entry.label.toLowerCase()}` : `Show ${entry.label.toLowerCase()}`}
                 >
                   <span className="header-type-icon">{entry.icon}</span>

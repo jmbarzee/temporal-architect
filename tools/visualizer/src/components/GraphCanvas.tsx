@@ -7,78 +7,35 @@ import type { ForceParams, SimNode } from '../graph/simulation'
 import { ALL_NODE_TYPES, bandForType, chargeForType, edgeCategory } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
-import { THEME } from '../theme/temporal-theme'
+import { definitionFor } from '../graph/node-types'
 import type { ForceSection } from './GraphControlPanel'
 
-// Per-node-type style: fill colour, border colour, and icon glyph. Mirrors
-// the --color-{type} / --color-{type}-border CSS variables in styles/index.css
-// so tree-view chips and canvas nodes read as the same palette. Icon glyphs
-// are sourced from the central THEME so the canvas stays in lock-step with
-// the tree view's badge icons.
-//
-// Why duplicate the CSS values here instead of reading them at runtime?
-// Canvas 2D needs concrete colour strings; reading getComputedStyle every
-// frame would be wasted work, and the values rarely change (theme switch is
-// the only driver). When the CSS is edited these constants must follow.
-interface NodeStyle {
-  fill: string
-  border: string
-  icon: string
-}
-
-const NODE_STYLES: Record<NodeType, NodeStyle> = {
-  namespace: { fill: '#475569', border: '#1E293B', icon: THEME.namespace.icon },
-  // Endpoints live just below namespaces in the band stack. They route nexus
-  // calls but aren't containers, so we tint them with the nexus pink while
-  // keeping the slate desaturation that signals "top-level routing infra".
-  nexusEndpoint: { fill: '#9F1239', border: '#4C0519', icon: THEME.nexusEndpoint.icon },
-  worker: { fill: '#94A3B8', border: '#475569', icon: THEME.worker.icon },
-  workflow: { fill: '#8B7EC8', border: '#5D4F95', icon: THEME.workflow.icon },
-  activity: { fill: '#7CB9E8', border: '#4A8BC2', icon: THEME.activity.icon },
-  nexusService: { fill: '#DB2777', border: '#831843', icon: THEME.nexusService.icon },
-  nexusOperation: { fill: '#F9A8D4', border: '#BE185D', icon: THEME.nexusOperation.icon },
-}
-
-// Edges are categorised by structural role and tone-graded by level. The
-// nexus family carries the pink palette through every leg of a call:
-//   - opContainment (operation → service): deep service pink, dashed —
-//     "this operation is owned by this service".
-//   - workflowDep   (workflow → workflow): workflow purple — "this is a
-//     workflow making a call".
-//   - nexusCall     (workflow ↔ operation, both directions, including the
-//     spliced caller → backing edge that survives when operations are
-//     hidden): light operation pink — "this hop crosses the nexus call
-//     surface".
-//   - dependencyL{1,2,3,4}: plain greys, stratified by level.
-//   - containment: subtle slate dotted, the default for parent/child edges
-//     that aren't part of the nexus family.
+// Edge styles indexed by semantic role. The nexus family carries the pink
+// palette through every leg of a call:
+//   - opContainment (operation → service): deep service pink, dashed
+//   - epComposition (operation → endpoint): deep endpoint rose, dashed —
+//     the operation's "second parent" (an endpoint that routes calls to
+//     the (namespace, queue) where this operation is deployed)
+//   - workflowDep   (workflow → workflow): workflow purple
+//   - nexusCall     (workflow ↔ operation, spliced caller → backing): light pink
+//   - dependencyNsToNs / dependencyWkToWk: named greys for the two coarsened cases
+//   - dependencyDefault: fallback grey for all other dependency edges
+//   - containment: subtle slate dotted, default for non-nexus containment edges
 const EDGE_STYLE = {
-  containment: { color: '#94A3B8', alpha: 0.35, dash: [3, 4], width: 1 },
-  opContainment: { color: '#DB2777', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → service
-  dependencyL1: { color: '#475569', alpha: 0.85, dash: [], width: 1.8 }, // ns → ns
-  dependencyL2: { color: '#64748B', alpha: 0.75, dash: [], width: 1.6 }, // worker → worker
-  workflowDep: { color: '#8B7EC8', alpha: 0.70, dash: [], width: 1.4 }, // workflow → workflow
-  workflowToActivity: { color: '#4A8BC2', alpha: 0.70, dash: [], width: 1.4 }, // workflow → activity (activity blue)
-  dependencyL3: { color: '#94A3B8', alpha: 0.55, dash: [], width: 1.4 }, // generic L3 fallback
-  dependencyL4: { color: '#94A3B8', alpha: 0.40, dash: [], width: 1.2 }, // ends at activity (L4 leaf)
-  nexusCall: { color: '#F472B6', alpha: 0.85, dash: [], width: 1.5 }, // workflow ↔ operation, or spliced
+  containment:        { color: '#94A3B8', alpha: 0.35, dash: [3, 4], width: 1 },
+  opContainment:      { color: '#DB2777', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → service
+  epComposition:      { color: '#9F1239', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → endpoint
+  dependencyNsToNs:   { color: '#475569', alpha: 0.85, dash: [], width: 1.8 },     // ns → ns
+  dependencyWkToWk:   { color: '#64748B', alpha: 0.75, dash: [], width: 1.6 },     // worker → worker
+  workflowDep:        { color: '#8B7EC8', alpha: 0.70, dash: [], width: 1.4 },     // workflow → workflow
+  workflowToActivity: { color: '#4A8BC2', alpha: 0.70, dash: [], width: 1.4 },     // workflow → activity
+  dependencyDefault:  { color: '#94A3B8', alpha: 0.50, dash: [], width: 1.3 },     // all other deps
+  nexusCall:          { color: '#F472B6', alpha: 0.85, dash: [], width: 1.5 },     // workflow ↔ operation, or spliced
 } as const
 
 const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#FFFFFF'
 const DIM_ALPHA = 0.2
-
-// Node sizes by level — all nodes render as circles; w/h = 2r for hit testing
-// and culling. L1 and L2 share a size because they're both "container" tiers
-// (namespace contains workers; workers and services host the L3 layer);
-// L3 and L4 step down to make the leaves visually subordinate.
-const NODE_SIZES: Record<number, { w: number; h: number; r: number; iconSize: number }> = {
-  1: { w: 40, h: 40, r: 20, iconSize: 18 },
-  1.5: { w: 30, h: 30, r: 15, iconSize: 14 },
-  2: { w: 40, h: 40, r: 20, iconSize: 18 },
-  3: { w: 22, h: 22, r: 11, iconSize: 12 },
-  4: { w: 16, h: 16, r: 8, iconSize: 10 },
-}
 
 const LABEL_FONT = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 const ICON_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
@@ -107,6 +64,15 @@ function edgeStyleFor(edge: GraphEdge, src: SimNode, tgt: SimNode): typeof EDGE_
     if (src.nodeType === 'nexusOperation' && tgt.nodeType === 'nexusService') {
       return EDGE_STYLE.opContainment
     }
+    // op ↔ endpoint composition: visualized like opContainment (dashed,
+    // nexus-family) but in the endpoint's deeper rose so the eye can tell
+    // the two parents apart at a glance.
+    if (
+      (src.nodeType === 'nexusOperation' && tgt.nodeType === 'nexusEndpoint') ||
+      (src.nodeType === 'nexusEndpoint' && tgt.nodeType === 'nexusOperation')
+    ) {
+      return EDGE_STYLE.epComposition
+    }
     return EDGE_STYLE.containment
   }
   // Both directions of the workflow ↔ operation hop, plus spliced
@@ -126,11 +92,16 @@ function edgeStyleFor(edge: GraphEdge, src: SimNode, tgt: SimNode): typeof EDGE_
   ) {
     return EDGE_STYLE.workflowToActivity
   }
-  const minLevel = Math.min(src.level, tgt.level)
-  if (minLevel === 1) return EDGE_STYLE.dependencyL1
-  if (minLevel === 2) return EDGE_STYLE.dependencyL2
-  if (tgt.level === 4 || src.level === 4) return EDGE_STYLE.dependencyL4
-  return EDGE_STYLE.dependencyL3
+  // The two coarsened dependency cases: namespace↔namespace and worker↔worker.
+  // These are the only non-nexus, non-workflow/activity dependency types that
+  // warrant a distinct style; everything else gets the neutral default.
+  if (src.nodeType === 'namespace' || tgt.nodeType === 'namespace') {
+    return EDGE_STYLE.dependencyNsToNs
+  }
+  if (src.nodeType === 'worker' || tgt.nodeType === 'worker') {
+    return EDGE_STYLE.dependencyWkToWk
+  }
+  return EDGE_STYLE.dependencyDefault
 }
 const ARROWHEAD_SIZE = 8
 const CULL_MARGIN = 100
@@ -280,7 +251,7 @@ export function GraphCanvas({
     const [wx, wy] = screenToWorld(viewport, sx, sy)
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i]
-      const r = NODE_SIZES[n.level].r / viewport.scale + 4
+      const r = definitionFor(n.nodeType).size.r / viewport.scale + 4
       if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
@@ -474,8 +445,8 @@ export function GraphCanvas({
         // direction is interesting to show).
         if (edge.edgeType !== 'containment') {
           const angle = Math.atan2(ty - sy, tx - sx)
-          const nodeSize = NODE_SIZES[tgt.level]
-          const offset = (nodeSize.w / 2) * vp.scale + 2
+          const tgtR = definitionFor(tgt.nodeType).size.r
+          const offset = tgtR * vp.scale + 2
           const ax = tx - Math.cos(angle) * offset
           const ay = ty - Math.sin(angle) * offset
           ctx.beginPath()
@@ -530,7 +501,7 @@ export function GraphCanvas({
           const baseAlpha = highlighted ? 0.24 : dimmed ? 0.04 : 0.10
           const stepAlpha = highlighted ? 0.05 : dimmed ? 0.01 : 0.025
 
-          const color = NODE_STYLES[node.nodeType]?.fill ?? '#999'
+          const color = definitionFor(node.nodeType).color.fill
           ctx.strokeStyle = color
 
           const effectiveCharge = Math.abs(chargeForType(d.forceParams, node.nodeType)) * pushMul
@@ -666,12 +637,13 @@ export function GraphCanvas({
           const isActive = d.activeGravityType === t
           const isDimmed = d.activeGravityType !== null && !isActive
 
-          ctx.fillStyle = NODE_STYLES[t]?.fill ?? '#999'
+          const nodeColor = definitionFor(t).color.fill
+          ctx.fillStyle = nodeColor
           ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
           ctx.fillRect(0, sy1, w, sy2 - sy1)
 
           // Top and bottom edges of the band (subtle), brighter when active.
-          ctx.strokeStyle = NODE_STYLES[t]?.fill ?? '#999'
+          ctx.strokeStyle = nodeColor
           ctx.globalAlpha = isActive ? 0.55 : isDimmed ? 0.08 : 0.22
           ctx.lineWidth = isActive ? 1.5 : 1
           ctx.setLineDash([])
@@ -711,40 +683,42 @@ export function GraphCanvas({
 
       for (const node of d.nodes) {
         const [sx, sy] = worldToScreen(vp, node.x, node.y)
-        const s = NODE_SIZES[node.level]
-        const hw = s.w / 2
-        const hh = s.h / 2
+        const def = definitionFor(node.nodeType)
+        const r = def.size.r
+        const hw = r  // nodes are circles: half-width = half-height = r
 
         if (sx + hw < -CULL_MARGIN || sx - hw > w + CULL_MARGIN ||
-          sy + hh < -CULL_MARGIN || sy - hh > h + CULL_MARGIN) continue
+          sy + hw < -CULL_MARGIN || sy - hw > h + CULL_MARGIN) continue
 
         const nodeHighlighted = d.highlightedNodes?.has(node.id) ?? false
         const searchDimmed = d.searchMatchIds !== null && !d.searchMatchIds.has(node.id)
         const nodeDimmed = (hasHighlight && !nodeHighlighted) || searchDimmed
         ctx.globalAlpha = nodeDimmed ? DIM_ALPHA : 1
 
-        const style = NODE_STYLES[node.nodeType] ?? { fill: '#999', border: '#444', icon: '?' }
+        const fill   = def.color.fill
+        const border = def.color.border
+        const icon   = def.icon
 
         // Filled body + crisp border. The border is ~3 stops darker than the
         // fill; 1.25px at the lowest zoom keeps the outline visible without
         // turning small nodes into bullseyes.
         ctx.beginPath()
-        ctx.arc(sx, sy, s.r, 0, Math.PI * 2)
-        ctx.fillStyle = style.fill
+        ctx.arc(sx, sy, r, 0, Math.PI * 2)
+        ctx.fillStyle = fill
         ctx.fill()
         ctx.lineWidth = Math.max(1, Math.min(2, vp.scale * 1.25))
-        ctx.strokeStyle = style.border
+        ctx.strokeStyle = border
         ctx.stroke()
 
         // Icon glyph at the node centre (single unicode char). Only drawn
         // once we're above the label-elision scale — at very low zoom the
         // icon bleeds into the fill anyway and just adds noise.
-        if (vp.scale >= LABEL_ELIDE_SCALE && style.icon) {
+        if (vp.scale >= LABEL_ELIDE_SCALE && icon) {
           ctx.save()
-          ctx.font = `${s.iconSize}px ${ICON_FONT_FAMILY}`
+          ctx.font = `${def.size.iconSize}px ${ICON_FONT_FAMILY}`
           ctx.fillStyle = '#FFFFFF'
           ctx.globalAlpha = (nodeDimmed ? DIM_ALPHA : 1) * 0.92
-          ctx.fillText(style.icon, sx, sy + 0.5)
+          ctx.fillText(icon, sx, sy + 0.5)
           ctx.restore()
         }
 
@@ -752,10 +726,10 @@ export function GraphCanvas({
         if (node.orphan && vp.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.setLineDash([3, 3])
-          ctx.strokeStyle = style.fill
+          ctx.strokeStyle = fill
           ctx.lineWidth = 1.5
           ctx.beginPath()
-          ctx.arc(sx, sy, s.r + 4, 0, Math.PI * 2)
+          ctx.arc(sx, sy, r + 4, 0, Math.PI * 2)
           ctx.stroke()
           ctx.restore()
         }
@@ -770,7 +744,7 @@ export function GraphCanvas({
         // 0.55) — it deliberately ignores nodeDimmed so it pops even when the
         // rest of the node is faded by the highlight system.
         //
-        // Sits at s.r + 5 (same gap from the node edge as the default
+        // Sits at r + 5 (same gap from the node edge as the default
         // selection ring) and uses a slightly thinner stroke so the two rings
         // read as distinct even when they appear together.
         const dupHaloActive = d.activeDupDefKey !== null &&
@@ -778,20 +752,20 @@ export function GraphCanvas({
           vp.scale >= DETAIL_REDUCE_SCALE
         if (dupHaloActive) {
           ctx.save()
-          ctx.strokeStyle = style.fill
+          ctx.strokeStyle = fill
           ctx.lineWidth = 2
           ctx.setLineDash([])
           ctx.globalAlpha = 0.55
           ctx.beginPath()
-          ctx.arc(sx, sy, s.r + 5, 0, Math.PI * 2)
+          ctx.arc(sx, sy, r + 5, 0, Math.PI * 2)
           ctx.stroke()
           ctx.restore()
         }
 
-        // Selection ring — white solid ring. Expands to s.r + 10 when the
+        // Selection ring — white solid ring. Expands to r + 10 when the
         // duplicate halo is also active, keeping the two rings clearly apart.
         if (node.id === d.selectedNodeId) {
-          const selR = dupHaloActive ? s.r + 10 : s.r + 5
+          const selR = dupHaloActive ? r + 10 : r + 5
           ctx.save()
           ctx.strokeStyle = SELECTION_RING_COLOR
           ctx.lineWidth = 2.5
@@ -803,14 +777,14 @@ export function GraphCanvas({
         }
 
         // Focus ring — dropped at very low zoom (dashes too small to read).
-        // Sits at s.r + 9 so it clears the duplicate halo at s.r + 7.
+        // Sits at r + 9 so it clears the duplicate halo at r + 7.
         if (node.id === d.focusedNodeId && vp.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.strokeStyle = FOCUS_RING_COLOR
           ctx.lineWidth = 2
           ctx.setLineDash([2, 2])
           ctx.beginPath()
-          ctx.arc(sx, sy, s.r + 9, 0, Math.PI * 2)
+          ctx.arc(sx, sy, r + 9, 0, Math.PI * 2)
           ctx.stroke()
           ctx.restore()
         }
@@ -818,8 +792,8 @@ export function GraphCanvas({
         ctx.globalAlpha = 1
 
         // Labels — elided at low zoom; always shown for hovered/selected node
-        const maxLabelW = Math.max(s.r * 4, 48)
-        const labelY = sy + s.r + 12
+        const maxLabelW = Math.max(r * 4, 48)
+        const labelY = sy + r + 12
         const isActiveNode = node.id === d.hoveredNodeId || node.id === d.selectedNodeId
         if (vp.scale >= LABEL_ELIDE_SCALE || isActiveNode) {
           // Theme-aware text colour — picks up `--color-text` so labels are

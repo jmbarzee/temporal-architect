@@ -3,6 +3,10 @@ import { WorkflowCanvas } from './components/WorkflowCanvas'
 import { StyleGuide } from './components/StyleGuide'
 import type { TWFFile } from './types/ast'
 import type { ParserGraph } from './types/parser-graph'
+import { mountNodeTypeStyles } from './graph/node-type-styles'
+
+// Mount registry-generated node-type CSS variables once at module load.
+mountNodeTypeStyles()
 
 // Standalone app - for development/testing
 // Load AST from URL query param: ?ast=/path/to/file.json

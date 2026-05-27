@@ -7,7 +7,7 @@ import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
 import { PinToggle } from './PinToggle'
 import { SearchIcon } from './icons/GearIcons'
-import { THEME, DEF_TYPE_CONFIGS, DEF_TYPE_ORDER } from '../theme/temporal-theme'
+import { THEME, DEF_TYPE_ORDER, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 
 interface TreeViewProps {
   ast: TWFFile
@@ -221,11 +221,18 @@ export function TreeView({
     }
   }, [searchActive, searchQuery, onSearchChange])
 
-  // Toggle a definition type in visibility
-  const toggleType = React.useCallback((type: string) => {
+  // Toggle a group of definition types in visibility. For single-type chips
+  // types has one element; for the Nexus group chip it has three. If any
+  // member of the group is on, the whole group turns off; if all are off,
+  // the whole group turns on — matching the Graph view's group toggle logic.
+  const toggleTypeGroup = React.useCallback((types: readonly string[]) => {
+    const anyOn = types.some(t => filter.visibleTypes.has(t))
     const next = new Set(filter.visibleTypes)
-    if (next.has(type)) next.delete(type)
-    else next.add(type)
+    if (anyOn) {
+      for (const t of types) next.delete(t)
+    } else {
+      for (const t of types) next.add(t)
+    }
     onFilterChange({ ...filter, visibleTypes: next })
   }, [filter, onFilterChange])
 
@@ -547,25 +554,25 @@ export function TreeView({
           {/* Definition Type Toggles */}
           <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
             <div className="header-types-row">
-              {DEF_TYPE_CONFIGS.map(cfg => {
-                const isActive = filter.visibleTypes.has(cfg.type)
-                const isChanged = recentlyChanged.has(`type:${cfg.type}`)
-                const hiddenCount = hiddenMatchByType.get(cfg.type) ?? 0
+              {VIEW_FILTER_ENTRIES.map(entry => {
+                const isActive = entry.types.some(t => filter.visibleTypes.has(t))
+                const isChanged = entry.types.some(t => recentlyChanged.has(`type:${t}`))
+                const hiddenCount = entry.types.reduce((sum, t) => sum + (hiddenMatchByType.get(t) ?? 0), 0)
                 const cls = [
                   'header-type-tag',
                   isActive ? 'active' : '',
-                  `header-type-${cfg.type}`,
+                  `header-type-${entry.id}`,
                   isChanged ? 'recently-changed' : '',
                 ].filter(Boolean).join(' ')
                 return (
                   <button
-                    key={cfg.type}
+                    key={entry.id}
                     className={cls}
-                    onClick={() => toggleType(cfg.type)}
-                    title={isActive ? `Hide ${cfg.label.toLowerCase()}` : `Show ${cfg.label.toLowerCase()}`}
+                    onClick={() => toggleTypeGroup(entry.types)}
+                    title={isActive ? `Hide ${entry.label.toLowerCase()}` : `Show ${entry.label.toLowerCase()}`}
                   >
-                    <span className="header-type-icon">{cfg.icon}</span>
-                    <span className="header-type-label">{cfg.label}</span>
+                    <span className="header-type-icon">{entry.icon}</span>
+                    <span className="header-type-label">{entry.label}</span>
                     {hiddenCount > 0 && (
                       <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden by this filter`}>
                         {hiddenCount}

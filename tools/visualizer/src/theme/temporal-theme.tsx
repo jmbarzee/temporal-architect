@@ -1,5 +1,6 @@
 import React from 'react'
 import { SingleGearIcon, InterlockingGearsIcon } from '../components/icons/GearIcons'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
 
 // --- Core types ---
 
@@ -57,31 +58,60 @@ export interface DefTypeConfig {
   defaultOn: boolean
 }
 
-export const DEF_TYPE_CONFIGS: DefTypeConfig[] = [
-  { type: 'namespaceDef',      icon: THEME.namespace.icon,      label: 'Namespaces',     defaultOn: false },
-  // Synthetic def type — endpoints live inside namespaceDef in the AST,
-  // but render as their own L1.5 nodes (parented to their namespace).
-  { type: 'nexusEndpointDef',  icon: THEME.nexusEndpoint.icon,  label: 'Nexus Endpoints', defaultOn: false },
-  { type: 'workerDef',         icon: THEME.worker.icon,         label: 'Workers',        defaultOn: true },
-  { type: 'nexusServiceDef',   icon: THEME.nexusService.icon,   label: 'Nexus Services', defaultOn: false },
-  // Synthetic def type — operations live inside nexusServiceDef in the AST,
-  // but render as their own L3 nodes (parented to their service).
-  { type: 'nexusOperationDef', icon: THEME.nexusOperation.icon, label: 'Nexus Operations', defaultOn: false },
-  { type: 'workflowDef',       icon: THEME.workflow.icon,       label: 'Workflows',      defaultOn: true },
-  { type: 'activityDef',       icon: THEME.activity.icon,       label: 'Activities',     defaultOn: false },
-]
+// Generate DEF_TYPE_CONFIGS from the registry so icon, label, and defaultOn
+// stay in sync with node-types.ts without a separate hand-maintained list.
+// The plural label follows standard English: 'y' → 'ies', else append 's'.
+function pluralize(label: string): string {
+  const last = label.split(' ').pop() ?? label
+  if (last.endsWith('y')) return label.slice(0, -1) + 'ies'
+  return label + 's'
+}
+
+export const DEF_TYPE_CONFIGS: DefTypeConfig[] = ALL_NODE_TYPES.map(t => ({
+  type:      NODE_TYPE_REGISTRY[t].defType,
+  icon:      NODE_TYPE_REGISTRY[t].icon,
+  label:     pluralize(NODE_TYPE_REGISTRY[t].label),
+  defaultOn: NODE_TYPE_REGISTRY[t].defaultVisible,
+}))
 
 export const DEF_TYPE_ORDER = new Map(DEF_TYPE_CONFIGS.map((cfg, i) => [cfg.type, i]))
 
 // The three nexus def types are consolidated into a single "Nexus" filter
-// chip in the graph view filter bar. This constant names the group so the
-// chip-toggle and recentlyChanged tracking can reference them without
+// chip in both the graph view and the tree view. This constant names the group
+// so chip-toggle and recentlyChanged tracking can reference them without
 // repeating the literal strings. The individual entries remain in
-// DEF_TYPE_CONFIGS so the tree view sort order and the shared filter
+// DEF_TYPE_CONFIGS so the tree-view sort order and the shared filter
 // contract (visibleTypes Set) continue to use individual type keys.
 export const NEXUS_GROUP_DEF_TYPES = [
   'nexusEndpointDef', 'nexusServiceDef', 'nexusOperationDef',
 ] as const
+
+/**
+ * One entry per filter chip shown in both the Tree and Graph filter bars.
+ * The nexus types are consolidated into a single 'nexus' group chip so both
+ * views stay in sync. This is the single source of truth for the chip layout —
+ * TreeView and GraphView both import and render from this list.
+ */
+export interface ViewFilterEntry {
+  /** CSS class suffix: `header-type-<id>`. Also used as the React key. */
+  id: string
+  icon: string
+  label: string
+  /**
+   * The defTypes this chip controls. For single-type chips this is a
+   * one-element array; for the Nexus group chip it covers all three nexus
+   * def types. Toggling the chip adds/removes ALL of these from visibleTypes.
+   */
+  types: readonly string[]
+}
+
+export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] = [
+  { id: 'namespaceDef', icon: NODE_TYPE_REGISTRY.namespace.icon,     label: 'Namespaces', types: ['namespaceDef'] },
+  { id: 'workerDef',    icon: NODE_TYPE_REGISTRY.worker.icon,        label: 'Workers',    types: ['workerDef'] },
+  { id: 'nexus',        icon: NODE_TYPE_REGISTRY.nexusEndpoint.icon, label: 'Nexus',      types: NEXUS_GROUP_DEF_TYPES },
+  { id: 'workflowDef',  icon: NODE_TYPE_REGISTRY.workflow.icon,      label: 'Workflows',  types: ['workflowDef'] },
+  { id: 'activityDef',  icon: NODE_TYPE_REGISTRY.activity.icon,      label: 'Activities', types: ['activityDef'] },
+]
 
 export const HANDLER_CONFIG = {
   signalDecl: { icon: THEME.signal.icon, keyword: 'signal', cssClass: 'declaration-signal' },

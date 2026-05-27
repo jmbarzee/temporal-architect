@@ -14,27 +14,11 @@
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
 
-  /* Graph node-type palette. Single source of truth for both the tree-view
-     CSS and the canvas renderer (GraphCanvas reads matching values from a
-     constant table, kept in lock-step with these vars). Workers and
-     namespaces sit on the same neutral axis but at noticeably different
-     warmth/lightness so they don't read as one shade of grey. The two
-     nexus colours are stratified the same way: service (parent) deeper,
-     operation (sub-element) lighter. Each fill has a paired border colour
-     ~3 stops darker so the canvas can outline nodes without picking colours
-     out of thin air. */
-  --color-namespace:        #475569;  /* slate-600 — deep, authoritative */
-  --color-namespace-border: #1E293B;
-  --color-worker:           #94A3B8;  /* slate-400 — silver */
-  --color-worker-border:    #475569;
-  --color-workflow-border:  #5D4F95;
-  --color-activity-border:  #4A8BC2;
-  --color-nexus:            #DB2777;  /* pink-600 — slightly deeper than before for service */
-  --color-nexus-border:     #831843;
-  --color-nexus-operation:  #F9A8D4;
-  --color-nexus-operation-border: #BE185D;
-  --color-nexus-endpoint:        #9F1239;  /* rose-900 — deep, since endpoints sit just under namespace */
-  --color-nexus-endpoint-border: #4C0519;
+  /* Graph node-type palette — generated at runtime from NODE_TYPE_REGISTRY
+     via mountNodeTypeStyles() in App.tsx / webview.tsx.
+     The CSS variables --color-<suffix> and --color-<suffix>-border for each
+     node type are injected into :root by that call; they are not hard-coded
+     here so that adding a new node type only requires one registry entry. */
 
   /* Force-section accent palette for the control panel. Each section gets a
      distinct hue that doesn't compete with the node-type colours: warm for
@@ -63,21 +47,10 @@
 /* Dark theme - applied when VSCode is in dark mode */
 .vscode-dark,
 [data-theme="dark"] {
-  /* Brighter palette on dark backgrounds. Borders go ~2 stops darker than
-     the fill so they read as outlines rather than competing rims. */
-  --color-workflow: #A89BD8;
-  --color-workflow-border:  #6B5BB0;
-  --color-activity-border:  #5DA8DD;
-  --color-namespace:        #94A3B8;
-  --color-namespace-border: #475569;
-  --color-worker:           #CBD5E1;
-  --color-worker-border:    #64748B;
-  --color-nexus:            #EC4899;
-  --color-nexus-border:     #9D174D;
-  --color-nexus-operation:  #F9A8D4;
-  --color-nexus-operation-border: #DB2777;
-  --color-nexus-endpoint:        #BE123C;  /* rose-700 — lighter on dark backgrounds */
-  --color-nexus-endpoint-border: #881337;
+  /* Brighter palette on dark backgrounds — node-type overrides are
+     generated at runtime by mountNodeTypeStyles() and injected into the
+     same .vscode-dark / [data-theme="dark"] selector. Only structural /
+     non-node-type overrides remain here. */
   --color-bg: #1e1e1e;
   --color-bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
   --color-text: #d4d4d4;
@@ -708,19 +681,11 @@ body {
 }
 
 /* ── Type / section colour theming ─────────────────────────────────────────
-   A single shared system of CSS custom properties drives colour on every
-   row and section header in the control panel. This keeps the panel
-   visually coordinated with the canvas:
-     • Per-type rows (charges, bands, edge endpoints) read from --type-color
-     • Per-section headers (PUSH/PULL/GRAVITY/DYNAMICS) read from --section-color
+   Per-type rows (charges, bands, edge endpoints) read from --type-color.
+   The .graph-control-typed-<nodeType> assignments that set --type-color are
+   generated at runtime by mountNodeTypeStyles() in App.tsx / webview.tsx.
+   Per-section headers (PUSH/PULL/GRAVITY/DYNAMICS) read from --section-color.
 */
-.graph-control-typed-namespace      { --type-color: var(--color-namespace); }
-.graph-control-typed-nexusEndpoint  { --type-color: var(--color-nexus-endpoint); }
-.graph-control-typed-worker         { --type-color: var(--color-worker); }
-.graph-control-typed-workflow       { --type-color: var(--color-workflow); }
-.graph-control-typed-activity       { --type-color: var(--color-activity); }
-.graph-control-typed-nexusService   { --type-color: var(--color-nexus); }
-.graph-control-typed-nexusOperation { --type-color: var(--color-nexus-operation); }
 
 /* Rows that carry a single node type get a coloured left-accent and tint
    their label + slider thumb to match. Applied to both per-type charge
@@ -837,12 +802,8 @@ body {
   opacity: 0.7;
 }
 
-.dual-range-namespace .dual-range-fill { background: #7E8CA0; }
-.dual-range-nexusEndpoint .dual-range-fill { background: #BE123C; }
-.dual-range-worker .dual-range-fill { background: #94A3B8; }
-.dual-range-workflow .dual-range-fill { background: #8B7EC8; }
-.dual-range-activity .dual-range-fill { background: #7CB9E8; }
-.dual-range-nexusService .dual-range-fill { background: #EC4899; }
+/* .dual-range-<nodeType> fill and thumb-border rules are generated at runtime
+   by mountNodeTypeStyles() — one rule per node type, derived from the registry. */
 
 .dual-range-input {
   position: absolute;
@@ -894,18 +855,7 @@ body {
   cursor: pointer;
 }
 
-.dual-range-namespace .dual-range-input::-webkit-slider-thumb { border-color: #7E8CA0; }
-.dual-range-namespace .dual-range-input::-moz-range-thumb { border-color: #7E8CA0; }
-.dual-range-nexusEndpoint .dual-range-input::-webkit-slider-thumb { border-color: #BE123C; }
-.dual-range-nexusEndpoint .dual-range-input::-moz-range-thumb { border-color: #BE123C; }
-.dual-range-worker .dual-range-input::-webkit-slider-thumb { border-color: #94A3B8; }
-.dual-range-worker .dual-range-input::-moz-range-thumb { border-color: #94A3B8; }
-.dual-range-workflow .dual-range-input::-webkit-slider-thumb { border-color: #8B7EC8; }
-.dual-range-workflow .dual-range-input::-moz-range-thumb { border-color: #8B7EC8; }
-.dual-range-activity .dual-range-input::-webkit-slider-thumb { border-color: #7CB9E8; }
-.dual-range-activity .dual-range-input::-moz-range-thumb { border-color: #7CB9E8; }
-.dual-range-nexusService .dual-range-input::-webkit-slider-thumb { border-color: #EC4899; }
-.dual-range-nexusService .dual-range-input::-moz-range-thumb { border-color: #EC4899; }
+/* Thumb-border rules per node type: generated at runtime by mountNodeTypeStyles(). */
 
 .dual-range-input:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 2px var(--focus-ring-color);
@@ -1332,7 +1282,7 @@ body {
   --chip-tint-bg-active: rgba(148, 163, 184, 0.12);
 }
 .header-type-tag.header-type-nexusServiceDef {
-  --chip-tint: var(--color-nexus);
+  --chip-tint: var(--color-nexus-service);
   --chip-tint-bg-hover: rgba(219, 39, 119, 0.06);
   --chip-tint-bg-active: rgba(219, 39, 119, 0.12);
 }
@@ -1352,11 +1302,14 @@ body {
   --chip-tint-bg-active: rgba(159, 18, 57, 0.12);
 }
 /* Nexus group chip — consolidates endpoint, service, and operation. Uses the
-   endpoint rose as the group representative (strongest hue = entry point). */
+   operation light pink as the group representative. The lighter hue keeps the
+   three deepest palette extremes (namespace slate, nexus-service pink, nexus-
+   endpoint rose) reserved for per-node-type accents and gives the group chip
+   a softer presence in the filter bar. */
 .header-type-tag.header-type-nexus {
-  --chip-tint: var(--color-nexus-endpoint);
-  --chip-tint-bg-hover: rgba(159, 18, 57, 0.06);
-  --chip-tint-bg-active: rgba(159, 18, 57, 0.12);
+  --chip-tint: var(--color-nexus-operation);
+  --chip-tint-bg-hover: rgba(249, 168, 212, 0.10);
+  --chip-tint-bg-active: rgba(249, 168, 212, 0.18);
 }
 
 /* Dark mode bumps the active backgrounds a bit because the surface they
@@ -1364,11 +1317,11 @@ body {
 .vscode-dark .header-type-tag.header-type-workflowDef       { --chip-tint-bg-hover: rgba(168, 155, 216, 0.10); --chip-tint-bg-active: rgba(168, 155, 216, 0.18); }
 .vscode-dark .header-type-tag.header-type-activityDef       { --chip-tint-bg-hover: rgba(124, 185, 232, 0.10); --chip-tint-bg-active: rgba(124, 185, 232, 0.18); }
 .vscode-dark .header-type-tag.header-type-workerDef         { --chip-tint-bg-hover: rgba(203, 213, 225, 0.10); --chip-tint-bg-active: rgba(203, 213, 225, 0.18); }
-.vscode-dark .header-type-tag.header-type-nexusServiceDef   { --chip-tint-bg-hover: rgba(236, 72, 153, 0.10);  --chip-tint-bg-active: rgba(236, 72, 153, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexusServiceDef   { --chip-tint: var(--color-nexus-service); --chip-tint-bg-hover: rgba(236, 72, 153, 0.10);  --chip-tint-bg-active: rgba(236, 72, 153, 0.18); }
 .vscode-dark .header-type-tag.header-type-nexusOperationDef { --chip-tint-bg-hover: rgba(249, 168, 212, 0.10); --chip-tint-bg-active: rgba(249, 168, 212, 0.18); }
 .vscode-dark .header-type-tag.header-type-namespaceDef      { --chip-tint-bg-hover: rgba(148, 163, 184, 0.10); --chip-tint-bg-active: rgba(148, 163, 184, 0.18); }
 .vscode-dark .header-type-tag.header-type-nexusEndpointDef  { --chip-tint-bg-hover: rgba(190, 18, 60, 0.10);   --chip-tint-bg-active: rgba(190, 18, 60, 0.18); }
-.vscode-dark .header-type-tag.header-type-nexus             { --chip-tint-bg-hover: rgba(190, 18, 60, 0.10);   --chip-tint-bg-active: rgba(190, 18, 60, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexus             { --chip-tint-bg-hover: rgba(249, 168, 212, 0.10); --chip-tint-bg-active: rgba(249, 168, 212, 0.18); }
 
 /* No workflows message */
 .no-workflows {

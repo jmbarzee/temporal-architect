@@ -1,33 +1,21 @@
 // Graph data model for the force-directed graph view.
 // Derived from GRAPH_VIEW.md § Graph Data Model.
 
-// Node levels. `1.5` is a sub-tier between L1 (namespace) and L2 (worker /
-// service) reserved for `nexusEndpoint` nodes — endpoints are top-level
-// like namespaces (they have no children) but they aren't containers, so
-// they sit in their own band just below the namespace band.
-export type NodeLevel = 1 | 1.5 | 2 | 3 | 4
-
 // Node types in the graph.
-//   L1   namespace
-//   L1.5 nexusEndpoint — top-level routing alias, parented to namespace.
-//        No outgoing edges (endpoints are pure addressing; they don't
-//        themselves call anything). The nexus call's edge metadata
-//        names the endpoint that routed it.
-//   L2   worker / nexusService — hosting tier (workers run code, services
-//        expose a callable API surface). Both attach to a namespace as their
-//        parent and can sit beside each other in the L2 band.
-//   L3   workflow / nexusOperation — orchestrators and call surfaces (the
-//        "what does work get organised through" tier). Operations are the
-//        callable units of a service; workflows are the orchestrating units
-//        run by a worker.
-//   L4   activity — leaves of the call tree (the "where work actually
-//        happens" tier). Pulled out of L3 so workflows and activities don't
-//        both crowd the same band on the canvas.
 //
-// nexusOperation parents to its nexusService (an L3-under-L2 containment),
-// so a nexus call shows up as caller → operation → backing (each leg is
-// its own dependency edge). The operation node carries the "this is a
-// nexus call" semantics that used to live on a special edge type.
+//   namespace      — L1 container. Holds workers and nexus endpoints.
+//   nexusEndpoint  — L1.5 top-level routing alias parented to a namespace.
+//                    No outgoing edges; the nexus call's edge metadata names
+//                    the endpoint that routed it.
+//   worker         — L2 hosting tier. Runs workflows and activities.
+//   nexusService   — L2 nexus hosting tier. Exposes a callable API surface.
+//   workflow       — L3 orchestrator. Runs inside a worker.
+//   nexusOperation — L3 nexus orchestrator. Callable unit of a service;
+//                    sits on the call path between caller and backing workflow.
+//   activity       — L4 leaf. Where work actually happens.
+//
+// Sizing, physics, and summary behaviour for each type live in the
+// central NODE_TYPE_REGISTRY in graph/node-types.ts.
 export type NodeType =
   | 'namespace'
   | 'nexusEndpoint'
@@ -51,7 +39,6 @@ export interface GraphNode {
    * opaque string and never parses it for routing decisions.
    */
   id: string
-  level: NodeLevel
   nodeType: NodeType
   name: string
   /** AST source file, joined in by buildGraph via the `definitionKey` lookup. */
@@ -91,8 +78,6 @@ export interface GraphEdge {
   edgeType: EdgeType
   sourceId: string
   targetId: string
-  sourceLevel: NodeLevel
-  targetLevel: NodeLevel
   sourceNodeType: NodeType
   targetNodeType: NodeType
   // Endpoint metadata for dependency edges that originate from a nexus call.
@@ -112,20 +97,4 @@ export interface Graph {
   // set has three. Consumers read this to keep sister copies undimmed
   // during hover/select interactions in GraphView.
   duplicateGroups: Map<string, Set<string>>
-}
-
-/**
- * Tier number for a node type. Used for sizing, edge styling, and the
- * hierarchical Y-band layout. The numbering matches `NodeLevel`.
- */
-export function nodeLevel(nodeType: NodeType): NodeLevel {
-  switch (nodeType) {
-    case 'namespace':       return 1
-    case 'nexusEndpoint':   return 1.5
-    case 'worker':
-    case 'nexusService':    return 2
-    case 'workflow':
-    case 'nexusOperation':  return 3
-    case 'activity':        return 4
-  }
 }

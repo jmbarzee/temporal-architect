@@ -2,6 +2,10 @@
 // Implements GRAPH_VIEW.md § Layout: Force-Directed Simulation.
 
 import type { GraphNode, GraphEdge, Graph, NodeType } from './model'
+import { NODE_TYPE_REGISTRY } from './node-types'
+
+// Re-export so callers that already import ALL_NODE_TYPES from simulation continue to work.
+export { ALL_NODE_TYPES } from './node-types'
 
 export interface SimNode extends GraphNode {
   x: number
@@ -129,13 +133,13 @@ export const DEFAULT_PARAMS: ForceParams = {
   // workers since they're routing aliases rather than orchestration
   // hosts — they shouldn't push other top-level nodes around as hard
   // as workers do.
-  chargeNamespace:      -640,
-  chargeWorker:         -220,
-  chargeNexusEndpoint:  -180,
-  chargeNexusService:   -105,
-  chargeWorkflow:        -95,
-  chargeNexusOperation:  -85,
-  chargeActivity:        -80,
+  chargeNamespace:      NODE_TYPE_REGISTRY.namespace.physics.charge,
+  chargeNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.charge,
+  chargeWorker:         NODE_TYPE_REGISTRY.worker.physics.charge,
+  chargeNexusService:   NODE_TYPE_REGISTRY.nexusService.physics.charge,
+  chargeWorkflow:       NODE_TYPE_REGISTRY.workflow.physics.charge,
+  chargeNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.charge,
+  chargeActivity:       NODE_TYPE_REGISTRY.activity.physics.charge,
 
   // Spring strengths. With pullMultiplier at 0.6 and distanceMultiplier at
   // 0.1 every spring is a *light tether* — these k's mostly determine the
@@ -175,20 +179,20 @@ export const DEFAULT_PARAMS: ForceParams = {
   gravityY: 0.145,
   bandXMin:    0,
   bandXMax:  380,
-  bandYMinNamespace:      -340,
-  bandYMaxNamespace:      -120,
-  bandYMinNexusEndpoint:  -180,
-  bandYMaxNexusEndpoint:   -60,
-  bandYMinWorker:         -200,
-  bandYMaxWorker:          120,
-  bandYMinNexusService:   -200,
-  bandYMaxNexusService:    110,
-  bandYMinNexusOperation:   10,
-  bandYMaxNexusOperation:  340,
-  bandYMinWorkflow:        100,
-  bandYMaxWorkflow:        460,
-  bandYMinActivity:        170,
-  bandYMaxActivity:        500,
+  bandYMinNamespace:      NODE_TYPE_REGISTRY.namespace.physics.yBand.min,
+  bandYMaxNamespace:      NODE_TYPE_REGISTRY.namespace.physics.yBand.max,
+  bandYMinNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.yBand.min,
+  bandYMaxNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.yBand.max,
+  bandYMinWorker:         NODE_TYPE_REGISTRY.worker.physics.yBand.min,
+  bandYMaxWorker:         NODE_TYPE_REGISTRY.worker.physics.yBand.max,
+  bandYMinNexusService:   NODE_TYPE_REGISTRY.nexusService.physics.yBand.min,
+  bandYMaxNexusService:   NODE_TYPE_REGISTRY.nexusService.physics.yBand.max,
+  bandYMinNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.yBand.min,
+  bandYMaxNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.yBand.max,
+  bandYMinWorkflow:       NODE_TYPE_REGISTRY.workflow.physics.yBand.min,
+  bandYMaxWorkflow:       NODE_TYPE_REGISTRY.workflow.physics.yBand.max,
+  bandYMinActivity:       NODE_TYPE_REGISTRY.activity.physics.yBand.min,
+  bandYMaxActivity:       NODE_TYPE_REGISTRY.activity.physics.yBand.max,
 
   // Dynamics. alphaMin is well below the d3 default (0.001) so the
   // simulation continues into its slow-cooling tail — layouts read as
@@ -206,16 +210,42 @@ export const DEFAULT_PARAMS: ForceParams = {
   linkExponent:       1.0,
 }
 
+// Lookup records that map each NodeType to its corresponding ForceParams field.
+// Using Record<NodeType, keyof ForceParams> (rather than a switch) means the
+// TypeScript compiler enforces exhaustiveness for both the NodeType union and
+// the ForceParams keys — a new node type without an entry here is a build error.
+export const CHARGE_KEY: Record<NodeType, keyof ForceParams> = {
+  namespace:      'chargeNamespace',
+  nexusEndpoint:  'chargeNexusEndpoint',
+  worker:         'chargeWorker',
+  nexusService:   'chargeNexusService',
+  workflow:       'chargeWorkflow',
+  nexusOperation: 'chargeNexusOperation',
+  activity:       'chargeActivity',
+}
+
+export const BAND_MIN_KEY: Record<NodeType, keyof ForceParams> = {
+  namespace:      'bandYMinNamespace',
+  nexusEndpoint:  'bandYMinNexusEndpoint',
+  worker:         'bandYMinWorker',
+  nexusService:   'bandYMinNexusService',
+  workflow:       'bandYMinWorkflow',
+  nexusOperation: 'bandYMinNexusOperation',
+  activity:       'bandYMinActivity',
+}
+
+export const BAND_MAX_KEY: Record<NodeType, keyof ForceParams> = {
+  namespace:      'bandYMaxNamespace',
+  nexusEndpoint:  'bandYMaxNexusEndpoint',
+  worker:         'bandYMaxWorker',
+  nexusService:   'bandYMaxNexusService',
+  workflow:       'bandYMaxWorkflow',
+  nexusOperation: 'bandYMaxNexusOperation',
+  activity:       'bandYMaxActivity',
+}
+
 export function chargeForType(params: ForceParams, nodeType: NodeType): number {
-  switch (nodeType) {
-    case 'namespace': return params.chargeNamespace
-    case 'nexusEndpoint': return params.chargeNexusEndpoint
-    case 'worker': return params.chargeWorker
-    case 'workflow': return params.chargeWorkflow
-    case 'activity': return params.chargeActivity
-    case 'nexusService': return params.chargeNexusService
-    case 'nexusOperation': return params.chargeNexusOperation
-  }
+  return params[CHARGE_KEY[nodeType]] as number
 }
 
 export interface YBand {
@@ -224,27 +254,11 @@ export interface YBand {
 }
 
 export function bandForType(params: ForceParams, nodeType: NodeType): YBand {
-  switch (nodeType) {
-    case 'namespace':
-      return { yMin: params.bandYMinNamespace, yMax: params.bandYMaxNamespace }
-    case 'nexusEndpoint':
-      return { yMin: params.bandYMinNexusEndpoint, yMax: params.bandYMaxNexusEndpoint }
-    case 'worker':
-      return { yMin: params.bandYMinWorker, yMax: params.bandYMaxWorker }
-    case 'workflow':
-      return { yMin: params.bandYMinWorkflow, yMax: params.bandYMaxWorkflow }
-    case 'activity':
-      return { yMin: params.bandYMinActivity, yMax: params.bandYMaxActivity }
-    case 'nexusService':
-      return { yMin: params.bandYMinNexusService, yMax: params.bandYMaxNexusService }
-    case 'nexusOperation':
-      return { yMin: params.bandYMinNexusOperation, yMax: params.bandYMaxNexusOperation }
+  return {
+    yMin: params[BAND_MIN_KEY[nodeType]] as number,
+    yMax: params[BAND_MAX_KEY[nodeType]] as number,
   }
 }
-
-export const ALL_NODE_TYPES: NodeType[] = [
-  'namespace', 'nexusEndpoint', 'worker', 'workflow', 'activity', 'nexusService', 'nexusOperation',
-]
 
 interface EdgeCategory {
   strength: number
@@ -266,8 +280,15 @@ export function edgeCategory(params: ForceParams, edge: GraphEdge): EdgeCategory
   if (edge.edgeType === 'containment') {
     // NexusService ↔ NexusOperation (operations live one tier under their
     // service — L3 child anchored to the L2 service that owns it).
+    // Same spring applies to the derived NexusOperation ↔ NexusEndpoint
+    // composition edges (op's second "parent" — the endpoint that fronts it).
+    // The relationship strength is comparable: both encode "this operation
+    // is structurally anchored to this nexus-family node", and reusing the
+    // spring keeps the slider count down.
     if ((src === 'nexusOperation' && tgt === 'nexusService') ||
-        (src === 'nexusService' && tgt === 'nexusOperation')) {
+        (src === 'nexusService' && tgt === 'nexusOperation') ||
+        (src === 'nexusOperation' && tgt === 'nexusEndpoint') ||
+        (src === 'nexusEndpoint' && tgt === 'nexusOperation')) {
       return { strength: params.linkNexusToOperation, distance: params.distNexusToOperation }
     }
     // Worker ↔ NexusService (peer L2 nodes; service is hosted on a worker).

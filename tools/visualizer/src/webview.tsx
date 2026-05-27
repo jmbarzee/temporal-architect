@@ -5,6 +5,10 @@ import { StyleGuide } from './components/StyleGuide'
 import type { TWFFile } from './types/ast'
 import type { ParserGraph } from './types/parser-graph'
 import './styles/index.css'
+import { mountNodeTypeStyles } from './graph/node-type-styles'
+
+// Mount registry-generated node-type CSS variables once at module load.
+mountNodeTypeStyles()
 
 // VSCode webview entry point
 declare const acquireVsCodeApi: () => {
