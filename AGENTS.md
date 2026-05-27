@@ -38,7 +38,7 @@ packages/install.sh     Curl-bash installer (no package manager required)
 internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
   bump-brew/            Go tool that bumps the Homebrew tap formula on release
-internal/changes/       Ephemeral coordination files (REVISIONS_NNN + CHANGES_NNN per component)
+internal/changes/       Per-component coordination files: REVISIONS_NNN, CHANGES_NNN, and BACKLOG
 internal/orchestrator/  Temporal workflow design for the automated dev cycle
 internal/version.sh     Release version bump helper
 
@@ -51,9 +51,15 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Breaking changes are expected and welcome.** Do not waste effort on backwards compatibility shims, deprecated field aliases, or migration paths. When a better design emerges, adopt it directly.
 
-**Coordinate breaking changes through the `internal/changes/` directory.** Each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/orchestrator/`, `internal/changes/design-skill/`, `internal/changes/author-go-skill/`) owns a numbered series of `REVISIONS_NNN.md` (planned work) and `CHANGES_NNN.md` (completed work). The automated dev cycle drives this flow — see the [Development Commands](#development-commands) below, with `/project:dev-cycle` as the entry point and `/project:propagate-changes` for fanning a completed change out to downstream consumers.
+**Coordinate breaking changes through the `internal/changes/` directory.** Each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/orchestrator/`, `internal/changes/design-skill/`, `internal/changes/author-go-skill/`) owns three file types:
 
-Long-lived backlog and reference docs that aren't per-cycle revisions live at the repo root (e.g. `POSSIBLE_DSL_FEATURES.md`, `VISUALIZER_DEFERRED.md`, `SKILL_IMPROVEMENTS.md`, `issues_blocking_downstream_adoption.md`, `packaging.md`).
+- `REVISIONS_NNN.md` — planned work for an active dev cycle
+- `CHANGES_NNN.md` — completed work, consumed and archived
+- `BACKLOG.md` — informal ideas and deferred features; not cycle-committed, just a place to drop thoughts
+
+The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Development Commands](#development-commands) below, with `/project:dev-cycle` as the entry point and `/project:propagate-changes` for fanning a completed change out to downstream consumers.
+
+Long-lived reference docs that don't belong to a single component live at the repo root (e.g. `issues_blocking_downstream_adoption.md`, `packaging.md`).
 
 When the parser's JSON output changes, both the Go and TypeScript sides update together; that contract is what every downstream consumer (visualizer, VS Code extension, skills) reads.
 

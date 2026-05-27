@@ -1,6 +1,8 @@
-# Visualizer — Deferred Features
+# Visualizer Backlog
 
-Features identified during spec-to-implementation alignment that are not yet implemented. Grouped by blocker status.
+Deferred features and design ideas. Not committed to any cycle — just a place to drop thoughts.
+
+---
 
 ## Blocked on Parser / DSL Changes
 
@@ -11,6 +13,8 @@ Features identified during spec-to-implementation alignment that are not yet imp
 | Edge Opacity/Thickness for Traffic | Multiplicity data in AST |
 | Namespace Endpoint Task Queue | `NamespaceEndpoint` AST type needs a task queue field |
 
+---
+
 ## Unblocked — Interaction Refinements
 
 | Feature | Notes |
@@ -19,7 +23,7 @@ Features identified during spec-to-implementation alignment that are not yet imp
 | Multi-Select Modifier (Tree) | Shift/Ctrl click for multi-selection in tree view |
 | Bulk Expand/Collapse | `Ctrl+Shift+Right/Left` to expand/collapse all at current level |
 | Multi-Select (Graph) | Select multiple nodes in graph view |
-| Node Selection + Info Panel | Click-to-select with persistent highlight state, a structured info panel (identity, connections, blast radius, navigation list, "Show in Tree"), and stable selection target for cross-view actions. Motivation: hover is transient — selection locks context while the user reads a panel or pans the canvas. The hover info tooltip (GRAPH_VIEW.md § Hover) serves the immediate discoverability need. Original spec in GRAPH_VIEW.md § Selection and § Info Panel. |
+| Node Selection + Info Panel | Click-to-select with persistent highlight state, a structured info panel (identity, connections, blast radius, navigation list, "Show in Tree"), and stable selection target for cross-view actions. Motivation: hover is transient — selection locks context while the user reads a panel or pans the canvas. The hover info tooltip serves the immediate discoverability need. Original spec in GRAPH_VIEW.md § Selection and § Info Panel. |
 | Unified Filter Bar | Replace graph level selector with shared type toggles + edge graduation (now specced in VIEW_FRAMEWORK.md § Unified Filter Bar, GRAPH_VIEW.md § Type Filtering) |
 | Force Parameter Presets | Named presets for simulation force parameters |
 | Nexus Edge Scope Highlighting | Highlight all edges sharing a nexus service/endpoint on hover |
