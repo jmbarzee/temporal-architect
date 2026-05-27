@@ -48,12 +48,12 @@ approvedCh := workflow.GetSignalChannel(ctx, "Approved")
 ```
 
 ```twf
-promise payHandle <- nexus PaymentsEndpoint PaymentsService.ProcessPayment(payment)
+promise payHandle <- nexus BillingEndpoint BillingService.ChargePayment(payment)
 ```
 
 ```go
-c := workflow.NewNexusClient("PaymentsEndpoint", "PaymentsService")
-payFuture := c.ExecuteOperation(ctx, "ProcessPayment", payment, workflow.NexusOperationOptions{})
+c := workflow.NewNexusClient("BillingEndpoint", "BillingService")
+payFuture := c.ExecuteOperation(ctx, "ChargePayment", payment, workflow.NexusOperationOptions{})
 ```
 
 ## Notes

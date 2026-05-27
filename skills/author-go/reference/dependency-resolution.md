@@ -20,10 +20,10 @@ A dependency is resolved when you can write the call expression with verified ty
 
 ```
 Example dependency map:
-  ProcessPayment → stripe-go
+  ChargePayment → stripe-go
     paymentintent.New(params *stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)
-  SendEmail → sendgrid-go
+  SendPaymentConfirmation → sendgrid-go
     client.SendWithContext(ctx, mail *sgmail.SGMailV3) (*rest.Response, error)
-  GetOrder → database/sql (no external dependency)
+  LoadOrderRecord → database/sql (no external dependency)
   CalculateTotal → pure logic (no dependency)
 ```

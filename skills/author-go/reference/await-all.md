@@ -5,7 +5,7 @@
 ```twf
 await all:
     activity ReserveInventory(order) -> inventory
-    activity ProcessPayment(order) -> payment
+    activity ChargePayment(order) -> payment
 ```
 
 ## Go
@@ -21,7 +21,7 @@ wg.Go(ctx, func(gCtx workflow.Context) {
     inventoryErr = workflow.ExecuteActivity(gCtx, ReserveInventory, order).Get(gCtx, &inventory)
 })
 wg.Go(ctx, func(gCtx workflow.Context) {
-    paymentErr = workflow.ExecuteActivity(gCtx, ProcessPayment, order).Get(gCtx, &payment)
+    paymentErr = workflow.ExecuteActivity(gCtx, ChargePayment, order).Get(gCtx, &payment)
 })
 
 wg.Wait(ctx)
@@ -65,7 +65,7 @@ for _, f := range futures {
 ```twf
 await all:
     activity ReserveInventory(order) -> inventory
-    nexus PaymentsEndpoint PaymentsService.ProcessPayment(order.payment) -> payment
+    nexus BillingEndpoint BillingService.ChargePayment(order.payment) -> payment
 ```
 
 ### Go
@@ -81,8 +81,8 @@ wg.Go(ctx, func(gCtx workflow.Context) {
     inventoryErr = workflow.ExecuteActivity(gCtx, ReserveInventory, order).Get(gCtx, &inventory)
 })
 wg.Go(ctx, func(gCtx workflow.Context) {
-    c := workflow.NewNexusClient("PaymentsEndpoint", "PaymentsService")
-    paymentErr = c.ExecuteOperation(gCtx, "ProcessPayment", order.Payment, workflow.NexusOperationOptions{}).Get(gCtx, &payment)
+    c := workflow.NewNexusClient("BillingEndpoint", "BillingService")
+    paymentErr = c.ExecuteOperation(gCtx, "ChargePayment", order.Payment, workflow.NexusOperationOptions{}).Get(gCtx, &payment)
 })
 
 wg.Wait(ctx)

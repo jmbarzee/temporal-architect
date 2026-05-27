@@ -87,7 +87,7 @@ func HumanReview(ctx workflow.Context, docId string) (ReviewResult, error) {
 
 1. **Update handler must be registered before `sel.Select`** — if the selector blocks first, updates arriving during the race window are rejected
 2. **Condition is not a future** — it must be bridged to the selector via a goroutine + channel (see [await-one.md](./await-one.md), "condition promise" pattern)
-3. **Timer must be cancelled in the condition handler** — otherwise it fires 48h later, generating wasted workflow tasks
+3. **Timer should be cancelled in the condition handler** — per DSL semantics, non-winning cases are not automatically cancelled; the timer continues running until workflow completion. Cancelling it in the winning handler is an optimization that prevents unnecessary history events (a timer-fired event 48h later)
 4. **`AllHandlersFinished` wait before return** — without this, an in-flight update handler is abandoned when the workflow completes (see [update-handler.md](./update-handler.md))
 
 ---
@@ -172,5 +172,5 @@ func ManageRetention(ctx workflow.Context, docId string, retentionDays int) erro
 
 1. **Signal handler goroutine runs independently of the selector** — it loops forever, processing every signal arrival. The condition bridge (`workflow.Await` + channel send) connects it to the selector
 2. **The signal handler mutates `cancelled`, the selector reads it via the condition goroutine** — two goroutines share state through a bool, which is safe in Temporal's cooperative scheduling model but would be a data race in normal Go
-3. **Timer cancellation is still required** — even though both paths do the same work (delete), leaving the timer active wastes workflow history events
+3. **Timer cancellation is recommended** — per DSL semantics, non-winning cases are not automatically cancelled; the timer continues until workflow completion regardless. Cancelling it in the winning handler avoids a wasted timer-fired history event
 4. **Shared post-race logic** — when both branches do the same thing, factor the common activity call after `sel.Select` instead of duplicating inside handlers

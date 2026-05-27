@@ -3,15 +3,15 @@
 ## DSL
 
 ```twf
-nexus PaymentsEndpoint PaymentsService.ProcessPayment(order.payment) -> paymentResult
+nexus BillingEndpoint BillingService.ChargePayment(order.payment) -> paymentResult
 ```
 
 ## Go
 
 ```go
-c := workflow.NewNexusClient("PaymentsEndpoint", "PaymentsService")
+c := workflow.NewNexusClient("BillingEndpoint", "BillingService")
 var paymentResult PaymentResult
-fut := c.ExecuteOperation(ctx, "ProcessPayment", order.Payment, workflow.NexusOperationOptions{})
+fut := c.ExecuteOperation(ctx, "ChargePayment", order.Payment, workflow.NexusOperationOptions{})
 if err := fut.Get(ctx, &paymentResult); err != nil {
     return Result{}, err
 }

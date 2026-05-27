@@ -3,28 +3,28 @@
 ## DSL
 
 ```twf
-workflow ClusterManager(config: Config):
+workflow JobCoordinator(config: JobConfig):
     state:
-        condition clusterStarted
+        condition jobReady
 
     # ... later in body:
-    set clusterStarted
+    set jobReady
 
     # ... elsewhere:
-    await clusterStarted
+    await jobReady
 ```
 
 ## Go
 
 ```go
-func ClusterManager(ctx workflow.Context, config Config) error {
-    clusterStarted := false
+func JobCoordinator(ctx workflow.Context, config JobConfig) error {
+    jobReady := false
 
     // ... later in body:
-    clusterStarted = true
+    jobReady = true
 
     // ... elsewhere:
-    err := workflow.Await(ctx, func() bool { return clusterStarted })
+    err := workflow.Await(ctx, func() bool { return jobReady })
     if err != nil {
         return err
     }

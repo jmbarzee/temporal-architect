@@ -49,4 +49,4 @@ c.ExecuteOperation(ctx, "SendConfirmation", sendConfirmationInput, workflow.Nexu
 
 - Use `detach` when the parent does not need the child's result and the child should outlive the parent (e.g., sending a notification after order completion)
 - Use a normal child workflow call (with `.Get()`) when the parent needs the result or should fail if the child fails
-- `detach` with `ABANDON` is the only way for a child workflow to survive parent completion — the default `ParentClosePolicy` is `TERMINATE`
+- `detach` uses `ABANDON` so the child survives parent completion independently. The default `ParentClosePolicy` is `TERMINATE` (child killed). `REQUEST_CANCEL` is a middle ground — the child receives a cancellation request and can handle it gracefully before stopping, but does not run indefinitely like `ABANDON`

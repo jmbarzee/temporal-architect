@@ -3,25 +3,25 @@
 ## DSL
 
 ```twf
-nexus service PaymentsService:
-    operation ProcessPayment(PaymentRequest) -> (PaymentResult)
+nexus service BillingService:
+    operation ChargePayment(PaymentRequest) -> (PaymentResult)
     operation RefundPayment(RefundRequest) -> (RefundResult)
 ```
 
 ## Go — Service contract (shared types)
 
 ```go
-const PaymentsServiceName = "PaymentsService"
-const ProcessPaymentOp = "ProcessPayment"
+const BillingServiceName = "BillingService"
+const ChargePaymentOp = "ChargePayment"
 const RefundPaymentOp = "RefundPayment"
 ```
 
 ## Go — Async operation handler (workflow-backed)
 
 ```go
-var ProcessPaymentOperation = temporalnexus.NewWorkflowRunOperation(
-    ProcessPaymentOp,
-    ProcessPaymentWorkflow,
+var ChargePaymentOperation = temporalnexus.NewWorkflowRunOperation(
+    ChargePaymentOp,
+    BillingChargeWorkflow,
     func(ctx context.Context, input PaymentRequest, options nexus.StartOperationOptions) (client.StartWorkflowOptions, error) {
         return client.StartWorkflowOptions{
             ID: "payment-" + input.OrderID, // business-meaningful ID for deduplication
@@ -42,13 +42,13 @@ var RefundPaymentOperation = nexus.NewSyncOperation(RefundPaymentOp, func(ctx co
 ## Go — Registration on worker
 
 ```go
-service := nexus.NewService(PaymentsServiceName)
-err := service.Register(ProcessPaymentOperation, RefundPaymentOperation)
+service := nexus.NewService(BillingServiceName)
+err := service.Register(ChargePaymentOperation, RefundPaymentOperation)
 if err != nil {
     log.Fatalln("Unable to register operations", err)
 }
 w.RegisterNexusService(service)
-w.RegisterWorkflow(ProcessPaymentWorkflow) // handler workflows must also be registered
+w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be registered
 ```
 
 ## Notes

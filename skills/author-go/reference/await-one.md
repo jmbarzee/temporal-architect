@@ -11,17 +11,21 @@ await one:
         close fail(OrderResult{status: "cancelled"})
 ```
 
-## Common Mistakes
+## History Hygiene
+
+Per DSL semantics, non-winning cases are **not** cancelled by `await one` — they continue running until the workflow run ends (`close complete`, `close fail`, `close continue_as_new`, or external cancellation). The Go `Selector.Select` API mirrors this: it fires one case and returns, leaving all other registered futures and channels active.
+
+Explicitly cancelling the losing timer is an **optimization** for history hygiene, not a correctness requirement. A non-cancelled timer will fire later and generate unnecessary workflow tasks.
 
 ```go
-// WRONG: forgetting to cancel the losing timer — generates unnecessary workflow tasks
+// WASTEFUL: the losing timer fires later, adding unnecessary history events
 sel.Select(ctx)
-// timer still fires later, creating noise in history
+// timer still scheduled — generates a timer-fired event when it expires
 
-// RIGHT: cancel the timer in the winning handler
+// BETTER: cancel the timer in the winning handler to avoid wasted history events
 sel.AddReceive(signalCh, func(ch workflow.ReceiveChannel, more bool) {
     ch.Receive(ctx, nil)
-    cancelTimer() // cancel the losing timer
+    cancelTimer() // prevents the timer from generating further history events
 })
 ```
 
@@ -103,8 +107,8 @@ sel.AddFuture(workflow.ExecuteChildWorkflow(ctx, Child, args), func(f workflow.F
 
 **Nexus case** — `sel.AddFuture(client.ExecuteOperation(...), handler)`. Nexus operations return `NexusOperationFuture`, which satisfies `workflow.Future` — add to selector with `AddFuture`.
 ```go
-c := workflow.NewNexusClient("PaymentsEndpoint", "PaymentsService")
-sel.AddFuture(c.ExecuteOperation(ctx, "ProcessPayment", input, workflow.NexusOperationOptions{}), func(f workflow.Future) {
+c := workflow.NewNexusClient("BillingEndpoint", "BillingService")
+sel.AddFuture(c.ExecuteOperation(ctx, "ChargePayment", input, workflow.NexusOperationOptions{}), func(f workflow.Future) {
     var result PaymentResult
     if err := f.Get(ctx, &result); err != nil {
         // handle error
@@ -153,7 +157,8 @@ sel.AddReceive(condCh, func(ch workflow.ReceiveChannel, more bool) {
 ## Notes
 
 - `sel.Select(ctx)` blocks until exactly one case fires — the first to complete wins
-- `Select` does not cancel losing cases. Cancel timers and child workflows explicitly using `workflow.WithCancel` + calling the cancel function in the winning handler (see primary example above)
+- **Non-winning cases are not cancelled by `await one`.** Per DSL semantics, they continue running until the workflow run ends (`close complete`, `close fail`, `close continue_as_new`, or external cancellation). This matches `Selector.Select` Go SDK behavior. Explicit cancellation in the winning handler is an optimization for history hygiene, not a semantic requirement
+- Cancelling a **timer** via `workflow.WithCancel` is clean — the timer stops and generates no further history events. Cancelling a **child workflow** sends a cancellation *request*; the child's actual behavior depends on its own cancellation handling. For controlling child lifecycle at parent completion, use `parent_close_policy` in child workflow options (see [options.md](./options.md))
 - Uncancelled timers remain active and generate unnecessary workflow tasks when they fire
 - Empty case bodies (just the colon in DSL) → handler function with only the `Receive`/`Get` call, no additional logic
 - For `close` inside a case body: set a variable in the handler, check it after `sel.Select`, then return

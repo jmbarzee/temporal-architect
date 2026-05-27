@@ -33,5 +33,5 @@ if err != nil {
 
 ## Pitfalls
 
-- Default `ParentClosePolicy` is `TERMINATE` — if the parent completes, fails, or times out, the child is forcefully terminated. Set `ABANDON` or `REQUEST_CANCEL` explicitly when the child should outlive the parent
+- Default `ParentClosePolicy` is `TERMINATE` (child is killed immediately) — if the parent completes, fails, or times out, the child is forcefully terminated. Set `REQUEST_CANCEL` (child receives a cancellation request and can handle it gracefully) or `ABANDON` (child continues running independently) explicitly when the child should outlive the parent. See [options.md](./options.md) for the DSL-to-Go mapping
 - If the parent completes before the `ChildWorkflowExecutionStarted` event is recorded, the child may never spawn. Always call `childFuture.GetChildWorkflowExecution().Get(ctx, nil)` to confirm the child started — see [detach.md](./detach.md)

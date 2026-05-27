@@ -20,7 +20,7 @@ Generate functioning Go code from `.twf` (Temporal Workflow Format) files using 
 **Iterative type resolution.** Work from certainty outward. Explicit signatures first, then derive from constructors/field access, then defer the rest. Revisit deferred types as surrounding code solidifies. See [types.md](./reference/types.md).
 
 **User as decision-maker.** The skill owns execution; the user owns consequential choices. Handle mechanical mappings, SDK boilerplate, and compilation fixes autonomously. Surface dependency choices, ambiguous domain logic, and architectural direction to the user — present specific options with tradeoffs, not open-ended questions. Revising a previously confirmed decision always requires user approval.
-> Example: "For ProcessPayment, should I use stripe-go (official SDK, matches your existing stripe dependency) or a generic HTTP client (more flexible, but more boilerplate)?"
+> Example: "For ChargePayment, should I use stripe-go (official SDK, matches your existing stripe dependency) or a generic HTTP client (more flexible, but more boilerplate)?"
 
 ---
 

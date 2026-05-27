@@ -76,12 +76,31 @@ var childResult ChildResult
 err := workflow.ExecuteChildWorkflow(childCtx, ChildWorkflow, input.Data).Get(ctx, &childResult)
 ```
 
+## Child workflow `parent_close_policy`
+
+### DSL
+
+```twf
+workflow NotifyCustomer(order.customer)
+    options:
+        parent_close_policy: REQUEST_CANCEL
+```
+
+### Go
+
+```go
+childCtx := workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
+    ParentClosePolicy: enumspb.PARENT_CLOSE_POLICY_REQUEST_CANCEL,
+})
+err := workflow.ExecuteChildWorkflow(childCtx, NotifyCustomer, order.Customer).Get(ctx, nil)
+```
+
 ## Nexus operation options
 
 ### DSL
 
 ```twf
-nexus PaymentsEndpoint PaymentsService.ProcessPayment(payment) -> paymentResult
+nexus BillingEndpoint BillingService.ChargePayment(payment) -> paymentResult
     options:
         schedule_to_close_timeout: 1h
 ```
@@ -89,9 +108,9 @@ nexus PaymentsEndpoint PaymentsService.ProcessPayment(payment) -> paymentResult
 ### Go
 
 ```go
-c := workflow.NewNexusClient("PaymentsEndpoint", "PaymentsService")
+c := workflow.NewNexusClient("BillingEndpoint", "BillingService")
 var paymentResult PaymentResult
-fut := c.ExecuteOperation(ctx, "ProcessPayment", payment, workflow.NexusOperationOptions{
+fut := c.ExecuteOperation(ctx, "ChargePayment", payment, workflow.NexusOperationOptions{
     ScheduleToCloseTimeout: 1 * time.Hour,
 })
 err := fut.Get(ctx, &paymentResult)
@@ -100,7 +119,7 @@ err := fut.Get(ctx, &paymentResult)
 ## Notes
 
 - When no `options:` block is specified, set a default `ActivityOptions` with `StartToCloseTimeout` on `ctx` near the top of the workflow function
-- Option keys map: `start_to_close_timeout` → `StartToCloseTimeout`, `schedule_to_close_timeout` → `ScheduleToCloseTimeout`, `heartbeat_timeout` → `HeartbeatTimeout`
+- Option keys map: `start_to_close_timeout` → `StartToCloseTimeout`, `schedule_to_close_timeout` → `ScheduleToCloseTimeout`, `heartbeat_timeout` → `HeartbeatTimeout`, `parent_close_policy` → `ParentClosePolicy` (type: `enumspb.ParentClosePolicy`; values: `PARENT_CLOSE_POLICY_TERMINATE` (default), `PARENT_CLOSE_POLICY_REQUEST_CANCEL`, `PARENT_CLOSE_POLICY_ABANDON`)
 - `retry_policy:` → `&temporal.RetryPolicy{...}` (pointer)
 - `NexusOperationOptions` fields: `ScheduleToCloseTimeout` (primary) and `CancellationType` (experimental). Options are passed inline — no context wrapping like activities
 
