@@ -303,11 +303,11 @@ type WorkerRefJSON struct {
 	Resolved *resolvedRefJSON `json:"resolved,omitempty"`
 }
 
-// marshalWorkerRefs converts a slice of Ref[T] to JSON form.
+// marshalWorkerRefs converts a slice of Ref[T] to JSON form. Returns an
+// empty (non-nil) slice when refs is empty so the JSON output always emits
+// the field as `[]` rather than omitting it — keeps WorkerDef/NamespaceDef
+// shape consistent for downstream consumers.
 func marshalWorkerRefs[T interface{ comparable; Node }](refs []Ref[T]) []WorkerRefJSON {
-	if len(refs) == 0 {
-		return nil
-	}
 	out := make([]WorkerRefJSON, 0, len(refs))
 	for _, ref := range refs {
 		rj := WorkerRefJSON{
@@ -335,9 +335,9 @@ type WorkerDefJSON struct {
 	Column     int             `json:"column"`
 	SourceFile string          `json:"sourceFile,omitempty"`
 	Name       string          `json:"name"`
-	Workflows  []WorkerRefJSON `json:"workflows,omitempty"`
-	Activities []WorkerRefJSON `json:"activities,omitempty"`
-	Services   []WorkerRefJSON `json:"services,omitempty"`
+	Workflows  []WorkerRefJSON `json:"workflows"`
+	Activities []WorkerRefJSON `json:"activities"`
+	Services   []WorkerRefJSON `json:"services"`
 }
 
 func (w *WorkerDef) MarshalJSON() ([]byte, error) {
@@ -378,8 +378,8 @@ type NamespaceDefJSON struct {
 	Column     int                     `json:"column"`
 	SourceFile string                  `json:"sourceFile,omitempty"`
 	Name       string                  `json:"name"`
-	Workers    []NamespaceWorkerJSON   `json:"workers,omitempty"`
-	Endpoints  []NamespaceEndpointJSON `json:"endpoints,omitempty"`
+	Workers    []NamespaceWorkerJSON   `json:"workers"`
+	Endpoints  []NamespaceEndpointJSON `json:"endpoints"`
 }
 
 func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
@@ -389,6 +389,8 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 		Column:     n.Column,
 		SourceFile: n.SourceFile,
 		Name:       n.Name,
+		Workers:    make([]NamespaceWorkerJSON, 0, len(n.Workers)),
+		Endpoints:  make([]NamespaceEndpointJSON, 0, len(n.Endpoints)),
 	}
 	for _, w := range n.Workers {
 		wj := NamespaceWorkerJSON{
