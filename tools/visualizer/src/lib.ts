@@ -39,6 +39,26 @@ export type {
   DiagnosticKind,
 } from './types/ast'
 
+// ParserGraph types — the wire shape of `twf graph`'s JSON payload. Host
+// applications that want to feed the visualizer's graph view must provide
+// this alongside the AST. Listed explicitly rather than star-exported.
+export type {
+  ParserGraph,
+  ParserGraphSummary,
+  ParserNode,
+  ParserEdge,
+  ParserEdgeKind,
+  ParserRouting,
+  ParserTier,
+  CoarsenedEdge,
+  ParserUnresolved,
+  ParserGraphDiagnostic,
+  ParserGraphDiagnosticCode,
+  ParserGraphDiagnosticSeverity,
+  DefinitionKey,
+} from './types/parser-graph'
+export { EMPTY_PARSER_GRAPH } from './types/parser-graph'
+
 // Statement union and primitives — exported so host apps can write their
 // own walkers / custom statement renderers without re-defining the discriminated
 // union. Listed explicitly rather than star-exported.

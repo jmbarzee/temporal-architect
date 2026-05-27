@@ -1,45 +1,87 @@
 // Graph data model for the force-directed graph view.
 // Derived from GRAPH_VIEW.md § Graph Data Model.
 
-export type NodeLevel = 1 | 2 | 3 | 4
+// Node levels. `1.5` is a sub-tier between L1 (namespace) and L2 (worker /
+// service) reserved for `nexusEndpoint` nodes — endpoints are top-level
+// like namespaces (they have no children) but they aren't containers, so
+// they sit in their own band just below the namespace band.
+export type NodeLevel = 1 | 1.5 | 2 | 3 | 4
 
 // Node types in the graph.
-//   L1 namespace
-//   L2 worker / nexusService — hosting tier (workers run code, services
-//      expose a callable API surface). Both attach to a namespace as their
-//      parent and can sit beside each other in the L2 band.
-//   L3 workflow / nexusOperation — orchestrators and call surfaces (the
-//      "what does work get organised through" tier). Operations are the
-//      callable units of a service; workflows are the orchestrating units
-//      run by a worker.
-//   L4 activity — leaves of the call tree (the "where work actually
-//      happens" tier). Pulled out of L3 so workflows and activities don't
-//      both crowd the same band on the canvas.
+//   L1   namespace
+//   L1.5 nexusEndpoint — top-level routing alias, parented to namespace.
+//        No outgoing edges (endpoints are pure addressing; they don't
+//        themselves call anything). The nexus call's edge metadata
+//        names the endpoint that routed it.
+//   L2   worker / nexusService — hosting tier (workers run code, services
+//        expose a callable API surface). Both attach to a namespace as their
+//        parent and can sit beside each other in the L2 band.
+//   L3   workflow / nexusOperation — orchestrators and call surfaces (the
+//        "what does work get organised through" tier). Operations are the
+//        callable units of a service; workflows are the orchestrating units
+//        run by a worker.
+//   L4   activity — leaves of the call tree (the "where work actually
+//        happens" tier). Pulled out of L3 so workflows and activities don't
+//        both crowd the same band on the canvas.
 //
 // nexusOperation parents to its nexusService (an L3-under-L2 containment),
 // so a nexus call shows up as caller → operation → backing (each leg is
 // its own dependency edge). The operation node carries the "this is a
 // nexus call" semantics that used to live on a special edge type.
-export type NodeType = 'namespace' | 'worker' | 'workflow' | 'activity' | 'nexusService' | 'nexusOperation'
+export type NodeType =
+  | 'namespace'
+  | 'nexusEndpoint'
+  | 'worker'
+  | 'nexusService'
+  | 'workflow'
+  | 'nexusOperation'
+  | 'activity'
 
 export interface GraphNode {
-  id: string            // e.g. "namespace:MyNS", "worker:MyWorker", "workflow:ProcessOrder@WorkerA", "nexusOperation:Svc.Op@WorkerB"
+  /**
+   * Composite deployment id from the parser graph. Form examples:
+   *   - `namespace:MyNS`
+   *   - `nexusEndpoint:PaymentEndpoint/namespace:MyNS`
+   *   - `worker:MyWorker/namespace:MyNS`
+   *   - `workflow:ProcessOrder/worker:WorkerA/namespace:MyNS`
+   *   - `nexusOperation:Svc.Op/worker:WorkerB/namespace:MyNS`
+   *   - `activity:Charge/orphan`  (uninstantiated definition)
+   *
+   * Identity is owned by the parser — the visualizer treats `id` as an
+   * opaque string and never parses it for routing decisions.
+   */
+  id: string
   level: NodeLevel
   nodeType: NodeType
   name: string
+  /** AST source file, joined in by buildGraph via the `definitionKey` lookup. */
   sourceFile?: string
-  parentId?: string     // containment parent (worker for L3, namespace for L2, nexusService for nexusOperation)
-  orphan: boolean       // true if no parent in the hierarchy
-  // Stable identifier shared across every copy of the same underlying
-  // definition. An activity registered on three workers produces three
-  // nodes with three distinct `id`s but a single `definitionKey`. Used
-  // to look up sister copies for the duplicate-highlight interaction
-  // and as the grouping key for `Graph.duplicateGroups`.
-  //
-  // Form: `${nodeType}:${disambiguator}` — for nexus operations the
-  // disambiguator is `${serviceName}.${opName}` so two services can
-  // each declare an op named "Run" without collapsing them.
+  /** Containment parent (worker for L3, namespace for L2 and L1.5, nexusService for nexusOperation). */
+  parentId?: string
+  /** True when no parent in the hierarchy (uninstantiated definition). */
+  orphan: boolean
+
+  /**
+   * Stable identifier shared across every copy of the same underlying
+   * definition. An activity registered on three workers produces three
+   * nodes with three distinct `id`s but a single `definitionKey`. Used
+   * to look up sister copies for the duplicate-highlight interaction
+   * and as the grouping key for `Graph.duplicateGroups`.
+   *
+   * Equals the parser's `node.definition` field — `${nodeType}:${name}`
+   * (with the parent service name folded in for operations).
+   */
   definitionKey: string
+
+  // --- View-only deployment metadata, copied from the parser node for
+  //     hover/tooltip rendering. They are diagnostic, not used for
+  //     graph identity or routing decisions.
+  /** e.g. `worker:paymentWorker`. Empty on namespace / endpoint / orphan nodes. */
+  worker?: string
+  /** e.g. `namespace:ecommerce`. Empty on namespace itself and on orphans. */
+  namespace?: string
+  /** Task queue name. Empty for nodes that don't have one. */
+  queue?: string
 }
 
 export type EdgeType = 'containment' | 'dependency'
@@ -72,44 +114,18 @@ export interface Graph {
   duplicateGroups: Map<string, Set<string>>
 }
 
-// Helpers
-
-// Base node id used by L1 (namespace) and L2 (worker) nodes — types
-// that are never duplicated. L3 / L2-service nodes use the
-// worker-scoped variant below so that the same definition registered
-// on multiple workers yields distinct node ids.
-export function nodeId(nodeType: NodeType, name: string): string {
-  return `${nodeType}:${name}`
-}
-
-// Worker-scoped node id for L3 / NexusService nodes when they belong
-// to a specific worker. When `workerName` is omitted the node is an
-// orphan (no worker registration) and the unscoped id is returned;
-// the unscoped form is also the duplicate-group key for that
-// definition. Operations belong to their service and inherit the
-// service's worker scope — pass the service's `workerName` through.
-export function workerScopedNodeId(nodeType: NodeType, name: string, workerName?: string): string {
-  return workerName ? `${nodeType}:${name}@${workerName}` : `${nodeType}:${name}`
-}
-
-// Stable key used to group every copy of a definition. Operations
-// disambiguate their name with the parent service to avoid colliding
-// across services that each declare an op with the same name.
-export function definitionKey(nodeType: NodeType, name: string): string {
-  return `${nodeType}:${name}`
-}
-
-export function nexusOperationName(serviceName: string, opName: string): string {
-  return `${serviceName}.${opName}`
-}
-
+/**
+ * Tier number for a node type. Used for sizing, edge styling, and the
+ * hierarchical Y-band layout. The numbering matches `NodeLevel`.
+ */
 export function nodeLevel(nodeType: NodeType): NodeLevel {
   switch (nodeType) {
-    case 'namespace': return 1
+    case 'namespace':       return 1
+    case 'nexusEndpoint':   return 1.5
     case 'worker':
-    case 'nexusService': return 2
+    case 'nexusService':    return 2
     case 'workflow':
-    case 'nexusOperation': return 3
-    case 'activity': return 4
+    case 'nexusOperation':  return 3
+    case 'activity':        return 4
   }
 }

@@ -1,9 +1,18 @@
 import { default as React } from 'react';
 import { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast';
+import { ParserGraph } from '../types/parser-graph';
 interface WorkflowCanvasProps {
     /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
-     * payload of the envelope) or constructed by a host application. */
+     * payload of the envelope) or constructed by a host application. The
+     * tree view consumes this directly; the graph view consults it as
+     * secondary input (sourceFile / hover details). */
     ast: TWFFile;
+    /** Resolved deployment graph from `twf graph`. Primary input for the
+     * graph view; the tree view doesn't consume it. Optional — when absent
+     * the graph view renders an empty graph (no errors, just nothing to
+     * draw), which is the right behaviour for hosts that don't yet ship
+     * `twf graph` output (older extension builds, AST-only fixtures). */
+    parserGraph?: ParserGraph;
     /** Invoked when the user narrows the file filter to exactly one file —
      * a hint to host applications (e.g. VS Code) to focus that file in their
      * editor. Optional; ignored when not provided. */
@@ -49,5 +58,5 @@ export interface CrossViewTarget {
     name: string;
     defType: string;
 }
-export declare function WorkflowCanvas({ ast, onOpenFile, onRefocus, className, style }: WorkflowCanvasProps): import("react/jsx-runtime").JSX.Element;
+export declare function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, className, style }: WorkflowCanvasProps): import("react/jsx-runtime").JSX.Element;
 export {};

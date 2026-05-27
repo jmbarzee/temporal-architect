@@ -498,10 +498,60 @@ class WorkflowVisualizerPanel {
   private async _update() {
     try {
       const ast = await this._parseFilesWithMetadata();
-      this._panel.webview.postMessage({ type: "ast", data: ast });
+      // `twf graph` is best-effort: graph extraction can fail in ways that
+      // `twf parse` doesn't (e.g. binary not yet rebuilt), but the tree
+      // view doesn't need it. If we can't get a parser graph, post the AST
+      // anyway and let the graph view render empty.
+      const parserGraph = await this._extractGraph();
+      this._panel.webview.postMessage({ type: "ast", data: { ast, parserGraph } });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       this._panel.webview.postMessage({ type: "error", message: errorMessage });
+    }
+  }
+
+  /**
+   * Run `twf graph --json` once over the full file set. The graph is
+   * single-resolution-context (cross-file dispatch must resolve across
+   * the same merged AST `twf parse` already merges), so we make one
+   * multi-file call rather than per-file.
+   *
+   * Returns the `graph` payload from the envelope, or `undefined` if
+   * the call failed or the graph wasn't produced. Failures are logged
+   * but never thrown — the graph view degrades to "empty graph" rather
+   * than blocking the tree view.
+   */
+  private async _extractGraph(): Promise<unknown | undefined> {
+    if (this._files.length === 0) return undefined;
+
+    const config = vscode.workspace.getConfiguration("twf.parser");
+    const configPath = config.get<string>("path", "");
+
+    let resolvedCommand: string;
+    if (configPath) {
+      resolvedCommand = configPath;
+    } else {
+      const ext = process.platform === "win32" ? ".exe" : "";
+      const bundled = path.join(this._extensionUri.fsPath, "bin", `twf${ext}`);
+      resolvedCommand = fs.existsSync(bundled) ? bundled : "twf";
+    }
+
+    try {
+      const { stdout, stderr } = await execFileAsync(resolvedCommand, [
+        "graph",
+        "--json",
+        ...this._files,
+      ]);
+      if (stderr) {
+        console.warn("twf graph stderr:", stderr);
+      }
+      const envelope = JSON.parse(stdout) as { graph?: unknown };
+      return envelope.graph;
+    } catch (err) {
+      // Per-file parse errors come through as diagnostics (still
+      // produces a graph); only catastrophic failures land here.
+      console.warn("Failed to extract deployment graph:", err);
+      return undefined;
     }
   }
 

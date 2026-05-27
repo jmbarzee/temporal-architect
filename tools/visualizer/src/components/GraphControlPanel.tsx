@@ -56,6 +56,9 @@ const PUSH_CHARGE_SLIDERS: ChargeSliderDef[] = [
   { key: 'chargeNamespace', nodeType: 'namespace', label: 'L1 NS',
     min: -1000, max: 0, step: 10,
     tooltip: 'Namespace node repulsion charge' },
+  { key: 'chargeNexusEndpoint', nodeType: 'nexusEndpoint', label: 'L1.5 Ep',
+    min: -400, max: 0, step: 10,
+    tooltip: 'Nexus endpoint node repulsion charge' },
   { key: 'chargeWorker', nodeType: 'worker', label: 'L2 Wk',
     min: -400, max: 0, step: 10,
     tooltip: 'Worker node repulsion charge' },
@@ -173,6 +176,9 @@ const GRAVITY_BAND_SLIDERS: GravityBandDef[] = [
   { label: 'L1 NS', nodeType: 'namespace',
     minKey: 'bandYMinNamespace', maxKey: 'bandYMaxNamespace',
     tooltip: 'Y band where namespace nodes feel zero gravity' },
+  { label: 'L1.5 Ep', nodeType: 'nexusEndpoint',
+    minKey: 'bandYMinNexusEndpoint', maxKey: 'bandYMaxNexusEndpoint',
+    tooltip: 'Y band where nexus endpoint nodes feel zero gravity' },
   { label: 'L2 Wk', nodeType: 'worker',
     minKey: 'bandYMinWorker', maxKey: 'bandYMaxWorker',
     tooltip: 'Y band where worker nodes feel zero gravity' },
@@ -559,9 +565,11 @@ DYNAMICS — Friction damps velocity, cooling reduces
   energy until the simulation stabilizes.
 
 Hierarchy & node types:
-  L1: Namespace
-  L2: Worker
-  L3: Workflow, Activity, NexusService
+  L1:   Namespace
+  L1.5: NexusEndpoint (top-level routing alias)
+  L2:   Worker, NexusService
+  L3:   Workflow, NexusOperation
+  L4:   Activity
 
 Tuning guide:
   • Start with push/pull multipliers for balance

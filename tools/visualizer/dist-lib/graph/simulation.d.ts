@@ -8,6 +8,7 @@ export interface SimNode extends GraphNode {
 }
 export interface ForceParams {
     chargeNamespace: number;
+    chargeNexusEndpoint: number;
     chargeWorker: number;
     chargeWorkflow: number;
     chargeActivity: number;
@@ -22,7 +23,6 @@ export interface ForceParams {
     linkWorkerToWorker: number;
     linkWorkflowToWorkflow: number;
     linkWorkflowToActivity: number;
-    linkActivityToActivity: number;
     distNsToWorker: number;
     distWorkerToWorkflow: number;
     distWorkerToActivity: number;
@@ -32,13 +32,14 @@ export interface ForceParams {
     distWorkerToWorker: number;
     distWorkflowToWorkflow: number;
     distWorkflowToActivity: number;
-    distActivityToActivity: number;
     gravityX: number;
     gravityY: number;
     bandXMin: number;
     bandXMax: number;
     bandYMinNamespace: number;
     bandYMaxNamespace: number;
+    bandYMinNexusEndpoint: number;
+    bandYMaxNexusEndpoint: number;
     bandYMinWorker: number;
     bandYMaxWorker: number;
     bandYMinWorkflow: number;

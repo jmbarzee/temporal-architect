@@ -33,6 +33,8 @@
   --color-nexus-border:     #831843;
   --color-nexus-operation:  #F9A8D4;
   --color-nexus-operation-border: #BE185D;
+  --color-nexus-endpoint:        #9F1239;  /* rose-900 — deep, since endpoints sit just under namespace */
+  --color-nexus-endpoint-border: #4C0519;
 
   /* Force-section accent palette for the control panel. Each section gets a
      distinct hue that doesn't compete with the node-type colours: warm for
@@ -74,6 +76,8 @@
   --color-nexus-border:     #9D174D;
   --color-nexus-operation:  #F9A8D4;
   --color-nexus-operation-border: #DB2777;
+  --color-nexus-endpoint:        #BE123C;  /* rose-700 — lighter on dark backgrounds */
+  --color-nexus-endpoint-border: #881337;
   --color-bg: #1e1e1e;
   --color-bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
   --color-text: #d4d4d4;
@@ -711,6 +715,7 @@ body {
      • Per-section headers (PUSH/PULL/GRAVITY/DYNAMICS) read from --section-color
 */
 .graph-control-typed-namespace      { --type-color: var(--color-namespace); }
+.graph-control-typed-nexusEndpoint  { --type-color: var(--color-nexus-endpoint); }
 .graph-control-typed-worker         { --type-color: var(--color-worker); }
 .graph-control-typed-workflow       { --type-color: var(--color-workflow); }
 .graph-control-typed-activity       { --type-color: var(--color-activity); }
@@ -833,6 +838,7 @@ body {
 }
 
 .dual-range-namespace .dual-range-fill { background: #7E8CA0; }
+.dual-range-nexusEndpoint .dual-range-fill { background: #BE123C; }
 .dual-range-worker .dual-range-fill { background: #94A3B8; }
 .dual-range-workflow .dual-range-fill { background: #8B7EC8; }
 .dual-range-activity .dual-range-fill { background: #7CB9E8; }
@@ -890,6 +896,8 @@ body {
 
 .dual-range-namespace .dual-range-input::-webkit-slider-thumb { border-color: #7E8CA0; }
 .dual-range-namespace .dual-range-input::-moz-range-thumb { border-color: #7E8CA0; }
+.dual-range-nexusEndpoint .dual-range-input::-webkit-slider-thumb { border-color: #BE123C; }
+.dual-range-nexusEndpoint .dual-range-input::-moz-range-thumb { border-color: #BE123C; }
 .dual-range-worker .dual-range-input::-webkit-slider-thumb { border-color: #94A3B8; }
 .dual-range-worker .dual-range-input::-moz-range-thumb { border-color: #94A3B8; }
 .dual-range-workflow .dual-range-input::-webkit-slider-thumb { border-color: #8B7EC8; }
@@ -1338,6 +1346,11 @@ body {
   --chip-tint-bg-hover: rgba(71, 85, 105, 0.06);
   --chip-tint-bg-active: rgba(71, 85, 105, 0.12);
 }
+.header-type-tag.header-type-nexusEndpointDef {
+  --chip-tint: var(--color-nexus-endpoint);
+  --chip-tint-bg-hover: rgba(159, 18, 57, 0.06);
+  --chip-tint-bg-active: rgba(159, 18, 57, 0.12);
+}
 
 /* Dark mode bumps the active backgrounds a bit because the surface they
    sit on is darker. */
@@ -1347,6 +1360,7 @@ body {
 .vscode-dark .header-type-tag.header-type-nexusServiceDef   { --chip-tint-bg-hover: rgba(236, 72, 153, 0.10);  --chip-tint-bg-active: rgba(236, 72, 153, 0.18); }
 .vscode-dark .header-type-tag.header-type-nexusOperationDef { --chip-tint-bg-hover: rgba(249, 168, 212, 0.10); --chip-tint-bg-active: rgba(249, 168, 212, 0.18); }
 .vscode-dark .header-type-tag.header-type-namespaceDef      { --chip-tint-bg-hover: rgba(148, 163, 184, 0.10); --chip-tint-bg-active: rgba(148, 163, 184, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexusEndpointDef  { --chip-tint-bg-hover: rgba(190, 18, 60, 0.10);   --chip-tint-bg-active: rgba(190, 18, 60, 0.18); }
 
 /* No workflows message */
 .no-workflows {

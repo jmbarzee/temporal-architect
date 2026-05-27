@@ -138,7 +138,7 @@ export interface ActivityCall extends Position {
     name: string;
     args: string;
     result?: string;
-    options?: string;
+    options?: OptionsBlock;
     resolved?: ResolvedRef;
 }
 export type WorkflowCallMode = 'child' | 'detach';
@@ -148,7 +148,7 @@ export interface WorkflowCall extends Position {
     name: string;
     args: string;
     result?: string;
-    options?: string;
+    options?: OptionsBlock;
     resolved?: ResolvedRef;
 }
 export interface OptionEntry {

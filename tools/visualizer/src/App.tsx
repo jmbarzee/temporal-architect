@@ -2,12 +2,21 @@ import React from 'react'
 import { WorkflowCanvas } from './components/WorkflowCanvas'
 import { StyleGuide } from './components/StyleGuide'
 import type { TWFFile } from './types/ast'
+import type { ParserGraph } from './types/parser-graph'
 
 // Standalone app - for development/testing
 // Load AST from URL query param: ?ast=/path/to/file.json
 
+// Shape of the payload App accepts — either a bare AST (legacy /
+// AST-only fixtures) or the new `{ ast, parserGraph }` envelope.
+function isWrappedPayload(d: unknown): d is { ast: TWFFile; parserGraph?: ParserGraph } {
+  return d != null && typeof d === 'object' && 'ast' in (d as Record<string, unknown>) &&
+    (d as { ast: unknown }).ast != null
+}
+
 function App() {
   const [ast, setAst] = React.useState<TWFFile | null>(null)
+  const [parserGraph, setParserGraph] = React.useState<ParserGraph | undefined>(undefined)
   const [error, setError] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [showStyleGuide, setShowStyleGuide] = React.useState(false)
@@ -35,12 +44,20 @@ function App() {
         const hash = JSON.stringify(message.data)
         if (hash === lastAstHashRef.current) return
         lastAstHashRef.current = hash
-        setAst(message.data)
+        const payload = message.data
+        if (isWrappedPayload(payload)) {
+          setAst(payload.ast)
+          setParserGraph(payload.parserGraph)
+        } else {
+          setAst(payload as TWFFile)
+          setParserGraph(undefined)
+        }
         setError(null)
       } else if (message.type === 'error') {
         lastAstHashRef.current = null
         setError(message.message)
         setAst(null)
+        setParserGraph(undefined)
       }
     }
 
@@ -54,7 +71,13 @@ function App() {
       fetch(astPath)
         .then(res => res.json())
         .then(data => {
-          setAst(data)
+          if (isWrappedPayload(data)) {
+            setAst(data.ast)
+            setParserGraph(data.parserGraph)
+          } else {
+            setAst(data)
+            setParserGraph(undefined)
+          }
           setLoading(false)
         })
         .catch(err => {
@@ -75,7 +98,13 @@ function App() {
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string)
-        setAst(json)
+        if (isWrappedPayload(json)) {
+          setAst(json.ast)
+          setParserGraph(json.parserGraph)
+        } else {
+          setAst(json)
+          setParserGraph(undefined)
+        }
         setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to parse JSON')
@@ -123,7 +152,7 @@ function App() {
     return <StyleGuide onClose={() => setShowStyleGuide(false)} />
   }
 
-  return <WorkflowCanvas ast={ast} />
+  return <WorkflowCanvas ast={ast} parserGraph={parserGraph} />
 }
 
 export default App

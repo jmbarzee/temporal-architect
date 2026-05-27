@@ -13,8 +13,10 @@ export interface SimNode extends GraphNode {
 
 export interface ForceParams {
   // Charge strengths (repulsion, negative values) — one per node type.
-  // L1: namespace. L2: worker. L3: workflow, activity, nexusService.
+  // L1: namespace. L1.5: nexusEndpoint. L2: worker, nexusService.
+  // L3: workflow, nexusOperation. L4: activity.
   chargeNamespace: number
+  chargeNexusEndpoint: number
   chargeWorker: number
   chargeWorkflow: number
   chargeActivity: number
@@ -65,6 +67,8 @@ export interface ForceParams {
   bandXMax: number
   bandYMinNamespace: number
   bandYMaxNamespace: number
+  bandYMinNexusEndpoint: number
+  bandYMaxNexusEndpoint: number
   bandYMinWorker: number
   bandYMaxWorker: number
   bandYMinWorkflow: number
@@ -119,9 +123,15 @@ export interface ForceParams {
 export const DEFAULT_PARAMS: ForceParams = {
   // Charges (all negative = repulsion). Tuned to a roughly 8:3:1 gradient
   // L1:L2:L3, with services and operations slightly stronger than their
-  // peer types so they stay clearly anchored to their bands.
+  // peer types so they stay clearly anchored to their bands. Endpoints
+  // sit on the nexus ladder between namespace and service: visually
+  // above workers (in their own band), but with weaker repulsion than
+  // workers since they're routing aliases rather than orchestration
+  // hosts — they shouldn't push other top-level nodes around as hard
+  // as workers do.
   chargeNamespace:      -640,
   chargeWorker:         -220,
+  chargeNexusEndpoint:  -180,
   chargeNexusService:   -105,
   chargeWorkflow:        -95,
   chargeNexusOperation:  -85,
@@ -167,6 +177,8 @@ export const DEFAULT_PARAMS: ForceParams = {
   bandXMax:  380,
   bandYMinNamespace:      -340,
   bandYMaxNamespace:      -120,
+  bandYMinNexusEndpoint:  -180,
+  bandYMaxNexusEndpoint:   -60,
   bandYMinWorker:         -200,
   bandYMaxWorker:          120,
   bandYMinNexusService:   -200,
@@ -197,6 +209,7 @@ export const DEFAULT_PARAMS: ForceParams = {
 export function chargeForType(params: ForceParams, nodeType: NodeType): number {
   switch (nodeType) {
     case 'namespace': return params.chargeNamespace
+    case 'nexusEndpoint': return params.chargeNexusEndpoint
     case 'worker': return params.chargeWorker
     case 'workflow': return params.chargeWorkflow
     case 'activity': return params.chargeActivity
@@ -214,6 +227,8 @@ export function bandForType(params: ForceParams, nodeType: NodeType): YBand {
   switch (nodeType) {
     case 'namespace':
       return { yMin: params.bandYMinNamespace, yMax: params.bandYMaxNamespace }
+    case 'nexusEndpoint':
+      return { yMin: params.bandYMinNexusEndpoint, yMax: params.bandYMaxNexusEndpoint }
     case 'worker':
       return { yMin: params.bandYMinWorker, yMax: params.bandYMaxWorker }
     case 'workflow':
@@ -228,7 +243,7 @@ export function bandForType(params: ForceParams, nodeType: NodeType): YBand {
 }
 
 export const ALL_NODE_TYPES: NodeType[] = [
-  'namespace', 'worker', 'workflow', 'activity', 'nexusService', 'nexusOperation',
+  'namespace', 'nexusEndpoint', 'worker', 'workflow', 'activity', 'nexusService', 'nexusOperation',
 ]
 
 interface EdgeCategory {
@@ -267,7 +282,9 @@ export function edgeCategory(params: ForceParams, edge: GraphEdge): EdgeCategory
     if (src === 'activity' || tgt === 'activity') {
       return { strength: params.linkWorkerToActivity, distance: params.distWorkerToActivity }
     }
-    // Worker → Namespace
+    // Worker → Namespace (and the analogous Endpoint → Namespace edge —
+    // endpoints sit at L1.5 but their only containment is to a namespace
+    // parent, structurally equivalent to the worker → namespace edge).
     return { strength: params.linkNsToWorker, distance: params.distNsToWorker }
   }
 

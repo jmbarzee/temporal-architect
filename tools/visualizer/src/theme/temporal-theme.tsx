@@ -12,7 +12,7 @@ export interface PrimitiveTheme {
 
 export type PrimitiveKind =
   | 'workflow' | 'activity' | 'worker' | 'namespace'
-  | 'nexusService' | 'nexusOperation' | 'nexusCall'
+  | 'nexusService' | 'nexusOperation' | 'nexusEndpoint' | 'nexusCall'
   | 'signal' | 'query' | 'update'
   | 'timer' | 'conditionSet' | 'conditionUnset'
   | 'promise' | 'return'
@@ -28,6 +28,7 @@ export const THEME: Record<PrimitiveKind, PrimitiveTheme> = {
   namespace:          { icon: '⧉',   label: 'Namespace',             cssVarPrefix: 'namespace' },
   nexusService:       { icon: '★',   label: 'Nexus Service',         cssVarPrefix: 'nexus-service' },
   nexusOperation:     { icon: '☆',   label: 'Nexus Operation',       cssVarPrefix: 'nexus-operation' },
+  nexusEndpoint:      { icon: '⌖',   label: 'Nexus Endpoint',        cssVarPrefix: 'nexus-endpoint' },
   nexusCall:          { icon: '☆',   label: 'Nexus Call',            cssVarPrefix: 'nexus' },
   signal:             { icon: '↪',   label: 'Signal',                cssVarPrefix: 'signal' },
   query:              { icon: '↩',   label: 'Query',                 cssVarPrefix: 'query' },
@@ -58,6 +59,9 @@ export interface DefTypeConfig {
 
 export const DEF_TYPE_CONFIGS: DefTypeConfig[] = [
   { type: 'namespaceDef',      icon: THEME.namespace.icon,      label: 'Namespaces',     defaultOn: false },
+  // Synthetic def type — endpoints live inside namespaceDef in the AST,
+  // but render as their own L1.5 nodes (parented to their namespace).
+  { type: 'nexusEndpointDef',  icon: THEME.nexusEndpoint.icon,  label: 'Nexus Endpoints', defaultOn: false },
   { type: 'workerDef',         icon: THEME.worker.icon,         label: 'Workers',        defaultOn: true },
   { type: 'nexusServiceDef',   icon: THEME.nexusService.icon,   label: 'Nexus Services', defaultOn: false },
   // Synthetic def type — operations live inside nexusServiceDef in the AST,

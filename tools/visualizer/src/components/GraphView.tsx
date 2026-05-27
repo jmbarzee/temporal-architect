@@ -3,6 +3,7 @@
 
 import React from 'react'
 import type { TWFFile, FileError } from '../types/ast'
+import type { ParserGraph } from '../types/parser-graph'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { ForceParams } from '../graph/simulation'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
@@ -25,6 +26,9 @@ import { THEME, DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface GraphViewProps {
   ast: TWFFile
+  // Deployment graph from `twf graph` — primary input. AST is secondary
+  // (sourceFile lookup, hover details). See visualizer/REVISIONS_003.
+  parserGraph: ParserGraph
   onShowInTree?: (name: string, defType: string) => void
   filter: FilterState
   onFilterChange: (next: FilterState) => void
@@ -40,12 +44,14 @@ interface GraphViewProps {
 }
 
 // Map graph nodeType to AST defType (for visibility filter). nexusOperation
-// is not a top-level AST definition — it's nested inside nexusServiceDef —
-// so we use a synthetic 'nexusOperationDef' key. The chip in the type
-// filter is wired to this synthetic key the same as any real def type.
+// and nexusEndpoint are not top-level AST definitions — operations are nested
+// inside nexusServiceDef, endpoints inside namespaceDef — so we use synthetic
+// 'nexusOperationDef' / 'nexusEndpointDef' keys. The chips in the type
+// filter are wired to these synthetic keys the same as any real def type.
 function nodeTypeToDefType(nodeType: string): string {
   switch (nodeType) {
     case 'namespace': return 'namespaceDef'
+    case 'nexusEndpoint': return 'nexusEndpointDef'
     case 'worker': return 'workerDef'
     case 'workflow': return 'workflowDef'
     case 'activity': return 'activityDef'
@@ -124,8 +130,28 @@ function computeGraphNodeSummary(
   nodeMap: Map<string, SimNode>
 ): string {
   if (node.level === 1) {
-    const count = visibleEdges.filter(e => e.edgeType === 'containment' && e.targetId === node.id).length
-    return count > 0 ? `${count} worker${count !== 1 ? 's' : ''}` : ''
+    // Count contained workers and endpoints separately so the user can read
+    // both at a glance (`5 workers · 2 endpoints`).
+    let workers = 0, endpoints = 0
+    for (const e of visibleEdges) {
+      if (e.edgeType !== 'containment' || e.targetId !== node.id) continue
+      const child = nodeMap.get(e.sourceId)
+      if (!child) continue
+      if (child.nodeType === 'worker') workers++
+      else if (child.nodeType === 'nexusEndpoint') endpoints++
+    }
+    const parts: string[] = []
+    if (workers > 0) parts.push(`${workers} worker${workers !== 1 ? 's' : ''}`)
+    if (endpoints > 0) parts.push(`${endpoints} endpoint${endpoints !== 1 ? 's' : ''}`)
+    return parts.join(' · ')
+  } else if (node.level === 1.5) {
+    // Endpoints have no outgoing edges (they're routing aliases). The
+    // useful summary is "how many calls land here?" — incoming dispatch
+    // edges via the routing.nexusEndpoint metadata. With endpoints
+    // promoted to nodes the dispatch edge points at the operation, not
+    // the endpoint — so this is computed downstream when we surface
+    // routing.nexusEndpoint on edges. For now, no summary at L1.5.
+    return ''
   } else if (node.level === 2) {
     let wf = 0, act = 0, nxs = 0
     for (const e of visibleEdges) {
@@ -159,6 +185,7 @@ function computeGraphNodeSummary(
 function defTypeToNodeType(defType: string): string {
   switch (defType) {
     case 'namespaceDef': return 'namespace'
+    case 'nexusEndpointDef': return 'nexusEndpoint'
     case 'workerDef': return 'worker'
     case 'workflowDef': return 'workflow'
     case 'activityDef': return 'activity'
@@ -170,6 +197,7 @@ function defTypeToNodeType(defType: string): string {
 
 export function GraphView({
   ast,
+  parserGraph,
   onShowInTree,
   filter,
   onFilterChange,
@@ -244,8 +272,13 @@ export function GraphView({
     return () => clearTimeout(timer)
   }, [overriddenPins, onOverriddenPinsConsumed])
 
-  // Build graph from AST
-  const graph = React.useMemo(() => buildGraph(ast), [ast])
+  // Build view-side graph from the parser's deployment graph.
+  // AST is consulted for sourceFile (the file-filter chip reads this) and
+  // for future hover-detail enrichments. See visualizer/REVISIONS_003.
+  const graph = React.useMemo(
+    () => buildGraph(parserGraph, ast),
+    [parserGraph, ast],
+  )
 
   // Bumped after each simulation (re)creation so memos that read from
   // simRef.current can be invalidated. Without this signal the

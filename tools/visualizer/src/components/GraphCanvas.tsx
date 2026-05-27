@@ -2,13 +2,13 @@
 // Implements GRAPH_VIEW.md § Visual Encoding, § Viewport Controls, § Interaction States.
 
 import React from 'react'
-import type { SimNode, ForceParams } from '../graph/simulation'
-import { edgeCategory, chargeForType, bandForType, ALL_NODE_TYPES } from '../graph/simulation'
-import type { ForceSection } from './GraphControlPanel'
 import type { GraphEdge, NodeType } from '../graph/model'
+import type { ForceParams, SimNode } from '../graph/simulation'
+import { ALL_NODE_TYPES, bandForType, chargeForType, edgeCategory } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
-import { worldToScreen, screenToWorld, zoomAt, fitToView } from '../graph/viewport'
+import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { THEME } from '../theme/temporal-theme'
+import type { ForceSection } from './GraphControlPanel'
 
 // Per-node-type style: fill colour, border colour, and icon glyph. Mirrors
 // the --color-{type} / --color-{type}-border CSS variables in styles/index.css
@@ -27,11 +27,15 @@ interface NodeStyle {
 }
 
 const NODE_STYLES: Record<NodeType, NodeStyle> = {
-  namespace:      { fill: '#475569', border: '#1E293B', icon: THEME.namespace.icon },
-  worker:         { fill: '#94A3B8', border: '#475569', icon: THEME.worker.icon },
-  workflow:       { fill: '#8B7EC8', border: '#5D4F95', icon: THEME.workflow.icon },
-  activity:       { fill: '#7CB9E8', border: '#4A8BC2', icon: THEME.activity.icon },
-  nexusService:   { fill: '#DB2777', border: '#831843', icon: THEME.nexusService.icon },
+  namespace: { fill: '#475569', border: '#1E293B', icon: THEME.namespace.icon },
+  // Endpoints live just below namespaces in the band stack. They route nexus
+  // calls but aren't containers, so we tint them with the nexus pink while
+  // keeping the slate desaturation that signals "top-level routing infra".
+  nexusEndpoint: { fill: '#9F1239', border: '#4C0519', icon: THEME.nexusEndpoint.icon },
+  worker: { fill: '#94A3B8', border: '#475569', icon: THEME.worker.icon },
+  workflow: { fill: '#8B7EC8', border: '#5D4F95', icon: THEME.workflow.icon },
+  activity: { fill: '#7CB9E8', border: '#4A8BC2', icon: THEME.activity.icon },
+  nexusService: { fill: '#DB2777', border: '#831843', icon: THEME.nexusService.icon },
   nexusOperation: { fill: '#F9A8D4', border: '#BE185D', icon: THEME.nexusOperation.icon },
 }
 
@@ -49,15 +53,15 @@ const NODE_STYLES: Record<NodeType, NodeStyle> = {
 //   - containment: subtle slate dotted, the default for parent/child edges
 //     that aren't part of the nexus family.
 const EDGE_STYLE = {
-  containment:         { color: '#94A3B8', alpha: 0.35, dash: [3, 4], width: 1 },
-  opContainment:       { color: '#DB2777', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → service
-  dependencyL1:        { color: '#475569', alpha: 0.85, dash: [],     width: 1.8 }, // ns → ns
-  dependencyL2:        { color: '#64748B', alpha: 0.75, dash: [],     width: 1.6 }, // worker → worker
-  workflowDep:         { color: '#8B7EC8', alpha: 0.70, dash: [],     width: 1.4 }, // workflow → workflow
-  workflowToActivity:  { color: '#4A8BC2', alpha: 0.70, dash: [],     width: 1.4 }, // workflow → activity (activity blue)
-  dependencyL3:        { color: '#94A3B8', alpha: 0.55, dash: [],     width: 1.4 }, // generic L3 fallback
-  dependencyL4:        { color: '#94A3B8', alpha: 0.40, dash: [],     width: 1.2 }, // ends at activity (L4 leaf)
-  nexusCall:           { color: '#F472B6', alpha: 0.85, dash: [],     width: 1.5 }, // workflow ↔ operation, or spliced
+  containment: { color: '#94A3B8', alpha: 0.35, dash: [3, 4], width: 1 },
+  opContainment: { color: '#DB2777', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → service
+  dependencyL1: { color: '#475569', alpha: 0.85, dash: [], width: 1.8 }, // ns → ns
+  dependencyL2: { color: '#64748B', alpha: 0.75, dash: [], width: 1.6 }, // worker → worker
+  workflowDep: { color: '#8B7EC8', alpha: 0.70, dash: [], width: 1.4 }, // workflow → workflow
+  workflowToActivity: { color: '#4A8BC2', alpha: 0.70, dash: [], width: 1.4 }, // workflow → activity (activity blue)
+  dependencyL3: { color: '#94A3B8', alpha: 0.55, dash: [], width: 1.4 }, // generic L3 fallback
+  dependencyL4: { color: '#94A3B8', alpha: 0.40, dash: [], width: 1.2 }, // ends at activity (L4 leaf)
+  nexusCall: { color: '#F472B6', alpha: 0.85, dash: [], width: 1.5 }, // workflow ↔ operation, or spliced
 } as const
 
 const FOCUS_RING_COLOR = '#4A90D9'
@@ -70,9 +74,10 @@ const DIM_ALPHA = 0.2
 // L3 and L4 step down to make the leaves visually subordinate.
 const NODE_SIZES: Record<number, { w: number; h: number; r: number; iconSize: number }> = {
   1: { w: 40, h: 40, r: 20, iconSize: 18 },
+  1.5: { w: 30, h: 30, r: 15, iconSize: 14 },
   2: { w: 40, h: 40, r: 20, iconSize: 18 },
   3: { w: 22, h: 22, r: 11, iconSize: 12 },
-  4: { w: 16, h: 16, r:  8, iconSize: 10 },
+  4: { w: 16, h: 16, r: 8, iconSize: 10 },
 }
 
 const LABEL_FONT = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
@@ -440,7 +445,7 @@ export function GraphCanvas({
         const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
 
         if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
-            Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
+          Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
         const edgeHighlighted = d.highlightedEdges?.has(edge.id) ?? false
         const style = edgeStyleFor(edge, src, tgt)
@@ -517,7 +522,7 @@ export function GraphCanvas({
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
           const maxRing = 2000
           if (sx + maxRing < 0 || sx - maxRing > w ||
-              sy + maxRing < 0 || sy - maxRing > h) continue
+            sy + maxRing < 0 || sy - maxRing > h) continue
 
           const typeMatch = typeFilter === null || node.nodeType === typeFilter
           const highlighted = pushActive && typeMatch
@@ -586,7 +591,7 @@ export function GraphCanvas({
           const [sx, sy] = worldToScreen(vp, src.x, src.y)
           const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
           if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
-              Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
+            Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
           const cat = edgeCategory(d.forceParams, edge)
           const restDist = cat.distance * distMul
@@ -711,7 +716,7 @@ export function GraphCanvas({
         const hh = s.h / 2
 
         if (sx + hw < -CULL_MARGIN || sx - hw > w + CULL_MARGIN ||
-            sy + hh < -CULL_MARGIN || sy - hh > h + CULL_MARGIN) continue
+          sy + hh < -CULL_MARGIN || sy - hh > h + CULL_MARGIN) continue
 
         const nodeHighlighted = d.highlightedNodes?.has(node.id) ?? false
         const searchDimmed = d.searchMatchIds !== null && !d.searchMatchIds.has(node.id)

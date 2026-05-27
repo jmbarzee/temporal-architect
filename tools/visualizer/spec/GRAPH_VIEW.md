@@ -10,33 +10,65 @@ This view serves goals 6–9 (system architecture questions) from [PRODUCT.md](.
 
 ---
 
+## Data Flow: Two Views, Two Commands
+
+The visualizer's two views consume different parser outputs:
+
+| View | Primary input | Secondary input |
+|---|---|---|
+| **Tree view** | `twf parse` (AST + diagnostics) | — |
+| **Graph view** | `twf graph` (resolved deployment graph) | AST for hover detail (sourceFile, params, body source) |
+
+The graph view is a **renderer over the parser-emitted deployment graph**. The parser owns deployment expansion (one node per definition × deployment context), dispatch routing (which deployment a call lands on), and tier coarsening (worker-tier and namespace-tier projections of dispatch edges). The visualizer does not re-walk the AST for any of this — it translates the parser's nodes and edges into view-side shapes and hands them to the simulation.
+
+Cross-view identity threads through `node.definitionKey` (the parser's `definition` field — `${kind}:${name}`). Selecting `OrderWorkflow` in the tree view highlights every graph node whose `definitionKey === "workflow:OrderWorkflow"`, regardless of how many deployments that definition has.
+
 ## Graph Data Model
 
-### Node Types (4 levels of a hierarchy)
+### Two parallel ladders
 
-| Level | Node Type        | Derived From                            |
-|-------|------------------|-----------------------------------------|
-| 1     | **Namespace**    | Namespace definition                    |
-| 2     | **Worker**       | Worker instantiation within a namespace |
-| 2     | **NexusService** | Nexus service registered on a worker    |
-| 3     | **Workflow**     | Workflow registered on a worker         |
-| 3     | **NexusOperation** | Operation declared inside a nexus service |
-| 4     | **Activity**     | Activity registered on a worker         |
+The graph is two parallel hierarchies that cross-connect via dispatch:
 
-**Per-worker duplication.** L3 nodes (Workflow, Activity, NexusOperation) and L2 NexusService nodes are created **per worker registration** — an activity registered on three workers produces three distinct nodes, each parented to its respective worker. This makes the fact that a definition has multiple homes visible directly in the canvas, instead of collapsing it into a single node whose containment relationship to all-but-one of its workers is silently dropped.
+| Tier             | Main ladder           | Nexus ladder           | Containment relationship  |
+|------------------|-----------------------|------------------------|---------------------------|
+| Container        | **Namespace**         | **NexusEndpoint**      | Endpoint → Namespace      |
+| Host             | **Worker**            | **NexusService**       | Service → Worker          |
+| Orchestrator     | **Workflow**          | **NexusOperation**     | Operation → Service       |
+| Leaf             | **Activity**          | —                      | Activity → Worker         |
 
-Each duplicate shares a stable `definitionKey` (the underlying `${nodeType}:${name}`, with the parent service name folded in for operations). The graph carries a `duplicateGroups: Map<definitionKey, Set<nodeId>>` index that the view uses during hover/select to keep sister copies visually grouped (see § Interaction States: Duplicate Highlighting). Definitions that are not registered on any worker remain orphan singletons (one node, no parent).
+The **main ladder** is the four-rung Namespace → Worker → Workflow → Activity hierarchy that describes how Temporal organises long-running work: containers hold hosts, hosts register orchestrators, orchestrators dispatch to leaf work.
 
-The hierarchy reads top-to-bottom as **organisation → orchestration → leaf work**:
+The **nexus ladder** is the parallel three-rung Endpoint → Service → Operation hierarchy that describes how nexus routing layers onto the same containers and hosts: endpoints declare a routable name inside a namespace, services attach to workers, operations belong to a service. The nexus ladder ends at the orchestrator tier — nexus operations either delegate to a backing workflow (async ops) or run an inline body that itself calls into the main ladder (sync ops). There is no nexus-side equivalent of activity.
 
-- **L1 Namespace** — the deployment container.
-- **L2 Worker** runs code; **L2 NexusService** exposes a callable API surface. Both are "hosting" units that sit beside each other in the same band; a service is registered on a worker, but neither contains the other in any deeper sense.
-- **L3 Workflow** orchestrates a long-running execution. **L3 NexusOperation** is the per-operation handle a service exposes; for async ops it delegates to a backing workflow, for sync ops it runs an inline body.
-- **L4 Activity** is the leaf of the call graph — work happens here but no further calls fan out.
+**Cross-ladder edges come in two distinct kinds:**
 
-Splitting L3 and L4 lets the canvas's hierarchical Y-band gravity stack workflows and activities into separate horizontal stripes instead of crowding both into a single band.
+- **Cross-ladder containment** binds each nexus rung to its main-ladder host. `Endpoint → Namespace` (an endpoint is declared inside a namespace). `Service → Worker` (a service is hosted on a worker). The third nexus rung `Operation → Service` is intra-nexus containment; operations don't bind cross-ladder, they bind to their declaring service.
+- **Cross-ladder dispatch** connects orchestrators across the ladders. `Workflow → Operation` (a workflow makes a nexus call). `Operation → Workflow` (async operations have a backing workflow; sync operations call workflows from their body). These edges are the reason both ladders matter visually — they tell the story of how work crosses the routing surface.
 
-Workflows and activities attach directly to a Worker. Nexus services also live at L2 and attach to their hosting Worker. Nexus operations attach to their parent NexusService. Walking parents from any node terminates at a Namespace; for an operation that walk goes Operation → Service → Worker → Namespace.
+### Note on the current implementation
+
+The visualizer's `GraphNode.level` field carries a numeric depth (`1 | 1.5 | 2 | 3 | 4`) that conflates the two ladders' tiers into a single sortable axis. That representation is implementation detail, retained pending a follow-up refactor (visualizer/REVISIONS_006) that moves all per-node-type metadata into a central registry and lets `nodeType` be the single axis of identity. The model described above is the authoritative one; the level numbers are a transient encoding the current code uses for sizing and Y-band lookup.
+
+**Per-worker duplication.** L3 nodes (Workflow, Activity, NexusOperation) and L2 NexusService nodes are emitted **per worker deployment** — an activity registered on three workers produces three distinct nodes, each parented to its respective worker. This makes the fact that a definition has multiple homes visible directly in the canvas, instead of collapsing it into a single node whose containment relationship to all-but-one of its workers is silently dropped. Duplication is performed upstream by `twf graph`; the visualizer consumes the already-duplicated nodes.
+
+Each duplicate shares a stable `definitionKey` (= the parser's `definition` field: `${nodeType}:${name}`, with the parent service name folded in for operations as `Service.Op`). The graph carries a `duplicateGroups: Map<definitionKey, Set<nodeId>>` index that the view uses during hover/select to keep sister copies visually grouped (see § Interaction States: Duplicate Highlighting). Definitions that are not registered on any worker remain orphan singletons (one node, no parent, `orphan: true`).
+
+Reading the table top-to-bottom on the main ladder is **organisation → hosting → orchestration → leaf work**:
+
+- **Namespace** — the deployment container.
+- **Worker** runs code.
+- **Workflow** orchestrates a long-running execution.
+- **Activity** is the leaf of the call graph — work happens here, no further calls fan out.
+
+Reading the nexus ladder is **routing → API surface → callable handle**:
+
+- **NexusEndpoint** — a routing alias declared inside a namespace. Endpoints bind a `(namespace, task_queue)` pair to a name that nexus call sites can reach. They have no outgoing dispatch — they're pure addressing.
+- **NexusService** — a callable API surface, hosted on a worker. The service is a peer of the worker that hosts it (neither contains the other in any deeper sense beyond hosting).
+- **NexusOperation** — the per-operation handle a service exposes; for async ops it delegates to a backing workflow on the main ladder, for sync ops it runs an inline body that calls into the main ladder.
+
+Visually the canvas uses hierarchical Y-band gravity to stack the tiers vertically — containers at the top, leaves at the bottom — so the main ladder reads top-to-bottom as a layered diagram. The nexus ladder's rungs share Y bands with their main-ladder peers where possible (Operation with Workflow, Service with Worker), so cross-ladder edges read as roughly horizontal hops.
+
+Walking parents from any node terminates at a Namespace. From a workflow the walk goes Workflow → Worker → Namespace. From an operation the walk goes Operation → Service → Worker → Namespace (the operation reaches the main ladder via its hosting service). From an endpoint the walk goes Endpoint → Namespace directly (endpoints live one cross-ladder hop from the container tier).
 
 ### Fundamental Edges
 
@@ -46,6 +78,7 @@ Workflows and activities attach directly to a Worker. Nexus services also live a
 2. **NexusService → Worker** ("hosted on") — An L2-to-L2 peer containment edge. The service is hosted on the worker but isn't "below" it in the level hierarchy.
 3. **NexusOperation → NexusService** ("member of") — An operation belongs to its declaring service (L3 child of an L2 parent).
 4. **Worker → Namespace** ("member of") — A worker is instantiated within a specific namespace.
+5. **NexusEndpoint → Namespace** ("declared in") — An endpoint is declared inside a specific namespace.
 
 **Dependency edges** come from call sites in workflow and sync-operation bodies, plus the implicit "operation delegates to backing workflow" relationship of an async operation. They are first-class semantic relationships and are drawn at Level 3 regardless of whether caller and callee share a Worker — co-location on a worker says nothing about whether one calls the other, so containment cannot stand in for a call edge.
 
@@ -68,21 +101,16 @@ Higher-level dependency edges are **derived** by projecting Level 3 dependency e
 1. **Worker → Worker** ("depends on") — Exists when any Level 3 node in Worker A depends on any Level 3 node in Worker B. Discard self-loops.
 2. **Namespace → Namespace** ("depends on") — Exists when any Worker in Namespace A depends on any Worker in Namespace B. Discard self-loops.
 
-### Graph Construction Order
+### Graph Construction
 
-1. Build Namespace nodes from namespace definitions.
-2. Build Worker nodes from worker instantiations; attach each to its parent Namespace.
-3. Build Workflow, Activity, and NexusService nodes **per worker registration**; attach each copy to its respective Worker. An activity registered on three workers becomes three nodes with three containment edges; each node gets a worker-scoped id of the form `${nodeType}:${name}@${workerName}`. Add orphan L3 nodes (unscoped ids) for definitions not registered on any worker.
-3b. Build NexusOperation nodes from each nexus service's `operations` list. Because the parent service can itself be duplicated across workers, each operation is duplicated per service copy, with its containment edge pointing at the matching copy. An async operation whose service lives on Workers A and B and whose backing workflow lives on Worker C therefore contributes two A→C / B→C worker dependencies after step 5; same-worker pairings collapse to self-loops and are dropped as usual.
-4. Resolve Level 3/4 dependency edges from workflow and sync nexus operation bodies only. Activities are leaves and emit no dependency edges.
-   a. Workflow → Workflow edges from workflow calls and awaits.
-   b. Workflow → Activity edges from activity calls.
-   c. Workflow → NexusOperation edges from nexus call sites (the operation is the target node; the endpoint is edge metadata).
-   d. NexusOperation → Workflow ("delegates to") edges from each async operation's backing workflow declaration.
-   e. NexusOperation → callee edges from each sync operation's body, walked the same way as a workflow body.
-   When the caller and/or callee definition has multiple copies, the call site emits one edge per (caller copy, callee copy) pair — Temporal task-queue dispatch doesn't single out a primary copy, so each caller copy is treated as potentially reaching every callee copy. Deduplicate by (source nodeId, target nodeId) so a caller with multiple call sites against the same callee — including the same operation reached through multiple endpoints — yields one edge per pair. Drop self-loops.
-5. Project Level 3 dependencies up to Worker-level; keep only cross-worker pairs (a same-worker projection collapses to a self-loop and is dropped).
-6. Project Worker-level dependencies up to Namespace-level; keep only cross-namespace pairs.
+The deployment graph is constructed **upstream** by `twf graph` (see `tools/lsp/parser/graph/`). The visualizer consumes the resulting JSON and translates each piece into its view counterpart. Construction inside the visualizer is a single pass over the parser payload:
+
+1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a view node with `id` (parser's composite deployment ID), `level` (derived from the parser's `definition` kind via `nodeLevel()`), `parentId` (looked up from the parser's containment edges), and `definitionKey` (= `parserGraph.nodes[i].definition`). The AST is consulted only to fill `sourceFile` so the per-file filter chip works; everything structural comes from the parser.
+2. **Translate edges.** For each `parserGraph.edges[i]`, emit a view edge. `kind: "containment"` becomes `edgeType: "containment"`; the dispatch kinds (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`) all become `edgeType: "dependency"`. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so the canvas can colour spliced caller-to-backing edges in the nexus palette.
+3. **Translate coarsened edges.** For each `parserGraph.coarsenedEdges[i]`, emit an L2 (`tier === "worker"`) or L1 (`tier === "namespace"`) view dependency edge. No projection logic runs in the visualizer — the parser has already aggregated dispatch edges by `(from, to, tier)` and discarded self-loops.
+4. **Build `duplicateGroups`.** Index every view node by its `definitionKey`; the resulting `Map<definitionKey, Set<nodeId>>` powers the duplicate-highlight interaction (see § Interaction States: Duplicate Highlighting).
+
+Per-worker duplication, dispatch routing, cross-namespace coarsening, and orphan detection are all properties of the parser graph. The visualizer never re-derives them.
 
 ### Orphan Definitions
 
@@ -173,11 +201,11 @@ The graph uses **type toggles** — the same five definition types as the tree v
 
 ### Type Toggle Control
 
-Five toggle buttons in the filter bar, matching the tree view's type toggles:
+Seven toggle buttons in the filter bar, matching the tree view's type toggles:
 
-**NS** · **Worker** · **Wf** · **Act** · **Nxs**
+**NS** · **Endpoint** · **Worker** · **Nxs** · **Op** · **Wf** · **Act**
 
-Each toggle shows/hides all nodes of that type. The toggle buttons use the same color coding as the tree view (dark grey, medium grey, purple, blue, pink). Default state matches the tree view: Workers and Workflows ON; Namespaces, Activities, and NexusServices OFF.
+Each toggle shows/hides all nodes of that type. The toggle buttons use the same color coding as the tree view (slate, rose, grey, pink, light pink, purple, blue). Default state: Workers and Workflows ON; everything else OFF.
 
 This replaces the previous level range selector. The visual filter bar is now identical across both views (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar).
 
@@ -416,7 +444,7 @@ Per-edge spring constant (k) and rest distance, displayed as dual-slider rows or
 
 - `X strength` — pull toward the nearest edge of the global X rest band
 - `Y strength` — pull toward the nearest edge of each node type's Y band
-- Per-node-type **Y band** (dual-handle slider) — the `[yMin, yMax]` window in which the type feels zero Y gravity. Five rows: `L1 NS`, `L2 Wk`, `L3 Wf`, `L3 Act`, `L3 Nx`. All five share a common Y range so the bands are directly comparable; defaults stack the hierarchy from top (`NS`) to bottom (the three L3 types share a single deep band).
+- Per-node-type **Y band** (dual-handle slider) — the `[yMin, yMax]` window in which the type feels zero Y gravity. One row per node type, stacking the two ladders from container tier at the top to leaf at the bottom. All rows share a common Y range so the bands are directly comparable; defaults stack the main ladder (NS / Wk / Wf / Act) top-to-bottom, with the nexus ladder rungs (Ep / Nx / Op) defaulting to bands near their main-ladder peers.
 
 **DYNAMICS**
 
