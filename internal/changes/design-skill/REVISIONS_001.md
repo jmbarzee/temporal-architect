@@ -5,7 +5,7 @@
 
 ## Summary
 
-The design skill files are largely silent on `await one` non-winning-case lifecycle. No file explicitly states the old incorrect semantics ("non-winning cases are automatically cancelled"), but several files present `await one` race patterns without noting that non-winning operations continue running. The `parent_close_policy` table in `child-workflows.md` needs value descriptions to match the LANGUAGE_SPEC additions. Two files mirror the skill across `skills/design/` and `packages/vscode/skills/design/` -- all changes must be applied to both locations.
+The design skill files are largely silent on `await one` non-winning-case lifecycle. No file explicitly states the old incorrect semantics ("non-winning cases are automatically cancelled"), but several files present `await one` race patterns without noting that non-winning operations continue running. The `parent_close_policy` table in `child-workflows.md` needs value descriptions to match the LANGUAGE_SPEC additions. 
 
 ## Group 1: `await one` Lifecycle Annotation
 
