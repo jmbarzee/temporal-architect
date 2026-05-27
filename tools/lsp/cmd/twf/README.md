@@ -127,20 +127,64 @@ activity ValidateOrder(order: Order) -> (ValidateResult)
 
 ---
 
-### `twf deps`
+### `twf graph`
 
-Show the dependency graph of the input files.
+Emit the **resolved deployment graph** of the input files. Nodes are
+runtime deployments (a definition × instantiation context — namespace,
+worker, queue); edges are confirmed dispatches between them. The
+output is what a downstream renderer or codegen needs without
+recomputing call-site → deployment routing.
 
 ```bash
-twf deps workflow.twf              # text
-twf deps --json workflow.twf       # JSON envelope with payload key `graph`
+twf graph workflow.twf              # text
+twf graph --json workflow.twf       # JSON envelope with payload key `graph`
 ```
+
+**Node IDs** are composite path-style strings:
+
+```
+namespace:<ns>
+worker:<w>/namespace:<ns>            # deployed
+worker:<w>/orphan                    # declared but uninstantiated
+workflow:<wf>/worker:<w>/namespace:<ns>
+activity:<a>/worker:<w>/namespace:<ns>
+nexusService:<s>/worker:<w>/namespace:<ns>
+nexusOperation:<s>.<op>/worker:<w>/namespace:<ns>
+nexusEndpoint:<e>/namespace:<ns>
+```
+
+`/orphan` is a tag suffix marking a definition that has no deployment.
+The leftmost segment (`workflow:<name>`, `worker:<name>`, …) is the
+**definition key** — same key the AST uses.
+
+**Edge kinds:**
+
+| Kind            | Meaning                                                                 |
+|-----------------|-------------------------------------------------------------------------|
+| `containment`   | child → parent (workflow → worker, worker → namespace, etc.)             |
+| `activityCall`  | resolved activity dispatch from a caller deployment                     |
+| `workflowCall`  | resolved child / detach workflow dispatch                                |
+| `nexusCall`     | resolved nexus operation dispatch through an endpoint                    |
+| `asyncBacking`  | async nexus operation → backing workflow (one start-workflow dispatch)   |
+
+Dispatch edges carry a `routing` object: `{ explicit?: string,
+nexusEndpoint?: string }`. `explicit` is the `task_queue:` literal the
+user wrote on the call site (activity / workflow only); `nexusEndpoint`
+is the endpoint deployment node ID (nexus only).
+
+**Coarsened edges** project dispatches up to the worker or namespace
+tier, aggregating by `(from, to, tier)` and dropping self-loops.
+
+**Graph-stage diagnostics** ride in the envelope's `diagnostics` array
+under `kind: "graph"`. Today the only code is
+`DISPATCH_NO_REACHABLE_DEPLOYMENT` — a call whose task queue has no
+deployment polling it.
 
 ---
 
 ## JSON envelope
 
-Every JSON-emitting subcommand (`parse`, `symbols --json`, `deps --json`)
+Every JSON-emitting subcommand (`parse`, `symbols --json`, `graph --json`)
 shares the same top-level shape:
 
 ```json
@@ -215,8 +259,14 @@ The complete list of `kind` + `code` combinations:
   `EXPLICIT_ROUTING_MISMATCH`, `IMPLICIT_ROUTING_MISMATCH`,
   `ENDPOINT_SERVICE_LINKAGE`
 
+**kind: `graph`**
+- `DISPATCH_NO_REACHABLE_DEPLOYMENT` — call site routes to a task
+  queue that no deployment polls
+
 The authoritative machine-readable schema is checked in at
-[`twf.schema.json`](./twf.schema.json).
+[`twf.schema.json`](./twf.schema.json), versioned with `$schemaVersion`
+(semver — minor bumps are additive, major bumps signal a breaking
+wire-shape change).
 
 ---
 

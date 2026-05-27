@@ -1,0 +1,173 @@
+# Workers, task queues, and deployment topology
+# Demonstrates: worker type sets, namespace instantiation, explicit routing, capability-based queues
+
+# --- Explicit routing + implicit inheritance ---
+
+workflow OrderWorkflow(order: Order) -> (Result):
+    # Implicit: inherits OrderWorkflow's queue ("orders")
+    activity ValidateOrder(order) -> validated
+
+    # Explicit: route to dedicated payment workers
+    activity ChargePayment(order) -> payment
+        options:
+            task_queue: "payments"
+
+    # Explicit: conditional routing by shipping priority
+    if (order.priority == "express"):
+        activity ShipOrder(order, payment) -> shipment
+            options:
+                task_queue: "shipping-express"
+    else:
+        activity ShipOrder(order, payment) -> shipment
+            options:
+                task_queue: "shipping-standard"
+
+    close complete(Result{shipment})
+
+# --- Capability-based routing ---
+
+workflow MediaPipeline(media: Media) -> (Result):
+    # Explicit: route to GPU-capable workers
+    activity TranscodeVideo(media) -> transcoded
+        options:
+            task_queue: "gpu-transcode"
+            start_to_close_timeout: 10m
+
+    # Implicit: inherits MediaPipeline's queue ("media")
+    activity GenerateThumbnail(transcoded) -> thumb
+
+    close complete(Result{thumb})
+
+# --- Activities ---
+
+activity ValidateOrder(order: Order) -> (ValidationResult):
+    return validate(order)
+
+activity ChargePayment(order: Order) -> (Payment):
+    return charge(order)
+
+activity ShipOrder(order: Order, payment: Payment) -> (Shipment):
+    return ship(order)
+
+activity TranscodeVideo(media: Media) -> (TranscodeResult):
+    heartbeat(media.progress)
+    return transcode(media)
+
+activity GenerateThumbnail(video: Video) -> (Thumbnail):
+    return thumbnail(video)
+
+# --- Nexus services ---
+
+nexus service PaymentService:
+    sync CheckPaymentStatus(paymentId: string) -> (PaymentStatus):
+        activity GetPaymentStatus(paymentId) -> status
+        close complete(status)
+
+nexus service AnalyticsService:
+    async TrackEvent workflow TrackEventWorkflow
+
+activity GetPaymentStatus(paymentId: string) -> (PaymentStatus):
+    return lookup(paymentId)
+
+workflow TrackEventWorkflow(event: Event):
+    activity RecordEvent(event)
+    close complete
+
+activity RecordEvent(event: Event):
+    record(event)
+
+# --- Workers ---
+
+worker orderWorker:
+    workflow OrderWorkflow
+    activity ValidateOrder
+
+worker paymentWorker:
+    activity ChargePayment
+    activity GetPaymentStatus
+    nexus service PaymentService
+
+worker analyticsWorker:
+    workflow TrackEventWorkflow
+    activity RecordEvent
+    nexus service AnalyticsService
+
+worker expressShipWorker:
+    activity ShipOrder
+
+worker standardShipWorker:
+    activity ShipOrder
+
+# Tiered registration: paymentWorkerSecondary mirrors paymentWorker on a
+# different queue. Two deployment nodes for ChargePayment, GetPaymentStatus,
+# and PaymentService (one per worker) are expected.
+worker paymentWorkerSecondary:
+    activity ChargePayment
+    activity GetPaymentStatus
+    nexus service PaymentService
+
+worker realtimeAnalyticsWorker:
+    workflow TrackEventWorkflow
+    activity RecordEvent
+
+worker mediaWorker:
+    workflow MediaPipeline
+    activity GenerateThumbnail
+
+worker gpuWorker:
+    activity TranscodeVideo
+
+# --- Namespaces ---
+
+namespace ecommerce:
+    worker orderWorker
+        options:
+            task_queue: "orders"
+    worker paymentWorker
+        options:
+            task_queue: "payments"
+    worker paymentWorkerSecondary
+        options:
+            task_queue: "payments-secondary"
+    worker expressShipWorker
+        options:
+            task_queue: "shipping-express"
+    worker standardShipWorker
+        options:
+            task_queue: "shipping-standard"
+    nexus endpoint PaymentEndpoint
+        options:
+            task_queue: "payments"
+    worker analyticsWorker
+        options:
+            task_queue: "analytics"
+    worker realtimeAnalyticsWorker
+        options:
+            task_queue: "analytics-realtime"
+    nexus endpoint AnalyticsEndpoint
+        options:
+            task_queue: "analytics"
+
+namespace media:
+    worker mediaWorker
+        options:
+            task_queue: "media"
+    worker gpuWorker
+        options:
+            task_queue: "gpu-transcode"
+
+# --- Cross-namespace caller ---
+# A partner service in a separate namespace reaches into ecommerce via Nexus endpoints.
+
+workflow PartnerCheckout(request: PartnerRequest) -> (PartnerResult):
+    nexus PaymentEndpoint PaymentService.CheckPaymentStatus(request.paymentId) -> status
+    detach nexus AnalyticsEndpoint AnalyticsService.TrackEvent(request.event)
+    close complete(PartnerResult{status: status})
+
+worker partnerWorker:
+    workflow PartnerCheckout
+
+namespace partner:
+    worker partnerWorker
+        options:
+            task_queue: "partner"

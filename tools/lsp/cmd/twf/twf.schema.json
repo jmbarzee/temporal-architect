@@ -1,8 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/twf.schema.json",
+  "$schemaVersion": "1.0.0",
   "title": "twf JSON envelope",
-  "description": "Stable wire contract emitted by `twf parse`, `twf symbols --json`, and `twf deps --json`. Adding optional fields or new diagnostic codes is non-breaking; renaming or removing them is breaking and requires coordinated bumps across downstream consumers.",
+  "description": "Stable wire contract emitted by `twf parse`, `twf symbols --json`, and `twf graph --json`. Adding optional fields or new diagnostic codes is non-breaking; renaming or removing them is breaking and requires coordinated bumps across downstream consumers. `$schemaVersion` follows semver — minor bumps are additive, major bumps signal a breaking change to the wire shape.",
   "type": "object",
   "required": ["summary", "diagnostics"],
   "additionalProperties": true,
@@ -21,8 +22,11 @@
       "type": "array"
     },
     "graph": {
-      "description": "Present on `twf deps --json`. The dependency graph object (edges, containment, coarsened views).",
-      "type": ["object", "null"]
+      "description": "Present on `twf graph --json`. The resolved deployment graph: nodes are runtime deployments (definition × instantiation), edges are confirmed dispatches.",
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/Graph" }
+      ]
     }
   },
 
@@ -56,7 +60,7 @@
       "additionalProperties": false,
       "properties": {
         "severity": { "type": "string", "enum": ["error", "warning"] },
-        "kind":     { "type": "string", "enum": ["parse", "resolve", "validate"] },
+        "kind":     { "type": "string", "enum": ["parse", "resolve", "validate", "graph"] },
         "code":     { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
         "file":     { "type": "string" },
         "start":    { "$ref": "#/$defs/Position" },
@@ -128,8 +132,112 @@
               }
             }
           }
+        },
+        {
+          "if":   { "properties": { "kind": { "const": "graph" } } },
+          "then": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "DISPATCH_NO_REACHABLE_DEPLOYMENT"
+                ]
+              }
+            }
+          }
         }
       ]
+    },
+
+    "Graph": {
+      "type": "object",
+      "required": ["summary", "nodes", "edges", "coarsenedEdges", "unresolved", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "summary":        { "$ref": "#/$defs/GraphSummary" },
+        "nodes":          { "type": "array", "items": { "$ref": "#/$defs/GraphNode" } },
+        "edges":          { "type": "array", "items": { "$ref": "#/$defs/GraphEdge" } },
+        "coarsenedEdges": { "type": "array", "items": { "$ref": "#/$defs/CoarsenedEdge" } },
+        "unresolved":     { "type": "array", "items": { "$ref": "#/$defs/Unresolved" } },
+        "diagnostics":    { "type": "array", "items": { "$ref": "#/$defs/GraphDiagnostic" } }
+      }
+    },
+    "GraphSummary": {
+      "type": "object",
+      "required": ["nodes", "edges", "coarsenedEdges", "unresolved", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "nodes":          { "type": "integer", "minimum": 0 },
+        "edges":          { "type": "integer", "minimum": 0 },
+        "coarsenedEdges": { "type": "integer", "minimum": 0 },
+        "unresolved":     { "type": "integer", "minimum": 0 },
+        "diagnostics":    { "type": "integer", "minimum": 0 }
+      }
+    },
+    "GraphNode": {
+      "type": "object",
+      "required": ["id", "definition"],
+      "additionalProperties": false,
+      "properties": {
+        "id":         { "type": "string" },
+        "definition": { "type": "string" },
+        "worker":     { "type": "string" },
+        "namespace":  { "type": "string" },
+        "queue":      { "type": "string" },
+        "orphan":     { "type": "boolean" }
+      }
+    },
+    "GraphEdge": {
+      "type": "object",
+      "required": ["from", "to", "kind", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "from":    { "type": "string" },
+        "to":      { "type": "string" },
+        "kind":    { "type": "string", "enum": ["containment", "activityCall", "workflowCall", "nexusCall", "asyncBacking"] },
+        "line":    { "type": "integer", "minimum": 0 },
+        "routing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "explicit":      { "type": "string" },
+            "nexusEndpoint": { "type": "string" }
+          }
+        }
+      }
+    },
+    "CoarsenedEdge": {
+      "type": "object",
+      "required": ["from", "to", "tier", "weight"],
+      "additionalProperties": false,
+      "properties": {
+        "from":   { "type": "string" },
+        "to":     { "type": "string" },
+        "tier":   { "type": "string", "enum": ["worker", "namespace"] },
+        "weight": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "Unresolved": {
+      "type": "object",
+      "required": ["from", "name", "kind", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string" },
+        "name": { "type": "string" },
+        "kind": { "type": "string", "enum": ["activityCall", "workflowCall", "nexusCall", "asyncBacking"] },
+        "line": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "GraphDiagnostic": {
+      "type": "object",
+      "required": ["severity", "code", "message", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "severity": { "type": "string", "enum": ["error", "warning"] },
+        "code":     { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "message":  { "type": "string" },
+        "from":     { "type": "string" },
+        "line":     { "type": "integer", "minimum": 0 }
+      }
     }
   }
 }

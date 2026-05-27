@@ -181,7 +181,7 @@ func TestEnvelopeJSONShape(t *testing.T) {
 }
 
 // TestFormatDiagnostic checks the text-mode rendering used by check / symbols
-// / deps for stderr diagnostics. The format is part of the human-facing
+// / graph for stderr diagnostics. The format is part of the human-facing
 // contract and is sensitive to changes (e.g. CI log filters); keep it stable.
 func TestFormatDiagnostic(t *testing.T) {
 	d := Diagnostic{

@@ -19,12 +19,12 @@ Commands:
   check     Validate files; exit non-zero on error severity (text only)
   parse     Emit the canonical JSON envelope (AST + diagnostics + summary)
   symbols   List workflows and activities; --json for envelope output
-  deps      Show the dependency graph; --json for envelope output
+  graph     Show the resolved deployment graph; --json for envelope output
   spec      Print the embedded TWF language specification
   lsp       Start the language server (stdio)
   help      Show this help
 
-JSON envelope shape (parse / symbols --json / deps --json):
+JSON envelope shape (parse / symbols --json / graph --json):
   {
     "summary":     { workflows, activities, errors, warnings, … },
     "diagnostics": [ { severity, kind, code, file, start, end, message, name } ],
@@ -36,7 +36,7 @@ Examples:
   twf check --lenient workflow.twf
   twf parse workflow.twf | jq '.diagnostics'
   twf symbols --json workflow.twf | jq '.symbols[].name'
-  twf deps workflow.twf
+  twf graph workflow.twf
   twf spec --list
   twf lsp
 `
@@ -56,8 +56,8 @@ func main() {
 		os.Exit(parseCommand(os.Args[2:]))
 	case "symbols":
 		os.Exit(symbolsCommand(os.Args[2:]))
-	case "deps":
-		os.Exit(depsCommand(os.Args[2:]))
+	case "graph":
+		os.Exit(graphCommand(os.Args[2:]))
 	case "spec":
 		os.Exit(specCommand(os.Args[2:]))
 	case "lsp":

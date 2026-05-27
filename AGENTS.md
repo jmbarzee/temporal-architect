@@ -20,7 +20,7 @@ tools/lsp/
   parser/ast/           AST node types, JSON serialization, walker
   parser/resolver/      Name resolution (string refs → pointers)
   parser/validator/     Post-resolution semantic checks
-  parser/deps/          Dependency graph extraction
+  parser/graph/         Resolved deployment graph extraction
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
   cmd/twf/              CLI binary (check, parse, symbols, deps, spec, lsp)
 tools/visualizer/       React workflow visualizer (npm package + VSIX webview)

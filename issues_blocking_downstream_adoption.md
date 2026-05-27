@@ -13,7 +13,7 @@ each item live in [`architecture-mode-discovery.md`](architecture-mode-discovery
 | 1 | Attach native `twf` binaries as GitHub Release assets | Medium | none (improves Phase 1 install UX) | **landed** — see `.github/workflows/release.yml` (matrix `build-twf-archive`, `SHA256SUMS`, `scripts/install.sh`) |
 | 2 | Publish `@temporal-architect/visualizer` as an ESM React component on npm | Medium | none (Phase 2+ aspiration) | **landed** — see `tools/visualizer/vite.lib.config.ts` + `publish-visualizer` job; requires `NPM_TOKEN` secret in GitHub before first release |
 | 3 | Publish skills bundle (`skills.tar.gz` or `temporal-architect-prompts` package) on each release | Low | none (Phase 2+ polish) | **landed (3a)** — see `scripts/gen-skills-manifest/` + `make build-skills-archive`; 3b PyPI distribution still open |
-| 4 | Add structured diagnostics (uniform JSON envelope across `twf parse` / `symbols --json` / `deps --json`; `check` stays text) | **High** | Phase 2 polish (Phase 2 ships without it but is brittle) | **landed** — see `tools/lsp/cmd/twf/twf.schema.json` + `diagnostic.go`; symbolic codes mirror `resolver.ErrorKind` / `validator.ErrorKind` |
+| 4 | Add structured diagnostics (uniform JSON envelope across `twf parse` / `symbols --json` / `graph --json`; `check` stays text) | **High** | Phase 2 polish (Phase 2 ships without it but is brittle) | **landed** — see `tools/lsp/cmd/twf/twf.schema.json` + `diagnostic.go`; symbolic codes mirror `resolver.ErrorKind` / `validator.ErrorKind` |
 | 5 | Relocate the language spec to `tools/spec/`, split into per-topic sections, embed in `twf`, expose via `twf spec` | Low | none (Phase 2+ DX) | **landed** — see `tools/spec/` module and `twf spec` subcommand |
 
 When an item lands upstream, replace `_not yet implemented upstream_` with
@@ -403,7 +403,7 @@ is not part of any documented contract.
 
 Instead of stapling `--json` onto `check`, structured diagnostics live in
 the **canonical JSON envelope** emitted by `twf parse`, and the same
-envelope shape is shared by `twf symbols --json` and `twf deps --json`:
+envelope shape is shared by `twf symbols --json` and `twf graph --json`:
 
 ```json
 {

@@ -35,7 +35,7 @@ A Go binary providing parsing, validation, symbol extraction, and a full LSP ser
 | `twf check <file...>` | Parse and validate `.twf` files, reporting errors |
 | `twf parse <file...>` | Output the AST as JSON (always emits partial AST, even with errors) |
 | `twf symbols <file...>` | List workflows and activities with their signatures |
-| `twf deps <file...>` | Show the dependency graph between definitions |
+| `twf graph <file...>` | Emit the resolved deployment graph (nodes are deployments, edges are dispatches) |
 | `twf spec [--list \| <slug>]` | Print the embedded TWF language specification |
 | `twf lsp` | Start the language server over stdio |
 

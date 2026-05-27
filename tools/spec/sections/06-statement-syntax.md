@@ -76,6 +76,8 @@ Calls a nexus service operation. The three IDENTs are: Endpoint, Service.Operati
 
 **Nexus call options:** `schedule_to_close_timeout`, `retry_policy`, `priority` (all nested blocks use the same sub-key schemas described above)
 
+`task_queue` is intentionally **not** a nexus call option. Nexus routing is determined entirely by the endpoint — the namespace's endpoint declaration carries the `task_queue` that dispatch lands on. Specifying a per-call queue would compete with the endpoint contract; the parser rejects `task_queue:` on a nexus call with `unknown option key: task_queue`.
+
 **Examples:**
 ```
 nexus OrderEndpoint OrderService.PlaceOrder(order) -> result

@@ -154,6 +154,38 @@ workflow ProcessOrder(order: Order) -> (Result):
 
 ---
 
+## Deployment Topology
+
+### Worker Indirection / Definition Reuse
+
+A worker is currently instantiated by name in at most one namespace block. The same `worker` definition cannot be reused across namespaces (each instantiation is a distinct `NamespaceWorker` referencing the same definition by name, but the resolver treats one definition → one deployment slot). The graph package assumes this 1:1 worker-definition-to-deployment mapping when enumerating deployment nodes.
+
+A reuse extension would let a single worker type set be instantiated in multiple namespaces on different task queues, capturing the "same code, multiple deployments" pattern that's common in Temporal (e.g., per-region or per-environment workers).
+
+```twf
+worker paymentWorker:
+    activity ChargePayment
+    nexus service PaymentService
+
+namespace ecommerce-us:
+    worker paymentWorker
+        options:
+            task_queue: "payments-us"
+
+namespace ecommerce-eu:
+    worker paymentWorker
+        options:
+            task_queue: "payments-eu"
+```
+
+**Why deferred:** The two-region case above is already expressible by declaring two separate workers with identical bodies (`paymentWorkerUS`, `paymentWorkerEU`). Reuse would be more elegant, but requires the parser/resolver to treat a worker definition as a *template* rather than a deployment, and requires the graph package to enumerate per-namespace worker deployment nodes (`worker:paymentWorker/namespace:ecommerce-us`, `worker:paymentWorker/namespace:ecommerce-eu`) instead of one node per definition.
+
+**Why needed:** Reduces duplication for multi-region / multi-environment deployments where the same code runs on multiple task queues with different routing.
+
+**Open questions:** Does instantiating the same worker in two namespaces imply two distinct deployments, or one logical worker visible from both namespaces? Should options blocks per-instantiation override worker-level defaults if those are ever added? How does the graph view distinguish the two deployments visually (separate nodes vs. one node with multiple parent edges)?
+
+---
+
 ## Syntax Extensions
 
 ### Bare Promise Declaration

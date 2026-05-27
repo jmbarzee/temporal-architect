@@ -13,7 +13,8 @@ import (
 //
 // The fields are deliberately small and orthogonal:
 //   - severity is "error" or "warning"
-//   - kind groups diagnostics by producing stage: "parse", "resolve", "validate"
+//   - kind groups diagnostics by producing stage: "parse", "resolve",
+//     "validate", or "graph"
 //   - code is a symbolic, stable identifier within a kind (e.g. UNDEFINED_ACTIVITY)
 //   - start and end are 1-based line/column positions; end == start where the
 //     producing stage has not computed a span (always present, never null)
@@ -49,7 +50,7 @@ type Position struct {
 //	}
 //
 // Each subcommand attaches a single payload field whose key is the command's
-// purpose: parse → "definitions", symbols → "symbols", deps → "graph".
+// purpose: parse → "definitions", symbols → "symbols", graph → "graph".
 // check emits an envelope without a payload (it IS diagnostics).
 type Envelope struct {
 	Summary     ast.FileSummary `json:"summary"`
