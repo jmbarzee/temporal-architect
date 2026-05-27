@@ -1351,6 +1351,13 @@ body {
   --chip-tint-bg-hover: rgba(159, 18, 57, 0.06);
   --chip-tint-bg-active: rgba(159, 18, 57, 0.12);
 }
+/* Nexus group chip — consolidates endpoint, service, and operation. Uses the
+   endpoint rose as the group representative (strongest hue = entry point). */
+.header-type-tag.header-type-nexus {
+  --chip-tint: var(--color-nexus-endpoint);
+  --chip-tint-bg-hover: rgba(159, 18, 57, 0.06);
+  --chip-tint-bg-active: rgba(159, 18, 57, 0.12);
+}
 
 /* Dark mode bumps the active backgrounds a bit because the surface they
    sit on is darker. */
@@ -1361,6 +1368,7 @@ body {
 .vscode-dark .header-type-tag.header-type-nexusOperationDef { --chip-tint-bg-hover: rgba(249, 168, 212, 0.10); --chip-tint-bg-active: rgba(249, 168, 212, 0.18); }
 .vscode-dark .header-type-tag.header-type-namespaceDef      { --chip-tint-bg-hover: rgba(148, 163, 184, 0.10); --chip-tint-bg-active: rgba(148, 163, 184, 0.18); }
 .vscode-dark .header-type-tag.header-type-nexusEndpointDef  { --chip-tint-bg-hover: rgba(190, 18, 60, 0.10);   --chip-tint-bg-active: rgba(190, 18, 60, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexus             { --chip-tint-bg-hover: rgba(190, 18, 60, 0.10);   --chip-tint-bg-active: rgba(190, 18, 60, 0.18); }
 
 /* No workflows message */
 .no-workflows {

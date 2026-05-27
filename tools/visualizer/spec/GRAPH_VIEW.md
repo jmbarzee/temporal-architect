@@ -197,17 +197,24 @@ The simulation should use **requestAnimationFrame** for rendering, decoupled fro
 
 ## Type Filtering
 
-The graph uses **type toggles** — the same five definition types as the tree view — to control which nodes are visible. Any combination of types is valid. There is no contiguity constraint.
+The graph uses **type toggles** to control which nodes are visible. Any combination is valid; there is no contiguity constraint.
 
 ### Type Toggle Control
 
-Seven toggle buttons in the filter bar, matching the tree view's type toggles:
+Five toggle chips in the graph view filter bar:
 
-**NS** · **Endpoint** · **Worker** · **Nxs** · **Op** · **Wf** · **Act**
+**NS** · **Workers** · **Nexus** · **Wf** · **Act**
 
-Each toggle shows/hides all nodes of that type. The toggle buttons use the same color coding as the tree view (slate, rose, grey, pink, light pink, purple, blue). Default state: Workers and Workflows ON; everything else OFF.
+The **Nexus** chip is a **group** that controls three underlying node kinds together:
+- **NexusEndpoint** — the routing alias (L1.5 nodes, parented to their namespace)
+- **NexusService** — the callable API surface (L2, hosted on a worker)
+- **NexusOperation** — the per-operation callable handle (L3, child of its service)
 
-This replaces the previous level range selector. The visual filter bar is now identical across both views (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar).
+Toggling the Nexus chip on turns all three on simultaneously; toggling it off hides all three and any nexus call edges that touch them. This keeps the filter bar compact. Internally, `visibleTypes` still tracks the three individual def-type keys (`nexusEndpointDef`, `nexusServiceDef`, `nexusOperationDef`) so the filter contract and persistence are unchanged — the group is a UI-only concept.
+
+Default state: Workers and Workflows ON; everything else OFF.
+
+The tree view's filter bar is separate and continues to show individual chips for the three nexus kinds; the consolidation is graph-view only.
 
 ### Which Nodes Are Visible
 
@@ -582,10 +589,34 @@ In both modes:
 - All edges along the traversal path are highlighted (arrowheads reinforced at full opacity).
 - All other nodes and edges dim (reduce opacity to ~20–30%).
 - Show a **hover info tooltip** anchored near the hovered node containing:
-  1. Node name, type icon + label, parent (worker for L3, namespace for L2), source file.
+  1. Node name, type icon + label, context line (format varies by type — see below), source file.
   2. **Duplicate-copies line** (only when the definition has more than one visible copy): `copy N of M`, where M is the number of sister copies currently visible. Makes the per-worker duplication explicit and tells the user the cross-canvas highlight on the other copies is intentional.
   3. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
   4. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
+
+**Context line format** — the second line of the tooltip shows the node's parent context in a format suited to each type's deployment role:
+
+| Node type | Context line format | Example |
+|---|---|---|
+| Namespace | *(no context — top-level)* | — |
+| NexusEndpoint | `namespace · queue` | `ecommerce · payment-queue` |
+| Worker | parent namespace name | `ecommerce` |
+| NexusService | `worker · queue` | `paymentWorker · nexus-queue` |
+| Workflow | parent worker name | `paymentWorker` |
+| NexusOperation | `service · worker · queue` | `PaymentService · paymentWorker · nexus-queue` |
+| Activity | parent worker name | `paymentWorker` |
+
+The `<parent context> · <task queue>` pattern for nexus types surfaces the two most useful addressing identifiers — where does it live, and what queue routes calls to it — without requiring the user to hover sub-nodes or read the sidebar.
+
+### Nexus Routing Association (Hover)
+
+The nexus family has transient hover behaviors that reveal routing relationships without persistent edges. These complement the standard transitive-dep highlight and apply automatically based on node type.
+
+**Hover on a `nexusEndpoint` node:** Standard transitive-dep BFS does not apply — endpoints have no outgoing dependency edges (they are pure addressing aliases). Instead, the canvas highlights all visible `nexusCall` edges whose routing metadata names this endpoint, plus the source and target nodes of those edges. The endpoint's namespace parent is also highlighted for context. The result makes the "which calls route through this entry point?" question answerable at a glance — the fan-out shows every caller and every operation that a call through this endpoint reaches.
+
+**Hover on a `nexusService` deployment:** The standard transitive-dep chain applies as usual. Additionally, all visible `nexusEndpoint` nodes whose `(namespace, queue)` deployment matches this service's deployment are added to the highlighted set (plus their namespace parent). This surfaces "which endpoints front calls to this service?" as a derived inference computed at hover time. No persistent endpoint→service edges are emitted by the parser — an endpoint is namespace-scoped routing, agnostic of which specific services share its queue. The relationship is real only at the call site; here it is expressed as transient highlight state rather than a materialised edge.
+
+No new edge types. No new data model. Both behaviors operate entirely over the existing graph, reading `edge.nexusEndpoint` metadata and node deployment fields (`namespace`, `queue`) that the parser already emits.
 
 ### Duplicate Highlighting
 

@@ -73,6 +73,16 @@ export const DEF_TYPE_CONFIGS: DefTypeConfig[] = [
 
 export const DEF_TYPE_ORDER = new Map(DEF_TYPE_CONFIGS.map((cfg, i) => [cfg.type, i]))
 
+// The three nexus def types are consolidated into a single "Nexus" filter
+// chip in the graph view filter bar. This constant names the group so the
+// chip-toggle and recentlyChanged tracking can reference them without
+// repeating the literal strings. The individual entries remain in
+// DEF_TYPE_CONFIGS so the tree view sort order and the shared filter
+// contract (visibleTypes Set) continue to use individual type keys.
+export const NEXUS_GROUP_DEF_TYPES = [
+  'nexusEndpointDef', 'nexusServiceDef', 'nexusOperationDef',
+] as const
+
 export const HANDLER_CONFIG = {
   signalDecl: { icon: THEME.signal.icon, keyword: 'signal', cssClass: 'declaration-signal' },
   queryDecl:  { icon: THEME.query.icon,  keyword: 'query',  cssClass: 'declaration-query' },

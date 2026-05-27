@@ -22,7 +22,7 @@ import type { ForceSection } from './GraphControlPanel'
 import { PinToggle } from './PinToggle'
 import { GraphContextMenu, type ContextMenuItem } from './GraphContextMenu'
 import { SearchIcon } from './icons/GearIcons'
-import { THEME, DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
+import { THEME, DEF_TYPE_CONFIGS, NEXUS_GROUP_DEF_TYPES } from '../theme/temporal-theme'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -180,6 +180,25 @@ function computeGraphNodeSummary(
     return parts.join(' ')
   }
 }
+
+// Graph-view filter entries. The three nexus def types (endpoint, service,
+// operation) are consolidated into one "Nexus" group chip so the filter bar
+// stays compact. Internally `visibleTypes` still tracks individual def-type
+// keys; the group is a UI concept only — no filter contract changes.
+interface FilterEntry {
+  id: string
+  icon: string
+  label: string
+  types: string[]
+}
+
+const GRAPH_FILTER_ENTRIES: FilterEntry[] = [
+  { id: 'namespaceDef',  icon: THEME.namespace.icon,     label: 'Namespaces', types: ['namespaceDef'] },
+  { id: 'workerDef',     icon: THEME.worker.icon,        label: 'Workers',    types: ['workerDef'] },
+  { id: 'nexus',         icon: THEME.nexusEndpoint.icon, label: 'Nexus',      types: [...NEXUS_GROUP_DEF_TYPES] },
+  { id: 'workflowDef',   icon: THEME.workflow.icon,      label: 'Workflows',  types: ['workflowDef'] },
+  { id: 'activityDef',   icon: THEME.activity.icon,      label: 'Activities', types: ['activityDef'] },
+]
 
 // Map AST defType to graph nodeType
 function defTypeToNodeType(defType: string): string {
@@ -449,20 +468,71 @@ export function GraphView({
   // share opacity with the hovered node while everything unrelated
   // dims, telling the user "all of these green dots are the same
   // thing, just on different workers".
+  //
+  // Two nexus-specific overrides apply before the generic BFS:
+  //
+  //   nexusEndpoint — endpoints have no outgoing dep edges; transitive
+  //   BFS would return only the endpoint itself. Instead we follow the
+  //   `nexusEndpoint` routing metadata on visible edges and highlight
+  //   every nexus call that routes through this endpoint, making the
+  //   fan-out immediately visible.
+  //
+  //   nexusService — after the normal BFS, additionally highlight any
+  //   visible nexusEndpoint nodes whose (namespace, queue) match the
+  //   service's deployment. This is a derived inference computed at hover
+  //   time — the endpoint fronts calls to this service, but the parser
+  //   correctly doesn't emit a persistent endpoint→service edge.
   const { highlightedNodes, highlightedEdges } = React.useMemo(() => {
     const activeId = hoveredNodeId ?? selectedNodeId
     if (!activeId || !visibleIds.has(activeId)) {
       return { highlightedNodes: null as Set<string> | null, highlightedEdges: null as Set<string> | null }
     }
+
+    const activeNode = simRef.current?.getNode(activeId)
+
+    // nexusEndpoint: routing fan-out highlight via edge metadata.
+    if (activeNode?.nodeType === 'nexusEndpoint') {
+      const nodes = new Set<string>([activeId])
+      const edges = new Set<string>()
+      // Pull in the namespace parent for context so the user sees where
+      // the endpoint lives, not just which calls pass through it.
+      if (activeNode.parentId && visibleIds.has(activeNode.parentId)) {
+        nodes.add(activeNode.parentId)
+      }
+      for (const edge of visibleEdges) {
+        if (edge.nexusEndpoint === activeNode.name) {
+          edges.add(edge.id)
+          if (visibleIds.has(edge.sourceId)) nodes.add(edge.sourceId)
+          if (visibleIds.has(edge.targetId)) nodes.add(edge.targetId)
+        }
+      }
+      return { highlightedNodes: nodes, highlightedEdges: edges }
+    }
+
     const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
     const nodes = getTransitiveDeps(activeId, visibleEdges, visibleIds, direction)
+
+    // nexusService: augment the standard dep chain with endpoints that
+    // front this service's task queue in the same namespace. Matching is
+    // on (namespace, queue) — both come from parser deployment metadata.
+    if (activeNode?.nodeType === 'nexusService' && activeNode.namespace && activeNode.queue) {
+      const svcNs = activeNode.namespace
+      const svcQ = activeNode.queue
+      for (const n of visibleNodes) {
+        if (n.nodeType === 'nexusEndpoint' && n.namespace === svcNs && n.queue === svcQ) {
+          nodes.add(n.id)
+          if (n.parentId && visibleIds.has(n.parentId)) nodes.add(n.parentId)
+        }
+      }
+    }
+
     // Sister copies of the active definition are intentionally NOT added to
     // highlightedNodes here. They will be dimmed like any other off-chain node,
     // but the canvas draws a full-color duplicate halo on them so the user can
     // still identify that they share a definition with the active node.
     const edges = getHighlightedEdgeIds(nodes, visibleEdges)
     return { highlightedNodes: nodes, highlightedEdges: edges }
-  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, graph])
+  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, graph])
 
   // Physics animation loop.
   //
@@ -668,11 +738,17 @@ export function GraphView({
     setRunning(true)
   }, [])
 
-  // Type toggle — emits an updated FilterState to the canvas.
-  const toggleType = (type: string) => {
+  // Type group toggle — turns all types in the group on together, or off
+  // together. If any member is currently on, the whole group turns off;
+  // if all are off, the whole group turns on.
+  const toggleTypeGroup = (types: string[]) => {
+    const anyOn = types.some(t => filter.visibleTypes.has(t))
     const next = new Set(filter.visibleTypes)
-    if (next.has(type)) next.delete(type)
-    else next.add(type)
+    if (anyOn) {
+      for (const t of types) next.delete(t)
+    } else {
+      for (const t of types) next.add(t)
+    }
     onFilterChange({ ...filter, visibleTypes: next })
   }
 
@@ -953,24 +1029,24 @@ export function GraphView({
 
         <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
           <div className="header-types-row">
-            {DEF_TYPE_CONFIGS.map(cfg => {
-              const isActive = visibleTypes.has(cfg.type)
-              const isChanged = recentlyChanged.has(`type:${cfg.type}`)
+            {GRAPH_FILTER_ENTRIES.map(entry => {
+              const isActive = entry.types.some(t => visibleTypes.has(t))
+              const isChanged = entry.types.some(t => recentlyChanged.has(`type:${t}`))
               const cls = [
                 'header-type-tag',
                 isActive ? 'active' : '',
-                `header-type-${cfg.type}`,
+                `header-type-${entry.id}`,
                 isChanged ? 'recently-changed' : '',
               ].filter(Boolean).join(' ')
               return (
                 <button
-                  key={cfg.type}
+                  key={entry.id}
                   className={cls}
-                  onClick={() => toggleType(cfg.type)}
-                  title={isActive ? `Hide ${cfg.label.toLowerCase()}` : `Show ${cfg.label.toLowerCase()}`}
+                  onClick={() => toggleTypeGroup(entry.types)}
+                  title={isActive ? `Hide ${entry.label.toLowerCase()}` : `Show ${entry.label.toLowerCase()}`}
                 >
-                  <span className="header-type-icon">{cfg.icon}</span>
-                  <span className="header-type-label">{cfg.label}</span>
+                  <span className="header-type-icon">{entry.icon}</span>
+                  <span className="header-type-label">{entry.label}</span>
                 </button>
               )
             })}
@@ -1120,6 +1196,16 @@ interface GraphHoverTooltipProps {
   duplicateGroups: Map<string, Set<string>>
 }
 
+// Strip the kind prefix from a parser metadata field (e.g. 'namespace:ecommerce'
+// → 'ecommerce', 'worker:paymentWorker' → 'paymentWorker'). The parser includes
+// the kind label so consumers can identify the type of the referenced entity;
+// tooltips want the bare name.
+function stripKindPrefix(s: string | undefined): string | undefined {
+  if (!s) return undefined
+  const i = s.indexOf(':')
+  return i >= 0 ? s.slice(i + 1) : s
+}
+
 function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups }: GraphHoverTooltipProps) {
   if (!hoveredNodeId) return null
   const sim = simRef.current
@@ -1128,6 +1214,27 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   if (!node) return null
 
   const parentName = node.parentId ? sim.getNode(node.parentId)?.name : undefined
+  // Context line — format varies by node type to surface the most useful
+  // parent context. Nexus types show their addressing metadata in the
+  // `<parent context> · <task queue>` format from the spec.
+  let contextLine: string | undefined
+  switch (node.nodeType) {
+    case 'nexusEndpoint':
+      contextLine = [stripKindPrefix(node.namespace), node.queue].filter(Boolean).join(' · ') || undefined
+      break
+    case 'nexusService':
+      contextLine = [stripKindPrefix(node.worker), node.queue].filter(Boolean).join(' · ') || undefined
+      break
+    case 'nexusOperation':
+      contextLine = [parentName, stripKindPrefix(node.worker), node.queue].filter(Boolean).join(' · ') || undefined
+      break
+    default:
+      contextLine = parentName
+  }
+  // Use the individual DEF_TYPE_CONFIGS entry for the tooltip icon — the
+  // per-type icon (★ for service, ☆ for operation, ⌖ for endpoint) is
+  // more informative than the group chip icon. DEF_TYPE_CONFIGS still has
+  // all 7 entries even though 3 are collapsed into one chip in the filter bar.
   const cfg = DEF_TYPE_CONFIGS.find(c => c.type === nodeTypeToDefType(node.nodeType))
   const fileName = node.sourceFile?.split('/').pop()
 
@@ -1158,7 +1265,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         {cfg && <span className="tooltip-type-icon">{cfg.icon}</span>}
         <span className="tooltip-name">{node.name}</span>
       </div>
-      {parentName && <div className="tooltip-parent">{parentName}</div>}
+      {contextLine && <div className="tooltip-parent">{contextLine}</div>}
       {fileName && <div className="tooltip-file">{fileName}</div>}
       {copyCount > 1 && (
         <div className="tooltip-duplicates" title="This definition is registered on multiple workers. Hovering any copy highlights all copies.">
