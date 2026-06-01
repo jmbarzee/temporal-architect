@@ -2,10 +2,6 @@
 
 Enhancement ideas for the design skill. Not errors — all current content is functional. Items here represent coverage gaps or areas where newer DSL features could be better leveraged. Not committed to any cycle — just a place to drop thoughts.
 
-> **Reconciled (this cycle):** Many earlier entries were stale — the listed gap had already been closed in the current skill files. Removed as stale: SKILL.md completion-checklist topology check (Completion #3 already covers it), Reference Index nexus/task-queues links (already present), "Rules table" nexus rules (no such table), common-errors nexus/worker/namespace catalog (fully documented), design-checklist deployment-topology checks (Deployment Topology section exists), anti-patterns "only 3 covered" (11+ now), workflow-boundaries "Use Nexus When" (section exists), primitives-reference worker/namespace (Infrastructure section has them), patterns `elif` (state machine uses `switch`/`case`), task-queues "nexus service" line (already says "workflow, activity, and nexus service"), child-workflows `workflow_id` rethink (now framed as SDK-level).
->
-> Items consumed by `REVISIONS_001`–`005` (idempotency-strategy expectation, activity-sprawl / nexus-same-namespace / misplaced-deployment-config anti-patterns, SDK-intrinsic + entity-ordering cleanup, `history_size` → `history_length` fix) have been implemented and removed.
-
 ---
 
 ## Deferred: worker/namespace deployment context in topic examples
