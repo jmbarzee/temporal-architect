@@ -7,15 +7,12 @@ import type {
   SetStmt,
   UnsetStmt,
 } from '../../types/ast'
-import { THEME, CLOSE_REASON_THEME } from '../../theme/temporal-theme'
-
 // Return
 export function ReturnBlock({ stmt }: { stmt: ReturnStmt }) {
   return (
     <div className="block block-return collapsed">
       <div className="block-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon">{THEME.return.icon}</span>
         <span className="block-keyword">return</span>
         {stmt.value && <span className="block-signature">{stmt.value}</span>}
       </div>
@@ -25,14 +22,12 @@ export function ReturnBlock({ stmt }: { stmt: ReturnStmt }) {
 
 // Close - workflow termination
 export function CloseBlock({ stmt }: { stmt: CloseStmt }) {
-  const icon = (CLOSE_REASON_THEME[stmt.reason] ?? THEME.closeComplete).icon
   const statusClass = stmt.reason === 'continue_as_new' ? 'close-continue-as-new' : stmt.reason === 'fail' ? 'close-failed' : ''
 
   return (
     <div className={`block block-close ${statusClass} collapsed`}>
       <div className="block-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon">{icon}</span>
         <span className="block-keyword">close</span>
         <span className="block-signature">
           <span className="close-reason">{stmt.reason}</span>
@@ -43,28 +38,26 @@ export function CloseBlock({ stmt }: { stmt: CloseStmt }) {
   )
 }
 
-// Raw statement (code)
+// Raw statement (code) — naked line that aligns flush with sibling block edges
 export function RawBlock({ stmt }: { stmt: RawStmt }) {
   return (
     <div className="block block-raw collapsed">
       <div className="block-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon">{THEME.raw.icon}</span>
         <span className="block-code">{stmt.text}</span>
       </div>
     </div>
   )
 }
 
-// Comment
+// Comment — naked line prefixed with the DSL's `#` so it aligns with raw
+// statements rather than reading as de-dented.
 export function CommentBlock({ stmt }: { stmt: Comment }) {
   return (
     <div className="block block-comment collapsed">
       <div className="block-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon">{THEME.raw.icon}</span>
-        <span className="block-keyword">comment</span>
-        <span className="block-signature" title={stmt.text}>{stmt.text}</span>
+        <span className="block-comment-text" title={stmt.text}># {stmt.text}</span>
       </div>
     </div>
   )
@@ -76,7 +69,6 @@ export function SimpleBlock({ keyword, className }: { keyword: string; className
     <div className={`block ${className} collapsed`}>
       <div className="block-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon">{THEME.breakContinue.icon}</span>
         <span className="block-keyword">{keyword}</span>
       </div>
     </div>
@@ -119,7 +111,6 @@ export function PromiseBlock({ stmt }: { stmt: PromiseStmt }) {
     <div className="block block-promise collapsed">
       <div className="block-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon">{THEME.promise.icon}</span>
         <span className="block-keyword">promise</span>
         <span className="block-signature">{stmt.name} ← {target}</span>
       </div>
@@ -133,7 +124,6 @@ export function SetBlock({ stmt }: { stmt: SetStmt }) {
     <div className="block block-set collapsed">
       <div className="block-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon">{THEME.conditionSet.icon}</span>
         <span className="block-keyword">set</span>
         <span className="block-signature">{stmt.name}</span>
       </div>
@@ -147,7 +137,6 @@ export function UnsetBlock({ stmt }: { stmt: UnsetStmt }) {
     <div className="block block-unset collapsed">
       <div className="block-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon">{THEME.conditionUnset.icon}</span>
         <span className="block-keyword">unset</span>
         <span className="block-signature">{stmt.name}</span>
       </div>

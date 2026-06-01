@@ -9,6 +9,20 @@ interface StatementBlockProps {
   statement: Statement
 }
 
+// Renders a procedure body (a list of statements) inside a control-flow-styled
+// container. The container gives the body a cohesive backdrop so naked raw
+// statements read as code rather than floating, boxless lines.
+export function StatementBody({ statements }: { statements: Statement[] }) {
+  if (!statements || statements.length === 0) return null
+  return (
+    <div className="block-statement-body">
+      {statements.map((stmt) => (
+        <StatementBlock key={`${stmt.line}:${stmt.column}`} statement={stmt} />
+      ))}
+    </div>
+  )
+}
+
 export function StatementBlock({ statement }: StatementBlockProps) {
   switch (statement.type) {
     case 'activityCall':

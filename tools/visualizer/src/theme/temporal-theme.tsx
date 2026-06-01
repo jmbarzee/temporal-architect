@@ -8,6 +8,8 @@ export interface PrimitiveTheme {
   icon: string
   label: string
   cssVarPrefix: string
+  /** Font-size (px) override for the text glyph. Defaults to the CSS base. */
+  iconSize?: number
   SvgIcon?: React.ComponentType<{ size?: number }>
 }
 
@@ -26,8 +28,8 @@ export const THEME: Record<PrimitiveKind, PrimitiveTheme> = {
   workflow:           { icon: '⚙⚙', label: 'Workflow',              cssVarPrefix: 'workflow',         SvgIcon: InterlockingGearsIcon },
   activity:           { icon: '⚙',   label: 'Activity',              cssVarPrefix: 'activity',         SvgIcon: SingleGearIcon },
   worker:             { icon: '□',   label: 'Worker',                cssVarPrefix: 'worker' },
-  namespace:          { icon: '⧉',   label: 'Namespace',             cssVarPrefix: 'namespace' },
-  nexusService:       { icon: '★',   label: 'Nexus Service',         cssVarPrefix: 'nexus-service' },
+  namespace:          { icon: '⧉',   label: 'Namespace',             cssVarPrefix: 'namespace',        iconSize: 16 },
+  nexusService:       { icon: '★',   label: 'Nexus Service',         cssVarPrefix: 'nexus-service',    iconSize: 16 },
   nexusOperation:     { icon: '☆',   label: 'Nexus Operation',       cssVarPrefix: 'nexus-operation' },
   nexusEndpoint:      { icon: '⌖',   label: 'Nexus Endpoint',        cssVarPrefix: 'nexus-endpoint' },
   nexusCall:          { icon: '☆',   label: 'Nexus Call',            cssVarPrefix: 'nexus' },
@@ -143,8 +145,21 @@ export const WORKER_REF_THEME: Record<string, PrimitiveTheme> = {
 
 // --- Helper component ---
 
-export function ThemeIcon({ kind, size }: { kind: PrimitiveKind; size?: number }) {
+/**
+ * Central block-header icon. Renders inside a fixed 16px square so the glyph
+ * never changes the row height or shifts the toggle/keyword alignment, and
+ * workflow/activity always render their SVG gears (no text fallback) so they
+ * look identical everywhere. This is the single place that owns icon
+ * formatting — call sites just pass a `kind`.
+ */
+export function BlockIcon({ kind }: { kind: PrimitiveKind }) {
   const entry = THEME[kind]
-  if (entry.SvgIcon) return <entry.SvgIcon size={size} />
-  return <>{entry.icon}</>
+  return (
+    <span
+      className="block-icon"
+      style={entry.iconSize ? { fontSize: `${entry.iconSize}px` } : undefined}
+    >
+      {entry.SvgIcon ? <entry.SvgIcon size={14} /> : entry.icon}
+    </span>
+  )
 }

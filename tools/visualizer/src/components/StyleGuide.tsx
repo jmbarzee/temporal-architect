@@ -1,4 +1,4 @@
-import { THEME, ThemeIcon, HANDLER_CONFIG, CLOSE_REASON_THEME, AWAIT_TARGET_THEME, WORKER_REF_THEME } from '../theme/temporal-theme'
+import { THEME, BlockIcon, HANDLER_CONFIG, CLOSE_REASON_THEME, WORKER_REF_THEME } from '../theme/temporal-theme'
 import './style-guide.css'
 import './blocks/blocks.css'
 
@@ -24,7 +24,7 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-namespace-def collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon block-icon-namespace">{THEME.namespace.icon}</span>
+              <BlockIcon kind="namespace" />
               <span className="block-keyword">namespace</span>
               <span className="block-signature">production (3 entries)</span>
             </div>
@@ -34,7 +34,7 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-worker-def collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.worker.icon}</span>
+              <BlockIcon kind="worker" />
               <span className="block-keyword">worker</span>
               <span className="block-signature">main-worker (5 types)</span>
             </div>
@@ -45,9 +45,7 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
             <div key={refType} className={`worker-ref worker-ref-${refType} collapsed`}>
               <div className="worker-ref-header">
                 <span className="block-toggle-placeholder" />
-                <span className={`block-icon ${refType === 'service' ? 'block-icon-nexus-service' : ''}`}>
-                  {WORKER_REF_THEME[refType].icon}
-                </span>
+                <BlockIcon kind={refType === 'service' ? 'nexusService' : refType} />
                 <span className="worker-ref-name">{WORKER_REF_THEME[refType].label}</span>
               </div>
             </div>
@@ -57,7 +55,7 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-nexus-service-def collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon block-icon-nexus-service">{THEME.nexusService.icon}</span>
+              <BlockIcon kind="nexusService" />
               <span className="block-keyword">service</span>
               <span className="block-signature">PaymentService (2 operations)</span>
             </div>
@@ -67,7 +65,7 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-nexus-operation nexus-operation-async collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon block-icon-nexus-operation">{THEME.nexusOperation.icon}</span>
+              <BlockIcon kind="nexusOperation" />
               <span className="block-keyword">async</span>
               <span className="block-signature">ProcessPayment</span>
             </div>
@@ -75,7 +73,7 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-nexus-operation nexus-operation-sync collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon block-icon-nexus-operation">{THEME.nexusOperation.icon}</span>
+              <BlockIcon kind="nexusOperation" />
               <span className="block-keyword">sync</span>
               <span className="block-signature">GetStatus(id string) &rarr; Status</span>
             </div>
@@ -85,7 +83,7 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-workflow collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon"><ThemeIcon kind="workflow" /></span>
+              <BlockIcon kind="workflow" />
               <span className="block-keyword">workflow</span>
               <span className="block-signature">OrderWorkflow(input OrderInput) &rarr; OrderResult</span>
             </div>
@@ -95,7 +93,7 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-activity-def collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon"><ThemeIcon kind="activity" /></span>
+              <BlockIcon kind="activity" />
               <span className="block-keyword">activity</span>
               <span className="block-signature">SendEmail(to string, body string)</span>
             </div>
@@ -110,7 +108,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-activity collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon"><ThemeIcon kind="activity" /></span>
               <span className="block-keyword">activity</span>
               <span className="block-signature">SendEmail(to, body) &rarr; err</span>
             </div>
@@ -120,7 +117,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-workflow-call collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon"><ThemeIcon kind="workflow" /></span>
               <span className="block-keyword">workflow</span>
               <span className="block-signature">ChildWorkflow(args) &rarr; result</span>
             </div>
@@ -130,7 +126,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-workflow-call block-mode-detach collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon"><ThemeIcon kind="workflow" /></span>
               <span className="block-keyword">detach workflow</span>
               <span className="block-signature">BackgroundJob(data)</span>
             </div>
@@ -140,7 +135,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-nexus-call collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon block-icon-nexus-call">{THEME.nexusCall.icon}</span>
               <span className="block-keyword">nexus</span>
               <span className="block-signature">ep PaymentService.Charge(amount) &rarr; receipt</span>
             </div>
@@ -148,8 +142,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
 
           {/* Await variants */}
           {(['timer', 'signal', 'update', 'activity', 'workflow', 'nexus', 'ident'] as const).map(kind => {
-            const theme = AWAIT_TARGET_THEME[kind]
-            const showIcon = kind !== 'activity' && kind !== 'workflow' && kind !== 'nexus'
             const sampleSig = kind === 'timer' ? '(30m)' :
               kind === 'signal' ? 'OrderCancelled' :
               kind === 'update' ? 'UpdateStatus(newStatus)' :
@@ -161,7 +153,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
               <div key={kind} className={`block block-await-stmt block-await-stmt-${kind} collapsed`}>
                 <div className="block-header">
                   <span className="block-toggle-placeholder" />
-                  <span className="block-icon">{showIcon ? theme.icon : ''}</span>
                   <span className="block-keyword">await {kind === 'ident' ? '' : kind}</span>
                   <span className="block-signature">{sampleSig}</span>
                 </div>
@@ -173,7 +164,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-await-all collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.awaitAll.icon}</span>
               <span className="block-keyword">await all</span>
               <span className="block-signature">3 branch(es)</span>
             </div>
@@ -183,7 +173,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-await-one collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon-placeholder" />
               <span className="block-keyword">await one</span>
               <span className="block-signature">first of 2 cases</span>
             </div>
@@ -195,7 +184,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
             </div>
             <div className="tagged-content tagged-signal">
               <span className="block-toggle-placeholder" />
-              <span className="tagged-icon">{THEME.signal.icon}</span>
               <span className="tagged-kind">signal</span>
               <span className="tagged-name">Cancel</span>
             </div>
@@ -206,7 +194,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
             </div>
             <div className="tagged-content tagged-timer">
               <span className="block-toggle-placeholder" />
-              <span className="tagged-icon">{THEME.timer.icon}</span>
               <span className="tagged-kind">timer</span>
               <span className="tagged-name">(1h)</span>
             </div>
@@ -236,20 +223,18 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-return collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.return.icon}</span>
               <span className="block-keyword">return</span>
               <span className="block-signature">result</span>
             </div>
           </div>
 
           {/* Close variants */}
-          {Object.entries(CLOSE_REASON_THEME).map(([reason, theme]) => {
+          {Object.keys(CLOSE_REASON_THEME).map((reason) => {
             const statusClass = reason === 'continue_as_new' ? 'close-continue-as-new' : reason === 'fail' ? 'close-failed' : ''
             return (
               <div key={reason} className={`block block-close ${statusClass} collapsed`}>
                 <div className="block-header">
                   <span className="block-toggle-placeholder" />
-                  <span className="block-icon">{theme.icon}</span>
                   <span className="block-keyword">close</span>
                   <span className="block-signature">
                     <span className="close-reason">{reason}</span>
@@ -259,12 +244,27 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
             )
           })}
 
-          {/* Raw */}
-          <div className="block block-raw collapsed">
-            <div className="block-header">
-              <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.raw.icon}</span>
-              <span className="block-code">logger.Info("processing order")</span>
+          {/* Body container with naked raw statements + comment.
+              Raw statements and comments render without a box and blend into
+              the control-flow-styled body container, aligned flush left. */}
+          <div className="block-statement-body">
+            <div className="block block-raw collapsed">
+              <div className="block-header">
+                <span className="block-toggle-placeholder" />
+                <span className="block-code">currentPhase = phase_0_5</span>
+              </div>
+            </div>
+            <div className="block block-comment collapsed">
+              <div className="block-header">
+                <span className="block-toggle-placeholder" />
+                <span className="block-comment-text"># validate the order before charging</span>
+              </div>
+            </div>
+            <div className="block block-raw collapsed">
+              <div className="block-header">
+                <span className="block-toggle-placeholder" />
+                <span className="block-code">logger.Info("processing order")</span>
+              </div>
             </div>
           </div>
 
@@ -272,7 +272,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-promise collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.promise.icon}</span>
               <span className="block-keyword">promise</span>
               <span className="block-signature">emailFuture &larr; activity SendEmail(to, body)</span>
             </div>
@@ -282,7 +281,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-set collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.conditionSet.icon}</span>
               <span className="block-keyword">set</span>
               <span className="block-signature">isReady</span>
             </div>
@@ -290,7 +288,6 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-unset collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.conditionUnset.icon}</span>
               <span className="block-keyword">unset</span>
               <span className="block-signature">isReady</span>
             </div>
@@ -300,14 +297,12 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-break collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.breakContinue.icon}</span>
               <span className="block-keyword">break</span>
             </div>
           </div>
           <div className="block block-continue collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.breakContinue.icon}</span>
               <span className="block-keyword">continue</span>
             </div>
           </div>
@@ -316,9 +311,32 @@ export function StyleGuide({ onClose }: { onClose: () => void }) {
           <div className="block block-for collapsed">
             <div className="block-header">
               <span className="block-toggle-placeholder" />
-              <span className="block-icon">{THEME.forLoop.icon}</span>
               <span className="block-keyword">for</span>
               <span className="block-signature">item in items</span>
+            </div>
+          </div>
+
+          {/* If / else-if / else chain — attached rungs sharing one outline */}
+          <div className="block block-if expanded">
+            <div className="if-branch">
+              <div className="block-header">
+                <span className="block-toggle">▼</span>
+                <span className="block-keyword">if</span>
+                <span className="block-signature">order.total &gt; 100</span>
+              </div>
+            </div>
+            <div className="if-branch">
+              <div className="block-header">
+                <span className="block-toggle-placeholder" />
+                <span className="block-keyword">else if</span>
+                <span className="block-signature">order.total &gt; 0</span>
+              </div>
+            </div>
+            <div className="if-branch">
+              <div className="block-header">
+                <span className="block-toggle-placeholder" />
+                <span className="block-keyword">else</span>
+              </div>
             </div>
           </div>
         </div>

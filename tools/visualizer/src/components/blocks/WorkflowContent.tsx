@@ -1,7 +1,7 @@
 import React from 'react'
 import type { WorkflowDef, HandlerDecl, Statement, SignalDecl, QueryDecl, UpdateDecl } from '../../types/ast'
-import { StatementBlock } from './StatementBlock'
-import { THEME, HANDLER_CONFIG, ThemeIcon } from '../../theme/temporal-theme'
+import { StatementBlock, StatementBody } from './StatementBlock'
+import { THEME, HANDLER_CONFIG, BlockIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { HandlerContext } from '../WorkflowCanvas'
 import './blocks.css'
@@ -138,12 +138,9 @@ export function WorkflowContent({ def }: { def: WorkflowDef }) {
         </div>
       )}
 
-      {/* Body statements */}
-      <div>
-        {(def.body || []).map((stmt) => (
-          <StatementBlock key={`${stmt.line}:${stmt.column}`} statement={stmt} />
-        ))}
-      </div>
+      {/* Body statements — wrapped in a control-flow container so the body
+          reads as one cohesive procedure block */}
+      <StatementBody statements={def.body || []} />
     </>
   )
 }
@@ -172,7 +169,7 @@ export function InlineWorkflowBlock({ def }: { def: WorkflowDef }) {
       <div className={`block block-workflow-call ${expanded ? 'expanded' : 'collapsed'}`}>
         <div className="block-header" onClick={toggle}>
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-          <span className="block-icon"><ThemeIcon kind="workflow" /></span>
+          <BlockIcon kind="workflow" />
           <span className="block-keyword">workflow</span>
           <span className="block-signature">{signature}</span>
         </div>
@@ -195,7 +192,6 @@ export function SyncBodyBlock({ body }: { body: Statement[] }) {
     <div className={`block block-sync-body ${expanded ? 'expanded' : 'collapsed'}`}>
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="block-icon-placeholder" />
         <span className="block-keyword">handler</span>
       </div>
       {expanded && (

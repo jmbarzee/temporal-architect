@@ -2,7 +2,6 @@ import React from 'react'
 import type { ActivityCall, WorkflowCall, NexusCall, SignalDecl, QueryDecl, UpdateDecl } from '../../types/ast'
 import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
 import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
-import { THEME, ThemeIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
 import { ContextualNavButtons } from './ContextualNav'
@@ -25,7 +24,6 @@ export function ActivityCallBlock({ stmt }: { stmt: ActivityCall }) {
         ) : (
           <span className="block-toggle-placeholder" />
         )}
-        <span className="block-icon"><ThemeIcon kind="activity" /></span>
         <span className="block-keyword">activity</span>
         <span className="block-signature" title={signature}>{signature}</span>
         {!isDefined && <span className="block-unresolved-badge">?</span>}
@@ -65,7 +63,6 @@ export function WorkflowCallBlock({ stmt }: { stmt: WorkflowCall }) {
         ) : (
           <span className="block-toggle-placeholder" />
         )}
-        <span className="block-icon"><ThemeIcon kind="workflow" /></span>
         <span className="block-keyword">{modePrefix}workflow</span>
         <span className="block-signature" title={signature}>{signature}</span>
         {!isDefined && <span className="block-unresolved-badge">?</span>}
@@ -134,7 +131,6 @@ export function NexusCallBlock({ stmt }: { stmt: NexusCall }) {
         ) : (
           <span className="block-toggle-placeholder" />
         )}
-        <span className="block-icon block-icon-nexus-call">{THEME.nexusCall.icon}</span>
         <span className="block-keyword">{modePrefix}nexus</span>
         <span className="block-signature" title={`${signature}${result}`}>{signature}{result}</span>
         {!isDefined && stmt.service && <span className="block-unresolved-badge">?</span>}

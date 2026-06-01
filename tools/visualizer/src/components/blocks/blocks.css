@@ -59,9 +59,15 @@
   --block-continue-new-border: #FDBA74;
   --block-continue-new-text: #9A3412;
 
-  --block-raw-bg: #F8FAFC;
-  --block-raw-border: #E2E8F0;
-  --block-raw-text: #64748B;
+  /* Raw / pseudo-code shares the control-flow palette */
+  --block-raw-bg: linear-gradient(135deg, #F8FAFC 0%, #F4F6F9 100%);
+  --block-raw-border: #CBD5E1;
+  --block-raw-text: #334155;
+
+  /* Comment — recedes toward the background, just muted italic text */
+  --block-comment-bg: transparent;
+  --block-comment-border: transparent;
+  --block-comment-text: #94A3B8;
 
   --block-nexus-bg: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%);
   --block-nexus-border: #F9A8D4;
@@ -162,9 +168,15 @@
   --block-continue-new-border: #C87D3D;
   --block-continue-new-text: #F5D4A8;
 
-  --block-raw-bg: #1E2024;
-  --block-raw-border: #3D4550;
-  --block-raw-text: #A0AEC0;
+  /* Raw / pseudo-code shares the control-flow palette */
+  --block-raw-bg: linear-gradient(135deg, #1A1D22 0%, #1E2228 100%);
+  --block-raw-border: #4A5568;
+  --block-raw-text: #CBD5E1;
+
+  /* Comment — recedes toward the background, just muted italic text */
+  --block-comment-bg: transparent;
+  --block-comment-border: transparent;
+  --block-comment-text: #6B7688;
 
   --block-nexus-bg: linear-gradient(135deg, #3D1E30 0%, #4A2538 100%);
   --block-nexus-border: #C86DA5;
@@ -217,8 +229,8 @@
 .block-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 12px 8px 6px;
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
@@ -229,40 +241,49 @@
   filter: brightness(var(--hover-brightness));
 }
 
+/* The leading column items (toggle, icon, keyword) must never shrink, or the
+   flex layout collapses them by varying amounts under width pressure (long
+   signatures, deep nesting) and the content drifts left inconsistently from
+   one row to the next. Only the signature absorbs shrinking (via ellipsis). */
 .block-toggle {
   font-size: 10px;
-  width: 14px;
+  flex: 0 0 12px;
   text-align: center;
   opacity: 0.7;
 }
 
 .block-toggle-placeholder {
-  width: 14px;
+  flex: 0 0 12px;
 }
 
+/* Central icon footprint: a fixed 16px square so any glyph (text or SVG gears)
+   sits in the same box and never shifts the row's toggle/keyword alignment.
+   Per-icon sizing lives in the THEME (iconSize), applied inline by BlockIcon. */
 .block-icon {
   font-size: 12px;
   opacity: 0.8;
   display: flex;
   align-items: center;
-  width: 16px;
   justify-content: center;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
 }
 
 .block-icon-placeholder {
-  width: 16px;
-}
-
-.block-icon-namespace {
-  font-size: 16px;
+  flex: 0 0 16px;
 }
 
 .block-keyword {
+  flex: 0 0 auto;
   font-weight: 600;
   opacity: 0.9;
+  white-space: nowrap;
 }
 
 .block-signature {
+  flex: 0 1 auto;
+  min-width: 0;
   opacity: 0.85;
   white-space: nowrap;
   overflow: hidden;
@@ -278,15 +299,38 @@
 }
 
 .block-code {
-  opacity: 0.7;
+  flex: 0 1 auto;
+  min-width: 0;
+  opacity: 0.85;
   font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Body - nested content offset to the right (no line) */
+/* Body - nested content offset to the right (no line).
+   --body-indent is the single source of truth for one nesting level so every
+   body type (control flow, workflow/activity, handler) steps by the same
+   amount and nested items never drift out of alignment. */
+:root {
+  --body-indent: 16px;
+}
+
 .block-body {
   position: relative;
-  margin-left: 20px;
-  padding: 4px 0 4px 12px;
+  margin-left: 0;
+  padding: 4px 0 4px var(--body-indent);
+}
+
+/* Statement body container — a control-flow-styled wrapper around a procedure
+   body (workflow/activity). It gives the body a cohesive backdrop so naked raw
+   statements read as code on a panel rather than floating, boxless lines. */
+.block-statement-body {
+  background: var(--block-control-bg);
+  border: 1px solid var(--block-control-border);
+  border-radius: 6px;
+  padding: 6px var(--body-indent);
+  margin: 4px 0;
 }
 
 /* Focus ring for keyboard navigation */
@@ -332,8 +376,8 @@
 .declaration-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 12px 8px 6px;
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
@@ -365,8 +409,8 @@
 /* Declaration body - for expandable handler bodies */
 .declaration-body {
   position: relative;
-  margin-left: 20px;
-  padding: 4px 0 4px 12px;
+  margin-left: 0;
+  padding: 4px 0 4px var(--body-indent);
 }
 
 /* When declaration is expanded, add subtle shadow */
@@ -376,20 +420,6 @@
 
 .declaration.expanded>.declaration-header {
   border-radius: 6px 6px 0 0;
-}
-
-/* Branch labels */
-.branch-label {
-  font-size: 11px;
-  font-weight: 600;
-  opacity: 0.6;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.block-branch {
-  margin: 8px 0;
 }
 
 /* === Block Type Colors === */
@@ -462,8 +492,8 @@
 .worker-ref-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 6px 12px 6px 6px;
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
@@ -549,8 +579,8 @@
 .namespace-entry-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 6px 12px 6px 6px;
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
@@ -660,23 +690,6 @@
 .nexus-operation-grayed-sig {
   opacity: 0.5;
   margin-left: 0;
-}
-
-/* Nexus icon sizing */
-.block-icon-nexus-service {
-  font-size: 16px;
-}
-
-.block-icon-nexus-endpoint {
-  font-size: 12px;
-}
-
-.block-icon-nexus-operation {
-  font-size: 12px;
-}
-
-.block-icon-nexus-call {
-  font-size: 14px;
 }
 
 /* === Tagged Composite: Unified "hint" and "option" design === */
@@ -902,8 +915,16 @@
 .block-await-one>.block-header,
 .block-switch>.block-header,
 .block-if>.block-header,
+.block-if>.if-branch>.block-header,
 .block-for>.block-header {
   color: var(--block-control-text);
+}
+
+/* If / else-if / else chain — each branch is its own rung sharing the chain's
+   single outline. Rungs after the first are separated by a thin divider (no
+   gap) so `else if` / `else` read as attached boxes below the `if`. */
+.block-if>.if-branch+.if-branch {
+  border-top: 1px solid var(--block-control-border);
 }
 
 /* Await one uses tagged-composite styling for cases */
@@ -964,25 +985,49 @@
   margin-right: 4px;
 }
 
-/* Raw code - Light gray */
+/* Raw code - generic statements / pseudo code. No box: the text blends into
+   its surrounding body container (or control-flow block) so a run of raw
+   statements reads as cohesive code rather than a stack of floating boxes. */
 .block-raw {
-  background: var(--block-raw-bg);
-  border: 1px solid var(--block-raw-border);
+  background: none;
+  border: none;
+  margin: 2px 0;
 }
 
 .block-raw>.block-header {
   color: var(--block-raw-text);
+  padding: 3px 12px 3px 6px;
 }
 
-/* Comment - Light grey */
+.block-raw>.block-header:hover {
+  filter: none;
+}
+
+/* Comment - recedes toward the background; the text is indented to read as an
+   inline annotation while the box itself stays aligned with sibling statements */
 .block-comment {
-  background: var(--block-raw-bg);
-  border: 1px solid var(--block-raw-border);
+  background: var(--block-comment-bg);
+  border: 1px solid var(--block-comment-border);
+  margin: 2px 0;
 }
 
 .block-comment>.block-header {
-  color: var(--block-raw-text);
+  color: var(--block-comment-text);
   font-style: italic;
+  padding: 3px 12px 3px 6px;
+}
+
+.block-comment-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  opacity: 0.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.block-comment>.block-header:hover {
+  filter: none;
 }
 
 /* Promise - Cyan/Teal (async non-blocking) */
@@ -995,16 +1040,16 @@
   color: var(--block-promise-text);
 }
 
-/* Set/Unset - Subtle (condition mutation) */
+/* Set/Unset - Condition coloring (condition mutation) */
 .block-set,
 .block-unset {
-  background: var(--block-subtle-bg);
-  border: 1px solid var(--block-subtle-border);
+  background: var(--decl-condition-bg);
+  border: 1px solid var(--decl-condition-border);
 }
 
 .block-set>.block-header,
 .block-unset>.block-header {
-  color: var(--block-subtle-text);
+  color: var(--decl-condition-text);
 }
 
 /* Break/Continue - Subtle */

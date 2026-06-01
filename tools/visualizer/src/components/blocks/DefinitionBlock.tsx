@@ -1,8 +1,8 @@
 import React from 'react'
 import type { Definition, WorkflowDef, ActivityDef, WorkerDef, WorkerRef, NamespaceDef, NamespaceWorker, NamespaceEndpoint, NexusServiceDef, NexusOperation, SignalDecl, QueryDecl, UpdateDecl } from '../../types/ast'
-import { StatementBlock } from './StatementBlock'
+import { StatementBody } from './StatementBlock'
 import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
-import { THEME, ThemeIcon, WORKER_REF_THEME } from '../../theme/temporal-theme'
+import { BlockIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
 import { ContextualNavButtons } from './ContextualNav'
@@ -61,7 +61,7 @@ function WorkflowDefBlock({ def, controlledExpanded, onToggle }: { def: Workflow
         <ContextualNavButtons defName={def.name} defType="workflowDef" />
         <div className="block-header" onClick={toggle}>
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-          <span className="block-icon"><ThemeIcon kind="workflow" /></span>
+          <BlockIcon kind="workflow" />
           <span className="block-keyword">workflow</span>
           <span className="block-signature" title={signature}>{signature}</span>
           {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
@@ -88,7 +88,7 @@ function ActivityDefBlock({ def, controlledExpanded, onToggle }: { def: Activity
       <ContextualNavButtons defName={def.name} defType="activityDef" />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="block-icon"><ThemeIcon kind="activity" /></span>
+        <BlockIcon kind="activity" />
         <span className="block-keyword">activity</span>
         <span className="block-signature" title={signature}>{signature}</span>
         {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
@@ -96,9 +96,7 @@ function ActivityDefBlock({ def, controlledExpanded, onToggle }: { def: Activity
 
       {expanded && (
         <div className="block-body">
-          {(def.body || []).map((stmt) => (
-            <StatementBlock key={`${stmt.line}:${stmt.column}`} statement={stmt} />
-          ))}
+          <StatementBody statements={def.body || []} />
         </div>
       )}
     </div>
@@ -117,7 +115,7 @@ function WorkerDefBlock({ def, controlledExpanded, onToggle }: { def: WorkerDef 
       <ContextualNavButtons defName={def.name} defType="workerDef" />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="block-icon">{THEME.worker.icon}</span>
+        <BlockIcon kind="worker" />
         <span className="block-keyword">worker</span>
         <span className="block-signature" title={`${def.name} (${totalRefs} types)`}>{def.name} ({totalRefs} types)</span>
         {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
@@ -166,7 +164,7 @@ function WorkerRefItem({ ref_, refType }: { ref_: WorkerRef; refType: 'workflow'
   const isDefined = !!(linkedDef || linkedService)
   const [expanded, toggle] = useToggle(false, isDefined)
 
-  const icon = WORKER_REF_THEME[refType].icon
+  const refKind = refType === 'service' ? 'nexusService' : refType
 
   return (
     <div className={`worker-ref worker-ref-${refType} ${expanded ? 'expanded' : 'collapsed'} ${!isDefined ? 'worker-ref-unresolved' : ''}`}>
@@ -176,7 +174,7 @@ function WorkerRefItem({ ref_, refType }: { ref_: WorkerRef; refType: 'workflow'
         ) : (
           <span className="block-toggle-placeholder" />
         )}
-        <span className={`block-icon ${refType === 'service' ? 'block-icon-nexus-service' : ''}`}>{icon}</span>
+        <BlockIcon kind={refKind} />
         <span className="worker-ref-name">{ref_.name}</span>
         {!isDefined && <span className="block-unresolved-badge">?</span>}
       </div>
@@ -186,9 +184,7 @@ function WorkerRefItem({ ref_, refType }: { ref_: WorkerRef; refType: 'workflow'
           {linkedDef?.type === 'workflowDef' ? (
             <WorkflowContent def={linkedDef} />
           ) : linkedDef ? (
-            (linkedDef.body || []).map((stmt) => (
-              <StatementBlock key={`${stmt.line}:${stmt.column}`} statement={stmt} />
-            ))
+            <StatementBody statements={linkedDef.body || []} />
           ) : linkedService ? (
             (linkedService.operations || []).map((op) => (
               <NexusOperationBlock key={`${op.line}:${op.column}`} operation={op} />
@@ -212,7 +208,7 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle }: { def: Namespa
       <ContextualNavButtons defName={def.name} defType="namespaceDef" />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="block-icon block-icon-namespace">{THEME.namespace.icon}</span>
+        <BlockIcon kind="namespace" />
         <span className="block-keyword">namespace</span>
         <span className="block-signature" title={`${def.name} (${totalEntries} entries)`}>{def.name} ({totalEntries} entries)</span>
         {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
@@ -256,7 +252,7 @@ function NamespaceWorkerEntry({ entry }: { entry: NamespaceWorker }) {
         ) : (
           <span className="block-toggle-placeholder" />
         )}
-        <span className="block-icon">{THEME.worker.icon}</span>
+        <BlockIcon kind="worker" />
         <span className="namespace-entry-name">{entry.workerName}</span>
         {!isDefined && <span className="block-unresolved-badge">?</span>}
       </div>
@@ -283,7 +279,7 @@ function NamespaceEndpointEntry({ entry }: { entry: NamespaceEndpoint }) {
     <div className="namespace-entry namespace-entry-endpoint collapsed">
       <div className="namespace-entry-header">
         <span className="block-toggle-placeholder" />
-        <span className="block-icon block-icon-nexus-endpoint">{THEME.nexusService.icon}</span>
+        <BlockIcon kind="nexusEndpoint" />
         <span className="namespace-entry-name">{entry.endpointName}</span>
       </div>
     </div>
@@ -344,7 +340,7 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle }: { def: Nexu
       <ContextualNavButtons defName={def.name} defType="nexusServiceDef" />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="block-icon block-icon-nexus-service">{THEME.nexusService.icon}</span>
+        <BlockIcon kind="nexusService" />
         <span className="block-keyword">service</span>
         <span className="block-signature" title={`${def.name} (${opCount} operation${opCount !== 1 ? 's' : ''})`}>{def.name} ({opCount} operation{opCount !== 1 ? 's' : ''})</span>
         {!expanded && (() => { const s = computeSummary(def); return s ? <span className="block-summary">{s}</span> : null })()}
@@ -403,7 +399,7 @@ export function NexusOperationBlock({ operation }: { operation: NexusOperation }
         ) : (
           <span className="block-toggle-placeholder" />
         )}
-        <span className="block-icon block-icon-nexus-operation">{THEME.nexusOperation.icon}</span>
+        <BlockIcon kind="nexusOperation" />
         <span className="block-keyword">{operation.opType}</span>
         <span className="block-signature">{signature}</span>
         {isUnresolved && <span className="block-unresolved-badge">?</span>}

@@ -120,7 +120,7 @@ export function AwaitStmtBlock({ stmt }: { stmt: AwaitStmt }) {
   const context = React.useContext(DefinitionContext)
   const handlers = React.useContext(HandlerContext)
 
-  const { icon, keyword, signature, blockClass, expandableDef, nexusAsyncWorkflow, nexusSyncBody, isUnresolved } = getAwaitStmtDisplay(stmt, context, handlers)
+  const { keyword, signature, blockClass, expandableDef, nexusAsyncWorkflow, nexusSyncBody, isUnresolved } = getAwaitStmtDisplay(stmt, context, handlers)
   const isExpandable = !!(expandableDef || nexusAsyncWorkflow || nexusSyncBody)
   const [expanded, toggle] = useToggle(false, isExpandable)
 
@@ -132,7 +132,6 @@ export function AwaitStmtBlock({ stmt }: { stmt: AwaitStmt }) {
         ) : (
           <span className="block-toggle-placeholder" />
         )}
-        <span className="block-icon">{icon}</span>
         <span className="block-keyword">{keyword}</span>
         <span className="block-signature">{signature}</span>
         {isUnresolved && <span className="block-unresolved-badge">?</span>}
@@ -165,7 +164,6 @@ export function AwaitAllBlockComponent({ stmt }: { stmt: AwaitAllBlock }) {
     <div className={`block block-await-all ${expanded ? 'expanded' : 'collapsed'}`}>
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="block-icon">{THEME.awaitAll.icon}</span>
         <span className="block-keyword">await all</span>
         <span className="block-signature">{(stmt.body || []).length} branch(es)</span>
       </div>
@@ -190,7 +188,6 @@ export function AwaitOneBlockComponent({ stmt }: { stmt: AwaitOneBlock }) {
     <div className={`block block-await-one ${expanded ? 'expanded' : 'collapsed'}`}>
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="block-icon-placeholder" />
         <span className="block-keyword">await one</span>
         <span className="block-signature">first of {stmt.cases.length} {caseWord}</span>
       </div>
@@ -215,7 +212,7 @@ function AwaitOneCaseBlock({ awaitCase }: { awaitCase: AwaitOneCase }) {
   const [expanded, toggle] = useToggle(false, isExpandable)
 
   // Determine display based on case kind
-  const { contentClass, icon, keyword, signature, isUnresolved } = getAwaitOneCaseDisplay(awaitCase, context, handlers)
+  const { contentClass, keyword, signature, isUnresolved } = getAwaitOneCaseDisplay(awaitCase, context, handlers)
 
   return (
     <div className={`tagged-composite ${expanded ? 'expanded' : ''} ${isUnresolved ? 'tagged-unresolved' : ''}`}>
@@ -225,7 +222,6 @@ function AwaitOneCaseBlock({ awaitCase }: { awaitCase: AwaitOneCase }) {
       <div className={`tagged-content ${contentClass} ${isExpandable ? 'expandable' : ''}`} onClick={toggle}>
         {isExpandable && <span className="block-toggle">{expanded ? '▼' : '▶'}</span>}
         {!isExpandable && <span className="block-toggle-placeholder" />}
-        <span className="tagged-icon">{icon}</span>
         <span className="tagged-kind">{keyword}</span>
         <span className="tagged-name">{signature}</span>
         {isUnresolved && <span className="block-unresolved-badge">?</span>}
