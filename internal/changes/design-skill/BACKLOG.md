@@ -21,6 +21,11 @@ Enhancement ideas for the design skill. Not errors — all current content is fu
 - Missing deployment topology checks (workers defined, namespaces with task_queue, etc.)
 - Missing nexus-specific checks (cross-namespace boundaries justified, call timeouts configured)
 
+## reference/core-principles.md
+
+- Idempotency section teaches the patterns (create-or-get, idempotency keys) but never requires the *design* to **state** the key/strategy per side-effecting activity — so it lands as a prose comment, not a load-bearing decision (e.g. `LlmCall`'s key was described in a comment, not enforced; from `REFLECTION_DESIGN.md`). Add an expectation: each non-idempotent-by-nature activity names its idempotency strategy and key derivation (e.g. "workflow ID + activity name"). Note this is a skill concern only — Temporal has no call-site `idempotency_key` option to validate, so it can't be a DSL/parser check.
+- *(Promoted to `REVISIONS_002`):* concurrent-writes-to-shared-state review prompt + "a clean tool is not a finished design" now live in the design-review revision, not here.
+
 ## reference/anti-patterns.md
 
 - Only 3 anti-patterns covered

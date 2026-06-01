@@ -4,6 +4,29 @@ Unimplemented features and design ideas. Not committed to any cycle — just a p
 
 ---
 
+## Statement Recognition
+
+### Meaningful Statements Hidden in `raw` (leading priority)
+
+A bare statement like `x = ActName(args)` parses as `raw` pseudocode text, not as a structured `activityCall`/`workflowCall`. The call exists in the author's intent but never appears in the AST — so a real, used activity looks uncalled, every downstream consumer (validator, graph, visualizer) misses the edge, and `twf check` reports clean. This was the leading silent-failure in `REFLECTION_DESIGN.md` (8 activities with no structured call site).
+
+```twf
+# Parses as raw text today — the call to ProcessData is invisible:
+workflow Pipeline(input: Input) -> (Result):
+    x = ProcessData(input)        # intended: activity ProcessData
+    close complete(Result{x})
+```
+
+**The fix (be thoughtful about which raw statements we promote/flag):** when a raw statement appears in an **orchestration context** (a workflow body, not a free-form activity body) and its call target **resolves to a defined `activity`/`workflow`/`nexus` symbol**, it is almost certainly a miswritten structured call. Lean toward **diagnosing** ("`x = ProcessData(args)` looks like a call to activity `ProcessData` — use `activity ProcessData(args) -> x`") rather than silently reinterpreting, because a bare `x = F(args)` drops the `activity`/`workflow`/`nexus` keyword that encodes *which* Temporal primitive it is — the parser can't safely guess.
+
+**Scope boundary:** activity bodies are intentionally free-form pseudocode (`x = transform(y)` is just code there). The disambiguation must key on *context + symbol resolution*, never promote raw statements blanket-style.
+
+**Related:** Consider whether to make a binding call form first-class (`result = activity Foo(args)` / `x = activity Foo(args)`) so the natural assignment syntax is legal-and-structured instead of swallowed as raw.
+
+**Open questions:** Diagnose-only, or offer an auto-fix? Does a resolvable raw call in a workflow body become a hard error, a warning, or a structured node? Should the binding call form be added? What about raw statements whose target is *not yet defined* (typo) — those fall to the unused-definition check (see `internal/changes/parser/BACKLOG.md`) as a backstop.
+
+---
+
 ## Naming Conventions
 
 ### UpperCamelCase for All Top-Level Primitives
@@ -65,6 +88,10 @@ workflow OrderSaga(order: Order) -> (Result):
 
 **Open questions:** What is the syntax? `signal TargetWorkflow.HandlerName(args)` vs `send signal HandlerName to TargetWorkflow(args)`? Should sends target a specific workflow instance (by ID) or a workflow type? How does the resolver validate that the target workflow actually handles the named signal/query/update? Should sends appear as statements (in workflow body) or as part of await expressions?
 
+**Reachability nuance (from `REFLECTION_DESIGN.md`):** Signal/query/update handlers — and workflows started out-of-band (external clients, schedules, Nexus operations) — look like dead code to any reachability / unused-definition check, because their trigger is invisible to the DSL. Send-side syntax makes *intra-design* sends visible as dependency edges (so a handler targeted by another workflow in the same design is no longer "uncalled"), but *external* triggers still will not be. Any future reachability checker must therefore treat handler-bearing and entry-annotated workflows (see Entry Point Annotation) as roots rather than flagging them as unreachable.
+
+**Cancellation send (pair with this item):** the same send-side gap applies to **cancelling** another workflow — a parent cancelling a runaway child, or pausing across a Nexus boundary. In the Comparanda design `AgenticTask.Cancel` and `Pause/Resume` can only be triggered by an external client as drawn, because a workflow has no way to *send* a cancel/pause. A cancel-send primitive (e.g. `cancel ChildWorkflow` / `signal Target.Pause()`) belongs here alongside the signal/query/update sends. This is distinct from the *receive* side (see Workflow Cancellation Handler).
+
 ---
 
 ### Workflow Cancellation Handler
@@ -83,6 +110,8 @@ workflow ProcessOrder(order: Order) -> (Result):
 ```
 
 **Why needed:** Cancellation is a first-class Temporal concept. Cleanup/compensation on cancel is a common pattern with no current TWF representation.
+
+**Scope — this is the *receive* side.** This item is the handler: what a workflow does when it is cancelled (`on_cancel:`). The *send* side — one workflow cancelling/pausing another — is a separate item, paired with Signal/Query/Update Send Statements above. Keep them distinct.
 
 ### Async Activity Completion
 
@@ -116,9 +145,9 @@ workflow ProcessOrder(order: Order) -> (OrderResult):
 
 **Trade-off:** Adding types moves the DSL toward a full IDL. May conflict with "skeleton, not meat" principle — or may be exactly what's needed for design clarity.
 
-### SDK Built-in Functions
+### SDK Built-in Functions / Workflow Metadata for Control Flow
 
-Deterministic SDK utilities like `workflow.history_length()` have no formal syntax. Currently shown as raw expressions in examples.
+Deterministic SDK utilities like `workflow.history_length()` / `workflow.history_size()` have no formal syntax. Currently shown as raw expressions in examples.
 
 ```twf
 # Used in practice but not formalized:
@@ -127,7 +156,9 @@ if (historyBytes > 40_000_000):
     continue_as_new(data)
 ```
 
-**Open questions:** Should the DSL formalize a set of SDK intrinsics? Or are these implementation details that belong in `raw_stmt`?
+**Why this matters (from `REFLECTION_DESIGN.md`):** The "should this loop `continue_as_new`?" decision essentially reduces to *the DSL has no way to read workflow metadata (history length/size, iteration count, run age) and branch on it*. Without intrinsics for that metadata, a design can express `close continue_as_new(...)` but cannot express the **condition** that should trigger it — so the continue-as-new *strategy* stays implicit, which is exactly the silent gap the reflection flagged on `AgenticTask`. Formalizing a small set of read-only, deterministic workflow-metadata intrinsics would let designs express *selective* continue-as-new control flow rather than leaving the trigger to prose or to the author skill.
+
+**Open questions:** Should the DSL formalize a set of SDK intrinsics (history size/length, run count, info)? A namespaced `sdk.*` / `workflow.*` form, or first-class keywords? Which are deterministic-and-safe to expose vs implementation details that belong in `raw_stmt`? How does this interact with expression-based conditions (above)?
 
 ### Workflow ID Call Option
 
@@ -183,6 +214,23 @@ namespace ecommerce-eu:
 **Open questions:** Does instantiating the same worker in two namespaces imply two distinct deployments, or one logical worker? Should options blocks per-instantiation override worker-level defaults? How does the graph view distinguish the two deployments visually?
 
 ---
+
+### Codec Server / Payload Codec Configuration
+
+A way to declare that a worker (or namespace) uses a **payload codec / data converter** — the standard mechanism for transparently offloading large payloads (claim-check), compressing, or encrypting them. Today the DSL has no representation of codec configuration at all; large-payload handling is invisible in `.twf`.
+
+```twf
+# Illustrative only — syntax TBD
+worker ExtractionWorker:
+    codec: claim-check        # offload large payloads to external store
+    activity RunExtraction
+```
+
+**Why needed:** The design skill is being revised to make "defer large payloads to the codec server" the default answer (see `design-skill/REVISIONS_003.md`). If that's the blessed pattern, the DSL should be able to *say* a codec is in play, so the decision is visible rather than implied.
+
+**Key challenge — codecs are worker-level, calls cross workers.** A payload codec is configured on the **data converter at the worker level**. But a workflow on worker A frequently calls an activity or child workflow that runs on worker B (different task queue, namespace, or across a Nexus boundary). The encoded payload produced under A's codec must be **decodable by B's codec** — if B isn't configured with a compatible codec, it gets an opaque/encrypted blob it can't read. So the hard part isn't representing the codec; it's **validating cross-worker codec compatibility**: every deployment on the receiving end of a dispatch edge must share (or be able to decode) the sender's codec. This is a routing-style check analogous to the existing task-queue routing validation, but over codec configuration rather than queues.
+
+**Open questions:** Codec config at worker level, namespace level, or both? Is it an enum of known strategies (`claim-check`, `compression`, `encryption`) or freeform? Should the resolver/validator check codec compatibility across every dispatch edge (the graph already has the edges)? How does it interact with Nexus, where the target namespace is owned by another team and may have an entirely independent codec? Does this stay design-time intent only, or feed codegen?
 
 ## Syntax Extensions
 
@@ -296,6 +344,24 @@ activity ChargePayment(order: Order) -> (Payment):
 
 **Open questions:** General-purpose list syntax (`value ::= ... | list_value`) or restricted to specific option keys? Could an alternative syntax avoid brackets entirely (multi-line list under the key, one entry per line)?
 
+### Dynamic Multi-Await / Async Result Aggregation (umbrella)
+
+General capability: spawn a dynamic (data-driven) set of async operations and **collect their results back into a value** the rest of the workflow can use. Today `await all:` / `await one:` take *static* cases, and a `for (x in xs)` fan-out leaves each `-> result` binding trapped per-iteration — there is no aggregate binding, no accumulate-across-iterations, no dynamic promise set. This umbrella covers the family; the two entries below are specific cuts of it.
+
+```twf
+# Wanted: result-bearing fan-out
+await all (x in xs):
+    workflow F(x) -> r        # collects [r] -> results
+```
+
+**Why needed (from `REFLECTION_DESIGN.md` / `twf-language-limitations.md`):** the absence of fan-in is not just missing sugar — it actively invites bugs, because the language gives *no syntactic signal that an `await all` left results unbound*. Two real dropped-result bugs in the Comparanda design (`phase0.twf:39`, `comparanda.twf:114`) trace directly to this. The workaround is to have children write to a blob store and a `Collect*` activity read them back — fan-in done manually and invisibly.
+
+**Lowest-bound win:** even without new aggregation syntax, a resolver **warning** ("`await all` block produces results that are never bound") would have caught both bugs.
+
+**Specific cuts (below):** *Promise Composition* = dynamic promise collection; *Completion-Order Promise Iteration* = yielding results as each completes. This umbrella adds the most basic case: a **static `await all` + `for` with an aggregate result binding**, plus the unbound-results warning.
+
+**Open questions:** One unifying construct or several? `await all (x in xs): … -> results` aggregate-binding form, `await all promises -> results`, and `for await` completion-order — same feature or distinct? Is the unbound-results warning worth shipping ahead of any syntax?
+
 ### Promise Composition
 
 Dynamic promise collection for batch awaiting.
@@ -356,6 +422,22 @@ workflow ProcessOrder(order: Order) -> (Result):
 **Why needed:** Polyglot Temporal deployments are common. Language annotations make this explicit at design time, enabling code generation targeting the correct SDK, clearer ownership boundaries, and better onboarding context.
 
 **Open questions:** Apply at block level or also at file level as a default? Fixed enum or freeform? How does it interact with the SDK Language Specification syntax extension above — should both exist, or should one replace the other?
+
+### Entry Point Annotation
+
+A way to mark a workflow as an intended top-level entry point — one started by an external client, schedule, or operator rather than called by another workflow in the design.
+
+```twf
+@entry
+workflow Comparanda(config: Config) -> (Result):
+    ...
+```
+
+**Why needed:** Without a declared entry point, tooling fundamentally cannot distinguish a legitimate top-level workflow from leftover/dead code, and cannot compute reachability at all — a graph walk needs roots to start from. This is the **prerequisite** for any dead-workflow / unused-definition / reachability check (see Design Quality Linting below). It also keeps the future reachability analysis honest: workflows reached only via signals, Nexus operations, or other out-of-band triggers (see the reachability nuance under Signal/Query/Update Send Statements) are roots too, not unreachable code.
+
+**Leading motivation (from `REFLECTION_DESIGN.md`):** In the Comparanda design, `Comparanda` was the real top-level entry, but the validator had no way to tell it apart from leftover workflows — so neither dead-code detection nor "is everything reachable" could be offered. The current `checkCoverage` validator pass only checks *worker registration* coverage (and only when namespaces are declared); it does not check whether a definition is ever *called* or *reachable*.
+
+**Open questions:** Annotation (`@entry`) vs keyword (`entry workflow Foo`)? Should Nexus-operation-backing workflows and handler-bearing workflows be *implicit* entries, or require explicit marking? Distinguish client-started vs schedule-started entries? Can a file legitimately have zero entries (a library of reusable building blocks) without warnings — i.e. is the reachability check opt-in once any `@entry` exists?
 
 ### Reference Annotations
 
