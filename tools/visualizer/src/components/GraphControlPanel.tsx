@@ -149,6 +149,8 @@ const GRAVITY_STRENGTH_SLIDERS: SliderDef[] = [
     tooltip: 'Pull toward the nearest edge of the global X band' },
   { key: 'gravityY', label: 'Y strength', min: 0, max: 0.2, step: 0.005,
     tooltip: 'Pull toward the nearest edge of each node type\u2019s Y band' },
+  { key: 'gravityDownstream', label: 'Downstream Y', min: 0, max: 0.2, step: 0.005,
+    tooltip: 'Pull toward a Y position derived from outgoing dependency reach (high reach \u2192 up). Layered on top of the per-type Y band.' },
 ]
 
 interface GravityBandDef {

@@ -124,6 +124,68 @@ function resolveDepEndpoint(
   return ancestor ? [ancestor] : []
 }
 
+// Compute per-node downstream-reach scores over the visible dependency
+// subgraph, log-normalized to [0, 1] globally.
+//
+// "Downstream reach" = the number of distinct nodes reachable by following
+// outgoing `dependency` edges from the node (containment edges ignored).
+// Activities, namespaces, workers, services, and endpoints have no outgoing
+// dep edges by construction, so they always score 0. Only workflow and
+// nexusOperation can carry a non-zero score, and the top-reaching such node
+// anchors score = 1. Cycles are handled by the per-BFS visited set — the
+// score counts distinct reachable nodes, not path multiplicities.
+//
+// The simulation consumes this map through `tick(visibleIds, downstreamScores)`
+// to apply the downstream-Y gravity force. The map is recomputed only when
+// the visible-edge memo recomputes (i.e. on filter / graph change), never
+// per frame, so the BFS cost amortizes away.
+function computeDownstreamScores(
+  visibleNodes: SimNode[],
+  visibleEdges: { edgeType: string; sourceId: string; targetId: string }[],
+): Map<string, number> {
+  // Pre-build the dep-only adjacency list once so each BFS is O(V + E)
+  // rather than re-scanning every edge per source.
+  const adj = new Map<string, string[]>()
+  for (const e of visibleEdges) {
+    if (e.edgeType !== 'dependency') continue
+    const list = adj.get(e.sourceId)
+    if (list) list.push(e.targetId)
+    else adj.set(e.sourceId, [e.targetId])
+  }
+
+  const counts = new Map<string, number>()
+  let maxCount = 0
+  for (const node of visibleNodes) {
+    const seen = new Set<string>()
+    const queue: string[] = [node.id]
+    while (queue.length > 0) {
+      const cur = queue.shift()!
+      const out = adj.get(cur)
+      if (!out) continue
+      for (const t of out) {
+        if (t === node.id || seen.has(t)) continue
+        seen.add(t)
+        queue.push(t)
+      }
+    }
+    const c = seen.size
+    counts.set(node.id, c)
+    if (c > maxCount) maxCount = c
+  }
+
+  const scores = new Map<string, number>()
+  if (maxCount === 0) {
+    // No outgoing reach anywhere — every score is 0. Return an empty map
+    // so the simulation's `score ?? 0` fallback short-circuits the loop.
+    return scores
+  }
+  const denom = Math.log(1 + maxCount)
+  for (const [id, c] of counts) {
+    scores.set(id, Math.log(1 + c) / denom)
+  }
+  return scores
+}
+
 // Compute a glanceable summary string for a graph node from the visible edge set.
 // Dispatches on the registry's `summaryKind` so the logic is driven by node
 // type identity, not by the removed `level` field.
@@ -308,9 +370,9 @@ export function GraphView({
   // filters consistently when the AST changes).
 
   // Filter visible nodes by type toggles + file filter
-  const { visibleNodes, visibleEdges, visibleIds, nodeSummaries } = React.useMemo(() => {
+  const { visibleNodes, visibleEdges, visibleIds, nodeSummaries, downstreamScores } = React.useMemo(() => {
     const sim = simRef.current
-    if (!sim) return { visibleNodes: [] as SimNode[], visibleEdges: [], visibleIds: new Set<string>(), nodeSummaries: new Map<string, string>() }
+    if (!sim) return { visibleNodes: [] as SimNode[], visibleEdges: [], visibleIds: new Set<string>(), nodeSummaries: new Map<string, string>(), downstreamScores: new Map<string, number>() }
 
     const hasFileFilter = selectedFiles.size > 0
     const ids = new Set<string>()
@@ -401,7 +463,12 @@ export function GraphView({
       if (s) nodeSummaries.set(node.id, s)
     }
 
-    return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, nodeSummaries }
+    // Downstream-reach scores over the graduated visible dep subgraph.
+    // Consumed by the simulation's downstream-Y gravity force; computed
+    // here so it recomputes only on filter / graph changes, never per frame.
+    const downstreamScores = computeDownstreamScores(vNodes, vEdges)
+
+    return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, nodeSummaries, downstreamScores }
     // simVersion is the signal that simRef.current has been (re)assigned;
     // without it this memo would cache the first-render empty result
     // (when the sim hadn't been created yet) and never recompute on the
@@ -524,7 +591,7 @@ export function GraphView({
       const sim = simRef.current
       if (!sim) return
 
-      sim.tick(visibleIds)
+      sim.tick(visibleIds, downstreamScores)
 
       // Initial fit — once per sim instance, after warmup. With hierarchical
       // gravity the world coordinates are anchored, so a one-shot fit is all

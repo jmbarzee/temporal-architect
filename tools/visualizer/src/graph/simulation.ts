@@ -67,6 +67,13 @@ export interface ForceParams {
   // world coordinates rather than letting the centre drift.
   gravityX: number
   gravityY: number
+  // Optional vertical-pull force whose target Y is derived from each node's
+  // downstream-reach score (0..1, log-normalized in GraphView). Score = 1
+  // targets one band-height above the node's own band — i.e. a high-reach
+  // workflow drifts upward into the worker band. Default 0 (off); enabling
+  // it deliberately fights the per-type Y bands above to surface the call
+  // graph's depth structure on top of the structural hierarchy.
+  gravityDownstream: number
   bandXMin: number
   bandXMax: number
   bandYMinNamespace: number
@@ -177,6 +184,11 @@ export const DEFAULT_PARAMS: ForceParams = {
   // width, which is generous enough to let wide fan-outs spread laterally.
   gravityX: 0.05,
   gravityY: 0.145,
+  // Off by default — the experiment lives behind a slider. When non-zero,
+  // every node with a positive downstream score gets an additional vy pull
+  // toward `bandMin - score * bandHeight`, layered additively on top of the
+  // per-type Y-band gravity above.
+  gravityDownstream: 0,
   bandXMin:    0,
   bandXMax:  380,
   bandYMinNamespace:      NODE_TYPE_REGISTRY.namespace.physics.yBand.min,
@@ -396,7 +408,7 @@ export class Simulation {
     return this.nodeMap.get(id)
   }
 
-  tick(visibleIds?: Set<string>): void {
+  tick(visibleIds?: Set<string>, downstreamScores?: Map<string, number>): void {
     if (this.alpha < this.params.alphaMin) return
 
     const active = visibleIds
@@ -531,6 +543,30 @@ export class Simulation {
       else if (node.y > band.yMax) yTarget = band.yMax
       if (yTarget !== null) {
         node.vy -= (node.y - yTarget) * this.alpha * gy
+      }
+    }
+
+    // Downstream-Y gravity. Optional, off by default. Pulls each node toward
+    // a target Y derived from its downstream-reach score, with high-reach
+    // nodes (workflows / nexusOperations near the root of the call graph)
+    // floating upward into the tier above their own band.
+    //
+    // targetY = bandMin - score * bandHeight
+    //   score = 0 → top edge of own band → no displacement
+    //   score = 1 → one band-height above own band → lifted into next tier
+    //
+    // Layered additively on top of the per-type band gravity above; we
+    // deliberately do NOT reconcile the two — equilibrium depends on the
+    // ratio of `gravityDownstream` to `gravityY`, and that's the experiment.
+    const gd = this.params.gravityDownstream
+    if (gd > 0 && downstreamScores) {
+      for (const node of active) {
+        if (node.pinned) continue
+        const score = downstreamScores.get(node.id) ?? 0
+        if (score <= 0) continue
+        const band = bandForType(this.params, node.nodeType)
+        const targetY = band.yMin - score * (band.yMax - band.yMin)
+        node.vy -= (node.y - targetY) * this.alpha * gd
       }
     }
 
