@@ -1,4 +1,6 @@
-# Design Skill Revisions: Independent Design-Quality Review Pass
+# Design Skill Changes: Independent Design-Quality Review Pass
+
+> **Status: COMPLETED.** `SKILL.md` Design Flow now routes a clean `twf check` through a **Design Review** node (not straight to Done); Completion split into grammar/structure vs design-quality gates; a fresh-eyes Design Review rubric (call-site integrity, reachability, anti-pattern re-check, idempotency, concurrent-writes) added. `anti-patterns.md` gained a required re-check callout; `design-checklist.md` gained a validation-vs-review preamble and Design Review block.
 
 **Source:** `reflect-skill` from `REFLECTION_DESIGN.md`
 **Focus:** Stop gating the design on `twf check ✓ OK`. Add a required design-quality review pass — run with fresh-context framing — against a concrete rubric, including a re-check against the skill's own `anti-patterns.md`.

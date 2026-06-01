@@ -2,70 +2,25 @@
 
 Enhancement ideas for the design skill. Not errors — all current content is functional. Items here represent coverage gaps or areas where newer DSL features could be better leveraged. Not committed to any cycle — just a place to drop thoughts.
 
+> **Reconciled (this cycle):** Many earlier entries were stale — the listed gap had already been closed in the current skill files. Removed as stale: SKILL.md completion-checklist topology check (Completion #3 already covers it), Reference Index nexus/task-queues links (already present), "Rules table" nexus rules (no such table), common-errors nexus/worker/namespace catalog (fully documented), design-checklist deployment-topology checks (Deployment Topology section exists), anti-patterns "only 3 covered" (11+ now), workflow-boundaries "Use Nexus When" (section exists), primitives-reference worker/namespace (Infrastructure section has them), patterns `elif` (state machine uses `switch`/`case`), task-queues "nexus service" line (already says "workflow, activity, and nexus service"), child-workflows `workflow_id` rethink (now framed as SDK-level).
+>
+> Items consumed by `REVISIONS_001`–`005` (idempotency-strategy expectation, activity-sprawl / nexus-same-namespace / misplaced-deployment-config anti-patterns, SDK-intrinsic + entity-ordering cleanup, `history_size` → `history_length` fix) have been implemented and removed.
+
 ---
 
-## SKILL.md
+## Deferred: worker/namespace deployment context in topic examples
 
-- No mention of workers, namespaces, or nexus in syntax summary or basic structure example
-- "Rules" table doesn't mention nexus/worker/namespace validation rules from `twf check`
-- "Completion" checklist missing deployment topology validation (workers defined, namespaces configured, etc.)
-- Reference Index has no direct link to `topics/nexus.md` or `topics/task-queues.md`
+A recurring low-priority theme: several topic files teach a construct without showing how it gets deployed (worker registration / namespace instantiation). Lazy to add; not load-bearing for the design itself.
 
-## reference/common-errors.md
+- `topics/activities-advanced.md` — no worker/namespace context for how activities relate to deployment.
+- `topics/child-workflows.md` — no worker/namespace deployment shown for parent/child relationships.
+- `topics/long-running.md` — could show worker/namespace blocks for how entity workflows get deployed.
 
-- Missing all 15+ nexus/worker/namespace error types documented in the spec
-- Could be expanded to cover the full `twf check` error catalog
+## Deferred: nexus coverage in patterns/testing
 
-## reference/design-checklist.md
+- `topics/patterns.md` — no nexus patterns shown; could add a cross-namespace pattern using current nexus syntax.
+- `topics/testing.md` — could add a nexus testing section showing how to test cross-namespace calls.
 
-- Missing deployment topology checks (workers defined, namespaces with task_queue, etc.)
-- Missing nexus-specific checks (cross-namespace boundaries justified, call timeouts configured)
+## Deferred: SKILL.md basic-structure example
 
-## reference/core-principles.md
-
-- Idempotency section teaches the patterns (create-or-get, idempotency keys) but never requires the *design* to **state** the key/strategy per side-effecting activity — so it lands as a prose comment, not a load-bearing decision (e.g. `LlmCall`'s key was described in a comment, not enforced; from `REFLECTION_DESIGN.md`). Add an expectation: each non-idempotent-by-nature activity names its idempotency strategy and key derivation (e.g. "workflow ID + activity name"). Note this is a skill concern only — Temporal has no call-site `idempotency_key` option to validate, so it can't be a DSL/parser check.
-- *(Promoted to `REVISIONS_002`):* concurrent-writes-to-shared-state review prompt + "a clean tool is not a finished design" now live in the design-review revision, not here.
-
-## reference/anti-patterns.md
-
-- Only 3 anti-patterns covered
-- Could add: nexus for same-namespace calls, deployment config in workers instead of namespaces, workers not instantiated in namespaces
-
-## reference/workflow-boundaries.md
-
-- No mention of nexus as a third boundary option alongside activity vs child workflow
-- Could add "Use Nexus When" section for cross-namespace/cross-team/different security contexts
-
-## reference/primitives-reference.md
-
-- Missing `worker` and `namespace` as infrastructure primitives
-
-## topics/activities-advanced.md
-
-- Local activity section uses conceptual syntax not supported by parser — consider marking as future/conceptual more clearly
-- No worker/namespace context shown for how activities relate to deployment
-
-## topics/child-workflows.md
-
-- `workflow_id` examples are central to this file but not a supported option — needs rethinking once workflow_id support is decided
-- No worker/namespace deployment shown for parent/child relationships
-
-## topics/long-running.md
-
-- Entity workflow signal/query/update declaration ordering may confuse readers (appears after body code in examples)
-- SDK intrinsics (`history_size()`, `history_length()`) used inconsistently across examples
-- Could benefit from worker/namespace blocks showing how entity workflows get deployed
-
-## topics/patterns.md
-
-- No nexus patterns shown — could add cross-namespace pattern using current nexus syntax
-- State machine pattern uses unsupported `elif` — needs `else if` support or `switch`/`case` rewrite
-
-## topics/testing.md
-
-- Could add nexus testing section showing how to test cross-namespace calls
-
-## topics/task-queues.md
-
-- Line mentioning "Workers contain only workflow and activity entries" should also mention `nexus service`
-- Could demonstrate nexus endpoint deployment alongside worker deployment in namespace blocks
+- `SKILL.md` — the worked example is intentionally minimal (single workflow). A larger end-to-end example showing worker/namespace topology could live in `notation-examples.md` rather than the SKILL.md quick example, to avoid bloating the entry point.

@@ -137,7 +137,9 @@ Parent starts
 
 ### Cancellation Propagation
 
-By default, cancelling a parent cancels its children. Use `detach` for fire-and-forget children that survive parent close.
+Child behavior at parent close is governed by `parent_close_policy`. The default is `TERMINATE`, which **terminates** the child (not merely cancels it) when the parent closes — "parent closes" is broader than "parent cancelled," and the distinction matters. Use `detach` (which implies `ABANDON`) for fire-and-forget children that survive parent close.
+
+> **Interaction with `await one`:** if a child workflow is one branch of an `await one` race and a *different* branch wins, the child is **not** cancelled by losing the race — it continues running. What ultimately happens to it is decided by its `parent_close_policy` when the parent closes (terminate by default, abandon if detached). Racing a child against a timeout does not stop the child; rely on `parent_close_policy`, or compensate explicitly.
 
 ```twf
 workflow Parent(input: Input) -> (Result):

@@ -57,6 +57,8 @@ workflow ProcessWithDeadline(data: Data) -> (Result):
             close fail(Result{success: false, error: "deadline exceeded"})
 ```
 
+> **`await one` does not cancel the loser.** If the timer wins, `LongOperation` is **not** cancelled — it keeps running in the background until the workflow run ends. `await one` is "first to complete wins," not "winner cancels the rest." If the losing operation must actually stop (release a lock, stop billing), you need an explicit cancellation/cleanup activity — the race alone won't do it.
+
 ### Timeout on Signal Wait
 
 ```twf

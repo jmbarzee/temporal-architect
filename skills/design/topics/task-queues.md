@@ -90,6 +90,8 @@ A `nexus endpoint` in a namespace declaration exposes a nexus service to callers
 
 ### When to Use Separate Task Queues
 
+> **Different runtimes do not require different namespaces — use task queues.** GPU workers, licensed-software workers, region-specific workers, and bursty-vs-steady workloads are all *task queue* concerns within a single namespace. Reaching for a namespace per runtime is the misconception that produces namespace-per-worker. See [namespaces.md](../reference/namespaces.md) — the default namespace count is one.
+
 | Use Case | Rationale |
 |----------|-----------|
 | **Different resource requirements** | CPU-heavy vs I/O-heavy work |

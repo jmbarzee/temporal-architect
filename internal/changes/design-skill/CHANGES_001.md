@@ -1,4 +1,6 @@
-# Design Skill Revisions: Alignment to DSL Changes
+# Design Skill Changes: Alignment to DSL Changes
+
+> **Status: COMPLETED.** All Medium and applicable Low items implemented in `skills/design/`. `await one` non-cancellation notes added to `notation-reference.md`, `timers-scheduling.md`, `promises-conditions.md`, and `nexus.md`; `parent_close_policy` rewording + `await one` cross-reference added to `child-workflows.md`. Mirroring is a build step (`make build-skills`), not manual.
 
 **Source:** `propagate-changes` from `internal/changes/dsl/CHANGES_001.md`
 **Focus:** `await one` cancellation semantics correction, `parent_close_policy` descriptions

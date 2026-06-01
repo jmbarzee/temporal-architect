@@ -1,4 +1,6 @@
-# Design Skill Revisions: Orient Before Drafting
+# Design Skill Changes: Orient Before Drafting
+
+> **Status: COMPLETED.** `SKILL.md` now opens the Design Flow with an **Orient** step (glance for existing `.twf`/`DESIGN.md`/`archive*/`; migration case noted), scopes "Write before you read" to *reference docs only* (prior artifacts are requirements), and links "Revising an Existing Design" back to Orient.
 
 **Source:** `reflect-skill` from `REFLECTION_DESIGN.md`
 **Focus:** "Write before you read" is tuned for analysis paralysis (a new designer reading every reference doc before starting). It misfires when prior *project artifacts* exist — those are requirements, not reference material. Add an orientation step and disambiguate the two kinds of "reading."

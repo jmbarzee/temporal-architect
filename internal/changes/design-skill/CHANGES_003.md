@@ -1,4 +1,8 @@
-# Design Skill Revisions: The Runtime / Cost / Lifecycle Dimension
+# Design Skill Changes: The Runtime / Cost / Lifecycle Dimension
+
+> **Status: COMPLETED, with one deviation.** Worked example extended with explicit `start_to_close_timeout`/`retry_policy` and a counter-bounded `continue_as_new` loop; common `options:` keys table added to `notation-reference.md`; activity-per-network-call default in `workflow-boundaries.md`; I/O-vs-in-memory bound + activity-sprawl anti-pattern; payload-codec deferral and bounded-but-large-history reframe in `anti-patterns.md`; CAN-strategy-stated note in `long-running.md`.
+>
+> **Deviation (Groups 1 & 2):** `workflow_id` is **not** a valid TWF call option — the spec allows only `workflow_id_reuse_policy` on workflow calls, and `child-workflows.md` already treats `workflow_id` as SDK-level. Per decision, `workflow_id` was **omitted** from the worked example and the options table (which documents `workflow_id_reuse_policy` instead). The example demonstrates timeout/retry + `continue_as_new` only. The counter-bound (`pageCount`) is used instead of `history_length()` because nested parentheses inside an `if (...)` condition do not parse.
 
 **Source:** `reflect-skill` from `REFLECTION_DESIGN.md`
 **Focus:** The skill designs *static call topology* and never forces reasoning about *behavior over time and scale* — history growth, identity across retries, per-call cost, and data ownership. Teach this dimension where it belongs: in the canonical worked example and the reference docs, so it is modeled rather than enumerated.

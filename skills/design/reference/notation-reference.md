@@ -22,7 +22,7 @@
 | `await signal Name` | Wait for signal |
 | `await update Name` | Wait for update |
 | `await nexus Endpoint Service.Op(args) -> result` | Wait for nexus call |
-| `await one:` | Race: first to complete wins (timeouts, signal-or-timer patterns) |
+| `await one:` | Race: first to complete wins (timeouts, signal-or-timer patterns). Non-winning operations are **not** cancelled — they keep running until the workflow run ends |
 | `await all:` | Join: wait for all (parallel execution) |
 | `heartbeat()` | Report progress from long-running activity (detect worker death) |
 | `options: key: value` | Options block for activity/workflow/nexus calls |
@@ -44,5 +44,25 @@
 | `nexus service Name` (in worker) | Register nexus service on worker |
 | `namespace name:` | Namespace definition (deployment with options) |
 | `nexus endpoint Name` (in namespace) | Nexus endpoint instantiation with task_queue |
+
+## Common `options:` Keys
+
+`options:` blocks attach operational config to a call. A clean `twf check` does not require any of these — but the design must reason about them (idempotency, history cost, failure behavior, routing). This is a lookup table; the *reasoning* lives in the worked example in [SKILL.md](../SKILL.md#design-flow) and the topic docs.
+
+| Key | Attaches to | Why it matters |
+|-----|-------------|----------------|
+| `task_queue` | activity, workflow | Routing — pins the call to a specific worker pool (capability, isolation, region) |
+| `start_to_close_timeout` | activity | Failure behavior — bounds a single attempt; required in practice for any real activity |
+| `schedule_to_close_timeout` | activity, nexus | Total time budget across queueing + attempts |
+| `schedule_to_start_timeout` | activity | Tolerance for queue wait before a worker picks it up |
+| `heartbeat_timeout` | activity | Worker-death detection for long activities (pairs with `heartbeat()`) |
+| `retry_policy` | activity, workflow, nexus | Failure behavior — `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types` |
+| `workflow_execution_timeout` / `workflow_run_timeout` / `workflow_task_timeout` | workflow | Bounds for total / per-run / per-task duration |
+| `parent_close_policy` | workflow | Child lifecycle when parent closes: `TERMINATE` (default), `REQUEST_CANCEL`, `ABANDON` |
+| `workflow_id_reuse_policy` | workflow | Idempotency on retry: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, `TERMINATE_IF_RUNNING` |
+| `cron_schedule` | workflow | Recurring child execution |
+| `priority` | activity, workflow, nexus | Relative dispatch priority |
+
+> The child-workflow **ID** itself is an SDK-level concern, not a TWF call option — see [child-workflows.md](../topics/child-workflows.md#workflow-id-design). `task_queue` is intentionally **not** a nexus-call option; nexus routing comes from the endpoint declaration.
 
 Full grammar: [`tools/spec/sections/`](../../../tools/spec/sections/) (or run `twf spec`).

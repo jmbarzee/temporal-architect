@@ -14,6 +14,8 @@ Nexus enables workflows in one Temporal namespace to call operations in another 
 | Service abstraction needed | Direct coupling acceptable |
 | Multi-tenant architectures | Single-tenant |
 
+> **Deciding how many namespaces?** See [namespaces.md](../reference/namespaces.md) — the default is **one**. Nexus is the mechanism for the *one* case that legitimately spans namespaces (a cross-team / different-security-context service contract); it is not a reason to multiply namespaces. Same-namespace calls should be child workflows, not Nexus.
+
 ---
 
 ## Nexus Concepts
@@ -179,6 +181,8 @@ workflow Caller(data: Data) -> (Result):
             activity AlertTimeout(data)
             close fail(Result{success: false, error: "timeout"})
 ```
+
+> **The nexus operation continues if the timer wins.** Losing an `await one` race does **not** cancel the nexus call — the operation (and the workflow it runs in the *target* namespace) keeps running until this workflow run ends. Since the target is an independent service, you usually can't cancel it implicitly; if the payment must be voided on timeout, model that explicitly (a compensating nexus op or activity), not by relying on the race.
 
 ---
 

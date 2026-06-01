@@ -49,6 +49,8 @@ await one:
         close fail("timed out")
 ```
 
+> **The promise's operation is not cancelled when it loses.** If `timeout` wins, the operation backing `p` (the activity/workflow/nexus call started by `promise p <- ...`) keeps running until the workflow run ends — racing a promise against a timeout does **not** cancel the promise. If the losing operation must actually stop, add explicit cleanup; the race alone won't release it.
+
 ### Start-Now, Wait-Later Pattern
 
 The primary use case for promises is starting operations without blocking, doing other work, then collecting results:

@@ -2,10 +2,14 @@
 
 ## Use Activities When
 
+**Default granularity: one activity per network call / external interaction.** This is the right default because it makes Temporal's retry, timeout, and backoff land at exactly the unit that can fail independently — one activity per fallible boundary gives clean, granular retry semantics. Start here, then deviate only as an optimization (batching, local activities — see [core-principles.md](./core-principles.md#activities-are-for-io--not-in-memory-work)).
+
 - Single atomic operation
 - External system interaction (API, DB, file)
 - Short, predictable completion time (single timeout period)
 - No orchestration logic
+
+Conversely, do **not** create an activity for work that touches no external system — reads of already-held data, in-memory derivation, or accumulation are workflow code, not activities.
 
 ## Use Child Workflows When
 

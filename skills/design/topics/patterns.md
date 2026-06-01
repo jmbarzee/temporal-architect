@@ -72,8 +72,20 @@ A long-running workflow representing a business entity.
 
 ### Pattern
 
+Handlers (`signal`/`query`/`update`) are declared **before** the workflow body, not after it. `history_length()` returns an event *count* (use it against an event-count threshold); `history_size()` returns *bytes* (use it against a byte limit) — don't confuse the two.
+
 ```twf
 workflow AccountEntity(accountId: string, account: Account):
+    query GetBalance() -> (decimal):
+        return account.balance
+
+    update Transfer(amount: decimal, toAccount: string) -> (TransferResult):
+        if account.balance < amount:
+            return TransferResult{success: false, error: "insufficient funds"}
+        account.balance -= amount
+        activity InitiateTransfer(toAccount, amount)
+        return TransferResult{success: true}
+
     if account == null:
         activity LoadAccount(accountId) -> account
 
@@ -95,18 +107,9 @@ workflow AccountEntity(accountId: string, account: Account):
             timer(24h):
                 activity DailyReconciliation(accountId, account)
 
-        if history_size() > 1000:
+        # history_length() = event count; reset before it grows large
+        if history_length() > 1000:
             close continue_as_new(accountId, account)
-
-query GetBalance() -> (decimal):
-    return account.balance
-
-update Transfer(amount: decimal, toAccount: string) -> (TransferResult):
-    if account.balance < amount:
-        return TransferResult{success: false, error: "insufficient funds"}
-    account.balance -= amount
-    activity InitiateTransfer(toAccount, amount)
-    return TransferResult{success: true}
 ```
 
 ### When to Use

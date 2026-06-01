@@ -17,6 +17,10 @@ Temporal replays the full event history to reconstruct workflow state after any 
 
 **Solution:** Reset history periodically with `continue_as_new`.
 
+> **A bound is not a free pass.** "Only infinite loops need `continue_as_new`" is wrong. A *bounded* loop still grows history linearly with its bound, and if per-iteration history is chunky (a large activity result plus several tool calls each iteration) it can hit the limit well before the bound. The rule is: **loops whose accumulated history is large need `continue_as_new` — the bound alone is not sufficient.**
+>
+> **State the strategy explicitly.** Even though *where* to continue-as-new is partly an implementation concern, the design should **say** what it is — "bounded at N, per-iteration history small, no `continue_as_new`," "resets every K iterations," or "defer to author-go" — rather than leaving it silent. A silent design is one nobody decided.
+
 ---
 
 ## Continue-As-New

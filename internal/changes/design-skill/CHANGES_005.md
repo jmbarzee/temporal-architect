@@ -1,4 +1,8 @@
-# Design Skill Revisions: Namespace Topology Guidance
+# Design Skill Changes: Namespace Topology Guidance
+
+> **Status: COMPLETED.** New `reference/namespaces.md` (decision ladder: default one; organizational not architectural; explicit not-reasons; two-layer-agent worked judgment). Cross-references added from `nexus.md` and `task-queues.md`; Reference Index row and a namespace-count checklist line added.
+>
+> **Deviation from "new `topics/namespaces.md`":** placed in `reference/`, not `topics/`. The content is a cross-cutting decision ladder (spanning workers/nexus/task-queues), structurally a sibling of `reference/workflow-boundaries.md` — not a single-construct deep-dive — and it doesn't carry a compelling standalone example, so the topology is **inlined** as a `twf` block rather than shipped as a companion `namespaces.twf`.
 
 **Source:** `reflect-skill` from `REFLECTION_DESIGN.md`
 **Focus:** The skill gives no guidance on namespace *count*. With no heuristic, the design drifted to one namespace per worker (6). Add a decision ladder establishing that namespaces are an organizational/operational boundary, not an architectural one.
