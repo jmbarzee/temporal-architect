@@ -17,3 +17,7 @@ See:
 - [Activity Definitions](./02-activities.md)
 - [Worker and Namespace Definitions](./03-workers-and-namespaces.md)
 - [Nexus Service Definitions](./04-nexus.md)
+
+Cross-cutting topics:
+
+- [Cross-Workflow Signals](./13-cross-workflow-signals.md)

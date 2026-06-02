@@ -87,6 +87,40 @@ nexus OrderEndpoint OrderService.GetStatus(order.id) -> status
 detach nexus NotificationEndpoint NotificationService.SendEmail(email)
 ```
 
+## Signal Send
+
+```
+signal_send_stmt ::= 'signal' send_target args NEWLINE
+
+send_target ::= ident_handle_target
+
+ident_handle_target ::= IDENT '.' IDENT
+                       # IDENT 1 = promise bound to a workflow call (the handle)
+                       # IDENT 2 = signal handler name declared by the target workflow
+```
+
+Sends a signal to another running workflow that the sender started and still holds a handle to. The handle is a workflow-bound `promise` (`promise child <- workflow X(args)`); the dot-qualified name selects a signal the target workflow declares. Maps to `ChildWorkflowFuture.SignalChildWorkflow`.
+
+A `.` after the name is what distinguishes a send from a signal *arrival* target (`await signal Name`): `signal pay.OrderShipped(id)` is a send, `await signal OrderShipped` is an arrival.
+
+**Signal send is fire-and-forget.** It is a statement only — there is no `await` or `promise` form, and it is not an `await one` case. A signal carries no return value, so the only thing a sender could wait on is *send acceptance*, never the receiver's handler running; modeling that would invite the misreading "the target processed my signal." The one scenario where an asynchronous send helps is raw throughput (not blocking the sender on dispatch), but it carries a strong tradeoff: the sender loses the ability to (1) learn that the target workflow did not exist and (2) handle delivery failures locally. That tradeoff is rarely justified, so the DSL keeps signal send to the single fire-and-forget statement form.
+
+**Example:**
+```twf
+workflow OrderSaga(order: Order) -> (SagaResult):
+    promise pay <- workflow ProcessPayment(order)
+    promise ship <- workflow ShipOrder(order)
+
+    # Notify the payment workflow that the order has shipped
+    signal pay.OrderShipped(shipmentId)
+
+    # Wait for both children to finish
+    await all:
+        await pay -> payment
+        await ship -> shipment
+    close complete(SagaResult{payment, shipment})
+```
+
 ## Promise Statement
 
 ```

@@ -47,10 +47,15 @@ signal_decl ::= 'signal' IDENT params ':' NEWLINE INDENT statement* DEDENT
 query_decl ::= 'query' IDENT params '->' return_type ':' NEWLINE INDENT statement* DEDENT
 update_decl ::= 'update' IDENT params '->' return_type ':' NEWLINE INDENT statement* DEDENT
 
-statement ::= activity_call | workflow_call | nexus_call | promise_stmt | set_stmt | unset_stmt
+statement ::= activity_call | workflow_call | nexus_call | signal_send_stmt | promise_stmt
+            | set_stmt | unset_stmt
             | await_stmt | await_all_block | await_one_block | switch_block
             | if_stmt | for_stmt | close_stmt | return_stmt
             | break_stmt | continue_stmt | assignment
+
+signal_send_stmt ::= 'signal' send_target args NEWLINE
+send_target ::= ident_handle_target
+ident_handle_target ::= IDENT '.' IDENT
 
 promise_stmt ::= 'promise' IDENT '<-' async_target NEWLINE
 set_stmt ::= 'set' IDENT NEWLINE

@@ -13,6 +13,7 @@ After parsing, the resolver performs symbol resolution:
    - Resolve workflow calls to workflow definitions
    - Resolve await targets to signal/update/activity/workflow/promise/condition declarations
    - Resolve `set`/`unset` targets to condition declarations
+   - Resolve cross-workflow signal sends: the handle must resolve to a workflow-bound `promise`, and the target workflow must declare the named signal
    - Walk signal/query/update handler bodies and resolve references
 3. **Report errors:** Undefined references, duplicate definitions, etc.
 
@@ -25,6 +26,8 @@ Common error types:
 - Duplicate definitions
 - Temporal keywords in activity context
 - Invalid await targets (e.g., awaiting a query)
+- Signal-send handle is not a workflow-bound promise (the handle must come from `promise h <- workflow X(args)`)
+- Signal name not declared by the target workflow (cross-workflow signal send)
 - Condition with result binding (conditions cannot have `-> result`)
 - `set`/`unset` on undefined condition
 - Worker references undefined workflow, activity, or nexus service

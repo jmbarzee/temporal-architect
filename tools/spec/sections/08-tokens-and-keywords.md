@@ -14,7 +14,7 @@
 - `workflow` - Workflow definition or child call
 - `activity` - Activity definition or call
 - `timer` - Durable sleep (used with `await`)
-- `signal` - Signal declaration and await target
+- `signal` - Three uses, disambiguated by syntactic context: (a) handler declaration at the top of a workflow, (b) arrival target in `await`/`promise`/`await one` (`await signal Name`), (c) cross-workflow send statement with a dot-qualified handle target (`signal handle.Name(args)`). A `.` after the name marks a send; otherwise it is an arrival.
 - `query` - Query declaration
 - `update` - Update declaration and await target
 

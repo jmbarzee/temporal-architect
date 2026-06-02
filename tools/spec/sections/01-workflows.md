@@ -50,6 +50,8 @@ signal_decl ::= 'signal' IDENT params ':' NEWLINE
 
 Signal handler bodies execute when the signal arrives. Handlers have access to the full workflow statement set (activities, child workflows, timers, etc.).
 
+For sending a signal to another workflow, see [Cross-Workflow Signals](./13-cross-workflow-signals.md).
+
 ## Query Declarations
 
 Query handlers are defined at the beginning of workflows with handler body blocks:

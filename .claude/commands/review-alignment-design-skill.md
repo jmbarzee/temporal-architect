@@ -2,13 +2,14 @@
 
 This command answers: "does the design skill accurately and completely document what the parser actually accepts, emits, and rejects?"
 
-The parser is the ground truth — not `tools/spec/sections/`. The spec and parser are kept in sync separately via `/project:review-alignment-parser`. The skill must reflect reality: what the parser parses, what errors it emits, what the resulting AST means.
+The spec (`tools/spec/sections/`) is the design authority — the canonical flow changes the spec first, then propagates to the parser via `/project:review-alignment-parser`. The skill, though, teaches `.twf` that authors run through `twf check` today, so it must also track what the parser currently parses, the errors it emits, and what the resulting AST means. In practice the two agree; when they diverge it is usually because the parser has not yet caught up to a recent spec change. Treat the spec as the source of intent and the parser as the source of current reality — and when they conflict, identify which one is ahead rather than assuming the skill is at fault.
 
 Skill craft and structure belong in `/project:review-quality-skill`. This command is solely alignment: does the skill document everything the parser provides?
 
 ## Context
 
-- `tools/lsp/parser/` (`lexer/`, `parser/`, `ast/`, `resolver/`) — authoritative source
+- `tools/spec/sections/*.md` — the design authority (what the DSL is *meant* to do); consult when the parser and skill diverge to tell whether the parser is simply behind
+- `tools/lsp/parser/` (`lexer/`, `parser/`, `ast/`, `resolver/`) — current parser behavior (what `twf check` accepts, emits, and rejects today)
 - `skills/design/README.md` — declared goal and scope of the skill
 - `skills/design/SKILL.md` and `skills/design/reference/` — the target under review
 - `AST_REVISIONS.md` — changes in flight that may introduce new constructs requiring pre-emptive documentation
@@ -40,7 +41,7 @@ Launch one sub-agent per topic. Each sub-agent reads the relevant **parser code 
 
 - Is this construct documented in the skill? (`documented` / `partial` / `missing`)
 - Is the documentation accurate — does it match what the parser actually does?
-- Is there skill content describing behavior the parser doesn't support? (stale)
+- Is there skill content describing behavior the parser doesn't support? If the spec defines it, the parser is likely just behind (a parser-alignment gap, not skill rot); if neither the spec nor the parser supports it, it is stale.
 - Do the `.twf` examples for this topic pass `twf check`?
 
 Sub-agents run in parallel. **Every sub-agent reads both sides** — parser code and skill documentation — for its topic.
@@ -69,7 +70,7 @@ Write the grouped plan to `internal/changes/design-skill/alignment_REVISIONS_{NN
 
 ## Constraints
 
-- **Parser is authoritative.** If the skill documents something the parser doesn't support, flag it for removal — not for parser addition.
+- **Spec is the design authority; the parser is current reality.** If the skill documents something the parser doesn't support, check the spec first: if the spec defines it, that's a parser gap — route it to `/project:review-alignment-parser` and keep the content (but don't imply `twf check` accepts it yet) rather than deleting it. Only flag content for removal when neither the spec nor the parser supports it (genuinely stale).
 - **Sub-agents are scoped by topic, not by artifact.** Every sub-agent reads both parser code and skill docs for its topic.
 - **Run `twf check` on all examples.** Don't trust example correctness by reading alone.
 - **Prefer improving existing examples over creating new ones.** More docs ≠ better docs.
