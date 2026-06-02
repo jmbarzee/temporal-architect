@@ -6,8 +6,8 @@ Actionable rollout for getting every distribution channel from "wired in CI" to 
 
 | Channel | CI wired | Account / token | First publish landed | Notes |
 |---|---|---|---|---|
-| VS Code Marketplace (`jmbarzee.twf-syntax`) | yes | yes (`VSCE_TOKEN`) | yes — last shipped `v0.3.2` | **Listing's "View Source" link 404s today** because `package.json` `repository.url` points at `github.com/jmbarzee/temporal-architect` but the repo is still at `jmbarzee/temporal-skills`. Resolves the moment the repo is renamed (next item). |
-| Open VSX (`jmbarzee/twf-syntax`) | yes | yes (`OVSX_TOKEN`) | yes — last shipped `v0.3.2` | Same "View Source" caveat as VS Code Marketplace. |
+| VS Code Marketplace (`jmbarzee.twf-syntax`) | yes | yes (`VSCE_TOKEN`) | yes — last shipped `v0.3.2` | Listing's "View Source" link resolves to the renamed repo. |
+| Open VSX (`jmbarzee/twf-syntax`) | yes | yes (`OVSX_TOKEN`) | yes — last shipped `v0.3.2` | Same. |
 | GitHub Release assets (`twf-*`, `skills-*`, `install.sh`, `SHA256SUMS`) | yes | (built-in) | **partial** — `v0.3.2` shipped only VSIX files; the binary archive + skills tarball + install.sh wiring landed after `v0.3.2`. First end-to-end run will be the next `v*` tag. |
 | npm `@temporal-architect/visualizer` | yes (`_publish-npm-visualizer.yml`) | yes (`NPM_TOKEN`, scope claimed) | no | First publish happens on next tag. |
 | npm `@temporal-architect/twf` + 5 platform sub-packages | yes (`_publish-npm-twf.yml`) | yes (`NPM_TOKEN`, scope claimed) | no | First publish happens on next tag. **6 packages publish atomically per tag**; if any sub-package publish fails the wrapper's `optionalDependencies` resolution breaks for that platform. |
@@ -22,63 +22,20 @@ Legend: "wired in CI" = a `_publish-*.yml` reusable workflow exists and is calle
 ## What blocks what
 
 ```
-GitHub repo rename (jmbarzee/temporal-skills → jmbarzee/temporal-architect)
-  ├── unblocks: marketplace "View Source" links, install.sh URLs, all `go install` URLs in error messages
-  └── safe to do immediately — see § 1
-
 External account setup (PyPI + Homebrew tap)
   ├── unblocks: `_publish-pypi.yml`, `_publish-brew.yml`
-  └── safe to do in parallel with rename — see § 2
+  └── only remaining gate — see § 1
 
 First publish (any `v*` tag after the above)
   ├── unblocks: every "first publish landed: no" row above
-  └── needs smoke tests per channel — see § 4
+  └── needs smoke tests per channel — see § 3
 ```
+
+The GitHub repo rename (`jmbarzee/temporal-skills` → `jmbarzee/temporal-architect`) is **done**. GitHub auto-redirects the old URL for ~1 year of inactivity, which is enough for the long tail (forks, cached blog posts, AI-agent caches) to migrate via `git remote set-url`. The CHANGELOG entry for the next release should call this out.
 
 ---
 
-## 1. GitHub repo rename
-
-This is the single highest-leverage move. All internal manifests already reference `github.com/jmbarzee/temporal-architect`; the GitHub repo itself is still at `jmbarzee/temporal-skills`. Until they match:
-
-- The shipped VS Code extension's "View Source" link 404s.
-- `go install github.com/jmbarzee/temporal-architect/...@latest` fails. The extension's missing-binary error message prints exactly this URL ([`packages/vscode/src/extension.ts:306`](./packages/vscode/src/extension.ts)).
-- The Claude Code marketplace install line `/plugin marketplace add jmbarzee/temporal-architect` fails to resolve.
-- Every README install snippet that pins a download URL fails.
-- The JSON Schema `$id` (`tools/lsp/cmd/twf/twf.schema.json`) resolves to a non-existent URL.
-
-### Action
-
-Settings → General → Rename: `temporal-skills` → `temporal-architect`. GitHub auto-creates a redirect that survives for **1 year** of inactivity on the old name, but the cleanest path is to update the local clone immediately after:
-
-```bash
-git remote set-url origin git@github.com:jmbarzee/temporal-architect.git
-git remote -v   # verify
-```
-
-### Verification gate
-
-- [ ] `curl -sI https://github.com/jmbarzee/temporal-architect | head -1` returns `200`.
-- [ ] `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` succeeds in a clean shell.
-- [ ] The marketplace listing's "Repository" link resolves.
-
-### What this does **not** break
-
-The VS Code / Cursor extension itself is unaffected at the *extension-ID* level — `jmbarzee.twf-syntax` is the same string before and after the repo rename. Installed users keep their extension; updates keep flowing. The only thing that changes is the URL the marketplace's "View Source" link sends a click to (currently 404, post-rename 200).
-
-### What this **does** break (and how to handle)
-
-| Surface | Break | Mitigation |
-|---|---|---|
-| Hardcoded `temporal-skills` URLs in old documentation, blog posts, AI-agent caches | 404 once GitHub's 1-year redirect lapses | GitHub redirect is automatic and lasts a year; that's enough time for the long tail to update. |
-| Cloned forks tracking `temporal-skills` | `git fetch` still works via redirect | Communicate the rename in CHANGELOG; users `git remote set-url`. |
-| Lingering `temporal-skills` references in `package-lock.json` and two `MANIFEST.md` build artifacts | None functionally, but they leak the old name | Rebuild the visualizer / claude-plugin and let `make build-skills` regenerate the MANIFEST files. The fix is mechanical, not load-bearing. |
-
-If a future *brand* rename ever changes the extension publisher (`jmbarzee.*`) or extension name (`twf-syntax`), that is a fundamentally bigger break because VS Code Marketplace extension IDs are **immutable** — see [§ 5](#5-future-brand-rename-the-extension-id-change-scenario). That scenario is not triggered by the current repo rename.
-
----
-
-## 2. External accounts (pending)
+## 1. External accounts (pending)
 
 Both block their corresponding publish jobs. Both are independent and can be done in parallel.
 
@@ -119,22 +76,17 @@ Both block their corresponding publish jobs. Both are independent and can be don
 
 ---
 
-## 3. Pre-tag final cleanup
+## 2. Pre-tag final cleanup
 
-Bookkeeping that survives the rename but is worth doing once before the next `v*` tag.
-
-- [ ] `package-lock.json` at the repo root — regenerate or delete; it's an empty stub that still references `temporal-skills`.
-- [ ] `packages/vscode/skills/MANIFEST.md` — regenerated by `make build-skills`; verify the next build clears the `temporal-skills` reference.
-- [ ] `packages/npm/claude-plugin/skills/MANIFEST.md` — same; cleared by `make build-claude-plugin`.
 - [ ] CHANGELOG entry for the next version noting the GitHub repo rename and (eventually) first publish on PyPI / Homebrew / npm-twf / claude-plugin channels.
 
 ### Verification gate
 
-- [ ] `rg "temporal-skills" --type-add 'md:*.md' --type-add 'json:*.json' --type-add 'toml:*.toml' -t md -t json -t toml -t go` returns no live references (only historical CHANGELOG mentions are OK).
+- [x] No live references to the old project name in source — confirmed clean as of this writing; only this file mentions it, in the historical "what changed" context above.
 
 ---
 
-## 4. First-publish verification (per channel)
+## 3. First-publish verification (per channel)
 
 After the next `v*` tag fires, each channel needs a real-world smoke test. CI green is necessary but not sufficient — the registry's resolution path is what matters.
 
@@ -159,9 +111,9 @@ Failures here are typically credential-related (token scopes too narrow), name-r
 
 ---
 
-## 5. Future brand rename — the extension-ID change scenario
+## 4. Future brand rename — the extension-ID change scenario
 
-The current GitHub repo rename does **not** change the extension ID. A separate, larger brand rename someday might — and that's the case the user flagged as breaking the VS Code / Cursor extensions. The mechanics:
+The completed GitHub repo rename did **not** change the extension ID. A separate, larger brand rename someday might — and that's the case to plan for, since it would break the VS Code / Cursor extensions. The mechanics:
 
 - **VS Code Marketplace extension IDs are immutable.** `jmbarzee.twf-syntax` is the literal identifier installed users carry; you cannot rename it in-place. The marketplace API has no concept of "this extension moved."
 - **Open VSX has the same constraint.**
@@ -201,18 +153,17 @@ The same dynamic applies to:
 | Does the extension name (`twf-syntax`) actually need to change? | If not, *no break*: extension stays installable as `jmbarzee.twf-syntax` no matter what the GitHub repo or product name is. |
 | Migration vs. deprecate-and-forget? | Migration costs ~1 day of authoring the deprecation flow above; deprecate-and-forget costs lost users. |
 
-The current internal-rename to `temporal-architect` (Go modules, npm scope, repo URL) **does not** require either of those to change. The extension stays `jmbarzee.twf-syntax` indefinitely if we want it to. Treat the extension-ID rename as a separate, opt-in event, not a consequence of the current rename.
+The completed internal-rename to `temporal-architect` (Go modules, npm scope, repo URL) **does not** require either of those to change. The extension stays `jmbarzee.twf-syntax` indefinitely if we want it to. Treat the extension-ID rename as a separate, opt-in event, not a consequence of the project rename.
 
 ---
 
-## 6. Sequencing
+## 5. Sequencing
 
-1. **Rename the GitHub repo** (§ 1). Lowest cost, highest cleanup leverage.
-2. **In parallel: stand up the PyPI and Homebrew accounts** (§ 2).
-3. **Pre-tag cleanup pass** (§ 3) — clear lingering `temporal-skills` strings, regenerate built artifacts.
-4. **Cut the next `v*` tag.** Every reusable workflow fires; per-channel smoke-test (§ 4).
-5. **Triage any first-publish failures** per channel and re-tag if needed.
-6. **Post-M2: Smithery submission** (per `packaging.md`).
-7. **Defer the extension-ID change scenario** (§ 5) until / unless a brand-level decision actually requires it.
+1. **Stand up the PyPI and Homebrew accounts** (§ 1). The only remaining external gate.
+2. **CHANGELOG entry** (§ 2) — record the GitHub rename and queued first-publish channels.
+3. **Cut the next `v*` tag.** Every reusable workflow fires; per-channel smoke-test (§ 3).
+4. **Triage any first-publish failures** per channel and re-tag if needed.
+5. **Post-M2: Smithery submission** (per `packaging.md`).
+6. **Defer the extension-ID change scenario** (§ 4) until / unless a brand-level decision actually requires it.
 
-The work above can plausibly land in one focused day plus a real-tag dry run; the only hard external dependency is account creation latency (PyPI verification + tap repo creation).
+The work above can plausibly land in one focused session plus a real-tag dry run; the only hard external dependency is account creation latency (PyPI verification + tap repo creation).

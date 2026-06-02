@@ -9,9 +9,24 @@ import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor } from '../graph/nod
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
+// The four force tabs. Unlike ForceSection, a tab is always one of these —
+// there is no "null" tab; exactly one section is shown at a time.
+type ForceTab = 'push' | 'pull' | 'gravity' | 'dynamics'
+
+const FORCE_TABS: { id: ForceTab; label: string }[] = [
+  { id: 'push', label: 'Push' },
+  { id: 'pull', label: 'Pull' },
+  { id: 'gravity', label: 'Gravity' },
+  { id: 'dynamics', label: 'Dynamics' },
+]
+
 interface GraphControlPanelProps {
   params: ForceParams
   onParamChange: (key: keyof ForceParams, value: number) => void
+  // Shared "keep the simulation warm while tuning" signal. Fired alongside
+  // every force-control edit so the layout responds live. See GraphView's
+  // handleForceAdjust.
+  onAdjust: () => void
   running: boolean
   onToggleRunning: () => void
   onReheat: () => void
@@ -192,17 +207,28 @@ const DYNAMICS_SLIDERS: SliderDef[] = [
 ]
 
 export function GraphControlPanel({
-  params, onParamChange, running, onToggleRunning, onReheat,
+  params, onParamChange, onAdjust, running, onToggleRunning, onReheat,
   showForceFields, onToggleForceFields, onActiveSection,
   onActiveChargeType, onActiveGravityType,
 }: GraphControlPanelProps) {
   const [open, setOpen] = React.useState(false)
   const [helpOpen, setHelpOpen] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState<ForceTab>('push')
+
+  // Single funnel for every force control's edits. Routing all controls
+  // through one wrapper means the "nudge the simulation" behaviour is
+  // defined once and inherited by every present and future control
+  // (sliders, dual-range bands, upcoming 2D fields) — no per-control wiring,
+  // no chance of a control forgetting to keep the layout warm.
+  const emitParamChange = React.useCallback((key: keyof ForceParams, value: number) => {
+    onParamChange(key, value)
+    onAdjust()
+  }, [onParamChange, onAdjust])
 
   const handleReset = () => {
     for (const key of Object.keys(DEFAULT_PARAMS) as (keyof ForceParams)[]) {
       if (params[key] !== DEFAULT_PARAMS[key]) {
-        onParamChange(key, DEFAULT_PARAMS[key])
+        emitParamChange(key, DEFAULT_PARAMS[key])
       }
     }
   }
@@ -234,103 +260,130 @@ export function GraphControlPanel({
 
       {open && (
         <div className="graph-control-panel-body">
-          {/* PUSH section */}
-          <EquationSection section="push" title="PUSH" subtitle="all node pairs" equation={'F = \u03B1 \u00D7 push \u00D7 charge / eff^exp\neff = \u221A(d\u00B2 + softening)'} onHover={h => onActiveSection(h ? 'push' : null)}>
-            {PUSH_MASTER_SLIDERS.map(s => (
-              <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => onParamChange(s.key, v)} />
-            ))}
-            <div className="graph-control-sub-header">
-              <span className="graph-control-sub-label">Level</span>
-              <span className="graph-control-sub-label">Charge</span>
-            </div>
-            {PUSH_CHARGE_SLIDERS.map(s => (
-              <div
-                key={s.key}
-                onMouseEnter={() => onActiveChargeType(s.nodeType)}
-                onMouseLeave={() => onActiveChargeType(null)}
+          {/* Force tabs — only one section is shown at a time. */}
+          <div className="graph-control-tabs" role="tablist">
+            {FORCE_TABS.map(t => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={activeTab === t.id}
+                className={`graph-control-tab${activeTab === t.id ? ' active' : ''}`}
+                onClick={() => setActiveTab(t.id)}
               >
-                <SliderRow
-                  def={s}
-                  value={params[s.key]}
-                  onChange={v => onParamChange(s.key, v)}
-                  nodeType={s.nodeType}
-                />
-              </div>
+                {t.label}
+              </button>
             ))}
-          </EquationSection>
+          </div>
 
-          {/* PULL section */}
-          <EquationSection section="pull" title="PULL" subtitle="connected pairs" equation={'F = \u03B1 \u00D7 pull \u00D7 k \u00D7 sign(\u0394) \u00D7 |\u0394|^exp / d\n\u0394 = d \u2212 rest \u00D7 dist'} onHover={h => onActiveSection(h ? 'pull' : null)}>
-            {PULL_MASTER_SLIDERS.map(s => (
-              <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => onParamChange(s.key, v)} />
-            ))}
-            <div className="graph-control-sub-header">
-              <span className="graph-control-sub-label" style={{ minWidth: 52 }}>Edge</span>
-              <span className="graph-control-sub-label">k</span>
-              <span className="graph-control-sub-label">rest</span>
-            </div>
-            {PULL_EDGES.map(e => (
-              <PullEdgeRow key={e.label} def={e} params={params} onChange={onParamChange} />
-            ))}
-          </EquationSection>
+          {/* All four sections are always mounted and stacked in the same grid
+              cell; only the active one is visible. The grid auto-sizes to the
+              tallest/widest tab, so the panel never resizes when switching
+              tabs — the browser computes the "max required space" for us. */}
+          <div className="graph-control-sections">
+            {/* PUSH section */}
+            <SectionSlot active={activeTab === 'push'}>
+              <EquationSection subtitle="all node pairs" equation={'F = \u03B1 \u00D7 push \u00D7 charge / eff^exp\neff = \u221A(d\u00B2 + softening)'} onHover={h => onActiveSection(h ? 'push' : null)}>
+                {PUSH_MASTER_SLIDERS.map(s => (
+                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange(s.key, v)} />
+                ))}
+                <div className="graph-control-sub-header">
+                  <span className="graph-control-sub-label">Level</span>
+                  <span className="graph-control-sub-label">Charge</span>
+                </div>
+                {PUSH_CHARGE_SLIDERS.map(s => (
+                  <div
+                    key={s.key}
+                    onMouseEnter={() => onActiveChargeType(s.nodeType)}
+                    onMouseLeave={() => onActiveChargeType(null)}
+                  >
+                    <SliderRow
+                      def={s}
+                      value={params[s.key]}
+                      onChange={v => emitParamChange(s.key, v)}
+                      nodeType={s.nodeType}
+                    />
+                  </div>
+                ))}
+              </EquationSection>
+            </SectionSlot>
 
-          {/* GRAVITY section */}
-          <EquationSection
-            section="gravity"
-            title="GRAVITY"
-            subtitle="hierarchical anchor"
-            equation={'F\u2093 = \u03B1 \u00D7 X \u00D7 (0 \u2212 x)\nF\u1d67 = \u03B1 \u00D7 Y \u00D7 (band \u2212 y) when y outside band'}
-            onHover={h => { onActiveSection(h ? 'gravity' : null); if (!h) onActiveGravityType(null) }}
-          >
-            {GRAVITY_STRENGTH_SLIDERS.map(s => (
-              <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => onParamChange(s.key, v)} />
-            ))}
-            <div className="graph-control-sub-header">
-              <span className="graph-control-sub-label">Axis</span>
-              <span className="graph-control-sub-label">X band (left \u2192 right)</span>
-            </div>
-            <div className="graph-control-band-row">
-              <span className="graph-control-band-label">X</span>
-              <DualRangeSlider
-                min={BAND_Y_MIN}
-                max={BAND_Y_MAX}
-                step={BAND_Y_STEP}
-                valueMin={params.bandXMin}
-                valueMax={params.bandXMax}
-                onChangeMin={v => onParamChange('bandXMin', v)}
-                onChangeMax={v => onParamChange('bandXMax', v)}
-                nodeType="namespace"
-              />
-              <span className="graph-control-band-value">{Math.round(params.bandXMin)}</span>
-              <span className="graph-control-band-value">{Math.round(params.bandXMax)}</span>
-            </div>
-            <div className="graph-control-sub-header">
-              <span className="graph-control-sub-label">Type</span>
-              <span className="graph-control-sub-label">Y band (top \u2192 bottom)</span>
-            </div>
-            {GRAVITY_BAND_SLIDERS.map(b => (
-              <div
-                key={b.nodeType}
-                onMouseEnter={() => onActiveGravityType(b.nodeType)}
-                onMouseLeave={() => onActiveGravityType(null)}
+            {/* PULL section */}
+            <SectionSlot active={activeTab === 'pull'}>
+              <EquationSection subtitle="connected pairs" equation={'F = \u03B1 \u00D7 pull \u00D7 k \u00D7 sign(\u0394) \u00D7 |\u0394|^exp / d\n\u0394 = d \u2212 rest \u00D7 dist'} onHover={h => onActiveSection(h ? 'pull' : null)}>
+                {PULL_MASTER_SLIDERS.map(s => (
+                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange(s.key, v)} />
+                ))}
+                <div className="graph-control-sub-header">
+                  <span className="graph-control-sub-label" style={{ minWidth: 52 }}>Edge</span>
+                  <span className="graph-control-sub-label">k</span>
+                  <span className="graph-control-sub-label">rest</span>
+                </div>
+                {PULL_EDGES.map(e => (
+                  <PullEdgeRow key={e.label} def={e} params={params} onChange={emitParamChange} />
+                ))}
+              </EquationSection>
+            </SectionSlot>
+
+            {/* GRAVITY section */}
+            <SectionSlot active={activeTab === 'gravity'}>
+              <EquationSection
+                subtitle="hierarchical anchor"
+                equation={'F\u2093 = \u03B1 \u00D7 X \u00D7 (0 \u2212 x)\nF\u1d67 = \u03B1 \u00D7 Y \u00D7 (band \u2212 y) when y outside band'}
+                onHover={h => { onActiveSection(h ? 'gravity' : null); if (!h) onActiveGravityType(null) }}
               >
-                <BandRow
-                  def={b}
-                  valueMin={params[b.minKey] as number}
-                  valueMax={params[b.maxKey] as number}
-                  onChangeMin={v => onParamChange(b.minKey, v)}
-                  onChangeMax={v => onParamChange(b.maxKey, v)}
-                />
-              </div>
-            ))}
-          </EquationSection>
+                {GRAVITY_STRENGTH_SLIDERS.map(s => (
+                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange(s.key, v)} />
+                ))}
+                <div className="graph-control-sub-header">
+                  <span className="graph-control-sub-label">Axis</span>
+                  <span className="graph-control-sub-label">X band (left \u2192 right)</span>
+                </div>
+                <div className="graph-control-band-row">
+                  <span className="graph-control-band-label">X</span>
+                  <DualRangeSlider
+                    min={BAND_Y_MIN}
+                    max={BAND_Y_MAX}
+                    step={BAND_Y_STEP}
+                    valueMin={params.bandXMin}
+                    valueMax={params.bandXMax}
+                    onChangeMin={v => emitParamChange('bandXMin', v)}
+                    onChangeMax={v => emitParamChange('bandXMax', v)}
+                    nodeType="namespace"
+                  />
+                  <span className="graph-control-band-value">{Math.round(params.bandXMin)}</span>
+                  <span className="graph-control-band-value">{Math.round(params.bandXMax)}</span>
+                </div>
+                <div className="graph-control-sub-header">
+                  <span className="graph-control-sub-label">Type</span>
+                  <span className="graph-control-sub-label">Y band (top \u2192 bottom)</span>
+                </div>
+                {GRAVITY_BAND_SLIDERS.map(b => (
+                  <div
+                    key={b.nodeType}
+                    onMouseEnter={() => onActiveGravityType(b.nodeType)}
+                    onMouseLeave={() => onActiveGravityType(null)}
+                  >
+                    <BandRow
+                      def={b}
+                      valueMin={params[b.minKey] as number}
+                      valueMax={params[b.maxKey] as number}
+                      onChangeMin={v => emitParamChange(b.minKey, v)}
+                      onChangeMax={v => emitParamChange(b.maxKey, v)}
+                    />
+                  </div>
+                ))}
+              </EquationSection>
+            </SectionSlot>
 
-          {/* DYNAMICS section */}
-          <EquationSection section="dynamics" title="DYNAMICS" subtitle="" equation={'v \u00D7= friction\n\u03B1 \u2212= cooling, stop at threshold'} onHover={h => onActiveSection(h ? 'dynamics' : null)}>
-            {DYNAMICS_SLIDERS.map(s => (
-              <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => onParamChange(s.key, v)} />
-            ))}
-          </EquationSection>
+            {/* DYNAMICS section */}
+            <SectionSlot active={activeTab === 'dynamics'}>
+              <EquationSection subtitle="" equation={'v \u00D7= friction\n\u03B1 \u2212= cooling, stop at threshold'} onHover={h => onActiveSection(h ? 'dynamics' : null)}>
+                {DYNAMICS_SLIDERS.map(s => (
+                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange(s.key, v)} />
+                ))}
+              </EquationSection>
+            </SectionSlot>
+          </div>
 
           {/* Simulation controls */}
           <div className="graph-control-group">
@@ -356,9 +409,24 @@ export function GraphControlPanel({
   )
 }
 
-function EquationSection({ section, title, subtitle, equation, onHover, children }: {
-  section: 'push' | 'pull' | 'gravity' | 'dynamics'
-  title: string
+// A stacking slot for one force section. All slots share a single grid cell
+// (see .graph-control-sections), so the panel sizes to the tallest section and
+// never changes size when switching tabs. Inactive slots stay mounted but
+// hidden (visibility + pointer-events) so they still contribute to the grid's
+// max size and keep their input state.
+function SectionSlot({ active, children }: { active: boolean; children: React.ReactNode }) {
+  return (
+    <div className={`graph-control-section-slot${active ? ' active' : ''}`} aria-hidden={!active}>
+      {children}
+    </div>
+  )
+}
+
+// One force section's content. The tab bar names the section, so this no
+// longer renders its own title — just the optional subtitle, the governing
+// equation (transparency), and the controls. The wrapper is still the hover
+// target that drives the canvas force-field preview via onHover.
+function EquationSection({ subtitle, equation, onHover, children }: {
   subtitle: string
   equation: string
   onHover: (hovered: boolean) => void
@@ -366,14 +434,15 @@ function EquationSection({ section, title, subtitle, equation, onHover, children
 }) {
   return (
     <div
-      className={`graph-control-equation-section graph-control-section-${section}`}
+      className="graph-control-equation-section"
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
     >
-      <div className="graph-control-equation-header">
-        <span className="graph-control-equation-title">{title}</span>
-        {subtitle && <span className="graph-control-equation-subtitle">({subtitle})</span>}
-      </div>
+      {subtitle && (
+        <div className="graph-control-equation-header">
+          <span className="graph-control-equation-subtitle">({subtitle})</span>
+        </div>
+      )}
       <pre className="graph-control-equation-formula">{equation}</pre>
       <div className="graph-control-equation-body">
         {children}

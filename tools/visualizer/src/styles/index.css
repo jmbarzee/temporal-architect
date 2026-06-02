@@ -20,14 +20,6 @@
      node type are injected into :root by that call; they are not hard-coded
      here so that adding a new node type only requires one registry entry. */
 
-  /* Force-section accent palette for the control panel. Each section gets a
-     distinct hue that doesn't compete with the node-type colours: warm for
-     repulsion, cool for attraction, the same purple as the X anchor for
-     gravity, and a neutral slate for the temporal dynamics. */
-  --color-section-push: #E07B5B;
-  --color-section-pull: #5DA8C9;
-  --color-section-gravity: #8B7EC8;
-  --color-section-dynamics: #94A3B8;
   --color-bg: #f8fafc;
   --color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   --color-text: #1e293b;
@@ -598,21 +590,63 @@ body {
   margin-bottom: 4px;
 }
 
-/* Equation-oriented sections */
+/* Force tabs — one section visible at a time. */
+.graph-control-tabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.graph-control-tab {
+  flex: 1;
+  padding: 5px 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.graph-control-tab:hover {
+  color: var(--color-text);
+}
+
+.graph-control-tab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-text);
+}
+
+/* All four force sections are stacked in a single grid cell so the panel
+   sizes to the tallest/widest tab and never resizes on tab switch. Each slot
+   occupies the same cell (1 / 1); only the active one is visible. */
+.graph-control-sections {
+  display: grid;
+}
+
+.graph-control-section-slot {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  pointer-events: none;
+  min-width: 0;
+}
+
+.graph-control-section-slot.active {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Equation-oriented sections. Only the active tab's section is visible, so it
+   sits at full opacity (no inter-section dimming to compete with). */
 .graph-control-equation-section {
   margin-top: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-border);
-  opacity: 0.6;
-  transition: opacity 0.15s;
-}
-
-.graph-control-equation-section:hover {
-  opacity: 1;
-}
-
-.graph-control-equation-section:last-of-type {
-  border-bottom: none;
 }
 
 .graph-control-equation-header {
@@ -620,14 +654,6 @@ body {
   align-items: baseline;
   gap: 6px;
   margin-bottom: 2px;
-}
-
-.graph-control-equation-title {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--color-text);
 }
 
 .graph-control-equation-subtitle {
@@ -695,11 +721,10 @@ body {
   text-align: right;
 }
 
-/* ── Type / section colour theming ─────────────────────────────────────────
+/* ── Type colour theming ───────────────────────────────────────────────────
    Per-type rows (charges, bands, edge endpoints) read from --type-color.
    The .graph-control-typed-<nodeType> assignments that set --type-color are
    generated at runtime by mountNodeTypeStyles() in App.tsx / webview.tsx.
-   Per-section headers (PUSH/PULL/GRAVITY/DYNAMICS) read from --section-color.
 */
 
 /* Rows that carry a single node type get a coloured left-accent and tint
@@ -734,29 +759,6 @@ body {
   background: var(--type-color, var(--color-text-muted));
   vertical-align: middle;
   opacity: 0.85;
-}
-
-/* Section-header accents. Each EquationSection gets a coloured left rule
-   and a tinted title; subtitle and formula stay neutral so the colour
-   reads as a section landmark rather than visual noise. */
-.graph-control-section-push { --section-color: var(--color-section-push); }
-.graph-control-section-pull { --section-color: var(--color-section-pull); }
-.graph-control-section-gravity { --section-color: var(--color-section-gravity); }
-.graph-control-section-dynamics { --section-color: var(--color-section-dynamics); }
-
-.graph-control-equation-section.graph-control-section-push,
-.graph-control-equation-section.graph-control-section-pull,
-.graph-control-equation-section.graph-control-section-gravity,
-.graph-control-equation-section.graph-control-section-dynamics {
-  border-left: 3px solid var(--section-color);
-  padding-left: 8px;
-}
-
-.graph-control-equation-section.graph-control-section-push .graph-control-equation-title,
-.graph-control-equation-section.graph-control-section-pull .graph-control-equation-title,
-.graph-control-equation-section.graph-control-section-gravity .graph-control-equation-title,
-.graph-control-equation-section.graph-control-section-dynamics .graph-control-equation-title {
-  color: var(--section-color);
 }
 
 /* Gravity Y-band row — label, dual-handle slider, two readouts. */

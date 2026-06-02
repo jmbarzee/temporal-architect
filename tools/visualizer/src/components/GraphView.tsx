@@ -711,13 +711,28 @@ export function GraphView({
     prevSelectedFiles.current = selectedFiles
   }, [selectedFiles])
 
-  // Propagate force param changes to simulation (no auto-reheat — user controls when to restart)
+  // Propagate force param changes to the simulation. This only updates the
+  // params; re-energising the layout is the separate concern of
+  // `handleForceAdjust` below, so non-param interactions (e.g. dragging a
+  // future 2D force field before it commits a value) can keep the sim warm
+  // without routing through here.
   const handleParamChange = React.useCallback((key: keyof ForceParams, value: number) => {
     setForceParams(prev => {
       const next = { ...prev, [key]: value }
       simRef.current?.setParams(next)
       return next
     })
+  }, [])
+
+  // Shared "keep the simulation warm while tuning" mechanism. Every force
+  // control routes its edits through this (via the control panel) so a
+  // parameter change always re-energises the layout — tuning is a live
+  // feedback loop, not an edit-then-press-Play workflow. Freezing a layout
+  // is a separate, explicit action (Pause / the simulation cooling on its
+  // own once edits stop).
+  const handleForceAdjust = React.useCallback(() => {
+    simRef.current?.nudge(0.3)
+    setRunning(true)
   }, [])
 
   // Node drag handlers
@@ -1217,6 +1232,7 @@ export function GraphView({
       <GraphControlPanel
         params={forceParams}
         onParamChange={handleParamChange}
+        onAdjust={handleForceAdjust}
         running={running}
         onToggleRunning={handleToggleRunning}
         onReheat={handleReheat}

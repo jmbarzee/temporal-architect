@@ -619,6 +619,15 @@ export class Simulation {
     this.alpha = alpha
   }
 
+  // Raise alpha to at least `target` without ever cooling a hotter sim.
+  // This is the physics primitive behind the control panel's "keep the
+  // layout warm while tuning" hook: a parameter edit re-energises the
+  // simulation just enough to show its effect, but a still-hot sim is
+  // left alone so dragging a slider during settling doesn't dampen it.
+  nudge(target = 0.3): void {
+    if (this.alpha < target) this.alpha = target
+  }
+
   isStable(): boolean {
     return this.alpha < this.params.alphaMin
   }
