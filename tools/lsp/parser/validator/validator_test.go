@@ -425,3 +425,39 @@ namespace ns:
 		t.Error("expected error about endpoint-service linkage")
 	}
 }
+
+// TestSignalSendHandleCountsAsUse locks in the Group 4 guard: a workflow-bound
+// promise consumed solely by a signal send (never awaited) must not be flagged
+// as unused / "result never consumed", and a fire-and-forget send produces no
+// validation warning of its own. There is no unused-promise heuristic today;
+// this test exists so that if one is ever added it cannot regress this case.
+func TestSignalSendHandleCountsAsUse(t *testing.T) {
+	input := `workflow OrderSaga(order: string) -> (string):
+    promise pay <- workflow ProcessPayment(order)
+    signal pay.OrderShipped(order)
+    close complete(order)
+
+workflow ProcessPayment(order: string) -> (string):
+    signal OrderShipped(id: string):
+        shipped = true
+    return order
+
+worker sagaWorker:
+    workflow OrderSaga
+    workflow ProcessPayment
+
+namespace ecommerce:
+    worker sagaWorker
+        options:
+            task_queue: "orders"
+`
+	file := mustParseAndResolve(t, input)
+	errs := Validate(file)
+	for _, e := range errs {
+		if strings.Contains(e.Msg, "pay") ||
+			strings.Contains(e.Msg, "unused") ||
+			strings.Contains(e.Msg, "never consumed") {
+			t.Errorf("unexpected diagnostic about the signal-send handle: %v", e)
+		}
+	}
+}

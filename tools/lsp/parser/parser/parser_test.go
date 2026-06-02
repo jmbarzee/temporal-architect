@@ -1982,3 +1982,126 @@ workflow ProcessOrder(order: Order) -> (Result):
 		t.Errorf("expected value 'orders', got %q", ep.Options.Entries[0].Value)
 	}
 }
+
+func TestSignalSendStmt(t *testing.T) {
+	input := `workflow OrderSaga(order):
+    promise pay <- workflow ProcessPayment(order)
+    signal pay.OrderShipped(shipmentId)
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	send, ok := wf.Body[1].(*ast.SignalSendStmt)
+	if !ok {
+		t.Fatalf("expected SignalSendStmt, got %T", wf.Body[1])
+	}
+	if send.Handle.Name != "pay" {
+		t.Errorf("expected handle 'pay', got %q", send.Handle.Name)
+	}
+	if send.Signal != "OrderShipped" {
+		t.Errorf("expected signal 'OrderShipped', got %q", send.Signal)
+	}
+	if send.Args != "shipmentId" {
+		t.Errorf("expected args 'shipmentId', got %q", send.Args)
+	}
+}
+
+func TestSignalSendAsFirstStatementUnsupported(t *testing.T) {
+	// By design a signal send cannot be the first statement in a workflow: the
+	// declaration region intercepts the leading `signal` and parses it as a
+	// (malformed) signal declaration. Putting any statement before it works.
+	input := `workflow Foo(x):
+    signal pay.OrderShipped(id)
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for signal send as first statement, got nil")
+	}
+
+	// Workaround: a leading statement ends the declaration region.
+	ok := `workflow Foo(x):
+    log(starting)
+    signal pay.OrderShipped(id)
+`
+	file, err := ParseFile(ok)
+	if err != nil {
+		t.Fatalf("unexpected error with leading statement: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	if _, ok := wf.Body[1].(*ast.SignalSendStmt); !ok {
+		t.Fatalf("expected SignalSendStmt at body[1], got %T", wf.Body[1])
+	}
+
+	// A leading comment does NOT work: the declaration region skips comments,
+	// so the signal is still intercepted as a declaration.
+	cmt := `workflow Foo(x):
+    # kick things off
+    signal pay.OrderShipped(id)
+`
+	if _, err := ParseFile(cmt); err == nil {
+		t.Fatal("expected error for leading comment + signal send, got nil")
+	}
+}
+
+func TestSignalDeclStillParsesWithSend(t *testing.T) {
+	// A real signal declaration must still parse when a send follows in the body.
+	input := `workflow Foo(x):
+    signal Approved():
+        approved = true
+    promise pay <- workflow ProcessPayment(x)
+    signal pay.OrderShipped(id)
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	if len(wf.Signals) != 1 {
+		t.Fatalf("expected 1 signal declaration, got %d", len(wf.Signals))
+	}
+	if wf.Signals[0].Name != "Approved" {
+		t.Errorf("expected signal decl 'Approved', got %q", wf.Signals[0].Name)
+	}
+	if _, ok := wf.Body[1].(*ast.SignalSendStmt); !ok {
+		t.Fatalf("expected SignalSendStmt at body[1], got %T", wf.Body[1])
+	}
+}
+
+func TestSignalSendWithoutDotError(t *testing.T) {
+	// A leading statement ends the declaration loop, so `signal pay` reaches
+	// the body parser and is treated as a (malformed) send rather than a decl.
+	input := `workflow Foo(x):
+    promise pay <- workflow ProcessPayment(x)
+    signal pay
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for signal send without dot, got nil")
+	}
+	pe, ok := err.(*ParseError)
+	if !ok {
+		t.Fatalf("expected ParseError, got %T: %v", err, err)
+	}
+	if !strings.Contains(pe.Msg, "signal arrivals must be awaited") {
+		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+}
+
+func TestSignalSendRejectedInActivityBody(t *testing.T) {
+	input := `activity Foo(x):
+    signal pay.OrderShipped(id)
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for signal send in activity body, got nil")
+	}
+	pe, ok := err.(*ParseError)
+	if !ok {
+		t.Fatalf("expected ParseError, got %T: %v", err, err)
+	}
+	if !strings.Contains(pe.Msg, "not allowed in activity body") {
+		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+}

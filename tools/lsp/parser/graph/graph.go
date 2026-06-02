@@ -63,6 +63,7 @@ const (
 	EdgeWorkflowCall = "workflowCall"
 	EdgeNexusCall    = "nexusCall"
 	EdgeAsyncBacking = "asyncBacking"
+	EdgeSignalSend   = "signalSend"
 )
 
 // Edge is a single edge in the graph. Dispatch edges (activityCall /

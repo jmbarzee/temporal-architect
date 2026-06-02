@@ -58,6 +58,11 @@ declLoop:
 
 		switch p.current.Type {
 		case token.SIGNAL:
+			// A leading `signal` in this region is parsed as a signal
+			// declaration. A signal *send* (`signal handle.Name(args)`) is a
+			// body statement, so by design it cannot be the FIRST statement in
+			// a workflow: precede it with any statement to end this region. A
+			// comment does not suffice — comments are skipped above.
 			sig, err := parseSignalDecl(p)
 			if err != nil {
 				return nil, err

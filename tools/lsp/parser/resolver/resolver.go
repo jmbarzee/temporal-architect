@@ -42,6 +42,14 @@ const (
 	// ErrConditionResultBinding: a condition target has a result binding (-> identifier), which is not allowed.
 	ErrConditionResultBinding
 
+	// --- Cross-workflow signal send errors ---
+
+	// ErrSignalSendHandleNotWorkflow: a signal-send handle resolves to a promise
+	// that is not workflow-bound (the handle must come from `promise h <- workflow X(args)`).
+	ErrSignalSendHandleNotWorkflow
+	// ErrSignalSendUndefinedSignal: the target workflow does not declare the named signal.
+	ErrSignalSendUndefinedSignal
+
 	// --- Nexus resolution errors ---
 
 	// ErrNexusAsyncUndefinedWorkflow: an async nexus operation references an undefined workflow.
@@ -122,6 +130,10 @@ func (k ErrorKind) String() string {
 		return "UNDEFINED_PROMISE_OR_CONDITION"
 	case ErrConditionResultBinding:
 		return "CONDITION_RESULT_BINDING"
+	case ErrSignalSendHandleNotWorkflow:
+		return "SIGNAL_SEND_HANDLE_NOT_WORKFLOW"
+	case ErrSignalSendUndefinedSignal:
+		return "SIGNAL_SEND_UNDEFINED_SIGNAL"
 	case ErrNexusAsyncUndefinedWorkflow:
 		return "NEXUS_ASYNC_UNDEFINED_WORKFLOW"
 	case ErrNexusUndefinedEndpoint:
@@ -351,6 +363,8 @@ func (c *resolveCtx) resolveStatements(stmts []ast.Statement) {
 			resolveRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, &c.errs)
 		case *ast.UnsetStmt:
 			resolveRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, &c.errs)
+		case *ast.SignalSendStmt:
+			c.resolveSignalSend(s)
 		}
 		return true
 	}, ast.WithAsyncTargets(func(target ast.AsyncTarget, parent ast.Statement) bool {
@@ -456,6 +470,59 @@ func (c *resolveCtx) resolveAsyncTarget(target ast.AsyncTarget, line, column int
 	case *ast.TimerTarget:
 		// No resolution needed for timers
 	}
+}
+
+// resolveSignalSend resolves a cross-workflow signal send. This is the first
+// resolver rule that follows a promise to what it resolves to: the handle must
+// be a workflow-bound promise, and the target workflow must declare the named
+// signal. On full success the handle's Resolved pointer is linked to the
+// promise so the graph and JSON layers can reach the target workflow.
+func (c *resolveCtx) resolveSignalSend(s *ast.SignalSendStmt) {
+	promise, ok := c.promises[s.Handle.Name]
+	if !ok {
+		c.errs = append(c.errs, &ResolveError{
+			Msg:    fmt.Sprintf("undefined promise or condition: %s", s.Handle.Name),
+			Line:   s.Handle.Line,
+			Column: s.Handle.Column,
+			Kind:   ErrUndefinedPromiseOrCondition,
+			Name:   s.Handle.Name,
+		})
+		return
+	}
+
+	wt, ok := promise.Target.(*ast.WorkflowTarget)
+	if !ok {
+		c.errs = append(c.errs, &ResolveError{
+			Msg:    fmt.Sprintf("signal-send handle %q is not a workflow-bound promise; the handle must come from `promise %s <- workflow X(args)`", s.Handle.Name, s.Handle.Name),
+			Line:   s.Handle.Line,
+			Column: s.Handle.Column,
+			Kind:   ErrSignalSendHandleNotWorkflow,
+			Name:   s.Handle.Name,
+		})
+		return
+	}
+
+	// The target workflow name itself is unresolved — the promise's own
+	// workflow-call resolution already reported it. Degrade gracefully rather
+	// than double-reporting or verifying the signal against a nil target.
+	if wt.Workflow.Resolved == nil {
+		return
+	}
+
+	for _, sig := range wt.Workflow.Resolved.Signals {
+		if sig.Name == s.Signal {
+			s.Handle.Resolved = promise
+			return
+		}
+	}
+
+	c.errs = append(c.errs, &ResolveError{
+		Msg:    fmt.Sprintf("signal %q is not declared by workflow %s", s.Signal, wt.Workflow.Resolved.Name),
+		Line:   s.Line,
+		Column: s.Column,
+		Kind:   ErrSignalSendUndefinedSignal,
+		Name:   s.Signal,
+	})
 }
 
 // collectDef registers a definition in the map, appending a duplicate error if

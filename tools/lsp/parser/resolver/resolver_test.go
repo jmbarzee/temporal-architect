@@ -927,6 +927,110 @@ namespace myNs:
 	}
 }
 
+func TestSignalSendResolution(t *testing.T) {
+	input := `workflow OrderSaga(order):
+    promise pay <- workflow ProcessPayment(order)
+    signal pay.OrderShipped(shipmentId)
+
+workflow ProcessPayment(order):
+    signal OrderShipped(id):
+        shipped = true
+`
+	file := mustParse(t, input)
+	errs := Resolve(file)
+	if len(errs) > 0 {
+		for _, e := range errs {
+			t.Errorf("unexpected error: %v", e)
+		}
+		t.FailNow()
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	send := wf.Body[1].(*ast.SignalSendStmt)
+	if send.Handle.Resolved == nil {
+		t.Fatal("signal-send handle not resolved")
+	}
+	if send.Handle.Resolved.Name != "pay" {
+		t.Errorf("handle resolved to %q, expected 'pay'", send.Handle.Resolved.Name)
+	}
+}
+
+func TestSignalSendHandleNotWorkflow(t *testing.T) {
+	input := `workflow Foo(x):
+    promise t <- timer(5m)
+    signal t.Something(x)
+`
+	file := mustParse(t, input)
+	errs := Resolve(file)
+	if len(errs) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(errs))
+	}
+	if errs[0].Kind != ErrSignalSendHandleNotWorkflow {
+		t.Errorf("expected ErrSignalSendHandleNotWorkflow, got %v", errs[0].Kind)
+	}
+	if !strings.Contains(errs[0].Msg, "not a workflow-bound promise") {
+		t.Errorf("unexpected error: %q", errs[0].Msg)
+	}
+}
+
+func TestSignalSendUndefinedSignal(t *testing.T) {
+	input := `workflow OrderSaga(order):
+    promise pay <- workflow ProcessPayment(order)
+    signal pay.NopeSignal(x)
+
+workflow ProcessPayment(order):
+    return done
+`
+	file := mustParse(t, input)
+	errs := Resolve(file)
+	if len(errs) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(errs))
+	}
+	if errs[0].Kind != ErrSignalSendUndefinedSignal {
+		t.Errorf("expected ErrSignalSendUndefinedSignal, got %v", errs[0].Kind)
+	}
+	if !strings.Contains(errs[0].Msg, "is not declared by workflow ProcessPayment") {
+		t.Errorf("unexpected error: %q", errs[0].Msg)
+	}
+}
+
+func TestSignalSendUndefinedHandle(t *testing.T) {
+	input := `workflow Foo(x):
+    log(start)
+    signal ghost.Something(x)
+`
+	file := mustParse(t, input)
+	errs := Resolve(file)
+	if len(errs) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(errs))
+	}
+	if errs[0].Kind != ErrUndefinedPromiseOrCondition {
+		t.Errorf("expected ErrUndefinedPromiseOrCondition, got %v", errs[0].Kind)
+	}
+}
+
+func TestSignalSendTargetWorkflowUndefined(t *testing.T) {
+	// The target workflow name is itself undefined: the promise's own
+	// resolution reports it; signal-send resolution must degrade gracefully
+	// (no duplicate, no panic) and leave the handle unresolved.
+	input := `workflow Foo(order):
+    promise pay <- workflow Missing(order)
+    signal pay.OrderShipped(x)
+`
+	file := mustParse(t, input)
+	errs := Resolve(file)
+	if len(errs) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(errs))
+	}
+	if errs[0].Kind != ErrUndefinedWorkflow {
+		t.Errorf("expected ErrUndefinedWorkflow, got %v", errs[0].Kind)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	send := wf.Body[1].(*ast.SignalSendStmt)
+	if send.Handle.Resolved != nil {
+		t.Error("handle should remain unresolved when target workflow is undefined")
+	}
+}
+
 // hasError checks if any non-warning error contains the given substring.
 func hasError(errs []*ResolveError, substr string) bool {
 	for _, e := range errs {

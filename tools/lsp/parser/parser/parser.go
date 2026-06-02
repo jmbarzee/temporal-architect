@@ -71,6 +71,7 @@ func init() {
 	workflowStmtParsers = map[token.TokenType]stmtParser{
 		token.ACTIVITY:        parseActivityCall,
 		token.WORKFLOW:        parseWorkflowCall,
+		token.SIGNAL:          parseSignalSendStmt,
 		token.DETACH:          parseWorkflowCallOrNexus,
 		token.NEXUS:           parseNexusCall,
 		token.AWAIT:           parseAwaitStmt, // handles both single await and await blocks

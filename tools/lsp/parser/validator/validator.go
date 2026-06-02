@@ -358,6 +358,16 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, callingWorkflow st
 			v.checkCallRouting("workflow", n.Workflow.Name, n.Options, callingWorkflow, n.Line, n.Column)
 		case *ast.NexusCall:
 			v.checkEndpointServiceLinkage(n.Endpoint.Name, n.Service.Name, n.Line, n.Column)
+		case *ast.SignalSendStmt:
+			// A signal send is a *use* of its handle promise — no routing
+			// check applies (a signal is delivered to a child the sender
+			// already started, not task-queue-matched; see graph.emitSignalSend).
+			// GUARD for future heuristics: there is no unused-promise /
+			// "result never consumed" check today, but when one is added it
+			// MUST treat `signal h.Name(...)` as consuming the promise `h`. A
+			// workflow-bound promise used only as a signal target (never
+			// awaited) is still used, and a fire-and-forget send is valid even
+			// if the handle is never awaited. See TestSignalSendHandleCountsAsUse.
 		default:
 			if target := ast.AsyncTargetOf(s); target != nil {
 				v.walkAsyncTarget(target, s.NodeLine(), s.NodeColumn())

@@ -476,6 +476,8 @@ func marshalStatement(stmt Statement) (json.RawMessage, error) {
 		return marshalContinueStmt(s)
 	case *RawStmt:
 		return marshalRawStmt(s)
+	case *SignalSendStmt:
+		return marshalSignalSendStmt(s)
 	case *Comment:
 		return marshalComment(s)
 	case *PromiseStmt:
@@ -707,6 +709,30 @@ func marshalRawStmt(s *RawStmt) (json.RawMessage, error) {
 
 func marshalComment(s *Comment) (json.RawMessage, error) {
 	return json.Marshal(commentJSON{Type: "comment", Line: s.Line, Column: s.Column, Text: s.Text})
+}
+
+func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
+	sj := signalSendStmtJSON{
+		Type:   "signalSend",
+		Line:   s.Line,
+		Column: s.Column,
+		Handle: s.Handle.Name,
+		Signal: s.Signal,
+		Args:   s.Args,
+	}
+	// resolved surfaces the target workflow the handle was started against —
+	// what the visualizer needs to draw the signalSend edge. Reached by
+	// following the resolved handle promise to its WorkflowTarget.
+	if s.Handle.Resolved != nil {
+		if wt, ok := s.Handle.Resolved.Target.(*WorkflowTarget); ok && wt.Workflow.Resolved != nil {
+			sj.Resolved = &resolvedRefJSON{
+				Name:   wt.Workflow.Resolved.Name,
+				Line:   wt.Workflow.Resolved.Line,
+				Column: wt.Workflow.Resolved.Column,
+			}
+		}
+	}
+	return json.Marshal(sj)
 }
 
 func marshalPromiseStmt(s *PromiseStmt) (json.RawMessage, error) {
@@ -999,6 +1025,16 @@ type commentJSON struct {
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
 	Text   string `json:"text"`
+}
+
+type signalSendStmtJSON struct {
+	Type     string           `json:"type"`
+	Line     int              `json:"line"`
+	Column   int              `json:"column"`
+	Handle   string           `json:"handle"`
+	Signal   string           `json:"signal"`
+	Args     string           `json:"args,omitempty"`
+	Resolved *resolvedRefJSON `json:"resolved,omitempty"`
 }
 
 type promiseStmtJSON struct {

@@ -265,6 +265,104 @@ namespace bad:
 	}
 }
 
+// TestSignalSendEdge covers the cross-workflow signal-send edge: a distinct
+// signalSend edge to the target workflow's deployment in the caller's
+// namespace, with a present-but-empty Routing block (no task_queue).
+func TestSignalSendEdge(t *testing.T) {
+	src := `
+workflow OrderSaga(order: string) -> (string):
+    promise pay <- workflow ProcessPayment(order)
+    signal pay.OrderShipped(order)
+    close complete(order)
+
+workflow ProcessPayment(order: string) -> (string):
+    signal OrderShipped(id: string):
+        shipped = true
+    return order
+
+worker sagaWorker:
+    workflow OrderSaga
+    workflow ProcessPayment
+
+namespace ecommerce:
+    worker sagaWorker
+        options:
+            task_queue: "orders"
+`
+	file, parseErrs := parser.ParseFileAll(src)
+	if len(parseErrs) > 0 {
+		t.Fatalf("parse: %v", parseErrs[0])
+	}
+	if errs := resolver.Resolve(file); len(errs) > 0 {
+		t.Fatalf("resolve: %v", errs[0])
+	}
+	g := Extract(file)
+
+	from := "workflow:OrderSaga/worker:sagaWorker/namespace:ecommerce"
+	to := "workflow:ProcessPayment/worker:sagaWorker/namespace:ecommerce"
+	if !hasEdge(g, from, to, EdgeSignalSend) {
+		t.Fatalf("expected signalSend edge %s -> %s; edges: %+v", from, to, g.Edges)
+	}
+
+	// The signalSend edge must carry a present-but-empty Routing block (no
+	// task_queue semantics), distinct from queue-routed dispatch edges.
+	for _, e := range g.Edges {
+		if e.Kind == EdgeSignalSend {
+			if e.Routing == nil {
+				t.Errorf("signalSend edge missing Routing block: %+v", e)
+			} else if !e.Routing.isEmpty() {
+				t.Errorf("signalSend edge Routing should be empty, got %+v", e.Routing)
+			}
+		}
+	}
+}
+
+// TestSignalSendUnresolved verifies that a send whose handle does not fully
+// resolve (here: the target workflow declares no such signal) records an
+// Unresolved entry rather than drawing an edge.
+func TestSignalSendUnresolved(t *testing.T) {
+	src := `
+workflow OrderSaga(order: string) -> (string):
+    promise pay <- workflow ProcessPayment(order)
+    signal pay.NopeSignal(order)
+    close complete(order)
+
+workflow ProcessPayment(order: string) -> (string):
+    return order
+
+worker sagaWorker:
+    workflow OrderSaga
+    workflow ProcessPayment
+
+namespace ecommerce:
+    worker sagaWorker
+        options:
+            task_queue: "orders"
+`
+	file, parseErrs := parser.ParseFileAll(src)
+	if len(parseErrs) > 0 {
+		t.Fatalf("parse: %v", parseErrs[0])
+	}
+	// Resolve will report SIGNAL_SEND_UNDEFINED_SIGNAL; that's expected here.
+	resolver.Resolve(file)
+	g := Extract(file)
+
+	for _, e := range g.Edges {
+		if e.Kind == EdgeSignalSend {
+			t.Errorf("expected no signalSend edge for unresolved send, got %+v", e)
+		}
+	}
+	found := false
+	for _, u := range g.Unresolved {
+		if u.Kind == EdgeSignalSend && u.Name == "pay" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected Unresolved signalSend entry; got %+v", g.Unresolved)
+	}
+}
+
 // TestNilFile ensures Extract is defensive against a nil AST input
 // — useful so the CLI can call Extract before checking for parse
 // errors without short-circuiting.

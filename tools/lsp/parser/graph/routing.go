@@ -76,6 +76,8 @@ func (g *Graph) walkRunnable(idx *astIndex, callerID string, callerDep workerDep
 			g.emitWorkflowCall(idx, callerID, callerDep, n.Workflow, n.Options, n.Line)
 		case *ast.NexusCall:
 			g.emitNexusCall(idx, callerID, n.Endpoint, n.Service, n.Operation, n.Line)
+		case *ast.SignalSendStmt:
+			g.emitSignalSend(idx, callerID, callerDep, n.Handle, n.Line)
 		}
 		return true
 	}, ast.WithAsyncTargets(func(target ast.AsyncTarget, parent ast.Statement) bool {
@@ -116,6 +118,58 @@ func (g *Graph) emitWorkflowCall(
 		return
 	}
 	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, kindWorkflow, ref.Resolved.Name, opts, line)
+}
+
+// emitSignalSend emits the cross-workflow signal-send edge. Unlike a
+// workflow call, a signal is delivered to a specific running child the
+// sender already started — not dispatched by task-queue matching. So the
+// edge does not reuse the queue-routed emitQueuedCall path: it fans out to
+// every deployment of the target workflow in the caller's namespace and
+// carries a present-but-empty Routing block (fire-and-forget, no
+// task_queue override), mirroring the asyncBacking edge.
+//
+// The target workflow is reached through the resolved handle promise
+// (set by the resolver only when the send is fully valid). When the handle
+// is unresolved — undefined handle, non-workflow handle, undefined target
+// workflow, or undeclared signal — no edge is drawn and an Unresolved entry
+// is recorded instead of silently dropping the send.
+func (g *Graph) emitSignalSend(
+	idx *astIndex, callerID string, callerDep workerDeployment,
+	handle ast.Ref[*ast.PromiseStmt], line int,
+) {
+	target := signalSendTarget(handle)
+	if target == nil {
+		g.Unresolved = append(g.Unresolved, Unresolved{
+			From: callerID, Name: handle.Name, Kind: EdgeSignalSend, Line: line,
+		})
+		return
+	}
+	for _, calleeDep := range idx.deploymentsHosting(kindWorkflow, target.Name) {
+		if calleeDep.NamespaceName != callerDep.NamespaceName {
+			continue
+		}
+		g.Edges = append(g.Edges, Edge{
+			From:    callerID,
+			To:      hostedID(kindWorkflow, target.Name, calleeDep.WorkerName, calleeDep.NamespaceName, false),
+			Kind:    EdgeSignalSend,
+			Line:    line,
+			Routing: &Routing{},
+		})
+	}
+}
+
+// signalSendTarget extracts the resolved target workflow definition from a
+// signal-send handle. Returns nil when the handle did not fully resolve to a
+// workflow-bound promise whose target workflow is itself resolved.
+func signalSendTarget(handle ast.Ref[*ast.PromiseStmt]) *ast.WorkflowDef {
+	if handle.Resolved == nil {
+		return nil
+	}
+	wt, ok := handle.Resolved.Target.(*ast.WorkflowTarget)
+	if !ok {
+		return nil
+	}
+	return wt.Workflow.Resolved
 }
 
 // emitQueuedCall implements the shared activity/workflow dispatch

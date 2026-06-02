@@ -80,6 +80,42 @@ workflow OrderTrackingWorkflow(orderId: string):
 
 ---
 
+## Sending Signals to a Child Workflow
+
+Everything above is the *receive* side — declaring handlers and awaiting arrivals. A workflow can also *send* a signal to a child it started and still holds a handle to. The handle is a workflow-bound promise (`promise handle <- workflow X(args)`); the dot-qualified name selects a signal the target workflow declares.
+
+```twf
+workflow OrderSaga(order: Order) -> (SagaResult):
+    promise pay <- workflow ProcessPayment(order)
+    promise ship <- workflow ShipOrder(order)
+
+    # Notify the payment workflow that the order has shipped
+    signal pay.OrderShipped(shipmentId)
+
+    # The handle is still awaitable later — sending does not consume it
+    await all:
+        await pay -> payment
+        await ship -> shipment
+    close complete(SagaResult{payment, shipment})
+```
+
+The send is **statement-only and fire-and-forget**. There is no `await` or `promise` form and it is not an `await one` case: a signal carries no return value, so there is nothing to bind. The only thing a sender could wait on is *send acceptance* (the server accepting the send), never the receiver's handler running — modeling that would invite the misreading "the target processed my signal."
+
+### Rules
+
+- The handle must be **workflow-bound** (`promise h <- workflow X(args)`). Sending on a handle bound to a timer, signal, activity, etc. is an error.
+- The target workflow must **declare** the named signal (`signal OrderShipped(...)` on `X`), or it is an error.
+- A workflow-bound promise serves **two roles** on the same handle — an awaitable (`await pay -> payment`) and a signal target (`signal pay.OrderShipped(...)`). Sending a signal does not consume or affect a later `await` on it.
+
+### When to Use
+
+- Coordinating sibling/child workflows in a saga — telling one child about an event another produced.
+- Pushing an event into a child you started, without waiting for it to react.
+
+This is the only cross-workflow send the DSL provides: handle-bound only. Addressing a workflow you did not start (external/ID-based sends), and cross-workflow queries or updates, are not modeled.
+
+---
+
 ## Queries
 
 Synchronous, read-only access to workflow state. The caller blocks until the query returns.

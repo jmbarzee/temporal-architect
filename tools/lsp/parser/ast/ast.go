@@ -392,6 +392,20 @@ type RawStmt struct {
 
 func (*RawStmt) stmtNode() {}
 
+// SignalSendStmt represents a cross-workflow signal send: signal handle.Name(args).
+// It is statement-only — never an AsyncTarget, await target, or promise RHS —
+// because a signal carries no return value (fire-and-forget). Handle is a
+// workflow-bound promise; it resolves to the *PromiseStmt so the resolver and
+// graph can follow it to the target workflow it was started against.
+type SignalSendStmt struct {
+	Pos
+	Handle Ref[*PromiseStmt]
+	Signal string // signal name declared on the target workflow
+	Args   string // opaque parenthesized argument literal
+}
+
+func (*SignalSendStmt) stmtNode() {}
+
 type Comment struct {
 	Pos
 	Text string
