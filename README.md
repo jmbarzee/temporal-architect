@@ -91,6 +91,26 @@ The TWF notation covers the core Temporal feature set:
 - **Translators** — Analyze existing systems (event-based architectures, SQS/Lambda, etc.) and generate equivalent DSL designs
 - **Debuggers & Optimizers** — Assist with debugging, profiling, and optimizing existing Temporal workflows
 
+## Packaging & Distribution
+
+Every way `twf` and the skills ship — the canonical channel matrix. For user-facing install lines, see [Quick install](#quick-install) above; for design rationale, see [`packaging.md`](./packaging.md); for the actionable rollout work, see [`publishing_setup.md`](./publishing_setup.md).
+
+| Channel | Artifact | Install | Bundles | Source |
+|---|---|---|---|---|
+| **VS Code Marketplace** / **Open VSX** | `jmbarzee.twf-syntax` (VSIX, 5 platforms) | Search "Temporal Workflow (.twf)" in Extensions, or install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) / [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax) | `twf` binary, LSP client, visualizer webview, skills (auto-installed to `~/.cursor/skills/` on activation) | [`packages/vscode/`](./packages/vscode/) |
+| **Claude Code marketplace** | `@temporal-architect/claude-plugin` (payload) | `/plugin marketplace add jmbarzee/temporal-architect` → `/plugin install temporal-architect@temporal-architect` | skills tree + plugin manifest declaring the `twf` MCP server | catalog at [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json); payload built from [`packages/npm/claude-plugin/`](./packages/npm/claude-plugin/) |
+| **npm (wrapper + platform sub-packages)** | `@temporal-architect/twf` + `@temporal-architect/twf-{darwin-arm64,darwin-x64,linux-arm64,linux-x64,win32-x64}` | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm i -g @temporal-architect/twf` | `twf` binary (resolved via `optionalDependencies` per platform) | [`packages/npm/twf/`](./packages/npm/twf/) wrapper + [`packages/npm/twf-*/`](./packages/npm/) sub-packages |
+| **npm (visualizer)** | `@temporal-architect/visualizer` | `npm install @temporal-architect/visualizer` then `import { Visualizer } from '@temporal-architect/visualizer'` | React `<Visualizer>` component + AST/diagnostic types + sibling `styles.css` | [`tools/visualizer/`](./tools/visualizer/) (built via `vite.lib.config.ts`) |
+| **PyPI** | `twf-cli` (wheel, 5 platforms) | `pip install twf-cli` | `twf` binary force-included per wheel; MCP server entrypoint | [`packages/pypi/twf-cli/`](./packages/pypi/twf-cli/) |
+| **Homebrew tap** | `jmbarzee/homebrew-twf` formula `twf` | `brew install jmbarzee/twf/twf` | `twf` binary | formula auto-bumped by [`internal/release/bump-brew/`](./internal/release/bump-brew/) against the tap repo |
+| **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + `SHA256SUMS` + `install.sh` | `curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh \| bash` (binary only) or download individually | platform binary; `skills/` tree with `MANIFEST.json` | built by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/) and [`skills/`](./skills/) via [`internal/release/gen-skills-manifest/`](./internal/release/gen-skills-manifest/) |
+| **Go install** | `github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf` | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` | `twf` binary (built from source by the user's Go toolchain) | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) |
+| **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/design/`](./skills/design/) and [`skills/author-go/`](./skills/author-go/) |
+| **MCP** (planned, M2) | `twf mcp` over stdio | configure any MCP client to launch `npx -y @temporal-architect/twf mcp` (or `twf mcp` if installed) | tools wrapping `check`/`parse`/`symbols`/`spec`/`skill`; resources for spec sections and skill files; prompts per skill | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) (subcommand to be added) |
+| **Smithery MCP registry** (planned, post-M2) | listing pointing at the `twf mcp` install line | discover and install via the Smithery UI / CLI | (registry listing only — no payload) | submission only; no source in this repo |
+
+All `twf` artifacts converge on the same binary (cross-built from `tools/lsp/`) and the same embedded language spec (`tools/spec/sections/*.md`); all skill artifacts converge on `skills/`.
+
 ## Repository Structure
 
 The top-level layout splits **distribution** (what users receive) from **dev** (what builds and maintains it).
