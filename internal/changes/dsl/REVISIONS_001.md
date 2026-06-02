@@ -1,35 +1,35 @@
-# DSL Revisions: Cross-Workflow Messaging (Send Side)
+# DSL Revisions: Handle-Bound Signal Sends
 
-**Source:** ad-hoc design review of signal-handling coverage in the DSL and visualizer (May 2026).
-**Reflection file:** none — initiated by direct user request after noticing receive-side signal support has no send-side counterpart. Closes the `Signal/Query/Update Send Statements` entry on `internal/changes/dsl/BACKLOG.md` (after this REVISIONS is consumed, that backlog entry should be replaced with the more specific cross-workflow-update gap noted in Group 6).
+**Source:** ad-hoc design review of signal-handling coverage in the DSL and visualizer (May 2026), narrowed during a critical design review (June 2026) that scoped external-addressed sends out of this cycle.
+**Reflection file:** none — initiated by direct user request after noticing receive-side signal support has no send-side counterpart. Narrows the `Signal/Query/Update Send Statements` entry on `internal/changes/dsl/BACKLOG.md` (after this REVISIONS is consumed, that backlog entry should be renamed `Cross-Workflow Update / Query Sends` and reduced to update/query coverage only). A new backlog entry, `External-Addressed Signal Sends`, captures the deferred work and its blocker (see below).
 
 ## Summary
 
-The DSL fully models the *receive* side of signals — handler declarations, `await signal`, `signal` cases in `await one`, `promise <- signal` — but has no syntax for *sending* a signal to another workflow. The same gap exists for cancellation. The asymmetry shows up in every downstream layer: the parser AST has `SignalDecl` and `SignalTarget` (arrival), but no send-side node; the graph package has no `signalSend` edge kind, so the visualizer's "Message Flow Edges" and "Handler Show Callers" features are blocked (`internal/changes/visualizer/BACKLOG.md`); the author-go skill has `signal-handler.md` but no counterpart for `SignalChildWorkflow` / `SignalExternalWorkflow`.
+The DSL fully models the *receive* side of signals — handler declarations, `await signal`, `signal` cases in `await one`, `promise <- signal` — but has no syntax for *sending* a signal to another workflow. The asymmetry shows up in every downstream layer: the parser AST has `SignalDecl` and `SignalTarget` (arrival), but no send-side node; the graph package has no `signalSend` edge kind, so the visualizer's "Message Flow Edges" and "Handler Show Callers" features are blocked (`internal/changes/visualizer/BACKLOG.md`); the author-go skill has `signal-handler.md` but no counterpart for `SignalChildWorkflow`.
 
-This revision adds send-side syntax for the two Temporal primitives that workflows can actually invoke on other workflows in the current Go SDK: **signal** and **cancel**. Cross-workflow updates are explicitly excluded — the Go SDK forbids `workflow.UpdateChildWorkflow` / `workflow.UpdateExternalWorkflow` and the official guidance is "use an Activity" ([Temporal Go SDK docs — Workflow message passing](https://docs.temporal.io/develop/go/workflows/message-passing)). Modeling update-send in the DSL would create design surface with no codegen target.
+This revision adds send-side syntax for **one addressing model only: handle-bound signal sends** — signalling a child workflow you already hold a promise to. Cancellation send and `on_cancel:` receive remain in BACKLOG and are intentionally out of scope. Cross-workflow update-send and query-send are not addressed at any layer (see D6). The grammar designed below leaves the syntactic slots (`update handle.X(args) -> r`, `query handle.X() -> r`) available by absence — the DSL is simply silent on them, in the same way it is silent on every other Temporal capability the user has not yet asked for.
 
-Two addressing models cover the call sites:
+**One addressing model is in scope:**
 
-1. **Handle-bound**: signal/cancel a child workflow you already hold a promise to. Maps to `ChildWorkflowFuture.SignalChildWorkflow` / context cancellation.
-2. **External**: signal/cancel a workflow you only know by type + ID expression. Maps to `workflow.SignalExternalWorkflow` / `workflow.RequestCancelExternalWorkflow`.
+1. **Handle-bound**: signal a child workflow you already hold a promise to (`promise child <- workflow X(args)`). Maps to `ChildWorkflowFuture.SignalChildWorkflow`. Everything needed to type-check the send — the target workflow definition and its declared signals — is reachable from names already in the file.
 
-Both compose with the existing `AsyncTarget` machinery, so each new operation gets all three forms (statement, await target, promise target) for free.
+**External addressing is deferred to the backlog.** Signalling a workflow you did *not* start (entity workflows by business ID, sharded siblings, cross-saga peers) maps to `workflow.SignalExternalWorkflow`. The *syntax* for it is clear (`signal external X(id).Name(args)`); the blocker is that the DSL has **no mechanism to identify a workflow by runtime identity**. The address is a workflow-ID value (`orderId`, `"order-" + id`), and the DSL deliberately has no expression/ID-addressing primitive — the same gap that deferred the `workflow_id` call option. External sends are unblocked the moment that identity mechanism exists; until then, fusing an opaque ID expression into the send statement would smuggle in the deferred problem without the deliberation that deferred it. See `BACKLOG.md` → `External-Addressed Signal Sends`.
+
+The handle-bound form composes with the existing `AsyncTarget` machinery, so it gets all three forms (statement, await target, promise target). Note the await/promise forms wait on **send acceptance** (the SDK future resolves when the server accepts the send / the child has started), *not* on the receiving handler executing — see Group 1 for the precise wording.
 
 ## Design decisions locked in
 
-These are the calls this REVISIONS file makes. Each is overridable by the user; flag any of them now if you disagree, since downstream propagation depends on them.
+These are the calls this REVISIONS file makes. Each is overridable; flag any disagreements now since downstream propagation depends on them.
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | Keep the `signal` keyword overload | Already overloaded (declaration vs await target); a third meaning disambiguated by syntactic form (dot-qualified target + arg list) is consistent with `workflow`, `activity`, `nexus`. Alternative `send signal` was rejected as verbose. |
-| D2 | Require dot-qualified target for sends | `signal handle.Name(args)` reads as "send to handle's Name handler." The leading dot-form is the syntactic tell that disambiguates from arrival targets (`await signal Name`). |
-| D3 | Handle binding via existing `promise` | `promise child <- workflow X(args)` already produces a workflow handle. Reuse it instead of inventing new handle syntax. Resolver verifies the promise is workflow-bound. |
-| D4 | New `external` keyword for ID-addressed sends | `signal external X(id).Name(args)`. New hard keyword; alternatives (omit, infer by resolution, reuse `workflow`) were rejected as ambiguous. |
-| D5 | New `cancel` keyword for cancellation | Single primitive covers both handle-bound and external forms; mirrors signal-send. Statement-only (no result), but composable as async target. |
-| D6 | **No** cross-workflow update-send | Go SDK does not support `workflow.UpdateChildWorkflow` / `workflow.UpdateExternalWorkflow`. Adding it to the DSL would create un-codegen-able design surface. Documented as explicit non-goal in spec. |
-| D7 | **No** cross-workflow query-send | Queries are client-side primitives (`Client.QueryWorkflow`); the Go SDK has no workflow-level equivalent. Documented as explicit non-goal. |
-| D8 | Args remain opaque strings | Consistent with all existing call sites (`ActivityCall.Args`, `WorkflowCall.Args`, `SignalDecl.Params`). No new resolver work beyond name + arity checks. |
+| D1 | Keep the `signal` keyword overload | Already overloaded (declaration vs await target); a third meaning disambiguated by syntactic form (dot-qualified target + arg list). Note this overload is sharper than `workflow`/`activity`/`nexus` (which split across *positions* — top-level def vs body call): the send target shares the `await signal …` position with the arrival target and differs only by the embedded `.`. Accepted, but the spec must make the disambiguation explicit. Alternative `send signal` was rejected as verbose. |
+| D2 | Require dot-qualified target for sends | `signal handle.Name(args)` reads as "send to handle's Name handler." The leading dot-form is the syntactic tell that disambiguates from arrival targets (`await signal Name`) with one-token lookahead. |
+| D3 | Handle binding via existing `promise` | `promise child <- workflow X(args)` already produces a workflow handle (a `ChildWorkflowFuture`). Reuse it instead of inventing new handle syntax. Resolver verifies the promise is workflow-bound (its `Target` is a `WorkflowTarget`). This widens what a promise *is* — it can now be used as a handle (`signal p.X()`) in addition to an awaitable (`await p`) — which the spec should name explicitly. |
+| ~~D4~~ | ~~New `external` keyword for ID-addressed sends~~ | **Deferred to backlog.** External addressing needs a workflow-identity mechanism the DSL does not have. With external sends out of scope, this cycle adds **no new keyword**. (When external sends return, prefer a *soft* keyword special only after `signal` — matching the `service`/`endpoint` precedent — rather than a hard keyword that steals a common identifier.) |
+| ~~D5~~ | ~~`signal external` is implicitly same-namespace~~ | **Deferred with D4.** Reasoning preserved in `BACKLOG.md`: cross-namespace is a Nexus concern. (Note: this was a policy choice, not an SDK limit — Go's `WithWorkflowNamespace` does allow cross-namespace external signals.) |
+| D6 | DSL is silent on cross-workflow update-send and query-send | No syntax, no spec mention, no skill mention. Grounded in SDK reality: in-workflow cross-workflow query/update is genuinely unsupported (Java docs are explicit; the standard workaround is an activity that uses the client). The grammar leaves the `update handle.X(args) -> r` and `query handle.X() -> r` slots available by absence — the DSL just doesn't claim them. |
+| D7 | Args remain opaque strings | Consistent with all existing call sites (`ActivityCall.Args`, `WorkflowCall.Args`, `SignalDecl.Params`). No new resolver work beyond name checks. (D7 is unproblematic for handle-bound sends — args are "the meat." It was the *external* form, where the opaque value would be the addressing ID, that raised the concern; that concern moves to the backlog with external addressing.) |
 
 ---
 
@@ -49,9 +49,9 @@ These are the calls this REVISIONS file makes. Each is overridable by the user; 
 - `tools/spec/sections/12-grammar-summary.md` (mirror)
 - `tools/spec/sections/08-tokens-and-keywords.md` (no new keyword; note `signal` overload)
 
-**Change type:** `External` (additive; new AST node types and JSON output fields. No existing grammar breaks.)
+**Change type:** `External` (additive; new AST node type and JSON output fields. No existing grammar breaks. **No new keyword token** — `signal` is already lexed.)
 
-**Parallelism:** Independent of Group 2 (external addressing) at the grammar level; Group 2 reuses the same statement/target slot. Group 3 (cancel) is structurally identical and can be implemented in parallel.
+**Parallelism:** Self-contained. The `send_target` non-terminal is deliberately left open so external addressing can slot a second alternative in later (see backlog) without reworking the statement/target shape.
 
 **Specific changes:**
 
@@ -60,14 +60,16 @@ These are the calls this REVISIONS file makes. Each is overridable by the user; 
    ```
    signal_send_stmt ::= 'signal' send_target args NEWLINE
 
-   send_target ::= ident_handle_target | external_handle_target
+   send_target ::= ident_handle_target
+                 # external_handle_target is a deferred second alternative
+                 # (see BACKLOG.md → External-Addressed Signal Sends)
 
    ident_handle_target ::= IDENT '.' IDENT
                           # IDENT 1 = promise bound to a workflow call
                           # IDENT 2 = signal handler name on the target workflow
    ```
 
-   (Group 2 adds `external_handle_target`; both are defined under the same `send_target` non-terminal so the resolver can dispatch on shape.)
+   Disambiguation from a signal *arrival* target is one-token lookahead: after `signal IDENT`, a `.` means a send; anything else is arrival. The parser adds `token.SIGNAL` to `workflowStmtParsers` for the statement form and branches the existing `signal` arm of the shared async-target parser for the await/promise forms.
 
 2. **New async-target form** (composes with `await` and `promise`):
 
@@ -78,8 +80,10 @@ These are the calls this REVISIONS file makes. Each is overridable by the user; 
    Extends the `await_target` and `async_target` unions in `06-statement-syntax.md` and `12-grammar-summary.md`. Behavior:
 
    - As statement: `signal child.PaymentReceived(amount)` — fire-and-forget. No result binding.
-   - As await: `await signal child.PaymentReceived(amount)` — block until delivery is acknowledged. No result binding (signals don't return values).
-   - As promise: `promise sent <- signal child.PaymentReceived(amount)` — capture the delivery future; `await sent` later.
+   - As await: `await signal child.PaymentReceived(amount)` — block until the **send is accepted** (for a child, until the child has started). Signals carry no return value, and this does **not** wait for the receiver's handler to run.
+   - As promise: `promise sent <- signal child.PaymentReceived(amount)` — capture the send-acceptance future; `await sent` later.
+
+   **Wording matters here.** The SDK future for a signal send resolves on *send acceptance*, never on handler execution (Go: the call "returns when the server accepts the Signal; it does not wait for the Signal to be delivered"; `SignalChildWorkflow` "blocks until child workflow is started"). The spec and skill text must not describe `await`/`promise` on a send as "delivery acknowledged" or imply the receiver processed it. Because that distinction is subtle and the statement form covers the overwhelming majority of real use, downstream propagation may choose to ship the statement form first and the await/promise forms only when a concrete need appears.
 
 3. **Resolution rules** (additions to `11-resolution-and-errors.md`):
 
@@ -115,262 +119,112 @@ These are the calls this REVISIONS file makes. Each is overridable by the user; 
 
 ---
 
-## Group 2: External-addressed signal sends
+## Group 2: External-addressed signal sends — DEFERRED
 
-**Findings:**
+**Status: moved to `BACKLOG.md` → `External-Addressed Signal Sends`.** Not part of this cycle.
 
-- The handle pattern (Group 1) covers only call sites where the sender holds a child handle. Many real designs need to signal a workflow the sender did not start (entity workflows addressed by business ID, sibling workflows in a sharded design, cross-saga compensation).
-- Temporal's `workflow.SignalExternalWorkflow(ctx, workflowID, runID, name, arg)` is the SDK primitive. The natural DSL surface is "name the workflow type so we can type-check the signal, leave the ID as an opaque expression."
-- Adding `external` as a hard keyword is cheaper than the alternatives (overload `workflow`, infer addressing mode from resolver) and reads clearly at the call site.
+External addressing (signalling a workflow the sender did not start, by runtime identity) maps to `workflow.SignalExternalWorkflow`. The *syntax* is settled — `signal external X(id).Name(args)` — but it cannot ship until the DSL has a way to identify a workflow by runtime ID, which it currently does not. The full reasoning, the settled syntax, and the blocker are recorded in the backlog so this can resume without re-deriving the design. The one-line summary:
 
-**Files touched:**
-- `tools/spec/sections/06-statement-syntax.md`
-- `tools/spec/sections/08-tokens-and-keywords.md` (add `external` to keyword list)
-- `tools/spec/sections/11-resolution-and-errors.md`
-- `tools/spec/sections/12-grammar-summary.md`
-
-**Change type:** `External` (additive; new keyword token, new AST target type).
-
-**Parallelism:** Builds on Group 1's `signal_send_stmt` / `signal_send_target` slot — just adds a second `send_target` form. Can be authored alongside Group 1 in the same parser PR.
-
-**Specific changes:**
-
-1. **New grammar** in `06-statement-syntax.md`:
-
-   ```
-   external_handle_target ::= 'external' IDENT '(' expr ')' '.' IDENT
-                            # 'external' WorkflowType(idExpr).HandlerName
-   ```
-
-   Optional second form for run-pinned addressing (defer to BACKLOG if you'd rather punt on it):
-
-   ```
-   external_handle_target ::= 'external' IDENT '(' expr [',' expr] ')' '.' IDENT
-                            # second expr is the runId
-   ```
-
-   Recommend: ship the single-expr form now, defer the runId form. Most external signals address a workflow by stable business ID, not a specific run.
-
-2. **New keyword** `external` added to `08-tokens-and-keywords.md` under "Cross-workflow messaging" (a new subsection — see Group 4). Hard keyword, lexed unconditionally.
-
-3. **Resolution rules** (additions to `11-resolution-and-errors.md`):
-
-   - For `signal external X(id).N(args)`:
-     - `X` must resolve to a `WorkflowDef`. If not, emit `UNDEFINED_WORKFLOW` (same code used for unresolved workflow calls).
-     - `X` must declare a `signal N`. If not, emit `UNDEFINED_SIGNAL_ON_TARGET`.
-     - `id` is an opaque expression; no validation.
-   - If `X` does not resolve at all (no local workflow definition), the resolver may emit a warning rather than an error — same convention as unresolved nexus endpoints in `03-workers-and-namespaces.md`. The target workflow may live outside the current `.twf` set.
-
-4. **Worked example** to add to `06-statement-syntax.md`:
-
-   ```twf
-   workflow OrderCoordinator(orderId: string):
-       # Signal a long-running entity workflow we did not start
-       signal external OrderEntity(orderId).OrderShipped(trackingNumber)
-
-       # Or capture delivery as a promise
-       promise sent <- signal external OrderEntity(orderId).OrderShipped(trackingNumber)
-       await sent
-   ```
+- **Blocker:** no workflow-identity mechanism. The target address is a workflow-ID *value*, and the DSL has no expression/ID-addressing primitive (the same gap that deferred the `workflow_id` call option — see `BACKLOG.md` → `Workflow ID Call Option`). Both should likely be unblocked by the same future primitive.
+- **When unblocked:** add a second `send_target` alternative (`external_handle_target`), prefer a *soft* keyword for `external` (special only after `signal`, matching `service`/`endpoint`), and treat the target run as the latest by default (run-pinned addressing stays deferred). The "X declares signal N" check is a DSL-imposed design-time contract, stricter than Go's untyped `SignalExternalWorkflow` — frame it as such, not as SDK-enforced.
 
 ---
 
-## Group 3: Cancellation primitive
+## Group 3: Spec reorganization — "Cross-Workflow Signals" section
 
 **Findings:**
 
-- The DSL has no syntax for `RequestCancelExternalWorkflow` or for cancelling a child workflow. Cancellation is a first-class Temporal concept — most production workflows need it — and is currently invisible in TWF designs.
-- The `internal/changes/dsl/BACKLOG.md` "Workflow Cancellation Handler" entry covers the *receive* side (`on_cancel:` blocks). This REVISIONS covers the *send* side. The two are independent and can land separately.
-- Cancel mirrors signal-send structurally: same two addressing modes (handle / external), same three forms (statement / await / promise), no result binding. Bundling it here costs one extra keyword (`cancel`) and reuses all the resolution machinery.
+- Signal handler and arrival material is scattered: handler declarations in `01-workflows.md`, await/promise/case targets in `06-statement-syntax.md`, context restrictions in `10-context-restrictions.md`. A reader looking for "how does workflow A signal workflow B?" has to read all three to discover the answer used to be "you can't."
+- After Group 1 lands, the asymmetry that produced this REVISIONS will be gone for the handle-bound case, but the spec navigation problem will remain unless the cross-workflow signal material is grouped in one place.
+- Existing sections are organized by syntactic shape (definitions, statements, expressions). The new section should be organized by *concept* (cross-workflow signals) and cross-reference the syntactic sections. Same pattern as Temporal's own docs.
 
 **Files touched:**
-- `tools/spec/sections/06-statement-syntax.md`
-- `tools/spec/sections/08-tokens-and-keywords.md` (add `cancel` keyword)
-- `tools/spec/sections/10-context-restrictions.md`
-- `tools/spec/sections/11-resolution-and-errors.md`
-- `tools/spec/sections/12-grammar-summary.md`
-
-**Change type:** `External` (additive; new keyword token, new AST node type).
-
-**Parallelism:** Independent of Groups 1 and 2 at the grammar level. Shares resolution machinery with both. Can be deferred to a follow-up REVISIONS if you'd rather scope this cycle tighter; flag now if so.
-
-**Specific changes:**
-
-1. **New grammar** in `06-statement-syntax.md`:
-
-   ```
-   cancel_stmt   ::= 'cancel' cancel_target NEWLINE
-   cancel_target ::= IDENT                              # handle-bound
-                  | 'external' IDENT '(' expr ')'       # external by ID
-   ```
-
-   And as an async target:
-
-   ```
-   cancel_async_target ::= 'cancel' cancel_target
-   ```
-
-   Behavior parallels signal-send (statement = fire-and-forget; `await cancel h` = wait for cancel ack; `promise c <- cancel h` = capture as promise).
-
-2. **New keyword** `cancel` added to `08-tokens-and-keywords.md`. Hard keyword.
-
-3. **Resolution rules** (additions to `11-resolution-and-errors.md`):
-   - For `cancel H`: `H` must resolve to a workflow-typed promise (same check as Group 1's handle resolution).
-   - For `cancel external X(id)`: `X` must resolve to a `WorkflowDef`, or warn if no local definition exists. `id` opaque.
-
-4. **Context restriction** (addition to `10-context-restrictions.md`): same surface as signal-send.
-
-5. **Worked example** to add:
-
-   ```twf
-   workflow OrderSaga(order: Order) -> (SagaResult):
-       promise pay <- workflow ProcessPayment(order)
-       promise inventory <- workflow ReserveInventory(order)
-
-       await one:
-           await pay -> payment:
-               # Payment succeeded — wait for inventory
-               await inventory -> reservation
-               close complete(SagaResult{payment, reservation})
-           await inventory -> reservation:
-               # Inventory came first; wait for payment
-               await pay -> payment
-               close complete(SagaResult{payment, reservation})
-           timer(30m):
-               # Timed out — cancel both
-               cancel pay
-               cancel inventory
-               close fail("saga timeout")
-   ```
-
----
-
-## Group 4: Spec reorganization — "Cross-Workflow Messaging" section
-
-**Findings:**
-
-- Signal/cancel/handler material is currently scattered: handler declarations in `01-workflows.md`, await/promise/case targets in `06-statement-syntax.md`, context restrictions in `10-context-restrictions.md`. A reader looking for "how does workflow A signal workflow B?" has to read all three to discover the answer used to be "you can't."
-- After Groups 1–3 land, the asymmetry that produced this REVISIONS will be gone, but the spec navigation problem will remain unless we group the cross-workflow material in one place.
-- Existing sections are organized by syntactic shape (definitions, statements, expressions). The new section should be organized by *concept* (cross-workflow messaging) and cross-reference the syntactic sections. Same pattern as Temporal's own docs.
-
-**Files touched:**
-- `tools/spec/sections/` (new file, suggested name `13-cross-workflow-messaging.md`)
+- `tools/spec/sections/` (new file, `13-cross-workflow-signals.md`)
 - `tools/spec/sections/00-overview.md` (add to the See list)
 - `tools/spec/sections/01-workflows.md` (cross-reference from Signal Declarations section)
 
 **Change type:** `Internal` (pure reorganization; no grammar changes).
 
-**Parallelism:** Should ship *with* or *after* Groups 1–3 — writing it before the grammar is locked invites rework. Independent of the actual implementation work in those groups.
+**Parallelism:** Should ship *with* or *after* Group 1 — writing it before the grammar is locked invites rework. Independent of the actual implementation work in that group.
 
 **Specific changes:**
 
-1. **New section file** `13-cross-workflow-messaging.md` with the following structure:
+1. **New section file** `13-cross-workflow-signals.md` with the following structure:
 
    ```
-   # Cross-Workflow Messaging
+   # Cross-Workflow Signals
 
-   Mechanisms by which one workflow communicates with another while both are running.
+   Mechanisms by which one workflow signals another while both are running.
 
    ## Overview
 
-   | Primitive | Direction | Send side | Receive side | Result |
-   |---|---|---|---|---|
-   | Signal | One-way notification | signal handle.Name(args) | signal Name(params): handler | None |
-   | Cancel | One-way termination request | cancel handle | (handled by Temporal runtime / on_cancel: in future) | None |
-   | Update | Request-response | NOT supported workflow→workflow | update Name(params): handler | Result returned to caller |
-   | Query  | Read | NOT supported workflow→workflow | query Name(params): handler | Result returned to caller |
-
-   ## Addressing
-
-   ### Handle-bound (child workflows)
-   ... pointer to 06-statement-syntax.md grammar, summary example ...
-
-   ### External (by workflow ID)
-   ... pointer to 06-statement-syntax.md grammar, summary example ...
+   | Form | Addressing | Resolution |
+   |---|---|---|
+   | signal handle.Name(args) | Workflow promise (`promise h <- workflow X(args)`) | Resolver checks handle is workflow-typed and target workflow declares `signal Name`. |
 
    ## Composition with await and promise
-   ... explain the three forms ...
 
-   ## Non-goals
-   ... see Group 6 ...
+   Signal-send produces a send-acceptance future. Use as a statement to fire-and-forget; use with `await` to block until the send is accepted (for a child, until it has started); bind with `promise` to compose later. None of these wait for the receiving handler to run — signals carry no return value.
+
+   ... examples ...
    ```
 
-2. **In `01-workflows.md`**, add a one-line pointer at the end of "Signal Declarations": *"For sending signals to other workflows, see [Cross-Workflow Messaging](./13-cross-workflow-messaging.md)."*
+   The section documents only what the DSL provides. It does not enumerate what the DSL doesn't provide (no "external addressing not supported," "queries not supported," or "updates not supported" callouts) — the spec stays silent on absent capabilities, consistent with how it treats every other unimplemented Temporal feature.
+
+2. **In `01-workflows.md`**, add a one-line pointer at the end of "Signal Declarations": *"For sending signals to other workflows, see [Cross-Workflow Signals](./13-cross-workflow-signals.md)."*
 
 3. **In `00-overview.md`**, add the new file to the See list.
 
 ---
 
-## Group 5: Token / keyword inventory bump
+## Group 4: Keyword inventory note
 
 **Findings:**
 
-- Adds two hard keywords: `external` (Groups 1–3 use it) and `cancel` (Group 3 uses it).
-- `08-tokens-and-keywords.md` already groups keywords by purpose ("Async workflow operations," "Workflow primitives," etc.). A new "Cross-workflow messaging" subgroup keeps the inventory readable.
+- This cycle adds **no new keyword** — `signal` is already lexed. (The `external` keyword is deferred with external addressing; see backlog.)
 - The `signal` keyword now has three uses (handler declaration, arrival target, send statement/target). Worth a short note in the keyword reference so first-time readers know to disambiguate by syntactic form, not by keyword.
 
 **Files touched:**
 - `tools/spec/sections/08-tokens-and-keywords.md`
 
-**Change type:** `Internal` (keyword inventory update; the grammar changes live in Groups 1–3).
+**Change type:** `Internal` (keyword inventory note; the grammar change lives in Group 1).
 
-**Parallelism:** Trivial; combine with whichever of Groups 1–3 ships first.
+**Parallelism:** Trivial; combine with Group 1.
 
 **Specific changes:**
 
-1. New subsection in `08-tokens-and-keywords.md`:
+1. Update the `signal` keyword entry to note the three uses:
 
    ```
-   **Cross-workflow messaging:**
-   - `external` - Addresses a workflow by type + ID expression (e.g. `signal external X(id).Name(args)`)
-   - `cancel` - Requests cancellation of a workflow (`cancel handle` or `cancel external X(id)`)
-   ```
-
-2. Update the `signal` keyword entry to note the three uses:
-
-   ```
-   - `signal` - Three uses: (a) handler declaration at the top of a workflow, (b) arrival target in await/promise/await-one (`await signal Name`), (c) send statement/target with a dot-qualified target (`signal handle.Name(args)`, `signal external X(id).Name(args)`). Disambiguated by syntactic context.
+   - `signal` - Three uses: (a) handler declaration at the top of a workflow, (b) arrival target in await/promise/await-one (`await signal Name`), (c) send statement/target with a dot-qualified handle target (`signal handle.Name(args)`). Disambiguated by syntactic context — specifically, a `.` after the name marks a send rather than an arrival.
    ```
 
 ---
 
-## Group 6: Explicit non-goals
+## Internal design notes (not a spec change)
 
-**Findings:**
+These items shape the grammar but are deliberately *not* mentioned in the spec or downstream skills. They exist here as a record for future contributors so the same design questions don't get re-asked.
 
-- Three plausible cross-workflow primitives are deliberately NOT in this REVISIONS. Each is excluded for a specific SDK reason. Documenting them in the spec prevents re-proposal and gives readers an answer when they go looking.
-- Without explicit non-goals, the asymmetry pattern that produced this whole exercise (handler-without-sender) will quietly reappear for updates and queries.
-
-**Files touched:**
-- `tools/spec/sections/13-cross-workflow-messaging.md` (the new file from Group 4, under "Non-goals")
-- `internal/changes/dsl/BACKLOG.md` (replace the existing "Signal/Query/Update Send Statements" entry with a tighter "Cross-Workflow Update Send" entry that records the SDK constraint)
-
-**Change type:** `Internal` (documentation only).
-
-**Parallelism:** Ships with Group 4 (needs the new file).
-
-**Specific items to document as non-goals:**
-
-1. **Cross-workflow update-send.** Temporal Go SDK does not support `workflow.UpdateChildWorkflow` or `workflow.UpdateExternalWorkflow`. The official guidance is "use an Activity to bridge" — the activity calls back into Temporal via `client.UpdateWorkflow`. Adding `update handle.Name(args) -> result` to the DSL would compile to "this isn't possible in Go." Excluded until SDK support lands, at which point it slots in trivially using the Group 1 / Group 2 machinery.
-
-2. **Cross-workflow query-send.** Queries are a client-side primitive (`Client.QueryWorkflow`). The Go SDK has no `workflow.QueryWorkflow` equivalent and likely never will — queries replay history and are intentionally restricted to client contexts where staleness is acceptable. Excluded permanently.
-
-3. **Signal-with-start.** `Client.SignalWithStartWorkflow` is client-only; the in-workflow equivalent is `SignalExternalWorkflow` after a separate `ExecuteChildWorkflow`. The DSL can already express this as two statements (`workflow X(args)` then `signal external X(id).Name(args)`); a fused primitive would save tokens but adds a third addressing model. Defer until a real design needs it.
+- **External addressing.** Deferred — see Group 2 and `BACKLOG.md` → `External-Addressed Signal Sends`. The blocker is the absence of a workflow-identity mechanism, not the syntax. The `send_target` non-terminal is left open so the external alternative slots in without reworking Group 1.
+- **Cross-workflow update-send.** Not modeled. The Go SDK currently has no `workflow.UpdateChildWorkflow` / `workflow.UpdateExternalWorkflow`; the recommended workaround is an Activity that uses the client. The grammar designed in Group 1 leaves the `update handle.X(args) -> r` slot available by absence — if direct support is ever added, syntax slots in without retrofitting. The spec and skill stay silent on this.
+- **Cross-workflow query-send.** Not modeled. Queries are a client-side primitive (`Client.QueryWorkflow`); the Go SDK has no workflow-level equivalent, and the Java docs explicitly state querying a child from within workflow code is unsupported. The grammar leaves the `query handle.X() -> r` slot available by absence. Same silence in spec and skill.
+- **Signal-with-Start.** `Client.SignalWithStartWorkflow` is client-only; there is no child-workflow equivalent that atomically starts-and-signals (confirmed by Temporal maintainers). The in-workflow path is `ExecuteChildWorkflow` then signal the handle (Group 1), or — once external addressing lands — `SignalExternalWorkflow`. No fused primitive added.
+- **Cross-namespace signal.** Deferred with external addressing. Cross-namespace messaging is treated as a Nexus concern; note this is a *policy* choice, not an SDK limit (Go's `WithWorkflowNamespace` does allow it). Captured in `BACKLOG.md` under Nexus Extensions → `Cross-Namespace Messaging via Nexus`.
+- **Cancellation send.** Not in scope. Lives in BACKLOG (under `Cross-Workflow Update / Query Sends`, paired paragraph). The send-side grammar in Group 1 is structurally similar to what a future `cancel handle` would need, so the eventual cancel-send REVISIONS can reuse the same machinery.
 
 ---
 
 ## Downstream propagation
 
-This REVISIONS file is the DSL contract. After it is consumed and renamed to `CHANGES_003.md`, `/project:propagate-changes` should produce downstream REVISIONS in:
+This REVISIONS file is the DSL contract. After it is consumed and renamed, `/project:propagate-changes` should produce downstream REVISIONS in:
 
-- **`internal/changes/parser/`** — implement the AST additions (`SignalSendStmt`, `SignalSendTarget`, `CancelStmt`, `CancelTarget`), lexer additions (`external`, `cancel` tokens), parser productions, resolver rules, graph package additions (new `signalSend` and `cancelSend` edge kinds).
-- **`internal/changes/visualizer/`** — render new edge kinds; unblock "Message Flow Edges" and "Handler Show Callers" from `visualizer/BACKLOG.md`; add the new types to the unified filter bar / type toggles.
-- **`internal/changes/design-skill/`** — extend `skills/design/topics/signals-queries-updates.md` with a "Sending Signals to Other Workflows" section; add cancel to a new or existing topic; note the cross-workflow-update non-goal.
-- **`internal/changes/author-go-skill/`** — new `skills/author-go/reference/signal-send.md` mapping the four send forms to `SignalChildWorkflow` / `SignalExternalWorkflow`; new `cancel.md` for `RequestCancelExternalWorkflow` and child context cancellation; update `workflow-call.md` (line ~31, "communication is through signals only") with a forward reference.
+- **`internal/changes/parser/`** — implement the AST addition (`SignalSendStmt` + a handle-bound `SignalSendTarget` as a new `AsyncTarget`), parser productions (statement form via `workflowStmtParsers[token.SIGNAL]`; await/promise forms by branching the shared `signal` async-target arm on one-token lookahead for `.`), resolver rules (handle resolves to a workflow-bound promise; target workflow declares the signal), graph package additions (new `signalSend` edge kind). **No lexer change** — no new keyword.
+- **`internal/changes/visualizer/`** — render the new `signalSend` edge kind; unblock "Message Flow Edges" and "Handler Show Callers" from `visualizer/BACKLOG.md`; add the new edge type to the unified filter bar / type toggles.
+- **`internal/changes/design-skill/`** — extend `skills/design/topics/signals-queries-updates.md` with a "Sending Signals to a Child Workflow" section describing the handle-bound model and the composition forms, with the send-acceptance (not handler-execution) semantics stated explicitly.
+- **`internal/changes/author-go-skill/`** — new `skills/author-go/reference/signal-send.md` mapping the handle-bound forms (statement/await/promise) to `ChildWorkflowFuture.SignalChildWorkflow`; update `workflow-call.md` (line ~31, "communication is through signals only") with a forward reference.
 
 ## Recommended execution order
 
-1. **Decide on D1–D8** above. The choices below depend on these. Default: ship as proposed.
-2. **Group 1** (handle-bound signal sends) — smallest viable slice; gives parser + visualizer + skills something concrete to consume.
-3. **Group 2** (external addressing) and **Group 3** (cancel) — can land together with Group 1 in one parser pass, since they reuse the same statement slot and resolution machinery. Worth bundling unless you want a tighter first slice.
-4. **Group 4–6** (spec reorganization, keyword inventory, non-goals) — pure documentation; can ship in the same commit as Group 1 or follow once the grammar is stable.
+1. **Confirm D1, D2, D3, D6, D7** above (D4/D5 are deferred). Default: ship as proposed.
+2. **Group 1** — handle-bound signal sends. One parser pass. Consider shipping the statement form first and deferring the await/promise composition forms until a concrete need appears (the send-acceptance semantics are subtle).
+3. **Group 3 + Group 4** — spec reorganization and the keyword note. Pure documentation; ship in the same commit as Group 1 or follow once the grammar is stable.
