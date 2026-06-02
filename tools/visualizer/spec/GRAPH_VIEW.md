@@ -151,31 +151,26 @@ The anchor also fixes the practical drift problem that comes with COM-based grav
 
 ### Force Parameters
 
-The simulation exposes **one charge strength per node type** and **one spring (k + rest distance) per edge category**, plus shape controls and dynamics that govern how those forces behave.
+The simulation exposes **one charge strength + one core radius per node type** and **one spring (stiffness + rest length) per edge category**, plus shape controls and dynamics that govern how those forces behave.
 
-**Charge strengths** (6, one per node type — negative values, repulsion):
-- Level 1: Namespace
-- Level 2: Worker
-- Level 3: Workflow
-- Level 3: NexusService
-- Level 3: NexusOperation
-- Level 4: Activity
+**Charge strengths** (one per node type — negative values, repulsion):
+- Namespace, NexusEndpoint, Worker, NexusService, Workflow, NexusOperation, Activity
 
-The L3 and L4 charges share a slider range so their magnitudes are directly comparable across the bottom of the hierarchy; this lets the user see at a glance whether one definition type repels harder than its peers.
+**Core radii** (one per node type — the charge softening, expressed as a length). A pair of nodes softens its charge by the squared average of the two endpoints' effective core radii (`rEff = coreRadiusMultiplier × coreRadius`), added to `d²`. A larger core radius spreads a type's repulsion over a wider, gentler plateau near the centre instead of a sharp spike. This is the per-type successor to the old single global softening; every type defaults to `√450` so the per-pair softening is `450` (today's layout) until the user tunes it.
 
-**Link strengths** (9, one per edge category — positive values, attraction). Containment edges connect a parent to one specific child type; dependency edges live within or across levels and are split by endpoint type:
-- Containment: `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`, `Nx↔Op` (intra-L3, operation under its service)
-- Dependency: `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`
+These are tuned on the 2D charge map (see § Control Panel → PUSH), not a stack of sliders; the map plots every node type on shared charge × core-radius axes so their relative repulsion strength and reach are directly comparable.
 
-NexusOperation nodes participate in dependency edges as both source and target (caller → operation, operation → backing workflow, sync-op-body → callee). For spring-force purposes, an operation is treated as workflow-equivalent — it sits on the call path and clusters with workflows in the L3 band.
+**Spring strengths** (one stiffness + rest length per edge category — positive, attraction). Each nexus relationship is its own first-class category rather than folding into a main-ladder neighbour, and the workflow/operation dependency is split by direction:
+- Containment: `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`, `Nx↔Op`, `Ep↔NS`, `Ep↔Op`
+- Dependency: `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`, `Wf→Op` (a workflow makes a nexus call), `Op→Wf` (an operation delegates to / calls a workflow), `Op↔Act`
 
-All link sliders share a common k range and a common rest range, so the gradient across the hierarchy (loose-and-long at the top, tight-and-short at L3) is visually obvious.
+These are tuned on the 2D spring map (see § Control Panel → PULL), not a stack of sliders; the map plots every category on shared length × stiffness axes so their relative values are directly comparable.
 
 **Shape controls** modify the force curves:
-- Master multipliers (`push`, `pull`, `dist`) scale entire force categories
+- Master multipliers (all presented as their map's "scale all" axis sliders): `push` and `coreRadiusMultiplier` on the charge map, `pull`/`dist` on the spring map
 - Exponents control falloff shape (charge exponent, link exponent)
-- Softening prevents charge singularity at close range
-- Rest distances (one per edge type) define the spring equilibrium length
+- Core radii (one per node type) soften the charge at close range, preventing the singularity
+- Rest lengths (one per edge category) define the spring equilibrium length
 
 **Dynamics** control the simulation's temporal behavior:
 - Friction (velocity damping per tick)
@@ -397,7 +392,8 @@ The graph toolbar — rendered as a row within the overlay, just below the filte
 
 - **Node / edge count** — `N nodes, M edges` (counts the currently visible/graduated set). Informational; updates reactively with filters.
 - **Fit** — fit the viewport to all visible nodes. Keyboard shortcut: `F`.
-- **Play / Pause** — quick-access toggle for simulation ticking. Same as the Play/Pause in the Control Panel; both are in sync. Keyboard shortcut: `Space`.
+- **Play / Pause** — toggle for simulation ticking. Keyboard shortcut: `Space`.
+- **Reheat** — re-energise the layout with a strong kick (high alpha); the simulation settles back down on its own.
 - **Show in Tree** — contextual; appears only when a node is selected. Invokes the `focus(target)` view transition (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions).
 
 The toolbar is always visible (not collapsible). It is compact — a single row, right-aligned controls.
@@ -410,39 +406,44 @@ A collapsible overlay containing force parameters, simulation controls, and a fo
 
 ### Organization
 
-The panel is collapsed by default (progressive disclosure). When expanded, controls are grouped into four **equation sections**. Each section displays the physics equation it governs as a monospace header, then the sliders for every parameter that appears in that equation.
+The panel is collapsed by default (progressive disclosure). When expanded, controls are split across four **tabs** — PUSH, PULL, GRAVITY, DYNAMICS — with exactly one section shown at a time. The tab strip sits at the top of the panel body; the section area is sized to the tallest tab so switching tabs never resizes the panel. Each section displays the physics equation it governs as a monospace header, then the controls for every parameter that appears in that equation. Sections carry no decorative per-force colour; node-type colour is reserved for the per-type/per-edge controls where it carries meaning.
 
 **PUSH** (all node pairs)
 
-    F = α × push × charge / eff^exp
-    eff = √(d² + softening)
+    F = charge / (d² + r²)^exp
 
-Master parameters that shape all charge (repulsion) forces:
-- `push` — master multiplier for all repulsion forces
-- `exp` — power of distance in charge falloff (2 = inverse-square)
-- `softening` — added to d² to prevent singularity at close range
+The equation is simplified for glanceability: `r` is the (effective) core radius and the global `push` multiplier is folded into the y "scale all" slider rather than shown as a separate term — so the per-type charge control reads as an extension of the global control on the same axis. The exponent acts on the squared distance `(d² + r²)` directly (no `/2`), so `exp = 1` is inverse-square; the default `0.7` is a gentler, longer-range falloff. Its slider is deliberately narrow (`[0.5, 1.0]`) because that band holds the layout's useful range.
 
-Per-type charge strengths (negative values = repulsion):
-- L1 Namespace (`NS`)
-- L2 Worker (`Wk`)
-- L3 Workflow (`Wf`)
-- L3 Activity (`Act`)
-- L3 NexusService (`Nx`)
+Each node type has two values — a repulsion **charge** (negative) and a **core radius** (`r`, the charge softening as a length). Rather than a stack of paired sliders, they are tuned on a **2D charge map**, mirroring the Pull tab's spring map:
 
-**PULL** (connected pairs)
+- **Axes:** y = charge magnitude `[0, 1000]` (charge is stored negative but plotted as magnitude), x = core radius `[0, 100]`, labelled but unnumbered. One **token** per node type, positioned at its `(core radius, charge)`. Ordering is emergent from value.
+- **Token encoding:** a solid dot coloured by the node type (no split, since a charge belongs to a single type), with a solid outline.
+- **Direct manipulation:** dragging a token sets that type's charge and core radius together; the drag routes through the shared live-reheat so the layout responds immediately.
+- **Globals along the axes:** the two global multipliers sit on the axes they scale — a vertical `push` ("scale all charge") slider up the y-axis, a horizontal `coreRadiusMultiplier` ("scale all core radius") slider along the x-axis.
 
-    F = α × pull × k × sign(Δ) × |Δ|^exp / d
-    Δ = d − rest × dist
+Below the map, a read-only **charge-falloff visualization** (a boxed plot with `force` and `distance` axis labels) plots each type's repulsion falloff `charge / (d² + r²)^exp` against distance — all-positive, with the baseline at the bottom of the frame and the core radius marked on the distance axis. All curves are drawn faint; hovering a token on the map brightens its curve and dims the rest (and vice versa). The one global shape parameter, `exp` (charge exponent), is controlled by a slider beneath the plot.
 
-Master parameters that shape all link (attraction) forces:
-- `pull` — master multiplier for all spring forces
-- `exp` — power of displacement in spring force (1 = linear/Hooke)
-- `dist` — master multiplier for all rest distances
+The charge field rings (see § Force Field Visualization) are hover-driven, not a persistent toggle: they appear while the PUSH section is hovered, narrowing to a single type while its token is hovered.
 
-Per-edge spring constant (k) and rest distance, displayed as dual-slider rows ordered top-of-tree → bottom-of-tree:
-- L1: `NS↔NS` (dep), `NS↔Wk` (cont)
-- L2: `Wk↔Wk` (dep), `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx` (cont)
-- L3/L4: `Wf↔Wf`, `Wf↔Act` (dep)
+**PULL**
+
+    F = α × stiffness × Δ^exp / d
+    Δ = d − length
+
+`Δ^exp` is a signed power (the sign of `Δ` is preserved) — the explicit `sign(Δ)·|Δ|^exp` is collapsed to one term for glanceability. The equation is shown with a single per-edge value each (`stiffness`, `length`) rather than splitting them into a global multiplier and a per-edge factor. The globals still exist (see below) but are presented as "scale all" knobs, not as separate equation terms — so the per-edge control reads as an extension of the global control on the same axis.
+
+Each edge category has two values: a spring **stiffness** (`k`) and a rest **length** (`rest`). Rather than a stack of paired sliders, they are tuned on a **2D spring map**:
+
+- **Axes:** x = length, y = stiffness, labelled but unnumbered (no per-tick values or origin marker — the axis labels and gridline box are enough to orient). One **token** per edge category, positioned at its `(length, stiffness)`. Ordering is emergent from value — there is no hand-curated row order. A small padding keeps tokens at the extremes inside the box.
+- **Token encoding:** a split dot, left half coloured by the source node type and right half by the target node type; a dashed outline for containment edges and a solid outline for dependency edges (mirroring the canvas edge styling).
+- **Direct manipulation:** dragging a token sets that category's stiffness and length together; the drag routes through the shared live-reheat so the layout responds immediately.
+- **Globals along the axes:** the two global multipliers sit on the axes they scale — a vertical `stiffness` "scale all" slider up the y-axis, a horizontal `length` "scale all" slider along the x-axis.
+
+Below the map, a read-only **force-curve visualization** (a boxed plot with `force` and `distance` axis labels) plots each spring's displacement response (`stiffness · Δ^exp`) around its rest length — the zero crossing (the length) sits low so the readable tension side gets most of the height; the slope is the stiffness, and the curvature is `exp`. All curves are drawn faint; hovering a token on the map brightens its curve and dims the rest (and vice versa). The one global shape parameter, `exp`, is controlled by a slider beneath the plot, where its effect on curve shape is visible.
+
+The covered edge categories: containment `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`, `Nx↔Op`, `Ep↔NS`, `Ep↔Op`; dependency `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`, `Wf→Op`, `Op→Wf`, `Op↔Act`. The nexus edges (`Ep↔NS`, `Ep↔Op`, `Wf→Op`, `Op→Wf`, `Op↔Act`) are first-class spring categories rather than folding into their main-ladder neighbours, so each nexus relationship is tunable on its own. The workflow/operation dependency is **directional** — `Wf→Op` (a workflow makes a nexus call) and `Op→Wf` (an operation delegates to a backing workflow, or a sync-op body calls one) are separate springs because they serve different purposes. (An endpoint fronts an operation, so `Ep↔Op` is its own containment spring distinct from the service's `Nx↔Op`. Operation→operation calls are not modelled as a distinct relationship — they fold into `Wf→Op`.)
+
+When a token is being tuned, the canvas highlights only that edge category — drawn as a coloured border (a tension-coloured casing with the edge's own colour on top) so the edge's identity colour stays clear, rather than recolouring every edge.
 
 **GRAVITY** (hierarchical anchor)
 
@@ -462,22 +463,19 @@ Per-edge spring constant (k) and rest distance, displayed as dual-slider rows or
 - `cooling` — energy lost per tick (higher = settles faster)
 - `threshold` — energy level below which simulation pauses
 
-The equation-oriented grouping means each section is self-contained: the formula shows what the parameters do, the sliders let you change them. A user who understands the equation can predict slider effects; a user who doesn't can still experiment and see results.
+The equation-oriented grouping means each section is self-contained: the formula shows what the parameters do, the controls let you change them. A user who understands the equation can predict a control's effect; a user who doesn't can still experiment and see results.
 
 ### Simulation Controls
 
-Below the equation sections:
-- **Play / Pause** — toggle simulation ticking
-- **Reheat** — reset alpha to restart the layout from current positions
-- **Reset** — return all parameters to defaults
+Simulation controls live in the graph toolbar (see § Graph Toolbar Contents), not the control panel: **Play / Pause** toggles ticking, and **Reheat** re-energises the layout with a strong kick (high alpha) so a vigorous re-layout settles back on its own. There is no Reset button. The control panel itself holds only the force-shaping controls.
 
 ### Design Decisions
 
-**Parameter changes do not auto-reheat.** The user adjusts sliders at their own pace; the simulation applies changes passively. When satisfied with parameter tuning, the user manually reheats to see the full effect. This separates "explore parameters" from "run the simulation."
+**Parameter changes auto-reheat.** Tuning is a live feedback loop: changing any force parameter nudges the simulation warm so its effect is immediately visible, with no separate "press Play" step. A single shared mechanism re-energises the layout on every control edit, so every present and future control (sliders, the spring-map tokens, dual-range bands) inherits the behaviour. Freezing a layout is a separate, explicit action (Pause, or letting the simulation cool once edits stop).
 
-**Sliders are live.** Dragging a slider immediately affects the running simulation. Each slider shows its current numeric value.
+**Controls are live.** Editing any control immediately affects the running simulation. Each control shows its current value.
 
-**Help popover.** A `?` button in the panel header reveals a reference showing all four force equations and a brief tuning guide (e.g., "if nodes overlap, increase push or charge; if oscillating, increase friction or cooling").
+**Help popover.** A `?` button in the panel header reveals a reference showing the force equations and a brief tuning guide (e.g., "if nodes overlap, increase push or charge; if oscillating, increase friction or cooling").
 
 **Future:** Named presets (e.g., "Tight clusters", "Spread out") that animate sliders to known-good values.
 
@@ -485,42 +483,42 @@ Below the equation sections:
 
 ## Force Field Visualization
 
-A toggle ("Show force fields") in the control panel enables a visual overlay on the canvas that makes the invisible forces visible. This embodies the *Make the Invisible Visible* design principle.
+Hovering a force-control section (or an individual token) in the control panel reveals a visual overlay on the canvas that makes the invisible forces visible. This embodies the *Make the Invisible Visible* design principle. The overlays are **hover-driven** — there is no persistent toggle; they fade as soon as the pointer leaves the control.
 
 ### What's Drawn
 
-When enabled, the canvas renders three overlay layers (drawn before nodes, after edges):
+While a section is hovered, the canvas renders the matching overlay layer (drawn before nodes, after edges):
 
-**Charge field rings** — Concentric circle outlines around each node showing where the charge force drops below a fixed set of *absolute* thresholds. Ring radius is derived from the equation `force(d) = pushMul × |q| / (d² + softening)^(exp/2)`, solved for `d` at each threshold; rings whose threshold is unreachable for a node's charge (i.e. the threshold exceeds the node's peak force) are simply not drawn. Stronger charges therefore produce visibly larger rings — and a node type with too small a charge to reach the inner threshold renders only its outer rings, which is itself a useful signal that the type is under-charged. Ring colour matches the node's type colour at low opacity.
+**Charge field rings** — Concentric circle outlines around each node showing where the charge force drops below a fixed set of *absolute* thresholds. Ring radius is derived from the equation `force(d) = pushMul × |q| / (d² + r²)^exp`, solved for `d` at each threshold, where `r` is the node type's effective core radius (`coreRadiusMultiplier × coreRadius`); rings whose threshold is unreachable for a node's charge (i.e. the threshold exceeds the node's peak force) are simply not drawn. Stronger charges therefore produce visibly larger rings — and a node type with too small a charge to reach the inner threshold renders only its outer rings, which is itself a useful signal that the type is under-charged. Only the ring **outlines** are drawn (no filled disc), so overlapping fields don't stack into a solid colour that washes out the canvas. Ring colour matches the node's type colour at low opacity.
 
-**Spring tension coloring** — Edges colored by their current tension state: green when near rest distance, orange when compressed, blue when stretched. Color intensity scales with displacement magnitude.
+**Spring tension coloring** — Edges colored by their current tension state, drawn from the app palette so the highlight reads as part of the visualizer: teal (`--color-timer`) near rest length, amber (`--color-warning`) when stretched, blue (`--color-activity`) when compressed. When a specific spring is being tuned on the map (a token hovered or dragged), only that edge category is highlighted, drawn as a coloured **border** that preserves the edge's own identity colour rather than recolouring it; otherwise (hovering the PULL section as a whole) all edges are coloured by tension.
 
 **Hierarchical gravity overlay** — A faint vertical stripe between world `bandXMin` and `bandXMax` (with dashed edges) shows the X rest band; a horizontal stripe in each node type's colour shows that type's Y rest band. Inside either stripe a node feels no force on that axis; outside it the node is pulled toward the nearest edge. Hovering a single Y-band slider in the control panel highlights only that band and dims the others.
 
 ### When It's On
 
-The toggle defaults to **off** — these overlays add visual density and are a debugging/exploration tool, not part of the default reading experience. Once toggled on, the overlays persist across simulation pause/play and parameter changes, updating each frame.
+The overlays are **hover-driven**: they appear only while the corresponding control section (or token) is hovered and fade as soon as the pointer leaves. This keeps the default reading experience uncluttered — the overlays add visual density and are a tuning aid, surfaced exactly when the user is touching the control they explain — while updating live each frame for as long as the hover persists.
 
 ---
 
 ## Control-Canvas Feedback Loop
 
-The control panel and canvas are linked: hovering a control section activates the corresponding force visualization on the canvas, even when the persistent force field toggle is off. This creates a direct mapping between the abstract parameter the user is adjusting and its physical effect on the layout.
+The control panel and canvas are linked: hovering a control section activates the corresponding force visualization on the canvas. This creates a direct mapping between the abstract parameter the user is adjusting and its physical effect on the layout, and it is the *only* way the overlays are shown — there is no persistent toggle.
 
 ### Section Hover
 
 | Hovered Section | Canvas Response |
 |-----------------|-----------------|
 | **PUSH** | Charge field rings appear around all visible nodes |
-| **PULL** | Edges show tension coloring (green/orange/blue) |
+| **PULL** | Edges show tension colouring (teal/amber/blue). Hovering or dragging a spring-map token narrows this to just that edge category, drawn as a border. |
 | **GRAVITY** | Global X rest band (vertical stripe with dashed edges) plus per-type Y rest bands appear |
 | **DYNAMICS** | No canvas response (dynamics are temporal, not spatial) |
 
-When the user stops hovering, the visualization fades unless the persistent "Show force fields" toggle is on.
+When the user stops hovering, the visualization fades.
 
 ### Per-Type Charge Highlighting
 
-Within the PUSH section, hovering an individual charge slider (`NS`, `Wk`, `Wf`, `Act`, or `Nx`) highlights only that node type's field rings and dims the others. This lets the user see the reach and strength of one type's charge force in isolation — useful for understanding why nodes of different types settle at different distances.
+Within the PUSH section, hovering an individual charge-map token (one per node type) highlights only that node type's field rings and dims the others, and brightens that type's curve in the falloff plot. This lets the user see the reach and strength of one type's charge force in isolation — useful for understanding why nodes of different types settle at different distances.
 
 ### Per-Type Y-Band Highlighting
 

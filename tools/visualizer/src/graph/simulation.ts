@@ -27,6 +27,20 @@ export interface ForceParams {
   chargeNexusService: number
   chargeNexusOperation: number
 
+  // Core radius (charge softening, expressed as a length) — one per node type.
+  // Per pair, the softening added to dist² is the squared average of the two
+  // endpoints' effective core radii (rEff = coreRadiusMultiplier × coreRadius).
+  // A larger core radius spreads a type's repulsion over a wider, gentler
+  // plateau near the centre instead of a sharp spike; it is the per-type
+  // successor to the old global `chargeSoftening`.
+  coreRadiusNamespace: number
+  coreRadiusNexusEndpoint: number
+  coreRadiusWorker: number
+  coreRadiusWorkflow: number
+  coreRadiusActivity: number
+  coreRadiusNexusService: number
+  coreRadiusNexusOperation: number
+
   // Spring constants (k) per edge category.
   // Containment (parent ↔ child):
   linkNsToWorker: number          // Namespace ↔ Worker
@@ -34,11 +48,16 @@ export interface ForceParams {
   linkWorkerToActivity: number    // Worker ↔ Activity
   linkWorkerToNexus: number       // Worker ↔ NexusService
   linkNexusToOperation: number    // NexusService ↔ NexusOperation (intra-L3)
+  linkEndpointToNamespace: number // NexusEndpoint ↔ Namespace (nexus containment)
+  linkEndpointToOperation: number // NexusEndpoint ↔ NexusOperation (endpoint fronts op)
   // Dependency (caller → callee):
   linkNsToNs: number               // Namespace ↔ Namespace
   linkWorkerToWorker: number       // Worker ↔ Worker
   linkWorkflowToWorkflow: number   // Workflow ↔ Workflow
   linkWorkflowToActivity: number   // Workflow ↔ Activity
+  linkWorkflowToOperation: number  // Workflow → NexusOperation (the nexus call)
+  linkOperationToWorkflow: number  // NexusOperation → Workflow (backing / sync-op call)
+  linkOperationToActivity: number  // NexusOperation ↔ Activity (sync-op body call)
 
   // Rest distances per edge category (mirror the link strengths above).
   distNsToWorker: number
@@ -46,10 +65,15 @@ export interface ForceParams {
   distWorkerToActivity: number
   distWorkerToNexus: number
   distNexusToOperation: number
+  distEndpointToNamespace: number
+  distEndpointToOperation: number
   distNsToNs: number
   distWorkerToWorker: number
   distWorkflowToWorkflow: number
   distWorkflowToActivity: number
+  distWorkflowToOperation: number
+  distOperationToWorkflow: number
+  distOperationToActivity: number
 
   // Hierarchical gravity. The graph has an inherent vertical hierarchy
   // (namespace → worker → definition) so gravity is split into two axes,
@@ -96,16 +120,14 @@ export interface ForceParams {
   alphaMin: number
   velocityDecay: number
 
-  // Stability controls
-  chargeSoftening: number  // added to dist² in charge calc — prevents singularity at close range
-
   // Category multipliers — master knobs that scale all forces in a group
-  pushMultiplier: number     // scales all charge (repulsion) forces
-  pullMultiplier: number     // scales all link (attraction) forces
-  distanceMultiplier: number // scales all rest distances
+  pushMultiplier: number       // scales all charge (repulsion) forces
+  pullMultiplier: number       // scales all link (attraction) forces
+  distanceMultiplier: number   // scales all rest distances
+  coreRadiusMultiplier: number // scales all per-type core radii (charge softening)
 
   // Force shape — exponents
-  chargeExponent: number   // power of distance in charge falloff (2 = inverse-square)
+  chargeExponent: number   // power of (dist² + softening) in charge falloff (1 = inverse-square)
   linkExponent: number     // power of displacement in spring force (1 = linear/Hooke)
 }
 
@@ -115,9 +137,11 @@ export interface ForceParams {
 // bands hold the hierarchy, and the link springs act as short tethers
 // rather than rigid rods. Concretely:
 //
-//   - pushMultiplier 2.6 + chargeExponent 1.4 + chargeSoftening 450
-//     produce strong, sharply-decaying repulsion that prevents node
-//     overlap and naturally fans siblings apart.
+//   - pushMultiplier 0.4 + chargeExponent 0.7 (acting on dist² + softening)
+//     + per-type core radii (read off the charge map) produce strong,
+//     softly-decaying repulsion that prevents node overlap and naturally
+//     fans siblings apart. push is modest because the per-type charges
+//     themselves are now large (container/host tiers ~800).
 //   - pullMultiplier 0.6 + distanceMultiplier 0.1 means every spring is
 //     ~6% of its old strength × ~10% of its old rest distance — enough to
 //     keep connected nodes near each other, not enough to fight the
@@ -132,14 +156,12 @@ export interface ForceParams {
 // user can drag from. Ranges in GraphControlPanel.tsx are wide enough that
 // every default sits in a comfortable middle of its slider.
 export const DEFAULT_PARAMS: ForceParams = {
-  // Charges (all negative = repulsion). Tuned to a roughly 8:3:1 gradient
-  // L1:L2:L3, with services and operations slightly stronger than their
-  // peer types so they stay clearly anchored to their bands. Endpoints
-  // sit on the nexus ladder between namespace and service: visually
-  // above workers (in their own band), but with weaker repulsion than
-  // workers since they're routing aliases rather than orchestration
-  // hosts — they shouldn't push other top-level nodes around as hard
-  // as workers do.
+  // Charges (all negative = repulsion). Per-type defaults captured from an
+  // interactive tuning session on the PUSH charge map: the container/host
+  // tiers (endpoint, namespace, worker, service) carry the heaviest repulsion
+  // so top-level nodes fan well apart, dropping off through the orchestrator
+  // tier (operation, workflow) down to activities. Sourced from the registry
+  // alongside each type's core radius.
   chargeNamespace:      NODE_TYPE_REGISTRY.namespace.physics.charge,
   chargeNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.charge,
   chargeWorker:         NODE_TYPE_REGISTRY.worker.physics.charge,
@@ -148,33 +170,51 @@ export const DEFAULT_PARAMS: ForceParams = {
   chargeNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.charge,
   chargeActivity:       NODE_TYPE_REGISTRY.activity.physics.charge,
 
-  // Spring strengths. With pullMultiplier at 0.6 and distanceMultiplier at
-  // 0.1 every spring is a *light tether* — these k's mostly determine the
-  // ranking of which connections snap closest, not the absolute pull.
-  linkNsToNs:             0.05,
-  linkNsToWorker:         0.20,
-  linkWorkerToWorker:     0.40,
-  linkWorkerToWorkflow:   0.60,
-  linkWorkerToActivity:   0.30,
-  linkWorkerToNexus:      0.40,
-  linkNexusToOperation:   0.65,
-  linkWorkflowToWorkflow: 0.75,
-  linkWorkflowToActivity: 0.45,
+  // Core radii (charge softening as a length). Per-type defaults captured
+  // from an interactive tuning session on the PUSH charge map (sourced from
+  // the registry alongside each type's charge).
+  coreRadiusNamespace:      NODE_TYPE_REGISTRY.namespace.physics.coreRadius,
+  coreRadiusNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.coreRadius,
+  coreRadiusWorker:         NODE_TYPE_REGISTRY.worker.physics.coreRadius,
+  coreRadiusNexusService:   NODE_TYPE_REGISTRY.nexusService.physics.coreRadius,
+  coreRadiusWorkflow:       NODE_TYPE_REGISTRY.workflow.physics.coreRadius,
+  coreRadiusNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.coreRadius,
+  coreRadiusActivity:       NODE_TYPE_REGISTRY.activity.physics.coreRadius,
 
-  // Rest distances. These are pre-multiplier values; the panel's `dist`
-  // master multiplies them at simulation time (currently 0.1, so the
-  // effective rest length of a Wk↔Wf edge is 18 world units, etc.). The
-  // spread between rows still matters — it sets the *ordering* of which
-  // edges are willing to stretch furthest, not the absolute length.
-  distNsToNs:             340,
-  distNsToWorker:         250,
-  distWorkerToWorker:     200,
-  distWorkerToWorkflow:   180,
-  distWorkerToActivity:   280,
-  distWorkerToNexus:      180,
-  distNexusToOperation:   140,
-  distWorkflowToWorkflow: 120,
-  distWorkflowToActivity:  90,
+  // Spring strengths (k = stiffness). These are the spring-map default token
+  // positions on the stiffness axis — hand-placed via the control panel.
+  linkNsToNs:             0.25,
+  linkNsToWorker:         0.30,
+  linkWorkerToWorker:     0.30,
+  linkWorkerToWorkflow:   0.55,
+  linkWorkerToActivity:   0.35,
+  linkWorkerToNexus:      1.25,
+  linkNexusToOperation:   1.40,
+  linkWorkflowToWorkflow: 0.50,
+  linkWorkflowToActivity: 1.90,
+  linkEndpointToNamespace: 1.00,
+  linkEndpointToOperation: 1.50,
+  linkWorkflowToOperation: 1.50,
+  linkOperationToWorkflow: 1.55,
+  linkOperationToActivity: 1.40,
+
+  // Rest distances (length). Spring-map default token positions on the length
+  // axis — hand-placed via the control panel. The panel's `length ×` master
+  // multiplies these at simulation time.
+  distNsToNs:             870,
+  distNsToWorker:         800,
+  distWorkerToWorker:     720,
+  distWorkerToWorkflow:   190,
+  distWorkerToActivity:   210,
+  distWorkerToNexus:      430,
+  distNexusToOperation:   600,
+  distWorkflowToWorkflow: 420,
+  distWorkflowToActivity:  40,
+  distEndpointToNamespace: 690,
+  distEndpointToOperation: 470,
+  distWorkflowToOperation: 330,
+  distOperationToWorkflow: 360,
+  distOperationToActivity: 300,
 
   // Hierarchical gravity. Y bands carry the vertical structure of the
   // layout — strong (gravityY = 0.145) and overlapping at the edges so
@@ -214,12 +254,12 @@ export const DEFAULT_PARAMS: ForceParams = {
   alphaMin:      0.0001,
   velocityDecay: 0.4,
 
-  chargeSoftening:    450,
-  pushMultiplier:     2.6,
-  pullMultiplier:     0.6,
-  distanceMultiplier: 0.1,
-  chargeExponent:     1.4,
-  linkExponent:       1.0,
+  pushMultiplier:       0.4,
+  pullMultiplier:       0.6,
+  distanceMultiplier:   0.1,
+  coreRadiusMultiplier: 1.0,
+  chargeExponent:       0.7,  // acts on (dist² + softening); = old 1.4 with the /2 folded in
+  linkExponent:         1.0,
 }
 
 // Lookup records that map each NodeType to its corresponding ForceParams field.
@@ -256,8 +296,27 @@ export const BAND_MAX_KEY: Record<NodeType, keyof ForceParams> = {
   activity:       'bandYMaxActivity',
 }
 
+export const CORE_RADIUS_KEY: Record<NodeType, keyof ForceParams> = {
+  namespace:      'coreRadiusNamespace',
+  nexusEndpoint:  'coreRadiusNexusEndpoint',
+  worker:         'coreRadiusWorker',
+  nexusService:   'coreRadiusNexusService',
+  workflow:       'coreRadiusWorkflow',
+  nexusOperation: 'coreRadiusNexusOperation',
+  activity:       'coreRadiusActivity',
+}
+
 export function chargeForType(params: ForceParams, nodeType: NodeType): number {
   return params[CHARGE_KEY[nodeType]] as number
+}
+
+// Minimum effective core radius. A type dragged to 0 would otherwise drop the
+// pair softening toward zero and reintroduce the close-range force singularity
+// the softening exists to prevent, so we floor every read at this value.
+export const CORE_RADIUS_MIN = 2
+
+export function coreRadiusForType(params: ForceParams, nodeType: NodeType): number {
+  return Math.max(params[CORE_RADIUS_KEY[nodeType]] as number, CORE_RADIUS_MIN)
 }
 
 export interface YBand {
@@ -275,6 +334,9 @@ export function bandForType(params: ForceParams, nodeType: NodeType): YBand {
 interface EdgeCategory {
   strength: number
   distance: number
+  // The k-field key identifying this category — lets callers (e.g. the canvas
+  // active-edge highlight) match an edge to the spring-map token tuning it.
+  key: keyof ForceParams
 }
 
 // Categorize an edge by its endpoint node types. Containment edges typically
@@ -289,55 +351,70 @@ export function edgeCategory(params: ForceParams, edge: GraphEdge): EdgeCategory
   const src = edge.sourceNodeType
   const tgt = edge.targetNodeType
 
+  // Unordered endpoint-type test, so each branch matches an edge in either
+  // direction without spelling out both orderings.
+  const has = (a: NodeType, b: NodeType) =>
+    (src === a && tgt === b) || (src === b && tgt === a)
+
   if (edge.edgeType === 'containment') {
-    // NexusService ↔ NexusOperation (operations live one tier under their
-    // service — L3 child anchored to the L2 service that owns it).
-    // Same spring applies to the derived NexusOperation ↔ NexusEndpoint
-    // composition edges (op's second "parent" — the endpoint that fronts it).
-    // The relationship strength is comparable: both encode "this operation
-    // is structurally anchored to this nexus-family node", and reusing the
-    // spring keeps the slider count down.
-    if ((src === 'nexusOperation' && tgt === 'nexusService') ||
-        (src === 'nexusService' && tgt === 'nexusOperation') ||
-        (src === 'nexusOperation' && tgt === 'nexusEndpoint') ||
-        (src === 'nexusEndpoint' && tgt === 'nexusOperation')) {
-      return { strength: params.linkNexusToOperation, distance: params.distNexusToOperation }
+    // NexusOperation ↔ NexusEndpoint composition edge (the endpoint that
+    // fronts the operation — its second "parent").
+    if (has('nexusOperation', 'nexusEndpoint')) {
+      return { strength: params.linkEndpointToOperation, distance: params.distEndpointToOperation, key: 'linkEndpointToOperation' }
+    }
+    // NexusService ↔ NexusOperation (operation nested under its service).
+    if (has('nexusOperation', 'nexusService')) {
+      return { strength: params.linkNexusToOperation, distance: params.distNexusToOperation, key: 'linkNexusToOperation' }
     }
     // Worker ↔ NexusService (peer L2 nodes; service is hosted on a worker).
-    if ((src === 'nexusService' && tgt === 'worker') ||
-        (src === 'worker' && tgt === 'nexusService')) {
-      return { strength: params.linkWorkerToNexus, distance: params.distWorkerToNexus }
+    if (has('worker', 'nexusService')) {
+      return { strength: params.linkWorkerToNexus, distance: params.distWorkerToNexus, key: 'linkWorkerToNexus' }
+    }
+    // NexusEndpoint ↔ Namespace (endpoints declared inside a namespace).
+    if (has('nexusEndpoint', 'namespace')) {
+      return { strength: params.linkEndpointToNamespace, distance: params.distEndpointToNamespace, key: 'linkEndpointToNamespace' }
     }
     // L3/L4 → Worker (build.ts always emits the child as source).
     if (src === 'workflow' || tgt === 'workflow') {
-      return { strength: params.linkWorkerToWorkflow, distance: params.distWorkerToWorkflow }
+      return { strength: params.linkWorkerToWorkflow, distance: params.distWorkerToWorkflow, key: 'linkWorkerToWorkflow' }
     }
     if (src === 'activity' || tgt === 'activity') {
-      return { strength: params.linkWorkerToActivity, distance: params.distWorkerToActivity }
+      return { strength: params.linkWorkerToActivity, distance: params.distWorkerToActivity, key: 'linkWorkerToActivity' }
     }
-    // Worker → Namespace (and the analogous Endpoint → Namespace edge —
-    // endpoints sit at L1.5 but their only containment is to a namespace
-    // parent, structurally equivalent to the worker → namespace edge).
-    return { strength: params.linkNsToWorker, distance: params.distNsToWorker }
+    // Worker → Namespace.
+    return { strength: params.linkNsToWorker, distance: params.distNsToWorker, key: 'linkNsToWorker' }
   }
 
   // Dependency
   if (src === 'namespace' || tgt === 'namespace') {
-    return { strength: params.linkNsToNs, distance: params.distNsToNs }
+    return { strength: params.linkNsToNs, distance: params.distNsToNs, key: 'linkNsToNs' }
   }
   if (src === 'worker' || tgt === 'worker') {
-    return { strength: params.linkWorkerToWorker, distance: params.distWorkerToWorker }
+    return { strength: params.linkWorkerToWorker, distance: params.distWorkerToWorker, key: 'linkWorkerToWorker' }
   }
-  // L3↔L3: collapse nexusOperation to "workflow-equivalent" (it sits on the
-  // call path between caller and callee), then differentiate Wf↔Wf and Wf↔Act.
-  // Act↔Act dependency edges do not exist — activities cannot call activities.
-  const lsrc = src === 'nexusOperation' ? 'workflow' : src
-  const ltgt = tgt === 'nexusOperation' ? 'workflow' : tgt
-  if (lsrc === 'workflow' && ltgt === 'workflow') {
-    return { strength: params.linkWorkflowToWorkflow, distance: params.distWorkflowToWorkflow }
+  // L3↔L3 dependency, nexus-aware and direction-sensitive for the
+  // workflow/operation pair — the two directions mean different things:
+  //   Workflow → Operation : a workflow makes a nexus call.
+  //   Operation → Workflow : an operation delegates to a backing workflow
+  //                          (async) or calls one from a sync-op body.
+  // Operation → Operation (rare) folds into the nexus-call spring.
+  if (src === 'workflow' && tgt === 'nexusOperation') {
+    return { strength: params.linkWorkflowToOperation, distance: params.distWorkflowToOperation, key: 'linkWorkflowToOperation' }
   }
-  // Wf↔Act (in either direction) — the only L3/L4 dependency edge type.
-  return { strength: params.linkWorkflowToActivity, distance: params.distWorkflowToActivity }
+  if (src === 'nexusOperation' && tgt === 'workflow') {
+    return { strength: params.linkOperationToWorkflow, distance: params.distOperationToWorkflow, key: 'linkOperationToWorkflow' }
+  }
+  if (has('nexusOperation', 'nexusOperation')) {
+    return { strength: params.linkWorkflowToOperation, distance: params.distWorkflowToOperation, key: 'linkWorkflowToOperation' }
+  }
+  if (has('nexusOperation', 'activity')) {
+    return { strength: params.linkOperationToActivity, distance: params.distOperationToActivity, key: 'linkOperationToActivity' }
+  }
+  if (has('workflow', 'workflow')) {
+    return { strength: params.linkWorkflowToWorkflow, distance: params.distWorkflowToWorkflow, key: 'linkWorkflowToWorkflow' }
+  }
+  // Wf↔Act (in either direction) — the remaining L3/L4 dependency edge type.
+  return { strength: params.linkWorkflowToActivity, distance: params.distWorkflowToActivity, key: 'linkWorkflowToActivity' }
 }
 
 // Stability bounds — defenses against numerical instability cascades.
@@ -435,9 +512,12 @@ export class Simulation {
     }
 
     // Charge force (repulsion between all visible node pairs)
-    // force = pushMultiplier * strength / effectiveDist^chargeExponent
-    // effectiveDist = sqrt(dist² + softening)  — prevents singularity
-    const softening = this.params.chargeSoftening
+    // force = pushMultiplier * strength / (dist² + softening)^chargeExponent
+    // The softening prevents the close-range singularity; it is per-pair: the
+    // squared average of the two endpoints' effective core radii
+    // (rEff = coreRadiusMultiplier × coreRadius[type]). The exponent acts on
+    // the squared distance directly (no /2) — chargeExponent 1 = inverse-square.
+    const crMul = this.params.coreRadiusMultiplier
     const pushMul = this.params.pushMultiplier
     const chargeExp = this.params.chargeExponent
     for (let i = 0; i < active.length; i++) {
@@ -459,12 +539,17 @@ export class Simulation {
           dist2 = 1
         }
         const rawDist = Math.sqrt(dist2)
-        const effectiveDist = Math.sqrt(dist2 + softening)
+        // Per-pair softening from the endpoints' core radii.
+        const rEffA = crMul * coreRadiusForType(this.params, a.nodeType)
+        const rEffB = crMul * coreRadiusForType(this.params, b.nodeType)
+        const rAvg = (rEffA + rEffB) / 2
+        const softening = rAvg * rAvg
         const chargeA = chargeForType(this.params, a.nodeType)
         const chargeB = chargeForType(this.params, b.nodeType)
         const strength = (chargeA + chargeB) / 2
-        // Negate: strength is negative (convention), but force must be positive for repulsion
-        const force = -(this.alpha * pushMul * strength / Math.pow(effectiveDist, chargeExp))
+        // Negate: strength is negative (convention), but force must be positive
+        // for repulsion. The exponent acts on (dist² + softening) directly.
+        const force = -(this.alpha * pushMul * strength / Math.pow(dist2 + softening, chargeExp))
         const fx = force * (dx / rawDist)
         const fy = force * (dy / rawDist)
         if (!a.pinned) { a.vx -= fx; a.vy -= fy }

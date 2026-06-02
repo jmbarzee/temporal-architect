@@ -293,11 +293,13 @@ export function GraphView({
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
   const [shiftHeld, setShiftHeld] = React.useState(false)
 
-  // --- Force field visualization ---
-  const [showForceFields, setShowForceFields] = React.useState(false)
+  // --- Force field visualization (hover-driven; no persistent toggle) ---
   const [activeSection, setActiveSection] = React.useState<ForceSection>(null)
   const [activeChargeType, setActiveChargeType] = React.useState<NodeType | null>(null)
   const [activeGravityType, setActiveGravityType] = React.useState<NodeType | null>(null)
+  // The pull edge category (k-field key) currently being hovered/tuned in the
+  // spring map; drives the canvas single-edge tension highlight.
+  const [activePullEdge, setActivePullEdge] = React.useState<string | null>(null)
 
   // --- Search ---
   const searchInputRef = React.useRef<HTMLInputElement>(null)
@@ -789,8 +791,11 @@ export function GraphView({
     }
   }, [running])
 
+  // Reheat with a strong kick (10× the old reheat). Force magnitude scales
+  // with alpha, so a high alpha drives a vigorous re-layout that settles back
+  // down on its own; the per-tick velocity clamp keeps it stable.
   const handleReheat = React.useCallback(() => {
-    simRef.current?.reheat(1.0)
+    simRef.current?.reheat(10)
     setRunning(true)
   }, [])
 
@@ -1059,11 +1064,11 @@ export function GraphView({
           focusedNodeId={focusedNodeId}
           searchMatchIds={visibleMatchIds}
           running={running}
-          showForceFields={showForceFields}
           forceParams={forceParams}
           activeSection={activeSection}
           activeChargeType={activeChargeType}
           activeGravityType={activeGravityType}
+          activePullEdge={activePullEdge}
           nodeSummaries={nodeSummaries}
         />
         <GraphHoverTooltip
@@ -1199,6 +1204,7 @@ export function GraphView({
         >
           {running ? 'Pause' : 'Play'}
         </button>
+        <button className="graph-toolbar-btn" onClick={handleReheat} title="Reheat the simulation (strong)">Reheat</button>
       </div>
 
       {/* Search results dropdown */}
@@ -1233,14 +1239,10 @@ export function GraphView({
         params={forceParams}
         onParamChange={handleParamChange}
         onAdjust={handleForceAdjust}
-        running={running}
-        onToggleRunning={handleToggleRunning}
-        onReheat={handleReheat}
-        showForceFields={showForceFields}
-        onToggleForceFields={() => setShowForceFields(v => !v)}
         onActiveSection={setActiveSection}
         onActiveChargeType={setActiveChargeType}
         onActiveGravityType={setActiveGravityType}
+        onActivePullEdge={setActivePullEdge}
       />
 
       {/* Right-click context menu */}

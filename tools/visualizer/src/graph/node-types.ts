@@ -85,6 +85,13 @@ export interface NodeTypeDefinition {
      */
     charge: number
     /**
+     * Default core radius (charge softening, as a length). A pair of nodes
+     * softens its charge by the squared average of the two endpoints'
+     * effective core radii (`coreRadiusMultiplier × coreRadius`), added to d².
+     * Tuned at runtime on the PUSH charge map. Larger = gentler, wider plateau.
+     */
+    coreRadius: number
+    /**
      * Default Y band where this node type feels zero gravity.
      * Negative Y = top of canvas. The simulation places nodes inside their
      * band on creation so the hierarchy is visible immediately.
@@ -120,7 +127,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDefinition> = {
     },
     size: { r: 20, iconSize: 18 },
     physics: {
-      charge: -640,
+      charge: -850,
+      coreRadius: 85,
       yBand:  { min: -340, max: -120 },  // container band (shared with nexusEndpoint)
     },
     summaryKind: 'containerCount',
@@ -142,7 +150,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDefinition> = {
     },
     size: { r: 15, iconSize: 14 },
     physics: {
-      charge: -180,
+      charge: -900,
+      coreRadius: 64,
       yBand:  { min: -340, max: -120 },  // container band aligned with namespace
     },
     summaryKind: 'none',
@@ -164,7 +173,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDefinition> = {
     },
     size: { r: 20, iconSize: 18 },
     physics: {
-      charge: -220,
+      charge: -770,
+      coreRadius: 72,
       yBand:  { min: -200, max: 120 },   // host band (shared with nexusService)
     },
     summaryKind: 'hostRegistrations',
@@ -186,7 +196,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDefinition> = {
     },
     size: { r: 20, iconSize: 18 },
     physics: {
-      charge: -105,
+      charge: -760,
+      coreRadius: 54,
       yBand:  { min: -200, max: 120 },   // host band aligned with worker
     },
     summaryKind: 'hostRegistrations',
@@ -208,7 +219,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDefinition> = {
     },
     size: { r: 11, iconSize: 12 },
     physics: {
-      charge: -95,
+      charge: -360,
+      coreRadius: 38,
       yBand:  { min: 100, max: 460 },    // orchestrator band (shared with nexusOperation)
     },
     summaryKind: 'degree',
@@ -229,7 +241,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDefinition> = {
     },
     size: { r: 11, iconSize: 12 },
     physics: {
-      charge: -85,
+      charge: -560,
+      coreRadius: 58,
       yBand:  { min: 100, max: 460 },    // orchestrator band aligned with workflow
     },
     summaryKind: 'degree',
@@ -250,15 +263,17 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDefinition> = {
     },
     size: { r: 8, iconSize: 10 },
     physics: {
-      charge: -80,
+      charge: -190,
+      coreRadius: 20,
       yBand:  { min: 170, max: 500 },
     },
     summaryKind: 'degree',
   },
 }
 
-// Short abbreviations for the control-panel slider labels.
-// Kept here so they stay in sync with the registry when node types change.
+// Short abbreviations for the control-panel labels (charge-map tokens,
+// gravity-band rows). Kept here so they stay in sync with the registry when
+// node types change.
 const SLIDER_ABBREV: Record<NodeType, string> = {
   namespace:      'NS',
   nexusEndpoint:  'Ep',
@@ -270,17 +285,13 @@ const SLIDER_ABBREV: Record<NodeType, string> = {
 }
 
 /**
- * Generate the short hierarchical label used in the control panel, e.g.
- * 'L1 NS', 'L1.5 Ep', 'L2 Wk'. Derived entirely from the registry so
- * the label is always consistent with the node type's tier and ladder.
+ * The short label used in the control panel for a node type, e.g. 'NS', 'Ep',
+ * 'Wk'. The old hierarchical 'L1'/'L1.5' level prefix has been dropped — the
+ * level numbering carried no meaning the user could act on, and the bands /
+ * colours already convey the hierarchy.
  */
 export function sliderLabelFor(t: NodeType): string {
-  const def = NODE_TYPE_REGISTRY[t]
-  const level =
-    def.tier === 'container'    ? (def.ladder === 'nexus' ? '1.5' : '1') :
-    def.tier === 'host'         ? '2' :
-    def.tier === 'orchestrator' ? '3' : '4'
-  return `L${level} ${SLIDER_ABBREV[t]}`
+  return SLIDER_ABBREV[t]
 }
 
 /** Ordered list of all node types (declaration order = top-of-hierarchy first). */

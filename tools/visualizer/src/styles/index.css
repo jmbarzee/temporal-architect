@@ -507,10 +507,16 @@ body {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 10;
-  max-width: 280px;
+  max-width: calc(100vw - 24px);
   max-height: calc(100% - 70px);
   display: flex;
   flex-direction: column;
+}
+
+/* Widen only when open so the collapsed toggle stays compact. The spring map
+   needs more horizontal room than the old slider stack. */
+.graph-control-panel.open {
+  width: 330px;
 }
 
 .graph-control-panel-toggle {
@@ -575,6 +581,11 @@ body {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  /* Single source of truth for the panel's text. Children inherit this; the
+     normalization block below pins the few classes that still carry their own
+     size, and only numeric/equation text overrides the family to mono. */
+  font-size: 12px;
+  font-family: var(--font-sans);
 }
 
 .graph-control-group {
@@ -604,10 +615,7 @@ body {
   border: none;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 10px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
   cursor: pointer;
   font-family: var(--font-sans);
   border-bottom: 2px solid transparent;
@@ -663,12 +671,12 @@ body {
 
 .graph-control-equation-formula {
   font-family: var(--font-mono);
-  font-size: 9px;
   line-height: 1.4;
   color: var(--color-text-muted);
   opacity: 0.7;
   margin: 0 0 4px;
   white-space: pre-wrap;
+  text-align: center;
 }
 
 .graph-control-equation-body {
@@ -692,33 +700,215 @@ body {
   opacity: 0.6;
 }
 
-/* Pull edge row — two sliders side by side */
-.graph-control-pull-edge {
+/* ── 2D force map + force curves (shared) ──────────────────────────────────
+   The 2D map (control) and the force-curve viz (read-out), shared by both the
+   Pull tab (spring map: split-colour edge tokens) and the Push tab (charge
+   map: solid per-type tokens) via the ForceMap2D / ForceCurves primitives.
+   Each plot fills its SVG; the axis labels, origin marker, and the global
+   "scale all" sliders sit in a CSS grid *around* the SVG, so the sliders line
+   up with the plot structurally — no magic inset percentages. Tokens that
+   reach a plot edge spill out via `overflow: visible` rather than clipping.
+   A split token (Pull) draws two half-circle <path>s; a solid token (Push)
+   draws a single filled <circle>; both share the .spring-token-outline ring. */
+
+.spring-map {
+  display: grid;
+  grid-template-columns: 16px 14px 1fr;  /* axisY | ySlider | plot */
+  grid-template-rows: 1fr 14px 18px;      /* plot | xSlider | axisX */
+  grid-template-areas:
+    "axisY ySlider plot"
+    ".     .       xSlider"
+    ".     .       axisX";
+  align-items: stretch;
+  row-gap: 4px;
+  margin-top: 12px;
+}
+
+.spring-map-svg {
+  grid-area: plot;
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;   /* edge tokens spill rather than clip */
+  touch-action: none;  /* pointer drags move tokens, not scroll/zoom */
+}
+
+.spring-axis-slider {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--color-workflow);
+}
+
+/* Sliders fill their grid track, which shares the plot's row/column — so they
+   match the plot's width/height by construction. */
+.spring-axis-slider-x {
+  grid-area: xSlider;
+  width: 100%;
+  height: 4px;
+  align-self: center;
+}
+
+.spring-axis-slider-y {
+  grid-area: ySlider;
+  writing-mode: vertical-lr;
+  direction: rtl;  /* up = stronger */
+  height: 100%;
+  width: 4px;
+  justify-self: center;
+}
+
+/* Axis labels — shared by both graphs; the y-labels read bottom-to-top. */
+.spring-axis-label {
+  color: var(--color-text-muted);
+  align-self: center;
+  justify-self: center;
+}
+
+.spring-map-axis-x { grid-area: axisX; }
+.spring-curves-axis-x { grid-area: axisX; }
+
+.spring-map-axis-y,
+.spring-curves-axis-y {
+  grid-area: axisY;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.spring-plot-bg { fill: var(--color-bg); opacity: 0.5; }
+.spring-grid { stroke: var(--color-border); stroke-width: 1; opacity: 0.6; }
+
+/* Spring map tokens */
+.spring-token { cursor: grab; }
+.spring-token:active { cursor: grabbing; }
+.spring-token.dim { opacity: 0.3; }
+
+.spring-token-outline {
+  stroke: var(--color-text);
+  stroke-opacity: 0.55;
+  stroke-width: 1.2;
+}
+
+.spring-token.active .spring-token-outline {
+  stroke-opacity: 0.95;
+  stroke-width: 1.8;
+}
+
+.spring-token-label {
+  font-size: 11px;
+  fill: var(--color-text-muted);
+  pointer-events: none;
+  user-select: none;
+}
+
+.spring-token.active .spring-token-label {
+  fill: var(--color-text);
+  font-weight: 600;
+}
+
+/* Force-curve visualization */
+.spring-curves {
+  display: grid;
+  grid-template-columns: 16px 1fr;   /* axisY | plot */
+  grid-template-rows: 1fr 18px auto;  /* plot | axisX | exp */
+  grid-template-areas:
+    "axisY plot"
+    ".     axisX"
+    ".     exp";
+  row-gap: 4px;
+  margin-top: 10px;
+}
+
+.spring-curves-svg {
+  grid-area: plot;
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.spring-curve-frame { fill: none; stroke: var(--color-border); stroke-width: 1; }
+.spring-curve-baseline { stroke: var(--color-border); stroke-width: 1; }
+
+.spring-curve-restmark {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  opacity: 0.6;
+}
+
+.spring-curve-line { fill: none; stroke-width: 1.25; opacity: 0.3; }
+.spring-curve-hit { fill: none; stroke: transparent; stroke-width: 8; cursor: pointer; }
+.spring-curve.active .spring-curve-line { opacity: 1; stroke-width: 2; }
+.spring-curve.dim .spring-curve-line { opacity: 0.15; }
+
+.spring-curves-exp {
+  grid-area: exp;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.spring-exp-label { color: var(--color-text-muted); }
+
+/* Full plot-width (shares the plot's grid column) and aligned with its label. */
+.spring-exp-slider {
+  width: 100%;
+  height: 4px;
+  accent-color: var(--color-workflow);
+  cursor: pointer;
+}
+
+/* Typography normalization: pin every panel text element to one size (12px,
+   matching the toolbar) so the modal reads consistently. Declared after the
+   base rules so it wins at equal specificity — the one place to change the
+   control-panel font size. */
+.graph-control-panel-toggle,
+.graph-control-tab,
+.graph-control-equation-formula,
+.graph-control-equation-subtitle,
+.graph-control-sub-label,
+.graph-control-slider-label,
+.graph-control-slider-value,
+.graph-control-band-label,
+.graph-control-band-value,
+.graph-control-help-text,
+.graph-control-checkbox {
+  font-size: 12px;
+}
+
+/* Equation fraction — the Pull tab renders its formula as a real fraction
+   ((d − length)^exp over d) instead of a flat "/ d". */
+.eq-line {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-bottom: 2px;
+  flex-wrap: wrap;
 }
 
-.graph-control-pull-edge-label {
-  font-size: 9px;
-  color: var(--color-text-muted);
-  min-width: 40px;
-  white-space: nowrap;
-  font-family: var(--font-mono);
+.eq-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  vertical-align: middle;
 }
 
-.graph-control-pull-slider {
-  flex: 1;
-  min-width: 0;
+.eq-num {
+  border-bottom: 1px solid currentColor;
+  padding: 0 4px;
+  line-height: 1.3;
+  /* Stretch to the fraction's full width (the wider of numerator/denominator)
+     so the dividing line spans the whole fraction, not just the numerator. */
+  align-self: stretch;
+  text-align: center;
 }
 
-.graph-control-pull-value {
-  font-size: 9px;
-  font-family: var(--font-mono);
-  color: var(--color-text-muted);
-  min-width: 24px;
-  text-align: right;
+.eq-den {
+  padding: 0 4px;
+  line-height: 1.3;
+  text-align: center;
 }
 
 /* ── Type colour theming ───────────────────────────────────────────────────
@@ -744,21 +934,6 @@ body {
   color: var(--type-color);
   opacity: 0.95;
   font-weight: 500;
-}
-
-/* Edge endpoint markers — a pair of dots before each PULL edge label,
-   coloured by the source and target node types. NS↔NS shows two grey
-   dots, Wf↔Act shows purple+blue, etc. — visually echoing the
-   coloured nodes you're tuning the spring for. */
-.graph-control-edge-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-right: 2px;
-  background: var(--type-color, var(--color-text-muted));
-  vertical-align: middle;
-  opacity: 0.85;
 }
 
 /* Gravity Y-band row — label, dual-handle slider, two readouts. */

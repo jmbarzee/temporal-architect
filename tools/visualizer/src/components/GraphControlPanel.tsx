@@ -3,9 +3,11 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
-import { DEFAULT_PARAMS, CHARGE_KEY, BAND_MIN_KEY, BAND_MAX_KEY } from '../graph/simulation'
+import { BAND_MIN_KEY, BAND_MAX_KEY } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor } from '../graph/node-types'
+import { SpringMap, SpringCurves } from './SpringControls'
+import { ChargeMap, ChargeCurves } from './ChargeControls'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
@@ -27,14 +29,12 @@ interface GraphControlPanelProps {
   // every force-control edit so the layout responds live. See GraphView's
   // handleForceAdjust.
   onAdjust: () => void
-  running: boolean
-  onToggleRunning: () => void
-  onReheat: () => void
-  showForceFields: boolean
-  onToggleForceFields: () => void
   onActiveSection: (section: ForceSection) => void
   onActiveChargeType: (nodeType: NodeType | null) => void
   onActiveGravityType: (nodeType: NodeType | null) => void
+  // The hovered/active pull edge category (its k-field key), forwarded to the
+  // canvas so only that edge category is highlighted while tuning it.
+  onActivePullEdge: (key: string | null) => void
 }
 
 interface SliderDef {
@@ -46,111 +46,17 @@ interface SliderDef {
   tooltip: string
 }
 
-// --- PUSH section sliders ---
+// --- PUSH section ---
 //
-// Master parameters use modest 0–3 ranges so the default 1.0 sits well within
-// the slider's working area in either direction. softening uses a 0–2000 band
-// for the same reason — defaults at ~900 leave room to firm or soften charges.
+// The Push tab's controls live in ChargeControls: a 2D charge map (per-type
+// charge/core-radius tokens + the two global "scale all" multipliers along the
+// axes) and a charge-falloff visualization (which hosts the global `exp`).
 
-const PUSH_MASTER_SLIDERS: SliderDef[] = [
-  { key: 'pushMultiplier', label: 'push', min: 0, max: 3, step: 0.1,
-    tooltip: 'Master multiplier for all repulsion forces' },
-  { key: 'chargeExponent', label: 'exp', min: 0.5, max: 3, step: 0.1,
-    tooltip: 'Power of distance in charge falloff. 2 = inverse-square' },
-  { key: 'chargeSoftening', label: 'softening', min: 0, max: 2000, step: 50,
-    tooltip: 'Added to dist² — prevents singularity at close range' },
-]
-
-interface ChargeSliderDef extends SliderDef {
-  nodeType: NodeType
-}
-
-// Charge slider ranges, stratified by tier so the default value sits comfortably
-// in the middle of each slider's working range.
-function chargeSliderRange(t: NodeType): { min: number; max: number; step: number } {
-  const def = NODE_TYPE_REGISTRY[t]
-  if (def.tier === 'container' && def.ladder === 'main') return { min: -1000, max: 0, step: 10 }
-  if (def.tier === 'container' || (def.tier === 'host' && def.ladder === 'main')) return { min: -400, max: 0, step: 10 }
-  return { min: -200, max: 0, step: 5 }
-}
-
-// Enumerate charge sliders from the registry. Order follows ALL_NODE_TYPES
-// (top-of-hierarchy first) so the list reads as a vertical layout preview.
-const PUSH_CHARGE_SLIDERS: ChargeSliderDef[] = ALL_NODE_TYPES.map(t => ({
-  key: CHARGE_KEY[t],
-  nodeType: t,
-  label: sliderLabelFor(t),
-  ...chargeSliderRange(t),
-  tooltip: `${NODE_TYPE_REGISTRY[t].label} node repulsion charge`,
-}))
-
-// --- PULL section sliders ---
-
-const PULL_MASTER_SLIDERS: SliderDef[] = [
-  { key: 'pullMultiplier', label: 'pull', min: 0, max: 3, step: 0.1,
-    tooltip: 'Master multiplier for all spring forces' },
-  { key: 'linkExponent', label: 'exp', min: 0.5, max: 3, step: 0.1,
-    tooltip: 'Power of displacement in spring force. 1 = linear (Hooke)' },
-  { key: 'distanceMultiplier', label: 'dist', min: 0.05, max: 3, step: 0.05,
-    tooltip: 'Master multiplier for all rest distances' },
-]
-
-interface PullEdgeDef {
-  label: string
-  kKey: keyof ForceParams
-  restKey: keyof ForceParams
-  // Endpoint node types — drive the pair of coloured dots that render
-  // before each label, so the row visually matches the nodes it controls.
-  sourceType: NodeType
-  targetType: NodeType
-  tooltip: string
-}
-
-// All edge sliders share a common range for k and rest so their values are
-// directly comparable. This makes the gradient across the hierarchy
-// (loose-and-long at the top, tight-and-short at L3) visually obvious.
-const EDGE_K_MIN = 0
-const EDGE_K_MAX = 1.5
-const EDGE_K_STEP = 0.05
-const EDGE_REST_MIN = 10
-const EDGE_REST_MAX = 600
-const EDGE_REST_STEP = 10
-
-// Order: top-of-tree → bottom-of-tree, alternating dependency / containment as
-// we walk down the hierarchy. This mirrors the layout the user reads on the
-// canvas and keeps related rows adjacent.
-const PULL_EDGES: PullEdgeDef[] = [
-  // Level 1
-  { label: 'NS↔NS', kKey: 'linkNsToNs', restKey: 'distNsToNs',
-    sourceType: 'namespace', targetType: 'namespace',
-    tooltip: 'Namespace ↔ Namespace dependency' },
-  { label: 'NS↔Wk', kKey: 'linkNsToWorker', restKey: 'distNsToWorker',
-    sourceType: 'namespace', targetType: 'worker',
-    tooltip: 'Namespace ↔ Worker containment' },
-  // Level 2
-  { label: 'Wk↔Wk', kKey: 'linkWorkerToWorker', restKey: 'distWorkerToWorker',
-    sourceType: 'worker', targetType: 'worker',
-    tooltip: 'Worker ↔ Worker dependency' },
-  { label: 'Wk↔Wf', kKey: 'linkWorkerToWorkflow', restKey: 'distWorkerToWorkflow',
-    sourceType: 'worker', targetType: 'workflow',
-    tooltip: 'Worker ↔ Workflow containment' },
-  { label: 'Wk↔Act', kKey: 'linkWorkerToActivity', restKey: 'distWorkerToActivity',
-    sourceType: 'worker', targetType: 'activity',
-    tooltip: 'Worker ↔ Activity containment' },
-  { label: 'Wk↔Nx', kKey: 'linkWorkerToNexus', restKey: 'distWorkerToNexus',
-    sourceType: 'worker', targetType: 'nexusService',
-    tooltip: 'Worker ↔ Nexus service containment' },
-  // Level 3 (intra-L3 containment + dependencies)
-  { label: 'Nx↔Op', kKey: 'linkNexusToOperation', restKey: 'distNexusToOperation',
-    sourceType: 'nexusService', targetType: 'nexusOperation',
-    tooltip: 'Nexus service ↔ Nexus operation containment' },
-  { label: 'Wf↔Wf', kKey: 'linkWorkflowToWorkflow', restKey: 'distWorkflowToWorkflow',
-    sourceType: 'workflow', targetType: 'workflow',
-    tooltip: 'Workflow ↔ Workflow dependency' },
-  { label: 'Wf↔Act', kKey: 'linkWorkflowToActivity', restKey: 'distWorkflowToActivity',
-    sourceType: 'workflow', targetType: 'activity',
-    tooltip: 'Workflow ↔ Activity dependency' },
-]
+// --- PULL section ---
+//
+// The Pull tab's controls live in SpringControls: a 2D spring map (per-edge
+// stiffness/length tokens + the two global "scale all" multipliers along the
+// axes) and a force-curve visualization (which hosts the global `exp`).
 
 // --- GRAVITY section sliders ---
 //
@@ -207,13 +113,31 @@ const DYNAMICS_SLIDERS: SliderDef[] = [
 ]
 
 export function GraphControlPanel({
-  params, onParamChange, onAdjust, running, onToggleRunning, onReheat,
-  showForceFields, onToggleForceFields, onActiveSection,
-  onActiveChargeType, onActiveGravityType,
+  params, onParamChange, onAdjust,
+  onActiveSection,
+  onActiveChargeType, onActiveGravityType, onActivePullEdge,
 }: GraphControlPanelProps) {
   const [open, setOpen] = React.useState(false)
   const [helpOpen, setHelpOpen] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<ForceTab>('push')
+  // Links the spring map and the force-curve viz: hovering a token in one
+  // brightens the matching curve in the other. The key (an edge category's
+  // k-field) is also forwarded to the canvas so only that category's edges
+  // highlight while tuning.
+  const [hoveredPullEdge, setHoveredPullEdge] = React.useState<string | null>(null)
+  const handleHoverPullEdge = React.useCallback((key: string | null) => {
+    setHoveredPullEdge(key)
+    onActivePullEdge(key)
+  }, [onActivePullEdge])
+
+  // Links the charge map and the charge-falloff viz: hovering a token in one
+  // brightens the matching curve in the other. The node type is also forwarded
+  // to the canvas so only that type's charge field rings highlight while tuning.
+  const [hoveredChargeType, setHoveredChargeType] = React.useState<NodeType | null>(null)
+  const handleHoverChargeType = React.useCallback((t: NodeType | null) => {
+    setHoveredChargeType(t)
+    onActiveChargeType(t)
+  }, [onActiveChargeType])
 
   // Single funnel for every force control's edits. Routing all controls
   // through one wrapper means the "nudge the simulation" behaviour is
@@ -224,14 +148,6 @@ export function GraphControlPanel({
     onParamChange(key, value)
     onAdjust()
   }, [onParamChange, onAdjust])
-
-  const handleReset = () => {
-    for (const key of Object.keys(DEFAULT_PARAMS) as (keyof ForceParams)[]) {
-      if (params[key] !== DEFAULT_PARAMS[key]) {
-        emitParamChange(key, DEFAULT_PARAMS[key])
-      }
-    }
-  }
 
   return (
     <div className={`graph-control-panel ${open ? 'open' : ''}`}>
@@ -282,45 +198,61 @@ export function GraphControlPanel({
           <div className="graph-control-sections">
             {/* PUSH section */}
             <SectionSlot active={activeTab === 'push'}>
-              <EquationSection subtitle="all node pairs" equation={'F = \u03B1 \u00D7 push \u00D7 charge / eff^exp\neff = \u221A(d\u00B2 + softening)'} onHover={h => onActiveSection(h ? 'push' : null)}>
-                {PUSH_MASTER_SLIDERS.map(s => (
-                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange(s.key, v)} />
-                ))}
-                <div className="graph-control-sub-header">
-                  <span className="graph-control-sub-label">Level</span>
-                  <span className="graph-control-sub-label">Charge</span>
-                </div>
-                {PUSH_CHARGE_SLIDERS.map(s => (
-                  <div
-                    key={s.key}
-                    onMouseEnter={() => onActiveChargeType(s.nodeType)}
-                    onMouseLeave={() => onActiveChargeType(null)}
-                  >
-                    <SliderRow
-                      def={s}
-                      value={params[s.key]}
-                      onChange={v => emitParamChange(s.key, v)}
-                      nodeType={s.nodeType}
-                    />
-                  </div>
-                ))}
+              <EquationSection
+                subtitle=""
+                equation={
+                  <span className="eq-line">
+                    F =
+                    <span className="eq-frac">
+                      <span className="eq-num">charge</span>
+                      <span className="eq-den">(d² + r²)<sup>exp</sup></span>
+                    </span>
+                  </span>
+                }
+                onHover={h => onActiveSection(h ? 'push' : null)}
+              >
+                <ChargeMap
+                  params={params}
+                  onParamChange={emitParamChange}
+                  hoveredType={hoveredChargeType}
+                  onHoverType={handleHoverChargeType}
+                />
+                <ChargeCurves
+                  params={params}
+                  onParamChange={emitParamChange}
+                  hoveredType={hoveredChargeType}
+                  onHoverType={handleHoverChargeType}
+                />
               </EquationSection>
             </SectionSlot>
 
             {/* PULL section */}
             <SectionSlot active={activeTab === 'pull'}>
-              <EquationSection subtitle="connected pairs" equation={'F = \u03B1 \u00D7 pull \u00D7 k \u00D7 sign(\u0394) \u00D7 |\u0394|^exp / d\n\u0394 = d \u2212 rest \u00D7 dist'} onHover={h => onActiveSection(h ? 'pull' : null)}>
-                {PULL_MASTER_SLIDERS.map(s => (
-                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange(s.key, v)} />
-                ))}
-                <div className="graph-control-sub-header">
-                  <span className="graph-control-sub-label" style={{ minWidth: 52 }}>Edge</span>
-                  <span className="graph-control-sub-label">k</span>
-                  <span className="graph-control-sub-label">rest</span>
-                </div>
-                {PULL_EDGES.map(e => (
-                  <PullEdgeRow key={e.label} def={e} params={params} onChange={emitParamChange} />
-                ))}
+              <EquationSection
+                subtitle=""
+                equation={
+                  <span className="eq-line">
+                    F = stiffness ×
+                    <span className="eq-frac">
+                      <span className="eq-num">(d − length)<sup>exp</sup></span>
+                      <span className="eq-den">d</span>
+                    </span>
+                  </span>
+                }
+                onHover={h => onActiveSection(h ? 'pull' : null)}
+              >
+                <SpringMap
+                  params={params}
+                  onParamChange={emitParamChange}
+                  hoveredEdge={hoveredPullEdge}
+                  onHoverEdge={handleHoverPullEdge}
+                />
+                <SpringCurves
+                  params={params}
+                  onParamChange={emitParamChange}
+                  hoveredEdge={hoveredPullEdge}
+                  onHoverEdge={handleHoverPullEdge}
+                />
               </EquationSection>
             </SectionSlot>
 
@@ -384,25 +316,6 @@ export function GraphControlPanel({
               </EquationSection>
             </SectionSlot>
           </div>
-
-          {/* Simulation controls */}
-          <div className="graph-control-group">
-            <div className="graph-control-sim-buttons">
-              <button className="graph-header-btn" onClick={onToggleRunning}>
-                {running ? 'Pause' : 'Play'}
-              </button>
-              <button className="graph-header-btn" onClick={onReheat}>
-                Reheat
-              </button>
-              <button className="graph-header-btn" onClick={handleReset} title="Reset all parameters to defaults">
-                Reset
-              </button>
-            </div>
-            <label className="graph-control-checkbox" title="Show charge field rings around nodes">
-              <input type="checkbox" checked={showForceFields} onChange={onToggleForceFields} />
-              Show force fields
-            </label>
-          </div>
         </div>
       )}
     </div>
@@ -428,7 +341,7 @@ function SectionSlot({ active, children }: { active: boolean; children: React.Re
 // target that drives the canvas force-field preview via onHover.
 function EquationSection({ subtitle, equation, onHover, children }: {
   subtitle: string
-  equation: string
+  equation: React.ReactNode
   onHover: (hovered: boolean) => void
   children: React.ReactNode
 }) {
@@ -443,47 +356,12 @@ function EquationSection({ subtitle, equation, onHover, children }: {
           <span className="graph-control-equation-subtitle">({subtitle})</span>
         </div>
       )}
-      <pre className="graph-control-equation-formula">{equation}</pre>
+      {typeof equation === 'string'
+        ? <pre className="graph-control-equation-formula">{equation}</pre>
+        : <div className="graph-control-equation-formula">{equation}</div>}
       <div className="graph-control-equation-body">
         {children}
       </div>
-    </div>
-  )
-}
-
-function PullEdgeRow({ def, params, onChange }: {
-  def: PullEdgeDef
-  params: ForceParams
-  onChange: (key: keyof ForceParams, value: number) => void
-}) {
-  const kVal = params[def.kKey]
-  const restVal = params[def.restKey]
-  const kDisplay = EDGE_K_STEP < 1 ? String(kVal) : String(Math.round(kVal))
-  const restDisplay = EDGE_REST_STEP < 1 ? String(restVal) : String(Math.round(restVal))
-
-  return (
-    <div className="graph-control-pull-edge" title={def.tooltip}>
-      <span className="graph-control-pull-edge-label">
-        <span className={`graph-control-edge-dot graph-control-typed-${def.sourceType}`} />
-        <span className={`graph-control-edge-dot graph-control-typed-${def.targetType}`} />
-        {def.label}
-      </span>
-      <input
-        type="range"
-        min={EDGE_K_MIN} max={EDGE_K_MAX} step={EDGE_K_STEP}
-        value={kVal}
-        onChange={e => onChange(def.kKey, Number(e.target.value))}
-        className="graph-control-slider-input graph-control-pull-slider"
-      />
-      <span className="graph-control-pull-value">{kDisplay}</span>
-      <input
-        type="range"
-        min={EDGE_REST_MIN} max={EDGE_REST_MAX} step={EDGE_REST_STEP}
-        value={restVal}
-        onChange={e => onChange(def.restKey, Number(e.target.value))}
-        className="graph-control-slider-input graph-control-pull-slider"
-      />
-      <span className="graph-control-pull-value">{restDisplay}</span>
     </div>
   )
 }
@@ -599,12 +477,15 @@ function SliderRow({ def, value, onChange, nodeType }: {
 const HELP_TEXT = `Force-directed graph layout:
 
 PUSH — Nodes repel each other via charge force.
-  F = α × push × charge / eff^exp
-  eff = √(d² + softening)
+  F = charge / (d² + r²)^exp
+  Drag a token on the charge map to set one
+  node type's charge & core radius (r); the
+  axis sliders scale all at once.
 
 PULL — Connected nodes attract via spring force.
-  F = α × pull × k × sign(Δ) × |Δ|^exp / d
-  Δ = d − rest × dist
+  F = stiffness × (d − length)^exp / d
+  Drag a token on the spring map to set one
+  edge type; the axis sliders scale all at once.
 
 GRAVITY — All nodes drift toward center of mass.
   F = α × gravity × (pos − COM)
@@ -612,16 +493,16 @@ GRAVITY — All nodes drift toward center of mass.
 DYNAMICS — Friction damps velocity, cooling reduces
   energy until the simulation stabilizes.
 
-Hierarchy & node types:
-  L1:   Namespace
-  L1.5: NexusEndpoint (top-level routing alias)
-  L2:   Worker, NexusService
-  L3:   Workflow, NexusOperation
-  L4:   Activity
+Node types:
+  Namespace
+  NexusEndpoint (top-level routing alias)
+  Worker, NexusService
+  Workflow, NexusOperation
+  Activity
 
 Tuning guide:
   • Start with push/pull multipliers for balance
   • If nodes overlap → increase push or charge
   • If too spread → increase pull or gravity
   • If oscillating → increase friction or cooling
-  • Toggle "Show force fields" to see charge reach`
+  • Hover a tab or token to see its force on the canvas`

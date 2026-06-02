@@ -4,7 +4,7 @@
 import React from 'react'
 import type { GraphEdge, NodeType } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
-import { ALL_NODE_TYPES, bandForType, chargeForType, edgeCategory } from '../graph/simulation'
+import { ALL_NODE_TYPES, bandForType, chargeForType, coreRadiusForType, edgeCategory } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { definitionFor } from '../graph/node-types'
@@ -133,11 +133,11 @@ interface GraphCanvasProps {
   focusedNodeId: string | null
   searchMatchIds: Set<string> | null
   running: boolean
-  showForceFields: boolean
   forceParams: ForceParams
   activeSection: ForceSection
   activeChargeType: NodeType | null
   activeGravityType: NodeType | null
+  activePullEdge: string | null
   nodeSummaries: Map<string, string>
 }
 
@@ -153,11 +153,11 @@ interface DrawData {
   selectedNodeId: string | null
   focusedNodeId: string | null
   searchMatchIds: Set<string> | null
-  showForceFields: boolean
   forceParams: ForceParams
   activeSection: ForceSection
   activeChargeType: NodeType | null
   activeGravityType: NodeType | null
+  activePullEdge: string | null
   nodeSummaries: Map<string, string>
   running: boolean
   // Set of node ids where the same underlying definition appears more than
@@ -175,8 +175,8 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode, onNodeContextMenu,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, showForceFields, forceParams, activeSection, activeChargeType,
-  activeGravityType, nodeSummaries,
+  running, forceParams, activeSection, activeChargeType,
+  activeGravityType, activePullEdge, nodeSummaries,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -223,14 +223,14 @@ export function GraphCanvas({
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
-    hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
-    forceParams, activeSection, activeChargeType, activeGravityType, nodeSummaries, running,
+    hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
+    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeSummaries, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
-    hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, showForceFields,
-    forceParams, activeSection, activeChargeType, activeGravityType, nodeSummaries, running,
+    hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
+    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeSummaries, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -476,18 +476,25 @@ export function GraphCanvas({
       //
       // Rings are placed at distances where the force on a unit test particle
       // crosses absolute thresholds (FORCE_THRESHOLDS, in raw force units).
-      // Solving F = pushMul·|q| / (d² + soft)^(exp/2) = T for d gives
-      //   d = sqrt((pushMul·|q| / T)^(2/exp) − soft)
+      // Solving F = pushMul·|q| / (d² + soft)^exp = T for d gives
+      //   d = sqrt((pushMul·|q| / T)^(1/exp) − soft)
       // which is real only when the threshold is reachable for that node's
       // charge. As a result, stronger charges show larger rings (more reach),
       // and the weakest types may render only the outermost ring — exactly
       // the visual the user intuits when they tune a per-type charge.
+      //
+      // `soft` is now per-type: a single node's field uses its own effective
+      // core radius (rEff = coreRadiusMultiplier × coreRadius[type])², the
+      // self-pair case of the simulation's per-pair softening.
+      //
+      // Rings are hover-only: the persistent toggle was removed, so they show
+      // only while the PUSH section (or a charge token) is hovered.
       const FORCE_THRESHOLDS = [0.2, 0.5, 1.5]
-      if (d.showForceFields || pushActive) {
-        const soft = d.forceParams.chargeSoftening
+      if (pushActive) {
         const exp = d.forceParams.chargeExponent
         const pushMul = d.forceParams.pushMultiplier
-        const typeFilter = pushActive ? d.activeChargeType : null
+        const crMul = d.forceParams.coreRadiusMultiplier
+        const typeFilter = d.activeChargeType
 
         for (const node of d.nodes) {
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
@@ -495,11 +502,9 @@ export function GraphCanvas({
           if (sx + maxRing < 0 || sx - maxRing > w ||
             sy + maxRing < 0 || sy - maxRing > h) continue
 
-          const typeMatch = typeFilter === null || node.nodeType === typeFilter
-          const highlighted = pushActive && typeMatch
-          const dimmed = pushActive && !typeMatch
-          const baseAlpha = highlighted ? 0.24 : dimmed ? 0.04 : 0.10
-          const stepAlpha = highlighted ? 0.05 : dimmed ? 0.01 : 0.025
+          const highlighted = typeFilter === null || node.nodeType === typeFilter
+          const baseAlpha = highlighted ? 0.28 : 0.05
+          const stepAlpha = highlighted ? 0.06 : 0.015
 
           const color = definitionFor(node.nodeType).color.fill
           ctx.strokeStyle = color
@@ -507,15 +512,17 @@ export function GraphCanvas({
           const effectiveCharge = Math.abs(chargeForType(d.forceParams, node.nodeType)) * pushMul
           if (effectiveCharge <= 0) continue
 
-          // First pass: collect every reachable ring radius. We need them up
-          // front so we can fill out to the outermost reachable distance
-          // before stroking the rings on top — matching the "fill + edges"
-          // idiom used by the gravity bands.
+          const rEff = crMul * coreRadiusForType(d.forceParams, node.nodeType)
+          const soft = rEff * rEff
+
+          // Collect every reachable ring radius. Outer rings (lower threshold
+          // T, larger d, weaker force) draw fainter than inner rings — this
+          // preserves the "field fades with distance" reading.
           const ringRadii: number[] = []
           for (let ti = 0; ti < FORCE_THRESHOLDS.length; ti++) {
             const T = FORCE_THRESHOLDS[ti]
             const ratio = effectiveCharge / T
-            const inner = Math.pow(ratio, 2 / Math.max(exp, 0.01)) - soft
+            const inner = Math.pow(ratio, 1 / Math.max(exp, 0.01)) - soft
             if (inner <= 0) continue
             const dd = Math.sqrt(inner)
             const r = dd * vp.scale
@@ -525,18 +532,9 @@ export function GraphCanvas({
 
           if (ringRadii.length === 0) continue
 
-          // Faint disc fill out to the outermost reachable ring. Per-node fill
-          // alpha is intentionally low so that overlapping nodes don't blow out
-          // contrast — the visual cue is colour, not brightness.
-          ctx.fillStyle = color
-          ctx.globalAlpha = highlighted ? 0.14 : dimmed ? 0.02 : 0.05
-          ctx.beginPath()
-          ctx.arc(sx, sy, ringRadii[0], 0, Math.PI * 2)
-          ctx.fill()
-
-          // Outline rings on top. Outer rings (lower threshold T, larger d,
-          // weaker force) draw fainter than inner rings — preserves the
-          // "field fades with distance" reading.
+          // Outline rings only — no per-node disc fill. Filling each field
+          // washed the screen into a solid colour where many nodes overlap;
+          // the ring outlines alone read as "reach" without stacking opacity.
           ctx.strokeStyle = color
           for (let ri = 0; ri < ringRadii.length; ri++) {
             const r = ringRadii[ri]
@@ -551,20 +549,34 @@ export function GraphCanvas({
         ctx.globalAlpha = 1
       }
 
-      // PULL: edge tension coloring
-      if (pullActive) {
+      // PULL: edge tension. When a specific edge category is being tuned in
+      // the spring map (activePullEdge), highlight only that category — drawn
+      // as a border (a tension-coloured casing with the edge's own colour
+      // redrawn on top) so the edge's identity colour stays clear. Otherwise
+      // (section hover, no specific token) colour all edges by tension.
+      const activePullKey = d.activePullEdge
+      if (pullActive || activePullKey) {
         const distMul = d.forceParams.distanceMultiplier
+        // Tension palette drawn from the app's own colours (theme-aware) so the
+        // highlight reads as part of the visualizer, not a generic stoplight:
+        // amber warning = stretched, cool activity-blue = compressed, calm
+        // timer-teal = near rest.
+        const tensionStretch = cssVar('--color-warning', '#d97706')
+        const tensionCompress = cssVar('--color-activity', '#7CB9E8')
+        const tensionRest = cssVar('--color-timer', '#7EC8B8')
         for (const edge of d.edges) {
           const src = d.nodeMap.get(edge.sourceId)
           const tgt = d.nodeMap.get(edge.targetId)
           if (!src || !tgt) continue
+
+          const cat = edgeCategory(d.forceParams, edge)
+          if (activePullKey && cat.key !== activePullKey) continue
 
           const [sx, sy] = worldToScreen(vp, src.x, src.y)
           const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
           if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
             Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
-          const cat = edgeCategory(d.forceParams, edge)
           const restDist = cat.distance * distMul
           const dx = tgt.x - src.x
           const dy = tgt.y - src.y
@@ -573,11 +585,36 @@ export function GraphCanvas({
 
           let tensionColor: string
           if (ratio > 1.15) {
-            tensionColor = '#F59E0B'
+            tensionColor = tensionStretch
           } else if (ratio < 0.85) {
-            tensionColor = '#3B82F6'
+            tensionColor = tensionCompress
           } else {
-            tensionColor = '#22C55E'
+            tensionColor = tensionRest
+          }
+
+          if (activePullKey) {
+            // Border: a tension-coloured casing wider than the edge, then the
+            // edge's own colour redrawn on top at full opacity.
+            const style = edgeStyleFor(edge, src, tgt)
+            ctx.beginPath()
+            ctx.moveTo(sx, sy)
+            ctx.lineTo(tx, ty)
+            ctx.strokeStyle = tensionColor
+            ctx.globalAlpha = 0.9
+            ctx.lineWidth = style.width + 5
+            ctx.setLineDash([])
+            ctx.stroke()
+
+            ctx.beginPath()
+            ctx.moveTo(sx, sy)
+            ctx.lineTo(tx, ty)
+            ctx.strokeStyle = style.color
+            ctx.globalAlpha = 1
+            ctx.lineWidth = style.width
+            ctx.setLineDash([...style.dash])
+            ctx.stroke()
+            ctx.setLineDash([])
+            continue
           }
 
           ctx.beginPath()
@@ -600,7 +637,7 @@ export function GraphCanvas({
             ctx.beginPath()
             ctx.moveTo(mx1 - perpX * tickLen, my1 - perpY * tickLen)
             ctx.lineTo(mx1 + perpX * tickLen, my1 + perpY * tickLen)
-            ctx.strokeStyle = '#22C55E'
+            ctx.strokeStyle = tensionRest
             ctx.globalAlpha = 0.7
             ctx.lineWidth = 1.5
             ctx.stroke()
