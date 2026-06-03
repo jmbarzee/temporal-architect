@@ -194,10 +194,17 @@ function setupTerminalPath(context: vscode.ExtensionContext) {
   }
 }
 
-// Skill folders created by older versions of this extension, before skills
-// were renamed to their canonical `temporal-architect-*` names. Removed on
-// activation so upgrading users don't keep stale duplicates in their skills list.
-const LEGACY_SKILL_DIRS = ["temporal-design", "temporal-author-go"];
+// Skill folders to remove from ~/.cursor/skills on activation so upgrading
+// users don't keep stale duplicates. Covers folders created by older versions
+// of this extension (before skills were renamed to their canonical
+// `temporal-architect-*` names) and the `temporal-skills/` namespace from
+// early manual installs of the repo's skills tree. Removal is recursive, so
+// `temporal-skills` clears its nested `design` / `author-go` copies too.
+const LEGACY_SKILL_DIRS = [
+  "temporal-design",
+  "temporal-author-go",
+  "temporal-skills",
+];
 
 /**
  * Install bundled skills to ~/.cursor/skills/.
