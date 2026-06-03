@@ -1,6 +1,6 @@
 {
   "name": "@temporal-architect/twf-darwin-arm64",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "twf binary for darwin/arm64. Installed automatically by @temporal-architect/twf.",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/packages/npm/twf-darwin-arm64",

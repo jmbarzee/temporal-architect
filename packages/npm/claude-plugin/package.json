@@ -1,6 +1,6 @@
 {
   "name": "@temporal-architect/claude-plugin",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Claude Code plugin payload for temporal-architect (TWF design + Go authoring skills, plus the twf MCP server).",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/packages/npm/claude-plugin",
