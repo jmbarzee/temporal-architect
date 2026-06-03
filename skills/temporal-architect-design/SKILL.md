@@ -1,9 +1,9 @@
 ---
-name: temporal-workflow-design
-description: Design Temporal workflows with proper determinism, idempotency, and decomposition. Use when designing new workflows, planning workflow-activity boundaries, or reviewing workflow architecture.
+name: temporal-architect-design
+description: Design Temporal systems — workflows, activities, workers, namespaces, and Nexus — with proper determinism, idempotency, and decomposition in `.twf`. Use when designing or reviewing Temporal architecture, planning workflow/activity boundaries, or decomposing a system into Temporal primitives.
 ---
 
-# Temporal Workflow Design
+# Temporal Architect: System Design
 
 Design Temporal workflows using `.twf` (Temporal Workflow Format) — a language-agnostic DSL capturing workflow structure, activity boundaries, and Temporal primitives. Always produce `.twf` files as deliverables, never SDK code.
 

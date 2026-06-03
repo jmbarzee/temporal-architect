@@ -11,7 +11,7 @@ import path from 'node:path'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '../..')
-const topicsDir = path.join(repoRoot, 'skills/design/topics')
+const topicsDir = path.join(repoRoot, 'skills/temporal-architect-design/topics')
 
 const twfFiles = readdirSync(topicsDir).filter(f => f.endsWith('.twf')).map(f => path.join(topicsDir, f))
 

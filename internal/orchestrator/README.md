@@ -34,8 +34,8 @@ Each component maps to a directory scope, review commands, and downstream edges:
 | `parser` | `tools/lsp/` | `review-quality-parser` | `review-alignment-parser` | visualizer, design-skill, vscode |
 | `visualizer-spec` | `tools/visualizer/spec/` | `review-quality-visualizer-spec` | — | visualizer |
 | `visualizer` | `tools/visualizer/` (minus spec/) | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — |
-| `design-skill` | `skills/design/` | `review-quality-skill` | `review-alignment-design-skill` | author-go-skill |
-| `author-go-skill` | `skills/author-go/` | `review-quality-skill` | `review-alignment-author-skills` | — |
+| `design-skill` | `skills/temporal-architect-design/` | `review-quality-skill` | `review-alignment-design-skill` | author-go-skill |
+| `author-go-skill` | `skills/temporal-architect-author-go/` | `review-quality-skill` | `review-alignment-author-skills` | — |
 
 ## File Conventions
 

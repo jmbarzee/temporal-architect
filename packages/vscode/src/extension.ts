@@ -194,10 +194,22 @@ function setupTerminalPath(context: vscode.ExtensionContext) {
   }
 }
 
+// Skill folders created by older versions of this extension, before skills
+// were renamed to their canonical `temporal-architect-*` names. Removed on
+// activation so upgrading users don't keep stale duplicates in their skills list.
+const LEGACY_SKILL_DIRS = ["temporal-design", "temporal-author-go"];
+
 /**
  * Install bundled skills to ~/.cursor/skills/.
- * Auto-discovers all skill directories containing SKILL.md in the extension bundle.
- * Overwrites existing installations to keep them up to date.
+ *
+ * Auto-discovers all skill directories containing SKILL.md in the extension
+ * bundle. The bundle directory name is the canonical skill name and becomes the
+ * installed folder name verbatim — Cursor uses the folder name as the skill's
+ * identity (it must match the SKILL.md `name` frontmatter), so no prefixing.
+ *
+ * Reconciles on every activation: removes legacy folders from prior versions
+ * and does a fresh copy of each skill (clearing any previous install) so files
+ * dropped from the bundle don't linger in the user's copy.
  */
 async function installSkills(context: vscode.ExtensionContext) {
   const bundledSkillsDir = path.join(context.extensionPath, "skills");
@@ -208,6 +220,14 @@ async function installSkills(context: vscode.ExtensionContext) {
   const cursorSkillsDir = path.join(os.homedir(), ".cursor", "skills");
 
   try {
+    // Drop skill folders this extension created under older names.
+    for (const legacy of LEGACY_SKILL_DIRS) {
+      fs.rmSync(path.join(cursorSkillsDir, legacy), {
+        recursive: true,
+        force: true,
+      });
+    }
+
     // Discover all skill directories (each contains a SKILL.md)
     const entries = fs.readdirSync(bundledSkillsDir, { withFileTypes: true });
     for (const entry of entries) {
@@ -221,7 +241,10 @@ async function installSkills(context: vscode.ExtensionContext) {
         continue;
       }
 
-      const skillDest = path.join(cursorSkillsDir, `temporal-${entry.name}`);
+      // Fresh copy: clear any prior install of this skill first so files
+      // removed from the bundle don't survive in the user's copy.
+      const skillDest = path.join(cursorSkillsDir, entry.name);
+      fs.rmSync(skillDest, { recursive: true, force: true });
       await copyDirRecursive(skillSrc, skillDest);
     }
   } catch (err) {

@@ -77,9 +77,9 @@ DSL grammar (tools/spec/sections/*.md)
         │     contract: Go AST types + resolver API (same module)
         ├─► Visualizer (tools/visualizer/)
         │     contract: JSON output of `twf parse` and `twf symbols`
-        ├─► Skill: Design (skills/design/)
+        ├─► Skill: Design (skills/temporal-architect-design/)
         │     contract: DSL syntax and semantics as in tools/spec/sections/
-        │     └─► Skill: Author-Go (skills/author-go/)
+        │     └─► Skill: Author-Go (skills/temporal-architect-author-go/)
         │           contract: Design skill semantics + Temporal Go SDK mapping
         └─► VS Code Extension (packages/vscode/)
               contract: LSP protocol responses + JSON output

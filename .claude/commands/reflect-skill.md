@@ -130,7 +130,7 @@ For each sub-agent observation, engage with it before categorizing it:
 - **Confirming** — "I suspected this and now have validation." Strengthens existing direction.
 - **Novel reframe** — "I hadn't thought about it this way." Not yet actionable but shifts understanding.
 
-Write the results to `REFLECTION_{NAME}.md` at the repo root, where `{NAME}` is derived from the skill path (e.g., `skills/design` → `REFLECTION_DESIGN.md`).
+Write the results to `REFLECTION_{NAME}.md` at the repo root, where `{NAME}` is derived from the skill path (e.g., `skills/temporal-architect-design` → `REFLECTION_DESIGN.md`).
 
 ```
 # Reflection: {Skill Name}

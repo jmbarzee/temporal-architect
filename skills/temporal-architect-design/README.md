@@ -1,4 +1,4 @@
-# Skill: Temporal Workflow Design
+# Skill: Temporal Architect — System Design
 
 **Goal:** Guide an AI to design well-structured Temporal workflows using the TWF DSL — making sound architectural decisions about workflow boundaries, activity decomposition, and primitive selection.
 

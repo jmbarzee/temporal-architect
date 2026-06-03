@@ -92,8 +92,8 @@ Group by theme. Order by:
 ### Phase 4: Write to `internal/changes/{component}/quality_REVISIONS_{NNN}.md`
 
 Derive the component name from the skill path:
-- `skills/design` → `design-skill`
-- `skills/author-go` → `author-go-skill`
+- `skills/temporal-architect-design` → `design-skill`
+- `skills/temporal-architect-author-go` → `author-go-skill`
 
 Write the grouped plan to `internal/changes/{component}/quality_REVISIONS_{NNN}.md` (create the directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 

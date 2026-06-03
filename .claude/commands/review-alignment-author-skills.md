@@ -8,10 +8,10 @@ Skill craft belongs in `/project:review-quality-skill`. This command is solely c
 
 ## Context
 
-- `skills/design/SKILL.md` and `skills/design/reference/` — authoritative: every construct the design skill can produce
+- `skills/temporal-architect-design/SKILL.md` and `skills/temporal-architect-design/reference/` — authoritative: every construct the design skill can produce
 - Temporal Go SDK via **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowledge_sources`) — authoritative: current SDK API, patterns, and idioms
-- `skills/author-go/README.md` — declared scope of the skill
-- `skills/author-go/SKILL.md` and `skills/author-go/reference/` — the target under review
+- `skills/temporal-architect-author-go/README.md` — declared scope of the skill
+- `skills/temporal-architect-author-go/SKILL.md` and `skills/temporal-architect-author-go/reference/` — the target under review
 - `AST_REVISIONS.md` — changes in flight that may introduce new design constructs requiring new Go mappings
 - All existing files in `internal/changes/author-go-skill/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 

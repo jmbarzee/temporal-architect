@@ -1,9 +1,9 @@
 ---
-name: temporal-go-author
+name: temporal-architect-author-go
 description: Generate Go code from .twf workflow designs using the Temporal Go SDK. Use when implementing workflows defined in TWF, producing compilable Go packages from DSL specifications.
 ---
 
-# Temporal Go Author
+# Temporal Architect: Go Authoring
 
 Generate functioning Go code from `.twf` (Temporal Workflow Format) files using the Temporal Go SDK. The primary goal is producing code that compiles, runs, and correctly implements the workflow design. Always produce `.go` files as deliverables.
 

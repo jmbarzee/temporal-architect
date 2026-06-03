@@ -1,4 +1,4 @@
-# Skill: Temporal Go Author
+# Skill: Temporal Architect — Go Authoring
 
 **Goal:** Translate a validated TWF design into correct, idiomatic Temporal Go SDK code.
 

@@ -54,10 +54,10 @@ Common error types:
 - Empty activity body (warning)
 - Unresolved nexus endpoint when no endpoints defined (warning, may be external)
 - Unresolved nexus service when no services defined (warning, may be external)
-- Unknown option key in `options:` block
+- Unknown option key in `options:` block (including handler `options:` blocks — e.g. `unfinished_policy` on a query handler, where only `description` is allowed)
 - Wrong value type for option key (e.g., number where duration expected)
-- Invalid enum value for option key
+- Invalid enum value for option key (e.g., a value other than `abandon` / `warn_and_abandon` for `unfinished_policy`)
 
 ## Examples
 
-See the `skills/design/topics/` directory for complete working examples of all language features.
+See the `skills/temporal-architect-design/topics/` directory for complete working examples of all language features.

@@ -82,8 +82,8 @@ The TWF notation covers the core Temporal feature set:
 
 ## Skills
 
-- **[design](./skills/design/SKILL.md)** — Design Temporal workflows using `.twf`, a language-agnostic DSL with parser/LSP tooling and visualization
-- **[author-go](./skills/author-go/SKILL.md)** — Generate Go code from `.twf` workflow designs using the Temporal Go SDK
+- **[temporal-architect-design](./skills/temporal-architect-design/SKILL.md)** — Design Temporal systems in `.twf`, a language-agnostic DSL with parser/LSP tooling and visualization
+- **[temporal-architect-author-go](./skills/temporal-architect-author-go/SKILL.md)** — Generate Go code from `.twf` designs using the Temporal Go SDK
 
 ### Planned
 
@@ -105,7 +105,7 @@ Every way `twf` and the skills ship — the canonical channel matrix. For user-f
 | **Homebrew tap** | `jmbarzee/homebrew-twf` formula `twf` | `brew install jmbarzee/twf/twf` | `twf` binary | formula auto-bumped by [`internal/release/bump-brew/`](./internal/release/bump-brew/) against the tap repo |
 | **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + `SHA256SUMS` + `install.sh` | `curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh \| bash` (binary only) or download individually | platform binary; `skills/` tree with `MANIFEST.json` | built by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/) and [`skills/`](./skills/) via [`internal/release/gen-skills-manifest/`](./internal/release/gen-skills-manifest/) |
 | **Go install** | `github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf` | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` | `twf` binary (built from source by the user's Go toolchain) | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) |
-| **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/design/`](./skills/design/) and [`skills/author-go/`](./skills/author-go/) |
+| **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/temporal-architect-design/`](./skills/temporal-architect-design/) and [`skills/temporal-architect-author-go/`](./skills/temporal-architect-author-go/) |
 | **MCP** (planned, M2) | `twf mcp` over stdio | configure any MCP client to launch `npx -y @temporal-architect/twf mcp` (or `twf mcp` if installed) | tools wrapping `check`/`parse`/`symbols`/`spec`/`skill`; resources for spec sections and skill files; prompts per skill | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) (subcommand to be added) |
 | **Smithery MCP registry** (planned, post-M2) | listing pointing at the `twf mcp` install line | discover and install via the Smithery UI / CLI | (registry listing only — no payload) | submission only; no source in this repo |
 

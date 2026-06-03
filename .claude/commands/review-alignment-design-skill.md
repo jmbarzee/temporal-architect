@@ -10,8 +10,8 @@ Skill craft and structure belong in `/project:review-quality-skill`. This comman
 
 - `tools/spec/sections/*.md` — the design authority (what the DSL is *meant* to do); consult when the parser and skill diverge to tell whether the parser is simply behind
 - `tools/lsp/parser/` (`lexer/`, `parser/`, `ast/`, `resolver/`) — current parser behavior (what `twf check` accepts, emits, and rejects today)
-- `skills/design/README.md` — declared goal and scope of the skill
-- `skills/design/SKILL.md` and `skills/design/reference/` — the target under review
+- `skills/temporal-architect-design/README.md` — declared goal and scope of the skill
+- `skills/temporal-architect-design/SKILL.md` and `skills/temporal-architect-design/reference/` — the target under review
 - `AST_REVISIONS.md` — changes in flight that may introduce new constructs requiring pre-emptive documentation
 - All existing files in `internal/changes/design-skill/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
@@ -19,7 +19,7 @@ Skill craft and structure belong in `/project:review-quality-skill`. This comman
 
 ### Phase 1: Orient
 
-Briefly scan the parser directory structure and the design skill's reference file list. Confirm the comparison units below still apply — add topics for new parser constructs not yet in the list, drop topics for removed ones. Note any `.twf` example files in `skills/design/topics/` that should be validated.
+Briefly scan the parser directory structure and the design skill's reference file list. Confirm the comparison units below still apply — add topics for new parser constructs not yet in the list, drop topics for removed ones. Note any `.twf` example files in `skills/temporal-architect-design/topics/` that should be validated.
 
 **Standard comparison units:**
 

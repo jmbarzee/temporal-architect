@@ -29,11 +29,11 @@ addition — a `MANIFEST.json` at the root:
 ```
 skills/
   MANIFEST.json
-  design/
+  temporal-architect-design/
     SKILL.md
     reference/...
     topics/...
-  author-go/
+  temporal-architect-author-go/
     SKILL.md
     reference/...
 ```
@@ -51,7 +51,7 @@ tree at any location.
   "total_bytes": 280417,
   "files": [
     {
-      "path":   "design/SKILL.md",
+      "path":   "temporal-architect-design/SKILL.md",
       "size":   9150,
       "sha256": "b871ea8b982130d282c5578d2847b319525f87bc8a9dec98cf23fcc2b0819be3"
     }
@@ -68,7 +68,7 @@ tree at any location.
 | `file_count`  | integer | Number of entries in `files`.                                        |
 | `total_bytes` | integer | Sum of `size` across all files. Excludes `MANIFEST.json` itself.     |
 | `files`       | array   | Sorted lexicographically by `path`. Excludes `MANIFEST.json`.        |
-| `files[].path`   | string  | Forward-slash, relative to `root` (e.g. `"design/SKILL.md"`).     |
+| `files[].path`   | string  | Forward-slash, relative to `root` (e.g. `"temporal-architect-design/SKILL.md"`). |
 | `files[].size`   | integer | File size in bytes.                                                |
 | `files[].sha256` | string  | Lowercase-hex SHA-256 of the file's raw bytes.                    |
 

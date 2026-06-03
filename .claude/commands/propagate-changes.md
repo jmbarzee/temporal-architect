@@ -20,9 +20,9 @@ DSL grammar (tools/spec/sections/*.md)
         │     API/Semantic → triggers: review-quality-parser
         ├─► Visualizer (tools/visualizer/)
         │     Schema → triggers: review-quality-visualizer, review-quality-visualizer-spec
-        ├─► Skill: Design (skills/design/)
+        ├─► Skill: Design (skills/temporal-architect-design/)
         │     Grammar/Semantic → triggers: review-alignment-design-skill
-        │     └─► Skill: Author-Go (skills/author-go/)
+        │     └─► Skill: Author-Go (skills/temporal-architect-author-go/)
         │           Grammar/Semantic → triggers: review-alignment-author-skills
         └─► VS Code Extension (packages/vscode/)
               Schema/API → flag for manual review (no automated command)

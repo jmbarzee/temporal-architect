@@ -140,7 +140,7 @@ Embed skills in the `twf` binary and add a `twf skill` subcommand mirroring `twf
 | 1.2 | New `tools/lsp/cmd/twf/skill.go`: `twf skill`, `twf skill list`, `twf skill <name>`, `twf skill <name>/<file>`. Pattern: clone `tools/lsp/cmd/twf/spec.go`. | S |
 | 1.3 | Test mirroring `tools/spec/spec_test.go`: each embedded skill has a `SKILL.md`, valid YAML frontmatter, `name` matches directory name. | S |
 | 1.4 | Wire `tools/skills/` into `go.work` and `tools/lsp/go.mod` (relative `replace`). | S |
-| 1.5 | Add `compatibility:` field to `skills/design/SKILL.md` and `skills/author-go/SKILL.md`. | S |
+| 1.5 | Add `compatibility:` field to `skills/temporal-architect-design/SKILL.md` and `skills/temporal-architect-author-go/SKILL.md`. | S |
 | 1.6 | Update `tools/lsp/cmd/twf/README.md`. | S |
 
 **Acceptance:** `twf skill` prints index; `twf skill list` enumerates; `twf skill design` prints `SKILL.md`; `twf skill design/reference/notation-reference.md` prints that file.
@@ -209,7 +209,7 @@ Every place the brand appears, internally and externally. Walk this checklist wh
 
 - The CLI binary name: `twf`.
 - The DSL file extension: `.twf`.
-- The product the skills describe: `Temporal` (Temporal Technologies' platform). Skills' frontmatter `name` fields (`temporal-workflow-design`, `temporal-go-author`) reference *that* Temporal.
+- The product the skills describe: `Temporal` (Temporal Technologies' platform). The skill `name` fields (`temporal-architect-design`, `temporal-architect-author-go`) carry the `temporal-architect` brand, but the body content references Temporal Technologies' platform — that usage stays.
 
 ### Repo-internal references
 
@@ -231,7 +231,7 @@ Every place the brand appears, internally and externally. Walk this checklist wh
 | JSON schema | `tools/lsp/cmd/twf/twf.schema.json` | `$id` field references the repo URL. |
 | Repo-development guidance | `AGENTS.md` | Project-overview prose, file paths. |
 | Changelog | `CHANGELOG.md` | New entries use new URL; historical entries stay. |
-| Skill compatibility field (after M1) | `skills/design/SKILL.md`, `skills/author-go/SKILL.md` | Frontmatter `compatibility:` references new install lines. |
+| Skill compatibility field (after M1) | `skills/temporal-architect-design/SKILL.md`, `skills/temporal-architect-author-go/SKILL.md` | Frontmatter `compatibility:` references new install lines. |
 | `twf init` templates (after M4) | `tools/skills/templates/AGENTS.md.tmpl`, etc. | The scaffolded AGENTS.md block, install instructions baked into templates. |
 | `.claude/commands/` | 16 files | Spot-check for brand-name mentions. Mostly relative paths. |
 
