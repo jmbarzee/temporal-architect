@@ -1,6 +1,6 @@
 {
   "name": "@temporal-architect/visualizer",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "React component for visualizing Temporal Workflow Format (.twf) ASTs as an interactive tree and force-directed graph.",
   "type": "module",
   "license": "MIT",

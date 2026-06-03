@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "twf-cli"
-version = "0.8.0"
+version = "0.8.1"
 description = "TWF (Temporal Workflow Format) CLI, language server, and MCP server."
 readme = "README.md"
 license = { text = "MIT" }
