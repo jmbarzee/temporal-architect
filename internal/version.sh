@@ -14,6 +14,11 @@ validate_version() {
 }
 
 # Bump version based on type
+#
+# Guardrail (see AGENTS.md "Project Status"): this project stays on 0.x until a
+# deliberate first major release. `minor` bumps 0.7.0 -> 0.8.0 and NEVER crosses
+# into 1.x on its own. A 1.0.0 only happens if a caller explicitly passes
+# TYPE=major or VERSION=1.x.x — do not do that until the team decides to cut v1.
 bump_version() {
     local version=$1
     local type=$2

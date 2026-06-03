@@ -1,5 +1,56 @@
 # TWF Language Changelog
 
+## v0.8.0 - Cross-Workflow Signals
+
+New construct for the *send* side of signals: a workflow can signal a child it started and still holds a handle to. The feature is deliberately minimal — **handle-bound only** (no external/ID addressing) and **statement-only** (no `await`/`promise`/`await one` form).
+
+### New syntax: `signal handle.Name(args)`
+
+```twf
+workflow OrderSaga(order: Order) -> (SagaResult):
+    promise pay <- workflow ProcessPayment(order)
+    promise ship <- workflow ShipOrder(order)
+
+    # Notify the payment workflow that the order has shipped
+    signal pay.OrderShipped(shipmentId)
+
+    await all:
+        await pay -> payment
+        await ship -> shipment
+    close complete(SagaResult{payment, shipment})
+```
+
+The handle is a workflow-bound promise (`promise handle <- workflow X(args)`); the dot-qualified name selects a signal the target workflow declares. Maps to `ChildWorkflowFuture.SignalChildWorkflow`.
+
+### Fire-and-forget semantics
+
+Signal send is a statement only. A signal carries no return value, so there is nothing to bind, and the only thing a sender could wait on is *send acceptance* — never the receiver's handler running. The DSL keeps signal send to the single fire-and-forget statement form to avoid the misreading "the target processed my signal."
+
+A workflow-bound promise serves two roles on the same handle: an awaitable (`await pay -> payment`) and a signal target (`signal pay.OrderShipped(...)`). Sending a signal does not consume or affect a later `await`.
+
+### Grammar
+
+- `signal_send_stmt ::= 'signal' send_target args NEWLINE`, `send_target ::= ident_handle_target`, `ident_handle_target ::= IDENT '.' IDENT`
+- Added to the workflow statement set (not the activity set); mirrored in the grammar summary. Not an `await`/`async` target.
+- **No new keyword** — the third use of `signal`; a `.` after the name disambiguates a send from a signal arrival.
+
+### Resolver & validation
+
+- The handle must resolve to a workflow-bound `promise`, and the target workflow must declare the named signal.
+- Two new errors: handle-not-workflow-typed; signal-name-not-declared-by-target.
+- Context restrictions match a `workflow` call: valid in a workflow body, signal handler, update handler, or sync nexus operation body; rejected in an activity body or query handler.
+
+### AST & graph
+
+- New `SignalSendStmt` statement node (statement-only; not an `AsyncTarget`).
+- New distinct `signalSend` graph edge (fire-and-forget, no result), keyed on the resolved handle — its own filterable category, not a reuse of the call edge. A workflow-bound promise used only as a signal target is not flagged "result never consumed."
+
+### Deferred
+
+- External-addressed sends (`signal external X(id).Name(args)`) are scoped out, blocked on a workflow-identity mechanism. Recorded in `BACKLOG.md`.
+
+---
+
 ## v0.7.0 - Full Nexus Support
 
 **Breaking change** — The old `nexus "namespace" workflow Name(args)` syntax is replaced with a structured nexus model.
