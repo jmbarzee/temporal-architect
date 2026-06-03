@@ -2,6 +2,10 @@ name: _publish-vsix
 
 # Reusable: publish all platform VSIXes to VS Code Marketplace + Open VSX.
 # Consumes vsix-* artifacts uploaded by _build-binaries.yml.
+#
+# The two registries publish in INDEPENDENT jobs: a failure on one (e.g. an
+# expired VS Code Marketplace PAT) must never block or skip the other. Open VSX
+# is the registry Cursor resolves from, so keeping it isolated is load-bearing.
 
 on:
   workflow_call:
@@ -19,27 +23,37 @@ on:
         required: true
 
 jobs:
-  publish:
-    name: Publish VSIX
+  vscode-marketplace:
+    name: Publish to VS Code Marketplace
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - uses: actions/download-artifact@v4
         with:
           pattern: vsix-*
           merge-multiple: true
           path: packages/vscode/
-
       - name: Publish to VS Code Marketplace
         run: make publish-vscode
         env:
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
 
+  open-vsx:
+    name: Publish to Open VSX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vsix-*
+          merge-multiple: true
+          path: packages/vscode/
       - name: Publish to Open VSX
         run: make publish-ovsx
         env:
