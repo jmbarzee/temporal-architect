@@ -10,7 +10,7 @@
         "package": "@temporal-architect/claude-plugin"
       },
       "strict": false,
-      "version": "0.3.2",
+      "version": "0.8.0",
       "description": "TWF design + Go authoring skills, plus the twf MCP server.",
       "author": { "name": "jmbarzee" },
       "license": "MIT",
