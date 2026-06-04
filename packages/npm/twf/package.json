@@ -1,6 +1,6 @@
 {
   "name": "@temporal-architect/twf",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "TWF (Temporal Workflow Format) CLI, language server, and MCP server.",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/packages/npm/twf",
@@ -37,11 +37,11 @@
     "postpack": "rm -f LICENSE"
   },
   "optionalDependencies": {
-    "@temporal-architect/twf-darwin-arm64": "0.8.3",
-    "@temporal-architect/twf-darwin-x64": "0.8.3",
-    "@temporal-architect/twf-linux-x64": "0.8.3",
-    "@temporal-architect/twf-linux-arm64": "0.8.3",
-    "@temporal-architect/twf-win32-x64": "0.8.3"
+    "@temporal-architect/twf-darwin-arm64": "0.8.4",
+    "@temporal-architect/twf-darwin-x64": "0.8.4",
+    "@temporal-architect/twf-linux-x64": "0.8.4",
+    "@temporal-architect/twf-linux-arm64": "0.8.4",
+    "@temporal-architect/twf-win32-x64": "0.8.4"
   },
   "publishConfig": {
     "access": "public"

@@ -1,6 +1,6 @@
 {
   "name": "@temporal-architect/twf-linux-arm64",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "twf binary for linux/arm64. Installed automatically by @temporal-architect/twf.",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/packages/npm/twf-linux-arm64",
