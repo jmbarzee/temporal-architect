@@ -34,6 +34,18 @@ Walk the call/Nexus graph from declared entry points; report any workflow not re
 
 ---
 
+## Option-Schema Validation Belongs in the Resolver
+
+Today, option `key` membership, value-type, and enum validation for `options:` blocks happens **at parse time**: `parseOptionEntry` (`tools/lsp/parser/parser/options.go`) consults `schemaForContext(ctx)` and raises `unknown option key` / wrong-type / invalid-enum errors inline.
+
+These are *semantic* checks (meaning-in-context), so the conventional home is the resolver, where the rest of the structured `ErrorKind` catalog lives. The current placement has two costs: (1) the errors ship as generic `SYNTAX` `ParseError`s instead of first-class semantic codes the LSP/VS Code layers can key off, and (2) a bad option key aborts the enclosing definition's parse, so unrelated errors in that definition are lost (a resolver pass runs on the fully-parsed AST and reports everything together).
+
+**Scope:** cross-cutting across *all* option contexts (activity / workflow / worker / nexus call / endpoint / signal-handler / update-handler / query-handler), not just the handler-options added in `CHANGES_002`. The parser would keep structural parsing (well-formed `key: value` / nested blocks) and produce raw `OptionsBlock` AST; the resolver (or a dedicated pass) would own schema validation with dedicated codes (e.g. `UNKNOWN_OPTION_KEY`, `INVALID_OPTION_VALUE`, `INVALID_OPTION_ENUM`).
+
+**Surfaced by:** the handler-options framework (`CHANGES_002`), which added three more parse-time schema contexts and made the layering smell more pronounced.
+
+---
+
 ## Design-Quality Linting (cross-reference)
 
 Heuristic, intent-aware checks (missing `continue_as_new` on large loops, missing timeout/retry, wrapper workflows, sequential child-workflow loops, etc.) are tracked under **Design Quality Linting / `twf lint`** in `internal/changes/dsl/BACKLOG.md`. Those are advisory and judgment-heavy; the two checks above are structural-completeness checks closer to `twf check` proper. Keep the distinction: *completeness* (is everything wired up and reachable?) vs *quality* (is this a good design?).

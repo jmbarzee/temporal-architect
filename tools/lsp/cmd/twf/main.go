@@ -5,10 +5,11 @@ import (
 	"os"
 )
 
-const (
-	name    = "twf"
-	version = "0.1.0"
-)
+const name = "twf"
+
+// version is stamped at build time via -ldflags "-X main.version=...".
+// Unstamped builds (e.g. `go run`, `go install` without ldflags) report "dev".
+var version = "dev"
 
 const usage = `twf - Temporal Workflow Format CLI
 
@@ -22,6 +23,7 @@ Commands:
   graph     Show the resolved deployment graph; --json for envelope output
   spec      Print the embedded TWF language specification
   lsp       Start the language server (stdio)
+  version   Print the twf version
   help      Show this help
 
 JSON envelope shape (parse / symbols --json / graph --json):
@@ -62,6 +64,9 @@ func main() {
 		os.Exit(specCommand(os.Args[2:]))
 	case "lsp":
 		lspCommand()
+	case "version", "--version", "-v":
+		fmt.Printf("%s %s\n", name, version)
+		os.Exit(0)
 	case "help", "--help", "-h":
 		fmt.Print(usage)
 		os.Exit(0)

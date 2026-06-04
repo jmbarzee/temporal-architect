@@ -95,11 +95,12 @@ func marshalDeclList[D any, J any](decls []D, fn func(D) (*J, error)) ([]*J, err
 
 func marshalSignalDecl(s *SignalDecl) (*SignalDeclJSON, error) {
 	sj := &SignalDeclJSON{
-		Type:   "signalDecl",
-		Line:   s.Line,
-		Column: s.Column,
-		Name:   s.Name,
-		Params: s.Params,
+		Type:    "signalDecl",
+		Line:    s.Line,
+		Column:  s.Column,
+		Name:    s.Name,
+		Params:  s.Params,
+		Options: marshalOptionsBlock(s.Options),
 	}
 	var err error
 	if sj.Body, err = marshalStatements(s.Body); err != nil {
@@ -116,6 +117,7 @@ func marshalQueryDecl(q *QueryDecl) (*QueryDeclJSON, error) {
 		Name:       q.Name,
 		Params:     q.Params,
 		ReturnType: q.ReturnType,
+		Options:    marshalOptionsBlock(q.Options),
 	}
 	var err error
 	if qj.Body, err = marshalStatements(q.Body); err != nil {
@@ -132,6 +134,7 @@ func marshalUpdateDecl(u *UpdateDecl) (*UpdateDeclJSON, error) {
 		Name:       u.Name,
 		Params:     u.Params,
 		ReturnType: u.ReturnType,
+		Options:    marshalOptionsBlock(u.Options),
 	}
 	var err error
 	if uj.Body, err = marshalStatements(u.Body); err != nil {
@@ -417,12 +420,13 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 
 // Declaration JSON types
 type SignalDeclJSON struct {
-	Type   string            `json:"type"`
-	Line   int               `json:"line"`
-	Column int               `json:"column"`
-	Name   string            `json:"name"`
-	Params string            `json:"params"`
-	Body   []json.RawMessage `json:"body,omitempty"`
+	Type    string            `json:"type"`
+	Line    int               `json:"line"`
+	Column  int               `json:"column"`
+	Name    string            `json:"name"`
+	Params  string            `json:"params"`
+	Options *OptionsBlockJSON `json:"options,omitempty"`
+	Body    []json.RawMessage `json:"body,omitempty"`
 }
 
 type QueryDeclJSON struct {
@@ -432,6 +436,7 @@ type QueryDeclJSON struct {
 	Name       string            `json:"name"`
 	Params     string            `json:"params"`
 	ReturnType string            `json:"returnType,omitempty"`
+	Options    *OptionsBlockJSON `json:"options,omitempty"`
 	Body       []json.RawMessage `json:"body,omitempty"`
 }
 
@@ -442,6 +447,7 @@ type UpdateDeclJSON struct {
 	Name       string            `json:"name"`
 	Params     string            `json:"params"`
 	ReturnType string            `json:"returnType,omitempty"`
+	Options    *OptionsBlockJSON `json:"options,omitempty"`
 	Body       []json.RawMessage `json:"body,omitempty"`
 }
 

@@ -16,6 +16,9 @@ const (
 	OptionsContextWorker
 	OptionsContextNexusCall
 	OptionsContextEndpoint
+	OptionsContextSignalHandler
+	OptionsContextUpdateHandler
+	OptionsContextQueryHandler
 )
 
 // optionSchema describes the expected value type for an option key.
@@ -91,12 +94,35 @@ var endpointOptionSchema = map[string]*optionSchema{
 	"task_queue": {valueType: "string"},
 }
 
+// unfinishedPolicyValues are the SDK HandlerUnfinishedPolicy enum, lowercased.
+var unfinishedPolicyValues = []string{"abandon", "warn_and_abandon"}
+
+// Handler-options schemas. The three handler kinds share `description`;
+// signal and update additionally admit `unfinished_policy`. Queries do not
+// (they are synchronous and read-only, so they cannot be "unfinished").
+var signalHandlerOptionSchema = map[string]*optionSchema{
+	"unfinished_policy": {valueType: "enum", allowed: unfinishedPolicyValues},
+	"description":       {valueType: "string"},
+}
+
+var updateHandlerOptionSchema = map[string]*optionSchema{
+	"unfinished_policy": {valueType: "enum", allowed: unfinishedPolicyValues},
+	"description":       {valueType: "string"},
+}
+
+var queryHandlerOptionSchema = map[string]*optionSchema{
+	"description": {valueType: "string"},
+}
+
 var optionSchemas = map[OptionsContext]map[string]*optionSchema{
-	OptionsContextActivity:  activityOptionSchema,
-	OptionsContextWorkflow:  workflowOptionSchema,
-	OptionsContextWorker:    workerOptionSchema,
-	OptionsContextNexusCall: nexusCallOptionSchema,
-	OptionsContextEndpoint:  endpointOptionSchema,
+	OptionsContextActivity:      activityOptionSchema,
+	OptionsContextWorkflow:      workflowOptionSchema,
+	OptionsContextWorker:        workerOptionSchema,
+	OptionsContextNexusCall:     nexusCallOptionSchema,
+	OptionsContextEndpoint:      endpointOptionSchema,
+	OptionsContextSignalHandler: signalHandlerOptionSchema,
+	OptionsContextUpdateHandler: updateHandlerOptionSchema,
+	OptionsContextQueryHandler:  queryHandlerOptionSchema,
 }
 
 func schemaForContext(ctx OptionsContext) map[string]*optionSchema {

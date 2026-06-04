@@ -2008,6 +2008,136 @@ func TestSignalSendStmt(t *testing.T) {
 	}
 }
 
+func TestSignalHandlerOptions(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    signal Cancel():
+        options:
+            unfinished_policy: abandon
+            description: "cancels the order"
+        cancelled = true
+
+    return Result{}
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	sig := wf.Signals[0]
+	if sig.Options == nil {
+		t.Fatal("expected signal handler options, got nil")
+	}
+	if len(sig.Options.Entries) != 2 {
+		t.Fatalf("expected 2 option entries, got %d", len(sig.Options.Entries))
+	}
+	if sig.Options.Entries[0].Key != "unfinished_policy" || sig.Options.Entries[0].Value != "abandon" {
+		t.Errorf("unexpected first option entry: %+v", sig.Options.Entries[0])
+	}
+	// The body must still parse after the options block.
+	if len(sig.Body) != 1 {
+		t.Fatalf("expected 1 body statement after options, got %d", len(sig.Body))
+	}
+}
+
+func TestUpdateHandlerOptions(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    update SubmitJob(job: Job) -> (JobId):
+        options:
+            unfinished_policy: warn_and_abandon
+        return jobId
+
+    return Result{}
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	upd := wf.Updates[0]
+	if upd.Options == nil || len(upd.Options.Entries) != 1 {
+		t.Fatalf("expected 1 update handler option, got %+v", upd.Options)
+	}
+	if upd.Options.Entries[0].Key != "unfinished_policy" || upd.Options.Entries[0].Value != "warn_and_abandon" {
+		t.Errorf("unexpected option entry: %+v", upd.Options.Entries[0])
+	}
+}
+
+func TestQueryHandlerOptions(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    query GetStatus() -> (string):
+        options:
+            description: "current status"
+        return status
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	q := wf.Queries[0]
+	if q.Options == nil || len(q.Options.Entries) != 1 {
+		t.Fatalf("expected 1 query handler option, got %+v", q.Options)
+	}
+	if q.Options.Entries[0].Key != "description" {
+		t.Errorf("unexpected option entry: %+v", q.Options.Entries[0])
+	}
+}
+
+func TestQueryHandlerRejectsUnfinishedPolicy(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    query GetStatus() -> (string):
+        options:
+            unfinished_policy: abandon
+        return status
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for unfinished_policy on query handler, got nil")
+	}
+	if !strings.Contains(err.Error(), "unknown option key: unfinished_policy") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestHandlerOptionsInvalidEnum(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    signal Cancel():
+        options:
+            unfinished_policy: bogus
+        cancelled = true
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for invalid unfinished_policy enum value, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid value bogus") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestHandlerOptionsOnly(t *testing.T) {
+	// A handler whose body is only an options block (no statements) still parses.
+	input := `workflow Foo(x: int) -> (Result):
+    signal Ping():
+        options:
+            unfinished_policy: abandon
+
+    return Result{}
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	sig := wf.Signals[0]
+	if sig.Options == nil {
+		t.Fatal("expected options on options-only handler")
+	}
+	if len(sig.Body) != 0 {
+		t.Errorf("expected empty body, got %d statements", len(sig.Body))
+	}
+}
+
 func TestSignalSendAsFirstStatementUnsupported(t *testing.T) {
 	// By design a signal send cannot be the first statement in a workflow: the
 	// declaration region intercepts the leading `signal` and parses it as a

@@ -33,6 +33,25 @@ consumers should match on `kind+code` rather than the message.
 | `WORKER_UNDEFINED_WORKFLOW` / `WORKER_UNDEFINED_ACTIVITY` / `WORKER_UNDEFINED_NEXUS_SERVICE` | `worker X references undefined ...` | Worker lists a name that doesn't exist | Add the definition or fix the name |
 | `NAMESPACE_UNDEFINED_WORKER` | `namespace X references undefined worker: Y` | Namespace uses unknown worker | Add worker block or fix name |
 
+### Nexus resolution: external (warning) vs. local (error)
+
+Nexus references resolve in one of two modes, decided **per category** — services and
+endpoints are independent axes:
+
+| Category | Nothing of that category defined in the file set | Any of that category defined |
+|----------|--------------------------------------------------|------------------------------|
+| Service  | `NEXUS_UNRESOLVED_SERVICE` — warning, exit 0 ("may be external") | `NEXUS_UNDEFINED_SERVICE` — error, exit 1 |
+| Endpoint | `NEXUS_UNRESOLVED_ENDPOINT` — warning, exit 0 ("may be external") | `NEXUS_UNDEFINED_ENDPOINT` — error, exit 1 |
+
+(Endpoints are defined inside `namespace` blocks; services via top-level `nexus service`.)
+
+**Gotcha:** defining *one* local service retroactively turns *every other* service reference
+into a hard error — even references to genuinely external services in other namespaces. This is
+a sharp cliff for a partial / per-package file that both *calls* external services and *provides*
+its own. Until an explicit external marker exists, either (a) add a local stub definition for
+each external service you call, or (b) define no nexus services in the file and accept the
+warnings.
+
 ## Parse errors (kind: `parse`)
 
 All parse failures share the single code `SYNTAX`. The message carries the
@@ -46,6 +65,7 @@ the message for now (categorical parse codes are future work).
 | `expected ( after if` / `expected ( after for` | Missing parentheses around condition/iterator | Use `if (expr):` / `for (x in items):` |
 | `unexpected token <tok> at top level` | Statement or keyword that doesn't start a workflow or activity definition | Ensure all top-level items are `workflow`, `activity`, `worker`, `namespace`, or `nexus service` definitions |
 | `unexpected token <tok> in await one case` | Invalid case type inside `await one:` block | Cases must be `signal`, `update`, `timer`, `activity`, `workflow`, an identifier, or `await all` |
+| `expected COLON, got NEWLINE` | A definition is missing its `:` and indented body — a bare declaration like `activity Foo(x) -> (R)` with nothing under it. `activity`/`workflow`/`sync` nexus op definitions always require a body. (Often followed by a cascading `UNDEFINED_*` because the malformed definition didn't register.) | Add `:` and an indented body. For a not-yet-implemented stub, use a placeholder statement (e.g. `return Foo{}` or a single `log(...)`); a definition cannot be body-less. |
 
 ## Validation diagnostics (kind: `validate`)
 

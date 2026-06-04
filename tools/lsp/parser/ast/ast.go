@@ -112,9 +112,10 @@ func (*NamespaceDef) defNode() {}
 
 type SignalDecl struct {
 	Pos
-	Name   string
-	Params string
-	Body   []Statement // handler body
+	Name    string
+	Params  string
+	Options *OptionsBlock // optional handler options block (leads the body)
+	Body    []Statement   // handler body
 }
 
 func (*SignalDecl) stmtNode() {}
@@ -124,7 +125,8 @@ type QueryDecl struct {
 	Name       string
 	Params     string
 	ReturnType string
-	Body       []Statement // handler body (restricted: no temporal primitives)
+	Options    *OptionsBlock // optional handler options block (leads the body)
+	Body       []Statement   // handler body (restricted: no temporal primitives)
 }
 
 func (*QueryDecl) stmtNode() {}
@@ -134,7 +136,8 @@ type UpdateDecl struct {
 	Name       string
 	Params     string
 	ReturnType string
-	Body       []Statement // handler body
+	Options    *OptionsBlock // optional handler options block (leads the body)
+	Body       []Statement   // handler body
 }
 
 func (*UpdateDecl) stmtNode() {}

@@ -149,7 +149,19 @@ func parseActivityDef(p *Parser) (ast.Definition, error) {
 	}, nil
 }
 
-// parseSignalDecl parses: SIGNAL IDENT [ ARGS ] COLON NEWLINE INDENT body DEDENT
+// parseHandlerOptions parses an optional options block at the head of a handler
+// body. The body INDENT has already been consumed by expectBlock; if the next
+// token is `options`, the block is parsed and validated against the handler
+// context (the same placement as a state: block at the top of a workflow).
+func (p *Parser) parseHandlerOptions(ctx OptionsContext) (*ast.OptionsBlock, error) {
+	if p.current.Type != token.OPTIONS {
+		return nil, nil
+	}
+	p.advance() // consume OPTIONS
+	return p.parseOptionsBlock(ctx)
+}
+
+// parseSignalDecl parses: SIGNAL IDENT [ ARGS ] COLON NEWLINE INDENT [options_block] body DEDENT
 func parseSignalDecl(p *Parser) (*ast.SignalDecl, error) {
 	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume SIGNAL
@@ -169,16 +181,22 @@ func parseSignalDecl(p *Parser) (*ast.SignalDecl, error) {
 		return nil, err
 	}
 
+	options, err := p.parseHandlerOptions(OptionsContextSignalHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	body, err := p.parseBodyAs(bodyWorkflow)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.SignalDecl{
-		Pos:    pos,
-		Name:   name.Literal,
-		Params: params,
-		Body:   body,
+		Pos:     pos,
+		Name:    name.Literal,
+		Params:  params,
+		Options: options,
+		Body:    body,
 	}, nil
 }
 
@@ -211,6 +229,11 @@ func parseQueryDecl(p *Parser) (*ast.QueryDecl, error) {
 		return nil, err
 	}
 
+	options, err := p.parseHandlerOptions(OptionsContextQueryHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	// Query bodies are restricted like activity bodies (no temporal primitives).
 	body, err := p.parseBodyAs(bodyActivity)
 	if err != nil {
@@ -222,6 +245,7 @@ func parseQueryDecl(p *Parser) (*ast.QueryDecl, error) {
 		Name:       name.Literal,
 		Params:     params.Literal,
 		ReturnType: returnType,
+		Options:    options,
 		Body:       body,
 	}, nil
 }
@@ -255,6 +279,11 @@ func parseUpdateDecl(p *Parser) (*ast.UpdateDecl, error) {
 		return nil, err
 	}
 
+	options, err := p.parseHandlerOptions(OptionsContextUpdateHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	body, err := p.parseBodyAs(bodyWorkflow)
 	if err != nil {
 		return nil, err
@@ -265,6 +294,7 @@ func parseUpdateDecl(p *Parser) (*ast.UpdateDecl, error) {
 		Name:       name.Literal,
 		Params:     params.Literal,
 		ReturnType: returnType,
+		Options:    options,
 		Body:       body,
 	}, nil
 }
