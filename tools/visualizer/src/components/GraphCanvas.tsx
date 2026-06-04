@@ -4,7 +4,7 @@
 import React from 'react'
 import type { GraphEdge, NodeType } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
-import { ALL_NODE_TYPES, bandForType, chargeForType, coreRadiusForType, edgeCategory } from '../graph/simulation'
+import { ALL_NODE_TYPES, bandForType, chargeForType, coreRadiusForType, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { definitionFor } from '../graph/node-types'
@@ -653,61 +653,91 @@ export function GraphCanvas({
         ctx.setLineDash([])
       }
 
-      // GRAVITY: per-type Y bands + a global X band.
-      //
-      // Both axes are drawn the same way — a faint stripe with brighter
-      // edges marks the rest band, where there is zero force. Outside the
-      // stripe a node is pulled toward the nearest edge. With X as a band
-      // (rather than a single anchor at x = 0) the layout has room to
-      // breathe horizontally without the centre of mass collapsing.
-      if (gravityActive) {
-        const [sxMin] = worldToScreen(vp, d.forceParams.bandXMin, 0)
-        const [sxMax] = worldToScreen(vp, d.forceParams.bandXMax, 0)
-
-        // Y bands first (they stack the hierarchy and sit behind the X band).
-        for (const t of ALL_NODE_TYPES) {
-          const band = bandForType(d.forceParams, t)
-          const [, sy1] = worldToScreen(vp, 0, band.yMin)
-          const [, sy2] = worldToScreen(vp, 0, band.yMax)
-          if (sy2 < 0 || sy1 > h) continue
-
-          const isActive = d.activeGravityType === t
-          const isDimmed = d.activeGravityType !== null && !isActive
-
-          const nodeColor = definitionFor(t).color.fill
-          ctx.fillStyle = nodeColor
-          ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
-          ctx.fillRect(0, sy1, w, sy2 - sy1)
-
-          // Top and bottom edges of the band (subtle), brighter when active.
-          ctx.strokeStyle = nodeColor
-          ctx.globalAlpha = isActive ? 0.55 : isDimmed ? 0.08 : 0.22
-          ctx.lineWidth = isActive ? 1.5 : 1
-          ctx.setLineDash([])
-          ctx.beginPath()
-          ctx.moveTo(0, sy1); ctx.lineTo(w, sy1)
-          ctx.moveTo(0, sy2); ctx.lineTo(w, sy2)
-          ctx.stroke()
+      // GRAVITY: band rest regions. Drawn only when band gravity is active, and
+      // shaped by the mode:
+      //   cartesian — per-type Y stripes (median-centred to match the force) +
+      //               a global X band.
+      //   radial    — concentric rings at each tier's target radius about the
+      //               world origin.
+      if (gravityActive && d.forceParams.bandEnabled) {
+        // Node types present in the visible set (their band centres drive both
+        // the cartesian median and the radial ring mapping).
+        const present: NodeType[] = []
+        const seenTypes = new Set<NodeType>()
+        for (const n of d.nodes) {
+          if (seenTypes.has(n.nodeType)) continue
+          seenTypes.add(n.nodeType)
+          present.push(n.nodeType)
+        }
+        const centerOf = (t: NodeType) => {
+          const b = bandForType(d.forceParams, t)
+          return (b.yMin + b.yMax) / 2
         }
 
-        // X band: dashed verticals at xMin and xMax (matching strength to
-        // the dashed convention used previously for the x = 0 anchor).
-        const xBandVisible = sxMin < w + CULL_MARGIN && sxMax > -CULL_MARGIN
-        if (xBandVisible) {
-          ctx.strokeStyle = '#8B7EC8'
-          ctx.globalAlpha = 0.5
-          ctx.lineWidth = 1.5
-          ctx.setLineDash([6, 6])
-          ctx.beginPath()
-          ctx.moveTo(sxMin, 0); ctx.lineTo(sxMin, h)
-          ctx.moveTo(sxMax, 0); ctx.lineTo(sxMax, h)
-          ctx.stroke()
-          // Faint band fill between the two edges so the rest region reads
-          // as a stripe rather than two unrelated lines.
-          ctx.fillStyle = '#8B7EC8'
-          ctx.globalAlpha = 0.05
-          ctx.fillRect(sxMin, 0, sxMax - sxMin, h)
-          ctx.setLineDash([])
+        if (d.forceParams.gravityMode === 'radial') {
+          const centers = present.map(centerOf)
+          const lo = centers.length ? Math.min(...centers) : 0
+          const span = (centers.length ? Math.max(...centers) : 0) - lo || 1
+          const [ox, oy] = worldToScreen(vp, 0, 0)
+          for (const t of present) {
+            const targetR = RADIAL_R_MIN + ((centerOf(t) - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)
+            const isActive = d.activeGravityType === t
+            const isDimmed = d.activeGravityType !== null && !isActive
+            ctx.strokeStyle = definitionFor(t).color.fill
+            ctx.globalAlpha = isActive ? 0.6 : isDimmed ? 0.1 : 0.28
+            ctx.lineWidth = isActive ? 1.5 : 1
+            ctx.setLineDash([])
+            ctx.beginPath()
+            ctx.arc(ox, oy, targetR * vp.scale, 0, Math.PI * 2)
+            ctx.stroke()
+          }
+        } else {
+          // Median band centre over the visible types (matches applyBandGravity).
+          const sorted = present.map(centerOf).sort((a, b) => a - b)
+          const m = sorted.length
+          const median = m ? (m % 2 ? sorted[(m - 1) / 2] : (sorted[m / 2 - 1] + sorted[m / 2]) / 2) : 0
+
+          for (const t of ALL_NODE_TYPES) {
+            const band = bandForType(d.forceParams, t)
+            const [, sy1] = worldToScreen(vp, 0, band.yMin - median)
+            const [, sy2] = worldToScreen(vp, 0, band.yMax - median)
+            if (sy2 < 0 || sy1 > h) continue
+
+            const isActive = d.activeGravityType === t
+            const isDimmed = d.activeGravityType !== null && !isActive
+
+            const nodeColor = definitionFor(t).color.fill
+            ctx.fillStyle = nodeColor
+            ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
+            ctx.fillRect(0, sy1, w, sy2 - sy1)
+
+            ctx.strokeStyle = nodeColor
+            ctx.globalAlpha = isActive ? 0.55 : isDimmed ? 0.08 : 0.22
+            ctx.lineWidth = isActive ? 1.5 : 1
+            ctx.setLineDash([])
+            ctx.beginPath()
+            ctx.moveTo(0, sy1); ctx.lineTo(w, sy1)
+            ctx.moveTo(0, sy2); ctx.lineTo(w, sy2)
+            ctx.stroke()
+          }
+
+          // X band: dashed verticals at xMin and xMax with a faint fill.
+          const [sxMin] = worldToScreen(vp, d.forceParams.bandXMin, 0)
+          const [sxMax] = worldToScreen(vp, d.forceParams.bandXMax, 0)
+          if (sxMin < w + CULL_MARGIN && sxMax > -CULL_MARGIN) {
+            ctx.strokeStyle = '#8B7EC8'
+            ctx.globalAlpha = 0.5
+            ctx.lineWidth = 1.5
+            ctx.setLineDash([6, 6])
+            ctx.beginPath()
+            ctx.moveTo(sxMin, 0); ctx.lineTo(sxMin, h)
+            ctx.moveTo(sxMax, 0); ctx.lineTo(sxMax, h)
+            ctx.stroke()
+            ctx.fillStyle = '#8B7EC8'
+            ctx.globalAlpha = 0.05
+            ctx.fillRect(sxMin, 0, sxMax - sxMin, h)
+            ctx.setLineDash([])
+          }
         }
 
         ctx.globalAlpha = 1

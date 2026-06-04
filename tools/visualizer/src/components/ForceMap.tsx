@@ -222,6 +222,17 @@ export interface CurveItem {
   color: string
   // Optional vertical marker (e.g. rest length / core radius) in viewBox x.
   markerX?: number
+  // Optional short label drawn at the curve's end point (e.g. "X" / "Y" for the
+  // band curves, where there is no map token to link the identity to).
+  label?: string
+}
+
+// Parse the last "x,y" pair out of a polyline points string.
+function lastPoint(points: string): { x: number; y: number } | null {
+  const pts = points.trim().split(/\s+/)
+  const last = pts[pts.length - 1]?.split(',')
+  if (!last || last.length < 2) return null
+  return { x: Number(last[0]), y: Number(last[1]) }
 }
 
 export function ForceCurves({
@@ -272,6 +283,21 @@ export function ForceCurves({
                 className="spring-curve-line"
                 style={{ stroke: c.color }}
               />
+              {c.label && (() => {
+                const p = lastPoint(c.points)
+                if (!p) return null
+                return (
+                  <text
+                    x={Math.min(p.x + 4, CURVE_W - 2)}
+                    y={clamp(p.y, 9, CURVE_H - 2)}
+                    className="spring-curve-label"
+                    style={{ fill: c.color }}
+                    textAnchor="end"
+                  >
+                    {c.label}
+                  </text>
+                )
+              })()}
             </g>
           )
         })}

@@ -7,7 +7,8 @@ import {
   applyChargeForce,
   applyLinkForce,
   applyBandGravity,
-  applyDownstreamGravity,
+  applyTopologicalGravity,
+  applyCenterGravity,
   bandForType,
 } from './forces'
 
@@ -26,6 +27,8 @@ export {
   coreRadiusForType,
   bandForType,
   edgeCategory,
+  RADIAL_R_MIN,
+  RADIAL_R_MAX,
 } from './forces'
 export type { YBand } from './forces'
 
@@ -130,11 +133,29 @@ export interface LinkParams {
 export interface GravityParams {
   gravityX: number
   gravityY: number
-  // Optional vertical-pull force whose target Y is derived from each node's
-  // downstream-reach score (0..1, log-normalized in GraphView). Score = 1
-  // targets one band-height above the node's own band — i.e. a high-reach
-  // workflow drifts upward into the worker band. Default 0 (off).
+  // Band falloff exponent applied to the displacement outside the rest band
+  // (force = strength × d^exp). 1 = linear (Hooke); higher = softer just outside
+  // the band, stiffer far out. Mirrors the Pull tab's linkExponent.
+  gravityBandExp: number
+  // Topological gravity strength: scales the single-sided inward pull on each
+  // node by its (shaped) downstream-reach score. Default 0 (off). (Field name
+  // retained as `gravityDownstream` for now.)
   gravityDownstream: number
+  // Topological contrast: exponent applied to the reach score (score^exp) so
+  // high-reach roots dominate. 1 = linear; higher = sharper tiering (only the
+  // biggest hubs pull hard).
+  gravityTopologicalExp: number
+  // Center gravity strength: radial pull toward the world origin — the baseline
+  // cohesion/anchor force used when neither Band nor Topological is active.
+  gravityCenter: number
+  // Layout mode for Band + Topological gravity. 'cartesian' maps the hierarchy
+  // to vertical position; 'radial' maps it to distance from the origin
+  // (uppermost tier innermost) with charge spreading nodes around each ring.
+  gravityMode: 'cartesian' | 'radial'
+  // Which shaping forces are active (non-exclusive). When both are off, center
+  // gravity is the baseline that keeps the graph cohesive.
+  bandEnabled: boolean
+  topologicalEnabled: boolean
   bandXMin: number
   bandXMax: number
   bandYMinNamespace: number
@@ -257,11 +278,17 @@ export const DEFAULT_PARAMS: ForceParams = {
   // width, which is generous enough to let wide fan-outs spread laterally.
   gravityX: 0.05,
   gravityY: 0.145,
+  gravityBandExp: 1,
   // Off by default — the experiment lives behind a slider. When non-zero,
   // every node with a positive downstream score gets an additional vy pull
   // toward `bandMin - score * bandHeight`, layered additively on top of the
   // per-type Y-band gravity above.
   gravityDownstream: 0,
+  gravityTopologicalExp: 3,
+  gravityCenter: 0.05,
+  gravityMode: 'cartesian',
+  bandEnabled: true,
+  topologicalEnabled: false,
   bandXMin:    0,
   bandXMax:  380,
   bandYMinNamespace:      NODE_TYPE_REGISTRY.namespace.physics.yBand.min,
@@ -310,11 +337,24 @@ export const DEFAULT_PARAMS: ForceParams = {
 const MAX_VELOCITY = 50
 const MAX_POSITION = 1e6
 
+// REHEAT_TICKS: the fixed settle window (in ticks) that a `reheat()` cools over,
+// regardless of how hard it kicks. Cooling normally subtracts a constant
+// `alphaDecay` each tick, so a bigger kick would linger proportionally longer
+// (alpha 10 ÷ decay 0.005 ≈ 2000 ticks of jitter). Instead, `reheat()` derives a
+// per-burst decay of `alpha / REHEAT_TICKS`, so a stronger kick moves nodes
+// *further* within the same window rather than dragging the tail out *longer*.
+const REHEAT_TICKS = 200
+
 export class Simulation {
   nodes: SimNode[]
   edges: GraphEdge[]
   params: ForceParams
   alpha: number
+
+  // Per-burst cooling rate set by `reheat()` so the settle window stays fixed
+  // (~REHEAT_TICKS) no matter the kick size. Null means "cool at the normal
+  // alphaDecay" — used during steady-state and live tuning via `nudge()`.
+  private reheatDecay: number | null = null
 
   private nodeMap: Map<string, SimNode>
 
@@ -375,11 +415,17 @@ export class Simulation {
       : this.edges
 
     // Forces — each scaled by the current alpha, mutating node velocities.
-    // (Implemented in ./forces, one function per category.)
+    // (Implemented in ./forces, one function per category.) Gravity is the two
+    // shaping forces (Band, Topological) gated by their toggles, with Center
+    // gravity as the baseline when neither is active. The Cartesian/Radial mode
+    // is read inside the band/topological forces.
     applyChargeForce(active, this.params, this.alpha)
     applyLinkForce(activeEdges, this.nodeMap, this.params, this.alpha)
-    applyBandGravity(active, this.params, this.alpha)
-    applyDownstreamGravity(active, this.params, this.alpha, downstreamScores)
+    if (this.params.bandEnabled) applyBandGravity(active, this.params, this.alpha)
+    if (this.params.topologicalEnabled) applyTopologicalGravity(active, this.params, this.alpha, downstreamScores)
+    if (!this.params.bandEnabled && !this.params.topologicalEnabled) {
+      applyCenterGravity(active, this.params, this.alpha)
+    }
 
     // Apply velocity and damping with stability guards.
     //
@@ -422,12 +468,20 @@ export class Simulation {
       else if (node.y > MAX_POSITION) node.y = MAX_POSITION
     }
 
-    // Cool
-    this.alpha = Math.max(this.alpha - this.params.alphaDecay, 0)
+    // Cool. A `reheat()` burst cools at its own bounded rate so the settle
+    // window stays fixed; once it lands back at rest, drop back to the normal
+    // alphaDecay for any future steady-state warming.
+    const cool = this.reheatDecay ?? this.params.alphaDecay
+    this.alpha = Math.max(this.alpha - cool, 0)
+    if (this.alpha <= this.params.alphaMin) this.reheatDecay = null
   }
 
+  // Strong, bounded-duration kick. A bigger `alpha` rearranges the layout
+  // further but settles in the same ~REHEAT_TICKS window (decay scales with the
+  // kick) rather than lingering proportionally longer.
   reheat(alpha = 0.5): void {
     this.alpha = alpha
+    this.reheatDecay = alpha / REHEAT_TICKS
   }
 
   // Raise alpha to at least `target` without ever cooling a hotter sim.
@@ -437,6 +491,9 @@ export class Simulation {
   // left alone so dragging a slider during settling doesn't dampen it.
   nudge(target = 0.3): void {
     if (this.alpha < target) this.alpha = target
+    // Live tuning cools at the normal rate — clear any leftover reheat burst so
+    // a prior strong kick's fast decay doesn't dampen the warm-while-editing feel.
+    this.reheatDecay = null
   }
 
   isStable(): boolean {

@@ -3,11 +3,10 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
-import { BAND_MIN_KEY, BAND_MAX_KEY } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor } from '../graph/node-types'
 import { SpringMap, SpringCurves } from './SpringControls'
 import { ChargeMap, ChargeCurves } from './ChargeControls'
+import { GravityControls } from './GravityControls'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
@@ -29,6 +28,9 @@ interface GraphControlPanelProps {
   // every force-control edit so the layout responds live. See GraphView's
   // handleForceAdjust.
   onAdjust: () => void
+  // Non-numeric gravity edits (mode, Band/Topological toggles). Routed through
+  // GraphView so the simulation params update and the layout reheats.
+  onGravityChange: (partial: Partial<ForceParams>) => void
   onActiveSection: (section: ForceSection) => void
   onActiveChargeType: (nodeType: NodeType | null) => void
   onActiveGravityType: (nodeType: NodeType | null) => void
@@ -37,8 +39,14 @@ interface GraphControlPanelProps {
   onActivePullEdge: (key: string | null) => void
 }
 
+// Keys of ForceParams whose value is a number (ForceParams now also has the
+// boolean toggles and the string mode, which sliders must not target).
+type NumericForceKey = {
+  [K in keyof ForceParams]: ForceParams[K] extends number ? K : never
+}[keyof ForceParams]
+
 interface SliderDef {
-  key: keyof ForceParams
+  key: NumericForceKey
   label: string
   min: number
   max: number
@@ -58,43 +66,11 @@ interface SliderDef {
 // stiffness/length tokens + the two global "scale all" multipliers along the
 // axes) and a force-curve visualization (which hosts the global `exp`).
 
-// --- GRAVITY section sliders ---
+// --- GRAVITY section ---
 //
-// Hierarchical gravity decomposes into one axis-strength per dimension plus
-// a per-type Y "rest band". The strengths sit on the same range so they're
-// directly comparable; the bands all share a wide Y range so the user can
-// re-stack the hierarchy by dragging band edges around a common axis.
-
-const GRAVITY_STRENGTH_SLIDERS: SliderDef[] = [
-  { key: 'gravityX', label: 'X strength', min: 0, max: 0.2, step: 0.005,
-    tooltip: 'Pull toward the nearest edge of the global X band' },
-  { key: 'gravityY', label: 'Y strength', min: 0, max: 0.2, step: 0.005,
-    tooltip: 'Pull toward the nearest edge of each node type\u2019s Y band' },
-  { key: 'gravityDownstream', label: 'Downstream Y', min: 0, max: 0.2, step: 0.005,
-    tooltip: 'Pull toward a Y position derived from outgoing dependency reach (high reach \u2192 up). Layered on top of the per-type Y band.' },
-]
-
-interface GravityBandDef {
-  label: string
-  nodeType: NodeType
-  minKey: keyof ForceParams
-  maxKey: keyof ForceParams
-  tooltip: string
-}
-
-const BAND_Y_MIN = -600
-const BAND_Y_MAX = 600
-const BAND_Y_STEP = 10
-
-// Enumerate band sliders from the registry. Order matches PUSH_CHARGE_SLIDERS
-// so both sections read as the same hierarchy, top to bottom.
-const GRAVITY_BAND_SLIDERS: GravityBandDef[] = ALL_NODE_TYPES.map(t => ({
-  label: sliderLabelFor(t),
-  nodeType: t,
-  minKey: BAND_MIN_KEY[t],
-  maxKey: BAND_MAX_KEY[t],
-  tooltip: `Y band where ${NODE_TYPE_REGISTRY[t].label.toLowerCase()} nodes feel zero gravity`,
-}))
+// The Gravity tab's controls live in GravityControls: a Cartesian/Radial mode
+// switch, Band/Topological toggles, the band pseudo-plot, and the topological
+// strength + note. Center gravity is the unexplained baseline.
 
 // --- DYNAMICS section sliders ---
 //
@@ -113,7 +89,7 @@ const DYNAMICS_SLIDERS: SliderDef[] = [
 ]
 
 export function GraphControlPanel({
-  params, onParamChange, onAdjust,
+  params, onParamChange, onAdjust, onGravityChange,
   onActiveSection,
   onActiveChargeType, onActiveGravityType, onActivePullEdge,
 }: GraphControlPanelProps) {
@@ -138,6 +114,14 @@ export function GraphControlPanel({
     setHoveredChargeType(t)
     onActiveChargeType(t)
   }, [onActiveChargeType])
+
+  // Links the band pseudo-plot to the canvas band/ring highlight (and dims the
+  // other columns/stripes).
+  const [hoveredGravityType, setHoveredGravityType] = React.useState<NodeType | null>(null)
+  const handleHoverGravityType = React.useCallback((t: NodeType | null) => {
+    setHoveredGravityType(t)
+    onActiveGravityType(t)
+  }, [onActiveGravityType])
 
   // Single funnel for every force control's edits. Routing all controls
   // through one wrapper means the "nudge the simulation" behaviour is
@@ -259,51 +243,17 @@ export function GraphControlPanel({
             {/* GRAVITY section */}
             <SectionSlot active={activeTab === 'gravity'}>
               <EquationSection
-                subtitle="hierarchical anchor"
-                equation={'F\u2093 = \u03B1 \u00D7 X \u00D7 (0 \u2212 x)\nF\u1d67 = \u03B1 \u00D7 Y \u00D7 (band \u2212 y) when y outside band'}
+                subtitle=""
+                equation=""
                 onHover={h => { onActiveSection(h ? 'gravity' : null); if (!h) onActiveGravityType(null) }}
               >
-                {GRAVITY_STRENGTH_SLIDERS.map(s => (
-                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange(s.key, v)} />
-                ))}
-                <div className="graph-control-sub-header">
-                  <span className="graph-control-sub-label">Axis</span>
-                  <span className="graph-control-sub-label">X band (left \u2192 right)</span>
-                </div>
-                <div className="graph-control-band-row">
-                  <span className="graph-control-band-label">X</span>
-                  <DualRangeSlider
-                    min={BAND_Y_MIN}
-                    max={BAND_Y_MAX}
-                    step={BAND_Y_STEP}
-                    valueMin={params.bandXMin}
-                    valueMax={params.bandXMax}
-                    onChangeMin={v => emitParamChange('bandXMin', v)}
-                    onChangeMax={v => emitParamChange('bandXMax', v)}
-                    nodeType="namespace"
-                  />
-                  <span className="graph-control-band-value">{Math.round(params.bandXMin)}</span>
-                  <span className="graph-control-band-value">{Math.round(params.bandXMax)}</span>
-                </div>
-                <div className="graph-control-sub-header">
-                  <span className="graph-control-sub-label">Type</span>
-                  <span className="graph-control-sub-label">Y band (top \u2192 bottom)</span>
-                </div>
-                {GRAVITY_BAND_SLIDERS.map(b => (
-                  <div
-                    key={b.nodeType}
-                    onMouseEnter={() => onActiveGravityType(b.nodeType)}
-                    onMouseLeave={() => onActiveGravityType(null)}
-                  >
-                    <BandRow
-                      def={b}
-                      valueMin={params[b.minKey] as number}
-                      valueMax={params[b.maxKey] as number}
-                      onChangeMin={v => emitParamChange(b.minKey, v)}
-                      onChangeMax={v => emitParamChange(b.maxKey, v)}
-                    />
-                  </div>
-                ))}
+                <GravityControls
+                  params={params}
+                  onParamChange={emitParamChange}
+                  onGravitySet={onGravityChange}
+                  hoveredType={hoveredGravityType}
+                  onHoverType={handleHoverGravityType}
+                />
               </EquationSection>
             </SectionSlot>
 
@@ -356,92 +306,12 @@ function EquationSection({ subtitle, equation, onHover, children }: {
           <span className="graph-control-equation-subtitle">({subtitle})</span>
         </div>
       )}
-      {typeof equation === 'string'
+      {equation && (typeof equation === 'string'
         ? <pre className="graph-control-equation-formula">{equation}</pre>
-        : <div className="graph-control-equation-formula">{equation}</div>}
+        : <div className="graph-control-equation-formula">{equation}</div>)}
       <div className="graph-control-equation-body">
         {children}
       </div>
-    </div>
-  )
-}
-
-function BandRow({ def, valueMin, valueMax, onChangeMin, onChangeMax }: {
-  def: GravityBandDef
-  valueMin: number
-  valueMax: number
-  onChangeMin: (v: number) => void
-  onChangeMax: (v: number) => void
-}) {
-  return (
-    <div
-      className={`graph-control-band-row graph-control-typed-row graph-control-typed-${def.nodeType}`}
-      title={def.tooltip}
-    >
-      <span className="graph-control-band-label">{def.label}</span>
-      <DualRangeSlider
-        min={BAND_Y_MIN}
-        max={BAND_Y_MAX}
-        step={BAND_Y_STEP}
-        valueMin={valueMin}
-        valueMax={valueMax}
-        onChangeMin={onChangeMin}
-        onChangeMax={onChangeMax}
-        nodeType={def.nodeType}
-      />
-      <span className="graph-control-band-value">{Math.round(valueMin)}</span>
-      <span className="graph-control-band-value">{Math.round(valueMax)}</span>
-    </div>
-  )
-}
-
-// Two-handle range slider implemented with overlapping native inputs. Each
-// thumb is grabbable thanks to pointer-events trickery in the CSS; the fill
-// element between them is purely decorative. We clamp on change so the low
-// thumb can never overtake the high thumb.
-function DualRangeSlider({
-  min, max, step, valueMin, valueMax, onChangeMin, onChangeMax, nodeType,
-}: {
-  min: number
-  max: number
-  step: number
-  valueMin: number
-  valueMax: number
-  onChangeMin: (v: number) => void
-  onChangeMax: (v: number) => void
-  nodeType: NodeType
-}) {
-  const range = max - min
-  const minPct = ((valueMin - min) / range) * 100
-  const widthPct = Math.max(0, ((valueMax - valueMin) / range) * 100)
-
-  return (
-    <div className={`dual-range dual-range-${nodeType}`}>
-      <div className="dual-range-track" />
-      <div
-        className="dual-range-fill"
-        style={{ left: `${minPct}%`, width: `${widthPct}%` }}
-      />
-      <input
-        type="range"
-        className="dual-range-input dual-range-input-low"
-        min={min} max={max} step={step}
-        value={valueMin}
-        onChange={e => {
-          const v = Math.min(Number(e.target.value), valueMax - step)
-          onChangeMin(v)
-        }}
-      />
-      <input
-        type="range"
-        className="dual-range-input dual-range-input-high"
-        min={min} max={max} step={step}
-        value={valueMax}
-        onChange={e => {
-          const v = Math.max(Number(e.target.value), valueMin + step)
-          onChangeMax(v)
-        }}
-      />
     </div>
   )
 }
@@ -487,8 +357,11 @@ PULL — Connected nodes attract via spring force.
   Drag a token on the spring map to set one
   edge type; the axis sliders scale all at once.
 
-GRAVITY — All nodes drift toward center of mass.
-  F = α × gravity × (pos − COM)
+GRAVITY — Three toggleable forces (Cartesian or Radial):
+  Band (per-type rest bands = the hierarchy),
+  Topological (root-ness pulls nodes inward),
+  Center (radial pull to origin; the baseline
+  when neither Band nor Topological is on).
 
 DYNAMICS — Friction damps velocity, cooling reduces
   energy until the simulation stabilizes.

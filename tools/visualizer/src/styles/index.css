@@ -836,6 +836,14 @@ body {
   opacity: 0.6;
 }
 
+.spring-curve-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
 .spring-curve-line { fill: none; stroke-width: 1.25; opacity: 0.3; }
 .spring-curve-hit { fill: none; stroke: transparent; stroke-width: 8; cursor: pointer; }
 .spring-curve.active .spring-curve-line { opacity: 1; stroke-width: 2; }
@@ -859,6 +867,238 @@ body {
   accent-color: var(--color-workflow);
   cursor: pointer;
 }
+
+/* ── Gravity tab ────────────────────────────────────────────────────────────
+   A shared Cartesian/Radial mode switch, then Band/Topological *sub-tabs*: each
+   sub-tab carries a sliding on/off switch (so both forces' state is always
+   visible) and selects which body shows below. Bodies: the band "mini world
+   view" (per-type vertical sliders over rest-region stripes) and the topological
+   depth→pull curve + sliders. */
+.gravity-controls {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gravity-modes-row { display: flex; justify-content: center; }
+
+/* inline-grid with two 1fr tracks → both segments take the width of the wider
+   label ("Cartesian"), so the divider sits dead-centre. */
+.gravity-modes {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gravity-mode-btn {
+  padding: 4px 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+.gravity-mode-btn + .gravity-mode-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.gravity-mode-btn:hover:not(.active) { color: var(--color-text); }
+
+.gravity-mode-btn.active {
+  background: var(--color-workflow);
+  color: #fff;
+}
+
+/* Sub-tab bar — same underline-tab pattern as the main force tabs, but marked
+   as a sub-level by an accent-coloured underline (main tabs underline in the
+   text colour) and the inline on/off switch each tab carries. */
+.gravity-subtabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gravity-subtab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 4px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  user-select: none;
+}
+
+.gravity-subtab:hover { color: var(--color-text); }
+
+.gravity-subtab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-workflow);
+}
+
+.gravity-subtab-label { font-weight: 600; }
+
+/* Both sub-tab bodies stack in one grid cell so the panel sizes to the taller
+   body and never resizes when switching sub-tabs (mirrors .graph-control-sections). */
+.gravity-bodies { display: grid; }
+
+/* Stack both bodies; only hide the *inactive* one. Crucially we do NOT force the
+   active body `visibility: visible` — that would override the inherited `hidden`
+   from an inactive parent major-tab slot and paint the gravity body over whatever
+   tab is actually showing. Instead the active body inherits visibility from its
+   major-tab slot (visible only when the Gravity tab is active). */
+.gravity-body {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.gravity-body:not(.active) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Sliding on/off switch (a styled checkbox), used on each sub-tab. */
+.switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.switch input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+.switch-track {
+  width: 26px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--color-border);
+  transition: background 0.15s ease;
+  position: relative;
+  display: inline-block;
+}
+.switch.on .switch-track { background: var(--color-workflow); }
+.switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s ease;
+}
+.switch.on .switch-knob { left: 14px; }
+.switch input:focus-visible + .switch-track { box-shadow: 0 0 0 2px var(--focus-ring-color); }
+
+/* The active body's tools dim (but stay usable) when its force switch is off. */
+.gravity-section-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gravity-section-tools.inactive { opacity: 0.5; }
+
+/* Band mini-world-view: vertical strength slider on the left gutter, the plot,
+   the X-range band immediately under it, then the horizontal strength slider —
+   both force sliders sit on their axis (left = vertical, bottom = horizontal)
+   and are labelled "strength". Reuses the spring axis-slider grid areas. */
+.gravity-band-layout {
+  display: grid;
+  grid-template-columns: 16px 14px 1fr;     /* yLabel | ySlider | plot */
+  grid-template-rows: 1fr auto 14px auto;    /* plot | xband | xSlider | xLabel */
+  grid-template-areas:
+    "yLabel ySlider plot"
+    ".      .       xband"
+    ".      .       xSlider"
+    ".      .       xLabel";
+  align-items: stretch;
+  row-gap: 2px;
+}
+
+/* "strength" labels next to each force slider (vertical for Y, plain for X). */
+.gravity-band-strength-y {
+  grid-area: yLabel;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: var(--color-text-muted);
+  align-self: center;
+  justify-self: center;
+}
+
+.gravity-band-strength-x {
+  grid-area: xLabel;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.gravity-band-svg {
+  grid-area: plot;
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+}
+
+/* X-band dual-range sits snug under the plot — short track height so the bar
+   hugs the bottom of the plot rather than floating in a tall slider row. */
+.gravity-xband { grid-area: xband; display: flex; align-items: flex-start; }
+.gravity-xband .dual-range,
+.gravity-xband .dual-range-input { height: 12px; }
+
+.gravity-band-bg { fill: var(--color-bg); opacity: 0.5; }
+
+/* Rest-region stripes — behind and non-interactive, so handles stay grabbable. */
+.gravity-band-stripes { pointer-events: none; }
+.gravity-band-stripe { opacity: 0.16; }
+.gravity-band-stripe.dim { opacity: 0.05; }
+.gravity-band-stripe.active { opacity: 0.30; }
+.gravity-xband-stripe { fill: var(--color-text-muted); opacity: 0.10; }
+.gravity-xband-stripe.active { opacity: 0.22; }
+
+/* Per-type vertical slider controls, on top of the stripes. */
+.gravity-band-track { stroke: var(--color-border); stroke-width: 1; opacity: 0.5; }
+.gravity-band-stem { stroke-width: 2; opacity: 0.7; }
+.gravity-band-dot { cursor: ns-resize; stroke: var(--color-surface); stroke-width: 1; }
+.gravity-band-label { font-family: var(--font-sans); font-size: 11px; }
+.gravity-band-col.dim { opacity: 0.35; }
+
+.gravity-topo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gravity-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gravity-topo-curve {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 2px;
+}
+
+.gravity-topo-curve-line {
+  fill: none;
+  stroke: var(--color-workflow);
+  stroke-width: 1.5;
+}
+
+.gravity-topo-curve-axis {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  fill: var(--color-text-muted);
+}
+
 
 /* Typography normalization: pin every panel text element to one size (12px,
    matching the toolbar) so the modal reads consistently. Declared after the

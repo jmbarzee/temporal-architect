@@ -139,15 +139,24 @@ The graph is rendered using a **force-directed layout** (also called a force sim
 |-------------------|------------------|--------------------------------------------------------------------------|
 | **Charge (repulsion)** | Every node pair | Nodes repel each other, preventing overlap. Follows an inverse-square falloff (like electrostatic charge). |
 | **Link (attraction)**  | Connected node pairs | Edges act as springs pulling connected nodes toward a target distance.    |
-| **Hierarchical gravity** | All nodes      | Two rest bands that hold world coordinates in place: a global X band exerts no force inside `[bandXMin, bandXMax]` and pulls nodes back to the nearest edge outside it; a per-node-type Y band does the same vertically. Both axes use bands rather than point anchors so a graph with many top-level siblings can spread out instead of stacking on `x = 0`. The Y bands stack the hierarchy top-to-bottom (NS at the top, L4 activities at the bottom). |
+| **Gravity** | All nodes | Cohesion/anchoring, as one of three toggleable forces (see § Gravity below): **Band** (per-type rest bands, the hierarchy), **Topological** (root-ness inward pull), and **Center** (radial pull to the origin, the baseline when neither shaping force is on). Band and Topological are interpreted through a Cartesian or Radial mode. |
 
 Each force has a **strength** parameter that controls its magnitude. These strengths are the primary tuning knobs for the layout.
 
-### Why a hierarchical anchor instead of center-of-mass gravity
+### Gravity: three toggleable forces, two modes
 
-A force-directed graph is a free-floating cloud by default — it is held together but not held *anywhere*. The graph view's data has an inherent vertical hierarchy (namespace → worker → definition), and a manually-organised diagram of the same data would place namespaces and workers near the top, definitions toward the bottom. The hierarchical anchor encodes that structure in the layout itself: each node type lives in its own Y band, with no Y force inside the band and a pull toward the band's nearest edge outside it.
+A force-directed graph is a free-floating cloud by default — held together but not held *anywhere*. Gravity supplies cohesion and structure as **three independent, toggleable forces**:
 
-The anchor also fixes the practical drift problem that comes with COM-based gravity. Because the X band and the type-specific Y bands are absolute world coordinates, the simulation's centre of mass cannot wander out of frame; the canvas does not need to compensate by re-centering the viewport every tick. After the initial fit-to-view, the user's pan/zoom is the only thing that moves the camera.
+- **Band** — each node type has a rest band; the hierarchy reads from the bands. A node inside its band feels nothing; outside, it is pulled back with force `strength × dᵉˣᵖ` where `d` is the distance past the nearest band edge (`exp = 1` is the linear/Hooke spring). The bands are stored *relatively* and re-centred each tick on the **median** of the visible types' band centres, so editing or toggling them doesn't shift the whole graph.
+- **Topological** — a single-sided inward pull whose strength scales with a node's **downstream depth** (how many call-levels deep its subtree runs, linearly normalized): orchestrators atop deep call chains are drawn toward the focal point, leaves are left to charge. Depth is naturally tiered rather than combinatorially heavy-tailed (unlike raw reach count), so no log compression is needed. Depth is **propagated up the containment hierarchy** (a worker/service/namespace is scored at least as deep as anything it hosts) so the pull never drags a deep workflow above its own container — keeping it aligned with, rather than fighting, the bands. Origin-relative, so it is independent of the bands.
+- **Center** — a radial pull toward the world origin. It is the unexplained baseline: active only when neither Band nor Topological is on, keeping the graph cohesive and anchored. (Not surfaced as a control.)
+
+Band and Topological are interpreted through a **mode**:
+
+- **Cartesian** — the hierarchy maps to vertical position (bands are `[yMin, yMax]` windows; Topological's focal point is the top). A global X band keeps horizontal spread bounded.
+- **Radial** — the hierarchy maps to distance from the origin (uppermost tier innermost; Topological's focal point is the centre). Charge distributes nodes around each ring; there is no angular force.
+
+Because the shaping forces re-centre on (or pull toward) the origin, the layout's centre of mass stays in frame and the canvas needs no per-tick re-centering — and switching forces or modes doesn't lurch the layout.
 
 ### Force Parameters
 
@@ -393,7 +402,7 @@ The graph toolbar — rendered as a row within the overlay, just below the filte
 - **Node / edge count** — `N nodes, M edges` (counts the currently visible/graduated set). Informational; updates reactively with filters.
 - **Fit** — fit the viewport to all visible nodes. Keyboard shortcut: `F`.
 - **Play / Pause** — toggle for simulation ticking. Keyboard shortcut: `Space`.
-- **Reheat** — re-energise the layout with a strong kick (high alpha); the simulation settles back down on its own.
+- **Reheat** — re-energise the layout with a strong kick; cooling scales with the kick, so a bigger reheat rearranges the layout *further* but settles back down in the same fixed window (not *longer*).
 - **Show in Tree** — contextual; appears only when a node is selected. Invokes the `focus(target)` view transition (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions).
 
 The toolbar is always visible (not collapsible). It is compact — a single row, right-aligned controls.
@@ -445,14 +454,14 @@ The covered edge categories: containment `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk�
 
 When a token is being tuned, the canvas highlights only that edge category — drawn as a coloured border (a tension-coloured casing with the edge's own colour on top) so the edge's identity colour stays clear, rather than recolouring every edge.
 
-**GRAVITY** (hierarchical anchor)
+**GRAVITY**
 
-    Fx = α × X × (0 − x)
-    Fy = α × Y × (band − y)   (only when y is outside band)
+A centered `Cartesian | Radial` **mode** switch (a segmented control — the right pattern for an exclusive binary choice, kept visually distinct from the on/off switches; its two segments are equal-width so the divider sits dead-centre) sits at the top, *above* the sub-tabs, so it stays visible whichever force is being edited. Below it, **Band** and **Topological** are **sub-tabs**, styled like the main force tabs (underline tabs) but marked as a sub-level by an accent-coloured underline and by the inline on/off **switch** each one carries. The switch toggles that force; the label selects which body shows. They're independent — toggling a force does not change which body is shown — so both forces' enabled state is always legible while you tune one. Both bodies are stacked in one grid cell (only the active one visible), so switching sub-tabs never resizes the panel — the same trick the main force tabs use. Center gravity is the unexplained baseline (active when both switches are off) and has no control.
 
-- `X strength` — pull toward the nearest edge of the global X rest band
-- `Y strength` — pull toward the nearest edge of each node type's Y band
-- Per-node-type **Y band** (dual-handle slider) — the `[yMin, yMax]` window in which the type feels zero Y gravity. One row per node type, stacking the two ladders from container tier at the top to leaf at the bottom. All rows share a common Y range so the bands are directly comparable; defaults stack the main ladder (NS / Wk / Wf / Act) top-to-bottom, with the nexus ladder rungs (Ep / Nx / Op) defaulting to bands near their main-ladder peers.
+- **Band** — equation `F = strength × dᵉˣᵖ` (`d` = distance outside the rest band; zero inside). A **band pseudo-plot**: a shared vertical axis with one column per node type (main ladder `NS Wk Wf Act`, then the nexus ladder `Ep Nx Op`). Each type's `[yMin, yMax]` rest band is two draggable dots over a full-width type-coloured stripe (always shown; hovering a column highlights it and dims the rest, and drives the canvas band/ring highlight). Type labels sit above the columns. The two force sliders sit on their axes and are labelled **Y strength** (vertical, left gutter) and **X strength** (horizontal, bottom gutter). The global **X band** is a dual-range bar snug beneath the plot (above the horizontal strength slider), reading as a continuation of the in-plot X-band stripe. Beneath the plot is a read-only **X/Y force-response curve** — the same boxed read-out as Pull/Push (distance → force, one curve per axis, normalized to the stronger axis so the taller curve is the stiffer one) — with the **exp** slider beneath it (band falloff exponent: `1` linear/Hooke, higher = softer just outside the band and stiffer far out; mirrors the Pull tab's exponent). In Radial mode the same bands map to rings (uppermost innermost).
+- **Topological** — equation `F = strength × depthᵉˣᵖ × d` (`d` = distance to the focal point). A read-only **depth→pull curve** with labelled axes (x = depth, y = pull), then two sliders **beneath** the curve: **strength**, and **exp** (the contrast exponent that shapes `depth^exp` — `1` is linear, higher sharpens the tiering; named `exp` to match the Push/Pull exponent sliders). Focal point is the top in Cartesian, the centre in Radial; leaves (depth 0) stay put.
+
+The active body's tools stay shown but dim when its force switch is off. No numbers on the controls (consistent with Push/Pull). The Band X/Y strength sliders are capped tight (the defaults sit mid-range); the Topological strength range is extended for headroom.
 
 **DYNAMICS**
 
@@ -467,7 +476,7 @@ The equation-oriented grouping means each section is self-contained: the formula
 
 ### Simulation Controls
 
-Simulation controls live in the graph toolbar (see § Graph Toolbar Contents), not the control panel: **Play / Pause** toggles ticking, and **Reheat** re-energises the layout with a strong kick (high alpha) so a vigorous re-layout settles back on its own. There is no Reset button. The control panel itself holds only the force-shaping controls.
+Simulation controls live in the graph toolbar (see § Graph Toolbar Contents), not the control panel: **Play / Pause** toggles ticking, and **Reheat** re-energises the layout with a strong kick whose cooling rate scales with the kick, so a vigorous re-layout moves *further* but settles back in the same fixed window rather than lingering *longer*. There is no Reset button. The control panel itself holds only the force-shaping controls.
 
 ### Design Decisions
 
@@ -493,7 +502,7 @@ While a section is hovered, the canvas renders the matching overlay layer (drawn
 
 **Spring tension coloring** — Edges colored by their current tension state, drawn from the app palette so the highlight reads as part of the visualizer: teal (`--color-timer`) near rest length, amber (`--color-warning`) when stretched, blue (`--color-activity`) when compressed. When a specific spring is being tuned on the map (a token hovered or dragged), only that edge category is highlighted, drawn as a coloured **border** that preserves the edge's own identity colour rather than recolouring it; otherwise (hovering the PULL section as a whole) all edges are coloured by tension.
 
-**Hierarchical gravity overlay** — A faint vertical stripe between world `bandXMin` and `bandXMax` (with dashed edges) shows the X rest band; a horizontal stripe in each node type's colour shows that type's Y rest band. Inside either stripe a node feels no force on that axis; outside it the node is pulled toward the nearest edge. Hovering a single Y-band slider in the control panel highlights only that band and dims the others.
+**Gravity band overlay** — Shown when Band gravity is active, shaped by the mode. In **Cartesian**, a horizontal stripe in each node type's colour marks its Y rest band (median-centred to match the force), plus a dashed/filled vertical stripe for the global X band. In **Radial**, a concentric ring in each type's colour marks its target radius about the origin. Hovering a column in the band pseudo-plot highlights that type's stripe/ring and dims the others.
 
 ### When It's On
 
@@ -511,7 +520,7 @@ The control panel and canvas are linked: hovering a control section activates th
 |-----------------|-----------------|
 | **PUSH** | Charge field rings appear around all visible nodes |
 | **PULL** | Edges show tension colouring (teal/amber/blue). Hovering or dragging a spring-map token narrows this to just that edge category, drawn as a border. |
-| **GRAVITY** | Global X rest band (vertical stripe with dashed edges) plus per-type Y rest bands appear |
+| **GRAVITY** | Band rest regions appear — per-type Y stripes + the X band (Cartesian) or concentric rings (Radial). Hovering a band-plot column narrows the highlight to that type. |
 | **DYNAMICS** | No canvas response (dynamics are temporal, not spatial) |
 
 When the user stops hovering, the visualization fades.
@@ -522,7 +531,7 @@ Within the PUSH section, hovering an individual charge-map token (one per node t
 
 ### Per-Type Y-Band Highlighting
 
-Within the GRAVITY section, hovering a single Y-band slider highlights only that node type's stripe on the canvas (full opacity) and dims the rest. This makes it easy to see exactly where one type's rest band sits relative to the others while you're moving its handles.
+Within the GRAVITY section, hovering a node type's column in the band pseudo-plot highlights only that type's stripe (Cartesian) or ring (Radial) on the canvas at full opacity and dims the rest. This makes it easy to see exactly where one type's rest band sits relative to the others while you're dragging its dots.
 
 ### Principle
 

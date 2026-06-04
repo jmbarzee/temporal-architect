@@ -124,16 +124,22 @@ function resolveDepEndpoint(
   return ancestor ? [ancestor] : []
 }
 
-// Compute per-node downstream-reach scores over the visible dependency
-// subgraph, log-normalized to [0, 1] globally.
+// Compute per-node downstream-depth scores over the visible dependency
+// subgraph, linearly normalized to [0, 1] globally.
 //
-// "Downstream reach" = the number of distinct nodes reachable by following
-// outgoing `dependency` edges from the node (containment edges ignored).
-// Activities, namespaces, workers, services, and endpoints have no outgoing
-// dep edges by construction, so they always score 0. Only workflow and
-// nexusOperation can carry a non-zero score, and the top-reaching such node
-// anchors score = 1. Cycles are handled by the per-BFS visited set — the
-// score counts distinct reachable nodes, not path multiplicities.
+// "Downstream depth" = the number of call-levels in a node's subtree (BFS hops
+// to its deepest reachable leaf along outgoing `dependency` edges; containment
+// edges ignored). Only workflow and nexusOperation have outgoing dep edges, so
+// only they get a raw depth; the deepest such node anchors score = 1.
+//
+// That raw depth is then **propagated up the containment hierarchy** (via each
+// node's `parentId`): a container is scored at least as deep as anything it
+// hosts. Without this, a deep workflow gets a strong topological (root-ward)
+// pull while its own worker/namespace — which have no dep edges and would score
+// 0 — get none, so the workflow is dragged *above* its container, inverting the
+// tier order band gravity is trying to hold. Propagation keeps containers at or
+// above their contents, so the two gravities reinforce rather than fight.
+// Cycles are handled by the per-BFS visited set and the per-walk guard.
 //
 // The simulation consumes this map through `tick(visibleIds, downstreamScores)`
 // to apply the downstream-Y gravity force. The map is recomputed only when
@@ -153,35 +159,63 @@ function computeDownstreamScores(
     else adj.set(e.sourceId, [e.targetId])
   }
 
-  const counts = new Map<string, number>()
-  let maxCount = 0
+  // "Root-ness" = downstream depth: how many call-levels deep a node's subtree
+  // goes (BFS distance to its deepest reachable leaf). Unlike transitive reach
+  // count, depth is naturally tiered rather than combinatorially heavy-tailed,
+  // so a plain linear normalize spreads cleanly with no log compression — and it
+  // tracks "sits atop a deep call chain" better than "fans out to many leaves".
+  const depths = new Map<string, number>()
+  let maxDepth = 0
   for (const node of visibleNodes) {
-    const seen = new Set<string>()
-    const queue: string[] = [node.id]
-    while (queue.length > 0) {
-      const cur = queue.shift()!
-      const out = adj.get(cur)
-      if (!out) continue
-      for (const t of out) {
-        if (t === node.id || seen.has(t)) continue
-        seen.add(t)
-        queue.push(t)
+    const seen = new Set<string>([node.id])
+    let depth = 0
+    let frontier: string[] = [node.id]
+    while (frontier.length > 0) {
+      const next: string[] = []
+      for (const cur of frontier) {
+        const out = adj.get(cur)
+        if (!out) continue
+        for (const t of out) {
+          if (seen.has(t)) continue
+          seen.add(t)
+          next.push(t)
+        }
       }
+      if (next.length > 0) depth++
+      frontier = next
     }
-    const c = seen.size
-    counts.set(node.id, c)
-    if (c > maxCount) maxCount = c
+    depths.set(node.id, depth)
+    if (depth > maxDepth) maxDepth = depth
   }
 
   const scores = new Map<string, number>()
-  if (maxCount === 0) {
+  if (maxDepth === 0) {
     // No outgoing reach anywhere — every score is 0. Return an empty map
     // so the simulation's `score ?? 0` fallback short-circuits the loop.
     return scores
   }
-  const denom = Math.log(1 + maxCount)
-  for (const [id, c] of counts) {
-    scores.set(id, Math.log(1 + c) / denom)
+
+  // Propagate each node's raw depth up its containment chain so a container is
+  // scored at least as deep as anything it hosts (keeps tiers from inverting).
+  const byId = new Map(visibleNodes.map(n => [n.id, n]))
+  const effective = new Map<string, number>()
+  for (const node of visibleNodes) effective.set(node.id, depths.get(node.id) ?? 0)
+  for (const node of visibleNodes) {
+    const d = depths.get(node.id) ?? 0
+    if (d <= 0) continue
+    let pid = node.parentId
+    const guard = new Set<string>()
+    while (pid && !guard.has(pid)) {
+      guard.add(pid)
+      // Ancestor already at least this deep ⇒ so are its own ancestors. Stop.
+      if ((effective.get(pid) ?? 0) >= d) break
+      effective.set(pid, d)
+      pid = byId.get(pid)?.parentId
+    }
+  }
+
+  for (const [id, d] of effective) {
+    scores.set(id, d / maxDepth)
   }
   return scores
 }
@@ -737,6 +771,19 @@ export function GraphView({
     setRunning(true)
   }, [])
 
+  // Non-numeric gravity edits (mode, Band/Topological toggles). These relocate
+  // nodes (e.g. tiers <-> rings), so reheat harder than a slider nudge to let
+  // the layout re-settle.
+  const handleGravityChange = React.useCallback((partial: Partial<ForceParams>) => {
+    setForceParams(prev => {
+      const next = { ...prev, ...partial }
+      simRef.current?.setParams(next)
+      return next
+    })
+    simRef.current?.reheat(0.6)
+    setRunning(true)
+  }, [])
+
   // Node drag handlers
   const handleNodeDragStart = React.useCallback((id: string, wx: number, wy: number) => {
     dragNodeRef.current = id
@@ -791,11 +838,11 @@ export function GraphView({
     }
   }, [running])
 
-  // Reheat with a strong kick (10× the old reheat). Force magnitude scales
-  // with alpha, so a high alpha drives a vigorous re-layout that settles back
-  // down on its own; the per-tick velocity clamp keeps it stable.
+  // Reheat with a strong kick. `reheat()` now scales its cooling rate to the
+  // kick, so a large alpha rearranges the layout *further* without dragging the
+  // settle out *longer* — it lands back at rest in the same fixed window.
   const handleReheat = React.useCallback(() => {
-    simRef.current?.reheat(10)
+    simRef.current?.reheat(2)
     setRunning(true)
   }, [])
 
@@ -1239,6 +1286,7 @@ export function GraphView({
         params={forceParams}
         onParamChange={handleParamChange}
         onAdjust={handleForceAdjust}
+        onGravityChange={handleGravityChange}
         onActiveSection={setActiveSection}
         onActiveChargeType={setActiveChargeType}
         onActiveGravityType={setActiveGravityType}

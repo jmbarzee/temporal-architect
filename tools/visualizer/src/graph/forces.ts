@@ -291,58 +291,158 @@ export function applyLinkForce(
   }
 }
 
-// Hierarchical band gravity. Both axes are anchored to a band with no force
-// inside and a pull toward the nearest edge outside — Y is per-type (the
-// vertical hierarchy of node levels), X is global (keeps things from drifting
-// off-screen). Anchoring world coordinates this way removes the need for any
-// canvas-side centre-of-mass compensation.
+// Radius range the bands map onto in radial mode (uppermost tier innermost).
+// Exported so the canvas can draw matching ring guides.
+export const RADIAL_R_MIN = 60
+export const RADIAL_R_MAX = 540
+
+// Median of the band centres of the node types present in `active`. Subtracting
+// it keeps the band stack symmetric about the origin, so editing or toggling
+// bands doesn't shift the whole graph vertically (and it shares the origin with
+// center gravity, so swapping forces doesn't lurch the layout).
+function medianBandCenter(active: SimNode[], params: GravityParams): number {
+  const seen = new Set<NodeType>()
+  const centers: number[] = []
+  for (const n of active) {
+    if (seen.has(n.nodeType)) continue
+    seen.add(n.nodeType)
+    const b = bandForType(params, n.nodeType)
+    centers.push((b.yMin + b.yMax) / 2)
+  }
+  if (centers.length === 0) return 0
+  centers.sort((a, b) => a - b)
+  const m = centers.length
+  return m % 2 ? centers[(m - 1) / 2] : (centers[m / 2 - 1] + centers[m / 2]) / 2
+}
+
+// Hierarchical band gravity. Each node type has a rest band that exerts no force
+// inside and pulls toward the nearest edge outside. The mode decides geometry:
+//   cartesian — the band is a vertical [yMin, yMax] window (the hierarchy reads
+//               top-to-bottom); a global X band keeps the spread bounded. The
+//               whole stack is re-centred on the origin each tick (median).
+//   radial    — the band maps to a distance-from-origin ring (uppermost tier
+//               innermost); angular spread is left to charge.
 export function applyBandGravity(active: SimNode[], params: GravityParams, alpha: number): void {
+  if (params.gravityMode === 'radial') {
+    applyBandGravityRadial(active, params, alpha)
+    return
+  }
+
   const gx = params.gravityX
   const gy = params.gravityY
+  const exp = params.gravityBandExp
   const xMin = params.bandXMin
   const xMax = params.bandXMax
+  const center = medianBandCenter(active, params)
   for (const node of active) {
     if (node.pinned) continue
     let xTarget: number | null = null
     if (node.x < xMin) xTarget = xMin
     else if (node.x > xMax) xTarget = xMax
     if (xTarget !== null) {
-      node.vx -= (node.x - xTarget) * alpha * gx
+      node.vx -= bandForce(node.x - xTarget, exp) * alpha * gx
     }
+    // Band shifted so the stack is centred on the origin.
     const band = bandForType(params, node.nodeType)
+    const yMin = band.yMin - center
+    const yMax = band.yMax - center
     let yTarget: number | null = null
-    if (node.y < band.yMin) yTarget = band.yMin
-    else if (node.y > band.yMax) yTarget = band.yMax
+    if (node.y < yMin) yTarget = yMin
+    else if (node.y > yMax) yTarget = yMax
     if (yTarget !== null) {
-      node.vy -= (node.y - yTarget) * alpha * gy
+      node.vy -= bandForce(node.y - yTarget, exp) * alpha * gy
     }
   }
 }
 
-// Downstream-Y gravity. Optional, off by default. Pulls each node toward a
-// target Y derived from its downstream-reach score, with high-reach nodes
-// (workflows / nexusOperations near the root of the call graph) floating
-// upward into the tier above their own band.
-//
-//   targetY = bandMin - score * bandHeight
-//     score = 0 → top edge of own band → no displacement
-//     score = 1 → one band-height above own band → lifted into next tier
-//
-// Layered additively on top of the per-type band gravity.
-export function applyDownstreamGravity(
+// Restoring force for the band springs: magnitude |d|^exp, signed toward the
+// band (exp = 1 is the linear/Hooke spring; exp > 1 is soft just outside the
+// band and stiff far out). Shared by both axes and the radial ring pull.
+function bandForce(d: number, exp: number): number {
+  return Math.sign(d) * Math.pow(Math.abs(d), exp)
+}
+
+// Radial band gravity: map each present type's band centre to a target radius
+// (smallest centre = innermost ring) and pull each node's distance-from-origin
+// toward its type's ring. Charge handles distributing nodes around the ring.
+function applyBandGravityRadial(active: SimNode[], params: GravityParams, alpha: number): void {
+  const gy = params.gravityY
+  const center = new Map<NodeType, number>()
+  for (const n of active) {
+    if (center.has(n.nodeType)) continue
+    const b = bandForType(params, n.nodeType)
+    center.set(n.nodeType, (b.yMin + b.yMax) / 2)
+  }
+  if (center.size === 0) return
+  const centers = [...center.values()]
+  const lo = Math.min(...centers)
+  const span = Math.max(...centers) - lo || 1
+  for (const node of active) {
+    if (node.pinned) continue
+    const c = center.get(node.nodeType)
+    if (c === undefined) continue
+    const targetR = RADIAL_R_MIN + ((c - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)
+    const r = Math.hypot(node.x, node.y)
+    if (r < 1e-6) {
+      // No defined direction at the origin — give a tiny outward kick so the
+      // ring pull has something to act on next tick.
+      node.vx += (Math.random() - 0.5)
+      node.vy += (Math.random() - 0.5)
+      continue
+    }
+    const f = bandForce(r - targetR, params.gravityBandExp)
+    node.vx -= (node.x / r) * f * alpha * gy
+    node.vy -= (node.y / r) * f * alpha * gy
+  }
+}
+
+// Topological gravity. A single-sided inward pull whose strength scales with a
+// node's downstream-depth score, drawing the orchestrators atop deep call chains
+// toward the focal point while leaving leaves (score 0) untouched —
+// charge handles spreading those outward. Origin-relative, so it is independent
+// of the band layout. In the (current) cartesian interpretation the focal point
+// is "up", toward the top of the world; the radial interpretation (focal =
+// origin) lands with the radial gravity mode.
+const TOPOLOGICAL_FOCAL_Y = -350
+
+export function applyTopologicalGravity(
   active: SimNode[],
   params: GravityParams,
   alpha: number,
-  downstreamScores?: Map<string, number>,
+  scores?: Map<string, number>,
 ): void {
-  const gd = params.gravityDownstream
-  if (gd <= 0 || !downstreamScores) return
+  const gt = params.gravityDownstream
+  if (gt <= 0 || !scores) return
+  const exp = params.gravityTopologicalExp
+  const radial = params.gravityMode === 'radial'
   for (const node of active) {
     if (node.pinned) continue
-    const score = downstreamScores.get(node.id) ?? 0
+    const score = scores.get(node.id) ?? 0
     if (score <= 0) continue
-    const band = bandForType(params, node.nodeType)
-    const targetY = band.yMin - score * (band.yMax - band.yMin)
-    node.vy -= (node.y - targetY) * alpha * gd
+    // Shape the depth score so the deepest roots dominate (score^exp keeps the
+    // deepest root at full pull while mid/low scores fall off fast). Leaves
+    // (score 0) feel nothing — charge spreads those outward.
+    const weight = Math.pow(score, exp)
+    if (radial) {
+      // Focal point is the origin: well-connected nodes pulled inward.
+      node.vx -= node.x * alpha * gt * weight
+      node.vy -= node.y * alpha * gt * weight
+    } else {
+      // Focal point is "up" toward the top of the world.
+      node.vy -= (node.y - TOPOLOGICAL_FOCAL_Y) * alpha * gt * weight
+    }
+  }
+}
+
+// Center gravity. A radial pull toward the world origin — the standard cohesion
+// force for force-directed charts. It is the baseline anchor when neither band
+// nor topological gravity is shaping the layout; off (strength 0) by default.
+export function applyCenterGravity(active: SimNode[], params: GravityParams, alpha: number): void {
+  const gc = params.gravityCenter
+  if (gc <= 0) return
+  for (const node of active) {
+    if (node.pinned) continue
+    node.vx -= node.x * alpha * gc
+    node.vy -= node.y * alpha * gc
   }
 }
