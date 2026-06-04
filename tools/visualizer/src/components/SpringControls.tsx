@@ -12,6 +12,7 @@ import type { NodeType } from '../graph/model'
 import { NODE_TYPE_REGISTRY } from '../graph/node-types'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
+import { ALL_EDGE_TYPES } from '../graph/edge-types'
 
 // Shared k / rest ranges. The map plots every edge category on these common
 // axes so their relative stiffness / length is directly comparable.
@@ -35,53 +36,19 @@ export interface PullEdgeDef {
   tooltip: string
 }
 
-// One entry per edge category. `kKey` doubles as the category's stable id (used
-// to link hover across the map, the curves, and the canvas active-edge
-// highlight). Order is irrelevant — the map positions tokens by value.
-export const PULL_EDGES: PullEdgeDef[] = [
-  { label: 'NS↔NS', kKey: 'linkNsToNs', restKey: 'distNsToNs',
-    sourceType: 'namespace', targetType: 'namespace', edgeType: 'dependency',
-    tooltip: 'Namespace ↔ Namespace dependency' },
-  { label: 'NS↔Wk', kKey: 'linkNsToWorker', restKey: 'distNsToWorker',
-    sourceType: 'namespace', targetType: 'worker', edgeType: 'containment',
-    tooltip: 'Namespace ↔ Worker containment' },
-  { label: 'Wk↔Wk', kKey: 'linkWorkerToWorker', restKey: 'distWorkerToWorker',
-    sourceType: 'worker', targetType: 'worker', edgeType: 'dependency',
-    tooltip: 'Worker ↔ Worker dependency' },
-  { label: 'Wk↔Wf', kKey: 'linkWorkerToWorkflow', restKey: 'distWorkerToWorkflow',
-    sourceType: 'worker', targetType: 'workflow', edgeType: 'containment',
-    tooltip: 'Worker ↔ Workflow containment' },
-  { label: 'Wk↔Act', kKey: 'linkWorkerToActivity', restKey: 'distWorkerToActivity',
-    sourceType: 'worker', targetType: 'activity', edgeType: 'containment',
-    tooltip: 'Worker ↔ Activity containment' },
-  { label: 'Wk↔Nx', kKey: 'linkWorkerToNexus', restKey: 'distWorkerToNexus',
-    sourceType: 'worker', targetType: 'nexusService', edgeType: 'containment',
-    tooltip: 'Worker ↔ Nexus service containment' },
-  { label: 'Nx↔Op', kKey: 'linkNexusToOperation', restKey: 'distNexusToOperation',
-    sourceType: 'nexusService', targetType: 'nexusOperation', edgeType: 'containment',
-    tooltip: 'Nexus service ↔ Nexus operation containment' },
-  { label: 'Ep↔NS', kKey: 'linkEndpointToNamespace', restKey: 'distEndpointToNamespace',
-    sourceType: 'nexusEndpoint', targetType: 'namespace', edgeType: 'containment',
-    tooltip: 'Nexus endpoint ↔ Namespace containment' },
-  { label: 'Wf↔Wf', kKey: 'linkWorkflowToWorkflow', restKey: 'distWorkflowToWorkflow',
-    sourceType: 'workflow', targetType: 'workflow', edgeType: 'dependency',
-    tooltip: 'Workflow ↔ Workflow dependency' },
-  { label: 'Wf↔Act', kKey: 'linkWorkflowToActivity', restKey: 'distWorkflowToActivity',
-    sourceType: 'workflow', targetType: 'activity', edgeType: 'dependency',
-    tooltip: 'Workflow ↔ Activity dependency' },
-  { label: 'Wf→Op', kKey: 'linkWorkflowToOperation', restKey: 'distWorkflowToOperation',
-    sourceType: 'workflow', targetType: 'nexusOperation', edgeType: 'dependency',
-    tooltip: 'Workflow → Nexus operation (the nexus call)' },
-  { label: 'Op→Wf', kKey: 'linkOperationToWorkflow', restKey: 'distOperationToWorkflow',
-    sourceType: 'nexusOperation', targetType: 'workflow', edgeType: 'dependency',
-    tooltip: 'Nexus operation → Workflow (backing workflow / sync-op call)' },
-  { label: 'Op↔Act', kKey: 'linkOperationToActivity', restKey: 'distOperationToActivity',
-    sourceType: 'nexusOperation', targetType: 'activity', edgeType: 'dependency',
-    tooltip: 'Nexus operation ↔ Activity dependency (sync-op body call)' },
-  { label: 'Ep↔Op', kKey: 'linkEndpointToOperation', restKey: 'distEndpointToOperation',
-    sourceType: 'nexusEndpoint', targetType: 'nexusOperation', edgeType: 'containment',
-    tooltip: 'Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)' },
-]
+// One entry per edge category, derived from the central edge-type registry.
+// `kKey` doubles as the category's stable id (used to link hover across the map,
+// the curves, and the canvas active-edge highlight). Order is irrelevant — the
+// map positions tokens by value.
+export const PULL_EDGES: PullEdgeDef[] = ALL_EDGE_TYPES.map(e => ({
+  label: e.label,
+  kKey: e.linkKey,
+  restKey: e.distKey,
+  sourceType: e.sourceType,
+  targetType: e.targetType,
+  edgeType: e.category,
+  tooltip: e.tooltip,
+}))
 
 // Theme-aware fill for a node type. mountNodeTypeStyles() emits --color-<suffix>
 // with a dark-theme override, so this stays correct across themes.

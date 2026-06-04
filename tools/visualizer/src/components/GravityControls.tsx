@@ -10,23 +10,18 @@ import React from 'react'
 import type { ForceParams } from '../graph/simulation'
 import { BAND_MIN_KEY, BAND_MAX_KEY } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
-import { NODE_TYPE_REGISTRY } from '../graph/node-types'
+import { NODE_TYPE_REGISTRY, MAIN_LADDER, NEXUS_LADDER, sliderLabelFor } from '../graph/node-types'
 import { ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES, type CurveItem } from './ForceMap'
 import { Plot } from './controls/Plot'
 import { Slider } from './controls/Slider'
 import { Equation } from './controls/Equation'
 import { FormulaValue } from './controls/PopContext'
 
-// Column order: main ladder first, then the nexus ladder (after a gap).
-const COL_ORDER: NodeType[] = [
-  'namespace', 'worker', 'workflow', 'activity',
-  'nexusEndpoint', 'nexusService', 'nexusOperation',
-]
-const MAIN_COUNT = 4
-const ABBREV: Record<NodeType, string> = {
-  namespace: 'NS', worker: 'Wk', workflow: 'Wf', activity: 'Act',
-  nexusEndpoint: 'Ep', nexusService: 'Nx', nexusOperation: 'Op',
-}
+// Column order: main ladder first, then the nexus ladder (after a gap). Both
+// derived from the node-type registry (family + tier) so a registry change
+// reflows the columns. Labels reuse the shared sliderLabelFor (no local copy).
+const COL_ORDER: NodeType[] = [...MAIN_LADDER, ...NEXUS_LADDER]
+const MAIN_COUNT = MAIN_LADDER.length
 
 function typeColor(t: NodeType): string {
   return `var(--color-${NODE_TYPE_REGISTRY[t].color.cssVarSuffix})`
@@ -194,7 +189,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
               onPointerEnter={() => onHoverType(t)}
               onPointerLeave={() => { if (!dragRef.current) onHoverType(null) }}
             >
-              <text x={x} y={PT - 6} textAnchor="middle" className="gravity-band-label" style={{ fill: color }}>{ABBREV[t]}</text>
+              <text x={x} y={PT - 6} textAnchor="middle" className="gravity-band-label" style={{ fill: color }}>{sliderLabelFor(t)}</text>
               <line x1={x} y1={PT} x2={x} y2={PB} className="gravity-band-track" />
               <line x1={x} y1={yTop} x2={x} y2={yBot} stroke={color} className="gravity-band-stem" />
               <circle

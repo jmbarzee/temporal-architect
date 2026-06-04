@@ -305,6 +305,20 @@ export const ALL_NODE_TYPES: NodeType[] = [
   'activity',
 ]
 
+// Per-ladder, top-to-bottom ordering, derived from each type's tier. Consumers
+// that lay types out by family + hierarchy (e.g. the gravity band plot's columns)
+// read these instead of hardcoding the order, so a registry change reflows them.
+const TIER_RANK: Record<NodeTypeDefinition['tier'], number> = {
+  container: 0, host: 1, orchestrator: 2, leaf: 3,
+}
+const byTier = (a: NodeType, b: NodeType) =>
+  TIER_RANK[NODE_TYPE_REGISTRY[a].tier] - TIER_RANK[NODE_TYPE_REGISTRY[b].tier]
+
+/** Main deployment ladder (namespace → worker → workflow → activity), tier-ordered. */
+export const MAIN_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REGISTRY[t].ladder === 'main').sort(byTier)
+/** Nexus ladder (endpoint → service → operation), tier-ordered. */
+export const NEXUS_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REGISTRY[t].ladder === 'nexus').sort(byTier)
+
 /** Look up the registry entry for a node type. */
 export function definitionFor(t: NodeType): NodeTypeDefinition {
   return NODE_TYPE_REGISTRY[t]

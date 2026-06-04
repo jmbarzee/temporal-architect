@@ -13,6 +13,7 @@
 
 import type { NodeType, GraphEdge } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
+import { edgeTypeFor } from './edge-types'
 
 // ── Per-type / per-edge lookups ─────────────────────────────────────────────
 //
@@ -95,80 +96,16 @@ interface EdgeCategory {
   key: keyof LinkParams
 }
 
-// Categorize an edge by its endpoint node types. Containment edges typically
-// have a Worker (L2) on one side, but with services living at L2 and
-// operations at L3 there are two intra/cross-level cases that need their
-// own springs: Worker ↔ Service (L2↔L2 hosting) and Service ↔ Operation
-// (L3↔L2 nesting). Dependency edges live within or across levels and
-// stratify by the endpoint types so deep call chains get gentler springs.
+// Categorize an edge into its spring parameters. The taxonomy + prioritized
+// matching rules live in the edge-type registry (edge-types.ts, edgeTypeFor);
+// here we just read the live param values for the resolved category.
 export function edgeCategory(params: LinkParams, edge: GraphEdge): EdgeCategory {
-  const src = edge.sourceNodeType
-  const tgt = edge.targetNodeType
-
-  // Unordered endpoint-type test, so each branch matches an edge in either
-  // direction without spelling out both orderings.
-  const has = (a: NodeType, b: NodeType) =>
-    (src === a && tgt === b) || (src === b && tgt === a)
-
-  if (edge.edgeType === 'containment') {
-    // NexusOperation ↔ NexusEndpoint composition edge (the endpoint that
-    // fronts the operation — its second "parent").
-    if (has('nexusOperation', 'nexusEndpoint')) {
-      return { strength: params.linkEndpointToOperation, distance: params.distEndpointToOperation, key: 'linkEndpointToOperation' }
-    }
-    // NexusService ↔ NexusOperation (operation nested under its service).
-    if (has('nexusOperation', 'nexusService')) {
-      return { strength: params.linkNexusToOperation, distance: params.distNexusToOperation, key: 'linkNexusToOperation' }
-    }
-    // Worker ↔ NexusService (peer L2 nodes; service is hosted on a worker).
-    if (has('worker', 'nexusService')) {
-      return { strength: params.linkWorkerToNexus, distance: params.distWorkerToNexus, key: 'linkWorkerToNexus' }
-    }
-    // NexusEndpoint ↔ Namespace (endpoints declared inside a namespace).
-    if (has('nexusEndpoint', 'namespace')) {
-      return { strength: params.linkEndpointToNamespace, distance: params.distEndpointToNamespace, key: 'linkEndpointToNamespace' }
-    }
-    // L3/L4 → Worker (build.ts always emits the child as source).
-    if (src === 'workflow' || tgt === 'workflow') {
-      return { strength: params.linkWorkerToWorkflow, distance: params.distWorkerToWorkflow, key: 'linkWorkerToWorkflow' }
-    }
-    if (src === 'activity' || tgt === 'activity') {
-      return { strength: params.linkWorkerToActivity, distance: params.distWorkerToActivity, key: 'linkWorkerToActivity' }
-    }
-    // Worker → Namespace.
-    return { strength: params.linkNsToWorker, distance: params.distNsToWorker, key: 'linkNsToWorker' }
+  const def = edgeTypeFor(edge)
+  return {
+    strength: params[def.linkKey] as number,
+    distance: params[def.distKey] as number,
+    key: def.linkKey,
   }
-
-  // Dependency
-  if (src === 'namespace' || tgt === 'namespace') {
-    return { strength: params.linkNsToNs, distance: params.distNsToNs, key: 'linkNsToNs' }
-  }
-  if (src === 'worker' || tgt === 'worker') {
-    return { strength: params.linkWorkerToWorker, distance: params.distWorkerToWorker, key: 'linkWorkerToWorker' }
-  }
-  // L3↔L3 dependency, nexus-aware and direction-sensitive for the
-  // workflow/operation pair — the two directions mean different things:
-  //   Workflow → Operation : a workflow makes a nexus call.
-  //   Operation → Workflow : an operation delegates to a backing workflow
-  //                          (async) or calls one from a sync-op body.
-  // Operation → Operation (rare) folds into the nexus-call spring.
-  if (src === 'workflow' && tgt === 'nexusOperation') {
-    return { strength: params.linkWorkflowToOperation, distance: params.distWorkflowToOperation, key: 'linkWorkflowToOperation' }
-  }
-  if (src === 'nexusOperation' && tgt === 'workflow') {
-    return { strength: params.linkOperationToWorkflow, distance: params.distOperationToWorkflow, key: 'linkOperationToWorkflow' }
-  }
-  if (has('nexusOperation', 'nexusOperation')) {
-    return { strength: params.linkWorkflowToOperation, distance: params.distWorkflowToOperation, key: 'linkWorkflowToOperation' }
-  }
-  if (has('nexusOperation', 'activity')) {
-    return { strength: params.linkOperationToActivity, distance: params.distOperationToActivity, key: 'linkOperationToActivity' }
-  }
-  if (has('workflow', 'workflow')) {
-    return { strength: params.linkWorkflowToWorkflow, distance: params.distWorkflowToWorkflow, key: 'linkWorkflowToWorkflow' }
-  }
-  // Wf↔Act (in either direction) — the remaining L3/L4 dependency edge type.
-  return { strength: params.linkWorkflowToActivity, distance: params.distWorkflowToActivity, key: 'linkWorkflowToActivity' }
 }
 
 // ── Coordinate adapter (for the upcoming radial gravity mode) ────────────────

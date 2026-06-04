@@ -3,6 +3,7 @@
 
 import type { GraphNode, GraphEdge, Graph } from './model'
 import { NODE_TYPE_REGISTRY } from './node-types'
+import { EDGE_TYPE_REGISTRY } from './edge-types'
 import {
   applyChargeForce,
   applyLinkForce,
@@ -235,40 +236,38 @@ export const DEFAULT_PARAMS: ForceParams = {
   coreRadiusNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.coreRadius,
   coreRadiusActivity:       NODE_TYPE_REGISTRY.activity.physics.coreRadius,
 
-  // Spring strengths (k = stiffness). These are the spring-map default token
-  // positions on the stiffness axis — hand-placed via the control panel.
-  linkNsToNs:             0.25,
-  linkNsToWorker:         0.30,
-  linkWorkerToWorker:     0.30,
-  linkWorkerToWorkflow:   0.55,
-  linkWorkerToActivity:   0.35,
-  linkWorkerToNexus:      1.25,
-  linkNexusToOperation:   1.40,
-  linkWorkflowToWorkflow: 0.50,
-  linkWorkflowToActivity: 1.90,
-  linkEndpointToNamespace: 1.00,
-  linkEndpointToOperation: 1.50,
-  linkWorkflowToOperation: 1.50,
-  linkOperationToWorkflow: 1.55,
-  linkOperationToActivity: 1.40,
+  // Spring strengths (k = stiffness) and rest distances (length). The default
+  // token positions are sourced from the edge-type registry (one entry per
+  // category owns both its stiffness and length default).
+  linkNsToNs:              EDGE_TYPE_REGISTRY.linkNsToNs.physics.strength,
+  linkNsToWorker:          EDGE_TYPE_REGISTRY.linkNsToWorker.physics.strength,
+  linkWorkerToWorker:      EDGE_TYPE_REGISTRY.linkWorkerToWorker.physics.strength,
+  linkWorkerToWorkflow:    EDGE_TYPE_REGISTRY.linkWorkerToWorkflow.physics.strength,
+  linkWorkerToActivity:    EDGE_TYPE_REGISTRY.linkWorkerToActivity.physics.strength,
+  linkWorkerToNexus:       EDGE_TYPE_REGISTRY.linkWorkerToNexus.physics.strength,
+  linkNexusToOperation:    EDGE_TYPE_REGISTRY.linkNexusToOperation.physics.strength,
+  linkWorkflowToWorkflow:  EDGE_TYPE_REGISTRY.linkWorkflowToWorkflow.physics.strength,
+  linkWorkflowToActivity:  EDGE_TYPE_REGISTRY.linkWorkflowToActivity.physics.strength,
+  linkEndpointToNamespace: EDGE_TYPE_REGISTRY.linkEndpointToNamespace.physics.strength,
+  linkEndpointToOperation: EDGE_TYPE_REGISTRY.linkEndpointToOperation.physics.strength,
+  linkWorkflowToOperation: EDGE_TYPE_REGISTRY.linkWorkflowToOperation.physics.strength,
+  linkOperationToWorkflow: EDGE_TYPE_REGISTRY.linkOperationToWorkflow.physics.strength,
+  linkOperationToActivity: EDGE_TYPE_REGISTRY.linkOperationToActivity.physics.strength,
 
-  // Rest distances (length). Spring-map default token positions on the length
-  // axis — hand-placed via the control panel. The panel's `length ×` master
-  // multiplies these at simulation time.
-  distNsToNs:             870,
-  distNsToWorker:         800,
-  distWorkerToWorker:     720,
-  distWorkerToWorkflow:   190,
-  distWorkerToActivity:   210,
-  distWorkerToNexus:      430,
-  distNexusToOperation:   600,
-  distWorkflowToWorkflow: 420,
-  distWorkflowToActivity:  40,
-  distEndpointToNamespace: 690,
-  distEndpointToOperation: 470,
-  distWorkflowToOperation: 330,
-  distOperationToWorkflow: 360,
-  distOperationToActivity: 300,
+  distNsToNs:              EDGE_TYPE_REGISTRY.linkNsToNs.physics.distance,
+  distNsToWorker:          EDGE_TYPE_REGISTRY.linkNsToWorker.physics.distance,
+  distWorkerToWorker:      EDGE_TYPE_REGISTRY.linkWorkerToWorker.physics.distance,
+  distWorkerToWorkflow:    EDGE_TYPE_REGISTRY.linkWorkerToWorkflow.physics.distance,
+  distWorkerToActivity:    EDGE_TYPE_REGISTRY.linkWorkerToActivity.physics.distance,
+  distWorkerToNexus:       EDGE_TYPE_REGISTRY.linkWorkerToNexus.physics.distance,
+  distNexusToOperation:    EDGE_TYPE_REGISTRY.linkNexusToOperation.physics.distance,
+  distWorkflowToWorkflow:  EDGE_TYPE_REGISTRY.linkWorkflowToWorkflow.physics.distance,
+  distWorkflowToActivity:  EDGE_TYPE_REGISTRY.linkWorkflowToActivity.physics.distance,
+  distEndpointToNamespace: EDGE_TYPE_REGISTRY.linkEndpointToNamespace.physics.distance,
+  distEndpointToOperation: EDGE_TYPE_REGISTRY.linkEndpointToOperation.physics.distance,
+  distWorkflowToOperation: EDGE_TYPE_REGISTRY.linkWorkflowToOperation.physics.distance,
+  distOperationToWorkflow: EDGE_TYPE_REGISTRY.linkOperationToWorkflow.physics.distance,
+  distOperationToActivity: EDGE_TYPE_REGISTRY.linkOperationToActivity.physics.distance,
 
   // Hierarchical gravity. Y bands carry the vertical structure of the
   // layout — strong (gravityY = 0.145) and overlapping at the edges so
