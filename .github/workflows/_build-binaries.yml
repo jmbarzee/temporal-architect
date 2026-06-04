@@ -64,7 +64,7 @@ jobs:
           make build-extension
 
       - name: Package platform VSIX
-        run: make package-platform VSCE_TARGET=${{ matrix.vsce_target }} GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
+        run: make package-platform VSCE_TARGET=${{ matrix.vsce_target }} GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} VERSION=${{ inputs.version }}
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4

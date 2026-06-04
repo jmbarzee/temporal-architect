@@ -6,6 +6,14 @@ GOARCH ?= $(shell go env GOARCH)
 
 EXT_DIR := packages/vscode
 
+# Version stamped into the twf binary (printed by `twf version`). Release/CI
+# builds pass VERSION explicitly; local dev builds fall back to `git describe`,
+# then "dev". A leading "v" is stripped so the value matches package versions.
+TWF_VERSION := $(patsubst v%,%,$(VERSION))
+ifeq ($(strip $(TWF_VERSION)),)
+TWF_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+endif
+
 # All supported platforms (for package-all / CI release only)
 # Format: VSCE_TARGET:GOOS:GOARCH
 PLATFORMS := \
@@ -35,8 +43,8 @@ build-lsp:
 	@mkdir -p $(EXT_DIR)/bin
 	cd tools/lsp && \
 		GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 \
-		go build -o ../../$(EXT_DIR)/bin/twf$(if $(filter windows,$(GOOS)),.exe) ./cmd/twf
-	@echo "Built twf for $(GOOS)/$(GOARCH)"
+		go build -ldflags "-X main.version=$(TWF_VERSION)" -o ../../$(EXT_DIR)/bin/twf$(if $(filter windows,$(GOOS)),.exe) ./cmd/twf
+	@echo "Built twf $(TWF_VERSION) for $(GOOS)/$(GOARCH)"
 
 ## Package the twf binary into a standalone archive for release.
 ## VERSION may be passed with or without a leading "v"; the archive is always
