@@ -137,11 +137,13 @@ export function SpringMap({ params, onParamChange, hoveredEdge, onHoverEdge }: S
         value: params.distanceMultiplier, min: 0.05, max: 3, step: 0.05,
         onChange: v => onParamChange('distanceMultiplier', v),
         title: 'Scale every spring’s rest length', ariaLabel: 'Scale all length',
+        popId: 'distanceMultiplier',
       }}
       ySlider={{
         value: params.pullMultiplier, min: 0, max: 3, step: 0.1,
         onChange: v => onParamChange('pullMultiplier', v),
         title: 'Scale every spring’s stiffness', ariaLabel: 'Scale all stiffness',
+        popId: 'pullMultiplier',
       }}
     />
   )
@@ -168,7 +170,7 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
   const dist = params.distanceMultiplier
   const exp = params.linkExponent
 
-  const curves = React.useMemo<CurveItem[]>(() => {
+  const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
     const restEffs = PULL_EDGES.map(e => (params[e.restKey] as number) * dist)
     const dMax = Math.max(60, Math.max(...restEffs) * 2.2)
 
@@ -193,17 +195,19 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
     // clips at the bottom (intentional crop).
     const yFor = (v: number) => clamp(ZERO_Y - (v / norm) * ampH, 0, CURVE_H)
 
-    return sampled.map(({ edge, restEff, pts }) => ({
+    const built = sampled.map(({ edge, restEff, pts }) => ({
       id: edge.kKey as string,
       color: typeColor(edge.sourceType),
       markerX: xFor(restEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
+    return { curves: built, dMax }
   }, [params, pull, dist, exp])
 
   return (
     <ForceCurves
       curves={curves}
+      xMax={dMax}
       baselineY={ZERO_Y}
       hoveredId={hoveredEdge}
       onHover={onHoverEdge}
@@ -214,6 +218,7 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
         value: exp, min: 0.5, max: 3, step: 0.1,
         onChange: v => onParamChange('linkExponent', v),
         title: 'Power of displacement in the spring force. 1 = linear (Hooke); higher = softer near rest, stiffer far out.',
+        popId: 'linkExponent',
       }}
     />
   )

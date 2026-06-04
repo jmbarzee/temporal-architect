@@ -484,7 +484,11 @@ Simulation controls live in the graph toolbar (see § Graph Toolbar Contents), n
 
 **Controls are live.** Editing any control immediately affects the running simulation. Each control shows its current value.
 
-**Help popover.** A `?` button in the panel header reveals a reference showing the force equations and a brief tuning guide (e.g., "if nodes overlap, increase push or charge; if oscillating, increase friction or cooling").
+**Equation as a card.** Each section's governing equation renders in an unassuming bordered/tinted card above the controls, so it reads as a distinct band rather than floating text.
+
+**Formula-hover pops the matching control.** Hovering a value token in an equation (e.g. `stiffness`, `length`, `exp`, `charge`, `strength`) emphasizes the corresponding **global** slider (the axis "scale all", `exp`, or `strength` knobs — not the per-token plot positions) with an accent halo, so the link between a symbol and its knob is discoverable at a glance. (Replaces the old `?` help popover, which has been removed.)
+
+**Adaptive curve gridlines.** The force-response curves (the Graph) draw light value-anchored vertical gridlines at a "nice" step. Because the curves' x-domain grows/shrinks as parameters change, the gridlines visibly re-space (the step jumps to keep ~6 divisions), signalling that the scale changed.
 
 **Future:** Named presets (e.g., "Tight clusters", "Spread out") that animate sliders to known-good values.
 

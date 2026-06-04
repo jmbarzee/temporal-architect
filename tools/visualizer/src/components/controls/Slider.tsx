@@ -9,6 +9,8 @@
 // (width 100% horizontal, height 100% vertical), so a grid cell or flex row
 // positions it. The two-handle band slider is a separate primitive (DualRange).
 
+import { usePop } from './PopContext'
+
 export interface SliderProps {
   value: number
   min: number
@@ -30,7 +32,11 @@ export function Slider({
   value, min, max, step, onChange,
   orientation = 'horizontal', title, ariaLabel, className, popId,
 }: SliderProps) {
-  const cls = `ctl-slider ctl-slider-${orientation === 'vertical' ? 'v' : 'h'}${className ? ' ' + className : ''}`
+  const { popped } = usePop()
+  const isPopped = popId !== undefined && popped === popId
+  const cls = `ctl-slider ctl-slider-${orientation === 'vertical' ? 'v' : 'h'}`
+    + (isPopped ? ' ctl-slider-popped' : '')
+    + (className ? ' ' + className : '')
   return (
     <input
       type="range"

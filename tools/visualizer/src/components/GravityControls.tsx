@@ -15,6 +15,7 @@ import { ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES, type CurveItem } from './
 import { Plot } from './controls/Plot'
 import { Slider } from './controls/Slider'
 import { Equation } from './controls/Equation'
+import { FormulaValue } from './controls/PopContext'
 
 // Column order: main ladder first, then the nexus ladder (after a gap).
 const COL_ORDER: NodeType[] = [
@@ -115,6 +116,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
           onChange={v => onParamChange('gravityY', v)}
           title="Vertical band-pull strength (scale all)"
           ariaLabel="Vertical band strength"
+          popId="bandStrength"
         />
       }
       bottom={
@@ -138,6 +140,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
             onChange={v => onParamChange('gravityX', v)}
             title="Horizontal band-pull strength (scale all)"
             ariaLabel="Horizontal band strength"
+            popId="bandStrength"
           />
           <div className="ctl-plot-xlabel">X strength</div>
         </>
@@ -249,7 +252,7 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
       <div className="gravity-bodies">
         <div className={`gravity-body${sub === 'band' ? ' active' : ''}`} aria-hidden={sub !== 'band'}>
           <div className={`gravity-section-tools${params.bandEnabled ? '' : ' inactive'}`}>
-            <Equation>{<>F = strength × d<sup>exp</sup></>}</Equation>
+            <Equation>{<>F = <FormulaValue id="bandStrength">strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
             <GravityBandPlot params={params} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
             <BandCurves params={params} onParamChange={onParamChange} />
           </div>
@@ -257,7 +260,7 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
 
         <div className={`gravity-body${sub === 'topological' ? ' active' : ''}`} aria-hidden={sub !== 'topological'}>
           <div className={`gravity-section-tools gravity-topo${params.topologicalEnabled ? '' : ' inactive'}`}>
-            <Equation>{<>F = strength × depth<sup>exp</sup> × d</>}</Equation>
+            <Equation>{<>F = <FormulaValue id="topoStrength">strength</FormulaValue> × depth<sup><FormulaValue id="topoExp">exp</FormulaValue></sup> × d</>}</Equation>
             <TopologicalCurve exp={params.gravityTopologicalExp} />
             <div className="gravity-slider-row">
               <label className="graph-control-slider-label">strength</label>
@@ -265,6 +268,7 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
                 min={0} max={2} step={0.02}
                 value={params.gravityDownstream}
                 onChange={v => onParamChange('gravityDownstream', v)}
+                popId="topoStrength"
               />
             </div>
             <div className="gravity-slider-row">
@@ -273,6 +277,7 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
                 min={1} max={6} step={0.1}
                 value={params.gravityTopologicalExp}
                 onChange={v => onParamChange('gravityTopologicalExp', v)}
+                popId="topoExp"
               />
             </div>
           </div>
@@ -337,6 +342,7 @@ function BandCurves({
   return (
     <ForceCurves
       curves={curves}
+      xMax={1}
       hoveredId={hovered}
       onHover={setHovered}
       xLabel="distance"
@@ -346,6 +352,7 @@ function BandCurves({
         value: exp, min: 0.5, max: 3, step: 0.1,
         onChange: v => onParamChange('gravityBandExp', v),
         title: 'Band falloff exponent. 1 = linear (Hooke); higher = softer just outside the band, stiffer far out.',
+        popId: 'bandExp',
       }}
     />
   )

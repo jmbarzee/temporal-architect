@@ -9,6 +9,7 @@ import { ChargeMap, ChargeCurves } from './ChargeControls'
 import { GravityControls } from './GravityControls'
 import { Slider } from './controls/Slider'
 import { Equation } from './controls/Equation'
+import { PopProvider, FormulaValue } from './controls/PopContext'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
@@ -96,7 +97,6 @@ export function GraphControlPanel({
   onActiveChargeType, onActiveGravityType, onActivePullEdge,
 }: GraphControlPanelProps) {
   const [open, setOpen] = React.useState(false)
-  const [helpOpen, setHelpOpen] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<ForceTab>('push')
   // Links the spring map and the force-curve viz: hovering a token in one
   // brightens the matching curve in the other. The key (an edge category's
@@ -143,24 +143,10 @@ export function GraphControlPanel({
         title="Toggle control panel"
       >
         {open ? '▼ Forces' : '▶ Forces'}
-        {open && (
-          <span
-            className="graph-control-help-btn"
-            onClick={e => { e.stopPropagation(); setHelpOpen(!helpOpen) }}
-            title="How the simulation works"
-          >
-            ?
-          </span>
-        )}
       </button>
 
-      {open && helpOpen && (
-        <div className="graph-control-help-popover">
-          <pre className="graph-control-help-text">{HELP_TEXT}</pre>
-        </div>
-      )}
-
       {open && (
+        <PopProvider>
         <div className="graph-control-panel-body">
           {/* Force tabs — only one section is shown at a time. */}
           <div className="graph-control-tabs" role="tablist">
@@ -190,8 +176,8 @@ export function GraphControlPanel({
                   <span className="eq-line">
                     F =
                     <span className="eq-frac">
-                      <span className="eq-num">charge</span>
-                      <span className="eq-den">(d² + r²)<sup>exp</sup></span>
+                      <span className="eq-num"><FormulaValue id="pushMultiplier">charge</FormulaValue></span>
+                      <span className="eq-den">(d² + <FormulaValue id="coreRadiusMultiplier">r</FormulaValue>²)<sup><FormulaValue id="chargeExponent">exp</FormulaValue></sup></span>
                     </span>
                   </span>
                 }
@@ -218,9 +204,9 @@ export function GraphControlPanel({
                 subtitle=""
                 equation={
                   <span className="eq-line">
-                    F = stiffness ×
+                    F = <FormulaValue id="pullMultiplier">stiffness</FormulaValue> ×
                     <span className="eq-frac">
-                      <span className="eq-num">(d − length)<sup>exp</sup></span>
+                      <span className="eq-num">(d − <FormulaValue id="distanceMultiplier">length</FormulaValue>)<sup><FormulaValue id="linkExponent">exp</FormulaValue></sup></span>
                       <span className="eq-den">d</span>
                     </span>
                   </span>
@@ -269,6 +255,7 @@ export function GraphControlPanel({
             </SectionSlot>
           </div>
         </div>
+        </PopProvider>
       )}
     </div>
   )
@@ -335,39 +322,3 @@ function SliderRow({ def, value, onChange, nodeType }: {
     </div>
   )
 }
-
-const HELP_TEXT = `Force-directed graph layout:
-
-PUSH — Nodes repel each other via charge force.
-  F = charge / (d² + r²)^exp
-  Drag a token on the charge map to set one
-  node type's charge & core radius (r); the
-  axis sliders scale all at once.
-
-PULL — Connected nodes attract via spring force.
-  F = stiffness × (d − length)^exp / d
-  Drag a token on the spring map to set one
-  edge type; the axis sliders scale all at once.
-
-GRAVITY — Three toggleable forces (Cartesian or Radial):
-  Band (per-type rest bands = the hierarchy),
-  Topological (root-ness pulls nodes inward),
-  Center (radial pull to origin; the baseline
-  when neither Band nor Topological is on).
-
-DYNAMICS — Friction damps velocity, cooling reduces
-  energy until the simulation stabilizes.
-
-Node types:
-  Namespace
-  NexusEndpoint (top-level routing alias)
-  Worker, NexusService
-  Workflow, NexusOperation
-  Activity
-
-Tuning guide:
-  • Start with push/pull multipliers for balance
-  • If nodes overlap → increase push or charge
-  • If too spread → increase pull or gravity
-  • If oscillating → increase friction or cooling
-  • Hover a tab or token to see its force on the canvas`

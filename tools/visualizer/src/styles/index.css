@@ -540,42 +540,6 @@ body {
   color: var(--color-text);
 }
 
-.graph-control-help-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.graph-control-help-btn:hover {
-  background: var(--color-text-muted);
-  color: var(--color-surface);
-}
-
-.graph-control-help-popover {
-  padding: 8px 12px;
-  border-top: 1px solid var(--color-border);
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.graph-control-help-text {
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--color-text-muted);
-  white-space: pre-wrap;
-  font-family: var(--font-sans);
-  margin: 0;
-}
-
 .graph-control-panel-body {
   padding: 0 12px 10px;
   overflow-y: auto;
@@ -673,10 +637,15 @@ body {
   font-family: var(--font-mono);
   line-height: 1.4;
   color: var(--color-text-muted);
-  opacity: 0.7;
-  margin: 0 0 4px;
+  margin: 0 0 6px;
+  padding: 5px 8px;
   white-space: pre-wrap;
   text-align: center;
+  /* Unassuming card so the governing equation reads as a distinct band above
+     the controls rather than floating text. */
+  background: color-mix(in srgb, var(--color-text-muted) 7%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
 }
 
 .graph-control-equation-body {
@@ -727,6 +696,26 @@ body {
   direction: rtl;  /* up = stronger */
   width: 4px;
   height: 100%;
+}
+
+/* Popped: the global slider whose formula token is being hovered. A soft accent
+   halo makes it stand out without moving layout. */
+.ctl-slider-popped {
+  border-radius: 5px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-workflow) 38%, transparent);
+}
+
+/* A hoverable value inside a governing equation; hovering pops its slider. */
+.ctl-formula-value {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+.ctl-formula-value:hover,
+.ctl-formula-value.active {
+  background: color-mix(in srgb, var(--color-workflow) 22%, transparent);
+  color: var(--color-text);
 }
 
 .ctl-plot {
@@ -840,6 +829,9 @@ body {
   height: auto;
   overflow: visible;
 }
+
+/* Light value-anchored gridlines on the curves (the Graph). */
+.ctl-grid-line { stroke: var(--color-border); stroke-width: 1; opacity: 0.35; pointer-events: none; }
 
 .spring-curve-frame { fill: none; stroke: var(--color-border); stroke-width: 1; }
 .spring-curve-baseline { stroke: var(--color-border); stroke-width: 1; }
@@ -1087,7 +1079,6 @@ body {
 .graph-control-slider-value,
 .graph-control-band-label,
 .graph-control-band-value,
-.graph-control-help-text,
 .graph-control-checkbox {
   font-size: 12px;
 }

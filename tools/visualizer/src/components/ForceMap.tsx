@@ -47,6 +47,8 @@ export interface GlobalSlider {
   onChange: (v: number) => void
   title?: string
   ariaLabel?: string
+  // Links this global slider to a matching formula token (see PopContext).
+  popId?: string
 }
 
 export interface MapToken {
@@ -141,6 +143,7 @@ export function ForceMap2D({
           onChange={ySlider.onChange}
           title={ySlider.title}
           ariaLabel={ySlider.ariaLabel}
+          popId={ySlider.popId}
         />
       }
       bottom={
@@ -151,6 +154,7 @@ export function ForceMap2D({
             onChange={xSlider.onChange}
             title={xSlider.title}
             ariaLabel={xSlider.ariaLabel}
+            popId={xSlider.popId}
           />
           <div className="ctl-plot-xlabel">{xAxis.label}</div>
         </>
@@ -237,8 +241,21 @@ function lastPoint(points: string): { x: number; y: number } | null {
   return { x: Number(last[0]), y: Number(last[1]) }
 }
 
+// A "nice" grid step (1/2/5 × 10ⁿ) giving roughly `target` divisions over
+// [0, max]. Bounding the division count is the adaptive behaviour: as the curve's
+// x-domain grows or shrinks while tuning, the step jumps so the gridlines never
+// crowd or thin out — they visibly re-space, signalling the scale changed.
+export function niceStep(max: number, target: number): number {
+  if (!(max > 0)) return 1
+  const raw = max / target
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)))
+  const norm = raw / mag
+  const step = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10
+  return step * mag
+}
+
 export function ForceCurves({
-  curves, baselineY, hoveredId, onHover, xLabel, yLabel, exp, ariaLabel,
+  curves, baselineY, hoveredId, onHover, xLabel, yLabel, exp, ariaLabel, xMax,
 }: {
   curves: CurveItem[]
   // y of an optional horizontal baseline; omit for none.
@@ -249,7 +266,15 @@ export function ForceCurves({
   yLabel: string
   exp: GlobalSlider & { label?: string }
   ariaLabel: string
+  // The x-axis domain max (in data units). When set, draws value-anchored
+  // gridlines at a nice step — they re-space as the domain changes while tuning.
+  xMax?: number
 }) {
+  const gridXs: number[] = []
+  if (xMax !== undefined && xMax > 0) {
+    const step = niceStep(xMax, 6)
+    for (let v = step; v < xMax * 0.999; v += step) gridXs.push((v / xMax) * CURVE_W)
+  }
   return (
     <div className="spring-curves">
       <div className="spring-axis-label spring-curves-axis-y">{yLabel}</div>
@@ -261,6 +286,9 @@ export function ForceCurves({
         aria-label={ariaLabel}
       >
         <rect x={0} y={0} width={CURVE_W} height={CURVE_H} className="spring-curve-frame" />
+        {gridXs.map((px, i) => (
+          <line key={`g${i}`} x1={px.toFixed(1)} y1={0} x2={px.toFixed(1)} y2={CURVE_H} className="ctl-grid-line" />
+        ))}
         {baselineY !== undefined && (
           <line x1={0} y1={baselineY} x2={CURVE_W} y2={baselineY} className="spring-curve-baseline" />
         )}
@@ -313,6 +341,7 @@ export function ForceCurves({
           min={exp.min} max={exp.max} step={exp.step}
           value={exp.value}
           onChange={exp.onChange}
+          popId={exp.popId}
         />
       </div>
     </div>

@@ -71,11 +71,13 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
         value: params.coreRadiusMultiplier, min: 0.1, max: 3, step: 0.05,
         onChange: v => onParamChange('coreRadiusMultiplier', v),
         title: 'Scale every type’s core radius', ariaLabel: 'Scale all core radius',
+        popId: 'coreRadiusMultiplier',
       }}
       ySlider={{
         value: params.pushMultiplier, min: 0, max: 3, step: 0.1,
         onChange: v => onParamChange('pushMultiplier', v),
         title: 'Scale every type’s charge', ariaLabel: 'Scale all charge',
+        popId: 'pushMultiplier',
       }}
     />
   )
@@ -92,7 +94,7 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
   const crMul = params.coreRadiusMultiplier
   const exp = params.chargeExponent
 
-  const curves = React.useMemo<CurveItem[]>(() => {
+  const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
     const rEffs = ALL_NODE_TYPES.map(t => crMul * (params[CORE_RADIUS_KEY[t]] as number))
     const maxREff = Math.max(0, ...rEffs)
     // Show the falloff out to a few core radii so the plateau-then-drop shape
@@ -119,17 +121,19 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
     const xFor = (d: number) => (d / dMax) * CURVE_W
     const yFor = (v: number) => clamp(CURVE_H - (v / norm) * ampH, 0, CURVE_H)
 
-    return sampled.map(({ type, rEff, pts }) => ({
+    const built = sampled.map(({ type, rEff, pts }) => ({
       id: type,
       color: typeColor(type),
       markerX: xFor(rEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
+    return { curves: built, dMax }
   }, [params, push, crMul, exp])
 
   return (
     <ForceCurves
       curves={curves}
+      xMax={dMax}
       hoveredId={hoveredType}
       onHover={id => onHoverType(id as NodeType | null)}
       xLabel="distance"
@@ -139,6 +143,7 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
         value: exp, min: 0.5, max: 1.0, step: 0.05,
         onChange: v => onParamChange('chargeExponent', v),
         title: 'Power of (d² + r²) in the charge falloff. 1 = inverse-square; higher = sharper drop-off.',
+        popId: 'chargeExponent',
       }}
     />
   )
