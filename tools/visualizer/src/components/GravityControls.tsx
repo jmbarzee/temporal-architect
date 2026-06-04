@@ -8,7 +8,6 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
-import { BAND_MIN_KEY, BAND_MAX_KEY } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
 import { NODE_TYPE_REGISTRY, MAIN_LADDER, NEXUS_LADDER, sliderLabelFor } from '../graph/node-types'
 import { ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES, type CurveItem } from './ForceMap'
@@ -32,7 +31,7 @@ const snap = (v: number, step: number) => Math.round(v / step) * step
 
 interface GravityControlProps {
   params: ForceParams
-  onParamChange: (key: keyof ForceParams, value: number) => void
+  onParamChange: (patch: Partial<ForceParams>) => void
   onGravitySet: (partial: Partial<ForceParams>) => void
   hoveredType: NodeType | null
   onHoverType: (t: NodeType | null) => void
@@ -87,13 +86,12 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
   const handleMove = (e: React.PointerEvent) => {
     const drag = dragRef.current
     if (!drag) return
-    const minKey = BAND_MIN_KEY[drag.type]
-    const maxKey = BAND_MAX_KEY[drag.type]
-    const curMin = params[minKey] as number
-    const curMax = params[maxKey] as number
-    let v = clamp(snap(valForY(userY(e)), W_STEP), W_MIN, W_MAX)
-    if (drag.edge === 'min') onParamChange(minKey, Math.min(v, curMax - W_STEP))
-    else onParamChange(maxKey, Math.max(v, curMin + W_STEP))
+    const cur = params.band[drag.type]
+    const v = clamp(snap(valForY(userY(e)), W_STEP), W_MIN, W_MAX)
+    const next = drag.edge === 'min'
+      ? { min: Math.min(v, cur.max - W_STEP), max: cur.max }
+      : { min: cur.min, max: Math.max(v, cur.min + W_STEP) }
+    onParamChange({ band: { ...params.band, [drag.type]: next } })
   }
   const handleUp = (e: React.PointerEvent) => {
     dragRef.current = null
@@ -108,7 +106,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
           orientation="vertical"
           min={0} max={0.25} step={0.005}
           value={params.gravityY}
-          onChange={v => onParamChange('gravityY', v)}
+          onChange={v => onParamChange({ gravityY: v })}
           title="Vertical band-pull strength (scale all)"
           ariaLabel="Vertical band strength"
           popId="bandStrength"
@@ -125,15 +123,15 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
             <DualRange
               min={W_MIN} max={W_MAX} step={W_STEP}
               valueMin={params.bandXMin} valueMax={params.bandXMax}
-              onChangeMin={v => onParamChange('bandXMin', v)}
-              onChangeMax={v => onParamChange('bandXMax', v)}
+              onChangeMin={v => onParamChange({ bandXMin: v })}
+              onChangeMax={v => onParamChange({ bandXMax: v })}
             />
           </div>
           <Slider
             min={0} max={0.25} step={0.005}
-            value={params.gravityX}
-            onChange={v => onParamChange('gravityX', v)}
-            title="Horizontal band-pull strength (scale all)"
+          value={params.gravityX}
+          onChange={v => onParamChange({ gravityX: v })}
+          title="Horizontal band-pull strength (scale all)"
             ariaLabel="Horizontal band strength"
             popId="bandStrength"
           />
@@ -153,8 +151,8 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
         {/* Rest-region stripes — the mini world view, behind and inert. */}
         <g className="gravity-band-stripes">
           {COL_ORDER.map(t => {
-            const yTop = yForWorld(params[BAND_MIN_KEY[t]] as number)
-            const yBot = yForWorld(params[BAND_MAX_KEY[t]] as number)
+            const yTop = yForWorld(params.band[t].min)
+            const yBot = yForWorld(params.band[t].max)
             const dim = hoveredType !== null && hoveredType !== t
             const active = hoveredType === t
             return (
@@ -177,8 +175,8 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
         {/* Per-type vertical sliders (track + two handles), on top. */}
         {COL_ORDER.map((t, i) => {
           const x = colX(i)
-          const yTop = yForWorld(params[BAND_MIN_KEY[t]] as number)
-          const yBot = yForWorld(params[BAND_MAX_KEY[t]] as number)
+          const yTop = yForWorld(params.band[t].min)
+          const yBot = yForWorld(params.band[t].max)
           const dim = hoveredType !== null && hoveredType !== t
           const active = hoveredType === t
           const color = typeColor(t)
@@ -262,7 +260,7 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
               <Slider
                 min={0} max={2} step={0.02}
                 value={params.gravityDownstream}
-                onChange={v => onParamChange('gravityDownstream', v)}
+                onChange={v => onParamChange({ gravityDownstream: v })}
                 popId="topoStrength"
               />
             </div>
@@ -271,7 +269,7 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
               <Slider
                 min={1} max={6} step={0.1}
                 value={params.gravityTopologicalExp}
-                onChange={v => onParamChange('gravityTopologicalExp', v)}
+                onChange={v => onParamChange({ gravityTopologicalExp: v })}
                 popId="topoExp"
               />
             </div>
@@ -315,7 +313,7 @@ function BandCurves({
   params, onParamChange,
 }: {
   params: ForceParams
-  onParamChange: (key: keyof ForceParams, value: number) => void
+  onParamChange: (patch: Partial<ForceParams>) => void
 }) {
   const [hovered, setHovered] = React.useState<string | null>(null)
   const exp = params.gravityBandExp
@@ -345,7 +343,7 @@ function BandCurves({
       ariaLabel="Band force-response curves (X and Y)"
       exp={{
         value: exp, min: 0.5, max: 3, step: 0.1,
-        onChange: v => onParamChange('gravityBandExp', v),
+        onChange: v => onParamChange({ gravityBandExp: v }),
         title: 'Band falloff exponent. 1 = linear (Hooke); higher = softer just outside the band, stiffer far out.',
         popId: 'bandExp',
       }}

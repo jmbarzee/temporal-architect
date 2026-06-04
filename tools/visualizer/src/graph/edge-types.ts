@@ -13,7 +13,6 @@
 // (simulation -> edge-types is the value dependency, mirroring simulation -> forces).
 
 import type { NodeType, GraphEdge } from './model'
-import type { LinkParams } from './simulation'
 
 export type EdgeCategoryKind = 'containment' | 'dependency'
 
@@ -27,7 +26,8 @@ export type EdgeTypeId =
   | 'linkEndpointToOperation'
 
 export interface EdgeTypeDefinition {
-  /** Stable id (== the stiffness ForceParams key). */
+  /** Stable id — also the key into the `link` / `dist` param maps and the
+   *  hover-link id across the spring map, curves, and canvas. */
   id: EdgeTypeId
   /** Short control-panel label, e.g. "Wk↔Wf" / "Wf→Op". */
   label: string
@@ -37,9 +37,6 @@ export interface EdgeTypeDefinition {
   category: EdgeCategoryKind
   /** True = the two directions are distinct categories (Wf→Op vs Op→Wf). */
   directional: boolean
-  /** ForceParams keys this category tunes. */
-  linkKey: keyof LinkParams
-  distKey: keyof LinkParams
   /** Default stiffness / rest length (the DEFAULT_PARAMS values live here). */
   physics: { strength: number; distance: number }
   tooltip: string
@@ -49,46 +46,46 @@ export interface EdgeTypeDefinition {
 // positioning makes it cosmetic); the matcher below does not depend on it.
 export const ALL_EDGE_TYPES: EdgeTypeDefinition[] = [
   { id: 'linkNsToNs', label: 'NS↔NS', sourceType: 'namespace', targetType: 'namespace',
-    category: 'dependency', directional: false, linkKey: 'linkNsToNs', distKey: 'distNsToNs',
+    category: 'dependency', directional: false,
     physics: { strength: 0.25, distance: 870 }, tooltip: 'Namespace ↔ Namespace dependency' },
   { id: 'linkNsToWorker', label: 'NS↔Wk', sourceType: 'namespace', targetType: 'worker',
-    category: 'containment', directional: false, linkKey: 'linkNsToWorker', distKey: 'distNsToWorker',
+    category: 'containment', directional: false,
     physics: { strength: 0.30, distance: 800 }, tooltip: 'Namespace ↔ Worker containment' },
   { id: 'linkWorkerToWorker', label: 'Wk↔Wk', sourceType: 'worker', targetType: 'worker',
-    category: 'dependency', directional: false, linkKey: 'linkWorkerToWorker', distKey: 'distWorkerToWorker',
+    category: 'dependency', directional: false,
     physics: { strength: 0.30, distance: 720 }, tooltip: 'Worker ↔ Worker dependency' },
   { id: 'linkWorkerToWorkflow', label: 'Wk↔Wf', sourceType: 'worker', targetType: 'workflow',
-    category: 'containment', directional: false, linkKey: 'linkWorkerToWorkflow', distKey: 'distWorkerToWorkflow',
+    category: 'containment', directional: false,
     physics: { strength: 0.55, distance: 190 }, tooltip: 'Worker ↔ Workflow containment' },
   { id: 'linkWorkerToActivity', label: 'Wk↔Act', sourceType: 'worker', targetType: 'activity',
-    category: 'containment', directional: false, linkKey: 'linkWorkerToActivity', distKey: 'distWorkerToActivity',
+    category: 'containment', directional: false,
     physics: { strength: 0.35, distance: 210 }, tooltip: 'Worker ↔ Activity containment' },
   { id: 'linkWorkerToNexus', label: 'Wk↔Nx', sourceType: 'worker', targetType: 'nexusService',
-    category: 'containment', directional: false, linkKey: 'linkWorkerToNexus', distKey: 'distWorkerToNexus',
+    category: 'containment', directional: false,
     physics: { strength: 1.25, distance: 430 }, tooltip: 'Worker ↔ Nexus service containment' },
   { id: 'linkNexusToOperation', label: 'Nx↔Op', sourceType: 'nexusService', targetType: 'nexusOperation',
-    category: 'containment', directional: false, linkKey: 'linkNexusToOperation', distKey: 'distNexusToOperation',
+    category: 'containment', directional: false,
     physics: { strength: 1.40, distance: 600 }, tooltip: 'Nexus service ↔ Nexus operation containment' },
   { id: 'linkEndpointToNamespace', label: 'Ep↔NS', sourceType: 'nexusEndpoint', targetType: 'namespace',
-    category: 'containment', directional: false, linkKey: 'linkEndpointToNamespace', distKey: 'distEndpointToNamespace',
+    category: 'containment', directional: false,
     physics: { strength: 1.00, distance: 690 }, tooltip: 'Nexus endpoint ↔ Namespace containment' },
   { id: 'linkWorkflowToWorkflow', label: 'Wf↔Wf', sourceType: 'workflow', targetType: 'workflow',
-    category: 'dependency', directional: false, linkKey: 'linkWorkflowToWorkflow', distKey: 'distWorkflowToWorkflow',
+    category: 'dependency', directional: false,
     physics: { strength: 0.50, distance: 420 }, tooltip: 'Workflow ↔ Workflow dependency' },
   { id: 'linkWorkflowToActivity', label: 'Wf↔Act', sourceType: 'workflow', targetType: 'activity',
-    category: 'dependency', directional: false, linkKey: 'linkWorkflowToActivity', distKey: 'distWorkflowToActivity',
+    category: 'dependency', directional: false,
     physics: { strength: 1.90, distance: 40 }, tooltip: 'Workflow ↔ Activity dependency' },
   { id: 'linkWorkflowToOperation', label: 'Wf→Op', sourceType: 'workflow', targetType: 'nexusOperation',
-    category: 'dependency', directional: true, linkKey: 'linkWorkflowToOperation', distKey: 'distWorkflowToOperation',
+    category: 'dependency', directional: true,
     physics: { strength: 1.50, distance: 330 }, tooltip: 'Workflow → Nexus operation (the nexus call)' },
   { id: 'linkOperationToWorkflow', label: 'Op→Wf', sourceType: 'nexusOperation', targetType: 'workflow',
-    category: 'dependency', directional: true, linkKey: 'linkOperationToWorkflow', distKey: 'distOperationToWorkflow',
+    category: 'dependency', directional: true,
     physics: { strength: 1.55, distance: 360 }, tooltip: 'Nexus operation → Workflow (backing workflow / sync-op call)' },
   { id: 'linkOperationToActivity', label: 'Op↔Act', sourceType: 'nexusOperation', targetType: 'activity',
-    category: 'dependency', directional: false, linkKey: 'linkOperationToActivity', distKey: 'distOperationToActivity',
+    category: 'dependency', directional: false,
     physics: { strength: 1.40, distance: 300 }, tooltip: 'Nexus operation ↔ Activity dependency (sync-op body call)' },
   { id: 'linkEndpointToOperation', label: 'Ep↔Op', sourceType: 'nexusEndpoint', targetType: 'nexusOperation',
-    category: 'containment', directional: false, linkKey: 'linkEndpointToOperation', distKey: 'distEndpointToOperation',
+    category: 'containment', directional: false,
     physics: { strength: 1.50, distance: 470 }, tooltip: 'Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)' },
 ]
 

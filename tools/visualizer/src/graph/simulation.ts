@@ -1,9 +1,11 @@
 // Force-directed simulation engine.
 // Implements GRAPH_VIEW.md § Layout: Force-Directed Simulation.
 
-import type { GraphNode, GraphEdge, Graph } from './model'
+import type { GraphNode, GraphEdge, Graph, NodeType } from './model'
 import { NODE_TYPE_REGISTRY } from './node-types'
-import { EDGE_TYPE_REGISTRY } from './edge-types'
+import { ALL_EDGE_TYPES } from './edge-types'
+import type { EdgeTypeId } from './edge-types'
+import { ALL_NODE_TYPES } from './node-types'
 import {
   applyChargeForce,
   applyLinkForce,
@@ -19,10 +21,6 @@ export { ALL_NODE_TYPES } from './node-types'
 // The force helpers now live in ./forces; re-export them so existing consumers
 // (GraphCanvas, GraphControlPanel, ChargeControls) keep importing them here.
 export {
-  CHARGE_KEY,
-  BAND_MIN_KEY,
-  BAND_MAX_KEY,
-  CORE_RADIUS_KEY,
   CORE_RADIUS_MIN,
   chargeForType,
   coreRadiusForType,
@@ -52,30 +50,14 @@ export interface SimNode extends GraphNode {
 // PUSH — repulsion. Per-type charge strength and core radius, the masters that
 // scale them, and the charge falloff exponent.
 export interface ChargeParams {
-  // Charge strengths (repulsion, negative values) — one per node type.
-  // L1: namespace. L1.5: nexusEndpoint. L2: worker, nexusService.
-  // L3: workflow, nexusOperation. L4: activity.
-  chargeNamespace: number
-  chargeNexusEndpoint: number
-  chargeWorker: number
-  chargeWorkflow: number
-  chargeActivity: number
-  chargeNexusService: number
-  chargeNexusOperation: number
-
-  // Core radius (charge softening, expressed as a length) — one per node type.
+  // Charge strength (repulsion, negative values), keyed by node type.
+  charge: Record<NodeType, number>
+  // Core radius (charge softening, expressed as a length), keyed by node type.
   // Per pair, the softening added to dist² is the squared average of the two
   // endpoints' effective core radii (rEff = coreRadiusMultiplier × coreRadius).
   // A larger core radius spreads a type's repulsion over a wider, gentler
-  // plateau near the centre instead of a sharp spike; it is the per-type
-  // successor to the old global `chargeSoftening`.
-  coreRadiusNamespace: number
-  coreRadiusNexusEndpoint: number
-  coreRadiusWorker: number
-  coreRadiusWorkflow: number
-  coreRadiusActivity: number
-  coreRadiusNexusService: number
-  coreRadiusNexusOperation: number
+  // plateau near the centre instead of a sharp spike.
+  coreRadius: Record<NodeType, number>
 
   pushMultiplier: number       // scales all charge (repulsion) forces
   coreRadiusMultiplier: number // scales all per-type core radii (charge softening)
@@ -85,39 +67,9 @@ export interface ChargeParams {
 // PULL — spring attraction. Per-edge-category stiffness (k) and rest length,
 // the masters that scale them, and the displacement exponent.
 export interface LinkParams {
-  // Spring constants (k) per edge category.
-  // Containment (parent ↔ child):
-  linkNsToWorker: number          // Namespace ↔ Worker
-  linkWorkerToWorkflow: number    // Worker ↔ Workflow
-  linkWorkerToActivity: number    // Worker ↔ Activity
-  linkWorkerToNexus: number       // Worker ↔ NexusService
-  linkNexusToOperation: number    // NexusService ↔ NexusOperation (intra-L3)
-  linkEndpointToNamespace: number // NexusEndpoint ↔ Namespace (nexus containment)
-  linkEndpointToOperation: number // NexusEndpoint ↔ NexusOperation (endpoint fronts op)
-  // Dependency (caller → callee):
-  linkNsToNs: number               // Namespace ↔ Namespace
-  linkWorkerToWorker: number       // Worker ↔ Worker
-  linkWorkflowToWorkflow: number   // Workflow ↔ Workflow
-  linkWorkflowToActivity: number   // Workflow ↔ Activity
-  linkWorkflowToOperation: number  // Workflow → NexusOperation (the nexus call)
-  linkOperationToWorkflow: number  // NexusOperation → Workflow (backing / sync-op call)
-  linkOperationToActivity: number  // NexusOperation ↔ Activity (sync-op body call)
-
-  // Rest distances per edge category (mirror the link strengths above).
-  distNsToWorker: number
-  distWorkerToWorkflow: number
-  distWorkerToActivity: number
-  distWorkerToNexus: number
-  distNexusToOperation: number
-  distEndpointToNamespace: number
-  distEndpointToOperation: number
-  distNsToNs: number
-  distWorkerToWorker: number
-  distWorkflowToWorkflow: number
-  distWorkflowToActivity: number
-  distWorkflowToOperation: number
-  distOperationToWorkflow: number
-  distOperationToActivity: number
+  // Spring stiffness (k) and rest length per edge category, keyed by edge-type id.
+  link: Record<EdgeTypeId, number>
+  dist: Record<EdgeTypeId, number>
 
   pullMultiplier: number     // scales all link (attraction) forces
   distanceMultiplier: number // scales all rest distances
@@ -159,20 +111,8 @@ export interface GravityParams {
   topologicalEnabled: boolean
   bandXMin: number
   bandXMax: number
-  bandYMinNamespace: number
-  bandYMaxNamespace: number
-  bandYMinNexusEndpoint: number
-  bandYMaxNexusEndpoint: number
-  bandYMinWorker: number
-  bandYMaxWorker: number
-  bandYMinWorkflow: number
-  bandYMaxWorkflow: number
-  bandYMinActivity: number
-  bandYMaxActivity: number
-  bandYMinNexusService: number
-  bandYMaxNexusService: number
-  bandYMinNexusOperation: number
-  bandYMaxNexusOperation: number
+  // Per-type Y rest band [min, max], keyed by node type.
+  band: Record<NodeType, { min: number; max: number }>
 }
 
 // DYNAMICS — how the simulation cools and damps over time.
@@ -217,57 +157,22 @@ export const DEFAULT_PARAMS: ForceParams = {
   // so top-level nodes fan well apart, dropping off through the orchestrator
   // tier (operation, workflow) down to activities. Sourced from the registry
   // alongside each type's core radius.
-  chargeNamespace:      NODE_TYPE_REGISTRY.namespace.physics.charge,
-  chargeNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.charge,
-  chargeWorker:         NODE_TYPE_REGISTRY.worker.physics.charge,
-  chargeNexusService:   NODE_TYPE_REGISTRY.nexusService.physics.charge,
-  chargeWorkflow:       NODE_TYPE_REGISTRY.workflow.physics.charge,
-  chargeNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.charge,
-  chargeActivity:       NODE_TYPE_REGISTRY.activity.physics.charge,
+  charge: Object.fromEntries(
+    ALL_NODE_TYPES.map(t => [t, NODE_TYPE_REGISTRY[t].physics.charge]),
+  ) as Record<NodeType, number>,
 
-  // Core radii (charge softening as a length). Per-type defaults captured
-  // from an interactive tuning session on the PUSH charge map (sourced from
-  // the registry alongside each type's charge).
-  coreRadiusNamespace:      NODE_TYPE_REGISTRY.namespace.physics.coreRadius,
-  coreRadiusNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.coreRadius,
-  coreRadiusWorker:         NODE_TYPE_REGISTRY.worker.physics.coreRadius,
-  coreRadiusNexusService:   NODE_TYPE_REGISTRY.nexusService.physics.coreRadius,
-  coreRadiusWorkflow:       NODE_TYPE_REGISTRY.workflow.physics.coreRadius,
-  coreRadiusNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.coreRadius,
-  coreRadiusActivity:       NODE_TYPE_REGISTRY.activity.physics.coreRadius,
+  // Core radii (charge softening as a length), sourced from the registry.
+  coreRadius: Object.fromEntries(
+    ALL_NODE_TYPES.map(t => [t, NODE_TYPE_REGISTRY[t].physics.coreRadius]),
+  ) as Record<NodeType, number>,
 
-  // Spring strengths (k = stiffness) and rest distances (length). The default
-  // token positions are sourced from the edge-type registry (one entry per
-  // category owns both its stiffness and length default).
-  linkNsToNs:              EDGE_TYPE_REGISTRY.linkNsToNs.physics.strength,
-  linkNsToWorker:          EDGE_TYPE_REGISTRY.linkNsToWorker.physics.strength,
-  linkWorkerToWorker:      EDGE_TYPE_REGISTRY.linkWorkerToWorker.physics.strength,
-  linkWorkerToWorkflow:    EDGE_TYPE_REGISTRY.linkWorkerToWorkflow.physics.strength,
-  linkWorkerToActivity:    EDGE_TYPE_REGISTRY.linkWorkerToActivity.physics.strength,
-  linkWorkerToNexus:       EDGE_TYPE_REGISTRY.linkWorkerToNexus.physics.strength,
-  linkNexusToOperation:    EDGE_TYPE_REGISTRY.linkNexusToOperation.physics.strength,
-  linkWorkflowToWorkflow:  EDGE_TYPE_REGISTRY.linkWorkflowToWorkflow.physics.strength,
-  linkWorkflowToActivity:  EDGE_TYPE_REGISTRY.linkWorkflowToActivity.physics.strength,
-  linkEndpointToNamespace: EDGE_TYPE_REGISTRY.linkEndpointToNamespace.physics.strength,
-  linkEndpointToOperation: EDGE_TYPE_REGISTRY.linkEndpointToOperation.physics.strength,
-  linkWorkflowToOperation: EDGE_TYPE_REGISTRY.linkWorkflowToOperation.physics.strength,
-  linkOperationToWorkflow: EDGE_TYPE_REGISTRY.linkOperationToWorkflow.physics.strength,
-  linkOperationToActivity: EDGE_TYPE_REGISTRY.linkOperationToActivity.physics.strength,
-
-  distNsToNs:              EDGE_TYPE_REGISTRY.linkNsToNs.physics.distance,
-  distNsToWorker:          EDGE_TYPE_REGISTRY.linkNsToWorker.physics.distance,
-  distWorkerToWorker:      EDGE_TYPE_REGISTRY.linkWorkerToWorker.physics.distance,
-  distWorkerToWorkflow:    EDGE_TYPE_REGISTRY.linkWorkerToWorkflow.physics.distance,
-  distWorkerToActivity:    EDGE_TYPE_REGISTRY.linkWorkerToActivity.physics.distance,
-  distWorkerToNexus:       EDGE_TYPE_REGISTRY.linkWorkerToNexus.physics.distance,
-  distNexusToOperation:    EDGE_TYPE_REGISTRY.linkNexusToOperation.physics.distance,
-  distWorkflowToWorkflow:  EDGE_TYPE_REGISTRY.linkWorkflowToWorkflow.physics.distance,
-  distWorkflowToActivity:  EDGE_TYPE_REGISTRY.linkWorkflowToActivity.physics.distance,
-  distEndpointToNamespace: EDGE_TYPE_REGISTRY.linkEndpointToNamespace.physics.distance,
-  distEndpointToOperation: EDGE_TYPE_REGISTRY.linkEndpointToOperation.physics.distance,
-  distWorkflowToOperation: EDGE_TYPE_REGISTRY.linkWorkflowToOperation.physics.distance,
-  distOperationToWorkflow: EDGE_TYPE_REGISTRY.linkOperationToWorkflow.physics.distance,
-  distOperationToActivity: EDGE_TYPE_REGISTRY.linkOperationToActivity.physics.distance,
+  // Spring stiffness + rest length per edge category, sourced from the registry.
+  link: Object.fromEntries(
+    ALL_EDGE_TYPES.map(e => [e.id, e.physics.strength]),
+  ) as Record<EdgeTypeId, number>,
+  dist: Object.fromEntries(
+    ALL_EDGE_TYPES.map(e => [e.id, e.physics.distance]),
+  ) as Record<EdgeTypeId, number>,
 
   // Hierarchical gravity. Y bands carry the vertical structure of the
   // layout — strong (gravityY = 0.145) and overlapping at the edges so
@@ -290,20 +195,10 @@ export const DEFAULT_PARAMS: ForceParams = {
   topologicalEnabled: false,
   bandXMin:    0,
   bandXMax:  380,
-  bandYMinNamespace:      NODE_TYPE_REGISTRY.namespace.physics.yBand.min,
-  bandYMaxNamespace:      NODE_TYPE_REGISTRY.namespace.physics.yBand.max,
-  bandYMinNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.yBand.min,
-  bandYMaxNexusEndpoint:  NODE_TYPE_REGISTRY.nexusEndpoint.physics.yBand.max,
-  bandYMinWorker:         NODE_TYPE_REGISTRY.worker.physics.yBand.min,
-  bandYMaxWorker:         NODE_TYPE_REGISTRY.worker.physics.yBand.max,
-  bandYMinNexusService:   NODE_TYPE_REGISTRY.nexusService.physics.yBand.min,
-  bandYMaxNexusService:   NODE_TYPE_REGISTRY.nexusService.physics.yBand.max,
-  bandYMinNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.yBand.min,
-  bandYMaxNexusOperation: NODE_TYPE_REGISTRY.nexusOperation.physics.yBand.max,
-  bandYMinWorkflow:       NODE_TYPE_REGISTRY.workflow.physics.yBand.min,
-  bandYMaxWorkflow:       NODE_TYPE_REGISTRY.workflow.physics.yBand.max,
-  bandYMinActivity:       NODE_TYPE_REGISTRY.activity.physics.yBand.min,
-  bandYMaxActivity:       NODE_TYPE_REGISTRY.activity.physics.yBand.max,
+  // Per-type Y rest bands, sourced from the registry.
+  band: Object.fromEntries(
+    ALL_NODE_TYPES.map(t => [t, { ...NODE_TYPE_REGISTRY[t].physics.yBand }]),
+  ) as Record<NodeType, { min: number; max: number }>,
 
   // Dynamics. alphaMin is well below the d3 default (0.001) so the
   // simulation continues into its slow-cooling tail — layouts read as

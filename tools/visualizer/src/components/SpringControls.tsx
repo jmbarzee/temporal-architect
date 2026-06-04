@@ -13,6 +13,7 @@ import { NODE_TYPE_REGISTRY } from '../graph/node-types'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
 import { ALL_EDGE_TYPES } from '../graph/edge-types'
+import type { EdgeTypeId } from '../graph/edge-types'
 
 // Shared k / rest ranges. The map plots every edge category on these common
 // axes so their relative stiffness / length is directly comparable.
@@ -25,8 +26,8 @@ export const EDGE_REST_STEP = 10
 
 export interface PullEdgeDef {
   label: string
-  kKey: keyof ForceParams
-  restKey: keyof ForceParams
+  // Edge-type id — the key into the link/dist param maps and the stable hover id.
+  id: EdgeTypeId
   // Endpoint node types — drive the split-colour token (source | target).
   sourceType: NodeType
   targetType: NodeType
@@ -37,13 +38,12 @@ export interface PullEdgeDef {
 }
 
 // One entry per edge category, derived from the central edge-type registry.
-// `kKey` doubles as the category's stable id (used to link hover across the map,
-// the curves, and the canvas active-edge highlight). Order is irrelevant — the
-// map positions tokens by value.
+// `id` links hover across the map, the curves, and the canvas active-edge
+// highlight, and keys the link/dist maps. Order is irrelevant — the map
+// positions tokens by value.
 export const PULL_EDGES: PullEdgeDef[] = ALL_EDGE_TYPES.map(e => ({
   label: e.label,
-  kKey: e.linkKey,
-  restKey: e.distKey,
+  id: e.id,
   sourceType: e.sourceType,
   targetType: e.targetType,
   edgeType: e.category,
@@ -61,7 +61,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 interface SpringControlProps {
   params: ForceParams
   // Routes through the panel's emitParamChange → live reheat.
-  onParamChange: (key: keyof ForceParams, value: number) => void
+  onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active edge category, identified by its k-field key.
   hoveredEdge: string | null
   onHoverEdge: (key: string | null) => void
@@ -73,9 +73,9 @@ interface SpringControlProps {
 // split-colour token; dragging sets both rest and k at once.
 export function SpringMap({ params, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const tokens: MapToken[] = PULL_EDGES.map(edge => ({
-    id: edge.kKey as string,
-    x: params[edge.restKey] as number,
-    y: params[edge.kKey] as number,
+    id: edge.id,
+    x: params.dist[edge.id],
+    y: params.link[edge.id],
     colorA: typeColor(edge.sourceType),
     colorB: typeColor(edge.targetType),
     outline: edge.edgeType === 'containment' ? 'dashed' : 'solid',
@@ -83,12 +83,14 @@ export function SpringMap({ params, onParamChange, hoveredEdge, onHoverEdge }: S
     tooltip: edge.tooltip,
   }))
 
-  // Drag id is the kKey; map back to the edge def to set both fields.
+  // Drag id is the edge-type id; write both the stiffness and length maps.
   const handleDrag = (id: string, x: number, y: number) => {
-    const edge = PULL_EDGES.find(e => (e.kKey as string) === id)
+    const edge = PULL_EDGES.find(e => e.id === id)
     if (!edge) return
-    onParamChange(edge.restKey, x)
-    onParamChange(edge.kKey, y)
+    onParamChange({
+      dist: { ...params.dist, [edge.id]: x },
+      link: { ...params.link, [edge.id]: y },
+    })
   }
 
   return (
@@ -102,13 +104,13 @@ export function SpringMap({ params, onParamChange, hoveredEdge, onHoverEdge }: S
       ariaLabel="Spring map: rest length versus stiffness"
       xSlider={{
         value: params.distanceMultiplier, min: 0.05, max: 3, step: 0.05,
-        onChange: v => onParamChange('distanceMultiplier', v),
+        onChange: v => onParamChange({ distanceMultiplier: v }),
         title: 'Scale every spring’s rest length', ariaLabel: 'Scale all length',
         popId: 'distanceMultiplier',
       }}
       ySlider={{
         value: params.pullMultiplier, min: 0, max: 3, step: 0.1,
-        onChange: v => onParamChange('pullMultiplier', v),
+        onChange: v => onParamChange({ pullMultiplier: v }),
         title: 'Scale every spring’s stiffness', ariaLabel: 'Scale all stiffness',
         popId: 'pullMultiplier',
       }}
@@ -138,13 +140,13 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
   const exp = params.linkExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const restEffs = PULL_EDGES.map(e => (params[e.restKey] as number) * dist)
+    const restEffs = PULL_EDGES.map(e => params.dist[e.id] * dist)
     const dMax = Math.max(60, Math.max(...restEffs) * 2.2)
 
     let maxMag = 0
     const sampled = PULL_EDGES.map(edge => {
-      const kEff = (params[edge.kKey] as number) * pull
-      const restEff = (params[edge.restKey] as number) * dist
+      const kEff = params.link[edge.id] * pull
+      const restEff = params.dist[edge.id] * dist
       const pts: { d: number; v: number }[] = []
       for (let i = 0; i <= CURVE_SAMPLES; i++) {
         const d = (i / CURVE_SAMPLES) * dMax
@@ -163,7 +165,7 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
     const yFor = (v: number) => clamp(ZERO_Y - (v / norm) * ampH, 0, CURVE_H)
 
     const built = sampled.map(({ edge, restEff, pts }) => ({
-      id: edge.kKey as string,
+      id: edge.id,
       color: typeColor(edge.sourceType),
       markerX: xFor(restEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
@@ -183,7 +185,7 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
       ariaLabel="Spring force response curves"
       exp={{
         value: exp, min: 0.5, max: 3, step: 0.1,
-        onChange: v => onParamChange('linkExponent', v),
+        onChange: v => onParamChange({ linkExponent: v }),
         title: 'Power of displacement in the spring force. 1 = linear (Hooke); higher = softer near rest, stiffer far out.',
         popId: 'linkExponent',
       }}

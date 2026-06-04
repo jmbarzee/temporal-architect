@@ -14,57 +14,14 @@
 import type { NodeType, GraphEdge } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
 import { edgeTypeFor } from './edge-types'
+import type { EdgeTypeId } from './edge-types'
 
-// ── Per-type / per-edge lookups ─────────────────────────────────────────────
-//
-// Record<NodeType, keyof CategoryParams> (rather than a switch) makes the
-// compiler enforce exhaustiveness for both the NodeType union and the param
-// keys — a new node type without an entry here is a build error. Keying on the
-// category interface (not the full ForceParams) is what lets the helpers below
-// take a narrow slice while still indexing safely.
-
-export const CHARGE_KEY: Record<NodeType, keyof ChargeParams> = {
-  namespace:      'chargeNamespace',
-  nexusEndpoint:  'chargeNexusEndpoint',
-  worker:         'chargeWorker',
-  nexusService:   'chargeNexusService',
-  workflow:       'chargeWorkflow',
-  nexusOperation: 'chargeNexusOperation',
-  activity:       'chargeActivity',
-}
-
-export const BAND_MIN_KEY: Record<NodeType, keyof GravityParams> = {
-  namespace:      'bandYMinNamespace',
-  nexusEndpoint:  'bandYMinNexusEndpoint',
-  worker:         'bandYMinWorker',
-  nexusService:   'bandYMinNexusService',
-  workflow:       'bandYMinWorkflow',
-  nexusOperation: 'bandYMinNexusOperation',
-  activity:       'bandYMinActivity',
-}
-
-export const BAND_MAX_KEY: Record<NodeType, keyof GravityParams> = {
-  namespace:      'bandYMaxNamespace',
-  nexusEndpoint:  'bandYMaxNexusEndpoint',
-  worker:         'bandYMaxWorker',
-  nexusService:   'bandYMaxNexusService',
-  workflow:       'bandYMaxWorkflow',
-  nexusOperation: 'bandYMaxNexusOperation',
-  activity:       'bandYMaxActivity',
-}
-
-export const CORE_RADIUS_KEY: Record<NodeType, keyof ChargeParams> = {
-  namespace:      'coreRadiusNamespace',
-  nexusEndpoint:  'coreRadiusNexusEndpoint',
-  worker:         'coreRadiusWorker',
-  nexusService:   'coreRadiusNexusService',
-  workflow:       'coreRadiusWorkflow',
-  nexusOperation: 'coreRadiusNexusOperation',
-  activity:       'coreRadiusActivity',
-}
+// ── Per-type / per-edge accessors ───────────────────────────────────────────
+// Each force reads its per-type/per-edge values from the id-keyed param maps via
+// these thin helpers, taking only its own category slice.
 
 export function chargeForType(params: ChargeParams, nodeType: NodeType): number {
-  return params[CHARGE_KEY[nodeType]] as number
+  return params.charge[nodeType]
 }
 
 // Minimum effective core radius. A type dragged to 0 would otherwise drop the
@@ -73,7 +30,7 @@ export function chargeForType(params: ChargeParams, nodeType: NodeType): number 
 export const CORE_RADIUS_MIN = 2
 
 export function coreRadiusForType(params: ChargeParams, nodeType: NodeType): number {
-  return Math.max(params[CORE_RADIUS_KEY[nodeType]] as number, CORE_RADIUS_MIN)
+  return Math.max(params.coreRadius[nodeType], CORE_RADIUS_MIN)
 }
 
 export interface YBand {
@@ -82,18 +39,16 @@ export interface YBand {
 }
 
 export function bandForType(params: GravityParams, nodeType: NodeType): YBand {
-  return {
-    yMin: params[BAND_MIN_KEY[nodeType]] as number,
-    yMax: params[BAND_MAX_KEY[nodeType]] as number,
-  }
+  const b = params.band[nodeType]
+  return { yMin: b.min, yMax: b.max }
 }
 
 interface EdgeCategory {
   strength: number
   distance: number
-  // The k-field key identifying this category — lets callers (e.g. the canvas
+  // The edge-type id identifying this category — lets callers (e.g. the canvas
   // active-edge highlight) match an edge to the spring-map token tuning it.
-  key: keyof LinkParams
+  key: EdgeTypeId
 }
 
 // Categorize an edge into its spring parameters. The taxonomy + prioritized
@@ -102,9 +57,9 @@ interface EdgeCategory {
 export function edgeCategory(params: LinkParams, edge: GraphEdge): EdgeCategory {
   const def = edgeTypeFor(edge)
   return {
-    strength: params[def.linkKey] as number,
-    distance: params[def.distKey] as number,
-    key: def.linkKey,
+    strength: params.link[def.id],
+    distance: params.dist[def.id],
+    key: def.id,
   }
 }
 

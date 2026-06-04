@@ -7,7 +7,6 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
-import { CHARGE_KEY, CORE_RADIUS_KEY } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor } from '../graph/node-types'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
@@ -31,7 +30,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 interface ChargeControlProps {
   params: ForceParams
-  onParamChange: (key: keyof ForceParams, value: number) => void
+  onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active node type — links the map, the curves, and the canvas.
   hoveredType: NodeType | null
   onHoverType: (t: NodeType | null) => void
@@ -44,8 +43,8 @@ interface ChargeControlProps {
 export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: ChargeControlProps) {
   const tokens: MapToken[] = ALL_NODE_TYPES.map(t => ({
     id: t,
-    x: params[CORE_RADIUS_KEY[t]] as number,
-    y: Math.abs(params[CHARGE_KEY[t]] as number),
+    x: params.coreRadius[t],
+    y: Math.abs(params.charge[t]),
     colorA: typeColor(t),
     outline: 'solid',
     label: sliderLabelFor(t),
@@ -54,8 +53,10 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
 
   const handleDrag = (id: string, x: number, y: number) => {
     const t = id as NodeType
-    onParamChange(CHARGE_KEY[t], -y)   // store negative (repulsion)
-    onParamChange(CORE_RADIUS_KEY[t], x)
+    onParamChange({
+      charge: { ...params.charge, [t]: -y },        // store negative (repulsion)
+      coreRadius: { ...params.coreRadius, [t]: x },
+    })
   }
 
   return (
@@ -69,13 +70,13 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
       ariaLabel="Charge map: core radius versus charge magnitude"
       xSlider={{
         value: params.coreRadiusMultiplier, min: 0.1, max: 3, step: 0.05,
-        onChange: v => onParamChange('coreRadiusMultiplier', v),
+        onChange: v => onParamChange({ coreRadiusMultiplier: v }),
         title: 'Scale every type’s core radius', ariaLabel: 'Scale all core radius',
         popId: 'coreRadiusMultiplier',
       }}
       ySlider={{
         value: params.pushMultiplier, min: 0, max: 3, step: 0.1,
-        onChange: v => onParamChange('pushMultiplier', v),
+        onChange: v => onParamChange({ pushMultiplier: v }),
         title: 'Scale every type’s charge', ariaLabel: 'Scale all charge',
         popId: 'pushMultiplier',
       }}
@@ -95,7 +96,7 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
   const exp = params.chargeExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const rEffs = ALL_NODE_TYPES.map(t => crMul * (params[CORE_RADIUS_KEY[t]] as number))
+    const rEffs = ALL_NODE_TYPES.map(t => crMul * params.coreRadius[t])
     const maxREff = Math.max(0, ...rEffs)
     // Show the falloff out to a few core radii so the plateau-then-drop shape
     // is legible even when the radii are small.
@@ -103,8 +104,8 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
 
     let maxMag = 0
     const sampled = ALL_NODE_TYPES.map(t => {
-      const q = Math.abs(params[CHARGE_KEY[t]] as number) * push
-      const rEff = crMul * (params[CORE_RADIUS_KEY[t]] as number)
+      const q = Math.abs(params.charge[t]) * push
+      const rEff = crMul * params.coreRadius[t]
       const soft = rEff * rEff
       const pts: { d: number; v: number }[] = []
       for (let i = 0; i <= CURVE_SAMPLES; i++) {
@@ -141,7 +142,7 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
       ariaLabel="Charge falloff curves"
       exp={{
         value: exp, min: 0.5, max: 1.0, step: 0.05,
-        onChange: v => onParamChange('chargeExponent', v),
+        onChange: v => onParamChange({ chargeExponent: v }),
         title: 'Power of (d² + r²) in the charge falloff. 1 = inverse-square; higher = sharper drop-off.',
         popId: 'chargeExponent',
       }}

@@ -26,7 +26,9 @@ const FORCE_TABS: { id: ForceTab; label: string }[] = [
 
 interface GraphControlPanelProps {
   params: ForceParams
-  onParamChange: (key: keyof ForceParams, value: number) => void
+  // Patch-based: a control emits the subset of params it changed. (handleGravityChange
+  // already used this shape; unifying lets nested map params be written too.)
+  onParamChange: (patch: Partial<ForceParams>) => void
   // Shared "keep the simulation warm while tuning" signal. Fired alongside
   // every force-control edit so the layout responds live. See GraphView's
   // handleForceAdjust.
@@ -130,8 +132,8 @@ export function GraphControlPanel({
   // defined once and inherited by every present and future control
   // (sliders, dual-range bands, upcoming 2D fields) — no per-control wiring,
   // no chance of a control forgetting to keep the layout warm.
-  const emitParamChange = React.useCallback((key: keyof ForceParams, value: number) => {
-    onParamChange(key, value)
+  const emitParamChange = React.useCallback((patch: Partial<ForceParams>) => {
+    onParamChange(patch)
     onAdjust()
   }, [onParamChange, onAdjust])
 
@@ -249,7 +251,7 @@ export function GraphControlPanel({
             <SectionSlot active={activeTab === 'dynamics'}>
               <EquationSection subtitle="" equation={'v \u00D7= friction\n\u03B1 \u2212= cooling, stop at threshold'} onHover={h => onActiveSection(h ? 'dynamics' : null)}>
                 {DYNAMICS_SLIDERS.map(s => (
-                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange(s.key, v)} />
+                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange({ [s.key]: v } as Partial<ForceParams>)} />
                 ))}
               </EquationSection>
             </SectionSlot>

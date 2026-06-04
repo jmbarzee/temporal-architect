@@ -752,9 +752,9 @@ export function GraphView({
   // `handleForceAdjust` below, so non-param interactions (e.g. dragging a
   // future 2D force field before it commits a value) can keep the sim warm
   // without routing through here.
-  const handleParamChange = React.useCallback((key: keyof ForceParams, value: number) => {
+  const handleParamChange = React.useCallback((patch: Partial<ForceParams>) => {
     setForceParams(prev => {
-      const next = { ...prev, [key]: value }
+      const next = { ...prev, ...patch }
       simRef.current?.setParams(next)
       return next
     })
