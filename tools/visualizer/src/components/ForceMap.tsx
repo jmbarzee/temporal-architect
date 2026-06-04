@@ -14,6 +14,8 @@
 // Both reuse the `.spring-*` / `.force-curve-*` CSS classes (see index.css).
 
 import React from 'react'
+import { Plot } from './controls/Plot'
+import { Slider } from './controls/Slider'
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const snap = (v: number, step: number) => Math.round(v / step) * step
@@ -129,19 +131,31 @@ export function ForceMap2D({
   const hGrid = [0, MAP_H / 2, MAP_H]
 
   return (
-    <div className="spring-map">
-      <div className="spring-axis-label spring-map-axis-y">{yAxis.label}</div>
-
-      <input
-        type="range"
-        className="spring-axis-slider spring-axis-slider-y"
-        min={ySlider.min} max={ySlider.max} step={ySlider.step}
-        value={ySlider.value}
-        onChange={e => ySlider.onChange(Number(e.target.value))}
-        title={ySlider.title}
-        aria-label={ySlider.ariaLabel}
-      />
-
+    <Plot
+      yLabel={yAxis.label}
+      ySlider={
+        <Slider
+          orientation="vertical"
+          min={ySlider.min} max={ySlider.max} step={ySlider.step}
+          value={ySlider.value}
+          onChange={ySlider.onChange}
+          title={ySlider.title}
+          ariaLabel={ySlider.ariaLabel}
+        />
+      }
+      bottom={
+        <>
+          <Slider
+            min={xSlider.min} max={xSlider.max} step={xSlider.step}
+            value={xSlider.value}
+            onChange={xSlider.onChange}
+            title={xSlider.title}
+            ariaLabel={xSlider.ariaLabel}
+          />
+          <div className="ctl-plot-xlabel">{xAxis.label}</div>
+        </>
+      }
+    >
       <svg
         ref={svgRef}
         className="spring-map-svg"
@@ -193,19 +207,7 @@ export function ForceMap2D({
           )
         })}
       </svg>
-
-      <input
-        type="range"
-        className="spring-axis-slider spring-axis-slider-x"
-        min={xSlider.min} max={xSlider.max} step={xSlider.step}
-        value={xSlider.value}
-        onChange={e => xSlider.onChange(Number(e.target.value))}
-        title={xSlider.title}
-        aria-label={xSlider.ariaLabel}
-      />
-
-      <div className="spring-axis-label spring-map-axis-x">{xAxis.label}</div>
-    </div>
+    </Plot>
   )
 }
 
@@ -307,12 +309,10 @@ export function ForceCurves({
 
       <div className="spring-curves-exp" title={exp.title}>
         <span className="spring-exp-label">{exp.label ?? 'exp'}</span>
-        <input
-          type="range"
+        <Slider
           min={exp.min} max={exp.max} step={exp.step}
           value={exp.value}
-          onChange={e => exp.onChange(Number(e.target.value))}
-          className="spring-exp-slider"
+          onChange={exp.onChange}
         />
       </div>
     </div>

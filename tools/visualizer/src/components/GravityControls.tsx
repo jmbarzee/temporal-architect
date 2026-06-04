@@ -12,6 +12,9 @@ import { BAND_MIN_KEY, BAND_MAX_KEY } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
 import { NODE_TYPE_REGISTRY } from '../graph/node-types'
 import { ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES, type CurveItem } from './ForceMap'
+import { Plot } from './controls/Plot'
+import { Slider } from './controls/Slider'
+import { Equation } from './controls/Equation'
 
 // Column order: main ladder first, then the nexus ladder (after a gap).
 const COL_ORDER: NodeType[] = [
@@ -102,19 +105,44 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
   }
 
   return (
-    <div className="gravity-band-layout">
-      <div className="gravity-band-strength-y">Y strength</div>
-
-      <input
-        type="range"
-        className="spring-axis-slider spring-axis-slider-y"
-        min={0} max={0.25} step={0.005}
-        value={params.gravityY}
-        onChange={e => onParamChange('gravityY', Number(e.target.value))}
-        title="Vertical band-pull strength (scale all)"
-        aria-label="Vertical band strength"
-      />
-
+    <Plot
+      yLabel="Y strength"
+      ySlider={
+        <Slider
+          orientation="vertical"
+          min={0} max={0.25} step={0.005}
+          value={params.gravityY}
+          onChange={v => onParamChange('gravityY', v)}
+          title="Vertical band-pull strength (scale all)"
+          ariaLabel="Vertical band strength"
+        />
+      }
+      bottom={
+        <>
+          {/* X-range band: horizontal two-handle slider immediately under the plot. */}
+          <div
+            className="gravity-xband"
+            onMouseEnter={() => setXbandHover(true)}
+            onMouseLeave={() => setXbandHover(false)}
+          >
+            <DualRange
+              min={W_MIN} max={W_MAX} step={W_STEP}
+              valueMin={params.bandXMin} valueMax={params.bandXMax}
+              onChangeMin={v => onParamChange('bandXMin', v)}
+              onChangeMax={v => onParamChange('bandXMax', v)}
+            />
+          </div>
+          <Slider
+            min={0} max={0.25} step={0.005}
+            value={params.gravityX}
+            onChange={v => onParamChange('gravityX', v)}
+            title="Horizontal band-pull strength (scale all)"
+            ariaLabel="Horizontal band strength"
+          />
+          <div className="ctl-plot-xlabel">X strength</div>
+        </>
+      }
+    >
       <svg
         ref={svgRef}
         className="gravity-band-svg"
@@ -178,33 +206,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
           )
         })}
       </svg>
-
-      {/* X band: horizontal two-handle slider immediately under the plot. */}
-      <div
-        className="gravity-xband"
-        onMouseEnter={() => setXbandHover(true)}
-        onMouseLeave={() => setXbandHover(false)}
-      >
-        <DualRange
-          min={W_MIN} max={W_MAX} step={W_STEP}
-          valueMin={params.bandXMin} valueMax={params.bandXMax}
-          onChangeMin={v => onParamChange('bandXMin', v)}
-          onChangeMax={v => onParamChange('bandXMax', v)}
-        />
-      </div>
-
-      <input
-        type="range"
-        className="spring-axis-slider spring-axis-slider-x"
-        min={0} max={0.25} step={0.005}
-        value={params.gravityX}
-        onChange={e => onParamChange('gravityX', Number(e.target.value))}
-        title="Horizontal band-pull strength (scale all)"
-        aria-label="Horizontal band strength"
-      />
-
-      <div className="gravity-band-strength-x">X strength</div>
-    </div>
+    </Plot>
   )
 }
 
@@ -247,7 +249,7 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
       <div className="gravity-bodies">
         <div className={`gravity-body${sub === 'band' ? ' active' : ''}`} aria-hidden={sub !== 'band'}>
           <div className={`gravity-section-tools${params.bandEnabled ? '' : ' inactive'}`}>
-            <div className="graph-control-equation-formula">F = strength × d<sup>exp</sup></div>
+            <Equation>{<>F = strength × d<sup>exp</sup></>}</Equation>
             <GravityBandPlot params={params} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
             <BandCurves params={params} onParamChange={onParamChange} />
           </div>
@@ -255,26 +257,22 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
 
         <div className={`gravity-body${sub === 'topological' ? ' active' : ''}`} aria-hidden={sub !== 'topological'}>
           <div className={`gravity-section-tools gravity-topo${params.topologicalEnabled ? '' : ' inactive'}`}>
-            <div className="graph-control-equation-formula">F = strength × depth<sup>exp</sup> × d</div>
+            <Equation>{<>F = strength × depth<sup>exp</sup> × d</>}</Equation>
             <TopologicalCurve exp={params.gravityTopologicalExp} />
             <div className="gravity-slider-row">
               <label className="graph-control-slider-label">strength</label>
-              <input
-                type="range"
-                className="graph-control-slider-input"
+              <Slider
                 min={0} max={2} step={0.02}
                 value={params.gravityDownstream}
-                onChange={e => onParamChange('gravityDownstream', Number(e.target.value))}
+                onChange={v => onParamChange('gravityDownstream', v)}
               />
             </div>
             <div className="gravity-slider-row">
               <label className="graph-control-slider-label">exp</label>
-              <input
-                type="range"
-                className="graph-control-slider-input"
+              <Slider
                 min={1} max={6} step={0.1}
                 value={params.gravityTopologicalExp}
-                onChange={e => onParamChange('gravityTopologicalExp', Number(e.target.value))}
+                onChange={v => onParamChange('gravityTopologicalExp', v)}
               />
             </div>
           </div>

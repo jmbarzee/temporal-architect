@@ -7,6 +7,8 @@ import type { NodeType } from '../graph/model'
 import { SpringMap, SpringCurves } from './SpringControls'
 import { ChargeMap, ChargeCurves } from './ChargeControls'
 import { GravityControls } from './GravityControls'
+import { Slider } from './controls/Slider'
+import { Equation } from './controls/Equation'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
@@ -306,9 +308,7 @@ function EquationSection({ subtitle, equation, onHover, children }: {
           <span className="graph-control-equation-subtitle">({subtitle})</span>
         </div>
       )}
-      {equation && (typeof equation === 'string'
-        ? <pre className="graph-control-equation-formula">{equation}</pre>
-        : <div className="graph-control-equation-formula">{equation}</div>)}
+      <Equation>{equation}</Equation>
       <div className="graph-control-equation-body">
         {children}
       </div>
@@ -330,15 +330,7 @@ function SliderRow({ def, value, onChange, nodeType }: {
   return (
     <div className={className} title={def.tooltip}>
       <label className="graph-control-slider-label">{def.label}</label>
-      <input
-        type="range"
-        min={def.min}
-        max={def.max}
-        step={def.step}
-        value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        className="graph-control-slider-input"
-      />
+      <Slider min={def.min} max={def.max} step={def.step} value={value} onChange={onChange} />
       <span className="graph-control-slider-value">{display}</span>
     </div>
   )
