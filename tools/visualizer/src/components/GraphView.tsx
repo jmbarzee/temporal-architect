@@ -11,7 +11,7 @@ import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
 import type { SimNode } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
 import { definitionFor, ALL_NODE_TYPES as _ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
-import { DEFAULT_VIEWPORT, fitToView, worldToScreen } from '../graph/viewport'
+import { fitToView, worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { getTransitiveDeps, getHighlightedEdgeIds } from '../graph/highlight'
@@ -23,6 +23,7 @@ import { GraphContextMenu, type ContextMenuItem } from './GraphContextMenu'
 import { SearchIcon } from './icons/GearIcons'
 import { DEF_TYPE_CONFIGS, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 import { useGraphModel } from './graph-view/useGraphModel'
+import { useViewport } from './graph-view/useViewport'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -308,14 +309,12 @@ export function GraphView({
   const selectedFiles = filter.selectedFiles
 
   // --- Core state ---
-  const [viewport, setViewport] = React.useState<Viewport>(DEFAULT_VIEWPORT)
+  // Camera (viewport transform, container ref, fit/center coordination).
+  const { viewport, setViewport, containerRef, initialFitDone, pendingCenterRef, fit } = useViewport()
   const [running, setRunning] = React.useState(true)
   const [forceParams, setForceParams] = React.useState<ForceParams>({ ...DEFAULT_PARAMS })
   const simRef = React.useRef<Simulation | null>(null)
   const dragNodeRef = React.useRef<string | null>(null)
-  const initialFitDone = React.useRef(false)
-  const containerRef = React.useRef<HTMLDivElement>(null)
-  const pendingCenterRef = React.useRef<{ nodeId: string } | null>(null)
   // Frame-rate indicator for debugging. Updated ~2×/sec from the physics loop.
   const [fps, setFps] = React.useState(0)
   const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
@@ -785,8 +784,7 @@ export function GraphView({
   // Double-click node: center and zoom to neighbors
   const handleDoubleClickNode = React.useCallback((id: string) => {
     const sim = simRef.current
-    const container = containerRef.current
-    if (!sim || !container) return
+    if (!sim) return
     const node = sim.getNode(id)
     if (!node) return
     const neighborIds = new Set<string>([id])
@@ -795,17 +793,13 @@ export function GraphView({
       if (edge.targetId === id) neighborIds.add(edge.sourceId)
     }
     const neighbors = sim.nodes.filter(n => neighborIds.has(n.id))
-    const { width, height } = container.getBoundingClientRect()
-    setViewport(fitToView(neighbors, width, height, 80))
-  }, [])
+    fit(neighbors, 80)
+  }, [fit])
 
   // Fit-to-view
   const handleFitToView = React.useCallback(() => {
-    const container = containerRef.current
-    if (!container) return
-    const { width, height } = container.getBoundingClientRect()
-    setViewport(fitToView(visibleNodes, width, height))
-  }, [visibleNodes])
+    fit(visibleNodes)
+  }, [fit, visibleNodes])
 
   // Toggle simulation
   const handleToggleRunning = React.useCallback(() => {
