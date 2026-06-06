@@ -7,8 +7,6 @@ import type { ParserGraph } from '../types/parser-graph'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { ForceParams } from '../graph/simulation'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
-import { filterStatesEqual } from '../filter/types'
-import { buildGraph } from '../graph/build'
 import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
 import type { SimNode } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
@@ -24,6 +22,7 @@ import { PinToggle } from './PinToggle'
 import { GraphContextMenu, type ContextMenuItem } from './GraphContextMenu'
 import { SearchIcon } from './icons/GearIcons'
 import { DEF_TYPE_CONFIGS, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
+import { useGraphModel } from './graph-view/useGraphModel'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -342,22 +341,19 @@ export function GraphView({
   // --- Right-click context menu ---
   const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; nodeId: string } | null>(null)
 
-  // --- Filter change tracking for transient animation on focus transitions ---
-  const prevFilterRef = React.useRef<FilterState>(filter)
-  const [recentlyChanged, setRecentlyChanged] = React.useState<Set<string>>(new Set())
-  React.useEffect(() => {
-    const prev = prevFilterRef.current
-    if (filterStatesEqual(prev, filter)) return
-    const changed = new Set<string>()
-    for (const f of filter.selectedFiles) if (!prev.selectedFiles.has(f)) changed.add(`file:${f}`)
-    for (const t of filter.visibleTypes) if (!prev.visibleTypes.has(t)) changed.add(`type:${t}`)
-    prevFilterRef.current = filter
-    if (changed.size > 0) {
-      setRecentlyChanged(changed)
-      const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)
-      return () => clearTimeout(timer)
-    }
-  }, [filter])
+  // Pure data layer (graph build, file list, filter-change flash, diagnostics
+  // partition) — everything derived straight from props, no sim/DOM.
+  const {
+    graph,
+    allFiles,
+    recentlyChanged,
+    errors,
+    diagnostics,
+    shownFileErrors,
+    hiddenFileErrors,
+    shownDiagnostics,
+    hiddenDiagnostics,
+  } = useGraphModel(ast, parserGraph, filter)
 
   // Clear pin-override flash after ~600ms so the visual flash plays once.
   React.useEffect(() => {
@@ -365,14 +361,6 @@ export function GraphView({
     const timer = setTimeout(onOverriddenPinsConsumed, 600)
     return () => clearTimeout(timer)
   }, [overriddenPins, onOverriddenPinsConsumed])
-
-  // Build view-side graph from the parser's deployment graph.
-  // AST is consulted for sourceFile (the file-filter chip reads this) and
-  // for future hover-detail enrichments. See visualizer/REVISIONS_003.
-  const graph = React.useMemo(
-    () => buildGraph(parserGraph, ast),
-    [parserGraph, ast],
-  )
 
   // Bumped after each simulation (re)creation so memos that read from
   // simRef.current can be invalidated. Without this signal the
@@ -392,15 +380,6 @@ export function GraphView({
     setFocusedIndex(-1)
     setSimVersion(v => v + 1)
   }, [graph]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Extract all unique source files from graph nodes
-  const allFiles = React.useMemo(() => {
-    const files = new Set<string>()
-    for (const node of graph.nodes.values()) {
-      if (node.sourceFile) files.add(node.sourceFile)
-    }
-    return Array.from(files).sort()
-  }, [graph])
 
   // Stale-file cleanup is now owned by WorkflowCanvas (it touches both views'
   // filters consistently when the AST changes).
@@ -1038,49 +1017,6 @@ export function GraphView({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, onSearchChange, shortcutsOpen, handleFitToView, handleToggleRunning])
-
-  // Findings: process-level FileErrors (catastrophic parser failures)
-  // and structured Diagnostics (validator/resolver/parse warnings &
-  // errors from `twf parse`'s JSON envelope). Each is partitioned by
-  // the file-filter so the header can report the shown/hidden split.
-  const errors = ast.errors || []
-  const diagnostics = ast.diagnostics || []
-  const {
-    shownFileErrors,
-    hiddenFileErrors,
-    shownDiagnostics,
-    hiddenDiagnostics,
-  } = React.useMemo(() => {
-    if (selectedFiles.size === 0) {
-      return {
-        shownFileErrors: errors,
-        hiddenFileErrors: [] as FileError[],
-        shownDiagnostics: diagnostics,
-        hiddenDiagnostics: [] as Diagnostic[],
-      }
-    }
-    const sFE: FileError[] = []
-    const hFE: FileError[] = []
-    for (const e of errors) {
-      if (selectedFiles.has(e.file)) sFE.push(e)
-      else hFE.push(e)
-    }
-    const sD: Diagnostic[] = []
-    const hD: Diagnostic[] = []
-    for (const d of diagnostics) {
-      // Unstamped diagnostics surface in the shown group so a missing
-      // file path can't accidentally hide them. The extension stamps
-      // file paths, so this only triggers on adversarial input.
-      if (!d.file || selectedFiles.has(d.file)) sD.push(d)
-      else hD.push(d)
-    }
-    return {
-      shownFileErrors: sFE,
-      hiddenFileErrors: hFE,
-      shownDiagnostics: sD,
-      hiddenDiagnostics: hD,
-    }
-  }, [errors, diagnostics, selectedFiles])
 
   const hasFiles = allFiles.length > 0
   const hasHeaderContent = errors.length > 0 || diagnostics.length > 0
