@@ -39,6 +39,14 @@ Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`
 
 Priority keys: `priority_key` (number, 1–n, lower = higher priority), `fairness_key` (string, fairness balancing key), `fairness_weight` (number, weight in [0.001, 1000])
 
+Signal handler options: `unfinished_policy` (values: `abandon`, `warn_and_abandon`; default `warn_and_abandon`), `description` (string)
+
+Update handler options: `unfinished_policy` (values: `abandon`, `warn_and_abandon`; default `warn_and_abandon`), `description` (string)
+
+Query handler options: `description` (string). `unfinished_policy` does not apply — queries are synchronous and read-only, so they cannot be "unfinished".
+
+`unfinished_policy` declares whether a handler may be silently dropped when the workflow exits while the handler is still running: `warn_and_abandon` logs a warning and drops it (the default), `abandon` drops it silently. The choice is a design-intent statement — for update handlers especially, an abandoned handler means the waiting caller receives `NotFound`, so it is rarely the right choice there.
+
 **Example:**
 ```
 activity ChargePayment(order) -> payment
@@ -51,6 +59,22 @@ activity ChargePayment(order) -> payment
         priority:
             priority_key: 1
             fairness_key: "high"
+```
+
+Handler declarations may carry an `options:` block at the head of the handler body, before any statements:
+
+```twf
+signal Cancel():
+    options:
+        unfinished_policy: abandon
+    cancelled = true
+
+update SubmitJob(job: Job) -> (JobId):
+    options:
+        unfinished_policy: warn_and_abandon
+    activity ValidateJob(job)
+    jobId = uuid()
+    return jobId
 ```
 
 ## Workflow Call

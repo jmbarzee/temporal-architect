@@ -43,9 +43,9 @@ state_block ::= 'state' ':' NEWLINE INDENT state_stmt* DEDENT
 state_stmt ::= condition_decl | raw_stmt
 condition_decl ::= 'condition' IDENT NEWLINE
 
-signal_decl ::= 'signal' IDENT params ':' NEWLINE INDENT statement* DEDENT
-query_decl ::= 'query' IDENT params '->' return_type ':' NEWLINE INDENT statement* DEDENT
-update_decl ::= 'update' IDENT params '->' return_type ':' NEWLINE INDENT statement* DEDENT
+signal_decl ::= 'signal' IDENT params ':' NEWLINE INDENT [options_block] statement* DEDENT
+query_decl ::= 'query' IDENT params '->' return_type ':' NEWLINE INDENT [options_block] statement* DEDENT
+update_decl ::= 'update' IDENT params '->' return_type ':' NEWLINE INDENT [options_block] statement* DEDENT
 
 statement ::= activity_call | workflow_call | nexus_call | signal_send_stmt | promise_stmt
             | set_stmt | unset_stmt
