@@ -2,6 +2,10 @@
 
 A DSL (`.twf`) and toolchain for designing, visualizing, and code-generating Temporal workflows. See [README](./README.md) for full details.
 
+## Running `go`
+
+Prefix every Go command with `GOMODCACHE=$HOME/go/pkg/mod` (e.g. `GOMODCACHE=$HOME/go/pkg/mod go test ./...`). The Cursor agent sandbox injects a broken `GOMODCACHE` that can't resolve the temporary `tliron/glsp => jmbarzee/glsp` replace, so Go fails with `no required module provides package github.com/tliron/glsp` for the `tools/lsp` packages; the override points Go at the host cache (allowlisting `go` alone doesn't help — the bad var is still injected, and this is unrelated to `go.work`). Don't "fix" it by editing `go.mod`/`go.work`/`go.sum` or touching the replace — they're correct. Remove this paragraph once the upstream `tliron/glsp` PR lands and the replace is dropped.
+
 ## Project Layout
 
 See [README — Repository Structure](./README.md#repository-structure) for the top-level tree. Additional internal detail relevant to working in this repo:

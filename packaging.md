@@ -167,6 +167,27 @@ Embed skills in the `twf` binary and add a `twf skill` subcommand mirroring `twf
 
 **Effort:** ~2-3 days.
 
+### M3 — Agent-discoverable binary on PATH
+
+The extension bundles `twf` and prepends its `bin/` to the **integrated terminal** via
+`environmentVariableCollection` (`setupTerminalPath`), but that does **not** reach the AI agent's
+shell — confirmed empirically: in an agent shell with the extension installed, `twf` resolves only
+if the user separately `go install`ed it (`~/go/bin/twf`); the extension `bin/` is absent from the
+agent PATH. So extension-only users (the common case) get an AI that can't find `twf` and digs around
+or runs full paths. (This was the reverse-engineering reflection's recurring friction.)
+
+| | Work | Effort |
+|---|---|---|
+| 3.1 | On activation, symlink (or copy) bundled `twf` into a dir already on the agent PATH — `~/.local/bin/twf` on macOS/Linux (confirmed present; already holds `claude`), platform equivalent on Windows. Refresh on each activation so it tracks the extension version. | S |
+| 3.2 | Guard: don't clobber a user-managed `twf` (e.g. if `~/.local/bin/twf` exists and isn't our symlink, leave it / warn). Keep the existing integrated-terminal `environmentVariableCollection` for human terminals. | S |
+| 3.3 | Skill/onboarding note: skills assume `twf` on PATH; the **visualizer** is not a CLI — the agent's surface to graph data is `twf graph --json` (the GUI stays human-facing via the `twf.visualize` command). | S |
+
+**Acceptance:** With only the extension installed (no `go install`), a fresh agent shell resolves
+`twf` on PATH and `twf graph --json` works. No path-digging.
+
+**Why it matters (North Star):** keeping the AI out of "where is the tool" busywork is exactly the
+context-protection the project is built on.
+
 ### M4 — `twf init` scaffolder
 
 New `twf init` subcommand that scaffolds a starter `.twf` project in any directory. Depends on M1 (uses embedded skills/templates).
