@@ -31,6 +31,8 @@ github.com/tliron/commonlog v0.2.18 h1:F0zY09VDGTasPCpP9KvE8xqqVNMUfwMJQ0Xvo5Y6B
 github.com/tliron/commonlog v0.2.18/go.mod h1:7f3OMSgVyGAFbRKwlvfUErnB6U75LgW8wa6NlWuswGg=
 github.com/tliron/kutil v0.3.25 h1:oaPN6K0zsH3KcVnsocA3kAlfR0XYDzADob6xdjqe56k=
 github.com/tliron/kutil v0.3.25/go.mod h1:ZvOJuF6PTGvjfHmn2dFcgz+EDEzRQqQUztK+7djlXIw=
+go.temporal.io/api v1.62.13 h1:xMa8Nt5oAMX+LvlCJA44wjTCc1H09i2rG9poB1/xvH4=
+go.temporal.io/api v1.62.13/go.mod h1:0k75tRljEuELWGeXjEZZO7zYqBln4+1FrG6+IMOMy7Q=
 golang.org/x/crypto v0.48.0 h1:/VRzVqiRSggnhY7gNRxPauEQ5Drw9haKdM0jqfcCFts=
 golang.org/x/crypto v0.48.0/go.mod h1:r0kV5h3qnFPlQnBSrULhlsRfryS2pmewsg+XfMgkVos=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

@@ -88,10 +88,10 @@ func (g *Graph) buildParentIndex() parentIndex {
 		if n.Orphan {
 			continue
 		}
-		if w := ancestorOfKind(n.ID, kindWorker, parentEdge, kindByID); w != "" {
+		if w := ancestorOfKind(n.ID, KindWorker, parentEdge, kindByID); w != "" {
 			pi.worker[n.ID] = w
 		}
-		if ns := ancestorOfKind(n.ID, kindNamespace, parentEdge, kindByID); ns != "" {
+		if ns := ancestorOfKind(n.ID, KindNamespace, parentEdge, kindByID); ns != "" {
 			pi.namespace[n.ID] = ns
 		}
 	}

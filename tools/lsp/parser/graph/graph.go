@@ -166,46 +166,55 @@ type Graph struct {
 // `workflow:OrderWorkflow`. They match the form already used internally
 // by the visualizer's `definitionKey`.
 
+// Node kind constants. Values mirror the definition-key prefixes in the
+// wire format. Exported so external builders (e.g. the history importer)
+// can produce byte-identical node IDs without duplicating these strings.
 const (
-	kindNamespace      = "namespace"
-	kindWorker         = "worker"
-	kindWorkflow       = "workflow"
-	kindActivity       = "activity"
-	kindNexusService   = "nexusService"
-	kindNexusOperation = "nexusOperation"
-	kindNexusEndpoint  = "nexusEndpoint"
+	KindNamespace      = "namespace"
+	KindWorker         = "worker"
+	KindWorkflow       = "workflow"
+	KindActivity       = "activity"
+	KindNexusService   = "nexusService"
+	KindNexusOperation = "nexusOperation"
+	KindNexusEndpoint  = "nexusEndpoint"
 )
 
 const orphanSuffix = "/orphan"
 
-func defKey(kind, name string) string {
+// DefKey returns the definition key for a node kind and name,
+// e.g. DefKey("workflow", "OrderWorkflow") → "workflow:OrderWorkflow".
+func DefKey(kind, name string) string {
 	return kind + ":" + name
 }
 
-func namespaceID(name string) string {
-	return defKey(kindNamespace, name)
+// NamespaceID returns the canonical node ID for a namespace deployment.
+func NamespaceID(name string) string {
+	return DefKey(KindNamespace, name)
 }
 
-func workerID(name, namespace string) string {
+// WorkerID returns the canonical node ID for a worker deployment.
+// An empty namespace produces an orphan ID.
+func WorkerID(name, namespace string) string {
 	if namespace == "" {
-		return defKey(kindWorker, name) + orphanSuffix
+		return DefKey(KindWorker, name) + orphanSuffix
 	}
-	return defKey(kindWorker, name) + "/" + namespaceID(namespace)
+	return DefKey(KindWorker, name) + "/" + NamespaceID(namespace)
 }
 
-func endpointID(name, namespace string) string {
-	return defKey(kindNexusEndpoint, name) + "/" + namespaceID(namespace)
+// EndpointID returns the canonical node ID for a nexus endpoint deployment.
+func EndpointID(name, namespace string) string {
+	return DefKey(KindNexusEndpoint, name) + "/" + NamespaceID(namespace)
 }
 
-// hostedID builds the ID for a definition hosted on a specific worker
+// HostedID builds the ID for a definition hosted on a specific worker
 // deployment. orphan=true is used when the definition exists but isn't
 // registered on any instantiated worker.
-func hostedID(kind, name, worker, namespace string, orphan bool) string {
-	base := defKey(kind, name)
+func HostedID(kind, name, worker, namespace string, orphan bool) string {
+	base := DefKey(kind, name)
 	if orphan {
 		return base + orphanSuffix
 	}
-	return base + "/" + defKey(kindWorker, worker) + "/" + namespaceID(namespace)
+	return base + "/" + DefKey(KindWorker, worker) + "/" + NamespaceID(namespace)
 }
 
 // nexusOpQualifiedName joins service and operation names into the
@@ -251,6 +260,14 @@ func newGraph() *Graph {
 		Unresolved:     []Unresolved{},
 		Diagnostics:    []Diagnostic{},
 	}
+}
+
+// Finalize runs coarsening and stabilizes the graph for serialization.
+// Called by external builders (e.g. the history importer) that construct
+// a Graph directly without going through Extract.
+func Finalize(g *Graph) {
+	g.emitCoarsenedEdges()
+	g.finalize()
 }
 
 // finalize populates the summary and produces a stable ordering of all

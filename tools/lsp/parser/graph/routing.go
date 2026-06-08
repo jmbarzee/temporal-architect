@@ -22,8 +22,8 @@ import (
 // diagnostic is added so the consumer knows the call landed nowhere.
 func (g *Graph) emitDispatchEdges(idx *astIndex) {
 	for _, wf := range idx.workflows {
-		for _, callerDep := range idx.deploymentsHosting(kindWorkflow, wf.Name) {
-			callerID := hostedID(kindWorkflow, wf.Name, callerDep.WorkerName, callerDep.NamespaceName, false)
+		for _, callerDep := range idx.deploymentsHosting(KindWorkflow, wf.Name) {
+			callerID := HostedID(KindWorkflow, wf.Name, callerDep.WorkerName, callerDep.NamespaceName, false)
 			g.walkRunnable(idx, callerID, callerDep, wf.Body)
 			for _, s := range wf.Signals {
 				g.walkRunnable(idx, callerID, callerDep, s.Body)
@@ -38,7 +38,7 @@ func (g *Graph) emitDispatchEdges(idx *astIndex) {
 	}
 
 	for _, svc := range idx.nexusServices {
-		serviceDeployments := idx.deploymentsHosting(kindNexusService, svc.Name)
+		serviceDeployments := idx.deploymentsHosting(KindNexusService, svc.Name)
 		for _, op := range svc.Operations {
 			opName := nexusOpQualifiedName(svc.Name, op.Name)
 			switch op.OpType {
@@ -49,12 +49,12 @@ func (g *Graph) emitDispatchEdges(idx *astIndex) {
 				}
 				targetName := op.Workflow.Resolved.Name
 				for _, opDep := range serviceDeployments {
-					fromID := hostedID(kindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
+					fromID := HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
 					g.emitAsyncBacking(idx, fromID, opDep, targetName, op.Line)
 				}
 			case ast.NexusOpSync:
 				for _, opDep := range serviceDeployments {
-					fromID := hostedID(kindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
+					fromID := HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
 					g.walkRunnable(idx, fromID, opDep, op.Body)
 				}
 			}
@@ -104,7 +104,7 @@ func (g *Graph) emitActivityCall(
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, kindActivity, ref.Resolved.Name, opts, line)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, ref.Resolved.Name, opts, line)
 }
 
 func (g *Graph) emitWorkflowCall(
@@ -117,7 +117,7 @@ func (g *Graph) emitWorkflowCall(
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, kindWorkflow, ref.Resolved.Name, opts, line)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, ref.Resolved.Name, opts, line)
 }
 
 // emitSignalSend emits the cross-workflow signal-send edge. Unlike a
@@ -144,13 +144,13 @@ func (g *Graph) emitSignalSend(
 		})
 		return
 	}
-	for _, calleeDep := range idx.deploymentsHosting(kindWorkflow, target.Name) {
+	for _, calleeDep := range idx.deploymentsHosting(KindWorkflow, target.Name) {
 		if calleeDep.NamespaceName != callerDep.NamespaceName {
 			continue
 		}
 		g.Edges = append(g.Edges, Edge{
 			From:    callerID,
-			To:      hostedID(kindWorkflow, target.Name, calleeDep.WorkerName, calleeDep.NamespaceName, false),
+			To:      HostedID(KindWorkflow, target.Name, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 			Kind:    EdgeSignalSend,
 			Line:    line,
 			Routing: &Routing{},
@@ -209,7 +209,7 @@ func (g *Graph) emitQueuedCall(
 			}
 			edge := Edge{
 				From: callerID,
-				To:   hostedID(calleeKind, calleeName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
+				To:   HostedID(calleeKind, calleeName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 				Kind: edgeKind,
 				Line: line,
 				Routing: &Routing{
@@ -264,7 +264,7 @@ func (g *Graph) emitNexusCall(
 
 	opName := nexusOpQualifiedName(svcRef.Resolved.Name, opRef.Resolved.Name)
 	matched := false
-	for _, opDep := range idx.deploymentsHosting(kindNexusService, svcRef.Resolved.Name) {
+	for _, opDep := range idx.deploymentsHosting(KindNexusService, svcRef.Resolved.Name) {
 		if opDep.NamespaceName != ep.Namespace {
 			continue
 		}
@@ -273,11 +273,11 @@ func (g *Graph) emitNexusCall(
 		}
 		edge := Edge{
 			From: callerID,
-			To:   hostedID(kindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false),
+			To:   HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false),
 			Kind: EdgeNexusCall,
 			Line: line,
 			Routing: &Routing{
-				NexusEndpoint: endpointID(ep.Name, ep.Namespace),
+				NexusEndpoint: EndpointID(ep.Name, ep.Namespace),
 			},
 		}
 		g.Edges = append(g.Edges, edge)
@@ -285,7 +285,7 @@ func (g *Graph) emitNexusCall(
 	}
 
 	if !matched && ep.Queue != "" {
-		g.addDiagnostic(warningDispatchNoReachable(callerID, kindNexusOperation, opName, ep.Queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(callerID, KindNexusOperation, opName, ep.Queue, line))
 	}
 }
 
@@ -299,7 +299,7 @@ func (g *Graph) emitAsyncBacking(
 	workflowName string, line int,
 ) {
 	matched := false
-	for _, calleeDep := range idx.deploymentsHosting(kindWorkflow, workflowName) {
+	for _, calleeDep := range idx.deploymentsHosting(KindWorkflow, workflowName) {
 		if calleeDep.NamespaceName != opDep.NamespaceName {
 			continue
 		}
@@ -308,7 +308,7 @@ func (g *Graph) emitAsyncBacking(
 		}
 		g.Edges = append(g.Edges, Edge{
 			From:    fromID,
-			To:      hostedID(kindWorkflow, workflowName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
+			To:      HostedID(KindWorkflow, workflowName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 			Kind:    EdgeAsyncBacking,
 			Line:    line,
 			Routing: &Routing{},
@@ -317,7 +317,7 @@ func (g *Graph) emitAsyncBacking(
 	}
 
 	if !matched && opDep.Queue != "" {
-		g.addDiagnostic(warningDispatchNoReachable(fromID, kindWorkflow, workflowName, opDep.Queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(fromID, KindWorkflow, workflowName, opDep.Queue, line))
 	}
 }
 
@@ -344,14 +344,14 @@ func nexusOpCallName(svc ast.Ref[*ast.NexusServiceDef], op ast.Ref[*ast.NexusOpe
 func (g *Graph) recordUnresolved(opQualName, calleeName, kind string, line int, serviceDeployments []workerDeployment) {
 	if len(serviceDeployments) == 0 {
 		g.Unresolved = append(g.Unresolved, Unresolved{
-			From: hostedID(kindNexusOperation, opQualName, "", "", true),
+			From: HostedID(KindNexusOperation, opQualName, "", "", true),
 			Name: calleeName, Kind: kind, Line: line,
 		})
 		return
 	}
 	for _, opDep := range serviceDeployments {
 		g.Unresolved = append(g.Unresolved, Unresolved{
-			From: hostedID(kindNexusOperation, opQualName, opDep.WorkerName, opDep.NamespaceName, false),
+			From: HostedID(KindNexusOperation, opQualName, opDep.WorkerName, opDep.NamespaceName, false),
 			Name: calleeName, Kind: kind, Line: line,
 		})
 	}

@@ -1,13 +1,14 @@
 module github.com/jmbarzee/temporal-architect/tools/lsp
 
-go 1.24.0
+go 1.25.4
 
-toolchain go1.24.2
+toolchain go1.25.11
 
 require (
 	github.com/jmbarzee/temporal-architect/tools/spec v0.0.0-00010101000000-000000000000
 	github.com/tliron/commonlog v0.2.18
 	github.com/tliron/glsp v0.2.3-0.20250617204849-59d6e3155c81
+	go.temporal.io/api v1.62.13
 )
 
 require (
@@ -25,6 +26,7 @@ require (
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sourcegraph/jsonrpc2 v0.2.0 // indirect
 	github.com/tliron/kutil v0.3.25 // indirect
+	go.temporal.io/api v1.62.13
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect

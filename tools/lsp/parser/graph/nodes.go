@@ -133,21 +133,21 @@ func (idx *astIndex) deploymentsHosting(kind, name string) []workerDeployment {
 		}
 		var hosted bool
 		switch kind {
-		case kindWorkflow:
+		case KindWorkflow:
 			for _, r := range wd.worker.Workflows {
 				if r.Name == name {
 					hosted = true
 					break
 				}
 			}
-		case kindActivity:
+		case KindActivity:
 			for _, r := range wd.worker.Activities {
 				if r.Name == name {
 					hosted = true
 					break
 				}
 			}
-		case kindNexusService:
+		case KindNexusService:
 			for _, r := range wd.worker.Services {
 				if r.Name == name {
 					hosted = true
@@ -172,8 +172,8 @@ func (idx *astIndex) deploymentsHosting(kind, name string) []workerDeployment {
 func (g *Graph) enumerateNodes(idx *astIndex) {
 	for _, ns := range idx.namespaces {
 		g.addNode(Node{
-			ID:         namespaceID(ns.Name),
-			Definition: defKey(kindNamespace, ns.Name),
+			ID:         NamespaceID(ns.Name),
+			Definition: DefKey(KindNamespace, ns.Name),
 		})
 	}
 
@@ -183,8 +183,8 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 		// no edge equivalent and is intrinsic to the worker deployment, so
 		// it stays.
 		g.addNode(Node{
-			ID:         workerID(wd.WorkerName, wd.NamespaceName),
-			Definition: defKey(kindWorker, wd.WorkerName),
+			ID:         WorkerID(wd.WorkerName, wd.NamespaceName),
+			Definition: DefKey(KindWorker, wd.WorkerName),
 			Queue:      wd.Queue,
 		})
 	}
@@ -192,8 +192,8 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 	for name := range idx.workers {
 		if len(idx.deploymentsOfWorker(name)) == 0 {
 			g.addNode(Node{
-				ID:         workerID(name, ""),
-				Definition: defKey(kindWorker, name),
+				ID:         WorkerID(name, ""),
+				Definition: DefKey(KindWorker, name),
 				Orphan:     true,
 			})
 		}
@@ -201,41 +201,41 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 
 	for _, ep := range idx.endpointsByName {
 		g.addNode(Node{
-			ID:         endpointID(ep.Name, ep.Namespace),
-			Definition: defKey(kindNexusEndpoint, ep.Name),
-			Namespace:  namespaceID(ep.Namespace),
+			ID:         EndpointID(ep.Name, ep.Namespace),
+			Definition: DefKey(KindNexusEndpoint, ep.Name),
+			Namespace:  NamespaceID(ep.Namespace),
 			Queue:      ep.Queue,
 		})
 	}
 
 	for name := range idx.workflows {
-		g.enumerateHosted(kindWorkflow, name, idx)
+		g.enumerateHosted(KindWorkflow, name, idx)
 	}
 	for name := range idx.activities {
-		g.enumerateHosted(kindActivity, name, idx)
+		g.enumerateHosted(KindActivity, name, idx)
 	}
 	for name := range idx.nexusServices {
-		g.enumerateHosted(kindNexusService, name, idx)
+		g.enumerateHosted(KindNexusService, name, idx)
 	}
 
 	for _, svc := range idx.nexusServices {
-		serviceDeployments := idx.deploymentsHosting(kindNexusService, svc.Name)
+		serviceDeployments := idx.deploymentsHosting(KindNexusService, svc.Name)
 		for _, op := range svc.Operations {
 			opName := nexusOpQualifiedName(svc.Name, op.Name)
 			if len(serviceDeployments) == 0 {
 				g.addNode(Node{
-					ID:         hostedID(kindNexusOperation, opName, "", "", true),
-					Definition: defKey(kindNexusOperation, opName),
+					ID:         HostedID(KindNexusOperation, opName, "", "", true),
+					Definition: DefKey(KindNexusOperation, opName),
 					Orphan:     true,
 				})
 				continue
 			}
 			for _, wd := range serviceDeployments {
 				g.addNode(Node{
-					ID:         hostedID(kindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
-					Definition: defKey(kindNexusOperation, opName),
-					Worker:     defKey(kindWorker, wd.WorkerName),
-					Namespace:  namespaceID(wd.NamespaceName),
+					ID:         HostedID(KindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
+					Definition: DefKey(KindNexusOperation, opName),
+					Worker:     DefKey(KindWorker, wd.WorkerName),
+					Namespace:  NamespaceID(wd.NamespaceName),
 					Queue:      wd.Queue,
 				})
 			}
@@ -250,16 +250,16 @@ func (g *Graph) enumerateHosted(kind, name string, idx *astIndex) {
 	deployments := idx.deploymentsHosting(kind, name)
 	if len(deployments) == 0 {
 		g.addNode(Node{
-			ID:         hostedID(kind, name, "", "", true),
-			Definition: defKey(kind, name),
+			ID:         HostedID(kind, name, "", "", true),
+			Definition: DefKey(kind, name),
 			Orphan:     true,
 		})
 		return
 	}
 	for _, wd := range deployments {
 		n := Node{
-			ID:         hostedID(kind, name, wd.WorkerName, wd.NamespaceName, false),
-			Definition: defKey(kind, name),
+			ID:         HostedID(kind, name, wd.WorkerName, wd.NamespaceName, false),
+			Definition: DefKey(kind, name),
 		}
 		// Worker/namespace membership is the containment edge, not a
 		// denormalized field. The nexus tier is the exception: its
@@ -267,9 +267,9 @@ func (g *Graph) enumerateHosted(kind, name string, idx *astIndex) {
 		// the visualizer pending nexus normalization (Reverse-History
 		// Backlog), so nexus services keep them. Workflow/activity nodes do
 		// not.
-		if kind == kindNexusService {
-			n.Worker = defKey(kindWorker, wd.WorkerName)
-			n.Namespace = namespaceID(wd.NamespaceName)
+		if kind == KindNexusService {
+			n.Worker = DefKey(KindWorker, wd.WorkerName)
+			n.Namespace = NamespaceID(wd.NamespaceName)
 			n.Queue = wd.Queue
 		}
 		g.addNode(n)

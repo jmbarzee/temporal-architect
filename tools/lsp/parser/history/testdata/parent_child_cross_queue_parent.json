@@ -1,0 +1,21 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": { "name": "ParentWorkflow" },
+        "taskQueue": { "name": "parent-q", "kind": "TASK_QUEUE_KIND_NORMAL" }
+      }
+    },
+    {
+      "eventId": "5",
+      "eventType": "EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED",
+      "startChildWorkflowExecutionInitiatedEventAttributes": {
+        "workflowType": { "name": "ChildWorkflow" },
+        "taskQueue": { "name": "child-q", "kind": "TASK_QUEUE_KIND_NORMAL" },
+        "workflowId": "child-001"
+      }
+    }
+  ]
+}

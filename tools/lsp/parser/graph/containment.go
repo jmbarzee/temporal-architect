@@ -26,8 +26,8 @@ func (g *Graph) emitContainment(idx *astIndex) {
 	for _, ns := range idx.namespaces {
 		for _, nw := range ns.Workers {
 			g.Edges = append(g.Edges, Edge{
-				From: workerID(nw.Worker.Name, ns.Name),
-				To:   namespaceID(ns.Name),
+				From: WorkerID(nw.Worker.Name, ns.Name),
+				To:   NamespaceID(ns.Name),
 				Kind: EdgeContainment,
 				Line: nw.Line,
 			})
@@ -35,8 +35,8 @@ func (g *Graph) emitContainment(idx *astIndex) {
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			g.Edges = append(g.Edges, Edge{
-				From: endpointID(ep.EndpointName, ns.Name),
-				To:   namespaceID(ns.Name),
+				From: EndpointID(ep.EndpointName, ns.Name),
+				To:   NamespaceID(ns.Name),
 				Kind: EdgeContainment,
 				Line: ep.Line,
 			})
@@ -47,18 +47,18 @@ func (g *Graph) emitContainment(idx *astIndex) {
 		if wd.worker == nil {
 			continue
 		}
-		emitHostedContainment(g, wd, kindWorkflow, refNamesAndLines(wd.worker.Workflows))
-		emitHostedContainment(g, wd, kindActivity, refNamesAndLines(wd.worker.Activities))
-		emitHostedContainment(g, wd, kindNexusService, refNamesAndLines(wd.worker.Services))
+		emitHostedContainment(g, wd, KindWorkflow, refNamesAndLines(wd.worker.Workflows))
+		emitHostedContainment(g, wd, KindActivity, refNamesAndLines(wd.worker.Activities))
+		emitHostedContainment(g, wd, KindNexusService, refNamesAndLines(wd.worker.Services))
 	}
 
 	for _, svc := range idx.nexusServices {
-		for _, wd := range idx.deploymentsHosting(kindNexusService, svc.Name) {
+		for _, wd := range idx.deploymentsHosting(KindNexusService, svc.Name) {
 			for _, op := range svc.Operations {
 				opName := nexusOpQualifiedName(svc.Name, op.Name)
 				g.Edges = append(g.Edges, Edge{
-					From: hostedID(kindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
-					To:   hostedID(kindNexusService, svc.Name, wd.WorkerName, wd.NamespaceName, false),
+					From: HostedID(KindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
+					To:   HostedID(KindNexusService, svc.Name, wd.WorkerName, wd.NamespaceName, false),
 					Kind: EdgeContainment,
 					Line: op.Line,
 				})
@@ -86,8 +86,8 @@ func refNamesAndLines[T any](refs []ast.Ref[T]) []refLine {
 func emitHostedContainment(g *Graph, wd workerDeployment, kind string, refs []refLine) {
 	for _, r := range refs {
 		g.Edges = append(g.Edges, Edge{
-			From: hostedID(kind, r.Name, wd.WorkerName, wd.NamespaceName, false),
-			To:   workerID(wd.WorkerName, wd.NamespaceName),
+			From: HostedID(kind, r.Name, wd.WorkerName, wd.NamespaceName, false),
+			To:   WorkerID(wd.WorkerName, wd.NamespaceName),
 			Kind: EdgeContainment,
 			Line: r.Line,
 		})
