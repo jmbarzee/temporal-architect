@@ -28,14 +28,27 @@ type Summary struct {
 // Node is one deployment in the resolved graph. Identity is composite
 // (definition × deployment context), encoded into ID. Definition is
 // always present and points back to the AST entry that produced this
-// node; the optional fields carry deployment context.
+// node.
+//
+// Worker/namespace membership is expressed by containment edges — the
+// single source of truth — and is NOT duplicated on worker /
+// workflow / activity nodes. The nexus tier
+// (nexusService / nexusOperation / nexusEndpoint) still carries these
+// fields pending nexus normalization (tracked in the Reverse-History
+// Backlog). Queue has no edge equivalent and is intrinsic to a
+// deployment, so it is retained on worker and nexusEndpoint nodes (and
+// the nexus tier).
 type Node struct {
 	ID         string `json:"id"`
 	Definition string `json:"definition"`
-	Worker     string `json:"worker,omitempty"`
-	Namespace  string `json:"namespace,omitempty"`
-	Queue      string `json:"queue,omitempty"`
-	Orphan     bool   `json:"orphan,omitempty"`
+	// Worker/Namespace are populated only on nexus-tier nodes (deferred
+	// normalization); empty elsewhere — read the containment edges.
+	Worker    string `json:"worker,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	// Queue is the task queue name; intrinsic to worker / nexusEndpoint
+	// deployments (and retained on the nexus tier).
+	Queue  string `json:"queue,omitempty"`
+	Orphan bool   `json:"orphan,omitempty"`
 }
 
 // Routing is the diagnostic cause of a dispatch edge. The effect (which

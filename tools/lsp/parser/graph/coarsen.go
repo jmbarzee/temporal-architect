@@ -55,45 +55,69 @@ func (g *Graph) emitCoarsenedEdges() {
 }
 
 // parentIndex maps each deployment node ID to its containing worker
-// deployment ID and namespace ID. Built from the already-emitted
-// containment edges plus per-node fields so the lookup tolerates
-// nodes that don't have an explicit parent edge (e.g. namespace
-// nodes pointing to themselves trivially).
+// deployment ID and namespace ID, both derived purely from the
+// already-emitted containment edges (the single source of truth for
+// membership).
 type parentIndex struct {
 	worker    map[string]string
 	namespace map[string]string
 }
 
 func (g *Graph) buildParentIndex() parentIndex {
+	// child → parent from containment edges, and node-id → kind so we can
+	// walk the chain looking for the enclosing worker / namespace.
+	parentEdge := make(map[string]string, len(g.Edges))
+	for _, e := range g.Edges {
+		if e.Kind == EdgeContainment {
+			parentEdge[e.From] = e.To
+		}
+	}
+	kindByID := make(map[string]string, len(g.Nodes))
+	for i := range g.Nodes {
+		kindByID[g.Nodes[i].ID] = defKindOf(g.Nodes[i].Definition)
+	}
+
 	pi := parentIndex{
 		worker:    map[string]string{},
 		namespace: map[string]string{},
 	}
-
 	for i := range g.Nodes {
 		n := &g.Nodes[i]
 		if n.Orphan {
 			continue
 		}
-		switch {
-		case n.Worker != "" && n.Namespace != "":
-			pi.worker[n.ID] = defKey(kindWorker, workerNameFromDef(n.Worker)) + "/" + n.Namespace
+		if w := ancestorOfKind(n.ID, kindWorker, parentEdge, kindByID); w != "" {
+			pi.worker[n.ID] = w
 		}
-		if n.Namespace != "" {
-			pi.namespace[n.ID] = n.Namespace
+		if ns := ancestorOfKind(n.ID, kindNamespace, parentEdge, kindByID); ns != "" {
+			pi.namespace[n.ID] = ns
 		}
 	}
 
 	return pi
 }
 
-// workerNameFromDef strips the `worker:` prefix from a definition
-// key. The result is the bare worker name suitable for re-assembling
-// a worker deployment ID via workerID().
-func workerNameFromDef(def string) string {
-	const prefix = "worker:"
-	if len(def) > len(prefix) && def[:len(prefix)] == prefix {
-		return def[len(prefix):]
+// ancestorOfKind walks containment parents upward from id (exclusive of
+// id itself) and returns the first ancestor node whose definition kind
+// matches wantKind, or "" if none is found.
+func ancestorOfKind(id, wantKind string, parentEdge, kindByID map[string]string) string {
+	for cur := id; ; {
+		p, ok := parentEdge[cur]
+		if !ok {
+			return ""
+		}
+		if kindByID[p] == wantKind {
+			return p
+		}
+		cur = p
+	}
+}
+
+// defKindOf returns the kind segment of a definition key
+// (`workflow:Foo` → `workflow`, `nexusOperation:Svc.Op` → `nexusOperation`).
+func defKindOf(def string) string {
+	if i := strings.IndexByte(def, ':'); i >= 0 {
+		return def[:i]
 	}
 	return def
 }

@@ -178,10 +178,13 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 	}
 
 	for _, wd := range idx.workerDeployments {
+		// Namespace membership is the worker→namespace containment edge
+		// (emitted in containment.go), not a denormalized field. Queue has
+		// no edge equivalent and is intrinsic to the worker deployment, so
+		// it stays.
 		g.addNode(Node{
 			ID:         workerID(wd.WorkerName, wd.NamespaceName),
 			Definition: defKey(kindWorker, wd.WorkerName),
-			Namespace:  namespaceID(wd.NamespaceName),
 			Queue:      wd.Queue,
 		})
 	}
@@ -254,12 +257,21 @@ func (g *Graph) enumerateHosted(kind, name string, idx *astIndex) {
 		return
 	}
 	for _, wd := range deployments {
-		g.addNode(Node{
+		n := Node{
 			ID:         hostedID(kind, name, wd.WorkerName, wd.NamespaceName, false),
 			Definition: defKey(kind, name),
-			Worker:     defKey(kindWorker, wd.WorkerName),
-			Namespace:  namespaceID(wd.NamespaceName),
-			Queue:      wd.Queue,
-		})
+		}
+		// Worker/namespace membership is the containment edge, not a
+		// denormalized field. The nexus tier is the exception: its
+		// endpoint↔operation routing is still derived from these fields in
+		// the visualizer pending nexus normalization (Reverse-History
+		// Backlog), so nexus services keep them. Workflow/activity nodes do
+		// not.
+		if kind == kindNexusService {
+			n.Worker = defKey(kindWorker, wd.WorkerName)
+			n.Namespace = namespaceID(wd.NamespaceName)
+			n.Queue = wd.Queue
+		}
+		g.addNode(n)
 	}
 }
