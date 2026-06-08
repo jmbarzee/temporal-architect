@@ -1,5 +1,7 @@
 package graph
 
+import "strings"
+
 // emitCoarsenedEdges projects each dispatch edge up to higher
 // containment tiers (worker, namespace) and aggregates by
 // (from, to, tier). Containment edges don't contribute. Self-loops

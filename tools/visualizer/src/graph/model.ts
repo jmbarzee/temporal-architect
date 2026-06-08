@@ -63,11 +63,17 @@ export interface GraphNode {
   // --- View-only deployment metadata, copied from the parser node for
   //     hover/tooltip rendering. They are diagnostic, not used for
   //     graph identity or routing decisions.
-  /** e.g. `worker:paymentWorker`. Empty on namespace / endpoint / orphan nodes. */
+  //
+  //     These fields are populated ONLY for nexus-tier nodes
+  //     (nexusService, nexusOperation, nexusEndpoint) where the
+  //     visualizer derives endpoint↔operation edges from them locally.
+  //     Worker/activity/workflow nodes carry no Worker or Namespace
+  //     here — use the parentId chain instead (normalized model).
+  /** e.g. `worker:paymentWorker`. Nexus-tier nodes only. */
   worker?: string
-  /** e.g. `namespace:ecommerce`. Empty on namespace itself and on orphans. */
+  /** e.g. `namespace:ecommerce`. Nexus-tier nodes only. */
   namespace?: string
-  /** Task queue name. Empty for nodes that don't have one. */
+  /** Task queue name. Worker and nexus-tier nodes only. */
   queue?: string
 }
 

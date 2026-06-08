@@ -63,8 +63,10 @@ func TestTaskQueuesFixture(t *testing.T) {
 			}
 		}},
 		{"workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce", func(t *testing.T, n Node) {
-			if n.Worker != "worker:orderWorker" || n.Namespace != "namespace:ecommerce" || n.Queue != "orders" {
-				t.Errorf("OrderWorkflow deployment: %+v", n)
+			// Worker/Namespace/Queue are not on workflow nodes (normalized —
+			// membership is expressed by containment edges, not node fields).
+			if n.Worker != "" || n.Namespace != "" || n.Queue != "" {
+				t.Errorf("OrderWorkflow deployment: unexpectedly carries denormalized fields: %+v", n)
 			}
 		}},
 		{"nexusEndpoint:PaymentEndpoint/namespace:ecommerce", func(t *testing.T, n Node) {
@@ -90,13 +92,20 @@ func TestTaskQueuesFixture(t *testing.T) {
 		t.Errorf("ChargePayment deployment nodes = %d, want 2 (one per hosting worker)", len(chargeNodes))
 	}
 
-	// Containment: every non-orphan hosted node has a containment edge
-	// to its worker deployment. Spot-check ChargePayment's edges.
+	// Containment: every non-orphan hosted node has a containment edge to
+	// its worker deployment. Worker/Namespace are not on activity nodes
+	// (normalized) — derive the expected parent worker ID from the node ID
+	// itself (everything after the first path segment).
 	for _, n := range chargeNodes {
 		if n.Orphan {
 			continue
 		}
-		want := workerID(workerNameFromDef(n.Worker), namespaceNameFromID(n.Namespace))
+		i := strings.Index(n.ID, "/")
+		if i < 0 {
+			t.Errorf("node %q has no parent segment in ID", n.ID)
+			continue
+		}
+		want := n.ID[i+1:]
 		if !hasEdge(g, n.ID, want, EdgeContainment) {
 			t.Errorf("missing containment edge %s → %s", n.ID, want)
 		}

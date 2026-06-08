@@ -193,7 +193,7 @@
       "properties": {
         "from":    { "type": "string" },
         "to":      { "type": "string" },
-        "kind":    { "type": "string", "enum": ["containment", "activityCall", "workflowCall", "nexusCall", "asyncBacking"] },
+        "kind":    { "type": "string", "enum": ["containment", "activityCall", "workflowCall", "nexusCall", "asyncBacking", "signalSend"] },
         "line":    { "type": "integer", "minimum": 0 },
         "routing": {
           "type": "object",
@@ -223,7 +223,7 @@
       "properties": {
         "from": { "type": "string" },
         "name": { "type": "string" },
-        "kind": { "type": "string", "enum": ["activityCall", "workflowCall", "nexusCall", "asyncBacking"] },
+        "kind": { "type": "string", "enum": ["activityCall", "workflowCall", "nexusCall", "asyncBacking", "signalSend"] },
         "line": { "type": "integer", "minimum": 0 }
       }
     },

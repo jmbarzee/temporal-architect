@@ -15,6 +15,7 @@ export type ParserEdgeKind =
   | 'workflowCall'
   | 'nexusCall'
   | 'asyncBacking'
+  | 'signalSend'
 
 /** Coarsening tier discriminator. Mirrors the Go TierXxx constants. */
 export type ParserTier = 'worker' | 'namespace'
