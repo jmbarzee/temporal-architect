@@ -9,21 +9,19 @@ import type { ForceParams } from '../graph/simulation'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
 import type { SimNode } from '../graph/simulation'
-import type { NodeType } from '../graph/model'
 import { definitionFor, ALL_NODE_TYPES as _ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
 import { fitToView, worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
-import { getTransitiveDeps, getHighlightedEdgeIds } from '../graph/highlight'
 import { GraphCanvas } from './GraphCanvas'
 import { GraphControlPanel } from './GraphControlPanel'
-import type { ForceSection } from './GraphControlPanel'
 import { PinToggle } from './PinToggle'
 import { GraphContextMenu, type ContextMenuItem } from './GraphContextMenu'
 import { SearchIcon } from './icons/GearIcons'
 import { DEF_TYPE_CONFIGS, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 import { useGraphModel } from './graph-view/useGraphModel'
 import { useViewport } from './graph-view/useViewport'
+import { useHighlight } from './graph-view/useHighlight'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -319,19 +317,9 @@ export function GraphView({
   const [fps, setFps] = React.useState(0)
   const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
 
-  // --- Interaction state ---
-  const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null)
-  const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null)
-  const [focusedIndex, setFocusedIndex] = React.useState(-1)
-  const [shiftHeld, setShiftHeld] = React.useState(false)
-
-  // --- Force field visualization (hover-driven; no persistent toggle) ---
-  const [activeSection, setActiveSection] = React.useState<ForceSection>(null)
-  const [activeChargeType, setActiveChargeType] = React.useState<NodeType | null>(null)
-  const [activeGravityType, setActiveGravityType] = React.useState<NodeType | null>(null)
-  // The pull edge category (k-field key) currently being hovered/tuned in the
-  // spring map; drives the canvas single-edge tension highlight.
-  const [activePullEdge, setActivePullEdge] = React.useState<string | null>(null)
+  // Interaction / highlight state (hover, selection, keyboard focus, shift, and
+  // the control-panel preview) is owned by useHighlight, called below once the
+  // visible subgraph it derives from is available.
 
   // --- Search ---
   const searchInputRef = React.useRef<HTMLInputElement>(null)
@@ -374,10 +362,9 @@ export function GraphView({
     initialFitDone.current = false
     fpsTrackRef.current = { frames: 0, lastStamp: 0 }
     setRunning(true)
-    setSelectedNodeId(null)
-    setHoveredNodeId(null)
-    setFocusedIndex(-1)
     setSimVersion(v => v + 1)
+    // Selection/hover/focus reset on graph change is owned by useHighlight
+    // (keyed on `graph`).
   }, [graph]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stale-file cleanup is now owned by WorkflowCanvas (it touches both views'
@@ -489,6 +476,25 @@ export function GraphView({
     // next render where the sim is finally available.
   }, [visibleTypes, selectedFiles, graph, simVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Stable accessor into the live simulation (reads simRef at call time) — the
+  // explicit data link passed to hooks that need node lookups.
+  const getSimNode = React.useCallback((id: string) => simRef.current?.getNode(id), [])
+
+  // Selection / hover / keyboard-focus / shift + control-panel preview state,
+  // plus the derived transitive-dependency highlight sets and focusedNodeId.
+  const {
+    hoveredNodeId, setHoveredNodeId,
+    selectedNodeId, setSelectedNodeId,
+    setFocusedIndex,
+    shiftHeld,
+    focusedNodeId,
+    highlightedNodes, highlightedEdges,
+    activeSection, setActiveSection,
+    activeChargeType, setActiveChargeType,
+    activeGravityType, setActiveGravityType,
+    activePullEdge, setActivePullEdge,
+  } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph)
+
   // Search matches against all nodes (not just visible). When search is
   // active we return a Set even if empty so the canvas dims everything —
   // an empty search with a query is "no matches yet, all non-matching",
@@ -512,82 +518,6 @@ export function GraphView({
     }
     return { visibleMatchIds: visible, hiddenMatchCount: hidden }
   }, [searchQuery, visibleIds])
-
-  // Transitive dependency highlighting.
-  //
-  // The active node's transitive dep chain is unioned with every sister
-  // copy of the same underlying definition (see
-  // `Graph.duplicateGroups`) so that hovering one copy keeps every
-  // other copy of the same activity / workflow / service / operation
-  // legible. That's the visual cue that links the duplicates: they
-  // share opacity with the hovered node while everything unrelated
-  // dims, telling the user "all of these green dots are the same
-  // thing, just on different workers".
-  //
-  // Two nexus-specific overrides apply before the generic BFS:
-  //
-  //   nexusEndpoint — endpoints have no outgoing dep edges; transitive
-  //   BFS would return only the endpoint itself. Instead we follow the
-  //   `nexusEndpoint` routing metadata on visible edges and highlight
-  //   every nexus call that routes through this endpoint, making the
-  //   fan-out immediately visible.
-  //
-  //   nexusService — after the normal BFS, additionally highlight any
-  //   visible nexusEndpoint nodes whose (namespace, queue) match the
-  //   service's deployment. This is a derived inference computed at hover
-  //   time — the endpoint fronts calls to this service, but the parser
-  //   correctly doesn't emit a persistent endpoint→service edge.
-  const { highlightedNodes, highlightedEdges } = React.useMemo(() => {
-    const activeId = hoveredNodeId ?? selectedNodeId
-    if (!activeId || !visibleIds.has(activeId)) {
-      return { highlightedNodes: null as Set<string> | null, highlightedEdges: null as Set<string> | null }
-    }
-
-    const activeNode = simRef.current?.getNode(activeId)
-
-    // nexusEndpoint: routing fan-out highlight via edge metadata.
-    if (activeNode?.nodeType === 'nexusEndpoint') {
-      const nodes = new Set<string>([activeId])
-      const edges = new Set<string>()
-      // Pull in the namespace parent for context so the user sees where
-      // the endpoint lives, not just which calls pass through it.
-      if (activeNode.parentId && visibleIds.has(activeNode.parentId)) {
-        nodes.add(activeNode.parentId)
-      }
-      for (const edge of visibleEdges) {
-        if (edge.nexusEndpoint === activeNode.name) {
-          edges.add(edge.id)
-          if (visibleIds.has(edge.sourceId)) nodes.add(edge.sourceId)
-          if (visibleIds.has(edge.targetId)) nodes.add(edge.targetId)
-        }
-      }
-      return { highlightedNodes: nodes, highlightedEdges: edges }
-    }
-
-    const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
-    const nodes = getTransitiveDeps(activeId, visibleEdges, visibleIds, direction)
-
-    // nexusService: augment the standard dep chain with endpoints that
-    // front this service's task queue in the same namespace. Matching is
-    // on (namespace, queue) — both come from parser deployment metadata.
-    if (activeNode?.nodeType === 'nexusService' && activeNode.namespace && activeNode.queue) {
-      const svcNs = activeNode.namespace
-      const svcQ = activeNode.queue
-      for (const n of visibleNodes) {
-        if (n.nodeType === 'nexusEndpoint' && n.namespace === svcNs && n.queue === svcQ) {
-          nodes.add(n.id)
-          if (n.parentId && visibleIds.has(n.parentId)) nodes.add(n.parentId)
-        }
-      }
-    }
-
-    // Sister copies of the active definition are intentionally NOT added to
-    // highlightedNodes here. They will be dimmed like any other off-chain node,
-    // but the canvas draws a full-color duplicate halo on them so the user can
-    // still identify that they share a definition with the active node.
-    const edges = getHighlightedEdgeIds(nodes, visibleEdges)
-    return { highlightedNodes: nodes, highlightedEdges: edges }
-  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, graph])
 
   // Physics animation loop.
   //
@@ -893,10 +823,6 @@ export function GraphView({
   }
 
   // Focused node ID (for keyboard nav)
-  const focusedNodeId = focusedIndex >= 0 && focusedIndex < visibleNodes.length
-    ? visibleNodes[focusedIndex].id
-    : null
-
   // Cross-view focus: the reconciler in WorkflowCanvas has already
   // expanded the destination filter so the target is visible. We only
   // arrange the visual focus part — set up the center-on-target ref
@@ -918,15 +844,6 @@ export function GraphView({
     }
     onFocusConsumed()
   }, [pendingFocus]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Shift key tracking
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(true) }
-    const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(false) }
-    window.addEventListener('keydown', down)
-    window.addEventListener('keyup', up)
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
-  }, [])
 
   // Keyboard navigation
   React.useEffect(() => {

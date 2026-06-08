@@ -26,7 +26,16 @@ Deferred features and design ideas. Not committed to any cycle — just a place 
 | Node Selection + Info Panel | Click-to-select with persistent highlight state, a structured info panel (identity, connections, blast radius, navigation list, "Show in Tree"), and stable selection target for cross-view actions. Motivation: hover is transient — selection locks context while the user reads a panel or pans the canvas. The hover info tooltip serves the immediate discoverability need. Original spec in GRAPH_VIEW.md § Selection and § Info Panel. |
 | Unified Filter Bar | Replace graph level selector with shared type toggles + edge graduation (now specced in VIEW_FRAMEWORK.md § Unified Filter Bar, GRAPH_VIEW.md § Type Filtering) |
 | Force Parameter Presets | Named presets for simulation force parameters |
+| Save / Load Layout State | Persist the live working state between sessions: the tuned force settings (`ForceParams`) and the node distribution (settled node positions), restored on reload. Distinct from named presets — this is the current working layout, not a curated set. The post-WS3 id-keyed `ForceParams` shape (maps keyed by `NodeType`/`EdgeTypeId`) serializes cleanly for this. |
 | Nexus Edge Scope Highlighting | Highlight all edges sharing a nexus service/endpoint on hover |
 | Animated Type Transitions | Smooth force interpolation when toggling types (now specced in GRAPH_VIEW.md § Type Transitions) |
 | Barnes-Hut Approximation | Perf optimization for large graphs — O(n log n) charge force |
 | Diagnostic Summary Pill in Tab Bar | Originally Group 4 of REVISIONS_005. Render `N✗` / `N⚠` pills next to the Tree/Graph tab buttons sourced from `ast.summary.errors`/`warnings`. Deferred because the errors header already renders directly below the tab bar (minimal value-add), and a clickable variant ("expand the header") would require new cross-component state coordination between `WorkflowCanvas` and its child views. |
+
+---
+
+## Code Health / Maintainability
+
+| Item | Notes |
+|------|-------|
+| Decompose `src/styles/index.css` | One ~2.4k-line stylesheet holds styles for every component (panels, tree, graph, blocks, controls, theme). Split by feature/component (or co-locate `*.css` next to each component, or adopt CSS modules) so styles live with the code that uses them. The new `components/controls/` extraction is a natural first slice to co-locate. Not urgent; large but mechanical. |
