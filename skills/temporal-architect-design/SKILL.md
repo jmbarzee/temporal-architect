@@ -13,7 +13,7 @@ Design Temporal workflows using `.twf` (Temporal Workflow Format) — a language
 
 Core loop: **orient → write TWF → `twf check` → fix/consult → design review → repeat**. Parser errors are design feedback — validate early and often. But a clean `twf check` is a *grammar gate*, not a finished design: it never routes straight to done (see [Design Review](#design-review)).
 
-**Write before you read the reference docs.** Draft TWF from the workflow description even if you're unsure — use `twf check --lenient` for incomplete designs. Consult `notation-reference.md` and the other references only to fix specific errors, not to prepare. **This does not apply to prior project artifacts** (existing `.twf`, `DESIGN.md`): those are requirements — read them first (see [Orient](#orient)).
+**Write before you read the reference docs.** Draft TWF from the workflow description even if you're unsure — use `twf check --lenient` while iterating on incomplete designs — it still reports every error, it just exits 0 instead of failing the gate. Consult `notation-reference.md` and the other references only to fix specific errors, not to prepare. **This does not apply to prior project artifacts** (existing `.twf`, `DESIGN.md`): those are requirements — read them first (see [Orient](#orient)).
 
 ### Orient
 
@@ -151,7 +151,7 @@ This is also the entry point when [Orient](#orient) surfaces prior work. Treat p
 | `twf check <file...>` | Parse + resolve — run after every edit |
 | `twf symbols <file...>` | List all workflow/activity signatures |
 | `twf symbols --json <file...>` | Machine-readable symbol output |
-| `twf check --lenient <file...>` | Partial tolerance for incomplete designs |
+| `twf check --lenient <file...>` | Same checks; still prints every error but exits 0 instead of failing — for WIP iteration (it suppresses nothing) |
 
 **Error format** (stderr): `parse error at <line>:<col>: <message>` / `resolve error at <line>:<col>: <message>`
 
