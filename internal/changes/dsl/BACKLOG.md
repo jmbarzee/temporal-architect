@@ -27,6 +27,34 @@ workflow Pipeline(input: Input) -> (Result):
 
 ---
 
+## Packages and Project Structure
+
+### Packages / Cross-Package References
+
+No `import`/`extern`/`package` construct: a `.twf` cannot reference a definition in another `.twf`
+except by passing all files to `twf check` together (the "defined somewhere in this file set"
+behavior). The reverse-engineering reflection hit this hard — per-package files forced reproducing
+cross-domain activity/workflow/nexus stubs locally just to resolve.
+
+```twf
+# wanted: reference a definition that lives in another package/file
+import "payments/payments.twf"        # or: extern activity ChargePayment(...)
+```
+
+**Current interim (design-skill guidance):** put **all `.twf` in one package** so everything
+resolves together — deliberately routing *around* the missing feature. Cost: `.twf` layout decouples
+from code layout (see Reference Annotations for the mapping).
+
+**Why deferred:** one-package resolution covers the present need. Real packages become valuable only
+when teams want per-package co-location (a `.twf` beside the code it describes) without losing
+resolution. Pairs with the cross-domain stub convention the design skill documents as the interim.
+
+**Open questions:** `import` (file-level) vs `extern` (per-symbol forward declaration) vs a `package`
+header? How does this interact with the nexus external-reference marker (same "lives elsewhere"
+intent — see Nexus Extensions)? Does the graph/visualizer span packages?
+
+---
+
 ## Naming Conventions
 
 ### UpperCamelCase for All Top-Level Primitives
@@ -72,6 +100,99 @@ Cross-namespace state changes today route through a sync nexus operation whose b
 - First-class typed "signal channel" Nexus operations if a future SDK adds a Nexus operation kind for signal delivery.
 
 **Open question:** Is there an idiom worth blessing in the design skill — "to signal across namespaces, define a sync nexus operation that signals the target locally"? If yes, this becomes a skill addition, not a grammar one.
+
+### External Nexus Reference Marker (`extern`)
+
+Today nexus references resolve via a **blanket per-category cliff**: if *any* `nexus service` is
+defined in the file set, *every* service reference must resolve locally (`NEXUS_UNDEFINED_SERVICE`,
+error); otherwise they are warnings ("may be external"). Endpoints follow the same rule on their own
+axis. This conflates "I provide some services" with "all services are local."
+
+**Why this is wrong (SDK-grounded):** a codebase is routinely **both** a caller of external services
+(other namespaces/teams, reached via an out-of-band Registry endpoint) **and** a provider of its
+own. The moment it defines one local service, every genuinely-external reference turns into a hard
+error. This bit the reverse-engineering work, where a single domain's `.twf` is simultaneously caller
+and provider.
+
+```twf
+# wanted: declare a reference as intentionally external, so local definitions
+# don't flip it to an error
+extern nexus service Payments
+extern nexus endpoint PayEndpoint
+```
+
+**Direction:** an explicit `extern` marker (soft keyword, matching the `external`/`service`/
+`endpoint` precedent) declares external intent, so the resolver stops *inferring* "external" from
+"is it defined anywhere." Resolver half tracked in `parser/BACKLOG.md`. Likely shares machinery with
+Packages / Cross-Package References (same "lives elsewhere" intent).
+
+**Steer (S2 — do NOT ship a nexus-specific `extern` as the cliff fix):** the real need is the
+*general* "declared elsewhere" mechanism — a C-header-like "this thing exists somewhere else."
+Solve it once under **Packages / Cross-Package References** and let nexus references ride it, rather
+than minting a bespoke nexus keyword. Once a general header/import exists, the cliff largely
+dissolves: you declare what lives elsewhere, and an unmarked-unresolved reference stays a warning.
+Keep this entry as the *general* header/`extern` concept (it has standalone value, like C headers),
+de-scoped from a nexus-only marker.
+
+### Nexus Endpoint Access Policy (allowed caller namespaces)
+
+A Nexus endpoint carries a **runtime access policy** — the allowlist of caller namespaces permitted
+to invoke it (`No callers allowed by default`). The Terraform provider models this as
+`allowed_caller_namespaces` on `temporalcloud_nexus_endpoint`; `tcld`/CLI uses `--allow-namespace`.
+TWF models the endpoint (name, target namespace, task queue) but **not who may call it** — yet that
+is design-relevant security/topology intent, and the `author-infra` skill needs it to provision the
+endpoint completely.
+
+```twf
+# Illustrative only — syntax TBD
+namespace payments:
+    nexus endpoint PayEndpoint:
+        task_queue: "payments"
+        allow_callers: [orders, billing]      # caller-namespace allowlist
+```
+
+**Why needed:** without it, the design can't express the caller→endpoint authorization boundary, so
+the infra author has to source it from outside the `.twf`. It's also a reachability/where-used signal
+(which namespaces are sanctioned callers).
+
+**Surfaced by:** the `author-infra` skill scoping (Temporal Cloud Terraform `allowed_caller_namespaces`
+/ `tcld --allow-namespace`).
+
+**Open questions:** Where does the allowlist live — on the endpoint declaration (as sketched) or a
+separate policy block? Namespaces only, or also service accounts? How does it interact with the
+caller-side `nexus ... call` (cross-check that a caller's namespace is on the allowlist)? Self-hosted
+(custom Authorizers) vs Cloud RBAC differences.
+
+### Custom Search Attributes
+
+Custom search attributes are namespace-level configuration registered **out-of-band** (Terraform
+`temporalcloud_namespace_search_attribute`, `tcld`/CLI, or the operator API) and then set/read by
+workflows for visibility/filtering. TWF models neither the *declaration* (namespace owns attributes
+X: Keyword, Y: Int) nor their *use* (a workflow setting/upserting a search attribute).
+
+```twf
+# Illustrative only — syntax TBD
+namespace orders:
+    search_attributes:
+        OrderStatus: keyword
+        OrderTotal: double
+```
+
+**Why borderline (design vs ops):** the *declaration* is namespace setup the `author-infra` skill
+must provision (design-relevant — it's part of the namespace contract). The *upsert-at-runtime* side
+(a workflow writing its own search attributes) is closer to workflow behavior and may warrant a
+separate call-site primitive. Lower priority than access policy.
+
+**Surfaced by:** the `author-infra` skill scoping (search attributes are out-of-band infra).
+
+**Open questions:** Declaration only (namespace-level), or also a workflow-body `upsert_search_attributes`
+primitive? Fixed type enum (`keyword`/`text`/`int`/`double`/`bool`/`datetime`/`keyword_list`)? Does the
+resolver cross-check that attributes used in workflows are declared on the namespace?
+
+**Open questions:** `extern nexus service X` declaration vs a per-call modifier? Does this subsume
+cross-package import for nexus? **Lean:** once `extern` exists, an unmarked-but-unresolved reference
+should *stay a warning* (preserve partial-file friendliness for reverse-engineering) rather than
+becoming a hard error — `extern` is an opt-in precision tool, not a mandate.
 
 ---
 
@@ -292,6 +413,41 @@ namespace ecommerce-eu:
 **Open questions:** Does instantiating the same worker in two namespaces imply two distinct deployments, or one logical worker? Should options blocks per-instantiation override worker-level defaults? How does the graph view distinguish the two deployments visually?
 
 ---
+
+### Worker Runtime Options and Versioning / Deployment
+
+The DSL models worker *topology* (which types, which queue, which namespace) but not worker *runtime*
+intent: concurrency caps (`MaxConcurrentActivityExecutionSize`,
+`MaxConcurrentWorkflowTaskExecutionSize`), activity/task-queue rate limiters, sticky cache, and
+**worker versioning / Build IDs / Worker Deployments**.
+
+```twf
+# Illustrative only — syntax TBD
+worker OrderTypes:
+    activity ChargePayment
+    options:
+        max_concurrent_activities: 200
+        versioning: build-id          # or a deployment/version strategy
+```
+
+**Why needed (North Star):** these are system-scale concerns — scaling, reliability, availability —
+exactly what the design agent should reason about and express, rather than leaving the author skill
+to hardcode them in the weeds. Versioning in particular is a determinism/safety concern across
+deploys, not an incidental option.
+
+**Surfaced by:** the author-go worker section work, which deliberately scopes worker *wiring* into
+the skill but defers *tuning/versioning* here so the skill doesn't cover for a DSL gap.
+
+**Decision (S2 — option set & validation):** TWF worker options are the **union/superset of SDK
+worker options**, excluding one-off per-language-only configs. SDK quirks or a missing option in one
+SDK do **not** gate inclusion. **Keep it simple for now: the parser accepts all worker options with
+no per-language validation** (no language check). Filter by the North Star — express *strategy/intent*
+at design altitude (e.g. `versioning: build-id` as a strategy, coarse concurrency intent), not
+numeric ops tuning (exact sticky-cache TTLs etc. stay in implementation).
+
+**Open questions:** Worker-level only, or per-namespace deployment? Versioning as an enum of
+strategies vs a richer model (Build IDs, Worker Deployments, ramping)? Overlap with
+Codec config below (also worker-level) — a shared "worker runtime config" block?
 
 ### Codec Server / Payload Codec Configuration
 
@@ -536,6 +692,14 @@ activity ChargePayment(order: Order) -> (Payment):
 **Why needed:** As a design DSL, TWF captures intent — but teams also need to find the real code. Reference annotations close that loop, making `.twf` files a living index of the project. LSP go-to-definition could resolve `@ref` paths to open the actual source file.
 
 **Open questions:** Paths relative to repo root, or allow URLs for multi-repo setups? Should the LSP validate that `@ref` targets exist? Could references be auto-populated by scanning the codebase for matching workflow/activity registrations?
+
+**Elevated by one-package layout (reverse-engineering work):** with all `.twf` in one package
+(see Packages and Project Structure), `.twf` layout no longer mirrors code layout, so the
+implementation link can't be inferred from location — it must be explicit. The design skill's
+**interim** is a top-of-file comment linking each `.twf` to its implementation dir(s); `@ref` is the
+durable, machine-checkable form. The project-discovery subagent (author-go existing-repo detection +
+design reverse-engineering) both *reads* these links to find code and *writes* them during
+extraction — which is exactly the "auto-populate by scanning the codebase" question above.
 
 ---
 

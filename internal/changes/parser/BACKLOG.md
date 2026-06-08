@@ -34,6 +34,68 @@ Walk the call/Nexus graph from declared entry points; report any workflow not re
 
 ---
 
+## Graph Decomposition: Composable Chunks / Workflow Trees
+
+The harness (entry-point skill) needs to decompose a `.twf` design into independently-implementable
+chunks to dispatch to authors/subagents. The decomposition rule is "cut at contract boundaries, never
+finer" — and `.twf` *is* the contract — so the natural chunk units are **independent workflow trees**
+(connected components rooted at entry points) and the coarser cuts (language, worker, namespace).
+
+`parser/graph/` already extracts the resolved deployment graph; **identifying trees/components is a
+cheap extension** of the existing traversal. Surface it as a tool the AI calls instead of eyeballing.
+
+**Capabilities wanted:**
+- **Tree / component identification** — enumerate the independent workflow trees (roots + their
+  reachable child workflows / activities / nexus targets). Roots come from **Entry Point Annotation**
+  (hard dependency — same roots the reachability check needs).
+- **Decomposition strategies (optional, AI-selectable)** — given a large tree, suggest cuts:
+  parallelize independent branches, break out by worker / task queue, by namespace, by package. The
+  point is to *help the AI pick* a decomposition, not impose one.
+
+**CLI/MCP surface (sketch, refine with the query-surface work below):** e.g. `twf graph trees`
+(list chunks) and a strategy-aware variant (`twf graph chunks --by worker|tree|namespace`). Rides
+the same resolved graph the visualizer already consumes.
+
+**Consumer:** the harness / `temporal-engineer` entry-point skill (decomposition + dispatch). This is
+the tool-computed answer to "what are the composable chunks?"
+
+**Open questions:** Is a "tree" the right unit, or connected-component (handles shared sub-workflows)?
+How to present overlap when two roots share a child workflow? Should strategies emit a recommended
+chunking or just the raw structure for the AI to cut? Depends on Entry Point Annotation landing first.
+
+## Nexus Resolution: External-by-Intent vs. Blanket Strictness
+
+Today the resolver decides nexus reference strictness by a **blanket per-category rule**: if any
+`nexus service` is defined in the file set, all service references must resolve locally (error);
+otherwise they warn ("may be external"). Endpoints follow the same rule independently. This can't
+model a codebase that is simultaneously a provider (local services) and a caller of external services
+— defining one local service flips every external reference to a hard error.
+
+**Direction:** honor an explicit external marker (`extern nexus service/endpoint` — DSL half in
+`dsl/BACKLOG.md`) so external intent is *declared*, not inferred from "is it defined anywhere." A
+marked-external reference stays resolved-as-external regardless of what else is defined locally.
+
+**Open questions:** Once `extern` exists, does an unmarked-unresolved reference stay a warning
+(current lean: yes, preserve partial-file friendliness) or become an error? Per-category
+(service/endpoint) or unified? Interaction with cross-package imports.
+
+**Steer (S2):** don't build a nexus-specific resolver mode. Fold this into the general "declared
+elsewhere" mechanism (cross-package import / header) — see `dsl/BACKLOG.md` → External Nexus
+Reference Marker. With a general header/import in place, the blanket cliff largely dissolves and
+unmarked-unresolved stays a warning. Lower priority than the general packages work.
+
+## Clearer Diagnostic for Body-less Definitions
+
+A definition missing its `:` + indented body (e.g. `activity Foo(x) -> (R)` with nothing under it)
+emits `expected COLON, got NEWLINE` plus a cascading `UNDEFINED_*` (the malformed definition never
+registers). The message doesn't point at the real cause — a body is required. Documented as a
+common-error in the design skill; a clearer parser diagnostic ("definition requires `:` and an
+indented body") would be better.
+
+**Note:** the reflection's reported "`DEDENT at top level` from nested constructor calls in arg
+position" does **not** reproduce on v0.8.3 (grammar allows `call_expr` inside `constructor_expr`
+fields). No action beyond the body-less diagnostic above.
+
 ## Option-Schema Validation Belongs in the Resolver
 
 Today, option `key` membership, value-type, and enum validation for `options:` blocks happens **at parse time**: `parseOptionEntry` (`tools/lsp/parser/parser/options.go`) consults `schemaForContext(ctx)` and raises `unknown option key` / wrong-type / invalid-enum errors inline.
