@@ -69,9 +69,10 @@ function resolveDepEndpoint(
   return ancestor ? [ancestor] : []
 }
 
-// Per-node downstream-depth scores over the visible dependency subgraph, linearly
-// normalized to [0,1], then propagated up the containment hierarchy so a container
-// is scored at least as deep as anything it hosts (keeps tiers from inverting).
+// Per-node downstream-depth scores over the visible dependency subgraph,
+// propagated up the containment hierarchy (one rank per tier) so a container is
+// scored strictly higher than anything it hosts, then linearly normalized to
+// [0,1] by the top container. Keeps tiers ordered under topological gravity.
 function computeDownstreamScores(
   visibleNodes: SimNode[],
   visibleEdges: { edgeType: string; sourceId: string; targetId: string }[],
@@ -111,6 +112,12 @@ function computeDownstreamScores(
   const scores = new Map<string, number>()
   if (maxDepth === 0) return scores
 
+  // Propagate each node's depth up its containment chain, adding one rank per
+  // tier so a container *strictly* out-ranks everything it hosts (a namespace
+  // pulls harder than its deepest workflow, not merely equal). This keeps the
+  // tier order under topological gravity without leaning on band gravity to
+  // break ties. Early-out when an ancestor is already ranked higher (a deeper
+  // branch already propagated past it, so its own ancestors are too).
   const byId = new Map(visibleNodes.map(n => [n.id, n]))
   const effective = new Map<string, number>()
   for (const node of visibleNodes) effective.set(node.id, depths.get(node.id) ?? 0)
@@ -118,17 +125,23 @@ function computeDownstreamScores(
     const d = depths.get(node.id) ?? 0
     if (d <= 0) continue
     let pid = node.parentId
+    let bump = d
     const guard = new Set<string>()
     while (pid && !guard.has(pid)) {
       guard.add(pid)
-      if ((effective.get(pid) ?? 0) >= d) break
-      effective.set(pid, d)
+      bump += 1
+      if ((effective.get(pid) ?? 0) >= bump) break
+      effective.set(pid, bump)
       pid = byId.get(pid)?.parentId
     }
   }
 
+  // Normalize by the post-propagation max (the top container) so scores ∈ [0,1].
+  let maxEff = 0
+  for (const v of effective.values()) if (v > maxEff) maxEff = v
+  if (maxEff === 0) return scores
   for (const [id, d] of effective) {
-    scores.set(id, d / maxDepth)
+    scores.set(id, d / maxEff)
   }
   return scores
 }

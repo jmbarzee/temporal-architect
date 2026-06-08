@@ -31,6 +31,8 @@ Deferred features and design ideas. Not committed to any cycle — just a place 
 | Animated Type Transitions | Smooth force interpolation when toggling types (now specced in GRAPH_VIEW.md § Type Transitions) |
 | Barnes-Hut Approximation | Perf optimization for large graphs — O(n log n) charge force |
 | Diagnostic Summary Pill in Tab Bar | Originally Group 4 of REVISIONS_005. Render `N✗` / `N⚠` pills next to the Tree/Graph tab buttons sourced from `ast.summary.errors`/`warnings`. Deferred because the errors header already renders directly below the tab bar (minimal value-add), and a clickable variant ("expand the header") would require new cross-component state coordination between `WorkflowCanvas` and its child views. |
+| Inject node/edge config into the forces panel | Make the forces panel + simulation accept the node-type and edge-type taxonomy as injected config (props/context) rather than importing `NODE_TYPE_REGISTRY` / `EDGE_TYPE_REGISTRY` as module singletons: node types with set/family + order (so the band-gravity plot lays out sensibly), edge types as ordered node-type pairs. The post-WS3 registries + id-keyed `ForceParams` already make everything derive from the taxonomy, so this is the natural next step. |
+| Schema-driven control visibility | Show only the controls for node/edge types actually present after filtering — e.g. hide nexus tokens/columns/edges when the nexus filter is off, or show only edge controls when the visible set is edges-only. Reads the enabled filters / post-filter type set against the registries. High value for new users and small graphs; depends on the registries + filter state (and pairs well with the config-injection item above). |
 
 ---
 

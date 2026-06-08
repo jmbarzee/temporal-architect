@@ -8,7 +8,7 @@ import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import { nodeTypeToDefType, defTypeToNodeType } from './graph-view/nodeDefType'
-import { fitToView, worldToScreen } from '../graph/viewport'
+import { worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { GraphCanvas } from './GraphCanvas'
@@ -22,6 +22,7 @@ import { useViewport } from './graph-view/useViewport'
 import { useHighlight } from './graph-view/useHighlight'
 import { useSimulation } from './graph-view/useSimulation'
 import { useVisibleGraph } from './graph-view/useVisibleGraph'
+import { useSimulationLoop } from './graph-view/useSimulationLoop'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -69,11 +70,9 @@ export function GraphView({
   // --- Core state ---
   // Camera (viewport transform, container ref, fit/center coordination).
   const { viewport, setViewport, containerRef, initialFitDone, pendingCenterRef, fit } = useViewport()
-  // Frame-rate indicator for debugging. Updated ~2×/sec from the physics loop.
-  const [fps, setFps] = React.useState(0)
-  const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
-  // The simulation instance + its handlers are owned by useSimulation, called
-  // below once `graph` (from useGraphModel) is available.
+  // The simulation instance + its handlers are owned by useSimulation, and the
+  // RAF loop + fps by useSimulationLoop, both called below once `graph` and the
+  // visible subgraph are available.
 
   // Interaction / highlight state (hover, selection, keyboard focus, shift, and
   // the control-panel preview) is owned by useHighlight, called below once the
@@ -105,7 +104,6 @@ export function GraphView({
   // keyed on `graph`).
   const onSimRebuild = React.useCallback(() => {
     initialFitDone.current = false
-    fpsTrackRef.current = { frames: 0, lastStamp: 0 }
   }, [initialFitDone])
 
   // Simulation spine: the instance, version signal, running flag, forceParams,
@@ -180,141 +178,17 @@ export function GraphView({
     return { visibleMatchIds: visible, hiddenMatchCount: hidden }
   }, [searchQuery, visibleIds])
 
-  // Physics animation loop.
-  //
-  // Decoupled from React rendering: the canvas has its own requestAnimationFrame
-  // draw loop that reads live SimNode.x/.y through a ref, so the physics tick does
-  // NOT need to trigger a React re-render each frame. We only touch React state
-  // for one-shot events (initial fit, pending cross-view center, stability, FPS).
-  // Hierarchical gravity (X anchor + per-type Y bands) keeps world coordinates
-  // stable, so we no longer compensate for COM drift on the canvas side.
-  React.useEffect(() => {
-    if (!running) return
-    let frameId = 0
-
-    const loop = () => {
-      const sim = simRef.current
-      if (!sim) return
-
-      sim.tick(visibleIds, downstreamScores)
-
-      // Initial fit — once per sim instance, after warmup. With hierarchical
-      // gravity the world coordinates are anchored, so a one-shot fit is all
-      // we need; the graph won't drift out of frame as the simulation runs.
-      if (!initialFitDone.current && sim.alpha < 0.3) {
-        const container = containerRef.current
-        if (container) {
-          const { width, height } = container.getBoundingClientRect()
-          if (width > 0 && height > 0) {
-            setViewport(fitToView(visibleNodes, width, height))
-            initialFitDone.current = true
-          }
-        }
-      }
-
-      // Cross-view navigation: center on target after warmup.
-      if (initialFitDone.current && pendingCenterRef.current) {
-        const targetNode = sim.getNode(pendingCenterRef.current.nodeId)
-        if (targetNode) {
-          const container = containerRef.current
-          if (container) {
-            const { width, height } = container.getBoundingClientRect()
-            setViewport(prev => ({
-              scale: Math.max(prev.scale, 1.2),
-              x: width / 2 - targetNode.x * Math.max(prev.scale, 1.2),
-              y: height / 2 - targetNode.y * Math.max(prev.scale, 1.2),
-            }))
-            setSelectedNodeId(targetNode.id)
-          }
-        }
-        pendingCenterRef.current = null
-      }
-
-      // FPS meter — recompute ~2×/sec. setFps only fires on change, so this
-      // is the only routine state update from the loop in steady state.
-      const now = performance.now()
-      const track = fpsTrackRef.current
-      track.frames++
-      if (track.lastStamp === 0) track.lastStamp = now
-      const elapsed = now - track.lastStamp
-      if (elapsed >= 500) {
-        const measured = Math.round((track.frames * 1000) / elapsed)
-        setFps(prev => (prev === measured ? prev : measured))
-        track.frames = 0
-        track.lastStamp = now
-      }
-
-      if (sim.isStable()) {
-        setRunning(false)
-        return
-      }
-
-      frameId = requestAnimationFrame(loop)
-    }
-
-    frameId = requestAnimationFrame(loop)
-    return () => { if (frameId) cancelAnimationFrame(frameId) }
-  }, [running, visibleIds, visibleNodes, selectedNodeId])
-
-  // While hovering a node during a running simulation, re-render at ~10fps so
-  // the DOM tooltip tracks the moving node. (Canvas nodes update at 60fps via
-  // mutable refs; the tooltip is a React-rendered DOM element that reads
-  // node.x/.y at render time.)
-  const [, setTooltipTick] = React.useState(0)
-  React.useEffect(() => {
-    if (!running || !hoveredNodeId) return
-    const id = window.setInterval(() => setTooltipTick(t => t + 1), 100)
-    return () => window.clearInterval(id)
-  }, [running, hoveredNodeId])
-
-  // Seed newly visible nodes at their nearest visible ancestor, then reheat
-  const prevVisibleTypes = React.useRef(visibleTypes)
-  React.useEffect(() => {
-    const prev = prevVisibleTypes.current
-    if (prev === visibleTypes) return
-    const sim = simRef.current
-    if (sim) {
-      // Find nodes that just became visible
-      for (const node of sim.nodes) {
-        const defType = nodeTypeToDefType(node.nodeType)
-        if (visibleTypes.has(defType) && !prev.has(defType)) {
-          // Seed at nearest visible ancestor
-          let ancestorId = node.parentId
-          while (ancestorId) {
-            const ancestor = sim.getNode(ancestorId)
-            if (!ancestor) break
-            if (visibleTypes.has(nodeTypeToDefType(ancestor.nodeType))) {
-              sim.seedAt(node.id, ancestor.x, ancestor.y)
-              break
-            }
-            ancestorId = ancestor.parentId
-          }
-        }
-      }
-      sim.reheat(0.5)
-      setRunning(true)
-      initialFitDone.current = false
-    }
-    prevVisibleTypes.current = visibleTypes
-  }, [visibleTypes])
-
-  // Reheat when the file filter changes — gives the user visible motion
-  // confirming the change registered, and lets the now-visible /
-  // newly-hidden subset settle into a layout that reflects the new
-  // node population. Unlike type changes, we don't ancestor-seed (files
-  // aren't structural containers in the graph) and we don't refit the
-  // viewport (the user's pan/zoom should survive a file filter toggle).
-  const prevSelectedFiles = React.useRef(selectedFiles)
-  React.useEffect(() => {
-    const prev = prevSelectedFiles.current
-    if (prev === selectedFiles) return
-    const sim = simRef.current
-    if (sim) {
-      sim.reheat(0.3)
-      setRunning(true)
-    }
-    prevSelectedFiles.current = selectedFiles
-  }, [selectedFiles])
+  // Physics loop + filter-driven reheats. Owns the RAF tick (with one-shot
+  // initial fit, cross-view center, fps, and stability stop), the hover tooltip
+  // re-render tick, and the seed/reheat-on-filter-change effects. It consumes the
+  // sim, the visible subgraph, and the camera/selection handles as inputs.
+  const { fps } = useSimulationLoop({
+    simRef, running, setRunning,
+    visibleIds, visibleNodes, downstreamScores,
+    visibleTypes, selectedFiles,
+    hoveredNodeId, selectedNodeId,
+    containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
+  })
 
   // Double-click node: center and zoom to neighbors
   const handleDoubleClickNode = React.useCallback((id: string) => {
