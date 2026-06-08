@@ -5,10 +5,8 @@ import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { CrossViewTarget } from './WorkflowCanvas'
-import type { ForceParams } from '../graph/simulation'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
-import { Simulation, DEFAULT_PARAMS } from '../graph/simulation'
-import type { SimNode } from '../graph/simulation'
+import type { SimNode, Simulation } from '../graph/simulation'
 import { definitionFor, ALL_NODE_TYPES as _ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
 import { fitToView, worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
@@ -22,6 +20,7 @@ import { DEF_TYPE_CONFIGS, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 import { useGraphModel } from './graph-view/useGraphModel'
 import { useViewport } from './graph-view/useViewport'
 import { useHighlight } from './graph-view/useHighlight'
+import { useSimulation } from './graph-view/useSimulation'
 
 interface GraphViewProps {
   ast: TWFFile
@@ -309,13 +308,11 @@ export function GraphView({
   // --- Core state ---
   // Camera (viewport transform, container ref, fit/center coordination).
   const { viewport, setViewport, containerRef, initialFitDone, pendingCenterRef, fit } = useViewport()
-  const [running, setRunning] = React.useState(true)
-  const [forceParams, setForceParams] = React.useState<ForceParams>({ ...DEFAULT_PARAMS })
-  const simRef = React.useRef<Simulation | null>(null)
-  const dragNodeRef = React.useRef<string | null>(null)
   // Frame-rate indicator for debugging. Updated ~2×/sec from the physics loop.
   const [fps, setFps] = React.useState(0)
   const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
+  // The simulation instance + its handlers are owned by useSimulation, called
+  // below once `graph` (from useGraphModel) is available.
 
   // Interaction / highlight state (hover, selection, keyboard focus, shift, and
   // the control-panel preview) is owned by useHighlight, called below once the
@@ -342,30 +339,38 @@ export function GraphView({
     hiddenDiagnostics,
   } = useGraphModel(ast, parserGraph, filter)
 
+  // Reset camera/fps coordination on each sim rebuild. Held by useSimulation
+  // and invoked from its build effect (selection reset is owned by useHighlight,
+  // keyed on `graph`).
+  const onSimRebuild = React.useCallback(() => {
+    initialFitDone.current = false
+    fpsTrackRef.current = { frames: 0, lastStamp: 0 }
+  }, [initialFitDone])
+
+  // Simulation spine: the instance, version signal, running flag, forceParams,
+  // and every sim-mutating handler.
+  const {
+    simRef,
+    simVersion,
+    running, setRunning,
+    forceParams,
+    getNode: getSimNode,
+    onParamChange: handleParamChange,
+    onForceAdjust: handleForceAdjust,
+    onGravityChange: handleGravityChange,
+    onNodeDragStart: handleNodeDragStart,
+    onNodeDragMove: handleNodeDragMove,
+    onNodeDragEnd: handleNodeDragEnd,
+    onToggleRunning: handleToggleRunning,
+    onReheat: handleReheat,
+  } = useSimulation(graph, onSimRebuild)
+
   // Clear pin-override flash after ~600ms so the visual flash plays once.
   React.useEffect(() => {
     if (overriddenPins.size === 0) return
     const timer = setTimeout(onOverriddenPinsConsumed, 600)
     return () => clearTimeout(timer)
   }, [overriddenPins, onOverriddenPinsConsumed])
-
-  // Bumped after each simulation (re)creation so memos that read from
-  // simRef.current can be invalidated. Without this signal the
-  // visibleNodes memo cached an empty result on first render — when
-  // simRef.current was still null — and never recomputed because its
-  // structural deps hadn't changed.
-  const [simVersion, setSimVersion] = React.useState(0)
-
-  // Create or update simulation when graph changes
-  React.useEffect(() => {
-    simRef.current = new Simulation(graph, forceParams)
-    initialFitDone.current = false
-    fpsTrackRef.current = { frames: 0, lastStamp: 0 }
-    setRunning(true)
-    setSimVersion(v => v + 1)
-    // Selection/hover/focus reset on graph change is owned by useHighlight
-    // (keyed on `graph`).
-  }, [graph]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stale-file cleanup is now owned by WorkflowCanvas (it touches both views'
   // filters consistently when the AST changes).
@@ -475,10 +480,6 @@ export function GraphView({
     // (when the sim hadn't been created yet) and never recompute on the
     // next render where the sim is finally available.
   }, [visibleTypes, selectedFiles, graph, simVersion]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Stable accessor into the live simulation (reads simRef at call time) — the
-  // explicit data link passed to hooks that need node lookups.
-  const getSimNode = React.useCallback((id: string) => simRef.current?.getNode(id), [])
 
   // Selection / hover / keyboard-focus / shift + control-panel preview state,
   // plus the derived transitive-dependency highlight sets and focusedNodeId.
@@ -655,62 +656,6 @@ export function GraphView({
     prevSelectedFiles.current = selectedFiles
   }, [selectedFiles])
 
-  // Propagate force param changes to the simulation. This only updates the
-  // params; re-energising the layout is the separate concern of
-  // `handleForceAdjust` below, so non-param interactions (e.g. dragging a
-  // future 2D force field before it commits a value) can keep the sim warm
-  // without routing through here.
-  const handleParamChange = React.useCallback((patch: Partial<ForceParams>) => {
-    setForceParams(prev => {
-      const next = { ...prev, ...patch }
-      simRef.current?.setParams(next)
-      return next
-    })
-  }, [])
-
-  // Shared "keep the simulation warm while tuning" mechanism. Every force
-  // control routes its edits through this (via the control panel) so a
-  // parameter change always re-energises the layout — tuning is a live
-  // feedback loop, not an edit-then-press-Play workflow. Freezing a layout
-  // is a separate, explicit action (Pause / the simulation cooling on its
-  // own once edits stop).
-  const handleForceAdjust = React.useCallback(() => {
-    simRef.current?.nudge(0.3)
-    setRunning(true)
-  }, [])
-
-  // Non-numeric gravity edits (mode, Band/Topological toggles). These relocate
-  // nodes (e.g. tiers <-> rings), so reheat harder than a slider nudge to let
-  // the layout re-settle.
-  const handleGravityChange = React.useCallback((partial: Partial<ForceParams>) => {
-    setForceParams(prev => {
-      const next = { ...prev, ...partial }
-      simRef.current?.setParams(next)
-      return next
-    })
-    simRef.current?.reheat(0.6)
-    setRunning(true)
-  }, [])
-
-  // Node drag handlers
-  const handleNodeDragStart = React.useCallback((id: string, wx: number, wy: number) => {
-    dragNodeRef.current = id
-    simRef.current?.pinNode(id, wx, wy)
-    simRef.current?.reheat(0.3)
-    setRunning(true)
-  }, [])
-
-  const handleNodeDragMove = React.useCallback((wx: number, wy: number) => {
-    if (dragNodeRef.current) simRef.current?.pinNode(dragNodeRef.current, wx, wy)
-  }, [])
-
-  const handleNodeDragEnd = React.useCallback(() => {
-    if (dragNodeRef.current) {
-      simRef.current?.unpinNode(dragNodeRef.current)
-      dragNodeRef.current = null
-    }
-  }, [])
-
   // Double-click node: center and zoom to neighbors
   const handleDoubleClickNode = React.useCallback((id: string) => {
     const sim = simRef.current
@@ -730,24 +675,6 @@ export function GraphView({
   const handleFitToView = React.useCallback(() => {
     fit(visibleNodes)
   }, [fit, visibleNodes])
-
-  // Toggle simulation
-  const handleToggleRunning = React.useCallback(() => {
-    if (!running) {
-      simRef.current?.reheat(0.5)
-      setRunning(true)
-    } else {
-      setRunning(false)
-    }
-  }, [running])
-
-  // Reheat with a strong kick. `reheat()` now scales its cooling rate to the
-  // kick, so a large alpha rearranges the layout *further* without dragging the
-  // settle out *longer* — it lands back at rest in the same fixed window.
-  const handleReheat = React.useCallback(() => {
-    simRef.current?.reheat(2)
-    setRunning(true)
-  }, [])
 
   // Type group toggle — turns all types in the group on together, or off
   // together. If any member is currently on, the whole group turns off;
