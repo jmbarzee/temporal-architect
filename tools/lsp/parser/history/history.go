@@ -18,8 +18,11 @@ import (
 
 // History is one workflow execution's event log. WorkflowID is the
 // execution ID — needed for cross-batch signal-target resolution.
+// Namespace, when non-empty, overrides ctx.Namespace for this specific
+// history; used by the folder walker to set the namespace from the path.
 type History struct {
 	WorkflowID string
+	Namespace  string
 	Events     []*historypb.HistoryEvent
 }
 
@@ -124,11 +127,9 @@ func buildIndex(histories []History, ctx Context) map[string]startInfo {
 			if attr == nil {
 				break
 			}
-			ns := ctx.Namespace
-			if attr.ParentWorkflowNamespace != "" {
-				// Only set if the event explicitly carries a namespace override.
-				// For started events this field is the parent's namespace, not
-				// the workflow's own. The workflow's namespace comes from ctx.
+			ns := h.Namespace
+			if ns == "" {
+				ns = ctx.Namespace
 			}
 			idx[h.WorkflowID] = startInfo{
 				workflowType: attr.GetWorkflowType().GetName(),
@@ -157,10 +158,14 @@ func (b *builder) processHistory(h History) {
 		if attr == nil {
 			break
 		}
+		ns := h.Namespace
+		if ns == "" {
+			ns = b.ctx.Namespace
+		}
 		root = startInfo{
 			workflowType: attr.GetWorkflowType().GetName(),
 			taskQueue:    attr.GetTaskQueue().GetName(),
-			namespace:    b.ctx.Namespace,
+			namespace:    ns,
 		}
 		found = true
 		break

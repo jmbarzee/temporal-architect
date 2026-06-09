@@ -139,7 +139,8 @@
             "properties": {
               "code": {
                 "enum": [
-                  "DISPATCH_NO_REACHABLE_DEPLOYMENT"
+                  "DISPATCH_NO_REACHABLE_DEPLOYMENT",
+                  "SIGNAL_TARGET_NOT_SAMPLED"
                 ]
               }
             }

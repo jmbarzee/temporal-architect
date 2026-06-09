@@ -1,0 +1,22 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": { "name": "PartnerCheckout" },
+        "taskQueue": { "name": "partner", "kind": "TASK_QUEUE_KIND_NORMAL" }
+      }
+    },
+    {
+      "eventId": "5",
+      "eventType": "EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED",
+      "startChildWorkflowExecutionInitiatedEventAttributes": {
+        "workflowType": { "name": "OrderWorkflow" },
+        "taskQueue": { "name": "orders", "kind": "TASK_QUEUE_KIND_NORMAL" },
+        "namespace": "ecommerce",
+        "workflowId": "order-child-001"
+      }
+    }
+  ]
+}
