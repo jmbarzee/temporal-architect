@@ -26,10 +26,37 @@ Generate functioning Go code from `.twf` (Temporal Workflow Format) files using 
 
 ## Process
 
+### Orient
+
+Before generating, resolve **where the code lands** along two independent axes. Greenfield is the easy case; adoption into an existing repo is the common one, and an existing repo's conventions are **requirements to match**, not defaults to pick.
+
+| Axis | Existing repo | Greenfield |
+|------|---------------|------------|
+| **1. Greenfield vs. existing** | *Detect* — cheap signals below; if any fire, you are in an existing repo | *Ask* the user |
+| **2. Codegen variant** (proto-first vs. hand-written) | *Detect from the repo* and conform to it | *Ask*; default = hand-written |
+
+**Cheap detection signals** (check these first — no subagent needed):
+
+- `buf.gen.yaml` with a `protoc-gen-go_temporal` plugin → **proto-first**
+- generated `*_temporal.pb.go` files → **proto-first**
+- `(temporal.v1.activity)` / `(temporal.v1.workflow)` annotations in `.proto` files → **proto-first**
+- none of the above, hand-written `workflow.ExecuteActivity` call sites → **hand-written**
+
+**Variant → reference routing:**
+
+| Variant | Load |
+|---------|------|
+| proto-first | [proto-driven.md](./reference/proto-driven.md) (alias: "PFI") — read in addition to the construct references below |
+| hand-written | the construct references below (default) |
+
+Route on concrete repo signals, never on a name or acronym. Adding a new variant later = one reference file + one routing row.
+
+**For an existing repo, dispatch the shared `project-discovery` subagent** to scan a **bounded slice** (the domain or directory in scope — never the whole repo) and return a compact summary of tooling, layout, Temporal SDK usage, registration style, and existing `.twf`. Trigger it deliberately, not reflexively; if the slice is unclear, narrow it with the user first. Its contract lives in [project-discovery-subagent.md](../temporal-architect-design/reference/project-discovery-subagent.md) (owned by the design skill, shared across skills). Project-convention discovery is the subagent's job, not the orchestrator's — consume its summary, don't re-scan in the main context.
+
 ### 1. Context Gathering
 
 - Read `.twf` files in scope
-- Examine `go.mod`, existing project code, and conventions
+- Examine `go.mod`, existing project code, and conventions (for an existing repo, this is the discovery subagent's summary from Orient)
 - Ask the user about project context, domain, key dependencies — brief, targeted questions
 
 ### 2. Dependency Resolution
@@ -55,8 +82,10 @@ Root-down, with build checks between layers. Consult [reference files](#referenc
 | 2. Workflow bodies | Orchestration logic: activity calls, child workflows, signals, timers, selectors | `go build` | [workflow-def.md](./reference/workflow-def.md), [activity-call.md](./reference/activity-call.md) |
 | 3. Activity impl | Thin activity methods + concrete implementations behind interfaces | `go build` | [activity-def.md](./reference/activity-def.md) |
 | 4. Worker wiring | `cmd/` entry point: construct dependencies, wire activity struct, register types, start worker | `go build` | [worker.md](./reference/worker.md), [nexus-service-def.md](./reference/nexus-service-def.md) |
-| 5. Tests | One happy-path test per workflow using `testsuite.WorkflowTestSuite`. Catches: activity name resolution failures, serialization round-trip issues, update handler races, missing activity options | `go test` | — |
+| 5. Tests | At minimum, one happy-path test per workflow using `testsuite.WorkflowTestSuite`. Recommended: the three-layer approach below. Catches: activity name resolution failures, serialization round-trip issues, update handler races, missing activity options | `go test` | [three-layer-testing.md](./reference/three-layer-testing.md) |
 | 6. Final | Full correctness check | `go vet` | — |
+
+**Recommended: three-layer testing.** A happy-path workflow test is the floor, not the ceiling. For any non-trivial design, test in three layers — workflows (mock the activities interface), activities (mock the client interface), and clients (real system, behind a build tag) — because each layer catches bugs the others structurally cannot: workflow tests can't see inside activities, activity tests can't see the real client, and they also guard replay safety by pinning the activity-call sequence. Mechanics and patterns are in [three-layer-testing.md](./reference/three-layer-testing.md).
 
 After generation: present the code to the user for review.
 
