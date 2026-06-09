@@ -8,6 +8,8 @@ design-skill/REVISIONS_002.md → Groups 1 & 3 (reverse-engineering parallel pat
 author-go-skill/REVISIONS_001.md — Group 1 (Orient, depends on #1) then Groups 2–4 (proto-driven.md, three-layer-testing.md, worker expansion), in parallel. Distill from temp-change-set/skill-retro/PROTO_DRIVEN_TEMPORAL.md + THREE_LAYER_TESTING.md, then delete those.
 packaging.md M3 (extension symlinks twf into ~/.local/bin) — fully independent, do anytime.
 AGENTS.md (F1) — dev-repo North Star — independent.
+
+
 Stage 2 — new skill (after Stage 1's discovery subagent): 6. author-infra-skill/REVISIONS_001.md — Group 1 (skeleton+Orient, needs the discovery subagent) then Groups 2–4 (terraform.md, tcld.md, not-yet-modeled intent).
 
 Stage 3 — DSL/parser (has an internal order): 7. dsl/REVISIONS_001.md → Group 1 (Entry Point Annotation) — prerequisite for the next. 8. parser/REVISIONS_002.md → Group 1 (reachability + tree/chunk tooling) — depends on #7. 9. dsl/REVISIONS_001.md Group 2 + parser/REVISIONS_002.md Group 2 (worker options) — independent pair, anytime in Stage 3.

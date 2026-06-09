@@ -24,6 +24,8 @@ Before drafting, glance for prior work — a quick discovery step, not a researc
 
 If found, read them **as requirements** and enter [Revising an Existing Design](#revising-an-existing-design) rather than drafting from scratch — drafting on top of validated prior work re-derives (and silently diverges from) boundaries someone already debated. When the task is migrating an existing orchestration (Claude-Code → Temporal, cron → Temporal, etc.), the prior artifacts *are* the requirements; discovering and reading them is the first step, not a detour.
 
+**When the source of truth is existing code** (an already-running Temporal app, no design doc — the dominant adoption path), the `.twf` is *recovered from the implementation*, not drafted. This is a distinct, **parallel** path — do not improvise it inline, and do not let it slow the greenfield loop. Trigger it deliberately on a **bounded slice** (one domain at a time, never the whole repo reflexively), dispatch the [project-discovery subagent](./reference/project-discovery-subagent.md) to scan in isolation, and follow [reverse-engineering.md](./reference/reverse-engineering.md) for the mechanics. The reverse path rejoins the core loop at [Design Review](#design-review).
+
 ```
   ┌────────────┐
   │ Write/Edit │◄────────────────────────┐
@@ -203,10 +205,13 @@ Read only what the current design requires.
 | Signal vs Update | Choosing between signal and update for external input | [signals-queries-updates.md](./topics/signals-queries-updates.md) |
 | Notation Examples | Control flow, handlers, timers, nexus in TWF | [notation-examples.md](./reference/notation-examples.md) |
 | Notation Reference | All TWF syntax constructs | [notation-reference.md](./reference/notation-reference.md) |
+| `.twf` Conventions | File placement + comment conventions (impl-link, cross-domain stub) | [twf-conventions.md](./reference/twf-conventions.md) |
 | Design Checklist | Final verification before presenting | [design-checklist.md](./reference/design-checklist.md) |
 | Anti-Patterns | Common Temporal design mistakes | [anti-patterns.md](./reference/anti-patterns.md) |
+| Reverse Engineering | Recovering `.twf` from existing code | [reverse-engineering.md](./reference/reverse-engineering.md) |
 | Common Errors | Troubleshooting `twf check` parser/resolver errors | [common-errors.md](./reference/common-errors.md) |
 | Primitives Reference | Temporal primitive lookup | [primitives-reference.md](./reference/primitives-reference.md) |
+| Project Discovery Subagent | Scanning an existing repo on a bounded slice | [project-discovery-subagent.md](./reference/project-discovery-subagent.md) |
 | Workers & Task Queues | Worker grouping, task queue routing, deployment | [task-queues.md](./topics/task-queues.md) |
 | Namespaces | Deciding namespace count / boundaries | [namespaces.md](./reference/namespaces.md) |
 | Nexus | Cross-namespace communication | [nexus.md](./topics/nexus.md) |
