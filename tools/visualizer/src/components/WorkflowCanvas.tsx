@@ -126,11 +126,15 @@ function filterToPersisted(f: FilterState): PersistedFilter {
 
 export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
+  // History mode: a graph-only payload (e.g. `twf graph --history`) has no
+  // AST definitions. The Tree view has nothing to render, so we hide its tab
+  // and default to the Graph view.
+  const historyMode = ast.definitions.length === 0
   // Load persisted state once on mount. Sets are restored as Set<string>
   // from their array representation.
   const persisted = React.useMemo(() => loadState(), [])
 
-  const [activeView, setActiveView] = React.useState<ActiveView>('tree')
+  const [activeView, setActiveView] = React.useState<ActiveView>(historyMode ? 'graph' : 'tree')
 
   // Per-view structural filter state, lifted from each view so the
   // reconciler at switch time has access to both.
@@ -237,6 +241,9 @@ export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, classN
   // intent, runs the reconciler, applies the result, and flips the
   // active view. See spec § View Transitions.
   const switchView = React.useCallback((target: ActiveView, transition: ViewTransition) => {
+    // History mode has no Tree view; never switch to it (defensive — the
+    // Tree tab button and "Show in Tree" affordances are hidden anyway).
+    if (target === 'tree' && historyMode) return
     // Same-view manual click is a no-op; same-view focus is impossible
     // by construction (Show in [view] is always cross-view).
     if (target === activeView && transition.kind === 'manual') return
@@ -260,7 +267,7 @@ export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, classN
     }
 
     setActiveView(target)
-  }, [activeView, treeFilter, graphFilter, treePins, graphPins])
+  }, [activeView, treeFilter, graphFilter, treePins, graphPins, historyMode])
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
@@ -312,12 +319,14 @@ export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, classN
     <DefinitionContext.Provider value={context}>
       <div className={shellClassName} style={style} onClick={onRefocus}>
         <div className="tab-bar">
-          <button
-            className={`tab-bar-btn ${activeView === 'tree' ? 'active' : ''}`}
-            onClick={() => switchView('tree', { kind: 'manual' })}
-          >
-            Tree
-          </button>
+          {!historyMode && (
+            <button
+              className={`tab-bar-btn ${activeView === 'tree' ? 'active' : ''}`}
+              onClick={() => switchView('tree', { kind: 'manual' })}
+            >
+              Tree
+            </button>
+          )}
           <button
             className={`tab-bar-btn ${activeView === 'graph' ? 'active' : ''}`}
             onClick={() => switchView('graph', { kind: 'manual' })}
@@ -346,7 +355,7 @@ export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, classN
           <GraphView
             ast={ast}
             parserGraph={graphInput}
-            onShowInTree={showInTree}
+            onShowInTree={historyMode ? undefined : showInTree}
             filter={graphFilter}
             onFilterChange={setGraphFilter}
             pins={graphPins}

@@ -13,6 +13,42 @@ import type { FilterState } from '../../filter/types'
 import { filterStatesEqual } from '../../filter/types'
 import { buildGraph } from '../../graph/build'
 
+// graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
+// and parserGraph.unresolved) into the AST Diagnostic shape so the existing
+// GraphErrorsHeader renders them with no new UI. These are the primary way
+// history-derived warnings (e.g. a signal target not present in the sampled
+// histories) become visible — the AST carries no such diagnostics in history mode.
+//
+// Graph findings have no source file or column; they ride through the file-filter
+// partition in the "shown" group (file-less diagnostics are never hidden).
+function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
+  const out: Diagnostic[] = []
+  for (const d of pg.diagnostics) {
+    out.push({
+      severity: d.severity,
+      kind: 'graph',
+      code: d.code,
+      message: d.message,
+      name: d.from,
+      start: { line: d.line, column: 0 },
+      end: { line: d.line, column: 0 },
+    })
+  }
+  for (const u of pg.unresolved) {
+    const code = u.kind === 'signalSend' ? 'SIGNAL_TARGET_NOT_SAMPLED' : 'UNRESOLVED_REFERENCE'
+    out.push({
+      severity: 'warning',
+      kind: 'graph',
+      code,
+      message: `unresolved ${u.kind} target ${JSON.stringify(u.name)} (not present in the sampled input)`,
+      name: u.from,
+      start: { line: u.line, column: 0 },
+      end: { line: u.line, column: 0 },
+    })
+  }
+  return out
+}
+
 export interface GraphModel {
   graph: ReturnType<typeof buildGraph>
   allFiles: string[]
@@ -64,8 +100,13 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph, filter: Fi
 
   // Process-level FileErrors and structured Diagnostics, partitioned by the
   // file filter so the errors header can report the shown/hidden split.
+  // Graph-stage findings (parserGraph.diagnostics + unresolved) are folded in
+  // alongside the AST diagnostics so history-derived warnings are visible.
   const errors = ast.errors || []
-  const diagnostics = ast.diagnostics || []
+  const diagnostics = React.useMemo(
+    () => [...(ast.diagnostics || []), ...graphFindingsToDiagnostics(parserGraph)],
+    [ast.diagnostics, parserGraph],
+  )
   const { shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics } = React.useMemo(() => {
     if (selectedFiles.size === 0) {
       return {

@@ -21,7 +21,9 @@ export type ParserEdgeKind =
 export type ParserTier = 'worker' | 'namespace'
 
 /** Diagnostic codes emitted by the graph stage. */
-export type ParserGraphDiagnosticCode = 'DISPATCH_NO_REACHABLE_DEPLOYMENT'
+export type ParserGraphDiagnosticCode =
+  | 'DISPATCH_NO_REACHABLE_DEPLOYMENT'
+  | 'SIGNAL_TARGET_NOT_SAMPLED'
 
 /** Graph-stage diagnostic severity. */
 export type ParserGraphDiagnosticSeverity = 'error' | 'warning'

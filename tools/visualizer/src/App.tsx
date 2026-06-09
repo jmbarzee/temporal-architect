@@ -3,6 +3,7 @@ import { WorkflowCanvas } from './components/WorkflowCanvas'
 import { StyleGuide } from './components/StyleGuide'
 import type { TWFFile } from './types/ast'
 import type { ParserGraph } from './types/parser-graph'
+import { normalizePayload } from './types/payload'
 import { mountNodeTypeStyles } from './graph/node-type-styles'
 
 // Mount registry-generated node-type CSS variables once at module load.
@@ -10,23 +11,15 @@ mountNodeTypeStyles()
 
 // Standalone app - for development/testing
 // Load AST from URL query param: ?ast=/path/to/file.json
-
-// Shape of the payload App accepts — either a bare AST (legacy /
-// AST-only fixtures) or the new `{ ast, parserGraph }` envelope.
+//
+// Payload shapes are normalized by normalizePayload (see types/payload.ts):
+// a wrapped `{ ast, parserGraph }` envelope, the raw `twf graph --json`
+// envelope (`{ graph }` → empty AST + graph, history mode), or a bare AST.
 //
 // `ast.diagnostics` (structured validator/resolver findings from
 // `twf parse`'s JSON envelope) and `ast.errors` (catastrophic
-// parser-process failures) both ride through this function unchanged:
-// the standalone loader and the postMessage loader both forward the
-// payload verbatim into React state, so the headers in TreeView /
-// GraphView see both fields naturally. The JSON envelope from
-// `twf parse` (envelope.diagnostics) is the source of truth for
-// structured warnings in standalone mode — load it via ?ast=… or the
-// file picker and the warnings render in the errors header.
-function isWrappedPayload(d: unknown): d is { ast: TWFFile; parserGraph?: ParserGraph } {
-  return d != null && typeof d === 'object' && 'ast' in (d as Record<string, unknown>) &&
-    (d as { ast: unknown }).ast != null
-}
+// parser-process failures) both ride through unchanged; the headers in
+// TreeView / GraphView see both fields naturally.
 
 function App() {
   const [ast, setAst] = React.useState<TWFFile | null>(null)
@@ -58,15 +51,14 @@ function App() {
         const hash = JSON.stringify(message.data)
         if (hash === lastAstHashRef.current) return
         lastAstHashRef.current = hash
-        const payload = message.data
-        if (isWrappedPayload(payload)) {
-          setAst(payload.ast)
-          setParserGraph(payload.parserGraph)
+        const norm = normalizePayload(message.data)
+        if (norm) {
+          setAst(norm.ast)
+          setParserGraph(norm.parserGraph)
+          setError(null)
         } else {
-          setAst(payload as TWFFile)
-          setParserGraph(undefined)
+          setError('Unrecognized payload shape')
         }
-        setError(null)
       } else if (message.type === 'error') {
         lastAstHashRef.current = null
         setError(message.message)
@@ -85,12 +77,12 @@ function App() {
       fetch(astPath)
         .then(res => res.json())
         .then(data => {
-          if (isWrappedPayload(data)) {
-            setAst(data.ast)
-            setParserGraph(data.parserGraph)
+          const norm = normalizePayload(data)
+          if (norm) {
+            setAst(norm.ast)
+            setParserGraph(norm.parserGraph)
           } else {
-            setAst(data)
-            setParserGraph(undefined)
+            setError('Unrecognized payload shape')
           }
           setLoading(false)
         })
@@ -112,14 +104,14 @@ function App() {
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string)
-        if (isWrappedPayload(json)) {
-          setAst(json.ast)
-          setParserGraph(json.parserGraph)
+        const norm = normalizePayload(json)
+        if (norm) {
+          setAst(norm.ast)
+          setParserGraph(norm.parserGraph)
+          setError(null)
         } else {
-          setAst(json)
-          setParserGraph(undefined)
+          setError('Unrecognized payload shape')
         }
-        setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to parse JSON')
       }

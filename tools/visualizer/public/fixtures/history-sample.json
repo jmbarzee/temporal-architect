@@ -1,0 +1,130 @@
+{
+  "summary": {
+    "namespaces": 0,
+    "workers": 0,
+    "workflows": 0,
+    "activities": 0,
+    "nexusServices": 0
+  },
+  "diagnostics": [],
+  "graph": {
+    "summary": {
+      "nodes": 8,
+      "edges": 9,
+      "coarsenedEdges": 2,
+      "unresolved": 0,
+      "diagnostics": 0
+    },
+    "nodes": [
+      {
+        "id": "activity:ChargePayment/worker:orders/namespace:ecommerce",
+        "definition": "activity:ChargePayment"
+      },
+      {
+        "id": "activity:ValidateOrder/worker:orders/namespace:ecommerce",
+        "definition": "activity:ValidateOrder"
+      },
+      {
+        "id": "namespace:ecommerce",
+        "definition": "namespace:ecommerce"
+      },
+      {
+        "id": "namespace:partner",
+        "definition": "namespace:partner"
+      },
+      {
+        "id": "worker:orders/namespace:ecommerce",
+        "definition": "worker:orders",
+        "queue": "orders"
+      },
+      {
+        "id": "worker:partner/namespace:partner",
+        "definition": "worker:partner",
+        "queue": "partner"
+      },
+      {
+        "id": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
+        "definition": "workflow:OrderWorkflow"
+      },
+      {
+        "id": "workflow:PartnerCheckout/worker:partner/namespace:partner",
+        "definition": "workflow:PartnerCheckout"
+      }
+    ],
+    "edges": [
+      {
+        "from": "activity:ChargePayment/worker:orders/namespace:ecommerce",
+        "to": "worker:orders/namespace:ecommerce",
+        "kind": "containment",
+        "line": 0
+      },
+      {
+        "from": "activity:ValidateOrder/worker:orders/namespace:ecommerce",
+        "to": "worker:orders/namespace:ecommerce",
+        "kind": "containment",
+        "line": 0
+      },
+      {
+        "from": "worker:orders/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 0
+      },
+      {
+        "from": "worker:partner/namespace:partner",
+        "to": "namespace:partner",
+        "kind": "containment",
+        "line": 0
+      },
+      {
+        "from": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
+        "to": "activity:ChargePayment/worker:orders/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 0,
+        "routing": {}
+      },
+      {
+        "from": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
+        "to": "activity:ValidateOrder/worker:orders/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 0,
+        "routing": {}
+      },
+      {
+        "from": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
+        "to": "worker:orders/namespace:ecommerce",
+        "kind": "containment",
+        "line": 0
+      },
+      {
+        "from": "workflow:PartnerCheckout/worker:partner/namespace:partner",
+        "to": "worker:partner/namespace:partner",
+        "kind": "containment",
+        "line": 0
+      },
+      {
+        "from": "workflow:PartnerCheckout/worker:partner/namespace:partner",
+        "to": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
+        "kind": "workflowCall",
+        "line": 0,
+        "routing": {}
+      }
+    ],
+    "coarsenedEdges": [
+      {
+        "from": "namespace:partner",
+        "to": "namespace:ecommerce",
+        "tier": "namespace",
+        "weight": 1
+      },
+      {
+        "from": "worker:partner/namespace:partner",
+        "to": "worker:orders/namespace:ecommerce",
+        "tier": "worker",
+        "weight": 1
+      }
+    ],
+    "unresolved": [],
+    "diagnostics": []
+  }
+}

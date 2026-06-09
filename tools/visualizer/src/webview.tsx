@@ -4,6 +4,7 @@ import { WorkflowCanvas } from './components/WorkflowCanvas'
 import { StyleGuide } from './components/StyleGuide'
 import type { TWFFile } from './types/ast'
 import type { ParserGraph } from './types/parser-graph'
+import { normalizePayload } from './types/payload'
 import './styles/index.css'
 import { mountNodeTypeStyles } from './graph/node-type-styles'
 
@@ -23,25 +24,16 @@ const vscode = acquireVsCodeApi()
 // (acquireVsCodeApi can only be called once per webview).
 ;(window as unknown as { __twfVsCodeApi?: typeof vscode }).__twfVsCodeApi = vscode
 
-// Shape of the `ast` message from the VS Code extension. The host posts
-// `{ ast, parserGraph }`; older builds (and standalone fixtures) post just
-// an AST payload. We accept either shape and supply `parserGraph` as
-// undefined when it's absent — WorkflowCanvas's optional prop handles
-// the missing-graph case (empty graph view).
+// The `ast` message from the VS Code extension carries one of: the wrapped
+// `{ ast, parserGraph }` envelope, a bare AST payload, or `twf graph --json`
+// output (`{ graph }`, history mode). normalizePayload (types/payload.ts)
+// handles all shapes.
 //
 // Note: `ast.diagnostics` (structured warnings/errors from `twf parse`'s
 // envelope) and `ast.errors` (catastrophic parser-process failures) both
 // pass through this handler unchanged because we forward the AST payload
 // verbatim to React state. The headers in TreeView / GraphView consume
 // both fields directly.
-interface AstMessage {
-  type: 'ast'
-  data: TWFFile | { ast: TWFFile; parserGraph?: ParserGraph }
-}
-
-function isWrappedPayload(d: AstMessage['data']): d is { ast: TWFFile; parserGraph?: ParserGraph } {
-  return d != null && typeof d === 'object' && 'ast' in d && (d as { ast: unknown }).ast != null
-}
 
 function WebviewApp() {
   const [ast, setAst] = React.useState<TWFFile | null>(null)
@@ -76,15 +68,14 @@ function WebviewApp() {
         const hash = JSON.stringify(message.data)
         if (hash === lastAstHashRef.current) return
         lastAstHashRef.current = hash
-        const payload: AstMessage['data'] = message.data
-        if (isWrappedPayload(payload)) {
-          setAst(payload.ast)
-          setParserGraph(payload.parserGraph)
+        const norm = normalizePayload(message.data)
+        if (norm) {
+          setAst(norm.ast)
+          setParserGraph(norm.parserGraph)
+          setError(null)
         } else {
-          setAst(payload)
-          setParserGraph(undefined)
+          setError('Unrecognized payload shape')
         }
-        setError(null)
       } else if (message.type === 'error') {
         lastAstHashRef.current = null
         setError(message.message)

@@ -23,7 +23,7 @@ export interface FileError {
 // shape produced by `twf parse` and `twf <cmd> --json`. See
 // tools/lsp/cmd/twf/twf.schema.json for the authoritative schema.
 export type DiagnosticSeverity = 'error' | 'warning'
-export type DiagnosticKind = 'parse' | 'resolve' | 'validate'
+export type DiagnosticKind = 'parse' | 'resolve' | 'validate' | 'graph'
 
 export interface Diagnostic {
   severity: DiagnosticSeverity
