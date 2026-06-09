@@ -43,6 +43,10 @@ export function activate(context: vscode.ExtensionContext) {
   // Add bundled bin/ to terminal PATH so `twf` is available to users and AI agents
   setupTerminalPath(context);
 
+  // Symlink bundled `twf` into ~/.local/bin so AI agent shells (which don't
+  // inherit the integrated terminal's PATH) can resolve it without `go install`
+  linkTwfOnPath(context);
+
   // Install bundled skills to ~/.cursor/skills/
   installSkills(context);
 
@@ -191,6 +195,64 @@ function setupTerminalPath(context: vscode.ExtensionContext) {
       "PATH",
       binDir + path.delimiter
     );
+  }
+}
+
+// globalState key recording the ~/.local/bin/twf entry this extension manages.
+// It is how we distinguish a link we created (safe to refresh) from a `twf` the
+// user placed there themselves (must never be clobbered).
+const TWF_PATH_LINK_KEY = "twf.pathLinkTarget";
+
+/**
+ * Link the bundled `twf` into ~/.local/bin so it resolves on the agent's PATH.
+ *
+ * `setupTerminalPath` only reaches the integrated terminal via
+ * `environmentVariableCollection`; an AI agent's shell does not inherit that,
+ * so extension-only users (no `go install`) get an agent that can't find `twf`.
+ * `~/.local/bin` is already on the typical agent PATH (it also holds `claude`)
+ * and is the installer's default `INSTALL_DIR`.
+ *
+ * Refreshes on every activation so the link tracks the bundled binary's
+ * version. Never clobbers a user-managed `twf`: an existing entry we didn't
+ * record in globalState is left untouched.
+ */
+async function linkTwfOnPath(context: vscode.ExtensionContext) {
+  const ext = process.platform === "win32" ? ".exe" : "";
+  const bundled = path.join(context.extensionPath, "bin", `twf${ext}`);
+  if (!fs.existsSync(bundled)) {
+    return;
+  }
+
+  const binDir = path.join(os.homedir(), ".local", "bin");
+  const target = path.join(binDir, `twf${ext}`);
+  const owned = context.globalState.get<string>(TWF_PATH_LINK_KEY) === target;
+
+  try {
+    let exists = true;
+    try {
+      fs.lstatSync(target);
+    } catch {
+      exists = false;
+    }
+
+    // Leave a `twf` we didn't create (user `go install`, another tool) alone.
+    if (exists && !owned) {
+      console.warn(`twf already present at ${target}; leaving it untouched`);
+      return;
+    }
+
+    fs.mkdirSync(binDir, { recursive: true });
+    // Refresh so the entry always points at the current bundled binary.
+    fs.rmSync(target, { force: true });
+    if (process.platform === "win32") {
+      // Symlinks require elevation on Windows; copy instead.
+      await copyFileAsync(bundled, target);
+    } else {
+      fs.symlinkSync(bundled, target);
+    }
+    await context.globalState.update(TWF_PATH_LINK_KEY, target);
+  } catch (err) {
+    console.warn("Failed to link twf onto PATH:", err);
   }
 }
 

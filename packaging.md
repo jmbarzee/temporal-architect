@@ -169,6 +169,8 @@ Embed skills in the `twf` binary and add a `twf skill` subcommand mirroring `twf
 
 ### M3 — Agent-discoverable binary on PATH
 
+**Status:** 3.1 + 3.2 done — `linkTwfOnPath` in `packages/vscode/src/extension.ts` symlinks the bundled `twf` into `~/.local/bin` on activation (copy on Windows), refreshes per version, and guards a user-managed `twf` via a `globalState`-recorded ownership marker. 3.3 (skill/onboarding note) outstanding.
+
 The extension bundles `twf` and prepends its `bin/` to the **integrated terminal** via
 `environmentVariableCollection` (`setupTerminalPath`), but that does **not** reach the AI agent's
 shell — confirmed empirically: in an agent shell with the extension installed, `twf` resolves only

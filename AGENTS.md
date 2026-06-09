@@ -2,6 +2,12 @@
 
 A DSL (`.twf`) and toolchain for designing, visualizing, and code-generating Temporal workflows. See [README](./README.md) for full details.
 
+## North Star
+
+`.twf` exists to **extend the complexity horizon of AI execution** — to let AI work at *system* scale, not code scale. The largest gains in AI-assisted development came from wiring AIs into **deterministic tooling** (compilers, linters, testers); temporal-architect is that deterministic harness for **Temporal architecture**. It keeps the AI out of the weeds — error handling, library choices, application-code pedantics — so it can focus on the large scale: **workloads, scaling, reliability, availability**. The product is a **context-protecting harness for the main agent**: fit bigger problems into the same context window.
+
+Every change in this repo should serve that. Prefer designs that protect context and raise the level of abstraction the agent operates at; be wary of anything that drags the AI back down into code-scale busywork. (The "main agent" isn't always the *design* agent — sometimes it's authoring or reverse-engineering. Don't assume.)
+
 ## Running `go`
 
 Prefix every Go command with `GOMODCACHE=$HOME/go/pkg/mod` (e.g. `GOMODCACHE=$HOME/go/pkg/mod go test ./...`). The Cursor agent sandbox injects a broken `GOMODCACHE` that can't resolve the temporary `tliron/glsp => jmbarzee/glsp` replace, so Go fails with `no required module provides package github.com/tliron/glsp` for the `tools/lsp` packages; the override points Go at the host cache (allowlisting `go` alone doesn't help — the bad var is still injected, and this is unrelated to `go.work`). Don't "fix" it by editing `go.mod`/`go.work`/`go.sum` or touching the replace — they're correct. Remove this paragraph once the upstream `tliron/glsp` PR lands and the replace is dropped.
