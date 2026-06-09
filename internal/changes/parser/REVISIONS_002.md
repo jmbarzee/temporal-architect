@@ -5,40 +5,25 @@
 
 ## Summary
 
-Analysis features that turn the resolved graph into the harness's decomposition primitive, plus the
-permissive worker-options acceptance to match the DSL change. Depends on Entry Point Annotation
-(`dsl/REVISIONS_001` Group 1) for roots.
+The permissive worker-options acceptance to match the DSL change. This cycle is worker-options only.
 
-## Group 1: Reachability + Composable-Chunk / Tree Identification (E2)
+**Deferred from this cycle:** the *Reachability + Composable-Chunk / Tree Identification* group was
+pulled. It had a **hard dependency** on the Entry Point Annotation grammar (`dsl/REVISIONS_001`), which
+is itself deferred and being reframed as the general "connect in and out of Temporal" boundary concept
+(see `dsl/BACKLOG.md` → *Connecting In and Out of Temporal*). With no roots in the language, root-based
+reachability/tree decomposition cannot land as specced — the work stays in `parser/BACKLOG.md`
+(*Reachability Check* and *Graph Decomposition*), where the chunk-identification strategy is being
+sharpened (graph traversal for the basic case; loops and oversized trees as the harder open cases).
 
-**Findings:**
-- The harness decomposes a `.twf` into independently-implementable chunks; the natural units are
-  **independent workflow trees** (components rooted at entry points). `parser/graph/` already extracts
-  the resolved graph, so identifying trees/components is a cheap traversal extension. Surface it as a
-  tool the AI calls. Full design in `BACKLOG.md` → *Graph Decomposition: Composable Chunks / Workflow
-  Trees* and *Reachability Check*.
-
-**Files touched:** `tools/lsp/parser/graph/`, `tools/lsp/cmd/twf/graph.go` (+ envelope/schema).
-**Change type:** `Internal` (additive).
-**Parallelism:** **Hard dependency** on `dsl/REVISIONS_001` Group 1 (Entry Point Annotation) for roots.
-
-**Specific changes:**
-1. Reachability: walk from declared/implicit entries; flag unreachable workflows; treat handler-bearing
-   + Nexus-op-backing workflows as roots.
-2. Tree/component identification: enumerate independent trees (roots + reachable children).
-3. CLI surface: `twf graph trees` / `twf graph chunks --by tree|worker|namespace`; optional
-   decomposition strategies (parallelize independent branches, break out by worker/namespace) as
-   AI-selectable suggestions.
-
-## Group 2: Worker-Options Permissive Acceptance
+## Group 1: Worker-Options Permissive Acceptance
 
 **Findings:**
-- Match the DSL change (`dsl/REVISIONS_001` Group 2): resolver/validator accepts the SDK-union worker
+- Match the DSL change (`dsl/REVISIONS_001` Group 1): resolver/validator accepts the SDK-union worker
   options with **no per-language check**.
 
 **Files touched:** `tools/lsp/parser/validator/`, `tools/lsp/parser/resolver/` (as needed).
 **Change type:** `Internal`.
-**Parallelism:** Independent of Group 1; pairs with `dsl/REVISIONS_001` Group 2.
+**Parallelism:** Independent; pairs with `dsl/REVISIONS_001` Group 1.
 
 **Specific changes:**
 1. Permit the expanded worker-option keys without emitting unknown-key errors; no language gating.

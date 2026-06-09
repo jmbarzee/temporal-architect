@@ -51,7 +51,73 @@ resolution. Pairs with the cross-domain stub convention the design skill documen
 
 **Open questions:** `import` (file-level) vs `extern` (per-symbol forward declaration) vs a `package`
 header? How does this interact with the nexus external-reference marker (same "lives elsewhere"
-intent — see Nexus Extensions)? Does the graph/visualizer span packages?
+intent — see Nexus Extensions)? Does the graph/visualizer span packages? Pairs with the inbound edge
+under *Connecting In and Out of Temporal* below (the outbound "declared elsewhere" half).
+
+---
+
+## Connecting In and Out of Temporal (System Boundary)
+
+TWF models the system *inside* Temporal — workflows, activities, workers, namespaces, Nexus — but
+represents the **boundary** between that system and the outside world only implicitly. Two edges of
+that boundary are invisible to tooling today:
+
+- **Inbound — what triggers the system.** Workflows started by an external client, a schedule, an
+  operator, or a Nexus operation are the *roots* of the design. The DSL has no way to mark them, so
+  tooling cannot tell a legitimate top-level workflow from leftover/dead code and cannot compute
+  reachability at all (a graph walk needs roots). Signal/update/query handlers and
+  Nexus-operation-backing workflows are entered out-of-band too — they are roots even though nothing
+  in the file calls them.
+- **Outbound — what the system reaches that lives elsewhere.** Definitions in another package, Nexus
+  services/endpoints owned by another team/namespace, and external systems an activity talks to are
+  "declared elsewhere." Today their absence is *inferred* (blanket per-category strictness for Nexus;
+  one-package resolution for cross-file refs), which produces the wrong errors (see the outbound items
+  cross-referenced below).
+
+**Direction:** treat this as **one concept** — *a way to declare how the design connects in and out of
+Temporal* — rather than a grab-bag of point markers. The inbound edge gives tooling its reachability
+**roots**; the outbound edge gives it "lives elsewhere" **leaves**; together they define the boundary
+the harness cuts along when decomposing a design into composable chunks.
+
+**This subsumes the former standalone "Entry Point Annotation" item** (the inbound half). The original
+sketch was a single `@entry` annotation:
+
+```twf
+@entry
+workflow Comparanda(config: Config) -> (Result):
+    ...
+```
+
+but the narrow marker is being reframed: the real need is to express the *boundary*, not just tag a
+root. Whatever inbound surface lands (annotation `@entry`, keyword `entry workflow Foo`, or a form that
+also names the *trigger* — client/schedule/operator/Nexus) should be designed alongside the outbound
+"declared elsewhere" mechanism, not as an isolated annotation.
+
+**Leading motivation (from `REFLECTION_DESIGN.md`):** In the Comparanda design, `Comparanda` was the
+real top-level entry, but the validator had no way to tell it apart from leftover workflows — so
+neither dead-code detection nor "is everything reachable" could be offered. The current `checkCoverage`
+validator pass only checks *worker-registration* coverage (and only when namespaces are declared); it
+does not check whether a definition is ever *called* or *reachable*.
+
+**Outbound half — already tracked elsewhere, folded in here:**
+- **Packages / Cross-Package References** (above) — the general `import`/`extern`/`package` "declared
+  elsewhere" mechanism.
+- **External Nexus Reference Marker (`extern`)** (Nexus Extensions) — carries the S2 steer to *not*
+  ship a nexus-specific marker but ride the general mechanism.
+- **Reference Annotations (`@ref`)** (Annotations) — links a definition to where its real
+  implementation lives (a third "elsewhere" axis: code location).
+
+**Tooling payoff (parser):** reachability checks and composable-chunk / workflow-tree identification
+both need roots; see `parser/BACKLOG.md` → *Reachability Check* and *Graph Decomposition*. Until the
+inbound boundary lands, those fall back to heuristic roots (handler-bearing + Nexus-op-backing
+workflows) plus graph traversal of connected components — workable for the basic case, weaker for
+loops and oversized trees.
+
+**Open questions:** Inbound surface — annotation (`@entry`) vs keyword (`entry workflow Foo`) vs a
+trigger-naming form (client/schedule/operator/Nexus)? Are handler-bearing and Nexus-op-backing
+workflows *implicit* inbound roots, or must they be marked? Is reachability opt-in once any inbound
+marker exists (zero markers = a library, no warnings)? Do the inbound marker and the outbound
+"declared elsewhere" mechanism share grammar, or are they distinct constructs designed together?
 
 ---
 
@@ -231,7 +297,7 @@ Workflow-to-workflow send for updates and queries. Handle-bound signal-send ship
 
 **Why not just add it now:** The spec stays silent on capabilities the underlying primitives don't provide — adding `update handle.X(args) -> r` syntax that lowers to an activity bridge would invite designers to reach for it without recognizing the boundary they're crossing (extra activity surface, retries on the bridge itself, etc.). Until SDK semantics make the direct path real, the activity bridge stays explicit in the design.
 
-**Reachability nuance (from `REFLECTION_DESIGN.md`):** Signal/query/update handlers — and workflows started out-of-band (external clients, schedules, Nexus operations) — look like dead code to any reachability / unused-definition check, because their trigger is invisible to the DSL. Send-side syntax for signals (shipped via `REVISIONS_001`) makes *intra-design* signal sends visible as dependency edges (so a signal handler targeted by another workflow in the same design is no longer "uncalled"), but query/update handlers and *external* triggers still will not be. Any reachability checker must therefore treat handler-bearing and entry-annotated workflows (see Entry Point Annotation) as roots rather than flagging them as unreachable.
+**Reachability nuance (from `REFLECTION_DESIGN.md`):** Signal/query/update handlers — and workflows started out-of-band (external clients, schedules, Nexus operations) — look like dead code to any reachability / unused-definition check, because their trigger is invisible to the DSL. Send-side syntax for signals (shipped via `REVISIONS_001`) makes *intra-design* signal sends visible as dependency edges (so a signal handler targeted by another workflow in the same design is no longer "uncalled"), but query/update handlers and *external* triggers still will not be. Any reachability checker must therefore treat handler-bearing and entry-annotated workflows (see Connecting In and Out of Temporal) as roots rather than flagging them as unreachable.
 
 **Cancellation send (separate but related):** The same send-side gap applies to **cancelling** another workflow — a parent cancelling a runaway child, or pausing across a Nexus boundary. In the Comparanda design `AgenticTask.Cancel` and `Pause/Resume` can only be triggered by an external client as drawn, because a workflow has no way to *send* a cancel/pause. A cancel-send primitive (`cancel handle` / `cancel external X(id)`) is a candidate for a follow-up REVISIONS that would reuse the same send-target machinery shipped by `REVISIONS_001`. This is distinct from the *receive* side (see Workflow Cancellation Handler).
 
@@ -659,19 +725,9 @@ workflow ProcessOrder(order: Order) -> (Result):
 
 ### Entry Point Annotation
 
-A way to mark a workflow as an intended top-level entry point — one started by an external client, schedule, or operator rather than called by another workflow in the design.
-
-```twf
-@entry
-workflow Comparanda(config: Config) -> (Result):
-    ...
-```
-
-**Why needed:** Without a declared entry point, tooling fundamentally cannot distinguish a legitimate top-level workflow from leftover/dead code, and cannot compute reachability at all — a graph walk needs roots to start from. This is the **prerequisite** for any dead-workflow / unused-definition / reachability check (see Design Quality Linting below). It also keeps the future reachability analysis honest: workflows reached only via signals, Nexus operations, or other out-of-band triggers (see the reachability nuance under Signal/Query/Update Send Statements) are roots too, not unreachable code.
-
-**Leading motivation (from `REFLECTION_DESIGN.md`):** In the Comparanda design, `Comparanda` was the real top-level entry, but the validator had no way to tell it apart from leftover workflows — so neither dead-code detection nor "is everything reachable" could be offered. The current `checkCoverage` validator pass only checks *worker registration* coverage (and only when namespaces are declared); it does not check whether a definition is ever *called* or *reachable*.
-
-**Open questions:** Annotation (`@entry`) vs keyword (`entry workflow Foo`)? Should Nexus-operation-backing workflows and handler-bearing workflows be *implicit* entries, or require explicit marking? Distinguish client-started vs schedule-started entries? Can a file legitimately have zero entries (a library of reusable building blocks) without warnings — i.e. is the reachability check opt-in once any `@entry` exists?
+**Moved + reframed.** The inbound-entry-point concept now lives under *Connecting In and Out of
+Temporal* (System Boundary), paired with the outbound "declared elsewhere" mechanism rather than
+standing alone as a single `@entry` annotation.
 
 ### Reference Annotations
 

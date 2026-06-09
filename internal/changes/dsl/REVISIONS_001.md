@@ -5,28 +5,17 @@
 
 ## Summary
 
-Two grammar additions that unblock the harness's decomposition tooling and the North-Star worker
-intent. The larger DSL designs (packages / cross-package refs, `@ref`, general `extern`, Nexus
-endpoint access policy, custom search attributes) **remain in `BACKLOG.md`** — not promoted this cycle.
+One grammar addition this cycle: the North-Star worker intent. The larger DSL designs (packages /
+cross-package refs, `@ref`, general `extern`, Nexus endpoint access policy, custom search attributes)
+**remain in `BACKLOG.md`** — not promoted this cycle.
 
-## Group 1: Entry Point Annotation
+**Deferred from this cycle:** the *Entry Point Annotation* group was pulled — the narrow `@entry`
+marker is being reframed as a general "connect in and out of Temporal" boundary concept (inbound
+triggers + outbound "declared elsewhere"). See `BACKLOG.md` → *Connecting In and Out of Temporal*.
+With no language change, the dependent parser reachability/tree work (`parser/REVISIONS_002` Group 1)
+is also deferred to `parser/BACKLOG.md`.
 
-**Findings:**
-- Tooling cannot compute reachability or identify composable workflow **trees** without declared
-  **roots**. An entry-point marker is the prerequisite for the parser's reachability check *and* the
-  harness's graph-tree decomposition (see `parser/REVISIONS_002`). Full design in `BACKLOG.md` →
-  Annotations → *Entry Point Annotation*.
-
-**Files touched:** `tools/spec/sections/` (grammar), `tools/lsp/parser/` (lexer/parser/AST), `tools/lsp/parser/ast/json.go`.
-**Change type:** `Breaking` (new grammar) — pre-v1, fine.
-**Parallelism:** Prerequisite for `parser/REVISIONS_002` Group 1 (reachability + trees).
-
-**Specific changes:**
-1. Add `@entry` (annotation) or `entry workflow Foo` (keyword) — pick per the backlog open question.
-2. Parse + carry on the workflow AST node; emit in JSON. Handler-bearing and Nexus-op-backing workflows
-   are *implicit* entries (don't flag as unreachable). Zero-entry files = libraries (no reachability warnings).
-
-## Group 2: Worker Options (union, parser-permissive)
+## Group 1: Worker Options (union, parser-permissive)
 
 **Findings:**
 - TWF worker options = the **union/superset of SDK worker options** (excluding per-language one-offs).

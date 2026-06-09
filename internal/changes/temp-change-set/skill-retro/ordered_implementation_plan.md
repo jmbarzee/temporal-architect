@@ -12,13 +12,13 @@ AGENTS.md (F1) — dev-repo North Star — independent.
 
 Stage 2 — new skill (after Stage 1's discovery subagent): 6. author-infra-skill/REVISIONS_001.md — Group 1 (skeleton+Orient, needs the discovery subagent) then Groups 2–4 (terraform.md, tcld.md, not-yet-modeled intent).
 
-Stage 3 — DSL/parser (has an internal order): 7. dsl/REVISIONS_001.md → Group 1 (Entry Point Annotation) — prerequisite for the next. 8. parser/REVISIONS_002.md → Group 1 (reachability + tree/chunk tooling) — depends on #7. 9. dsl/REVISIONS_001.md Group 2 + parser/REVISIONS_002.md Group 2 (worker options) — independent pair, anytime in Stage 3.
+Stage 3 — DSL/parser: 7. dsl/REVISIONS_001.md Entry Point Annotation — DEFERRED this cycle. The narrow `@entry` marker is being reframed as a general "connect in and out of Temporal" boundary concept (inbound triggers + outbound "declared elsewhere"); back to dsl/BACKLOG.md → *Connecting In and Out of Temporal*. 8. parser/REVISIONS_002.md reachability + tree/chunk tooling — DEFERRED with #7 (it hard-depended on declared roots). Chunk identification stays in parser/BACKLOG.md → *Graph Decomposition*: basic graph traversal of connected components works today; loops/cycles and oversized trees are the harder open cases needing a more sophisticated strategy. 9. dsl/REVISIONS_001.md Group 1 + parser/REVISIONS_002.md Group 1 (worker options, parser-permissive) — independent pair; now the only Stage 3 work.
 
 Stage 4 — capstone (after 1–2, ideally after 8): 10. harness-skill/REVISIONS_001.md (ships as temporal-architect) — Groups 1–4, then Group 5 (trim design). 11. F2/F3 — echo the North Star into README + published package descriptions.
 
 Critical-path summary
 B1c discovery subagent (#1) gates author-go Orient (#3) and author-infra (#6).
-Entry Point Annotation (#7) gates the graph-tree tooling (#8), which the harness (#10) ideally uses.
+Entry Point Annotation (#7) and the graph-tree tooling that hard-depended on it (#8) are DEFERRED this cycle (see Stage 3). The harness (#10) ships without tool-computed tree decomposition, falling back to basic connected-component graph traversal (parser/BACKLOG.md → Graph Decomposition); precise root-based trees return with the reframed inbound boundary.
 Everything else in Stage 1 (packaging M3, AGENTS.md, the reference docs, worker section) is independent and parallelizable.
-The deep DSL designs (packages/@ref/extern/access-policy/search-attrs) stay in the dsl/parser BACKLOGs — promote to REVISIONS later, not on this path.
+The deep DSL designs (packages/@ref/extern/access-policy/search-attrs, plus the reframed inbound/outbound boundary — dsl/BACKLOG.md → Connecting In and Out of Temporal) stay in the dsl/parser BACKLOGs — promote to REVISIONS later, not on this path.
 Each REVISIONS file has its own Findings / Files-touched / Parallelism / Specific-changes, so they're ready for /project:address-review one at a time. The plan now carries the REVISIONS index up top for traceability.

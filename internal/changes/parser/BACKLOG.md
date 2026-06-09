@@ -16,7 +16,7 @@ Flag any `activity`, `workflow`, or `nexus service` definition that has **zero s
 
 **Why needed:** A defined-but-never-called activity is almost always a mistake (a dropped step, or — until the raw-statement fix lands — a call swallowed as `raw`; see `internal/changes/dsl/BACKLOG.md`). This check is also the **backstop for the raw-statement disambiguation**: a *typo'd* call name won't resolve to its symbol and so won't be flagged as a miswritten call, but the real definition then shows up here as unused.
 
-**Dependencies:** Most precise once the raw-statement fix lands (otherwise calls written as raw produce false "unused" positives). Must treat handler-bearing and entry-annotated workflows as legitimately "used by an external trigger" — see the reachability nuance and Entry Point Annotation in the DSL backlog.
+**Dependencies:** Most precise once the raw-statement fix lands (otherwise calls written as raw produce false "unused" positives). Must treat handler-bearing and entry-annotated workflows as legitimately "used by an external trigger" — see the reachability nuance and *Connecting In and Out of Temporal* in the DSL backlog.
 
 **Open questions:** Warning or error? Should it run unconditionally (today's coverage check is gated on `len(namespaces) > 0`)? How does it interact with multi-file designs where the caller is in another file?
 
@@ -24,7 +24,7 @@ Flag any `activity`, `workflow`, or `nexus service` definition that has **zero s
 
 Walk the call/Nexus graph from declared entry points; report any workflow not reachable from an entry as dead code, and distinguish intended top-level entries from leftover workflows.
 
-**Hard dependency:** This is **impossible without an entry-point concept** — a graph walk needs roots. See **Entry Point Annotation** in `internal/changes/dsl/BACKLOG.md`. Until entries are declarable, the validator cannot tell `Comparanda` (the real root) from leftover dead code.
+**Hard dependency:** This is **impossible without an inbound-boundary concept** — a graph walk needs roots. See **Connecting In and Out of Temporal** in `internal/changes/dsl/BACKLOG.md` (the inbound half subsumes the former Entry Point Annotation). Until inbound roots are declarable, the validator cannot tell `Comparanda` (the real root) from leftover dead code.
 
 **Out-of-band triggers:** Signal/query/update handlers and Nexus-operation-backing workflows are entered externally; the walk must seed roots with entry-annotated *and* handler-bearing workflows, or it will flag legitimately-triggered code as unreachable (the reachability nuance on the signal-sends backlog item).
 
@@ -41,14 +41,28 @@ chunks to dispatch to authors/subagents. The decomposition rule is "cut at contr
 finer" — and `.twf` *is* the contract — so the natural chunk units are **independent workflow trees**
 (connected components rooted at entry points) and the coarser cuts (language, worker, namespace).
 
-`parser/graph/` already extracts the resolved deployment graph; **identifying trees/components is a
-cheap extension** of the existing traversal. Surface it as a tool the AI calls instead of eyeballing.
+`parser/graph/` already extracts the resolved deployment graph; **identifying connected components is
+a cheap extension** of the existing traversal. Surface it as a tool the AI calls instead of eyeballing.
+
+**Roots dependency is deferred.** Clean tree identification wants declared roots, which come from the
+inbound boundary — now deferred and reframed (see `dsl/BACKLOG.md` → *Connecting In and Out of
+Temporal*). So this work needs a **more sophisticated strategy than "walk from declared entries,"**
+staged by difficulty:
+- **Basic case (works today):** graph traversal of the resolved graph — enumerate connected components
+  and treat each as a chunk, seeding roots heuristically (handler-bearing + Nexus-op-backing workflows,
+  plus any workflow with no in-edges). No language change required.
+- **Harder cases (open):**
+  - **Loops / cycles** — workflow-call cycles and shared sub-workflows mean components aren't clean
+    trees; the traversal must handle cycles (strongly-connected components, or merge cyclically-linked
+    workflows into one chunk) rather than assuming a DAG of trees.
+  - **Oversized trees** — a single component too large to be one implementable chunk must be *cut*
+    along contract boundaries (worker / task queue / namespace / package) into sub-chunks, ideally with
+    AI-selectable strategies, without the clean root signal a declared entry would give.
 
 **Capabilities wanted:**
-- **Tree / component identification** — enumerate the independent workflow trees (roots + their
-  reachable child workflows / activities / nexus targets). Roots come from **Entry Point Annotation**
-  (hard dependency — same roots the reachability check needs).
-- **Decomposition strategies (optional, AI-selectable)** — given a large tree, suggest cuts:
+- **Component / chunk identification** — enumerate independent chunks (heuristic roots + their
+  reachable child workflows / activities / nexus targets), cycle-aware.
+- **Decomposition strategies (optional, AI-selectable)** — given an oversized chunk, suggest cuts:
   parallelize independent branches, break out by worker / task queue, by namespace, by package. The
   point is to *help the AI pick* a decomposition, not impose one.
 
@@ -59,9 +73,19 @@ the same resolved graph the visualizer already consumes.
 **Consumer:** the harness / `temporal-engineer` entry-point skill (decomposition + dispatch). This is
 the tool-computed answer to "what are the composable chunks?"
 
-**Open questions:** Is a "tree" the right unit, or connected-component (handles shared sub-workflows)?
-How to present overlap when two roots share a child workflow? Should strategies emit a recommended
-chunking or just the raw structure for the AI to cut? Depends on Entry Point Annotation landing first.
+**Testing (sampler + `twf graph`):** integration tests for the sampler + `twf graph` combo are in
+flight. When the sub-tree / chunk-identification work lands, **expand that coverage to verify
+decomposition** — drive sampled histories (or fixtures in the sampler's `<ns>/<wfType>/<id>.json`
+layout) through `twf graph --history` and assert the chunk/tree output: connected-component grouping,
+cycle handling (workflow-call loops collapse into one chunk rather than blowing up), and oversized-tree
+cuts. The round-trip harness already exists (`tools/sampler` → `twf graph --history`); the sub-tree
+cases are new assertions over the same graph, not a new test rig.
+
+**Open questions:** Is a "tree" the right unit, or connected-component (handles shared sub-workflows
+and cycles)? How to present overlap when two roots share a child workflow? How to decide a chunk is
+"oversized" and which cut to recommend? Should strategies emit a recommended chunking or just the raw
+structure for the AI to cut? The basic graph-traversal case is unblocked today; precise root-based
+trees still want the inbound boundary (*Connecting In and Out of Temporal*).
 
 ## Nexus Resolution: External-by-Intent vs. Blanket Strictness
 
@@ -125,7 +149,7 @@ Give the model (and humans) commands that answer the questions it actually asks,
 Capabilities wanted:
 
 - **Relationship queries on a single definition** — who calls this? what does this call? show everything about this one definition (signature, body, call sites, deployment, options). All derivable from the existing resolved graph + AST.
-- **Whole-set structural findings** — definitions with no structured call site (unused), and workflows unreachable from a declared entry point (reachability — depends on Entry Point Annotation in the DSL backlog).
+- **Whole-set structural findings** — definitions with no structured call site (unused), and workflows unreachable from a declared entry point (reachability — depends on the inbound boundary; see *Connecting In and Out of Temporal* in the DSL backlog).
 
 **Naming / organization is intentionally left open** — bring an API mindset when this is picked up. Some *suggestions*, not decisions:
 
