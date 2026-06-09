@@ -29,8 +29,6 @@ dist/
 # Built Go binaries
 tools/lsp/twf
 
-twf
-
 # Claude settings
 .claude/settings.local.json
 examples/.claude/settings.local.json

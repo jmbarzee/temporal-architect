@@ -6,5 +6,6 @@ use (
 	./internal/release/bump-brew
 	./internal/release/gen-skills-manifest
 	./tools/lsp
+	./tools/sampler
 	./tools/spec
 )
