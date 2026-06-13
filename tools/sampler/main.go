@@ -2,11 +2,9 @@
 // live Temporal namespace and writes them as protojson into the folder layout
 // `twf graph --history` consumes: <out>/<namespace>/<workflowType>/<id>.json.
 //
-// One invocation targets one namespace and runs two internal phases:
-//
-//	Phase A — enumerate workflow types via a paginated Visibility scan.
-//	Phase B — per type, sample a configurable share of executions (preferring
-//	          running ones) and download their full histories.
+// The core sampling logic lives in the importable ./sampling package; this
+// command is a thin wrapper that adds flag parsing, the client connection, and
+// disk writing.
 //
 // Run it once per namespace into the same --out to build a multi-namespace
 // tree for `twf graph --history <out>`.
@@ -23,8 +21,10 @@ import (
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
 	"go.temporal.io/api/temporalproto"
-	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
+
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/history"
+	"github.com/jmbarzee/temporal-architect/tools/sampler/sampling"
 )
 
 type options struct {
@@ -66,30 +66,25 @@ func run(ctx context.Context, opts options) error {
 	}
 	defer c.Close()
 
-	// Phase A — enumerate types and candidate executions.
-	byType, err := enumerate(ctx, c, opts.namespace)
+	histories, err := sampling.Sample(ctx, c, sampling.Options{
+		Namespace:     opts.namespace,
+		SamplePercent: opts.samplePercent,
+		MinPerType:    opts.minPerType,
+	})
 	if err != nil {
-		return fmt.Errorf("enumerate workflow types: %w", err)
+		return err
 	}
-	if len(byType) == 0 {
+	if len(histories) == 0 {
 		fmt.Fprintf(os.Stderr, "no workflow executions found in namespace %q\n", opts.namespace)
 		return nil
 	}
 
-	// Phase B — sample per type and write histories.
-	total := 0
-	for wfType, cands := range byType {
-		n := sampleCount(len(cands), opts.samplePercent, opts.minPerType)
-		selected := selectCandidates(cands, n)
-		for _, cand := range selected {
-			if err := writeHistory(ctx, c, opts, wfType, cand); err != nil {
-				return fmt.Errorf("write history %s/%s: %w", wfType, cand.workflowID, err)
-			}
-			total++
+	for _, h := range histories {
+		if err := writeHistory(opts.out, h); err != nil {
+			return fmt.Errorf("write history %s: %w", h.WorkflowID, err)
 		}
-		fmt.Fprintf(os.Stderr, "%s: sampled %d of %d execution(s)\n", wfType, len(selected), len(cands))
 	}
-	fmt.Fprintf(os.Stderr, "wrote %d history file(s) under %s\n", total, opts.out)
+	fmt.Fprintf(os.Stderr, "wrote %d history file(s) under %s\n", len(histories), opts.out)
 	return nil
 }
 
@@ -112,60 +107,17 @@ func dial(opts options) (client.Client, error) {
 	return client.Dial(co)
 }
 
-// enumerate paginates the Visibility ListWorkflow API, aggregating every
-// observed execution into a map keyed by workflow type. Each entry records
-// the execution's id, run id, and whether it is currently running.
-//
-// This single portable scan replaces a CountWorkflowExecutions GROUP BY
-// (which not all server versions support); per-type counts fall out of the
-// candidate slice lengths.
-func enumerate(ctx context.Context, c client.Client, namespace string) (map[string][]candidate, error) {
-	byType := map[string][]candidate{}
-	var pageToken []byte
-	for {
-		resp, err := c.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
-			Namespace:     namespace,
-			PageSize:      1000,
-			NextPageToken: pageToken,
-		})
-		if err != nil {
-			return nil, err
-		}
-		for _, info := range resp.GetExecutions() {
-			wfType := info.GetType().GetName()
-			if wfType == "" {
-				continue
-			}
-			byType[wfType] = append(byType[wfType], candidate{
-				workflowID: info.GetExecution().GetWorkflowId(),
-				runID:      info.GetExecution().GetRunId(),
-				running:    info.GetStatus() == enumspb.WORKFLOW_EXECUTION_STATUS_RUNNING,
-			})
-		}
-		pageToken = resp.GetNextPageToken()
-		if len(pageToken) == 0 {
-			break
-		}
-	}
-	return byType, nil
-}
-
-// writeHistory downloads one execution's full history and writes it as
-// protojson to <out>/<namespace>/<type>/<id>.json, matching the format of
-// `temporal workflow show -o json`.
-func writeHistory(ctx context.Context, c client.Client, opts options, wfType string, cand candidate) error {
-	events, err := fetchHistory(ctx, c, cand)
-	if err != nil {
-		return err
-	}
-	hist := &historypb.History{Events: events}
-
+// writeHistory serializes one sampled history as protojson (matching
+// `temporal workflow show -o json`) and writes it to
+// <out>/<namespace>/<workflowType>/<workflowId>.json.
+func writeHistory(out string, h history.History) error {
+	hist := &historypb.History{Events: h.Events}
 	data, err := temporalproto.CustomJSONMarshalOptions{Indent: "  "}.Marshal(hist)
 	if err != nil {
 		return fmt.Errorf("marshal history: %w", err)
 	}
 
-	path := outputPath(opts.out, opts.namespace, wfType, cand.workflowID)
+	path := outputPath(out, h.Namespace, workflowTypeOf(h), h.WorkflowID)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create dir: %w", err)
 	}
@@ -175,17 +127,13 @@ func writeHistory(ctx context.Context, c client.Client, opts options, wfType str
 	return nil
 }
 
-// fetchHistory drains the full event history for one execution.
-func fetchHistory(ctx context.Context, c client.Client, cand candidate) ([]*historypb.HistoryEvent, error) {
-	iter := c.GetWorkflowHistory(ctx, cand.workflowID, cand.runID, false,
-		enumspb.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT)
-	var events []*historypb.HistoryEvent
-	for iter.HasNext() {
-		e, err := iter.Next()
-		if err != nil {
-			return nil, err
+// workflowTypeOf reads the workflow type from the history's
+// WORKFLOW_EXECUTION_STARTED event (used only for the on-disk folder layout).
+func workflowTypeOf(h history.History) string {
+	for _, e := range h.Events {
+		if e.GetEventType() == enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED {
+			return e.GetWorkflowExecutionStartedEventAttributes().GetWorkflowType().GetName()
 		}
-		events = append(events, e)
 	}
-	return events, nil
+	return "UnknownWorkflowType"
 }

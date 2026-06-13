@@ -1,12 +1,7 @@
-package main
+package sampling
 
-import (
-	"path/filepath"
-	"strings"
-)
-
-// candidate is one workflow execution discovered during the Phase A scan.
-// running marks executions in the RUNNING status, which Phase B prefers.
+// candidate is one workflow execution discovered during enumeration.
+// running marks executions in the RUNNING status, which sampling prefers.
 type candidate struct {
 	workflowID string
 	runID      string
@@ -77,32 +72,4 @@ func selectCandidates(cands []candidate, n int) []candidate {
 		}
 	}
 	return out
-}
-
-// outputPath builds <out>/<namespace>/<workflowType>/<workflowId>.json,
-// sanitizing path-hostile characters in the namespace / type / id
-// segments so an exotic workflow ID can't escape the output tree.
-func outputPath(out, namespace, wfType, wfID string) string {
-	return filepath.Join(
-		out,
-		sanitizeSegment(namespace),
-		sanitizeSegment(wfType),
-		sanitizeSegment(wfID)+".json",
-	)
-}
-
-// sanitizeSegment replaces characters that are unsafe in a single path
-// segment (separators and the parent-dir marker) with underscores.
-func sanitizeSegment(s string) string {
-	replacer := strings.NewReplacer(
-		"/", "_",
-		"\\", "_",
-		"\x00", "_",
-	)
-	s = replacer.Replace(s)
-	switch s {
-	case "", ".", "..":
-		return "_"
-	}
-	return s
 }
