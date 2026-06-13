@@ -116,6 +116,16 @@ Within a wave, children are independent and run concurrently. Between waves, the
 
 Leaf nodes (visualizer, author-go-skill) terminate the propagation chain.
 
+### Filesystem safety invariant
+
+All children in a wave share one worktree. A child's `address-review` step **reads** from `internal/changes/{self}/` (and edits its own source directory), while its `propagate-changes` step **writes** REVISIONS into `internal/changes/{downstream}/`. If an upstream component and its downstream ran in the same wave, one child's propagation write would race another child's review read.
+
+`BuildWaveManifest` enforces the invariant that prevents this: **a component and any of its downstream components are never scheduled in the same wave.** Because each component owns a distinct source directory and a distinct `internal/changes/{self}/` directory, and no in-wave sibling is downstream of another, every child's read/write scope is disjoint from every sibling's. Deferred components surface in the next `ScanRevisions` and run in a later wave. This is why propagation always lands a wave *later* than the change that triggered it.
+
+### Host co-location requirement
+
+The worktree is a **local filesystem resource, not shared storage.** Every activity and child workflow reads and writes that single directory, so the entire worker fleet for this design must run on the one host that owns the worktree — the orchestrator is **not horizontally scalable across machines** as designed. If a future version must span hosts, the worktree has to move to shared storage, or the worktree-touching activities must be pinned to the owning worker via Temporal **sessions** for host-affinity (sticky routing to a single worker).
+
 ## Commit Strategy
 
 The main workflow serializes all commits. No child workflow touches git directly.
@@ -146,6 +156,17 @@ This preserves the full trail in git history (REVISIONS → CHANGES → summary)
 | Human approval between waves | off (configurable) | Optional manual gate between waves |
 
 All limits are configurable via workflow input parameters.
+
+### Outcome reporting
+
+The two ways the main loop exits are not the same, and `DevCycleResult.outcome` records which one happened:
+
+| `outcome` | Meaning |
+|-----------|---------|
+| `completed` | A `ScanRevisions` found no remaining REVISIONS — all work drained. |
+| `wave_limit_reached` | `maxWaves` was hit with REVISIONS still pending — work was **deferred**, not finished. |
+
+When `outcome` is `wave_limit_reached`, the operator knows the system stopped on a protective limit rather than because the work was done; the leftover REVISIONS persist in the worktree and a follow-up run (or a higher `maxWaves`) can resume them. Without this field both exits produced an identical result, so "finished" and "gave up" were indistinguishable.
 
 ## Failure Handling
 

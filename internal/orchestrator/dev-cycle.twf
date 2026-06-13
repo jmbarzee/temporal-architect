@@ -21,6 +21,22 @@
 #   changes in LIFO order, then let the workflow fail. Temporal's workflow
 #   retry policy retries the child on a clean worktree. The parent handles
 #   ultimate child failure per-child (see await all comment).
+# - HOST CO-LOCATION (deployment constraint): the worktree is a local
+#   filesystem resource, not shared storage. Every activity and child workflow
+#   reads and writes that one directory, so the entire worker fleet for this
+#   design MUST run on the single host that owns the worktree. The orchestrator
+#   is not horizontally scalable across machines as written. (If it ever needs
+#   to span hosts, the worktree must move to shared storage, or the worktree-
+#   touching activities must be pinned to the owning worker via Temporal
+#   sessions for host-affinity — sticky routing to one worker.)
+# - WAVE FILESYSTEM SAFETY INVARIANT: within a wave, children run concurrently
+#   in the shared worktree. A child's propagate-changes step writes REVISIONS
+#   into internal/changes/{downstream}/ while sibling children read
+#   internal/changes/{self}/ during address-review. To prevent that race,
+#   BuildWaveManifest never schedules a component together with any of its
+#   downstream components in the same wave. Each child's read/write scope
+#   (its source dir + internal/changes/{self}/) is therefore disjoint from
+#   every sibling's, so concurrent children never touch the same paths.
 
 
 # =============================================================================
@@ -50,6 +66,11 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
     totalRounds = 0
     totalChildrenSpawned = 0
     activeChildCount = 0
+    # Distinguishes the two loop exits in the final result. Set at each break:
+    # "completed" = no REVISIONS remain (all work drained); "wave_limit_reached"
+    # = maxWaves hit with work still pending (deferred). Default covers the
+    # degenerate case where the loop never executes a wave.
+    outcome = "completed"
 
     # --- Initial review generation (when scope provided) ---
     if (config.initialScope):
@@ -63,6 +84,7 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
         waveNumber = waveNumber + 1
 
         if (waveNumber > config.maxWaves):
+            outcome = "wave_limit_reached"
             break
 
         # Optional human gate between waves
@@ -78,9 +100,14 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
                 start_to_close_timeout: 30s
 
         if (pendingWork.isEmpty):
+            outcome = "completed"
             break
 
-        # Spawn children for all components with pending REVISIONS (parallel)
+        # Spawn children for all components with pending REVISIONS (parallel).
+        # BuildWaveManifest applies the wave filesystem safety invariant: an
+        # upstream component and its downstream are never in the same wave, so
+        # concurrent children never read/write each other's internal/changes/
+        # subdirectories.
         activeChildCount = pendingWork.componentCount
         activity BuildWaveManifest(pendingWork, totalChildrenSpawned, config.maxChildWorkflows) -> waveManifest
             options:
@@ -131,6 +158,9 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
                 maximum_attempts: 3
     commitCount = commitCount + 1
 
+    # Initialized before the conditional so the result field is always defined,
+    # even when PR creation is disabled (createPR = false).
+    prURL = ""
     if (config.createPR):
         activity CreatePullRequest(worktreePath, config.branchName, summary.body) -> prURL
             options:
@@ -142,7 +172,7 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
         options:
             start_to_close_timeout: 1m
 
-    close complete(DevCycleResult{waves: waveNumber, commits: commitCount, rounds: totalRounds, prURL: prURL})
+    close complete(DevCycleResult{waves: waveNumber, commits: commitCount, rounds: totalRounds, prURL: prURL, outcome: outcome})
 
 
 # =============================================================================
@@ -215,6 +245,11 @@ activity ScanRevisions(worktreePath: string) -> (PendingWork):
 activity BuildWaveManifest(pendingWork: PendingWork, alreadySpawned: int, maxChildren: int) -> (WaveManifest):
     # Build the list of components to process this wave
     # Respects the maxChildren limit by capping entries
+    # Enforces the wave filesystem safety invariant (see header): never place a
+    # component and any of its downstream components in the same wave, so that no
+    # child's propagate-changes write target (internal/changes/{downstream}/) is
+    # another in-flight child's address-review read scope. Deferred components
+    # surface in the next ScanRevisions and run in a later wave.
     # Returns WaveManifest with entries and count
     buildManifest(pendingWork, alreadySpawned, maxChildren)
 
