@@ -135,13 +135,81 @@ Close the Temporal client (`defer c.Close()`) and any injected dependencies (DB 
 
 The resolver previews coverage gaps **at design time**: `UNCOVERED_WORKFLOW` / `UNCOVERED_ACTIVITY` / `UNCOVERED_SERVICE` flag a type no worker covers, and `IMPLICIT_ROUTING_MISMATCH` flags a routing mismatch. Treat a clean resolve as the design-time analog of full registration. These same codes are also a **reverse-reading signal**: when recovering a `.twf` from existing Go, the registered set on each `worker.New` is what populates each `worker` block.
 
-## Deferred: worker runtime options
+## Worker options → `worker.Options`
 
-Worker tuning is **not** modeled in TWF yet and is deliberately out of scope here — do not invent DSL for it (tracked in `dsl/BACKLOG.md`, Worker Runtime Options). This includes:
+Worker tuning now lives in the namespace `options:` block — the SDK-union worker-options set (concurrency caps, rate limiters, sticky cache, versioning). Map each key onto a `worker.Options` field rather than keeping it out of the `.twf`:
 
-- `MaxConcurrentActivityExecutionSize` / `MaxConcurrentWorkflowTaskExecutionSize` and friends
-- activity/workflow-task rate limiters
-- sticky execution cache settings
-- worker versioning / Build IDs / deployments
+| TWF worker option | `worker.Options` field | Go type |
+|-------------------|------------------------|---------|
+| `task_queue` | 2nd arg to `worker.New` (not a field) | string |
+| `max_concurrent_activity_executions` | `MaxConcurrentActivityExecutionSize` | int |
+| `max_concurrent_workflow_task_executions` | `MaxConcurrentWorkflowTaskExecutionSize` | int |
+| `max_concurrent_local_activity_executions` | `MaxConcurrentLocalActivityExecutionSize` | int |
+| `max_concurrent_nexus_task_executions` | `MaxConcurrentNexusTaskExecutionSize` | int |
+| `max_concurrent_workflow_task_pollers` | `MaxConcurrentWorkflowTaskPollers` | int |
+| `max_concurrent_activity_task_pollers` | `MaxConcurrentActivityTaskPollers` | int |
+| `max_concurrent_nexus_task_pollers` | `MaxConcurrentNexusTaskPollers` | int |
+| `worker_activity_rate_limit` | `WorkerActivitiesPerSecond` | float64 |
+| `task_queue_activity_rate_limit` | `TaskQueueActivitiesPerSecond` | float64 |
+| `worker_local_activity_rate_limit` | `WorkerLocalActivitiesPerSecond` | float64 |
+| `sticky_schedule_to_start_timeout` | `StickyScheduleToStartTimeout` | time.Duration |
+| `heartbeat_throttle_interval` | `MaxHeartbeatThrottleInterval` | time.Duration |
+| `worker_identity` | `Identity` | string |
+| `worker_shutdown_timeout` | `WorkerStopTimeout` | time.Duration |
+| `local_activity_only_mode` | `LocalActivityWorkerOnly` | bool |
+| `enable_sessions` | `EnableSessionWorker` | bool |
+| `max_concurrent_session_executions` | `MaxConcurrentSessionExecutionSize` | int |
+| `max_cached_workflows` | **not** a `worker.Options` field — process-global via `worker.SetStickyWorkflowCacheSize(n)` | int |
+| `versioning` | not 1:1 — see below | enum |
 
-If the user needs these today, set them directly in `worker.Options` in the generated Go — but keep them out of the `.twf`.
+Example — a namespace worker carrying a couple of options:
+
+```twf
+namespace orders:
+    worker orderTypes
+        options:
+            task_queue: "orders"
+            max_concurrent_activity_executions: 50
+            enable_sessions: true
+```
+
+maps to:
+
+```go
+w := worker.New(c, "orders", worker.Options{
+    MaxConcurrentActivityExecutionSize: 50,
+    EnableSessionWorker:                true,
+})
+```
+
+> **Permissive-union caveat:** the DSL worker-options set is the SDK *union* accepted permissively, so a `.twf` may carry a key the Go SDK has no field for (a per-language one-off). When a key has no `worker.Options` field, **drop it — do not invent an API.** The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred in `internal/changes/dsl/BACKLOG.md`.
+
+### `versioning` (not 1:1)
+
+The DSL `versioning` enum carries *strategy*, not identifiers. Concrete Build ID / deployment name / version are **deploy-time inputs from config/env** — never fabricate them into generated code.
+
+- `none` → no versioning fields (default unversioned worker).
+- `build_id` → **legacy** path (the SDK marks these **Deprecated** in favor of `DeploymentOptions`):
+
+```go
+worker.Options{
+    BuildID:                 buildID, // from env/config, not the .twf
+    UseBuildIDForVersioning: true,
+}
+```
+
+- `deployment` → **current** path:
+
+```go
+worker.Options{
+    DeploymentOptions: worker.DeploymentOptions{
+        UseVersioning: true,
+        Version: worker.WorkerDeploymentVersion{
+            DeploymentName: deploymentName, // from env/config
+            BuildId:        buildID,        // from env/config
+        },
+    },
+}
+```
+
+> **Pitfall — mutual exclusion:** worker versioning (`UseBuildIDForVersioning` or `DeploymentOptions.UseVersioning`) **cannot** be enabled together with `EnableSessionWorker`. A `.twf` carrying both `versioning: build_id|deployment` and `enable_sessions: true` cannot map to one `worker.Options` — surface it as a conflict; do not silently pick one.

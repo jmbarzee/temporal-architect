@@ -66,7 +66,10 @@ namespace staging:
 
 ## Worker Options
 
-Worker instantiation options (all snake_case):
+Worker instantiation options (all snake_case). This set is the **union/superset of SDK worker
+options**, excluding per-language one-offs. Keys are accepted **permissively, with no per-language
+validation** — an option that a particular SDK lacks does not gate its inclusion here. Express
+*strategy/intent* at design altitude (e.g. `versioning: build_id`), not exhaustive numeric ops tuning.
 
 | Key | Type |
 |-----|------|
@@ -77,14 +80,19 @@ Worker instantiation options (all snake_case):
 | `max_concurrent_activity_executions` | number |
 | `max_concurrent_workflow_task_executions` | number |
 | `max_concurrent_local_activity_executions` | number |
+| `max_concurrent_nexus_task_executions` | number |
 | `max_concurrent_workflow_task_pollers` | number |
 | `max_concurrent_activity_task_pollers` | number |
+| `max_concurrent_nexus_task_pollers` | number |
 | `max_cached_workflows` | number |
 | `sticky_schedule_to_start_timeout` | duration |
 | `heartbeat_throttle_interval` | duration |
 | `worker_identity` | string |
 | `worker_shutdown_timeout` | duration |
 | `local_activity_only_mode` | bool |
+| `enable_sessions` | bool |
+| `max_concurrent_session_executions` | number |
+| `versioning` | enum (`none`, `build_id`, `deployment`) |
 
 ## Endpoint Options
 

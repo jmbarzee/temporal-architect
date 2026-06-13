@@ -171,3 +171,4 @@ namespace versioning:
     worker versioningWorker
         options:
             task_queue: "versioning"
+            versioning: build_id

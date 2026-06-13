@@ -29,7 +29,7 @@ Workers contain only type references — no deployment config. Naming: `lowerCam
 
 ## Namespace Instantiation
 
-Namespaces instantiate workers with deployment options (task queue, concurrency limits, etc.) and expose nexus endpoints for external callers:
+Namespaces instantiate workers with deployment options (task queue, versioning strategy, and more — see [Worker Options](#worker-options) below) and expose nexus endpoints for external callers:
 
 ```twf
 namespace ecommerce:
@@ -55,6 +55,17 @@ namespace staging:
         options:
             task_queue: "staging-orders"
 ```
+
+### Worker Options
+
+The worker `options:` block is the **union of SDK worker options**, accepted *permissively* — the parser does no per-language validation, so an option a given SDK lacks is still allowed. Use it to express **strategy and intent at design altitude**, not exhaustive numeric ops tuning (exact poller counts and cache TTLs belong in implementation):
+
+- **`task_queue`** (required) — routing; pins the worker pool.
+- **`versioning: none | build_id | deployment`** — the worker-versioning *strategy* a pool follows (see [versioning.md](./versioning.md#declaring-the-strategy-in-twf)). A reliability/availability decision the design should make; concrete Build IDs / deployment names are deploy-time inputs, not `.twf` content.
+- **`enable_sessions`** — a genuine design call: sessions pin a sequence of activities to one worker (host-affinity for stateful or resource-bound work), distinct from numeric tuning.
+- **Concurrency caps and rate limiters** (`max_concurrent_*`, `*_rate_limit`, sticky cache) are part of the union but are ops tuning — include them only when a workload demands it; the design agent generally should not hand-set them.
+
+The full key list lives in the spec — run `twf spec` or see [`tools/spec/sections/03-workers-and-namespaces.md`](../../../tools/spec/sections/03-workers-and-namespaces.md) — rather than being duplicated here (avoids drift, keeps the design at altitude).
 
 ### Nexus Endpoints in Namespaces
 

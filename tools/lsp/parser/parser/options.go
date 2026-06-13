@@ -30,10 +30,10 @@ type optionSchema struct {
 }
 
 var retryPolicySchema = map[string]*optionSchema{
-	"initial_interval":        {valueType: "duration"},
-	"backoff_coefficient":     {valueType: "number"},
-	"maximum_interval":        {valueType: "duration"},
-	"maximum_attempts":        {valueType: "number"},
+	"initial_interval":          {valueType: "duration"},
+	"backoff_coefficient":       {valueType: "number"},
+	"maximum_interval":          {valueType: "duration"},
+	"maximum_attempts":          {valueType: "number"},
 	"non_retryable_error_types": {valueType: "string"},
 }
 
@@ -44,44 +44,57 @@ var prioritySchema = map[string]*optionSchema{
 }
 
 var activityOptionSchema = map[string]*optionSchema{
-	"task_queue":                    {valueType: "string"},
-	"schedule_to_close_timeout":     {valueType: "duration"},
-	"schedule_to_start_timeout":     {valueType: "duration"},
-	"start_to_close_timeout":        {valueType: "duration"},
-	"heartbeat_timeout":             {valueType: "duration"},
-	"request_eager_execution":       {valueType: "bool"},
-	"retry_policy":                  {valueType: "nested", nested: retryPolicySchema},
-	"priority":                      {valueType: "nested", nested: prioritySchema},
+	"task_queue":                {valueType: "string"},
+	"schedule_to_close_timeout": {valueType: "duration"},
+	"schedule_to_start_timeout": {valueType: "duration"},
+	"start_to_close_timeout":    {valueType: "duration"},
+	"heartbeat_timeout":         {valueType: "duration"},
+	"request_eager_execution":   {valueType: "bool"},
+	"retry_policy":              {valueType: "nested", nested: retryPolicySchema},
+	"priority":                  {valueType: "nested", nested: prioritySchema},
 }
 
+// versioningStrategies are the worker-versioning strategies expressed at design
+// altitude. Intent, not numeric tuning: `build_id` uses an underscore because
+// DSL enum values are bare idents and cannot contain hyphens.
+var versioningStrategies = []string{"none", "build_id", "deployment"}
+
+// workerOptionSchema is the SDK-union of worker options (excluding per-language
+// one-offs). Keys are accepted permissively with no per-language validation —
+// an option missing from one SDK does not gate its inclusion here.
 var workerOptionSchema = map[string]*optionSchema{
-	"task_queue":                                {valueType: "string"},
-	"worker_activity_rate_limit":                {valueType: "number"},
-	"task_queue_activity_rate_limit":            {valueType: "number"},
-	"worker_local_activity_rate_limit":          {valueType: "number"},
-	"max_concurrent_activity_executions":        {valueType: "number"},
-	"max_concurrent_workflow_task_executions":   {valueType: "number"},
-	"max_concurrent_local_activity_executions":  {valueType: "number"},
-	"max_concurrent_workflow_task_pollers":      {valueType: "number"},
-	"max_concurrent_activity_task_pollers":      {valueType: "number"},
-	"max_cached_workflows":                      {valueType: "number"},
-	"sticky_schedule_to_start_timeout":          {valueType: "duration"},
-	"heartbeat_throttle_interval":               {valueType: "duration"},
-	"worker_identity":                           {valueType: "string"},
-	"worker_shutdown_timeout":                   {valueType: "duration"},
-	"local_activity_only_mode":                  {valueType: "bool"},
+	"task_queue":                               {valueType: "string"},
+	"worker_activity_rate_limit":               {valueType: "number"},
+	"task_queue_activity_rate_limit":           {valueType: "number"},
+	"worker_local_activity_rate_limit":         {valueType: "number"},
+	"max_concurrent_activity_executions":       {valueType: "number"},
+	"max_concurrent_workflow_task_executions":  {valueType: "number"},
+	"max_concurrent_local_activity_executions": {valueType: "number"},
+	"max_concurrent_nexus_task_executions":     {valueType: "number"},
+	"max_concurrent_workflow_task_pollers":     {valueType: "number"},
+	"max_concurrent_activity_task_pollers":     {valueType: "number"},
+	"max_concurrent_nexus_task_pollers":        {valueType: "number"},
+	"max_cached_workflows":                     {valueType: "number"},
+	"sticky_schedule_to_start_timeout":         {valueType: "duration"},
+	"heartbeat_throttle_interval":              {valueType: "duration"},
+	"worker_identity":                          {valueType: "string"},
+	"worker_shutdown_timeout":                  {valueType: "duration"},
+	"local_activity_only_mode":                 {valueType: "bool"},
+	"enable_sessions":                          {valueType: "bool"},
+	"max_concurrent_session_executions":        {valueType: "number"},
+	"versioning":                               {valueType: "enum", allowed: versioningStrategies},
 }
 
 var workflowOptionSchema = map[string]*optionSchema{
-	"task_queue":                    {valueType: "string"},
-	"workflow_execution_timeout":    {valueType: "duration"},
-	"workflow_run_timeout":          {valueType: "duration"},
-	"workflow_task_timeout":         {valueType: "duration"},
-	"parent_close_policy":          {valueType: "enum", allowed: []string{"TERMINATE", "ABANDON", "REQUEST_CANCEL"}},
-	"workflow_id_reuse_policy":     {valueType: "enum", allowed: []string{"ALLOW_DUPLICATE", "ALLOW_DUPLICATE_FAILED_ONLY", "REJECT_DUPLICATE", "TERMINATE_IF_RUNNING"}},
-	"cron_schedule":                {valueType: "string"},
-	"retry_policy":                 {valueType: "nested", nested: retryPolicySchema},
-	"priority":                     {valueType: "nested", nested: prioritySchema},
+	"task_queue":                 {valueType: "string"},
+	"workflow_execution_timeout": {valueType: "duration"},
+	"workflow_run_timeout":       {valueType: "duration"},
+	"workflow_task_timeout":      {valueType: "duration"},
+	"parent_close_policy":        {valueType: "enum", allowed: []string{"TERMINATE", "ABANDON", "REQUEST_CANCEL"}},
+	"workflow_id_reuse_policy":   {valueType: "enum", allowed: []string{"ALLOW_DUPLICATE", "ALLOW_DUPLICATE_FAILED_ONLY", "REJECT_DUPLICATE", "TERMINATE_IF_RUNNING"}},
+	"cron_schedule":              {valueType: "string"},
+	"retry_policy":               {valueType: "nested", nested: retryPolicySchema},
+	"priority":                   {valueType: "nested", nested: prioritySchema},
 }
 
 var nexusCallOptionSchema = map[string]*optionSchema{
@@ -351,4 +364,3 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, string, error) {
 		return "", "", p.errorf("expected value after colon, got %s", p.current.Type)
 	}
 }
-

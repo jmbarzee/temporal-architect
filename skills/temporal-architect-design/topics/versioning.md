@@ -139,6 +139,28 @@ activity NewFeature()
 
 Route workflows to workers running compatible code versions.
 
+### Declaring the strategy in `.twf`
+
+> **TWF vs SDK:** A worker instantiation declares *which* versioning strategy a worker pool uses via the `versioning` option — the design-altitude decision. The build-id registration, ramping, and routing mechanics below stay SDK/CLI-level (code-scale).
+
+```twf
+namespace orders:
+    worker orderTypes
+        options:
+            task_queue: "orderProcessing"
+            versioning: build_id      # none | build_id | deployment
+```
+
+`versioning` expresses *intent* — the strategy a worker pool follows — not concrete Build IDs or deployment names (those are deploy-time inputs, never `.twf` content):
+
+| Value | Meaning |
+|-------|---------|
+| `none` | Unversioned workers (default) |
+| `build_id` | Build ID–based worker versioning |
+| `deployment` | Worker Deployment–based versioning |
+
+Enum values are bare idents — `build_id`, not `build-id` or `"build_id"`.
+
 ### Concept
 
 ```text

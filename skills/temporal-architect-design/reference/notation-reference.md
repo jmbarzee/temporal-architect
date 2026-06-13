@@ -65,4 +65,6 @@
 
 > The child-workflow **ID** itself is an SDK-level concern, not a TWF call option — see [child-workflows.md](../topics/child-workflows.md#workflow-id-design). `task_queue` is intentionally **not** a nexus-call option; nexus routing comes from the endpoint declaration.
 
+> **Worker-instantiation `options:` are a separate set** from the call options above — they attach to a `worker` (or `nexus endpoint`) inside a `namespace`, not to a call. `task_queue` is required; `versioning` (`none` / `build_id` / `deployment`) is the design-altitude strategy key. The set is the SDK union, accepted permissively — see [task-queues.md](../topics/task-queues.md#worker-options) and `twf spec`.
+
 Full grammar: [`tools/spec/sections/`](../../../tools/spec/sections/) (or run `twf spec`).
