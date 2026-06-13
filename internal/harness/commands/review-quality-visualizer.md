@@ -44,7 +44,7 @@ Use sub-agents to read all source in parallel:
 - One agent for `tools/visualizer/src/` — all TypeScript files, evaluating against all four rubric lenses
 - One agent for the context files: `tools/visualizer/spec/TREE_VIEW.md`, `tools/visualizer/spec/GRAPH_VIEW.md`, `AST_REVISIONS.md`
 
-Agents should work from source code only. Do not run the visualizer or evaluate visual output — that is the domain of `/project:review-quality-visualizer-spec`.
+Agents should work from source code only. Do not run the visualizer or evaluate visual output — that is the domain of `internal/harness/commands/review-quality-visualizer-spec.md`.
 
 ### Phase 2: Catalog
 
@@ -70,11 +70,11 @@ Write the grouped plan to `internal/changes/visualizer/quality_REVISIONS_{NNN}.m
 
 TypeScript changes here are almost always `Internal` unless they expose a new API surface to the extension.
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `internal/harness/commands/address-review.md`.**
 
 ## Constraints
 - **Source code only.** Don't run the visualizer or evaluate visual output — stay in `tools/visualizer/src/`.
 - **Focus on the consumer side.** Don't re-review the Go parser internals.
 - **Flag contract mismatches explicitly.** If the TS expects a field the parser no longer emits, that is a blocker.
 - **No backwards compatibility.** Pre-v1. Propose clean fixes.
-- **Visual design and UX are out of scope.** Those belong in `/project:review-quality-visualizer-spec`.
+- **Visual design and UX are out of scope.** Those belong in `internal/harness/commands/review-quality-visualizer-spec.md`.

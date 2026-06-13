@@ -79,7 +79,7 @@ When all sub-agents complete:
    - Which layers had no impact (changes didn't affect them)
    - Which layers were skipped because an existing REVISIONS file already references this same CHANGES source
    - Any VS Code Extension impacts that need manual review
-   - Recommended order for running `/project:address-review` on each REVISIONS file
+   - Recommended order for running `internal/harness/commands/address-review.md` on each REVISIONS file
 
 **STOP. Present the report and wait for the user to begin addressing each new revision file.**
 

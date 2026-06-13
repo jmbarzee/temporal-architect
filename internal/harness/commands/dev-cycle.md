@@ -18,17 +18,17 @@ Before launching any reviews, ask the user:
    - "Resume" — check `internal/changes/` for existing REVISIONS files and report current state
    - "Targeted" — specific component(s) only
 2. Which **layers** should be reviewed this cycle?
-   - DSL spec (`/review-quality-dsl-spec`)
-   - Parser internals (`/review-quality-parser`)
-   - Parser alignment (`/review-alignment-parser`)
-   - Parser-visualizer contract (`/review-alignment-parser-visualizer`)
-   - Visualizer spec (`/review-quality-visualizer-spec`)
-   - Visualizer TypeScript (`/review-quality-visualizer`)
-   - Visualizer alignment (`/review-alignment-visualizer`)
-   - Design skill (`/review-quality-skill` for design)
-   - Design skill alignment (`/review-alignment-design-skill`)
-   - Author-go skill (`/review-quality-skill` for author-go)
-   - Author-go alignment (`/review-alignment-author-skills`)
+   - DSL spec (`internal/harness/commands/review-quality-dsl-spec.md`)
+   - Parser internals (`internal/harness/commands/review-quality-parser.md`)
+   - Parser alignment (`internal/harness/commands/review-alignment-parser.md`)
+   - Parser-visualizer contract (`internal/harness/commands/review-alignment-parser-visualizer.md`)
+   - Visualizer spec (`internal/harness/commands/review-quality-visualizer-spec.md`)
+   - Visualizer TypeScript (`internal/harness/commands/review-quality-visualizer.md`)
+   - Visualizer alignment (`internal/harness/commands/review-alignment-visualizer.md`)
+   - Design skill (`internal/harness/commands/review-quality-skill.md` for design)
+   - Design skill alignment (`internal/harness/commands/review-alignment-design-skill.md`)
+   - Author-go skill (`internal/harness/commands/review-quality-skill.md` for author-go)
+   - Author-go alignment (`internal/harness/commands/review-alignment-author-skills.md`)
    - All of the above
 
 Present the proposed review scope and **wait for confirmation** before starting.
@@ -45,11 +45,11 @@ Present:
 - Which REVISIONS files were created, by component
 - Total groups and findings across all components
 - Suggested execution order (respecting the dependency DAG)
-- Whether to proceed manually (`/project:address-review` per REVISIONS file) or hand off to the automated orchestrator
+- Whether to proceed manually (`internal/harness/commands/address-review.md` per REVISIONS file) or hand off to the automated orchestrator
 
 **STOP. Wait for user to decide next steps.**
 
-If the user wants to continue manually, recommend running `/project:address-review` with the specific REVISIONS file paths, followed by `/project:propagate-changes` after each component's CHANGES file is written.
+If the user wants to continue manually, recommend running `internal/harness/commands/address-review.md` with the specific REVISIONS file paths, followed by `internal/harness/commands/propagate-changes.md` after each component's CHANGES file is written.
 
 If the user wants to run the automated workflow, the REVISIONS files in `internal/changes/` are the input — start the DevCycleWorkflow.
 

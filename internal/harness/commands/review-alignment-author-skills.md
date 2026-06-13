@@ -4,7 +4,7 @@ This command answers: "does the author-go skill provide a complete and accurate 
 
 Both sources are authoritative — a mapping that exists but uses an outdated SDK call is as broken as a missing mapping.
 
-Skill craft belongs in `/project:review-quality-skill`. This command is solely coverage and accuracy alignment across two authoritative sources.
+Skill craft belongs in `internal/harness/commands/review-quality-skill.md`. This command is solely coverage and accuracy alignment across two authoritative sources.
 
 ## Context
 
@@ -70,7 +70,7 @@ Write the grouped plan to `internal/changes/author-go-skill/alignment_REVISIONS_
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Internal`), parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `/project:address-review`.**
+**STOP after writing. Present a summary and wait for approval. To execute, invoke `internal/harness/commands/address-review.md`.**
 
 ## Constraints
 

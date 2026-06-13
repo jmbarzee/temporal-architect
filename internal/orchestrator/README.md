@@ -183,7 +183,7 @@ Child workflow failures use the saga compensation pattern:
 
 Three ways to kick off the workflow:
 
-1. **Manual review → workflow:** Run a review command manually (e.g., `/project:review-quality-parser`). It writes REVISIONS to `internal/changes/parser/`. Then start DevCycleWorkflow — it picks up existing REVISIONS and begins the loop.
+1. **Manual review → workflow:** Run a review command manually (e.g., follow `internal/harness/commands/review-quality-parser.md`). It writes REVISIONS to `internal/changes/parser/`. Then start DevCycleWorkflow — it picks up existing REVISIONS and begins the loop.
 
 2. **Workflow with initial scope:** Start DevCycleWorkflow with an initial scope parameter (e.g., `["parser", "visualizer"]`). The workflow runs the appropriate review commands as the first wave, generating the initial REVISIONS files.
 

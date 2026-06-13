@@ -48,8 +48,9 @@ These rules are enforced by `spec_test.go`. CI fails if any are violated.
   prints a single section. See [tools/lsp/cmd/twf/README.md](../lsp/cmd/twf/README.md).
 - **Skill prompts:** link directly to specific section files
   (e.g. `tools/spec/sections/04-nexus.md`) so prompts stay focused.
-- **Review commands:** `/project:review-quality-dsl-spec` reviews the
-  spec; `/project:review-alignment-parser` aligns the parser to it.
+- **Review commands:** `internal/harness/commands/review-quality-dsl-spec.md`
+  reviews the spec; `internal/harness/commands/review-alignment-parser.md`
+  aligns the parser to it.
 
 ## Embedding mechanics
 

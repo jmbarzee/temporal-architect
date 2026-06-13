@@ -2,7 +2,7 @@
 
 Review the TWF language design against Temporal's actual primitives and patterns. Evaluate whether the DSL adequately represents the application domain — not whether the parser implements it correctly.
 
-This review asks "does the DSL express Temporal well?" — not "does the parser handle it correctly?" Parser quality belongs in `/project:review-quality-parser`.
+This review asks "does the DSL express Temporal well?" — not "does the parser handle it correctly?" Parser quality belongs in `internal/harness/commands/review-quality-parser.md`.
 
 ## Context
 
@@ -88,10 +88,10 @@ Write the grouped plan to `internal/changes/dsl/quality_REVISIONS_{NNN}.md` (cre
 
 DSL changes are `Grammar` if they require syntax changes, `Semantic` if they clarify or correct meaning without changing syntax.
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `internal/harness/commands/address-review.md`.**
 
 ## Constraints
-- **Spec lens only.** Don't review parser implementation, AST structure, or resolver behavior — those belong in `/project:review-quality-parser`.
+- **Spec lens only.** Don't review parser implementation, AST structure, or resolver behavior — those belong in `internal/harness/commands/review-quality-parser.md`.
 - **Use the Temporal docs MCP server.** Don't evaluate coverage from memory alone. Search for each concept.
 - **Possible features come last.** The Phase 2 review drives findings; Phase 3 validates proposals against those findings. Don't let the possible features list anchor the review.
 - **No backwards compatibility.** Pre-v1. If a better representation exists, propose it. Note which changes would break existing `.twf` files.

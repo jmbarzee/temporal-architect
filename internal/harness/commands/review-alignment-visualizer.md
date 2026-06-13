@@ -2,7 +2,7 @@
 
 This command answers: "does the visualizer implement everything the spec requires?"
 
-Code quality belongs in `/project:review-quality-visualizer`. Spec design belongs in `/project:review-quality-visualizer-spec`. This command is solely gap detection between spec and implementation.
+Code quality belongs in `internal/harness/commands/review-quality-visualizer.md`. Spec design belongs in `internal/harness/commands/review-quality-visualizer-spec.md`. This command is solely gap detection between spec and implementation.
 
 ## Context
 
@@ -69,11 +69,11 @@ Write the grouped plan to `internal/changes/visualizer/alignment_REVISIONS_{NNN}
 - One `## Group N: Title` section per group
 - Each group: spec features addressed, files touched, change type (`Internal`), blocked status, parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `/project:address-review`.**
+**STOP after writing. Present a summary and wait for approval. To execute, invoke `internal/harness/commands/address-review.md`.**
 
 ## Constraints
 
-- **Spec is authoritative.** Don't re-evaluate design decisions — that's `/project:review-quality-visualizer-spec`.
+- **Spec is authoritative.** Don't re-evaluate design decisions — that's `internal/harness/commands/review-quality-visualizer-spec.md`.
 - **Sub-agents are scoped by topic, not by artifact.** Every sub-agent reads both spec and TypeScript source for its topic.
 - **Flag blocked work clearly.** Features waiting on parser data go in a separate group. Note the required JSON fields for each.
-- **Code quality is out of scope.** Note issues separately for `/project:review-quality-visualizer` — don't mix them in here.
+- **Code quality is out of scope.** Note issues separately for `internal/harness/commands/review-quality-visualizer.md` — don't mix them in here.

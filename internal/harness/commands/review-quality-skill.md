@@ -104,7 +104,7 @@ Also read all existing files in `internal/changes/{component}/` before starting 
 
 Skill changes are always `Internal` — they don't propagate downstream via the dependency graph.
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `internal/harness/commands/address-review.md`.**
 
 ## Constraints
 - **Evaluate against the skill's own stated goal.** `README.md` defines intent. Judge the skill against that, not against what you think it should do.

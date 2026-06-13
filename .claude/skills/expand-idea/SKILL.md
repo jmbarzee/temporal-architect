@@ -1,3 +1,8 @@
+---
+name: expand-idea
+description: Expand a one-sentence idea or bare term (e.g. "multi-tenant-ai-rate-limiting") into a first-principles system needs brief — domain context, entities, operations, boundaries, failure modes, and a scope ladder — for a Temporal architecture. Use at the very start of a design, before writing .twf, when the problem is still vague.
+---
+
 # Expand Idea to System Needs Brief
 
 Takes a single sentence — or even just a term like "multi-tenant-ai-rate-limiting" — and expands it into a thorough, first-principles system needs brief. The output describes *what the system is, what it must do, and what forces shape it* in domain-native language, without prescribing technology choices or execution frameworks.

@@ -135,7 +135,8 @@ packages/
 internal/
   release/          Go tools that build / sync / publish distribution artifacts
   changes/          Ephemeral coordination files for in-flight revisions
-  orchestrator/     Temporal workflow design for the automated dev cycle
+  harness/          Runner-agnostic dev-cycle prompts (agent-loop runtime)
+  orchestrator/     Temporal workflow design for the automated dev cycle (durable runtime)
   version.sh        Release version bump helper
 
 # Reference

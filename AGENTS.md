@@ -49,7 +49,8 @@ internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
   bump-brew/            Go tool that bumps the Homebrew tap formula on release
 internal/changes/       Per-component coordination files: REVISIONS_NNN, CHANGES_NNN, and BACKLOG
-internal/orchestrator/  Temporal workflow design for the automated dev cycle
+internal/harness/       Runner-agnostic dev-cycle prompts (commands/) driving review → execute → propagate
+internal/orchestrator/  Temporal workflow design for the automated dev cycle (the durable twin of internal/harness/)
 internal/version.sh     Release version bump helper
 
 go.work                 Workspace wiring tools/lsp, tools/spec, and internal/release/*
@@ -69,7 +70,7 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 - `CHANGES_NNN.md` — completed work, consumed and archived
 - `BACKLOG.md` — informal ideas and deferred features; not cycle-committed, just a place to drop thoughts
 
-The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Development Commands](#development-commands) below, with `/project:dev-cycle` as the entry point and `/project:propagate-changes` for fanning a completed change out to downstream consumers.
+The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Development Commands](#development-commands) below, with `internal/harness/commands/dev-cycle.md` as the entry point and `internal/harness/commands/propagate-changes.md` for fanning a completed change out to downstream consumers.
 
 Long-lived reference docs that don't belong to a single component live at the repo root (e.g. `issues_blocking_downstream_adoption.md`, `packaging.md`).
 
@@ -101,9 +102,9 @@ When a layer changes, the contracts it exposes determine what needs to update do
 
 ## Development Commands
 
-These project commands drive the development loop. Invoke with `/project:<name>`:
+These prompt files drive the development loop. They live in `internal/harness/commands/` as runner-agnostic prompts — read and follow the relevant file. (No slash-command wiring is in place yet; invoke a command by reading its file.)
 
-| Command | Purpose |
+| Command (`internal/harness/commands/<name>.md`) | Purpose |
 |---------|---------|
 | `dev-cycle` | Scope and launch reviews → write REVISIONS to `internal/changes/` |
 | **Quality Reviews** | |
@@ -122,11 +123,14 @@ These project commands drive the development loop. Invoke with `/project:<name>`
 | `address-review` | Execute an approved review group (inner loop) |
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
 | `summarize-changes` | Scan `internal/changes/` and produce consolidated report |
-| **Skill Authoring** | |
-| `reflect-skill` | Reflect on a recent task and propose updates to the responsible skill |
-| **Design Ideation** | |
-| `expand-idea` | Expand a one-sentence idea into a full Temporal architecture vision with draft `.twf` |
 
-**Start here for a new cycle:** `/project:dev-cycle`
+Two related helpers ship as **skills** under `.claude/skills/` (read by both Cursor and Claude Code), not as harness commands:
+
+| Skill (`.claude/skills/<name>/SKILL.md`) | Purpose |
+|---------|---------|
+| `expand-idea` | Expand a one-sentence idea into a full Temporal architecture vision with draft `.twf` |
+| `reflect-skill` | Reflect on a recent task and propose updates to the responsible skill |
+
+**Start here for a new cycle:** read and follow `internal/harness/commands/dev-cycle.md`
 **Start here for targeted work:** pick the specific review command for the layer you're focused on.
-**Start here for a new design:** `/project:expand-idea`
+**Start here for a new design:** use the `expand-idea` skill.

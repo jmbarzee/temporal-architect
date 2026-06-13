@@ -1,3 +1,8 @@
+---
+name: reflect-skill
+description: Reflect on how a skill was applied in the current session and propose concrete revisions to that skill. Use after completing a task that was guided by a skill, to surface intention-vs-outcome gaps and write a skill-revisions file.
+---
+
 # Reflect on Skill Application
 
 Reflect on how a skill was applied in this conversation. Surface what worked, what didn't, what was invisible, and what the skill should say differently so the next application is better.
@@ -197,9 +202,9 @@ Take the user's selections and group them by theme. Write `SKILL_{NAME}_REVISION
 
 Delete `REFLECTION_{NAME}.md` after writing the revisions file.
 
-**Cross-layer changes (rare).** If the reflection surfaces a genuine issue in a layer other than the skill — for example, the parser doesn't support a construct the skill assumes exists, or the visualizer misrepresents something the skill relies on — write a `{LAYER}_CHANGES.md` for the affected layer and flag it for `/project:propagate-changes`. The bar is high: "this is broken in the other layer," not "it would be nice if the other layer also changed." If you're unsure whether it meets the bar, it doesn't.
+**Cross-layer changes (rare).** If the reflection surfaces a genuine issue in a layer other than the skill — for example, the parser doesn't support a construct the skill assumes exists, or the visualizer misrepresents something the skill relies on — write a `{LAYER}_CHANGES.md` for the affected layer and flag it for `internal/harness/commands/propagate-changes.md`. The bar is high: "this is broken in the other layer," not "it would be nice if the other layer also changed." If you're unsure whether it meets the bar, it doesn't.
 
-**To execute revisions, invoke `/project:address-review`.**
+**To execute revisions, invoke `internal/harness/commands/address-review.md`.**
 
 ## Constraints
 

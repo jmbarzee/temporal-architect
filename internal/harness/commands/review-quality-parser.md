@@ -91,14 +91,14 @@ Write the grouped plan to `internal/changes/parser/quality_REVISIONS_{NNN}.md` (
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Grammar` | `Schema` | `API` | `Semantic` | `Internal`), parallelism notes
 
-The **change type** field is used by `/project:propagate-changes` to route downstream reviews. Classify accurately:
+The **change type** field is used by `internal/harness/commands/propagate-changes.md` to route downstream reviews. Classify accurately:
 - `Grammar` — DSL syntax changes
 - `Schema` — JSON output shape changes
 - `API` — Go type or interface changes
 - `Semantic` — behavior changes with no type signature change
 - `Internal` — refactors with no downstream contract impact
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `/project:address-review`.**
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `internal/harness/commands/address-review.md`.**
 
 ## Constraints
 

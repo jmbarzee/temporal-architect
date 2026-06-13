@@ -2,7 +2,7 @@
 
 This command answers: "does the TypeScript layer correctly and completely consume what the parser's JSON contract provides?"
 
-This is a boundary review — the parser's JSON output is the contract between Go and TypeScript. Implementation quality on either side belongs in `/project:review-quality-parser` and `/project:review-quality-visualizer`. This command is solely about the contract: shape mismatches, missing fields, incorrect types, and unhandled variants.
+This is a boundary review — the parser's JSON output is the contract between Go and TypeScript. Implementation quality on either side belongs in `internal/harness/commands/review-quality-parser.md` and `internal/harness/commands/review-quality-visualizer.md`. This command is solely about the contract: shape mismatches, missing fields, incorrect types, and unhandled variants.
 
 ## Context
 
@@ -67,7 +67,7 @@ Write the grouped plan to `internal/changes/visualizer/parser-output_REVISIONS_{
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Schema` | `Internal`), parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `/project:address-review`.**
+**STOP after writing. Present a summary and wait for approval. To execute, invoke `internal/harness/commands/address-review.md`.**
 
 ## Constraints
 
