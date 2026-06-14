@@ -10,9 +10,10 @@ destinations** and **documentation**, measured against three goals:
    just a notation for individual workflows.
 3. **Distance — gently — from the official Temporal skills** — the project
    predates them and is a larger vision; lean into the differentiators
-   (deterministic harness, visualizer, deployment graph, system-scale design)
-   rather than the "AI skill for Temporal" framing that now collides with
-   Temporal's own offering.
+   (deterministic harness, visualizer, deployment graph — built from `.twf`
+   *or* recovered from live production history — system-scale design) rather
+   than the "AI skill for Temporal" framing that now collides with Temporal's
+   own offering.
 
 This document is **findings + recommendations only**. Nothing here is applied.
 Screenshot slots are marked `[SCREENSHOT: …]` for capture later.
@@ -320,6 +321,15 @@ attack or name the official skills. Instead, lead with what they don't have:
   Star). This is an *architecture* layer that sits *above* SDK codegen.
 - **System/ecosystem scope** — namespaces, workers, Nexus routing, deployment
   topology, and infra provisioning, not per-workflow authoring.
+- **Graph-from-history** — `twf graph --history <dir>` reconstructs a
+  *deterministic* deployment graph straight from sampled production workflow
+  histories (collected by the `tools/sampler/` namespace sampler), with **no
+  `.twf` required**. Nothing in a prompt-based assistant reads a *running
+  system* and recovers its topology; this is the strongest single proof of the
+  ecosystem-scope claim. It also seeds the **observed-vs-designed overlay** —
+  diffing a history-derived graph against a `.twf`-derived one to surface drift
+  between design and production (the long-term payoff of first-class graph
+  output).
 
 Message house phrasing to prefer: *"design the system, not just the workflow,"*
 *"the architecture layer for Temporal,"* *"a validated, visual source of truth
@@ -342,6 +352,13 @@ for your whole deployment."*
   from `README.md`, the VSIX README, the Claude plugin description/README, and
   the `skills/MANIFEST.md` example tree. It's strong *ecosystem* evidence —
   surfacing it actively supports the reposition. (P4)
+- **Graph-from-history + sampler undocumented**: `twf graph --history <dir>`
+  (recover a deployment graph from sampled production histories) and the
+  `tools/sampler/` collector ship today but appear in **no** user-facing
+  surface — not the README features list, the VSIX README, or any skill. This
+  is first-class ecosystem evidence (the harness reads a *running system*, not
+  just a `.twf` source of truth) and the seed of the observed-vs-designed
+  overlay, so it should be surfaced prominently rather than buried. (P2)
 - **"Planned" lists** in README (Implementers/Translators/Debuggers) predate
   `author-infra`; refresh so shipped capability isn't shown as future.
 
@@ -362,6 +379,7 @@ shot list (user to capture):
 | S4 | **Live diagnostics** — red squiggle + hover on an undefined activity / routing error | VSIX README | Proves the "deterministic harness" claim |
 | S5 | **Semantic zoom / level toggle** — same graph at namespace-only vs. fully expanded | README "Graph View" section | Demonstrates scale management for big systems |
 | S6 | *(optional)* **Blast-radius hover** — a node selected with transitive dependents highlighted | README, blog | Strong "system reasoning" visual |
+| S7 | **Graph View rendered from sampled history** — a deployment graph built by `twf graph --history` from production workflow histories (no `.twf`), ideally beside the same system's `.twf`-designed graph | README, VSIX README, blog | Proves the harness reads a *running system* and previews the observed-vs-designed overlay |
 
 Place S1+S2 high in `README.md`; S1+S3+S4 in `packages/vscode/README.md`. Store
 under a repo `docs/images/` (or `packages/vscode/images/` for ones the VSIX
@@ -374,7 +392,9 @@ must bundle — Marketplace requires images resolvable from the packaged README)
 **Prefer:** Temporal *systems* / *architecture* / *ecosystems*; "design,
 visualize, and implement"; "deployment topology"; "source of truth";
 "deterministic harness"; "the architecture layer for Temporal"; `.twf` as "the
-artifact / model / design file."
+artifact / model / design file"; for graph-from-history: "recover the
+deployment graph from production history," "deterministic graph from a running
+system," "observed vs. designed."
 
 **Demote (don't ban — use only in technical/grammar contexts):** "DSL,"
 "notation," "language" (fine in `tools/spec/**`), "AST" (implementer surfaces
