@@ -2,13 +2,7 @@
 
 package integration
 
-import (
-	"testing"
-
-	"go.temporal.io/sdk/worker"
-
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
-)
+import "testing"
 
 // TestSamplerSuite runs every case through the direct-call harness in parallel.
 // Each case gets its own dev server, so cases cannot pollute one another.
@@ -22,49 +16,41 @@ func TestSamplerSuite(t *testing.T) {
 	}
 }
 
-// cases is the suite table. Add a scenario by appending a Case: a workflow set
-// to run plus the graph structure it must produce.
+// cases is the suite registry: one constructor per scenario. Each case (and its
+// workflow/activity fixtures) lives in the cases_*_test.go file for the graph
+// feature it exercises. The harness model and matchers live in harness_test.go.
 func cases() []Case {
 	return []Case{
+		// Activity dispatch (cases_activities_test.go).
 		singleWorkflowActivity(),
-	}
-}
+		workflowNoDispatch(),
+		workflowMultipleDistinctActivities(),
+		workflowRepeatedActivity(),
+		fanOutSameActivity(),
+		multipleWorkflowsSharedActivity(),
 
-// singleWorkflowActivity: one workflow that calls one activity in one namespace.
-func singleWorkflowActivity() Case {
-	return Case{
-		Name: "single-workflow-activity",
-		Namespaces: []NamespaceSet{
-			{
-				Name: defaultNamespace,
-				Workers: []WorkerSpec{
-					{
-						TaskQueue: graphTestQueue,
-						Register: func(w worker.Worker) {
-							w.RegisterWorkflow(GraphTestWorkflow)
-							w.RegisterActivity(GraphTestActivity)
-						},
-					},
-				},
-				Starts: []StartSpec{
-					{ID: "graph-it-wf-1", TaskQueue: graphTestQueue, Workflow: GraphTestWorkflow},
-				},
-			},
-		},
-		Expect: Expect{
-			Nodes: []ExpectNode{
-				{Kind: graph.KindWorkflow, Name: graphTestWorkflowType},
-				{Kind: graph.KindActivity, Name: graphTestActivityType},
-				{Kind: graph.KindWorker, Name: graphTestQueue},
-				{Kind: graph.KindNamespace, Name: defaultNamespace},
-			},
-			Edges: []ExpectEdge{
-				{
-					From: ExpectNode{Kind: graph.KindWorkflow, Name: graphTestWorkflowType},
-					To:   ExpectNode{Kind: graph.KindActivity, Name: graphTestActivityType},
-					Kind: graph.EdgeActivityCall,
-				},
-			},
-		},
+		// Child workflows + coarsening (cases_children_test.go).
+		parentChildSameQueue(),
+		parentChildSameQueueDedup(),
+		parentChildCrossQueue(),
+		parentChildCrossNamespace(),
+		crossNamespaceMultiNamespaceGraph(),
+
+		// Sampling coverage (cases_sampling_test.go).
+		multiTypeSingleNamespace(),
+		variedCallPatternsPerType(),
+		variedCallPatternsRareBranch(),
+		lowVolumeTypeMinPerType(),
+		highVolumeSamplingSufficiency(),
+
+		// Routing (cases_routing_test.go).
+		sameDefinitionTwoQueues(),
+
+		// Signals (cases_signals_test.go).
+		signalSendResolved(),
+		signalSendUnresolved(),
+
+		// Failure (cases_failure_test.go).
+		failedExecutionStillYieldsEdges(),
 	}
 }

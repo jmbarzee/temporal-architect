@@ -311,9 +311,14 @@ blockers to identification. Roughly ordered by how many cases they unblock.
   evaluated only at the full sample). S2 relies on the `MaxEdges` cap rather than naming an
   absent edge (the spurious edge's target is unknown a priori); S12 will use `AbsentEdges`
   for the signalSend that must not appear.
-- **U3. `Unresolved` / `Diagnostics` / `CoarsenedEdges` not assertable.** S8, S9, S12, R3,
-  R6 reach into `g.CoarsenedEdges` / `g.Unresolved` directly. Extend `Expect` with
-  `CoarsenedEdges`, `Unresolved`, and a graph-equality helper for R3.
+- **U3. `Unresolved` / `Diagnostics` / `CoarsenedEdges` not assertable.** DONE (coarsened +
+  unresolved) — `Expect.Coarsened []ExpectCoarsened` (tier + from/to by definition) and
+  `Expect.Unresolved []ExpectUnresolved` (from/name/kind) with `coarsenedPresent` /
+  `unresolvedPresent` matchers. S8 asserts the worker-tier edge; S9/R6 assert namespace-tier
+  edges; S12 asserts the unresolved signalSend. `Diagnostics` is still unused (no case needs
+  it yet). R3's graph equality is DONE — `TestSamplerDeterminism` is a standalone test (the
+  `Case`/`Expect` model is existential, not equality-based) that samples + builds twice at
+  100% and asserts `reflect.DeepEqual` over the two graphs, guarding the full sampler path.
 - **U4. Running-preference path never exercised.** The harness waits on `run.Get`, so all
   executions are **closed**; `selectCandidates`' running-first branch
   ([select.go](../../../../tools/sampler/sampling/select.go)) is never hit. Testing it needs a
@@ -328,15 +333,37 @@ blockers to identification. Roughly ordered by how many cases they unblock.
   "only resolved at step N" assertion). Exposing the satisfying step (return the index from
   the `runCase` loop, or a per-case schedule override) is the remaining work; deferred as
   documentation-only for now.
-- **U7. Cross-namespace setup pattern.** `startDevServer` provisions extra namespaces via
-  `--namespace`, and each `NamespaceSet` needs its own client + workers. Document this as
-  the canonical multi-namespace pattern (S9, R6).
-- **U8. `waitForVisibleCount` vs. child executions.** It waits for `len(Starts)` visible
-  executions per namespace; child workflows (S7-S9) add executions not in `Starts`, risking
-  a count mismatch or premature/late wait. Make the expected count child-aware.
-- **U9. Cannot express an expected-failed start (R2).** `runCase` `t.Fatalf`s on
-  `run.Get` error. Add `StartSpec.ExpectError` (or `IgnoreResult`) so failed/terminated
-  executions can be driven on purpose.
+- **U7. Cross-namespace setup pattern.** DONE — the canonical multi-namespace pattern is now
+  exercised by S9/R6: `startDevServer` provisions extra namespaces via `--namespace`, each
+  `NamespaceSet` gets its own client + workers, and `runCase` was restructured to start ALL
+  workers across ALL namespaces *before* launching any execution (a cross-namespace child is
+  started by a parent in one namespace but runs on a worker in another — starting workers
+  lazily per-namespace deadlocks the parent on the child). See also the cross-namespace
+  command discovery below.
+- **U8. `waitForVisibleCount` vs. child executions.** DONE — `NamespaceSet.ExpectedVisible`
+  overrides the wait target (default `len(Starts)`). S8 sets it to 2 (parent + child land in
+  one namespace); R6's B/C namespaces set it to 1 each so the child/grandchild executions
+  (no `Starts` of their own) are visible and sampleable before `sampling.Sample` runs.
+- **U9. Cannot express an expected-failed start (R2).** DONE — `StartSpec.ExpectError`: when
+  set, `runCase` requires `run.Get` to return an error (and fails if the execution succeeds).
+  R2 uses it to drive a workflow that schedules an activity then fails; the activityCall edge
+  is still reconstructed from the `*_SCHEDULED` event.
+- **U10. Cross-namespace child workflows are disabled by default (NEW, found in Phase 4).**
+  Server >= 1.30.0 rejects cross-namespace child commands with
+  `BadStartChildExecutionAttributes: cross namespace commands are not allowed` unless
+  `system.enableCrossNamespaceCommands=true`. S9/R6 (the only producers of a namespace-tier
+  coarsened edge from real history) hang on the parent until the context deadline without it.
+  ADDRESSED — `startDevServer` now passes
+  `--dynamic-config-value system.enableCrossNamespaceCommands=true`. Worth flagging: this
+  capability is deprecated upstream (temporalio/api#750), so the *only* way history.Build
+  ever sees a cross-namespace `START_CHILD_WORKFLOW_EXECUTION_INITIATED` is from servers with
+  this flag flipped on; the namespace-tier coarsened edge is effectively a legacy/opt-in
+  shape in practice.
+- **U11. Per-execution await ordering blocks signal scenarios (NEW, found in Phase 6).** The
+  original `runCase` awaited each start's `run.Get` immediately, in start order. A signal
+  *receiver* (S11) parks until its sender runs, so awaiting it before starting the sender
+  deadlocks. ADDRESSED — `runCase` now starts *all* executions in a namespace before awaiting
+  any of them, so the sender delivers the signal while the receiver is parked on `run.Get`.
 
 ---
 
@@ -352,3 +379,21 @@ harness improvements:
 5. S10, R5 — two-queues + sampling sufficiency.
 6. S11, S12 (+ U2/U3) — signal send resolved/unresolved.
 7. R2, R4, R3 (+ U9) — failure, low-volume, determinism.
+
+### Status (implemented)
+
+All supported-subset cases are now implemented in
+[suite_test.go](../../../../test/integration/sampler/suite_test.go) and pass under
+`go test -tags integration ./test/integration/sampler/...`:
+
+- Structural: S1 (pre-existing), S2–S13 including the S7b dedup variant. **S5** was not in the
+  order above but is implemented (`fan-out-same-activity`) — it belongs with S4 as the
+  runtime-loop counterpart of the dedup contract.
+- Real-use: R1 + R1b, R2, R4, R5, R6. R3 ships as the standalone `TestSamplerDeterminism`
+  rather than a `Case` (the existential `Case`/`Expect` model can't express graph equality).
+- Harness gaps addressed this cycle: U1, U2, U3 (coarsened + unresolved), U5, U7, U8, U9, and
+  the newly discovered U10 (cross-namespace dynamic config) and U11 (start-all-then-await-all).
+  Still open: U6 (which schedule step satisfied) and U4 (running-preference path — no case
+  exercises a non-awaited, still-running execution yet).
+- §6 deferred shapes (D1–D6: nexus, asyncBacking, local activities, continue-as-new, explicit
+  routing cause, shared-queue worker identity) remain out of scope.

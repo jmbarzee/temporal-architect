@@ -105,7 +105,7 @@ func TestSamplerE2E(t *testing.T) {
 			},
 		},
 	}
-	if ok, miss := satisfied(env.Graph, exp); !ok {
+	if ok, miss := satisfied(env.Graph, exp, true); !ok {
 		t.Fatalf("CLI-produced graph missing expected structure: %s", miss)
 	}
 }
