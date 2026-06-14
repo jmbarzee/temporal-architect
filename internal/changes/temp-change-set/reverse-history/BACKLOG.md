@@ -2,21 +2,13 @@
 
 Dedicated backlog for the **reverse-history** effort: reverse-engineering a deployment graph from Temporal workflow-history JSON. Kept separate from the per-component backlogs (`parser`, `visualizer`, `dsl`, …) so this project's deferred work isn't lost behind slower component workstreams.
 
-Design/architecture hub: [GRAPH_FROM_HISTORY.md](../../../GRAPH_FROM_HISTORY.md). That document owns the staged plan (Pre + Stages 1–4); this file owns the deferred ideas and open questions. When a stage runs, its active cycle work (`REVISIONS`/`CHANGES`) still lives with the component it edits (e.g. `internal/changes/parser/`), but is initiated from and linked back to this workstream.
+Design/architecture hub: [GRAPH_FROM_HISTORY.md](./GRAPH_FROM_HISTORY.md) — the design-of-record and use-case reference (v1 shipped). This file owns only the genuinely-open work. When an item runs, its active cycle work (`REVISIONS`/`CHANGES`) lives with the component it edits (e.g. `internal/changes/parser/`), initiated from and linked back to this workstream.
 
 ---
 
-## Deferred: Nexus reverse-engineering
+## Deferred: Nexus history decoding
 
-The entire nexus side is parked so v1 can ship on workflows / activities / task-queues.
-
-### Forward-graph nexus normalization — DONE
-
-Completed: see [internal/changes/parser/CHANGES_004.md](../../parser/CHANGES_004.md) and [internal/changes/visualizer/CHANGES_003.md](../../visualizer/CHANGES_003.md).
-
-The endpoint↔operation composition is now a dedicated `nexusRoute` graph edge emitted upstream by `tools/lsp/parser/graph/` (matched on `(namespace, queue)`); the visualizer consumes it and no longer derives nexus topology from node fields. `namespace` was dropped from `nexusEndpoint` / `nexusOperation` nodes; `queue` (and operation `worker`) were **retained** as display-only metadata (not `queue`-dropped — keeping them avoids losing the hover-tooltip task-queue line, and nothing structural reads them). **Resolved open question:** dedicated `nexusRoute` kind, mapped to the view's `containment` edge type for now (future-proof for distinct styling).
-
-### History nexus decoding
+The forward-graph nexus half shipped (see GRAPH_FROM_HISTORY.md § "Since v1"). What remains is the *history* side:
 
 - Decode `NEXUS_OPERATION_SCHEDULED` (and its started/completed siblings) in `tools/lsp/parser/history`.
 - Emit `nexusCall` edges; synthesize endpoint / service / operation nodes from the observed `endpoint` / `service` / `operation` names.
@@ -39,12 +31,19 @@ Local activities appear as `MARKER_RECORDED` ("LocalActivity") events, not `ACTI
 
 ## Deferred: sampler ergonomics
 
-`tools/sampler/` v1 is one command per namespace, two internal phases (enumerate types via Visibility, then percentage-sample preferring running workflows). Later:
+`tools/sampler/` v1 is one command per namespace, two internal phases (enumerate types via Visibility, then percentage-sample preferring running workflows). Time-window / status filters shipped (GRAPH_FROM_HISTORY.md § "Since v1"). Still open:
 
-- ~~Time-window / status filters.~~ DONE — `--since` / `--until` (`StartTime` window; RFC3339 or duration) and `--status` (`ExecutionStatus`), threaded through enumeration and candidate selection. See [SAMPLER_FILTERS_CHANGES.md](SAMPLER_FILTERS_CHANGES.md).
 - **Transitive sampling:** auto-fetch child-workflow and nexus-target histories so the graph is complete without separate runs per type.
 - Concurrency and rate limiting against the server.
 - Temporal Cloud auth via environment variables (parallel to the `temporal` CLI's env handling).
+- **Continue-as-new run boundaries:** the `<ns>/<wfType>/<id>.json` layout is keyed by WorkflowID, so chained CAN runs (same WorkflowID, new RunID) collide/overwrite, and `history.Build` reads only the first run — activities in later runs are invisible. Needs a layout/decoding fix.
+
+### Integration-suite harness gaps
+
+The case set in `test/integration/sampler/` is implemented; two harness ergonomics remain open:
+
+- **Running-preference path unexercised:** the harness awaits each `run.Get`, so all sampled executions are closed and `selectCandidates`' running-first branch never runs. Needs a non-blocking start (a long-running workflow the case doesn't await).
+- **Opaque expansion step:** a case can't assert *which* sample step (10/50/100%) satisfied it, only the final union. Exposing the satisfying step would let coverage cases assert "resolved only at full sample."
 
 ---
 
@@ -60,8 +59,8 @@ Because the importer emits the same node-ID scheme as `graph.Extract`, a future 
 
 ---
 
-## Open questions (cross-cutting)
+## Validation & rollout (planned next)
 
-- **History diagnostics kind:** reuse the envelope's `graph` diagnostic kind for import-time problems, or add a dedicated `history` kind?
-- **Visibility type-enumeration mechanism:** confirm whether target server versions support `CountWorkflowExecutions GROUP BY WorkflowType`; otherwise fall back to paginated `ListWorkflow` aggregation (sampler Phase A).
-- **Validation/rollout:** dogfood against a real namespace; compare a history-derived graph to the hand-written `.twf` for a system we own, to validate the event→graph mapping.
+Dogfood against a real namespace: run the sampler, build the graph with `twf graph --history`, and diff it against a hand-written `.twf` for a system we own. Expect the history graph to be a subset of the design graph; investigate any node/edge present in one but not the other. Validates the event→graph mapping end to end and seeds the observed-vs-designed overlay.
+
+(The two former cross-cutting questions — diagnostics kind and Visibility enumeration — are resolved; see GRAPH_FROM_HISTORY.md § "Resolved decisions".)
