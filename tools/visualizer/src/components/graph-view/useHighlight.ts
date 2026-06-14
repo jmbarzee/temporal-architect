@@ -75,9 +75,10 @@ export function useHighlight(
     : null
 
   // Transitive dependency highlighting. nexusEndpoint follows routing metadata;
-  // nexusService augments the dep chain with matching endpoints; everything else
-  // is a directional transitive-dep BFS. Sister copies are intentionally NOT
-  // added (the canvas draws their duplicate halo separately).
+  // nexusService augments the dep chain with the endpoints fronting its
+  // operations (via nexusRoute edges); everything else is a directional
+  // transitive-dep BFS. Sister copies are intentionally NOT added (the canvas
+  // draws their duplicate halo separately).
   const { highlightedNodes, highlightedEdges } = React.useMemo(() => {
     const activeId = hoveredNodeId ?? selectedNodeId
     if (!activeId || !visibleIds.has(activeId)) {
@@ -105,13 +106,25 @@ export function useHighlight(
     const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
     const nodes = getTransitiveDeps(activeId, visibleEdges, visibleIds, direction)
 
-    if (activeNode?.nodeType === 'nexusService' && activeNode.namespace && activeNode.queue) {
-      const svcNs = activeNode.namespace
-      const svcQ = activeNode.queue
+    if (activeNode?.nodeType === 'nexusService') {
+      // Co-highlight the endpoints that front this service's operations.
+      // The endpoint↔operation relationship is the parser's nexusRoute
+      // edge (operation → endpoint, rendered as a containment-style edge);
+      // we reach it via the service's operation children rather than
+      // re-deriving it from (namespace, queue).
+      const operationIds = new Set<string>()
       for (const n of visibleNodes) {
-        if (n.nodeType === 'nexusEndpoint' && n.namespace === svcNs && n.queue === svcQ) {
-          nodes.add(n.id)
-          if (n.parentId && visibleIds.has(n.parentId)) nodes.add(n.parentId)
+        if (n.nodeType === 'nexusOperation' && n.parentId === activeId) {
+          operationIds.add(n.id)
+        }
+      }
+      for (const edge of visibleEdges) {
+        if (edge.targetNodeType !== 'nexusEndpoint') continue
+        if (!operationIds.has(edge.sourceId)) continue
+        if (visibleIds.has(edge.targetId)) {
+          nodes.add(edge.targetId)
+          const ep = getNode(edge.targetId)
+          if (ep?.parentId && visibleIds.has(ep.parentId)) nodes.add(ep.parentId)
         }
       }
     }

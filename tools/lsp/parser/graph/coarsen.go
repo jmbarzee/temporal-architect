@@ -29,7 +29,9 @@ func (g *Graph) emitCoarsenedEdges() {
 	agg := map[aggKey]int{}
 
 	for _, e := range g.Edges {
-		if e.Kind == EdgeContainment {
+		// Containment and nexusRoute are structural, not dispatch — they
+		// must not project to worker/namespace tiers.
+		if e.Kind == EdgeContainment || e.Kind == EdgeNexusRoute {
 			continue
 		}
 

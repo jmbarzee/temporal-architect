@@ -194,7 +194,7 @@
       "properties": {
         "from":    { "type": "string" },
         "to":      { "type": "string" },
-        "kind":    { "type": "string", "enum": ["containment", "activityCall", "workflowCall", "nexusCall", "asyncBacking", "signalSend"] },
+        "kind":    { "type": "string", "enum": ["containment", "activityCall", "workflowCall", "nexusCall", "asyncBacking", "signalSend", "nexusRoute"] },
         "line":    { "type": "integer", "minimum": 0 },
         "routing": {
           "type": "object",

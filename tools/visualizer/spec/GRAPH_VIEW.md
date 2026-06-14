@@ -94,6 +94,8 @@ Putting operations on the call path (caller → operation → callee) lets the u
 
 Multiple call sites between the same pair (caller, callee) collapse into a single dependency edge — the graph answers "does X reach Y?", not "how many times". When the same caller reaches an operation through more than one endpoint, the surviving deduplicated edge keeps a representative endpoint as hover metadata.
 
+Separately, the parser emits a **NexusOperation → NexusEndpoint** composition edge (`kind: "nexusRoute"`) for each endpoint that fronts an operation — matched upstream on shared `(namespace, queue)`. This is structural topology, not an observed dispatch: it carries no routing metadata, is excluded from coarsening, and renders as a containment-style edge. It is the source of truth for the endpoint↔operation relationship; the visualizer reads it instead of re-deriving the association from node `(namespace, queue)` fields.
+
 ### Derived Edges (Graph Coarsening)
 
 Higher-level dependency edges are **derived** by projecting Level 3 dependency edges upward through the containment hierarchy:
@@ -106,7 +108,7 @@ Higher-level dependency edges are **derived** by projecting Level 3 dependency e
 The deployment graph is constructed **upstream** by `twf graph` (see `tools/lsp/parser/graph/`). The visualizer consumes the resulting JSON and translates each piece into its view counterpart. Construction inside the visualizer is a single pass over the parser payload:
 
 1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a view node with `id` (parser's composite deployment ID), `level` (derived from the parser's `definition` kind via `nodeLevel()`), `parentId` (looked up from the parser's containment edges), and `definitionKey` (= `parserGraph.nodes[i].definition`). The AST is consulted only to fill `sourceFile` so the per-file filter chip works; everything structural comes from the parser.
-2. **Translate edges.** For each `parserGraph.edges[i]`, emit a view edge. `kind: "containment"` becomes `edgeType: "containment"`; the dispatch kinds (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`) all become `edgeType: "dependency"`. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so the canvas can colour spliced caller-to-backing edges in the nexus palette.
+2. **Translate edges.** For each `parserGraph.edges[i]`, emit a view edge. `kind: "containment"` and `kind: "nexusRoute"` (the endpoint↔operation composition) both become `edgeType: "containment"`; the dispatch kinds (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`) all become `edgeType: "dependency"`. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so the canvas can colour spliced caller-to-backing edges in the nexus palette. `nexusRoute` edges are not in the parser's containment set, so they never reassign an operation's `parentId` (which stays its owning service).
 3. **Translate coarsened edges.** For each `parserGraph.coarsenedEdges[i]`, emit an L2 (`tier === "worker"`) or L1 (`tier === "namespace"`) view dependency edge. No projection logic runs in the visualizer — the parser has already aggregated dispatch edges by `(from, to, tier)` and discarded self-loops.
 4. **Build `duplicateGroups`.** Index every view node by its `definitionKey`; the resulting `Map<definitionKey, Set<nodeId>>` powers the duplicate-highlight interaction (see § Interaction States: Duplicate Highlighting).
 
@@ -625,9 +627,9 @@ The nexus family has transient hover behaviors that reveal routing relationships
 
 **Hover on a `nexusEndpoint` node:** Standard transitive-dep BFS does not apply — endpoints have no outgoing dependency edges (they are pure addressing aliases). Instead, the canvas highlights all visible `nexusCall` edges whose routing metadata names this endpoint, plus the source and target nodes of those edges. The endpoint's namespace parent is also highlighted for context. The result makes the "which calls route through this entry point?" question answerable at a glance — the fan-out shows every caller and every operation that a call through this endpoint reaches.
 
-**Hover on a `nexusService` deployment:** The standard transitive-dep chain applies as usual. Additionally, all visible `nexusEndpoint` nodes whose `(namespace, queue)` deployment matches this service's deployment are added to the highlighted set (plus their namespace parent). This surfaces "which endpoints front calls to this service?" as a derived inference computed at hover time. No persistent endpoint→service edges are emitted by the parser — an endpoint is namespace-scoped routing, agnostic of which specific services share its queue. The relationship is real only at the call site; here it is expressed as transient highlight state rather than a materialised edge.
+**Hover on a `nexusService` deployment:** The standard transitive-dep chain applies as usual. Additionally, the endpoints fronting this service's operations are added to the highlighted set (plus their namespace parent). These are reached by walking the service's operation children and following their `nexusRoute` edges to the endpoint nodes — the parser materialises the endpoint↔operation composition as a `nexusRoute` edge (matched upstream on namespace + queue), so the visualizer never re-derives the relationship from node `(namespace, queue)` fields. This surfaces "which endpoints front calls to this service?" at hover time.
 
-No new edge types. No new data model. Both behaviors operate entirely over the existing graph, reading `edge.nexusEndpoint` metadata and node deployment fields (`namespace`, `queue`) that the parser already emits.
+Both behaviors operate over edges the parser already emits — the endpoint hover reads `edge.nexusEndpoint` routing metadata on `nexusCall` edges; the service hover reads `nexusRoute` edges. Neither consults node `(namespace, queue)` fields, which exist only as hover-tooltip display metadata.
 
 ### Duplicate Highlighting
 

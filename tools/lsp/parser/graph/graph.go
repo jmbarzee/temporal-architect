@@ -31,22 +31,27 @@ type Summary struct {
 // node.
 //
 // Worker/namespace membership is expressed by containment edges — the
-// single source of truth — and is NOT duplicated on worker /
-// workflow / activity nodes. The nexus tier
-// (nexusService / nexusOperation / nexusEndpoint) still carries these
-// fields pending nexus normalization (tracked in the Reverse-History
-// Backlog). Queue has no edge equivalent and is intrinsic to a
-// deployment, so it is retained on worker and nexusEndpoint nodes (and
-// the nexus tier).
+// single source of truth — and is NOT duplicated on worker / workflow /
+// activity nodes. The endpoint↔operation routing relationship is
+// likewise expressed by an edge (the nexusRoute edge), not by matching
+// node fields downstream. Consequently nexusEndpoint and nexusOperation
+// nodes no longer carry Namespace (it's the containment parent).
+//
+// nexusService still carries Worker/Namespace (it is not part of this
+// normalization step). Queue has no edge equivalent and is intrinsic to
+// a deployment, so it is retained on worker and on the nexus tier
+// (endpoint / service / operation) — but purely as display metadata;
+// nothing downstream derives structure from it.
 type Node struct {
 	ID         string `json:"id"`
 	Definition string `json:"definition"`
-	// Worker/Namespace are populated only on nexus-tier nodes (deferred
-	// normalization); empty elsewhere — read the containment edges.
+	// Worker is populated on nexusService / nexusOperation nodes;
+	// Namespace only on nexusService. Both empty elsewhere — read the
+	// containment edges for membership.
 	Worker    string `json:"worker,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
-	// Queue is the task queue name; intrinsic to worker / nexusEndpoint
-	// deployments (and retained on the nexus tier).
+	// Queue is the task queue name; intrinsic to worker and nexus-tier
+	// deployments. Display metadata only — not a structural input.
 	Queue  string `json:"queue,omitempty"`
 	Orphan bool   `json:"orphan,omitempty"`
 }
@@ -77,11 +82,17 @@ const (
 	EdgeNexusCall    = "nexusCall"
 	EdgeAsyncBacking = "asyncBacking"
 	EdgeSignalSend   = "signalSend"
+	// EdgeNexusRoute is the structural composition edge from a nexus
+	// operation deployment to each endpoint deployment that fronts it
+	// (matched on namespace + queue). It is topology, not an observed
+	// dispatch, so it carries no Routing and is excluded from
+	// coarsening.
+	EdgeNexusRoute = "nexusRoute"
 )
 
 // Edge is a single edge in the graph. Dispatch edges (activityCall /
 // workflowCall / nexusCall / asyncBacking) carry Routing; containment
-// edges omit it.
+// and nexusRoute edges omit it.
 type Edge struct {
 	From    string   `json:"from"`
 	To      string   `json:"to"`
@@ -246,6 +257,7 @@ func Extract(file *ast.File) *Graph {
 	g.enumerateNodes(idx)
 	g.emitContainment(idx)
 	g.emitDispatchEdges(idx)
+	g.emitNexusRoutes(idx)
 	g.emitCoarsenedEdges()
 
 	g.finalize()

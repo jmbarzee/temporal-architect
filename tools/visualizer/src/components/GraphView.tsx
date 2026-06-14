@@ -670,7 +670,9 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   let contextLine: string | undefined
   switch (node.nodeType) {
     case 'nexusEndpoint':
-      contextLine = [stripKindPrefix(node.namespace), node.queue].filter(Boolean).join(' · ') || undefined
+      // Namespace is the endpoint's containment parent (parentName), not a
+      // node field; queue is intrinsic display metadata.
+      contextLine = [parentName, node.queue].filter(Boolean).join(' · ') || undefined
       break
     case 'nexusService':
       contextLine = [stripKindPrefix(node.worker), node.queue].filter(Boolean).join(' · ') || undefined

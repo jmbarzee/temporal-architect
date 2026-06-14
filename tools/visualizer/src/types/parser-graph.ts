@@ -16,6 +16,9 @@ export type ParserEdgeKind =
   | 'nexusCall'
   | 'asyncBacking'
   | 'signalSend'
+  // Structural composition edge: nexus operation → endpoint that fronts
+  // it (matched upstream on namespace+queue). Topology, not dispatch.
+  | 'nexusRoute'
 
 /** Coarsening tier discriminator. Mirrors the Go TierXxx constants. */
 export type ParserTier = 'worker' | 'namespace'
@@ -32,16 +35,18 @@ export type ParserGraphDiagnosticSeverity = 'error' | 'warning'
  * One deployment in the resolved graph. Identity is composite
  * (definition × deployment context), encoded into `id`.
  *
- * `definition` is the AST anchor (always present); the optional
- * `worker` / `namespace` / `queue` fields carry deployment context.
- * Orphan nodes (definitions that exist but have no deployment) carry
- * `orphan: true` and omit the deployment fields.
+ * `definition` is the AST anchor (always present). `worker` /
+ * `namespace` / `queue` are display-only deployment metadata — structure
+ * (membership, routing) is expressed by edges, never by matching these
+ * fields. `namespace` is present only on `nexusService` nodes; `worker`
+ * on `nexusService` / `nexusOperation`; `queue` on `worker` and the nexus
+ * tier. Orphan nodes carry `orphan: true` and omit these fields.
  */
 export interface ParserNode {
   id: string
   definition: DefinitionKey
   worker?: DefinitionKey      // e.g. "worker:paymentWorker"
-  namespace?: string          // e.g. "namespace:ecommerce"
+  namespace?: string          // e.g. "namespace:ecommerce" (nexusService only)
   queue?: string
   orphan?: boolean
 }

@@ -73,6 +73,24 @@ func TestTaskQueuesFixture(t *testing.T) {
 			if n.Queue != "payments" {
 				t.Errorf("PaymentEndpoint queue = %q", n.Queue)
 			}
+			// Namespace is normalized off the endpoint node — it's the
+			// containment parent, not a denormalized field.
+			if n.Namespace != "" {
+				t.Errorf("PaymentEndpoint unexpectedly carries namespace: %q", n.Namespace)
+			}
+		}},
+		{"nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce", func(t *testing.T, n Node) {
+			// Operation keeps Worker + Queue (display metadata) but the
+			// Namespace field is normalized off — it's the containment chain.
+			if n.Namespace != "" {
+				t.Errorf("operation node unexpectedly carries namespace: %q", n.Namespace)
+			}
+			if n.Worker != "worker:paymentWorker" {
+				t.Errorf("operation worker = %q, want \"worker:paymentWorker\"", n.Worker)
+			}
+			if n.Queue != "payments" {
+				t.Errorf("operation queue = %q, want \"payments\"", n.Queue)
+			}
 		}},
 	}
 	for _, c := range cases {
@@ -140,6 +158,28 @@ func TestTaskQueuesFixture(t *testing.T) {
 	opOnPayments := "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce"
 	if !hasEdgeRouting(g, partnerFrom, opOnPayments, EdgeNexusCall, "") {
 		t.Errorf("missing nexusCall %s → %s", partnerFrom, opOnPayments)
+	}
+
+	// nexusRoute: structural endpoint↔operation composition emitted by the
+	// parser (operation → endpoint, matched on namespace+queue). The
+	// CheckPaymentStatus copy on paymentWorker (queue "payments") is fronted
+	// by PaymentEndpoint (also "payments"); the secondary copy
+	// (payments-secondary) is fronted by no endpoint.
+	paymentEndpoint := "nexusEndpoint:PaymentEndpoint/namespace:ecommerce"
+	if !hasEdge(g, opOnPayments, paymentEndpoint, EdgeNexusRoute) {
+		t.Errorf("missing nexusRoute %s → %s", opOnPayments, paymentEndpoint)
+	}
+	opOnSecondary := "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce"
+	if hasEdge(g, opOnSecondary, paymentEndpoint, EdgeNexusRoute) {
+		t.Errorf("unexpected nexusRoute %s → %s (secondary polls payments-secondary, not payments)", opOnSecondary, paymentEndpoint)
+	}
+
+	// nexusRoute edges are structural, not dispatch — they must never be
+	// projected into the coarsened (worker/namespace-tier) output.
+	for _, ce := range g.CoarsenedEdges {
+		if strings.HasPrefix(ce.From, "nexusEndpoint:") || strings.HasPrefix(ce.To, "nexusEndpoint:") {
+			t.Errorf("nexusRoute leaked into coarsened edges: %+v", ce)
+		}
 	}
 
 	// AsyncBacking: AnalyticsService.TrackEvent → TrackEventWorkflow

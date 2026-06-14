@@ -10,15 +10,11 @@ Design/architecture hub: [GRAPH_FROM_HISTORY.md](../../../GRAPH_FROM_HISTORY.md)
 
 The entire nexus side is parked so v1 can ship on workflows / activities / task-queues.
 
-### Forward-graph nexus normalization
+### Forward-graph nexus normalization — DONE
 
-The Pre stage (graph-model normalization) deliberately leaves `nexusEndpoint` / `nexusOperation` nodes carrying their `namespace` + `queue` fields, so the visualizer's existing local endpoint↔operation derivation ([tools/visualizer/src/graph/build.ts](../../../tools/visualizer/src/graph/build.ts) lines ~171-197) keeps working untouched. Finishing the normalization means:
+Completed: see [internal/changes/parser/CHANGES_004.md](../../parser/CHANGES_004.md) and [internal/changes/visualizer/CHANGES_003.md](../../visualizer/CHANGES_003.md).
 
-- Drop `namespace`/`queue` from `nexusEndpoint` / `nexusOperation` nodes.
-- **Move the endpoint↔operation composition edge upstream** into the graph package (`tools/lsp/parser/graph/`), matching endpoint and operation deployments on `(namespace, queue)` and emitting the edge there.
-- Update the visualizer to consume the upstream edge instead of deriving it; update `twf.schema.json`.
-
-**Open question (deferred from the design discussion):** edge kind — reuse `containment`, or introduce a dedicated kind (e.g. `nexusRoute`) for distinct styling?
+The endpoint↔operation composition is now a dedicated `nexusRoute` graph edge emitted upstream by `tools/lsp/parser/graph/` (matched on `(namespace, queue)`); the visualizer consumes it and no longer derives nexus topology from node fields. `namespace` was dropped from `nexusEndpoint` / `nexusOperation` nodes; `queue` (and operation `worker`) were **retained** as display-only metadata (not `queue`-dropped — keeping them avoids losing the hover-tooltip task-queue line, and nothing structural reads them). **Resolved open question:** dedicated `nexusRoute` kind, mapped to the view's `containment` edge type for now (future-proof for distinct styling).
 
 ### History nexus decoding
 

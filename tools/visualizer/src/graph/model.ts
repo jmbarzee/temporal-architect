@@ -61,17 +61,13 @@ export interface GraphNode {
   definitionKey: string
 
   // --- View-only deployment metadata, copied from the parser node for
-  //     hover/tooltip rendering. They are diagnostic, not used for
-  //     graph identity or routing decisions.
-  //
-  //     These fields are populated ONLY for nexus-tier nodes
-  //     (nexusService, nexusOperation, nexusEndpoint) where the
-  //     visualizer derives endpoint↔operation edges from them locally.
-  //     Worker/activity/workflow nodes carry no Worker or Namespace
-  //     here — use the parentId chain instead (normalized model).
-  /** e.g. `worker:paymentWorker`. Nexus-tier nodes only. */
+  //     hover/tooltip rendering. Diagnostic only — never used for graph
+  //     identity, membership, or routing decisions. Structure comes from
+  //     edges: containment for membership, nexusRoute for the
+  //     endpoint↔operation relationship.
+  /** e.g. `worker:paymentWorker`. nexusService / nexusOperation only. */
   worker?: string
-  /** e.g. `namespace:ecommerce`. Nexus-tier nodes only. */
+  /** e.g. `namespace:ecommerce`. nexusService only. */
   namespace?: string
   /** Task queue name. Worker and nexus-tier nodes only. */
   queue?: string
