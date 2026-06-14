@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
@@ -27,6 +28,14 @@ type Options struct {
 	Namespace     string
 	SamplePercent int
 	MinPerType    int
+
+	// Status, when non-empty, restricts sampling to a single ExecutionStatus
+	// (e.g. "Running", "Completed", "Failed").
+	Status string
+	// Since / Until bound the StartTime window applied to enumeration and
+	// candidate selection. A zero time means that side is unbounded.
+	Since time.Time
+	Until time.Time
 }
 
 // Sample pulls a bounded, representative sample of workflow histories from the
@@ -36,7 +45,9 @@ type Options struct {
 // for each type, selects max(MinPerType, ceil(SamplePercent% * count))
 // executions (preferring running ones) and downloads their full histories.
 func Sample(ctx context.Context, c client.Client, opts Options) ([]history.History, error) {
-	counts, candidates, err := enumerate(ctx, c, opts.Namespace)
+	f := filters{status: opts.Status, since: opts.Since, until: opts.Until}
+
+	counts, candidates, err := enumerate(ctx, c, opts.Namespace, f)
 	if err != nil {
 		return nil, fmt.Errorf("enumerate workflow types: %w", err)
 	}
@@ -61,7 +72,7 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 			selected = selectCandidates(candidates[wfType], n)
 		} else {
 			// GROUP BY path: query just the executions we will keep.
-			cands, err := queryByType(ctx, c, opts.Namespace, wfType, n)
+			cands, err := queryByType(ctx, c, opts.Namespace, wfType, n, f)
 			if err != nil {
 				return nil, fmt.Errorf("query %q executions: %w", wfType, err)
 			}
@@ -90,20 +101,21 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 // call, no per-execution listing). When the server doesn't support that
 // grouping, it falls back to a paginated ListWorkflow scan that yields counts
 // and candidates together.
-func enumerate(ctx context.Context, c client.Client, namespace string) (counts map[string]int, candidates map[string][]candidate, err error) {
-	if counts, err = countByType(ctx, c, namespace); err == nil && len(counts) > 0 {
+func enumerate(ctx context.Context, c client.Client, namespace string, f filters) (counts map[string]int, candidates map[string][]candidate, err error) {
+	if counts, err = countByType(ctx, c, namespace, f); err == nil && len(counts) > 0 {
 		return counts, nil, nil
 	}
-	return scanByType(ctx, c, namespace)
+	return scanByType(ctx, c, namespace, f)
 }
 
-// countByType enumerates types and counts via a single grouped Count call.
+// countByType enumerates types and counts via a single grouped Count call,
+// applying any active filters so the counts match the filtered candidate path.
 // Returns an error when the server ignores GROUP BY (no groups), so the caller
 // falls back to a scan.
-func countByType(ctx context.Context, c client.Client, namespace string) (map[string]int, error) {
+func countByType(ctx context.Context, c client.Client, namespace string, f filters) (map[string]int, error) {
 	resp, err := c.CountWorkflow(ctx, &workflowservice.CountWorkflowExecutionsRequest{
 		Namespace: namespace,
-		Query:     "GROUP BY WorkflowType",
+		Query:     countQuery(f),
 	})
 	if err != nil {
 		return nil, err
@@ -128,16 +140,19 @@ func countByType(ctx context.Context, c client.Client, namespace string) (map[st
 	return counts, nil
 }
 
-// scanByType paginates ListWorkflow over the whole namespace, building both the
+// scanByType paginates ListWorkflow over the namespace, building both the
 // per-type counts and the candidate execution lists. Portable fallback for
-// servers without GROUP BY support.
-func scanByType(ctx context.Context, c client.Client, namespace string) (map[string]int, map[string][]candidate, error) {
+// servers without GROUP BY support. Any active filters are applied via the
+// list query so the fallback's counts match the filtered candidate path.
+func scanByType(ctx context.Context, c client.Client, namespace string, f filters) (map[string]int, map[string][]candidate, error) {
 	counts := map[string]int{}
 	byType := map[string][]candidate{}
+	query := scanQuery(f)
 	var token []byte
 	for {
 		resp, err := c.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 			Namespace:     namespace,
+			Query:         query,
 			PageSize:      1000,
 			NextPageToken: token,
 		})
@@ -165,18 +180,23 @@ func scanByType(ctx context.Context, c client.Client, namespace string) (map[str
 }
 
 // queryByType pulls up to n candidate executions for one workflow type,
-// preferring running executions and topping up with any remaining ones.
-// Used by the GROUP BY path so we list only the executions we will keep.
-func queryByType(ctx context.Context, c client.Client, namespace, wfType string, n int) ([]candidate, error) {
+// applying any active filters. Absent an explicit status filter it prefers
+// running executions (a first ExecutionStatus = 'Running' pass) and tops up
+// with the rest; when a status filter is set the prefer-running pass is
+// skipped so the two never contradict. Used by the GROUP BY path so we list
+// only the executions we will keep.
+func queryByType(ctx context.Context, c client.Client, namespace, wfType string, n int, f filters) ([]candidate, error) {
 	seen := map[string]bool{}
 	var out []candidate
 
-	running := fmt.Sprintf("WorkflowType = '%s' AND ExecutionStatus = 'Running'", wfType)
-	if err := pageInto(ctx, c, namespace, running, n, seen, &out); err != nil {
-		return nil, err
+	if f.status == "" {
+		running := typeQuery(wfType, f, true)
+		if err := pageInto(ctx, c, namespace, running, n, seen, &out); err != nil {
+			return nil, err
+		}
 	}
 	if len(out) < n {
-		all := fmt.Sprintf("WorkflowType = '%s'", wfType)
+		all := typeQuery(wfType, f, false)
 		if err := pageInto(ctx, c, namespace, all, n, seen, &out); err != nil {
 			return nil, err
 		}

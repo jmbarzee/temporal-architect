@@ -1,6 +1,127 @@
 package sampling
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+// fixed timestamps so query strings are stable and assertable.
+var (
+	t0 = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	t1 = time.Date(2026, 1, 3, 3, 4, 5, 0, time.UTC)
+)
+
+func TestWhereClauses(t *testing.T) {
+	tests := []struct {
+		name string
+		f    filters
+		want []string
+	}{
+		{"empty", filters{}, nil},
+		{"status only", filters{status: "Completed"},
+			[]string{"ExecutionStatus = 'Completed'"}},
+		{"since only", filters{since: t0},
+			[]string{"StartTime >= '2026-01-02T03:04:05Z'"}},
+		{"until only", filters{until: t1},
+			[]string{"StartTime <= '2026-01-03T03:04:05Z'"}},
+		{"between", filters{since: t0, until: t1},
+			[]string{"StartTime BETWEEN '2026-01-02T03:04:05Z' AND '2026-01-03T03:04:05Z'"}},
+		{"status and window (status first)", filters{status: "Failed", since: t0, until: t1},
+			[]string{
+				"ExecutionStatus = 'Failed'",
+				"StartTime BETWEEN '2026-01-02T03:04:05Z' AND '2026-01-03T03:04:05Z'",
+			}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertClauses(t, tt.f.whereClauses(), tt.want)
+		})
+	}
+}
+
+func TestCountQuery(t *testing.T) {
+	tests := []struct {
+		name string
+		f    filters
+		want string
+	}{
+		{"no filter keeps bare group by", filters{},
+			"GROUP BY WorkflowType"},
+		{"status prepended", filters{status: "Completed"},
+			"ExecutionStatus = 'Completed' GROUP BY WorkflowType"},
+		{"window prepended", filters{since: t0, until: t1},
+			"StartTime BETWEEN '2026-01-02T03:04:05Z' AND '2026-01-03T03:04:05Z' GROUP BY WorkflowType"},
+		{"status and window", filters{status: "Failed", since: t0},
+			"ExecutionStatus = 'Failed' AND StartTime >= '2026-01-02T03:04:05Z' GROUP BY WorkflowType"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := countQuery(tt.f); got != tt.want {
+				t.Errorf("countQuery() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestScanQuery(t *testing.T) {
+	tests := []struct {
+		name string
+		f    filters
+		want string
+	}{
+		{"no filter lists all", filters{}, ""},
+		{"status", filters{status: "Running"}, "ExecutionStatus = 'Running'"},
+		{"status and window", filters{status: "Completed", since: t0, until: t1},
+			"ExecutionStatus = 'Completed' AND StartTime BETWEEN '2026-01-02T03:04:05Z' AND '2026-01-03T03:04:05Z'"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := scanQuery(tt.f); got != tt.want {
+				t.Errorf("scanQuery() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTypeQuery(t *testing.T) {
+	tests := []struct {
+		name        string
+		wfType      string
+		f           filters
+		runningOnly bool
+		want        string
+	}{
+		{"all, no filter", "Order", filters{}, false,
+			"WorkflowType = 'Order'"},
+		{"running-first pass, no filter", "Order", filters{}, true,
+			"WorkflowType = 'Order' AND ExecutionStatus = 'Running'"},
+		{"window applied", "Order", filters{since: t0, until: t1}, false,
+			"WorkflowType = 'Order' AND StartTime BETWEEN '2026-01-02T03:04:05Z' AND '2026-01-03T03:04:05Z'"},
+		{"running-first pass with window", "Order", filters{since: t0}, true,
+			"WorkflowType = 'Order' AND StartTime >= '2026-01-02T03:04:05Z' AND ExecutionStatus = 'Running'"},
+		{"status filter, no running pass", "Order", filters{status: "Completed"}, false,
+			"WorkflowType = 'Order' AND ExecutionStatus = 'Completed'"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := typeQuery(tt.wfType, tt.f, tt.runningOnly); got != tt.want {
+				t.Errorf("typeQuery() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func assertClauses(t *testing.T, got, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+}
 
 func TestSampleCount(t *testing.T) {
 	tests := []struct {

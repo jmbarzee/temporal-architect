@@ -45,7 +45,7 @@ Local activities appear as `MARKER_RECORDED` ("LocalActivity") events, not `ACTI
 
 `tools/sampler/` v1 is one command per namespace, two internal phases (enumerate types via Visibility, then percentage-sample preferring running workflows). Later:
 
-- Time-window / status filters.
+- ~~Time-window / status filters.~~ DONE — `--since` / `--until` (`StartTime` window; RFC3339 or duration) and `--status` (`ExecutionStatus`), threaded through enumeration and candidate selection. See [SAMPLER_FILTERS_CHANGES.md](SAMPLER_FILTERS_CHANGES.md).
 - **Transitive sampling:** auto-fetch child-workflow and nexus-target histories so the graph is complete without separate runs per type.
 - Concurrency and rate limiting against the server.
 - Temporal Cloud auth via environment variables (parallel to the `temporal` CLI's env handling).

@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
@@ -35,6 +36,12 @@ type options struct {
 	out           string
 	samplePercent int
 	minPerType    int
+
+	// since / until are the raw --since / --until flag values (RFC3339 or a
+	// duration like "24h"), parsed into a StartTime window in run.
+	since  string
+	until  string
+	status string
 }
 
 func main() {
@@ -55,11 +62,40 @@ func parseFlags(args []string) options {
 	fs.StringVar(&opts.out, "out", "./", "Output root dir for <namespace>/<type>/<id>.json")
 	fs.IntVar(&opts.samplePercent, "sample-percent", 10, "Percent of each type's executions to sample")
 	fs.IntVar(&opts.minPerType, "min-per-type", 5, "Minimum executions to sample per type")
+	fs.StringVar(&opts.since, "since", "", "StartTime lower bound: RFC3339 timestamp or duration like 24h (relative to now)")
+	fs.StringVar(&opts.until, "until", "", "StartTime upper bound: RFC3339 timestamp or duration like 1h (relative to now)")
+	fs.StringVar(&opts.status, "status", "", "ExecutionStatus filter (e.g. Running, Completed, Failed)")
 	_ = fs.Parse(args)
 	return opts
 }
 
+// parseTimeFlag interprets a --since / --until value as either an RFC3339
+// timestamp or a Go duration (e.g. "24h"), the latter taken relative to now
+// (now - d). An empty string yields the zero time (unbounded).
+func parseTimeFlag(s string, now time.Time) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+	if d, err := time.ParseDuration(s); err == nil {
+		return now.Add(-d), nil
+	}
+	return time.Time{}, fmt.Errorf("invalid time %q: want RFC3339 timestamp or duration like 24h", s)
+}
+
 func run(ctx context.Context, opts options) error {
+	now := time.Now()
+	since, err := parseTimeFlag(opts.since, now)
+	if err != nil {
+		return fmt.Errorf("--since: %w", err)
+	}
+	until, err := parseTimeFlag(opts.until, now)
+	if err != nil {
+		return fmt.Errorf("--until: %w", err)
+	}
+
 	c, err := dial(opts)
 	if err != nil {
 		return fmt.Errorf("connect to %s: %w", opts.address, err)
@@ -70,6 +106,9 @@ func run(ctx context.Context, opts options) error {
 		Namespace:     opts.namespace,
 		SamplePercent: opts.samplePercent,
 		MinPerType:    opts.minPerType,
+		Status:        opts.status,
+		Since:         since,
+		Until:         until,
 	})
 	if err != nil {
 		return err

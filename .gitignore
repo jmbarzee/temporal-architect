@@ -39,4 +39,5 @@ internal/orchestrator/.claude/settings.local.json
 # skills used to build examples
 examples/.claude/skills
 
-./bump-brew
+internal/release/bump-brew/bump-brew
+internal/release/gen-skills-manifest/gen-skills-manifest
