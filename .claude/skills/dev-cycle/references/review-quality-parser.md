@@ -6,7 +6,7 @@ We value clear, elegant, functional code. The parser is the foundation of the de
 
 ## Context
 
-Before starting, read `AST_REVISIONS.md` for the current revision plan. Check which groups have been completed. Your review should focus on **what remains** and **what's new** — don't re-report issues that are already tracked.
+Before starting, read existing files in `internal/changes/parser/` for the current revision plan. Check which groups have been completed. Your review should focus on **what remains** and **what's new** — don't re-report issues that are already tracked.
 
 Also read all existing files in `internal/changes/parser/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to understand what has already been found, addressed, or is in progress. Don't re-report issues tracked there.
 
@@ -69,7 +69,7 @@ Synthesize all sub-agent findings into a single catalog. Each finding must inclu
 - **Theme**: a short grouping label
 - **Finding**: 1-2 sentences describing the issue and why it matters
 
-Cross-reference against `AST_REVISIONS.md`. Drop findings that are already tracked there. Flag any finding that *contradicts* a planned revision.
+Cross-reference against existing files in `internal/changes/parser/`. Drop findings that are already tracked there. Flag any finding that *contradicts* a planned revision.
 
 ### Phase 3: Group & Prioritize
 
@@ -91,14 +91,14 @@ Write the grouped plan to `internal/changes/parser/quality_REVISIONS_{NNN}.md` (
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Grammar` | `Schema` | `API` | `Semantic` | `Internal`), parallelism notes
 
-The **change type** field is used by `internal/harness/commands/propagate-changes.md` to route downstream reviews. Classify accurately:
+The **change type** field is used by `.claude/skills/dev-cycle/references/propagate-changes.md` to route downstream reviews. Classify accurately:
 - `Grammar` — DSL syntax changes
 - `Schema` — JSON output shape changes
 - `API` — Go type or interface changes
 - `Semantic` — behavior changes with no type signature change
 - `Internal` — refactors with no downstream contract impact
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `internal/harness/commands/address-review.md`.**
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
 ## Constraints
 
@@ -107,4 +107,4 @@ The **change type** field is used by `internal/harness/commands/propagate-change
 - **Preserve test coverage.** If you change behavior, update or add tests.
 - **Flag ambiguity.** If a finding has multiple valid approaches, present the tradeoffs and ask.
 - **Stay in scope.** Review `tools/lsp/` only. Don't wander into skills, docs, or the VS Code extension.
-- **No backwards compatibility.** This is pre-v1. If a better design exists, propose it. Document breaking changes in `AST_REVISIONS.md`.
+- **No backwards compatibility.** This is pre-v1. If a better design exists, propose it. Document breaking changes in the parser's `CHANGES` file (`internal/changes/parser/`).

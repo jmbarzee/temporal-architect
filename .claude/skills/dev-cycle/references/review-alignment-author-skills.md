@@ -4,7 +4,7 @@ This command answers: "does the author-go skill provide a complete and accurate 
 
 Both sources are authoritative — a mapping that exists but uses an outdated SDK call is as broken as a missing mapping.
 
-Skill craft belongs in `internal/harness/commands/review-quality-skill.md`. This command is solely coverage and accuracy alignment across two authoritative sources.
+Skill craft belongs in `.claude/skills/dev-cycle/references/review-quality-skill.md`. This command is solely coverage and accuracy alignment across two authoritative sources.
 
 ## Context
 
@@ -12,7 +12,7 @@ Skill craft belongs in `internal/harness/commands/review-quality-skill.md`. This
 - Temporal Go SDK via **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowledge_sources`) — authoritative: current SDK API, patterns, and idioms
 - `skills/temporal-architect-author-go/README.md` — declared scope of the skill
 - `skills/temporal-architect-author-go/SKILL.md` and `skills/temporal-architect-author-go/reference/` — the target under review
-- `AST_REVISIONS.md` — changes in flight that may introduce new design constructs requiring new Go mappings
+- in-flight files in `internal/changes/` (especially `parser/` and `design-skill/`) — changes in flight that may introduce new design constructs requiring new Go mappings
 - All existing files in `internal/changes/author-go-skill/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
@@ -70,7 +70,7 @@ Write the grouped plan to `internal/changes/author-go-skill/alignment_REVISIONS_
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Internal`), parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `internal/harness/commands/address-review.md`.**
+**STOP after writing. Present a summary and wait for approval. To execute, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
 ## Constraints
 

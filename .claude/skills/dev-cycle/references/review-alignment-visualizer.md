@@ -2,7 +2,7 @@
 
 This command answers: "does the visualizer implement everything the spec requires?"
 
-Code quality belongs in `internal/harness/commands/review-quality-visualizer.md`. Spec design belongs in `internal/harness/commands/review-quality-visualizer-spec.md`. This command is solely gap detection between spec and implementation.
+Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visualizer.md`. Spec design belongs in `.claude/skills/dev-cycle/references/review-quality-visualizer-spec.md`. This command is solely gap detection between spec and implementation.
 
 ## Context
 
@@ -10,7 +10,7 @@ Code quality belongs in `internal/harness/commands/review-quality-visualizer.md`
 - `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View spec (authoritative)
 - `tools/visualizer/spec/` (all other files) — product patterns, priority tiers, view framework
 - `tools/visualizer/src/` — TypeScript implementation (target under review)
-- `AST_REVISIONS.md` — parser changes in flight that may affect data availability
+- in-flight files in `internal/changes/parser/` — parser changes in flight that may affect data availability
 - All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
@@ -69,11 +69,11 @@ Write the grouped plan to `internal/changes/visualizer/alignment_REVISIONS_{NNN}
 - One `## Group N: Title` section per group
 - Each group: spec features addressed, files touched, change type (`Internal`), blocked status, parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `internal/harness/commands/address-review.md`.**
+**STOP after writing. Present a summary and wait for approval. To execute, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
 ## Constraints
 
-- **Spec is authoritative.** Don't re-evaluate design decisions — that's `internal/harness/commands/review-quality-visualizer-spec.md`.
+- **Spec is authoritative.** Don't re-evaluate design decisions — that's `.claude/skills/dev-cycle/references/review-quality-visualizer-spec.md`.
 - **Sub-agents are scoped by topic, not by artifact.** Every sub-agent reads both spec and TypeScript source for its topic.
 - **Flag blocked work clearly.** Features waiting on parser data go in a separate group. Note the required JSON fields for each.
-- **Code quality is out of scope.** Note issues separately for `internal/harness/commands/review-quality-visualizer.md` — don't mix them in here.
+- **Code quality is out of scope.** Note issues separately for `.claude/skills/dev-cycle/references/review-quality-visualizer.md` — don't mix them in here.

@@ -202,9 +202,9 @@ Take the user's selections and group them by theme. Write `SKILL_{NAME}_REVISION
 
 Delete `REFLECTION_{NAME}.md` after writing the revisions file.
 
-**Cross-layer changes (rare).** If the reflection surfaces a genuine issue in a layer other than the skill — for example, the parser doesn't support a construct the skill assumes exists, or the visualizer misrepresents something the skill relies on — write a `{LAYER}_CHANGES.md` for the affected layer and flag it for `internal/harness/commands/propagate-changes.md`. The bar is high: "this is broken in the other layer," not "it would be nice if the other layer also changed." If you're unsure whether it meets the bar, it doesn't.
+**Cross-layer changes (rare).** If the reflection surfaces a genuine issue in a layer other than the skill — for example, the parser doesn't support a construct the skill assumes exists, or the visualizer misrepresents something the skill relies on — write a `{LAYER}_CHANGES.md` for the affected layer and flag it for `.claude/skills/dev-cycle/references/propagate-changes.md`. The bar is high: "this is broken in the other layer," not "it would be nice if the other layer also changed." If you're unsure whether it meets the bar, it doesn't.
 
-**To execute revisions, invoke `internal/harness/commands/address-review.md`.**
+**To execute revisions, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
 ## Constraints
 

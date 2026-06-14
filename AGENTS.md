@@ -49,8 +49,8 @@ internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
   bump-brew/            Go tool that bumps the Homebrew tap formula on release
 internal/changes/       Per-component coordination files: REVISIONS_NNN, CHANGES_NNN, and BACKLOG
-internal/harness/       Runner-agnostic dev-cycle prompts (commands/) driving review → execute → propagate
-internal/orchestrator/  Temporal workflow design for the automated dev cycle (the durable twin of internal/harness/)
+internal/harness/       Dev-cycle component manifest (components.md), shared by the /dev-cycle skill and the orchestrator
+internal/orchestrator/  Temporal workflow design for the automated dev cycle (the durable twin of the /dev-cycle skill)
 internal/version.sh     Release version bump helper
 
 go.work                 Workspace wiring tools/lsp, tools/spec, and internal/release/*
@@ -70,7 +70,7 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 - `CHANGES_NNN.md` — completed work, consumed and archived
 - `BACKLOG.md` — informal ideas and deferred features; not cycle-committed, just a place to drop thoughts
 
-The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Development Commands](#development-commands) below, with `internal/harness/commands/dev-cycle.md` as the entry point and `internal/harness/commands/propagate-changes.md` for fanning a completed change out to downstream consumers.
+The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Development Commands](#development-commands) below, with the `/dev-cycle` skill (`.claude/skills/dev-cycle/`) as the entry point and its `propagate-changes` step for fanning a completed change out to downstream consumers.
 
 Long-lived reference docs that don't belong to a single component live at the repo root (e.g. `issues_blocking_downstream_adoption.md`, `packaging.md`).
 
@@ -78,23 +78,9 @@ When the parser's JSON output changes, both the Go and TypeScript sides update t
 
 ## Dependency Map
 
-Changes propagate downstream along this graph. Each edge has a named contract:
+The authoritative component graph — scopes, review mappings, propagation routing, and wave ordering — lives in `internal/harness/components.md`. Keep it there and only there.
 
-```
-DSL grammar (tools/spec/sections/*.md)
-  └─► Parser (tools/lsp/)
-        │  contract: token types, AST node types, resolver error model
-        ├─► LSP Server (tools/lsp/internal/server/)
-        │     contract: Go AST types + resolver API (same module)
-        ├─► Visualizer (tools/visualizer/)
-        │     contract: JSON output of `twf parse` and `twf symbols`
-        ├─► Skill: Design (skills/temporal-architect-design/)
-        │     contract: DSL syntax and semantics as in tools/spec/sections/
-        │     └─► Skill: Author-Go (skills/temporal-architect-author-go/)
-        │           contract: Design skill semantics + Temporal Go SDK mapping
-        └─► VS Code Extension (packages/vscode/)
-              contract: LSP protocol responses + JSON output
-```
+The contract on each edge: the parser exposes token types, AST node types, and the resolver error model to the LSP server; the JSON output of `twf parse`/`twf symbols` to the visualizer; DSL syntax and semantics (per `tools/spec/sections/`) to the design skill, which in turn exposes Temporal Go SDK mappings to the author skills; and LSP responses + JSON output to the VS Code extension.
 
 The spec is consumed three ways: (1) as embedded content via `twf spec [--list|<slug>]`, (2) as files in `tools/spec/sections/` for skill prompts and review commands, and (3) as the importable Go package `github.com/jmbarzee/temporal-architect/tools/spec`.
 
@@ -102,11 +88,10 @@ When a layer changes, the contracts it exposes determine what needs to update do
 
 ## Development Commands
 
-These prompt files drive the development loop. They live in `internal/harness/commands/` as runner-agnostic prompts — read and follow the relevant file. (No slash-command wiring is in place yet; invoke a command by reading its file.)
+The dev-cycle harness is a **skill** at `.claude/skills/dev-cycle/` (read by both Cursor and Claude Code), invokable as `/dev-cycle`. Its `SKILL.md` is the router and loop; the individual step prompts live in `.claude/skills/dev-cycle/references/` and are dispatched to subagents on demand. The graph they operate on is `internal/harness/components.md`.
 
-| Command (`internal/harness/commands/<name>.md`) | Purpose |
+| Step prompt (`.claude/skills/dev-cycle/references/<name>.md`) | Purpose |
 |---------|---------|
-| `dev-cycle` | Scope and launch reviews → write REVISIONS to `internal/changes/` |
 | **Quality Reviews** | |
 | `review-quality-parser` | Go parser, AST, resolver — code quality and design |
 | `review-quality-visualizer` | Visualizer TypeScript — code quality and contract consumption |
@@ -118,19 +103,19 @@ These prompt files drive the development loop. They live in `internal/harness/co
 | `review-alignment-parser-visualizer` | Align visualizer to parser JSON contract |
 | `review-alignment-visualizer` | Align visualizer implementation to visualizer spec |
 | `review-alignment-design-skill` | Align design skill to parser (constructs, errors, AST) |
-| `review-alignment-author-skills` | Align author-go skill to design skill and Temporal SDK |
+| `review-alignment-author-skills` | Align author-go / author-infra skills to design skill and Temporal SDK |
 | **Execution & Propagation** | |
 | `address-review` | Execute an approved review group (inner loop) |
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
 | `summarize-changes` | Scan `internal/changes/` and produce consolidated report |
 
-Two related helpers ship as **skills** under `.claude/skills/` (read by both Cursor and Claude Code), not as harness commands:
+Two standalone helpers ship as their own **skills** under `.claude/skills/` (not part of the dev-cycle harness):
 
 | Skill (`.claude/skills/<name>/SKILL.md`) | Purpose |
 |---------|---------|
 | `expand-idea` | Expand a one-sentence idea into a full Temporal architecture vision with draft `.twf` |
 | `reflect-skill` | Reflect on a recent task and propose updates to the responsible skill |
 
-**Start here for a new cycle:** read and follow `internal/harness/commands/dev-cycle.md`
-**Start here for targeted work:** pick the specific review command for the layer you're focused on.
+**Start here for a new cycle:** invoke the `/dev-cycle` skill.
+**Start here for targeted work:** use the dev-cycle skill's "review" entrypoint for the layer you're focused on.
 **Start here for a new design:** use the `expand-idea` skill.

@@ -124,7 +124,7 @@ The Claude Code plugin payload (`@temporal-architect/claude-plugin`) lives at [`
 
 The marketplace catalog at `.claude-plugin/marketplace.json` is the only thing forced to live at the repo root. It uses `strict: false` to declare the plugin's components inline (skills path, MCP server config) and points at the npm package as the plugin source. Claude Code does `npm install` to fetch the payload at install time.
 
-The dev-cycle harness (`internal/harness/`) and its helper skills (`.claude/skills/`) are intentionally **not** part of the plugin — they are dev scaffolding for this repo, not for downstream users. `internal/` is dev-only by convention, and the shipped skills come from the repo-root `skills/`, never from `.claude/skills/`.
+The dev-cycle harness (the `.claude/skills/dev-cycle/` skill plus its manifest `internal/harness/components.md`) and the standalone helper skills (`.claude/skills/expand-idea/`, `.claude/skills/reflect-skill/`) are intentionally **not** part of the plugin — they are dev scaffolding for this repo, not for downstream users. `internal/` is dev-only by convention, and the shipped skills come from the repo-root `skills/`, never from `.claude/skills/`.
 
 ---
 
@@ -256,8 +256,9 @@ Every place the brand appears, internally and externally. Walk this checklist wh
 | Changelog | `CHANGELOG.md` | New entries use new URL; historical entries stay. |
 | Skill compatibility field (after M1) | `skills/temporal-architect-design/SKILL.md`, `skills/temporal-architect-author-go/SKILL.md` | Frontmatter `compatibility:` references new install lines. |
 | `twf init` templates (after M4) | `tools/skills/templates/AGENTS.md.tmpl`, etc. | The scaffolded AGENTS.md block, install instructions baked into templates. |
-| `internal/harness/commands/` | 14 files | Spot-check for brand-name mentions. Mostly relative paths. |
+| `.claude/skills/dev-cycle/` | `SKILL.md` + 13 `references/` prompts | Spot-check for brand-name mentions. Mostly relative paths. |
 | `.claude/skills/` | `expand-idea`, `reflect-skill` | Spot-check for brand-name mentions. |
+| `internal/harness/components.md` | 1 file | Component manifest; spot-check scopes/paths. |
 
 **Mechanical strategy:**
 

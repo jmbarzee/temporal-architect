@@ -2,7 +2,7 @@
 
 This command answers: "does the TypeScript layer correctly and completely consume what the parser's JSON contract provides?"
 
-This is a boundary review — the parser's JSON output is the contract between Go and TypeScript. Implementation quality on either side belongs in `internal/harness/commands/review-quality-parser.md` and `internal/harness/commands/review-quality-visualizer.md`. This command is solely about the contract: shape mismatches, missing fields, incorrect types, and unhandled variants.
+This is a boundary review — the parser's JSON output is the contract between Go and TypeScript. Implementation quality on either side belongs in `.claude/skills/dev-cycle/references/review-quality-parser.md` and `.claude/skills/dev-cycle/references/review-quality-visualizer.md`. This command is solely about the contract: shape mismatches, missing fields, incorrect types, and unhandled variants.
 
 ## Context
 
@@ -10,14 +10,14 @@ This is a boundary review — the parser's JSON output is the contract between G
 - `tools/visualizer/src/types/ast.ts` — TypeScript type declarations (primary target)
 - `tools/visualizer/src/` — TypeScript consumers (secondary target — how types are actually used)
 - `tools/visualizer/spec/TREE_VIEW.md` and `GRAPH_VIEW.md` — what the consumers need to provide
-- `AST_REVISIONS.md` — changes in flight that will affect the contract
+- in-flight files in `internal/changes/parser/` — changes in flight that will affect the contract
 - All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
 ### Phase 1: Orient
 
-Briefly scan `ast/ast.go`, `ast/json.go`, and `types/ast.ts`. Confirm the comparison units below still apply — add topics for new Go types without TypeScript counterparts, drop topics for removed types. Note any `AST_REVISIONS.md` changes that affect the contract and may already supersede findings in Phase 2.
+Briefly scan `ast/ast.go`, `ast/json.go`, and `types/ast.ts`. Confirm the comparison units below still apply — add topics for new Go types without TypeScript counterparts, drop topics for removed types. Note any in-flight `internal/changes/parser/` changes that affect the contract and may already supersede findings in Phase 2.
 
 **Standard comparison units:**
 
@@ -67,7 +67,7 @@ Write the grouped plan to `internal/changes/visualizer/parser-output_REVISIONS_{
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Schema` | `Internal`), parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `internal/harness/commands/address-review.md`.**
+**STOP after writing. Present a summary and wait for approval. To execute, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
 ## Constraints
 

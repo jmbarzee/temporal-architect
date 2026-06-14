@@ -6,9 +6,9 @@ Invoke this after any review command has produced a grouped finding plan and you
 
 ## Input
 
-**Option 1: Explicit REVISIONS file paths.** If specific REVISIONS files are provided (e.g., `internal/changes/parser/quality_REVISIONS_001.md`, `internal/changes/parser/alignment_REVISIONS_001.md`), read those files and merge their grouped plans into one execution sequence.
+**Option 1 (default; required under the dev-cycle loop): Explicit REVISIONS file paths.** Specific REVISIONS files are provided (e.g., `internal/changes/parser/quality_REVISIONS_001.md`, `internal/changes/parser/alignment_REVISIONS_001.md`). Read those files and merge their grouped plans into one execution sequence. When dispatched as a subagent by the dev-cycle loop, this is the only valid input — work entirely from the named files, never from conversation context.
 
-**Option 2: Conversation context.** The grouped plan from the review command should be present in conversation context. If it is not, ask the user to paste it or point to the REVISIONS file(s) in `internal/changes/{component}/`.
+**Option 2 (manual, interactive use only): Conversation context.** Only when a human is driving this command directly and the grouped plan is already in the conversation. If it is not, ask the user to point to the REVISIONS file(s) in `internal/changes/{component}/`. Subagents must not use this path.
 
 Each group in the plan should have:
 - A theme name

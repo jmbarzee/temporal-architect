@@ -8,25 +8,10 @@ This command answers: "changes were made — what else needs to review and updat
 
 ## Dependency Map
 
-Changes propagate along this graph. Each edge has a contract type:
-
-```
-DSL grammar (tools/spec/sections/*.md)
-  └─► Parser (tools/lsp/)
-        │  Grammar → internal/changes/dsl/ triggers: review-alignment-design-skill
-        │  Schema  → internal/changes/parser/ triggers: review-quality-visualizer, review-quality-visualizer-spec
-        │  API     → triggers: review-quality-visualizer (TS types)
-        ├─► LSP Server (tools/lsp/internal/server/)
-        │     API/Semantic → triggers: review-quality-parser
-        ├─► Visualizer (tools/visualizer/)
-        │     Schema → triggers: review-quality-visualizer, review-quality-visualizer-spec
-        ├─► Skill: Design (skills/temporal-architect-design/)
-        │     Grammar/Semantic → triggers: review-alignment-design-skill
-        │     └─► Skill: Author-Go (skills/temporal-architect-author-go/)
-        │           Grammar/Semantic → triggers: review-alignment-author-skills
-        └─► VS Code Extension (packages/vscode/)
-              Schema/API → flag for manual review (no automated command)
-```
+Changes propagate along the graph defined in `internal/harness/components.md` — the single
+source of truth. Use its **Propagation routing** table (source component + change type →
+downstream component + triggered review) to build the propagation map below. Do not restate
+the graph from memory.
 
 ## Workflow
 
@@ -79,7 +64,7 @@ When all sub-agents complete:
    - Which layers had no impact (changes didn't affect them)
    - Which layers were skipped because an existing REVISIONS file already references this same CHANGES source
    - Any VS Code Extension impacts that need manual review
-   - Recommended order for running `internal/harness/commands/address-review.md` on each REVISIONS file
+   - Recommended order for running `.claude/skills/dev-cycle/references/address-review.md` on each REVISIONS file
 
 **STOP. Present the report and wait for the user to begin addressing each new revision file.**
 

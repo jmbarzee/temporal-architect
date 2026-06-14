@@ -2,13 +2,13 @@
 
 Review the TWF language design against Temporal's actual primitives and patterns. Evaluate whether the DSL adequately represents the application domain — not whether the parser implements it correctly.
 
-This review asks "does the DSL express Temporal well?" — not "does the parser handle it correctly?" Parser quality belongs in `internal/harness/commands/review-quality-parser.md`.
+This review asks "does the DSL express Temporal well?" — not "does the parser handle it correctly?" Parser quality belongs in `.claude/skills/dev-cycle/references/review-quality-parser.md`.
 
 ## Context
 
 Before starting, read:
 - `tools/spec/sections/*.md` — the current formal grammar and semantics (the artifact under review). The whole spec can also be dumped via `twf spec`; individual sections via `twf spec <slug>`.
-- `AST_REVISIONS.md` — language changes in flight; don't re-report what's already planned
+- existing files in `internal/changes/dsl/` — language changes in flight; don't re-report what's already planned
 - All existing files in `internal/changes/dsl/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
 
 Use the **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowledge_sources`) as the authoritative reference for what Temporal offers. When evaluating whether the DSL covers a concept, search the docs — don't rely on memory.
@@ -55,7 +55,7 @@ Map the Temporal inventory against the DSL inventory. For each Temporal concept:
 
 Also flag DSL constructs with no clear Temporal mapping.
 
-Cross-reference against `AST_REVISIONS.md`. Drop findings that are already planned.
+Cross-reference against existing files in `internal/changes/dsl/`. Drop findings that are already planned.
 
 ### Phase 3: Evaluate Possible Features
 
@@ -88,10 +88,10 @@ Write the grouped plan to `internal/changes/dsl/quality_REVISIONS_{NNN}.md` (cre
 
 DSL changes are `Grammar` if they require syntax changes, `Semantic` if they clarify or correct meaning without changing syntax.
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `internal/harness/commands/address-review.md`.**
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
 ## Constraints
-- **Spec lens only.** Don't review parser implementation, AST structure, or resolver behavior — those belong in `internal/harness/commands/review-quality-parser.md`.
+- **Spec lens only.** Don't review parser implementation, AST structure, or resolver behavior — those belong in `.claude/skills/dev-cycle/references/review-quality-parser.md`.
 - **Use the Temporal docs MCP server.** Don't evaluate coverage from memory alone. Search for each concept.
 - **Possible features come last.** The Phase 2 review drives findings; Phase 3 validates proposals against those findings. Don't let the possible features list anchor the review.
 - **No backwards compatibility.** Pre-v1. If a better representation exists, propose it. Note which changes would break existing `.twf` files.

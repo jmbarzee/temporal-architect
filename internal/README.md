@@ -13,8 +13,8 @@ For *what does ship*, see [`tools/`](../tools/) (source) and
 |---|---|
 | [`release/gen-skills-manifest/`](./release/gen-skills-manifest/) | Go tool — emits `skills/MANIFEST.md` and the `skills-vX.Y.Z.tar.gz` release asset |
 | [`release/bump-brew/`](./release/bump-brew/) | Go tool — bumps `jmbarzee/homebrew-twf`'s `Formula/twf.rb` on release via the GitHub Contents API |
-| [`harness/`](./harness/) | Runner-agnostic dev-cycle prompts (`commands/`) — the agent-loop runtime of review → execute → propagate. Pairs with [`changes/`](./changes/) |
-| [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate) — the durable twin of [`harness/`](./harness/). Pairs with [`changes/`](./changes/) |
+| [`harness/`](./harness/) | `components.md` — the dev-cycle component manifest (graph, scopes, review mappings, propagation routing). Consumed by the `/dev-cycle` skill (`.claude/skills/dev-cycle/`, the agent-loop runtime) and the orchestrator. Pairs with [`changes/`](./changes/) |
+| [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate) — the durable twin of the `/dev-cycle` skill. Pairs with [`changes/`](./changes/) |
 | [`version.sh`](./version.sh) | Shell helper for `make release` — computes the next semver from `git describe` |
 
 ## Why `internal/`
@@ -24,7 +24,7 @@ outside this module." That's literally true for the Go modules under
 `release/` — nothing in [`tools/`](../tools/) imports them, and they
 never become part of any shipped artifact.
 
-The non-Go contents (`harness/commands/*.md`, `orchestrator/dev-cycle.twf`, `version.sh`) follow
+The non-Go contents (`harness/components.md`, `orchestrator/dev-cycle.twf`, `version.sh`) follow
 the same spirit: they're things only people developing this repo touch,
 never things downstream consumers see.
 

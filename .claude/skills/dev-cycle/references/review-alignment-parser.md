@@ -2,7 +2,7 @@
 
 This command answers: "does the parser correctly and completely implement everything in `tools/spec/sections/`?"
 
-Parser quality and code health belong in `internal/harness/commands/review-quality-parser.md`. DSL design belongs in `internal/harness/commands/review-quality-dsl-spec.md`. This command is solely gap detection between spec and implementation.
+Parser quality and code health belong in `.claude/skills/dev-cycle/references/review-quality-parser.md`. DSL design belongs in `.claude/skills/dev-cycle/references/review-quality-dsl-spec.md`. This command is solely gap detection between spec and implementation.
 
 ## Context
 
@@ -66,11 +66,11 @@ Write the grouped plan to `internal/changes/parser/alignment_REVISIONS_{NNN}.md`
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Grammar` | `API` | `Semantic`), parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `internal/harness/commands/address-review.md`.**
+**STOP after writing. Present a summary and wait for approval. To execute, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
 ## Constraints
 
-- **Spec is authoritative.** Don't question DSL design decisions — that's `internal/harness/commands/review-quality-dsl-spec.md`.
+- **Spec is authoritative.** Don't question DSL design decisions — that's `.claude/skills/dev-cycle/references/review-quality-dsl-spec.md`.
 - **Sub-agents are scoped by topic, not by artifact.** Every sub-agent reads both spec sections and parser code for its topic.
 - **Run `twf parse`, don't just read code.** Actual behavior may differ from what the code suggests.
 - **Incorrect is worse than missing.** A construct that silently parses wrong is more dangerous than one that fails with a clear error.

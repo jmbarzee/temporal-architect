@@ -2,7 +2,7 @@
 
 Review the visualizer from a product and user experience perspective. Identify feature gaps, UX improvements, and missing spec coverage.
 
-This review asks "does the visualizer serve its users well?" — not "is the code well-written?" Code quality belongs in `internal/harness/commands/review-quality-visualizer.md`. Implementation planning happens in `internal/harness/commands/address-review.md`.
+This review asks "does the visualizer serve its users well?" — not "is the code well-written?" Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visualizer.md`. Implementation planning happens in `.claude/skills/dev-cycle/references/address-review.md`.
 
 ## Context
 
@@ -75,10 +75,10 @@ Write the grouped plan to `internal/changes/visualizer-spec/quality_REVISIONS_{N
 
 Mark groups blocked on missing parser data as `Schema` — they require upstream changes before they can be executed.
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `internal/harness/commands/address-review.md`.**
+**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
 ## Constraints
-- **Product lens only.** Describe gaps in terms of user experience and features, not TypeScript components or file changes. Implementation is `internal/harness/commands/address-review.md`'s job.
+- **Product lens only.** Describe gaps in terms of user experience and features, not TypeScript components or file changes. Implementation is `.claude/skills/dev-cycle/references/address-review.md`'s job.
 - **The product eval plan is authoritative.** Don't re-derive the user question hierarchy or priority tiers. Use what's in the plan. If you disagree with a tier assignment, flag it but don't override it.
 - **TypeScript is for current-state only.** Consult the implementation to understand what already exists. Don't use it to plan what should be built.
 - **Flag missing data, not parser work.** If a gap requires JSON fields the parser doesn't emit, note the missing data shape and move on.
