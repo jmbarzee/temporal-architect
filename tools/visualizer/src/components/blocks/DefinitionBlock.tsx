@@ -6,6 +6,7 @@ import { BlockIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
 import { ContextualNavButtons } from './ContextualNav'
+import { OptionsSection } from './OptionsSection'
 import './blocks.css'
 
 interface DefinitionBlockProps {
@@ -242,12 +243,14 @@ function NamespaceWorkerEntry({ entry }: { entry: NamespaceWorker }) {
   const context = React.useContext(DefinitionContext)
   const workerDef = context.workers.get(entry.workerName)
   const isDefined = !!workerDef
-  const [expanded, toggle] = useToggle(false, isDefined)
+  const hasOptions = !!entry.options?.entries?.length
+  const isExpandable = isDefined || hasOptions
+  const [expanded, toggle] = useToggle(false, isExpandable)
 
   return (
     <div className={`namespace-entry namespace-entry-worker ${expanded ? 'expanded' : 'collapsed'} ${!isDefined ? 'namespace-entry-unresolved' : ''}`}>
       <div className="namespace-entry-header" onClick={toggle}>
-        {isDefined ? (
+        {isExpandable ? (
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         ) : (
           <span className="block-toggle-placeholder" />
@@ -257,16 +260,21 @@ function NamespaceWorkerEntry({ entry }: { entry: NamespaceWorker }) {
         {!isDefined && <span className="block-unresolved-badge">?</span>}
       </div>
 
-      {expanded && isDefined && workerDef && (
+      {expanded && isExpandable && (
         <div className="block-body">
-          {workerDef.workflows?.length > 0 && (
-            <WorkerRefSection label="workflows" refs={workerDef.workflows} refType="workflow" />
-          )}
-          {workerDef.activities?.length > 0 && (
-            <WorkerRefSection label="activities" refs={workerDef.activities} refType="activity" />
-          )}
-          {workerDef.services?.length > 0 && (
-            <WorkerRefSection label="nexus services" refs={workerDef.services} refType="service" />
+          <OptionsSection options={entry.options} />
+          {isDefined && workerDef && (
+            <>
+              {workerDef.workflows?.length > 0 && (
+                <WorkerRefSection label="workflows" refs={workerDef.workflows} refType="workflow" />
+              )}
+              {workerDef.activities?.length > 0 && (
+                <WorkerRefSection label="activities" refs={workerDef.activities} refType="activity" />
+              )}
+              {workerDef.services?.length > 0 && (
+                <WorkerRefSection label="nexus services" refs={workerDef.services} refType="service" />
+              )}
+            </>
           )}
         </div>
       )}
@@ -275,13 +283,26 @@ function NamespaceWorkerEntry({ entry }: { entry: NamespaceWorker }) {
 }
 
 function NamespaceEndpointEntry({ entry }: { entry: NamespaceEndpoint }) {
+  const hasOptions = !!entry.options?.entries?.length
+  const [expanded, toggle] = useToggle(false, hasOptions)
+
   return (
-    <div className="namespace-entry namespace-entry-endpoint collapsed">
-      <div className="namespace-entry-header">
-        <span className="block-toggle-placeholder" />
+    <div className={`namespace-entry namespace-entry-endpoint ${expanded ? 'expanded' : 'collapsed'}`}>
+      <div className="namespace-entry-header" onClick={hasOptions ? toggle : undefined}>
+        {hasOptions ? (
+          <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
+        ) : (
+          <span className="block-toggle-placeholder" />
+        )}
         <BlockIcon kind="nexusEndpoint" />
         <span className="namespace-entry-name">{entry.endpointName}</span>
       </div>
+
+      {expanded && hasOptions && (
+        <div className="block-body">
+          <OptionsSection options={entry.options} />
+        </div>
+      )}
     </div>
   )
 }

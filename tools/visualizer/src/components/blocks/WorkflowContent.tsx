@@ -4,11 +4,14 @@ import { StatementBlock, StatementBody } from './StatementBlock'
 import { THEME, HANDLER_CONFIG, BlockIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { HandlerContext } from '../WorkflowCanvas'
+import { OptionsSection } from './OptionsSection'
 import './blocks.css'
 
 function HandlerDeclBlock({ decl }: { decl: HandlerDecl }) {
-  const hasBody = decl.body && decl.body.length > 0
-  const [expanded, toggle] = useToggle(false, hasBody)
+  const hasBody = !!(decl.body && decl.body.length > 0)
+  const hasOptions = !!decl.options?.entries?.length
+  const isExpandable = hasBody || hasOptions
+  const [expanded, toggle] = useToggle(false, isExpandable)
   const { icon, keyword, cssClass } = HANDLER_CONFIG[decl.type]
 
   let signature = `${decl.name}(${decl.params})`
@@ -17,15 +20,16 @@ function HandlerDeclBlock({ decl }: { decl: HandlerDecl }) {
   return (
     <div className={`declaration ${cssClass} ${expanded ? 'expanded' : ''}`}>
       <div className="declaration-header" onClick={toggle}>
-        {hasBody && <span className="block-toggle">{expanded ? '▼' : '▶'}</span>}
-        {!hasBody && <span className="block-toggle-placeholder" />}
+        {isExpandable && <span className="block-toggle">{expanded ? '▼' : '▶'}</span>}
+        {!isExpandable && <span className="block-toggle-placeholder" />}
         <span className="declaration-icon">{icon}</span>
         <span className="declaration-keyword">{keyword}</span>
         <span className="declaration-name">{signature}</span>
       </div>
-      {expanded && hasBody && (
+      {expanded && isExpandable && (
         <div className="declaration-body">
-          {decl.body!.map((stmt) => (
+          <OptionsSection options={decl.options} />
+          {hasBody && decl.body!.map((stmt) => (
             <StatementBlock key={`${stmt.line}:${stmt.column}`} statement={stmt} />
           ))}
         </div>

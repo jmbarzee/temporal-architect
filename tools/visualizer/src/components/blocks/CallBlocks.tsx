@@ -5,13 +5,16 @@ import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowC
 import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
 import { ContextualNavButtons } from './ContextualNav'
+import { OptionsSection } from './OptionsSection'
 
 // Activity Call - expandable to show activity definition body directly
 export function ActivityCallBlock({ stmt }: { stmt: ActivityCall }) {
   const context = React.useContext(DefinitionContext)
   const activityDef = context.activities.get(stmt.name)
   const isDefined = !!activityDef
-  const [expanded, toggle] = useToggle(false, isDefined)
+  const hasOptions = !!stmt.options?.entries?.length
+  const isExpandable = isDefined || hasOptions
+  const [expanded, toggle] = useToggle(false, isExpandable)
 
   const signature = formatActivityCallSignature(stmt)
 
@@ -19,7 +22,7 @@ export function ActivityCallBlock({ stmt }: { stmt: ActivityCall }) {
     <div className={`block block-activity ${expanded ? 'expanded' : 'collapsed'} ${!isDefined ? 'block-unresolved' : ''}`}>
       {isDefined && <ContextualNavButtons showDefinition={{ name: stmt.name, type: 'activityDef' }} />}
       <div className="block-header" onClick={toggle}>
-        {isDefined ? (
+        {isExpandable ? (
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         ) : (
           <span className="block-toggle-placeholder" />
@@ -29,15 +32,16 @@ export function ActivityCallBlock({ stmt }: { stmt: ActivityCall }) {
         {!isDefined && <span className="block-unresolved-badge">?</span>}
       </div>
 
-      {expanded && isDefined && (
+      {expanded && isExpandable && (
         <div className="block-body">
-          {(activityDef.body || []).length > 0 ? (
+          <OptionsSection options={stmt.options} />
+          {isDefined && ((activityDef.body || []).length > 0 ? (
             (activityDef.body || []).map((s) => (
               <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
             ))
           ) : (
             <div className="block-empty-body">No implementation defined</div>
-          )}
+          ))}
         </div>
       )}
     </div>
@@ -49,7 +53,9 @@ export function WorkflowCallBlock({ stmt }: { stmt: WorkflowCall }) {
   const context = React.useContext(DefinitionContext)
   const workflowDef = context.workflows.get(stmt.name)
   const isDefined = !!workflowDef
-  const [expanded, toggle] = useToggle(false, isDefined)
+  const hasOptions = !!stmt.options?.entries?.length
+  const isExpandable = isDefined || hasOptions
+  const [expanded, toggle] = useToggle(false, isExpandable)
 
   const modePrefix = stmt.mode === 'detach' ? 'detach ' : ''
   const signature = formatWorkflowCallSignature(stmt)
@@ -58,7 +64,7 @@ export function WorkflowCallBlock({ stmt }: { stmt: WorkflowCall }) {
     <div className={`block block-workflow-call block-mode-${stmt.mode} ${expanded ? 'expanded' : 'collapsed'} ${!isDefined ? 'block-unresolved' : ''}`}>
       {isDefined && <ContextualNavButtons showDefinition={{ name: stmt.name, type: 'workflowDef' }} />}
       <div className="block-header" onClick={toggle}>
-        {isDefined ? (
+        {isExpandable ? (
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         ) : (
           <span className="block-toggle-placeholder" />
@@ -68,11 +74,14 @@ export function WorkflowCallBlock({ stmt }: { stmt: WorkflowCall }) {
         {!isDefined && <span className="block-unresolved-badge">?</span>}
       </div>
 
-      {expanded && isDefined && (
+      {expanded && isExpandable && (
         <div className="block-body">
-          <WorkflowCallHandlerScope def={workflowDef}>
-            <WorkflowContent def={workflowDef} />
-          </WorkflowCallHandlerScope>
+          <OptionsSection options={stmt.options} />
+          {isDefined && (
+            <WorkflowCallHandlerScope def={workflowDef}>
+              <WorkflowContent def={workflowDef} />
+            </WorkflowCallHandlerScope>
+          )}
         </div>
       )}
     </div>
@@ -114,7 +123,9 @@ export function NexusCallBlock({ stmt }: { stmt: NexusCall }) {
   const linkedWorkflow = operation?.opType === 'async' && operation.workflowName
     ? context.workflows.get(operation.workflowName)
     : undefined
-  const isExpandable = operation?.opType === 'async' ? !!linkedWorkflow : !!(operation?.body && operation.body.length > 0)
+  const hasInlineBody = operation?.opType === 'async' ? !!linkedWorkflow : !!(operation?.body && operation.body.length > 0)
+  const hasOptions = !!stmt.options?.entries?.length
+  const isExpandable = hasInlineBody || hasOptions
 
   const [expanded, toggle] = useToggle(false, isExpandable)
 
@@ -138,12 +149,13 @@ export function NexusCallBlock({ stmt }: { stmt: NexusCall }) {
 
       {expanded && isExpandable && (
         <div className="block-body">
-          {operation?.opType === 'async' && linkedWorkflow ? (
-            <InlineWorkflowBlock def={linkedWorkflow} />
-          ) : operation?.body ? (
-            <SyncBodyBlock body={operation.body} />
-          ) : (
-            <div className="block-empty-body">No implementation defined</div>
+          <OptionsSection options={stmt.options} />
+          {hasInlineBody && (
+            operation?.opType === 'async' && linkedWorkflow ? (
+              <InlineWorkflowBlock def={linkedWorkflow} />
+            ) : operation?.body ? (
+              <SyncBodyBlock body={operation.body} />
+            ) : null
           )}
         </div>
       )}

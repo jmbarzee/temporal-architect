@@ -308,6 +308,75 @@
   text-overflow: ellipsis;
 }
 
+/* === Options block ===
+   Collapsible, neutrally-colored box holding a call/handler/namespace's
+   options. Collapsed it shows a summary of top-level keys; expanded it shows
+   the recursive key/value list. Uses the neutral control palette so it reads
+   as metadata, distinct from the type-colored definition/call blocks. */
+.options-block {
+  background: var(--block-control-bg);
+  border: 1px solid var(--block-control-border);
+  border-radius: 6px;
+  margin: 4px 0;
+  color: var(--block-control-text);
+}
+
+.options-block-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.options-block-label {
+  font-weight: 600;
+}
+
+.options-block-summary {
+  font-size: 0.85em;
+  opacity: 0.6;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.options-block-body {
+  padding: 2px 8px 6px;
+  /* Single source of size + family so deeper nesting never compounds. */
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.option-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.option-entry {
+  line-height: 1.6;
+}
+
+/* Nested groups (retry_policy, priority) step in by exactly one nesting level
+   so sub-keys align under their parent group key. Indentation is the only
+   thing that changes with depth — size and color stay constant. */
+.option-nested {
+  padding-left: var(--body-indent);
+}
+
+.option-key {
+  font-weight: 400;
+  margin-right: 6px;
+}
+
+.option-value {
+  font-weight: 400;
+}
+
 /* Body - nested content offset to the right (no line).
    --body-indent is the single source of truth for one nesting level so every
    body type (control flow, workflow/activity, handler) steps by the same

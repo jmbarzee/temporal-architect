@@ -167,6 +167,7 @@ export interface SignalDecl extends Position {
   type: 'signalDecl'
   name: string
   params: string
+  options?: OptionsBlock
   body?: Statement[]
 }
 
@@ -175,6 +176,7 @@ export interface QueryDecl extends Position {
   name: string
   params: string
   returnType?: string
+  options?: OptionsBlock
   body?: Statement[]
 }
 
@@ -183,6 +185,7 @@ export interface UpdateDecl extends Position {
   name: string
   params: string
   returnType?: string
+  options?: OptionsBlock
   body?: Statement[]
 }
 

@@ -114,6 +114,22 @@ Body:
 - Default initial state varies by block type
 
 
+## Options
+
+Option-bearing blocks render their `options:` block as a **collapsible, neutrally-colored box** at the top of the expanded block body, above any inline-expanded definition content. This covers:
+
+- **Calls** — activity, workflow, and nexus calls (`task_queue`, timeouts, `retry_policy`, `priority`, etc.)
+- **Handler declarations** — signal, query, and update handlers (`unfinished_policy`, `description`)
+- **Namespace entries** — worker and nexus-endpoint deployment config
+
+Presentation:
+- The box uses the **neutral control palette** (grey), not a type color, so it reads as metadata distinct from the type-colored definition/call blocks.
+- It is collapsed by default (progressive disclosure). Collapsed, the header shows an `options` label and a muted summary of the top-level option keys. Expanded, it shows the full recursive key/value list.
+- Each entry renders as a `key: value` row in monospace; nested blocks (e.g. `retry_policy`, `priority`) indent their sub-entries by exactly one nesting level. **Indentation is the only thing that changes with depth — text size and color stay constant at every level** so deep option trees read calmly rather than chaotically.
+
+Because the options box lives in the expanded body, a block that carries options becomes **expandable even when its reference is unresolved or it has no inline body** (e.g. an activity call to an undefined activity, or a nexus endpoint, which otherwise would not expand). The toggle indicator appears whenever a block has either inline content or options.
+
+
 ## Block Summaries
 
 Collapsed definition headers display a **summary annotation** — a short, muted string after the signature that communicates the block's structural shape without expanding it. Summaries are derived from the AST at render time. See [PRODUCT.md](./PRODUCT.md) § Glanceable summaries for the design principle.
