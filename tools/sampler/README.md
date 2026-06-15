@@ -49,8 +49,42 @@ go run ./tools/sampler \
 | `--out` | `./` | Output root dir |
 | `--sample-percent` | `10` | Percent of each type's executions to sample |
 | `--min-per-type` | `5` | Minimum executions to sample per type |
+| `--since` | _(none)_ | `StartTime` lower bound: RFC3339 timestamp or duration like `24h` (relative to now) |
+| `--until` | _(none)_ | `StartTime` upper bound: RFC3339 timestamp or duration like `1h` (relative to now) |
+| `--status` | _(none)_ | `ExecutionStatus` filter, e.g. `Running`, `Completed`, `Failed` |
 
 mTLS is enabled only when both `--tls-cert-path` and `--tls-key-path` are set.
+
+### Filtering by time window and status
+
+`--since` / `--until` / `--status` narrow which executions are both **counted**
+and **sampled** — they apply to Phase A enumeration and Phase B selection alike,
+so the per-type counts always match the candidates the sampler can return.
+
+- **Time window (`--since` / `--until`).** Each value is either an RFC3339
+  timestamp (`2026-06-01T00:00:00Z`) or a Go duration (`24h`, `30m`, `168h`).
+  A duration is interpreted relative to now, so `--since 24h` means "started in
+  the last 24 hours" (`StartTime >= now - 24h`) and `--until 1h` means "started
+  more than an hour ago" (`StartTime <= now - 1h`). Either side may be omitted
+  for an open-ended window. Internally this becomes a `StartTime BETWEEN … AND …`
+  clause (or a single-sided `>=` / `<=`) on the Visibility query.
+- **Status (`--status`).** Restricts to a single `ExecutionStatus` value. When a
+  status is set, the sampler **skips** its usual "prefer running, then top up"
+  pass (which would otherwise contradict e.g. `--status Completed`) and selects
+  directly from the filtered set.
+
+```bash
+# Completed workflows started in the last 24h
+go run ./tools/sampler --namespace default --out ./histories \
+  --since 24h --status Completed
+
+# A fixed RFC3339 window, any status
+go run ./tools/sampler --namespace default --out ./histories \
+  --since 2026-06-01T00:00:00Z --until 2026-06-07T00:00:00Z
+```
+
+Filters compose cleanly with the existing `WorkflowType` / running-preference
+logic and keep output deterministic (stable clause order, RFC3339 timestamps).
 
 ## Manual acceptance
 
@@ -73,8 +107,10 @@ round-trip from live histories through the importer.
 
 ## Unit tests
 
-The sampling math and path layout are pure functions covered by
-`sample_test.go`:
+The sampling math, query construction, and path layout are pure functions
+covered by `sampling/select_test.go` (counts, candidate selection, and
+filter-query building) and `path_test.go` (output paths, `--since`/`--until`
+parsing):
 
 ```bash
 go test ./tools/sampler/...
@@ -82,7 +118,8 @@ go test ./tools/sampler/...
 
 ## Deferred
 
-Time-window / status filters, transitive child-workflow and nexus-target
-sampling, server-side concurrency / rate limiting, Temporal Cloud env-var auth,
-and a `CountWorkflowExecutions GROUP BY WorkflowType` fast path for Phase A are
-tracked in the reverse-history workstream backlog.
+Transitive child-workflow and nexus-target sampling, server-side concurrency /
+rate limiting, and Temporal Cloud env-var auth are tracked in the
+reverse-history workstream backlog. (Time-window / status filters and the
+`CountWorkflowExecutions GROUP BY WorkflowType` fast path for Phase A are now
+implemented.)

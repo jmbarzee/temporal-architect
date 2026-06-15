@@ -62,7 +62,7 @@ Each stage is complete; the code is the source of truth. Summaries + locations:
 **Since v1 (post-ship enhancements):**
 
 - **Nexus forward-normalization.** The endpoint↔operation composition is now a dedicated `nexusRoute` graph edge emitted upstream by `tools/lsp/parser/graph/` (matched on `(namespace, queue)`) and consumed by the visualizer; `namespace` was dropped from `nexusEndpoint`/`nexusOperation` nodes (`queue`/`worker` retained as display-only). Records: `internal/changes/parser/CHANGES_004.md`, `internal/changes/visualizer/CHANGES_003.md`. (This is the forward-graph half; *history* nexus decoding remains deferred — see backlog.)
-- **Sampler time-window / status filters.** `--since` / `--until` (a `StartTime` window; RFC3339 or duration) and `--status` (`ExecutionStatus`), threaded consistently through enumeration and candidate selection in `tools/sampler/`.
+- **Sampler time-window / status filters.** `--since` / `--until` (a `StartTime` window; RFC3339 or duration) and `--status` (`ExecutionStatus`), threaded consistently through enumeration and candidate selection in `tools/sampler/`. Records: [SAMPLER_FILTERS_CHANGES.md](./SAMPLER_FILTERS_CHANGES.md).
 
 ---
 
