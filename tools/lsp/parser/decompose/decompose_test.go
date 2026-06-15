@@ -373,7 +373,7 @@ namespace ns:
             task_queue: "q"
 `
 	// Disable the floor so the trivial leaf sections aren't gated out, and set
-	// a low ceiling so the single fat chunk triggers #2.
+	// a low ceiling so the single fat chunk triggers the explore phase.
 	res := decomposeTWF(t, src, Options{Ceiling: 5, Floor: -1})
 
 	big := graph.DefKey(graph.KindWorkflow, "Big")
@@ -427,8 +427,8 @@ func TestLoopChunkExemptFromCutting(t *testing.T) {
 		},
 	}
 
-	// Ceiling 1: the chunk's complexity (2 base) exceeds it, so #2 would fire —
-	// but the chunk is one SCC (a loop), which is never cut.
+	// Ceiling 1: the chunk's complexity (2 base) exceeds it, so the explore
+	// phase would fire — but the chunk is one SCC (a loop), which is never cut.
 	res := Decompose(nil, g, Options{Ceiling: 1, Floor: -1})
 
 	if len(res.Chunks) != 1 {
@@ -442,7 +442,7 @@ func TestLoopChunkExemptFromCutting(t *testing.T) {
 		t.Fatalf("chunk complexity %d should exceed ceiling %d (so the exemption is meaningful)", c.Complexity, res.Ceiling)
 	}
 	if len(c.Divisions) != 0 {
-		t.Errorf("loop chunk must be exempt from #2; got divisions %+v", c.Divisions)
+		t.Errorf("loop chunk must be exempt from the explore phase; got divisions %+v", c.Divisions)
 	}
 }
 

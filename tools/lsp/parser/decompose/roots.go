@@ -23,9 +23,10 @@ const (
 //	  ∪ handler-bearing workflows (signal/query/update handlers, from the AST)
 //	  ∪ in-cycle-with-no-external-binding-in-edge
 //
-// Every root is tagged source "heuristic". #7 (declared inbound roots) later
-// contributes source "declared" without changing this shape. Requires condense()
-// to have already run (the cycle heuristic reads the SCC condensation).
+// Every root is tagged source "heuristic". The deferred declared-inbound-roots
+// feature later contributes source "declared" without changing this shape.
+// Requires condense() to have already run (the cycle heuristic reads the SCC
+// condensation).
 func (wg *workGraph) heuristicRoots(file *ast.File) map[string]*Root {
 	roots := map[string]*Root{}
 	add := func(key, reason string) {
@@ -111,4 +112,15 @@ func (wg *workGraph) heuristicRoots(file *ast.File) map[string]*Root {
 	}
 
 	return roots
+}
+
+// exportRoots renders the heuristic-root working map as the public Root slice,
+// sorted by key.
+func exportRoots(roots map[string]*Root) []Root {
+	out := make([]Root, 0, len(roots))
+	for _, r := range roots {
+		out = append(out, *r)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	return out
 }

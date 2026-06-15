@@ -68,26 +68,14 @@ func (wg *workGraph) condense() {
 			wg.sccOf[m] = i
 		}
 	}
-
-	wg.cond = map[int]map[int]bool{}
-	for from := range wg.binding {
-		for to := range wg.binding[from] {
-			fi, ti := wg.sccOf[from], wg.sccOf[to]
-			if fi == ti {
-				continue
-			}
-			if wg.cond[fi] == nil {
-				wg.cond[fi] = map[int]bool{}
-			}
-			wg.cond[fi][ti] = true
-		}
-	}
 }
 
-// partition computes the #1 hard partition: weakly-connected components of the
-// binding+soft subgraph. Every definition lands in exactly one chunk. It also
-// returns the inter-chunk contract dependency DAG (nexusCall edges between
-// chunks). Isolated definitions (no edges) are singleton chunks.
+// partition is the decide phase: it computes the hard partition — weakly-
+// connected components of the binding+soft subgraph — so every definition lands
+// in exactly one chunk. It also returns the inter-chunk contract dependency DAG
+// (nexusCall edges between chunks). Isolated definitions (no edges) are
+// singleton chunks. This is the mandatory structure the harness must honor;
+// the optional, strategy-driven cuts come later in the explore phase.
 func (wg *workGraph) partition(roots map[string]*Root) ([]Chunk, []ChunkEdge) {
 	adj := map[string]map[string]bool{}
 	addUndir := func(a, b string) {
@@ -240,7 +228,8 @@ func (wg *workGraph) bindingReachable(root string, memberSet map[string]bool) []
 }
 
 // distinctSCCs counts how many distinct SCCs the member set spans. A chunk with
-// fewer than two has no condensation-DAG seam to cut and is exempt from #2.
+// fewer than two has no condensation-DAG seam to cut and is exempt from the
+// explore phase (loops are never cut).
 func (wg *workGraph) distinctSCCs(members []string) int {
 	seen := map[int]bool{}
 	for _, m := range members {
@@ -260,13 +249,4 @@ func chunkID(rootKeys, members []string) string {
 		base = members[0]
 	}
 	return "chunk:" + base
-}
-
-// setOf builds a presence set from a slice.
-func setOf(keys []string) map[string]bool {
-	m := make(map[string]bool, len(keys))
-	for _, k := range keys {
-		m[k] = true
-	}
-	return m
 }
