@@ -362,6 +362,34 @@ for your whole deployment."*
 - **"Planned" lists** in README (Implementers/Translators/Debuggers) predate
   `author-infra`; refresh so shipped capability isn't shown as future.
 
+### 3.5 Scope absorbed into this reposition
+
+This reposition is the single executor for several items tracked elsewhere.
+They are **the same work** as surfaces already surveyed above — recorded here so
+they aren't executed twice:
+
+- **Harness-skill follow-on F2/F3** (`internal/changes/harness-skill/REVISIONS_001.md`).
+  F2 — "echo the North Star into `README.md`" — *is* the README tagline + vision
+  rewrite (Survey 2.1 / sequencing step 1). F3 — "North Star in published package
+  descriptions" — *is* the VSIX, Claude-plugin, npm, PyPI, visualizer, and
+  Homebrew description edits (Survey 1.1–1.7 / sequencing steps 2–6). The North
+  Star already lives in `AGENTS.md`; this reposition lifts it into both the
+  README and the storefront in one pass, so there is no standalone F2/F3 task.
+  (F1 — the dev-repo `AGENTS.md` one-liner, step 5 / Survey 2.5 — is also already
+  in scope here.) *Later piggyback, not this work:* once
+  `skills/temporal-architect` ships, the harness skill itself gets surfaced in
+  these same docs.
+- **`packaging.md` M3 / item 3.3** — the skill/onboarding note (`packaging.md:172`,
+  currently "outstanding"). Folded into the doc-drift/onboarding pass: skills
+  assume `twf` is **on PATH**, and the agent's surface to graph data is
+  `twf graph --json` (the **visualizer GUI stays human-facing** via the
+  `twf.visualize` command — not a CLI the agent drives). Pairs naturally with the
+  graph-from-history framing (§3.2, §3.4). When this reposition lands, flip
+  `packaging.md`'s "3.3 … outstanding" to done.
+- **Doc drift (§3.4)** — surfacing `author-infra` and graph-from-history,
+  refreshing the README "Planned" lists, and reconciling `publishing_setup.md:85`
+  are all part of this reposition (sequencing steps 1, 2, 7), not a separate task.
+
 ---
 
 ## Visualizer screenshots to capture
