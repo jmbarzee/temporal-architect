@@ -63,4 +63,6 @@ Because the importer emits the same node-ID scheme as `graph.Extract`, a future 
 
 Dogfood against a real namespace: run the sampler, build the graph with `twf graph --history`, and diff it against a hand-written `.twf` for a system we own. Expect the history graph to be a subset of the design graph; investigate any node/edge present in one but not the other. Validates the event→graph mapping end to end and seeds the observed-vs-designed overlay.
 
+Step-by-step instructions: [VALIDATION_RUNBOOK.md](./VALIDATION_RUNBOOK.md).
+
 (The two former cross-cutting questions — diagnostics kind and Visibility enumeration — are resolved; see GRAPH_FROM_HISTORY.md § "Resolved decisions".)
