@@ -190,9 +190,9 @@ The design is **not** ready on a clean `twf check` alone — gates 4-7 are where
 
 ## Handoff
 
-The deliverable is the `.twf` file. **Produce/review `.twf`; the `temporal-architect` harness routes implementation** — do not select authoring skills or orchestrate subagents from here. Alongside the `.twf`, note what the harness and authors need: target SDK/language, external system assumptions, and design decisions not captured in the notation.
+The deliverable is the `.twf` file. **Produce/review `.twf`; `temporal-architect` routes implementation** — do not select authoring skills or orchestrate subagents from here. Alongside the `.twf`, note what `temporal-architect` and the authors need: target SDK/language, external system assumptions, and design decisions not captured in the notation.
 
-This skill may run **in the main agent** (collaborative, interactive design — the common case, since `.twf` is the elevated surface the user designs *from*) or as a reviewer subagent dispatched by the harness. The harness decides which; either way, the output is the same `.twf` plus its handoff notes.
+This skill may run **in the main agent** (collaborative, interactive design — the common case, since `.twf` is the elevated surface the user designs *from*) or as a reviewer subagent dispatched by `temporal-architect`. `temporal-architect` decides which; either way, the output is the same `.twf` plus its handoff notes.
 
 ---
 
