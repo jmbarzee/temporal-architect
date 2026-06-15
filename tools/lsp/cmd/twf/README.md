@@ -182,10 +182,51 @@ deployment polling it.
 
 ---
 
+### `twf graph chunks`
+
+Decompose a design into independently-implementable **chunks** of work.
+This is the analysis the temporal-architect harness uses to fan
+implementation out to author subagents at contract boundaries. It is a
+pure consumer of the deployment graph; **the tool informs, it does not
+impose** a decomposition.
+
+```bash
+twf graph chunks workflow.twf                        # text
+twf graph chunks --json workflow.twf                 # JSON, payload key `chunks`
+twf graph chunks --ceiling 20 --json workflow.twf    # also emit #2 divisions
+twf graph chunks --ceiling 20 --floor 3 --by tree,nexus workflow.twf
+twf graph chunks --history ./sample                  # over a sampled-history graph
+```
+
+Two cleanly-typed outputs:
+
+- **#1 Hard boundaries** — the partition of authorable definitions into
+  chunks (weakly-connected components of the binding + signal subgraph,
+  with workflow-call cycles SCC-collapsed). Every definition lands in
+  exactly one chunk; the harness **MUST** dispatch separate subagents
+  across them. `nexusCall` is a contract cut that separates chunks and
+  forms the inter-chunk dependency DAG (`chunkEdges`).
+- **#2 Soft divisions** — only when `--ceiling N` is set: for any chunk
+  scoring above the ceiling, ranked candidate cuts (`tree`, `nexus`,
+  `worker`, `namespace`) plus a per-division dependency DAG. The harness
+  **MAY** use them. Loops are never cut.
+
+**Complexity** is a deterministic AST-derived scalar (body statements,
+distinct call fan-out, branch/loop depth, handler count, child-workflow
+count — documented, tunable weights; not a calibrated model). Chunks
+below `--floor M` (default 2; negative disables) are flagged too-granular
+with a recommended merge target. Over a `--history` graph there is no AST,
+so complexity is base-only and the decomposition is purely structural.
+
+The `chunks` payload schema is in [`twf.schema.json`](./twf.schema.json)
+under `$defs/Decomposition`.
+
+---
+
 ## JSON envelope
 
-Every JSON-emitting subcommand (`parse`, `symbols --json`, `graph --json`)
-shares the same top-level shape:
+Every JSON-emitting subcommand (`parse`, `symbols --json`, `graph --json`,
+`graph chunks --json`) shares the same top-level shape:
 
 ```json
 {

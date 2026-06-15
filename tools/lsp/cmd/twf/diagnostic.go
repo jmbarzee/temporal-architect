@@ -62,6 +62,7 @@ type Envelope struct {
 	Definitions interface{} `json:"definitions,omitempty"`
 	Symbols     interface{} `json:"symbols,omitempty"`
 	Graph       interface{} `json:"graph,omitempty"`
+	Chunks      interface{} `json:"chunks,omitempty"`
 }
 
 // fromParseError lifts a parser error into the wire Diagnostic shape.

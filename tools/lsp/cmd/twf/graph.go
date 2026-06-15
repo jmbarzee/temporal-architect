@@ -23,6 +23,11 @@ import (
 // Both modes emit the same JSON envelope so downstream tooling reads
 // diagnostics and graph in one payload.
 func graphCommand(args []string) int {
+	// `graph chunks` is a sibling analysis over the same extracted graph.
+	if len(args) > 0 && args[0] == "chunks" {
+		return chunksCommand(args[1:])
+	}
+
 	fs := flag.NewFlagSet("graph", flag.ContinueOnError)
 	jsonOutput := fs.Bool("json", false, "Output in JSON envelope (default: text)")
 	historyDir := fs.String("history", "", "Root dir of sampler output (<ns>/<type>/<id>.json); mutually exclusive with file arguments")

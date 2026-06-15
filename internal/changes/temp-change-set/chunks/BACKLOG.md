@@ -10,10 +10,11 @@ This is the un-deferral of Stage 3 #8 in
 **not** depend on declared inbound roots (#7, deferred — *Connecting In and Out of Temporal*); roots stay
 heuristic and #7 slots in additively later.
 
-**Active cycle work:** promoted to [`internal/changes/parser/REVISIONS_005.md`](../../parser/REVISIONS_005.md)
-(the call-structure decomposition: `tools/lsp/parser/decompose` + `twf graph chunks`). When it runs, the
-active `REVISIONS`/`CHANGES` work lives with the `parser` component and links back here. This file owns the
-design-of-record and the genuinely-open / deferred work.
+**Cycle work — landed:** the call-structure decomposition (`tools/lsp/parser/decompose` +
+`twf graph chunks`) shipped via [`internal/changes/parser/CHANGES_005.md`](../../parser/CHANGES_005.md)
+(REVISIONS_005, consumed). The deferred / genuinely-open work below remains owned here; the shipped scope
+and its spillover are tracked under `internal/changes/parser/BACKLOG.md` → *Graph Decomposition*. This
+file owns the design-of-record.
 
 **Reading:** `internal/changes/parser/BACKLOG.md` → *Graph Decomposition: Composable Chunks / Workflow
 Trees*; `tools/lsp/parser/graph/graph.go` (the resolved deployment graph this rides on).

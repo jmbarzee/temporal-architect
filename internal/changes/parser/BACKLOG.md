@@ -36,6 +36,32 @@ Walk the call/Nexus graph from declared entry points; report any workflow not re
 
 ## Graph Decomposition: Composable Chunks / Workflow Trees
 
+**Status: the basic case shipped** as `tools/lsp/parser/decompose` + `twf graph chunks`
+(`internal/changes/parser/CHANGES_005.md`, design-of-record
+`internal/changes/temp-change-set/chunks/BACKLOG.md`). Heuristic roots + Tarjan SCC collapse +
+the #1 hard partition, the AST complexity metric with floor-merge, and #2 ceiling-triggered ranked
+divisions with a dependency DAG are all in. The two harder cases below remain **deferred** (carried
+out of REVISIONS_005 as spillover):
+
+- **Loop cut ceiling** — loops are *never* cut in the shipped pass: a workflow-call cycle
+  SCC-collapses to one chunk and is exempt from #2 regardless of score. The deferred work is the
+  *raised* ceiling above which a loop's subtrees may be extracted (non-cutting strategies first, then
+  community detection as a last resort). Explicitly out of the first pass.
+- **Worker / namespace / nexus grouping lens** — an alternate grouping dimension over the same node
+  set, riding the existing coarsened worker/namespace edges + nexus tiers (the retained per-node
+  deployment attributes already support it). Parallel to the call-structure decomposition, not on its
+  critical path — `--by worker|namespace|nexus` already biases #2 *divisions*, but a standalone
+  grouping *lens* (independent of the #1 partition) is its own item.
+
+Additive, designed to slot in without reshaping the pipeline: **#7 declared inbound roots**
+(`dsl/BACKLOG.md` → *Connecting In and Out of Temporal*) becomes a higher-priority root seed
+(`source: declared`); **#1b language boundaries** (once `@lang` exists) hard-split on the retained
+per-node language attribute.
+
+---
+
+### (Original note, retained for context)
+
 The harness (entry-point skill) needs to decompose a `.twf` design into independently-implementable
 chunks to dispatch to authors/subagents. The decomposition rule is "cut at contract boundaries, never
 finer" — and `.twf` *is* the contract — so the natural chunk units are **independent workflow trees**

@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/twf.schema.json",
-  "$schemaVersion": "1.0.0",
+  "$schemaVersion": "1.1.0",
   "title": "twf JSON envelope",
-  "description": "Stable wire contract emitted by `twf parse`, `twf symbols --json`, and `twf graph --json`. Adding optional fields or new diagnostic codes is non-breaking; renaming or removing them is breaking and requires coordinated bumps across downstream consumers. `$schemaVersion` follows semver — minor bumps are additive, major bumps signal a breaking change to the wire shape.",
+  "description": "Stable wire contract emitted by `twf parse`, `twf symbols --json`, `twf graph --json`, and `twf graph chunks --json`. Adding optional fields or new diagnostic codes is non-breaking; renaming or removing them is breaking and requires coordinated bumps across downstream consumers. `$schemaVersion` follows semver — minor bumps are additive, major bumps signal a breaking change to the wire shape.",
   "type": "object",
   "required": ["summary", "diagnostics"],
   "additionalProperties": true,
@@ -26,6 +26,13 @@
       "oneOf": [
         { "type": "null" },
         { "$ref": "#/$defs/Graph" }
+      ]
+    },
+    "chunks": {
+      "description": "Present on `twf graph chunks --json`. The topology-based decomposition: the #1 hard partition of authorable definitions into chunks, the inter-chunk contract dependency DAG, and (when a ceiling is set) #2 ranked soft divisions.",
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/Decomposition" }
       ]
     }
   },
@@ -238,6 +245,116 @@
         "message":  { "type": "string" },
         "from":     { "type": "string" },
         "line":     { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "Decomposition": {
+      "type": "object",
+      "required": ["nodes", "roots", "chunks", "chunkEdges", "floor", "ceiling"],
+      "additionalProperties": false,
+      "properties": {
+        "nodes":      { "type": "array", "items": { "$ref": "#/$defs/ChunkNode" } },
+        "roots":      { "type": "array", "items": { "$ref": "#/$defs/ChunkRootDecl" } },
+        "chunks":     { "type": "array", "items": { "$ref": "#/$defs/Chunk" } },
+        "chunkEdges": { "type": "array", "items": { "$ref": "#/$defs/ChunkEdge" } },
+        "floor":      { "type": "integer" },
+        "ceiling":    { "type": "integer" }
+      }
+    },
+    "ChunkNode": {
+      "description": "One authorable definition (deployment-duplicates collapsed). Kind is workflow / activity / nexusOperation.",
+      "type": "object",
+      "required": ["key", "kind", "name", "complexity"],
+      "additionalProperties": false,
+      "properties": {
+        "key":        { "type": "string" },
+        "kind":       { "type": "string", "enum": ["workflow", "activity", "nexusOperation"] },
+        "name":       { "type": "string" },
+        "workers":    { "type": "array", "items": { "type": "string" } },
+        "namespaces": { "type": "array", "items": { "type": "string" } },
+        "langs":      { "type": "array", "items": { "type": "string" } },
+        "complexity": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ChunkRootDecl": {
+      "description": "A heuristic entry point. source is heuristic this pass; declared is reserved for #7.",
+      "type": "object",
+      "required": ["key", "source", "reasons"],
+      "additionalProperties": false,
+      "properties": {
+        "key":     { "type": "string" },
+        "source":  { "type": "string", "enum": ["heuristic", "declared"] },
+        "reasons": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Chunk": {
+      "description": "One element of the #1 hard partition (a weakly-connected component of the binding+soft subgraph). Every definition lands in exactly one chunk.",
+      "type": "object",
+      "required": ["id", "roots", "members", "complexity"],
+      "additionalProperties": false,
+      "properties": {
+        "id":         { "type": "string" },
+        "roots":      { "type": "array", "items": { "$ref": "#/$defs/ChunkRootReach" } },
+        "members":    { "type": "array", "items": { "type": "string" } },
+        "overlap":    { "type": "array", "items": { "type": "string" } },
+        "complexity": { "type": "integer", "minimum": 0 },
+        "cyclic":     { "type": "boolean" },
+        "belowFloor": { "type": "boolean" },
+        "mergeInto":  { "type": "string" },
+        "divisions":  { "type": "array", "items": { "$ref": "#/$defs/Division" } }
+      }
+    },
+    "ChunkRootReach": {
+      "type": "object",
+      "required": ["key", "reaches"],
+      "additionalProperties": false,
+      "properties": {
+        "key":     { "type": "string" },
+        "reaches": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "ChunkEdge": {
+      "description": "A contract-cut dependency between two hard chunks (via == nexusCall).",
+      "type": "object",
+      "required": ["from", "to", "via"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string" },
+        "to":   { "type": "string" },
+        "via":  { "type": "string", "enum": ["nexusCall"] }
+      }
+    },
+    "Division": {
+      "description": "One candidate way to cut an over-ceiling chunk into sections, with a dependency DAG among them. Rank 1 is the most balanced.",
+      "type": "object",
+      "required": ["strategy", "rank", "sections", "dag", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "strategy":  { "type": "string", "enum": ["tree", "nexus", "worker", "namespace"] },
+        "rank":      { "type": "integer", "minimum": 1 },
+        "sections":  { "type": "array", "items": { "$ref": "#/$defs/Section" } },
+        "dag":       { "type": "array", "items": { "$ref": "#/$defs/SectionEdge" } },
+        "rationale": { "type": "string" }
+      }
+    },
+    "Section": {
+      "type": "object",
+      "required": ["id", "members", "complexity"],
+      "additionalProperties": false,
+      "properties": {
+        "id":         { "type": "string" },
+        "members":    { "type": "array", "items": { "type": "string" } },
+        "complexity": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "SectionEdge": {
+      "description": "Orders two sections in a division: From depends on (calls into) To.",
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string" },
+        "to":   { "type": "string" }
       }
     }
   }

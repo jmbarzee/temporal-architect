@@ -21,6 +21,7 @@ Commands:
   parse     Emit the canonical JSON envelope (AST + diagnostics + summary)
   symbols   List workflows and activities; --json for envelope output
   graph     Show the resolved deployment graph; --json for envelope output
+            (subcommand: graph chunks — topology-based work decomposition)
   spec      Print the embedded TWF language specification
   lsp       Start the language server (stdio)
   version   Print the twf version
@@ -39,6 +40,8 @@ Examples:
   twf parse workflow.twf | jq '.diagnostics'
   twf symbols --json workflow.twf | jq '.symbols[].name'
   twf graph workflow.twf
+  twf graph chunks workflow.twf
+  twf graph chunks --ceiling 20 --json workflow.twf | jq '.chunks'
   twf spec --list
   twf lsp
 `
