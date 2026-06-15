@@ -80,7 +80,7 @@ paper over failures.
 | Layer (components) | Validation |
 |---|---|
 | Go — `parser` (`tools/lsp/`) | `GOMODCACHE=$HOME/go/pkg/mod go build ./... && go test ./...` from `tools/lsp/` |
-| Skills / spec — `dsl`, `design-skill`, `author-go-skill`, `author-infra-skill` | `twf check` against affected `.twf` files (e.g. under `examples/`) |
+| Skills / spec — `dsl`, `skills` | `twf check` against affected `.twf` files (e.g. under `examples/`) |
 | Visualizer — `visualizer`, `visualizer-spec` | `npm run build` from `tools/visualizer/` |
 
 The `GOMODCACHE` prefix is required in this sandbox (see `AGENTS.md`).

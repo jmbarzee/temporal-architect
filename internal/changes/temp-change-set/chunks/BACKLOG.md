@@ -103,6 +103,14 @@ soft divisions + dependency ordering, and SCC collapse of workflow-call cycles (
 
 ## Deferred / open work
 
+- **Chunk ↔ existing-impl reconciliation + cheap implementation-status check** — the harness consumer
+  decomposes over the *design*, but `twf graph chunks` doesn't know what's already implemented. Selective
+  dispatch (don't re-author unchanged chunks; skip components that don't need altering) currently relies
+  on a coarse stopgap: resolve the chunk's `# impl: <dirs>` link and use the author skill's build/test
+  verify as a changed-vs-unchanged signal. Wanted: a first-class staleness signal tying **chunk identity**
+  (from the chunker) + the `# impl:` link + a quick verify into a "this chunk's implementation is
+  in/out of sync with its `.twf`" check. Shares a surface with drift detection (author feedback /
+  sampler-on-production). Consumer: the `temporal-architect` harness skill.
 - **Loop cut ceiling** — the raised ceiling above which a loop's subtrees (then, last-resort, community
   detection) may be cut. Explicitly out of the first pass; loops are never cut until this lands.
 - **Worker / namespace / nexus grouping lens** — an alternate grouping dimension over the same node set;

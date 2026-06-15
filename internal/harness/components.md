@@ -17,15 +17,18 @@ Review prompts referenced below live at `.claude/skills/dev-cycle/references/<na
 | Component | Source scope | Coordination dir | Quality review | Alignment review(s) | Downstream (contract types) |
 |---|---|---|---|---|---|
 | `dsl` | `tools/spec/sections/` | `internal/changes/dsl/` | `review-quality-dsl-spec` | — | `parser` [Grammar] |
-| `parser` | `tools/lsp/` | `internal/changes/parser/` | `review-quality-parser` | `review-alignment-parser` | `visualizer` [Schema, API], `visualizer-spec` [Schema], `design-skill` [Grammar, Semantic], `vscode` [Schema, API — manual] |
+| `parser` | `tools/lsp/` | `internal/changes/parser/` | `review-quality-parser` | `review-alignment-parser` | `visualizer` [Schema, API], `visualizer-spec` [Schema], `skills` [Grammar, Semantic], `vscode` [Schema, API — manual] |
 | `visualizer-spec` | `tools/visualizer/spec/` | `internal/changes/visualizer-spec/` | `review-quality-visualizer-spec` | — | `visualizer` [Spec] |
 | `visualizer` | `tools/visualizer/` (excluding `spec/`) | `internal/changes/visualizer/` | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — (leaf) |
-| `design-skill` | `skills/temporal-architect-design/` | `internal/changes/design-skill/` | `review-quality-skill` | `review-alignment-design-skill` | `author-go-skill` [Grammar, Semantic], `author-infra-skill` [Grammar, Semantic] |
-| `author-go-skill` | `skills/temporal-architect-author-go/` | `internal/changes/author-go-skill/` | `review-quality-skill` | `review-alignment-author-skills` | — (leaf) |
-| `author-infra-skill` | `skills/temporal-architect-author-infra/` | `internal/changes/author-infra-skill/` | `review-quality-skill` | `review-alignment-author-skills` | — (leaf) |
+| `skills` | `skills/` | `internal/changes/` (per-skill subdirs: `design-skill/`, `author-go-skill/`, `author-infra-skill/`, `harness-skill/`) | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — (leaf) |
 
-`internal/changes/orchestrator/` and `internal/changes/harness-skill/` are **not** cycle
-components — they are coordination scratch for the harness's own design and are excluded.
+The skill set — design, the two authors, and the `temporal-architect` harness front-door — is **one
+component**. Its members have dependencies flowing in many internal directions (design ↔ authors ↔
+harness), so those edges are **intra-component**, not modeled in the DAG. The skills are downstream; the
+only inbound edge is from `parser`.
+
+`internal/changes/orchestrator/` is **not** a cycle component — it is coordination scratch for the
+orchestrator's own design and is excluded.
 
 ## Propagation routing
 
@@ -36,14 +39,16 @@ changes never propagate.
 | Source | Change type | Triggers (downstream → review) |
 |---|---|---|
 | `dsl` | Grammar | `parser` → `review-alignment-parser` |
-| `parser` | Grammar | `design-skill` → `review-alignment-design-skill` |
+| `parser` | Grammar | `skills` → `review-alignment-design-skill` |
 | `parser` | Schema | `visualizer` → `review-quality-visualizer`; `visualizer-spec` → `review-quality-visualizer-spec` |
 | `parser` | API | `visualizer` → `review-quality-visualizer` (TS types); `vscode` → manual |
-| `parser` | Semantic | `design-skill` → `review-alignment-design-skill` |
+| `parser` | Semantic | `skills` → `review-alignment-design-skill` |
 | `visualizer-spec` | Spec | `visualizer` → `review-alignment-visualizer` |
-| `design-skill` | Grammar, Semantic | `author-go-skill` → `review-alignment-author-skills`; `author-infra-skill` → `review-alignment-author-skills` |
 
-Leaves (`visualizer`, `author-go-skill`, `author-infra-skill`) terminate propagation.
+Design → author propagation is now **intra-component** (within `skills`) and no longer a DAG edge: a
+design change still triggers `review-alignment-author-skills`, but as part of the `skills` component's
+own review sweep rather than cross-component propagation. Leaves (`visualizer`, `skills`) terminate
+propagation.
 
 ## Contract types
 
@@ -63,9 +68,12 @@ upstream change landing later:
 
 ```
 Wave 1: dsl, parser
-Wave 2: visualizer-spec, visualizer, design-skill
-Wave 3: author-go-skill, author-infra-skill
+Wave 2: visualizer-spec, visualizer, skills
 ```
+
+`skills` depends only on `parser`/`dsl` (Wave 1); the former per-skill waves collapse into the single
+`skills` node. Intra-`skills` ordering (design before authors before harness) is handled inside the
+component's own review sweep, not by the cross-component wave order.
 
 `vscode` (`packages/vscode/`) has no automated review command; parser Schema/API changes
 that reach it are flagged for manual review.
