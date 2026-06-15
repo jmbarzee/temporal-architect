@@ -1,8 +1,7 @@
 # Parser Revisions: Topology-based graph decomposition (`twf graph chunks`)
 
-**Source:** ideation session captured in
-`internal/changes/temp-change-set/skill-retro/ordered_implementation_plan.md`
-§ "Feature design capture: Topology-based graph decomposition (the un-deferral of #8)".
+**Source:** ideation session captured in the chunks workstream backlog
+`internal/changes/temp-change-set/chunks/BACKLOG.md` (design-of-record).
 Un-defers Stage 3 #8 (`parser/BACKLOG.md` → *Graph Decomposition: Composable Chunks / Workflow Trees*),
 **without** depending on declared inbound roots (#7, deferred — *Connecting In and Out of Temporal*).
 

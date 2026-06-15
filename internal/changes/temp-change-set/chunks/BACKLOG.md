@@ -1,38 +1,24 @@
-Ordered implementation plan
-0. (early, parallel) — G1 baseline reflection pass. Run the zero-context baseline + case sub-agents on the original .twf artifacts before locking the Stage 1 skill rewrites — it's meant to surface blind spots first. No REVISIONS; it's a task. (Optional but recommended; doesn't block anything.)
+# chunks Workstream Backlog
 
-Stage 1 — independent skill content (parallelizable):
+Dedicated backlog for the **chunks** effort: topology-based graph decomposition — "what are the composable
+chunks of work?" — that lets the harness skill break implementation out to author subagents at contract
+boundaries. Kept separate from the per-component backlogs (`parser`, `visualizer`, `dsl`, …) so this
+project's deferred work isn't lost behind slower component workstreams.
 
-design-skill/REVISIONS_002.md → Group 2 first: the shared project-discovery subagent (B1c). It's the cross-dependency — build it before the author-go Orient that consumes it.
-design-skill/REVISIONS_002.md → Groups 1 & 3 (reverse-engineering parallel path; one-package + comment conventions).
-author-go-skill/REVISIONS_001.md — Group 1 (Orient, depends on #1) then Groups 2–4 (proto-driven.md, three-layer-testing.md, worker expansion), in parallel. Distill from temp-change-set/skill-retro/PROTO_DRIVEN_TEMPORAL.md + THREE_LAYER_TESTING.md, then delete those.
-packaging.md M3 (extension symlinks twf into ~/.local/bin) — fully independent, do anytime.
-AGENTS.md (F1) — dev-repo North Star — independent.
+This is the un-deferral of Stage 3 #8 in
+[skill-retro/ordered_implementation_plan.md](../skill-retro/ordered_implementation_plan.md). It does
+**not** depend on declared inbound roots (#7, deferred — *Connecting In and Out of Temporal*); roots stay
+heuristic and #7 slots in additively later.
 
-
-Stage 2 — new skill (after Stage 1's discovery subagent): 6. author-infra-skill/REVISIONS_001.md — Group 1 (skeleton+Orient, needs the discovery subagent) then Groups 2–4 (terraform.md, tcld.md, not-yet-modeled intent).
-
-Stage 3 — DSL/parser: 7. dsl/REVISIONS_001.md Entry Point Annotation — DEFERRED this cycle. The narrow `@entry` marker is being reframed as a general "connect in and out of Temporal" boundary concept (inbound triggers + outbound "declared elsewhere"); back to dsl/BACKLOG.md → *Connecting In and Out of Temporal*. 8. parser/REVISIONS_002.md reachability + tree/chunk tooling — DEFERRED with #7 (it hard-depended on declared roots). Chunk identification stays in parser/BACKLOG.md → *Graph Decomposition*: basic graph traversal of connected components works today; loops/cycles and oversized trees are the harder open cases needing a more sophisticated strategy. 9. dsl/REVISIONS_001.md Group 1 + parser/REVISIONS_002.md Group 1 (worker options, parser-permissive) — independent pair; now the only Stage 3 work.
-
-Stage 4 — capstone (after 1–2, ideally after 8): 10. harness-skill/REVISIONS_001.md (ships as temporal-architect) — Groups 1–4, then Group 5 (trim design). 11. F2/F3 — echo the North Star into README + published package descriptions.
-
-Critical-path summary
-B1c discovery subagent (#1) gates author-go Orient (#3) and author-infra (#6).
-Entry Point Annotation (#7) and the graph-tree tooling that hard-depended on it (#8) are DEFERRED this cycle (see Stage 3). The harness (#10) ships without tool-computed tree decomposition, falling back to basic connected-component graph traversal (parser/BACKLOG.md → Graph Decomposition); precise root-based trees return with the reframed inbound boundary.
-Everything else in Stage 1 (packaging M3, AGENTS.md, the reference docs, worker section) is independent and parallelizable.
-The deep DSL designs (packages/@ref/extern/access-policy/search-attrs, plus the reframed inbound/outbound boundary — dsl/BACKLOG.md → Connecting In and Out of Temporal) stay in the dsl/parser BACKLOGs — promote to REVISIONS later, not on this path.
-Each REVISIONS file has its own Findings / Files-touched / Parallelism / Specific-changes, so they're ready for /project:address-review one at a time. The plan now carries the REVISIONS index up top for traceability.
-
----
-
-# Feature design capture: Topology-based graph decomposition (the un-deferral of #8)
-
-Parked design for the chunk/decomposition tooling that Stage 3 #8 deferred. This is the brainstormed
-design-of-record; promote to `parser/REVISIONS_NNN.md` when planning resumes. Does **not** depend on
-declared inbound roots (#7) — roots stay heuristic and #7 slots in additively later.
+**Active cycle work:** promoted to [`internal/changes/parser/REVISIONS_005.md`](../../parser/REVISIONS_005.md)
+(the call-structure decomposition: `tools/lsp/parser/decompose` + `twf graph chunks`). When it runs, the
+active `REVISIONS`/`CHANGES` work lives with the `parser` component and links back here. This file owns the
+design-of-record and the genuinely-open / deferred work.
 
 **Reading:** `internal/changes/parser/BACKLOG.md` → *Graph Decomposition: Composable Chunks / Workflow
 Trees*; `tools/lsp/parser/graph/graph.go` (the resolved deployment graph this rides on).
+
+---
 
 ## Goal
 
@@ -97,7 +83,7 @@ Chunk unit = **SCC-collapsed reachable-set per heuristic root, shared nodes repo
 duplicated)**. SCC condensation collapses workflow-call cycles into one node.
 
 **Loops are never cut this pass.** The "raised loop ceiling above which a cut is enforced (via non-cutting
-strategies like subtree extraction until then, then community detection)" → **BACKLOG**, not this pass.
+strategies like subtree extraction until then, then community detection)" → **deferred** (see below).
 
 ## Tool surface (sketch)
 
@@ -113,13 +99,25 @@ Reuse the existing round-trip harness (`tools/sampler` → `twf graph --history`
 same graph: hard-partition grouping (isolated components), floor merges of trivial chunks, ceiling-triggered
 soft divisions + dependency ordering, and SCC collapse of workflow-call cycles (one chunk, **no** cut).
 
-## Spillover backlog items
+---
 
-- **Loop cut ceiling** (parser/BACKLOG) — raised ceiling above which a loop's subtrees, then
-  community-detection cuts, apply. Not this pass.
-- **Worker / namespace / nexus grouping lens** (separate parser/BACKLOG item) — an alternate grouping
-  dimension over the same node set; rides existing coarsened worker/namespace edges + nexus tiers. Parallel
-  to the call-structure decomposition, not on its critical path.
-- **#7 declared inbound roots** — sharpens root identification additively (`source: declared`).
-- **#1b language boundaries** — depends on lang annotations (dsl/BACKLOG); reads the retained deployment
-  attributes; additive.
+## Deferred / open work
+
+- **Loop cut ceiling** — the raised ceiling above which a loop's subtrees (then, last-resort, community
+  detection) may be cut. Explicitly out of the first pass; loops are never cut until this lands.
+- **Worker / namespace / nexus grouping lens** — an alternate grouping dimension over the same node set;
+  rides the existing coarsened worker/namespace edges + nexus tiers. Parallel to the call-structure
+  decomposition, not on its critical path. (Rides an existing component → its own backlog entry; likely
+  promote into `parser/BACKLOG.md`.)
+- **#7 declared inbound roots** — sharpens root identification additively (`source: declared`); see
+  `dsl/BACKLOG.md` → *Connecting In and Out of Temporal*.
+- **#1b language boundaries** — depends on `@lang` annotations (dsl/BACKLOG); reads the retained per-node
+  deployment attributes; additive to the #1 partition.
+
+## Open questions (carried, non-blocking)
+
+- Default floor/ceiling values and metric weights — ship documented defaults, tune from real designs.
+- Should `twf graph chunks` ever auto-apply the floor merge, or only *recommend* it? (Lean: recommend
+  only — consistent with "informs, does not impose".)
+- Multi-file designs: cross-file callers already resolve in the graph, so the chunker inherits that;
+  verify in a sampler fixture.
