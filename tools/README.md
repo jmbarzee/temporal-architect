@@ -14,8 +14,9 @@ release tooling, the dev-cycle orchestrator, helper scripts.
 | Path | Ships as | Contract |
 |---|---|---|
 | [`spec/`](./spec/) | Embedded markdown sections + Go module `github.com/jmbarzee/temporal-architect/tools/spec` | DSL grammar — single source of truth |
-| [`lsp/`](./lsp/) | `twf` binary (LSP server, parser, validator, CLI) | Token types, AST node types, resolver error model, `twf parse`/`symbols`/`check` JSON |
-| [`visualizer/`](./visualizer/) | `@temporal-architect/visualizer` npm package + VSIX webview | Consumes the LSP's parser-output JSON |
+| [`lsp/`](./lsp/) | `twf` binary (LSP server, parser, validator, CLI); owns the Go DTO wire contract | Token types, AST node types, resolver error model, `twf parse`/`symbols`/`check` JSON |
+| [`wire-types/`](./wire-types/) | `@temporal-architect/wire-types` npm package (release artifact) | tygo-generated TS projection of the Go DTOs; gated by `make check-types` |
+| [`visualizer/`](./visualizer/) | `@temporal-architect/visualizer` npm lib + webview IIFE bundle (both release artifacts) | Consumes the LSP's parser-output JSON via wire-types |
 
 ## Conventions
 

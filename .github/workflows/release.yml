@@ -2,21 +2,20 @@ name: Release
 
 # Orchestrator. Triggered by every `v*` tag push.
 #
-# All real work is in per-phase reusable workflows:
-#   _check-versions.yml          — assert every manifest matches the tag
-#   _build-binaries.yml          — matrix builds twf binary + VSIX + archives
-#   _build-skills-tarball.yml    — package skills/ as a release asset
-#   _publish-vsix.yml            — VS Code Marketplace + Open VSX
-#   _publish-npm-twf.yml         — @temporal-architect/twf wrapper + 5 sub-pkgs
-#   _publish-npm-visualizer.yml  — @temporal-architect/visualizer
-#   _publish-npm-claude-plugin.yml — @temporal-architect/claude-plugin (Claude Code plugin payload)
-#   _publish-pypi.yml            — twf-cli wheels × 5 + single twine upload
-#   _publish-github-release.yml  — checksums + GitHub Release with all assets
-#   _publish-brew.yml            — bump jmbarzee/homebrew-twf formula
+# After the distribution split the toolchain is a pure release-cutter: it builds
+# primitive artifacts and publishes the canonical GitHub Release, then dispatches
+# to the distribution repo (jmbarzee/temporal-architect-dist), which downloads
+# those assets and publishes every registry package.
 #
-# This file is intentionally thin: declare the dependency graph and pass
-# secrets to the reusables that need them. When adding a new publish channel,
-# add one job here that `uses:` the new reusable. Don't inline steps here.
+# All real work is in per-phase reusable workflows:
+#   _check-versions.yml          — assert the visualizer + wire-types manifests match the tag
+#   _build-binaries.yml          — matrix builds the twf binary archives
+#   _build-skills-tarball.yml    — package skills/ as a release asset
+#   _build-artifacts.yml         — visualizer lib + webview bundle + wire-types tarballs
+#   _publish-github-release.yml  — checksums + GitHub Release with all assets
+#
+# This file is intentionally thin: declare the dependency graph and pass the
+# dispatch secret. Registry publishing lives in the distribution repo.
 
 on:
   push:
@@ -34,7 +33,7 @@ jobs:
     with:
       version: ${{ github.ref_name }}
 
-  # ── Build (artifacts consumed by publish jobs) ───────────────────────────
+  # ── Build (artifacts the Release ships) ──────────────────────────────────
 
   build-binaries:
     needs: check-versions
@@ -48,60 +47,33 @@ jobs:
     with:
       version: ${{ github.ref_name }}
 
-  # ── Publish (one channel per job, run in parallel after their deps) ──────
-
-  publish-vsix:
-    needs: build-binaries
-    uses: ./.github/workflows/_publish-vsix.yml
-    with:
-      version: ${{ github.ref_name }}
-    secrets:
-      VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
-      OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}
-
-  publish-npm-twf:
-    needs: build-binaries
-    uses: ./.github/workflows/_publish-npm-twf.yml
-    with:
-      version: ${{ github.ref_name }}
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  publish-pypi:
-    needs: build-binaries
-    uses: ./.github/workflows/_publish-pypi.yml
-    with:
-      version: ${{ github.ref_name }}
-    secrets:
-      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-
-  publish-npm-visualizer:
+  build-artifacts:
     needs: check-versions
-    uses: ./.github/workflows/_publish-npm-visualizer.yml
+    uses: ./.github/workflows/_build-artifacts.yml
     with:
       version: ${{ github.ref_name }}
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  publish-npm-claude-plugin:
-    needs: check-versions
-    uses: ./.github/workflows/_publish-npm-claude-plugin.yml
-    with:
-      version: ${{ github.ref_name }}
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  # ── Cut the canonical GitHub Release ─────────────────────────────────────
 
   publish-github-release:
-    needs: [build-binaries, build-skills-tarball]
+    needs: [build-binaries, build-skills-tarball, build-artifacts]
     uses: ./.github/workflows/_publish-github-release.yml
     with:
       version: ${{ github.ref_name }}
 
-  publish-brew:
-    # Needs the GitHub Release to exist so the formula's URLs + SHAs are pinnable.
+  # ── Hand off to the distribution repo ────────────────────────────────────
+
+  dispatch-dist:
+    # Fires only after the Release (and its assets) exist, so dist can download
+    # them immediately. Lockstep is automatic: dist stamps the incoming version
+    # into its manifests and never tags independently.
     needs: publish-github-release
-    uses: ./.github/workflows/_publish-brew.yml
-    with:
-      version: ${{ github.ref_name }}
-    secrets:
-      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch toolchain-release to distribution repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DIST_DISPATCH_TOKEN }}
+          repository: jmbarzee/temporal-architect-dist
+          event-type: toolchain-release
+          client-payload: '{"version": "${{ github.ref_name }}"}'

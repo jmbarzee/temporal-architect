@@ -41,14 +41,12 @@ jobs:
           go-version-file: tools/lsp/go.mod
 
       - name: Install dependencies
+        run: cd tools/visualizer && npm ci
+
+      - name: Build toolchain (binary + visualizer lib/webview)
+        run: make build
+
+      - name: Verify release artifacts pack
         run: |
-          cd packages/vscode && npm ci
-          cd ../../tools/visualizer && npm ci
-
-      - run: make build
-
-      - name: Verify VSIX packaging
-        run: make package
-
-      - name: Verify Claude Code plugin builds
-        run: make build-claude-plugin
+          make pack-visualizer-lib
+          make pack-wire-types

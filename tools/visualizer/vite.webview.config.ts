@@ -11,7 +11,10 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../../packages/vscode/dist/webview',
+    // Toolchain-local output. The webview bundle is a release asset the
+    // distribution repo downloads and embeds into the VSIX — it no longer
+    // writes into a packages/ extension tree (which now lives in the dist repo).
+    outDir: '../../dist/webview',
     emptyOutDir: true,
     cssCodeSplit: false,
     rollupOptions: {

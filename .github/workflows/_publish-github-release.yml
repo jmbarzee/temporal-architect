@@ -1,8 +1,11 @@
 name: _publish-github-release
 
 # Reusable: create the GitHub Release with all downloadable assets +
-# SHA256SUMS. Consumes vsix-*, twf-archive-*, and skills-tarball artifacts
-# produced by _build-binaries.yml and _build-skills-tarball.yml.
+# SHA256SUMS. This Release is the canonical, durable contract the distribution
+# repo and the Homebrew tap pin to. Consumes:
+#   twf-archive-*       (from _build-binaries.yml)   — per-platform binary archives
+#   skills-tarball      (from _build-skills-tarball.yml)
+#   release-artifacts   (from _build-artifacts.yml)  — visualizer lib + webview + wire-types
 
 on:
   workflow_call:
@@ -24,12 +27,6 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          pattern: vsix-*
-          merge-multiple: true
-          path: packages/vscode/
-
-      - uses: actions/download-artifact@v4
-        with:
           pattern: twf-archive-*
           merge-multiple: true
           path: dist/
@@ -39,18 +36,24 @@ jobs:
           name: skills-tarball
           path: dist/
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+
       - name: Generate SHA256SUMS
         run: |
           cd dist
-          sha256sum twf-* skills-* > SHA256SUMS
+          sha256sum twf-* skills-* *.tgz visualizer-webview-* > SHA256SUMS
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            packages/vscode/*.vsix
             dist/twf-*
             dist/skills-*
+            dist/*.tgz
+            dist/visualizer-webview-*
             dist/SHA256SUMS
             packages/install.sh
           generate_release_notes: true

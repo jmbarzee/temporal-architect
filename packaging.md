@@ -2,6 +2,20 @@
 
 How temporal-architect ships — the catalog of distribution channels, the conventions that govern packaging work, and the remaining milestones to close out the epic.
 
+> **Two-repo topology.** Packaging has been split out of the toolchain. This repo
+> (`jmbarzee/temporal-architect`) is a pure toolchain: it builds the engine + rendering
+> source and cuts a single **GitHub Release** of primitive artifacts (per-platform `twf`
+> binaries, `skills-vX.Y.Z.tar.gz`, the visualizer lib + webview bundle, the
+> `@temporal-architect/wire-types` tarball, `SHA256SUMS`, `install.sh`). The
+> **distribution repo** (`jmbarzee/temporal-architect-dist`) consumes those assets and
+> publishes every registry package. On each `v*` tag this repo cuts the Release and fires a
+> `repository_dispatch` carrying the version; dist stamps it into its manifests and
+> publishes in lockstep. **All `_publish-*` workflows, registry secrets, and the
+> packaging manifests (`packages/vscode`, `packages/npm`, `packages/pypi`,
+> `.claude-plugin`, `bump-brew`) now live in the dist repo** — sections below that describe
+> them (Current state, Release pipeline, Conventions C2–C7, External account checklist)
+> describe the *combined* system; the publish half is owned by dist.
+
 ## Audiences
 
 The packaging story serves three audiences:
@@ -24,38 +38,48 @@ The bundle is intentionally small: **one binary** (`twf`), **one npm package** (
 
 Distribution surfaces and where their sources live:
 
+Distribution surfaces, where their source lives (T = this toolchain repo, D = dist repo), and how they ship:
+
 | Channel | Source | Install line | Audience |
 |---|---|---|---|
-| Go binary direct | `tools/lsp/` | `curl -sSL .../install.sh \| bash` or `go install .../tools/lsp/cmd/twf@latest` | Direct binary users |
-| VS Code / Cursor / Open VSX extension | `tools/lsp/`, `tools/visualizer/`, `skills/`, `packages/vscode/` | VSIX (5 platforms) on VS Code Marketplace + Open VSX | Cursor, VS Code, Codium devs |
-| npm wrapper + 5 platform sub-packages | `packages/npm/` | `npx -y @temporal-architect/twf` (also the canonical MCP install line) | Node / TS, MCP clients |
-| PyPI wheels | `packages/pypi/twf-cli/` | `pip install twf-cli` | Python ecosystem, spec-builder Temporal worker |
-| Homebrew tap | recipe via `internal/release/bump-brew/` against `jmbarzee/homebrew-twf` | `brew install jmbarzee/twf/twf` | macOS / Linux desktop devs |
-| Claude Code plugin | `packages/npm/claude-plugin/` (npm package; catalog at `.claude-plugin/marketplace.json`) | `/plugin marketplace add jmbarzee/temporal-architect` | Claude Code users |
-| Skills tarball | `skills/` via `internal/release/gen-skills-manifest/` | `skills-vX.Y.Z.tar.gz` GitHub Release asset | Prompt-library builders, non-binary consumers |
+| Go binary direct | `tools/lsp/` (T) | `curl -sSL .../install.sh \| bash` or `go install .../tools/lsp/cmd/twf@latest` | Direct binary users |
+| VS Code / Cursor / Open VSX extension | `packages/vscode/` (D); binary + webview + wire-types downloaded from the T Release | VSIX (5 platforms) on VS Code Marketplace + Open VSX | Cursor, VS Code, Codium devs |
+| npm wrapper + 5 platform sub-packages | `packages/npm/` (D); binary archives from the T Release | `npx -y @temporal-architect/twf` (also the canonical MCP install line) | Node / TS, MCP clients |
+| npm visualizer + wire-types | built in T (`tools/visualizer`, `tools/wire-types`); published from D | `npm install @temporal-architect/visualizer` / `…/wire-types` | Library + type consumers |
+| PyPI wheels | `packages/pypi/twf-cli/` (D); binary archives from the T Release | `pip install twf-cli` | Python ecosystem, spec-builder Temporal worker |
+| Homebrew tap | `bump-brew` (D) against `jmbarzee/homebrew-twf`, pinning T Release URLs/SHAs | `brew install jmbarzee/twf/twf` | macOS / Linux desktop devs |
+| Claude Code plugin | `packages/npm/claude-plugin/` (D); catalog at `.claude-plugin/marketplace.json` (D root) | `/plugin marketplace add jmbarzee/temporal-architect-dist` | Claude Code users |
+| Skills tarball | `skills/` (T) via `internal/release/gen-skills-manifest/` | `skills-vX.Y.Z.tar.gz` GitHub Release asset | Prompt-library builders, non-binary consumers |
 
 All channels converge on the same `twf` binary and the same embedded skills + spec.
 
-### Release pipeline
+### Release pipeline (two repos, one event)
 
 ```
-git tag vX.Y.Z && git push --tags
+[toolchain repo]  git tag vX.Y.Z && git push --tags
         |
         v
-release.yml (orchestrator)
-  +-- _check-versions          assert every manifest's version equals the tag
-  +-- _build-binaries          matrix: 5 platforms; twf binary, VSIX
+release.yml (release-cutter)
+  +-- _check-versions          assert tools/visualizer + tools/wire-types match the tag
+  +-- _build-binaries          matrix: 5 platforms; twf binary archives
   +-- _build-skills-tarball    deterministic skills-vX.Y.Z.tar.gz asset
-  +-- _publish-vsix             VS Code Marketplace + Open VSX
+  +-- _build-artifacts         visualizer lib + webview bundle + wire-types tarballs
+  +-- _publish-github-release  SHA256SUMS + all assets + install.sh
+  +-- dispatch-dist            repository_dispatch {version} -> dist repo (DIST_DISPATCH_TOKEN)
+        |
+        v
+[dist repo]  _consume-release.yml (on repository_dispatch: toolchain-release)
+  +-- download all Release assets; stamp manifests to vX.Y.Z; _check-versions
+  +-- _publish-vsix             VS Code Marketplace + Open VSX (embeds downloaded webview)
   +-- _publish-npm-twf          @temporal-architect/twf + 5 platform sub-packages
-  +-- _publish-npm-visualizer   @temporal-architect/visualizer
-  +-- _publish-npm-claude-plugin @temporal-architect/claude-plugin (Claude Code plugin payload)
+  +-- _publish-npm-visualizer   @temporal-architect/visualizer (re-publish downloaded tarball)
+  +-- _publish-npm-wire-types   @temporal-architect/wire-types (re-publish downloaded tarball)
+  +-- _publish-npm-claude-plugin @temporal-architect/claude-plugin
   +-- _publish-pypi             twf-cli wheels x 5 + twine upload
   +-- _publish-brew             bump-brew -> jmbarzee/homebrew-twf formula
-  +-- _publish-github-release   SHA256SUMS + binary archives + skills tarball + install.sh
 ```
 
-Local mirror: every CI publish step has a matching `make publish-*` target. See [`Makefile`](./Makefile) for the full list.
+The toolchain keeps only `GITHUB_TOKEN` + `DIST_DISPATCH_TOKEN`; all registry secrets live in dist.
 
 ---
 

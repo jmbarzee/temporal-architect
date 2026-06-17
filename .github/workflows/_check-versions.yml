@@ -1,9 +1,10 @@
 name: _check-versions
 
-# Reusable: assert that every checked-in manifest's `version` field matches
-# a given version string (typically the git tag, with leading "v" stripped).
-# Release-only in practice — the only meaningful invocation is "does this
-# match the tag we're about to release as?"
+# Reusable: assert that the toolchain's own published-package manifests match
+# the release tag (leading "v" stripped). After the distribution split the
+# toolchain only publishes two npm packages from its release assets — the
+# visualizer library and the wire-types contract; every other manifest lives in
+# the distribution repo and is version-checked there.
 # Called by release.yml; not directly triggerable.
 
 on:
@@ -36,46 +37,8 @@ jobs:
               fail=1
             fi
           }
-          check_pyproject() {
-            local label="$1" file="$2"
-            local actual
-            actual="$(python3 -c "import tomllib; print(tomllib.load(open('$file','rb'))['project']['version'])")"
-            echo "  ${label}: ${actual}"
-            if [ "$actual" != "$TAG_VERSION" ]; then
-              echo "::error file=${file}::version ${actual} does not match tag v${TAG_VERSION}"
-              fail=1
-            fi
-          }
-          check_node "packages/vscode"          packages/vscode/package.json
-          check_node "tools/visualizer"         tools/visualizer/package.json
-          check_node "npm wrapper"              packages/npm/twf/package.json
-          for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
-            check_node "npm $p" "packages/npm/twf-$p/package.json"
-          done
-          check_pyproject "pypi twf-cli" packages/pypi/twf-cli/pyproject.toml
-          check_node "claude plugin npm package" packages/npm/claude-plugin/package.json
-          # Marketplace catalog: every "version" key must match the tag.
-          # The plugin entry's version is the user-facing version label.
-          # node -p evaluates a JS expr that finds all version strings recursively.
-          actual_versions="$(node -e "
-            const m = require('./.claude-plugin/marketplace.json');
-            const out = new Set();
-            const walk = (o) => {
-              if (o && typeof o === 'object') {
-                if (typeof o.version === 'string') out.add(o.version);
-                for (const v of Object.values(o)) walk(v);
-              }
-            };
-            walk(m);
-            console.log([...out].join(','));
-          ")"
-          echo "  marketplace.json versions: ${actual_versions}"
-          for v in $(echo "$actual_versions" | tr ',' ' '); do
-            if [ "$v" != "$TAG_VERSION" ]; then
-              echo "::error file=.claude-plugin/marketplace.json::version ${v} does not match tag v${TAG_VERSION}"
-              fail=1
-            fi
-          done
+          check_node "tools/visualizer" tools/visualizer/package.json
+          check_node "tools/wire-types" tools/wire-types/package.json
           exit $fail
         env:
           VERSION: ${{ inputs.version }}

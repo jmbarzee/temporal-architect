@@ -4,15 +4,15 @@
 tools, designs, and helpers used to *build, release, and maintain*
 the project itself.
 
-For *what does ship*, see [`tools/`](../tools/) (source) and
-[`packages/`](../packages/) (artifacts).
+For *what does ship*, see [`tools/`](../tools/) (source). The registry packaging
+surfaces (and the `bump-brew` formula tool) live in the distribution repo
+(`jmbarzee/temporal-architect-dist`); this repo only cuts the GitHub Release.
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
 | [`release/gen-skills-manifest/`](./release/gen-skills-manifest/) | Go tool — emits `skills/MANIFEST.md` and the `skills-vX.Y.Z.tar.gz` release asset |
-| [`release/bump-brew/`](./release/bump-brew/) | Go tool — bumps `jmbarzee/homebrew-twf`'s `Formula/twf.rb` on release via the GitHub Contents API |
 | [`harness/`](./harness/) | `components.md` — the dev-cycle component manifest (graph, scopes, review mappings, propagation routing). Consumed by the `/dev-cycle` skill (`.claude/skills/dev-cycle/`, the agent-loop runtime) and the orchestrator. Pairs with [`changes/`](./changes/) |
 | [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate) — the durable twin of the `/dev-cycle` skill. Pairs with [`changes/`](./changes/) |
 | [`version.sh`](./version.sh) | Shell helper for `make release` — computes the next semver from `git describe` |

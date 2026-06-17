@@ -17,7 +17,7 @@ Review prompts referenced below live at `.claude/skills/dev-cycle/references/<na
 | Component | Source scope | Coordination dir | Quality review | Alignment review(s) | Downstream (contract types) |
 |---|---|---|---|---|---|
 | `dsl` | `tools/spec/sections/` | `internal/changes/dsl/` | `review-quality-dsl-spec` | — | `parser` [Grammar] |
-| `parser` | `tools/lsp/` | `internal/changes/parser/` | `review-quality-parser` | `review-alignment-parser` | `visualizer` [Schema, API], `visualizer-spec` [Schema], `skills` [Grammar, Semantic], `vscode` [Schema, API — manual] |
+| `parser` | `tools/lsp/` | `internal/changes/parser/` | `review-quality-parser` | `review-alignment-parser` | `visualizer` [Schema, API], `visualizer-spec` [Schema], `skills` [Grammar, Semantic] |
 | `visualizer-spec` | `tools/visualizer/spec/` | `internal/changes/visualizer-spec/` | `review-quality-visualizer-spec` | — | `visualizer` [Spec] |
 | `visualizer` | `tools/visualizer/` (excluding `spec/`) | `internal/changes/visualizer/` | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — (leaf) |
 | `skills` | `skills/` | `internal/changes/` (per-skill subdirs: `design-skill/`, `author-go-skill/`, `author-infra-skill/`, `harness-skill/`) | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — (leaf) |
@@ -41,7 +41,7 @@ changes never propagate.
 | `dsl` | Grammar | `parser` → `review-alignment-parser` |
 | `parser` | Grammar | `skills` → `review-alignment-design-skill` |
 | `parser` | Schema | `visualizer` → `review-quality-visualizer`; `visualizer-spec` → `review-quality-visualizer-spec` |
-| `parser` | API | `visualizer` → `review-quality-visualizer` (TS types); `vscode` → manual |
+| `parser` | API | `visualizer` → `review-quality-visualizer` (TS types) |
 | `parser` | Semantic | `skills` → `review-alignment-design-skill` |
 | `visualizer-spec` | Spec | `visualizer` → `review-alignment-visualizer` |
 
@@ -75,5 +75,15 @@ Wave 2: visualizer-spec, visualizer, skills
 `skills` node. Intra-`skills` ordering (design before authors before harness) is handled inside the
 component's own review sweep, not by the cross-component wave order.
 
-`vscode` (`packages/vscode/`) has no automated review command; parser Schema/API changes
-that reach it are flagged for manual review.
+## Cross-repo seam (distribution repo)
+
+The VS Code/Cursor extension and every registry package live in the distribution repo
+(`jmbarzee/temporal-architect-dist`), not here. Parser `Schema`/`API` changes reach the
+extension only through the **wire-types contract**, which is generated from the Go DTOs and
+gated in-tree by `make check-types` (and exercised by `review-quality-visualizer`). The
+distribution repo consumes that contract as the published, version-pinned
+`@temporal-architect/wire-types@X.Y.Z` package.
+
+The only cross-repo edge is therefore a **version bump, not a schema diff**: when dist bumps
+to a new toolchain release, its extension-only dev-cycle re-pins the wire-types/visualizer
+version. That review lives in the dist repo and is out of scope for this manifest.

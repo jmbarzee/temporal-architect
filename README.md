@@ -58,7 +58,7 @@ Pick the install line for your environment:
 | Audience / tool | Install |
 |---|---|
 | **Cursor / VS Code** | Install **Temporal Architect** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) or [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax). Bundles the `twf` binary, the system-design skills (auto-installed to `~/.cursor/skills/`), and the architecture visualizer. |
-| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-architect` then `/plugin install temporal-architect@temporal-architect`. Bundles the design, Go-authoring, and infra-provisioning skills plus the `twf` MCP server. |
+| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-architect-dist` then `/plugin install temporal-architect@temporal-architect`. Bundles the design, Go-authoring, and infra-provisioning skills plus the `twf` MCP server. |
 | **Any MCP-compatible client** (Claude Desktop, Cursor MCP, Continue, Windsurf, Zed) | Add to your MCP client config: `{"twf": {"command": "npx", "args": ["-y", "@temporal-architect/twf", "mcp"]}}` |
 | **Node / JS / TS projects** | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm install -g @temporal-architect/twf` |
 | **Python projects** | `pip install twf-cli` |
@@ -162,17 +162,20 @@ A React + TypeScript webview that renders the system defined in `.twf`. Runs sta
 <details>
 <summary><strong>Packaging &amp; distribution</strong> (every channel, for maintainers)</summary>
 
-Every way `twf` and the skills ship. For install lines see [Quick install](#quick-install); for design rationale see [`packaging.md`](./packaging.md); for rollout work see [`publishing_setup.md`](./publishing_setup.md).
+Every way `twf` and the skills ship. For install lines see [Quick install](#quick-install); for design rationale see [`packaging.md`](./packaging.md). The two-repo topology is described under [How it ships](#how-it-ships).
+
+Registry **identifiers** are unchanged by the split (npm scope `@temporal-architect`, PyPI `twf-cli`, VSIX id `jmbarzee.twf-syntax`); only where each package's *source* lives has moved. "Source" links below resolve into the distribution repo (`temporal-architect-dist`) for packaging surfaces and stay here for the engine + release-cut.
 
 | Channel | Artifact | Install | Bundles | Source |
 |---|---|---|---|---|
-| **VS Code Marketplace** / **Open VSX** | `jmbarzee.twf-syntax` (VSIX, 5 platforms) | Search "Temporal Architect" in Extensions, or install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) / [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax) | `twf` binary, LSP client, visualizer webview, skills (auto-installed to `~/.cursor/skills/` on activation) | [`packages/vscode/`](./packages/vscode/) |
-| **Claude Code marketplace** | `@temporal-architect/claude-plugin` (payload) | `/plugin marketplace add jmbarzee/temporal-architect` → `/plugin install temporal-architect@temporal-architect` | skills tree + plugin manifest declaring the `twf` MCP server | catalog at [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json); payload built from [`packages/npm/claude-plugin/`](./packages/npm/claude-plugin/) |
-| **npm (wrapper + platform sub-packages)** | `@temporal-architect/twf` + `@temporal-architect/twf-{darwin-arm64,darwin-x64,linux-arm64,linux-x64,win32-x64}` | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm i -g @temporal-architect/twf` | `twf` binary (resolved via `optionalDependencies` per platform) | [`packages/npm/twf/`](./packages/npm/twf/) wrapper + [`packages/npm/twf-*/`](./packages/npm/) sub-packages |
-| **npm (visualizer)** | `@temporal-architect/visualizer` | `npm install @temporal-architect/visualizer` then `import { Visualizer } from '@temporal-architect/visualizer'` | React `<Visualizer>` component + AST/diagnostic types + sibling `styles.css` | [`tools/visualizer/`](./tools/visualizer/) (built via `vite.lib.config.ts`) |
-| **PyPI** | `twf-cli` (wheel, 5 platforms) | `pip install twf-cli` | `twf` binary force-included per wheel; MCP server entrypoint | [`packages/pypi/twf-cli/`](./packages/pypi/twf-cli/) |
-| **Homebrew tap** | `jmbarzee/homebrew-twf` formula `twf` | `brew install jmbarzee/twf/twf` | `twf` binary | formula auto-bumped by [`internal/release/bump-brew/`](./internal/release/bump-brew/) against the tap repo |
-| **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + `SHA256SUMS` + `install.sh` | `curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh \| bash` (binary only) or download individually | platform binary; `skills/` tree with `MANIFEST.json` | built by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/) and [`skills/`](./skills/) via [`internal/release/gen-skills-manifest/`](./internal/release/gen-skills-manifest/) |
+| **VS Code Marketplace** / **Open VSX** | `jmbarzee.twf-syntax` (VSIX, 5 platforms) | Search "Temporal Architect" in Extensions, or install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) / [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax) | `twf` binary, LSP client, visualizer webview, skills (auto-installed to `~/.cursor/skills/` on activation) | `packages/vscode/` (dist repo) |
+| **Claude Code marketplace** | `@temporal-architect/claude-plugin` (payload) | `/plugin marketplace add jmbarzee/temporal-architect-dist` → `/plugin install temporal-architect@temporal-architect` | skills tree + plugin manifest declaring the `twf` MCP server | catalog at `.claude-plugin/marketplace.json` (dist repo root); payload from `packages/npm/claude-plugin/` (dist repo) |
+| **npm (wrapper + platform sub-packages)** | `@temporal-architect/twf` + `@temporal-architect/twf-{darwin-arm64,darwin-x64,linux-arm64,linux-x64,win32-x64}` | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm i -g @temporal-architect/twf` | `twf` binary (resolved via `optionalDependencies` per platform) | `packages/npm/twf/` wrapper + `packages/npm/twf-*/` sub-packages (dist repo) |
+| **npm (visualizer)** | `@temporal-architect/visualizer` | `npm install @temporal-architect/visualizer` then `import { Visualizer } from '@temporal-architect/visualizer'` | React `<Visualizer>` component + AST/diagnostic types + sibling `styles.css` | built here from [`tools/visualizer/`](./tools/visualizer/) (`vite.lib.config.ts`); published from the dist repo |
+| **npm (wire-types)** | `@temporal-architect/wire-types` | `npm install @temporal-architect/wire-types` (type-only) | TypeScript projection of the JSON wire contract (generated from the Go DTOs) | built here from [`tools/wire-types/`](./tools/wire-types/); published from the dist repo |
+| **PyPI** | `twf-cli` (wheel, 5 platforms) | `pip install twf-cli` | `twf` binary force-included per wheel; MCP server entrypoint | `packages/pypi/twf-cli/` (dist repo) |
+| **Homebrew tap** | `jmbarzee/homebrew-twf` formula `twf` | `brew install jmbarzee/twf/twf` | `twf` binary | formula auto-bumped by `internal/release/bump-brew/` (dist repo) against the tap repo |
+| **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + visualizer lib/webview + wire-types tarballs + `SHA256SUMS` + `install.sh` | `curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh \| bash` (binary only) or download individually | platform binary; `skills/` tree with `MANIFEST.json`; visualizer + wire-types tarballs | cut **here** by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/), [`tools/visualizer/`](./tools/visualizer/), [`tools/wire-types/`](./tools/wire-types/), and [`skills/`](./skills/) |
 | **Go install** | `github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf` | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` | `twf` binary (built from source by the user's Go toolchain) | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) |
 | **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/temporal-architect-design/`](./skills/temporal-architect-design/), [`skills/temporal-architect-author-go/`](./skills/temporal-architect-author-go/), and [`skills/temporal-architect-author-infra/`](./skills/temporal-architect-author-infra/) |
 | **MCP** (planned, M2) | `twf mcp` over stdio | configure any MCP client to launch `npx -y @temporal-architect/twf mcp` (or `twf mcp` if installed) | tools wrapping `check`/`parse`/`symbols`/`spec`/`skill`; resources for spec sections and skill files; prompts per skill | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) (subcommand to be added) |
@@ -185,27 +188,26 @@ All `twf` artifacts converge on the same binary (cross-built from `tools/lsp/`) 
 <details>
 <summary><strong>Repository structure</strong></summary>
 
-The top-level layout splits **distribution** (what users receive) from **dev** (what builds and maintains it).
+This repo is the **toolchain** (engine + language + rendering source). Everything a
+user installs is **packaged** in the separate distribution repo — see
+[How it ships](#how-it-ships).
 
 ```
-# Distribution — source of what ships
+# Engine + language + rendering source
 tools/
   spec/             Canonical TWF language spec (embedded markdown sections)
-  lsp/              Go parser, resolver, validator, and language server (twf CLI)
+  lsp/              Go parser, resolver, validator, language server, twf CLI, Go DTOs
+  wire-types/       TS projection of the JSON wire contract (tygo-generated from the DTOs)
   visualizer/       React architecture visualizer (tree view + graph view)
+  sampler/          History collector for `twf graph --history`
 skills/             AI skill definitions (SKILL.md + reference docs)
 
-# Distribution — packaged artifacts
-packages/
-  npm/              `@temporal-architect/twf` wrapper + 5 platform sub-packages
-  pypi/twf-cli/     `twf-cli` PyPI wheel (one per platform)
-  vscode/           VS Code / Cursor / Open VSX extension (VSIX)
-  install.sh        Curl-bash installer (no package manager required)
-.claude-plugin/     Claude Code marketplace plugin (root location forced by Claude Code)
+# Canonical release surface (cut where the GitHub Release is cut)
+packages/install.sh Curl-bash installer (no package manager required)
 
 # Dev — release tooling, dev-cycle orchestration, version helper
 internal/
-  release/          Go tools that build / sync / publish distribution artifacts
+  release/          Go tools that build the release assets (skills tarball)
   changes/          Ephemeral coordination files for in-flight revisions
   harness/          Runner-agnostic dev-cycle prompts (agent-loop runtime)
   orchestrator/     Temporal workflow design for the automated dev cycle (durable runtime)
@@ -217,14 +219,35 @@ examples/           Example `.twf` files
 
 </details>
 
+## How it ships
+
+This repository is a **pure toolchain**: it builds the engine and rendering source,
+then cuts a single **GitHub Release** of primitive artifacts — per-platform `twf`
+binaries, the `skills-vX.Y.Z.tar.gz` tarball, the visualizer library + webview bundle,
+the `@temporal-architect/wire-types` tarball, `SHA256SUMS`, and `install.sh`.
+
+A separate **distribution repo** ([`jmbarzee/temporal-architect-dist`](https://github.com/jmbarzee/temporal-architect-dist))
+consumes those assets and produces every shippable package: the VS Code/Cursor
+extension (VSIX), the npm wrapper + platform sub-packages, the PyPI wheel, the Claude
+Code plugin payload + marketplace catalog, and the Homebrew formula bump. On each `v*`
+tag, this repo's release workflow cuts the Release and dispatches the version to the
+dist repo, which stamps it into its manifests and publishes to every registry in
+lockstep. Registry identifiers never moved, so all existing install lines keep working.
+
 ## Development
 
 ```bash
-make build         # build everything (current platform)
-make test          # run Go tests
-make package       # package a local .vsix
-make package-all   # package for all platforms (CI)
+make build              # build the toolchain (binary + visualizer lib/webview) for the current platform
+make test               # run Go tests
+make vet                # go vet
+make check-types        # fail if the generated wire types drifted from the Go DTOs
+make check-docs         # fail if the CLI command reference drifted
 
-# Publish to marketplaces
-VSCE_TOKEN=... OVSX_TOKEN=... make publish
+# Cut a release: bump the visualizer + wire-types manifests, tag, push.
+# The v* tag triggers release.yml, which cuts the GitHub Release and dispatches
+# to the distribution repo for registry publishing.
+make release TYPE=patch        # or minor / major, or VERSION=X.Y.Z
 ```
+
+Registry publishing (VSIX, npm, PyPI, Homebrew, Claude plugin) lives in the
+distribution repo — see [How it ships](#how-it-ships).

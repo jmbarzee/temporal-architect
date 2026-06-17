@@ -4,7 +4,11 @@
 GOOS   ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
-EXT_DIR := packages/vscode
+# Toolchain-local output dir for the compiled binary and release archives.
+# Everything under dist/ is gitignored and rebuilt from source. The compiled
+# binary no longer lands in an extension tree — packages/ moved to the
+# distribution repo (jmbarzee/temporal-architect-dist).
+BIN_DIR := dist/bin
 
 # Version stamped into the twf binary (printed by `twf version`). Release/CI
 # builds pass VERSION explicitly; local dev builds fall back to `git describe`,
@@ -14,8 +18,8 @@ ifeq ($(strip $(TWF_VERSION)),)
 TWF_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 endif
 
-# All supported platforms (for package-all / CI release only)
-# Format: VSCE_TARGET:GOOS:GOARCH
+# All supported binary platforms (CI release matrix).
+# Format: label:GOOS:GOARCH
 PLATFORMS := \
 	darwin-arm64:darwin:arm64 \
 	darwin-x64:darwin:amd64 \
@@ -24,43 +28,39 @@ PLATFORMS := \
 	win32-x64:windows:amd64
 
 # ── Dev shortcuts ────────────────────────────────────────────────────────────
-# These build for the local platform only. Use *-all variants for cross-platform.
+# These build for the local platform only.
 
-.PHONY: build publish clean
+.PHONY: build clean
 
-## Build everything for the local platform
-build: build-lsp build-visualizer build-skills build-extension
-
-## Publish all .vsix files in packages/vscode/ to registries
-publish: publish-vscode publish-ovsx
+## Build the toolchain for the local platform (binary + visualizer)
+build: build-lsp build-visualizer build-visualizer-lib
 
 # ── Build targets ────────────────────────────────────────────────────────────
 
-.PHONY: build-lsp build-visualizer build-skills build-extension
+.PHONY: build-lsp build-twf-archive build-skills-archive build-visualizer build-visualizer-lib
 
 ## Build the twf binary for the current (or specified) platform
 build-lsp:
-	@mkdir -p $(EXT_DIR)/bin
+	@mkdir -p $(BIN_DIR)
 	cd tools/lsp && \
 		GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 \
-		go build -ldflags "-X main.version=$(TWF_VERSION)" -o ../../$(EXT_DIR)/bin/twf$(if $(filter windows,$(GOOS)),.exe) ./cmd/twf
+		go build -ldflags "-X main.version=$(TWF_VERSION)" -o ../../$(BIN_DIR)/twf$(if $(filter windows,$(GOOS)),.exe) ./cmd/twf
 	@echo "Built twf $(TWF_VERSION) for $(GOOS)/$(GOARCH)"
 
 ## Package the twf binary into a standalone archive for release.
 ## VERSION may be passed with or without a leading "v"; the archive is always
 ## named twf-v<X.Y.Z>-<goos>-<goarch>.{tar.gz,zip}.
 ## Usage: make build-twf-archive VERSION=1.2.3 GOOS=darwin GOARCH=arm64
-##        make build-twf-archive VERSION=v1.2.3 GOOS=darwin GOARCH=arm64
 build-twf-archive: build-lsp
 	@mkdir -p dist
 	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
 	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
 	ARCHIVE=twf-v$$VER-$(GOOS)-$(GOARCH); \
 	if [ "$(GOOS)" = "windows" ]; then \
-		cp $(EXT_DIR)/bin/twf.exe dist/twf.exe; \
+		cp $(BIN_DIR)/twf.exe dist/twf.exe; \
 		cd dist && zip $$ARCHIVE.zip twf.exe && rm twf.exe; \
 	else \
-		cp $(EXT_DIR)/bin/twf dist/twf; \
+		cp $(BIN_DIR)/twf dist/twf; \
 		cd dist && tar czf $$ARCHIVE.tar.gz twf && rm twf; \
 	fi; \
 	echo "Packaged $$ARCHIVE"
@@ -69,7 +69,6 @@ build-twf-archive: build-lsp
 ## VERSION may be passed with or without a leading "v"; the archive is always
 ## named skills-v<X.Y.Z>.tar.gz.
 ## Usage: make build-skills-archive VERSION=1.2.3
-##        make build-skills-archive VERSION=v1.2.3
 build-skills-archive:
 	@mkdir -p dist
 	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
@@ -78,26 +77,44 @@ build-skills-archive:
 	go run ./internal/release/gen-skills-manifest --source skills --out $$OUT --version v$$VER; \
 	echo "Packaged $$OUT"
 
-## Build the visualizer webview into the extension
+## Build the visualizer webview IIFE bundle (→ dist/webview).
 build-visualizer:
 	cd tools/visualizer && npm run build:webview
-	@echo "Built visualizer (webview bundle)"
+	@echo "Built visualizer (webview bundle → dist/webview)"
 
-## Build the visualizer as a publishable npm library (ESM + types + sibling CSS)
+## Build the visualizer as a publishable npm library (ESM + types + sibling CSS).
 build-visualizer-lib:
 	cd tools/visualizer && npm run build:lib
 	@echo "Built visualizer (npm library)"
 
-## Copy skills into the extension package
-build-skills:
-	@mkdir -p $(EXT_DIR)/skills
-	rsync -a --delete skills/ $(EXT_DIR)/skills/
-	@echo "Copied skills"
+# ── Release asset packaging ──────────────────────────────────────────────────
+# The toolchain cuts a GitHub Release of primitive artifacts; the distribution
+# repo (jmbarzee/temporal-architect-dist) downloads these and produces every
+# shippable registry package. Build stays here (source + version stamp live
+# here); publish happens in dist (where the registry tokens live).
 
-## Compile the extension TypeScript
-build-extension: build-skills
-	cd $(EXT_DIR) && npm run compile
-	@echo "Compiled extension"
+.PHONY: pack-visualizer-lib pack-visualizer-webview pack-wire-types
+
+## Pack the visualizer npm library into a release tarball (dist/).
+pack-visualizer-lib: build-visualizer-lib
+	@mkdir -p dist
+	cd tools/visualizer && npm pack --pack-destination ../../dist
+	@echo "Packed visualizer lib tarball into dist/"
+
+## Pack the prebuilt webview IIFE bundle into a versioned release tarball (dist/).
+## Usage: make pack-visualizer-webview VERSION=1.2.3
+pack-visualizer-webview: build-visualizer
+	@mkdir -p dist
+	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
+	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
+	tar czf dist/visualizer-webview-v$$VER.tar.gz -C dist/webview .; \
+	echo "Packed dist/visualizer-webview-v$$VER.tar.gz"
+
+## Pack the wire-types type-only package into a release tarball (dist/).
+pack-wire-types:
+	@mkdir -p dist
+	cd tools/wire-types && npm pack --pack-destination ../../dist
+	@echo "Packed wire-types tarball into dist/"
 
 # ── Test targets ─────────────────────────────────────────────────────────────
 
@@ -122,7 +139,6 @@ gen-docs:
 	@echo "Regenerated tools/lsp/cmd/twf/COMMANDS.md"
 
 ## Fail if the committed command reference has drifted from the command tree.
-## Run in CI so any flag/command change without a regen breaks the build.
 check-docs: gen-docs
 	@git diff --exit-code -- tools/lsp/cmd/twf/COMMANDS.md \
 		|| { echo "COMMANDS.md is stale — run 'make gen-docs' and commit the result."; exit 1; }
@@ -138,153 +154,22 @@ TYGO_VERSION := v0.2.21
 ## (tools/wire-types/src/generated/) from the Go DTO structs — the single source
 ## of truth. The hand-written sibling residue.ts holds the discriminated overlays
 ## and string-literal enums tygo can't express, and index.ts is the public API;
-## keep them in step by hand. The @temporal-architect/wire-types package is
-## consumed (type-only) by the visualizer and the extension.
+## keep them in step by hand. @temporal-architect/wire-types ships as a published
+## release artifact (consumed type-only by the visualizer and the extension).
 gen-types:
 	@mkdir -p tools/wire-types/src/generated
 	go run github.com/gzuidhof/tygo@$(TYGO_VERSION) generate --config tools/wire-types/tygo.yaml
 	@echo "Regenerated tools/wire-types/src/generated/"
 
 ## Fail if the committed generated wire types have drifted from the Go DTOs.
-## Run in CI so any DTO change without a regen breaks the build.
 check-types: gen-types
 	@git diff --exit-code -- tools/wire-types/src/generated \
 		|| { echo "Generated wire types are stale — run 'make gen-types' and commit the result."; exit 1; }
 
-# ── Package targets ──────────────────────────────────────────────────────────
-
-.PHONY: package package-platform package-all
-
-## Package a VSIX for the local platform
-package: build
-	cd $(EXT_DIR) && npx @vscode/vsce package
-	@echo "Packaged VSIX"
-
-## Package a VSIX for a single explicit target (used by CI matrix)
-## Usage: make package-platform VSCE_TARGET=darwin-arm64 GOOS=darwin GOARCH=arm64
-package-platform: build-lsp
-	cd $(EXT_DIR) && npx @vscode/vsce package --target $(VSCE_TARGET)
-	@echo "Packaged VSIX for $(VSCE_TARGET)"
-
-## Package VSIXes for all platforms
-package-all: build-visualizer build-skills build-extension
-	@for entry in $(PLATFORMS); do \
-		target=$$(echo $$entry | cut -d: -f1); \
-		os=$$(echo $$entry | cut -d: -f2); \
-		arch=$$(echo $$entry | cut -d: -f3); \
-		echo "Packaging $$target ($$os/$$arch)..."; \
-		$(MAKE) package-platform VSCE_TARGET=$$target GOOS=$$os GOARCH=$$arch; \
-	done
-	@echo "All platform packages built"
-
-# ── Publish targets — VSIX ──────────────────────────────────────────────────
-
-.PHONY: publish-vscode publish-ovsx
-
-## Publish all platform VSIXes to VS Code Marketplace
-publish-vscode:
-	@if [ -z "$(VSCE_TOKEN)" ]; then \
-		echo "Error: VSCE_TOKEN not set"; exit 1; \
-	fi
-	@for vsix in $(EXT_DIR)/*.vsix; do \
-		echo "Publishing $$vsix to VS Code Marketplace..."; \
-		cd $(EXT_DIR) && npx @vscode/vsce publish --packagePath $$(basename $$vsix) -p $(VSCE_TOKEN) && cd ../..; \
-	done
-
-## Publish all platform VSIXes to Open VSX
-publish-ovsx:
-	@if [ -z "$(OVSX_TOKEN)" ]; then \
-		echo "Error: OVSX_TOKEN not set"; exit 1; \
-	fi
-	@for vsix in $(EXT_DIR)/*.vsix; do \
-		echo "Publishing $$vsix to Open VSX..."; \
-		npx ovsx publish $$vsix -p $(OVSX_TOKEN); \
-	done
-
-# ── Claude Code plugin ──────────────────────────────────────────────────────
-
-.PHONY: build-claude-plugin publish-npm-claude-plugin
-
-## Stage skills/ into the @temporal-architect/claude-plugin npm package.
-## The plugin's skills/ is a build artifact, not tracked — gitignored, copied
-## from the canonical skills/ at the repo root. Mirrors the build-skills
-## pattern that stages skills into the VSIX.
-build-claude-plugin:
-	@mkdir -p packages/npm/claude-plugin/skills
-	rsync -a --delete skills/ packages/npm/claude-plugin/skills/
-	@echo "Staged skills into packages/npm/claude-plugin/"
-
-## Publish @temporal-architect/claude-plugin to npm.
-## The Claude Code marketplace catalog (.claude-plugin/marketplace.json) points
-## at this package — Claude Code does `npm install` to fetch it on plugin install.
-publish-npm-claude-plugin: build-claude-plugin
-	cd packages/npm/claude-plugin && npm publish
-
-# ── Homebrew tap ────────────────────────────────────────────────────────────
-
-.PHONY: publish-brew
-
-## Bump jmbarzee/homebrew-twf's Formula/twf.rb to point at this version's
-## GitHub Release archives. Runs AFTER the GitHub Release exists (so the
-## archives the formula references are downloadable).
-##
-## Required env: HOMEBREW_TAP_TOKEN (PAT with `repo` write on the tap).
-## Usage: make publish-brew VERSION=v0.3.2
-publish-brew:
-	@if [ -z "$(VERSION)" ];            then echo "Error: VERSION not set"; exit 1; fi
-	@if [ -z "$(HOMEBREW_TAP_TOKEN)" ]; then echo "Error: HOMEBREW_TAP_TOKEN not set"; exit 1; fi
-	go run ./internal/release/bump-brew -version $(VERSION) -token $(HOMEBREW_TAP_TOKEN)
-
-# ── PyPI wheel ──────────────────────────────────────────────────────────────
-
-.PHONY: build-pypi-wheel publish-pypi
-
-## Stage the freshly-built binary into the PyPI package and build one
-## platform-tagged wheel. Called per matrix entry in CI.
-## Usage: make build-pypi-wheel PLATFORM_TAG=macosx_11_0_arm64 GOOS=darwin
-##
-## Requires `build` and `wheel` Python packages: `pip install build wheel`.
-build-pypi-wheel:
-	@if [ -z "$(PLATFORM_TAG)" ]; then echo "Error: PLATFORM_TAG not set"; exit 1; fi
-	@mkdir -p packages/pypi/twf-cli/src/twf_cli/_binary
-	@ext=""; if [ "$(GOOS)" = "windows" ]; then ext=".exe"; fi; \
-		cp $(EXT_DIR)/bin/twf$$ext packages/pypi/twf-cli/src/twf_cli/_binary/twf$$ext; \
-		chmod +x packages/pypi/twf-cli/src/twf_cli/_binary/twf$$ext 2>/dev/null || true
-	@# Build a py3-none-any wheel via hatchling, then retag to the target platform.
-	@# Hatchling's wheel target doesn't natively support cross-platform tags, so we
-	@# post-process with `wheel tags` (from the `wheel` package).
-	cd packages/pypi/twf-cli && rm -rf dist && python3 -m build --wheel
-	cd packages/pypi/twf-cli/dist && \
-		python3 -m wheel tags --remove --platform-tag $(PLATFORM_TAG) *.whl
-	@echo "Built wheel for $(PLATFORM_TAG)"
-
-## Upload all wheels in packages/pypi/twf-cli/dist/ to PyPI via twine.
-publish-pypi:
-	@if [ -z "$(TWINE_PASSWORD)" ]; then echo "Error: TWINE_PASSWORD not set"; exit 1; fi
-	twine upload --non-interactive packages/pypi/twf-cli/dist/*.whl
-
-# ── npm wrapper ─────────────────────────────────────────────────────────────
-
-.PHONY: publish-npm-platform publish-npm
-
-## Stage the freshly-built binary into one platform sub-package and `npm publish`.
-## Called per matrix entry in CI; can be run locally for one platform at a time.
-## Usage: make publish-npm-platform VSCE_TARGET=darwin-arm64 GOOS=darwin GOARCH=arm64
-publish-npm-platform:
-	@if [ -z "$(VSCE_TARGET)" ]; then echo "Error: VSCE_TARGET not set"; exit 1; fi
-	@ext=""; if [ "$(GOOS)" = "windows" ]; then ext=".exe"; fi; \
-		mkdir -p packages/npm/twf-$(VSCE_TARGET)/bin; \
-		cp $(EXT_DIR)/bin/twf$$ext packages/npm/twf-$(VSCE_TARGET)/bin/twf$$ext
-	cd packages/npm/twf-$(VSCE_TARGET) && npm publish
-
-## Publish the `@temporal-architect/twf` wrapper. Run AFTER all sub-packages have
-## published — npm rejects the wrapper if its optionalDependencies reference
-## versions that don't exist yet.
-publish-npm:
-	cd packages/npm/twf && npm publish
-
 # ── Release targets ──────────────────────────────────────────────────────────
-# Bump version, commit, tag, and push — triggers the release workflow.
+# Bump the version of the toolchain's own published packages (visualizer lib +
+# wire-types), commit, tag, and push — the `v*` tag triggers release.yml, which
+# cuts the GitHub Release and dispatches to the distribution repo.
 #   make release TYPE=patch        (auto-bump from latest tag)
 #   make release TYPE=minor
 #   make release TYPE=major
@@ -305,33 +190,15 @@ release:
 	$(eval NEW_VERSION := $(shell bash internal/version.sh "$(VERSION)" "$(TYPE)"))
 	@if [ -z "$(NEW_VERSION)" ]; then exit 1; fi
 	@echo "Releasing v$(NEW_VERSION)"
-	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' $(EXT_DIR)/package.json && rm -f $(EXT_DIR)/package.json.bak
+	@# The toolchain publishes two npm packages from its release assets; their
+	@# manifest versions must match the tag (enforced by _check-versions.yml).
 	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' tools/visualizer/package.json && rm -f tools/visualizer/package.json.bak
-	@# npm wrapper top-level version
-	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' packages/npm/twf/package.json && rm -f packages/npm/twf/package.json.bak
-	@# npm wrapper optionalDependencies exact-version pins (one sed per package)
-	@for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do \
-		sed -i.bak "s|\"@temporal-architect/twf-$$p\": *\"[^\"]*\"|\"@temporal-architect/twf-$$p\": \"$(NEW_VERSION)\"|" packages/npm/twf/package.json && rm -f packages/npm/twf/package.json.bak; \
-	done
-	@# npm platform sub-package versions
-	@for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do \
-		sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' packages/npm/twf-$$p/package.json && rm -f packages/npm/twf-$$p/package.json.bak; \
-	done
-	@# PyPI package version (pyproject.toml top-level project.version)
-	@sed -i.bak 's/^version = "[^"]*"/version = "$(NEW_VERSION)"/' packages/pypi/twf-cli/pyproject.toml && rm -f packages/pypi/twf-cli/pyproject.toml.bak
-	@# Mirror the version into the package's __init__.py for `import twf_cli; twf_cli.__version__`
-	@sed -i.bak 's/^__version__ = "[^"]*"$$/__version__ = "$(NEW_VERSION)"/' packages/pypi/twf-cli/src/twf_cli/__init__.py && rm -f packages/pypi/twf-cli/src/twf_cli/__init__.py.bak
-	@# Claude Code plugin: bump the npm package's package.json + the marketplace
-	@# entry's version field. (marketplace.json has two "version" keys — the
-	@# plugin entry's own version and could-be source pin; -g hits both. The
-	@# top-level marketplace doesn't carry a "version" key, so this is safe.)
-	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' packages/npm/claude-plugin/package.json && rm -f packages/npm/claude-plugin/package.json.bak
-	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/g' .claude-plugin/marketplace.json && rm -f .claude-plugin/marketplace.json.bak
-	git add $(EXT_DIR)/package.json tools/visualizer/package.json packages/npm packages/pypi .claude-plugin
+	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' tools/wire-types/package.json && rm -f tools/wire-types/package.json.bak
+	git add tools/visualizer/package.json tools/wire-types/package.json
 	git commit -m "release: v$(NEW_VERSION)"
 	git tag "v$(NEW_VERSION)"
 	git push origin HEAD "v$(NEW_VERSION)"
-	@echo "Pushed v$(NEW_VERSION) — release workflow will build and publish"
+	@echo "Pushed v$(NEW_VERSION) — release workflow will cut the release and dispatch to dist"
 
 # ── Clean ────────────────────────────────────────────────────────────────────
 
@@ -339,7 +206,6 @@ release:
 
 ## Remove all build artifacts
 clean:
-	rm -rf $(EXT_DIR)/bin $(EXT_DIR)/dist $(EXT_DIR)/out $(EXT_DIR)/skills $(EXT_DIR)/*.vsix dist/
-	rm -rf packages/npm/twf-*/bin packages/npm/twf*/LICENSE
-	rm -rf packages/pypi/twf-cli/dist packages/pypi/twf-cli/src/twf_cli/_binary
+	rm -rf dist/ tools/visualizer/dist tools/visualizer/dist-lib
+	rm -f tools/visualizer/LICENSE tools/wire-types/LICENSE
 	@echo "Cleaned"

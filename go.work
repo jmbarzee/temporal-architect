@@ -3,7 +3,6 @@ go 1.25.4
 toolchain go1.25.11
 
 use (
-	./internal/release/bump-brew
 	./internal/release/gen-skills-manifest
 	./test/integration/sampler
 	./tools/lsp

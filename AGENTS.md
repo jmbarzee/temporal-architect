@@ -14,12 +14,15 @@ Prefix every Go command with `GOMODCACHE=$HOME/go/pkg/mod` (e.g. `GOMODCACHE=$HO
 
 ## Project Layout
 
-See [README — Repository Structure](./README.md#repository-structure) for the top-level tree. Additional internal detail relevant to working in this repo:
-
-The top-level layout splits **distribution** (what users receive) from **dev** (what builds and maintains it). Two paths are at the root because external tools dictate the location: `.claude-plugin/` (Claude Code marketplace) and `.claude/` (Claude Code config).
+See [README — How it ships](./README.md#how-it-ships) for the two-repo topology. This
+repo is the **toolchain** (engine + language + rendering source); everything a user
+installs is **packaged** in the separate distribution repo
+(`jmbarzee/temporal-architect-dist`). The toolchain cuts a GitHub Release of primitive
+artifacts; dist consumes them and publishes every registry package. Additional internal
+detail relevant to working in this repo:
 
 ```
-# Distribution source
+# Engine + language + rendering source
 tools/spec/
   sections/             Per-topic markdown files (NN-slug.md) — the canonical grammar
   spec.go               //go:embed sections/*.md + Sections/Get/All API
@@ -32,29 +35,30 @@ tools/lsp/
   parser/validator/     Post-resolution semantic checks
   parser/graph/         Resolved deployment graph extraction
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
-  cmd/twf/              CLI binary (check, parse, symbols, deps, spec, lsp)
-tools/visualizer/       React workflow visualizer (npm package + VSIX webview)
-skills/                 AI skill definitions (canonical source; bundled into VSIX and the Claude Code plugin npm package at build time)
+  cmd/twf/              CLI binary (check, parse, symbols, deps, spec, lsp); owns the Go DTO layer
+tools/wire-types/       TS projection of the JSON wire contract (tygo-generated from the DTOs); published release artifact
+tools/visualizer/       React workflow visualizer; toolchain builds the npm lib tarball + webview IIFE bundle as release assets
+skills/                 AI skill definitions (canonical source; cut into the skills release tarball)
 
-# Distribution artifacts (per channel)
-packages/npm/twf*/      `@temporal-architect/twf` wrapper + 5 platform sub-packages
-packages/npm/claude-plugin/  `@temporal-architect/claude-plugin` (Claude Code plugin payload; skills/ is gitignored, copied at build time)
-packages/pypi/twf-cli/  `twf-cli` PyPI wheel (one per platform)
-packages/vscode/        VS Code / Cursor / Open VSX extension (VSIX)
-packages/install.sh     Curl-bash installer (no package manager required)
-.claude-plugin/         Single-file Claude Code marketplace catalog (path forced by Claude Code; payload ships from packages/npm/claude-plugin/)
+# Canonical release surface (must live where the GitHub Release is cut)
+packages/install.sh     Curl-bash installer (downloads the toolchain's Release assets)
 
 # Dev — release tooling and dev-cycle apparatus
 internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
-  bump-brew/            Go tool that bumps the Homebrew tap formula on release
 internal/changes/       Per-component coordination files: REVISIONS_NNN, CHANGES_NNN, and BACKLOG
 internal/harness/       Dev-cycle component manifest (components.md), shared by the /dev-cycle skill and the orchestrator
 internal/orchestrator/  Temporal workflow design for the automated dev cycle (the durable twin of the /dev-cycle skill)
 internal/version.sh     Release version bump helper
 
-go.work                 Workspace wiring tools/lsp, tools/spec, and internal/release/*
+go.work                 Workspace wiring tools/lsp, tools/spec, tools/sampler, and internal/release/gen-skills-manifest
 ```
+
+**Packaging surfaces (VSIX, npm wrapper/sub-packages, PyPI wheel, Claude plugin payload +
+`.claude-plugin/` catalog, Homebrew bumper) and all registry-publish workflows live in the
+distribution repo, not here.** The visualizer and wire-types *source* stay here (welded to
+the parser via `make gen-types`/`check-types`); the dist repo only downloads and re-publishes
+their prebuilt tarballs.
 
 ## Project Status
 
@@ -74,13 +78,13 @@ The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Developme
 
 Long-lived reference docs that don't belong to a single component live at the repo root (e.g. `issues_blocking_downstream_adoption.md`, `packaging.md`).
 
-When the parser's JSON output changes, the Go DTO structs are the single source of truth: their TypeScript projection is generated into the `@temporal-architect/wire-types` package (`tools/wire-types`, via `make gen-types`, CI-gated by `make check-types`) and consumed by every downstream TS consumer (visualizer, VS Code extension). Only the hand-written residue (discriminated-union overlays + string-literal enums) is updated alongside.
+When the parser's JSON output changes, the Go DTO structs are the single source of truth: their TypeScript projection is generated into the `@temporal-architect/wire-types` package (`tools/wire-types`, via `make gen-types`, CI-gated by `make check-types`). The visualizer consumes it in-tree (`file:`); the VS Code extension (in the dist repo) consumes the **published, version-pinned** `@temporal-architect/wire-types@X.Y.Z` — so a DTO change reaches the extension as a version bump, not an in-repo edit. Only the hand-written residue (discriminated-union overlays + string-literal enums) is updated alongside.
 
 ## Dependency Map
 
 The authoritative component graph — scopes, review mappings, propagation routing, and wave ordering — lives in `internal/harness/components.md`. Keep it there and only there.
 
-The contract on each edge: the parser exposes token types, AST node types, and the resolver error model to the LSP server; the JSON output of `twf parse`/`twf symbols` to the visualizer; DSL syntax and semantics (per `tools/spec/sections/`) to the design skill, which in turn exposes Temporal Go SDK mappings to the author skills; and LSP responses + JSON output to the VS Code extension.
+The contract on each edge: the parser exposes token types, AST node types, and the resolver error model to the LSP server; the JSON output of `twf parse`/`twf symbols` to the visualizer; DSL syntax and semantics (per `tools/spec/sections/`) to the design skill, which in turn exposes Temporal Go SDK mappings to the author skills. The VS Code extension lives in the distribution repo and consumes the toolchain only across the published `@temporal-architect/wire-types` + visualizer release artifacts — a cross-repo version-pin seam, not an in-tree edge.
 
 The spec is consumed three ways: (1) as embedded content via `twf spec [--list|<slug>]`, (2) as files in `tools/spec/sections/` for skill prompts and review commands, and (3) as the importable Go package `github.com/jmbarzee/temporal-architect/tools/spec`.
 

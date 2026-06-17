@@ -1,0 +1,49 @@
+name: _build-artifacts
+
+# Reusable: build the platform-independent release tarballs the distribution
+# repo re-publishes / embeds.
+#
+# Outputs (as workflow artifacts, consumed by _publish-github-release.yml):
+#   release-artifacts         — visualizer lib tarball, webview bundle tarball,
+#                               and wire-types tarball (all under dist/)
+#
+# These are *built* here (their source + version stamp live in the toolchain)
+# and *published* from the distribution repo (which holds the registry tokens).
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+
+jobs:
+  artifacts:
+    name: Build release artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install visualizer dependencies
+        run: cd tools/visualizer && npm ci
+
+      - name: Pack visualizer lib + webview bundle
+        run: |
+          make pack-visualizer-lib
+          make pack-visualizer-webview VERSION=${{ inputs.version }}
+
+      - name: Pack wire-types
+        run: make pack-wire-types
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            dist/*.tgz
+            dist/visualizer-webview-*.tar.gz
