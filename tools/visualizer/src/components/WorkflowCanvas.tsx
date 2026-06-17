@@ -136,6 +136,13 @@ export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, classN
 
   const [activeView, setActiveView] = React.useState<ActiveView>(historyMode ? 'graph' : 'tree')
 
+  // Keep-alive: the Graph view is mounted lazily (the first time it's shown)
+  // and then kept mounted — hidden, not unmounted — when the user switches
+  // away, so its viewport/layout survive a round-trip to the Tree view. We
+  // mount it lazily rather than on first render so its one-shot initial fit
+  // happens while it's visible (a hidden 0×0 container would fit to nothing).
+  const [graphEverShown, setGraphEverShown] = React.useState(historyMode)
+
   // Per-view structural filter state, lifted from each view so the
   // reconciler at switch time has access to both.
   const [treeFilter, setTreeFilter] = React.useState<FilterState>(() =>
@@ -266,6 +273,7 @@ export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, classN
       setPendingFocus({ name: transition.target.name, defType: transition.target.defType })
     }
 
+    if (target === 'graph') setGraphEverShown(true)
     setActiveView(target)
   }, [activeView, treeFilter, graphFilter, treePins, graphPins, historyMode])
 
@@ -335,39 +343,49 @@ export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, classN
           </button>
         </div>
 
-        {activeView === 'tree' ? (
-          <TreeView
-            ast={ast}
-            onShowInGraph={showInGraph}
-            filter={treeFilter}
-            onFilterChange={setTreeFilter}
-            pins={treePins}
-            onPinsChange={setTreePins}
-            searchQuery={searchQuery}
-            searchActive={searchActive}
-            onSearchChange={handleSearchChange}
-            pendingFocus={pendingFocus}
-            onFocusConsumed={clearPendingFocus}
-            overriddenPins={treeOverriddenPins}
-            onOverriddenPinsConsumed={clearTreeOverriddenPins}
-          />
-        ) : (
-          <GraphView
-            ast={ast}
-            parserGraph={graphInput}
-            onShowInTree={historyMode ? undefined : showInTree}
-            filter={graphFilter}
-            onFilterChange={setGraphFilter}
-            pins={graphPins}
-            onPinsChange={setGraphPins}
-            searchQuery={searchQuery}
-            searchActive={searchActive}
-            onSearchChange={handleSearchChange}
-            pendingFocus={pendingFocus}
-            onFocusConsumed={clearPendingFocus}
-            overriddenPins={graphOverriddenPins}
-            onOverriddenPinsConsumed={clearGraphOverriddenPins}
-          />
+        {/* Both views stay mounted (keep-alive) so their per-view state
+            survives tab switches; the inactive one is hidden, not unmounted.
+            The Tree view never mounts in history mode (no AST definitions). */}
+        {!historyMode && (
+          <div className={`view-pane${activeView === 'tree' ? '' : ' hidden'}`}>
+            <TreeView
+              active={activeView === 'tree'}
+              ast={ast}
+              onShowInGraph={showInGraph}
+              filter={treeFilter}
+              onFilterChange={setTreeFilter}
+              pins={treePins}
+              onPinsChange={setTreePins}
+              searchQuery={searchQuery}
+              searchActive={searchActive}
+              onSearchChange={handleSearchChange}
+              pendingFocus={pendingFocus}
+              onFocusConsumed={clearPendingFocus}
+              overriddenPins={treeOverriddenPins}
+              onOverriddenPinsConsumed={clearTreeOverriddenPins}
+            />
+          </div>
+        )}
+        {graphEverShown && (
+          <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
+            <GraphView
+              active={activeView === 'graph'}
+              ast={ast}
+              parserGraph={graphInput}
+              onShowInTree={historyMode ? undefined : showInTree}
+              filter={graphFilter}
+              onFilterChange={setGraphFilter}
+              pins={graphPins}
+              onPinsChange={setGraphPins}
+              searchQuery={searchQuery}
+              searchActive={searchActive}
+              onSearchChange={handleSearchChange}
+              pendingFocus={pendingFocus}
+              onFocusConsumed={clearPendingFocus}
+              overriddenPins={graphOverriddenPins}
+              onOverriddenPinsConsumed={clearGraphOverriddenPins}
+            />
+          </div>
         )}
       </div>
     </DefinitionContext.Provider>

@@ -100,6 +100,20 @@ body {
   height: 100%;
 }
 
+/* Keep-alive wrapper for each view. Both views stay mounted so their state
+   (graph viewport/layout, tree scroll/expand) survives tab switches; the
+   inactive one is hidden rather than unmounted. */
+.view-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.view-pane.hidden {
+  display: none;
+}
+
 /* Tab Bar */
 .tab-bar {
   display: flex;
@@ -185,7 +199,9 @@ body {
   left: 0;
   right: 0;
   z-index: 10;
-  max-height: 30vh;
+  /* Bounded so a long expanded error/warning list never covers the whole
+     canvas; the individual error bodies scroll internally past this. */
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
   /* Don't intercept canvas pan/zoom in any transparent gaps within the
@@ -210,29 +226,67 @@ body {
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* Graph Toolbar — view-specific controls, rendered inside the overlay. */
-.graph-toolbar {
+/* Graph bottom controls — floating, anchored over the canvas. The left
+   carries the node/edge counts; the centre carries the simulation controls
+   and the live fps. */
+.graph-bottom-left,
+.graph-bottom-center {
+  position: absolute;
+  bottom: 12px;
+  z-index: 10;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
-  padding: 4px 14px;
-  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
+  pointer-events: auto;
 }
 
-.graph-toolbar-count {
+.graph-bottom-left {
+  left: 12px;
+  transition: left 0.2s ease;
+}
+
+/* Shift right of the keyboard-shortcuts panel when it's open. */
+.graph-bottom-left.shifted {
+  left: 224px;
+}
+
+.graph-bottom-center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.graph-count {
   font-size: 12px;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
-  margin-right: auto;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.graph-toolbar-fps {
+.graph-count-fps {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
   opacity: 0.7;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Fixed slot + centred text so the readout's changing digit count never
+     nudges the neighbouring controls. */
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Paused: keep the box (and its reserved width) but make it invisible, so the
+   Play/Pause button doesn't shift when ticking starts/stops. */
+.graph-count-fps.hidden {
+  visibility: hidden;
 }
 
 .graph-toolbar-btn {
@@ -240,7 +294,9 @@ body {
   font-size: 12px;
   font-weight: 500;
   color: var(--color-text-muted);
-  background: transparent;
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--color-border);
   border-radius: 4px;
   cursor: pointer;
@@ -298,7 +354,10 @@ body {
   border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 8px 10px;
-  pointer-events: none;
+  /* Interactive: the tooltip carries a "Show in Tree" button, so it must
+     capture pointer events. A grace period in GraphView keeps it open while
+     the pointer travels from the node onto it. */
+  pointer-events: auto;
   z-index: 20;
   min-width: 140px;
   max-width: 220px;
@@ -307,6 +366,32 @@ body {
 
 .vscode-dark .graph-hover-tooltip {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* "Show in Tree" button inside the hover tooltip. */
+.tooltip-show-in-tree {
+  margin-top: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tooltip-show-in-tree:hover {
+  color: var(--color-workflow);
+  border-color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.08);
+}
+
+.vscode-dark .tooltip-show-in-tree:hover {
+  background: rgba(168, 155, 216, 0.12);
 }
 
 .tooltip-identity {
@@ -453,68 +538,100 @@ body {
   font-weight: 500;
 }
 
-/* Graph Errors Header — translucent so it composes with the overlay */
-.graph-errors-header {
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-error-border);
-  flex-shrink: 0;
+/* === Error / Warning bars =====================================
+   Two independent, collapsed-by-default bars at the bottom of the
+   shared filter bar: a red Errors bar and a yellow Warnings bar.
+   Shared by both views (FilterBar). Each bar's body scrolls so a long
+   list never pushes the rest of the toolbar off-screen.
+   ============================================================= */
+.filter-error-bars {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
 }
 
-.graph-errors-bar {
+.severity-bar + .severity-bar {
+  border-top: 1px solid var(--color-border);
+}
+
+.severity-bar-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px;
+  padding: 6px 14px;
   cursor: pointer;
   user-select: none;
+  transition: background 0.1s ease;
 }
 
-.graph-errors-bar:hover {
-  background: rgba(220, 38, 38, 0.03);
-}
-
-.graph-errors-icon {
+.severity-bar-icon {
   font-size: 13px;
-  color: var(--color-error);
 }
 
-.graph-errors-title {
+.severity-bar-title {
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-error);
 }
 
-.graph-errors-body {
-  border-top: 1px solid var(--color-error-border);
+/* Red errors bar */
+.severity-bar-error .severity-bar-icon,
+.severity-bar-error .severity-bar-title {
+  color: var(--color-error);
+}
+.severity-bar-error .severity-bar-head:hover {
+  background: rgba(220, 38, 38, 0.04);
+}
+.vscode-dark .severity-bar-error .severity-bar-head:hover {
+  background: rgba(248, 113, 113, 0.06);
+}
+
+/* Yellow warnings bar */
+.severity-bar-warning .severity-bar-icon,
+.severity-bar-warning .severity-bar-title {
+  color: var(--warning-fg);
+}
+.severity-bar-warning .severity-bar-head:hover {
+  background: rgba(217, 119, 6, 0.05);
+}
+.vscode-dark .severity-bar-warning .severity-bar-head:hover {
+  background: rgba(251, 191, 36, 0.06);
+}
+
+/* Scrollable body — capped so it never eats the whole view. */
+.severity-bar-body {
+  max-height: 28vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-border);
   padding: 4px 0;
 }
 
-.graph-error-item {
-  padding: 4px 16px 4px 28px;
+.severity-bar-error .severity-bar-body {
+  border-top-color: var(--color-error-border);
+}
+.severity-bar-warning .severity-bar-body {
+  border-top-color: var(--warning-border);
 }
 
-.graph-error-file {
+/* Process-level FileError rows (rendered in the errors bar). */
+.severity-error-item {
+  padding: 6px 14px 6px 28px;
+}
+
+.severity-error-file {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-error-text);
 }
 
-.graph-error-msg {
+.severity-error-msg {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-error-text);
   white-space: pre-wrap;
-  margin: 2px 0 0;
-}
-
-.graph-error-hidden-label {
-  padding: 4px 16px 4px 28px;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  font-style: italic;
+  word-break: break-word;
+  line-height: 1.5;
+  margin: 4px 0 0;
 }
 
 /* Graph Control Panel */
@@ -1675,6 +1792,17 @@ body {
   line-height: 1;
 }
 
+/* Definition-count badge on the file and type chips — a muted count of the
+   top-level definitions the chip represents (type counts respect the file
+   filter; file counts are per-file totals). */
+.header-chip-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
 /* All filter chips share the same hover / active recipe — the only thing
    that varies per type is which palette variable drives the colour. The
    --chip-tint and --chip-tint-bg pair is set per chip class below; the
@@ -1862,58 +1990,8 @@ body {
   display: none;
 }
 
-/* === Errors Header === */
-.errors-header {
-  background: var(--color-surface);
-  border: 1px solid var(--color-error-border);
-  border-radius: 10px;
-  margin-bottom: 20px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.06);
-}
-
-.errors-header-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.1s ease;
-}
-
-.errors-header-bar:hover {
-  background: rgba(220, 38, 38, 0.03);
-}
-
-.vscode-dark .errors-header-bar:hover {
-  background: rgba(248, 113, 113, 0.06);
-}
-
-.errors-header-icon {
-  font-size: 14px;
-  color: var(--color-error);
-}
-
-.errors-header-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-error);
-}
-
-.errors-header-body {
-  border-top: 1px solid var(--color-error-border);
-}
-
-/* Error groups (shown/hidden files) */
-.error-group {
-  padding: 0;
-}
-
-.error-group + .error-group {
-  border-top: 1px solid var(--color-border);
-}
-
+/* Sub-group label inside an error/warning bar body ("Shown files (N)" /
+   "Hidden files (N)") — split shown when the file filter hides findings. */
 .error-group-label {
   padding: 8px 14px 4px;
   font-size: 11px;
@@ -1924,77 +2002,12 @@ body {
   opacity: 0.7;
 }
 
-.error-group-hidden .error-group-label {
-  opacity: 0.5;
-}
-
-.error-group-item {
-  padding: 8px 14px 8px 28px;
-  border-bottom: 1px solid var(--color-error-border);
-}
-
-.error-group-item:last-child {
-  border-bottom: none;
-}
-
-.error-group-file {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-error-text);
-  margin-bottom: 4px;
-}
-
-.error-group-hidden .error-group-file {
-  color: var(--color-warning);
-}
-
-.error-group-message {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-error-text);
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.error-group-hidden .error-group-message {
-  color: var(--color-text-muted);
-}
-
 /* === Diagnostic rows ===========================================
    Validator/resolver/parse findings emitted in the JSON envelope by
-   `twf parse`. Composed alongside the FileError rows above so the
-   user sees both process failures and validator output in one place.
+   `twf parse`. Rendered inside the error/warning bars (FilterBar).
    ============================================================= */
 
-/* Warnings-only header bar: same shape as .errors-header, but
-   colour-shifted from red → amber so the user can see at a glance
-   that everything in the header is informational (no parse failures). */
-.errors-header.severity-warnings-only {
-  border-color: var(--warning-border);
-  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.08);
-}
-
-.errors-header.severity-warnings-only .errors-header-bar:hover {
-  background: rgba(217, 119, 6, 0.04);
-}
-
-.errors-header.severity-warnings-only .errors-header-icon,
-.errors-header.severity-warnings-only .errors-header-title {
-  color: var(--warning-fg);
-}
-
-.errors-header.severity-warnings-only .errors-header-body {
-  border-top-color: var(--warning-border);
-}
-
-.vscode-dark .errors-header.severity-warnings-only .errors-header-bar:hover {
-  background: rgba(251, 191, 36, 0.06);
-}
-
-/* A single diagnostic row inside an ErrorGroup. Two-line layout:
+/* A single diagnostic row. Two-line layout:
    [glyph] [CODE]  message
                    file:line:col
    Line 1 carries the severity glyph (✗ red / ⚠ amber), the diagnostic
@@ -2089,61 +2102,6 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.error-group-hidden .diagnostic-message,
-.error-group-hidden .diagnostic-location {
-  opacity: 0.7;
-}
-
-/* Graph-view variant of the diagnostic row — narrower padding to
-   compose with the floating overlay's compact treatment, and inherits
-   the same severity palette. */
-.graph-diagnostic-item {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: baseline;
-  gap: 4px 6px;
-  padding: 4px 16px 4px 28px;
-}
-
-.graph-diagnostic-item.severity-error .diagnostic-glyph {
-  color: var(--color-error);
-}
-
-.graph-diagnostic-item.severity-warning .diagnostic-glyph {
-  color: var(--warning-accent);
-}
-
-.graph-diagnostic-item .diagnostic-message {
-  font-size: 11px;
-}
-
-.graph-diagnostic-item .diagnostic-location {
-  font-size: 10px;
-}
-
-/* Severity-shaded graph header. Drops to the warning palette when
-   only warnings exist; keeps the error palette as the default. */
-.graph-errors-header.severity-warnings-only {
-  border-bottom-color: var(--warning-border);
-}
-
-.graph-errors-header.severity-warnings-only .graph-errors-icon,
-.graph-errors-header.severity-warnings-only .graph-errors-title {
-  color: var(--warning-fg);
-}
-
-.graph-errors-header.severity-warnings-only .graph-errors-body {
-  border-top-color: var(--warning-border);
-}
-
-.graph-errors-header.severity-warnings-only .graph-errors-bar:hover {
-  background: rgba(217, 119, 6, 0.03);
-}
-
-.vscode-dark .graph-errors-header.severity-warnings-only .graph-errors-bar:hover {
-  background: rgba(251, 191, 36, 0.06);
 }
 
 

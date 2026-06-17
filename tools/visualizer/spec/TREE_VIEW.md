@@ -66,11 +66,11 @@ Tree-view-specific behaviors:
 - Search is **non-destructive**: non-matching definition blocks dim to reduced opacity; matching definitions stay at full opacity. An `N of M` match-count indicator appears in the filter bar while a query is active. Press `n` / `N` to jump focus between matches (see § Keyboard Navigation).
 - When exactly one file chip is selected, the VS Code webview sends an `openFile` message to focus that file in the editor.
 
-### Errors header
-- Shown only when the AST contains parse errors
-- A collapsible bar below the filter bar with error count
-- Errors are grouped by "shown files" (matching the file filter) and "hidden files"
-- Each error displays the file name and the error/stderr message
+### Error and warning bars
+- Shown only when the AST contains parse errors or warnings
+- Two collapsed-by-default severity bars (red errors, yellow warnings) at the bottom of the shared filter bar — the same shared component the graph view uses (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Error Handling)
+- Each bar's scrollable body groups findings by "shown files" (matching the file filter) and "hidden files"
+- Each finding displays the file name, code, position, and message
 
 
 ## Block rendering

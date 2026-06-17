@@ -53,17 +53,12 @@ export interface GraphModel {
   graph: ReturnType<typeof buildGraph>
   allFiles: string[]
   recentlyChanged: Set<string>
+  // Raw findings — partitioned by the file filter inside the shared FilterBar.
   errors: FileError[]
   diagnostics: Diagnostic[]
-  shownFileErrors: FileError[]
-  hiddenFileErrors: FileError[]
-  shownDiagnostics: Diagnostic[]
-  hiddenDiagnostics: Diagnostic[]
 }
 
 export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph, filter: FilterState): GraphModel {
-  const selectedFiles = filter.selectedFiles
-
   // Build the view-side graph from the parser's deployment graph. AST is
   // consulted for sourceFile (file-filter chips) and future hover enrichments.
   const graph = React.useMemo(
@@ -98,40 +93,15 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph, filter: Fi
     }
   }, [filter])
 
-  // Process-level FileErrors and structured Diagnostics, partitioned by the
-  // file filter so the errors header can report the shown/hidden split.
-  // Graph-stage findings (parserGraph.diagnostics + unresolved) are folded in
-  // alongside the AST diagnostics so history-derived warnings are visible.
+  // Process-level FileErrors and structured Diagnostics. Graph-stage findings
+  // (parserGraph.diagnostics + unresolved) are folded in alongside the AST
+  // diagnostics so history-derived warnings are visible. The file-filter
+  // partition (shown vs hidden) now happens inside the shared FilterBar.
   const errors = ast.errors || []
   const diagnostics = React.useMemo(
     () => [...(ast.diagnostics || []), ...graphFindingsToDiagnostics(parserGraph)],
     [ast.diagnostics, parserGraph],
   )
-  const { shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics } = React.useMemo(() => {
-    if (selectedFiles.size === 0) {
-      return {
-        shownFileErrors: errors,
-        hiddenFileErrors: [] as FileError[],
-        shownDiagnostics: diagnostics,
-        hiddenDiagnostics: [] as Diagnostic[],
-      }
-    }
-    const sFE: FileError[] = []
-    const hFE: FileError[] = []
-    for (const e of errors) {
-      if (selectedFiles.has(e.file)) sFE.push(e)
-      else hFE.push(e)
-    }
-    const sD: Diagnostic[] = []
-    const hD: Diagnostic[] = []
-    for (const d of diagnostics) {
-      // Unstamped diagnostics surface in the shown group so a missing file path
-      // can't accidentally hide them.
-      if (!d.file || selectedFiles.has(d.file)) sD.push(d)
-      else hD.push(d)
-    }
-    return { shownFileErrors: sFE, hiddenFileErrors: hFE, shownDiagnostics: sD, hiddenDiagnostics: hD }
-  }, [errors, diagnostics, selectedFiles])
 
   return {
     graph,
@@ -139,9 +109,5 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph, filter: Fi
     recentlyChanged,
     errors,
     diagnostics,
-    shownFileErrors,
-    hiddenFileErrors,
-    shownDiagnostics,
-    hiddenDiagnostics,
   }
 }

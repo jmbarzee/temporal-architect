@@ -1,15 +1,17 @@
 import React from 'react'
-import type { TWFFile, Definition, FileError, Diagnostic, Statement, AsyncTarget } from '../types/ast'
+import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
 import type { CallerRef, NavigationContextType, CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { filterStatesEqual } from '../filter/types'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
-import { PinToggle } from './PinToggle'
-import { SearchIcon } from './icons/GearIcons'
-import { DEF_TYPE_ORDER, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
+import { FilterBar } from './FilterBar'
+import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
 
 interface TreeViewProps {
+  // Whether this view is the active tab. Both views stay mounted (keep-alive),
+  // so the inactive one must not respond to global keyboard shortcuts.
+  active: boolean
   ast: TWFFile
   onShowInGraph?: (name: string, defType: string) => void
   filter: FilterState
@@ -26,6 +28,7 @@ interface TreeViewProps {
 }
 
 export function TreeView({
+  active,
   ast,
   onShowInGraph,
   filter,
@@ -203,14 +206,6 @@ export function TreeView({
     return Array.from(files).sort()
   }, [ast])
 
-  // Toggle a file in the selection
-  const toggleFile = React.useCallback((file: string) => {
-    const next = new Set(filter.selectedFiles)
-    if (next.has(file)) next.delete(file)
-    else next.add(file)
-    onFilterChange({ ...filter, selectedFiles: next })
-  }, [filter, onFilterChange])
-
   // Toggle search bar
   const toggleSearch = React.useCallback(() => {
     if (searchActive) {
@@ -220,28 +215,6 @@ export function TreeView({
       setTimeout(() => searchInputRef.current?.focus(), 50)
     }
   }, [searchActive, searchQuery, onSearchChange])
-
-  // Toggle a group of definition types in visibility. For single-type chips
-  // types has one element; for the Nexus group chip it has three. If any
-  // member of the group is on, the whole group turns off; if all are off,
-  // the whole group turns on — matching the Graph view's group toggle logic.
-  const toggleTypeGroup = React.useCallback((types: readonly string[]) => {
-    const anyOn = types.some(t => filter.visibleTypes.has(t))
-    const next = new Set(filter.visibleTypes)
-    if (anyOn) {
-      for (const t of types) next.delete(t)
-    } else {
-      for (const t of types) next.add(t)
-    }
-    onFilterChange({ ...filter, visibleTypes: next })
-  }, [filter, onFilterChange])
-
-  const togglePinFiles = React.useCallback(() => {
-    onPinsChange({ ...pins, files: !pins.files })
-  }, [pins, onPinsChange])
-  const togglePinTypes = React.useCallback(() => {
-    onPinsChange({ ...pins, types: !pins.types })
-  }, [pins, onPinsChange])
 
   // Filter and group definitions for display. Search is NO LONGER a
   // structural filter — non-matching definitions remain rendered but
@@ -298,55 +271,17 @@ export function TreeView({
     return { matchSet: set, matchIndices: indices, hiddenMatchByType: byType, hiddenMatchByFile: byFile }
   }, [searchQuery, visibleDefinitions, ast.definitions, filter])
 
-  // Partition errors into "shown files" vs "hidden files" based on file filter
+  // Raw findings handed straight to the shared FilterBar, which partitions
+  // them by the file filter and renders the error/warning bars.
   const errors = ast.errors || []
   const diagnostics = ast.diagnostics || []
-  const {
-    shownFileErrors,
-    hiddenFileErrors,
-    shownDiagnostics,
-    hiddenDiagnostics,
-  } = React.useMemo(() => {
-    if (filter.selectedFiles.size === 0) {
-      return {
-        shownFileErrors: errors,
-        hiddenFileErrors: [] as FileError[],
-        shownDiagnostics: diagnostics,
-        hiddenDiagnostics: [] as Diagnostic[],
-      }
-    }
-    const sFE: FileError[] = []
-    const hFE: FileError[] = []
-    for (const e of errors) {
-      if (filter.selectedFiles.has(e.file)) sFE.push(e)
-      else hFE.push(e)
-    }
-    const sD: Diagnostic[] = []
-    const hD: Diagnostic[] = []
-    for (const d of diagnostics) {
-      // Diagnostics without a `file` (rare — the parser should always
-      // stamp one) are surfaced in the shown group so they aren't
-      // accidentally hidden by file-filter narrowing.
-      if (!d.file || filter.selectedFiles.has(d.file)) sD.push(d)
-      else hD.push(d)
-    }
-    return {
-      shownFileErrors: sFE,
-      hiddenFileErrors: hFE,
-      shownDiagnostics: sD,
-      hiddenDiagnostics: hD,
-    }
-  }, [errors, diagnostics, filter.selectedFiles])
-
-  const hasFiles = allFiles.length > 0
-  // Render the errors header whenever there's anything to surface:
-  // a parser-process FileError or a structured Diagnostic of any
-  // severity. The header itself partitions counts by severity.
+  // Whether there's anything to surface — used only to decide the empty state.
   const hasHeaderContent = errors.length > 0 || diagnostics.length > 0
-  const noFilesSelected = filter.selectedFiles.size === 0
 
-  // Global keyboard shortcut: "/" or Ctrl+F opens search
+  // Global keyboard shortcut: "/" or Ctrl+F opens search. Gated on `active`
+  // so the hidden (inactive) view doesn't also respond.
   React.useEffect(() => {
+    if (!active) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === '/' || (e.ctrlKey && e.key === 'f')) {
@@ -361,7 +296,7 @@ export function TreeView({
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [searchActive, searchQuery, onSearchChange])
+  }, [active, searchActive, searchQuery, onSearchChange])
 
   // Keep refs array sized to visible definitions
   React.useEffect(() => {
@@ -530,143 +465,47 @@ export function TreeView({
     return pos >= 0 ? pos + 1 : null
   }, [matchSet, matchIndices, focusedIndex, visibleDefinitions])
 
+  // Tree-view search adornment: the "N of M" / "no matches" counter.
+  const searchExtra = searchActive && searchQuery ? (
+    matchIndices.length > 0 ? (
+      <span className="header-search-counter" title="Press n/N to jump between matches">
+        {currentMatchPosition !== null
+          ? `${currentMatchPosition} of ${matchIndices.length}`
+          : `${matchIndices.length} match${matchIndices.length !== 1 ? 'es' : ''}`}
+      </span>
+    ) : (
+      <span className="header-search-counter empty">no matches</span>
+    )
+  ) : null
+
   return (
     <NavigationContext.Provider value={navigationValue}>
       <div className="workflow-canvas">
-        {/* === Filter Header === */}
-        <div className={`canvas-header${refreshFlash ? ' refresh-flash' : ''}`}>
-          {/* Files Section — only show if there are files */}
-          {hasFiles && (
-            <>
-              <div className={`header-files-section${pins.files ? ' section-pinned' : ''}`}>
-                <div className="header-files-row">
-                  {allFiles.map(file => {
-                    const fileName = file.split('/').pop() || file
-                    const isSelected = filter.selectedFiles.has(file)
-                    const isChanged = recentlyChanged.has(`file:${file}`)
-                    const hiddenCount = hiddenMatchByFile.get(file) ?? 0
-                    const chipClass = [
-                      'header-file-tag',
-                      noFilesSelected ? 'all-included' : (isSelected ? 'selected' : ''),
-                      isChanged ? 'recently-changed' : '',
-                    ].filter(Boolean).join(' ')
-                    return (
-                      <button
-                        key={file}
-                        className={chipClass}
-                        onClick={() => toggleFile(file)}
-                        title={file}
-                      >
-                        <span className="header-file-icon">📄</span>
-                        <span className="header-file-name">{fileName}</span>
-                        {hiddenCount > 0 && (
-                          <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden in this file`}>
-                            {hiddenCount}
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-                <PinToggle
-                  pinned={pins.files}
-                  onClick={togglePinFiles}
-                  flashing={overriddenPins.has('files')}
-                  label="Files"
-                />
-              </div>
-              <div className="header-divider" />
-            </>
-          )}
-
-          {/* Definition Type Toggles */}
-          <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
-            <div className="header-types-row">
-              {VIEW_FILTER_ENTRIES.map(entry => {
-                const isActive = entry.types.some(t => filter.visibleTypes.has(t))
-                const isChanged = entry.types.some(t => recentlyChanged.has(`type:${t}`))
-                const hiddenCount = entry.types.reduce((sum, t) => sum + (hiddenMatchByType.get(t) ?? 0), 0)
-                const cls = [
-                  'header-type-tag',
-                  isActive ? 'active' : '',
-                  `header-type-${entry.id}`,
-                  isChanged ? 'recently-changed' : '',
-                ].filter(Boolean).join(' ')
-                return (
-                  <button
-                    key={entry.id}
-                    className={cls}
-                    onClick={() => toggleTypeGroup(entry.types)}
-                    title={isActive ? `Hide ${entry.label.toLowerCase()}` : `Show ${entry.label.toLowerCase()}`}
-                  >
-                    <span className="header-type-icon">{entry.icon}</span>
-                    <span className="header-type-label">{entry.label}</span>
-                    {hiddenCount > 0 && (
-                      <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden by this filter`}>
-                        {hiddenCount}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            <PinToggle
-              pinned={pins.types}
-              onClick={togglePinTypes}
-              flashing={overriddenPins.has('types')}
-              label="Types"
-            />
-          </div>
-          <div className="header-divider" />
-
-          {/* Controls Section — search */}
-          <div className="header-controls-section">
-            <div className={`header-search ${searchActive ? 'active' : ''}`}>
-              <button
-                className="header-search-toggle"
-                onClick={toggleSearch}
-                title="Search definitions"
-              >
-                <SearchIcon size={14} />
-              </button>
-              {searchActive && (
-                <input
-                  ref={searchInputRef}
-                  className="header-search-input"
-                  type="text"
-                  placeholder="Filter by name..."
-                  value={searchQuery}
-                  onChange={e => onSearchChange(e.target.value, true)}
-                  onKeyDown={e => {
-                    if (e.key === 'Escape') toggleSearch()
-                  }}
-                />
-              )}
-              {searchActive && searchQuery && matchIndices.length > 0 && (
-                <span className="header-search-counter" title="Press n/N to jump between matches">
-                  {currentMatchPosition !== null
-                    ? `${currentMatchPosition} of ${matchIndices.length}`
-                    : `${matchIndices.length} match${matchIndices.length !== 1 ? 'es' : ''}`}
-                </span>
-              )}
-              {searchActive && searchQuery && matchIndices.length === 0 && (
-                <span className="header-search-counter empty">no matches</span>
-              )}
-            </div>
-          </div>
-        </div>
+        <FilterBar
+          ast={ast}
+          allFiles={allFiles}
+          filter={filter}
+          onFilterChange={onFilterChange}
+          pins={pins}
+          onPinsChange={onPinsChange}
+          overriddenPins={overriddenPins}
+          recentlyChanged={recentlyChanged}
+          searchQuery={searchQuery}
+          searchActive={searchActive}
+          onSearchChange={onSearchChange}
+          searchInputRef={searchInputRef}
+          searchTitle="Search definitions"
+          searchPlaceholder="Filter by name..."
+          searchExtra={searchExtra}
+          hiddenMatchByType={hiddenMatchByType}
+          hiddenMatchByFile={hiddenMatchByFile}
+          errors={errors}
+          diagnostics={diagnostics}
+          refreshFlash={refreshFlash}
+        />
 
         {/* === Content — padded; scrolls independently of the sticky header === */}
         <div className="workflow-canvas-content">
-          {hasHeaderContent && (
-            <ErrorsHeader
-              shownFileErrors={shownFileErrors}
-              hiddenFileErrors={hiddenFileErrors}
-              shownDiagnostics={shownDiagnostics}
-              hiddenDiagnostics={hiddenDiagnostics}
-            />
-          )}
-
           {visibleDefinitions.length === 0 && !hasHeaderContent ? (
             <div className="no-workflows">
               <p>No definitions match the current filters.</p>
@@ -722,152 +561,4 @@ function nextMatchIndex(matchIndices: number[], currentIndex: number, forward: b
     }
     return matchIndices[matchIndices.length - 1]
   }
-}
-
-/**
- * Collapsible errors header — surfaces two distinct kinds of finding:
- *
- *   1. FileError (parser-process failure): missing binary, IO error,
- *      malformed JSON envelope. Always rendered as a parse-error row.
- *   2. Diagnostic (validator/resolver/parse finding from `twf parse`'s
- *      JSON envelope): carries severity, code, file, position, message.
- *
- * Each kind is partitioned by the file-filter into "shown" and "hidden"
- * groups so users see exactly which findings the current filter is
- * hiding from them. The header bar shows the rolled-up counts as
- * "N errors, M warnings", switching to a warning palette when there
- * are no errors and the only findings are warnings.
- */
-function ErrorsHeader({
-  shownFileErrors, hiddenFileErrors,
-  shownDiagnostics, hiddenDiagnostics,
-}: {
-  shownFileErrors: FileError[]
-  hiddenFileErrors: FileError[]
-  shownDiagnostics: Diagnostic[]
-  hiddenDiagnostics: Diagnostic[]
-}) {
-  const [expanded, setExpanded] = React.useState(true)
-
-  // Severity roll-up: process-level FileErrors count as errors; structured
-  // diagnostics contribute to either count based on their severity field.
-  const { errorCount, warningCount, headerSeverity } = React.useMemo(() => {
-    const allDiags = [...shownDiagnostics, ...hiddenDiagnostics]
-    const diagErrors = allDiags.filter(d => d.severity === 'error').length
-    const diagWarnings = allDiags.filter(d => d.severity === 'warning').length
-    const errCount = shownFileErrors.length + hiddenFileErrors.length + diagErrors
-    const warnCount = diagWarnings
-    const severity: 'error' | 'warning' = errCount > 0 ? 'error' : 'warning'
-    return { errorCount: errCount, warningCount: warnCount, headerSeverity: severity }
-  }, [shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics])
-
-  const countParts: string[] = []
-  if (errorCount > 0) countParts.push(`${errorCount} ${errorCount === 1 ? 'error' : 'errors'}`)
-  if (warningCount > 0) countParts.push(`${warningCount} ${warningCount === 1 ? 'warning' : 'warnings'}`)
-  const countText = countParts.join(', ')
-
-  // Append the shown/hidden breakdown when the file filter is splitting
-  // findings into both groups — gives the user a hint that filtered-out
-  // files have their own issues without forcing a chip toggle.
-  const shownTotal = shownFileErrors.length + shownDiagnostics.length
-  const hiddenTotal = hiddenFileErrors.length + hiddenDiagnostics.length
-  const splitParts: string[] = []
-  if (shownTotal > 0 && hiddenTotal > 0) {
-    splitParts.push(`${shownTotal} in shown files`)
-    splitParts.push(`${hiddenTotal} in hidden files`)
-  }
-  const splitSuffix = splitParts.length > 0 ? ` (${splitParts.join(', ')})` : ''
-
-  // Top-bar glyph mirrors the most severe entry: ✗ when any errors are
-  // present, ⚠ otherwise. Distinct from per-row glyphs so the bar
-  // communicates "worst-case" at a glance.
-  const headerIcon = headerSeverity === 'error' ? '✗' : '⚠'
-
-  return (
-    <div className={`errors-header${headerSeverity === 'warning' ? ' severity-warnings-only' : ''}`}>
-      <div className="errors-header-bar" onClick={() => setExpanded(!expanded)}>
-        <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
-        <span className="errors-header-icon">{headerIcon}</span>
-        <span className="errors-header-title">
-          {countText}{splitSuffix}
-        </span>
-      </div>
-
-      {expanded && (
-        <div className="errors-header-body">
-          {(shownFileErrors.length > 0 || shownDiagnostics.length > 0) && (
-            <ErrorGroup
-              label="Shown files"
-              fileErrors={shownFileErrors}
-              diagnostics={shownDiagnostics}
-              variant="shown"
-            />
-          )}
-          {(hiddenFileErrors.length > 0 || hiddenDiagnostics.length > 0) && (
-            <ErrorGroup
-              label="Hidden files"
-              fileErrors={hiddenFileErrors}
-              diagnostics={hiddenDiagnostics}
-              variant="hidden"
-            />
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * A group of findings under a sub-label. FileErrors render first
- * (parse-process failures are the most impactful); then errors-severity
- * diagnostics; then warnings. The grouping order ensures the user reads
- * "what's broken" before "what might be off".
- */
-function ErrorGroup({ label, fileErrors, diagnostics, variant }: {
-  label: string
-  fileErrors: FileError[]
-  diagnostics: Diagnostic[]
-  variant: 'shown' | 'hidden'
-}) {
-  const errorDiagnostics = diagnostics.filter(d => d.severity === 'error')
-  const warningDiagnostics = diagnostics.filter(d => d.severity === 'warning')
-  const total = fileErrors.length + diagnostics.length
-
-  return (
-    <div className={`error-group error-group-${variant}`}>
-      <div className="error-group-label">
-        {label} ({total})
-      </div>
-      {fileErrors.map((err, i) => (
-        <div key={`fe-${i}`} className="error-group-item">
-          <div className="error-group-file">{err.file.split('/').pop()}</div>
-          <pre className="error-group-message">{err.stderr || err.error}</pre>
-        </div>
-      ))}
-      {errorDiagnostics.map((d, i) => (
-        <DiagnosticRow key={`de-${i}`} diagnostic={d} />
-      ))}
-      {warningDiagnostics.map((d, i) => (
-        <DiagnosticRow key={`dw-${i}`} diagnostic={d} />
-      ))}
-    </div>
-  )
-}
-
-/** Single-line diagnostic row: glyph + code chip + message, with a
- * secondary muted file:line:col line beneath the message column. */
-function DiagnosticRow({ diagnostic }: { diagnostic: Diagnostic }) {
-  const glyph = diagnostic.severity === 'error' ? '✗' : '⚠'
-  const fileName = diagnostic.file ? diagnostic.file.split('/').pop() : undefined
-  const loc = fileName
-    ? `${fileName}:${diagnostic.start.line}:${diagnostic.start.column}`
-    : undefined
-  return (
-    <div className={`diagnostic-item severity-${diagnostic.severity}`}>
-      <span className="diagnostic-glyph" aria-hidden="true">{glyph}</span>
-      <span className="diagnostic-code">{diagnostic.code}</span>
-      <span className="diagnostic-message">{diagnostic.message}</span>
-      {loc && <span className="diagnostic-location">{loc}</span>}
-    </div>
-  )
 }

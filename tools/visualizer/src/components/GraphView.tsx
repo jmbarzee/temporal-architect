@@ -2,7 +2,7 @@
 // Wires together graph construction, simulation, viewport, rendering, and interaction.
 
 import React from 'react'
-import type { TWFFile, FileError, Diagnostic } from '../types/ast'
+import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
@@ -14,10 +14,8 @@ import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { GraphCanvas } from './GraphCanvas'
 import { GraphControlPanel } from './GraphControlPanel'
-import { PinToggle } from './PinToggle'
-import { GraphContextMenu, type ContextMenuItem } from './GraphContextMenu'
-import { SearchIcon } from './icons/GearIcons'
-import { DEF_TYPE_CONFIGS, VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
+import { FilterBar } from './FilterBar'
+import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 import { useGraphModel } from './graph-view/useGraphModel'
 import { useViewport } from './graph-view/useViewport'
 import { useHighlight } from './graph-view/useHighlight'
@@ -26,6 +24,9 @@ import { useVisibleGraph } from './graph-view/useVisibleGraph'
 import { useSimulationLoop } from './graph-view/useSimulationLoop'
 
 interface GraphViewProps {
+  // Whether this view is the active tab. Both views stay mounted (keep-alive),
+  // so the inactive one must not respond to global keyboard shortcuts.
+  active: boolean
   ast: TWFFile
   // Deployment graph from `twf graph` — primary input. AST is secondary
   // (sourceFile lookup, hover details). See visualizer/REVISIONS_003.
@@ -48,6 +49,7 @@ interface GraphViewProps {
 // Graph views always show the same chip layout. See VIEW_FILTER_ENTRIES.
 
 export function GraphView({
+  active,
   ast,
   parserGraph,
   onShowInTree,
@@ -83,9 +85,6 @@ export function GraphView({
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
 
-  // --- Right-click context menu ---
-  const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; nodeId: string } | null>(null)
-
   // Pure data layer (graph build, file list, filter-change flash, diagnostics
   // partition) — everything derived straight from props, no sim/DOM.
   const {
@@ -94,10 +93,6 @@ export function GraphView({
     recentlyChanged,
     errors,
     diagnostics,
-    shownFileErrors,
-    hiddenFileErrors,
-    shownDiagnostics,
-    hiddenDiagnostics,
   } = useGraphModel(ast, parserGraph, filter)
 
   // Reset camera/fps coordination on each sim rebuild. Held by useSimulation
@@ -122,7 +117,6 @@ export function GraphView({
     onNodeDragMove: handleNodeDragMove,
     onNodeDragEnd: handleNodeDragEnd,
     onToggleRunning: handleToggleRunning,
-    onReheat: handleReheat,
   } = useSimulation(graph, onSimRebuild)
 
   // Render-time node sizing (independent of the simulation). Tunable from the
@@ -219,31 +213,9 @@ export function GraphView({
     fit(visibleNodes)
   }, [fit, visibleNodes])
 
-  // Type group toggle — turns all types in the group on together, or off
-  // together. If any member is currently on, the whole group turns off;
-  // if all are off, the whole group turns on.
-  const toggleTypeGroup = (types: string[]) => {
-    const anyOn = types.some(t => filter.visibleTypes.has(t))
-    const next = new Set(filter.visibleTypes)
-    if (anyOn) {
-      for (const t of types) next.delete(t)
-    } else {
-      for (const t of types) next.add(t)
-    }
-    onFilterChange({ ...filter, visibleTypes: next })
-  }
-
-  // File filter toggle
-  const toggleFile = (file: string) => {
-    const next = new Set(filter.selectedFiles)
-    if (next.has(file)) next.delete(file)
-    else next.add(file)
-    onFilterChange({ ...filter, selectedFiles: next })
-  }
-
-  // Search toggle — emits to canvas. Search query is globally shared so
-  // clearing it on close affects both views (intentional: closing the
-  // search bar means "no active search anywhere").
+  // Search toggle — used by the keyboard handler (Escape closes search). The
+  // filter-bar's own search button has its own copy inside FilterBar. Search
+  // query is globally shared so clearing it on close affects both views.
   const toggleSearch = () => {
     if (searchActive) {
       onSearchChange('', false)
@@ -253,27 +225,28 @@ export function GraphView({
     }
   }
 
-  // Pin togglers — emit the new PinState up.
-  const togglePinFiles = () => onPinsChange({ ...pins, files: !pins.files })
-  const togglePinTypes = () => onPinsChange({ ...pins, types: !pins.types })
-
-  // Right-click on a canvas node — open the context menu at the cursor.
-  const handleNodeContextMenu = React.useCallback((nodeId: string, clientX: number, clientY: number) => {
-    setContextMenu({ x: clientX, y: clientY, nodeId })
+  // Hover with a grace period so the pointer can travel from a node onto its
+  // hover tooltip (now interactive — it carries a "Show in Tree" button)
+  // without the tooltip vanishing. A null from the canvas schedules a clear;
+  // the tooltip's onMouseEnter cancels it, onMouseLeave re-arms it.
+  const hoverClearTimer = React.useRef<number | null>(null)
+  const cancelHoverClear = React.useCallback(() => {
+    if (hoverClearTimer.current !== null) {
+      clearTimeout(hoverClearTimer.current)
+      hoverClearTimer.current = null
+    }
   }, [])
-
-  const closeContextMenu = React.useCallback(() => setContextMenu(null), [])
-
-  // Build the menu items dynamically from the right-clicked node.
-  const contextMenuItems = React.useMemo<ContextMenuItem[]>(() => {
-    if (!contextMenu || !onShowInTree) return []
-    const node = simRef.current?.getNode(contextMenu.nodeId)
-    if (!node) return []
-    return [{
-      label: 'Show in Tree',
-      onClick: () => onShowInTree(node.name, nodeTypeToDefType(node.nodeType)),
-    }]
-  }, [contextMenu, onShowInTree])
+  const handleHoverNode = React.useCallback((id: string | null) => {
+    cancelHoverClear()
+    if (id !== null) {
+      setHoveredNodeId(id)
+    } else {
+      hoverClearTimer.current = window.setTimeout(() => {
+        setHoveredNodeId(null)
+        hoverClearTimer.current = null
+      }, 150)
+    }
+  }, [cancelHoverClear, setHoveredNodeId])
 
   // Select node from search result
   const handleSelectSearchResult = (nodeId: string) => {
@@ -315,8 +288,10 @@ export function GraphView({
     onFocusConsumed()
   }, [pendingFocus]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keyboard navigation
+  // Keyboard navigation. Gated on `active` so the hidden (inactive) view —
+  // both views stay mounted for keep-alive — doesn't also handle shortcuts.
   React.useEffect(() => {
+    if (!active) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
@@ -397,13 +372,17 @@ export function GraphView({
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, onSearchChange, shortcutsOpen, handleFitToView, handleToggleRunning])
+  }, [active, visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, onSearchChange, shortcutsOpen, handleFitToView, handleToggleRunning])
 
-  const hasFiles = allFiles.length > 0
-  const hasHeaderContent = errors.length > 0 || diagnostics.length > 0
-  const noFilesSelected = selectedFiles.size === 0
   const nodeCount = visibleNodes.length
   const edgeCount = visibleEdges.length
+
+  // Graph-view search adornment: the hidden-match "+N" badge.
+  const searchExtra = hiddenMatchCount > 0 ? (
+    <span className="header-search-badge" title={`${hiddenMatchCount} match${hiddenMatchCount !== 1 ? 'es' : ''} hidden by filters`}>
+      +{hiddenMatchCount}
+    </span>
+  ) : null
 
   return (
     <div className="graph-view" ref={containerRef}>
@@ -418,9 +397,8 @@ export function GraphView({
           onNodeDragMove={handleNodeDragMove}
           onNodeDragEnd={handleNodeDragEnd}
           onDoubleClickNode={handleDoubleClickNode}
-          onHoverNode={setHoveredNodeId}
+          onHoverNode={handleHoverNode}
           onSelectNode={setSelectedNodeId}
-          onNodeContextMenu={handleNodeContextMenu}
           highlightedNodes={highlightedNodes}
           highlightedEdges={highlightedEdges}
           hoveredNodeId={hoveredNodeId}
@@ -444,123 +422,61 @@ export function GraphView({
           shiftHeld={shiftHeld}
           duplicateGroups={graph.duplicateGroups}
           nodeSummaries={nodeSummaries}
+          onShowInTree={onShowInTree}
+          onMouseEnter={cancelHoverClear}
+          onMouseLeave={() => handleHoverNode(null)}
         />
       </div>
 
-      {/* Floating overlay: filter bar + toolbar + errors header */}
+      {/* Floating overlay: shared filter bar (with the error/warning bars) */}
       <div className="graph-overlay">
-      {/* Shared Filter Bar — identical structure to Tree View */}
-      <div className="canvas-header">
-        {hasFiles && (
-          <>
-            <div className={`header-files-section${pins.files ? ' section-pinned' : ''}`}>
-              <div className="header-files-row">
-                {allFiles.map(file => {
-                  const fileName = file.split('/').pop() || file
-                  const isSelected = selectedFiles.has(file)
-                  const isChanged = recentlyChanged.has(`file:${file}`)
-                  const chipClass = [
-                    'header-file-tag',
-                    noFilesSelected ? 'all-included' : (isSelected ? 'selected' : ''),
-                    isChanged ? 'recently-changed' : '',
-                  ].filter(Boolean).join(' ')
-                  return (
-                    <button key={file} className={chipClass} onClick={() => toggleFile(file)} title={file}>
-                      <span className="header-file-icon">📄</span>
-                      <span className="header-file-name">{fileName}</span>
-                    </button>
-                  )
-                })}
-              </div>
-              <PinToggle
-                pinned={pins.files}
-                onClick={togglePinFiles}
-                flashing={overriddenPins.has('files')}
-                label="Files"
-              />
-            </div>
-            <div className="header-divider" />
-          </>
+        <FilterBar
+          ast={ast}
+          allFiles={allFiles}
+          filter={filter}
+          onFilterChange={onFilterChange}
+          pins={pins}
+          onPinsChange={onPinsChange}
+          overriddenPins={overriddenPins}
+          recentlyChanged={recentlyChanged}
+          searchQuery={searchQuery}
+          searchActive={searchActive}
+          onSearchChange={onSearchChange}
+          searchInputRef={searchInputRef}
+          searchTitle="Search nodes (/)"
+          searchPlaceholder="Search nodes..."
+          searchExtra={searchExtra}
+          errors={errors}
+          diagnostics={diagnostics}
+        />
+
+        {/* Search results dropdown */}
+        {visibleMatchIds && visibleMatchIds.size > 0 && searchActive && (
+          <div className="graph-search-results">
+            {visibleNodes.filter(n => visibleMatchIds.has(n.id)).map(n => (
+              <button
+                key={n.id}
+                className="graph-search-result"
+                onClick={() => handleSelectSearchResult(n.id)}
+              >
+                <span className="graph-search-result-type">{n.nodeType}</span>
+                <span className="graph-search-result-name">{n.name}</span>
+              </button>
+            ))}
+          </div>
         )}
+      </div>{/* /graph-overlay */}
 
-        <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
-          <div className="header-types-row">
-            {VIEW_FILTER_ENTRIES.map(entry => {
-              const isActive = entry.types.some(t => visibleTypes.has(t))
-              const isChanged = entry.types.some(t => recentlyChanged.has(`type:${t}`))
-              const cls = [
-                'header-type-tag',
-                isActive ? 'active' : '',
-                `header-type-${entry.id}`,
-                isChanged ? 'recently-changed' : '',
-              ].filter(Boolean).join(' ')
-              return (
-                <button
-                  key={entry.id}
-                  className={cls}
-                  onClick={() => toggleTypeGroup([...entry.types])}
-                  title={isActive ? `Hide ${entry.label.toLowerCase()}` : `Show ${entry.label.toLowerCase()}`}
-                >
-                  <span className="header-type-icon">{entry.icon}</span>
-                  <span className="header-type-label">{entry.label}</span>
-                </button>
-              )
-            })}
-          </div>
-          <PinToggle
-            pinned={pins.types}
-            onClick={togglePinTypes}
-            flashing={overriddenPins.has('types')}
-            label="Types"
-          />
-        </div>
-
-        <div className="header-divider" />
-
-        <div className="header-controls-section">
-          <div className={`header-search ${searchActive ? 'active' : ''}`}>
-            <button className="header-search-toggle" onClick={toggleSearch} title="Search nodes (/)">
-              <SearchIcon size={14} />
-            </button>
-            {searchActive && (
-              <input
-                ref={searchInputRef}
-                className="header-search-input"
-                type="text"
-                placeholder="Search nodes..."
-                value={searchQuery}
-                onChange={e => onSearchChange(e.target.value, true)}
-                onKeyDown={e => { if (e.key === 'Escape') toggleSearch() }}
-              />
-            )}
-            {hiddenMatchCount > 0 && (
-              <span className="header-search-badge" title={`${hiddenMatchCount} match${hiddenMatchCount !== 1 ? 'es' : ''} hidden by filters`}>
-                +{hiddenMatchCount}
-              </span>
-            )}
-          </div>
-        </div>
+      {/* Bottom-left: node/edge counts (shifts right when the shortcuts panel
+          is open so they don't overlap). */}
+      <div className={`graph-bottom-left${shortcutsOpen ? ' shifted' : ''}`}>
+        <span className="graph-count">
+          {nodeCount} node{nodeCount !== 1 ? 's' : ''}, {edgeCount} edge{edgeCount !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      {/* Graph Toolbar — view-specific controls */}
-      <div className="graph-toolbar">
-        <span className="graph-toolbar-count">
-          {nodeCount} node{nodeCount !== 1 ? 's' : ''}, {edgeCount} edge{edgeCount !== 1 ? 's' : ''}
-          {running && <span className="graph-toolbar-fps" title="Simulation frames per second">  ·  {fps} fps</span>}
-        </span>
-        {selectedNodeId && onShowInTree && (() => {
-          const node = simRef.current?.getNode(selectedNodeId)
-          if (!node) return null
-          return (
-            <button
-              className="graph-toolbar-btn"
-              onClick={() => onShowInTree(node.name, nodeTypeToDefType(node.nodeType))}
-              title="Show in Tree view"
-            >
-              Show in Tree
-            </button>
-          )
-        })()}
+      {/* Bottom-center: simulation controls + live fps. */}
+      <div className="graph-bottom-center">
         <button className="graph-toolbar-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
         <button
           className={`graph-toolbar-btn ${running ? 'active' : ''}`}
@@ -569,35 +485,10 @@ export function GraphView({
         >
           {running ? 'Pause' : 'Play'}
         </button>
-        <button className="graph-toolbar-btn" onClick={handleReheat} title="Reheat the simulation (strong)">Reheat</button>
+        {/* Always rendered (reserving its width) so toggling Play/Pause never
+            shifts the centred cluster; hidden when the simulation is paused. */}
+        <span className={`graph-count-fps${running ? '' : ' hidden'}`} title="Simulation frames per second">{fps} fps</span>
       </div>
-
-      {/* Search results dropdown */}
-      {visibleMatchIds && visibleMatchIds.size > 0 && searchActive && (
-        <div className="graph-search-results">
-          {visibleNodes.filter(n => visibleMatchIds.has(n.id)).map(n => (
-            <button
-              key={n.id}
-              className="graph-search-result"
-              onClick={() => handleSelectSearchResult(n.id)}
-            >
-              <span className="graph-search-result-type">{n.nodeType}</span>
-              <span className="graph-search-result-name">{n.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Errors header — last element inside the floating overlay */}
-      {hasHeaderContent && (
-        <GraphErrorsHeader
-          shownFileErrors={shownFileErrors}
-          hiddenFileErrors={hiddenFileErrors}
-          shownDiagnostics={shownDiagnostics}
-          hiddenDiagnostics={hiddenDiagnostics}
-        />
-      )}
-      </div>{/* /graph-overlay */}
 
       {/* Control panel */}
       <GraphControlPanel
@@ -612,16 +503,6 @@ export function GraphView({
         nodeScale={nodeScale}
         onNodeScaleChange={handleNodeScaleChange}
       />
-
-      {/* Right-click context menu */}
-      {contextMenu && contextMenuItems.length > 0 && (
-        <GraphContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          items={contextMenuItems}
-          onClose={closeContextMenu}
-        />
-      )}
 
       {/* Shortcuts panel */}
       {shortcutsOpen && (
@@ -657,6 +538,12 @@ interface GraphHoverTooltipProps {
   shiftHeld: boolean
   duplicateGroups: Map<string, Set<string>>
   nodeSummaries: Map<string, string>
+  // Cross-view nav from the tooltip. Absent in history mode (no Tree view).
+  onShowInTree?: (name: string, defType: string) => void
+  // The tooltip is interactive: these keep it open while the pointer is over
+  // it (so the Show in Tree button is clickable).
+  onMouseEnter: () => void
+  onMouseLeave: () => void
 }
 
 // Strip the kind prefix from a parser metadata field (e.g. 'namespace:ecommerce'
@@ -669,7 +556,7 @@ function stripKindPrefix(s: string | undefined): string | undefined {
   return i >= 0 ? s.slice(i + 1) : s
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries, onShowInTree, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
   if (!hoveredNodeId) return null
   const sim = simRef.current
   if (!sim) return null
@@ -736,7 +623,12 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   const [sx, sy] = worldToScreen(viewport, node.x, node.y)
 
   return (
-    <div className="graph-hover-tooltip" style={{ left: sx, top: sy }}>
+    <div
+      className="graph-hover-tooltip"
+      style={{ left: sx, top: sy }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <div className="tooltip-identity">
         {cfg && <span className="tooltip-type-icon">{cfg.icon}</span>}
         <span className="tooltip-name">{node.name}</span>
@@ -756,6 +648,15 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         </div>
       )}
       <div className="tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
+      {onShowInTree && (
+        <button
+          className="tooltip-show-in-tree"
+          onClick={() => onShowInTree(node.name, nodeTypeToDefType(node.nodeType))}
+          title="Show in Tree view"
+        >
+          Show in Tree
+        </button>
+      )}
     </div>
   )
 }
@@ -769,110 +670,3 @@ function Shortcut({ keys, desc }: { keys: string; desc: string }) {
   )
 }
 
-/**
- * Floating-overlay variant of the errors header used by the Graph view.
- * Renders both kinds of finding side-by-side:
- *   - FileError (catastrophic parser-process failures)
- *   - Diagnostic (structured validator/resolver/parse output) with
- *     severity-aware glyphs and code chips.
- *
- * Layout is more compact than the tree-view header — the overlay is
- * size-constrained (max-height: 30vh) and shares vertical space with
- * the filter bar and toolbar. Body items render inline; the
- * shown/hidden split appears as an in-body label between groups,
- * not as separate ErrorGroup containers.
- */
-function GraphErrorsHeader({
-  shownFileErrors, hiddenFileErrors,
-  shownDiagnostics, hiddenDiagnostics,
-}: {
-  shownFileErrors: FileError[]
-  hiddenFileErrors: FileError[]
-  shownDiagnostics: Diagnostic[]
-  hiddenDiagnostics: Diagnostic[]
-}) {
-  const [expanded, setExpanded] = React.useState(true)
-
-  const allDiagnostics = [...shownDiagnostics, ...hiddenDiagnostics]
-  const diagErrors = allDiagnostics.filter(d => d.severity === 'error').length
-  const diagWarnings = allDiagnostics.filter(d => d.severity === 'warning').length
-  const errorCount = shownFileErrors.length + hiddenFileErrors.length + diagErrors
-  const warningCount = diagWarnings
-  const headerSeverity: 'error' | 'warning' = errorCount > 0 ? 'error' : 'warning'
-  const headerIcon = headerSeverity === 'error' ? '\u2717' : '\u26A0'
-
-  const countParts: string[] = []
-  if (errorCount > 0) countParts.push(`${errorCount} ${errorCount === 1 ? 'error' : 'errors'}`)
-  if (warningCount > 0) countParts.push(`${warningCount} ${warningCount === 1 ? 'warning' : 'warnings'}`)
-  const countText = countParts.join(', ')
-
-  const shownTotal = shownFileErrors.length + shownDiagnostics.length
-  const hiddenTotal = hiddenFileErrors.length + hiddenDiagnostics.length
-
-  const shownErrDiags = shownDiagnostics.filter(d => d.severity === 'error')
-  const shownWarnDiags = shownDiagnostics.filter(d => d.severity === 'warning')
-  const hiddenErrDiags = hiddenDiagnostics.filter(d => d.severity === 'error')
-  const hiddenWarnDiags = hiddenDiagnostics.filter(d => d.severity === 'warning')
-
-  return (
-    <div className={`graph-errors-header${headerSeverity === 'warning' ? ' severity-warnings-only' : ''}`}>
-      <div className="graph-errors-bar" onClick={() => setExpanded(!expanded)}>
-        <span className="block-toggle">{expanded ? '\u25BC' : '\u25B6'}</span>
-        <span className="graph-errors-icon">{headerIcon}</span>
-        <span className="graph-errors-title">{countText}</span>
-      </div>
-      {expanded && (
-        <div className="graph-errors-body">
-          {shownTotal > 0 && hiddenTotal > 0 && (
-            <div className="error-group-label">Shown files ({shownTotal})</div>
-          )}
-          {shownFileErrors.map((err, i) => (
-            <div key={`sfe${i}`} className="graph-error-item">
-              <span className="graph-error-file">{err.file.split('/').pop()}</span>
-              <pre className="graph-error-msg">{err.stderr || err.error}</pre>
-            </div>
-          ))}
-          {shownErrDiags.map((d, i) => (
-            <GraphDiagnosticRow key={`sed${i}`} diagnostic={d} />
-          ))}
-          {shownWarnDiags.map((d, i) => (
-            <GraphDiagnosticRow key={`swd${i}`} diagnostic={d} />
-          ))}
-          {hiddenTotal > 0 && (
-            <>
-              <div className="error-group-label">Hidden files ({hiddenTotal})</div>
-              {hiddenFileErrors.map((err, i) => (
-                <div key={`hfe${i}`} className="graph-error-item">
-                  <span className="graph-error-file">{err.file.split('/').pop()}</span>
-                  <pre className="graph-error-msg">{err.stderr || err.error}</pre>
-                </div>
-              ))}
-              {hiddenErrDiags.map((d, i) => (
-                <GraphDiagnosticRow key={`hed${i}`} diagnostic={d} />
-              ))}
-              {hiddenWarnDiags.map((d, i) => (
-                <GraphDiagnosticRow key={`hwd${i}`} diagnostic={d} />
-              ))}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function GraphDiagnosticRow({ diagnostic }: { diagnostic: Diagnostic }) {
-  const glyph = diagnostic.severity === 'error' ? '\u2717' : '\u26A0'
-  const fileName = diagnostic.file ? diagnostic.file.split('/').pop() : undefined
-  const loc = fileName
-    ? `${fileName}:${diagnostic.start.line}:${diagnostic.start.column}`
-    : undefined
-  return (
-    <div className={`graph-diagnostic-item diagnostic-item severity-${diagnostic.severity}`}>
-      <span className="diagnostic-glyph" aria-hidden="true">{glyph}</span>
-      <span className="diagnostic-code">{diagnostic.code}</span>
-      <span className="diagnostic-message">{diagnostic.message}</span>
-      {loc && <span className="diagnostic-location">{loc}</span>}
-    </div>
-  )
-}

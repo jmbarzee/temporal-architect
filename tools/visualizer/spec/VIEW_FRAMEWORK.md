@@ -54,7 +54,7 @@ The "Show in [view]" action is a contextual action available on any identifiable
 
 **Trigger points:**
 - **Tree View:** Right-click context menu on definition block headers, or the "Show in Graph" contextual navigation button.
-- **Graph View:** Right-click context menu on nodes. (Double-click is reserved for graph-native "center and zoom to fit" — see GRAPH_VIEW.md § Viewport Controls.)
+- **Graph View:** A **"Show in Tree" button in the node's hover tooltip** (the tooltip is interactive — it stays open while the pointer is over it so the button is clickable). (Double-click is reserved for graph-native "center and zoom to fit" — see GRAPH_VIEW.md § Viewport Controls.)
 
 **Sequence when invoked:**
 
@@ -134,16 +134,18 @@ Because search is non-destructive, badges apply only to matches hidden by *struc
 
 ### Layout Stack
 
-The layout stack is identical in both views:
+The filter bar is a **single shared component** (`FilterBar`) rendered by both views — file chips with pin and per-chip definition counts, type toggles with pin and counts, search, and the **error/warning bars** at its bottom. Defining it once is what keeps the two views' toolbars in lockstep.
 
-1. **Filter bar** (`canvas-header`) — shared; visually identical across views. File chips with pin, type toggles with pin, search.
-2. **View toolbar** — view-specific controls directly below the filter bar. The graph view has a toolbar with node/edge count, Fit, and Play/Pause quick-access. The tree view has no separate toolbar (no simulation state to surface).
-3. **Errors header** — present only when parse errors exist. Same collapsible pattern in both views.
-4. **Content** — tree block list or graph canvas, filling remaining space.
+The layout stack is:
 
-This stack order is fixed. The filter is always first, so users always know where to find it regardless of which view they're in.
+1. **Filter bar** (`canvas-header`) — shared; visually identical across views. File chips, type toggles, search, and the error/warning bars (§ Error Handling).
+2. **Content** — tree block list or graph canvas, filling remaining space.
 
-**Graph view layout exception:** in the Graph view, the filter bar, view toolbar, and errors header are rendered as a **floating overlay** above the canvas (the canvas fills the full viewport behind them). Zoomed-in graph content extends visibly under the edges of the overlay — an affordance signaling "there's more out here." See GRAPH_VIEW.md § Overlay Layout. The Tree view uses normal vertical stack flow because its content scrolls within a fixed-width column where bleed-under provides no value.
+The filter bar is always first, so users always know where to find it regardless of which view they're in.
+
+**Definition counts on chips.** Each file and type chip carries a muted count of the top-level definitions it represents. Type-chip counts respect the file filter (definitions from the selected files only, or all when none selected); file-chip counts are the per-file definition totals. The counts come from the AST so they read identically in both views (not the graph's deployment-expanded node count).
+
+**Graph view specifics:** in the Graph view the shared filter bar is rendered as a **floating overlay** above the canvas (the canvas fills the full viewport behind it). Zoomed-in graph content extends visibly under the edges of the overlay — an affordance signaling "there's more out here." See GRAPH_VIEW.md § Overlay Layout. The graph's simulation state and controls do not live in a top toolbar row; they float at the bottom of the canvas: node/edge counts at the bottom-left, and a centred Fit / Play-Pause / fps cluster at the bottom-center. See GRAPH_VIEW.md § Bottom Controls. The Tree view has no simulation state to surface and uses normal vertical stack flow because its content scrolls within a fixed-width column where bleed-under provides no value.
 
 ### Graph-Specific: Edge Graduation
 
@@ -181,30 +183,33 @@ Each view shows a centered, non-interactive message when there's nothing to disp
 |-----------|---------|
 | No AST loaded | "Open a `.twf` file or connect to the extension to get started." |
 | AST loaded, no definitions match current filters | "No definitions match the current filters." with a hint to adjust filters. |
-| AST loaded, only parse errors | Show the errors header (see § Error Handling below) with no content below. |
+| AST loaded, only parse errors | Show the error/warning bars (see § Error Handling below) with no content below. |
 
 Empty states apply identically to both views. The message is centered in the content area below the header/filter controls.
 
 
 ## Error Handling
 
-When the AST contains parse errors, both views surface them in the same way.
+When the AST contains parse errors or warnings, both views surface them in the same way — through the shared filter bar, which owns the error/warning UI.
 
-### Errors Header
+### Error and Warning Bars
 
-A collapsible bar between the filter bar and the view content (tree block list or graph canvas). The bar shows:
+Findings are split by **severity** into two independent bars at the bottom of the filter bar:
 
-- **Error count** — total number of parse errors.
-- **Error grouping** — errors are split into two groups:
-  - **Shown files** — errors from files that match the current file filter selection.
-  - **Hidden files** — errors from files excluded by the file filter.
-- **Error detail** — each error displays the source file name and the error/stderr message.
+- **Errors bar** (red) — process-level `FileError`s plus `error`-severity diagnostics.
+- **Warnings bar** (yellow) — `warning`-severity diagnostics.
 
-The errors header is collapsible — the user can dismiss it to focus on the valid content. It defaults to expanded when errors are present.
+Each bar:
+
+- Renders only when it has at least one finding of that severity.
+- Shows the count for its severity (`N errors`, `M warnings`).
+- Is **collapsed by default** — it is a notification, expanded on demand. Each bar collapses/expands independently.
+- Has its own **scrollable body** so a long list never pushes the rest of the toolbar off-screen.
+- Splits its body into **Shown files** / **Hidden files** sub-groups (by the current file filter) when the filter is hiding findings, so the user sees which findings the filter is keeping out of view. Each detail row shows the file name, code, position, and message.
 
 ### Errors Are Informational
 
-Errors do not block rendering. Both views still render whatever valid definitions exist in the partial AST. The errors header is a notification, not a gate.
+Errors do not block rendering. Both views still render whatever valid definitions exist in the partial AST. The error/warning bars are notifications, not a gate.
 
 
 ## Live Reload

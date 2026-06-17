@@ -363,15 +363,14 @@ A button (or automatic behavior on level change) that adjusts the viewport to fr
 
 ## Overlay Layout
 
-Unlike the Tree view, which stacks its filter bar, toolbar, and errors header above its scrollable content, the Graph view renders these three elements as a **single floating overlay layer** above the canvas. The graph canvas itself fills the full viewport behind them.
+The Graph view renders the **shared filter bar** (which includes the error/warning bars at its bottom — see VIEW_FRAMEWORK.md § Error Handling) as a **floating overlay layer** at the top of the canvas. The graph canvas itself fills the full viewport behind it. The graph's own state and quick controls do not sit in this overlay; they float in the **bottom corners** (§ Bottom Controls), keeping the top overlay to just the filter bar.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │ ┌──────────────────────────────────────────────────────┐ │
-│ │ filter bar     [pinning]  [graph toolbar]            │ │  ← overlay
-│ │ errors header (when present)                          │ │     (translucent or
+│ │ file chips  [pin] │ type chips  [pin] │ [search]      │ │  ← overlay
+│ │ ▶ 2 errors (collapsed)   ▶ 1 warning (collapsed)      │ │     (translucent,
 │ └──────────────────────────────────────────────────────┘ │      with backdrop)
-│                                                          │
 │              ▲                                           │
 │        ┌─────┴─────┐                                     │  ← canvas
 │        │ Worker A  │  ←──┐                               │     (fills full
@@ -380,6 +379,7 @@ Unlike the Tree view, which stacks its filter bar, toolbar, and errors header ab
 │        ┌───────────┐   ┌─┴─────────┐                     │
 │        │ Workflow  │──▶│ Activity  │                     │
 │        └───────────┘   └───────────┘                     │
+│ 12 nodes, 8 edges    [Fit][Play] 60fps          [Controls]│  ← bottom row
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -393,21 +393,18 @@ Two reasons:
 ### Visual Treatment
 
 - The overlay has a semi-transparent backdrop (matched to the surface color of the rest of the visualizer, with backdrop blur where available) so canvas content underneath remains visible but the controls stay legible.
-- The overlay never expands to occupy more than ~30% of the viewport height. If the errors header would push past that, it becomes internally scrollable.
+- The error/warning bars are collapsed by default, so the overlay is normally just the filter chips. When a bar is expanded, its body scrolls internally (it never grows unbounded), and the overlay is capped so it can't cover the whole canvas.
 - Interaction over the overlay does not pan or zoom the canvas — mouse events on overlay controls are consumed by the controls.
-- The overlay does not occlude the bottom of the viewport. The Control Panel (§ Control Panel) anchors to its existing position (typically bottom-right).
+- The overlay does not occlude the bottom of the viewport. The Control Panel (§ Control Panel) anchors to its existing position (bottom-right), and the bottom controls (§ Bottom Controls) sit alongside it.
 
-### Graph Toolbar Contents
+### Bottom Controls
 
-The graph toolbar — rendered as a row within the overlay, just below the filter bar — contains graph-specific state and quick-access controls that don't belong in the filter bar:
+The graph's own state and quick controls float at the bottom of the canvas, out of the way of the top filter overlay:
 
-- **Node / edge count** — `N nodes, M edges` (counts the currently visible/graduated set). Informational; updates reactively with filters.
-- **Fit** — fit the viewport to all visible nodes. Keyboard shortcut: `F`.
-- **Play / Pause** — toggle for simulation ticking. Keyboard shortcut: `Space`.
-- **Reheat** — re-energise the layout with a strong kick; cooling scales with the kick, so a bigger reheat rearranges the layout *further* but settles back down in the same fixed window (not *longer*).
-- **Show in Tree** — contextual; appears only when a node is selected. Invokes the `focus(target)` view transition (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions).
+- **Node / edge count** (bottom-left) — `N nodes, M edges` (counts the currently visible/graduated set). Informational; updates reactively with filters. Shifts right when the keyboard-shortcuts panel (bottom-left) is open so the two don't overlap.
+- **Fit / Play-Pause / fps** (bottom-center) — a single centred cluster: **Fit** frames the viewport to all visible nodes (`F`); **Play / Pause** toggles simulation ticking (`Space`); and the live `fps` reads out while the simulation runs.
 
-The toolbar is always visible (not collapsible). It is compact — a single row, right-aligned controls.
+(Reheat is not currently surfaced as a button.) **Show in Tree** is no longer a toolbar control — it lives in the node hover tooltip (§ Interaction States: Hover).
 
 ---
 
@@ -492,7 +489,7 @@ The equation-oriented grouping means each section is self-contained: the formula
 
 ### Simulation Controls
 
-Simulation controls live in the graph toolbar (see § Graph Toolbar Contents), not the control panel: **Play / Pause** toggles ticking, and **Reheat** re-energises the layout with a strong kick whose cooling rate scales with the kick, so a vigorous re-layout moves *further* but settles back in the same fixed window rather than lingering *longer*. There is no Reset button. The control panel itself holds only the force-shaping controls.
+Simulation controls live in the bottom-right corner (see § Bottom Controls), not the control panel: **Play / Pause** toggles ticking. (Reheat — re-energising the layout with a strong kick whose cooling scales with the kick — is implemented but not currently surfaced as a button.) There is no Reset button. The control panel itself holds only the force-shaping controls.
 
 ### Design Decisions
 
@@ -563,7 +560,7 @@ This feedback loop embodies two design principles:
 
 ## Errors Header
 
-The graph view surfaces parse errors using the shared error handling pattern. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Error Handling. The errors bar renders within the floating overlay (see § Overlay Layout), beneath the graph toolbar. The canvas still renders whatever valid nodes and edges exist in the partial AST.
+The graph view surfaces parse errors and warnings using the shared error handling pattern — the two severity bars (red errors, yellow warnings, collapsed by default) at the bottom of the shared filter bar. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Error Handling. The bars render within the floating overlay (see § Overlay Layout), beneath the filter chips, each with its own scrollable body. The canvas still renders whatever valid nodes and edges exist in the partial AST.
 
 ---
 
@@ -621,6 +618,9 @@ In both modes:
   3. **Duplicate-copies line** (only when the definition has more than one visible copy): `copy N of M`, where M is the number of sister copies currently visible. Makes the per-worker duplication explicit and tells the user the cross-canvas highlight on the other copies is intentional.
   4. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
   5. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
+  6. **Show in Tree** button — invokes the `focus(target)` view transition to the Tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions). This is the graph's sole "Show in Tree" affordance.
+
+The tooltip is **interactive**: it stays open while the pointer is over it (a short grace period bridges the gap as the pointer travels from the node onto the tooltip) so the Show in Tree button is clickable. Moving the pointer off both the node and the tooltip dismisses it.
 
 **Context line format** — the second line of the tooltip shows the node's parent context in a format suited to each type's deployment role:
 
