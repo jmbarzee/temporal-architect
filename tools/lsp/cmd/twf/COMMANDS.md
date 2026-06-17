@@ -117,8 +117,8 @@ Topology-based work decomposition of the deployment graph
 Decompose a design into independently-implementable chunks over the same
 extracted deployment graph. Emits the #1 hard partition plus per-chunk
 complexity and floor-merge recommendations; --ceiling additionally emits #2
-ranked divisions for any chunk over the ceiling. Recommendations are never
-auto-applied.
+ranked divisions for any chunk over the ceiling, recursively re-dividing any
+section still over the ceiling. Recommendations are never auto-applied.
 
 ```
 twf graph chunks [flags] <file...>
@@ -127,10 +127,11 @@ twf graph chunks [flags] <file...>
 ### Options
 
 ```
-      --by string     Comma-separated division strategy bias: tree,nexus,worker,namespace
-      --ceiling int   Complexity ceiling; chunks above it get #2 ranked divisions (0 = hard partition only)
-      --floor int     Complexity floor; chunks below it are flagged too-granular (0 = default, negative = disabled)
-  -h, --help          help for chunks
+      --by string       Comma-separated division strategy bias: tree,nexus,worker,namespace,hub
+      --ceiling int     Complexity ceiling; chunks above it get #2 ranked divisions (0 = hard partition only)
+      --floor int       Complexity floor; chunks below it are flagged too-granular (0 = default, negative = disabled)
+  -h, --help            help for chunks
+      --max-depth int   Max nesting depth for recursive re-division of over-ceiling sections (0 = default, negative = no recursion)
 ```
 
 ### Options inherited from parent commands

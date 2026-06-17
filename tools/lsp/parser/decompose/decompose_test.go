@@ -1,6 +1,8 @@
 package decompose
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
@@ -47,6 +49,19 @@ func chunkByID(t *testing.T, res *Result, id string) Chunk {
 		}
 	}
 	t.Fatalf("chunk %q not found; have %v", id, chunkIDs(res))
+	return Chunk{}
+}
+
+// chunkWithMember returns the chunk listing key among its members, failing if
+// none does.
+func chunkWithMember(t *testing.T, res *Result, key string) Chunk {
+	t.Helper()
+	for _, c := range res.Chunks {
+		if contains(c.Members, key) {
+			return c
+		}
+	}
+	t.Fatalf("no chunk contains %q; have %v", key, chunkIDs(res))
 	return Chunk{}
 }
 
@@ -499,6 +514,221 @@ namespace ns:
 	if thin < 1 {
 		t.Errorf("every node should carry at least the base weight; Thin = %d", thin)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// 9. Hub-extraction strategy isolates a shared high-fan-in node (R-1)
+// ---------------------------------------------------------------------------
+
+func TestHubStrategyIsolatesSharedNode(t *testing.T) {
+	// R1 and R2 both call Shared, which fans into three activities. Shared has
+	// the only in-degree ≥ 2 in the chunk, so the hub strategy must peel it.
+	src := `
+workflow R1():
+    workflow Shared()
+    close complete
+
+workflow R2():
+    workflow Shared()
+    close complete
+
+workflow Shared():
+    activity S1()
+    activity S2()
+    activity S3()
+    close complete
+
+activity S1():
+    return
+activity S2():
+    return
+activity S3():
+    return
+
+worker w:
+    workflow R1
+    workflow R2
+    workflow Shared
+    activity S1
+    activity S2
+    activity S3
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`
+	res := decomposeTWF(t, src, Options{Ceiling: 8, Floor: -1})
+	shared := graph.DefKey(graph.KindWorkflow, "Shared")
+	c := chunkWithMember(t, res, shared)
+
+	var hub *Division
+	for i := range c.Divisions {
+		if c.Divisions[i].Strategy == StrategyHub {
+			hub = &c.Divisions[i]
+			break
+		}
+	}
+	if hub == nil {
+		t.Fatalf("expected a hub division; got strategies %v", divisionStrategies(c.Divisions))
+	}
+	// The hub division isolates Shared into its own single-member section.
+	isolated := false
+	for _, s := range hub.Sections {
+		if len(s.Members) == 1 && s.Members[0] == shared {
+			isolated = true
+		}
+	}
+	if !isolated {
+		t.Errorf("hub division should isolate %s into its own section; sections %+v", shared, hub.Sections)
+	}
+}
+
+// recursionSrc is a two-level tree: Top → {Mid1, Mid2}; Mid1 fans into three
+// activities (a fat subtree), Mid2 into one (a thin one). With a ceiling of 12
+// the Mid1 subtree is over the ceiling and must be recursively re-divided; the
+// Mid2 subtree is under it and must be left flat.
+const recursionSrc = `
+workflow Top():
+    workflow Mid1()
+    workflow Mid2()
+    close complete
+
+workflow Mid1():
+    activity A1()
+    activity A2()
+    activity A3()
+    close complete
+
+workflow Mid2():
+    activity B1()
+    close complete
+
+activity A1():
+    return
+activity A2():
+    return
+activity A3():
+    return
+activity B1():
+    return
+
+worker w:
+    workflow Top
+    workflow Mid1
+    workflow Mid2
+    activity A1
+    activity A2
+    activity A3
+    activity B1
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`
+
+// ---------------------------------------------------------------------------
+// 10. Lazy recursive re-division of an over-ceiling section (R-2)
+// ---------------------------------------------------------------------------
+
+func TestRecursiveReDivision(t *testing.T) {
+	res := decomposeTWF(t, recursionSrc, Options{Ceiling: 12, Floor: -1})
+	top := graph.DefKey(graph.KindWorkflow, "Top")
+	c := chunkByID(t, res, "chunk:"+top)
+	if len(c.Divisions) == 0 {
+		t.Fatalf("expected divisions for the over-ceiling chunk")
+	}
+	div := c.Divisions[0]
+	if div.Strategy != StrategyTree {
+		t.Fatalf("top division strategy = %q, want %q", div.Strategy, StrategyTree)
+	}
+
+	mid1 := graph.DefKey(graph.KindWorkflow, "Mid1")
+	mid2 := graph.DefKey(graph.KindWorkflow, "Mid2")
+	mid1Sec := sectionBySuffix(t, div.Sections, "subtree:"+mid1)
+	mid2Sec := sectionBySuffix(t, div.Sections, "subtree:"+mid2)
+
+	if mid1Sec.Complexity <= res.Ceiling {
+		t.Fatalf("Mid1 subtree complexity %d should exceed ceiling %d for the test to be meaningful", mid1Sec.Complexity, res.Ceiling)
+	}
+	if len(mid1Sec.Divisions) != 1 {
+		t.Fatalf("over-ceiling Mid1 subtree should carry one nested division; got %+v", mid1Sec.Divisions)
+	}
+	if len(mid2Sec.Divisions) != 0 {
+		t.Errorf("under-ceiling Mid2 subtree must not be recursed; got %+v", mid2Sec.Divisions)
+	}
+
+	// The nested division actually pulls the leaf activities apart.
+	nested := mid1Sec.Divisions[0]
+	a1 := graph.DefKey(graph.KindActivity, "A1")
+	if sectionBySuffix(t, nested.Sections, "subtree:"+a1).Members[0] != a1 {
+		t.Errorf("nested division should isolate %s; sections %+v", a1, nested.Sections)
+	}
+	// Every leaf of the chosen compound is now within the ceiling.
+	if w := worstLeafComplexity(div); w > res.Ceiling {
+		t.Errorf("worst leaf complexity %d should be within ceiling %d after recursion", w, res.Ceiling)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 11. MaxDepth caps recursion (negative disables it entirely)
+// ---------------------------------------------------------------------------
+
+func TestMaxDepthDisablesRecursion(t *testing.T) {
+	res := decomposeTWF(t, recursionSrc, Options{Ceiling: 12, Floor: -1, MaxDepth: -1})
+	top := graph.DefKey(graph.KindWorkflow, "Top")
+	c := chunkByID(t, res, "chunk:"+top)
+	div := c.Divisions[0]
+	mid1 := graph.DefKey(graph.KindWorkflow, "Mid1")
+	mid1Sec := sectionBySuffix(t, div.Sections, "subtree:"+mid1)
+	if len(mid1Sec.Divisions) != 0 {
+		t.Errorf("MaxDepth<0 must disable recursion even for an over-ceiling section; got %+v", mid1Sec.Divisions)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 12. The explore phase is deterministic across runs (including recursion)
+// ---------------------------------------------------------------------------
+
+func TestExploreDeterministic(t *testing.T) {
+	opts := Options{Ceiling: 12, Floor: -1}
+	a, err := json.Marshal(decomposeTWF(t, recursionSrc, opts))
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	b, err := json.Marshal(decomposeTWF(t, recursionSrc, opts))
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(a) != string(b) {
+		t.Errorf("decomposition not byte-identical across runs:\n%s\n---\n%s", a, b)
+	}
+}
+
+// divisionStrategies lists the strategies present, for failure messages.
+func divisionStrategies(divs []Division) []string {
+	out := make([]string, 0, len(divs))
+	for _, d := range divs {
+		out = append(out, d.Strategy)
+	}
+	return out
+}
+
+// sectionBySuffix returns the section whose ID ends with suffix, failing if none.
+func sectionBySuffix(t *testing.T, sections []Section, suffix string) *Section {
+	t.Helper()
+	for i := range sections {
+		if strings.HasSuffix(sections[i].ID, suffix) {
+			return &sections[i]
+		}
+	}
+	ids := make([]string, 0, len(sections))
+	for _, s := range sections {
+		ids = append(ids, s.ID)
+	}
+	t.Fatalf("no section ID ends with %q; have %v", suffix, ids)
+	return nil
 }
 
 // Decompose must tolerate nil inputs (e.g. a catastrophically failed parse).

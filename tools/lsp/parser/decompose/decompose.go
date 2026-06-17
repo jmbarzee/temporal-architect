@@ -26,6 +26,13 @@ import (
 // soft divisions are only explored when the caller instructs a ceiling.
 const DefaultFloor = 2
 
+// DefaultMaxDepth bounds how many levels of divisions the explore phase nests
+// when recursively re-dividing over-ceiling sections (the top-level divisions
+// are level 1). It is a safety belt — recursion already terminates because every
+// division yields ≥2 strictly-smaller sections — and a context-protecting cap so
+// the suggestion tree stays compact. Documented default, not a calibrated value.
+const DefaultMaxDepth = 4
+
 // Options configures a Decompose run.
 type Options struct {
 	// Floor is the complexity threshold below which a hard chunk is flagged
@@ -37,8 +44,12 @@ type Options struct {
 	Ceiling int
 	// By biases / filters the division strategies emitted for over-ceiling
 	// chunks. Empty means "all applicable strategies". Recognized values:
-	// StrategyTree, StrategyNexus, StrategyWorker, StrategyNamespace.
+	// StrategyTree, StrategyNexus, StrategyWorker, StrategyNamespace, StrategyHub.
 	By []string
+	// MaxDepth bounds recursive re-division of over-ceiling sections. Zero
+	// selects DefaultMaxDepth; a negative value disables recursion (one level
+	// only). Level 1 is the chunk's own divisions.
+	MaxDepth int
 }
 
 // effectiveFloor resolves the floor with DefaultFloor / disable semantics.
@@ -50,6 +61,19 @@ func (o Options) effectiveFloor() int {
 		return 0
 	}
 	return o.Floor
+}
+
+// effectiveMaxDepth resolves the recursion depth with DefaultMaxDepth / disable
+// semantics. A non-positive request collapses to 1 (top-level divisions only,
+// no recursion).
+func (o Options) effectiveMaxDepth() int {
+	if o.MaxDepth == 0 {
+		return DefaultMaxDepth
+	}
+	if o.MaxDepth < 0 {
+		return 1
+	}
+	return o.MaxDepth
 }
 
 // Decompose computes the chunk decomposition for a resolved deployment graph.

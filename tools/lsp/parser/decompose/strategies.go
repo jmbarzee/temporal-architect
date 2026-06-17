@@ -17,7 +17,7 @@ import (
 // This order is only a default and a ranking tiebreaker — the explore phase
 // ranks candidates by balance, not by this sequence.
 func selectStrategies(by []string) []string {
-	all := []string{StrategyTree, StrategyNexus, StrategyWorker, StrategyNamespace}
+	all := []string{StrategyTree, StrategyNexus, StrategyWorker, StrategyNamespace, StrategyHub}
 	if len(by) == 0 {
 		return all
 	}
@@ -44,6 +44,8 @@ func (wg *workGraph) splitBy(strategy string, c *Chunk) map[string]string {
 		return wg.splitByAttr(c, StrategyWorker)
 	case StrategyNamespace:
 		return wg.splitByAttr(c, StrategyNamespace)
+	case StrategyHub:
+		return wg.splitByHub(c)
 	default:
 		return map[string]string{}
 	}
@@ -192,6 +194,50 @@ func (wg *workGraph) splitByAttr(c *Chunk, attr string) map[string]string {
 	return labels
 }
 
+// splitByHub peels the single highest-fan-in shared node — the hub — into its
+// own section, leaving the remainder as "core". A hub is the member with the
+// largest in-chunk binding in-degree; ties break toward the lexicographically
+// smallest key (c.Members is sorted). Nothing is extracted unless that in-degree
+// is at least two — a node nobody shares isn't a hub — so the strategy yields no
+// split on hub-free chunks. On hub-dominated designs the lone {hub}+{core} cut
+// looks unbalanced on its own, but it un-sticks the structural strategies: once
+// the recursion (divisions.go) re-divides the core with the hub removed, the
+// branches that all overlapped through the hub separate cleanly.
+func (wg *workGraph) splitByHub(c *Chunk) map[string]string {
+	memberSet := setOf(c.Members)
+	indeg := make(map[string]int, len(c.Members))
+	for _, m := range c.Members {
+		indeg[m] = 0
+	}
+	for _, from := range c.Members {
+		for _, to := range sortedSet(wg.binding[from]) {
+			if memberSet[to] {
+				indeg[to]++
+			}
+		}
+	}
+
+	hub, best := "", 0
+	for _, m := range c.Members { // sorted → first max wins (smallest key)
+		if indeg[m] > best {
+			hub, best = m, indeg[m]
+		}
+	}
+	if best < 2 {
+		return map[string]string{} // no shared hub to peel
+	}
+
+	labels := map[string]string{}
+	for _, m := range c.Members {
+		if m == hub {
+			labels[m] = "hub:" + hub
+		} else {
+			labels[m] = "core"
+		}
+	}
+	return labels
+}
+
 // rationaleFor returns a short human-readable explanation per strategy.
 func rationaleFor(strategy string) string {
 	switch strategy {
@@ -203,6 +249,8 @@ func rationaleFor(strategy string) string {
 		return "split by hosting worker"
 	case StrategyNamespace:
 		return "split by hosting namespace"
+	case StrategyHub:
+		return "extract the shared hub node so the rest can be divided"
 	default:
 		return ""
 	}

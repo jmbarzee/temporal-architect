@@ -87,6 +87,11 @@ const (
 	StrategyNexus     = "nexus"
 	StrategyWorker    = "worker"
 	StrategyNamespace = "namespace"
+	// StrategyHub peels the single highest-fan-in shared node (the hub) into
+	// its own section, leaving the rest as "core". On hub-dominated designs it
+	// un-sticks the structural strategies, which then apply cleanly to the core
+	// once the hub is recursed away.
+	StrategyHub = "hub"
 )
 
 // Division is one candidate way to cut an over-ceiling chunk into sections,
@@ -100,11 +105,16 @@ type Division struct {
 	Rationale string        `json:"rationale"`
 }
 
-// Section is one proposed sub-unit of a divided chunk.
+// Section is one proposed sub-unit of a divided chunk. Members and Complexity
+// are always authoritative (they list every member and its rolled-up score).
+// Divisions, when present, is the recursive refinement of a section that was
+// still over the ceiling: a single, locally-best sub-division. A consumer that
+// doesn't walk the tree can ignore it and treat the section as a flat leaf.
 type Section struct {
-	ID         string   `json:"id"`
-	Members    []string `json:"members"`
-	Complexity int      `json:"complexity"`
+	ID         string     `json:"id"`
+	Members    []string   `json:"members"`
+	Complexity int        `json:"complexity"`
+	Divisions  []Division `json:"divisions,omitempty"`
 }
 
 // SectionEdge orders two sections within a division (From must be authored

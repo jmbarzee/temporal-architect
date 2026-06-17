@@ -24,7 +24,7 @@ import (
 // inherited persistent flags declared on the parent `graph` command and read
 // here via the merged flag set; --ceiling, --floor, and --by are local.
 func New() *cobra.Command {
-	var ceiling, floor int
+	var ceiling, floor, maxDepth int
 	var by string
 	cmd := cmdutil.Silence(&cobra.Command{
 		Use:   "chunks [flags] <file...>",
@@ -32,17 +32,18 @@ func New() *cobra.Command {
 		Long: `Decompose a design into independently-implementable chunks over the same
 extracted deployment graph. Emits the #1 hard partition plus per-chunk
 complexity and floor-merge recommendations; --ceiling additionally emits #2
-ranked divisions for any chunk over the ceiling. Recommendations are never
-auto-applied.`,
+ranked divisions for any chunk over the ceiling, recursively re-dividing any
+section still over the ceiling. Recommendations are never auto-applied.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			jsonOutput, _ := cmd.Flags().GetBool("json")
 			historyDir, _ := cmd.Flags().GetString("history")
-			return cmdutil.CodeToErr(run(args, jsonOutput, historyDir, ceiling, floor, by))
+			return cmdutil.CodeToErr(run(args, jsonOutput, historyDir, ceiling, floor, maxDepth, by))
 		},
 	})
 	cmd.Flags().IntVar(&ceiling, "ceiling", 0, "Complexity ceiling; chunks above it get #2 ranked divisions (0 = hard partition only)")
 	cmd.Flags().IntVar(&floor, "floor", 0, "Complexity floor; chunks below it are flagged too-granular (0 = default, negative = disabled)")
-	cmd.Flags().StringVar(&by, "by", "", "Comma-separated division strategy bias: tree,nexus,worker,namespace")
+	cmd.Flags().IntVar(&maxDepth, "max-depth", 0, "Max nesting depth for recursive re-division of over-ceiling sections (0 = default, negative = no recursion)")
+	cmd.Flags().StringVar(&by, "by", "", "Comma-separated division strategy bias: tree,nexus,worker,namespace,hub")
 	return cmd
 }
 
@@ -53,11 +54,12 @@ auto-applied.`,
 // envelope.LoadHistories + history.Build under historyDir), feeds the result
 // to decompose.Decompose, and emits the standard JSON envelope under a
 // "chunks" payload.
-func run(paths []string, jsonOutput bool, historyDir string, ceiling, floor int, by string) int {
+func run(paths []string, jsonOutput bool, historyDir string, ceiling, floor, maxDepth int, by string) int {
 	opts := decompose.Options{
-		Ceiling: ceiling,
-		Floor:   floor,
-		By:      splitStrategies(by),
+		Ceiling:  ceiling,
+		Floor:    floor,
+		MaxDepth: maxDepth,
+		By:       splitStrategies(by),
 	}
 
 	if historyDir != "" && len(paths) > 0 {
@@ -176,18 +178,34 @@ func printText(res *decompose.Result) int {
 		if len(c.Overlap) > 0 {
 			fmt.Printf("  overlap: %s\n", strings.Join(c.Overlap, ", "))
 		}
-		for _, d := range c.Divisions {
-			fmt.Printf("  division #%d [%s]: %s\n", d.Rank, d.Strategy, d.Rationale)
-			for _, s := range d.Sections {
-				fmt.Printf("    section %s (complexity %d): %s\n", s.ID, s.Complexity, strings.Join(s.Members, ", "))
-			}
-			for _, e := range d.DAG {
-				fmt.Printf("    depends: %s -> %s\n", e.From, e.To)
-			}
-		}
+		printDivisions(c.Divisions, "  ")
 		fmt.Println()
 	}
 
+	printChunkEdges(res)
+	return 0
+}
+
+// printDivisions renders a division list and its recursive sub-divisions,
+// indenting one step per nesting level. A section that was re-divided prints its
+// nested division(s) beneath it.
+func printDivisions(divs []decompose.Division, indent string) {
+	for _, d := range divs {
+		fmt.Printf("%sdivision #%d [%s]: %s\n", indent, d.Rank, d.Strategy, d.Rationale)
+		for _, s := range d.Sections {
+			fmt.Printf("%s  section %s (complexity %d): %s\n", indent, s.ID, s.Complexity, strings.Join(s.Members, ", "))
+			if len(s.Divisions) > 0 {
+				printDivisions(s.Divisions, indent+"    ")
+			}
+		}
+		for _, e := range d.DAG {
+			fmt.Printf("%s  depends: %s -> %s\n", indent, e.From, e.To)
+		}
+	}
+}
+
+// printChunkEdges renders the inter-chunk contract dependency DAG, if any.
+func printChunkEdges(res *decompose.Result) {
 	if len(res.ChunkEdges) > 0 {
 		fmt.Println("Contract dependencies (between chunks):")
 		edges := make([]string, 0, len(res.ChunkEdges))
@@ -200,6 +218,4 @@ func printText(res *decompose.Result) int {
 		}
 		fmt.Println()
 	}
-
-	return 0
 }

@@ -64,20 +64,46 @@ every node carries the base complexity.
 
 Strategies are **not** applied in priority order with first-match-wins. For each
 over-ceiling chunk, `exploreStrategies` runs *every* requested strategy
-(`selectStrategies` returns `[tree, nexus, worker, namespace]`, or the `--by`
-subset) **independently** to produce a candidate split. Candidates that don't
-actually divide the chunk (<2 sections) or that would yield a sub-floor section
-are dropped. The survivors are then **ranked by balance** — smallest max-section
-complexity first, then fewer sections, then strategy name — and assigned `Rank`
-1..N (`rankDivisions`).
-
-So the canonical `[tree, nexus, worker, namespace]` order is only the default
-`--by` order and a ranking tiebreaker; the emitted order reflects cut quality.
-Rank 1 is the most balanced.
+(`selectStrategies` returns `[tree, nexus, worker, namespace, hub]`, or the
+`--by` subset) **independently** to produce a candidate split. Candidates that
+don't actually divide the chunk (<2 sections) or that would yield a sub-floor
+section are dropped. The survivors are then **ranked by whole-compound balance**
+(`rankDivisions`) and assigned `Rank` 1..N. Rank 1 is the best.
 
 The cut strategies themselves live in `strategies.go` as `splitBy*` functions
 (member → section labeling); `buildSections` turns a labeling into sections + a
-dependency DAG.
+dependency DAG. The `hub` strategy peels the single highest-fan-in shared node
+into its own section and leaves a `core`; on hub-dominated designs it un-sticks
+the structural strategies once the core is recursed (below).
+
+### Recursive re-division (compounding)
+
+A single cut is often not enough: the rank-1 division can still leave one section
+over the ceiling. So after building each candidate, `exploreStrategies`
+**lazily recurses** — every section that is still over the ceiling, spans ≥2 SCCs
+(loops are never cut, at any level), and re-divides cleanly is itself re-divided
+(`expandSections` → `subChunk` → the strategy menu again). The recursion is:
+
+- **lazy** — only over-ceiling sections are expanded;
+- **greedy inner** — a recursed section keeps a *single* locally-best
+  sub-division (`Section.Divisions`), not the whole menu, so the suggestion tree
+  stays compact;
+- a **portfolio at the top** — every top-level strategy is fully expanded, then
+  the whole compounds are ranked against each other;
+- **depth-capped** by `--max-depth` (`Options.MaxDepth`, default
+  `DefaultMaxDepth`; negative disables recursion). The cap is a safety belt —
+  recursion already terminates because every division yields ≥2 strictly-smaller
+  sections.
+
+Candidates are ranked by the **worst *leaf* complexity** (the largest unit left
+after full recursion), then leaf count, then nesting depth, then total section
+count, then strategy name. For a flat (un-recursed) division this reduces to the
+original "max-section complexity, then section count, then name" ordering, so the
+two-level behavior is a strict generalization of the single-level one.
+
+`Section.Members` and `Section.Complexity` stay authoritative at every level — a
+consumer that doesn't walk `Section.Divisions` sees a flat top-level menu exactly
+as before.
 
 ## Edge semantics
 

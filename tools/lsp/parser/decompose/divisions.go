@@ -6,10 +6,11 @@ import (
 
 // This file owns the explore phase — the soft divisions suggested for
 // over-ceiling chunks. It drives the cut strategies (strategies.go), turns each
-// resulting labeling into sections + a dependency DAG, and ranks the candidates.
-// Where the decide phase (partition, components.go) returns one mandatory
-// answer, this phase explores many and offers the harness a ranked menu. Loops
-// are never cut here.
+// resulting labeling into sections + a dependency DAG, recursively re-divides
+// any section still over the ceiling, and ranks the candidates by whole-compound
+// balance. Where the decide phase (partition, components.go) returns one
+// mandatory answer, this phase explores many and offers the harness a ranked
+// menu. Loops are never cut here, at any level.
 
 // exploreDivisions suggests soft divisions for every hard chunk that exceeds the
 // ceiling and has a condensation seam to cut. Loops are never cut: a chunk whose
@@ -28,14 +29,30 @@ func exploreDivisions(wg *workGraph, res *Result, opts Options) {
 	}
 }
 
-// exploreStrategies tries every requested strategy on one over-ceiling chunk and
-// returns the ranked candidate divisions. Each strategy that yields ≥2 sections
-// — none below the floor — is a candidate; candidates are ranked by balance
-// (smallest max-section complexity first), then by section count, then by
-// strategy name. Strategies are explored independently, not in priority order.
+// exploreStrategies tries every requested strategy on one over-ceiling chunk,
+// recursively re-divides any section that is still over the ceiling, and returns
+// the ranked candidate divisions. Each strategy that yields ≥2 sections — none
+// below the floor — is a candidate. The candidates form a *portfolio* (every
+// top-level strategy is fully expanded); within each, recursion is greedy —
+// every over-ceiling section keeps only its single locally-best sub-division
+// (see expandSections). Candidates are ranked by whole-compound balance
+// (rankDivisions). Strategies are explored independently, not in priority order.
 func (wg *workGraph) exploreStrategies(c *Chunk, opts Options, floor int) []Division {
+	divs := wg.candidateDivisions(c, opts.By, floor)
+	maxDepth := opts.effectiveMaxDepth()
+	for i := range divs {
+		wg.expandSections(divs[i].Sections, opts.By, floor, opts.Ceiling, maxDepth, 1)
+	}
+	rankDivisions(divs)
+	return divs
+}
+
+// candidateDivisions runs each requested strategy once over a (sub-)chunk and
+// returns the flat (un-recursed) divisions that actually split it — ≥2 sections,
+// none below the floor. Ranking and recursion are layered on by the callers.
+func (wg *workGraph) candidateDivisions(c *Chunk, by []string, floor int) []Division {
 	divs := []Division{}
-	for _, strat := range selectStrategies(opts.By) {
+	for _, strat := range selectStrategies(by) {
 		labels := wg.splitBy(strat, c)
 		sections, dag := wg.buildSections(c, labels)
 		if len(sections) < 2 {
@@ -51,27 +68,156 @@ func (wg *workGraph) exploreStrategies(c *Chunk, opts Options, floor int) []Divi
 			Rationale: rationaleFor(strat),
 		})
 	}
-
-	rankDivisions(divs)
 	return divs
 }
 
-// rankDivisions sorts candidates by balance (smallest max-section complexity
-// first), then section count, then strategy name, and assigns 1-based ranks.
+// expandSections lazily re-divides each over-ceiling section in place. It
+// recurses only into sections that are over the ceiling, span ≥2 SCCs (loops are
+// never cut, at any level), and re-divide cleanly; the section keeps a single
+// locally-best sub-division (greedy inner choice — rank-1 by the same metric),
+// which is itself recursively expanded. curDepth is the level of the division
+// owning these sections (top-level == 1); nested divisions land at curDepth+1
+// and are bounded by maxDepth. Floors are enforced by candidateDivisions.
+func (wg *workGraph) expandSections(sections []Section, by []string, floor, ceiling, maxDepth, curDepth int) {
+	if curDepth >= maxDepth {
+		return // a nested division here would exceed the depth budget
+	}
+	for i := range sections {
+		s := &sections[i]
+		if s.Complexity <= ceiling {
+			continue // lazy: only break down sections that are still too big
+		}
+		if wg.distinctSCCs(s.Members) < 2 {
+			continue // loop / single-node section — no seam to cut
+		}
+		sub := wg.subChunk(s.ID, s.Members)
+		cands := wg.candidateDivisions(sub, by, floor)
+		if len(cands) == 0 {
+			continue
+		}
+		rankDivisions(cands)
+		chosen := cands[0]
+		wg.expandSections(chosen.Sections, by, floor, ceiling, maxDepth, curDepth+1)
+		chosen.Rank = 1
+		s.Divisions = []Division{chosen}
+	}
+}
+
+// subChunk builds a transient chunk over a section's member set so the strategy
+// menu can be re-run on it. Roots are the subset's binding-in-degree-0 entry
+// points (or the smallest member when the subset is a pure cycle). The section
+// ID is reused as the sub-chunk ID so nested section IDs stay hierarchical.
+func (wg *workGraph) subChunk(id string, members []string) *Chunk {
+	memberSet := setOf(members)
+	indeg := make(map[string]int, len(members))
+	for _, m := range members {
+		indeg[m] = 0
+	}
+	for _, from := range members {
+		for _, to := range sortedSet(wg.binding[from]) {
+			if memberSet[to] {
+				indeg[to]++
+			}
+		}
+	}
+	var roots []ChunkRoot
+	for _, m := range members { // members arrive sorted from buildSections
+		if indeg[m] == 0 {
+			roots = append(roots, ChunkRoot{Key: m, Reaches: wg.bindingReachable(m, memberSet)})
+		}
+	}
+	if len(roots) == 0 && len(members) > 0 {
+		roots = append(roots, ChunkRoot{Key: members[0], Reaches: wg.bindingReachable(members[0], memberSet)})
+	}
+	return &Chunk{ID: id, Roots: roots, Members: members}
+}
+
+// rankDivisions sorts candidates by whole-compound balance and assigns 1-based
+// ranks. The primary key is the worst *leaf* complexity (the largest unit left
+// after full recursion — smaller is better), then leaf count, then nesting
+// depth (shallower wins for an equal result), then total section count, then
+// strategy name. For a flat (un-recursed) division this reduces to the original
+// "max-section complexity, then section count, then name" ordering.
 func rankDivisions(divs []Division) {
 	sort.SliceStable(divs, func(i, j int) bool {
-		mi, mj := maxSectionComplexity(divs[i].Sections), maxSectionComplexity(divs[j].Sections)
-		if mi != mj {
-			return mi < mj
+		if wi, wj := worstLeafComplexity(divs[i]), worstLeafComplexity(divs[j]); wi != wj {
+			return wi < wj
 		}
-		if len(divs[i].Sections) != len(divs[j].Sections) {
-			return len(divs[i].Sections) < len(divs[j].Sections)
+		if li, lj := leafCount(divs[i]), leafCount(divs[j]); li != lj {
+			return li < lj
+		}
+		if di, dj := divisionDepth(divs[i]), divisionDepth(divs[j]); di != dj {
+			return di < dj
+		}
+		if si, sj := totalSectionCount(divs[i]), totalSectionCount(divs[j]); si != sj {
+			return si < sj
 		}
 		return divs[i].Strategy < divs[j].Strategy
 	})
 	for i := range divs {
 		divs[i].Rank = i + 1
 	}
+}
+
+// worstLeafComplexity is the largest complexity among a division's leaf sections
+// (those with no sub-division), recursing through nested divisions. It is the
+// whole-compound balance metric: the biggest authorable unit the compound leaves
+// behind.
+func worstLeafComplexity(d Division) int {
+	m := 0
+	for _, s := range d.Sections {
+		if len(s.Divisions) == 0 {
+			if s.Complexity > m {
+				m = s.Complexity
+			}
+			continue
+		}
+		for _, nd := range s.Divisions {
+			if w := worstLeafComplexity(nd); w > m {
+				m = w
+			}
+		}
+	}
+	return m
+}
+
+// leafCount counts the division's leaf sections after full recursion.
+func leafCount(d Division) int {
+	n := 0
+	for _, s := range d.Sections {
+		if len(s.Divisions) == 0 {
+			n++
+			continue
+		}
+		for _, nd := range s.Divisions {
+			n += leafCount(nd)
+		}
+	}
+	return n
+}
+
+// totalSectionCount counts every section across the whole compound tree.
+func totalSectionCount(d Division) int {
+	n := len(d.Sections)
+	for _, s := range d.Sections {
+		for _, nd := range s.Divisions {
+			n += totalSectionCount(nd)
+		}
+	}
+	return n
+}
+
+// divisionDepth is the deepest nesting level of divisions (this division == 1).
+func divisionDepth(d Division) int {
+	deepest := 0
+	for _, s := range d.Sections {
+		for _, nd := range s.Divisions {
+			if dd := divisionDepth(nd); dd > deepest {
+				deepest = dd
+			}
+		}
+	}
+	return 1 + deepest
 }
 
 // buildSections groups members by label into sections (sorted, with a stable ID
@@ -154,16 +300,4 @@ func anyBelowFloor(sections []Section, floor int) bool {
 		}
 	}
 	return false
-}
-
-// maxSectionComplexity returns the largest section complexity (the balance
-// metric — smaller is a more even cut).
-func maxSectionComplexity(sections []Section) int {
-	m := 0
-	for _, s := range sections {
-		if s.Complexity > m {
-			m = s.Complexity
-		}
-	}
-	return m
 }
