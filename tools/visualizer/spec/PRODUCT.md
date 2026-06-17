@@ -59,7 +59,7 @@ Drag nodes, scrub sliders, click to expand — all with immediate visual feedbac
 
 ### Glanceable summaries
 
-Every item — a collapsed tree block, a graph node, a filter chip — should communicate its structural role without requiring interaction. A collapsed workflow header that reads "MyWorkflow(params) → Type" tells you the signature; a summary annotation like "12 steps · 3 calls · 2 handlers" tells you the shape. A graph node labeled "OrderService" tells you the name; a badge showing "→3 ←5" tells you its connectivity.
+Every item — a collapsed tree block, a graph node, a filter chip — should communicate its structural role without requiring interaction. A collapsed workflow header that reads "MyWorkflow(params) → Type" tells you the signature; a summary annotation like "12 steps · 3 calls · 2 handlers" tells you the shape. A graph node labeled "OrderService" tells you the name and, through its color/icon/size, its type and tier at a glance; finer structural detail (connectivity like "→3 ←5", composition counts) surfaces in the hover box so the zoomed-out canvas stays legible.
 
 Summaries are secondary information — smaller, muted, never competing with the primary label. They answer "is this worth drilling into?" and reduce the need for speculative expand/collapse. Each view defines its own summary content (see TREE_VIEW.md § Block Summaries and GRAPH_VIEW.md § Node Summaries).
 

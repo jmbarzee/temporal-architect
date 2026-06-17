@@ -24,6 +24,10 @@
   --color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   --color-text: #1e293b;
   --color-text-muted: #64748b;
+  /* Canvas graph node-label colour. Softened (slate-700, not near-black) so
+     labels read clearly on the light background without shouting; drawn at
+     reduced alpha so edges stay visible through them. */
+  --color-graph-label: #334155;
   --color-surface: #ffffff;
   --color-border: #e2e8f0;
   --color-error: #dc2626;
@@ -56,6 +60,10 @@
   --color-bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
   --color-text: #d4d4d4;
   --color-text-muted: #9ca3af;
+  /* Softened label colour on dark themes — slate-300 rather than near-white,
+     so names read without being the only bright text on the canvas. Drawn at
+     reduced alpha so edges stay visible through them. */
+  --color-graph-label: #cbd5e1;
   --color-surface: #252526;
   --color-border: #3c3c3c;
   --color-error: #f87171;
@@ -329,6 +337,18 @@ body {
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Composition counts (workers/endpoints/registrations) for container and
+   host nodes — relocated here from the under-node badge. */
+.tooltip-summary {
+  font-size: 11px;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -612,6 +632,22 @@ body {
 .graph-control-section-slot.active {
   visibility: visible;
   pointer-events: auto;
+}
+
+/* Labelled sub-section grouping (used by the Misc tab to separate Dynamics
+   from Node scaling). A second sub-section gets a hairline divider above it. */
+.graph-control-subsection + .graph-control-subsection {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.graph-control-subsection-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
 }
 
 /* Equation-oriented sections. Only the active tab's section is visible, so it

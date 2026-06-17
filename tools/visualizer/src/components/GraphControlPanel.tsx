@@ -4,6 +4,7 @@
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
+import type { NodeScaleParams } from '../graph/node-types'
 import { SpringMap, SpringCurves } from './SpringControls'
 import { ChargeMap, ChargeCurves } from './ChargeControls'
 import { GravityControls } from './GravityControls'
@@ -13,15 +14,18 @@ import { PopProvider, FormulaValue } from './controls/PopContext'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
-// The four force tabs. Unlike ForceSection, a tab is always one of these —
-// there is no "null" tab; exactly one section is shown at a time.
-type ForceTab = 'push' | 'pull' | 'gravity' | 'dynamics'
+// The four control tabs. Unlike ForceSection, a tab is always one of these —
+// there is no "null" tab; exactly one section is shown at a time. The "misc"
+// tab groups non-force controls (simulation dynamics + render-time node
+// scaling); its dynamics sub-section still drives the 'dynamics' ForceSection
+// hover preview.
+type ControlTab = 'push' | 'pull' | 'gravity' | 'misc'
 
-const FORCE_TABS: { id: ForceTab; label: string }[] = [
+const CONTROL_TABS: { id: ControlTab; label: string }[] = [
   { id: 'push', label: 'Push' },
   { id: 'pull', label: 'Pull' },
   { id: 'gravity', label: 'Gravity' },
-  { id: 'dynamics', label: 'Dynamics' },
+  { id: 'misc', label: 'Misc' },
 ]
 
 interface GraphControlPanelProps {
@@ -42,6 +46,11 @@ interface GraphControlPanelProps {
   // The hovered/active pull edge category (its k-field key), forwarded to the
   // canvas so only that edge category is highlighted while tuning it.
   onActivePullEdge: (key: string | null) => void
+  // Render-time node sizing (Misc → Node scaling). Separate from ForceParams
+  // because it never touches the simulation — it only affects how big nodes
+  // are drawn at a given zoom.
+  nodeScale: NodeScaleParams
+  onNodeScaleChange: (patch: Partial<NodeScaleParams>) => void
 }
 
 // Keys of ForceParams whose value is a number (ForceParams now also has the
@@ -50,13 +59,23 @@ type NumericForceKey = {
   [K in keyof ForceParams]: ForceParams[K] extends number ? K : never
 }[keyof ForceParams]
 
-interface SliderDef {
-  key: NumericForceKey
+// Shared shape for a labelled range row. Key types differ per param family
+// (force params vs. node-scale params), so the key lives on the extending
+// interfaces and SliderRow itself only needs the range/label/tooltip.
+interface RangeDef {
   label: string
   min: number
   max: number
   step: number
   tooltip: string
+}
+
+interface SliderDef extends RangeDef {
+  key: NumericForceKey
+}
+
+interface NodeScaleSliderDef extends RangeDef {
+  key: keyof NodeScaleParams
 }
 
 // --- PUSH section ---
@@ -93,13 +112,29 @@ const DYNAMICS_SLIDERS: SliderDef[] = [
     tooltip: 'Energy level below which simulation pauses' },
 ]
 
+// --- NODE SCALING section sliders ---
+//
+// Render-time controls for how big nodes are drawn. On-screen size is
+// `baseR × size × clamp(zoom, shrink-floor, grow-cap)`. Lowering "grow cap"
+// makes nodes start shrinking sooner as the user zooms out (the common fix for
+// "nodes are too big when zoomed out").
+const NODE_SCALE_SLIDERS: NodeScaleSliderDef[] = [
+  { key: 'baseMul', label: 'size', min: 0.3, max: 2.0, step: 0.05,
+    tooltip: 'Overall node + label size. 1 = default.' },
+  { key: 'maxZoomMul', label: 'grow cap', min: 0.5, max: 3.0, step: 0.05,
+    tooltip: 'Zoom past which nodes stop growing. Lower = nodes start shrinking sooner as you zoom out.' },
+  { key: 'minZoomMul', label: 'shrink floor', min: 0.1, max: 1.0, step: 0.05,
+    tooltip: 'Smallest nodes may get when zoomed all the way out.' },
+]
+
 export function GraphControlPanel({
   params, onParamChange, onAdjust, onGravityChange,
   onActiveSection,
   onActiveChargeType, onActiveGravityType, onActivePullEdge,
+  nodeScale, onNodeScaleChange,
 }: GraphControlPanelProps) {
   const [open, setOpen] = React.useState(false)
-  const [activeTab, setActiveTab] = React.useState<ForceTab>('push')
+  const [activeTab, setActiveTab] = React.useState<ControlTab>('push')
   // Links the spring map and the force-curve viz: hovering a token in one
   // brightens the matching curve in the other. The key (an edge category's
   // k-field) is also forwarded to the canvas so only that category's edges
@@ -144,15 +179,15 @@ export function GraphControlPanel({
         onClick={() => setOpen(!open)}
         title="Toggle control panel"
       >
-        {open ? '▼ Forces' : '▶ Forces'}
+        {open ? '▼ Controls' : '▶ Controls'}
       </button>
 
       {open && (
         <PopProvider>
         <div className="graph-control-panel-body">
-          {/* Force tabs — only one section is shown at a time. */}
+          {/* Control tabs — only one section is shown at a time. */}
           <div className="graph-control-tabs" role="tablist">
-            {FORCE_TABS.map(t => (
+            {CONTROL_TABS.map(t => (
               <button
                 key={t.id}
                 role="tab"
@@ -247,13 +282,25 @@ export function GraphControlPanel({
               </EquationSection>
             </SectionSlot>
 
-            {/* DYNAMICS section */}
-            <SectionSlot active={activeTab === 'dynamics'}>
-              <EquationSection subtitle="" equation={'v \u00D7= friction\n\u03B1 \u2212= cooling, stop at threshold'} onHover={h => onActiveSection(h ? 'dynamics' : null)}>
-                {DYNAMICS_SLIDERS.map(s => (
-                  <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange({ [s.key]: v } as Partial<ForceParams>)} />
-                ))}
-              </EquationSection>
+            {/* MISC section — non-force controls: simulation dynamics and
+                render-time node scaling, each in its own labelled sub-section. */}
+            <SectionSlot active={activeTab === 'misc'}>
+              <div className="graph-control-subsection">
+                <div className="graph-control-subsection-title">Dynamics</div>
+                <EquationSection subtitle="" equation={'v \u00D7= friction\n\u03B1 \u2212= cooling, stop at threshold'} onHover={h => onActiveSection(h ? 'dynamics' : null)}>
+                  {DYNAMICS_SLIDERS.map(s => (
+                    <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange({ [s.key]: v } as Partial<ForceParams>)} />
+                  ))}
+                </EquationSection>
+              </div>
+              <div className="graph-control-subsection">
+                <div className="graph-control-subsection-title">Node scaling</div>
+                <EquationSection subtitle="" equation={'size = base \u00D7 clamp(zoom, floor, cap)'} onHover={() => {}}>
+                  {NODE_SCALE_SLIDERS.map(s => (
+                    <SliderRow key={s.key} def={s} value={nodeScale[s.key]} onChange={v => onNodeScaleChange({ [s.key]: v } as Partial<NodeScaleParams>)} />
+                  ))}
+                </EquationSection>
+              </div>
             </SectionSlot>
           </div>
         </div>
@@ -306,7 +353,7 @@ function EquationSection({ subtitle, equation, onHover, children }: {
 }
 
 function SliderRow({ def, value, onChange, nodeType }: {
-  def: SliderDef
+  def: RangeDef
   value: number
   onChange: (v: number) => void
   nodeType?: NodeType

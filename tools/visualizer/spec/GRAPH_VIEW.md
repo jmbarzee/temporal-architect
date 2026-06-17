@@ -304,7 +304,9 @@ Each node type should be visually distinct using redundant encoding (don't rely 
 
 Level 3 node types share the same size tier but are distinguished by color and icon (matching the tree view's existing color system: purple for workflows, blue for activities, pink for nexus services).
 
-All nodes display their name as a label. Labels should remain legible at typical zoom levels — consider truncation with a tooltip for long names.
+Each node displays **only its name** as a label — all other detail (composition counts, file, connection degree, duplicate copies) lives in the hover box, not under the node. Labels use a dedicated `--color-graph-label` colour (softened — slate-700 in light themes, slate-300 in dark — rather than maximum contrast, so names aren't the only bright text on the canvas) at a semibold weight and slight translucency (so edges stay visible through them). Names up to 15 characters are shown in full; longer names are truncated to 12 characters plus an ellipsis. Overlap is handled by collision-based elision — see § Visual Density.
+
+**Zoom-responsive sizing.** Node bodies, icons, and labels are drawn in screen pixels but scale with zoom: on-screen size is `baseR × size × clamp(zoom, floor, cap)`. They shrink when zoomed out — so a zoomed-out graph reads as a clean constellation rather than a chaotic pile of full-size dots and overlapping labels — and are capped when zoomed in so they never dominate the canvas. The three knobs (`size`, `grow cap`, `shrink floor`) are **user-tunable** from the Controls panel (Misc → Node scaling, see § Control Panel) — e.g. lowering the grow cap makes nodes start shrinking at a lower zoom.
 
 ### Edge Appearance
 
@@ -326,19 +328,17 @@ See [PRODUCT.md](./PRODUCT.md) § Visual Identity for the shared color palette. 
 
 ### Node Summaries
 
-Graph nodes display **summary badges** that communicate structural role at a glance, without hovering or selecting. See [PRODUCT.md](./PRODUCT.md) § Glanceable summaries for the design principle.
+Structural summaries communicate a node's role at a glance, but to keep the canvas uncluttered they live in the **hover box**, not as a second label under the node. See [PRODUCT.md](./PRODUCT.md) § Glanceable summaries for the design principle.
 
-| Node Level | Summary | Example |
-|------------|---------|---------|
-| Level 1 (Namespace) | Contained worker count | `5 workers` |
-| Level 2 (Worker) | Registration breakdown | `3wf · 1act` |
-| Level 3 (Definition) | Dependency degree (in/out) | `→3 ←2` |
+| Node Level | Summary | Example | Where shown |
+|------------|---------|---------|-------------|
+| Level 1 (Namespace) | Contained worker / endpoint count | `5 workers · 1 endpoint` | Hover box (composition line) |
+| Level 2 (Worker / Nexus Service) | Registration breakdown | `3wf · 1act`, `2 ops` | Hover box (composition line) |
+| Level 3 (Definition) | Dependency degree (in/out) | `→3 ←2` | Hover box (connections row) |
 
 **Presentation:**
-- Summaries appear as a secondary label below or beside the node name, in a smaller font at reduced opacity.
-- At low zoom levels where labels are already hard to read, summaries are the first thing to be elided — they disappear before the primary name label does.
-- Containment counts (L1, L2) reflect only the currently visible children — if Level 3 is not in the selected range, a Worker node does not show a registration count.
-- Dependency degree counts (L3) count only edges at the currently visible abstraction level, consistent with filter-as-source-of-truth.
+- Composition counts (L1, L2) appear as a dedicated line in the hover tooltip; dependency degree (L3) is already represented by the tooltip's connections row, so it is not duplicated.
+- Counts reflect only the currently visible children/edges — if Level 3 is not in the selected range, a Worker node does not show a registration count — consistent with filter-as-source-of-truth.
 
 ---
 
@@ -348,7 +348,7 @@ The graph lives on an infinite 2D canvas. Standard viewport interactions:
 
 | Interaction       | Action                      |
 |-------------------|-----------------------------|
-| **Scroll / pinch** | Geometric zoom in/out      |
+| **Scroll / pinch** | Geometric zoom in/out (range ~0.1×–40×; the high ceiling lets dense clusters spread far enough apart to reveal every node's label) |
 | **Click-drag on background** | Pan the viewport  |
 | **Click-drag on a node**     | Drag the node; pin its position while dragging, release to unpin |
 | **Double-click a node**      | Center and zoom to fit the node and its immediate neighbors (graph-native; not used for cross-view navigation) |
@@ -417,7 +417,7 @@ A collapsible overlay containing force parameters, simulation controls, and a fo
 
 ### Organization
 
-The panel is collapsed by default (progressive disclosure). When expanded, controls are split across four **tabs** — PUSH, PULL, GRAVITY, DYNAMICS — with exactly one section shown at a time. The tab strip sits at the top of the panel body; the section area is sized to the tallest tab so switching tabs never resizes the panel. Each section displays the physics equation it governs as a monospace header, then the controls for every parameter that appears in that equation. Sections carry no decorative per-force colour; node-type colour is reserved for the per-type/per-edge controls where it carries meaning.
+The panel is collapsed by default (progressive disclosure); the collapsed toggle reads **Controls** (the panel covers more than forces). When expanded, controls are split across four **tabs** — PUSH, PULL, GRAVITY, MISC — with exactly one section shown at a time. The first three are force tabs; MISC groups the non-force controls (simulation dynamics + render-time node scaling). The tab strip sits at the top of the panel body; the section area is sized to the tallest tab so switching tabs never resizes the panel. Each force section displays the physics equation it governs as a monospace header, then the controls for every parameter that appears in that equation. Sections carry no decorative per-force colour; node-type colour is reserved for the per-type/per-edge controls where it carries meaning.
 
 **PUSH** (all node pairs)
 
@@ -465,7 +465,11 @@ A centered `Cartesian | Radial` **mode** switch (a segmented control — the rig
 
 The active body's tools stay shown but dim when its force switch is off. No numbers on the controls (consistent with Push/Pull). The Band X/Y strength sliders are capped tight (the defaults sit mid-range); the Topological strength range is extended for headroom.
 
-**DYNAMICS**
+**MISC**
+
+The MISC tab holds two labelled sub-sections — *Dynamics* and *Node scaling* — separated by a hairline divider. Neither is a force; they are grouped here to keep the three force tabs purely about the layout physics.
+
+*Dynamics* — how the simulation cools and damps over time:
 
     v ×= friction
     α −= cooling, stop at threshold
@@ -473,6 +477,16 @@ The active body's tools stay shown but dim when its force switch is off. No numb
 - `friction` — velocity damping per tick (higher = more friction)
 - `cooling` — energy lost per tick (higher = settles faster)
 - `threshold` — energy level below which simulation pauses
+
+*Node scaling* — render-time control of how big nodes (and their labels) are drawn. On-screen size is `baseR × size × clamp(zoom, floor, cap)`:
+
+    size = base × clamp(zoom, floor, cap)
+
+- `size` — overall node + label size multiplier (1 = registry default)
+- `grow cap` — the zoom level past which nodes stop growing; **lower it to make nodes start shrinking sooner as you zoom out** (the fix for "nodes are too big when zoomed out")
+- `shrink floor` — the smallest nodes may get when zoomed all the way out
+
+Node scaling is a pure-render concern: editing it redraws the canvas but does **not** reheat the simulation (unlike force controls, which auto-reheat). Defaults are `size 0.6`, `grow cap 1.65`, `shrink floor 0.4`.
 
 The equation-oriented grouping means each section is self-contained: the formula shows what the parameters do, the controls let you change them. A user who understands the equation can predict a control's effect; a user who doesn't can still experiment and see results.
 
@@ -527,7 +541,7 @@ The control panel and canvas are linked: hovering a control section activates th
 | **PUSH** | Charge field rings appear around all visible nodes |
 | **PULL** | Edges show tension colouring (teal/amber/blue). Hovering or dragging a spring-map token narrows this to just that edge category, drawn as a border. |
 | **GRAVITY** | Band rest regions appear — per-type Y stripes + the X band (Cartesian) or concentric rings (Radial). Hovering a band-plot column narrows the highlight to that type. |
-| **DYNAMICS** | No canvas response (dynamics are temporal, not spatial) |
+| **MISC** | No canvas force-field response — Dynamics is temporal, not spatial, and Node scaling redraws node sizes directly rather than previewing a force field |
 
 When the user stops hovering, the visualization fades.
 
@@ -603,9 +617,10 @@ In both modes:
 - All other nodes and edges dim (reduce opacity to ~20–30%).
 - Show a **hover info tooltip** anchored near the hovered node containing:
   1. Node name, type icon + label, context line (format varies by type — see below), source file.
-  2. **Duplicate-copies line** (only when the definition has more than one visible copy): `copy N of M`, where M is the number of sister copies currently visible. Makes the per-worker duplication explicit and tells the user the cross-canvas highlight on the other copies is intentional.
-  3. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
-  4. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
+  2. **Composition counts** (container/host nodes only — namespace, worker, nexus service): contained worker/endpoint counts or registration breakdown (e.g. `5 workers · 1 endpoint`, `3wf · 1act`, `2 ops`). This is the structural summary that used to render as an under-node badge (§ Node Summaries).
+  3. **Duplicate-copies line** (only when the definition has more than one visible copy): `copy N of M`, where M is the number of sister copies currently visible. Makes the per-worker duplication explicit and tells the user the cross-canvas highlight on the other copies is intentional.
+  4. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
+  5. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
 
 **Context line format** — the second line of the tooltip shows the node's parent context in a format suited to each type's deployment role:
 
@@ -710,7 +725,8 @@ See [PRODUCT.md](./PRODUCT.md) § Density management for the cross-cutting princ
 
 At high node counts, the graph risks becoming a hairball. Strategies to manage this, applied progressively as density increases:
 
-- **Label elision** — At low zoom levels where labels would overlap, hide node name labels and show only the color-coded shape. Labels reappear on hover or when zoomed in. Summary badges (§ Node Summaries) are elided before name labels.
+- **Label elision** — Two complementary mechanisms keep labels readable: (1) below a low zoom threshold, name labels are hidden entirely (only the colour-coded shapes remain), reappearing on hover or when zoomed in; (2) at all other zooms, each label is placed only if its box overlaps neither an already-drawn label **nor any node body** this frame, so dense clusters thin out their labels instead of overprinting nodes or each other. The hovered/selected node always wins, and the choice is greedy in (stable) node order so it doesn't flicker once the layout settles. Because labels hide rather than shrink, zooming in (up to 40×) spreads nodes apart and progressively reveals more labels. (There is no longer a secondary summary badge under the node — composition counts moved to the hover box, § Node Summaries.)
+- **Zoom-responsive node sizing** — Node bodies and labels scale down (clamped) as the user zooms out, so a zoomed-out graph reads as a clean constellation instead of a chaotic field of overlapping full-size dots. See § Visual Encoding → Node Appearance.
 - **Edge bundling** — When many edges connect the same pair of workers or namespaces at coarser zoom levels, the derived edge already compresses them to one. At Level 3 with many visible edges between the same two worker groups, consider visual bundling (routing edges through shared paths) or opacity reduction for parallel edges.
 - **Type toggles as density control** — The type filter is the primary density management tool. The default view (Workers and Workflows only) shows a moderate-density graph. Users opt into density by enabling additional types. This is density management through progressive disclosure rather than algorithmic simplification.
 - **Zoom-dependent detail** — Node rendering can reduce detail at distant zoom: drop icons, simplify shapes to dots, reduce border thickness. The node remains clickable and hoverable at all zoom levels.

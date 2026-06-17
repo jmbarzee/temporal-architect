@@ -11,6 +11,12 @@ export interface Viewport {
 
 export const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, scale: 1 }
 
+// Zoom bounds. The upper bound is generous so dense clusters can be spread far
+// enough apart on screen to reveal every node's label (labels hide when they'd
+// overlap a neighbour or its node — see GraphCanvas).
+export const MIN_ZOOM = 0.1
+export const MAX_ZOOM = 40
+
 export function worldToScreen(vp: Viewport, wx: number, wy: number): [number, number] {
   return [wx * vp.scale + vp.x, wy * vp.scale + vp.y]
 }
@@ -21,7 +27,7 @@ export function screenToWorld(vp: Viewport, sx: number, sy: number): [number, nu
 
 // Zoom centered on a screen point
 export function zoomAt(vp: Viewport, sx: number, sy: number, factor: number): Viewport {
-  const newScale = Math.max(0.1, Math.min(10, vp.scale * factor))
+  const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, vp.scale * factor))
   // Adjust translation so the point under the cursor stays fixed
   const wx = (sx - vp.x) / vp.scale
   const wy = (sy - vp.y) / vp.scale

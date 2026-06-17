@@ -8,6 +8,7 @@ import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import { nodeTypeToDefType, defTypeToNodeType } from './graph-view/nodeDefType'
+import { definitionFor, DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-types'
 import { worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
@@ -123,6 +124,14 @@ export function GraphView({
     onToggleRunning: handleToggleRunning,
     onReheat: handleReheat,
   } = useSimulation(graph, onSimRebuild)
+
+  // Render-time node sizing (independent of the simulation). Tunable from the
+  // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
+  // touch ForceParams or reheat the layout.
+  const [nodeScale, setNodeScale] = React.useState<NodeScaleParams>(DEFAULT_NODE_SCALE)
+  const handleNodeScaleChange = React.useCallback((patch: Partial<NodeScaleParams>) => {
+    setNodeScale(prev => ({ ...prev, ...patch }))
+  }, [])
 
   // Clear pin-override flash after ~600ms so the visual flash plays once.
   React.useEffect(() => {
@@ -424,7 +433,7 @@ export function GraphView({
           activeChargeType={activeChargeType}
           activeGravityType={activeGravityType}
           activePullEdge={activePullEdge}
-          nodeSummaries={nodeSummaries}
+          nodeScale={nodeScale}
         />
         <GraphHoverTooltip
           hoveredNodeId={hoveredNodeId}
@@ -434,6 +443,7 @@ export function GraphView({
           viewport={viewport}
           shiftHeld={shiftHeld}
           duplicateGroups={graph.duplicateGroups}
+          nodeSummaries={nodeSummaries}
         />
       </div>
 
@@ -599,6 +609,8 @@ export function GraphView({
         onActiveChargeType={setActiveChargeType}
         onActiveGravityType={setActiveGravityType}
         onActivePullEdge={setActivePullEdge}
+        nodeScale={nodeScale}
+        onNodeScaleChange={handleNodeScaleChange}
       />
 
       {/* Right-click context menu */}
@@ -644,6 +656,7 @@ interface GraphHoverTooltipProps {
   viewport: Viewport
   shiftHeld: boolean
   duplicateGroups: Map<string, Set<string>>
+  nodeSummaries: Map<string, string>
 }
 
 // Strip the kind prefix from a parser metadata field (e.g. 'namespace:ecommerce'
@@ -656,7 +669,7 @@ function stripKindPrefix(s: string | undefined): string | undefined {
   return i >= 0 ? s.slice(i + 1) : s
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries }: GraphHoverTooltipProps) {
   if (!hoveredNodeId) return null
   const sim = simRef.current
   if (!sim) return null
@@ -690,6 +703,17 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   const cfg = DEF_TYPE_CONFIGS.find(c => c.type === nodeTypeToDefType(node.nodeType))
   const fileName = node.sourceFile?.split('/').pop()
 
+  // Composition counts for container/host nodes (e.g. "3 workers · 1 endpoint"
+  // on a namespace, "3wf · 1act" on a worker, "2 ops" on a nexus service).
+  // These used to render as a badge under the node; they now live in the box.
+  // Degree nodes (workflow/activity/operation) are covered by the connection
+  // counts row below, so we don't duplicate them here.
+  const summaryKind = definitionFor(node.nodeType).summaryKind
+  const compositionLine =
+    summaryKind === 'containerCount' || summaryKind === 'hostRegistrations'
+      ? nodeSummaries.get(hoveredNodeId) || undefined
+      : undefined
+
   let outgoing = 0, incoming = 0
   for (const e of visibleEdges) {
     if (e.edgeType === 'containment') continue
@@ -718,6 +742,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         <span className="tooltip-name">{node.name}</span>
       </div>
       {contextLine && <div className="tooltip-parent">{contextLine}</div>}
+      {compositionLine && <div className="tooltip-summary">{compositionLine}</div>}
       {fileName && <div className="tooltip-file">{fileName}</div>}
       {copyCount > 1 && (
         <div className="tooltip-duplicates" title="This definition is registered on multiple workers. Hovering any copy highlights all copies.">

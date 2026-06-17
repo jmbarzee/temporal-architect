@@ -7,7 +7,7 @@ import type { ForceParams, SimNode } from '../graph/simulation'
 import { ALL_NODE_TYPES, bandForType, chargeForType, coreRadiusForType, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
-import { definitionFor } from '../graph/node-types'
+import { definitionFor, nodeSizeMul, type NodeScaleParams } from '../graph/node-types'
 import type { ForceSection } from './GraphControlPanel'
 
 // Edge styles indexed by semantic role. The nexus family carries the pink
@@ -37,16 +37,40 @@ const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#FFFFFF'
 const DIM_ALPHA = 0.2
 
-const LABEL_FONT = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 const ICON_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+const LABEL_FONT_PX = 11
+// Slight translucency on node labels so they don't read as the only bright
+// text on the dark canvas and edges remain visible through them.
+const LABEL_ALPHA = 0.78
 
-// Read a CSS custom property off the document root with a fallback. Used to
-// keep canvas-drawn text in step with the surrounding DOM theme — the body
-// inherits `--color-text`, so labels feel out of place if we hard-code a
-// dark slate that turns invisible on the dark VS Code background.
-function cssVar(name: string, fallback: string): string {
-  if (typeof document === 'undefined') return fallback
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+// Label truncation: names up to LABEL_MAX_CHARS are shown in full; anything
+// longer is shortened to LABEL_TRUNC_CHARS characters plus an ellipsis (so a
+// truncated label always shows at least LABEL_TRUNC_CHARS characters).
+const LABEL_MAX_CHARS = 15
+const LABEL_TRUNC_CHARS = 12
+function labelText(name: string): string {
+  return name.length > LABEL_MAX_CHARS ? name.slice(0, LABEL_TRUNC_CHARS) + '\u2026' : name
+}
+
+// Build the node-label font string at a given pixel size. Semibold (600) so
+// labels read against the canvas background and over edges without needing a
+// halo/outline.
+function labelFont(px: number): string {
+  return `600 ${px.toFixed(1)}px ${ICON_FONT_FAMILY}`
+}
+
+
+// Read a CSS custom property with a fallback, resolved against a specific
+// element. We resolve against the canvas (not `document.documentElement`)
+// because the dark theme is applied via a `.vscode-dark` class on `<body>`,
+// which is *below* `<html>` — reading from the root would always yield the
+// light value and leave labels near-invisible on the dark VS Code background.
+// The canvas is a descendant of the themed element, so it inherits the right
+// value in either theme.
+function cssVar(el: Element | null, name: string, fallback: string): string {
+  const target = el ?? (typeof document !== 'undefined' ? document.documentElement : null)
+  if (!target) return fallback
+  const v = getComputedStyle(target).getPropertyValue(name).trim()
   return v || fallback
 }
 
@@ -107,7 +131,6 @@ const ARROWHEAD_SIZE = 8
 const CULL_MARGIN = 100
 
 // Zoom elision thresholds
-const SUMMARY_ELIDE_SCALE = 0.5   // hide summary badges below this scale
 const LABEL_ELIDE_SCALE = 0.25    // hide name labels below this scale (except hovered/selected)
 const DETAIL_REDUCE_SCALE = 0.1   // drop decorative rings below this scale
 
@@ -138,7 +161,7 @@ interface GraphCanvasProps {
   activeChargeType: NodeType | null
   activeGravityType: NodeType | null
   activePullEdge: string | null
-  nodeSummaries: Map<string, string>
+  nodeScale: NodeScaleParams
 }
 
 // All data the draw function needs, stored in a ref to avoid effect teardown
@@ -158,7 +181,7 @@ interface DrawData {
   activeChargeType: NodeType | null
   activeGravityType: NodeType | null
   activePullEdge: string | null
-  nodeSummaries: Map<string, string>
+  nodeScale: NodeScaleParams
   running: boolean
   // Set of node ids where the same underlying definition appears more than
   // once in the visible set (different workers). Drawn with a colored halo.
@@ -176,7 +199,7 @@ export function GraphCanvas({
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, forceParams, activeSection, activeChargeType,
-  activeGravityType, activePullEdge, nodeSummaries,
+  activeGravityType, activePullEdge, nodeScale,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -224,13 +247,13 @@ export function GraphCanvas({
   const drawData = React.useRef<DrawData>({
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeSummaries, running,
+    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeSummaries, running,
+    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -251,11 +274,13 @@ export function GraphCanvas({
     const [wx, wy] = screenToWorld(viewport, sx, sy)
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i]
-      const r = definitionFor(n.nodeType).size.r / viewport.scale + 4
+      // Match the on-screen size: screen radius is def.r × nodeSizeMul(scale);
+      // convert to world units by dividing by scale, plus a small slop.
+      const r = (definitionFor(n.nodeType).size.r * nodeSizeMul(viewport.scale, nodeScale)) / viewport.scale + 4
       if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
-  }, [nodes, viewport])
+  }, [nodes, viewport, nodeScale])
 
   // Mouse handlers
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
@@ -263,7 +288,7 @@ export function GraphCanvas({
     const rect = canvasRef.current!.getBoundingClientRect()
     const sx = e.clientX - rect.left
     const sy = e.clientY - rect.top
-    const factor = e.deltaY < 0 ? 1.1 : 0.9
+    const factor = e.deltaY < 0 ? 1.15 : 0.85
     onViewportChange(zoomAt(viewport, sx, sy, factor))
   }, [viewport, onViewportChange])
 
@@ -389,8 +414,9 @@ export function GraphCanvas({
       // Resolve theme-tracking colours every frame. Cheap (CSS lookup +
       // string trim per draw) and guarantees the canvas text follows a
       // theme switch without needing a full effect teardown.
-      const labelColor = cssVar('--color-text', '#1e293b')
-      const labelMutedColor = cssVar('--color-text-muted', '#64748b')
+      // Dedicated, high-contrast label colour (darker than --color-text in
+      // light themes, brighter in dark) so node names pop off the background.
+      const labelColor = cssVar(canvas, '--color-graph-label', '#0f172a')
       // Dim variant keeps the same hue, just at low alpha. We synthesise it
       // by appending an alpha to the resolved hex when possible; otherwise
       // fall back to the existing rgba grey.
@@ -445,8 +471,10 @@ export function GraphCanvas({
         // direction is interesting to show).
         if (edge.edgeType !== 'containment') {
           const angle = Math.atan2(ty - sy, tx - sx)
-          const tgtR = definitionFor(tgt.nodeType).size.r
-          const offset = tgtR * vp.scale + 2
+          // Stop the arrowhead at the target's on-screen edge (screen radius =
+          // def.r × nodeSizeMul(scale)) so it tracks the zoom-scaled node body.
+          const tgtR = definitionFor(tgt.nodeType).size.r * nodeSizeMul(vp.scale, d.nodeScale)
+          const offset = tgtR + 2
           const ax = tx - Math.cos(angle) * offset
           const ay = ty - Math.sin(angle) * offset
           ctx.beginPath()
@@ -561,9 +589,9 @@ export function GraphCanvas({
         // highlight reads as part of the visualizer, not a generic stoplight:
         // amber warning = stretched, cool activity-blue = compressed, calm
         // timer-teal = near rest.
-        const tensionStretch = cssVar('--color-warning', '#d97706')
-        const tensionCompress = cssVar('--color-activity', '#7CB9E8')
-        const tensionRest = cssVar('--color-timer', '#7EC8B8')
+        const tensionStretch = cssVar(canvas, '--color-warning', '#d97706')
+        const tensionCompress = cssVar(canvas, '--color-activity', '#7CB9E8')
+        const tensionRest = cssVar(canvas, '--color-timer', '#7EC8B8')
         for (const edge of d.edges) {
           const src = d.nodeMap.get(edge.sourceId)
           const tgt = d.nodeMap.get(edge.targetId)
@@ -744,14 +772,28 @@ export function GraphCanvas({
       }
 
       // Draw nodes
-      ctx.font = LABEL_FONT
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
+
+      // Node + label size multiplier for the current zoom (clamped, tunable).
+      const mul = nodeSizeMul(vp.scale, d.nodeScale)
+
+      // Bounding boxes of labels already placed this frame, for collision
+      // avoidance (see the label block below). Reset every frame.
+      const labelBoxes: { x: number; y: number; w: number; h: number }[] = []
+
+      // Screen-space circle for every node, so a label can also avoid
+      // overlapping any node body (not just other labels). Precomputed because a
+      // label may collide with a node drawn later in the same loop.
+      const nodeCircles = d.nodes.map(n => {
+        const [nx, ny] = worldToScreen(vp, n.x, n.y)
+        return { x: nx, y: ny, r: definitionFor(n.nodeType).size.r * mul }
+      })
 
       for (const node of d.nodes) {
         const [sx, sy] = worldToScreen(vp, node.x, node.y)
         const def = definitionFor(node.nodeType)
-        const r = def.size.r
+        const r = def.size.r * mul
         const hw = r  // nodes are circles: half-width = half-height = r
 
         if (sx + hw < -CULL_MARGIN || sx - hw > w + CULL_MARGIN ||
@@ -782,7 +824,7 @@ export function GraphCanvas({
         // icon bleeds into the fill anyway and just adds noise.
         if (vp.scale >= LABEL_ELIDE_SCALE && icon) {
           ctx.save()
-          ctx.font = `${def.size.iconSize}px ${ICON_FONT_FAMILY}`
+          ctx.font = `${def.size.iconSize * mul}px ${ICON_FONT_FAMILY}`
           ctx.fillStyle = '#FFFFFF'
           ctx.globalAlpha = (nodeDimmed ? DIM_ALPHA : 1) * 0.92
           ctx.fillText(icon, sx, sy + 0.5)
@@ -858,26 +900,40 @@ export function GraphCanvas({
 
         ctx.globalAlpha = 1
 
-        // Labels — elided at low zoom; always shown for hovered/selected node
-        const maxLabelW = Math.max(r * 4, 48)
-        const labelY = sy + r + 12
+        // Label — node name only; all other detail lives in the hover box.
+        // Elided at low zoom; always shown for the hovered/selected node.
+        // Collision avoidance: a name is drawn only if its box overlaps neither
+        // an already-placed label nor any node body this frame (active nodes
+        // always win). Greedy in node order — which is stable — so the set of
+        // shown labels doesn't flicker once the layout settles. O(n²) worst
+        // case, fine at this scale.
         const isActiveNode = node.id === d.hoveredNodeId || node.id === d.selectedNodeId
         if (vp.scale >= LABEL_ELIDE_SCALE || isActiveNode) {
-          // Theme-aware text colour — picks up `--color-text` so labels are
-          // legible in both light and dark VS Code themes.
-          ctx.fillStyle = nodeDimmed ? labelDimColor : labelColor
-          ctx.fillText(truncateLabel(ctx, node.name, maxLabelW), sx, labelY)
-
-          // Summary — elided before name labels
-          if (vp.scale >= SUMMARY_ELIDE_SCALE) {
-            const summary = d.nodeSummaries.get(node.id)
-            if (summary) {
-              ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              ctx.globalAlpha = nodeDimmed ? DIM_ALPHA * 0.55 : 0.55
-              ctx.fillStyle = labelMutedColor
-              ctx.fillText(summary, sx, labelY + 13)
-              ctx.font = LABEL_FONT
-            }
+          // Active nodes (hovered/selected) keep a readable floor size even when
+          // zoomed out, since they're deliberately surfaced; others scale freely.
+          const labelPx = LABEL_FONT_PX * (isActiveNode ? Math.max(mul, 1) : mul)
+          const labelY = sy + r + 4 + labelPx * 0.7
+          ctx.font = labelFont(labelPx)
+          const text = labelText(node.name)
+          const tw = ctx.measureText(text).width
+          const box = { x: sx - tw / 2 - 2, y: labelY - labelPx / 2 - 1, w: tw + 4, h: labelPx + 2 }
+          const hitsLabel = labelBoxes.some(b =>
+            box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y)
+          // Box-vs-circle: closest point on the label box to each node centre.
+          const hitsNode = !hitsLabel && nodeCircles.some(c => {
+            const cx = Math.max(box.x, Math.min(c.x, box.x + box.w))
+            const cy = Math.max(box.y, Math.min(c.y, box.y + box.h))
+            return (c.x - cx) ** 2 + (c.y - cy) ** 2 < c.r * c.r
+          })
+          if (isActiveNode || (!hitsLabel && !hitsNode)) {
+            labelBoxes.push(box)
+            // Softened + slightly translucent so names aren't the only bright
+            // text on the dark canvas and edges stay visible through them.
+            // Dimmed labels already encode their fade in the colour itself.
+            ctx.globalAlpha = nodeDimmed ? 1 : LABEL_ALPHA
+            ctx.fillStyle = nodeDimmed ? labelDimColor : labelColor
+            ctx.fillText(text, sx, labelY)
+            ctx.globalAlpha = 1
           }
         }
       }
@@ -913,14 +969,4 @@ export function GraphCanvas({
       />
     </div>
   )
-}
-
-
-function truncateLabel(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
-  if (ctx.measureText(text).width <= maxWidth) return text
-  for (let i = text.length - 1; i > 0; i--) {
-    const truncated = text.slice(0, i) + '\u2026'
-    if (ctx.measureText(truncated).width <= maxWidth) return truncated
-  }
-  return '\u2026'
 }
