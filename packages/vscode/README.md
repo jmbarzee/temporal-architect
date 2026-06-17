@@ -1,63 +1,66 @@
 # Temporal Architect
 
-Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — as a validated, visual source of truth. `.twf` is the artifact; `twf` is the deterministic harness that gives your AI compiler-grade feedback at system scale.
+**Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — without leaving your editor.**
 
-This is the architecture layer above SDK codegen: a parseable model of your whole deployment, validated by a real parser and language server and rendered as an interactive architecture graph — not a per-workflow assist.
+Write your architecture in `.twf` and get live validation, an interactive architecture graph, and AI skills that turn the design into Temporal Go SDK code and infra. The architecture layer above SDK codegen — a parseable model of your whole deployment, not a per-workflow assist.
 
 <!-- [SCREENSHOT: S1 — Graph View, full system (namespace→worker→workflow) with dependency edges] → images/graph-view-system.png -->
 <!-- [SCREENSHOT: S3 — Graph View, dark theme, in the VS Code/Cursor webview with the editor beside it] → images/graph-view-webview.png -->
 <!-- [SCREENSHOT: S4 — Live diagnostics: red squiggle + hover on an undefined activity] → images/diagnostics.png -->
 
-## Features
+## What you get
 
-### Language Server
+- **Live diagnostics** — undefined activities, broken references, duplicate definitions, and determinism traps flagged as you type, plus completions, hover, go-to-definition, references, and rename.
+- **Interactive visualizer** — open any `.twf` file as a **Graph View** (namespace → worker → workflow topology with dependency edges) or a **Tree View** (collapsible blocks; expand a call to see the target's body inline). From the editor title bar or command palette.
+- **System-design skills** — auto-installed for Cursor's AI agent: **Design** (model the whole system), **Go authoring** (generate Temporal Go SDK code), and **Infra provisioning** (namespaces, Nexus endpoints, search attributes via Terraform / `tcld`).
+- **Bundled `twf` CLI** — the same parser/LSP binary on your PATH, including `twf graph --history <dir>` to recover a deployment graph straight from sampled production histories.
 
-Full language server with real-time diagnostics:
+## What `.twf` looks like
 
-- **Parse & resolve errors** — undefined activities, duplicate definitions, temporal keywords in wrong context
-- **Symbol resolution** — activity calls, workflow calls, signals, queries, updates, promises, and conditions are all cross-referenced
-- **Syntax highlighting** — keywords, types, operators, durations, and comments
-- **Bracket matching and code folding**
-- **Completions, hover, go-to-definition, references, and rename**
+```twf
+activity ReserveFunds(amount: Money) -> (Hold):
+    reserve(amount)
 
-### Workflow Visualizer
+activity CaptureFunds(hold: Hold) -> (Receipt):
+    capture(hold)
 
-Interactive visualization of `.twf` files, accessible from the editor title bar or command palette:
+workflow ChargeOrder(order: Order) -> (Receipt):
+    signal Cancel():
+        close fail("cancelled")
 
-- **Visualize file** — parses the current `.twf` file and renders workflows, activities, and their relationships
-- **Visualize folder** — renders all workflows across multiple `.twf` files in a folder
-- **Live refresh** — updates automatically when you save a `.twf` file
-- **Focused view** — follows the active editor, highlighting the workflows defined in the current file
+    activity ReserveFunds(order.amount) -> hold
+        options:
+            start_to_close_timeout: 30s
+    activity CaptureFunds(hold) -> receipt
+    close complete(receipt)
 
-Two complementary views:
+worker billing:
+    workflow ChargeOrder
+    activity ReserveFunds
+    activity CaptureFunds
 
-- **Tree View** — Every definition rendered as a collapsible, color-coded block. Expand a workflow call to see the target workflow's body inline. Filter by file, definition type, or search by name.
-- **Graph View** — A force-directed graph showing relationships across namespaces, workers, and workflows. Semantic zoom lets you switch between abstraction levels. Interactive force-tuning controls and animated transitions.
+namespace payments:
+    worker billing
+        options:
+            task_queue: "billing"
+```
 
-### System-Design Skills
+## Install
 
-Installs the `temporal-architect` skills for Cursor's AI agent — a deterministic harness that lets the agent reason at system scale instead of code scale:
+Search for **"Temporal Architect"** in the VS Code or Cursor extension marketplace. The extension bundles the `twf` binary (language server + parser) — no additional setup required.
 
-- **Design** — guides the agent through designing entire systems (workflows, activities, workers, namespaces, Nexus) with proper determinism, idempotency, and decomposition
-- **Go authoring** — translates `.twf` designs into Temporal Go SDK code
-- **Infra provisioning** — provisions the control-plane resources a design needs (namespaces, Nexus endpoints, search attributes) via the Temporal Cloud Terraform provider or self-hosted `tcld` / `temporal operator`
-
-### `twf` CLI
-
-The bundled `twf` binary is also available as a standalone CLI:
+## Commands
 
 | Command | Description |
 |---------|-------------|
-| `twf check <file...>` | Parse and validate `.twf` files |
-| `twf parse <file...>` | Output the AST as JSON |
-| `twf symbols <file...>` | List workflows and activities with signatures |
-| `twf graph <file...>` | Emit the resolved deployment graph |
-| `twf graph --history <dir>` | Recover a deployment graph from sampled production histories (no `.twf` required) |
-| `twf lsp` | Start the language server (stdio) |
+| **TWF: Visualize Workflow** | Open the interactive visualizer for the current `.twf` file |
+| **TWF: Visualize All Workflows in Folder** | Visualize all `.twf` files in a folder |
+| **Temporal Architect: Install Skills** | Re-install the system-design skills to `~/.cursor/skills/` |
 
-`twf graph --history` reconstructs a deterministic deployment graph straight from a tree of sampled production workflow histories — the harness reads a *running* system, not just a design. The `tools/sampler/` collector pulls a representative sample from a live namespace into the layout it consumes.
+The bundled `twf` CLI also runs standalone: `twf check`, `twf parse`, `twf symbols`, `twf graph [--history <dir>]`, `twf lsp`. Run `twf --help` for the full surface.
 
-## Temporal Features
+<details>
+<summary><strong>Full Temporal feature coverage</strong></summary>
 
 The TWF notation covers the core Temporal feature set:
 
@@ -86,19 +89,7 @@ The TWF notation covers the core Temporal feature set:
 | Options | `options:` | Task queues, timeouts, retry policies, priority |
 | Workflow Termination | `close complete` / `close fail` | Explicit workflow exit with status |
 
-## Installation
-
-Search for **"Temporal Architect"** in the VS Code or Cursor extension marketplace.
-
-The extension bundles the `twf` binary (language server + parser). No additional setup required.
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| **TWF: Visualize Workflow** | Open the interactive visualizer for the current `.twf` file |
-| **TWF: Visualize All Workflows in Folder** | Visualize all `.twf` files in a folder |
-| **Temporal Architect: Install Skills** | Re-install the system-design skills to `~/.cursor/skills/` |
+</details>
 
 ## License
 

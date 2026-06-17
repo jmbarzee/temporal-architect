@@ -1,9 +1,11 @@
 # twf-cli
 
-The `twf` CLI for Python projects — a thin wrapper around the bundled
-platform binary. Same tool, same flags, same output as the standalone
-`twf` distribution; just installable via `pip` for Python developers
-who'd rather not curl a binary.
+The `twf` CLI for Python projects — design and validate **entire Temporal
+systems** in `.twf`, emit the deployment graph, and serve Language Server /
+MCP protocols. A thin wrapper around the bundled platform binary: same tool,
+same flags, same output as the standalone `twf` distribution, installable via
+`pip`. See the [project README](https://github.com/jmbarzee/temporal-architect)
+for the full picture (visualizer, skills, examples).
 
 ## Install
 

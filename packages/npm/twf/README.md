@@ -1,9 +1,12 @@
 # @temporal-architect/twf
 
-The `twf` CLI as an npm package — parses, validates, and serves Language
-Server / MCP protocols for Temporal Workflow Format (`.twf`) files.
+The `twf` CLI — design and validate **entire Temporal systems** in `.twf`,
+emit the deployment graph, and serve Language Server / MCP protocols. This is
+the npm distribution of the `twf` binary; see the
+[project README](https://github.com/jmbarzee/temporal-architect) for the full
+picture (visualizer, skills, examples).
 
-This is a thin Node shim around platform-specific binaries published as
+It's a thin Node shim around platform-specific binaries published as
 `@temporal-architect/twf-<platform>` optional dependencies. npm installs only
 the binary for the current OS/arch.
 
