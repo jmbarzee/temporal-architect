@@ -1,12 +1,16 @@
-package main
+// Package symbols implements `twf symbols` — list the workflows, activities,
+// workers, namespaces, and Nexus services defined in the given files.
+package symbols
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/spf13/cobra"
 )
 
 type subSymbol struct {
@@ -29,6 +33,46 @@ type symbolJSON struct {
 	Workers    []subSymbol `json:"workers,omitempty"`
 	Endpoints  []subSymbol `json:"endpoints,omitempty"`
 	Operations []subSymbol `json:"operations,omitempty"`
+}
+
+// New builds the `symbols` command.
+func New() *cobra.Command {
+	var jsonOutput bool
+	cmd := cmdutil.Silence(&cobra.Command{
+		Use:   "symbols [flags] <file...>",
+		Short: "List workflows and activities; --json for envelope output",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmdutil.CodeToErr(run(args, jsonOutput))
+		},
+	})
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON envelope (default: text)")
+	return cmd
+}
+
+// run lists all workflows and activities found in the given files.
+//
+// Text mode (the default) prints a compact human view to stdout and writes
+// any diagnostics to stderr. JSON mode wraps the same data in the standard
+// twf envelope so consumers get diagnostics alongside the symbol list.
+func run(paths []string, jsonOutput bool) int {
+	file, diags, err := envelope.ParseFiles(paths)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		return 1
+	}
+
+	if jsonOutput {
+		return printJSON(file, diags)
+	}
+
+	for _, d := range diags {
+		fmt.Fprintln(os.Stderr, envelope.FormatDiagnostic(d))
+	}
+	if file == nil {
+		return 1
+	}
+	return printText(file)
 }
 
 // extractSymbols collects workflow and activity definitions into a uniform slice.
@@ -121,44 +165,7 @@ func extractSymbols(file *ast.File) []symbolJSON {
 	return symbols
 }
 
-// symbolsCommand lists all workflows and activities found in the given files.
-//
-// Text mode (the default) prints a compact human view to stdout and writes
-// any diagnostics to stderr. JSON mode wraps the same data in the standard
-// twf envelope so consumers get diagnostics alongside the symbol list.
-func symbolsCommand(args []string) int {
-	fs := flag.NewFlagSet("symbols", flag.ContinueOnError)
-	jsonOutput := fs.Bool("json", false, "Output in JSON envelope (default: text)")
-	if err := fs.Parse(args); err != nil {
-		return 1
-	}
-
-	paths := fs.Args()
-	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf symbols [--json] <file...>")
-		return 1
-	}
-
-	file, diags, err := parseFiles(paths)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-		return 1
-	}
-
-	if *jsonOutput {
-		return printSymbolsJSON(file, diags)
-	}
-
-	for _, d := range diags {
-		fmt.Fprintln(os.Stderr, formatDiagnostic(d))
-	}
-	if file == nil {
-		return 1
-	}
-	return printSymbolsText(file)
-}
-
-func printSymbolsText(file *ast.File) int {
+func printText(file *ast.File) int {
 	for _, sym := range extractSymbols(file) {
 		fmt.Printf("%s %s(%s)", sym.Kind, sym.Name, sym.Params)
 		if sym.ReturnType != "" {
@@ -205,10 +212,10 @@ func printSymbolsText(file *ast.File) int {
 	return 0
 }
 
-// printSymbolsJSON emits the standard twf envelope with the symbol list as
+// printJSON emits the standard twf envelope with the symbol list as
 // its payload. Diagnostics ride along inside the envelope so callers never
 // need a second invocation to learn what went wrong with a partial parse.
-func printSymbolsJSON(file *ast.File, diags []Diagnostic) int {
+func printJSON(file *ast.File, diags []envelope.Diagnostic) int {
 	var symbols []symbolJSON
 	if file != nil {
 		symbols = extractSymbols(file)
@@ -216,9 +223,9 @@ func printSymbolsJSON(file *ast.File, diags []Diagnostic) int {
 	if symbols == nil {
 		symbols = []symbolJSON{}
 	}
-	env := Envelope{
-		Summary:     summarize(file, diags),
-		Diagnostics: ensureSlice(diags),
+	env := envelope.Envelope{
+		Summary:     envelope.Summarize(file, diags),
+		Diagnostics: envelope.EnsureSlice(diags),
 		Symbols:     symbols,
 	}
 	data, err := json.MarshalIndent(env, "", "  ")

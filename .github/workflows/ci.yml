@@ -20,6 +20,9 @@ jobs:
       - run: make vet
       - run: make test
 
+      - name: Verify command reference is up to date
+        run: make check-docs
+
   build:
     name: Build
     runs-on: ubuntu-latest

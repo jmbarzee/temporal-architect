@@ -111,6 +111,22 @@ test:
 vet:
 	cd tools/lsp && go vet ./...
 
+# ── Docs targets ─────────────────────────────────────────────────────────────
+
+.PHONY: gen-docs check-docs
+
+## Regenerate the twf command reference (tools/lsp/cmd/twf/COMMANDS.md) from the
+## cobra command tree. The binary is the single source of truth for flags/help.
+gen-docs:
+	cd tools/lsp && go run ./cmd/twf gen-docs --out cmd/twf/COMMANDS.md
+	@echo "Regenerated tools/lsp/cmd/twf/COMMANDS.md"
+
+## Fail if the committed command reference has drifted from the command tree.
+## Run in CI so any flag/command change without a regen breaks the build.
+check-docs: gen-docs
+	@git diff --exit-code -- tools/lsp/cmd/twf/COMMANDS.md \
+		|| { echo "COMMANDS.md is stale — run 'make gen-docs' and commit the result."; exit 1; }
+
 # ── Package targets ──────────────────────────────────────────────────────────
 
 .PHONY: package package-platform package-all

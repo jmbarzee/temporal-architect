@@ -1,79 +1,36 @@
-package main
+package graph_test
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/clitest"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
+	graphcmd "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
 
-// captureStdout runs fn with os.Stdout redirected to a pipe and returns
-// everything written to stdout as a string. This lets CLI commands that
-// write directly to fmt.Println be tested without subprocess overhead.
-func captureStdout(fn func()) (string, error) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-	old := os.Stdout
-	os.Stdout = w
-
-	fn()
-
-	w.Close()
-	os.Stdout = old
-
-	var buf [1 << 20]byte
-	n, _ := r.Read(buf[:])
-	r.Close()
-	return string(buf[:n]), nil
+// runGraph drives the assembled `graph` command (with its `chunks` child) with
+// raw args and returns the process exit code, mirroring how main invokes it.
+func runGraph(args []string) int {
+	cmd := graphcmd.New()
+	cmd.SetArgs(args)
+	return cmdutil.Exec(cmd)
 }
 
 // ---------------------------------------------------------------------------
-// loadHistoriesFromDir — unit test
-// ---------------------------------------------------------------------------
-
-func TestLoadHistoriesFromDir(t *testing.T) {
-	histories, err := loadHistoriesFromDir("testdata/sample")
-	if err != nil {
-		t.Fatalf("loadHistoriesFromDir: %v", err)
-	}
-	if len(histories) != 2 {
-		t.Fatalf("got %d histories, want 2", len(histories))
-	}
-
-	// Each history must have its namespace set from the folder path.
-	nsSeen := map[string]int{}
-	for _, h := range histories {
-		if h.Namespace == "" {
-			t.Errorf("history %q has empty namespace", h.WorkflowID)
-		}
-		nsSeen[h.Namespace]++
-		if len(h.Events) == 0 {
-			t.Errorf("history %q has no events", h.WorkflowID)
-		}
-	}
-	for _, ns := range []string{"ecommerce", "partner"} {
-		if nsSeen[ns] == 0 {
-			t.Errorf("no history found for namespace %q", ns)
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// graphCommand --history — acceptance test
+// graph --history — acceptance test
 // ---------------------------------------------------------------------------
 
 func TestGraphCommand_HistoryJSON(t *testing.T) {
-	out, err := captureStdout(func() {
-		code := graphCommand([]string{"--history", "testdata/sample", "--json"})
+	out, err := clitest.CaptureStdout(func() {
+		code := runGraph([]string{"--history", clitest.Testdata("sample"), "--json"})
 		if code != 0 {
-			t.Errorf("graphCommand exit code = %d, want 0", code)
+			t.Errorf("graph exit code = %d, want 0", code)
 		}
 	})
 	if err != nil {
-		t.Fatalf("captureStdout: %v", err)
+		t.Fatalf("CaptureStdout: %v", err)
 	}
 
 	// Unmarshal as a generic envelope.
@@ -135,7 +92,7 @@ func TestGraphCommand_HistoryJSON(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestGraphCommand_HistoryMutualExclusion(t *testing.T) {
-	code := graphCommand([]string{"--history", "testdata/sample", "some.twf"})
+	code := runGraph([]string{"--history", clitest.Testdata("sample"), "some.twf"})
 	if code == 0 {
 		t.Error("expected non-zero exit when --history and file args both present")
 	}
@@ -146,14 +103,14 @@ func TestGraphCommand_HistoryMutualExclusion(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestGraphCommand_HistoryText(t *testing.T) {
-	out, err := captureStdout(func() {
-		code := graphCommand([]string{"--history", "testdata/sample"})
+	out, err := clitest.CaptureStdout(func() {
+		code := runGraph([]string{"--history", clitest.Testdata("sample")})
 		if code != 0 {
-			t.Errorf("graphCommand text mode exit code = %d, want 0", code)
+			t.Errorf("graph text mode exit code = %d, want 0", code)
 		}
 	})
 	if err != nil {
-		t.Fatalf("captureStdout: %v", err)
+		t.Fatalf("CaptureStdout: %v", err)
 	}
 	if len(out) == 0 {
 		t.Error("text output is empty")

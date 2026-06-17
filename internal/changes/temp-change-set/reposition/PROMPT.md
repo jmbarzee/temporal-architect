@@ -2,7 +2,10 @@
 
 Use this to execute the repositioning. Pair it with the findings in
 [`SURVEY.md`](./SURVEY.md) (same folder) — that doc has the per-surface
-inventory, the message house, and the sequencing.
+inventory, the message house, and the sequencing. Also read
+[`CLI_MIGRATION_NOTES.md`](./CLI_MIGRATION_NOTES.md) (same folder) — post-survey
+follow-ups from the `twf` cobra migration: surface the self-documenting CLI as a
+harness differentiator, and keep long flags double-dashed when rewriting examples.
 
 ---
 

@@ -1,24 +1,35 @@
-package main
+package chunks_test
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/clitest"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
+	graphcmd "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/graph"
 )
 
-// TestChunksCommand_JSON drives `twf graph chunks --json` through the same
-// dispatch the CLI uses and asserts the envelope carries a well-formed chunks
-// payload.
+// runChunks drives `graph chunks` through the assembled graph command, since
+// chunks is only ever reached as a child of graph (it inherits --json/--history
+// from the parent). This mirrors the real invocation path.
+func runChunks(args []string) int {
+	cmd := graphcmd.New()
+	cmd.SetArgs(append([]string{"chunks"}, args...))
+	return cmdutil.Exec(cmd)
+}
+
+// TestChunksCommand_JSON drives `twf graph chunks --json` and asserts the
+// envelope carries a well-formed chunks payload.
 func TestChunksCommand_JSON(t *testing.T) {
-	out, err := captureStdout(func() {
-		// Routed via graphCommand to exercise the `graph chunks` subcommand path.
-		code := graphCommand([]string{"chunks", "--json", "testdata/clean.twf"})
+	out, err := clitest.CaptureStdout(func() {
+		code := runChunks([]string{"--json", clitest.Testdata("clean.twf")})
 		if code != 0 {
 			t.Errorf("graph chunks exit code = %d, want 0", code)
 		}
 	})
 	if err != nil {
-		t.Fatalf("captureStdout: %v", err)
+		t.Fatalf("CaptureStdout: %v", err)
 	}
 
 	var env struct {
@@ -53,14 +64,14 @@ func TestChunksCommand_JSON(t *testing.T) {
 
 // TestChunksCommand_Text smoke-tests the human-readable rendering.
 func TestChunksCommand_Text(t *testing.T) {
-	out, err := captureStdout(func() {
-		code := graphCommand([]string{"chunks", "testdata/clean.twf"})
+	out, err := clitest.CaptureStdout(func() {
+		code := runChunks([]string{clitest.Testdata("clean.twf")})
 		if code != 0 {
 			t.Errorf("graph chunks text exit code = %d, want 0", code)
 		}
 	})
 	if err != nil {
-		t.Fatalf("captureStdout: %v", err)
+		t.Fatalf("CaptureStdout: %v", err)
 	}
 	if !strings.Contains(out, "Decomposition:") {
 		t.Errorf("text output missing header; got: %s", out)

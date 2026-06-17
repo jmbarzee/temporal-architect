@@ -58,6 +58,11 @@ go install ./cmd/twf
 
 ## Commands
 
+> The per-command flag reference below is mirrored, and kept authoritative, in
+> the generated [command reference](./COMMANDS.md) (`make gen-docs`; CI fails on
+> drift). The prose here — usage patterns, output shapes, exit codes — is
+> hand-authored.
+
 ### `twf check`
 
 Validate TWF files. Prints diagnostics to stderr as human-readable text and
@@ -253,7 +258,7 @@ Every JSON-emitting subcommand (`parse`, `symbols --json`, `graph --json`,
   ],
   "definitions": [ /* parse */ ],
   "symbols":     [ /* symbols --json */ ],
-  "graph":       { /* deps --json */ }
+  "graph":       { /* graph --json */ }
 }
 ```
 
@@ -394,7 +399,11 @@ done
 
 ## Options
 
-- `--json` — Emit the JSON envelope (supported by `symbols` and `deps`; `parse` is always JSON).
+The authoritative, always-current flag list is generated from the binary — see
+the [command reference](./COMMANDS.md) or run `twf help` / `twf <command> --help`.
+A few highlights:
+
+- `--json` — Emit the JSON envelope (`symbols` and `graph`; `parse` is always JSON).
 - `--lenient` — `check` only. Exit 0 even when errors are present (diagnostics still print).
 
 ---

@@ -1,4 +1,4 @@
-package main
+package envelope
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 )
 
-// parseFiles reads and parses the given files, returning the merged AST and
+// ParseFiles reads and parses the given files, returning the merged AST and
 // any diagnostics. Each file is parsed independently with per-file line
 // numbers; definitions are stamped with their source file and merged into
 // a single AST for resolution.
@@ -19,7 +19,7 @@ import (
 // Diagnostics are returned as wire-format Diagnostic values (structured,
 // JSON-ready). The previous string-formatted shape is gone — callers that
 // need a human-readable rendering should format Diagnostics themselves.
-func parseFiles(paths []string) (*ast.File, []Diagnostic, error) {
+func ParseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 	if len(paths) == 0 {
 		return nil, nil, fmt.Errorf("no input files")
 	}
@@ -38,7 +38,7 @@ func parseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 		file, parseErrs := parser.ParseFileAll(string(data))
 
 		for _, e := range parseErrs {
-			diags = append(diags, fromParseError(e, base))
+			diags = append(diags, FromParseError(e, base))
 		}
 
 		for _, def := range file.Definitions {
@@ -58,12 +58,12 @@ func parseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 
 	resolveErrs := resolver.Resolve(merged)
 	for _, e := range resolveErrs {
-		diags = append(diags, fromResolveError(e, fileForDiagnostic(merged, e.Name, defaultFile)))
+		diags = append(diags, FromResolveError(e, fileForDiagnostic(merged, e.Name, defaultFile)))
 	}
 
 	validateErrs := validator.Validate(merged)
 	for _, e := range validateErrs {
-		diags = append(diags, fromValidateError(e, fileForDiagnostic(merged, e.Name, defaultFile)))
+		diags = append(diags, FromValidateError(e, fileForDiagnostic(merged, e.Name, defaultFile)))
 	}
 
 	return merged, diags, nil

@@ -54,9 +54,9 @@ Once a `.twf` exists (or has been recovered), decompose it into independently-im
 Use **`twf graph chunks`**, which computes the decomposition from the design. **The tool informs; it does not impose** — you decide how to act on it. Its output has two cleanly-typed parts:
 
 - **#1 hard boundaries — you MUST dispatch separate subagents across these.** Discovered facts: isolated components today (a `nexusCall` is the cleanest contract cut, cross-namespace by construction), language boundaries later. Every definition lands in exactly one hard chunk.
-- **#2 soft divisions — you MAY use these.** Only emitted for a chunk that exceeds a complexity **`--ceiling N`** you instruct: ranked candidate cuts plus an inter-section **dependency DAG**.
+- **#2 soft divisions — you MAY use these.** Only emitted for a chunk that exceeds a complexity **ceiling** you instruct: ranked candidate cuts plus an inter-section **dependency DAG**.
 
-Other knobs: a **floor** flags chunks too granular for their own subagent (merge them up); loops are collapsed into one chunk and never cut; roots are heuristic.
+Other knobs: a **floor** flags chunks too granular for their own subagent (merge them up); loops are collapsed into one chunk and never cut; roots are heuristic. Run `twf graph chunks --help` for the exact flags.
 
 **Fallback (pre-tool):** if `twf graph chunks` is unavailable, enumerate chunks by hand from `twf symbols` / the `.twf` — heuristic roots (handler-bearing and Nexus-op-backing workflows, plus any with no inbound call edge) and their reachable children form connected components. Same dispatch logic, coarser input.
 

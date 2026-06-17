@@ -6,16 +6,16 @@ The governing rule: **cut at `.twf` contract boundaries, never finer.** `.twf` *
 
 ## The command
 
-```
-twf graph chunks [--ceiling N] [--floor M] [--by tree|worker|namespace|nexus]
-```
+Run `twf graph chunks --help` for the exact, current flag set — that help is
+generated from the binary, so it never drifts from this prose. What the flags
+*mean* for dispatch:
 
-- `twf graph chunks` — emits the **#1 hard partition** (every definition in exactly one chunk) + a per-chunk complexity score + floor-merge recommendations.
-- `--ceiling N` — additionally emits **#2 soft divisions** (ranked candidate cuts + a dependency DAG) for any chunk scoring over `N`.
-- `--floor M` — chunks below `M` are flagged "too granular for their own subagent."
-- `--by ...` — biases which soft-division strategy is suggested (reachable-subtree, `nexusCall`-boundary, worker, namespace).
+- `twf graph chunks` (no flags) — emits the **#1 hard partition** (every definition in exactly one chunk) + a per-chunk complexity score + floor-merge recommendations.
+- the **ceiling** flag — additionally emits **#2 soft divisions** (ranked candidate cuts + a dependency DAG) for any chunk scoring over it.
+- the **floor** flag — chunks below it are flagged "too granular for their own subagent."
+- the **by** flag — biases which soft-division strategy is suggested (reachable-subtree, `nexusCall`-boundary, worker, namespace).
 
-If the subcommand is absent, use the [manual fallback](#manual-fallback).
+See [Complexity floor + ceiling](#complexity-floor--ceiling) below for how to choose the thresholds. If the subcommand is absent, use the [manual fallback](#manual-fallback).
 
 ## #1 Hard boundaries — MUST dispatch separately
 
@@ -29,7 +29,7 @@ Each definition belongs to exactly one hard chunk. A node reachable from two roo
 
 ## #2 Soft divisions — MAY use
 
-Soft divisions appear only when a chunk exceeds `--ceiling N`. They are **options** over an oversized chunk:
+Soft divisions appear only when a chunk exceeds the ceiling you set. They are **options** over an oversized chunk:
 
 - Treat the **ranked candidate cuts** as suggestions; pick the one that matches a real boundary in the domain, or decline to cut.
 - The **inter-section dependency DAG is the build order.** Author independent sections first, then the sections they unblock. This is the PERT walk — not a blind parallel fan-out.

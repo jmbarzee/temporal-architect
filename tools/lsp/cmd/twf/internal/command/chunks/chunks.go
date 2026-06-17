@@ -1,51 +1,66 @@
-package main
+// Package chunks implements `twf graph chunks` — the topology-based
+// decomposition of a design into independently-implementable chunks of work.
+// It is wired as a child of the `graph` command, from which it inherits the
+// --json and --history flags.
+package chunks
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/history"
+	"github.com/spf13/cobra"
 )
 
-// chunksCommand implements `twf graph chunks` — the topology-based
-// decomposition of a design into independently-implementable chunks.
-//
-// It is a thin wrapper: it runs the existing parse → resolve → graph.Extract
-// pipeline (or history.Build under --history), feeds the result to
-// decompose.Decompose, and emits the standard JSON envelope under a "chunks"
-// payload. The definition-collapse is internal to decompose; there is no
-// `graph defs` lens this pass.
-//
-// Default: the #1 hard partition + per-chunk complexity + floor-merge
-// recommendations. With --ceiling N it additionally emits #2 ranked divisions
-// and a dependency DAG for any chunk over the ceiling. The tool informs; the
-// floor merge and divisions are recommendations, never auto-applied.
-func chunksCommand(args []string) int {
-	fs := flag.NewFlagSet("graph chunks", flag.ContinueOnError)
-	jsonOutput := fs.Bool("json", false, "Output in JSON envelope (default: text)")
-	historyDir := fs.String("history", "", "Root dir of sampler output (<ns>/<type>/<id>.json); mutually exclusive with file arguments")
-	ceiling := fs.Int("ceiling", 0, "Complexity ceiling; chunks above it get #2 ranked divisions (0 = hard partition only)")
-	floor := fs.Int("floor", 0, "Complexity floor; chunks below it are flagged too-granular (0 = default, negative = disabled)")
-	by := fs.String("by", "", "Comma-separated division strategy bias: tree,nexus,worker,namespace")
-	if err := fs.Parse(args); err != nil {
-		return 1
-	}
+// New builds the `graph chunks` child command. --json and --history are
+// inherited persistent flags declared on the parent `graph` command and read
+// here via the merged flag set; --ceiling, --floor, and --by are local.
+func New() *cobra.Command {
+	var ceiling, floor int
+	var by string
+	cmd := cmdutil.Silence(&cobra.Command{
+		Use:   "chunks [flags] <file...>",
+		Short: "Topology-based work decomposition of the deployment graph",
+		Long: `Decompose a design into independently-implementable chunks over the same
+extracted deployment graph. Emits the #1 hard partition plus per-chunk
+complexity and floor-merge recommendations; --ceiling additionally emits #2
+ranked divisions for any chunk over the ceiling. Recommendations are never
+auto-applied.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			historyDir, _ := cmd.Flags().GetString("history")
+			return cmdutil.CodeToErr(run(args, jsonOutput, historyDir, ceiling, floor, by))
+		},
+	})
+	cmd.Flags().IntVar(&ceiling, "ceiling", 0, "Complexity ceiling; chunks above it get #2 ranked divisions (0 = hard partition only)")
+	cmd.Flags().IntVar(&floor, "floor", 0, "Complexity floor; chunks below it are flagged too-granular (0 = default, negative = disabled)")
+	cmd.Flags().StringVar(&by, "by", "", "Comma-separated division strategy bias: tree,nexus,worker,namespace")
+	return cmd
+}
 
+// run implements `twf graph chunks` — the topology-based decomposition of a
+// design into independently-implementable chunks.
+//
+// It runs the existing parse → resolve → graph.Extract pipeline (or
+// envelope.LoadHistories + history.Build under historyDir), feeds the result
+// to decompose.Decompose, and emits the standard JSON envelope under a
+// "chunks" payload.
+func run(paths []string, jsonOutput bool, historyDir string, ceiling, floor int, by string) int {
 	opts := decompose.Options{
-		Ceiling: *ceiling,
-		Floor:   *floor,
-		By:      splitStrategies(*by),
+		Ceiling: ceiling,
+		Floor:   floor,
+		By:      splitStrategies(by),
 	}
 
-	paths := fs.Args()
-	if *historyDir != "" && len(paths) > 0 {
+	if historyDir != "" && len(paths) > 0 {
 		fmt.Fprintln(os.Stderr, "error: --history and file arguments are mutually exclusive")
 		return 1
 	}
@@ -53,16 +68,16 @@ func chunksCommand(args []string) int {
 	// History mode: decompose a graph reconstructed from sampled executions.
 	// No AST is available, so complexity is base-only and handler roots are not
 	// detected — the decomposition is purely structural.
-	if *historyDir != "" {
-		histories, err := loadHistoriesFromDir(*historyDir)
+	if historyDir != "" {
+		histories, err := envelope.LoadHistories(historyDir)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error loading histories: %v\n", err)
 			return 1
 		}
 		g := history.Build(histories, history.Context{})
 		res := decompose.Decompose(nil, g, opts)
-		diags := historyDiagnostics(g)
-		return emitChunks(nil, diags, res, *jsonOutput)
+		diags := envelope.HistoryDiagnostics(g)
+		return emitChunks(nil, diags, res, jsonOutput)
 	}
 
 	// .twf mode.
@@ -71,7 +86,7 @@ func chunksCommand(args []string) int {
 		return 1
 	}
 
-	file, diags, err := parseFiles(paths)
+	file, diags, err := envelope.ParseFiles(paths)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		return 1
@@ -80,11 +95,11 @@ func chunksCommand(args []string) int {
 	var res *decompose.Result
 	if file != nil {
 		g := graph.Extract(file)
-		diags = append(diags, graphDiagnostics(g)...)
+		diags = append(diags, envelope.GraphDiagnostics(g)...)
 		res = decompose.Decompose(file, g, opts)
 	}
 
-	return emitChunks(file, diags, res, *jsonOutput)
+	return emitChunks(file, diags, res, jsonOutput)
 }
 
 // splitStrategies parses the comma-separated --by value into a strategy list,
@@ -103,11 +118,11 @@ func splitStrategies(by string) []string {
 }
 
 // emitChunks renders the decomposition as JSON envelope or human-readable text.
-func emitChunks(file *ast.File, diags []Diagnostic, res *decompose.Result, jsonOutput bool) int {
+func emitChunks(file *ast.File, diags []envelope.Diagnostic, res *decompose.Result, jsonOutput bool) int {
 	if jsonOutput {
-		env := Envelope{
-			Summary:     summarize(file, diags),
-			Diagnostics: ensureSlice(diags),
+		env := envelope.Envelope{
+			Summary:     envelope.Summarize(file, diags),
+			Diagnostics: envelope.EnsureSlice(diags),
 			Chunks:      res,
 		}
 		data, err := json.MarshalIndent(env, "", "  ")
@@ -120,17 +135,17 @@ func emitChunks(file *ast.File, diags []Diagnostic, res *decompose.Result, jsonO
 	}
 
 	for _, d := range diags {
-		fmt.Fprintln(os.Stderr, formatDiagnostic(d))
+		fmt.Fprintln(os.Stderr, envelope.FormatDiagnostic(d))
 	}
 	if res == nil {
 		return 1
 	}
-	return printChunksText(res)
+	return printText(res)
 }
 
-// printChunksText renders the decomposition compactly. The #1 hard partition is
+// printText renders the decomposition compactly. The #1 hard partition is
 // always shown; #2 divisions appear only when a ceiling triggered them.
-func printChunksText(res *decompose.Result) int {
+func printText(res *decompose.Result) int {
 	fmt.Printf("Decomposition: %d hard chunk(s), floor=%d", len(res.Chunks), res.Floor)
 	if res.Ceiling > 0 {
 		fmt.Printf(", ceiling=%d", res.Ceiling)

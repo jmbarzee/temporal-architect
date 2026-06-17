@@ -1,12 +1,15 @@
-package main
+package envelope_test
 
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/clitest"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 )
 
 // TestParseFilesProducesStructuredDiagnostics covers the resolve and parse
-// pipelines through parseFiles, which is the single source of diagnostics
+// pipelines through ParseFiles, which is the single source of diagnostics
 // for every CLI subcommand. We check the wire-format shape — severity, kind,
 // code, position, message, name — for representative diagnostic kinds.
 func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
@@ -20,7 +23,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 	}{
 		{
 			name:         "undefined activity reference",
-			path:         "testdata/undefined_activity.twf",
+			path:         clitest.Testdata("undefined_activity.twf"),
 			wantKind:     "resolve",
 			wantCode:     "UNDEFINED_ACTIVITY",
 			wantSeverity: "error",
@@ -28,7 +31,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 		},
 		{
 			name:         "duplicate workflow definition",
-			path:         "testdata/duplicate_workflow.twf",
+			path:         clitest.Testdata("duplicate_workflow.twf"),
 			wantKind:     "resolve",
 			wantCode:     "DUPLICATE_WORKFLOW",
 			wantSeverity: "error",
@@ -36,7 +39,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 		},
 		{
 			name:         "parser error",
-			path:         "testdata/syntax_error.twf",
+			path:         clitest.Testdata("syntax_error.twf"),
 			wantKind:     "parse",
 			wantCode:     "SYNTAX",
 			wantSeverity: "error",
@@ -45,15 +48,15 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			file, diags, err := parseFiles([]string{tt.path})
+			file, diags, err := envelope.ParseFiles([]string{tt.path})
 			if err != nil {
-				t.Fatalf("parseFiles: %v", err)
+				t.Fatalf("ParseFiles: %v", err)
 			}
 			if file == nil {
-				t.Fatalf("parseFiles returned nil file")
+				t.Fatalf("ParseFiles returned nil file")
 			}
 
-			var found *Diagnostic
+			var found *envelope.Diagnostic
 			for i := range diags {
 				if diags[i].Kind == tt.wantKind && diags[i].Code == tt.wantCode {
 					found = &diags[i]
@@ -93,9 +96,9 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 // TestParseFilesCleanFileYieldsNoErrors verifies the happy path: a valid
 // .twf with no errors or warnings produces an empty diagnostic slice.
 func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
-	file, diags, err := parseFiles([]string{"testdata/clean.twf"})
+	file, diags, err := envelope.ParseFiles([]string{clitest.Testdata("clean.twf")})
 	if err != nil {
-		t.Fatalf("parseFiles: %v", err)
+		t.Fatalf("ParseFiles: %v", err)
 	}
 	if file == nil {
 		t.Fatalf("nil AST")
@@ -111,11 +114,11 @@ func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
 // error and warning severities correctly. The CLI exit-code logic depends
 // on this distinction (warnings must not flip exit codes).
 func TestSummarizeCountsDiagnostics(t *testing.T) {
-	file, diags, err := parseFiles([]string{"testdata/undefined_activity.twf"})
+	file, diags, err := envelope.ParseFiles([]string{clitest.Testdata("undefined_activity.twf")})
 	if err != nil {
-		t.Fatalf("parseFiles: %v", err)
+		t.Fatalf("ParseFiles: %v", err)
 	}
-	s := summarize(file, diags)
+	s := envelope.Summarize(file, diags)
 	if s.Errors == 0 {
 		t.Errorf("summary.errors = 0, want >0")
 	}
@@ -127,9 +130,9 @@ func TestSummarizeCountsDiagnostics(t *testing.T) {
 // TestEnsureSliceNeverNullsDiagnostics guards the wire contract that
 // `diagnostics` is always a JSON array (never null), even on the happy path.
 func TestEnsureSliceNeverNullsDiagnostics(t *testing.T) {
-	s := ensureSlice(nil)
+	s := envelope.EnsureSlice(nil)
 	if s == nil {
-		t.Fatal("ensureSlice returned nil")
+		t.Fatal("EnsureSlice returned nil")
 	}
 	data, err := json.Marshal(s)
 	if err != nil {
@@ -143,9 +146,9 @@ func TestEnsureSliceNeverNullsDiagnostics(t *testing.T) {
 // TestEnvelopeJSONShape verifies that a successful parse round-trips through
 // the Envelope and produces the documented top-level keys.
 func TestEnvelopeJSONShape(t *testing.T) {
-	file, diags, err := parseFiles([]string{"testdata/clean.twf"})
+	file, diags, err := envelope.ParseFiles([]string{clitest.Testdata("clean.twf")})
 	if err != nil {
-		t.Fatalf("parseFiles: %v", err)
+		t.Fatalf("ParseFiles: %v", err)
 	}
 
 	fileBytes, err := json.Marshal(file)
@@ -159,9 +162,9 @@ func TestEnvelopeJSONShape(t *testing.T) {
 		t.Fatalf("splice AST: %v", err)
 	}
 
-	env := Envelope{
-		Summary:     summarize(file, diags),
-		Diagnostics: ensureSlice(diags),
+	env := envelope.Envelope{
+		Summary:     envelope.Summarize(file, diags),
+		Diagnostics: envelope.EnsureSlice(diags),
 		Definitions: inner.Definitions,
 	}
 	out, err := json.Marshal(env)
@@ -184,19 +187,47 @@ func TestEnvelopeJSONShape(t *testing.T) {
 // / graph for stderr diagnostics. The format is part of the human-facing
 // contract and is sensitive to changes (e.g. CI log filters); keep it stable.
 func TestFormatDiagnostic(t *testing.T) {
-	d := Diagnostic{
+	d := envelope.Diagnostic{
 		Severity: "error",
 		Kind:     "resolve",
 		Code:     "UNDEFINED_ACTIVITY",
 		File:     "foo.twf",
-		Start:    Position{Line: 12, Column: 3},
-		End:      Position{Line: 12, Column: 3},
+		Start:    envelope.Position{Line: 12, Column: 3},
+		End:      envelope.Position{Line: 12, Column: 3},
 		Message:  "undefined activity: Foo",
 		Name:     "Foo",
 	}
-	got := formatDiagnostic(d)
+	got := envelope.FormatDiagnostic(d)
 	want := "error [resolve/UNDEFINED_ACTIVITY] at foo.twf:12:3: undefined activity: Foo"
 	if got != want {
-		t.Errorf("formatDiagnostic =\n  %q\nwant\n  %q", got, want)
+		t.Errorf("FormatDiagnostic =\n  %q\nwant\n  %q", got, want)
+	}
+}
+
+// TestLoadHistories verifies the sampler-output loader walks the two-level
+// <namespace>/<type>/<id>.json tree and stamps each history's namespace.
+func TestLoadHistories(t *testing.T) {
+	histories, err := envelope.LoadHistories(clitest.Testdata("sample"))
+	if err != nil {
+		t.Fatalf("LoadHistories: %v", err)
+	}
+	if len(histories) != 2 {
+		t.Fatalf("got %d histories, want 2", len(histories))
+	}
+
+	nsSeen := map[string]int{}
+	for _, h := range histories {
+		if h.Namespace == "" {
+			t.Errorf("history %q has empty namespace", h.WorkflowID)
+		}
+		nsSeen[h.Namespace]++
+		if len(h.Events) == 0 {
+			t.Errorf("history %q has no events", h.WorkflowID)
+		}
+	}
+	for _, ns := range []string{"ecommerce", "partner"} {
+		if nsSeen[ns] == 0 {
+			t.Errorf("no history found for namespace %q", ns)
+		}
 	}
 }

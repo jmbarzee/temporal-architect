@@ -148,6 +148,10 @@ This is also the entry point when [Orient](#orient) surfaces prior work. Treat p
 
 **Run `twf check` after every `.twf` edit.** Fix all errors before presenting to user.
 
+For the authoritative flag set on any command, run `twf help` or
+`twf <command> --help` — that help is generated from the binary and never
+drifts. The table below is the *when/why*, not the flag reference:
+
 | Command | Purpose |
 |---------|---------|
 | `twf check <file...>` | Parse + resolve — run after every edit |
@@ -155,7 +159,7 @@ This is also the entry point when [Orient](#orient) surfaces prior work. Treat p
 | `twf symbols --json <file...>` | Machine-readable symbol output |
 | `twf check --lenient <file...>` | Same checks; still prints every error but exits 0 instead of failing — for WIP iteration (it suppresses nothing) |
 
-**Error format** (stderr): `parse error at <line>:<col>: <message>` / `resolve error at <line>:<col>: <message>`
+**Error format** (stderr): `<severity> [<kind>/<CODE>] at <file>:<line>:<col>: <message>` — e.g. `error [resolve/UNDEFINED_ACTIVITY] at order.twf:2:3: undefined activity: Foo`.
 
 ---
 
