@@ -31,7 +31,7 @@ never things downstream consumers see.
 ## Adding a new dev-only tool
 
 Go module → drop it under `internal/release/<name>/` (single Go module
-per tool, wired into [`go.work`](../go.work) — see
-[`packaging.md` § Conventions](../packaging.md#conventions)).
+per tool — `go.mod`, `main.go`, `main_test.go` — wired into
+[`go.work`](../go.work)'s `use` list).
 Other tooling → at `internal/<name>` if it doesn't fit the release-tool
 shape.

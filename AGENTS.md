@@ -76,7 +76,7 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Development Commands](#development-commands) below, with the `/dev-cycle` skill (`.claude/skills/dev-cycle/`) as the entry point and its `propagate-changes` step for fanning a completed change out to downstream consumers.
 
-Long-lived reference docs that don't belong to a single component live at the repo root (e.g. `issues_blocking_downstream_adoption.md`, `packaging.md`).
+Long-lived reference docs that don't belong to a single component live at the repo root (e.g. `issues_blocking_downstream_adoption.md`). Packaging/distribution docs (`packaging.md`, `publishing_setup.md`) live in the distribution repo (`jmbarzee/temporal-architect-dist`).
 
 When the parser's JSON output changes, the Go DTO structs are the single source of truth: their TypeScript projection is generated into the `@temporal-architect/wire-types` package (`tools/wire-types`, via `make gen-types`, CI-gated by `make check-types`). The visualizer consumes it in-tree (`file:`); the VS Code extension (in the dist repo) consumes the **published, version-pinned** `@temporal-architect/wire-types@X.Y.Z` — so a DTO change reaches the extension as a version bump, not an in-repo edit. Only the hand-written residue (discriminated-union overlays + string-literal enums) is updated alongside.
 

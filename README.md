@@ -162,7 +162,7 @@ A React + TypeScript webview that renders the system defined in `.twf`. Runs sta
 <details>
 <summary><strong>Packaging &amp; distribution</strong> (every channel, for maintainers)</summary>
 
-Every way `twf` and the skills ship. For install lines see [Quick install](#quick-install); for design rationale see [`packaging.md`](./packaging.md). The two-repo topology is described under [How it ships](#how-it-ships).
+Every way `twf` and the skills ship. For install lines see [Quick install](#quick-install); for packaging design rationale see [`packaging.md`](https://github.com/jmbarzee/temporal-architect-dist/blob/main/packaging.md) in the distribution repo. The two-repo topology is described under [How it ships](#how-it-ships).
 
 Registry **identifiers** are unchanged by the split (npm scope `@temporal-architect`, PyPI `twf-cli`, VSIX id `jmbarzee.twf-syntax`); only where each package's *source* lives has moved. "Source" links below resolve into the distribution repo (`temporal-architect-dist`) for packaging surfaces and stay here for the engine + release-cut.
 
