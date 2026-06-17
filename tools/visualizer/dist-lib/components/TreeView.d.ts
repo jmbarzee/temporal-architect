@@ -2,6 +2,7 @@ import { TWFFile } from '../types/ast';
 import { CrossViewTarget } from './WorkflowCanvas';
 import { FilterState, PinState, FilterDimension } from '../filter/types';
 interface TreeViewProps {
+    active: boolean;
     ast: TWFFile;
     onShowInGraph?: (name: string, defType: string) => void;
     filter: FilterState;
@@ -16,5 +17,5 @@ interface TreeViewProps {
     overriddenPins: Set<FilterDimension>;
     onOverriddenPinsConsumed: () => void;
 }
-export declare function TreeView({ ast, onShowInGraph, filter, onFilterChange, pins, onPinsChange, searchQuery, searchActive, onSearchChange, pendingFocus, onFocusConsumed, overriddenPins, onOverriddenPinsConsumed, }: TreeViewProps): import("react/jsx-runtime").JSX.Element;
+export declare function TreeView({ active, ast, onShowInGraph, filter, onFilterChange, pins, onPinsChange, searchQuery, searchActive, onSearchChange, pendingFocus, onFocusConsumed, overriddenPins, onOverriddenPinsConsumed, }: TreeViewProps): import("react/jsx-runtime").JSX.Element;
 export {};

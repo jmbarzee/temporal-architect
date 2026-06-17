@@ -82,5 +82,7 @@ the message for now (categorical parse codes are future work).
 | `UNINSTANTIATED_WORKER` | warning | Worker defined but never instantiated in any namespace | Instantiate it in a namespace, or remove the worker |
 | `EMPTY_WORKFLOW` / `EMPTY_ACTIVITY` / `EMPTY_WORKER` / `EMPTY_NAMESPACE` | warning | Block has no body / no registrations / no instantiations | Add content or remove the empty block |
 
-The complete machine-readable schema for diagnostics lives at
-`tools/lsp/cmd/twf/twf.schema.json`.
+The diagnostic shape is the `envelope.Diagnostic` Go struct
+(`tools/lsp/cmd/twf/internal/envelope/model.go`); run any `twf --json`
+subcommand to see it live, or read its TypeScript projection in
+`tools/wire-types`.

@@ -1,7 +1,8 @@
-import { SimNode, ForceParams } from '../graph/simulation';
-import { ForceSection } from './GraphControlPanel';
 import { GraphEdge, NodeType } from '../graph/model';
+import { ForceParams, SimNode } from '../graph/simulation';
 import { Viewport } from '../graph/viewport';
+import { NodeScaleParams } from '../graph/node-types';
+import { ForceSection } from './GraphControlPanel';
 interface GraphCanvasProps {
     nodes: SimNode[];
     edges: GraphEdge[];
@@ -21,12 +22,12 @@ interface GraphCanvasProps {
     focusedNodeId: string | null;
     searchMatchIds: Set<string> | null;
     running: boolean;
-    showForceFields: boolean;
     forceParams: ForceParams;
     activeSection: ForceSection;
     activeChargeType: NodeType | null;
     activeGravityType: NodeType | null;
-    nodeSummaries: Map<string, string>;
+    activePullEdge: string | null;
+    nodeScale: NodeScaleParams;
 }
-export declare function GraphCanvas({ nodes, edges, viewport, onViewportChange, onNodeDragStart, onNodeDragMove, onNodeDragEnd, onDoubleClickNode, onHoverNode, onSelectNode, onNodeContextMenu, highlightedNodes, highlightedEdges, hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, running, showForceFields, forceParams, activeSection, activeChargeType, activeGravityType, nodeSummaries, }: GraphCanvasProps): import("react/jsx-runtime").JSX.Element;
+export declare function GraphCanvas({ nodes, edges, viewport, onViewportChange, onNodeDragStart, onNodeDragMove, onNodeDragEnd, onDoubleClickNode, onHoverNode, onSelectNode, onNodeContextMenu, highlightedNodes, highlightedEdges, hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds, running, forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, }: GraphCanvasProps): import("react/jsx-runtime").JSX.Element;
 export {};

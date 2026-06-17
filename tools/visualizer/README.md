@@ -93,8 +93,9 @@ their own walkers, badges, or side panels without re-declaring the shapes:
   diagnostic shape carried alongside the AST in `twf parse`'s envelope
 - `Position`, `ResolvedRef`, `OptionsBlock`, `OptionEntry`
 
-The authoritative JSON Schema for the wire format lives at
-[`tools/lsp/cmd/twf/twf.schema.json`](https://github.com/jmbarzee/temporal-architect/blob/main/tools/lsp/cmd/twf/twf.schema.json).
+These types are generated from `twf`'s Go DTO layer (the single source of
+truth) into [`@temporal-architect/wire-types`](https://github.com/jmbarzee/temporal-architect/tree/main/tools/wire-types)
+and re-exported here; run any `twf --json` subcommand to see the live shape.
 
 ## Styling
 

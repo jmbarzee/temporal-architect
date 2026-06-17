@@ -5,8 +5,9 @@
 // package consumes it; nothing here knows about cobra.
 //
 // The shapes below are the stable contract for downstream consumers
-// (visualizer, VS Code extension, skills) and must stay byte-for-byte
-// compatible — see tools/lsp/cmd/twf/twf.schema.json.
+// (visualizer, VS Code extension, skills). They are the source of truth; their
+// TypeScript projection is generated into the @temporal-architect/wire-types
+// package (tools/wire-types) and CI-gated via `make check-types`.
 package envelope
 
 import (
@@ -47,7 +48,9 @@ type Position struct {
 	Column int `json:"column"`
 }
 
-// Envelope is the top-level shape of every `--json` output.
+// Envelope is the top-level shape of every `--json` output — the stable wire
+// contract emitted by `twf parse`, `twf symbols --json`, `twf graph --json`,
+// and `twf graph chunks --json`.
 //
 //	{
 //	  "summary":     { ... },
@@ -58,6 +61,11 @@ type Position struct {
 // Each subcommand attaches a single payload field whose key is the command's
 // purpose: parse → "definitions", symbols → "symbols", graph → "graph".
 // check emits an envelope without a payload (it IS diagnostics).
+//
+// Compatibility: adding an optional field or a new diagnostic code is a
+// non-breaking change; renaming or removing one is breaking and requires a
+// coordinated bump across downstream consumers. The TypeScript projection of
+// this contract is generated into @temporal-architect/wire-types.
 type Envelope struct {
 	Summary     ast.FileSummary `json:"summary"`
 	Diagnostics []Diagnostic    `json:"diagnostics"`
@@ -65,8 +73,21 @@ type Envelope struct {
 	// Optional payload fields. Exactly one (or none, for check) is populated
 	// per command. The naming matches each subcommand's existing data shape
 	// so consumers can swap commands without remapping schemas.
+
+	// Definitions is present on `twf parse`: the AST definitions array. Item
+	// shape is the discriminated `Definition` union in the generated
+	// wire-types (keyed by the node `type`).
 	Definitions interface{} `json:"definitions,omitempty"`
-	Symbols     interface{} `json:"symbols,omitempty"`
-	Graph       interface{} `json:"graph,omitempty"`
-	Chunks      interface{} `json:"chunks,omitempty"`
+	// Symbols is present on `twf symbols --json`: the flat symbol list
+	// (workflows, activities, workers, namespaces, nexus services).
+	Symbols interface{} `json:"symbols,omitempty"`
+	// Graph is present on `twf graph --json`: the resolved deployment graph —
+	// nodes are runtime deployments (definition × instantiation), edges are
+	// confirmed dispatches.
+	Graph interface{} `json:"graph,omitempty"`
+	// Chunks is present on `twf graph chunks --json`: the topology-based
+	// decomposition — the hard partition of authorable definitions, the
+	// inter-chunk contract-dependency DAG, and (when a ceiling is set) the
+	// ranked soft divisions.
+	Chunks interface{} `json:"chunks,omitempty"`
 }

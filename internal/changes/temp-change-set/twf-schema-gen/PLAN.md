@@ -146,15 +146,34 @@ for a deliberate language-neutral/validation contract.
 
 ## 9. Work breakdown
 
-- [ ] **T1 — Tool + config.** Add `tygo` (or chosen generator) as a dev tool; write its config listing the DTO packages/types from §4. (`tools/lsp/go.mod` or a tool module.)
-- [ ] **T2 — Export the symbols DTO.** Rename `symbolJSON`/`subSymbol` → exported in [`symbols.go`](../../../../tools/lsp/cmd/twf/internal/command/symbols/symbols.go).
-- [ ] **T3 — Generate the types.** Emit a single generated TS file (graph, chunks, diagnostics/summary, symbols, AST DTOs) with a `DO NOT EDIT` header.
-- [ ] **T4 — Residue file.** Hand-write the union aliases, the `definitions` wrapper, and the string-literal enum unions beside the generated output.
+> **Status (generation half landed).** T1–T4 and T9 are implemented — the
+> generator, the generated wire types, the hand-written `residue.ts`, and the
+> `make gen-types` / `check-types` CI gate. The Go DTO layer is now generatable:
+> the AST `*JSON` statement DTOs were exported and `RawStatement`/`RawDefinition`
+> aliases (in `ast/wire.go`) keep the body/definitions arrays typed. Runtime JSON
+> is byte-for-byte unchanged (golden tests green). The consumer-rewiring half
+> (T5/T6) and the schema/docs decisions (T7/T8/T10) are intentionally **not**
+> done here — left for the parallel TS work.
+>
+> Three implementation notes that refine the plan: (a) generation is **one file
+> per source package** under `generated/` rather than a single file, because Go
+> type names collide across packages (`Node`, `Diagnostic`); the unions in
+> `residue.ts` unify the surface. (b) AST body/definitions arrays are kept typed
+> (`RawStatement[]` → `Statement[]`) via the alias hook instead of degrading to
+> `any[]` + a wrapper — strictly better than the §5 wrapper note. (c) Output
+> lands **inside the visualizer** at `tools/visualizer/src/types/wire/` (not a
+> top-level tool dir), so the visualizer's own strict `tsc` type-checks it for
+> free; config sits at `tools/visualizer/tygo.yaml`.
+
+- [x] **T1 — Tool + config.** `tygo` pinned in the [`Makefile`](../../../../Makefile) (`TYGO_VERSION`); config at [`tools/visualizer/tygo.yaml`](../../../../tools/visualizer/tygo.yaml).
+- [x] **T2 — Export the symbols DTO.** `symbolJSON`/`subSymbol` → `SymbolJSON`/`SubSymbol` in [`symbols.go`](../../../../tools/lsp/cmd/twf/internal/command/symbols/symbols.go).
+- [x] **T3 — Generate the types.** Generated under [`tools/visualizer/src/types/wire/generated/`](../../../../tools/visualizer/src/types/wire/generated/) (graph, chunks, diagnostics/summary, symbols, AST DTOs), `DO NOT EDIT` header + regen pointer.
+- [x] **T4 — Residue file.** [`tools/visualizer/src/types/wire/residue.ts`](../../../../tools/visualizer/src/types/wire/residue.ts): `Statement`/`Definition`/`HandlerDecl` unions, the `RawStatement`/`RawDefinition` aliases, and the string-literal enum unions.
 - [ ] **T5 — Rewire visualizer.** Replace `parser-graph.ts` + `ast.ts`; fix imports; `tsc`/tests green.
 - [ ] **T6 — Rewire extension.** Consume the generated `Diagnostic` (per D3); drop the hand copy.
 - [ ] **T7 — Descriptions inventory.** Extract every `description` in `twf.schema.json` into a review list (JSON path → text → "equivalent Go doc-comment exists? value?") under this directory, so genuinely-valuable prose can be migrated into Go doc-comments (which then flow into JSDoc) before the schema is retired. **Review, don't auto-migrate.**
 - [ ] **T8 — Schema fate (D1).** Retire (recommended) or generate `twf.schema.json`; update its references either way.
-- [ ] **T9 — CI gate.** Add `gen-types` + `check-types` (`git diff --exit-code`) to the [`Makefile`](../../../../Makefile) and `ci.yml`, mirroring `gen-docs`/`check-docs`.
+- [x] **T9 — CI gate.** `gen-types` + `check-types` (`git diff --exit-code`) added to the [`Makefile`](../../../../Makefile) and `ci.yml`, mirroring `gen-docs`/`check-docs`.
 - [ ] **T10 — Docs.** Update the `README`s that point at the schema to point at the generated types + `twf`'s output; note the new source-of-truth flow.
 
 ## 10. Open decisions

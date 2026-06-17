@@ -23,6 +23,9 @@ jobs:
       - name: Verify command reference is up to date
         run: make check-docs
 
+      - name: Verify generated wire types are up to date
+        run: make check-types
+
   build:
     name: Build
     runs-on: ubuntu-latest

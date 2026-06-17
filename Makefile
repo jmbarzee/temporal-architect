@@ -127,6 +127,30 @@ check-docs: gen-docs
 	@git diff --exit-code -- tools/lsp/cmd/twf/COMMANDS.md \
 		|| { echo "COMMANDS.md is stale — run 'make gen-docs' and commit the result."; exit 1; }
 
+# ── Wire-types targets ───────────────────────────────────────────────────────
+
+.PHONY: gen-types check-types
+
+# tygo version is pinned here so local and CI generation are byte-identical.
+TYGO_VERSION := v0.2.21
+
+## Regenerate the TypeScript projection of twf's JSON wire contract
+## (tools/wire-types/src/generated/) from the Go DTO structs — the single source
+## of truth. The hand-written sibling residue.ts holds the discriminated overlays
+## and string-literal enums tygo can't express, and index.ts is the public API;
+## keep them in step by hand. The @temporal-architect/wire-types package is
+## consumed (type-only) by the visualizer and the extension.
+gen-types:
+	@mkdir -p tools/wire-types/src/generated
+	go run github.com/gzuidhof/tygo@$(TYGO_VERSION) generate --config tools/wire-types/tygo.yaml
+	@echo "Regenerated tools/wire-types/src/generated/"
+
+## Fail if the committed generated wire types have drifted from the Go DTOs.
+## Run in CI so any DTO change without a regen breaks the build.
+check-types: gen-types
+	@git diff --exit-code -- tools/wire-types/src/generated \
+		|| { echo "Generated wire types are stale — run 'make gen-types' and commit the result."; exit 1; }
+
 # ── Package targets ──────────────────────────────────────────────────────────
 
 .PHONY: package package-platform package-all

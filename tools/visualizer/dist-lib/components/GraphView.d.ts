@@ -3,6 +3,7 @@ import { ParserGraph } from '../types/parser-graph';
 import { CrossViewTarget } from './WorkflowCanvas';
 import { FilterState, PinState, FilterDimension } from '../filter/types';
 interface GraphViewProps {
+    active: boolean;
     ast: TWFFile;
     parserGraph: ParserGraph;
     onShowInTree?: (name: string, defType: string) => void;
@@ -18,5 +19,5 @@ interface GraphViewProps {
     overriddenPins: Set<FilterDimension>;
     onOverriddenPinsConsumed: () => void;
 }
-export declare function GraphView({ ast, parserGraph, onShowInTree, filter, onFilterChange, pins, onPinsChange, searchQuery, searchActive, onSearchChange, pendingFocus, onFocusConsumed, overriddenPins, onOverriddenPinsConsumed, }: GraphViewProps): import("react/jsx-runtime").JSX.Element;
+export declare function GraphView({ active, ast, parserGraph, onShowInTree, filter, onFilterChange, pins, onPinsChange, searchQuery, searchActive, onSearchChange, pendingFocus, onFocusConsumed, overriddenPins, onOverriddenPinsConsumed, }: GraphViewProps): import("react/jsx-runtime").JSX.Element;
 export {};

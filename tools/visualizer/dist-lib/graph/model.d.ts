@@ -1,4 +1,3 @@
-export type NodeLevel = 1 | 1.5 | 2 | 3 | 4;
 export type NodeType = 'namespace' | 'nexusEndpoint' | 'worker' | 'nexusService' | 'workflow' | 'nexusOperation' | 'activity';
 export interface GraphNode {
     /**
@@ -14,7 +13,6 @@ export interface GraphNode {
      * opaque string and never parses it for routing decisions.
      */
     id: string;
-    level: NodeLevel;
     nodeType: NodeType;
     name: string;
     /** AST source file, joined in by buildGraph via the `definitionKey` lookup. */
@@ -34,11 +32,11 @@ export interface GraphNode {
      * (with the parent service name folded in for operations).
      */
     definitionKey: string;
-    /** e.g. `worker:paymentWorker`. Empty on namespace / endpoint / orphan nodes. */
+    /** e.g. `worker:paymentWorker`. nexusService / nexusOperation only. */
     worker?: string;
-    /** e.g. `namespace:ecommerce`. Empty on namespace itself and on orphans. */
+    /** e.g. `namespace:ecommerce`. nexusService only. */
     namespace?: string;
-    /** Task queue name. Empty for nodes that don't have one. */
+    /** Task queue name. Worker and nexus-tier nodes only. */
     queue?: string;
 }
 export type EdgeType = 'containment' | 'dependency';
@@ -47,8 +45,6 @@ export interface GraphEdge {
     edgeType: EdgeType;
     sourceId: string;
     targetId: string;
-    sourceLevel: NodeLevel;
-    targetLevel: NodeLevel;
     sourceNodeType: NodeType;
     targetNodeType: NodeType;
     nexusEndpoint?: string;
@@ -58,8 +54,3 @@ export interface Graph {
     edges: GraphEdge[];
     duplicateGroups: Map<string, Set<string>>;
 }
-/**
- * Tier number for a node type. Used for sizing, edge styling, and the
- * hierarchical Y-band layout. The numbering matches `NodeLevel`.
- */
-export declare function nodeLevel(nodeType: NodeType): NodeLevel;

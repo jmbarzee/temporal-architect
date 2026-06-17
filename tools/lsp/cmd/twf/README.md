@@ -223,8 +223,9 @@ below `--floor M` (default 2; negative disables) are flagged too-granular
 with a recommended merge target. Over a `--history` graph there is no AST,
 so complexity is base-only and the decomposition is purely structural.
 
-The `chunks` payload schema is in [`twf.schema.json`](./twf.schema.json)
-under `$defs/Decomposition`.
+The `chunks` payload shape is the `decompose.Result` family in
+[`decompose/result.go`](../../parser/decompose/result.go), projected to
+TypeScript in [`@temporal-architect/wire-types`](../../../wire-types).
 
 ---
 
@@ -273,7 +274,7 @@ Per command, exactly one of `definitions` / `symbols` / `graph` is present.
 | `code`     | string   | Symbolic, stable identifier within a kind. Adding new codes is non-breaking; renaming is breaking. |
 | `file`     | string   | Source-file basename. May be empty in multi-file mode when the diagnostic isn't tied to a definition. |
 | `start`    | Position | 1-based line/column. Always present.                                                              |
-| `end`      | Position | 1-based line/column. Currently `end == start` for resolve/validate diagnostics; precision will improve over time without changing the schema. |
+| `end`      | Position | 1-based line/column. Currently `end == start` for resolve/validate diagnostics; precision will improve over time without changing the wire shape. |
 | `message`  | string   | Human-readable text. Subject to change; pin to `code` for programmatic dispatch.                  |
 | `name`     | string   | Primary entity the diagnostic refers to (the undefined name, the duplicate name, …). Optional.    |
 
@@ -309,10 +310,13 @@ The complete list of `kind` + `code` combinations:
 - `DISPATCH_NO_REACHABLE_DEPLOYMENT` — call site routes to a task
   queue that no deployment polls
 
-The authoritative machine-readable schema is checked in at
-[`twf.schema.json`](./twf.schema.json), versioned with `$schemaVersion`
-(semver — minor bumps are additive, major bumps signal a breaking
-wire-shape change).
+The authoritative wire contract is the Go DTO layer — this CLI's `envelope`,
+`graph`, and `decompose` packages (plus `parser/ast/json.go`). Its TypeScript
+projection is generated from those structs into
+[`@temporal-architect/wire-types`](../../../wire-types) and CI-gated via
+`make check-types`. Run any `--json` subcommand to see the live shape; adding
+optional fields or new diagnostic codes is non-breaking, renaming or removing
+them is breaking.
 
 ---
 

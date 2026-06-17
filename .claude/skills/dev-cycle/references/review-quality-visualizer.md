@@ -15,14 +15,14 @@ Before starting, read:
 ## Review Rubric
 
 ### 1. Contract Consumption
-- Does the TypeScript correctly reflect the current JSON schema from `twf parse`?
+- Does the TypeScript correctly reflect the current wire contract from `twf parse`? The structural types are generated from the Go DTOs into `@temporal-architect/wire-types` (CI-gated via `make check-types`); the visualizer consumes them through the `tools/visualizer/src/types/` façades.
 - Are there fields being accessed that no longer exist, or fields being ignored that now carry data?
 - Are discriminated unions (`kind`/`type` fields) handled exhaustively?
 
 ### 2. Architecture & Organization
 - Component boundaries: is each component responsible for one thing?
 - Data flow: is there a clear separation between data fetching, transformation, and rendering?
-- Are there TypeScript types that duplicate or diverge from the Go JSON schema?
+- Are there hand-written TypeScript types that duplicate the generated `@temporal-architect/wire-types` (which should be the single source) or diverge from the Go DTOs?
 
 ### 3. TypeScript Quality
 - Type safety: are there `any` casts or unsafe assertions that hide real type errors?

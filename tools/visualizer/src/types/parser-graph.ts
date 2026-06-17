@@ -1,132 +1,28 @@
-// TypeScript types mirroring `twf graph`'s JSON payload.
+// Graph wire types for the visualizer.
 //
-// Authoritative shape: `tools/lsp/parser/graph/graph.go` (Go struct names
-// match 1:1 with the field names below; field tags carry the wire names).
-// When the parser graph contract changes, this file is the visualizer's
-// part of the rename — keep the two in lockstep.
+// The structural shapes are generated from `tools/lsp/parser/graph/graph.go`
+// and live in `@temporal-architect/wire-types` (single source of truth;
+// CI-gated). This file is a thin façade: it re-exports the ergonomic
+// `Parser*`-prefixed names the visualizer uses (prefixed to avoid colliding
+// with the view-layer's own graph model) and provides the empty-graph default.
 
-/** Definition key — `${kind}:${name}`, e.g. `workflow:OrderWorkflow`. */
-export type DefinitionKey = string
+export type {
+  ParserGraph,
+  ParserGraphSummary,
+  ParserNode,
+  ParserEdge,
+  ParserEdgeKind,
+  ParserRouting,
+  ParserTier,
+  CoarsenedEdge,
+  ParserUnresolved,
+  ParserGraphDiagnostic,
+  ParserGraphDiagnosticCode,
+  ParserGraphDiagnosticSeverity,
+  DefinitionKey,
+} from '@temporal-architect/wire-types'
 
-/** Edge kind discriminator. Mirrors the Go EdgeXxx constants. */
-export type ParserEdgeKind =
-  | 'containment'
-  | 'activityCall'
-  | 'workflowCall'
-  | 'nexusCall'
-  | 'asyncBacking'
-  | 'signalSend'
-  // Structural composition edge: nexus operation → endpoint that fronts
-  // it (matched upstream on namespace+queue). Topology, not dispatch.
-  | 'nexusRoute'
-
-/** Coarsening tier discriminator. Mirrors the Go TierXxx constants. */
-export type ParserTier = 'worker' | 'namespace'
-
-/** Diagnostic codes emitted by the graph stage. */
-export type ParserGraphDiagnosticCode =
-  | 'DISPATCH_NO_REACHABLE_DEPLOYMENT'
-  | 'SIGNAL_TARGET_NOT_SAMPLED'
-
-/** Graph-stage diagnostic severity. */
-export type ParserGraphDiagnosticSeverity = 'error' | 'warning'
-
-/**
- * One deployment in the resolved graph. Identity is composite
- * (definition × deployment context), encoded into `id`.
- *
- * `definition` is the AST anchor (always present). `worker` /
- * `namespace` / `queue` are display-only deployment metadata — structure
- * (membership, routing) is expressed by edges, never by matching these
- * fields. `namespace` is present only on `nexusService` nodes; `worker`
- * on `nexusService` / `nexusOperation`; `queue` on `worker` and the nexus
- * tier. Orphan nodes carry `orphan: true` and omit these fields.
- */
-export interface ParserNode {
-  id: string
-  definition: DefinitionKey
-  worker?: DefinitionKey      // e.g. "worker:paymentWorker"
-  namespace?: string          // e.g. "namespace:ecommerce" (nexusService only)
-  queue?: string
-  orphan?: boolean
-}
-
-/**
- * Routing block on a dispatch edge. Diagnostic-only — the effect of
- * routing (which deployment got the call) is already encoded by the
- * edge's `to` node. Containment edges omit this.
- */
-export interface ParserRouting {
-  /** Literal task_queue from the call site, when one was specified. */
-  explicit?: string
-  /** Endpoint node ID, set only on `nexusCall` edges. */
-  nexusEndpoint?: string
-}
-
-/**
- * Edge in the resolved graph. Dispatch edges
- * (`activityCall` / `workflowCall` / `nexusCall` / `asyncBacking`) carry
- * `routing`; containment edges omit it entirely.
- */
-export interface ParserEdge {
-  from: string
-  to: string
-  kind: ParserEdgeKind
-  line: number
-  routing?: ParserRouting
-}
-
-/**
- * Dispatch edge projected to a higher containment tier
- * (worker → worker, or namespace → namespace), aggregated by
- * (from, to, tier).
- */
-export interface CoarsenedEdge {
-  from: string
-  to: string
-  tier: ParserTier
-  weight: number
-}
-
-/** Call site whose callee couldn't be resolved by the resolver. */
-export interface ParserUnresolved {
-  from: string
-  name: string
-  kind: ParserEdgeKind
-  line: number
-}
-
-/** Graph-stage diagnostic. */
-export interface ParserGraphDiagnostic {
-  severity: ParserGraphDiagnosticSeverity
-  code: ParserGraphDiagnosticCode
-  message: string
-  from?: string
-  line: number
-}
-
-/** Top-level counts from `twf graph`. */
-export interface ParserGraphSummary {
-  nodes: number
-  edges: number
-  coarsenedEdges: number
-  unresolved: number
-  diagnostics: number
-}
-
-/**
- * The full payload emitted by `twf graph --json` (inside the standard
- * envelope's `graph` field). Arrays are always non-nil (`[]` on empty),
- * matching the Go side's stable wire shape.
- */
-export interface ParserGraph {
-  summary: ParserGraphSummary
-  nodes: ParserNode[]
-  edges: ParserEdge[]
-  coarsenedEdges: CoarsenedEdge[]
-  unresolved: ParserUnresolved[]
-  diagnostics: ParserGraphDiagnostic[]
-}
+import type { ParserGraph } from '@temporal-architect/wire-types'
 
 /** Empty parser graph — used as a fallback when no graph is available. */
 export const EMPTY_PARSER_GRAPH: ParserGraph = {

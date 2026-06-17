@@ -1,0 +1,74 @@
+# tygo configuration — generates the TypeScript projection of twf's JSON wire
+# contract from the Go DTO layer. The Go structs are the single source of
+# truth; this config lists the DTO packages and where their TS lands.
+#
+# Run via `make gen-types` (which pins the tygo version). CI runs
+# `make check-types` to fail if the committed output drifts from the Go DTOs.
+#
+# Output is one file per source package under src/generated/. Cross-package and
+# non-reflectable shapes (discriminated-union overlays, string-literal enums)
+# live in the hand-written sibling src/residue.ts; the public ergonomic API is
+# assembled in src/index.ts — see those files' headers.
+
+packages:
+  - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
+    output_path: "tools/wire-types/src/generated/graph.ts"
+    preserve_comments: "types"
+    # graph.go holds the whole wire family (Graph, Node, Edge, …) plus the
+    # node-kind / edge-kind constants; sibling files are internal builders.
+    include_files:
+      - "graph.go"
+    frontmatter: |
+      // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
+      // String-literal enums and discriminated unions live in ../residue.ts.
+
+  - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
+    output_path: "tools/wire-types/src/generated/decompose.ts"
+    preserve_comments: "types"
+    # result.go is the public wire model; decompose.go holds the Decompose()
+    # input Options (not part of any JSON payload) and is excluded.
+    include_files:
+      - "result.go"
+    frontmatter: |
+      // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
+      // String-literal enums and discriminated unions live in ../residue.ts.
+
+  - path: "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
+    output_path: "tools/wire-types/src/generated/envelope.ts"
+    preserve_comments: "types"
+    include_files:
+      - "model.go"
+    # Envelope.Summary is ast.FileSummary (a qualified selector tygo can map);
+    # point it at the generated FileSummary in the sibling ast file.
+    type_mappings:
+      ast.FileSummary: "FileSummary"
+    frontmatter: |
+      // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
+      // String-literal enums and discriminated unions live in ../residue.ts.
+      import type { FileSummary } from "./ast";
+
+  - path: "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/symbols"
+    output_path: "tools/wire-types/src/generated/symbols.ts"
+    preserve_comments: "types"
+    include_files:
+      - "symbols.go"
+    frontmatter: |
+      // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
+      // String-literal enums and discriminated unions live in ../residue.ts.
+
+  - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+    output_path: "tools/wire-types/src/generated/ast.ts"
+    preserve_comments: "types"
+    # Only the wire DTOs (the *JSON structs + FileSummary) live in json.go;
+    # ast.go et al. hold the internal interface-based AST, which is NOT the
+    # wire shape and must not be generated.
+    include_files:
+      - "json.go"
+    # RawStatement / RawDefinition are json.RawMessage aliases on the
+    # type-discriminated body/definitions fields; their declarations live in
+    # ast/wire.go (excluded above) so they resolve to the residue aliases,
+    # which point at the Statement / Definition unions.
+    frontmatter: |
+      // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
+      // String-literal enums and discriminated unions live in ../residue.ts.
+      import type { RawStatement, RawDefinition } from "../residue";

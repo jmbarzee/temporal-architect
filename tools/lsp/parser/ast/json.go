@@ -7,9 +7,9 @@ import (
 
 // JSON serialization with type discriminators for interface types.
 
-// resolvedRefJSON is a lightweight JSON reference to a resolved AST definition.
+// ResolvedRefJSON is a lightweight JSON reference to a resolved AST definition.
 // Instead of embedding the entire target node, we emit its name and source position.
-type resolvedRefJSON struct {
+type ResolvedRefJSON struct {
 	Name   string `json:"name"`
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
@@ -33,14 +33,14 @@ type FileSummary struct {
 
 // FileJSON is the JSON-serializable representation of a File.
 type FileJSON struct {
-	Summary     FileSummary       `json:"summary"`
-	Definitions []json.RawMessage `json:"definitions"`
+	Summary     FileSummary     `json:"summary"`
+	Definitions []RawDefinition `json:"definitions"`
 }
 
 // MarshalJSON implements json.Marshaler for File.
 func (f *File) MarshalJSON() ([]byte, error) {
 	fj := FileJSON{
-		Definitions: make([]json.RawMessage, 0, len(f.Definitions)),
+		Definitions: make([]RawDefinition, 0, len(f.Definitions)),
 	}
 	for _, def := range f.Definitions {
 		switch def.(type) {
@@ -65,11 +65,11 @@ func (f *File) MarshalJSON() ([]byte, error) {
 }
 
 // marshalStatements marshals a slice of statements into JSON.
-func marshalStatements(stmts []Statement) ([]json.RawMessage, error) {
+func marshalStatements(stmts []Statement) ([]RawStatement, error) {
 	if len(stmts) == 0 {
 		return nil, nil
 	}
-	out := make([]json.RawMessage, 0, len(stmts))
+	out := make([]RawStatement, 0, len(stmts))
 	for _, stmt := range stmts {
 		data, err := marshalStatement(stmt)
 		if err != nil {
@@ -201,24 +201,24 @@ func marshalOptionEntries(entries []*OptionEntry) []OptionEntryJSON {
 
 // WorkflowDefJSON is the JSON representation of WorkflowDef.
 type WorkflowDefJSON struct {
-	Type       string             `json:"type"`
-	Line       int                `json:"line"`
-	Column     int                `json:"column"`
-	SourceFile string             `json:"sourceFile,omitempty"`
-	Name       string             `json:"name"`
-	Params     string             `json:"params"`
-	ReturnType string             `json:"returnType,omitempty"`
-	State      *StateBlockJSON    `json:"state,omitempty"`
-	Signals    []*SignalDeclJSON  `json:"signals"`
-	Queries    []*QueryDeclJSON   `json:"queries"`
-	Updates    []*UpdateDeclJSON  `json:"updates"`
-	Body       []json.RawMessage  `json:"body"`
+	Type       string            `json:"type"`
+	Line       int               `json:"line"`
+	Column     int               `json:"column"`
+	SourceFile string            `json:"sourceFile,omitempty"`
+	Name       string            `json:"name"`
+	Params     string            `json:"params"`
+	ReturnType string            `json:"returnType,omitempty"`
+	State      *StateBlockJSON   `json:"state,omitempty"`
+	Signals    []*SignalDeclJSON `json:"signals"`
+	Queries    []*QueryDeclJSON  `json:"queries"`
+	Updates    []*UpdateDeclJSON `json:"updates"`
+	Body       []RawStatement    `json:"body"`
 }
 
 // StateBlockJSON is the JSON representation of a state: block.
 type StateBlockJSON struct {
 	Conditions []*ConditionDeclJSON `json:"conditions,omitempty"`
-	RawStmts   []rawStmtJSON        `json:"rawStmts,omitempty"`
+	RawStmts   []RawStmtJSON        `json:"rawStmts,omitempty"`
 }
 
 // ConditionDeclJSON is the JSON representation of a condition declaration.
@@ -244,7 +244,7 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 			sj.Conditions = append(sj.Conditions, &ConditionDeclJSON{Line: c.Line, Column: c.Column, Name: c.Name})
 		}
 		for _, r := range w.State.RawStmts {
-			sj.RawStmts = append(sj.RawStmts, rawStmtJSON{
+			sj.RawStmts = append(sj.RawStmts, RawStmtJSON{
 				Type:   "raw",
 				Line:   r.Line,
 				Column: r.Column,
@@ -271,14 +271,14 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 
 // ActivityDefJSON is the JSON representation of ActivityDef.
 type ActivityDefJSON struct {
-	Type       string            `json:"type"`
-	Line       int               `json:"line"`
-	Column     int               `json:"column"`
-	SourceFile string            `json:"sourceFile,omitempty"`
-	Name       string            `json:"name"`
-	Params     string            `json:"params"`
-	ReturnType string            `json:"returnType,omitempty"`
-	Body       []json.RawMessage `json:"body"`
+	Type       string         `json:"type"`
+	Line       int            `json:"line"`
+	Column     int            `json:"column"`
+	SourceFile string         `json:"sourceFile,omitempty"`
+	Name       string         `json:"name"`
+	Params     string         `json:"params"`
+	ReturnType string         `json:"returnType,omitempty"`
+	Body       []RawStatement `json:"body"`
 }
 
 func (a *ActivityDef) MarshalJSON() ([]byte, error) {
@@ -303,14 +303,17 @@ type WorkerRefJSON struct {
 	Name     string           `json:"name"`
 	Line     int              `json:"line"`
 	Column   int              `json:"column"`
-	Resolved *resolvedRefJSON `json:"resolved,omitempty"`
+	Resolved *ResolvedRefJSON `json:"resolved,omitempty"`
 }
 
 // marshalWorkerRefs converts a slice of Ref[T] to JSON form. Returns an
 // empty (non-nil) slice when refs is empty so the JSON output always emits
 // the field as `[]` rather than omitting it — keeps WorkerDef/NamespaceDef
 // shape consistent for downstream consumers.
-func marshalWorkerRefs[T interface{ comparable; Node }](refs []Ref[T]) []WorkerRefJSON {
+func marshalWorkerRefs[T interface {
+	comparable
+	Node
+}](refs []Ref[T]) []WorkerRefJSON {
 	out := make([]WorkerRefJSON, 0, len(refs))
 	for _, ref := range refs {
 		rj := WorkerRefJSON{
@@ -320,7 +323,7 @@ func marshalWorkerRefs[T interface{ comparable; Node }](refs []Ref[T]) []WorkerR
 		}
 		var zero T
 		if ref.Resolved != zero {
-			rj.Resolved = &resolvedRefJSON{
+			rj.Resolved = &ResolvedRefJSON{
 				Name:   ref.Name,
 				Line:   ref.Resolved.NodeLine(),
 				Column: ref.Resolved.NodeColumn(),
@@ -363,7 +366,7 @@ type NamespaceWorkerJSON struct {
 	Line           int               `json:"line"`
 	Column         int               `json:"column"`
 	Options        *OptionsBlockJSON `json:"options,omitempty"`
-	ResolvedWorker *resolvedRefJSON  `json:"resolvedWorker,omitempty"`
+	ResolvedWorker *ResolvedRefJSON  `json:"resolvedWorker,omitempty"`
 }
 
 // NamespaceEndpointJSON is the JSON representation of a nexus endpoint in a namespace.
@@ -403,7 +406,7 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 			Options:    marshalOptionsBlock(w.Options),
 		}
 		if w.Worker.Resolved != nil {
-			wj.ResolvedWorker = &resolvedRefJSON{Name: w.Worker.Resolved.Name, Line: w.Worker.Resolved.Line, Column: w.Worker.Resolved.Column}
+			wj.ResolvedWorker = &ResolvedRefJSON{Name: w.Worker.Resolved.Name, Line: w.Worker.Resolved.Line, Column: w.Worker.Resolved.Column}
 		}
 		nj.Workers = append(nj.Workers, wj)
 	}
@@ -426,7 +429,7 @@ type SignalDeclJSON struct {
 	Name    string            `json:"name"`
 	Params  string            `json:"params"`
 	Options *OptionsBlockJSON `json:"options,omitempty"`
-	Body    []json.RawMessage `json:"body,omitempty"`
+	Body    []RawStatement    `json:"body,omitempty"`
 }
 
 type QueryDeclJSON struct {
@@ -437,7 +440,7 @@ type QueryDeclJSON struct {
 	Params     string            `json:"params"`
 	ReturnType string            `json:"returnType,omitempty"`
 	Options    *OptionsBlockJSON `json:"options,omitempty"`
-	Body       []json.RawMessage `json:"body,omitempty"`
+	Body       []RawStatement    `json:"body,omitempty"`
 }
 
 type UpdateDeclJSON struct {
@@ -448,7 +451,7 @@ type UpdateDeclJSON struct {
 	Params     string            `json:"params"`
 	ReturnType string            `json:"returnType,omitempty"`
 	Options    *OptionsBlockJSON `json:"options,omitempty"`
-	Body       []json.RawMessage `json:"body,omitempty"`
+	Body       []RawStatement    `json:"body,omitempty"`
 }
 
 // marshalStatement marshals a Statement with type discrimination.
@@ -498,7 +501,7 @@ func marshalStatement(stmt Statement) (json.RawMessage, error) {
 }
 
 func marshalActivityCall(s *ActivityCall) (json.RawMessage, error) {
-	aj := activityCallJSON{
+	aj := ActivityCallJSON{
 		Type:    "activityCall",
 		Line:    s.Line,
 		Column:  s.Column,
@@ -508,7 +511,7 @@ func marshalActivityCall(s *ActivityCall) (json.RawMessage, error) {
 		Options: marshalOptionsBlock(s.Options),
 	}
 	if s.Activity.Resolved != nil {
-		aj.Resolved = &resolvedRefJSON{
+		aj.Resolved = &ResolvedRefJSON{
 			Name:   s.Activity.Resolved.Name,
 			Line:   s.Activity.Resolved.Line,
 			Column: s.Activity.Resolved.Column,
@@ -518,7 +521,7 @@ func marshalActivityCall(s *ActivityCall) (json.RawMessage, error) {
 }
 
 func marshalWorkflowCall(s *WorkflowCall) (json.RawMessage, error) {
-	wj := workflowCallJSON{
+	wj := WorkflowCallJSON{
 		Type:    "workflowCall",
 		Line:    s.Line,
 		Column:  s.Column,
@@ -529,7 +532,7 @@ func marshalWorkflowCall(s *WorkflowCall) (json.RawMessage, error) {
 		Options: marshalOptionsBlock(s.Options),
 	}
 	if s.Workflow.Resolved != nil {
-		wj.Resolved = &resolvedRefJSON{
+		wj.Resolved = &ResolvedRefJSON{
 			Name:   s.Workflow.Resolved.Name,
 			Line:   s.Workflow.Resolved.Line,
 			Column: s.Workflow.Resolved.Column,
@@ -539,7 +542,7 @@ func marshalWorkflowCall(s *WorkflowCall) (json.RawMessage, error) {
 }
 
 func marshalNexusCall(s *NexusCall) (json.RawMessage, error) {
-	nj := nexusCallJSON{
+	nj := NexusCallJSON{
 		Type:      "nexusCall",
 		Line:      s.Line,
 		Column:    s.Column,
@@ -552,20 +555,20 @@ func marshalNexusCall(s *NexusCall) (json.RawMessage, error) {
 		Options:   marshalOptionsBlock(s.Options),
 	}
 	if s.Endpoint.Resolved != nil {
-		nj.ResolvedEndpoint = &resolvedRefJSON{Name: s.Endpoint.Resolved.EndpointName, Line: s.Endpoint.Resolved.Line, Column: s.Endpoint.Resolved.Column}
+		nj.ResolvedEndpoint = &ResolvedRefJSON{Name: s.Endpoint.Resolved.EndpointName, Line: s.Endpoint.Resolved.Line, Column: s.Endpoint.Resolved.Column}
 		nj.ResolvedEndpointNamespace = s.Endpoint.Resolved.Namespace
 	}
 	if s.Service.Resolved != nil {
-		nj.ResolvedService = &resolvedRefJSON{Name: s.Service.Resolved.Name, Line: s.Service.Resolved.Line, Column: s.Service.Resolved.Column}
+		nj.ResolvedService = &ResolvedRefJSON{Name: s.Service.Resolved.Name, Line: s.Service.Resolved.Line, Column: s.Service.Resolved.Column}
 	}
 	if s.Operation.Resolved != nil {
-		nj.ResolvedOperation = &resolvedRefJSON{Name: s.Operation.Resolved.Name, Line: s.Operation.Resolved.Line, Column: s.Operation.Resolved.Column}
+		nj.ResolvedOperation = &ResolvedRefJSON{Name: s.Operation.Resolved.Name, Line: s.Operation.Resolved.Line, Column: s.Operation.Resolved.Column}
 	}
 	return json.Marshal(nj)
 }
 
 func marshalAwaitStmt(s *AwaitStmt) (json.RawMessage, error) {
-	return json.Marshal(awaitStmtJSON{
+	return json.Marshal(AwaitStmtJSON{
 		Type:   "await",
 		Line:   s.Line,
 		Column: s.Column,
@@ -578,7 +581,7 @@ func marshalAwaitAllBlock(s *AwaitAllBlock) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(awaitAllBlockJSON{
+	return json.Marshal(AwaitAllBlockJSON{
 		Type:   "awaitAll",
 		Line:   s.Line,
 		Column: s.Column,
@@ -587,13 +590,13 @@ func marshalAwaitAllBlock(s *AwaitAllBlock) (json.RawMessage, error) {
 }
 
 func marshalAwaitOneBlock(s *AwaitOneBlock) (json.RawMessage, error) {
-	cases := make([]awaitOneCaseJSON, 0, len(s.Cases))
+	cases := make([]AwaitOneCaseJSON, 0, len(s.Cases))
 	for _, c := range s.Cases {
 		caseBody, err := marshalStatements(c.Body)
 		if err != nil {
 			return nil, err
 		}
-		cj := awaitOneCaseJSON{
+		cj := AwaitOneCaseJSON{
 			Line:   c.Line,
 			Column: c.Column,
 			Body:   caseBody,
@@ -610,7 +613,7 @@ func marshalAwaitOneBlock(s *AwaitOneBlock) (json.RawMessage, error) {
 		}
 		cases = append(cases, cj)
 	}
-	return json.Marshal(awaitOneBlockJSON{
+	return json.Marshal(AwaitOneBlockJSON{
 		Type:   "awaitOne",
 		Line:   s.Line,
 		Column: s.Column,
@@ -619,13 +622,13 @@ func marshalAwaitOneBlock(s *AwaitOneBlock) (json.RawMessage, error) {
 }
 
 func marshalSwitchBlock(s *SwitchBlock) (json.RawMessage, error) {
-	cases := make([]switchCaseJSON, 0, len(s.Cases))
+	cases := make([]SwitchCaseJSON, 0, len(s.Cases))
 	for _, c := range s.Cases {
 		caseBody, err := marshalStatements(c.Body)
 		if err != nil {
 			return nil, err
 		}
-		cases = append(cases, switchCaseJSON{
+		cases = append(cases, SwitchCaseJSON{
 			Line:   c.Line,
 			Column: c.Column,
 			Value:  c.Value,
@@ -636,7 +639,7 @@ func marshalSwitchBlock(s *SwitchBlock) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(switchBlockJSON{
+	return json.Marshal(SwitchBlockJSON{
 		Type:    "switch",
 		Line:    s.Line,
 		Column:  s.Column,
@@ -655,7 +658,7 @@ func marshalIfStmt(s *IfStmt) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(ifStmtJSON{
+	return json.Marshal(IfStmtJSON{
 		Type:      "if",
 		Line:      s.Line,
 		Column:    s.Column,
@@ -670,7 +673,7 @@ func marshalForStmt(s *ForStmt) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(forStmtJSON{
+	return json.Marshal(ForStmtJSON{
 		Type:      "for",
 		Line:      s.Line,
 		Column:    s.Column,
@@ -683,7 +686,7 @@ func marshalForStmt(s *ForStmt) (json.RawMessage, error) {
 }
 
 func marshalReturnStmt(s *ReturnStmt) (json.RawMessage, error) {
-	return json.Marshal(returnStmtJSON{
+	return json.Marshal(ReturnStmtJSON{
 		Type:   "return",
 		Line:   s.Line,
 		Column: s.Column,
@@ -692,7 +695,7 @@ func marshalReturnStmt(s *ReturnStmt) (json.RawMessage, error) {
 }
 
 func marshalCloseStmt(s *CloseStmt) (json.RawMessage, error) {
-	return json.Marshal(closeStmtJSON{
+	return json.Marshal(CloseStmtJSON{
 		Type:   "close",
 		Line:   s.Line,
 		Column: s.Column,
@@ -702,23 +705,23 @@ func marshalCloseStmt(s *CloseStmt) (json.RawMessage, error) {
 }
 
 func marshalBreakStmt(s *BreakStmt) (json.RawMessage, error) {
-	return json.Marshal(breakStmtJSON{Type: "break", Line: s.Line, Column: s.Column})
+	return json.Marshal(BreakStmtJSON{Type: "break", Line: s.Line, Column: s.Column})
 }
 
 func marshalContinueStmt(s *ContinueStmt) (json.RawMessage, error) {
-	return json.Marshal(continueStmtJSON{Type: "continue", Line: s.Line, Column: s.Column})
+	return json.Marshal(ContinueStmtJSON{Type: "continue", Line: s.Line, Column: s.Column})
 }
 
 func marshalRawStmt(s *RawStmt) (json.RawMessage, error) {
-	return json.Marshal(rawStmtJSON{Type: "raw", Line: s.Line, Column: s.Column, Text: s.Text})
+	return json.Marshal(RawStmtJSON{Type: "raw", Line: s.Line, Column: s.Column, Text: s.Text})
 }
 
 func marshalComment(s *Comment) (json.RawMessage, error) {
-	return json.Marshal(commentJSON{Type: "comment", Line: s.Line, Column: s.Column, Text: s.Text})
+	return json.Marshal(CommentJSON{Type: "comment", Line: s.Line, Column: s.Column, Text: s.Text})
 }
 
 func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
-	sj := signalSendStmtJSON{
+	sj := SignalSendStmtJSON{
 		Type:   "signalSend",
 		Line:   s.Line,
 		Column: s.Column,
@@ -731,7 +734,7 @@ func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
 	// following the resolved handle promise to its WorkflowTarget.
 	if s.Handle.Resolved != nil {
 		if wt, ok := s.Handle.Resolved.Target.(*WorkflowTarget); ok && wt.Workflow.Resolved != nil {
-			sj.Resolved = &resolvedRefJSON{
+			sj.Resolved = &ResolvedRefJSON{
 				Name:   wt.Workflow.Resolved.Name,
 				Line:   wt.Workflow.Resolved.Line,
 				Column: wt.Workflow.Resolved.Column,
@@ -742,7 +745,7 @@ func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
 }
 
 func marshalPromiseStmt(s *PromiseStmt) (json.RawMessage, error) {
-	return json.Marshal(promiseStmtJSON{
+	return json.Marshal(PromiseStmtJSON{
 		Type:   "promise",
 		Line:   s.Line,
 		Column: s.Column,
@@ -752,11 +755,11 @@ func marshalPromiseStmt(s *PromiseStmt) (json.RawMessage, error) {
 }
 
 func marshalSetStmt(s *SetStmt) (json.RawMessage, error) {
-	return json.Marshal(setStmtJSON{Type: "set", Line: s.Line, Column: s.Column, Name: s.Condition.Name})
+	return json.Marshal(SetStmtJSON{Type: "set", Line: s.Line, Column: s.Column, Name: s.Condition.Name})
 }
 
 func marshalUnsetStmt(s *UnsetStmt) (json.RawMessage, error) {
-	return json.Marshal(unsetStmtJSON{Type: "unset", Line: s.Line, Column: s.Column, Name: s.Condition.Name})
+	return json.Marshal(UnsetStmtJSON{Type: "unset", Line: s.Line, Column: s.Column, Name: s.Condition.Name})
 }
 
 func workflowCallModeString(mode WorkflowCallMode) string {
@@ -784,7 +787,7 @@ func forVariantString(v ForVariant) string {
 }
 
 // Statement JSON types
-type activityCallJSON struct {
+type ActivityCallJSON struct {
 	Type     string            `json:"type"`
 	Line     int               `json:"line"`
 	Column   int               `json:"column"`
@@ -792,10 +795,10 @@ type activityCallJSON struct {
 	Args     string            `json:"args"`
 	Result   string            `json:"result,omitempty"`
 	Options  *OptionsBlockJSON `json:"options,omitempty"`
-	Resolved *resolvedRefJSON  `json:"resolved,omitempty"`
+	Resolved *ResolvedRefJSON  `json:"resolved,omitempty"`
 }
 
-type workflowCallJSON struct {
+type WorkflowCallJSON struct {
 	Type     string            `json:"type"`
 	Line     int               `json:"line"`
 	Column   int               `json:"column"`
@@ -804,7 +807,7 @@ type workflowCallJSON struct {
 	Args     string            `json:"args"`
 	Result   string            `json:"result,omitempty"`
 	Options  *OptionsBlockJSON `json:"options,omitempty"`
-	Resolved *resolvedRefJSON  `json:"resolved,omitempty"`
+	Resolved *ResolvedRefJSON  `json:"resolved,omitempty"`
 }
 
 func closeReasonString(r CloseReason) string {
@@ -820,89 +823,89 @@ func closeReasonString(r CloseReason) string {
 	}
 }
 
-// asyncTargetJSON is a discriminated union for async target JSON serialization.
+// AsyncTargetJSON is a discriminated union for async target JSON serialization.
 // Each kind populates exactly one of the per-kind fields.
-type asyncTargetJSON struct {
+type AsyncTargetJSON struct {
 	Kind     string              `json:"kind"`
-	Timer    *timerTargetJSON    `json:"timer,omitempty"`
-	Signal   *signalTargetJSON   `json:"signal,omitempty"`
-	Update   *updateTargetJSON   `json:"update,omitempty"`
-	Activity *activityTargetJSON `json:"activity,omitempty"`
-	Workflow *workflowTargetJSON `json:"workflow,omitempty"`
-	Nexus    *nexusTargetJSON    `json:"nexus,omitempty"`
-	Ident    *identTargetJSON    `json:"ident,omitempty"`
+	Timer    *TimerTargetJSON    `json:"timer,omitempty"`
+	Signal   *SignalTargetJSON   `json:"signal,omitempty"`
+	Update   *UpdateTargetJSON   `json:"update,omitempty"`
+	Activity *ActivityTargetJSON `json:"activity,omitempty"`
+	Workflow *WorkflowTargetJSON `json:"workflow,omitempty"`
+	Nexus    *NexusTargetJSON    `json:"nexus,omitempty"`
+	Ident    *IdentTargetJSON    `json:"ident,omitempty"`
 }
 
-type timerTargetJSON struct {
+type TimerTargetJSON struct {
 	Duration string `json:"duration"`
 }
 
-type signalTargetJSON struct {
+type SignalTargetJSON struct {
 	Name   string `json:"name"`
 	Params string `json:"params,omitempty"`
 }
 
-type updateTargetJSON struct {
+type UpdateTargetJSON struct {
 	Name   string `json:"name"`
 	Params string `json:"params,omitempty"`
 }
 
-type activityTargetJSON struct {
+type ActivityTargetJSON struct {
 	Name     string           `json:"name"`
 	Args     string           `json:"args,omitempty"`
 	Result   string           `json:"result,omitempty"`
-	Resolved *resolvedRefJSON `json:"resolved,omitempty"`
+	Resolved *ResolvedRefJSON `json:"resolved,omitempty"`
 }
 
-type workflowTargetJSON struct {
+type WorkflowTargetJSON struct {
 	Name     string           `json:"name"`
 	Mode     string           `json:"mode"`
 	Args     string           `json:"args,omitempty"`
 	Result   string           `json:"result,omitempty"`
-	Resolved *resolvedRefJSON `json:"resolved,omitempty"`
+	Resolved *ResolvedRefJSON `json:"resolved,omitempty"`
 }
 
-type nexusTargetJSON struct {
-	Endpoint                      string           `json:"endpoint"`
-	Service                       string           `json:"service"`
-	Operation                     string           `json:"operation"`
-	Args                          string           `json:"args,omitempty"`
-	Result                        string           `json:"result,omitempty"`
-	Detach                        bool             `json:"detach,omitempty"`
-	ResolvedEndpoint              *resolvedRefJSON `json:"resolvedEndpoint,omitempty"`
-	ResolvedEndpointNamespace     string           `json:"resolvedEndpointNamespace,omitempty"`
-	ResolvedService               *resolvedRefJSON `json:"resolvedService,omitempty"`
-	ResolvedOperation             *resolvedRefJSON `json:"resolvedOperation,omitempty"`
+type NexusTargetJSON struct {
+	Endpoint                  string           `json:"endpoint"`
+	Service                   string           `json:"service"`
+	Operation                 string           `json:"operation"`
+	Args                      string           `json:"args,omitempty"`
+	Result                    string           `json:"result,omitempty"`
+	Detach                    bool             `json:"detach,omitempty"`
+	ResolvedEndpoint          *ResolvedRefJSON `json:"resolvedEndpoint,omitempty"`
+	ResolvedEndpointNamespace string           `json:"resolvedEndpointNamespace,omitempty"`
+	ResolvedService           *ResolvedRefJSON `json:"resolvedService,omitempty"`
+	ResolvedOperation         *ResolvedRefJSON `json:"resolvedOperation,omitempty"`
 }
 
-type identTargetJSON struct {
+type IdentTargetJSON struct {
 	Name   string `json:"name"`
 	Result string `json:"result,omitempty"`
 }
 
-func marshalAsyncTarget(target AsyncTarget) asyncTargetJSON {
-	at := asyncTargetJSON{Kind: AsyncTargetKind(target)}
+func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
+	at := AsyncTargetJSON{Kind: AsyncTargetKind(target)}
 	switch t := target.(type) {
 	case *TimerTarget:
-		at.Timer = &timerTargetJSON{Duration: t.Duration}
+		at.Timer = &TimerTargetJSON{Duration: t.Duration}
 	case *SignalTarget:
-		at.Signal = &signalTargetJSON{Name: t.Signal.Name, Params: t.Params}
+		at.Signal = &SignalTargetJSON{Name: t.Signal.Name, Params: t.Params}
 	case *UpdateTarget:
-		at.Update = &updateTargetJSON{Name: t.Update.Name, Params: t.Params}
+		at.Update = &UpdateTargetJSON{Name: t.Update.Name, Params: t.Params}
 	case *ActivityTarget:
-		aj := &activityTargetJSON{Name: t.Activity.Name, Args: t.Args, Result: t.Result}
+		aj := &ActivityTargetJSON{Name: t.Activity.Name, Args: t.Args, Result: t.Result}
 		if t.Activity.Resolved != nil {
-			aj.Resolved = &resolvedRefJSON{Name: t.Activity.Resolved.Name, Line: t.Activity.Resolved.Line, Column: t.Activity.Resolved.Column}
+			aj.Resolved = &ResolvedRefJSON{Name: t.Activity.Resolved.Name, Line: t.Activity.Resolved.Line, Column: t.Activity.Resolved.Column}
 		}
 		at.Activity = aj
 	case *WorkflowTarget:
-		wj := &workflowTargetJSON{Name: t.Workflow.Name, Mode: workflowCallModeString(t.Mode), Args: t.Args, Result: t.Result}
+		wj := &WorkflowTargetJSON{Name: t.Workflow.Name, Mode: workflowCallModeString(t.Mode), Args: t.Args, Result: t.Result}
 		if t.Workflow.Resolved != nil {
-			wj.Resolved = &resolvedRefJSON{Name: t.Workflow.Resolved.Name, Line: t.Workflow.Resolved.Line, Column: t.Workflow.Resolved.Column}
+			wj.Resolved = &ResolvedRefJSON{Name: t.Workflow.Resolved.Name, Line: t.Workflow.Resolved.Line, Column: t.Workflow.Resolved.Column}
 		}
 		at.Workflow = wj
 	case *NexusTarget:
-		nj := &nexusTargetJSON{
+		nj := &NexusTargetJSON{
 			Endpoint:  t.Endpoint.Name,
 			Service:   t.Service.Name,
 			Operation: t.Operation.Name,
@@ -911,95 +914,95 @@ func marshalAsyncTarget(target AsyncTarget) asyncTargetJSON {
 			Detach:    t.Detach,
 		}
 		if t.Endpoint.Resolved != nil {
-			nj.ResolvedEndpoint = &resolvedRefJSON{Name: t.Endpoint.Resolved.EndpointName, Line: t.Endpoint.Resolved.Line, Column: t.Endpoint.Resolved.Column}
+			nj.ResolvedEndpoint = &ResolvedRefJSON{Name: t.Endpoint.Resolved.EndpointName, Line: t.Endpoint.Resolved.Line, Column: t.Endpoint.Resolved.Column}
 			nj.ResolvedEndpointNamespace = t.Endpoint.Resolved.Namespace
 		}
 		if t.Service.Resolved != nil {
-			nj.ResolvedService = &resolvedRefJSON{Name: t.Service.Resolved.Name, Line: t.Service.Resolved.Line, Column: t.Service.Resolved.Column}
+			nj.ResolvedService = &ResolvedRefJSON{Name: t.Service.Resolved.Name, Line: t.Service.Resolved.Line, Column: t.Service.Resolved.Column}
 		}
 		if t.Operation.Resolved != nil {
-			nj.ResolvedOperation = &resolvedRefJSON{Name: t.Operation.Resolved.Name, Line: t.Operation.Resolved.Line, Column: t.Operation.Resolved.Column}
+			nj.ResolvedOperation = &ResolvedRefJSON{Name: t.Operation.Resolved.Name, Line: t.Operation.Resolved.Line, Column: t.Operation.Resolved.Column}
 		}
 		at.Nexus = nj
 	case *IdentTarget:
-		at.Ident = &identTargetJSON{Name: t.Name, Result: t.Result}
+		at.Ident = &IdentTargetJSON{Name: t.Name, Result: t.Result}
 	}
 	return at
 }
 
-type awaitStmtJSON struct {
+type AwaitStmtJSON struct {
 	Type   string          `json:"type"`
 	Line   int             `json:"line"`
 	Column int             `json:"column"`
-	Target asyncTargetJSON `json:"target"`
+	Target AsyncTargetJSON `json:"target"`
 }
 
-type awaitAllBlockJSON struct {
-	Type   string            `json:"type"`
-	Line   int               `json:"line"`
-	Column int               `json:"column"`
-	Body   []json.RawMessage `json:"body"`
+type AwaitAllBlockJSON struct {
+	Type   string         `json:"type"`
+	Line   int            `json:"line"`
+	Column int            `json:"column"`
+	Body   []RawStatement `json:"body"`
 }
 
-type awaitOneCaseJSON struct {
-	Line     int               `json:"line"`
-	Column   int               `json:"column"`
-	Target   *asyncTargetJSON  `json:"target,omitempty"`
-	AwaitAll json.RawMessage   `json:"awaitAll,omitempty"`
-	Body     []json.RawMessage `json:"body"`
+type AwaitOneCaseJSON struct {
+	Line     int              `json:"line"`
+	Column   int              `json:"column"`
+	Target   *AsyncTargetJSON `json:"target,omitempty"`
+	AwaitAll RawStatement     `json:"awaitAll,omitempty"`
+	Body     []RawStatement   `json:"body"`
 }
 
-type awaitOneBlockJSON struct {
+type AwaitOneBlockJSON struct {
 	Type   string             `json:"type"`
 	Line   int                `json:"line"`
 	Column int                `json:"column"`
-	Cases  []awaitOneCaseJSON `json:"cases"`
+	Cases  []AwaitOneCaseJSON `json:"cases"`
 }
 
-type switchCaseJSON struct {
-	Line   int               `json:"line"`
-	Column int               `json:"column"`
-	Value  string            `json:"value"`
-	Body   []json.RawMessage `json:"body"`
+type SwitchCaseJSON struct {
+	Line   int            `json:"line"`
+	Column int            `json:"column"`
+	Value  string         `json:"value"`
+	Body   []RawStatement `json:"body"`
 }
 
-type switchBlockJSON struct {
-	Type    string            `json:"type"`
-	Line    int               `json:"line"`
-	Column  int               `json:"column"`
-	Expr    string            `json:"expr"`
-	Cases   []switchCaseJSON  `json:"cases"`
-	Default []json.RawMessage `json:"default,omitempty"`
+type SwitchBlockJSON struct {
+	Type    string           `json:"type"`
+	Line    int              `json:"line"`
+	Column  int              `json:"column"`
+	Expr    string           `json:"expr"`
+	Cases   []SwitchCaseJSON `json:"cases"`
+	Default []RawStatement   `json:"default,omitempty"`
 }
 
-type ifStmtJSON struct {
-	Type      string            `json:"type"`
-	Line      int               `json:"line"`
-	Column    int               `json:"column"`
-	Condition string            `json:"condition"`
-	Body      []json.RawMessage `json:"body"`
-	ElseBody  []json.RawMessage `json:"elseBody,omitempty"`
+type IfStmtJSON struct {
+	Type      string         `json:"type"`
+	Line      int            `json:"line"`
+	Column    int            `json:"column"`
+	Condition string         `json:"condition"`
+	Body      []RawStatement `json:"body"`
+	ElseBody  []RawStatement `json:"elseBody,omitempty"`
 }
 
-type forStmtJSON struct {
-	Type      string            `json:"type"`
-	Line      int               `json:"line"`
-	Column    int               `json:"column"`
-	Variant   string            `json:"variant"`
-	Condition string            `json:"condition,omitempty"`
-	Variable  string            `json:"variable,omitempty"`
-	Iterable  string            `json:"iterable,omitempty"`
-	Body      []json.RawMessage `json:"body"`
+type ForStmtJSON struct {
+	Type      string         `json:"type"`
+	Line      int            `json:"line"`
+	Column    int            `json:"column"`
+	Variant   string         `json:"variant"`
+	Condition string         `json:"condition,omitempty"`
+	Variable  string         `json:"variable,omitempty"`
+	Iterable  string         `json:"iterable,omitempty"`
+	Body      []RawStatement `json:"body"`
 }
 
-type returnStmtJSON struct {
+type ReturnStmtJSON struct {
 	Type   string `json:"type"`
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
 	Value  string `json:"value,omitempty"`
 }
 
-type closeStmtJSON struct {
+type CloseStmtJSON struct {
 	Type   string `json:"type"`
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
@@ -1007,65 +1010,65 @@ type closeStmtJSON struct {
 	Args   string `json:"args,omitempty"`
 }
 
-type breakStmtJSON struct {
+type BreakStmtJSON struct {
 	Type   string `json:"type"`
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
 }
 
-type continueStmtJSON struct {
+type ContinueStmtJSON struct {
 	Type   string `json:"type"`
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
 }
 
-type rawStmtJSON struct{
-	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Text   string `json:"text"`
-}
-
-type commentJSON struct {
+type RawStmtJSON struct {
 	Type   string `json:"type"`
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
 	Text   string `json:"text"`
 }
 
-type signalSendStmtJSON struct {
+type CommentJSON struct {
+	Type   string `json:"type"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
+	Text   string `json:"text"`
+}
+
+type SignalSendStmtJSON struct {
 	Type     string           `json:"type"`
 	Line     int              `json:"line"`
 	Column   int              `json:"column"`
 	Handle   string           `json:"handle"`
 	Signal   string           `json:"signal"`
 	Args     string           `json:"args,omitempty"`
-	Resolved *resolvedRefJSON `json:"resolved,omitempty"`
+	Resolved *ResolvedRefJSON `json:"resolved,omitempty"`
 }
 
-type promiseStmtJSON struct {
+type PromiseStmtJSON struct {
 	Type   string          `json:"type"`
 	Line   int             `json:"line"`
 	Column int             `json:"column"`
 	Name   string          `json:"name"`
-	Target asyncTargetJSON `json:"target"`
+	Target AsyncTargetJSON `json:"target"`
 }
 
-type setStmtJSON struct {
+type SetStmtJSON struct {
 	Type   string `json:"type"`
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
 	Name   string `json:"name"`
 }
 
-type unsetStmtJSON struct {
+type UnsetStmtJSON struct {
 	Type   string `json:"type"`
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
 	Name   string `json:"name"`
 }
 
-type nexusCallJSON struct {
+type NexusCallJSON struct {
 	Type      string            `json:"type"`
 	Line      int               `json:"line"`
 	Column    int               `json:"column"`
@@ -1077,22 +1080,22 @@ type nexusCallJSON struct {
 	Result    string            `json:"result,omitempty"`
 	Options   *OptionsBlockJSON `json:"options,omitempty"`
 	// Resolution links
-	ResolvedEndpoint          *resolvedRefJSON `json:"resolvedEndpoint,omitempty"`
+	ResolvedEndpoint          *ResolvedRefJSON `json:"resolvedEndpoint,omitempty"`
 	ResolvedEndpointNamespace string           `json:"resolvedEndpointNamespace,omitempty"`
-	ResolvedService           *resolvedRefJSON `json:"resolvedService,omitempty"`
-	ResolvedOperation         *resolvedRefJSON `json:"resolvedOperation,omitempty"`
+	ResolvedService           *ResolvedRefJSON `json:"resolvedService,omitempty"`
+	ResolvedOperation         *ResolvedRefJSON `json:"resolvedOperation,omitempty"`
 }
 
 // NexusOperationJSON is the JSON representation of a nexus operation.
 type NexusOperationJSON struct {
-	OpType       string            `json:"opType"`
-	Line         int               `json:"line"`
-	Column       int               `json:"column"`
-	Name         string            `json:"name"`
-	WorkflowName string            `json:"workflowName,omitempty"`
-	Params       string            `json:"params,omitempty"`
-	ReturnType   string            `json:"returnType,omitempty"`
-	Body         []json.RawMessage `json:"body,omitempty"`
+	OpType       string         `json:"opType"`
+	Line         int            `json:"line"`
+	Column       int            `json:"column"`
+	Name         string         `json:"name"`
+	WorkflowName string         `json:"workflowName,omitempty"`
+	Params       string         `json:"params,omitempty"`
+	ReturnType   string         `json:"returnType,omitempty"`
+	Body         []RawStatement `json:"body,omitempty"`
 }
 
 // NexusServiceDefJSON is the JSON representation of NexusServiceDef.

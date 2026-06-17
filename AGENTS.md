@@ -74,7 +74,7 @@ The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Developme
 
 Long-lived reference docs that don't belong to a single component live at the repo root (e.g. `issues_blocking_downstream_adoption.md`, `packaging.md`).
 
-When the parser's JSON output changes, both the Go and TypeScript sides update together; that contract is what every downstream consumer (visualizer, VS Code extension, skills) reads.
+When the parser's JSON output changes, the Go DTO structs are the single source of truth: their TypeScript projection is generated into the `@temporal-architect/wire-types` package (`tools/wire-types`, via `make gen-types`, CI-gated by `make check-types`) and consumed by every downstream TS consumer (visualizer, VS Code extension). Only the hand-written residue (discriminated-union overlays + string-literal enums) is updated alongside.
 
 ## Dependency Map
 
@@ -84,7 +84,7 @@ The contract on each edge: the parser exposes token types, AST node types, and t
 
 The spec is consumed three ways: (1) as embedded content via `twf spec [--list|<slug>]`, (2) as files in `tools/spec/sections/` for skill prompts and review commands, and (3) as the importable Go package `github.com/jmbarzee/temporal-architect/tools/spec`.
 
-When a layer changes, the contracts it exposes determine what needs to update downstream. AST field renames and JSON schema changes are the most common sources of cascading work.
+When a layer changes, the contracts it exposes determine what needs to update downstream. AST field renames and wire-contract (DTO) changes are the most common sources of cascading work; regenerate the wire types with `make gen-types`.
 
 ## Development Commands
 

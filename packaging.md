@@ -251,7 +251,6 @@ Every place the brand appears, internally and externally. Walk this checklist wh
 | VSIX install instructions | `packages/vscode/README.md`, `packages/vscode/src/extension.ts` | Marketplace URL + `go install` URL. |
 | Install script | `packages/install.sh` | `REPO="jmbarzee/temporal-architect"` |
 | READMEs | `README.md`, `tools/README.md`, `tools/visualizer/README.md`, `tools/lsp/cmd/twf/README.md`, `tools/spec/README.md`, `skills/MANIFEST.md`, `skills/{design,author-go}/README.md`, `packages/README.md`, `internal/README.md`, `.claude-plugin/README.md` | All install lines, all `github.com/jmbarzee/temporal-architect` URLs, "Quick install" table. |
-| JSON schema | `tools/lsp/cmd/twf/twf.schema.json` | `$id` field references the repo URL. |
 | Repo-development guidance | `AGENTS.md` | Project-overview prose, file paths. |
 | Changelog | `CHANGELOG.md` | New entries use new URL; historical entries stay. |
 | Skill compatibility field (after M1) | `skills/temporal-architect-design/SKILL.md`, `skills/temporal-architect-author-go/SKILL.md` | Frontmatter `compatibility:` references new install lines. |

@@ -1,9 +1,9 @@
-var Tt = Object.defineProperty;
-var St = (e, t, s) => t in e ? Tt(e, t, { enumerable: !0, configurable: !0, writable: !0, value: s }) : e[t] = s;
-var an = (e, t, s) => St(e, typeof t != "symbol" ? t + "" : t, s);
-import { jsxs as i, jsx as n, Fragment as gn } from "react/jsx-runtime";
-import u from "react";
-const Mt = {
+var os = Object.defineProperty;
+var as = (e, n, s) => n in e ? os(e, n, { enumerable: !0, configurable: !0, writable: !0, value: s }) : e[n] = s;
+var on = (e, n, s) => as(e, typeof n != "symbol" ? n + "" : n, s);
+import { jsxs as f, jsx as t, Fragment as Ge } from "react/jsx-runtime";
+import m from "react";
+const is = {
   summary: { nodes: 0, edges: 0, coarsenedEdges: 0, unresolved: 0, diagnostics: 0 },
   nodes: [],
   edges: [],
@@ -11,20 +11,20 @@ const Mt = {
   unresolved: [],
   diagnostics: []
 };
-function In(e, t) {
-  if (e.selectedFiles.size !== t.selectedFiles.size || e.visibleTypes.size !== t.visibleTypes.size) return !1;
-  for (const s of e.selectedFiles) if (!t.selectedFiles.has(s)) return !1;
-  for (const s of e.visibleTypes) if (!t.visibleTypes.has(s)) return !1;
+function Rn(e, n) {
+  if (e.selectedFiles.size !== n.selectedFiles.size || e.visibleTypes.size !== n.visibleTypes.size) return !1;
+  for (const s of e.selectedFiles) if (!n.selectedFiles.has(s)) return !1;
+  for (const s of e.visibleTypes) if (!n.visibleTypes.has(s)) return !1;
   return !0;
 }
-function lt(e) {
+function Rt(e) {
   return {
     selectedFiles: new Set(e.selectedFiles),
     visibleTypes: new Set(e.visibleTypes)
   };
 }
-function rt({ size: e = 16 }) {
-  return /* @__PURE__ */ i(
+function cs({ size: e = 16 }) {
+  return /* @__PURE__ */ f(
     "svg",
     {
       width: e,
@@ -37,14 +37,14 @@ function rt({ size: e = 16 }) {
       strokeLinejoin: "round",
       style: { display: "block" },
       children: [
-        /* @__PURE__ */ n("circle", { cx: "11", cy: "11", r: "7" }),
-        /* @__PURE__ */ n("line", { x1: "16.65", y1: "16.65", x2: "21", y2: "21" })
+        /* @__PURE__ */ t("circle", { cx: "11", cy: "11", r: "7" }),
+        /* @__PURE__ */ t("line", { x1: "16.65", y1: "16.65", x2: "21", y2: "21" })
       ]
     }
   );
 }
-function $t({ size: e = 14 }) {
-  return /* @__PURE__ */ n(
+function rs({ size: e = 14 }) {
+  return /* @__PURE__ */ t(
     "svg",
     {
       width: e,
@@ -52,12 +52,12 @@ function $t({ size: e = 14 }) {
       viewBox: "0 0 24 24",
       fill: "currentColor",
       style: { display: "block" },
-      children: /* @__PURE__ */ n("path", { d: "M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z" })
+      children: /* @__PURE__ */ t("path", { d: "M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z" })
     }
   );
 }
-function Ct({ size: e = 16 }) {
-  return /* @__PURE__ */ i(
+function ls({ size: e = 16 }) {
+  return /* @__PURE__ */ f(
     "svg",
     {
       width: e,
@@ -66,18 +66,222 @@ function Ct({ size: e = 16 }) {
       fill: "currentColor",
       style: { display: "block" },
       children: [
-        /* @__PURE__ */ n("g", { transform: "translate(0, 0) scale(0.65)", children: /* @__PURE__ */ n("path", { d: "M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z" }) }),
-        /* @__PURE__ */ n("g", { transform: "translate(9, 9) scale(0.55)", children: /* @__PURE__ */ n("path", { d: "M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z" }) })
+        /* @__PURE__ */ t("g", { transform: "translate(0, 0) scale(0.65)", children: /* @__PURE__ */ t("path", { d: "M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z" }) }),
+        /* @__PURE__ */ t("g", { transform: "translate(9, 9) scale(0.55)", children: /* @__PURE__ */ t("path", { d: "M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z" }) })
       ]
     }
   );
 }
-const C = {
-  workflow: { icon: "⚙⚙", label: "Workflow", cssVarPrefix: "workflow", SvgIcon: Ct },
-  activity: { icon: "⚙", label: "Activity", cssVarPrefix: "activity", SvgIcon: $t },
+const ke = {
+  namespace: {
+    label: "Namespace",
+    icon: "⧉",
+    defType: "namespaceDef",
+    ladder: "main",
+    tier: "container",
+    defaultVisible: !1,
+    color: {
+      fill: "#475569",
+      // slate-600
+      border: "#1E293B",
+      fillDark: "#94A3B8",
+      // slate-400
+      borderDark: "#475569",
+      cssVarSuffix: "namespace"
+    },
+    size: { r: 20, iconSize: 18 },
+    physics: {
+      charge: -850,
+      coreRadius: 85,
+      yBand: { min: -340, max: -120 }
+      // container band (shared with nexusEndpoint)
+    },
+    summaryKind: "containerCount"
+  },
+  nexusEndpoint: {
+    label: "Nexus Endpoint",
+    icon: "⌖",
+    defType: "nexusEndpointDef",
+    ladder: "nexus",
+    tier: "container",
+    defaultVisible: !1,
+    color: {
+      fill: "#9F1239",
+      // rose-900 — deep, sits just under namespace
+      border: "#4C0519",
+      fillDark: "#BE123C",
+      // rose-700 — lighter on dark
+      borderDark: "#881337",
+      cssVarSuffix: "nexus-endpoint"
+    },
+    size: { r: 15, iconSize: 14 },
+    physics: {
+      charge: -900,
+      coreRadius: 64,
+      yBand: { min: -340, max: -120 }
+      // container band aligned with namespace
+    },
+    summaryKind: "none"
+  },
+  worker: {
+    label: "Worker",
+    icon: "□",
+    defType: "workerDef",
+    ladder: "main",
+    tier: "host",
+    defaultVisible: !0,
+    color: {
+      fill: "#94A3B8",
+      // slate-400
+      border: "#475569",
+      fillDark: "#CBD5E1",
+      // slate-300
+      borderDark: "#64748B",
+      cssVarSuffix: "worker"
+    },
+    size: { r: 20, iconSize: 18 },
+    physics: {
+      charge: -770,
+      coreRadius: 72,
+      yBand: { min: -200, max: 120 }
+      // host band (shared with nexusService)
+    },
+    summaryKind: "hostRegistrations"
+  },
+  nexusService: {
+    label: "Nexus Service",
+    icon: "★",
+    defType: "nexusServiceDef",
+    ladder: "nexus",
+    tier: "host",
+    defaultVisible: !1,
+    color: {
+      fill: "#DB2777",
+      // pink-600
+      border: "#831843",
+      fillDark: "#EC4899",
+      // pink-500
+      borderDark: "#9D174D",
+      cssVarSuffix: "nexus-service"
+    },
+    size: { r: 20, iconSize: 18 },
+    physics: {
+      charge: -760,
+      coreRadius: 54,
+      yBand: { min: -200, max: 120 }
+      // host band aligned with worker
+    },
+    summaryKind: "hostRegistrations"
+  },
+  workflow: {
+    label: "Workflow",
+    icon: "⚙⚙",
+    defType: "workflowDef",
+    ladder: "main",
+    tier: "orchestrator",
+    defaultVisible: !0,
+    color: {
+      fill: "#8B7EC8",
+      border: "#5D4F95",
+      fillDark: "#A89BD8",
+      borderDark: "#6B5BB0",
+      cssVarSuffix: "workflow"
+    },
+    size: { r: 11, iconSize: 12 },
+    physics: {
+      charge: -360,
+      coreRadius: 38,
+      yBand: { min: 100, max: 460 }
+      // orchestrator band (shared with nexusOperation)
+    },
+    summaryKind: "degree"
+  },
+  nexusOperation: {
+    label: "Nexus Operation",
+    icon: "☆",
+    defType: "nexusOperationDef",
+    ladder: "nexus",
+    tier: "orchestrator",
+    defaultVisible: !1,
+    color: {
+      fill: "#F9A8D4",
+      border: "#BE185D",
+      borderDark: "#DB2777",
+      cssVarSuffix: "nexus-operation"
+    },
+    size: { r: 11, iconSize: 12 },
+    physics: {
+      charge: -560,
+      coreRadius: 58,
+      yBand: { min: 100, max: 460 }
+      // orchestrator band aligned with workflow
+    },
+    summaryKind: "degree"
+  },
+  activity: {
+    label: "Activity",
+    icon: "⚙",
+    defType: "activityDef",
+    ladder: "main",
+    tier: "leaf",
+    defaultVisible: !1,
+    color: {
+      fill: "#7CB9E8",
+      border: "#4A8BC2",
+      borderDark: "#5DA8DD",
+      cssVarSuffix: "activity"
+    },
+    size: { r: 8, iconSize: 10 },
+    physics: {
+      charge: -190,
+      coreRadius: 20,
+      yBand: { min: 170, max: 500 }
+    },
+    summaryKind: "degree"
+  }
+}, ds = {
+  namespace: "NS",
+  nexusEndpoint: "Ep",
+  worker: "Wk",
+  nexusService: "Nx",
+  workflow: "Wf",
+  nexusOperation: "Op",
+  activity: "Act"
+};
+function Ot(e) {
+  return ds[e];
+}
+const Oe = [
+  "namespace",
+  "nexusEndpoint",
+  "worker",
+  "nexusService",
+  "workflow",
+  "nexusOperation",
+  "activity"
+], ut = {
+  container: 0,
+  host: 1,
+  orchestrator: 2,
+  leaf: 3
+}, Lt = (e, n) => ut[ke[e].tier] - ut[ke[n].tier], Bt = Oe.filter((e) => ke[e].ladder === "main").sort(Lt), us = Oe.filter((e) => ke[e].ladder === "nexus").sort(Lt);
+function Ye(e) {
+  return ke[e];
+}
+const ps = {
+  baseMul: 0.6,
+  minZoomMul: 0.4,
+  maxZoomMul: 1.65
+};
+function _n(e, n) {
+  return n.baseMul * Math.max(n.minZoomMul, Math.min(n.maxZoomMul, e));
+}
+const Me = {
+  workflow: { icon: "⚙⚙", label: "Workflow", cssVarPrefix: "workflow", SvgIcon: ls },
+  activity: { icon: "⚙", label: "Activity", cssVarPrefix: "activity", SvgIcon: rs },
   worker: { icon: "□", label: "Worker", cssVarPrefix: "worker" },
-  namespace: { icon: "⧉", label: "Namespace", cssVarPrefix: "namespace" },
-  nexusService: { icon: "★", label: "Nexus Service", cssVarPrefix: "nexus-service" },
+  namespace: { icon: "⧉", label: "Namespace", cssVarPrefix: "namespace", iconSize: 16 },
+  nexusService: { icon: "★", label: "Nexus Service", cssVarPrefix: "nexus-service", iconSize: 16 },
   nexusOperation: { icon: "☆", label: "Nexus Operation", cssVarPrefix: "nexus-operation" },
   nexusEndpoint: { icon: "⌖", label: "Nexus Endpoint", cssVarPrefix: "nexus-endpoint" },
   nexusCall: { icon: "☆", label: "Nexus Call", cssVarPrefix: "nexus" },
@@ -97,336 +301,384 @@ const C = {
   raw: { icon: "≡", label: "Raw Code", cssVarPrefix: "raw" },
   breakContinue: { icon: "•", label: "Break/Continue", cssVarPrefix: "subtle" },
   error: { icon: "⚠", label: "Error", cssVarPrefix: "signal" }
-}, yn = [
-  { type: "namespaceDef", icon: C.namespace.icon, label: "Namespaces", defaultOn: !1 },
-  // Synthetic def type — endpoints live inside namespaceDef in the AST,
-  // but render as their own L1.5 nodes (parented to their namespace).
-  { type: "nexusEndpointDef", icon: C.nexusEndpoint.icon, label: "Nexus Endpoints", defaultOn: !1 },
-  { type: "workerDef", icon: C.worker.icon, label: "Workers", defaultOn: !0 },
-  { type: "nexusServiceDef", icon: C.nexusService.icon, label: "Nexus Services", defaultOn: !1 },
-  // Synthetic def type — operations live inside nexusServiceDef in the AST,
-  // but render as their own L3 nodes (parented to their service).
-  { type: "nexusOperationDef", icon: C.nexusOperation.icon, label: "Nexus Operations", defaultOn: !1 },
-  { type: "workflowDef", icon: C.workflow.icon, label: "Workflows", defaultOn: !0 },
-  { type: "activityDef", icon: C.activity.icon, label: "Activities", defaultOn: !1 }
-], jn = new Map(yn.map((e, t) => [e.type, t])), Et = {
-  signalDecl: { icon: C.signal.icon, keyword: "signal", cssClass: "declaration-signal" },
-  queryDecl: { icon: C.query.icon, keyword: "query", cssClass: "declaration-query" },
-  updateDecl: { icon: C.update.icon, keyword: "update", cssClass: "declaration-update" }
-}, Dt = {
-  complete: C.closeComplete,
-  fail: C.closeFail,
-  continue_as_new: C.closeContinueAsNew
-}, Ge = {
-  timer: C.timer,
-  signal: C.signal,
-  update: C.update,
-  activity: C.activity,
-  workflow: C.workflow,
-  nexus: C.nexusCall,
-  ident: C.conditionSet
-}, Ft = {
-  workflow: C.workflow,
-  activity: C.activity,
-  service: C.nexusService
 };
-function kn({ kind: e, size: t }) {
-  const s = C[e];
-  return s.SvgIcon ? /* @__PURE__ */ n(s.SvgIcon, { size: t }) : /* @__PURE__ */ n(gn, { children: s.icon });
+function hs(e) {
+  return (e.split(" ").pop() ?? e).endsWith("y") ? e.slice(0, -1) + "ies" : e + "s";
 }
-function le(e = !1, t = !0) {
-  const [s, o] = u.useState(e);
+const st = Oe.map((e) => ({
+  type: ke[e].defType,
+  icon: ke[e].icon,
+  label: hs(ke[e].label),
+  defaultOn: ke[e].defaultVisible
+})), pt = new Map(st.map((e, n) => [e.type, n])), fs = [
+  "nexusEndpointDef",
+  "nexusServiceDef",
+  "nexusOperationDef"
+], ms = [
+  { id: "namespaceDef", icon: ke.namespace.icon, label: "Namespaces", types: ["namespaceDef"] },
+  { id: "workerDef", icon: ke.worker.icon, label: "Workers", types: ["workerDef"] },
+  { id: "nexus", icon: ke.nexusEndpoint.icon, label: "Nexus", types: fs },
+  { id: "workflowDef", icon: ke.workflow.icon, label: "Workflows", types: ["workflowDef"] },
+  { id: "activityDef", icon: ke.activity.icon, label: "Activities", types: ["activityDef"] }
+], gs = {
+  signalDecl: { icon: Me.signal.icon, keyword: "signal", cssClass: "declaration-signal" },
+  queryDecl: { icon: Me.query.icon, keyword: "query", cssClass: "declaration-query" },
+  updateDecl: { icon: Me.update.icon, keyword: "update", cssClass: "declaration-update" }
+}, Xe = {
+  timer: Me.timer,
+  signal: Me.signal,
+  update: Me.update,
+  activity: Me.activity,
+  workflow: Me.workflow,
+  nexus: Me.nexusCall,
+  ident: Me.conditionSet
+};
+function He({ kind: e }) {
+  const n = Me[e];
+  return /* @__PURE__ */ t(
+    "span",
+    {
+      className: "block-icon",
+      style: n.iconSize ? { fontSize: `${n.iconSize}px` } : void 0,
+      children: n.SvgIcon ? /* @__PURE__ */ t(n.SvgIcon, { size: 14 }) : n.icon
+    }
+  );
+}
+function ue(e = !1, n = !0) {
+  const [s, o] = m.useState(e);
   return [s, () => {
-    t && o((l) => !l);
+    n && o((r) => !r);
   }];
 }
-function Pn({ decl: e }) {
-  const t = e.body && e.body.length > 0, [s, o] = le(!1, t), { icon: a, keyword: l, cssClass: r } = Et[e.type];
-  let p = `${e.name}(${e.params})`;
-  return "returnType" in e && e.returnType && (p += ` → ${e.returnType}`), /* @__PURE__ */ i("div", { className: `declaration ${r} ${s ? "expanded" : ""}`, children: [
-    /* @__PURE__ */ i("div", { className: "declaration-header", onClick: o, children: [
-      t && /* @__PURE__ */ n("span", { className: "block-toggle", children: s ? "▼" : "▶" }),
-      !t && /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "declaration-icon", children: a }),
-      /* @__PURE__ */ n("span", { className: "declaration-keyword", children: l }),
-      /* @__PURE__ */ n("span", { className: "declaration-name", children: p })
+function pn({ options: e }) {
+  const [n, s] = ue(!1);
+  if (!e || !e.entries || e.entries.length === 0) return null;
+  const o = e.entries.map((a) => a.key).join(", ");
+  return /* @__PURE__ */ f("div", { className: `options-block ${n ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "options-block-header", onClick: s, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+      /* @__PURE__ */ t("span", { className: "options-block-label", children: "options" }),
+      !n && /* @__PURE__ */ t("span", { className: "options-block-summary", title: o, children: o })
     ] }),
-    s && t && /* @__PURE__ */ n("div", { className: "declaration-body", children: e.body.map((d) => /* @__PURE__ */ n(Re, { statement: d }, `${d.line}:${d.column}`)) })
+    n && /* @__PURE__ */ t("div", { className: "options-block-body", children: /* @__PURE__ */ t(_t, { entries: e.entries }) })
   ] });
 }
-function Wn({ def: e }) {
-  var N, f, P, b;
-  const [t, s] = le(), [o, a] = le(), [l, r] = le(), [p, d] = le(), m = e.state && (e.state.conditions && e.state.conditions.length > 0 || e.state.rawStmts && e.state.rawStmts.length > 0), T = e.signals && e.signals.length > 0, $ = e.queries && e.queries.length > 0, y = e.updates && e.updates.length > 0, I = (((f = (N = e.state) == null ? void 0 : N.conditions) == null ? void 0 : f.length) || 0) + (((b = (P = e.state) == null ? void 0 : P.rawStmts) == null ? void 0 : b.length) || 0);
-  return /* @__PURE__ */ i(gn, { children: [
-    m && /* @__PURE__ */ i("div", { className: "block-declarations-group", children: [
-      /* @__PURE__ */ i("div", { className: "declarations-header", onClick: s, children: [
-        /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-        /* @__PURE__ */ n("span", { className: "declarations-icon declaration-condition", children: C.conditionSet.icon }),
-        /* @__PURE__ */ n("span", { className: "declarations-label", children: "state" }),
-        /* @__PURE__ */ i("span", { className: "declarations-count", children: [
+function _t({ entries: e }) {
+  return /* @__PURE__ */ t("div", { className: "option-entry-list", children: e.map((n, s) => /* @__PURE__ */ t(ys, { entry: n }, `${n.key}:${s}`)) });
+}
+function ys({ entry: e }) {
+  return !!e.nested && e.nested.length > 0 ? /* @__PURE__ */ f("div", { className: "option-entry", children: [
+    /* @__PURE__ */ f("span", { className: "option-key", children: [
+      e.key,
+      ":"
+    ] }),
+    /* @__PURE__ */ t("div", { className: "option-nested", children: /* @__PURE__ */ t(_t, { entries: e.nested }) })
+  ] }) : /* @__PURE__ */ f("div", { className: "option-entry", children: [
+    /* @__PURE__ */ f("span", { className: "option-key", children: [
+      e.key,
+      ":"
+    ] }),
+    /* @__PURE__ */ t("span", { className: "option-value", children: e.value })
+  ] });
+}
+function Wn({ decl: e }) {
+  var h, g;
+  const n = !!(e.body && e.body.length > 0), s = !!((g = (h = e.options) == null ? void 0 : h.entries) != null && g.length), o = n || s, [a, r] = ue(!1, o), { icon: c, keyword: l, cssClass: i } = gs[e.type];
+  let d = `${e.name}(${e.params})`;
+  return "returnType" in e && e.returnType && (d += ` → ${e.returnType}`), /* @__PURE__ */ f("div", { className: `declaration ${i} ${a ? "expanded" : ""}`, children: [
+    /* @__PURE__ */ f("div", { className: "declaration-header", onClick: r, children: [
+      o && /* @__PURE__ */ t("span", { className: "block-toggle", children: a ? "▼" : "▶" }),
+      !o && /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t("span", { className: "declaration-icon", children: c }),
+      /* @__PURE__ */ t("span", { className: "declaration-keyword", children: l }),
+      /* @__PURE__ */ t("span", { className: "declaration-name", children: d })
+    ] }),
+    a && o && /* @__PURE__ */ f("div", { className: "declaration-body", children: [
+      /* @__PURE__ */ t(pn, { options: e.options }),
+      n && e.body.map((p) => /* @__PURE__ */ t(Be, { statement: p }, `${p.line}:${p.column}`))
+    ] })
+  ] });
+}
+function On({ def: e }) {
+  var v, k, A, P;
+  const [n, s] = ue(), [o, a] = ue(), [r, c] = ue(), [l, i] = ue(), d = e.state && (e.state.conditions && e.state.conditions.length > 0 || e.state.rawStmts && e.state.rawStmts.length > 0), h = e.signals && e.signals.length > 0, g = e.queries && e.queries.length > 0, p = e.updates && e.updates.length > 0, y = (((k = (v = e.state) == null ? void 0 : v.conditions) == null ? void 0 : k.length) || 0) + (((P = (A = e.state) == null ? void 0 : A.rawStmts) == null ? void 0 : P.length) || 0);
+  return /* @__PURE__ */ f(Ge, { children: [
+    d && /* @__PURE__ */ f("div", { className: "block-declarations-group", children: [
+      /* @__PURE__ */ f("div", { className: "declarations-header", onClick: s, children: [
+        /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+        /* @__PURE__ */ t("span", { className: "declarations-icon declaration-condition", children: Me.conditionSet.icon }),
+        /* @__PURE__ */ t("span", { className: "declarations-label", children: "state" }),
+        /* @__PURE__ */ f("span", { className: "declarations-count", children: [
           "(",
-          I,
+          y,
           ")"
         ] })
       ] }),
-      t && /* @__PURE__ */ i("div", { className: "block-declarations", children: [
-        (e.state.conditions || []).map((x) => /* @__PURE__ */ n("div", { className: "declaration declaration-condition", children: /* @__PURE__ */ i("div", { className: "declaration-header", children: [
-          /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-          /* @__PURE__ */ n("span", { className: "declaration-icon", children: C.conditionSet.icon }),
-          /* @__PURE__ */ n("span", { className: "declaration-keyword", children: "condition" }),
-          /* @__PURE__ */ n("span", { className: "declaration-name", children: x.name })
-        ] }) }, `${x.line}:${x.column}`)),
-        (e.state.rawStmts || []).map((x) => /* @__PURE__ */ n("div", { className: "declaration declaration-raw-state", children: /* @__PURE__ */ i("div", { className: "declaration-header", children: [
-          /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-          /* @__PURE__ */ n("span", { className: "declaration-icon", children: C.raw.icon }),
-          /* @__PURE__ */ n("span", { className: "declaration-name", children: x.text })
-        ] }) }, `${x.line}:${x.column}`))
+      n && /* @__PURE__ */ f("div", { className: "block-declarations", children: [
+        (e.state.conditions || []).map(($) => /* @__PURE__ */ t("div", { className: "declaration declaration-condition", children: /* @__PURE__ */ f("div", { className: "declaration-header", children: [
+          /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+          /* @__PURE__ */ t("span", { className: "declaration-icon", children: Me.conditionSet.icon }),
+          /* @__PURE__ */ t("span", { className: "declaration-keyword", children: "condition" }),
+          /* @__PURE__ */ t("span", { className: "declaration-name", children: $.name })
+        ] }) }, `${$.line}:${$.column}`)),
+        (e.state.rawStmts || []).map(($) => /* @__PURE__ */ t("div", { className: "declaration declaration-raw-state", children: /* @__PURE__ */ f("div", { className: "declaration-header", children: [
+          /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+          /* @__PURE__ */ t("span", { className: "declaration-icon", children: Me.raw.icon }),
+          /* @__PURE__ */ t("span", { className: "declaration-name", children: $.text })
+        ] }) }, `${$.line}:${$.column}`))
       ] })
     ] }),
-    T && /* @__PURE__ */ i("div", { className: "block-declarations-group", children: [
-      /* @__PURE__ */ i("div", { className: "declarations-header", onClick: a, children: [
-        /* @__PURE__ */ n("span", { className: "block-toggle", children: o ? "▼" : "▶" }),
-        /* @__PURE__ */ n("span", { className: "declarations-icon declaration-signal", children: C.signal.icon }),
-        /* @__PURE__ */ n("span", { className: "declarations-label", children: "signals" }),
-        /* @__PURE__ */ i("span", { className: "declarations-count", children: [
+    h && /* @__PURE__ */ f("div", { className: "block-declarations-group", children: [
+      /* @__PURE__ */ f("div", { className: "declarations-header", onClick: a, children: [
+        /* @__PURE__ */ t("span", { className: "block-toggle", children: o ? "▼" : "▶" }),
+        /* @__PURE__ */ t("span", { className: "declarations-icon declaration-signal", children: Me.signal.icon }),
+        /* @__PURE__ */ t("span", { className: "declarations-label", children: "signals" }),
+        /* @__PURE__ */ f("span", { className: "declarations-count", children: [
           "(",
           e.signals.length,
           ")"
         ] })
       ] }),
-      o && /* @__PURE__ */ n("div", { className: "block-declarations", children: e.signals.map((x) => /* @__PURE__ */ n(Pn, { decl: x }, `${x.line}:${x.column}`)) })
+      o && /* @__PURE__ */ t("div", { className: "block-declarations", children: e.signals.map(($) => /* @__PURE__ */ t(Wn, { decl: $ }, `${$.line}:${$.column}`)) })
     ] }),
-    $ && /* @__PURE__ */ i("div", { className: "block-declarations-group", children: [
-      /* @__PURE__ */ i("div", { className: "declarations-header", onClick: r, children: [
-        /* @__PURE__ */ n("span", { className: "block-toggle", children: l ? "▼" : "▶" }),
-        /* @__PURE__ */ n("span", { className: "declarations-icon declaration-query", children: C.query.icon }),
-        /* @__PURE__ */ n("span", { className: "declarations-label", children: "queries" }),
-        /* @__PURE__ */ i("span", { className: "declarations-count", children: [
+    g && /* @__PURE__ */ f("div", { className: "block-declarations-group", children: [
+      /* @__PURE__ */ f("div", { className: "declarations-header", onClick: c, children: [
+        /* @__PURE__ */ t("span", { className: "block-toggle", children: r ? "▼" : "▶" }),
+        /* @__PURE__ */ t("span", { className: "declarations-icon declaration-query", children: Me.query.icon }),
+        /* @__PURE__ */ t("span", { className: "declarations-label", children: "queries" }),
+        /* @__PURE__ */ f("span", { className: "declarations-count", children: [
           "(",
           e.queries.length,
           ")"
         ] })
       ] }),
-      l && /* @__PURE__ */ n("div", { className: "block-declarations", children: e.queries.map((x) => /* @__PURE__ */ n(Pn, { decl: x }, `${x.line}:${x.column}`)) })
+      r && /* @__PURE__ */ t("div", { className: "block-declarations", children: e.queries.map(($) => /* @__PURE__ */ t(Wn, { decl: $ }, `${$.line}:${$.column}`)) })
     ] }),
-    y && /* @__PURE__ */ i("div", { className: "block-declarations-group", children: [
-      /* @__PURE__ */ i("div", { className: "declarations-header", onClick: d, children: [
-        /* @__PURE__ */ n("span", { className: "block-toggle", children: p ? "▼" : "▶" }),
-        /* @__PURE__ */ n("span", { className: "declarations-icon declaration-update", children: C.update.icon }),
-        /* @__PURE__ */ n("span", { className: "declarations-label", children: "updates" }),
-        /* @__PURE__ */ i("span", { className: "declarations-count", children: [
+    p && /* @__PURE__ */ f("div", { className: "block-declarations-group", children: [
+      /* @__PURE__ */ f("div", { className: "declarations-header", onClick: i, children: [
+        /* @__PURE__ */ t("span", { className: "block-toggle", children: l ? "▼" : "▶" }),
+        /* @__PURE__ */ t("span", { className: "declarations-icon declaration-update", children: Me.update.icon }),
+        /* @__PURE__ */ t("span", { className: "declarations-label", children: "updates" }),
+        /* @__PURE__ */ f("span", { className: "declarations-count", children: [
           "(",
           e.updates.length,
           ")"
         ] })
       ] }),
-      p && /* @__PURE__ */ n("div", { className: "block-declarations", children: e.updates.map((x) => /* @__PURE__ */ n(Pn, { decl: x }, `${x.line}:${x.column}`)) })
+      l && /* @__PURE__ */ t("div", { className: "block-declarations", children: e.updates.map(($) => /* @__PURE__ */ t(Wn, { decl: $ }, `${$.line}:${$.column}`)) })
     ] }),
-    /* @__PURE__ */ n("div", { children: (e.body || []).map((x) => /* @__PURE__ */ n(Re, { statement: x }, `${x.line}:${x.column}`)) })
+    /* @__PURE__ */ t(it, { statements: e.body || [] })
   ] });
 }
-function qn({ def: e }) {
-  const [t, s] = le(), o = `${e.name}(${e.params})${e.returnType ? ` → ${e.returnType}` : ""}`, a = u.useMemo(() => {
-    const l = /* @__PURE__ */ new Map(), r = /* @__PURE__ */ new Map(), p = /* @__PURE__ */ new Map();
-    for (const d of e.signals || []) l.set(d.name, d);
-    for (const d of e.queries || []) r.set(d.name, d);
-    for (const d of e.updates || []) p.set(d.name, d);
-    return { signals: l, queries: r, updates: p };
+function ot({ def: e }) {
+  const [n, s] = ue(), o = `${e.name}(${e.params})${e.returnType ? ` → ${e.returnType}` : ""}`, a = m.useMemo(() => {
+    const r = /* @__PURE__ */ new Map(), c = /* @__PURE__ */ new Map(), l = /* @__PURE__ */ new Map();
+    for (const i of e.signals || []) r.set(i.name, i);
+    for (const i of e.queries || []) c.set(i.name, i);
+    for (const i of e.updates || []) l.set(i.name, i);
+    return { signals: r, queries: c, updates: l };
   }, [e]);
-  return /* @__PURE__ */ n(wn.Provider, { value: a, children: /* @__PURE__ */ i("div", { className: `block block-workflow-call ${t ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: s, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: /* @__PURE__ */ n(kn, { kind: "workflow" }) }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "workflow" }),
-      /* @__PURE__ */ n("span", { className: "block-signature", children: o })
+  return /* @__PURE__ */ t(kn.Provider, { value: a, children: /* @__PURE__ */ f("div", { className: `block block-workflow-call ${n ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: s, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+      /* @__PURE__ */ t(He, { kind: "workflow" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "workflow" }),
+      /* @__PURE__ */ t("span", { className: "block-signature", children: o })
     ] }),
-    t && /* @__PURE__ */ n("div", { className: "block-body", children: /* @__PURE__ */ n(Wn, { def: e }) })
+    n && /* @__PURE__ */ t("div", { className: "block-body", children: /* @__PURE__ */ t(On, { def: e }) })
   ] }) });
 }
-function Hn({ body: e }) {
-  const [t, s] = le(!0);
-  return /* @__PURE__ */ i("div", { className: `block block-sync-body ${t ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: s, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "handler" })
+function at({ body: e }) {
+  const [n, s] = ue(!0);
+  return /* @__PURE__ */ f("div", { className: `block block-sync-body ${n ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: s, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "handler" })
     ] }),
-    t && /* @__PURE__ */ n("div", { className: "block-body", children: e.map((o) => /* @__PURE__ */ n(Re, { statement: o }, `${o.line}:${o.column}`)) })
+    n && /* @__PURE__ */ t("div", { className: "block-body", children: e.map((o) => /* @__PURE__ */ t(Be, { statement: o }, `${o.line}:${o.column}`)) })
   ] });
 }
-function Qe({ defName: e, defType: t, showDefinition: s }) {
-  const o = u.useContext(bt), a = [];
-  if (s && a.push({ label: "Def", targets: [s] }), e && t) {
-    const r = `${t}:${e}`, p = o.callers.get(r);
-    if (p && p.length > 0 && a.push({ label: "Callers", targets: p.map((d) => ({ name: d.defName, type: d.defType })) }), t === "workflowDef" || t === "activityDef" || t === "nexusServiceDef") {
-      const d = o.workerOf.get(r);
-      d && d.length > 0 && a.push({ label: "Worker", targets: d.map((m) => ({ name: m, type: "workerDef" })) });
+function tn({ defName: e, defType: n, showDefinition: s }) {
+  const o = m.useContext(ss), a = [];
+  if (s && a.push({ label: "Def", targets: [s] }), e && n) {
+    const c = `${n}:${e}`, l = o.callers.get(c);
+    if (l && l.length > 0 && a.push({ label: "Callers", targets: l.map((i) => ({ name: i.defName, type: i.defType })) }), n === "workflowDef" || n === "activityDef" || n === "nexusServiceDef") {
+      const i = o.workerOf.get(c);
+      i && i.length > 0 && a.push({ label: "Worker", targets: i.map((d) => ({ name: d, type: "workerDef" })) });
     }
-    if (t === "workerDef") {
-      const d = o.namespaceOf.get(r);
-      d && d.length > 0 && a.push({ label: "NS", targets: d.map((m) => ({ name: m, type: "namespaceDef" })) });
+    if (n === "workerDef") {
+      const i = o.namespaceOf.get(c);
+      i && i.length > 0 && a.push({ label: "NS", targets: i.map((d) => ({ name: d, type: "namespaceDef" })) });
     }
   }
-  const l = e && t && o.showInGraph ? () => o.showInGraph(e, t) : null;
-  return a.length === 0 && !l ? null : /* @__PURE__ */ i("div", { className: "ctx-nav-buttons", onClick: (r) => r.stopPropagation(), children: [
-    a.map((r) => /* @__PURE__ */ n(At, { action: r, onNavigate: o.navigateTo }, r.label)),
-    l && /* @__PURE__ */ n("button", { className: "ctx-nav-btn", onClick: l, title: "Show in Graph view", children: "Graph" })
+  const r = e && n && o.showInGraph ? () => o.showInGraph(e, n) : null;
+  return a.length === 0 && !r ? null : /* @__PURE__ */ f("div", { className: "ctx-nav-buttons", onClick: (c) => c.stopPropagation(), children: [
+    a.map((c) => /* @__PURE__ */ t(ks, { action: c, onNavigate: o.navigateTo }, c.label)),
+    r && /* @__PURE__ */ t("button", { className: "ctx-nav-btn", onClick: r, title: "Show in Graph view", children: "Graph" })
   ] });
 }
-function At({ action: e, onNavigate: t }) {
-  const [s, o] = u.useState(!1), a = u.useRef(null);
-  return u.useEffect(() => {
+function ks({ action: e, onNavigate: n }) {
+  const [s, o] = m.useState(!1), a = m.useRef(null);
+  return m.useEffect(() => {
     if (!s) return;
-    const r = (p) => {
-      a.current && !a.current.contains(p.target) && o(!1);
+    const c = (l) => {
+      a.current && !a.current.contains(l.target) && o(!1);
     };
-    return document.addEventListener("mousedown", r), () => document.removeEventListener("mousedown", r);
-  }, [s]), u.useEffect(() => {
+    return document.addEventListener("mousedown", c), () => document.removeEventListener("mousedown", c);
+  }, [s]), m.useEffect(() => {
     if (!s) return;
-    const r = (p) => {
-      p.key === "Escape" && (p.stopPropagation(), o(!1));
+    const c = (l) => {
+      l.key === "Escape" && (l.stopPropagation(), o(!1));
     };
-    return document.addEventListener("keydown", r), () => document.removeEventListener("keydown", r);
-  }, [s]), /* @__PURE__ */ i("div", { className: "ctx-nav-btn-wrapper", ref: a, children: [
-    /* @__PURE__ */ i(
+    return document.addEventListener("keydown", c), () => document.removeEventListener("keydown", c);
+  }, [s]), /* @__PURE__ */ f("div", { className: "ctx-nav-btn-wrapper", ref: a, children: [
+    /* @__PURE__ */ f(
       "button",
       {
         className: `ctx-nav-btn ${s ? "active" : ""}`,
         onClick: () => {
-          e.targets.length === 1 ? t(e.targets[0].name, e.targets[0].type) : o(!s);
+          e.targets.length === 1 ? n(e.targets[0].name, e.targets[0].type) : o(!s);
         },
         title: `Show ${e.label.toLowerCase()}`,
         children: [
           e.label,
-          e.targets.length > 1 && /* @__PURE__ */ n("span", { className: "ctx-nav-count", children: e.targets.length })
+          e.targets.length > 1 && /* @__PURE__ */ t("span", { className: "ctx-nav-count", children: e.targets.length })
         ]
       }
     ),
-    s && /* @__PURE__ */ n("div", { className: "ctx-nav-popover", children: e.targets.map((r) => /* @__PURE__ */ n(
+    s && /* @__PURE__ */ t("div", { className: "ctx-nav-popover", children: e.targets.map((c) => /* @__PURE__ */ t(
       "button",
       {
         className: "ctx-nav-popover-item",
         onClick: () => {
-          t(r.name, r.type), o(!1);
+          n(c.name, c.type), o(!1);
         },
-        children: r.name
+        children: c.name
       },
-      `${r.type}:${r.name}`
+      `${c.type}:${c.name}`
     )) })
   ] });
 }
-function It({ stmt: e }) {
-  const s = u.useContext(Xe).activities.get(e.name), o = !!s, [a, l] = le(!1, o), r = Rt(e);
-  return /* @__PURE__ */ i("div", { className: `block block-activity ${a ? "expanded" : "collapsed"} ${o ? "" : "block-unresolved"}`, children: [
-    o && /* @__PURE__ */ n(Qe, { showDefinition: { name: e.name, type: "activityDef" } }),
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: l, children: [
-      o ? /* @__PURE__ */ n("span", { className: "block-toggle", children: a ? "▼" : "▶" }) : /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: /* @__PURE__ */ n(kn, { kind: "activity" }) }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "activity" }),
-      /* @__PURE__ */ n("span", { className: "block-signature", title: r, children: r }),
-      !o && /* @__PURE__ */ n("span", { className: "block-unresolved-badge", children: "?" })
+function vs({ stmt: e }) {
+  var d, h;
+  const s = m.useContext(Ke).activities.get(e.name), o = !!s, a = !!((h = (d = e.options) == null ? void 0 : d.entries) != null && h.length), r = o || a, [c, l] = ue(!1, r), i = Ns(e);
+  return /* @__PURE__ */ f("div", { className: `block block-activity ${c ? "expanded" : "collapsed"} ${o ? "" : "block-unresolved"}`, children: [
+    o && /* @__PURE__ */ t(tn, { showDefinition: { name: e.name, type: "activityDef" } }),
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: l, children: [
+      r ? /* @__PURE__ */ t("span", { className: "block-toggle", children: c ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "activity" }),
+      /* @__PURE__ */ t("span", { className: "block-signature", title: i, children: i }),
+      !o && /* @__PURE__ */ t("span", { className: "block-unresolved-badge", children: "?" })
     ] }),
-    a && o && /* @__PURE__ */ n("div", { className: "block-body", children: (s.body || []).length > 0 ? (s.body || []).map((p) => /* @__PURE__ */ n(Re, { statement: p }, `${p.line}:${p.column}`)) : /* @__PURE__ */ n("div", { className: "block-empty-body", children: "No implementation defined" }) })
+    c && r && /* @__PURE__ */ f("div", { className: "block-body", children: [
+      /* @__PURE__ */ t(pn, { options: e.options }),
+      o && ((s.body || []).length > 0 ? (s.body || []).map((g) => /* @__PURE__ */ t(Be, { statement: g }, `${g.line}:${g.column}`)) : /* @__PURE__ */ t("div", { className: "block-empty-body", children: "No implementation defined" }))
+    ] })
   ] });
 }
-function Wt({ stmt: e }) {
-  const s = u.useContext(Xe).workflows.get(e.name), o = !!s, [a, l] = le(!1, o), r = e.mode === "detach" ? "detach " : "", p = Ot(e);
-  return /* @__PURE__ */ i("div", { className: `block block-workflow-call block-mode-${e.mode} ${a ? "expanded" : "collapsed"} ${o ? "" : "block-unresolved"}`, children: [
-    o && /* @__PURE__ */ n(Qe, { showDefinition: { name: e.name, type: "workflowDef" } }),
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: l, children: [
-      o ? /* @__PURE__ */ n("span", { className: "block-toggle", children: a ? "▼" : "▶" }) : /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: /* @__PURE__ */ n(kn, { kind: "workflow" }) }),
-      /* @__PURE__ */ i("span", { className: "block-keyword", children: [
-        r,
+function bs({ stmt: e }) {
+  var h, g;
+  const s = m.useContext(Ke).workflows.get(e.name), o = !!s, a = !!((g = (h = e.options) == null ? void 0 : h.entries) != null && g.length), r = o || a, [c, l] = ue(!1, r), i = e.mode === "detach" ? "detach " : "", d = Ts(e);
+  return /* @__PURE__ */ f("div", { className: `block block-workflow-call block-mode-${e.mode} ${c ? "expanded" : "collapsed"} ${o ? "" : "block-unresolved"}`, children: [
+    o && /* @__PURE__ */ t(tn, { showDefinition: { name: e.name, type: "workflowDef" } }),
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: l, children: [
+      r ? /* @__PURE__ */ t("span", { className: "block-toggle", children: c ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ f("span", { className: "block-keyword", children: [
+        i,
         "workflow"
       ] }),
-      /* @__PURE__ */ n("span", { className: "block-signature", title: p, children: p }),
-      !o && /* @__PURE__ */ n("span", { className: "block-unresolved-badge", children: "?" })
+      /* @__PURE__ */ t("span", { className: "block-signature", title: d, children: d }),
+      !o && /* @__PURE__ */ t("span", { className: "block-unresolved-badge", children: "?" })
     ] }),
-    a && o && /* @__PURE__ */ n("div", { className: "block-body", children: /* @__PURE__ */ n(Lt, { def: s, children: /* @__PURE__ */ n(Wn, { def: s }) }) })
+    c && r && /* @__PURE__ */ f("div", { className: "block-body", children: [
+      /* @__PURE__ */ t(pn, { options: e.options }),
+      o && /* @__PURE__ */ t(ws, { def: s, children: /* @__PURE__ */ t(On, { def: s }) })
+    ] })
   ] });
 }
-function Lt({ def: e, children: t }) {
-  const s = u.useMemo(() => {
-    const o = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map(), l = /* @__PURE__ */ new Map();
-    for (const r of e.signals || []) o.set(r.name, r);
-    for (const r of e.queries || []) a.set(r.name, r);
-    for (const r of e.updates || []) l.set(r.name, r);
-    return { signals: o, queries: a, updates: l };
+function ws({ def: e, children: n }) {
+  const s = m.useMemo(() => {
+    const o = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map(), r = /* @__PURE__ */ new Map();
+    for (const c of e.signals || []) o.set(c.name, c);
+    for (const c of e.queries || []) a.set(c.name, c);
+    for (const c of e.updates || []) r.set(c.name, c);
+    return { signals: o, queries: a, updates: r };
   }, [e]);
-  return /* @__PURE__ */ n(wn.Provider, { value: s, children: t });
+  return /* @__PURE__ */ t(kn.Provider, { value: s, children: n });
 }
-function Pt({ stmt: e }) {
-  var y;
-  const t = u.useContext(Xe), s = t.nexusServices.get(e.service), o = (y = s == null ? void 0 : s.operations) == null ? void 0 : y.find((I) => I.name === e.operation), a = !!o, l = (o == null ? void 0 : o.opType) === "async" && o.workflowName ? t.workflows.get(o.workflowName) : void 0, r = (o == null ? void 0 : o.opType) === "async" ? !!l : !!(o != null && o.body && o.body.length > 0), [p, d] = le(!1, r), m = e.detach ? "detach " : "", T = `${e.endpoint} ${e.service}.${e.operation}(${e.args})`, $ = e.result ? ` → ${e.result}` : "";
-  return /* @__PURE__ */ i("div", { className: `block block-nexus-call ${e.detach ? "block-mode-detach" : ""} ${p ? "expanded" : "collapsed"} ${!a && e.service ? "block-unresolved" : ""}`, children: [
-    s && /* @__PURE__ */ n(Qe, { showDefinition: { name: e.service, type: "nexusServiceDef" } }),
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: d, children: [
-      r ? /* @__PURE__ */ n("span", { className: "block-toggle", children: p ? "▼" : "▶" }) : /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-icon block-icon-nexus-call", children: C.nexusCall.icon }),
-      /* @__PURE__ */ i("span", { className: "block-keyword", children: [
-        m,
+function xs({ stmt: e }) {
+  var v, k, A;
+  const n = m.useContext(Ke), s = n.nexusServices.get(e.service), o = (v = s == null ? void 0 : s.operations) == null ? void 0 : v.find((P) => P.name === e.operation), a = !!o, r = (o == null ? void 0 : o.opType) === "async" && o.workflowName ? n.workflows.get(o.workflowName) : void 0, c = (o == null ? void 0 : o.opType) === "async" ? !!r : !!(o != null && o.body && o.body.length > 0), l = !!((A = (k = e.options) == null ? void 0 : k.entries) != null && A.length), i = c || l, [d, h] = ue(!1, i), g = e.detach ? "detach " : "", p = `${e.endpoint} ${e.service}.${e.operation}(${e.args})`, y = e.result ? ` → ${e.result}` : "";
+  return /* @__PURE__ */ f("div", { className: `block block-nexus-call ${e.detach ? "block-mode-detach" : ""} ${d ? "expanded" : "collapsed"} ${!a && e.service ? "block-unresolved" : ""}`, children: [
+    s && /* @__PURE__ */ t(tn, { showDefinition: { name: e.service, type: "nexusServiceDef" } }),
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: h, children: [
+      i ? /* @__PURE__ */ t("span", { className: "block-toggle", children: d ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ f("span", { className: "block-keyword", children: [
+        g,
         "nexus"
       ] }),
-      /* @__PURE__ */ i("span", { className: "block-signature", title: `${T}${$}`, children: [
-        T,
-        $
+      /* @__PURE__ */ f("span", { className: "block-signature", title: `${p}${y}`, children: [
+        p,
+        y
       ] }),
-      !a && e.service && /* @__PURE__ */ n("span", { className: "block-unresolved-badge", children: "?" })
+      !a && e.service && /* @__PURE__ */ t("span", { className: "block-unresolved-badge", children: "?" })
     ] }),
-    p && r && /* @__PURE__ */ n("div", { className: "block-body", children: (o == null ? void 0 : o.opType) === "async" && l ? /* @__PURE__ */ n(qn, { def: l }) : o != null && o.body ? /* @__PURE__ */ n(Hn, { body: o.body }) : /* @__PURE__ */ n("div", { className: "block-empty-body", children: "No implementation defined" }) })
+    d && i && /* @__PURE__ */ f("div", { className: "block-body", children: [
+      /* @__PURE__ */ t(pn, { options: e.options }),
+      c && ((o == null ? void 0 : o.opType) === "async" && r ? /* @__PURE__ */ t(ot, { def: r }) : o != null && o.body ? /* @__PURE__ */ t(at, { body: o.body }) : null)
+    ] })
   ] });
 }
-function Rt(e) {
-  let t = `${e.name}(${e.args})`;
-  return e.result && (t += ` → ${e.result}`), t;
+function Ns(e) {
+  let n = `${e.name}(${e.args})`;
+  return e.result && (n += ` → ${e.result}`), n;
 }
-function Ot(e) {
-  let t = `${e.name}(${e.args})`;
-  return e.result && (t += ` → ${e.result}`), t;
+function Ts(e) {
+  let n = `${e.name}(${e.args})`;
+  return e.result && (n += ` → ${e.result}`), n;
 }
-function it(e, t, s) {
+function Wt(e, n, s) {
   var o;
   switch (e.kind) {
     case "timer":
-      return { icon: Ge.timer.icon, keyword: "timer", signature: `(${e.timer.duration || ""})`, isUnresolved: !1 };
+      return { icon: Xe.timer.icon, keyword: "timer", signature: `(${e.timer.duration || ""})`, isUnresolved: !1 };
     case "signal": {
-      const a = e.signal.name || "", l = e.signal.params ? ` → ${e.signal.params}` : "", r = s.signals.get(a);
-      return { icon: Ge.signal.icon, keyword: "signal", signature: `${a}${l}`, expandableDef: r, isUnresolved: !r };
+      const a = e.signal.name || "", r = e.signal.params ? ` → ${e.signal.params}` : "", c = s.signals.get(a);
+      return { icon: Xe.signal.icon, keyword: "signal", signature: `${a}${r}`, expandableDef: c, isUnresolved: !c };
     }
     case "update": {
-      const a = e.update.name || "", l = e.update.params ? ` → ${e.update.params}` : "", r = s.updates.get(a);
-      return { icon: Ge.update.icon, keyword: "update", signature: `${a}${l}`, expandableDef: r, isUnresolved: !r };
+      const a = e.update.name || "", r = e.update.params ? ` → ${e.update.params}` : "", c = s.updates.get(a);
+      return { icon: Xe.update.icon, keyword: "update", signature: `${a}${r}`, expandableDef: c, isUnresolved: !c };
     }
     case "activity": {
-      const a = `${e.activity.name || ""}(${e.activity.args || ""})`, l = e.activity.result ? ` → ${e.activity.result}` : "", r = t.activities.get(e.activity.name || "");
-      return { icon: Ge.activity.icon, keyword: "activity", signature: `${a}${l}`, expandableDef: r, isUnresolved: !r };
+      const a = `${e.activity.name || ""}(${e.activity.args || ""})`, r = e.activity.result ? ` → ${e.activity.result}` : "", c = n.activities.get(e.activity.name || "");
+      return { icon: Xe.activity.icon, keyword: "activity", signature: `${a}${r}`, expandableDef: c, isUnresolved: !c };
     }
     case "workflow": {
-      const a = e.workflow.mode === "detach" ? "detach " : "", l = `${e.workflow.name || ""}(${e.workflow.args || ""})`, r = e.workflow.result ? ` → ${e.workflow.result}` : "", p = t.workflows.get(e.workflow.name || "");
-      return { icon: Ge.workflow.icon, keyword: `${a}workflow`, signature: `${l}${r}`, expandableDef: p, isUnresolved: !p };
+      const a = e.workflow.mode === "detach" ? "detach " : "", r = `${e.workflow.name || ""}(${e.workflow.args || ""})`, c = e.workflow.result ? ` → ${e.workflow.result}` : "", l = n.workflows.get(e.workflow.name || "");
+      return { icon: Xe.workflow.icon, keyword: `${a}workflow`, signature: `${r}${c}`, expandableDef: l, isUnresolved: !l };
     }
     case "nexus": {
-      const a = e.nexus.detach ? "detach " : "", l = `${e.nexus.endpoint || ""} ${e.nexus.service || ""}.${e.nexus.operation || ""}(${e.nexus.args || ""})`, r = e.nexus.result ? ` → ${e.nexus.result}` : "", p = t.nexusServices.get(e.nexus.service || ""), d = (o = p == null ? void 0 : p.operations) == null ? void 0 : o.find((T) => T.name === (e.nexus.operation || "")), m = !!(e.nexus.service && !p);
-      if ((d == null ? void 0 : d.opType) === "async" && d.workflowName) {
-        const T = t.workflows.get(d.workflowName);
-        if (T)
-          return { icon: Ge.nexus.icon, keyword: `${a}nexus`, signature: `${l}${r}`, nexusAsyncWorkflow: T, isUnresolved: m };
-      } else if ((d == null ? void 0 : d.opType) === "sync" && d.body)
-        return { icon: Ge.nexus.icon, keyword: `${a}nexus`, signature: `${l}${r}`, nexusSyncBody: d.body, isUnresolved: m };
-      return { icon: Ge.nexus.icon, keyword: `${a}nexus`, signature: `${l}${r}`, isUnresolved: m };
+      const a = e.nexus.detach ? "detach " : "", r = `${e.nexus.endpoint || ""} ${e.nexus.service || ""}.${e.nexus.operation || ""}(${e.nexus.args || ""})`, c = e.nexus.result ? ` → ${e.nexus.result}` : "", l = n.nexusServices.get(e.nexus.service || ""), i = (o = l == null ? void 0 : l.operations) == null ? void 0 : o.find((h) => h.name === (e.nexus.operation || "")), d = !!(e.nexus.service && !l);
+      if ((i == null ? void 0 : i.opType) === "async" && i.workflowName) {
+        const h = n.workflows.get(i.workflowName);
+        if (h)
+          return { icon: Xe.nexus.icon, keyword: `${a}nexus`, signature: `${r}${c}`, nexusAsyncWorkflow: h, isUnresolved: d };
+      } else if ((i == null ? void 0 : i.opType) === "sync" && i.body)
+        return { icon: Xe.nexus.icon, keyword: `${a}nexus`, signature: `${r}${c}`, nexusSyncBody: i.body, isUnresolved: d };
+      return { icon: Xe.nexus.icon, keyword: `${a}nexus`, signature: `${r}${c}`, isUnresolved: d };
     }
     case "ident": {
-      const a = e.ident.name || "", l = e.ident.result ? ` → ${e.ident.result}` : "";
-      return { icon: Ge.ident.icon, keyword: "", signature: `${a}${l}`, isUnresolved: !1 };
+      const a = e.ident.name || "", r = e.ident.result ? ` → ${e.ident.result}` : "";
+      return { icon: Xe.ident.icon, keyword: "", signature: `${a}${r}`, isUnresolved: !1 };
     }
     default:
       return { icon: "?", keyword: "", signature: "", isUnresolved: !1 };
   }
 }
-function Bt(e, t, s) {
-  var l, r;
-  const o = it(e.target, t, s), a = e.target.kind === "workflow" && ((l = e.target.workflow) == null ? void 0 : l.mode) === "detach" || e.target.kind === "nexus" && ((r = e.target.nexus) == null ? void 0 : r.detach);
+function Ms(e, n, s) {
+  var r, c;
+  const o = Wt(e.target, n, s), a = e.target.kind === "workflow" && ((r = e.target.workflow) == null ? void 0 : r.mode) === "detach" || e.target.kind === "nexus" && ((c = e.target.nexus) == null ? void 0 : c.detach);
   return {
     ...o,
     // Activity/workflow/nexus use SVG icons at block level, not text icons
@@ -435,11 +687,11 @@ function Bt(e, t, s) {
     blockClass: `block-await-stmt block-await-stmt-${e.target.kind}${a ? " block-mode-detach" : ""}`
   };
 }
-function Yt(e, t, s) {
-  var a, l;
+function Ss(e, n, s) {
+  var a, r;
   if (e.awaitAll != null)
-    return { contentClass: "tagged-await-all", icon: C.awaitAll.icon, keyword: "await all", signature: `${((l = (a = e.awaitAll) == null ? void 0 : a.body) == null ? void 0 : l.length) || 0} branch(es)`, isUnresolved: !1 };
-  const o = it(e.target, t, s);
+    return { contentClass: "tagged-await-all", icon: Me.awaitAll.icon, keyword: "await all", signature: `${((r = (a = e.awaitAll) == null ? void 0 : a.body) == null ? void 0 : r.length) || 0} branch(es)`, isUnresolved: !1 };
+  const o = Wt(e.target, n, s);
   return {
     icon: o.icon,
     keyword: o.keyword,
@@ -448,154 +700,148 @@ function Yt(e, t, s) {
     contentClass: `tagged-${e.target.kind}`
   };
 }
-function _t({ stmt: e }) {
-  const t = u.useContext(Xe), s = u.useContext(wn), { icon: o, keyword: a, signature: l, blockClass: r, expandableDef: p, nexusAsyncWorkflow: d, nexusSyncBody: m, isUnresolved: T } = Bt(e, t, s), $ = !!(p || d || m), [y, I] = le(!1, $);
-  return /* @__PURE__ */ i("div", { className: `block ${r} ${y ? "expanded" : "collapsed"} ${T ? "block-unresolved" : ""}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: I, children: [
-      $ ? /* @__PURE__ */ n("span", { className: "block-toggle", children: y ? "▼" : "▶" }) : /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: o }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: a }),
-      /* @__PURE__ */ n("span", { className: "block-signature", children: l }),
-      T && /* @__PURE__ */ n("span", { className: "block-unresolved-badge", children: "?" })
+function Es({ stmt: e }) {
+  const n = m.useContext(Ke), s = m.useContext(kn), { keyword: o, signature: a, blockClass: r, expandableDef: c, nexusAsyncWorkflow: l, nexusSyncBody: i, isUnresolved: d } = Ms(e, n, s), h = !!(c || l || i), [g, p] = ue(!1, h);
+  return /* @__PURE__ */ f("div", { className: `block ${r} ${g ? "expanded" : "collapsed"} ${d ? "block-unresolved" : ""}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: p, children: [
+      h ? /* @__PURE__ */ t("span", { className: "block-toggle", children: g ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: o }),
+      /* @__PURE__ */ t("span", { className: "block-signature", children: a }),
+      d && /* @__PURE__ */ t("span", { className: "block-unresolved-badge", children: "?" })
     ] }),
-    y && $ && /* @__PURE__ */ n("div", { className: "block-body", children: d ? /* @__PURE__ */ n(qn, { def: d }) : m ? /* @__PURE__ */ n(Hn, { body: m }) : p && (p.body || []).length > 0 ? (p.body || []).map((N) => /* @__PURE__ */ n(Re, { statement: N }, `${N.line}:${N.column}`)) : /* @__PURE__ */ n("div", { className: "block-empty-body", children: "No implementation defined" }) })
+    g && h && /* @__PURE__ */ t("div", { className: "block-body", children: l ? /* @__PURE__ */ t(ot, { def: l }) : i ? /* @__PURE__ */ t(at, { body: i }) : c && (c.body || []).length > 0 ? (c.body || []).map((y) => /* @__PURE__ */ t(Be, { statement: y }, `${y.line}:${y.column}`)) : /* @__PURE__ */ t("div", { className: "block-empty-body", children: "No implementation defined" }) })
   ] });
 }
-function dt({ stmt: e }) {
-  const [t, s] = le(!0);
-  return /* @__PURE__ */ i("div", { className: `block block-await-all ${t ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: s, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: C.awaitAll.icon }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "await all" }),
-      /* @__PURE__ */ i("span", { className: "block-signature", children: [
+function Vt({ stmt: e }) {
+  const [n, s] = ue(!0);
+  return /* @__PURE__ */ f("div", { className: `block block-await-all ${n ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: s, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "await all" }),
+      /* @__PURE__ */ f("span", { className: "block-signature", children: [
         (e.body || []).length,
         " branch(es)"
       ] })
     ] }),
-    t && /* @__PURE__ */ n("div", { className: "block-body", children: (e.body || []).map((o) => /* @__PURE__ */ n(Re, { statement: o }, `${o.line}:${o.column}`)) })
+    n && /* @__PURE__ */ t("div", { className: "block-body", children: (e.body || []).map((o) => /* @__PURE__ */ t(Be, { statement: o }, `${o.line}:${o.column}`)) })
   ] });
 }
-function Kt({ stmt: e }) {
-  const [t, s] = le(!0), o = e.cases.length === 1 ? "case" : "cases";
-  return /* @__PURE__ */ i("div", { className: `block block-await-one ${t ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: s, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "await one" }),
-      /* @__PURE__ */ i("span", { className: "block-signature", children: [
+function $s({ stmt: e }) {
+  const [n, s] = ue(!0), o = e.cases.length === 1 ? "case" : "cases";
+  return /* @__PURE__ */ f("div", { className: `block block-await-one ${n ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: s, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "await one" }),
+      /* @__PURE__ */ f("span", { className: "block-signature", children: [
         "first of ",
         e.cases.length,
         " ",
         o
       ] })
     ] }),
-    t && /* @__PURE__ */ n("div", { className: "block-body", children: e.cases.map((a) => /* @__PURE__ */ n(Vt, { awaitCase: a }, `${a.line}:${a.column}`)) })
+    n && /* @__PURE__ */ t("div", { className: "block-body", children: e.cases.map((a) => /* @__PURE__ */ t(Cs, { awaitCase: a }, `${a.line}:${a.column}`)) })
   ] });
 }
-function Vt({ awaitCase: e }) {
-  const t = u.useContext(Xe), s = u.useContext(wn), o = e.body && e.body.length > 0, a = o || !!e.awaitAll, [l, r] = le(!1, a), { contentClass: p, icon: d, keyword: m, signature: T, isUnresolved: $ } = Yt(e, t, s);
-  return /* @__PURE__ */ i("div", { className: `tagged-composite ${l ? "expanded" : ""} ${$ ? "tagged-unresolved" : ""}`, children: [
-    /* @__PURE__ */ n("div", { className: "tagged-tag", children: /* @__PURE__ */ n("span", { className: "tagged-tag-label", children: "option" }) }),
-    /* @__PURE__ */ i("div", { className: `tagged-content ${p} ${a ? "expandable" : ""}`, onClick: r, children: [
-      a && /* @__PURE__ */ n("span", { className: "block-toggle", children: l ? "▼" : "▶" }),
-      !a && /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "tagged-icon", children: d }),
-      /* @__PURE__ */ n("span", { className: "tagged-kind", children: m }),
-      /* @__PURE__ */ n("span", { className: "tagged-name", children: T }),
-      $ && /* @__PURE__ */ n("span", { className: "block-unresolved-badge", children: "?" })
+function Cs({ awaitCase: e }) {
+  const n = m.useContext(Ke), s = m.useContext(kn), o = e.body && e.body.length > 0, a = o || !!e.awaitAll, [r, c] = ue(!1, a), { contentClass: l, keyword: i, signature: d, isUnresolved: h } = Ss(e, n, s);
+  return /* @__PURE__ */ f("div", { className: `tagged-composite ${r ? "expanded" : ""} ${h ? "tagged-unresolved" : ""}`, children: [
+    /* @__PURE__ */ t("div", { className: "tagged-tag", children: /* @__PURE__ */ t("span", { className: "tagged-tag-label", children: "option" }) }),
+    /* @__PURE__ */ f("div", { className: `tagged-content ${l} ${a ? "expandable" : ""}`, onClick: c, children: [
+      a && /* @__PURE__ */ t("span", { className: "block-toggle", children: r ? "▼" : "▶" }),
+      !a && /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t("span", { className: "tagged-kind", children: i }),
+      /* @__PURE__ */ t("span", { className: "tagged-name", children: d }),
+      h && /* @__PURE__ */ t("span", { className: "block-unresolved-badge", children: "?" })
     ] }),
-    l && /* @__PURE__ */ i("div", { className: "tagged-body", children: [
-      e.awaitAll && /* @__PURE__ */ n(dt, { stmt: e.awaitAll }),
-      o && e.body.map((y) => /* @__PURE__ */ n(Re, { statement: y }, `${y.line}:${y.column}`))
+    r && /* @__PURE__ */ f("div", { className: "tagged-body", children: [
+      e.awaitAll && /* @__PURE__ */ t(Vt, { stmt: e.awaitAll }),
+      o && e.body.map((g) => /* @__PURE__ */ t(Be, { statement: g }, `${g.line}:${g.column}`))
     ] })
   ] });
 }
-function qt({ stmt: e }) {
-  const [t, s] = le(!0);
-  return /* @__PURE__ */ i("div", { className: `block block-switch ${t ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: s, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "switch" }),
-      /* @__PURE__ */ n("span", { className: "block-signature", children: e.expr })
+function Ds({ stmt: e }) {
+  const [n, s] = ue(!0);
+  return /* @__PURE__ */ f("div", { className: `block block-switch ${n ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: s, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "switch" }),
+      /* @__PURE__ */ t("span", { className: "block-signature", children: e.expr })
     ] }),
-    t && /* @__PURE__ */ i("div", { className: "block-body", children: [
-      e.cases.map((o) => /* @__PURE__ */ n(Ht, { switchCase: o }, `${o.line}:${o.column}`)),
-      e.default && e.default.length > 0 && /* @__PURE__ */ i("div", { className: "block block-switch-default", children: [
-        /* @__PURE__ */ i("div", { className: "block-header", children: [
-          /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-          /* @__PURE__ */ n("span", { className: "block-icon-placeholder" }),
-          /* @__PURE__ */ n("span", { className: "block-keyword", children: "default" })
+    n && /* @__PURE__ */ f("div", { className: "block-body", children: [
+      e.cases.map((o) => /* @__PURE__ */ t(Fs, { switchCase: o }, `${o.line}:${o.column}`)),
+      e.default && e.default.length > 0 && /* @__PURE__ */ f("div", { className: "block block-switch-default", children: [
+        /* @__PURE__ */ f("div", { className: "block-header", children: [
+          /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+          /* @__PURE__ */ t("span", { className: "block-keyword", children: "default" })
         ] }),
-        /* @__PURE__ */ n("div", { className: "block-body", children: e.default.map((o) => /* @__PURE__ */ n(Re, { statement: o }, `${o.line}:${o.column}`)) })
+        /* @__PURE__ */ t("div", { className: "block-body", children: e.default.map((o) => /* @__PURE__ */ t(Be, { statement: o }, `${o.line}:${o.column}`)) })
       ] })
     ] })
   ] });
 }
-function Ht({ switchCase: e }) {
-  const [t, s] = le(!0);
-  return /* @__PURE__ */ i("div", { className: `block block-switch-case ${t ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: s, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "case" }),
-      /* @__PURE__ */ n("span", { className: "block-signature", children: e.value })
+function Fs({ switchCase: e }) {
+  const [n, s] = ue(!0);
+  return /* @__PURE__ */ f("div", { className: `block block-switch-case ${n ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: s, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "case" }),
+      /* @__PURE__ */ t("span", { className: "block-signature", children: e.value })
     ] }),
-    t && e.body && e.body.length > 0 && /* @__PURE__ */ n("div", { className: "block-body", children: e.body.map((o) => /* @__PURE__ */ n(Re, { statement: o }, `${o.line}:${o.column}`)) })
+    n && e.body && e.body.length > 0 && /* @__PURE__ */ t("div", { className: "block-body", children: e.body.map((o) => /* @__PURE__ */ t(Be, { statement: o }, `${o.line}:${o.column}`)) })
   ] });
 }
-function zt({ stmt: e }) {
-  const [t, s] = le(!0), o = e.elseBody && e.elseBody.length > 0;
-  return /* @__PURE__ */ i("div", { className: `block block-if ${t ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: s, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "if" }),
-      /* @__PURE__ */ n("span", { className: "block-signature", children: e.condition })
-    ] }),
-    t && /* @__PURE__ */ i("div", { className: "block-body", children: [
-      /* @__PURE__ */ i("div", { className: "block-branch", children: [
-        /* @__PURE__ */ n("div", { className: "branch-label", children: "then:" }),
-        (e.body || []).map((a) => /* @__PURE__ */ n(Re, { statement: a }, `${a.line}:${a.column}`))
-      ] }),
-      o && /* @__PURE__ */ i("div", { className: "block-branch", children: [
-        /* @__PURE__ */ n("div", { className: "branch-label", children: "else:" }),
-        (e.elseBody || []).map((a) => /* @__PURE__ */ n(Re, { statement: a }, `${a.line}:${a.column}`))
-      ] })
-    ] })
-  ] });
+function As(e) {
+  const n = [{ kind: "if", condition: e.condition, body: e.body || [] }];
+  let s = e;
+  for (; s.elseBody && s.elseBody.length === 1 && s.elseBody[0].type === "if"; ) {
+    const o = s.elseBody[0];
+    n.push({ kind: "elseif", condition: o.condition, body: o.body || [] }), s = o;
+  }
+  return s.elseBody && s.elseBody.length > 0 && n.push({ kind: "else", body: s.elseBody }), n;
 }
-function Gt({ stmt: e }) {
-  const [t, s] = le(!0);
+const Ps = {
+  if: "if",
+  elseif: "else if",
+  else: "else"
+};
+function Is({ stmt: e }) {
+  const [n, s] = ue(!0), o = As(e), a = n ? o : o.slice(0, 1);
+  return /* @__PURE__ */ t("div", { className: `block block-if ${n ? "expanded" : "collapsed"}`, children: a.map((r, c) => /* @__PURE__ */ f("div", { className: "if-branch", children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: s, children: [
+      c === 0 ? /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: Ps[r.kind] }),
+      r.condition && /* @__PURE__ */ t("span", { className: "block-signature", children: r.condition })
+    ] }),
+    n && r.body.length > 0 && /* @__PURE__ */ t("div", { className: "block-body", children: r.body.map((l) => /* @__PURE__ */ t(Be, { statement: l }, `${l.line}:${l.column}`)) })
+  ] }, `${r.kind}:${c}`)) });
+}
+function Rs({ stmt: e }) {
+  const [n, s] = ue(!0);
   let o = "";
-  return e.variant === "iteration" ? o = `${e.variable} in ${e.iterable}` : e.variant === "conditional" ? o = e.condition || "" : o = "∞", /* @__PURE__ */ i("div", { className: `block block-for ${t ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: s, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: t ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: C.forLoop.icon }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "for" }),
-      /* @__PURE__ */ n("span", { className: "block-signature", children: o })
+  return e.variant === "iteration" ? o = `${e.variable} in ${e.iterable}` : e.variant === "conditional" ? o = e.condition || "" : o = "∞", /* @__PURE__ */ f("div", { className: `block block-for ${n ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: s, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: n ? "▼" : "▶" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "for" }),
+      /* @__PURE__ */ t("span", { className: "block-signature", children: o })
     ] }),
-    t && /* @__PURE__ */ n("div", { className: "block-body", children: (e.body || []).map((a) => /* @__PURE__ */ n(Re, { statement: a }, `${a.line}:${a.column}`)) })
+    n && /* @__PURE__ */ t("div", { className: "block-body", children: (e.body || []).map((a) => /* @__PURE__ */ t(Be, { statement: a }, `${a.line}:${a.column}`)) })
   ] });
 }
-function Ut({ stmt: e }) {
-  return /* @__PURE__ */ n("div", { className: "block block-return collapsed", children: /* @__PURE__ */ i("div", { className: "block-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon", children: C.return.icon }),
-    /* @__PURE__ */ n("span", { className: "block-keyword", children: "return" }),
-    e.value && /* @__PURE__ */ n("span", { className: "block-signature", children: e.value })
+function Os({ stmt: e }) {
+  return /* @__PURE__ */ t("div", { className: "block block-return collapsed", children: /* @__PURE__ */ f("div", { className: "block-header", children: [
+    /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+    /* @__PURE__ */ t("span", { className: "block-keyword", children: "return" }),
+    e.value && /* @__PURE__ */ t("span", { className: "block-signature", children: e.value })
   ] }) });
 }
-function Xt({ stmt: e }) {
-  const t = (Dt[e.reason] ?? C.closeComplete).icon, s = e.reason === "continue_as_new" ? "close-continue-as-new" : e.reason === "fail" ? "close-failed" : "";
-  return /* @__PURE__ */ n("div", { className: `block block-close ${s} collapsed`, children: /* @__PURE__ */ i("div", { className: "block-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon", children: t }),
-    /* @__PURE__ */ n("span", { className: "block-keyword", children: "close" }),
-    /* @__PURE__ */ i("span", { className: "block-signature", children: [
-      /* @__PURE__ */ n("span", { className: "close-reason", children: e.reason }),
-      e.args && /* @__PURE__ */ i("span", { children: [
+function Ls({ stmt: e }) {
+  const n = e.reason === "continue_as_new" ? "close-continue-as-new" : e.reason === "fail" ? "close-failed" : "";
+  return /* @__PURE__ */ t("div", { className: `block block-close ${n} collapsed`, children: /* @__PURE__ */ f("div", { className: "block-header", children: [
+    /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+    /* @__PURE__ */ t("span", { className: "block-keyword", children: "close" }),
+    /* @__PURE__ */ f("span", { className: "block-signature", children: [
+      /* @__PURE__ */ t("span", { className: "close-reason", children: e.reason }),
+      e.args && /* @__PURE__ */ f("span", { children: [
         "(",
         e.args,
         ")"
@@ -603,342 +849,349 @@ function Xt({ stmt: e }) {
     ] })
   ] }) });
 }
-function jt({ stmt: e }) {
-  return /* @__PURE__ */ n("div", { className: "block block-raw collapsed", children: /* @__PURE__ */ i("div", { className: "block-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon", children: C.raw.icon }),
-    /* @__PURE__ */ n("span", { className: "block-code", children: e.text })
+function Bs({ stmt: e }) {
+  return /* @__PURE__ */ t("div", { className: "block block-raw collapsed", children: /* @__PURE__ */ f("div", { className: "block-header", children: [
+    /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+    /* @__PURE__ */ t("span", { className: "block-code", children: e.text })
   ] }) });
 }
-function Jt({ stmt: e }) {
-  return /* @__PURE__ */ n("div", { className: "block block-comment collapsed", children: /* @__PURE__ */ i("div", { className: "block-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon", children: C.raw.icon }),
-    /* @__PURE__ */ n("span", { className: "block-keyword", children: "comment" }),
-    /* @__PURE__ */ n("span", { className: "block-signature", title: e.text, children: e.text })
+function _s({ stmt: e }) {
+  return /* @__PURE__ */ t("div", { className: "block block-comment collapsed", children: /* @__PURE__ */ f("div", { className: "block-header", children: [
+    /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+    /* @__PURE__ */ f("span", { className: "block-comment-text", title: e.text, children: [
+      "# ",
+      e.text
+    ] })
   ] }) });
 }
-function Jn({ keyword: e, className: t }) {
-  return /* @__PURE__ */ n("div", { className: `block ${t} collapsed`, children: /* @__PURE__ */ i("div", { className: "block-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon", children: C.breakContinue.icon }),
-    /* @__PURE__ */ n("span", { className: "block-keyword", children: e })
+function ht({ keyword: e, className: n }) {
+  return /* @__PURE__ */ t("div", { className: `block ${n} collapsed`, children: /* @__PURE__ */ f("div", { className: "block-header", children: [
+    /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+    /* @__PURE__ */ t("span", { className: "block-keyword", children: e })
   ] }) });
 }
-function Zt({ stmt: e }) {
-  let t = "";
+function Ws({ stmt: e }) {
+  let n = "";
   switch (e.target.kind) {
     case "activity":
-      t = `activity ${e.target.activity.name}(${e.target.activity.args || ""})`;
+      n = `activity ${e.target.activity.name}(${e.target.activity.args || ""})`;
       break;
     case "workflow":
-      t = `workflow ${e.target.workflow.name}(${e.target.workflow.args || ""})`;
+      n = `workflow ${e.target.workflow.name}(${e.target.workflow.args || ""})`;
       break;
     case "nexus":
-      t = `nexus ${e.target.nexus.endpoint} ${e.target.nexus.service}.${e.target.nexus.operation}(${e.target.nexus.args || ""})`;
+      n = `nexus ${e.target.nexus.endpoint} ${e.target.nexus.service}.${e.target.nexus.operation}(${e.target.nexus.args || ""})`;
       break;
     case "timer":
-      t = `timer(${e.target.timer.duration})`;
+      n = `timer(${e.target.timer.duration})`;
       break;
     case "signal": {
       const s = e.target.signal.params ? `(${e.target.signal.params})` : "";
-      t = `signal ${e.target.signal.name}${s}`;
+      n = `signal ${e.target.signal.name}${s}`;
       break;
     }
     case "update": {
       const s = e.target.update.params ? `(${e.target.update.params})` : "";
-      t = `update ${e.target.update.name}${s}`;
+      n = `update ${e.target.update.name}${s}`;
       break;
     }
     case "ident":
-      t = e.target.ident.name;
+      n = e.target.ident.name;
       break;
   }
-  return /* @__PURE__ */ n("div", { className: "block block-promise collapsed", children: /* @__PURE__ */ i("div", { className: "block-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon", children: C.promise.icon }),
-    /* @__PURE__ */ n("span", { className: "block-keyword", children: "promise" }),
-    /* @__PURE__ */ i("span", { className: "block-signature", children: [
+  return /* @__PURE__ */ t("div", { className: "block block-promise collapsed", children: /* @__PURE__ */ f("div", { className: "block-header", children: [
+    /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+    /* @__PURE__ */ t("span", { className: "block-keyword", children: "promise" }),
+    /* @__PURE__ */ f("span", { className: "block-signature", children: [
       e.name,
       " ← ",
-      t
+      n
     ] })
   ] }) });
 }
-function Qt({ stmt: e }) {
-  return /* @__PURE__ */ n("div", { className: "block block-set collapsed", children: /* @__PURE__ */ i("div", { className: "block-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon", children: C.conditionSet.icon }),
-    /* @__PURE__ */ n("span", { className: "block-keyword", children: "set" }),
-    /* @__PURE__ */ n("span", { className: "block-signature", children: e.name })
+function Vs({ stmt: e }) {
+  return /* @__PURE__ */ t("div", { className: "block block-set collapsed", children: /* @__PURE__ */ f("div", { className: "block-header", children: [
+    /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+    /* @__PURE__ */ t("span", { className: "block-keyword", children: "set" }),
+    /* @__PURE__ */ t("span", { className: "block-signature", children: e.name })
   ] }) });
 }
-function es({ stmt: e }) {
-  return /* @__PURE__ */ n("div", { className: "block block-unset collapsed", children: /* @__PURE__ */ i("div", { className: "block-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon", children: C.conditionUnset.icon }),
-    /* @__PURE__ */ n("span", { className: "block-keyword", children: "unset" }),
-    /* @__PURE__ */ n("span", { className: "block-signature", children: e.name })
+function Gs({ stmt: e }) {
+  return /* @__PURE__ */ t("div", { className: "block block-unset collapsed", children: /* @__PURE__ */ f("div", { className: "block-header", children: [
+    /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+    /* @__PURE__ */ t("span", { className: "block-keyword", children: "unset" }),
+    /* @__PURE__ */ t("span", { className: "block-signature", children: e.name })
   ] }) });
 }
-function Re({ statement: e }) {
+function it({ statements: e }) {
+  return !e || e.length === 0 ? null : /* @__PURE__ */ t("div", { className: "block-statement-body", children: e.map((n) => /* @__PURE__ */ t(Be, { statement: n }, `${n.line}:${n.column}`)) });
+}
+function Be({ statement: e }) {
   switch (e.type) {
     case "activityCall":
-      return /* @__PURE__ */ n(It, { stmt: e });
+      return /* @__PURE__ */ t(vs, { stmt: e });
     case "workflowCall":
-      return /* @__PURE__ */ n(Wt, { stmt: e });
+      return /* @__PURE__ */ t(bs, { stmt: e });
     case "nexusCall":
-      return /* @__PURE__ */ n(Pt, { stmt: e });
+      return /* @__PURE__ */ t(xs, { stmt: e });
     case "await":
-      return /* @__PURE__ */ n(_t, { stmt: e });
+      return /* @__PURE__ */ t(Es, { stmt: e });
     case "awaitAll":
-      return /* @__PURE__ */ n(dt, { stmt: e });
+      return /* @__PURE__ */ t(Vt, { stmt: e });
     case "awaitOne":
-      return /* @__PURE__ */ n(Kt, { stmt: e });
+      return /* @__PURE__ */ t($s, { stmt: e });
     case "switch":
-      return /* @__PURE__ */ n(qt, { stmt: e });
+      return /* @__PURE__ */ t(Ds, { stmt: e });
     case "if":
-      return /* @__PURE__ */ n(zt, { stmt: e });
+      return /* @__PURE__ */ t(Is, { stmt: e });
     case "for":
-      return /* @__PURE__ */ n(Gt, { stmt: e });
+      return /* @__PURE__ */ t(Rs, { stmt: e });
     case "return":
-      return /* @__PURE__ */ n(Ut, { stmt: e });
+      return /* @__PURE__ */ t(Os, { stmt: e });
     case "close":
-      return /* @__PURE__ */ n(Xt, { stmt: e });
+      return /* @__PURE__ */ t(Ls, { stmt: e });
     case "raw":
-      return /* @__PURE__ */ n(jt, { stmt: e });
+      return /* @__PURE__ */ t(Bs, { stmt: e });
     case "break":
-      return /* @__PURE__ */ n(Jn, { keyword: "break", className: "block-break" });
+      return /* @__PURE__ */ t(ht, { keyword: "break", className: "block-break" });
     case "continue":
-      return /* @__PURE__ */ n(Jn, { keyword: "continue", className: "block-continue" });
+      return /* @__PURE__ */ t(ht, { keyword: "continue", className: "block-continue" });
     case "promise":
-      return /* @__PURE__ */ n(Zt, { stmt: e });
+      return /* @__PURE__ */ t(Ws, { stmt: e });
     case "set":
-      return /* @__PURE__ */ n(Qt, { stmt: e });
+      return /* @__PURE__ */ t(Vs, { stmt: e });
     case "unset":
-      return /* @__PURE__ */ n(es, { stmt: e });
+      return /* @__PURE__ */ t(Gs, { stmt: e });
     case "comment":
-      return /* @__PURE__ */ n(Jt, { stmt: e });
+      return /* @__PURE__ */ t(_s, { stmt: e });
     default:
       return null;
   }
 }
-function ns({ definition: e, expanded: t, onToggle: s }) {
+function Hs({ definition: e, expanded: n, onToggle: s }) {
   switch (e.type) {
     case "workflowDef":
-      return /* @__PURE__ */ n(ts, { def: e, controlledExpanded: t, onToggle: s });
+      return /* @__PURE__ */ t(qs, { def: e, controlledExpanded: n, onToggle: s });
     case "activityDef":
-      return /* @__PURE__ */ n(ss, { def: e, controlledExpanded: t, onToggle: s });
+      return /* @__PURE__ */ t(zs, { def: e, controlledExpanded: n, onToggle: s });
     case "workerDef":
-      return /* @__PURE__ */ n(os, { def: e, controlledExpanded: t, onToggle: s });
+      return /* @__PURE__ */ t(Xs, { def: e, controlledExpanded: n, onToggle: s });
     case "namespaceDef":
-      return /* @__PURE__ */ n(cs, { def: e, controlledExpanded: t, onToggle: s });
+      return /* @__PURE__ */ t(Ys, { def: e, controlledExpanded: n, onToggle: s });
     case "nexusServiceDef":
-      return /* @__PURE__ */ n(ds, { def: e, controlledExpanded: t, onToggle: s });
+      return /* @__PURE__ */ t(Js, { def: e, controlledExpanded: n, onToggle: s });
     default:
       return null;
   }
 }
-function ts({ def: e, controlledExpanded: t, onToggle: s }) {
-  const o = is(e), [a, l] = le(), r = t ?? a, p = s ?? l, d = u.useMemo(() => {
-    const m = /* @__PURE__ */ new Map(), T = /* @__PURE__ */ new Map(), $ = /* @__PURE__ */ new Map();
-    for (const y of e.signals || []) m.set(y.name, y);
-    for (const y of e.queries || []) T.set(y.name, y);
-    for (const y of e.updates || []) $.set(y.name, y);
-    return { signals: m, queries: T, updates: $ };
+function qs({ def: e, controlledExpanded: n, onToggle: s }) {
+  const o = Zs(e), [a, r] = ue(), c = n ?? a, l = s ?? r, i = m.useMemo(() => {
+    const d = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Map(), g = /* @__PURE__ */ new Map();
+    for (const p of e.signals || []) d.set(p.name, p);
+    for (const p of e.queries || []) h.set(p.name, p);
+    for (const p of e.updates || []) g.set(p.name, p);
+    return { signals: d, queries: h, updates: g };
   }, [e]);
-  return /* @__PURE__ */ n(wn.Provider, { value: d, children: /* @__PURE__ */ i("div", { className: `block block-workflow ${r ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ n(Qe, { defName: e.name, defType: "workflowDef" }),
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: p, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: r ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: /* @__PURE__ */ n(kn, { kind: "workflow" }) }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "workflow" }),
-      /* @__PURE__ */ n("span", { className: "block-signature", title: o, children: o }),
-      !r && (() => {
-        const m = bn(e);
-        return m ? /* @__PURE__ */ n("span", { className: "block-summary", children: m }) : null;
+  return /* @__PURE__ */ t(kn.Provider, { value: i, children: /* @__PURE__ */ f("div", { className: `block block-workflow ${c ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ t(tn, { defName: e.name, defType: "workflowDef" }),
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: l, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: c ? "▼" : "▶" }),
+      /* @__PURE__ */ t(He, { kind: "workflow" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "workflow" }),
+      /* @__PURE__ */ t("span", { className: "block-signature", title: o, children: o }),
+      !c && (() => {
+        const d = yn(e);
+        return d ? /* @__PURE__ */ t("span", { className: "block-summary", children: d }) : null;
       })()
     ] }),
-    r && /* @__PURE__ */ n("div", { className: "block-body", children: /* @__PURE__ */ n(Wn, { def: e }) })
+    c && /* @__PURE__ */ t("div", { className: "block-body", children: /* @__PURE__ */ t(On, { def: e }) })
   ] }) });
 }
-function ss({ def: e, controlledExpanded: t, onToggle: s }) {
-  const [o, a] = le(), l = t ?? o, r = s ?? a, p = us(e);
-  return /* @__PURE__ */ i("div", { className: `block block-activity-def ${l ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ n(Qe, { defName: e.name, defType: "activityDef" }),
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: r, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: l ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: /* @__PURE__ */ n(kn, { kind: "activity" }) }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "activity" }),
-      /* @__PURE__ */ n("span", { className: "block-signature", title: p, children: p }),
-      !l && (() => {
-        const d = bn(e);
-        return d ? /* @__PURE__ */ n("span", { className: "block-summary", children: d }) : null;
+function zs({ def: e, controlledExpanded: n, onToggle: s }) {
+  const [o, a] = ue(), r = n ?? o, c = s ?? a, l = Qs(e);
+  return /* @__PURE__ */ f("div", { className: `block block-activity-def ${r ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ t(tn, { defName: e.name, defType: "activityDef" }),
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: c, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: r ? "▼" : "▶" }),
+      /* @__PURE__ */ t(He, { kind: "activity" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "activity" }),
+      /* @__PURE__ */ t("span", { className: "block-signature", title: l, children: l }),
+      !r && (() => {
+        const i = yn(e);
+        return i ? /* @__PURE__ */ t("span", { className: "block-summary", children: i }) : null;
       })()
     ] }),
-    l && /* @__PURE__ */ n("div", { className: "block-body", children: (e.body || []).map((d) => /* @__PURE__ */ n(Re, { statement: d }, `${d.line}:${d.column}`)) })
+    r && /* @__PURE__ */ t("div", { className: "block-body", children: /* @__PURE__ */ t(it, { statements: e.body || [] }) })
   ] });
 }
-function os({ def: e, controlledExpanded: t, onToggle: s }) {
-  var d, m, T, $, y, I;
-  const [o, a] = le(), l = t ?? o, r = s ?? a, p = (((d = e.workflows) == null ? void 0 : d.length) || 0) + (((m = e.activities) == null ? void 0 : m.length) || 0) + (((T = e.services) == null ? void 0 : T.length) || 0);
-  return /* @__PURE__ */ i("div", { className: `block block-worker-def ${l ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ n(Qe, { defName: e.name, defType: "workerDef" }),
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: r, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: l ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: C.worker.icon }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "worker" }),
-      /* @__PURE__ */ i("span", { className: "block-signature", title: `${e.name} (${p} types)`, children: [
+function Xs({ def: e, controlledExpanded: n, onToggle: s }) {
+  var i, d, h, g, p, y;
+  const [o, a] = ue(), r = n ?? o, c = s ?? a, l = (((i = e.workflows) == null ? void 0 : i.length) || 0) + (((d = e.activities) == null ? void 0 : d.length) || 0) + (((h = e.services) == null ? void 0 : h.length) || 0);
+  return /* @__PURE__ */ f("div", { className: `block block-worker-def ${r ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ t(tn, { defName: e.name, defType: "workerDef" }),
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: c, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: r ? "▼" : "▶" }),
+      /* @__PURE__ */ t(He, { kind: "worker" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "worker" }),
+      /* @__PURE__ */ f("span", { className: "block-signature", title: `${e.name} (${l} types)`, children: [
         e.name,
         " (",
-        p,
+        l,
         " types)"
       ] }),
-      !l && (() => {
-        const N = bn(e);
-        return N ? /* @__PURE__ */ n("span", { className: "block-summary", children: N }) : null;
+      !r && (() => {
+        const v = yn(e);
+        return v ? /* @__PURE__ */ t("span", { className: "block-summary", children: v }) : null;
       })()
     ] }),
-    l && /* @__PURE__ */ i("div", { className: "block-body", children: [
-      (($ = e.workflows) == null ? void 0 : $.length) > 0 && /* @__PURE__ */ n(rn, { label: "workflows", refs: e.workflows, refType: "workflow" }),
-      ((y = e.activities) == null ? void 0 : y.length) > 0 && /* @__PURE__ */ n(rn, { label: "activities", refs: e.activities, refType: "activity" }),
-      ((I = e.services) == null ? void 0 : I.length) > 0 && /* @__PURE__ */ n(rn, { label: "nexus services", refs: e.services, refType: "service" })
+    r && /* @__PURE__ */ f("div", { className: "block-body", children: [
+      ((g = e.workflows) == null ? void 0 : g.length) > 0 && /* @__PURE__ */ t(dn, { label: "workflows", refs: e.workflows, refType: "workflow" }),
+      ((p = e.activities) == null ? void 0 : p.length) > 0 && /* @__PURE__ */ t(dn, { label: "activities", refs: e.activities, refType: "activity" }),
+      ((y = e.services) == null ? void 0 : y.length) > 0 && /* @__PURE__ */ t(dn, { label: "nexus services", refs: e.services, refType: "service" })
     ] })
   ] });
 }
-function rn({ label: e, refs: t, refType: s }) {
-  return /* @__PURE__ */ i("div", { className: "worker-ref-section", children: [
-    /* @__PURE__ */ n("div", { className: "worker-ref-label", children: e }),
-    t.map((o) => /* @__PURE__ */ n(as, { ref_: o, refType: s }, `${o.line}:${o.column}`))
+function dn({ label: e, refs: n, refType: s }) {
+  return /* @__PURE__ */ f("div", { className: "worker-ref-section", children: [
+    /* @__PURE__ */ t("div", { className: "worker-ref-label", children: e }),
+    n.map((o) => /* @__PURE__ */ t(Us, { ref_: o, refType: s }, `${o.line}:${o.column}`))
   ] });
 }
-function as({ ref_: e, refType: t }) {
-  const s = u.useContext(Xe), o = t === "workflow" ? s.workflows.get(e.name) : t === "activity" ? s.activities.get(e.name) : void 0, a = t === "service" ? s.nexusServices.get(e.name) : void 0, l = !!(o || a), [r, p] = le(!1, l), d = Ft[t].icon;
-  return /* @__PURE__ */ i("div", { className: `worker-ref worker-ref-${t} ${r ? "expanded" : "collapsed"} ${l ? "" : "worker-ref-unresolved"}`, children: [
-    /* @__PURE__ */ i("div", { className: "worker-ref-header", onClick: p, children: [
-      l ? /* @__PURE__ */ n("span", { className: "block-toggle", children: r ? "▼" : "▶" }) : /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: `block-icon ${t === "service" ? "block-icon-nexus-service" : ""}`, children: d }),
-      /* @__PURE__ */ n("span", { className: "worker-ref-name", children: e.name }),
-      !l && /* @__PURE__ */ n("span", { className: "block-unresolved-badge", children: "?" })
+function Us({ ref_: e, refType: n }) {
+  const s = m.useContext(Ke), o = n === "workflow" ? s.workflows.get(e.name) : n === "activity" ? s.activities.get(e.name) : void 0, a = n === "service" ? s.nexusServices.get(e.name) : void 0, r = !!(o || a), [c, l] = ue(!1, r), i = n === "service" ? "nexusService" : n;
+  return /* @__PURE__ */ f("div", { className: `worker-ref worker-ref-${n} ${c ? "expanded" : "collapsed"} ${r ? "" : "worker-ref-unresolved"}`, children: [
+    /* @__PURE__ */ f("div", { className: "worker-ref-header", onClick: l, children: [
+      r ? /* @__PURE__ */ t("span", { className: "block-toggle", children: c ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t(He, { kind: i }),
+      /* @__PURE__ */ t("span", { className: "worker-ref-name", children: e.name }),
+      !r && /* @__PURE__ */ t("span", { className: "block-unresolved-badge", children: "?" })
     ] }),
-    r && l && /* @__PURE__ */ n("div", { className: "block-body", children: (o == null ? void 0 : o.type) === "workflowDef" ? /* @__PURE__ */ n(Wn, { def: o }) : o ? (o.body || []).map((m) => /* @__PURE__ */ n(Re, { statement: m }, `${m.line}:${m.column}`)) : a ? (a.operations || []).map((m) => /* @__PURE__ */ n(ut, { operation: m }, `${m.line}:${m.column}`)) : null })
+    c && r && /* @__PURE__ */ t("div", { className: "block-body", children: (o == null ? void 0 : o.type) === "workflowDef" ? /* @__PURE__ */ t(On, { def: o }) : o ? /* @__PURE__ */ t(it, { statements: o.body || [] }) : a ? (a.operations || []).map((d) => /* @__PURE__ */ t(Gt, { operation: d }, `${d.line}:${d.column}`)) : null })
   ] });
 }
-function cs({ def: e, controlledExpanded: t, onToggle: s }) {
-  var d, m, T, $;
-  const [o, a] = le(), l = t ?? o, r = s ?? a, p = (((d = e.workers) == null ? void 0 : d.length) || 0) + (((m = e.endpoints) == null ? void 0 : m.length) || 0);
-  return /* @__PURE__ */ i("div", { className: `block block-namespace-def ${l ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ n(Qe, { defName: e.name, defType: "namespaceDef" }),
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: r, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: l ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon block-icon-namespace", children: C.namespace.icon }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "namespace" }),
-      /* @__PURE__ */ i("span", { className: "block-signature", title: `${e.name} (${p} entries)`, children: [
+function Ys({ def: e, controlledExpanded: n, onToggle: s }) {
+  var i, d, h, g;
+  const [o, a] = ue(), r = n ?? o, c = s ?? a, l = (((i = e.workers) == null ? void 0 : i.length) || 0) + (((d = e.endpoints) == null ? void 0 : d.length) || 0);
+  return /* @__PURE__ */ f("div", { className: `block block-namespace-def ${r ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ t(tn, { defName: e.name, defType: "namespaceDef" }),
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: c, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: r ? "▼" : "▶" }),
+      /* @__PURE__ */ t(He, { kind: "namespace" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "namespace" }),
+      /* @__PURE__ */ f("span", { className: "block-signature", title: `${e.name} (${l} entries)`, children: [
         e.name,
         " (",
-        p,
+        l,
         " entries)"
       ] }),
-      !l && (() => {
-        const y = bn(e);
-        return y ? /* @__PURE__ */ n("span", { className: "block-summary", children: y }) : null;
+      !r && (() => {
+        const p = yn(e);
+        return p ? /* @__PURE__ */ t("span", { className: "block-summary", children: p }) : null;
       })()
     ] }),
-    l && /* @__PURE__ */ i("div", { className: "block-body", children: [
-      ((T = e.workers) == null ? void 0 : T.length) > 0 && /* @__PURE__ */ i("div", { className: "namespace-entry-section", children: [
-        /* @__PURE__ */ n("div", { className: "namespace-entry-label", children: "workers" }),
-        e.workers.map((y) => /* @__PURE__ */ n(ls, { entry: y }, `${y.line}:${y.column}`))
+    r && /* @__PURE__ */ f("div", { className: "block-body", children: [
+      ((h = e.workers) == null ? void 0 : h.length) > 0 && /* @__PURE__ */ f("div", { className: "namespace-entry-section", children: [
+        /* @__PURE__ */ t("div", { className: "namespace-entry-label", children: "workers" }),
+        e.workers.map((p) => /* @__PURE__ */ t(Ks, { entry: p }, `${p.line}:${p.column}`))
       ] }),
-      (($ = e.endpoints) == null ? void 0 : $.length) > 0 && /* @__PURE__ */ i("div", { className: "namespace-entry-section", children: [
-        /* @__PURE__ */ n("div", { className: "namespace-entry-label", children: "nexus endpoints" }),
-        e.endpoints.map((y) => /* @__PURE__ */ n(rs, { entry: y }, `${y.line}:${y.column}`))
+      ((g = e.endpoints) == null ? void 0 : g.length) > 0 && /* @__PURE__ */ f("div", { className: "namespace-entry-section", children: [
+        /* @__PURE__ */ t("div", { className: "namespace-entry-label", children: "nexus endpoints" }),
+        e.endpoints.map((p) => /* @__PURE__ */ t(js, { entry: p }, `${p.line}:${p.column}`))
       ] })
     ] })
   ] });
 }
-function ls({ entry: e }) {
-  var r, p, d;
-  const s = u.useContext(Xe).workers.get(e.workerName), o = !!s, [a, l] = le(!1, o);
-  return /* @__PURE__ */ i("div", { className: `namespace-entry namespace-entry-worker ${a ? "expanded" : "collapsed"} ${o ? "" : "namespace-entry-unresolved"}`, children: [
-    /* @__PURE__ */ i("div", { className: "namespace-entry-header", onClick: l, children: [
-      o ? /* @__PURE__ */ n("span", { className: "block-toggle", children: a ? "▼" : "▶" }) : /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-icon", children: C.worker.icon }),
-      /* @__PURE__ */ n("span", { className: "namespace-entry-name", children: e.workerName }),
-      !o && /* @__PURE__ */ n("span", { className: "block-unresolved-badge", children: "?" })
+function Ks({ entry: e }) {
+  var i, d, h, g, p;
+  const s = m.useContext(Ke).workers.get(e.workerName), o = !!s, a = !!((d = (i = e.options) == null ? void 0 : i.entries) != null && d.length), r = o || a, [c, l] = ue(!1, r);
+  return /* @__PURE__ */ f("div", { className: `namespace-entry namespace-entry-worker ${c ? "expanded" : "collapsed"} ${o ? "" : "namespace-entry-unresolved"}`, children: [
+    /* @__PURE__ */ f("div", { className: "namespace-entry-header", onClick: l, children: [
+      r ? /* @__PURE__ */ t("span", { className: "block-toggle", children: c ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t(He, { kind: "worker" }),
+      /* @__PURE__ */ t("span", { className: "namespace-entry-name", children: e.workerName }),
+      !o && /* @__PURE__ */ t("span", { className: "block-unresolved-badge", children: "?" })
     ] }),
-    a && o && s && /* @__PURE__ */ i("div", { className: "block-body", children: [
-      ((r = s.workflows) == null ? void 0 : r.length) > 0 && /* @__PURE__ */ n(rn, { label: "workflows", refs: s.workflows, refType: "workflow" }),
-      ((p = s.activities) == null ? void 0 : p.length) > 0 && /* @__PURE__ */ n(rn, { label: "activities", refs: s.activities, refType: "activity" }),
-      ((d = s.services) == null ? void 0 : d.length) > 0 && /* @__PURE__ */ n(rn, { label: "nexus services", refs: s.services, refType: "service" })
+    c && r && /* @__PURE__ */ f("div", { className: "block-body", children: [
+      /* @__PURE__ */ t(pn, { options: e.options }),
+      o && s && /* @__PURE__ */ f(Ge, { children: [
+        ((h = s.workflows) == null ? void 0 : h.length) > 0 && /* @__PURE__ */ t(dn, { label: "workflows", refs: s.workflows, refType: "workflow" }),
+        ((g = s.activities) == null ? void 0 : g.length) > 0 && /* @__PURE__ */ t(dn, { label: "activities", refs: s.activities, refType: "activity" }),
+        ((p = s.services) == null ? void 0 : p.length) > 0 && /* @__PURE__ */ t(dn, { label: "nexus services", refs: s.services, refType: "service" })
+      ] })
     ] })
   ] });
 }
-function rs({ entry: e }) {
-  return /* @__PURE__ */ n("div", { className: "namespace-entry namespace-entry-endpoint collapsed", children: /* @__PURE__ */ i("div", { className: "namespace-entry-header", children: [
-    /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-    /* @__PURE__ */ n("span", { className: "block-icon block-icon-nexus-endpoint", children: C.nexusService.icon }),
-    /* @__PURE__ */ n("span", { className: "namespace-entry-name", children: e.endpointName })
-  ] }) });
-}
-function bn(e) {
-  var s, o, a, l, r, p, d, m, T, $;
-  const t = [];
-  if (e.type === "workflowDef") {
-    const y = ((s = e.body) == null ? void 0 : s.length) || 0, I = (e.body || []).filter(
-      (f) => f.type === "activityCall" || f.type === "workflowCall" || f.type === "nexusCall"
-    ).length, N = (((o = e.signals) == null ? void 0 : o.length) || 0) + (((a = e.queries) == null ? void 0 : a.length) || 0) + (((l = e.updates) == null ? void 0 : l.length) || 0);
-    y > 0 && t.push(`${y} step${y !== 1 ? "s" : ""}`), I > 0 && t.push(`${I} call${I !== 1 ? "s" : ""}`), N > 0 && t.push(`${N} handler${N !== 1 ? "s" : ""}`);
-  } else if (e.type === "activityDef") {
-    const y = ((r = e.body) == null ? void 0 : r.length) || 0;
-    y > 0 && t.push(`${y} step${y !== 1 ? "s" : ""}`);
-  } else if (e.type === "workerDef") {
-    const y = ((p = e.workflows) == null ? void 0 : p.length) || 0, I = ((d = e.activities) == null ? void 0 : d.length) || 0, N = ((m = e.services) == null ? void 0 : m.length) || 0;
-    y > 0 && t.push(`${y} workflow${y !== 1 ? "s" : ""}`), I > 0 && t.push(`${I} activit${I !== 1 ? "ies" : "y"}`), N > 0 && t.push(`${N} service${N !== 1 ? "s" : ""}`);
-  } else if (e.type === "namespaceDef") {
-    const y = ((T = e.workers) == null ? void 0 : T.length) || 0, I = (($ = e.endpoints) == null ? void 0 : $.length) || 0;
-    y > 0 && t.push(`${y} worker${y !== 1 ? "s" : ""}`), I > 0 && t.push(`${I} endpoint${I !== 1 ? "s" : ""}`);
-  } else if (e.type === "nexusServiceDef") {
-    const y = (e.operations || []).filter((N) => N.opType === "async").length, I = (e.operations || []).filter((N) => N.opType === "sync").length;
-    y > 0 && t.push(`${y} async`), I > 0 && t.push(`${I} sync`);
-  }
-  return t.join(" · ");
-}
-function is(e) {
-  let t = `${e.name}(${e.params})`;
-  return e.returnType && (t += ` → ${e.returnType}`), t;
-}
-function ds({ def: e, controlledExpanded: t, onToggle: s }) {
-  var d;
-  const [o, a] = le(), l = t ?? o, r = s ?? a, p = ((d = e.operations) == null ? void 0 : d.length) || 0;
-  return /* @__PURE__ */ i("div", { className: `block block-nexus-service-def ${l ? "expanded" : "collapsed"}`, children: [
-    /* @__PURE__ */ n(Qe, { defName: e.name, defType: "nexusServiceDef" }),
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: r, children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: l ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "block-icon block-icon-nexus-service", children: C.nexusService.icon }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: "service" }),
-      /* @__PURE__ */ i("span", { className: "block-signature", title: `${e.name} (${p} operation${p !== 1 ? "s" : ""})`, children: [
-        e.name,
-        " (",
-        p,
-        " operation",
-        p !== 1 ? "s" : "",
-        ")"
-      ] }),
-      !l && (() => {
-        const m = bn(e);
-        return m ? /* @__PURE__ */ n("span", { className: "block-summary", children: m }) : null;
-      })()
+function js({ entry: e }) {
+  var a, r;
+  const n = !!((r = (a = e.options) == null ? void 0 : a.entries) != null && r.length), [s, o] = ue(!1, n);
+  return /* @__PURE__ */ f("div", { className: `namespace-entry namespace-entry-endpoint ${s ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ f("div", { className: "namespace-entry-header", onClick: n ? o : void 0, children: [
+      n ? /* @__PURE__ */ t("span", { className: "block-toggle", children: s ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t(He, { kind: "nexusEndpoint" }),
+      /* @__PURE__ */ t("span", { className: "namespace-entry-name", children: e.endpointName })
     ] }),
-    l && /* @__PURE__ */ n("div", { className: "block-body", children: (e.operations || []).map((m) => /* @__PURE__ */ n(ut, { operation: m }, `${m.line}:${m.column}`)) })
+    s && n && /* @__PURE__ */ t("div", { className: "block-body", children: /* @__PURE__ */ t(pn, { options: e.options }) })
   ] });
 }
-function ut({ operation: e }) {
-  const t = u.useContext(Xe), s = e.opType === "async" && e.workflowName ? t.workflows.get(e.workflowName) : void 0, o = e.opType === "async" ? !!s : !!(e.body && e.body.length > 0), a = e.opType === "async" && e.workflowName && !s, [l, r] = le(!1, o);
-  let p;
+function yn(e) {
+  var s, o, a, r, c, l, i, d, h, g;
+  const n = [];
+  if (e.type === "workflowDef") {
+    const p = ((s = e.body) == null ? void 0 : s.length) || 0, y = (e.body || []).filter(
+      (k) => k.type === "activityCall" || k.type === "workflowCall" || k.type === "nexusCall"
+    ).length, v = (((o = e.signals) == null ? void 0 : o.length) || 0) + (((a = e.queries) == null ? void 0 : a.length) || 0) + (((r = e.updates) == null ? void 0 : r.length) || 0);
+    p > 0 && n.push(`${p} step${p !== 1 ? "s" : ""}`), y > 0 && n.push(`${y} call${y !== 1 ? "s" : ""}`), v > 0 && n.push(`${v} handler${v !== 1 ? "s" : ""}`);
+  } else if (e.type === "activityDef") {
+    const p = ((c = e.body) == null ? void 0 : c.length) || 0;
+    p > 0 && n.push(`${p} step${p !== 1 ? "s" : ""}`);
+  } else if (e.type === "workerDef") {
+    const p = ((l = e.workflows) == null ? void 0 : l.length) || 0, y = ((i = e.activities) == null ? void 0 : i.length) || 0, v = ((d = e.services) == null ? void 0 : d.length) || 0;
+    p > 0 && n.push(`${p} workflow${p !== 1 ? "s" : ""}`), y > 0 && n.push(`${y} activit${y !== 1 ? "ies" : "y"}`), v > 0 && n.push(`${v} service${v !== 1 ? "s" : ""}`);
+  } else if (e.type === "namespaceDef") {
+    const p = ((h = e.workers) == null ? void 0 : h.length) || 0, y = ((g = e.endpoints) == null ? void 0 : g.length) || 0;
+    p > 0 && n.push(`${p} worker${p !== 1 ? "s" : ""}`), y > 0 && n.push(`${y} endpoint${y !== 1 ? "s" : ""}`);
+  } else if (e.type === "nexusServiceDef") {
+    const p = (e.operations || []).filter((v) => v.opType === "async").length, y = (e.operations || []).filter((v) => v.opType === "sync").length;
+    p > 0 && n.push(`${p} async`), y > 0 && n.push(`${y} sync`);
+  }
+  return n.join(" · ");
+}
+function Zs(e) {
+  let n = `${e.name}(${e.params})`;
+  return e.returnType && (n += ` → ${e.returnType}`), n;
+}
+function Js({ def: e, controlledExpanded: n, onToggle: s }) {
+  var i;
+  const [o, a] = ue(), r = n ?? o, c = s ?? a, l = ((i = e.operations) == null ? void 0 : i.length) || 0;
+  return /* @__PURE__ */ f("div", { className: `block block-nexus-service-def ${r ? "expanded" : "collapsed"}`, children: [
+    /* @__PURE__ */ t(tn, { defName: e.name, defType: "nexusServiceDef" }),
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: c, children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: r ? "▼" : "▶" }),
+      /* @__PURE__ */ t(He, { kind: "nexusService" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: "service" }),
+      /* @__PURE__ */ f("span", { className: "block-signature", title: `${e.name} (${l} operation${l !== 1 ? "s" : ""})`, children: [
+        e.name,
+        " (",
+        l,
+        " operation",
+        l !== 1 ? "s" : "",
+        ")"
+      ] }),
+      !r && (() => {
+        const d = yn(e);
+        return d ? /* @__PURE__ */ t("span", { className: "block-summary", children: d }) : null;
+      })()
+    ] }),
+    r && /* @__PURE__ */ t("div", { className: "block-body", children: (e.operations || []).map((d) => /* @__PURE__ */ t(Gt, { operation: d }, `${d.line}:${d.column}`)) })
+  ] });
+}
+function Gt({ operation: e }) {
+  const n = m.useContext(Ke), s = e.opType === "async" && e.workflowName ? n.workflows.get(e.workflowName) : void 0, o = e.opType === "async" ? !!s : !!(e.body && e.body.length > 0), a = e.opType === "async" && e.workflowName && !s, [r, c] = ue(!1, o);
+  let l;
   if (e.opType === "async" && s)
-    p = /* @__PURE__ */ i(gn, { children: [
+    l = /* @__PURE__ */ f(Ge, { children: [
       e.name,
-      /* @__PURE__ */ i("span", { className: "nexus-operation-grayed-sig", children: [
+      /* @__PURE__ */ f("span", { className: "nexus-operation-grayed-sig", children: [
         "(",
         s.params,
         ")",
@@ -946,713 +1199,921 @@ function ut({ operation: e }) {
       ] })
     ] });
   else if (e.opType === "sync") {
-    const d = e.params || "", m = e.returnType ? ` → ${e.returnType}` : "";
-    p = `${e.name}(${d})${m}`;
+    const i = e.params || "", d = e.returnType ? ` → ${e.returnType}` : "";
+    l = `${e.name}(${i})${d}`;
   } else
-    p = e.name;
-  return /* @__PURE__ */ i("div", { className: `block block-nexus-operation nexus-operation-${e.opType} ${l ? "expanded" : "collapsed"} ${a ? "block-unresolved" : ""}`, children: [
-    /* @__PURE__ */ i("div", { className: "block-header", onClick: r, children: [
-      o ? /* @__PURE__ */ n("span", { className: "block-toggle", children: l ? "▼" : "▶" }) : /* @__PURE__ */ n("span", { className: "block-toggle-placeholder" }),
-      /* @__PURE__ */ n("span", { className: "block-icon block-icon-nexus-operation", children: C.nexusOperation.icon }),
-      /* @__PURE__ */ n("span", { className: "block-keyword", children: e.opType }),
-      /* @__PURE__ */ n("span", { className: "block-signature", children: p }),
-      a && /* @__PURE__ */ n("span", { className: "block-unresolved-badge", children: "?" })
+    l = e.name;
+  return /* @__PURE__ */ f("div", { className: `block block-nexus-operation nexus-operation-${e.opType} ${r ? "expanded" : "collapsed"} ${a ? "block-unresolved" : ""}`, children: [
+    /* @__PURE__ */ f("div", { className: "block-header", onClick: c, children: [
+      o ? /* @__PURE__ */ t("span", { className: "block-toggle", children: r ? "▼" : "▶" }) : /* @__PURE__ */ t("span", { className: "block-toggle-placeholder" }),
+      /* @__PURE__ */ t(He, { kind: "nexusOperation" }),
+      /* @__PURE__ */ t("span", { className: "block-keyword", children: e.opType }),
+      /* @__PURE__ */ t("span", { className: "block-signature", children: l }),
+      a && /* @__PURE__ */ t("span", { className: "block-unresolved-badge", children: "?" })
     ] }),
-    l && o && /* @__PURE__ */ n("div", { className: "block-body", children: e.opType === "async" && s ? /* @__PURE__ */ n(qn, { def: s }) : e.body ? /* @__PURE__ */ n(Hn, { body: e.body }) : null })
+    r && o && /* @__PURE__ */ t("div", { className: "block-body", children: e.opType === "async" && s ? /* @__PURE__ */ t(ot, { def: s }) : e.body ? /* @__PURE__ */ t(at, { body: e.body }) : null })
   ] });
 }
-function us(e) {
-  let t = `${e.name}(${e.params})`;
-  return e.returnType && (t += ` → ${e.returnType}`), t;
+function Qs(e) {
+  let n = `${e.name}(${e.params})`;
+  return e.returnType && (n += ` → ${e.returnType}`), n;
 }
-function Fn({ pinned: e, onClick: t, flashing: s, label: o }) {
-  const a = e ? `${o} filter pinned — click to unpin` : `${o} filter unpinned — click to pin and stop syncing with the other view`, l = [
+function ft({ pinned: e, onClick: n, flashing: s, label: o }) {
+  const a = e ? `${o} filter pinned — click to unpin` : `${o} filter unpinned — click to pin and stop syncing with the other view`, r = [
     "pin-toggle",
     e ? "pinned" : "",
     s ? "flashing" : ""
   ].filter(Boolean).join(" ");
-  return /* @__PURE__ */ n(
+  return /* @__PURE__ */ t(
     "button",
     {
-      className: l,
-      onClick: t,
+      className: r,
+      onClick: n,
       title: a,
       "aria-label": a,
       "aria-pressed": e,
-      children: e ? /* @__PURE__ */ n(ps, {}) : /* @__PURE__ */ n(hs, {})
+      children: e ? /* @__PURE__ */ t(eo, {}) : /* @__PURE__ */ t(no, {})
     }
   );
 }
-function ps() {
-  return /* @__PURE__ */ i("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
-    /* @__PURE__ */ n("rect", { x: "3", y: "7", width: "10", height: "7", rx: "1.5" }),
-    /* @__PURE__ */ n("path", { d: "M5.5 7V5a2.5 2.5 0 0 1 5 0v2" })
+function eo() {
+  return /* @__PURE__ */ f("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
+    /* @__PURE__ */ t("rect", { x: "3", y: "7", width: "10", height: "7", rx: "1.5" }),
+    /* @__PURE__ */ t("path", { d: "M5.5 7V5a2.5 2.5 0 0 1 5 0v2" })
   ] });
 }
-function hs() {
-  return /* @__PURE__ */ i("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
-    /* @__PURE__ */ n("rect", { x: "3", y: "7", width: "10", height: "7", rx: "1.5" }),
-    /* @__PURE__ */ n("path", { d: "M5.5 7V5a2.5 2.5 0 0 1 4.9-.6" })
+function no() {
+  return /* @__PURE__ */ f("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
+    /* @__PURE__ */ t("rect", { x: "3", y: "7", width: "10", height: "7", rx: "1.5" }),
+    /* @__PURE__ */ t("path", { d: "M5.5 7V5a2.5 2.5 0 0 1 4.9-.6" })
   ] });
 }
-function fs({
+function Ht({
   ast: e,
-  onShowInGraph: t,
+  allFiles: n,
   filter: s,
   onFilterChange: o,
   pins: a,
-  onPinsChange: l,
-  searchQuery: r,
-  searchActive: p,
+  onPinsChange: r,
+  overriddenPins: c,
+  recentlyChanged: l,
+  searchQuery: i,
+  searchActive: d,
+  onSearchChange: h,
+  searchInputRef: g,
+  searchTitle: p,
+  searchPlaceholder: y,
+  searchExtra: v,
+  hiddenMatchByType: k,
+  hiddenMatchByFile: A,
+  errors: P,
+  diagnostics: $,
+  refreshFlash: D
+}) {
+  const M = s.selectedFiles, b = s.visibleTypes, C = M.size === 0, F = n.length > 0, { typeCounts: w, fileCounts: R } = m.useMemo(() => {
+    const T = /* @__PURE__ */ new Map(), z = /* @__PURE__ */ new Map();
+    for (const X of e.definitions)
+      X.sourceFile && z.set(X.sourceFile, (z.get(X.sourceFile) ?? 0) + 1), (M.size === 0 || !X.sourceFile || M.has(X.sourceFile)) && T.set(X.type, (T.get(X.type) ?? 0) + 1);
+    return { typeCounts: T, fileCounts: z };
+  }, [e.definitions, M]), V = (T) => {
+    const z = new Set(M);
+    z.has(T) ? z.delete(T) : z.add(T), o({ ...s, selectedFiles: z });
+  }, re = (T) => {
+    const z = T.some((pe) => b.has(pe)), X = new Set(b);
+    if (z) for (const pe of T) X.delete(pe);
+    else for (const pe of T) X.add(pe);
+    o({ ...s, visibleTypes: X });
+  }, j = () => r({ ...a, files: !a.files }), ne = () => r({ ...a, types: !a.types }), ie = () => {
+    d ? h("", !1) : (h(i, !0), setTimeout(() => {
+      var T;
+      return (T = g.current) == null ? void 0 : T.focus();
+    }, 50));
+  };
+  return /* @__PURE__ */ f("div", { className: `canvas-header${D ? " refresh-flash" : ""}`, children: [
+    F && /* @__PURE__ */ f(Ge, { children: [
+      /* @__PURE__ */ f("div", { className: `header-files-section${a.files ? " section-pinned" : ""}`, children: [
+        /* @__PURE__ */ t("div", { className: "header-files-row", children: n.map((T) => {
+          const z = T.split("/").pop() || T, X = M.has(T), pe = l.has(`file:${T}`), Ee = (A == null ? void 0 : A.get(T)) ?? 0, Ce = R.get(T) ?? 0, Ne = [
+            "header-file-tag",
+            C ? "all-included" : X ? "selected" : "",
+            pe ? "recently-changed" : ""
+          ].filter(Boolean).join(" ");
+          return /* @__PURE__ */ f("button", { className: Ne, onClick: () => V(T), title: T, children: [
+            /* @__PURE__ */ t("span", { className: "header-file-icon", children: "📄" }),
+            /* @__PURE__ */ t("span", { className: "header-file-name", children: z }),
+            /* @__PURE__ */ t("span", { className: "header-chip-count", children: Ce }),
+            Ee > 0 && /* @__PURE__ */ t("span", { className: "header-hidden-badge", title: `${Ee} match${Ee !== 1 ? "es" : ""} hidden in this file`, children: Ee })
+          ] }, T);
+        }) }),
+        /* @__PURE__ */ t(
+          ft,
+          {
+            pinned: a.files,
+            onClick: j,
+            flashing: c.has("files"),
+            label: "Files"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ t("div", { className: "header-divider" })
+    ] }),
+    /* @__PURE__ */ f("div", { className: `header-types-section${a.types ? " section-pinned" : ""}`, children: [
+      /* @__PURE__ */ t("div", { className: "header-types-row", children: ms.map((T) => {
+        const z = T.types.some((Ne) => b.has(Ne)), X = T.types.some((Ne) => l.has(`type:${Ne}`)), pe = T.types.reduce((Ne, Ie) => Ne + ((k == null ? void 0 : k.get(Ie)) ?? 0), 0), Ee = T.types.reduce((Ne, Ie) => Ne + (w.get(Ie) ?? 0), 0), Ce = [
+          "header-type-tag",
+          z ? "active" : "",
+          `header-type-${T.id}`,
+          X ? "recently-changed" : ""
+        ].filter(Boolean).join(" ");
+        return /* @__PURE__ */ f(
+          "button",
+          {
+            className: Ce,
+            onClick: () => re(T.types),
+            title: z ? `Hide ${T.label.toLowerCase()}` : `Show ${T.label.toLowerCase()}`,
+            children: [
+              /* @__PURE__ */ t("span", { className: "header-type-icon", children: T.icon }),
+              /* @__PURE__ */ t("span", { className: "header-type-label", children: T.label }),
+              /* @__PURE__ */ t("span", { className: "header-chip-count", children: Ee }),
+              pe > 0 && /* @__PURE__ */ t("span", { className: "header-hidden-badge", title: `${pe} match${pe !== 1 ? "es" : ""} hidden by this filter`, children: pe })
+            ]
+          },
+          T.id
+        );
+      }) }),
+      /* @__PURE__ */ t(
+        ft,
+        {
+          pinned: a.types,
+          onClick: ne,
+          flashing: c.has("types"),
+          label: "Types"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ t("div", { className: "header-divider" }),
+    /* @__PURE__ */ t("div", { className: "header-controls-section", children: /* @__PURE__ */ f("div", { className: `header-search ${d ? "active" : ""}`, children: [
+      /* @__PURE__ */ t("button", { className: "header-search-toggle", onClick: ie, title: p, children: /* @__PURE__ */ t(cs, { size: 14 }) }),
+      d && /* @__PURE__ */ t(
+        "input",
+        {
+          ref: g,
+          className: "header-search-input",
+          type: "text",
+          placeholder: y,
+          value: i,
+          onChange: (T) => h(T.target.value, !0),
+          onKeyDown: (T) => {
+            T.key === "Escape" && ie();
+          }
+        }
+      ),
+      v
+    ] }) }),
+    /* @__PURE__ */ t(so, { errors: P, diagnostics: $, selectedFiles: M })
+  ] });
+}
+function to(e, n, s) {
+  if (s.size === 0)
+    return { shownFileErrors: e, hiddenFileErrors: [], shownDiagnostics: n, hiddenDiagnostics: [] };
+  const o = [], a = [];
+  for (const l of e)
+    s.has(l.file) ? o.push(l) : a.push(l);
+  const r = [], c = [];
+  for (const l of n)
+    !l.file || s.has(l.file) ? r.push(l) : c.push(l);
+  return { shownFileErrors: o, hiddenFileErrors: a, shownDiagnostics: r, hiddenDiagnostics: c };
+}
+function so({ errors: e, diagnostics: n, selectedFiles: s }) {
+  const { shownFileErrors: o, hiddenFileErrors: a, shownDiagnostics: r, hiddenDiagnostics: c } = to(e, n, s), l = r.filter((y) => y.severity === "error"), i = c.filter((y) => y.severity === "error"), d = r.filter((y) => y.severity === "warning"), h = c.filter((y) => y.severity === "warning"), g = o.length + a.length + l.length + i.length, p = d.length + h.length;
+  return g === 0 && p === 0 ? null : /* @__PURE__ */ f("div", { className: "filter-error-bars", children: [
+    g > 0 && /* @__PURE__ */ t(
+      mt,
+      {
+        severity: "error",
+        count: g,
+        shownFileErrors: o,
+        hiddenFileErrors: a,
+        shownDiagnostics: l,
+        hiddenDiagnostics: i
+      }
+    ),
+    p > 0 && /* @__PURE__ */ t(
+      mt,
+      {
+        severity: "warning",
+        count: p,
+        shownFileErrors: [],
+        hiddenFileErrors: [],
+        shownDiagnostics: d,
+        hiddenDiagnostics: h
+      }
+    )
+  ] });
+}
+function mt({ severity: e, count: n, shownFileErrors: s, hiddenFileErrors: o, shownDiagnostics: a, hiddenDiagnostics: r }) {
+  const [c, l] = m.useState(!1), i = e === "error" ? "✗" : "⚠", d = e === "error" ? "error" : "warning", h = `${n} ${n === 1 ? d : `${d}s`}`, g = s.length + a.length, p = o.length + r.length, y = g > 0 && p > 0;
+  return /* @__PURE__ */ f("div", { className: `severity-bar severity-bar-${e}`, children: [
+    /* @__PURE__ */ f("div", { className: "severity-bar-head", onClick: () => l((v) => !v), children: [
+      /* @__PURE__ */ t("span", { className: "block-toggle", children: c ? "▼" : "▶" }),
+      /* @__PURE__ */ t("span", { className: "severity-bar-icon", children: i }),
+      /* @__PURE__ */ t("span", { className: "severity-bar-title", children: h })
+    ] }),
+    c && /* @__PURE__ */ f("div", { className: "severity-bar-body", children: [
+      y && /* @__PURE__ */ f("div", { className: "error-group-label", children: [
+        "Shown files (",
+        g,
+        ")"
+      ] }),
+      s.map((v, k) => /* @__PURE__ */ t(gt, { err: v }, `sfe${k}`)),
+      a.map((v, k) => /* @__PURE__ */ t(yt, { diagnostic: v }, `sd${k}`)),
+      p > 0 && /* @__PURE__ */ f(Ge, { children: [
+        /* @__PURE__ */ f("div", { className: "error-group-label", children: [
+          "Hidden files (",
+          p,
+          ")"
+        ] }),
+        o.map((v, k) => /* @__PURE__ */ t(gt, { err: v }, `hfe${k}`)),
+        r.map((v, k) => /* @__PURE__ */ t(yt, { diagnostic: v }, `hd${k}`))
+      ] })
+    ] })
+  ] });
+}
+function gt({ err: e }) {
+  return /* @__PURE__ */ f("div", { className: "severity-error-item", children: [
+    /* @__PURE__ */ t("span", { className: "severity-error-file", children: e.file.split("/").pop() }),
+    /* @__PURE__ */ t("pre", { className: "severity-error-msg", children: e.stderr || e.error })
+  ] });
+}
+function yt({ diagnostic: e }) {
+  const n = e.severity === "error" ? "✗" : "⚠", s = e.file ? e.file.split("/").pop() : void 0, o = s ? `${s}:${e.start.line}:${e.start.column}` : void 0;
+  return /* @__PURE__ */ f("div", { className: `diagnostic-item severity-${e.severity}`, children: [
+    /* @__PURE__ */ t("span", { className: "diagnostic-glyph", "aria-hidden": "true", children: n }),
+    /* @__PURE__ */ t("span", { className: "diagnostic-code", children: e.code }),
+    /* @__PURE__ */ t("span", { className: "diagnostic-message", children: e.message }),
+    o && /* @__PURE__ */ t("span", { className: "diagnostic-location", children: o })
+  ] });
+}
+function oo({
+  active: e,
+  ast: n,
+  onShowInGraph: s,
+  filter: o,
+  onFilterChange: a,
+  pins: r,
+  onPinsChange: c,
+  searchQuery: l,
+  searchActive: i,
   onSearchChange: d,
-  pendingFocus: m,
-  onFocusConsumed: T,
-  overriddenPins: $,
+  pendingFocus: h,
+  onFocusConsumed: g,
+  overriddenPins: p,
   onOverriddenPinsConsumed: y
 }) {
-  const I = u.useRef(null), [N, f] = u.useState(-1), P = u.useRef([]), [b, x] = u.useState(/* @__PURE__ */ new Set()), [_, U] = u.useState(null), [be, R] = u.useState(!1), ie = u.useRef(e);
-  u.useEffect(() => {
-    if (ie.current !== e && ie.current !== null) {
-      R(!0);
-      const g = setTimeout(() => R(!1), 600);
-      return () => clearTimeout(g);
+  const v = m.useRef(null), [k, A] = m.useState(-1), P = m.useRef([]), [$, D] = m.useState(/* @__PURE__ */ new Set()), [M, b] = m.useState(null), [C, F] = m.useState(!1), w = m.useRef(n);
+  m.useEffect(() => {
+    if (w.current !== n && w.current !== null) {
+      F(!0);
+      const S = setTimeout(() => F(!1), 600);
+      return () => clearTimeout(S);
     }
-    ie.current = e;
-  }, [e]);
-  const ae = u.useRef(s), [de, ue] = u.useState(/* @__PURE__ */ new Set());
-  u.useEffect(() => {
-    const g = ae.current;
-    if (In(g, s)) return;
-    const w = /* @__PURE__ */ new Set();
-    for (const D of s.selectedFiles) g.selectedFiles.has(D) || w.add(`file:${D}`);
-    for (const D of s.visibleTypes) g.visibleTypes.has(D) || w.add(`type:${D}`);
-    if (ae.current = s, w.size > 0) {
-      ue(w);
-      const D = setTimeout(() => ue(/* @__PURE__ */ new Set()), 450);
-      return () => clearTimeout(D);
+    w.current = n;
+  }, [n]);
+  const R = m.useRef(o), [V, re] = m.useState(/* @__PURE__ */ new Set());
+  m.useEffect(() => {
+    const S = R.current;
+    if (Rn(S, o)) return;
+    const I = /* @__PURE__ */ new Set();
+    for (const x of o.selectedFiles) S.selectedFiles.has(x) || I.add(`file:${x}`);
+    for (const x of o.visibleTypes) S.visibleTypes.has(x) || I.add(`type:${x}`);
+    if (R.current = o, I.size > 0) {
+      re(I);
+      const x = setTimeout(() => re(/* @__PURE__ */ new Set()), 450);
+      return () => clearTimeout(x);
     }
-  }, [s]), u.useEffect(() => {
-    if ($.size === 0) return;
-    const g = setTimeout(y, 600);
-    return () => clearTimeout(g);
-  }, [$, y]);
-  const Oe = u.useMemo(() => {
-    const g = /* @__PURE__ */ new Map(), w = /* @__PURE__ */ new Map(), D = /* @__PURE__ */ new Map();
-    function O(M, v) {
-      const Y = g.get(M) || [];
-      Y.some((ke) => ke.defName === v.defName && ke.defType === v.defType) || (Y.push(v), g.set(M, Y));
+  }, [o]), m.useEffect(() => {
+    if (p.size === 0) return;
+    const S = setTimeout(y, 600);
+    return () => clearTimeout(S);
+  }, [p, y]);
+  const j = m.useMemo(() => {
+    const S = /* @__PURE__ */ new Map(), I = /* @__PURE__ */ new Map(), x = /* @__PURE__ */ new Map();
+    function q(_, N) {
+      const Z = S.get(_) || [];
+      Z.some((ge) => ge.defName === N.defName && ge.defType === N.defType) || (Z.push(N), S.set(_, Z));
     }
-    function F(M, v, Y) {
-      const ke = M.get(v) || [];
-      ke.includes(Y) || (ke.push(Y), M.set(v, ke));
+    function Y(_, N, Z) {
+      const ge = _.get(N) || [];
+      ge.includes(Z) || (ge.push(Z), _.set(N, ge));
     }
-    function z(M, v) {
-      M.activity && O(`activityDef:${M.activity.name}`, { defName: v.name, defType: v.type }), M.workflow && O(`workflowDef:${M.workflow.name}`, { defName: v.name, defType: v.type }), M.nexus && O(`nexusServiceDef:${M.nexus.service}`, { defName: v.name, defType: v.type });
+    function le(_, N) {
+      _.activity && q(`activityDef:${_.activity.name}`, { defName: N.name, defType: N.type }), _.workflow && q(`workflowDef:${_.workflow.name}`, { defName: N.name, defType: N.type }), _.nexus && q(`nexusServiceDef:${_.nexus.service}`, { defName: N.name, defType: N.type });
     }
-    function Q(M, v) {
-      for (const Y of M)
-        switch (Y.type) {
+    function ce(_, N) {
+      for (const Z of _)
+        switch (Z.type) {
           case "activityCall":
-            O(`activityDef:${Y.name}`, { defName: v.name, defType: v.type });
+            q(`activityDef:${Z.name}`, { defName: N.name, defType: N.type });
             break;
           case "workflowCall":
-            O(`workflowDef:${Y.name}`, { defName: v.name, defType: v.type });
+            q(`workflowDef:${Z.name}`, { defName: N.name, defType: N.type });
             break;
           case "nexusCall":
-            O(`nexusServiceDef:${Y.service}`, { defName: v.name, defType: v.type });
+            q(`nexusServiceDef:${Z.service}`, { defName: N.name, defType: N.type });
             break;
           case "await":
-            z(Y.target, v);
+            le(Z.target, N);
             break;
           case "promise":
-            z(Y.target, v);
+            le(Z.target, N);
             break;
           case "awaitAll":
-            Q(Y.body || [], v);
+            ce(Z.body || [], N);
             break;
           case "awaitOne":
-            for (const ke of Y.cases || [])
-              ke.target && z(ke.target, v), ke.awaitAll && Q(ke.awaitAll.body || [], v), Q(ke.body || [], v);
+            for (const ge of Z.cases || [])
+              ge.target && le(ge.target, N), ge.awaitAll && ce(ge.awaitAll.body || [], N), ce(ge.body || [], N);
             break;
           case "if":
-            Q(Y.body || [], v), Q(Y.elseBody || [], v);
+            ce(Z.body || [], N), ce(Z.elseBody || [], N);
             break;
           case "for":
-            Q(Y.body || [], v);
+            ce(Z.body || [], N);
             break;
           case "switch":
-            for (const ke of Y.cases || []) Q(ke.body || [], v);
-            Y.default && Q(Y.default, v);
+            for (const ge of Z.cases || []) ce(ge.body || [], N);
+            Z.default && ce(Z.default, N);
             break;
         }
     }
-    for (const M of e.definitions) {
-      if (M.type === "workflowDef") {
-        Q(M.body || [], M);
-        for (const v of M.signals || []) Q(v.body || [], M);
-        for (const v of M.queries || []) Q(v.body || [], M);
-        for (const v of M.updates || []) Q(v.body || [], M);
-      } else if (M.type === "activityDef")
-        Q(M.body || [], M);
-      else if (M.type === "nexusServiceDef")
-        for (const v of M.operations || [])
-          v.opType === "async" && v.workflowName && O(`workflowDef:${v.workflowName}`, { defName: M.name, defType: M.type }), v.body && Q(v.body, M);
-      if (M.type === "workerDef") {
-        for (const v of M.workflows || []) F(w, `workflowDef:${v.name}`, M.name);
-        for (const v of M.activities || []) F(w, `activityDef:${v.name}`, M.name);
-        for (const v of M.services || []) F(w, `nexusServiceDef:${v.name}`, M.name);
+    for (const _ of n.definitions) {
+      if (_.type === "workflowDef") {
+        ce(_.body || [], _);
+        for (const N of _.signals || []) ce(N.body || [], _);
+        for (const N of _.queries || []) ce(N.body || [], _);
+        for (const N of _.updates || []) ce(N.body || [], _);
+      } else if (_.type === "activityDef")
+        ce(_.body || [], _);
+      else if (_.type === "nexusServiceDef")
+        for (const N of _.operations || [])
+          N.opType === "async" && N.workflowName && q(`workflowDef:${N.workflowName}`, { defName: _.name, defType: _.type }), N.body && ce(N.body, _);
+      if (_.type === "workerDef") {
+        for (const N of _.workflows || []) Y(I, `workflowDef:${N.name}`, _.name);
+        for (const N of _.activities || []) Y(I, `activityDef:${N.name}`, _.name);
+        for (const N of _.services || []) Y(I, `nexusServiceDef:${N.name}`, _.name);
       }
-      if (M.type === "namespaceDef")
-        for (const v of M.workers || []) F(D, `workerDef:${v.workerName}`, M.name);
+      if (_.type === "namespaceDef")
+        for (const N of _.workers || []) Y(x, `workerDef:${N.workerName}`, _.name);
     }
-    return { callers: g, workerOf: w, namespaceOf: D };
-  }, [e]), ce = u.useMemo(() => {
-    const g = /* @__PURE__ */ new Set();
-    for (const w of e.definitions)
-      w.sourceFile && g.add(w.sourceFile);
-    return Array.from(g).sort();
-  }, [e]), ge = u.useCallback((g) => {
-    const w = new Set(s.selectedFiles);
-    w.has(g) ? w.delete(g) : w.add(g), o({ ...s, selectedFiles: w });
-  }, [s, o]), pe = u.useCallback(() => {
-    p ? d("", !1) : (d(r, !0), setTimeout(() => {
-      var g;
-      return (g = I.current) == null ? void 0 : g.focus();
+    return { callers: S, workerOf: I, namespaceOf: x };
+  }, [n]), ne = m.useMemo(() => {
+    const S = /* @__PURE__ */ new Set();
+    for (const I of n.definitions)
+      I.sourceFile && S.add(I.sourceFile);
+    return Array.from(S).sort();
+  }, [n]), ie = m.useCallback(() => {
+    i ? d("", !1) : (d(l, !0), setTimeout(() => {
+      var S;
+      return (S = v.current) == null ? void 0 : S.focus();
     }, 50));
-  }, [p, r, d]), Fe = u.useCallback((g) => {
-    const w = new Set(s.visibleTypes);
-    w.has(g) ? w.delete(g) : w.add(g), o({ ...s, visibleTypes: w });
-  }, [s, o]), ye = u.useCallback(() => {
-    l({ ...a, files: !a.files });
-  }, [a, l]), ne = u.useCallback(() => {
-    l({ ...a, types: !a.types });
-  }, [a, l]), J = u.useMemo(() => {
-    const g = e.definitions.filter((w) => !(!s.visibleTypes.has(w.type) || s.selectedFiles.size > 0 && w.sourceFile && !s.selectedFiles.has(w.sourceFile)));
-    return g.sort((w, D) => {
-      const O = jn.get(w.type) ?? 999, F = jn.get(D.type) ?? 999;
-      return O - F;
-    }), g;
-  }, [e.definitions, s]), { matchSet: Be, matchIndices: Te, hiddenMatchByType: V, hiddenMatchByFile: Z } = u.useMemo(() => {
-    if (!r)
+  }, [i, l, d]), T = m.useMemo(() => {
+    const S = n.definitions.filter((I) => !(!o.visibleTypes.has(I.type) || o.selectedFiles.size > 0 && I.sourceFile && !o.selectedFiles.has(I.sourceFile)));
+    return S.sort((I, x) => {
+      const q = pt.get(I.type) ?? 999, Y = pt.get(x.type) ?? 999;
+      return q - Y;
+    }), S;
+  }, [n.definitions, o]), { matchSet: z, matchIndices: X, hiddenMatchByType: pe, hiddenMatchByFile: Ee } = m.useMemo(() => {
+    if (!l)
       return {
         matchSet: null,
         matchIndices: [],
         hiddenMatchByType: /* @__PURE__ */ new Map(),
         hiddenMatchByFile: /* @__PURE__ */ new Map()
       };
-    const g = r.toLowerCase(), w = /* @__PURE__ */ new Set(), D = [];
-    J.forEach((z, Q) => {
-      z.name.toLowerCase().includes(g) && (w.add(K(z)), D.push(Q));
+    const S = l.toLowerCase(), I = /* @__PURE__ */ new Set(), x = [];
+    T.forEach((le, ce) => {
+      le.name.toLowerCase().includes(S) && (I.add(De(le)), x.push(ce));
     });
-    const O = /* @__PURE__ */ new Map(), F = /* @__PURE__ */ new Map();
-    for (const z of e.definitions) {
-      if (!z.name.toLowerCase().includes(g)) continue;
-      const Q = s.visibleTypes.has(z.type), M = s.selectedFiles.size === 0 || (z.sourceFile ? s.selectedFiles.has(z.sourceFile) : !0);
-      Q ? !M && z.sourceFile && F.set(z.sourceFile, (F.get(z.sourceFile) ?? 0) + 1) : O.set(z.type, (O.get(z.type) ?? 0) + 1);
+    const q = /* @__PURE__ */ new Map(), Y = /* @__PURE__ */ new Map();
+    for (const le of n.definitions) {
+      if (!le.name.toLowerCase().includes(S)) continue;
+      const ce = o.visibleTypes.has(le.type), _ = o.selectedFiles.size === 0 || (le.sourceFile ? o.selectedFiles.has(le.sourceFile) : !0);
+      ce ? !_ && le.sourceFile && Y.set(le.sourceFile, (Y.get(le.sourceFile) ?? 0) + 1) : q.set(le.type, (q.get(le.type) ?? 0) + 1);
     }
-    return { matchSet: w, matchIndices: D, hiddenMatchByType: O, hiddenMatchByFile: F };
-  }, [r, J, e.definitions, s]), X = e.errors || [], { shownFileErrors: we, hiddenFileErrors: E } = u.useMemo(() => {
-    if (s.selectedFiles.size === 0)
-      return { shownFileErrors: X, hiddenFileErrors: [] };
-    const g = [], w = [];
-    for (const D of X)
-      s.selectedFiles.has(D.file) ? g.push(D) : w.push(D);
-    return { shownFileErrors: g, hiddenFileErrors: w };
-  }, [X, s.selectedFiles]), c = ce.length > 0, B = X.length > 0, j = s.selectedFiles.size === 0;
-  u.useEffect(() => {
-    const g = (w) => {
-      var D;
-      w.target instanceof HTMLInputElement || w.target instanceof HTMLTextAreaElement || (w.key === "/" || w.ctrlKey && w.key === "f") && (w.preventDefault(), p ? (D = I.current) == null || D.focus() : (d(r, !0), setTimeout(() => {
-        var O;
-        return (O = I.current) == null ? void 0 : O.focus();
+    return { matchSet: I, matchIndices: x, hiddenMatchByType: q, hiddenMatchByFile: Y };
+  }, [l, T, n.definitions, o]), Ce = n.errors || [], Ne = n.diagnostics || [], Ie = Ce.length > 0 || Ne.length > 0;
+  m.useEffect(() => {
+    if (!e) return;
+    const S = (I) => {
+      var x;
+      I.target instanceof HTMLInputElement || I.target instanceof HTMLTextAreaElement || (I.key === "/" || I.ctrlKey && I.key === "f") && (I.preventDefault(), i ? (x = v.current) == null || x.focus() : (d(l, !0), setTimeout(() => {
+        var q;
+        return (q = v.current) == null ? void 0 : q.focus();
       }, 50)));
     };
-    return window.addEventListener("keydown", g), () => window.removeEventListener("keydown", g);
-  }, [p, r, d]), u.useEffect(() => {
-    P.current = P.current.slice(0, J.length);
-  }, [J.length]);
-  function K(g) {
-    return `${g.type}:${g.name}:${g.sourceFile ?? ""}`;
+    return window.addEventListener("keydown", S), () => window.removeEventListener("keydown", S);
+  }, [e, i, l, d]), m.useEffect(() => {
+    P.current = P.current.slice(0, T.length);
+  }, [T.length]);
+  function De(S) {
+    return `${S.type}:${S.name}:${S.sourceFile ?? ""}`;
   }
-  u.useEffect(() => {
-    const g = new Set(e.definitions.map(K));
-    x((w) => {
-      const D = new Set([...w].filter((O) => g.has(O)));
-      return D.size === w.size ? w : D;
+  m.useEffect(() => {
+    const S = new Set(n.definitions.map(De));
+    D((I) => {
+      const x = new Set([...I].filter((q) => S.has(q)));
+      return x.size === I.size ? I : x;
     });
-  }, [e.definitions]);
-  const he = u.useCallback((g) => {
-    x((w) => {
-      const D = new Set(w);
-      return D.has(g) ? D.delete(g) : D.add(g), D;
+  }, [n.definitions]);
+  const H = m.useCallback((S) => {
+    D((I) => {
+      const x = new Set(I);
+      return x.has(S) ? x.delete(S) : x.add(S), x;
     });
-  }, []), Se = u.useCallback((g, w) => {
-    const D = J.findIndex((F) => F.name === g && F.type === w);
-    if (D === -1) return;
-    const O = K(J[D]);
-    x((F) => new Set(F).add(O)), f(D), setTimeout(() => {
-      var F, z;
-      (F = P.current[D]) == null || F.scrollIntoView({ behavior: "smooth", block: "nearest" }), (z = P.current[D]) == null || z.focus();
-    }, 50), U(O), setTimeout(() => U(null), 1e3);
-  }, [J]), L = u.useMemo(() => ({
-    ...Oe,
-    navigateTo: Se,
-    showInGraph: t
-  }), [Oe, Se, t]);
-  u.useEffect(() => {
-    if (!m) return;
-    const { name: g, defType: w } = m, D = setTimeout(() => {
-      Se(g, w), T();
+  }, []), E = m.useCallback((S, I) => {
+    const x = T.findIndex((Y) => Y.name === S && Y.type === I);
+    if (x === -1) return;
+    const q = De(T[x]);
+    D((Y) => new Set(Y).add(q)), A(x), setTimeout(() => {
+      var Y, le;
+      (Y = P.current[x]) == null || Y.scrollIntoView({ behavior: "smooth", block: "nearest" }), (le = P.current[x]) == null || le.focus();
+    }, 50), b(q), setTimeout(() => b(null), 1e3);
+  }, [T]), u = m.useMemo(() => ({
+    ...j,
+    navigateTo: E,
+    showInGraph: s
+  }), [j, E, s]);
+  m.useEffect(() => {
+    if (!h) return;
+    const { name: S, defType: I } = h, x = setTimeout(() => {
+      E(S, I), g();
     }, 50);
-    return () => clearTimeout(D);
-  }, [m, Se, T]);
-  const Ce = u.useCallback((g) => {
-    var D, O, F, z, Q, M;
-    const w = J.length;
-    if (w !== 0)
-      switch (g.key) {
+    return () => clearTimeout(x);
+  }, [h, E, g]);
+  const W = m.useCallback((S) => {
+    var x, q, Y, le, ce, _;
+    const I = T.length;
+    if (I !== 0)
+      switch (S.key) {
         case "ArrowDown": {
-          g.preventDefault();
-          const v = N < w - 1 ? N + 1 : N;
-          f(v), (D = P.current[v]) == null || D.focus();
+          S.preventDefault();
+          const N = k < I - 1 ? k + 1 : k;
+          A(N), (x = P.current[N]) == null || x.focus();
           break;
         }
         case "ArrowUp": {
-          g.preventDefault();
-          const v = N > 0 ? N - 1 : 0;
-          f(v), (O = P.current[v]) == null || O.focus();
+          S.preventDefault();
+          const N = k > 0 ? k - 1 : 0;
+          A(N), (q = P.current[N]) == null || q.focus();
           break;
         }
         case "ArrowRight": {
-          if (g.preventDefault(), N >= 0 && N < w) {
-            const v = K(J[N]);
-            b.has(v) || x((Y) => new Set(Y).add(v));
+          if (S.preventDefault(), k >= 0 && k < I) {
+            const N = De(T[k]);
+            $.has(N) || D((Z) => new Set(Z).add(N));
           }
           break;
         }
         case "ArrowLeft": {
-          if (g.preventDefault(), N >= 0 && N < w) {
-            const v = K(J[N]);
-            b.has(v) && x((Y) => {
-              const ke = new Set(Y);
-              return ke.delete(v), ke;
+          if (S.preventDefault(), k >= 0 && k < I) {
+            const N = De(T[k]);
+            $.has(N) && D((Z) => {
+              const ge = new Set(Z);
+              return ge.delete(N), ge;
             });
           }
           break;
         }
         case "Enter": {
-          g.preventDefault(), N >= 0 && N < w && he(K(J[N]));
+          S.preventDefault(), k >= 0 && k < I && H(De(T[k]));
           break;
         }
         case "Home": {
-          g.preventDefault(), f(0), (F = P.current[0]) == null || F.focus();
+          S.preventDefault(), A(0), (Y = P.current[0]) == null || Y.focus();
           break;
         }
         case "End": {
-          g.preventDefault();
-          const v = w - 1;
-          f(v), (z = P.current[v]) == null || z.focus();
+          S.preventDefault();
+          const N = I - 1;
+          A(N), (le = P.current[N]) == null || le.focus();
           break;
         }
         case "n":
         case "N": {
-          if (Te.length === 0) break;
-          g.preventDefault();
-          const v = g.key === "n", Y = ms(Te, N, v);
-          f(Y), (Q = P.current[Y]) == null || Q.scrollIntoView({ behavior: "smooth", block: "nearest" }), (M = P.current[Y]) == null || M.focus();
+          if (X.length === 0) break;
+          S.preventDefault();
+          const N = S.key === "n", Z = ao(X, k, N);
+          A(Z), (ce = P.current[Z]) == null || ce.scrollIntoView({ behavior: "smooth", block: "nearest" }), (_ = P.current[Z]) == null || _.focus();
           break;
         }
         case "Escape": {
-          g.preventDefault(), p && pe();
+          S.preventDefault(), i && ie();
           break;
         }
       }
-  }, [J, N, b, p, pe, he, Te]), Ae = u.useMemo(() => {
-    if (!Be || Te.length === 0 || N < 0) return null;
-    const g = J[N];
-    if (!g || !Be.has(K(g))) return null;
-    const w = Te.indexOf(N);
-    return w >= 0 ? w + 1 : null;
-  }, [Be, Te, N, J]);
-  return /* @__PURE__ */ n(bt.Provider, { value: L, children: /* @__PURE__ */ i("div", { className: "workflow-canvas", children: [
-    /* @__PURE__ */ i("div", { className: `canvas-header${be ? " refresh-flash" : ""}`, children: [
-      c && /* @__PURE__ */ i(gn, { children: [
-        /* @__PURE__ */ i("div", { className: `header-files-section${a.files ? " section-pinned" : ""}`, children: [
-          /* @__PURE__ */ n("div", { className: "header-files-row", children: ce.map((g) => {
-            const w = g.split("/").pop() || g, D = s.selectedFiles.has(g), O = de.has(`file:${g}`), F = Z.get(g) ?? 0, z = [
-              "header-file-tag",
-              j ? "all-included" : D ? "selected" : "",
-              O ? "recently-changed" : ""
-            ].filter(Boolean).join(" ");
-            return /* @__PURE__ */ i(
-              "button",
-              {
-                className: z,
-                onClick: () => ge(g),
-                title: g,
-                children: [
-                  /* @__PURE__ */ n("span", { className: "header-file-icon", children: "📄" }),
-                  /* @__PURE__ */ n("span", { className: "header-file-name", children: w }),
-                  F > 0 && /* @__PURE__ */ n("span", { className: "header-hidden-badge", title: `${F} match${F !== 1 ? "es" : ""} hidden in this file`, children: F })
-                ]
-              },
-              g
-            );
-          }) }),
-          /* @__PURE__ */ n(
-            Fn,
-            {
-              pinned: a.files,
-              onClick: ye,
-              flashing: $.has("files"),
-              label: "Files"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ n("div", { className: "header-divider" })
-      ] }),
-      /* @__PURE__ */ i("div", { className: `header-types-section${a.types ? " section-pinned" : ""}`, children: [
-        /* @__PURE__ */ n("div", { className: "header-types-row", children: yn.map((g) => {
-          const w = s.visibleTypes.has(g.type), D = de.has(`type:${g.type}`), O = V.get(g.type) ?? 0, F = [
-            "header-type-tag",
-            w ? "active" : "",
-            `header-type-${g.type}`,
-            D ? "recently-changed" : ""
-          ].filter(Boolean).join(" ");
-          return /* @__PURE__ */ i(
-            "button",
-            {
-              className: F,
-              onClick: () => Fe(g.type),
-              title: w ? `Hide ${g.label.toLowerCase()}` : `Show ${g.label.toLowerCase()}`,
-              children: [
-                /* @__PURE__ */ n("span", { className: "header-type-icon", children: g.icon }),
-                /* @__PURE__ */ n("span", { className: "header-type-label", children: g.label }),
-                O > 0 && /* @__PURE__ */ n("span", { className: "header-hidden-badge", title: `${O} match${O !== 1 ? "es" : ""} hidden by this filter`, children: O })
-              ]
-            },
-            g.type
-          );
-        }) }),
-        /* @__PURE__ */ n(
-          Fn,
-          {
-            pinned: a.types,
-            onClick: ne,
-            flashing: $.has("types"),
-            label: "Types"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ n("div", { className: "header-divider" }),
-      /* @__PURE__ */ n("div", { className: "header-controls-section", children: /* @__PURE__ */ i("div", { className: `header-search ${p ? "active" : ""}`, children: [
-        /* @__PURE__ */ n(
-          "button",
-          {
-            className: "header-search-toggle",
-            onClick: pe,
-            title: "Search definitions",
-            children: /* @__PURE__ */ n(rt, { size: 14 })
-          }
-        ),
-        p && /* @__PURE__ */ n(
-          "input",
-          {
-            ref: I,
-            className: "header-search-input",
-            type: "text",
-            placeholder: "Filter by name...",
-            value: r,
-            onChange: (g) => d(g.target.value, !0),
-            onKeyDown: (g) => {
-              g.key === "Escape" && pe();
-            }
-          }
-        ),
-        p && r && Te.length > 0 && /* @__PURE__ */ n("span", { className: "header-search-counter", title: "Press n/N to jump between matches", children: Ae !== null ? `${Ae} of ${Te.length}` : `${Te.length} match${Te.length !== 1 ? "es" : ""}` }),
-        p && r && Te.length === 0 && /* @__PURE__ */ n("span", { className: "header-search-counter empty", children: "no matches" })
-      ] }) })
-    ] }),
-    /* @__PURE__ */ i("div", { className: "workflow-canvas-content", children: [
-      B && /* @__PURE__ */ n(
-        gs,
+  }, [T, k, $, i, ie, H, X]), U = m.useMemo(() => {
+    if (!z || X.length === 0 || k < 0) return null;
+    const S = T[k];
+    if (!S || !z.has(De(S))) return null;
+    const I = X.indexOf(k);
+    return I >= 0 ? I + 1 : null;
+  }, [z, X, k, T]), B = i && l ? X.length > 0 ? /* @__PURE__ */ t("span", { className: "header-search-counter", title: "Press n/N to jump between matches", children: U !== null ? `${U} of ${X.length}` : `${X.length} match${X.length !== 1 ? "es" : ""}` }) : /* @__PURE__ */ t("span", { className: "header-search-counter empty", children: "no matches" }) : null;
+  return /* @__PURE__ */ t(ss.Provider, { value: u, children: /* @__PURE__ */ f("div", { className: "workflow-canvas", children: [
+    /* @__PURE__ */ t(
+      Ht,
+      {
+        ast: n,
+        allFiles: ne,
+        filter: o,
+        onFilterChange: a,
+        pins: r,
+        onPinsChange: c,
+        overriddenPins: p,
+        recentlyChanged: V,
+        searchQuery: l,
+        searchActive: i,
+        onSearchChange: d,
+        searchInputRef: v,
+        searchTitle: "Search definitions",
+        searchPlaceholder: "Filter by name...",
+        searchExtra: B,
+        hiddenMatchByType: pe,
+        hiddenMatchByFile: Ee,
+        errors: Ce,
+        diagnostics: Ne,
+        refreshFlash: C
+      }
+    ),
+    /* @__PURE__ */ t("div", { className: "workflow-canvas-content", children: T.length === 0 && !Ie ? /* @__PURE__ */ f("div", { className: "no-workflows", children: [
+      /* @__PURE__ */ t("p", { children: "No definitions match the current filters." }),
+      /* @__PURE__ */ t("p", { className: "no-workflows-hint", children: "Try adjusting the type toggles or file filter above." })
+    ] }) : T.length === 0 && Ie ? null : /* @__PURE__ */ t("div", { role: "tree", "aria-label": "Definition list", onKeyDown: W, children: T.map((S, I) => {
+      const x = De(S), q = $.has(x), Y = z !== null && !z.has(x), le = [
+        M === x ? "flash-target" : "",
+        Y ? "search-dimmed" : ""
+      ].filter(Boolean).join(" ");
+      return /* @__PURE__ */ t(
+        "div",
         {
-          shownFileErrors: we,
-          hiddenFileErrors: E
-        }
-      ),
-      J.length === 0 && !B ? /* @__PURE__ */ i("div", { className: "no-workflows", children: [
-        /* @__PURE__ */ n("p", { children: "No definitions match the current filters." }),
-        /* @__PURE__ */ n("p", { className: "no-workflows-hint", children: "Try adjusting the type toggles or file filter above." })
-      ] }) : J.length === 0 && B ? null : /* @__PURE__ */ n("div", { role: "tree", "aria-label": "Definition list", onKeyDown: Ce, children: J.map((g, w) => {
-        const D = K(g), O = b.has(D), F = Be !== null && !Be.has(D), z = [
-          _ === D ? "flash-target" : "",
-          F ? "search-dimmed" : ""
-        ].filter(Boolean).join(" ");
-        return /* @__PURE__ */ n(
-          "div",
-          {
-            role: "treeitem",
-            "aria-expanded": O,
-            "aria-level": 1,
-            tabIndex: w === N ? 0 : -1,
-            ref: (Q) => {
-              P.current[w] = Q;
-            },
-            onFocus: () => f(w),
-            className: z || void 0,
-            children: /* @__PURE__ */ n(ns, { definition: g, expanded: O, onToggle: () => he(D) })
+          role: "treeitem",
+          "aria-expanded": q,
+          "aria-level": 1,
+          tabIndex: I === k ? 0 : -1,
+          ref: (ce) => {
+            P.current[I] = ce;
           },
-          D
-        );
-      }) })
-    ] })
+          onFocus: () => A(I),
+          className: le || void 0,
+          children: /* @__PURE__ */ t(Hs, { definition: S, expanded: q, onToggle: () => H(x) })
+        },
+        x
+      );
+    }) }) })
   ] }) });
 }
-function ms(e, t, s) {
-  if (e.length === 0) return t;
+function ao(e, n, s) {
+  if (e.length === 0) return n;
   if (s) {
     for (const o of e)
-      if (o > t) return o;
+      if (o > n) return o;
     return e[0];
   } else {
     for (let o = e.length - 1; o >= 0; o--)
-      if (e[o] < t) return e[o];
+      if (e[o] < n) return e[o];
     return e[e.length - 1];
   }
 }
-function gs({ shownFileErrors: e, hiddenFileErrors: t }) {
-  const [s, o] = u.useState(!0), a = e.length + t.length, l = [];
-  e.length > 0 && l.push(`${e.length} in shown files`), t.length > 0 && l.push(`${t.length} in hidden files`);
-  const r = l.length > 1 ? ` (${l.join(", ")})` : "";
-  return /* @__PURE__ */ i("div", { className: "errors-header", children: [
-    /* @__PURE__ */ i("div", { className: "errors-header-bar", onClick: () => o(!s), children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: s ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "errors-header-icon", children: C.error.icon }),
-      /* @__PURE__ */ i("span", { className: "errors-header-title", children: [
-        a,
-        " ",
-        a === 1 ? "error" : "errors",
-        r
-      ] })
-    ] }),
-    s && /* @__PURE__ */ i("div", { className: "errors-header-body", children: [
-      e.length > 0 && /* @__PURE__ */ n(
-        Zn,
-        {
-          label: "Shown files",
-          errors: e,
-          variant: "shown"
-        }
-      ),
-      t.length > 0 && /* @__PURE__ */ n(
-        Zn,
-        {
-          label: "Hidden files",
-          errors: t,
-          variant: "hidden"
-        }
-      )
-    ] })
-  ] });
+const io = Object.fromEntries(
+  Oe.map((e) => [e, ke[e].defType])
+), co = Object.fromEntries(
+  Oe.map((e) => [ke[e].defType, e])
+);
+function mn(e) {
+  return io[e] ?? "workflowDef";
 }
-function Zn({ label: e, errors: t, variant: s }) {
-  return /* @__PURE__ */ i("div", { className: `error-group error-group-${s}`, children: [
-    /* @__PURE__ */ i("div", { className: "error-group-label", children: [
-      e,
-      " (",
-      t.length,
-      ")"
-    ] }),
-    t.map((o, a) => /* @__PURE__ */ i("div", { className: "error-group-item", children: [
-      /* @__PURE__ */ n("div", { className: "error-group-file", children: o.file.split("/").pop() }),
-      /* @__PURE__ */ n("pre", { className: "error-group-message", children: o.stderr || o.error })
-    ] }, a))
-  ] });
+function ro(e) {
+  return co[e] ?? "workflow";
 }
-function ys(e) {
-  switch (e) {
-    case "namespace":
-      return 1;
-    case "nexusEndpoint":
-      return 1.5;
-    case "worker":
-    case "nexusService":
-      return 2;
-    case "workflow":
-    case "nexusOperation":
-      return 3;
-    case "activity":
-      return 4;
-  }
+const lo = { x: 0, y: 0, scale: 1 }, uo = 0.1, po = 40;
+function Pe(e, n, s) {
+  return [n * e.scale + e.x, s * e.scale + e.y];
 }
-function ks(e) {
-  const t = /* @__PURE__ */ new Map();
-  for (const s of e.definitions ?? [])
-    switch (s.type) {
-      case "workflowDef":
-        t.set(`workflow:${s.name}`, { sourceFile: s.sourceFile, def: s });
-        break;
-      case "activityDef":
-        t.set(`activity:${s.name}`, { sourceFile: s.sourceFile, def: s });
-        break;
-      case "workerDef":
-        t.set(`worker:${s.name}`, { sourceFile: s.sourceFile, def: s });
-        break;
-      case "namespaceDef": {
-        t.set(`namespace:${s.name}`, { sourceFile: s.sourceFile, def: s });
-        for (const o of s.endpoints ?? [])
-          t.set(`nexusEndpoint:${o.endpointName}`, { sourceFile: s.sourceFile, def: s });
-        break;
-      }
-      case "nexusServiceDef": {
-        t.set(`nexusService:${s.name}`, { sourceFile: s.sourceFile, def: s });
-        for (const o of s.operations ?? [])
-          t.set(`nexusOperation:${s.name}.${o.name}`, { sourceFile: s.sourceFile, def: s });
-        break;
-      }
-    }
-  return t;
+function Vn(e, n, s) {
+  return [(n - e.x) / e.scale, (s - e.y) / e.scale];
 }
-function bs(e) {
-  const t = e.indexOf(":");
-  return t < 0 ? { kind: e, name: "" } : { kind: e.slice(0, t), name: e.slice(t + 1) };
-}
-function ws(e) {
-  switch (e) {
-    case "namespace":
-      return "namespace";
-    case "nexusEndpoint":
-      return "nexusEndpoint";
-    case "worker":
-      return "worker";
-    case "nexusService":
-      return "nexusService";
-    case "workflow":
-      return "workflow";
-    case "nexusOperation":
-      return "nexusOperation";
-    case "activity":
-      return "activity";
-    default:
-      return "workflow";
-  }
-}
-function vs(e, t) {
-  if (e === "nexusOperation") {
-    const s = t.lastIndexOf(".");
-    return s >= 0 ? t.slice(s + 1) : t;
-  }
-  return t;
-}
-function Ns(e, t) {
-  const s = ks(t), o = /* @__PURE__ */ new Map(), a = [];
-  let l = 0;
-  const r = /* @__PURE__ */ new Map();
-  for (const d of e.edges)
-    d.kind === "containment" && r.set(d.from, d.to);
-  for (const d of e.nodes) {
-    const { kind: m, name: T } = bs(d.definition), $ = ws(m), y = s.get(d.definition);
-    o.set(d.id, {
-      id: d.id,
-      level: ys($),
-      nodeType: $,
-      name: vs($, T),
-      sourceFile: y == null ? void 0 : y.sourceFile,
-      parentId: r.get(d.id),
-      orphan: d.orphan ?? !1,
-      definitionKey: d.definition,
-      worker: d.worker,
-      namespace: d.namespace,
-      queue: d.queue
-    });
-  }
-  for (const d of e.edges) {
-    const m = xs(d, o, l++);
-    m && a.push(m);
-  }
-  for (const d of e.coarsenedEdges) {
-    const m = Ts(d, o, l++);
-    m && a.push(m);
-  }
-  const p = /* @__PURE__ */ new Map();
-  for (const d of o.values()) {
-    const m = p.get(d.definitionKey) ?? /* @__PURE__ */ new Set();
-    m.add(d.id), p.set(d.definitionKey, m);
-  }
-  return { nodes: o, edges: a, duplicateGroups: p };
-}
-function xs(e, t, s) {
-  var p;
-  const o = t.get(e.from), a = t.get(e.to);
-  if (!o || !a) return null;
-  const l = e.kind === "containment" ? "containment" : "dependency", r = {
-    id: `e${s}`,
-    edgeType: l,
-    sourceId: e.from,
-    targetId: e.to,
-    sourceLevel: o.level,
-    targetLevel: a.level,
-    sourceNodeType: o.nodeType,
-    targetNodeType: a.nodeType
-  };
-  return (p = e.routing) != null && p.nexusEndpoint && (r.nexusEndpoint = e.routing.nexusEndpoint), r;
-}
-function Ts(e, t, s) {
-  const o = t.get(e.from), a = t.get(e.to);
-  if (!o || !a) return null;
-  const l = e.tier === "namespace" ? 1 : 2;
+function Yn(e, n, s, o) {
+  const a = Math.max(uo, Math.min(po, e.scale * o)), r = (n - e.x) / e.scale, c = (s - e.y) / e.scale;
   return {
-    id: `e${s}`,
-    edgeType: "dependency",
-    sourceId: e.from,
-    targetId: e.to,
-    sourceLevel: l,
-    targetLevel: l,
-    sourceNodeType: o.nodeType,
-    targetNodeType: a.nodeType
+    scale: a,
+    x: n - r * a,
+    y: s - c * a
   };
 }
-const mn = {
-  // Charges (all negative = repulsion). Tuned to a roughly 8:3:1 gradient
-  // L1:L2:L3, with services and operations slightly stronger than their
-  // peer types so they stay clearly anchored to their bands. Endpoints
-  // (L1.5) sit between namespace and worker — they're top-level but not
-  // containers, so their charge is closer to a worker's than a
-  // namespace's.
-  chargeNamespace: -640,
-  chargeNexusEndpoint: -260,
-  chargeWorker: -220,
-  chargeNexusService: -105,
-  chargeWorkflow: -95,
-  chargeNexusOperation: -85,
-  chargeActivity: -80,
-  // Spring strengths. With pullMultiplier at 0.6 and distanceMultiplier at
-  // 0.1 every spring is a *light tether* — these k's mostly determine the
-  // ranking of which connections snap closest, not the absolute pull.
-  linkNsToNs: 0.05,
-  linkNsToWorker: 0.2,
-  linkWorkerToWorker: 0.4,
-  linkWorkerToWorkflow: 0.6,
-  linkWorkerToActivity: 0.3,
-  linkWorkerToNexus: 0.4,
-  linkNexusToOperation: 0.65,
-  linkWorkflowToWorkflow: 0.75,
-  linkWorkflowToActivity: 0.45,
-  // Rest distances. These are pre-multiplier values; the panel's `dist`
-  // master multiplies them at simulation time (currently 0.1, so the
-  // effective rest length of a Wk↔Wf edge is 18 world units, etc.). The
-  // spread between rows still matters — it sets the *ordering* of which
-  // edges are willing to stretch furthest, not the absolute length.
-  distNsToNs: 340,
-  distNsToWorker: 250,
-  distWorkerToWorker: 200,
-  distWorkerToWorkflow: 180,
-  distWorkerToActivity: 280,
-  distWorkerToNexus: 180,
-  distNexusToOperation: 140,
-  distWorkflowToWorkflow: 120,
-  distWorkflowToActivity: 90,
+function ct(e, n, s, o = 60) {
+  if (e.length === 0) return { x: n / 2, y: s / 2, scale: 1 };
+  let a = 1 / 0, r = -1 / 0, c = 1 / 0, l = -1 / 0;
+  for (const k of e)
+    k.x < a && (a = k.x), k.x > r && (r = k.x), k.y < c && (c = k.y), k.y > l && (l = k.y);
+  const i = r - a || 1, d = l - c || 1, h = n - o * 2, g = s - o * 2, p = Math.min(h / i, g / d, 2), y = (a + r) / 2, v = (c + l) / 2;
+  return {
+    scale: p,
+    x: n / 2 - y * p,
+    y: s / 2 - v * p
+  };
+}
+const Dn = [
+  {
+    id: "linkNsToNs",
+    label: "NS↔NS",
+    sourceType: "namespace",
+    targetType: "namespace",
+    category: "dependency",
+    directional: !1,
+    physics: { strength: 0.25, distance: 870 },
+    tooltip: "Namespace ↔ Namespace dependency"
+  },
+  {
+    id: "linkNsToWorker",
+    label: "NS↔Wk",
+    sourceType: "namespace",
+    targetType: "worker",
+    category: "containment",
+    directional: !1,
+    physics: { strength: 0.3, distance: 800 },
+    tooltip: "Namespace ↔ Worker containment"
+  },
+  {
+    id: "linkWorkerToWorker",
+    label: "Wk↔Wk",
+    sourceType: "worker",
+    targetType: "worker",
+    category: "dependency",
+    directional: !1,
+    physics: { strength: 0.3, distance: 720 },
+    tooltip: "Worker ↔ Worker dependency"
+  },
+  {
+    id: "linkWorkerToWorkflow",
+    label: "Wk↔Wf",
+    sourceType: "worker",
+    targetType: "workflow",
+    category: "containment",
+    directional: !1,
+    physics: { strength: 0.55, distance: 190 },
+    tooltip: "Worker ↔ Workflow containment"
+  },
+  {
+    id: "linkWorkerToActivity",
+    label: "Wk↔Act",
+    sourceType: "worker",
+    targetType: "activity",
+    category: "containment",
+    directional: !1,
+    physics: { strength: 0.35, distance: 210 },
+    tooltip: "Worker ↔ Activity containment"
+  },
+  {
+    id: "linkWorkerToNexus",
+    label: "Wk↔Nx",
+    sourceType: "worker",
+    targetType: "nexusService",
+    category: "containment",
+    directional: !1,
+    physics: { strength: 1.25, distance: 430 },
+    tooltip: "Worker ↔ Nexus service containment"
+  },
+  {
+    id: "linkNexusToOperation",
+    label: "Nx↔Op",
+    sourceType: "nexusService",
+    targetType: "nexusOperation",
+    category: "containment",
+    directional: !1,
+    physics: { strength: 1.4, distance: 600 },
+    tooltip: "Nexus service ↔ Nexus operation containment"
+  },
+  {
+    id: "linkEndpointToNamespace",
+    label: "Ep↔NS",
+    sourceType: "nexusEndpoint",
+    targetType: "namespace",
+    category: "containment",
+    directional: !1,
+    physics: { strength: 1, distance: 690 },
+    tooltip: "Nexus endpoint ↔ Namespace containment"
+  },
+  {
+    id: "linkWorkflowToWorkflow",
+    label: "Wf↔Wf",
+    sourceType: "workflow",
+    targetType: "workflow",
+    category: "dependency",
+    directional: !1,
+    physics: { strength: 0.5, distance: 420 },
+    tooltip: "Workflow ↔ Workflow dependency"
+  },
+  {
+    id: "linkWorkflowToActivity",
+    label: "Wf↔Act",
+    sourceType: "workflow",
+    targetType: "activity",
+    category: "dependency",
+    directional: !1,
+    physics: { strength: 1.9, distance: 40 },
+    tooltip: "Workflow ↔ Activity dependency"
+  },
+  {
+    id: "linkWorkflowToOperation",
+    label: "Wf→Op",
+    sourceType: "workflow",
+    targetType: "nexusOperation",
+    category: "dependency",
+    directional: !0,
+    physics: { strength: 1.5, distance: 330 },
+    tooltip: "Workflow → Nexus operation (the nexus call)"
+  },
+  {
+    id: "linkOperationToWorkflow",
+    label: "Op→Wf",
+    sourceType: "nexusOperation",
+    targetType: "workflow",
+    category: "dependency",
+    directional: !0,
+    physics: { strength: 1.55, distance: 360 },
+    tooltip: "Nexus operation → Workflow (backing workflow / sync-op call)"
+  },
+  {
+    id: "linkOperationToActivity",
+    label: "Op↔Act",
+    sourceType: "nexusOperation",
+    targetType: "activity",
+    category: "dependency",
+    directional: !1,
+    physics: { strength: 1.4, distance: 300 },
+    tooltip: "Nexus operation ↔ Activity dependency (sync-op body call)"
+  },
+  {
+    id: "linkEndpointToOperation",
+    label: "Ep↔Op",
+    sourceType: "nexusEndpoint",
+    targetType: "nexusOperation",
+    category: "containment",
+    directional: !1,
+    physics: { strength: 1.5, distance: 470 },
+    tooltip: "Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)"
+  }
+], ho = Object.fromEntries(
+  Dn.map((e) => [e.id, e])
+);
+function fo(e) {
+  const n = e.sourceNodeType, s = e.targetNodeType, o = (r, c) => n === r && s === c || n === c && s === r;
+  let a;
+  return e.edgeType === "containment" ? o("nexusOperation", "nexusEndpoint") ? a = "linkEndpointToOperation" : o("nexusOperation", "nexusService") ? a = "linkNexusToOperation" : o("worker", "nexusService") ? a = "linkWorkerToNexus" : o("nexusEndpoint", "namespace") ? a = "linkEndpointToNamespace" : n === "workflow" || s === "workflow" ? a = "linkWorkerToWorkflow" : n === "activity" || s === "activity" ? a = "linkWorkerToActivity" : a = "linkNsToWorker" : n === "namespace" || s === "namespace" ? a = "linkNsToNs" : n === "worker" || s === "worker" ? a = "linkWorkerToWorker" : n === "workflow" && s === "nexusOperation" ? a = "linkWorkflowToOperation" : n === "nexusOperation" && s === "workflow" ? a = "linkOperationToWorkflow" : o("nexusOperation", "nexusOperation") ? a = "linkWorkflowToOperation" : o("nexusOperation", "activity") ? a = "linkOperationToActivity" : o("workflow", "workflow") ? a = "linkWorkflowToWorkflow" : a = "linkWorkflowToActivity", ho[a];
+}
+function Kn(e, n) {
+  return e.charge[n];
+}
+const mo = 2;
+function jn(e, n) {
+  return Math.max(e.coreRadius[n], mo);
+}
+function an(e, n) {
+  const s = e.band[n];
+  return { yMin: s.min, yMax: s.max };
+}
+function qt(e, n) {
+  const s = fo(n);
+  return {
+    strength: e.link[s.id],
+    distance: e.dist[s.id],
+    key: s.id
+  };
+}
+function go(e, n, s) {
+  const o = n.coreRadiusMultiplier, a = n.pushMultiplier, r = n.chargeExponent;
+  for (let c = 0; c < e.length; c++)
+    for (let l = c + 1; l < e.length; l++) {
+      const i = e[c], d = e[l];
+      let h = d.x - i.x, g = d.y - i.y, p = h * h + g * g;
+      if (p < 0.01) {
+        const w = Math.random() * Math.PI * 2;
+        h = Math.cos(w), g = Math.sin(w), p = 1;
+      }
+      const y = Math.sqrt(p), v = o * jn(n, i.nodeType), k = o * jn(n, d.nodeType), A = (v + k) / 2, P = A * A, $ = Kn(n, i.nodeType), D = Kn(n, d.nodeType), M = ($ + D) / 2, b = -(s * a * M / Math.pow(p + P, r)), C = b * (h / y), F = b * (g / y);
+      i.pinned || (i.vx -= C, i.vy -= F), d.pinned || (d.vx += C, d.vy += F);
+    }
+}
+function yo(e, n, s, o) {
+  const a = /* @__PURE__ */ new Map();
+  for (const i of e)
+    a.set(i.sourceId, (a.get(i.sourceId) ?? 0) + 1), a.set(i.targetId, (a.get(i.targetId) ?? 0) + 1);
+  const r = s.pullMultiplier, c = s.linkExponent, l = s.distanceMultiplier;
+  for (const i of e) {
+    const d = n.get(i.sourceId), h = n.get(i.targetId);
+    if (!d || !h) continue;
+    let g = h.x - d.x, p = h.y - d.y, y = Math.sqrt(g * g + p * p);
+    if (y < 0.1) {
+      const R = Math.random() * Math.PI * 2;
+      g = Math.cos(R), p = Math.sin(R), y = 1;
+    }
+    const v = qt(s, i), k = v.distance * l, A = y - k, P = Math.abs(A), $ = A >= 0 ? 1 : -1, D = o * r * v.strength * $ * Math.pow(P, c) / y, M = D * g, b = D * p, C = a.get(i.sourceId) ?? 1, F = a.get(i.targetId) ?? 1, w = C / (C + F);
+    d.pinned || (d.vx += M * (1 - w), d.vy += b * (1 - w)), h.pinned || (h.vx -= M * w, h.vy -= b * w);
+  }
+}
+const Fn = 60, zt = 540;
+function ko(e, n) {
+  const s = /* @__PURE__ */ new Set(), o = [];
+  for (const r of e) {
+    if (s.has(r.nodeType)) continue;
+    s.add(r.nodeType);
+    const c = an(n, r.nodeType);
+    o.push((c.yMin + c.yMax) / 2);
+  }
+  if (o.length === 0) return 0;
+  o.sort((r, c) => r - c);
+  const a = o.length;
+  return a % 2 ? o[(a - 1) / 2] : (o[a / 2 - 1] + o[a / 2]) / 2;
+}
+function vo(e, n, s) {
+  if (n.gravityMode === "radial") {
+    bo(e, n, s);
+    return;
+  }
+  const o = n.gravityX, a = n.gravityY, r = n.gravityBandExp, c = n.bandXMin, l = n.bandXMax, i = ko(e, n);
+  for (const d of e) {
+    if (d.pinned) continue;
+    let h = null;
+    d.x < c ? h = c : d.x > l && (h = l), h !== null && (d.vx -= Zn(d.x - h, r) * s * o);
+    const g = an(n, d.nodeType), p = g.yMin - i, y = g.yMax - i;
+    let v = null;
+    d.y < p ? v = p : d.y > y && (v = y), v !== null && (d.vy -= Zn(d.y - v, r) * s * a);
+  }
+}
+function Zn(e, n) {
+  return Math.sign(e) * Math.pow(Math.abs(e), n);
+}
+function bo(e, n, s) {
+  const o = n.gravityY, a = /* @__PURE__ */ new Map();
+  for (const i of e) {
+    if (a.has(i.nodeType)) continue;
+    const d = an(n, i.nodeType);
+    a.set(i.nodeType, (d.yMin + d.yMax) / 2);
+  }
+  if (a.size === 0) return;
+  const r = [...a.values()], c = Math.min(...r), l = Math.max(...r) - c || 1;
+  for (const i of e) {
+    if (i.pinned) continue;
+    const d = a.get(i.nodeType);
+    if (d === void 0) continue;
+    const h = Fn + (d - c) / l * (zt - Fn), g = Math.hypot(i.x, i.y);
+    if (g < 1e-6) {
+      i.vx += Math.random() - 0.5, i.vy += Math.random() - 0.5;
+      continue;
+    }
+    const p = Zn(g - h, n.gravityBandExp);
+    i.vx -= i.x / g * p * s * o, i.vy -= i.y / g * p * s * o;
+  }
+}
+const wo = -350;
+function xo(e, n, s, o) {
+  const a = n.gravityDownstream;
+  if (a <= 0 || !o) return;
+  const r = n.gravityTopologicalExp, c = n.gravityMode === "radial";
+  for (const l of e) {
+    if (l.pinned) continue;
+    const i = o.get(l.id) ?? 0;
+    if (i <= 0) continue;
+    const d = Math.pow(i, r);
+    c ? (l.vx -= l.x * s * a * d, l.vy -= l.y * s * a * d) : l.vy -= (l.y - wo) * s * a * d;
+  }
+}
+function No(e, n, s) {
+  const o = n.gravityCenter;
+  if (!(o <= 0))
+    for (const a of e)
+      a.pinned || (a.vx -= a.x * s * o, a.vy -= a.y * s * o);
+}
+const Xt = {
+  // Charges (all negative = repulsion). Per-type defaults captured from an
+  // interactive tuning session on the PUSH charge map: the container/host
+  // tiers (endpoint, namespace, worker, service) carry the heaviest repulsion
+  // so top-level nodes fan well apart, dropping off through the orchestrator
+  // tier (operation, workflow) down to activities. Sourced from the registry
+  // alongside each type's core radius.
+  charge: Object.fromEntries(
+    Oe.map((e) => [e, ke[e].physics.charge])
+  ),
+  // Core radii (charge softening as a length), sourced from the registry.
+  coreRadius: Object.fromEntries(
+    Oe.map((e) => [e, ke[e].physics.coreRadius])
+  ),
+  // Spring stiffness + rest length per edge category, sourced from the registry.
+  link: Object.fromEntries(
+    Dn.map((e) => [e.id, e.physics.strength])
+  ),
+  dist: Object.fromEntries(
+    Dn.map((e) => [e.id, e.physics.distance])
+  ),
   // Hierarchical gravity. Y bands carry the vertical structure of the
   // layout — strong (gravityY = 0.145) and overlapping at the edges so
   // adjacent tiers can soften their boundary instead of forming a hard
@@ -1661,22 +2122,23 @@ const mn = {
   // width, which is generous enough to let wide fan-outs spread laterally.
   gravityX: 0.05,
   gravityY: 0.145,
+  gravityBandExp: 1,
+  // Off by default — the experiment lives behind a slider. When non-zero,
+  // every node with a positive downstream score gets an additional vy pull
+  // toward `bandMin - score * bandHeight`, layered additively on top of the
+  // per-type Y-band gravity above.
+  gravityDownstream: 0,
+  gravityTopologicalExp: 3,
+  gravityCenter: 0.05,
+  gravityMode: "cartesian",
+  bandEnabled: !0,
+  topologicalEnabled: !1,
   bandXMin: 0,
   bandXMax: 380,
-  bandYMinNamespace: -340,
-  bandYMaxNamespace: -120,
-  bandYMinNexusEndpoint: -180,
-  bandYMaxNexusEndpoint: -60,
-  bandYMinWorker: -200,
-  bandYMaxWorker: 120,
-  bandYMinNexusService: -200,
-  bandYMaxNexusService: 110,
-  bandYMinNexusOperation: 10,
-  bandYMaxNexusOperation: 340,
-  bandYMinWorkflow: 100,
-  bandYMaxWorkflow: 460,
-  bandYMinActivity: 170,
-  bandYMaxActivity: 500,
+  // Per-type Y rest bands, sourced from the registry.
+  band: Object.fromEntries(
+    Oe.map((e) => [e, { ...ke[e].physics.yBand }])
+  ),
   // Dynamics. alphaMin is well below the d3 default (0.001) so the
   // simulation continues into its slow-cooling tail — layouts read as
   // "settled" rather than freezing while springs are still measurably
@@ -1684,813 +2146,1292 @@ const mn = {
   alphaDecay: 5e-3,
   alphaMin: 1e-4,
   velocityDecay: 0.4,
-  chargeSoftening: 450,
-  pushMultiplier: 2.6,
+  pushMultiplier: 0.4,
   pullMultiplier: 0.6,
   distanceMultiplier: 0.1,
-  chargeExponent: 1.4,
+  coreRadiusMultiplier: 1,
+  chargeExponent: 0.7,
+  // acts on (dist² + softening); = old 1.4 with the /2 folded in
   linkExponent: 1
-};
-function _n(e, t) {
-  switch (t) {
-    case "namespace":
-      return e.chargeNamespace;
-    case "nexusEndpoint":
-      return e.chargeNexusEndpoint;
-    case "worker":
-      return e.chargeWorker;
-    case "workflow":
-      return e.chargeWorkflow;
-    case "activity":
-      return e.chargeActivity;
-    case "nexusService":
-      return e.chargeNexusService;
-    case "nexusOperation":
-      return e.chargeNexusOperation;
-  }
-}
-function En(e, t) {
-  switch (t) {
-    case "namespace":
-      return { yMin: e.bandYMinNamespace, yMax: e.bandYMaxNamespace };
-    case "nexusEndpoint":
-      return { yMin: e.bandYMinNexusEndpoint, yMax: e.bandYMaxNexusEndpoint };
-    case "worker":
-      return { yMin: e.bandYMinWorker, yMax: e.bandYMaxWorker };
-    case "workflow":
-      return { yMin: e.bandYMinWorkflow, yMax: e.bandYMaxWorkflow };
-    case "activity":
-      return { yMin: e.bandYMinActivity, yMax: e.bandYMaxActivity };
-    case "nexusService":
-      return { yMin: e.bandYMinNexusService, yMax: e.bandYMaxNexusService };
-    case "nexusOperation":
-      return { yMin: e.bandYMinNexusOperation, yMax: e.bandYMaxNexusOperation };
-  }
-}
-const Ss = [
-  "namespace",
-  "nexusEndpoint",
-  "worker",
-  "workflow",
-  "activity",
-  "nexusService",
-  "nexusOperation"
-];
-function pt(e, t) {
-  const s = t.sourceNodeType, o = t.targetNodeType;
-  return t.edgeType === "containment" ? s === "nexusOperation" && o === "nexusService" || s === "nexusService" && o === "nexusOperation" ? { strength: e.linkNexusToOperation, distance: e.distNexusToOperation } : s === "nexusService" && o === "worker" || s === "worker" && o === "nexusService" ? { strength: e.linkWorkerToNexus, distance: e.distWorkerToNexus } : s === "workflow" || o === "workflow" ? { strength: e.linkWorkerToWorkflow, distance: e.distWorkerToWorkflow } : s === "activity" || o === "activity" ? { strength: e.linkWorkerToActivity, distance: e.distWorkerToActivity } : { strength: e.linkNsToWorker, distance: e.distNsToWorker } : s === "namespace" || o === "namespace" ? { strength: e.linkNsToNs, distance: e.distNsToNs } : s === "worker" || o === "worker" ? { strength: e.linkWorkerToWorker, distance: e.distWorkerToWorker } : (s === "nexusOperation" ? "workflow" : s) === "workflow" && (o === "nexusOperation" ? "workflow" : o) === "workflow" ? { strength: e.linkWorkflowToWorkflow, distance: e.distWorkflowToWorkflow } : { strength: e.linkWorkflowToActivity, distance: e.distWorkflowToActivity };
-}
-const Rn = 50, Ze = 1e6;
-class Ms {
-  constructor(t, s) {
-    an(this, "nodes");
-    an(this, "edges");
-    an(this, "params");
-    an(this, "alpha");
-    an(this, "nodeMap");
-    this.params = { ...mn, ...s }, this.alpha = 1, this.nodes = [], this.nodeMap = /* @__PURE__ */ new Map();
+}, Gn = 50, je = 1e6, To = 200;
+class Mo {
+  constructor(n, s) {
+    on(this, "nodes");
+    on(this, "edges");
+    on(this, "params");
+    on(this, "alpha");
+    // Per-burst cooling rate set by `reheat()` so the settle window stays fixed
+    // (~REHEAT_TICKS) no matter the kick size. Null means "cool at the normal
+    // alphaDecay" — used during steady-state and live tuning via `nudge()`.
+    on(this, "reheatDecay", null);
+    on(this, "nodeMap");
+    this.params = { ...Xt, ...s }, this.alpha = 1, this.nodes = [], this.nodeMap = /* @__PURE__ */ new Map();
     const o = (this.params.bandXMin + this.params.bandXMax) / 2, a = Math.max(40, (this.params.bandXMax - this.params.bandXMin) * 0.7);
-    for (const l of t.nodes.values()) {
-      const r = En(this.params, l.nodeType), p = (r.yMin + r.yMax) / 2, d = Math.max(20, (r.yMax - r.yMin) / 2), m = {
-        ...l,
+    for (const r of n.nodes.values()) {
+      const c = an(this.params, r.nodeType), l = (c.yMin + c.yMax) / 2, i = Math.max(20, (c.yMax - c.yMin) / 2), d = {
+        ...r,
         x: o + (Math.random() - 0.5) * a,
-        y: p + (Math.random() - 0.5) * d,
+        y: l + (Math.random() - 0.5) * i,
         vx: 0,
         vy: 0,
         pinned: !1
       };
-      this.nodes.push(m), this.nodeMap.set(m.id, m);
+      this.nodes.push(d), this.nodeMap.set(d.id, d);
     }
-    for (const l of this.nodes)
-      if (l.parentId) {
-        const r = this.nodeMap.get(l.parentId);
-        r && (l.x = r.x + (Math.random() - 0.5) * 20);
+    for (const r of this.nodes)
+      if (r.parentId) {
+        const c = this.nodeMap.get(r.parentId);
+        c && (r.x = c.x + (Math.random() - 0.5) * 20);
       }
-    this.edges = t.edges;
+    this.edges = n.edges;
   }
-  getNode(t) {
-    return this.nodeMap.get(t);
+  getNode(n) {
+    return this.nodeMap.get(n);
   }
-  tick(t) {
+  tick(n, s) {
     if (this.alpha < this.params.alphaMin) return;
-    const s = t ? this.nodes.filter((b) => t.has(b.id)) : this.nodes, o = t ? this.edges.filter((b) => t.has(b.sourceId) && t.has(b.targetId)) : this.edges, a = /* @__PURE__ */ new Map();
-    for (const b of o)
-      a.set(b.sourceId, (a.get(b.sourceId) ?? 0) + 1), a.set(b.targetId, (a.get(b.targetId) ?? 0) + 1);
-    const l = this.params.chargeSoftening, r = this.params.pushMultiplier, p = this.params.chargeExponent;
-    for (let b = 0; b < s.length; b++)
-      for (let x = b + 1; x < s.length; x++) {
-        const _ = s[b], U = s[x];
-        let be = U.x - _.x, R = U.y - _.y, ie = be * be + R * R;
-        if (ie < 0.01) {
-          const ye = Math.random() * Math.PI * 2;
-          be = Math.cos(ye), R = Math.sin(ye), ie = 1;
-        }
-        const ae = Math.sqrt(ie), de = Math.sqrt(ie + l), ue = _n(this.params, _.nodeType), Oe = _n(this.params, U.nodeType), ce = (ue + Oe) / 2, ge = -(this.alpha * r * ce / Math.pow(de, p)), pe = ge * (be / ae), Fe = ge * (R / ae);
-        _.pinned || (_.vx -= pe, _.vy -= Fe), U.pinned || (U.vx += pe, U.vy += Fe);
+    const o = n ? this.nodes.filter((i) => n.has(i.id)) : this.nodes, a = n ? this.edges.filter((i) => n.has(i.sourceId) && n.has(i.targetId)) : this.edges;
+    go(o, this.params, this.alpha), yo(a, this.nodeMap, this.params, this.alpha), this.params.bandEnabled && vo(o, this.params, this.alpha), this.params.topologicalEnabled && xo(o, this.params, this.alpha, s), !this.params.bandEnabled && !this.params.topologicalEnabled && No(o, this.params, this.alpha);
+    const r = this.params.velocityDecay, c = Gn * Gn;
+    for (const i of o) {
+      if (i.pinned) continue;
+      i.vx *= r, i.vy *= r, Number.isFinite(i.vx) || (i.vx = 0), Number.isFinite(i.vy) || (i.vy = 0);
+      const d = i.vx * i.vx + i.vy * i.vy;
+      if (d > c) {
+        const h = Gn / Math.sqrt(d);
+        i.vx *= h, i.vy *= h;
       }
-    const d = this.params.pullMultiplier, m = this.params.linkExponent, T = this.params.distanceMultiplier;
-    for (const b of o) {
-      const x = this.nodeMap.get(b.sourceId), _ = this.nodeMap.get(b.targetId);
-      if (!x || !_) continue;
-      let U = _.x - x.x, be = _.y - x.y, R = Math.sqrt(U * U + be * be);
-      if (R < 0.1) {
-        const J = Math.random() * Math.PI * 2;
-        U = Math.cos(J), be = Math.sin(J), R = 1;
-      }
-      const ie = pt(this.params, b), ae = ie.distance * T, de = R - ae, ue = Math.abs(de), Oe = de >= 0 ? 1 : -1, ce = this.alpha * d * ie.strength * Oe * Math.pow(ue, m) / R, ge = ce * U, pe = ce * be, Fe = a.get(b.sourceId) ?? 1, ye = a.get(b.targetId) ?? 1, ne = Fe / (Fe + ye);
-      x.pinned || (x.vx += ge * (1 - ne), x.vy += pe * (1 - ne)), _.pinned || (_.vx -= ge * ne, _.vy -= pe * ne);
+      i.x += i.vx, i.y += i.vy, Number.isFinite(i.x) || (i.x = 0), Number.isFinite(i.y) || (i.y = 0), i.x < -je ? i.x = -je : i.x > je && (i.x = je), i.y < -je ? i.y = -je : i.y > je && (i.y = je);
     }
-    const $ = this.params.gravityX, y = this.params.gravityY, I = this.params.bandXMin, N = this.params.bandXMax;
-    for (const b of s) {
-      if (b.pinned) continue;
-      let x = null;
-      b.x < I ? x = I : b.x > N && (x = N), x !== null && (b.vx -= (b.x - x) * this.alpha * $);
-      const _ = En(this.params, b.nodeType);
-      let U = null;
-      b.y < _.yMin ? U = _.yMin : b.y > _.yMax && (U = _.yMax), U !== null && (b.vy -= (b.y - U) * this.alpha * y);
-    }
-    const f = this.params.velocityDecay, P = Rn * Rn;
-    for (const b of s) {
-      if (b.pinned) continue;
-      b.vx *= f, b.vy *= f, Number.isFinite(b.vx) || (b.vx = 0), Number.isFinite(b.vy) || (b.vy = 0);
-      const x = b.vx * b.vx + b.vy * b.vy;
-      if (x > P) {
-        const _ = Rn / Math.sqrt(x);
-        b.vx *= _, b.vy *= _;
-      }
-      b.x += b.vx, b.y += b.vy, Number.isFinite(b.x) || (b.x = 0), Number.isFinite(b.y) || (b.y = 0), b.x < -Ze ? b.x = -Ze : b.x > Ze && (b.x = Ze), b.y < -Ze ? b.y = -Ze : b.y > Ze && (b.y = Ze);
-    }
-    this.alpha = Math.max(this.alpha - this.params.alphaDecay, 0);
+    const l = this.reheatDecay ?? this.params.alphaDecay;
+    this.alpha = Math.max(this.alpha - l, 0), this.alpha <= this.params.alphaMin && (this.reheatDecay = null);
   }
-  reheat(t = 0.5) {
-    this.alpha = t;
+  // Strong, bounded-duration kick. A bigger `alpha` rearranges the layout
+  // further but settles in the same ~REHEAT_TICKS window (decay scales with the
+  // kick) rather than lingering proportionally longer.
+  reheat(n = 0.5) {
+    this.alpha = n, this.reheatDecay = n / To;
+  }
+  // Raise alpha to at least `target` without ever cooling a hotter sim.
+  // This is the physics primitive behind the control panel's "keep the
+  // layout warm while tuning" hook: a parameter edit re-energises the
+  // simulation just enough to show its effect, but a still-hot sim is
+  // left alone so dragging a slider during settling doesn't dampen it.
+  nudge(n = 0.3) {
+    this.alpha < n && (this.alpha = n), this.reheatDecay = null;
   }
   isStable() {
     return this.alpha < this.params.alphaMin;
   }
-  pinNode(t, s, o) {
-    const a = this.nodeMap.get(t);
+  pinNode(n, s, o) {
+    const a = this.nodeMap.get(n);
     a && (a.pinned = !0, a.x = s, a.y = o, a.vx = 0, a.vy = 0);
   }
-  unpinNode(t) {
-    const s = this.nodeMap.get(t);
+  unpinNode(n) {
+    const s = this.nodeMap.get(n);
     s && (s.pinned = !1);
   }
-  setParams(t) {
-    Object.assign(this.params, t);
+  setParams(n) {
+    Object.assign(this.params, n);
   }
   // Seed a node at a given position (used when new nodes appear during a
   // level-toggle transition). X follows the seed point; Y snaps into the
   // node's own band so the hierarchy is honoured immediately.
-  seedAt(t, s, o) {
-    const a = this.nodeMap.get(t);
+  seedAt(n, s, o) {
+    const a = this.nodeMap.get(n);
     if (!a) return;
-    const l = En(this.params, a.nodeType), r = Math.min(Math.max(o, l.yMin), l.yMax);
-    a.x = s + (Math.random() - 0.5) * 10, a.y = r + (Math.random() - 0.5) * 10, a.vx = 0, a.vy = 0;
+    const r = an(this.params, a.nodeType), c = Math.min(Math.max(o, r.yMin), r.yMax);
+    a.x = s + (Math.random() - 0.5) * 10, a.y = c + (Math.random() - 0.5) * 10, a.vx = 0, a.vy = 0;
   }
 }
-const $s = { x: 0, y: 0, scale: 1 };
-function qe(e, t, s) {
-  return [t * e.scale + e.x, s * e.scale + e.y];
-}
-function On(e, t, s) {
-  return [(t - e.x) / e.scale, (s - e.y) / e.scale];
-}
-function Kn(e, t, s, o) {
-  const a = Math.max(0.1, Math.min(10, e.scale * o)), l = (t - e.x) / e.scale, r = (s - e.y) / e.scale;
-  return {
-    scale: a,
-    x: t - l * a,
-    y: s - r * a
-  };
-}
-function Dn(e, t, s, o = 60) {
-  if (e.length === 0) return { x: t / 2, y: s / 2, scale: 1 };
-  let a = 1 / 0, l = -1 / 0, r = 1 / 0, p = -1 / 0;
-  for (const f of e)
-    f.x < a && (a = f.x), f.x > l && (l = f.x), f.y < r && (r = f.y), f.y > p && (p = f.y);
-  const d = l - a || 1, m = p - r || 1, T = t - o * 2, $ = s - o * 2, y = Math.min(T / d, $ / m, 2), I = (a + l) / 2, N = (r + p) / 2;
-  return {
-    scale: y,
-    x: t / 2 - I * y,
-    y: s / 2 - N * y
-  };
-}
-function Cs(e, t, s, o) {
-  const a = /* @__PURE__ */ new Set([e]), l = [e];
-  for (; l.length > 0; ) {
-    const r = l.shift();
-    for (const p of t) {
-      if (p.edgeType === "containment") continue;
-      let d;
-      o === "downstream" && p.sourceId === r ? d = p.targetId : o === "upstream" && p.targetId === r && (d = p.sourceId), d && s.has(d) && !a.has(d) && (a.add(d), l.push(d));
-    }
-  }
-  return a;
-}
-function Es(e, t) {
-  const s = /* @__PURE__ */ new Set();
-  for (const o of t)
-    o.edgeType !== "containment" && e.has(o.sourceId) && e.has(o.targetId) && s.add(o.id);
-  return s;
-}
-const Mn = {
-  namespace: { fill: "#475569", border: "#1E293B", icon: C.namespace.icon },
-  // Endpoints live just below namespaces in the band stack. They route nexus
-  // calls but aren't containers, so we tint them with the nexus pink while
-  // keeping the slate desaturation that signals "top-level routing infra".
-  nexusEndpoint: { fill: "#9F1239", border: "#4C0519", icon: C.nexusEndpoint.icon },
-  worker: { fill: "#94A3B8", border: "#475569", icon: C.worker.icon },
-  workflow: { fill: "#8B7EC8", border: "#5D4F95", icon: C.workflow.icon },
-  activity: { fill: "#7CB9E8", border: "#4A8BC2", icon: C.activity.icon },
-  nexusService: { fill: "#DB2777", border: "#831843", icon: C.nexusService.icon },
-  nexusOperation: { fill: "#F9A8D4", border: "#BE185D", icon: C.nexusOperation.icon }
-}, Ue = {
+const Ue = {
   containment: { color: "#94A3B8", alpha: 0.35, dash: [3, 4], width: 1 },
   opContainment: { color: "#DB2777", alpha: 0.55, dash: [3, 4], width: 1.2 },
   // op → service
-  dependencyL1: { color: "#475569", alpha: 0.85, dash: [], width: 1.8 },
+  epComposition: { color: "#9F1239", alpha: 0.55, dash: [3, 4], width: 1.2 },
+  // op → endpoint
+  dependencyNsToNs: { color: "#475569", alpha: 0.85, dash: [], width: 1.8 },
   // ns → ns
-  dependencyL2: { color: "#64748B", alpha: 0.75, dash: [], width: 1.6 },
+  dependencyWkToWk: { color: "#64748B", alpha: 0.75, dash: [], width: 1.6 },
   // worker → worker
   workflowDep: { color: "#8B7EC8", alpha: 0.7, dash: [], width: 1.4 },
   // workflow → workflow
   workflowToActivity: { color: "#4A8BC2", alpha: 0.7, dash: [], width: 1.4 },
-  // workflow → activity (activity blue)
-  dependencyL3: { color: "#94A3B8", alpha: 0.55, dash: [], width: 1.4 },
-  // generic L3 fallback
-  dependencyL4: { color: "#94A3B8", alpha: 0.4, dash: [], width: 1.2 },
-  // ends at activity (L4 leaf)
+  // workflow → activity
+  dependencyDefault: { color: "#94A3B8", alpha: 0.5, dash: [], width: 1.3 },
+  // all other deps
   nexusCall: { color: "#F472B6", alpha: 0.85, dash: [], width: 1.5 }
   // workflow ↔ operation, or spliced
-}, Ds = "#4A90D9", Fs = "#FFFFFF", hn = 0.2, Bn = {
-  1: { w: 40, h: 40, r: 20, iconSize: 18 },
-  1.5: { w: 30, h: 30, r: 15, iconSize: 14 },
-  2: { w: 40, h: 40, r: 20, iconSize: 18 },
-  3: { w: 22, h: 22, r: 11, iconSize: 12 },
-  4: { w: 16, h: 16, r: 8, iconSize: 10 }
-}, Qn = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', As = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-function et(e, t) {
-  return typeof document > "u" ? t : getComputedStyle(document.documentElement).getPropertyValue(e).trim() || t;
+}, So = "#4A90D9", Eo = "#FFFFFF", Tn = 0.2, Ut = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', $o = 11, Co = 0.78, Do = 15, Fo = 12;
+function Ao(e) {
+  return e.length > Do ? e.slice(0, Fo) + "…" : e;
 }
-function Is(e, t, s) {
-  if (e.edgeType === "containment")
-    return t.nodeType === "nexusOperation" && s.nodeType === "nexusService" ? Ue.opContainment : Ue.containment;
-  if (t.nodeType === "nexusOperation" || s.nodeType === "nexusOperation" || e.nexusEndpoint != null)
-    return Ue.nexusCall;
-  if (t.nodeType === "workflow" && s.nodeType === "workflow")
-    return Ue.workflowDep;
-  if (t.nodeType === "workflow" && s.nodeType === "activity" || t.nodeType === "activity" && s.nodeType === "workflow")
-    return Ue.workflowToActivity;
-  const o = Math.min(t.level, s.level);
-  return o === 1 ? Ue.dependencyL1 : o === 2 ? Ue.dependencyL2 : s.level === 4 || t.level === 4 ? Ue.dependencyL4 : Ue.dependencyL3;
+function Po(e) {
+  return `600 ${e.toFixed(1)}px ${Ut}`;
 }
-const $n = 8, Pe = 100, Ws = 0.5, nt = 0.25, Yn = 0.1;
-function Ls({
+function Mn(e, n, s) {
+  const o = e ?? (typeof document < "u" ? document.documentElement : null);
+  return o && getComputedStyle(o).getPropertyValue(n).trim() || s;
+}
+function kt(e, n, s) {
+  return e.edgeType === "containment" ? n.nodeType === "nexusOperation" && s.nodeType === "nexusService" ? Ue.opContainment : n.nodeType === "nexusOperation" && s.nodeType === "nexusEndpoint" || n.nodeType === "nexusEndpoint" && s.nodeType === "nexusOperation" ? Ue.epComposition : Ue.containment : n.nodeType === "nexusOperation" || s.nodeType === "nexusOperation" || e.nexusEndpoint != null ? Ue.nexusCall : n.nodeType === "workflow" && s.nodeType === "workflow" ? Ue.workflowDep : n.nodeType === "workflow" && s.nodeType === "activity" || n.nodeType === "activity" && s.nodeType === "workflow" ? Ue.workflowToActivity : n.nodeType === "namespace" || s.nodeType === "namespace" ? Ue.dependencyNsToNs : n.nodeType === "worker" || s.nodeType === "worker" ? Ue.dependencyWkToWk : Ue.dependencyDefault;
+}
+const Sn = 8, Ae = 100, vt = 0.25, Hn = 0.1;
+function Io({
   nodes: e,
-  edges: t,
+  edges: n,
   viewport: s,
   onViewportChange: o,
   onNodeDragStart: a,
-  onNodeDragMove: l,
-  onNodeDragEnd: r,
-  onDoubleClickNode: p,
-  onHoverNode: d,
-  onSelectNode: m,
-  onNodeContextMenu: T,
-  highlightedNodes: $,
-  highlightedEdges: y,
-  hoveredNodeId: I,
-  selectedNodeId: N,
-  focusedNodeId: f,
-  searchMatchIds: P,
-  running: b,
-  showForceFields: x,
-  forceParams: _,
-  activeSection: U,
-  activeChargeType: be,
-  activeGravityType: R,
-  nodeSummaries: ie
+  onNodeDragMove: r,
+  onNodeDragEnd: c,
+  onDoubleClickNode: l,
+  onHoverNode: i,
+  onSelectNode: d,
+  onNodeContextMenu: h,
+  highlightedNodes: g,
+  highlightedEdges: p,
+  hoveredNodeId: y,
+  selectedNodeId: v,
+  focusedNodeId: k,
+  searchMatchIds: A,
+  running: P,
+  forceParams: $,
+  activeSection: D,
+  activeChargeType: M,
+  activeGravityType: b,
+  activePullEdge: C,
+  nodeScale: F
 }) {
-  const ae = u.useRef(null), de = u.useRef(null), [ue, Oe] = u.useState({ w: 0, h: 0 }), ce = u.useRef(null), ge = u.useMemo(() => {
+  const w = m.useRef(null), R = m.useRef(null), [V, re] = m.useState({ w: 0, h: 0 }), j = m.useRef(null), ne = m.useMemo(() => {
     const E = /* @__PURE__ */ new Map();
-    for (const c of e) E.set(c.id, c);
+    for (const u of e) E.set(u.id, u);
     return E;
-  }, [e]), pe = u.useMemo(() => {
+  }, [e]), ie = m.useMemo(() => {
     const E = /* @__PURE__ */ new Map();
-    for (const B of e) E.set(B.definitionKey, (E.get(B.definitionKey) ?? 0) + 1);
-    const c = /* @__PURE__ */ new Set();
-    for (const B of e)
-      (E.get(B.definitionKey) ?? 0) > 1 && c.add(B.id);
-    return c;
-  }, [e]), Fe = u.useMemo(() => {
-    const E = I ?? N;
+    for (const W of e) E.set(W.definitionKey, (E.get(W.definitionKey) ?? 0) + 1);
+    const u = /* @__PURE__ */ new Set();
+    for (const W of e)
+      (E.get(W.definitionKey) ?? 0) > 1 && u.add(W.id);
+    return u;
+  }, [e]), T = m.useMemo(() => {
+    const E = y ?? v;
     if (!E) return null;
-    const c = ge.get(E);
-    return !c || !pe.has(E) ? null : c.definitionKey;
-  }, [I, N, ge, pe]), ye = u.useRef({
+    const u = ne.get(E);
+    return !u || !ie.has(E) ? null : u.definitionKey;
+  }, [y, v, ne, ie]), z = m.useRef({
     nodes: e,
-    edges: t,
-    nodeMap: ge,
+    edges: n,
+    nodeMap: ne,
     viewport: s,
-    highlightedNodes: $,
-    highlightedEdges: y,
-    hoveredNodeId: I,
-    selectedNodeId: N,
-    focusedNodeId: f,
-    searchMatchIds: P,
-    showForceFields: x,
-    forceParams: _,
-    activeSection: U,
-    activeChargeType: be,
-    activeGravityType: R,
-    nodeSummaries: ie,
-    running: b,
-    dupNodeIds: pe,
-    activeDupDefKey: Fe
+    highlightedNodes: g,
+    highlightedEdges: p,
+    hoveredNodeId: y,
+    selectedNodeId: v,
+    focusedNodeId: k,
+    searchMatchIds: A,
+    forceParams: $,
+    activeSection: D,
+    activeChargeType: M,
+    activeGravityType: b,
+    activePullEdge: C,
+    nodeScale: F,
+    running: P,
+    dupNodeIds: ie,
+    activeDupDefKey: T
   });
-  ye.current = {
+  z.current = {
     nodes: e,
-    edges: t,
-    nodeMap: ge,
+    edges: n,
+    nodeMap: ne,
     viewport: s,
-    highlightedNodes: $,
-    highlightedEdges: y,
-    hoveredNodeId: I,
-    selectedNodeId: N,
-    focusedNodeId: f,
-    searchMatchIds: P,
-    showForceFields: x,
-    forceParams: _,
-    activeSection: U,
-    activeChargeType: be,
-    activeGravityType: R,
-    nodeSummaries: ie,
-    running: b,
-    dupNodeIds: pe,
-    activeDupDefKey: Fe
-  }, u.useEffect(() => {
-    const E = de.current;
+    highlightedNodes: g,
+    highlightedEdges: p,
+    hoveredNodeId: y,
+    selectedNodeId: v,
+    focusedNodeId: k,
+    searchMatchIds: A,
+    forceParams: $,
+    activeSection: D,
+    activeChargeType: M,
+    activeGravityType: b,
+    activePullEdge: C,
+    nodeScale: F,
+    running: P,
+    dupNodeIds: ie,
+    activeDupDefKey: T
+  }, m.useEffect(() => {
+    const E = R.current;
     if (!E) return;
-    const c = new ResizeObserver((B) => {
-      const { width: j, height: K } = B[0].contentRect;
-      Oe({ w: Math.floor(j), h: Math.floor(K) });
+    const u = new ResizeObserver((W) => {
+      const { width: U, height: B } = W[0].contentRect;
+      re({ w: Math.floor(U), h: Math.floor(B) });
     });
-    return c.observe(E), () => c.disconnect();
+    return u.observe(E), () => u.disconnect();
   }, []);
-  const ne = u.useCallback((E, c) => {
-    const [B, j] = On(s, E, c);
-    for (let K = e.length - 1; K >= 0; K--) {
-      const he = e[K], Se = Bn[he.level].r / s.scale + 4;
-      if ((B - he.x) ** 2 + (j - he.y) ** 2 <= Se * Se) return he;
+  const X = m.useCallback((E, u) => {
+    const [W, U] = Vn(s, E, u);
+    for (let B = e.length - 1; B >= 0; B--) {
+      const S = e[B], I = Ye(S.nodeType).size.r * _n(s.scale, F) / s.scale + 4;
+      if ((W - S.x) ** 2 + (U - S.y) ** 2 <= I * I) return S;
     }
     return null;
-  }, [e, s]), J = u.useCallback((E) => {
+  }, [e, s, F]), pe = m.useCallback((E) => {
     E.preventDefault();
-    const c = ae.current.getBoundingClientRect(), B = E.clientX - c.left, j = E.clientY - c.top, K = E.deltaY < 0 ? 1.1 : 0.9;
-    o(Kn(s, B, j, K));
-  }, [s, o]), Be = u.useCallback((E) => {
-    var he;
-    const c = ae.current.getBoundingClientRect(), B = E.clientX - c.left, j = E.clientY - c.top, K = ne(B, j);
-    if (K) {
-      ce.current = { type: "node", sx: B, sy: j, moved: !1 };
-      const [Se, L] = On(s, B, j);
-      a(K.id, Se, L);
+    const u = w.current.getBoundingClientRect(), W = E.clientX - u.left, U = E.clientY - u.top, B = E.deltaY < 0 ? 1.15 : 0.85;
+    o(Yn(s, W, U, B));
+  }, [s, o]), Ee = m.useCallback((E) => {
+    var S;
+    const u = w.current.getBoundingClientRect(), W = E.clientX - u.left, U = E.clientY - u.top, B = X(W, U);
+    if (B) {
+      j.current = { type: "node", sx: W, sy: U, moved: !1 };
+      const [I, x] = Vn(s, W, U);
+      a(B.id, I, x);
     } else
-      ce.current = { type: "pan", startVp: { ...s }, sx: B, sy: j, moved: !1 };
-    (he = ae.current) == null || he.setPointerCapture(E.pointerId);
-  }, [s, ne, a]), Te = u.useCallback((E) => {
-    const c = ae.current.getBoundingClientRect(), B = E.clientX - c.left, j = E.clientY - c.top;
-    if (!ce.current) {
-      const K = ne(B, j);
-      d((K == null ? void 0 : K.id) ?? null);
+      j.current = { type: "pan", startVp: { ...s }, sx: W, sy: U, moved: !1 };
+    (S = w.current) == null || S.setPointerCapture(E.pointerId);
+  }, [s, X, a]), Ce = m.useCallback((E) => {
+    const u = w.current.getBoundingClientRect(), W = E.clientX - u.left, U = E.clientY - u.top;
+    if (!j.current) {
+      const B = X(W, U);
+      i((B == null ? void 0 : B.id) ?? null);
       return;
     }
-    if (ce.current.moved = !0, ce.current.type === "pan" && ce.current.startVp) {
-      const K = B - ce.current.sx, he = j - ce.current.sy;
+    if (j.current.moved = !0, j.current.type === "pan" && j.current.startVp) {
+      const B = W - j.current.sx, S = U - j.current.sy;
       o({
-        ...ce.current.startVp,
-        x: ce.current.startVp.x + K,
-        y: ce.current.startVp.y + he
+        ...j.current.startVp,
+        x: j.current.startVp.x + B,
+        y: j.current.startVp.y + S
       });
-    } else if (ce.current.type === "node") {
-      const [K, he] = On(s, B, j);
-      l(K, he);
+    } else if (j.current.type === "node") {
+      const [B, S] = Vn(s, W, U);
+      r(B, S);
     }
-  }, [s, ne, o, l, d]), V = u.useCallback((E) => {
-    var B;
-    const c = ce.current;
-    if ((c == null ? void 0 : c.type) === "node") {
-      if (r(), !c.moved) {
-        const j = ae.current.getBoundingClientRect(), K = E.clientX - j.left, he = E.clientY - j.top, Se = ne(K, he);
-        Se && m(Se.id);
+  }, [s, X, o, r, i]), Ne = m.useCallback((E) => {
+    var W;
+    const u = j.current;
+    if ((u == null ? void 0 : u.type) === "node") {
+      if (c(), !u.moved) {
+        const U = w.current.getBoundingClientRect(), B = E.clientX - U.left, S = E.clientY - U.top, I = X(B, S);
+        I && d(I.id);
       }
-    } else (c == null ? void 0 : c.type) === "pan" && !c.moved && m(null);
-    ce.current = null, (B = ae.current) == null || B.releasePointerCapture(E.pointerId);
-  }, [r, m, ne]), Z = u.useCallback((E) => {
-    const c = ae.current.getBoundingClientRect(), B = E.clientX - c.left, j = E.clientY - c.top, K = ne(B, j);
-    K ? p(K.id) : o(Dn(e, ue.w, ue.h));
-  }, [ne, e, ue, o, p]), X = u.useCallback((E) => {
-    if (!T) return;
-    const c = ae.current.getBoundingClientRect(), B = E.clientX - c.left, j = E.clientY - c.top, K = ne(B, j);
-    K && (E.preventDefault(), T(K.id, E.clientX, E.clientY));
-  }, [ne, T]), we = u.useRef(!0);
-  return u.useEffect(() => {
-    we.current = !0;
-  }), u.useEffect(() => {
-    const E = ae.current;
-    if (!E || ue.w === 0) return;
-    const c = E.getContext("2d");
-    if (!c) return;
-    const B = window.devicePixelRatio || 1;
-    E.width = ue.w * B, E.height = ue.h * B;
-    let j = 0, K = !0;
-    const he = () => {
-      var Y, ke, en, nn, vn;
-      const L = ye.current, { w: Ce, h: Ae } = ue, g = L.highlightedNodes !== null && L.highlightedNodes.size > 0, w = et("--color-text", "#1e293b"), D = et("--color-text-muted", "#64748b"), O = w.startsWith("#") && w.length === 7 ? w + "33" : "rgba(100,116,139,0.2)", F = L.viewport;
-      c.setTransform(B, 0, 0, B, 0, 0), c.clearRect(0, 0, Ce, Ae);
-      for (const H of L.edges) {
-        const ee = L.nodeMap.get(H.sourceId), te = L.nodeMap.get(H.targetId);
-        if (!ee || !te) continue;
-        const [G, fe] = qe(F, ee.x, ee.y), [se, re] = qe(F, te.x, te.y);
-        if (Math.max(G, se) < -Pe || Math.min(G, se) > Ce + Pe || Math.max(fe, re) < -Pe || Math.min(fe, re) > Ae + Pe) continue;
-        const ve = ((Y = L.highlightedEdges) == null ? void 0 : Y.has(H.id)) ?? !1, Me = Is(H, ee, te), Ne = Me.alpha, Ee = L.searchMatchIds !== null && (!L.searchMatchIds.has(H.sourceId) || !L.searchMatchIds.has(H.targetId));
-        if (c.globalAlpha = g ? ve ? 1 : hn : Ee ? hn : Ne, c.beginPath(), c.setLineDash([...Me.dash]), c.strokeStyle = Me.color, c.lineWidth = Me.width, c.moveTo(G, fe), c.lineTo(se, re), c.stroke(), c.setLineDash([]), H.edgeType !== "containment") {
-          const De = Math.atan2(re - fe, se - G), Ye = Bn[te.level].w / 2 * F.scale + 2, xe = se - Math.cos(De) * Ye, $e = re - Math.sin(De) * Ye;
-          c.beginPath(), c.moveTo(xe, $e), c.lineTo(
-            xe - $n * Math.cos(De - Math.PI / 6),
-            $e - $n * Math.sin(De - Math.PI / 6)
-          ), c.lineTo(
-            xe - $n * Math.cos(De + Math.PI / 6),
-            $e - $n * Math.sin(De + Math.PI / 6)
-          ), c.closePath(), c.fillStyle = Me.color, c.fill();
+    } else (u == null ? void 0 : u.type) === "pan" && !u.moved && d(null);
+    j.current = null, (W = w.current) == null || W.releasePointerCapture(E.pointerId);
+  }, [c, d, X]), Ie = m.useCallback((E) => {
+    const u = w.current.getBoundingClientRect(), W = E.clientX - u.left, U = E.clientY - u.top, B = X(W, U);
+    B ? l(B.id) : o(ct(e, V.w, V.h));
+  }, [X, e, V, o, l]), De = m.useCallback((E) => {
+    if (!h) return;
+    const u = w.current.getBoundingClientRect(), W = E.clientX - u.left, U = E.clientY - u.top, B = X(W, U);
+    B && (E.preventDefault(), h(B.id, E.clientX, E.clientY));
+  }, [X, h]), H = m.useRef(!0);
+  return m.useEffect(() => {
+    H.current = !0;
+  }), m.useEffect(() => {
+    const E = w.current;
+    if (!E || V.w === 0) return;
+    const u = E.getContext("2d");
+    if (!u) return;
+    const W = window.devicePixelRatio || 1;
+    E.width = V.w * W, E.height = V.h * W;
+    let U = 0, B = !0;
+    const S = () => {
+      var xn, Nn;
+      const x = z.current, { w: q, h: Y } = V, le = x.highlightedNodes !== null && x.highlightedNodes.size > 0, ce = Mn(E, "--color-graph-label", "#0f172a"), _ = ce.startsWith("#") && ce.length === 7 ? ce + "33" : "rgba(100,116,139,0.2)", N = x.viewport;
+      u.setTransform(W, 0, 0, W, 0, 0), u.clearRect(0, 0, q, Y);
+      for (const J of x.edges) {
+        const fe = x.nodeMap.get(J.sourceId), he = x.nodeMap.get(J.targetId);
+        if (!fe || !he) continue;
+        const [Q, K] = Pe(N, fe.x, fe.y), [oe, ae] = Pe(N, he.x, he.y);
+        if (Math.max(Q, oe) < -Ae || Math.min(Q, oe) > q + Ae || Math.max(K, ae) < -Ae || Math.min(K, ae) > Y + Ae) continue;
+        const be = ((xn = x.highlightedEdges) == null ? void 0 : xn.has(J.id)) ?? !1, ee = kt(J, fe, he), me = ee.alpha, ye = x.searchMatchIds !== null && (!x.searchMatchIds.has(J.sourceId) || !x.searchMatchIds.has(J.targetId));
+        if (u.globalAlpha = le ? be ? 1 : Tn : ye ? Tn : me, u.beginPath(), u.setLineDash([...ee.dash]), u.strokeStyle = ee.color, u.lineWidth = ee.width, u.moveTo(Q, K), u.lineTo(oe, ae), u.stroke(), u.setLineDash([]), J.edgeType !== "containment") {
+          const te = Math.atan2(ae - K, oe - Q), we = Ye(he.nodeType).size.r * _n(N.scale, x.nodeScale) + 2, ve = oe - Math.cos(te) * we, $e = ae - Math.sin(te) * we;
+          u.beginPath(), u.moveTo(ve, $e), u.lineTo(
+            ve - Sn * Math.cos(te - Math.PI / 6),
+            $e - Sn * Math.sin(te - Math.PI / 6)
+          ), u.lineTo(
+            ve - Sn * Math.cos(te + Math.PI / 6),
+            $e - Sn * Math.sin(te + Math.PI / 6)
+          ), u.closePath(), u.fillStyle = ee.color, u.fill();
         }
-        c.globalAlpha = 1;
+        u.globalAlpha = 1;
       }
-      const z = L.activeSection === "push", Q = L.activeSection === "pull", M = L.activeSection === "gravity", v = [0.2, 0.5, 1.5];
-      if (L.showForceFields || z) {
-        const H = L.forceParams.chargeSoftening, ee = L.forceParams.chargeExponent, te = L.forceParams.pushMultiplier, G = z ? L.activeChargeType : null;
-        for (const fe of L.nodes) {
-          const [se, re] = qe(F, fe.x, fe.y), ve = 2e3;
-          if (se + ve < 0 || se - ve > Ce || re + ve < 0 || re - ve > Ae) continue;
-          const Me = G === null || fe.nodeType === G, Ne = z && Me, Ee = z && !Me, De = Ne ? 0.24 : Ee ? 0.04 : 0.1, je = Ne ? 0.05 : Ee ? 0.01 : 0.025, Ye = ((ke = Mn[fe.nodeType]) == null ? void 0 : ke.fill) ?? "#999";
-          c.strokeStyle = Ye;
-          const xe = Math.abs(_n(L.forceParams, fe.nodeType)) * te;
-          if (xe <= 0) continue;
-          const $e = [];
-          for (let Ie = 0; Ie < v.length; Ie++) {
-            const He = v[Ie], We = xe / He, Ke = Math.pow(We, 2 / Math.max(ee, 0.01)) - H;
-            if (Ke <= 0) continue;
-            const Ve = Math.sqrt(Ke) * F.scale;
-            Ve < 2 || Ve > 2e3 || $e.push(Ve);
+      const Z = x.activeSection === "push", ge = x.activeSection === "pull", vn = x.activeSection === "gravity", bn = [0.2, 0.5, 1.5];
+      if (Z) {
+        const J = x.forceParams.chargeExponent, fe = x.forceParams.pushMultiplier, he = x.forceParams.coreRadiusMultiplier, Q = x.activeChargeType;
+        for (const K of x.nodes) {
+          const [oe, ae] = Pe(N, K.x, K.y), be = 2e3;
+          if (oe + be < 0 || oe - be > q || ae + be < 0 || ae - be > Y) continue;
+          const ee = Q === null || K.nodeType === Q, me = ee ? 0.28 : 0.05, ye = ee ? 0.06 : 0.015, te = Ye(K.nodeType).color.fill;
+          u.strokeStyle = te;
+          const Te = Math.abs(Kn(x.forceParams, K.nodeType)) * fe;
+          if (Te <= 0) continue;
+          const we = he * jn(x.forceParams, K.nodeType), ve = we * we, $e = [];
+          for (let Se = 0; Se < bn.length; Se++) {
+            const Fe = bn[Se], L = Te / Fe, G = Math.pow(L, 1 / Math.max(J, 0.01)) - ve;
+            if (G <= 0) continue;
+            const O = Math.sqrt(G) * N.scale;
+            O < 2 || O > 2e3 || $e.push(O);
           }
           if ($e.length !== 0) {
-            c.fillStyle = Ye, c.globalAlpha = Ne ? 0.14 : Ee ? 0.02 : 0.05, c.beginPath(), c.arc(se, re, $e[0], 0, Math.PI * 2), c.fill(), c.strokeStyle = Ye;
-            for (let Ie = 0; Ie < $e.length; Ie++) {
-              const He = $e[Ie], We = $e.length - 1 - Ie;
-              c.beginPath(), c.arc(se, re, He, 0, Math.PI * 2), c.globalAlpha = De + We * je, c.lineWidth = Ne ? 1.5 : 1, c.stroke();
+            u.strokeStyle = te;
+            for (let Se = 0; Se < $e.length; Se++) {
+              const Fe = $e[Se], L = $e.length - 1 - Se;
+              u.beginPath(), u.arc(oe, ae, Fe, 0, Math.PI * 2), u.globalAlpha = me + L * ye, u.lineWidth = ee ? 1.5 : 1, u.stroke();
             }
           }
         }
-        c.globalAlpha = 1;
+        u.globalAlpha = 1;
       }
-      if (Q) {
-        const H = L.forceParams.distanceMultiplier;
-        for (const ee of L.edges) {
-          const te = L.nodeMap.get(ee.sourceId), G = L.nodeMap.get(ee.targetId);
-          if (!te || !G) continue;
-          const [fe, se] = qe(F, te.x, te.y), [re, ve] = qe(F, G.x, G.y);
-          if (Math.max(fe, re) < -Pe || Math.min(fe, re) > Ce + Pe || Math.max(se, ve) < -Pe || Math.min(se, ve) > Ae + Pe) continue;
-          const Ne = pt(L.forceParams, ee).distance * H, Ee = G.x - te.x, De = G.y - te.y, Ye = Math.sqrt(Ee * Ee + De * De) / Math.max(Ne, 0.1);
-          let xe;
-          Ye > 1.15 ? xe = "#F59E0B" : Ye < 0.85 ? xe = "#3B82F6" : xe = "#22C55E", c.beginPath(), c.moveTo(fe, se), c.lineTo(re, ve), c.strokeStyle = xe, c.globalAlpha = 0.5, c.lineWidth = 3, c.setLineDash([]), c.stroke();
-          const $e = Math.atan2(De, Ee), Ie = -Math.sin($e), He = Math.cos($e), We = 5, Ke = Ne * F.scale;
-          if (Ke > 10 && Ke < Math.sqrt((re - fe) ** 2 + (ve - se) ** 2) * 2) {
-            const dn = fe + Math.cos($e) * Ke, Ve = se + Math.sin($e) * Ke;
-            c.beginPath(), c.moveTo(dn - Ie * We, Ve - He * We), c.lineTo(dn + Ie * We, Ve + He * We), c.strokeStyle = "#22C55E", c.globalAlpha = 0.7, c.lineWidth = 1.5, c.stroke();
-            const tn = re - Math.cos($e) * Ke, Nn = ve - Math.sin($e) * Ke;
-            c.beginPath(), c.moveTo(tn - Ie * We, Nn - He * We), c.lineTo(tn + Ie * We, Nn + He * We), c.stroke();
+      const qe = x.activePullEdge;
+      if (ge || qe) {
+        const J = x.forceParams.distanceMultiplier, fe = Mn(E, "--color-warning", "#d97706"), he = Mn(E, "--color-activity", "#7CB9E8"), Q = Mn(E, "--color-timer", "#7EC8B8");
+        for (const K of x.edges) {
+          const oe = x.nodeMap.get(K.sourceId), ae = x.nodeMap.get(K.targetId);
+          if (!oe || !ae) continue;
+          const be = qt(x.forceParams, K);
+          if (qe && be.key !== qe) continue;
+          const [ee, me] = Pe(N, oe.x, oe.y), [ye, te] = Pe(N, ae.x, ae.y);
+          if (Math.max(ee, ye) < -Ae || Math.min(ee, ye) > q + Ae || Math.max(me, te) < -Ae || Math.min(me, te) > Y + Ae) continue;
+          const Te = be.distance * J, we = ae.x - oe.x, ve = ae.y - oe.y, Se = Math.sqrt(we * we + ve * ve) / Math.max(Te, 0.1);
+          let Fe;
+          if (Se > 1.15 ? Fe = fe : Se < 0.85 ? Fe = he : Fe = Q, qe) {
+            const de = kt(K, oe, ae);
+            u.beginPath(), u.moveTo(ee, me), u.lineTo(ye, te), u.strokeStyle = Fe, u.globalAlpha = 0.9, u.lineWidth = de.width + 5, u.setLineDash([]), u.stroke(), u.beginPath(), u.moveTo(ee, me), u.lineTo(ye, te), u.strokeStyle = de.color, u.globalAlpha = 1, u.lineWidth = de.width, u.setLineDash([...de.dash]), u.stroke(), u.setLineDash([]);
+            continue;
+          }
+          u.beginPath(), u.moveTo(ee, me), u.lineTo(ye, te), u.strokeStyle = Fe, u.globalAlpha = 0.5, u.lineWidth = 3, u.setLineDash([]), u.stroke();
+          const L = Math.atan2(ve, we), G = -Math.sin(L), xe = Math.cos(L), O = 5, se = Te * N.scale;
+          if (se > 10 && se < Math.sqrt((ye - ee) ** 2 + (te - me) ** 2) * 2) {
+            const de = ee + Math.cos(L) * se, ze = me + Math.sin(L) * se;
+            u.beginPath(), u.moveTo(de - G * O, ze - xe * O), u.lineTo(de + G * O, ze + xe * O), u.strokeStyle = Q, u.globalAlpha = 0.7, u.lineWidth = 1.5, u.stroke();
+            const lt = ye - Math.cos(L) * se, dt = te - Math.sin(L) * se;
+            u.beginPath(), u.moveTo(lt - G * O, dt - xe * O), u.lineTo(lt + G * O, dt + xe * O), u.stroke();
           }
         }
-        c.globalAlpha = 1, c.setLineDash([]);
+        u.globalAlpha = 1, u.setLineDash([]);
       }
-      if (M) {
-        const [H] = qe(F, L.forceParams.bandXMin, 0), [ee] = qe(F, L.forceParams.bandXMax, 0);
-        for (const G of Ss) {
-          const fe = En(L.forceParams, G), [, se] = qe(F, 0, fe.yMin), [, re] = qe(F, 0, fe.yMax);
-          if (re < 0 || se > Ae) continue;
-          const ve = L.activeGravityType === G, Me = L.activeGravityType !== null && !ve;
-          c.fillStyle = ((en = Mn[G]) == null ? void 0 : en.fill) ?? "#999", c.globalAlpha = ve ? 0.2 : Me ? 0.04 : 0.1, c.fillRect(0, se, Ce, re - se), c.strokeStyle = ((nn = Mn[G]) == null ? void 0 : nn.fill) ?? "#999", c.globalAlpha = ve ? 0.55 : Me ? 0.08 : 0.22, c.lineWidth = ve ? 1.5 : 1, c.setLineDash([]), c.beginPath(), c.moveTo(0, se), c.lineTo(Ce, se), c.moveTo(0, re), c.lineTo(Ce, re), c.stroke();
+      if (vn && x.forceParams.bandEnabled) {
+        const J = [], fe = /* @__PURE__ */ new Set();
+        for (const Q of x.nodes)
+          fe.has(Q.nodeType) || (fe.add(Q.nodeType), J.push(Q.nodeType));
+        const he = (Q) => {
+          const K = an(x.forceParams, Q);
+          return (K.yMin + K.yMax) / 2;
+        };
+        if (x.forceParams.gravityMode === "radial") {
+          const Q = J.map(he), K = Q.length ? Math.min(...Q) : 0, oe = (Q.length ? Math.max(...Q) : 0) - K || 1, [ae, be] = Pe(N, 0, 0);
+          for (const ee of J) {
+            const me = Fn + (he(ee) - K) / oe * (zt - Fn), ye = x.activeGravityType === ee, te = x.activeGravityType !== null && !ye;
+            u.strokeStyle = Ye(ee).color.fill, u.globalAlpha = ye ? 0.6 : te ? 0.1 : 0.28, u.lineWidth = ye ? 1.5 : 1, u.setLineDash([]), u.beginPath(), u.arc(ae, be, me * N.scale, 0, Math.PI * 2), u.stroke();
+          }
+        } else {
+          const Q = J.map(he).sort((ee, me) => ee - me), K = Q.length, oe = K ? K % 2 ? Q[(K - 1) / 2] : (Q[K / 2 - 1] + Q[K / 2]) / 2 : 0;
+          for (const ee of Oe) {
+            const me = an(x.forceParams, ee), [, ye] = Pe(N, 0, me.yMin - oe), [, te] = Pe(N, 0, me.yMax - oe);
+            if (te < 0 || ye > Y) continue;
+            const Te = x.activeGravityType === ee, we = x.activeGravityType !== null && !Te, ve = Ye(ee).color.fill;
+            u.fillStyle = ve, u.globalAlpha = Te ? 0.2 : we ? 0.04 : 0.1, u.fillRect(0, ye, q, te - ye), u.strokeStyle = ve, u.globalAlpha = Te ? 0.55 : we ? 0.08 : 0.22, u.lineWidth = Te ? 1.5 : 1, u.setLineDash([]), u.beginPath(), u.moveTo(0, ye), u.lineTo(q, ye), u.moveTo(0, te), u.lineTo(q, te), u.stroke();
+          }
+          const [ae] = Pe(N, x.forceParams.bandXMin, 0), [be] = Pe(N, x.forceParams.bandXMax, 0);
+          ae < q + Ae && be > -Ae && (u.strokeStyle = "#8B7EC8", u.globalAlpha = 0.5, u.lineWidth = 1.5, u.setLineDash([6, 6]), u.beginPath(), u.moveTo(ae, 0), u.lineTo(ae, Y), u.moveTo(be, 0), u.lineTo(be, Y), u.stroke(), u.fillStyle = "#8B7EC8", u.globalAlpha = 0.05, u.fillRect(ae, 0, be - ae, Y), u.setLineDash([]));
         }
-        H < Ce + Pe && ee > -Pe && (c.strokeStyle = "#8B7EC8", c.globalAlpha = 0.5, c.lineWidth = 1.5, c.setLineDash([6, 6]), c.beginPath(), c.moveTo(H, 0), c.lineTo(H, Ae), c.moveTo(ee, 0), c.lineTo(ee, Ae), c.stroke(), c.fillStyle = "#8B7EC8", c.globalAlpha = 0.05, c.fillRect(H, 0, ee - H, Ae), c.setLineDash([])), c.globalAlpha = 1;
+        u.globalAlpha = 1;
       }
-      c.font = Qn, c.textAlign = "center", c.textBaseline = "middle";
-      for (const H of L.nodes) {
-        const [ee, te] = qe(F, H.x, H.y), G = Bn[H.level], fe = G.w / 2, se = G.h / 2;
-        if (ee + fe < -Pe || ee - fe > Ce + Pe || te + se < -Pe || te - se > Ae + Pe) continue;
-        const re = ((vn = L.highlightedNodes) == null ? void 0 : vn.has(H.id)) ?? !1, ve = L.searchMatchIds !== null && !L.searchMatchIds.has(H.id), Me = g && !re || ve;
-        c.globalAlpha = Me ? hn : 1;
-        const Ne = Mn[H.nodeType] ?? { fill: "#999", border: "#444", icon: "?" };
-        c.beginPath(), c.arc(ee, te, G.r, 0, Math.PI * 2), c.fillStyle = Ne.fill, c.fill(), c.lineWidth = Math.max(1, Math.min(2, F.scale * 1.25)), c.strokeStyle = Ne.border, c.stroke(), F.scale >= nt && Ne.icon && (c.save(), c.font = `${G.iconSize}px ${As}`, c.fillStyle = "#FFFFFF", c.globalAlpha = (Me ? hn : 1) * 0.92, c.fillText(Ne.icon, ee, te + 0.5), c.restore()), H.orphan && F.scale >= Yn && (c.save(), c.setLineDash([3, 3]), c.strokeStyle = Ne.fill, c.lineWidth = 1.5, c.beginPath(), c.arc(ee, te, G.r + 4, 0, Math.PI * 2), c.stroke(), c.restore());
-        const Ee = L.activeDupDefKey !== null && H.definitionKey === L.activeDupDefKey && F.scale >= Yn;
-        if (Ee && (c.save(), c.strokeStyle = Ne.fill, c.lineWidth = 2, c.setLineDash([]), c.globalAlpha = 0.55, c.beginPath(), c.arc(ee, te, G.r + 5, 0, Math.PI * 2), c.stroke(), c.restore()), H.id === L.selectedNodeId) {
-          const xe = Ee ? G.r + 10 : G.r + 5;
-          c.save(), c.strokeStyle = Fs, c.lineWidth = 2.5, c.setLineDash([]), c.beginPath(), c.arc(ee, te, xe, 0, Math.PI * 2), c.stroke(), c.restore();
+      u.textAlign = "center", u.textBaseline = "middle";
+      const sn = _n(N.scale, x.nodeScale), wn = [], Bn = x.nodes.map((J) => {
+        const [fe, he] = Pe(N, J.x, J.y);
+        return { x: fe, y: he, r: Ye(J.nodeType).size.r * sn };
+      });
+      for (const J of x.nodes) {
+        const [fe, he] = Pe(N, J.x, J.y), Q = Ye(J.nodeType), K = Q.size.r * sn, oe = K;
+        if (fe + oe < -Ae || fe - oe > q + Ae || he + oe < -Ae || he - oe > Y + Ae) continue;
+        const ae = ((Nn = x.highlightedNodes) == null ? void 0 : Nn.has(J.id)) ?? !1, be = x.searchMatchIds !== null && !x.searchMatchIds.has(J.id), ee = le && !ae || be;
+        u.globalAlpha = ee ? Tn : 1;
+        const me = Q.color.fill, ye = Q.color.border, te = Q.icon;
+        u.beginPath(), u.arc(fe, he, K, 0, Math.PI * 2), u.fillStyle = me, u.fill(), u.lineWidth = Math.max(1, Math.min(2, N.scale * 1.25)), u.strokeStyle = ye, u.stroke(), N.scale >= vt && te && (u.save(), u.font = `${Q.size.iconSize * sn}px ${Ut}`, u.fillStyle = "#FFFFFF", u.globalAlpha = (ee ? Tn : 1) * 0.92, u.fillText(te, fe, he + 0.5), u.restore()), J.orphan && N.scale >= Hn && (u.save(), u.setLineDash([3, 3]), u.strokeStyle = me, u.lineWidth = 1.5, u.beginPath(), u.arc(fe, he, K + 4, 0, Math.PI * 2), u.stroke(), u.restore());
+        const Te = x.activeDupDefKey !== null && J.definitionKey === x.activeDupDefKey && N.scale >= Hn;
+        if (Te && (u.save(), u.strokeStyle = me, u.lineWidth = 2, u.setLineDash([]), u.globalAlpha = 0.55, u.beginPath(), u.arc(fe, he, K + 5, 0, Math.PI * 2), u.stroke(), u.restore()), J.id === x.selectedNodeId) {
+          const ve = Te ? K + 10 : K + 5;
+          u.save(), u.strokeStyle = Eo, u.lineWidth = 2.5, u.setLineDash([]), u.beginPath(), u.arc(fe, he, ve, 0, Math.PI * 2), u.stroke(), u.restore();
         }
-        H.id === L.focusedNodeId && F.scale >= Yn && (c.save(), c.strokeStyle = Ds, c.lineWidth = 2, c.setLineDash([2, 2]), c.beginPath(), c.arc(ee, te, G.r + 9, 0, Math.PI * 2), c.stroke(), c.restore()), c.globalAlpha = 1;
-        const De = Math.max(G.r * 4, 48), je = te + G.r + 12, Ye = H.id === L.hoveredNodeId || H.id === L.selectedNodeId;
-        if ((F.scale >= nt || Ye) && (c.fillStyle = Me ? O : w, c.fillText(Ps(c, H.name, De), ee, je), F.scale >= Ws)) {
-          const xe = L.nodeSummaries.get(H.id);
-          xe && (c.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', c.globalAlpha = Me ? hn * 0.55 : 0.55, c.fillStyle = D, c.fillText(xe, ee, je + 13), c.font = Qn);
+        J.id === x.focusedNodeId && N.scale >= Hn && (u.save(), u.strokeStyle = So, u.lineWidth = 2, u.setLineDash([2, 2]), u.beginPath(), u.arc(fe, he, K + 9, 0, Math.PI * 2), u.stroke(), u.restore()), u.globalAlpha = 1;
+        const we = J.id === x.hoveredNodeId || J.id === x.selectedNodeId;
+        if (N.scale >= vt || we) {
+          const ve = $o * (we ? Math.max(sn, 1) : sn), $e = he + K + 4 + ve * 0.7;
+          u.font = Po(ve);
+          const Se = Ao(J.name), Fe = u.measureText(Se).width, L = { x: fe - Fe / 2 - 2, y: $e - ve / 2 - 1, w: Fe + 4, h: ve + 2 }, G = wn.some((O) => L.x < O.x + O.w && L.x + L.w > O.x && L.y < O.y + O.h && L.y + L.h > O.y), xe = !G && Bn.some((O) => {
+            const se = Math.max(L.x, Math.min(O.x, L.x + L.w)), de = Math.max(L.y, Math.min(O.y, L.y + L.h));
+            return (O.x - se) ** 2 + (O.y - de) ** 2 < O.r * O.r;
+          });
+          (we || !G && !xe) && (wn.push(L), u.globalAlpha = ee ? 1 : Co, u.fillStyle = ee ? _ : ce, u.fillText(Se, fe, $e), u.globalAlpha = 1);
         }
       }
-    }, Se = () => {
-      if (!K) return;
-      (ye.current.running || we.current) && (we.current = !1, he()), j = requestAnimationFrame(Se);
+    }, I = () => {
+      if (!B) return;
+      (z.current.running || H.current) && (H.current = !1, S()), U = requestAnimationFrame(I);
     };
-    return j = requestAnimationFrame(Se), () => {
-      K = !1, cancelAnimationFrame(j);
+    return U = requestAnimationFrame(I), () => {
+      B = !1, cancelAnimationFrame(U);
     };
-  }, [ue]), /* @__PURE__ */ n("div", { ref: de, className: "graph-canvas-container", children: /* @__PURE__ */ n(
+  }, [V]), /* @__PURE__ */ t("div", { ref: R, className: "graph-canvas-container", children: /* @__PURE__ */ t(
     "canvas",
     {
-      ref: ae,
-      style: { width: ue.w, height: ue.h },
-      onWheel: J,
-      onPointerDown: Be,
-      onPointerMove: Te,
-      onPointerUp: V,
-      onDoubleClick: Z,
-      onContextMenu: X
+      ref: w,
+      style: { width: V.w, height: V.h },
+      onWheel: pe,
+      onPointerDown: Ee,
+      onPointerMove: Ce,
+      onPointerUp: Ne,
+      onDoubleClick: Ie,
+      onContextMenu: De
     }
   ) });
 }
-function Ps(e, t, s) {
-  if (e.measureText(t).width <= s) return t;
-  for (let o = t.length - 1; o > 0; o--) {
-    const a = t.slice(0, o) + "…";
-    if (e.measureText(a).width <= s) return a;
-  }
-  return "…";
+function Yt({
+  yLabel: e,
+  ySlider: n,
+  bottom: s,
+  children: o
+}) {
+  return /* @__PURE__ */ f("div", { className: "ctl-plot", children: [
+    e !== void 0 && /* @__PURE__ */ t("div", { className: "ctl-plot-ylabel", children: e }),
+    n !== void 0 && /* @__PURE__ */ t("div", { className: "ctl-plot-yslider", children: n }),
+    /* @__PURE__ */ t("div", { className: "ctl-plot-main", children: o }),
+    s !== void 0 && /* @__PURE__ */ t("div", { className: "ctl-plot-bottom", children: s })
+  ] });
 }
-const Rs = [
-  {
-    key: "pushMultiplier",
-    label: "push",
-    min: 0,
-    max: 3,
-    step: 0.1,
-    tooltip: "Master multiplier for all repulsion forces"
-  },
-  {
-    key: "chargeExponent",
-    label: "exp",
-    min: 0.5,
-    max: 3,
-    step: 0.1,
-    tooltip: "Power of distance in charge falloff. 2 = inverse-square"
-  },
-  {
-    key: "chargeSoftening",
-    label: "softening",
-    min: 0,
-    max: 2e3,
-    step: 50,
-    tooltip: "Added to dist² — prevents singularity at close range"
+const Kt = m.createContext({ popped: null, setPopped: () => {
+} });
+function Ro({ children: e }) {
+  const [n, s] = m.useState(null), o = m.useMemo(() => ({ popped: n, setPopped: s }), [n]);
+  return /* @__PURE__ */ t(Kt.Provider, { value: o, children: e });
+}
+function jt() {
+  return m.useContext(Kt);
+}
+function We({ id: e, children: n }) {
+  const { popped: s, setPopped: o } = jt();
+  return /* @__PURE__ */ t(
+    "span",
+    {
+      className: `ctl-formula-value${s === e ? " active" : ""}`,
+      onMouseEnter: () => o(e),
+      onMouseLeave: () => o(null),
+      children: n
+    }
+  );
+}
+function en({
+  value: e,
+  min: n,
+  max: s,
+  step: o,
+  onChange: a,
+  orientation: r = "horizontal",
+  title: c,
+  ariaLabel: l,
+  className: i,
+  popId: d
+}) {
+  const { popped: h } = jt(), p = `ctl-slider ctl-slider-${r === "vertical" ? "v" : "h"}` + (d !== void 0 && h === d ? " ctl-slider-popped" : "") + (i ? " " + i : "");
+  return /* @__PURE__ */ t(
+    "input",
+    {
+      type: "range",
+      className: p,
+      min: n,
+      max: s,
+      step: o,
+      value: e,
+      onChange: (y) => a(Number(y.target.value)),
+      title: c,
+      "aria-label": l,
+      "data-pop-id": d
+    }
+  );
+}
+const Jn = (e, n, s) => Math.max(n, Math.min(s, e)), bt = (e, n) => Math.round(e / n) * n, rn = 300, Ze = 200, ln = 12, wt = rn - 2 * ln, xt = Ze - 2 * ln, Le = 7;
+function Zt({
+  tokens: e,
+  xAxis: n,
+  yAxis: s,
+  onDrag: o,
+  hoveredId: a,
+  onHover: r,
+  xSlider: c,
+  ySlider: l,
+  ariaLabel: i
+}) {
+  const d = m.useRef(null), h = m.useRef(null), g = (b) => ln + (b - n.min) / (n.max - n.min) * wt, p = (b) => Ze - ln - (b - s.min) / (s.max - s.min) * xt, y = (b) => n.min + (b - ln) / wt * (n.max - n.min), v = (b) => s.min + (Ze - ln - b) / xt * (s.max - s.min), k = (b) => {
+    const C = d.current;
+    if (!C) return { x: 0, y: 0 };
+    const F = C.createSVGPoint();
+    F.x = b.clientX, F.y = b.clientY;
+    const w = C.getScreenCTM();
+    if (!w) return { x: 0, y: 0 };
+    const R = F.matrixTransform(w.inverse());
+    return { x: R.x, y: R.y };
+  }, A = (b, C) => {
+    b.preventDefault(), b.currentTarget.setPointerCapture(b.pointerId), h.current = C;
+  }, P = (b) => {
+    const C = h.current;
+    if (!C) return;
+    const { x: F, y: w } = k(b), R = Jn(bt(y(F), n.step), n.min, n.max), V = Jn(bt(v(w), s.step), s.min, s.max);
+    o(C, R, V);
+  }, $ = (b) => {
+    var C, F;
+    h.current = null, (F = (C = b.currentTarget).releasePointerCapture) == null || F.call(C, b.pointerId);
+  }, D = [0, rn / 2, rn], M = [0, Ze / 2, Ze];
+  return /* @__PURE__ */ t(
+    Yt,
+    {
+      yLabel: s.label,
+      ySlider: /* @__PURE__ */ t(
+        en,
+        {
+          orientation: "vertical",
+          min: l.min,
+          max: l.max,
+          step: l.step,
+          value: l.value,
+          onChange: l.onChange,
+          title: l.title,
+          ariaLabel: l.ariaLabel,
+          popId: l.popId
+        }
+      ),
+      bottom: /* @__PURE__ */ f(Ge, { children: [
+        /* @__PURE__ */ t(
+          en,
+          {
+            min: c.min,
+            max: c.max,
+            step: c.step,
+            value: c.value,
+            onChange: c.onChange,
+            title: c.title,
+            ariaLabel: c.ariaLabel,
+            popId: c.popId
+          }
+        ),
+        /* @__PURE__ */ t("div", { className: "ctl-plot-xlabel", children: n.label })
+      ] }),
+      children: /* @__PURE__ */ f(
+        "svg",
+        {
+          ref: d,
+          className: "spring-map-svg",
+          viewBox: `0 0 ${rn} ${Ze}`,
+          role: "group",
+          "aria-label": i,
+          children: [
+            /* @__PURE__ */ t("rect", { x: 0, y: 0, width: rn, height: Ze, className: "spring-plot-bg" }),
+            D.map((b) => /* @__PURE__ */ t("line", { x1: b, y1: 0, x2: b, y2: Ze, className: "spring-grid" }, `gx${b}`)),
+            M.map((b) => /* @__PURE__ */ t("line", { x1: 0, y1: b, x2: rn, y2: b, className: "spring-grid" }, `gy${b}`)),
+            e.map((b) => {
+              const C = g(b.x), F = p(b.y), w = a !== null && a !== b.id, R = a === b.id;
+              return /* @__PURE__ */ f(
+                "g",
+                {
+                  transform: `translate(${C} ${F})`,
+                  className: `spring-token${w ? " dim" : ""}${R ? " active" : ""}`,
+                  onPointerDown: (V) => A(V, b.id),
+                  onPointerMove: P,
+                  onPointerUp: $,
+                  onPointerEnter: () => r(b.id),
+                  onPointerLeave: () => {
+                    h.current || r(null);
+                  },
+                  children: [
+                    b.tooltip && /* @__PURE__ */ t("title", { children: b.tooltip }),
+                    b.colorB === void 0 ? /* @__PURE__ */ t("circle", { r: Le, fill: b.colorA }) : /* @__PURE__ */ f(Ge, { children: [
+                      /* @__PURE__ */ t("path", { d: `M0,${-Le} A${Le},${Le} 0 0 0 0,${Le} Z`, fill: b.colorA }),
+                      /* @__PURE__ */ t("path", { d: `M0,${-Le} A${Le},${Le} 0 0 1 0,${Le} Z`, fill: b.colorB })
+                    ] }),
+                    /* @__PURE__ */ t(
+                      "circle",
+                      {
+                        r: Le,
+                        fill: "none",
+                        className: "spring-token-outline",
+                        strokeDasharray: b.outline === "dashed" ? "2 2" : void 0
+                      }
+                    ),
+                    /* @__PURE__ */ t("text", { y: Le + 11, textAnchor: "middle", className: "spring-token-label", children: b.label })
+                  ]
+                },
+                b.id
+              );
+            })
+          ]
+        }
+      )
+    }
+  );
+}
+const Je = 300, Re = 130, un = 56;
+function Oo(e) {
+  var o;
+  const n = e.trim().split(/\s+/), s = (o = n[n.length - 1]) == null ? void 0 : o.split(",");
+  return !s || s.length < 2 ? null : { x: Number(s[0]), y: Number(s[1]) };
+}
+function Lo(e, n) {
+  if (!(e > 0)) return 1;
+  const s = e / n, o = Math.pow(10, Math.floor(Math.log10(s))), a = s / o;
+  return (a < 1.5 ? 1 : a < 3 ? 2 : a < 7 ? 5 : 10) * o;
+}
+function rt({
+  curves: e,
+  baselineY: n,
+  hoveredId: s,
+  onHover: o,
+  xLabel: a,
+  yLabel: r,
+  exp: c,
+  ariaLabel: l,
+  xMax: i
+}) {
+  const d = [];
+  if (i !== void 0 && i > 0) {
+    const h = Lo(i, 6);
+    for (let g = h; g < i * 0.999; g += h) d.push(g / i * Je);
   }
-], Os = [
-  {
-    key: "chargeNamespace",
-    nodeType: "namespace",
-    label: "L1 NS",
-    min: -1e3,
-    max: 0,
-    step: 10,
-    tooltip: "Namespace node repulsion charge"
-  },
-  {
-    key: "chargeNexusEndpoint",
-    nodeType: "nexusEndpoint",
-    label: "L1.5 Ep",
-    min: -400,
-    max: 0,
-    step: 10,
-    tooltip: "Nexus endpoint node repulsion charge"
-  },
-  {
-    key: "chargeWorker",
-    nodeType: "worker",
-    label: "L2 Wk",
-    min: -400,
-    max: 0,
-    step: 10,
-    tooltip: "Worker node repulsion charge"
-  },
-  {
-    key: "chargeWorkflow",
-    nodeType: "workflow",
-    label: "L3 Wf",
-    min: -200,
-    max: 0,
-    step: 5,
-    tooltip: "Workflow node repulsion charge"
-  },
-  {
-    key: "chargeActivity",
-    nodeType: "activity",
-    label: "L3 Act",
-    min: -200,
-    max: 0,
-    step: 5,
-    tooltip: "Activity node repulsion charge"
-  },
-  {
-    key: "chargeNexusService",
-    nodeType: "nexusService",
-    label: "L3 Nx",
-    min: -200,
-    max: 0,
-    step: 5,
-    tooltip: "Nexus service node repulsion charge"
-  },
-  {
-    key: "chargeNexusOperation",
-    nodeType: "nexusOperation",
-    label: "L3 Op",
-    min: -200,
-    max: 0,
-    step: 5,
-    tooltip: "Nexus operation node repulsion charge"
-  }
-], Bs = [
-  {
-    key: "pullMultiplier",
-    label: "pull",
-    min: 0,
-    max: 3,
-    step: 0.1,
-    tooltip: "Master multiplier for all spring forces"
-  },
-  {
-    key: "linkExponent",
-    label: "exp",
-    min: 0.5,
-    max: 3,
-    step: 0.1,
-    tooltip: "Power of displacement in spring force. 1 = linear (Hooke)"
-  },
-  {
-    key: "distanceMultiplier",
-    label: "dist",
-    min: 0.05,
-    max: 3,
-    step: 0.05,
-    tooltip: "Master multiplier for all rest distances"
-  }
-], Ys = 0, _s = 1.5, Ks = 0.05, Vs = 10, qs = 600, Hs = 10, zs = [
-  // Level 1
-  {
-    label: "NS↔NS",
-    kKey: "linkNsToNs",
-    restKey: "distNsToNs",
-    sourceType: "namespace",
-    targetType: "namespace",
-    tooltip: "Namespace ↔ Namespace dependency"
-  },
-  {
-    label: "NS↔Wk",
-    kKey: "linkNsToWorker",
-    restKey: "distNsToWorker",
-    sourceType: "namespace",
-    targetType: "worker",
-    tooltip: "Namespace ↔ Worker containment"
-  },
-  // Level 2
-  {
-    label: "Wk↔Wk",
-    kKey: "linkWorkerToWorker",
-    restKey: "distWorkerToWorker",
-    sourceType: "worker",
-    targetType: "worker",
-    tooltip: "Worker ↔ Worker dependency"
-  },
-  {
-    label: "Wk↔Wf",
-    kKey: "linkWorkerToWorkflow",
-    restKey: "distWorkerToWorkflow",
-    sourceType: "worker",
-    targetType: "workflow",
-    tooltip: "Worker ↔ Workflow containment"
-  },
-  {
-    label: "Wk↔Act",
-    kKey: "linkWorkerToActivity",
-    restKey: "distWorkerToActivity",
-    sourceType: "worker",
-    targetType: "activity",
-    tooltip: "Worker ↔ Activity containment"
-  },
-  {
-    label: "Wk↔Nx",
-    kKey: "linkWorkerToNexus",
-    restKey: "distWorkerToNexus",
-    sourceType: "worker",
-    targetType: "nexusService",
-    tooltip: "Worker ↔ Nexus service containment"
-  },
-  // Level 3 (intra-L3 containment + dependencies)
-  {
-    label: "Nx↔Op",
-    kKey: "linkNexusToOperation",
-    restKey: "distNexusToOperation",
-    sourceType: "nexusService",
-    targetType: "nexusOperation",
-    tooltip: "Nexus service ↔ Nexus operation containment"
-  },
-  {
-    label: "Wf↔Wf",
-    kKey: "linkWorkflowToWorkflow",
-    restKey: "distWorkflowToWorkflow",
-    sourceType: "workflow",
-    targetType: "workflow",
-    tooltip: "Workflow ↔ Workflow dependency"
-  },
-  {
-    label: "Wf↔Act",
-    kKey: "linkWorkflowToActivity",
-    restKey: "distWorkflowToActivity",
-    sourceType: "workflow",
-    targetType: "activity",
-    tooltip: "Workflow ↔ Activity dependency"
-  }
-], Gs = [
-  {
-    key: "gravityX",
-    label: "X strength",
-    min: 0,
-    max: 0.2,
-    step: 5e-3,
-    tooltip: "Pull toward the nearest edge of the global X band"
-  },
-  {
-    key: "gravityY",
-    label: "Y strength",
-    min: 0,
-    max: 0.2,
-    step: 5e-3,
-    tooltip: "Pull toward the nearest edge of each node type’s Y band"
-  }
-], ht = -600, ft = 600, mt = 10, Us = [
-  {
-    label: "L1 NS",
-    nodeType: "namespace",
-    minKey: "bandYMinNamespace",
-    maxKey: "bandYMaxNamespace",
-    tooltip: "Y band where namespace nodes feel zero gravity"
-  },
-  {
-    label: "L1.5 Ep",
-    nodeType: "nexusEndpoint",
-    minKey: "bandYMinNexusEndpoint",
-    maxKey: "bandYMaxNexusEndpoint",
-    tooltip: "Y band where nexus endpoint nodes feel zero gravity"
-  },
-  {
-    label: "L2 Wk",
-    nodeType: "worker",
-    minKey: "bandYMinWorker",
-    maxKey: "bandYMaxWorker",
-    tooltip: "Y band where worker nodes feel zero gravity"
-  },
-  {
-    label: "L2 Nx",
-    nodeType: "nexusService",
-    minKey: "bandYMinNexusService",
-    maxKey: "bandYMaxNexusService",
-    tooltip: "Y band where nexus service nodes feel zero gravity"
-  },
-  {
-    label: "L3 Wf",
-    nodeType: "workflow",
-    minKey: "bandYMinWorkflow",
-    maxKey: "bandYMaxWorkflow",
-    tooltip: "Y band where workflow nodes feel zero gravity"
-  },
-  {
-    label: "L3 Op",
-    nodeType: "nexusOperation",
-    minKey: "bandYMinNexusOperation",
-    maxKey: "bandYMaxNexusOperation",
-    tooltip: "Y band where nexus operation nodes feel zero gravity"
-  },
-  {
-    label: "L4 Act",
-    nodeType: "activity",
-    minKey: "bandYMinActivity",
-    maxKey: "bandYMaxActivity",
-    tooltip: "Y band where activity nodes feel zero gravity"
-  }
-], Xs = [
+  return /* @__PURE__ */ f("div", { className: "spring-curves", children: [
+    /* @__PURE__ */ t("div", { className: "spring-axis-label spring-curves-axis-y", children: r }),
+    /* @__PURE__ */ f(
+      "svg",
+      {
+        className: "spring-curves-svg",
+        viewBox: `0 0 ${Je} ${Re}`,
+        role: "img",
+        "aria-label": l,
+        children: [
+          /* @__PURE__ */ t("rect", { x: 0, y: 0, width: Je, height: Re, className: "spring-curve-frame" }),
+          d.map((h, g) => /* @__PURE__ */ t("line", { x1: h.toFixed(1), y1: 0, x2: h.toFixed(1), y2: Re, className: "ctl-grid-line" }, `g${g}`)),
+          n !== void 0 && /* @__PURE__ */ t("line", { x1: 0, y1: n, x2: Je, y2: n, className: "spring-curve-baseline" }),
+          e.filter((h) => h.id === s && h.markerX !== void 0).map((h) => /* @__PURE__ */ t("line", { x1: h.markerX, y1: 0, x2: h.markerX, y2: Re, className: "spring-curve-restmark" }, `m${h.id}`)),
+          e.map((h) => {
+            const g = s !== null && s !== h.id, p = s === h.id;
+            return /* @__PURE__ */ f("g", { className: `spring-curve${g ? " dim" : ""}${p ? " active" : ""}`, children: [
+              /* @__PURE__ */ t(
+                "polyline",
+                {
+                  points: h.points,
+                  className: "spring-curve-hit",
+                  onPointerEnter: () => o(h.id),
+                  onPointerLeave: () => o(null)
+                }
+              ),
+              /* @__PURE__ */ t(
+                "polyline",
+                {
+                  points: h.points,
+                  className: "spring-curve-line",
+                  style: { stroke: h.color }
+                }
+              ),
+              h.label && (() => {
+                const y = Oo(h.points);
+                return y ? /* @__PURE__ */ t(
+                  "text",
+                  {
+                    x: Math.min(y.x + 4, Je - 2),
+                    y: Jn(y.y, 9, Re - 2),
+                    className: "spring-curve-label",
+                    style: { fill: h.color },
+                    textAnchor: "end",
+                    children: h.label
+                  }
+                ) : null;
+              })()
+            ] }, h.id);
+          })
+        ]
+      }
+    ),
+    /* @__PURE__ */ t("div", { className: "spring-axis-label spring-curves-axis-x", children: a }),
+    /* @__PURE__ */ f("div", { className: "spring-curves-exp", title: c.title, children: [
+      /* @__PURE__ */ t("span", { className: "spring-exp-label", children: c.label ?? "exp" }),
+      /* @__PURE__ */ t(
+        en,
+        {
+          min: c.min,
+          max: c.max,
+          step: c.step,
+          value: c.value,
+          onChange: c.onChange,
+          popId: c.popId
+        }
+      )
+    ] })
+  ] });
+}
+const Bo = 0, _o = 2, Wo = 0.05, Vo = 0, Go = 1e3, Ho = 10, An = Dn.map((e) => ({
+  label: e.label,
+  id: e.id,
+  sourceType: e.sourceType,
+  targetType: e.targetType,
+  edgeType: e.category,
+  tooltip: e.tooltip
+}));
+function Qn(e) {
+  return `var(--color-${ke[e].color.cssVarSuffix})`;
+}
+const qo = (e, n, s) => Math.max(n, Math.min(s, e));
+function zo({ params: e, onParamChange: n, hoveredEdge: s, onHoverEdge: o }) {
+  const a = An.map((c) => ({
+    id: c.id,
+    x: e.dist[c.id],
+    y: e.link[c.id],
+    colorA: Qn(c.sourceType),
+    colorB: Qn(c.targetType),
+    outline: c.edgeType === "containment" ? "dashed" : "solid",
+    label: c.label,
+    tooltip: c.tooltip
+  }));
+  return /* @__PURE__ */ t(
+    Zt,
+    {
+      tokens: a,
+      xAxis: { min: Vo, max: Go, step: Ho, label: "length" },
+      yAxis: { min: Bo, max: _o, step: Wo, label: "stiffness" },
+      onDrag: (c, l, i) => {
+        const d = An.find((h) => h.id === c);
+        d && n({
+          dist: { ...e.dist, [d.id]: l },
+          link: { ...e.link, [d.id]: i }
+        });
+      },
+      hoveredId: s,
+      onHover: o,
+      ariaLabel: "Spring map: rest length versus stiffness",
+      xSlider: {
+        value: e.distanceMultiplier,
+        min: 0.05,
+        max: 3,
+        step: 0.05,
+        onChange: (c) => n({ distanceMultiplier: c }),
+        title: "Scale every spring’s rest length",
+        ariaLabel: "Scale all length",
+        popId: "distanceMultiplier"
+      },
+      ySlider: {
+        value: e.pullMultiplier,
+        min: 0,
+        max: 3,
+        step: 0.1,
+        onChange: (c) => n({ pullMultiplier: c }),
+        title: "Scale every spring’s stiffness",
+        ariaLabel: "Scale all stiffness",
+        popId: "pullMultiplier"
+      }
+    }
+  );
+}
+const qn = Re * 0.78;
+function Xo(e, n, s, o) {
+  const a = e - s;
+  return n * Math.sign(a) * Math.pow(Math.abs(a), o);
+}
+function Uo({ params: e, onParamChange: n, hoveredEdge: s, onHoverEdge: o }) {
+  const a = e.pullMultiplier, r = e.distanceMultiplier, c = e.linkExponent, { curves: l, dMax: i } = m.useMemo(() => {
+    const d = An.map(($) => e.dist[$.id] * r), h = Math.max(60, Math.max(...d) * 2.2);
+    let g = 0;
+    const p = An.map(($) => {
+      const D = e.link[$.id] * a, M = e.dist[$.id] * r, b = [];
+      for (let C = 0; C <= un; C++) {
+        const F = C / un * h, w = Xo(F, D, M, c);
+        Math.abs(w) > g && (g = Math.abs(w)), b.push({ d: F, v: w });
+      }
+      return { edge: $, restEff: M, pts: b };
+    }), y = g > 0 ? g : 1, v = qn, k = ($) => $ / h * Je, A = ($) => qo(qn - $ / y * v, 0, Re);
+    return { curves: p.map(({ edge: $, restEff: D, pts: M }) => ({
+      id: $.id,
+      color: Qn($.sourceType),
+      markerX: k(D),
+      points: M.map((b) => `${k(b.d).toFixed(1)},${A(b.v).toFixed(1)}`).join(" ")
+    })), dMax: h };
+  }, [e, a, r, c]);
+  return /* @__PURE__ */ t(
+    rt,
+    {
+      curves: l,
+      xMax: i,
+      baselineY: qn,
+      hoveredId: s,
+      onHover: o,
+      xLabel: "distance",
+      yLabel: "force",
+      ariaLabel: "Spring force response curves",
+      exp: {
+        value: c,
+        min: 0.5,
+        max: 3,
+        step: 0.1,
+        onChange: (d) => n({ linkExponent: d }),
+        title: "Power of displacement in the spring force. 1 = linear (Hooke); higher = softer near rest, stiffer far out.",
+        popId: "linkExponent"
+      }
+    }
+  );
+}
+const Yo = 0, Ko = 1e3, jo = 10, Zo = 0, Jo = 100, Qo = 1;
+function Jt(e) {
+  return `var(--color-${ke[e].color.cssVarSuffix})`;
+}
+const ea = (e, n, s) => Math.max(n, Math.min(s, e));
+function na({ params: e, onParamChange: n, hoveredType: s, onHoverType: o }) {
+  const a = Oe.map((c) => ({
+    id: c,
+    x: e.coreRadius[c],
+    y: Math.abs(e.charge[c]),
+    colorA: Jt(c),
+    outline: "solid",
+    label: Ot(c),
+    tooltip: `${ke[c].label} repulsion charge & core radius`
+  }));
+  return /* @__PURE__ */ t(
+    Zt,
+    {
+      tokens: a,
+      xAxis: { min: Zo, max: Jo, step: Qo, label: "core radius" },
+      yAxis: { min: Yo, max: Ko, step: jo, label: "charge" },
+      onDrag: (c, l, i) => {
+        const d = c;
+        n({
+          charge: { ...e.charge, [d]: -i },
+          // store negative (repulsion)
+          coreRadius: { ...e.coreRadius, [d]: l }
+        });
+      },
+      hoveredId: s,
+      onHover: (c) => o(c),
+      ariaLabel: "Charge map: core radius versus charge magnitude",
+      xSlider: {
+        value: e.coreRadiusMultiplier,
+        min: 0.1,
+        max: 3,
+        step: 0.05,
+        onChange: (c) => n({ coreRadiusMultiplier: c }),
+        title: "Scale every type’s core radius",
+        ariaLabel: "Scale all core radius",
+        popId: "coreRadiusMultiplier"
+      },
+      ySlider: {
+        value: e.pushMultiplier,
+        min: 0,
+        max: 3,
+        step: 0.1,
+        onChange: (c) => n({ pushMultiplier: c }),
+        title: "Scale every type’s charge",
+        ariaLabel: "Scale all charge",
+        popId: "pushMultiplier"
+      }
+    }
+  );
+}
+function ta({ params: e, onParamChange: n, hoveredType: s, onHoverType: o }) {
+  const a = e.pushMultiplier, r = e.coreRadiusMultiplier, c = e.chargeExponent, { curves: l, dMax: i } = m.useMemo(() => {
+    const d = Oe.map((D) => r * e.coreRadius[D]), h = Math.max(0, ...d), g = Math.max(150, h * 4);
+    let p = 0;
+    const y = Oe.map((D) => {
+      const M = Math.abs(e.charge[D]) * a, b = r * e.coreRadius[D], C = b * b, F = [];
+      for (let w = 0; w <= un; w++) {
+        const R = w / un * g, V = M / Math.pow(R * R + C, Math.max(c, 0.01));
+        V > p && (p = V), F.push({ d: R, v: V });
+      }
+      return { type: D, rEff: b, pts: F };
+    }), v = p > 0 ? p : 1, k = Re * 0.95, A = (D) => D / g * Je, P = (D) => ea(Re - D / v * k, 0, Re);
+    return { curves: y.map(({ type: D, rEff: M, pts: b }) => ({
+      id: D,
+      color: Jt(D),
+      markerX: A(M),
+      points: b.map((C) => `${A(C.d).toFixed(1)},${P(C.v).toFixed(1)}`).join(" ")
+    })), dMax: g };
+  }, [e, a, r, c]);
+  return /* @__PURE__ */ t(
+    rt,
+    {
+      curves: l,
+      xMax: i,
+      hoveredId: s,
+      onHover: (d) => o(d),
+      xLabel: "distance",
+      yLabel: "force",
+      ariaLabel: "Charge falloff curves",
+      exp: {
+        value: c,
+        min: 0.5,
+        max: 1,
+        step: 0.05,
+        onChange: (d) => n({ chargeExponent: d }),
+        title: "Power of (d² + r²) in the charge falloff. 1 = inverse-square; higher = sharper drop-off.",
+        popId: "chargeExponent"
+      }
+    }
+  );
+}
+function et({ children: e }) {
+  return e === "" || e === null || e === void 0 ? null : typeof e == "string" ? /* @__PURE__ */ t("pre", { className: "graph-control-equation-formula", children: e }) : /* @__PURE__ */ t("div", { className: "graph-control-equation-formula", children: e });
+}
+const nt = [...Bt, ...us], sa = Bt.length;
+function Nt(e) {
+  return `var(--color-${ke[e].color.cssVarSuffix})`;
+}
+const oa = (e, n, s) => Math.max(n, Math.min(s, e)), aa = (e, n) => Math.round(e / n) * n, Qt = 300, es = 210, Ln = { top: 16, right: 8, bottom: 2, left: 8 }, Qe = Ln.left, Pn = Qt - Ln.right, Ve = Ln.top, fn = es - Ln.bottom, nn = -600, gn = 600, En = 10, Tt = 5, ia = nt.length + 1, $n = (e) => Ve + (e - nn) / (gn - nn) * (fn - Ve), ca = (e) => nn + (e - Ve) / (fn - Ve) * (gn - nn), zn = (e) => Qe + (e - nn) / (gn - nn) * (Pn - Qe), ra = (e) => e < sa ? e : e + 1, la = (e) => Qe + (ra(e) + 0.5) / ia * (Pn - Qe);
+function da({ params: e, onParamChange: n, hoveredType: s, onHoverType: o }) {
+  const a = m.useRef(null), r = m.useRef(null), [c, l] = m.useState(!1), i = (p) => {
+    const y = a.current;
+    if (!y) return 0;
+    const v = y.createSVGPoint();
+    v.x = p.clientX, v.y = p.clientY;
+    const k = y.getScreenCTM();
+    return k ? v.matrixTransform(k.inverse()).y : 0;
+  }, d = (p, y, v) => {
+    p.preventDefault(), p.currentTarget.setPointerCapture(p.pointerId), r.current = { type: y, edge: v };
+  }, h = (p) => {
+    const y = r.current;
+    if (!y) return;
+    const v = e.band[y.type], k = oa(aa(ca(i(p)), En), nn, gn), A = y.edge === "min" ? { min: Math.min(k, v.max - En), max: v.max } : { min: v.min, max: Math.max(k, v.min + En) };
+    n({ band: { ...e.band, [y.type]: A } });
+  }, g = (p) => {
+    var y, v;
+    r.current = null, (v = (y = p.currentTarget).releasePointerCapture) == null || v.call(y, p.pointerId);
+  };
+  return /* @__PURE__ */ t(
+    Yt,
+    {
+      yLabel: "Y strength",
+      ySlider: /* @__PURE__ */ t(
+        en,
+        {
+          orientation: "vertical",
+          min: 0,
+          max: 0.25,
+          step: 5e-3,
+          value: e.gravityY,
+          onChange: (p) => n({ gravityY: p }),
+          title: "Vertical band-pull strength (scale all)",
+          ariaLabel: "Vertical band strength",
+          popId: "bandStrength"
+        }
+      ),
+      bottom: /* @__PURE__ */ f(Ge, { children: [
+        /* @__PURE__ */ t(
+          "div",
+          {
+            className: "gravity-xband",
+            onMouseEnter: () => l(!0),
+            onMouseLeave: () => l(!1),
+            children: /* @__PURE__ */ t(
+              ma,
+              {
+                min: nn,
+                max: gn,
+                step: En,
+                valueMin: e.bandXMin,
+                valueMax: e.bandXMax,
+                onChangeMin: (p) => n({ bandXMin: p }),
+                onChangeMax: (p) => n({ bandXMax: p })
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ t(
+          en,
+          {
+            min: 0,
+            max: 0.25,
+            step: 5e-3,
+            value: e.gravityX,
+            onChange: (p) => n({ gravityX: p }),
+            title: "Horizontal band-pull strength (scale all)",
+            ariaLabel: "Horizontal band strength",
+            popId: "bandStrength"
+          }
+        ),
+        /* @__PURE__ */ t("div", { className: "ctl-plot-xlabel", children: "X strength" })
+      ] }),
+      children: /* @__PURE__ */ f(
+        "svg",
+        {
+          ref: a,
+          className: "gravity-band-svg",
+          viewBox: `0 0 ${Qt} ${es}`,
+          role: "group",
+          "aria-label": "Band gravity: a mini world view of the per-type rest bands",
+          children: [
+            /* @__PURE__ */ t("rect", { x: Qe, y: Ve, width: Pn - Qe, height: fn - Ve, className: "gravity-band-bg" }),
+            /* @__PURE__ */ f("g", { className: "gravity-band-stripes", children: [
+              nt.map((p) => {
+                const y = $n(e.band[p].min), v = $n(e.band[p].max), k = s !== null && s !== p, A = s === p;
+                return /* @__PURE__ */ t(
+                  "rect",
+                  {
+                    x: Qe,
+                    y,
+                    width: Pn - Qe,
+                    height: Math.max(0, v - y),
+                    fill: Nt(p),
+                    className: `gravity-band-stripe${k ? " dim" : ""}${A ? " active" : ""}`
+                  },
+                  p
+                );
+              }),
+              /* @__PURE__ */ t(
+                "rect",
+                {
+                  x: zn(e.bandXMin),
+                  y: Ve,
+                  width: Math.max(0, zn(e.bandXMax) - zn(e.bandXMin)),
+                  height: fn - Ve,
+                  className: `gravity-xband-stripe${c ? " active" : ""}`
+                }
+              )
+            ] }),
+            nt.map((p, y) => {
+              const v = la(y), k = $n(e.band[p].min), A = $n(e.band[p].max), P = s !== null && s !== p, $ = s === p, D = Nt(p);
+              return /* @__PURE__ */ f(
+                "g",
+                {
+                  className: `gravity-band-col${P ? " dim" : ""}${$ ? " active" : ""}`,
+                  onPointerEnter: () => o(p),
+                  onPointerLeave: () => {
+                    r.current || o(null);
+                  },
+                  children: [
+                    /* @__PURE__ */ t("text", { x: v, y: Ve - 6, textAnchor: "middle", className: "gravity-band-label", style: { fill: D }, children: Ot(p) }),
+                    /* @__PURE__ */ t("line", { x1: v, y1: Ve, x2: v, y2: fn, className: "gravity-band-track" }),
+                    /* @__PURE__ */ t("line", { x1: v, y1: k, x2: v, y2: A, stroke: D, className: "gravity-band-stem" }),
+                    /* @__PURE__ */ t(
+                      "circle",
+                      {
+                        cx: v,
+                        cy: k,
+                        r: Tt,
+                        fill: D,
+                        className: "gravity-band-dot",
+                        onPointerDown: (M) => d(M, p, "min"),
+                        onPointerMove: h,
+                        onPointerUp: g
+                      }
+                    ),
+                    /* @__PURE__ */ t(
+                      "circle",
+                      {
+                        cx: v,
+                        cy: A,
+                        r: Tt,
+                        fill: D,
+                        className: "gravity-band-dot",
+                        onPointerDown: (M) => d(M, p, "max"),
+                        onPointerMove: h,
+                        onPointerUp: g
+                      }
+                    )
+                  ]
+                },
+                p
+              );
+            })
+          ]
+        }
+      )
+    }
+  );
+}
+function ua({ params: e, onParamChange: n, onGravitySet: s, hoveredType: o, onHoverType: a }) {
+  const r = e.gravityMode, [c, l] = m.useState("band");
+  return /* @__PURE__ */ f("div", { className: "gravity-controls", children: [
+    /* @__PURE__ */ t("div", { className: "gravity-modes-row", children: /* @__PURE__ */ t("div", { className: "gravity-modes", role: "tablist", "aria-label": "Gravity layout mode", children: ["cartesian", "radial"].map((i) => /* @__PURE__ */ t(
+      "button",
+      {
+        role: "tab",
+        "aria-selected": r === i,
+        className: `gravity-mode-btn${r === i ? " active" : ""}`,
+        onClick: () => s({ gravityMode: i }),
+        children: i === "cartesian" ? "Cartesian" : "Radial"
+      },
+      i
+    )) }) }),
+    /* @__PURE__ */ f("div", { className: "gravity-subtabs", role: "tablist", "aria-label": "Gravity force", children: [
+      /* @__PURE__ */ t(
+        Mt,
+        {
+          label: "Band",
+          active: c === "band",
+          enabled: e.bandEnabled,
+          onSelect: () => l("band"),
+          onToggle: (i) => s({ bandEnabled: i })
+        }
+      ),
+      /* @__PURE__ */ t(
+        Mt,
+        {
+          label: "Topological",
+          active: c === "topological",
+          enabled: e.topologicalEnabled,
+          onSelect: () => l("topological"),
+          onToggle: (i) => s({ topologicalEnabled: i })
+        }
+      )
+    ] }),
+    /* @__PURE__ */ f("div", { className: "gravity-bodies", children: [
+      /* @__PURE__ */ t("div", { className: `gravity-body${c === "band" ? " active" : ""}`, "aria-hidden": c !== "band", children: /* @__PURE__ */ f("div", { className: `gravity-section-tools${e.bandEnabled ? "" : " inactive"}`, children: [
+        /* @__PURE__ */ t(et, { children: /* @__PURE__ */ f(Ge, { children: [
+          "F = ",
+          /* @__PURE__ */ t(We, { id: "bandStrength", children: "strength" }),
+          " × d",
+          /* @__PURE__ */ t("sup", { children: /* @__PURE__ */ t(We, { id: "bandExp", children: "exp" }) })
+        ] }) }),
+        /* @__PURE__ */ t(da, { params: e, onParamChange: n, onGravitySet: s, hoveredType: o, onHoverType: a }),
+        /* @__PURE__ */ t(pa, { params: e, onParamChange: n })
+      ] }) }),
+      /* @__PURE__ */ t("div", { className: `gravity-body${c === "topological" ? " active" : ""}`, "aria-hidden": c !== "topological", children: /* @__PURE__ */ f("div", { className: `gravity-section-tools gravity-topo${e.topologicalEnabled ? "" : " inactive"}`, children: [
+        /* @__PURE__ */ t(et, { children: /* @__PURE__ */ f(Ge, { children: [
+          "F = ",
+          /* @__PURE__ */ t(We, { id: "topoStrength", children: "strength" }),
+          " × depth",
+          /* @__PURE__ */ t("sup", { children: /* @__PURE__ */ t(We, { id: "topoExp", children: "exp" }) }),
+          " × d"
+        ] }) }),
+        /* @__PURE__ */ t(fa, { exp: e.gravityTopologicalExp }),
+        /* @__PURE__ */ f("div", { className: "gravity-slider-row", children: [
+          /* @__PURE__ */ t("label", { className: "graph-control-slider-label", children: "strength" }),
+          /* @__PURE__ */ t(
+            en,
+            {
+              min: 0,
+              max: 2,
+              step: 0.02,
+              value: e.gravityDownstream,
+              onChange: (i) => n({ gravityDownstream: i }),
+              popId: "topoStrength"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ f("div", { className: "gravity-slider-row", children: [
+          /* @__PURE__ */ t("label", { className: "graph-control-slider-label", children: "exp" }),
+          /* @__PURE__ */ t(
+            en,
+            {
+              min: 1,
+              max: 6,
+              step: 0.1,
+              value: e.gravityTopologicalExp,
+              onChange: (i) => n({ gravityTopologicalExp: i }),
+              popId: "topoExp"
+            }
+          )
+        ] })
+      ] }) })
+    ] })
+  ] });
+}
+function Mt({ label: e, active: n, enabled: s, onSelect: o, onToggle: a }) {
+  return /* @__PURE__ */ f("div", { role: "tab", "aria-selected": n, className: `gravity-subtab${n ? " active" : ""}`, onClick: o, children: [
+    /* @__PURE__ */ f("label", { className: `switch${s ? " on" : ""}`, onClick: (r) => r.stopPropagation(), children: [
+      /* @__PURE__ */ t("input", { type: "checkbox", checked: s, onChange: (r) => a(r.target.checked), "aria-label": `${e} gravity enabled` }),
+      /* @__PURE__ */ t("span", { className: "switch-track", children: /* @__PURE__ */ t("span", { className: "switch-knob" }) })
+    ] }),
+    /* @__PURE__ */ t("span", { className: "gravity-subtab-label", children: e })
+  ] });
+}
+const St = 4;
+function pa({
+  params: e,
+  onParamChange: n
+}) {
+  const [s, o] = m.useState(null), a = e.gravityBandExp, r = Math.max(e.gravityX, e.gravityY, 1e-6), c = (i) => Array.from({ length: un + 1 }, (d, h) => {
+    const g = h / un, p = i / r * Math.pow(g, a), y = g * Je, v = Re - St - p * (Re - 2 * St);
+    return `${y.toFixed(1)},${v.toFixed(1)}`;
+  }).join(" "), l = [
+    { id: "y", points: c(e.gravityY), color: "var(--color-workflow)", label: "Y" },
+    { id: "x", points: c(e.gravityX), color: "var(--color-activity)", label: "X" }
+  ];
+  return /* @__PURE__ */ t(
+    rt,
+    {
+      curves: l,
+      xMax: 1,
+      hoveredId: s,
+      onHover: o,
+      xLabel: "distance",
+      yLabel: "force",
+      ariaLabel: "Band force-response curves (X and Y)",
+      exp: {
+        value: a,
+        min: 0.5,
+        max: 3,
+        step: 0.1,
+        onChange: (i) => n({ gravityBandExp: i }),
+        title: "Band falloff exponent. 1 = linear (Hooke); higher = softer just outside the band, stiffer far out.",
+        popId: "bandExp"
+      }
+    }
+  );
+}
+const Et = 220, Xn = 96, Un = 8, ha = 16;
+function fa({ exp: e }) {
+  const n = ha, s = Et - Un, o = Un, a = Xn - Un - 12, r = (o + a) / 2, c = 48, l = Array.from({ length: c + 1 }, (i, d) => {
+    const h = d / c, g = Math.pow(h, e);
+    return `${(n + h * (s - n)).toFixed(1)},${(a - g * (a - o)).toFixed(1)}`;
+  }).join(" ");
+  return /* @__PURE__ */ f("svg", { className: "gravity-topo-curve", viewBox: `0 0 ${Et} ${Xn}`, role: "img", "aria-label": "Depth-to-pull contrast curve", children: [
+    /* @__PURE__ */ t("rect", { x: n, y: o, width: s - n, height: a - o, className: "spring-curve-frame" }),
+    /* @__PURE__ */ t("polyline", { points: l, className: "gravity-topo-curve-line" }),
+    /* @__PURE__ */ t("text", { x: (n + s) / 2, y: Xn - 1, textAnchor: "middle", className: "gravity-topo-curve-axis", children: "depth" }),
+    /* @__PURE__ */ t("text", { x: 5, y: r, textAnchor: "middle", className: "gravity-topo-curve-axis", transform: `rotate(-90 5 ${r})`, children: "pull" })
+  ] });
+}
+function ma({
+  min: e,
+  max: n,
+  step: s,
+  valueMin: o,
+  valueMax: a,
+  onChangeMin: r,
+  onChangeMax: c
+}) {
+  const l = n - e, i = (o - e) / l * 100, d = Math.max(0, (a - o) / l * 100);
+  return /* @__PURE__ */ f("div", { className: "dual-range dual-range-namespace", children: [
+    /* @__PURE__ */ t("div", { className: "dual-range-track" }),
+    /* @__PURE__ */ t("div", { className: "dual-range-fill", style: { left: `${i}%`, width: `${d}%` } }),
+    /* @__PURE__ */ t(
+      "input",
+      {
+        type: "range",
+        className: "dual-range-input dual-range-input-low",
+        min: e,
+        max: n,
+        step: s,
+        value: o,
+        onChange: (h) => r(Math.min(Number(h.target.value), a - s))
+      }
+    ),
+    /* @__PURE__ */ t(
+      "input",
+      {
+        type: "range",
+        className: "dual-range-input dual-range-input-high",
+        min: e,
+        max: n,
+        step: s,
+        value: a,
+        onChange: (h) => c(Math.max(Number(h.target.value), o + s))
+      }
+    )
+  ] });
+}
+const ga = [
+  { id: "push", label: "Push" },
+  { id: "pull", label: "Pull" },
+  { id: "gravity", label: "Gravity" },
+  { id: "misc", label: "Misc" }
+], ya = [
   {
     key: "velocityDecay",
     label: "friction",
@@ -2515,783 +3456,978 @@ const Rs = [
     step: 1e-4,
     tooltip: "Energy level below which simulation pauses"
   }
+], ka = [
+  {
+    key: "baseMul",
+    label: "size",
+    min: 0.3,
+    max: 2,
+    step: 0.05,
+    tooltip: "Overall node + label size. 1 = default."
+  },
+  {
+    key: "maxZoomMul",
+    label: "grow cap",
+    min: 0.5,
+    max: 3,
+    step: 0.05,
+    tooltip: "Zoom past which nodes stop growing. Lower = nodes start shrinking sooner as you zoom out."
+  },
+  {
+    key: "minZoomMul",
+    label: "shrink floor",
+    min: 0.1,
+    max: 1,
+    step: 0.05,
+    tooltip: "Smallest nodes may get when zoomed all the way out."
+  }
 ];
-function js({
+function va({
   params: e,
-  onParamChange: t,
-  running: s,
-  onToggleRunning: o,
-  onReheat: a,
-  showForceFields: l,
-  onToggleForceFields: r,
-  onActiveSection: p,
-  onActiveChargeType: d,
-  onActiveGravityType: m
+  onParamChange: n,
+  onAdjust: s,
+  onGravityChange: o,
+  onActiveSection: a,
+  onActiveChargeType: r,
+  onActiveGravityType: c,
+  onActivePullEdge: l,
+  nodeScale: i,
+  onNodeScaleChange: d
 }) {
-  const [T, $] = u.useState(!1), [y, I] = u.useState(!1), N = () => {
-    for (const f of Object.keys(mn))
-      e[f] !== mn[f] && t(f, mn[f]);
-  };
-  return /* @__PURE__ */ i("div", { className: `graph-control-panel ${T ? "open" : ""}`, children: [
-    /* @__PURE__ */ i(
+  const [h, g] = m.useState(!1), [p, y] = m.useState("push"), [v, k] = m.useState(null), A = m.useCallback((w) => {
+    k(w), l(w);
+  }, [l]), [P, $] = m.useState(null), D = m.useCallback((w) => {
+    $(w), r(w);
+  }, [r]), [M, b] = m.useState(null), C = m.useCallback((w) => {
+    b(w), c(w);
+  }, [c]), F = m.useCallback((w) => {
+    n(w), s();
+  }, [n, s]);
+  return /* @__PURE__ */ f("div", { className: `graph-control-panel ${h ? "open" : ""}`, children: [
+    /* @__PURE__ */ t(
       "button",
       {
         className: "graph-control-panel-toggle",
-        onClick: () => $(!T),
+        onClick: () => g(!h),
         title: "Toggle control panel",
-        children: [
-          T ? "▼ Forces" : "▶ Forces",
-          T && /* @__PURE__ */ n(
-            "span",
-            {
-              className: "graph-control-help-btn",
-              onClick: (f) => {
-                f.stopPropagation(), I(!y);
-              },
-              title: "How the simulation works",
-              children: "?"
-            }
-          )
-        ]
+        children: h ? "▼ Controls" : "▶ Controls"
       }
     ),
-    T && y && /* @__PURE__ */ n("div", { className: "graph-control-help-popover", children: /* @__PURE__ */ n("pre", { className: "graph-control-help-text", children: Qs }) }),
-    T && /* @__PURE__ */ i("div", { className: "graph-control-panel-body", children: [
-      /* @__PURE__ */ i(Cn, { section: "push", title: "PUSH", subtitle: "all node pairs", equation: `F = α × push × charge / eff^exp
-eff = √(d² + softening)`, onHover: (f) => p(f ? "push" : null), children: [
-        Rs.map((f) => /* @__PURE__ */ n(fn, { def: f, value: e[f.key], onChange: (P) => t(f.key, P) }, f.key)),
-        /* @__PURE__ */ i("div", { className: "graph-control-sub-header", children: [
-          /* @__PURE__ */ n("span", { className: "graph-control-sub-label", children: "Level" }),
-          /* @__PURE__ */ n("span", { className: "graph-control-sub-label", children: "Charge" })
-        ] }),
-        Os.map((f) => /* @__PURE__ */ n(
-          "div",
-          {
-            onMouseEnter: () => d(f.nodeType),
-            onMouseLeave: () => d(null),
-            children: /* @__PURE__ */ n(
-              fn,
-              {
-                def: f,
-                value: e[f.key],
-                onChange: (P) => t(f.key, P),
-                nodeType: f.nodeType
-              }
-            )
-          },
-          f.key
-        ))
-      ] }),
-      /* @__PURE__ */ i(Cn, { section: "pull", title: "PULL", subtitle: "connected pairs", equation: `F = α × pull × k × sign(Δ) × |Δ|^exp / d
-Δ = d − rest × dist`, onHover: (f) => p(f ? "pull" : null), children: [
-        Bs.map((f) => /* @__PURE__ */ n(fn, { def: f, value: e[f.key], onChange: (P) => t(f.key, P) }, f.key)),
-        /* @__PURE__ */ i("div", { className: "graph-control-sub-header", children: [
-          /* @__PURE__ */ n("span", { className: "graph-control-sub-label", style: { minWidth: 52 }, children: "Edge" }),
-          /* @__PURE__ */ n("span", { className: "graph-control-sub-label", children: "k" }),
-          /* @__PURE__ */ n("span", { className: "graph-control-sub-label", children: "rest" })
-        ] }),
-        zs.map((f) => /* @__PURE__ */ n(Js, { def: f, params: e, onChange: t }, f.label))
-      ] }),
-      /* @__PURE__ */ i(
-        Cn,
+    h && /* @__PURE__ */ t(Ro, { children: /* @__PURE__ */ f("div", { className: "graph-control-panel-body", children: [
+      /* @__PURE__ */ t("div", { className: "graph-control-tabs", role: "tablist", children: ga.map((w) => /* @__PURE__ */ t(
+        "button",
         {
-          section: "gravity",
-          title: "GRAVITY",
-          subtitle: "hierarchical anchor",
-          equation: `Fₓ = α × X × (0 − x)
-Fᵧ = α × Y × (band − y) when y outside band`,
-          onHover: (f) => {
-            p(f ? "gravity" : null), f || m(null);
-          },
-          children: [
-            Gs.map((f) => /* @__PURE__ */ n(fn, { def: f, value: e[f.key], onChange: (P) => t(f.key, P) }, f.key)),
-            /* @__PURE__ */ i("div", { className: "graph-control-sub-header", children: [
-              /* @__PURE__ */ n("span", { className: "graph-control-sub-label", children: "Axis" }),
-              /* @__PURE__ */ n("span", { className: "graph-control-sub-label", children: "X band (left \\u2192 right)" })
+          role: "tab",
+          "aria-selected": p === w.id,
+          className: `graph-control-tab${p === w.id ? " active" : ""}`,
+          onClick: () => y(w.id),
+          children: w.label
+        },
+        w.id
+      )) }),
+      /* @__PURE__ */ f("div", { className: "graph-control-sections", children: [
+        /* @__PURE__ */ t(Cn, { active: p === "push", children: /* @__PURE__ */ f(
+          hn,
+          {
+            subtitle: "",
+            equation: /* @__PURE__ */ f("span", { className: "eq-line", children: [
+              "F =",
+              /* @__PURE__ */ f("span", { className: "eq-frac", children: [
+                /* @__PURE__ */ t("span", { className: "eq-num", children: /* @__PURE__ */ t(We, { id: "pushMultiplier", children: "charge" }) }),
+                /* @__PURE__ */ f("span", { className: "eq-den", children: [
+                  "(d² + ",
+                  /* @__PURE__ */ t(We, { id: "coreRadiusMultiplier", children: "r" }),
+                  "²)",
+                  /* @__PURE__ */ t("sup", { children: /* @__PURE__ */ t(We, { id: "chargeExponent", children: "exp" }) })
+                ] })
+              ] })
             ] }),
-            /* @__PURE__ */ i("div", { className: "graph-control-band-row", children: [
-              /* @__PURE__ */ n("span", { className: "graph-control-band-label", children: "X" }),
-              /* @__PURE__ */ n(
-                gt,
+            onHover: (w) => a(w ? "push" : null),
+            children: [
+              /* @__PURE__ */ t(
+                na,
                 {
-                  min: ht,
-                  max: ft,
-                  step: mt,
-                  valueMin: e.bandXMin,
-                  valueMax: e.bandXMax,
-                  onChangeMin: (f) => t("bandXMin", f),
-                  onChangeMax: (f) => t("bandXMax", f),
-                  nodeType: "namespace"
+                  params: e,
+                  onParamChange: F,
+                  hoveredType: P,
+                  onHoverType: D
                 }
               ),
-              /* @__PURE__ */ n("span", { className: "graph-control-band-value", children: Math.round(e.bandXMin) }),
-              /* @__PURE__ */ n("span", { className: "graph-control-band-value", children: Math.round(e.bandXMax) })
+              /* @__PURE__ */ t(
+                ta,
+                {
+                  params: e,
+                  onParamChange: F,
+                  hoveredType: P,
+                  onHoverType: D
+                }
+              )
+            ]
+          }
+        ) }),
+        /* @__PURE__ */ t(Cn, { active: p === "pull", children: /* @__PURE__ */ f(
+          hn,
+          {
+            subtitle: "",
+            equation: /* @__PURE__ */ f("span", { className: "eq-line", children: [
+              "F = ",
+              /* @__PURE__ */ t(We, { id: "pullMultiplier", children: "stiffness" }),
+              " ×",
+              /* @__PURE__ */ f("span", { className: "eq-frac", children: [
+                /* @__PURE__ */ f("span", { className: "eq-num", children: [
+                  "(d − ",
+                  /* @__PURE__ */ t(We, { id: "distanceMultiplier", children: "length" }),
+                  ")",
+                  /* @__PURE__ */ t("sup", { children: /* @__PURE__ */ t(We, { id: "linkExponent", children: "exp" }) })
+                ] }),
+                /* @__PURE__ */ t("span", { className: "eq-den", children: "d" })
+              ] })
             ] }),
-            /* @__PURE__ */ i("div", { className: "graph-control-sub-header", children: [
-              /* @__PURE__ */ n("span", { className: "graph-control-sub-label", children: "Type" }),
-              /* @__PURE__ */ n("span", { className: "graph-control-sub-label", children: "Y band (top \\u2192 bottom)" })
-            ] }),
-            Us.map((f) => /* @__PURE__ */ n(
-              "div",
+            onHover: (w) => a(w ? "pull" : null),
+            children: [
+              /* @__PURE__ */ t(
+                zo,
+                {
+                  params: e,
+                  onParamChange: F,
+                  hoveredEdge: v,
+                  onHoverEdge: A
+                }
+              ),
+              /* @__PURE__ */ t(
+                Uo,
+                {
+                  params: e,
+                  onParamChange: F,
+                  hoveredEdge: v,
+                  onHoverEdge: A
+                }
+              )
+            ]
+          }
+        ) }),
+        /* @__PURE__ */ t(Cn, { active: p === "gravity", children: /* @__PURE__ */ t(
+          hn,
+          {
+            subtitle: "",
+            equation: "",
+            onHover: (w) => {
+              a(w ? "gravity" : null), w || c(null);
+            },
+            children: /* @__PURE__ */ t(
+              ua,
               {
-                onMouseEnter: () => m(f.nodeType),
-                onMouseLeave: () => m(null),
-                children: /* @__PURE__ */ n(
-                  Zs,
-                  {
-                    def: f,
-                    valueMin: e[f.minKey],
-                    valueMax: e[f.maxKey],
-                    onChangeMin: (P) => t(f.minKey, P),
-                    onChangeMax: (P) => t(f.maxKey, P)
-                  }
-                )
-              },
-              f.nodeType
-            ))
-          ]
-        }
-      ),
-      /* @__PURE__ */ n(Cn, { section: "dynamics", title: "DYNAMICS", subtitle: "", equation: `v ×= friction
-α −= cooling, stop at threshold`, onHover: (f) => p(f ? "dynamics" : null), children: Xs.map((f) => /* @__PURE__ */ n(fn, { def: f, value: e[f.key], onChange: (P) => t(f.key, P) }, f.key)) }),
-      /* @__PURE__ */ i("div", { className: "graph-control-group", children: [
-        /* @__PURE__ */ i("div", { className: "graph-control-sim-buttons", children: [
-          /* @__PURE__ */ n("button", { className: "graph-header-btn", onClick: o, children: s ? "Pause" : "Play" }),
-          /* @__PURE__ */ n("button", { className: "graph-header-btn", onClick: a, children: "Reheat" }),
-          /* @__PURE__ */ n("button", { className: "graph-header-btn", onClick: N, title: "Reset all parameters to defaults", children: "Reset" })
-        ] }),
-        /* @__PURE__ */ i("label", { className: "graph-control-checkbox", title: "Show charge field rings around nodes", children: [
-          /* @__PURE__ */ n("input", { type: "checkbox", checked: l, onChange: r }),
-          "Show force fields"
+                params: e,
+                onParamChange: F,
+                onGravitySet: o,
+                hoveredType: M,
+                onHoverType: C
+              }
+            )
+          }
+        ) }),
+        /* @__PURE__ */ f(Cn, { active: p === "misc", children: [
+          /* @__PURE__ */ f("div", { className: "graph-control-subsection", children: [
+            /* @__PURE__ */ t("div", { className: "graph-control-subsection-title", children: "Dynamics" }),
+            /* @__PURE__ */ t(hn, { subtitle: "", equation: `v ×= friction
+α −= cooling, stop at threshold`, onHover: (w) => a(w ? "dynamics" : null), children: ya.map((w) => /* @__PURE__ */ t($t, { def: w, value: e[w.key], onChange: (R) => F({ [w.key]: R }) }, w.key)) })
+          ] }),
+          /* @__PURE__ */ f("div", { className: "graph-control-subsection", children: [
+            /* @__PURE__ */ t("div", { className: "graph-control-subsection-title", children: "Node scaling" }),
+            /* @__PURE__ */ t(hn, { subtitle: "", equation: "size = base × clamp(zoom, floor, cap)", onHover: () => {
+            }, children: ka.map((w) => /* @__PURE__ */ t($t, { def: w, value: i[w.key], onChange: (R) => d({ [w.key]: R }) }, w.key)) })
+          ] })
         ] })
       ] })
-    ] })
+    ] }) })
   ] });
 }
-function Cn({ section: e, title: t, subtitle: s, equation: o, onHover: a, children: l }) {
-  return /* @__PURE__ */ i(
+function Cn({ active: e, children: n }) {
+  return /* @__PURE__ */ t("div", { className: `graph-control-section-slot${e ? " active" : ""}`, "aria-hidden": !e, children: n });
+}
+function hn({ subtitle: e, equation: n, onHover: s, children: o }) {
+  return /* @__PURE__ */ f(
     "div",
     {
-      className: `graph-control-equation-section graph-control-section-${e}`,
-      onMouseEnter: () => a(!0),
-      onMouseLeave: () => a(!1),
+      className: "graph-control-equation-section",
+      onMouseEnter: () => s(!0),
+      onMouseLeave: () => s(!1),
       children: [
-        /* @__PURE__ */ i("div", { className: "graph-control-equation-header", children: [
-          /* @__PURE__ */ n("span", { className: "graph-control-equation-title", children: t }),
-          s && /* @__PURE__ */ i("span", { className: "graph-control-equation-subtitle", children: [
-            "(",
-            s,
-            ")"
-          ] })
-        ] }),
-        /* @__PURE__ */ n("pre", { className: "graph-control-equation-formula", children: o }),
-        /* @__PURE__ */ n("div", { className: "graph-control-equation-body", children: l })
+        e && /* @__PURE__ */ t("div", { className: "graph-control-equation-header", children: /* @__PURE__ */ f("span", { className: "graph-control-equation-subtitle", children: [
+          "(",
+          e,
+          ")"
+        ] }) }),
+        /* @__PURE__ */ t(et, { children: n }),
+        /* @__PURE__ */ t("div", { className: "graph-control-equation-body", children: o })
       ]
     }
   );
 }
-function Js({ def: e, params: t, onChange: s }) {
-  const o = t[e.kKey], a = t[e.restKey], l = String(o), r = String(Math.round(a));
-  return /* @__PURE__ */ i("div", { className: "graph-control-pull-edge", title: e.tooltip, children: [
-    /* @__PURE__ */ i("span", { className: "graph-control-pull-edge-label", children: [
-      /* @__PURE__ */ n("span", { className: `graph-control-edge-dot graph-control-typed-${e.sourceType}` }),
-      /* @__PURE__ */ n("span", { className: `graph-control-edge-dot graph-control-typed-${e.targetType}` }),
-      e.label
-    ] }),
-    /* @__PURE__ */ n(
-      "input",
-      {
-        type: "range",
-        min: Ys,
-        max: _s,
-        step: Ks,
-        value: o,
-        onChange: (p) => s(e.kKey, Number(p.target.value)),
-        className: "graph-control-slider-input graph-control-pull-slider"
-      }
-    ),
-    /* @__PURE__ */ n("span", { className: "graph-control-pull-value", children: l }),
-    /* @__PURE__ */ n(
-      "input",
-      {
-        type: "range",
-        min: Vs,
-        max: qs,
-        step: Hs,
-        value: a,
-        onChange: (p) => s(e.restKey, Number(p.target.value)),
-        className: "graph-control-slider-input graph-control-pull-slider"
-      }
-    ),
-    /* @__PURE__ */ n("span", { className: "graph-control-pull-value", children: r })
+function $t({ def: e, value: n, onChange: s, nodeType: o }) {
+  const a = e.step < 1 ? String(n) : String(Math.round(n)), r = o ? `graph-control-slider graph-control-typed-row graph-control-typed-${o}` : "graph-control-slider";
+  return /* @__PURE__ */ f("div", { className: r, title: e.tooltip, children: [
+    /* @__PURE__ */ t("label", { className: "graph-control-slider-label", children: e.label }),
+    /* @__PURE__ */ t(en, { min: e.min, max: e.max, step: e.step, value: n, onChange: s }),
+    /* @__PURE__ */ t("span", { className: "graph-control-slider-value", children: a })
   ] });
 }
-function Zs({ def: e, valueMin: t, valueMax: s, onChangeMin: o, onChangeMax: a }) {
-  return /* @__PURE__ */ i(
-    "div",
-    {
-      className: `graph-control-band-row graph-control-typed-row graph-control-typed-${e.nodeType}`,
-      title: e.tooltip,
-      children: [
-        /* @__PURE__ */ n("span", { className: "graph-control-band-label", children: e.label }),
-        /* @__PURE__ */ n(
-          gt,
-          {
-            min: ht,
-            max: ft,
-            step: mt,
-            valueMin: t,
-            valueMax: s,
-            onChangeMin: o,
-            onChangeMax: a,
-            nodeType: e.nodeType
-          }
-        ),
-        /* @__PURE__ */ n("span", { className: "graph-control-band-value", children: Math.round(t) }),
-        /* @__PURE__ */ n("span", { className: "graph-control-band-value", children: Math.round(s) })
-      ]
+function ba(e) {
+  const n = /* @__PURE__ */ new Map();
+  for (const s of e.definitions ?? [])
+    switch (s.type) {
+      case "workflowDef":
+        n.set(`workflow:${s.name}`, { sourceFile: s.sourceFile, def: s });
+        break;
+      case "activityDef":
+        n.set(`activity:${s.name}`, { sourceFile: s.sourceFile, def: s });
+        break;
+      case "workerDef":
+        n.set(`worker:${s.name}`, { sourceFile: s.sourceFile, def: s });
+        break;
+      case "namespaceDef": {
+        n.set(`namespace:${s.name}`, { sourceFile: s.sourceFile, def: s });
+        for (const o of s.endpoints ?? [])
+          n.set(`nexusEndpoint:${o.endpointName}`, { sourceFile: s.sourceFile, def: s });
+        break;
+      }
+      case "nexusServiceDef": {
+        n.set(`nexusService:${s.name}`, { sourceFile: s.sourceFile, def: s });
+        for (const o of s.operations ?? [])
+          n.set(`nexusOperation:${s.name}.${o.name}`, { sourceFile: s.sourceFile, def: s });
+        break;
+      }
     }
-  );
+  return n;
 }
-function gt({
-  min: e,
-  max: t,
-  step: s,
-  valueMin: o,
-  valueMax: a,
-  onChangeMin: l,
-  onChangeMax: r,
-  nodeType: p
-}) {
-  const d = t - e, m = (o - e) / d * 100, T = Math.max(0, (a - o) / d * 100);
-  return /* @__PURE__ */ i("div", { className: `dual-range dual-range-${p}`, children: [
-    /* @__PURE__ */ n("div", { className: "dual-range-track" }),
-    /* @__PURE__ */ n(
-      "div",
-      {
-        className: "dual-range-fill",
-        style: { left: `${m}%`, width: `${T}%` }
-      }
-    ),
-    /* @__PURE__ */ n(
-      "input",
-      {
-        type: "range",
-        className: "dual-range-input dual-range-input-low",
-        min: e,
-        max: t,
-        step: s,
-        value: o,
-        onChange: ($) => {
-          const y = Math.min(Number($.target.value), a - s);
-          l(y);
-        }
-      }
-    ),
-    /* @__PURE__ */ n(
-      "input",
-      {
-        type: "range",
-        className: "dual-range-input dual-range-input-high",
-        min: e,
-        max: t,
-        step: s,
-        value: a,
-        onChange: ($) => {
-          const y = Math.max(Number($.target.value), o + s);
-          r(y);
-        }
-      }
-    )
-  ] });
+function wa(e) {
+  const n = e.indexOf(":");
+  return n < 0 ? { kind: e, name: "" } : { kind: e.slice(0, n), name: e.slice(n + 1) };
 }
-function fn({ def: e, value: t, onChange: s, nodeType: o }) {
-  const a = e.step < 1 ? String(t) : String(Math.round(t)), l = o ? `graph-control-slider graph-control-typed-row graph-control-typed-${o}` : "graph-control-slider";
-  return /* @__PURE__ */ i("div", { className: l, title: e.tooltip, children: [
-    /* @__PURE__ */ n("label", { className: "graph-control-slider-label", children: e.label }),
-    /* @__PURE__ */ n(
-      "input",
-      {
-        type: "range",
-        min: e.min,
-        max: e.max,
-        step: e.step,
-        value: t,
-        onChange: (r) => s(Number(r.target.value)),
-        className: "graph-control-slider-input"
-      }
-    ),
-    /* @__PURE__ */ n("span", { className: "graph-control-slider-value", children: a })
-  ] });
-}
-const Qs = `Force-directed graph layout:
-
-PUSH — Nodes repel each other via charge force.
-  F = α × push × charge / eff^exp
-  eff = √(d² + softening)
-
-PULL — Connected nodes attract via spring force.
-  F = α × pull × k × sign(Δ) × |Δ|^exp / d
-  Δ = d − rest × dist
-
-GRAVITY — All nodes drift toward center of mass.
-  F = α × gravity × (pos − COM)
-
-DYNAMICS — Friction damps velocity, cooling reduces
-  energy until the simulation stabilizes.
-
-Hierarchy & node types:
-  L1:   Namespace
-  L1.5: NexusEndpoint (top-level routing alias)
-  L2:   Worker, NexusService
-  L3:   Workflow, NexusOperation
-  L4:   Activity
-
-Tuning guide:
-  • Start with push/pull multipliers for balance
-  • If nodes overlap → increase push or charge
-  • If too spread → increase pull or gravity
-  • If oscillating → increase friction or cooling
-  • Toggle "Show force fields" to see charge reach`;
-function eo({ x: e, y: t, items: s, onClose: o }) {
-  const a = u.useRef(null);
-  u.useEffect(() => {
-    const r = (d) => {
-      d.key === "Escape" && o();
-    }, p = (d) => {
-      a.current && (a.current.contains(d.target) || o());
-    };
-    return window.addEventListener("keydown", r), window.addEventListener("mousedown", p, !0), () => {
-      window.removeEventListener("keydown", r), window.removeEventListener("mousedown", p, !0);
-    };
-  }, [o]);
-  const l = u.useMemo(() => {
-    const d = 40 + s.length * 28, m = Math.min(e, window.innerWidth - 180 - 8), T = Math.min(t, window.innerHeight - d - 8);
-    return { left: m, top: T };
-  }, [e, t, s.length]);
-  return /* @__PURE__ */ n("div", { ref: a, className: "graph-context-menu", style: l, role: "menu", children: s.map((r, p) => /* @__PURE__ */ n(
-    "button",
-    {
-      role: "menuitem",
-      className: "graph-context-menu-item",
-      onClick: () => {
-        r.onClick(), o();
-      },
-      children: r.label
-    },
-    p
-  )) });
-}
-function ln(e) {
+function xa(e) {
   switch (e) {
     case "namespace":
-      return "namespaceDef";
+      return "namespace";
     case "nexusEndpoint":
-      return "nexusEndpointDef";
+      return "nexusEndpoint";
     case "worker":
-      return "workerDef";
-    case "workflow":
-      return "workflowDef";
-    case "activity":
-      return "activityDef";
+      return "worker";
     case "nexusService":
-      return "nexusServiceDef";
+      return "nexusService";
+    case "workflow":
+      return "workflow";
     case "nexusOperation":
-      return "nexusOperationDef";
+      return "nexusOperation";
+    case "activity":
+      return "activity";
     default:
-      return "workflowDef";
+      return "workflow";
   }
 }
-function yt(e, t, s) {
+function Na(e, n) {
+  if (e === "nexusOperation") {
+    const s = n.lastIndexOf(".");
+    return s >= 0 ? n.slice(s + 1) : n;
+  }
+  return n;
+}
+function Ta(e, n) {
+  const s = ba(n), o = /* @__PURE__ */ new Map(), a = [];
+  let r = 0;
+  const c = /* @__PURE__ */ new Map();
+  for (const i of e.edges)
+    i.kind === "containment" && c.set(i.from, i.to);
+  for (const i of e.nodes) {
+    const { kind: d, name: h } = wa(i.definition), g = xa(d), p = s.get(i.definition);
+    o.set(i.id, {
+      id: i.id,
+      nodeType: g,
+      name: Na(g, h),
+      sourceFile: p == null ? void 0 : p.sourceFile,
+      parentId: c.get(i.id),
+      orphan: i.orphan ?? !1,
+      definitionKey: i.definition,
+      worker: i.worker,
+      namespace: i.namespace,
+      queue: i.queue
+    });
+  }
+  for (const i of e.edges) {
+    const d = Ma(i, o, r++);
+    d && a.push(d);
+  }
+  for (const i of e.coarsenedEdges) {
+    const d = Sa(i, o, r++);
+    d && a.push(d);
+  }
+  const l = /* @__PURE__ */ new Map();
+  for (const i of o.values()) {
+    const d = l.get(i.definitionKey) ?? /* @__PURE__ */ new Set();
+    d.add(i.id), l.set(i.definitionKey, d);
+  }
+  return { nodes: o, edges: a, duplicateGroups: l };
+}
+function Ma(e, n, s) {
+  var l;
+  const o = n.get(e.from), a = n.get(e.to);
+  if (!o || !a) return null;
+  const r = e.kind === "containment" || e.kind === "nexusRoute" ? "containment" : "dependency", c = {
+    id: `e${s}`,
+    edgeType: r,
+    sourceId: e.from,
+    targetId: e.to,
+    sourceNodeType: o.nodeType,
+    targetNodeType: a.nodeType
+  };
+  return (l = e.routing) != null && l.nexusEndpoint && (c.nexusEndpoint = e.routing.nexusEndpoint), c;
+}
+function Sa(e, n, s) {
+  const o = n.get(e.from), a = n.get(e.to);
+  return !o || !a ? null : {
+    id: `e${s}`,
+    edgeType: "dependency",
+    sourceId: e.from,
+    targetId: e.to,
+    sourceNodeType: o.nodeType,
+    targetNodeType: a.nodeType
+  };
+}
+function Ea(e) {
+  const n = [];
+  for (const s of e.diagnostics)
+    n.push({
+      severity: s.severity,
+      kind: "graph",
+      code: s.code,
+      message: s.message,
+      name: s.from,
+      start: { line: s.line, column: 0 },
+      end: { line: s.line, column: 0 }
+    });
+  for (const s of e.unresolved) {
+    const o = s.kind === "signalSend" ? "SIGNAL_TARGET_NOT_SAMPLED" : "UNRESOLVED_REFERENCE";
+    n.push({
+      severity: "warning",
+      kind: "graph",
+      code: o,
+      message: `unresolved ${s.kind} target ${JSON.stringify(s.name)} (not present in the sampled input)`,
+      name: s.from,
+      start: { line: s.line, column: 0 },
+      end: { line: s.line, column: 0 }
+    });
+  }
+  return n;
+}
+function $a(e, n, s) {
+  const o = m.useMemo(
+    () => Ta(n, e),
+    [n, e]
+  ), a = m.useMemo(() => {
+    const h = /* @__PURE__ */ new Set();
+    for (const g of o.nodes.values())
+      g.sourceFile && h.add(g.sourceFile);
+    return Array.from(h).sort();
+  }, [o]), r = m.useRef(s), [c, l] = m.useState(/* @__PURE__ */ new Set());
+  m.useEffect(() => {
+    const h = r.current;
+    if (Rn(h, s)) return;
+    const g = /* @__PURE__ */ new Set();
+    for (const p of s.selectedFiles) h.selectedFiles.has(p) || g.add(`file:${p}`);
+    for (const p of s.visibleTypes) h.visibleTypes.has(p) || g.add(`type:${p}`);
+    if (r.current = s, g.size > 0) {
+      l(g);
+      const p = setTimeout(() => l(/* @__PURE__ */ new Set()), 450);
+      return () => clearTimeout(p);
+    }
+  }, [s]);
+  const i = e.errors || [], d = m.useMemo(
+    () => [...e.diagnostics || [], ...Ea(n)],
+    [e.diagnostics, n]
+  );
+  return {
+    graph: o,
+    allFiles: a,
+    recentlyChanged: c,
+    errors: i,
+    diagnostics: d
+  };
+}
+function Ca() {
+  const [e, n] = m.useState(lo), s = m.useRef(null), o = m.useRef(!1), a = m.useRef(null), r = m.useCallback((c, l) => {
+    const i = s.current;
+    if (!i) return;
+    const { width: d, height: h } = i.getBoundingClientRect();
+    n(ct(c, d, h, l));
+  }, []);
+  return { viewport: e, setViewport: n, containerRef: s, initialFitDone: o, pendingCenterRef: a, fit: r };
+}
+function Da(e, n, s, o) {
+  const a = /* @__PURE__ */ new Set([e]), r = [e];
+  for (; r.length > 0; ) {
+    const c = r.shift();
+    for (const l of n) {
+      if (l.edgeType === "containment") continue;
+      let i;
+      o === "downstream" && l.sourceId === c ? i = l.targetId : o === "upstream" && l.targetId === c && (i = l.sourceId), i && s.has(i) && !a.has(i) && (a.add(i), r.push(i));
+    }
+  }
+  return a;
+}
+function Fa(e, n) {
+  const s = /* @__PURE__ */ new Set();
+  for (const o of n)
+    o.edgeType !== "containment" && e.has(o.sourceId) && e.has(o.targetId) && s.add(o.id);
+  return s;
+}
+function Aa(e, n, s, o, a) {
+  const [r, c] = m.useState(null), [l, i] = m.useState(null), [d, h] = m.useState(-1), [g, p] = m.useState(!1), [y, v] = m.useState(null), [k, A] = m.useState(null), [P, $] = m.useState(null), [D, M] = m.useState(null);
+  m.useEffect(() => {
+    i(null), c(null), h(-1);
+  }, [a]), m.useEffect(() => {
+    const w = (V) => {
+      V.key === "Shift" && p(!0);
+    }, R = (V) => {
+      V.key === "Shift" && p(!1);
+    };
+    return window.addEventListener("keydown", w), window.addEventListener("keyup", R), () => {
+      window.removeEventListener("keydown", w), window.removeEventListener("keyup", R);
+    };
+  }, []);
+  const b = d >= 0 && d < e.length ? e[d].id : null, { highlightedNodes: C, highlightedEdges: F } = m.useMemo(() => {
+    const w = r ?? l;
+    if (!w || !s.has(w))
+      return { highlightedNodes: null, highlightedEdges: null };
+    const R = o(w);
+    if ((R == null ? void 0 : R.nodeType) === "nexusEndpoint") {
+      const ne = /* @__PURE__ */ new Set([w]), ie = /* @__PURE__ */ new Set();
+      R.parentId && s.has(R.parentId) && ne.add(R.parentId);
+      for (const T of n)
+        T.nexusEndpoint === R.name && (ie.add(T.id), s.has(T.sourceId) && ne.add(T.sourceId), s.has(T.targetId) && ne.add(T.targetId));
+      return { highlightedNodes: ne, highlightedEdges: ie };
+    }
+    const re = Da(w, n, s, g ? "upstream" : "downstream");
+    if ((R == null ? void 0 : R.nodeType) === "nexusService") {
+      const ne = /* @__PURE__ */ new Set();
+      for (const ie of e)
+        ie.nodeType === "nexusOperation" && ie.parentId === w && ne.add(ie.id);
+      for (const ie of n)
+        if (ie.targetNodeType === "nexusEndpoint" && ne.has(ie.sourceId) && s.has(ie.targetId)) {
+          re.add(ie.targetId);
+          const T = o(ie.targetId);
+          T != null && T.parentId && s.has(T.parentId) && re.add(T.parentId);
+        }
+    }
+    const j = Fa(re, n);
+    return { highlightedNodes: re, highlightedEdges: j };
+  }, [r, l, g, n, s, e, o]);
+  return {
+    hoveredNodeId: r,
+    setHoveredNodeId: c,
+    selectedNodeId: l,
+    setSelectedNodeId: i,
+    focusedIndex: d,
+    setFocusedIndex: h,
+    shiftHeld: g,
+    focusedNodeId: b,
+    highlightedNodes: C,
+    highlightedEdges: F,
+    activeSection: y,
+    setActiveSection: v,
+    activeChargeType: k,
+    setActiveChargeType: A,
+    activeGravityType: P,
+    setActiveGravityType: $,
+    activePullEdge: D,
+    setActivePullEdge: M
+  };
+}
+function Pa(e, n) {
+  const s = m.useRef(null), o = m.useRef(null), [a, r] = m.useState(!0), [c, l] = m.useState({ ...Xt }), [i, d] = m.useState(0), h = m.useRef(n);
+  h.current = n, m.useEffect(() => {
+    var M;
+    s.current = new Mo(e, c), (M = h.current) == null || M.call(h), r(!0), d((b) => b + 1);
+  }, [e]);
+  const g = m.useCallback((M) => {
+    var b;
+    return (b = s.current) == null ? void 0 : b.getNode(M);
+  }, []), p = m.useCallback((M) => {
+    l((b) => {
+      var F;
+      const C = { ...b, ...M };
+      return (F = s.current) == null || F.setParams(C), C;
+    });
+  }, []), y = m.useCallback(() => {
+    var M;
+    (M = s.current) == null || M.nudge(0.3), r(!0);
+  }, []), v = m.useCallback((M) => {
+    var b;
+    l((C) => {
+      var w;
+      const F = { ...C, ...M };
+      return (w = s.current) == null || w.setParams(F), F;
+    }), (b = s.current) == null || b.reheat(0.6), r(!0);
+  }, []), k = m.useCallback((M, b, C) => {
+    var F, w;
+    o.current = M, (F = s.current) == null || F.pinNode(M, b, C), (w = s.current) == null || w.reheat(0.3), r(!0);
+  }, []), A = m.useCallback((M, b) => {
+    var C;
+    o.current && ((C = s.current) == null || C.pinNode(o.current, M, b));
+  }, []), P = m.useCallback(() => {
+    var M;
+    o.current && ((M = s.current) == null || M.unpinNode(o.current), o.current = null);
+  }, []), $ = m.useCallback(() => {
+    var M;
+    a ? r(!1) : ((M = s.current) == null || M.reheat(0.5), r(!0));
+  }, [a]), D = m.useCallback(() => {
+    var M;
+    (M = s.current) == null || M.reheat(2), r(!0);
+  }, []);
+  return {
+    simRef: s,
+    simVersion: i,
+    running: a,
+    setRunning: r,
+    forceParams: c,
+    getNode: g,
+    onParamChange: p,
+    onForceAdjust: y,
+    onGravityChange: v,
+    onNodeDragStart: k,
+    onNodeDragMove: A,
+    onNodeDragEnd: P,
+    onToggleRunning: $,
+    onReheat: D
+  };
+}
+function ns(e, n, s) {
   const o = s(e);
   if (!o) return null;
   let a = o.parentId;
   for (; a; ) {
-    if (t.has(a)) return a;
-    const l = s(a);
-    a = l == null ? void 0 : l.parentId;
+    if (n.has(a)) return a;
+    const r = s(a);
+    a = r == null ? void 0 : r.parentId;
   }
   return null;
 }
-function Vn(e, t, s, o, a, l) {
-  if (t) return [e];
-  const r = l(e);
-  if ((r == null ? void 0 : r.nodeType) === "nexusOperation") {
-    const d = [];
-    for (const m of o.edges) {
-      if (m.edgeType !== "dependency") continue;
-      const T = s === "tgt" ? m.sourceId === e ? m.targetId : null : m.targetId === e ? m.sourceId : null;
-      if (T)
-        for (const $ of Vn(T, a.has(T), s, o, a, l))
-          d.push($);
+function tt(e, n, s, o, a, r) {
+  if (n) return [e];
+  const c = r(e);
+  if ((c == null ? void 0 : c.nodeType) === "nexusOperation") {
+    const i = [];
+    for (const d of o.edges) {
+      if (d.edgeType !== "dependency") continue;
+      const h = s === "tgt" ? d.sourceId === e ? d.targetId : null : d.targetId === e ? d.sourceId : null;
+      if (h)
+        for (const g of tt(h, a.has(h), s, o, a, r))
+          i.push(g);
     }
-    if (d.length > 0) return d;
+    if (i.length > 0) return i;
   }
-  const p = yt(e, a, l);
-  return p ? [p] : [];
+  const l = ns(e, a, r);
+  return l ? [l] : [];
 }
-function no(e, t, s) {
-  if (e.level === 1) {
-    let o = 0, a = 0;
-    for (const r of t) {
-      if (r.edgeType !== "containment" || r.targetId !== e.id) continue;
-      const p = s.get(r.sourceId);
-      p && (p.nodeType === "worker" ? o++ : p.nodeType === "nexusEndpoint" && a++);
-    }
-    const l = [];
-    return o > 0 && l.push(`${o} worker${o !== 1 ? "s" : ""}`), a > 0 && l.push(`${a} endpoint${a !== 1 ? "s" : ""}`), l.join(" · ");
-  } else {
-    if (e.level === 1.5)
-      return "";
-    if (e.level === 2) {
-      let o = 0, a = 0, l = 0;
-      for (const p of t) {
-        if (p.edgeType !== "containment" || p.targetId !== e.id) continue;
-        const d = s.get(p.sourceId);
-        d && (d.nodeType === "workflow" ? o++ : d.nodeType === "activity" ? a++ : d.nodeType === "nexusService" && l++);
+function Ia(e, n) {
+  var d;
+  const s = /* @__PURE__ */ new Map();
+  for (const h of n) {
+    if (h.edgeType !== "dependency") continue;
+    const g = s.get(h.sourceId);
+    g ? g.push(h.targetId) : s.set(h.sourceId, [h.targetId]);
+  }
+  const o = /* @__PURE__ */ new Map();
+  let a = 0;
+  for (const h of e) {
+    const g = /* @__PURE__ */ new Set([h.id]);
+    let p = 0, y = [h.id];
+    for (; y.length > 0; ) {
+      const v = [];
+      for (const k of y) {
+        const A = s.get(k);
+        if (A)
+          for (const P of A)
+            g.has(P) || (g.add(P), v.push(P));
       }
-      const r = [];
-      return o > 0 && r.push(`${o}wf`), a > 0 && r.push(`${a}act`), l > 0 && r.push(`${l}nxs`), r.join(" · ");
-    } else {
-      let o = 0, a = 0;
-      for (const r of t)
-        r.edgeType !== "containment" && (r.sourceId === e.id && o++, r.targetId === e.id && a++);
-      const l = [];
-      return o > 0 && l.push(`→${o}`), a > 0 && l.push(`←${a}`), l.join(" ");
+      v.length > 0 && p++, y = v;
     }
+    o.set(h.id, p), p > a && (a = p);
   }
-}
-function to(e) {
-  switch (e) {
-    case "namespaceDef":
-      return "namespace";
-    case "nexusEndpointDef":
-      return "nexusEndpoint";
-    case "workerDef":
-      return "worker";
-    case "workflowDef":
-      return "workflow";
-    case "activityDef":
-      return "activity";
-    case "nexusServiceDef":
-      return "nexusService";
-    case "nexusOperationDef":
-      return "nexusOperation";
-    default:
-      return "workflow";
+  const r = /* @__PURE__ */ new Map();
+  if (a === 0) return r;
+  const c = new Map(e.map((h) => [h.id, h])), l = /* @__PURE__ */ new Map();
+  for (const h of e) l.set(h.id, o.get(h.id) ?? 0);
+  for (const h of e) {
+    const g = o.get(h.id) ?? 0;
+    if (g <= 0) continue;
+    let p = h.parentId, y = g;
+    const v = /* @__PURE__ */ new Set();
+    for (; p && !v.has(p) && (v.add(p), y += 1, !((l.get(p) ?? 0) >= y)); )
+      l.set(p, y), p = (d = c.get(p)) == null ? void 0 : d.parentId;
   }
+  let i = 0;
+  for (const h of l.values()) h > i && (i = h);
+  if (i === 0) return r;
+  for (const [h, g] of l)
+    r.set(h, g / i);
+  return r;
 }
-function so({
-  ast: e,
-  parserGraph: t,
-  onShowInTree: s,
-  filter: o,
-  onFilterChange: a,
-  pins: l,
-  onPinsChange: r,
-  searchQuery: p,
-  searchActive: d,
-  onSearchChange: m,
-  pendingFocus: T,
-  onFocusConsumed: $,
-  overriddenPins: y,
-  onOverriddenPinsConsumed: I
-}) {
-  const N = o.visibleTypes, f = o.selectedFiles, [P, b] = u.useState($s), [x, _] = u.useState(!0), [U, be] = u.useState({ ...mn }), R = u.useRef(null), ie = u.useRef(null), ae = u.useRef(!1), de = u.useRef(null), ue = u.useRef(null), [Oe, ce] = u.useState(0), ge = u.useRef({ frames: 0, lastStamp: 0 }), [pe, Fe] = u.useState(null), [ye, ne] = u.useState(null), [J, Be] = u.useState(-1), [Te, V] = u.useState(!1), [Z, X] = u.useState(!1), [we, E] = u.useState(null), [c, B] = u.useState(null), [j, K] = u.useState(null), he = u.useRef(null), [Se, L] = u.useState(!1), [Ce, Ae] = u.useState(null), g = u.useRef(o), [w, D] = u.useState(/* @__PURE__ */ new Set());
-  u.useEffect(() => {
-    const h = g.current;
-    if (In(h, o)) return;
-    const k = /* @__PURE__ */ new Set();
-    for (const S of o.selectedFiles) h.selectedFiles.has(S) || k.add(`file:${S}`);
-    for (const S of o.visibleTypes) h.visibleTypes.has(S) || k.add(`type:${S}`);
-    if (g.current = o, k.size > 0) {
-      D(k);
-      const S = setTimeout(() => D(/* @__PURE__ */ new Set()), 450);
-      return () => clearTimeout(S);
+function Ra(e, n, s) {
+  const { summaryKind: o } = Ye(e.nodeType);
+  if (o === "containerCount") {
+    let l = 0, i = 0;
+    for (const h of n) {
+      if (h.edgeType !== "containment" || h.targetId !== e.id) continue;
+      const g = s.get(h.sourceId);
+      g && (g.nodeType === "worker" ? l++ : g.nodeType === "nexusEndpoint" && i++);
     }
-  }, [o]), u.useEffect(() => {
-    if (y.size === 0) return;
-    const h = setTimeout(I, 600);
-    return () => clearTimeout(h);
-  }, [y, I]);
-  const O = u.useMemo(
-    () => Ns(t, e),
-    [t, e]
-  ), [F, z] = u.useState(0);
-  u.useEffect(() => {
-    R.current = new Ms(O, U), ae.current = !1, ge.current = { frames: 0, lastStamp: 0 }, _(!0), ne(null), Fe(null), Be(-1), z((h) => h + 1);
-  }, [O]);
-  const Q = u.useMemo(() => {
-    const h = /* @__PURE__ */ new Set();
-    for (const k of O.nodes.values())
-      k.sourceFile && h.add(k.sourceFile);
-    return Array.from(h).sort();
-  }, [O]), { visibleNodes: M, visibleEdges: v, visibleIds: Y, nodeSummaries: ke } = u.useMemo(() => {
-    const h = R.current;
-    if (!h) return { visibleNodes: [], visibleEdges: [], visibleIds: /* @__PURE__ */ new Set(), nodeSummaries: /* @__PURE__ */ new Map() };
-    const k = f.size > 0, S = /* @__PURE__ */ new Set(), W = [];
-    for (const q of h.nodes)
-      N.has(ln(q.nodeType)) && (k && q.sourceFile && !f.has(q.sourceFile) || (S.add(q.id), W.push(q)));
-    const A = (q) => h.getNode(q), oe = [], me = /* @__PURE__ */ new Map();
-    for (const q of h.edges) {
-      const un = S.has(q.sourceId), Un = S.has(q.targetId);
-      if (q.edgeType === "containment") {
-        if (!un) continue;
-        if (Un)
-          oe.push(q);
+    const d = [];
+    return l > 0 && d.push(`${l} worker${l !== 1 ? "s" : ""}`), i > 0 && d.push(`${i} endpoint${i !== 1 ? "s" : ""}`), d.join(" · ");
+  }
+  if (o === "none") return "";
+  if (o === "hostRegistrations") {
+    let l = 0, i = 0, d = 0, h = 0;
+    for (const p of n) {
+      if (p.edgeType !== "containment" || p.targetId !== e.id) continue;
+      const y = s.get(p.sourceId);
+      y && (y.nodeType === "workflow" ? l++ : y.nodeType === "activity" ? i++ : y.nodeType === "nexusService" ? d++ : y.nodeType === "nexusOperation" && h++);
+    }
+    if (e.nodeType === "nexusService")
+      return h > 0 ? `${h} op${h !== 1 ? "s" : ""}` : "";
+    const g = [];
+    return l > 0 && g.push(`${l}wf`), i > 0 && g.push(`${i}act`), d > 0 && g.push(`${d}nxs`), g.join(" · ");
+  }
+  let a = 0, r = 0;
+  for (const l of n)
+    l.edgeType !== "containment" && (l.sourceId === e.id && a++, l.targetId === e.id && r++);
+  const c = [];
+  return a > 0 && c.push(`→${a}`), r > 0 && c.push(`←${r}`), c.join(" ");
+}
+const Oa = {
+  visibleNodes: [],
+  visibleEdges: [],
+  visibleIds: /* @__PURE__ */ new Set(),
+  nodeSummaries: /* @__PURE__ */ new Map(),
+  downstreamScores: /* @__PURE__ */ new Map()
+};
+function La(e, n, s, o) {
+  return m.useMemo(() => {
+    const a = e.current;
+    if (!a) return Oa;
+    const r = o.size > 0, c = /* @__PURE__ */ new Set(), l = [];
+    for (const k of a.nodes)
+      s.has(mn(k.nodeType)) && (r && k.sourceFile && !o.has(k.sourceFile) || (c.add(k.id), l.push(k)));
+    const i = (k) => a.getNode(k), d = [], h = /* @__PURE__ */ new Map();
+    for (const k of a.edges) {
+      const A = c.has(k.sourceId), P = c.has(k.targetId);
+      if (k.edgeType === "containment") {
+        if (!A) continue;
+        if (P)
+          d.push(k);
         else {
-          const pn = yt(q.targetId, S, A);
-          if (pn) {
-            const Je = A(pn);
-            oe.push({
-              ...q,
-              targetId: pn,
-              targetLevel: (Je == null ? void 0 : Je.level) ?? q.targetLevel,
-              targetNodeType: (Je == null ? void 0 : Je.nodeType) ?? q.targetNodeType,
-              id: `grad:${q.id}`
+          const $ = ns(k.targetId, c, i);
+          if ($) {
+            const D = i($);
+            d.push({
+              ...k,
+              targetId: $,
+              targetNodeType: (D == null ? void 0 : D.nodeType) ?? k.targetNodeType,
+              id: `grad:${k.id}`
             });
           }
         }
       } else {
-        const pn = Vn(q.sourceId, un, "src", h, S, A), Je = Vn(q.targetId, Un, "tgt", h, S, A);
-        for (const Tn of pn)
-          for (const Sn of Je) {
-            if (Tn === Sn) continue;
-            const Ln = `${Tn}→${Sn}`, Xn = me.get(Ln);
-            if (Xn && Xn.nexusEndpoint && !q.nexusEndpoint) continue;
-            const sn = A(Tn), on = A(Sn);
-            me.set(Ln, {
-              ...q,
-              sourceId: Tn,
-              targetId: Sn,
-              sourceLevel: (sn == null ? void 0 : sn.level) ?? q.sourceLevel,
-              targetLevel: (on == null ? void 0 : on.level) ?? q.targetLevel,
-              sourceNodeType: (sn == null ? void 0 : sn.nodeType) ?? q.sourceNodeType,
-              targetNodeType: (on == null ? void 0 : on.nodeType) ?? q.targetNodeType,
-              id: `grad:${Ln}`
+        const $ = tt(k.sourceId, A, "src", a, c, i), D = tt(k.targetId, P, "tgt", a, c, i);
+        for (const M of $)
+          for (const b of D) {
+            if (M === b) continue;
+            const C = `${M}→${b}`, F = h.get(C);
+            if (F && F.nexusEndpoint && !k.nexusEndpoint) continue;
+            const w = i(M), R = i(b);
+            h.set(C, {
+              ...k,
+              sourceId: M,
+              targetId: b,
+              sourceNodeType: (w == null ? void 0 : w.nodeType) ?? k.sourceNodeType,
+              targetNodeType: (R == null ? void 0 : R.nodeType) ?? k.targetNodeType,
+              id: `grad:${C}`
             });
           }
       }
     }
-    const _e = [...oe, ...me.values()], Le = /* @__PURE__ */ new Map();
-    for (const q of W) Le.set(q.id, q);
-    const xn = /* @__PURE__ */ new Map();
-    for (const q of W) {
-      const un = no(q, _e, Le);
-      un && xn.set(q.id, un);
+    const g = [...d, ...h.values()], p = /* @__PURE__ */ new Map();
+    for (const k of l) p.set(k.id, k);
+    const y = /* @__PURE__ */ new Map();
+    for (const k of l) {
+      const A = Ra(k, g, p);
+      A && y.set(k.id, A);
     }
-    return { visibleNodes: W, visibleEdges: _e, visibleIds: S, nodeSummaries: xn };
-  }, [N, f, O, F]), { visibleMatchIds: en, hiddenMatchCount: nn } = u.useMemo(() => {
-    if (!p) return { visibleMatchIds: null, hiddenMatchCount: 0 };
-    const h = p.toLowerCase(), k = R.current;
-    if (!k) return { visibleMatchIds: /* @__PURE__ */ new Set(), hiddenMatchCount: 0 };
-    const S = /* @__PURE__ */ new Set();
-    let W = 0;
-    for (const A of k.nodes)
-      A.name.toLowerCase().includes(h) && (Y.has(A.id) ? S.add(A.id) : W++);
-    return { visibleMatchIds: S, hiddenMatchCount: W };
-  }, [p, Y]), { highlightedNodes: vn, highlightedEdges: H } = u.useMemo(() => {
-    const h = pe ?? ye;
-    if (!h || !Y.has(h))
-      return { highlightedNodes: null, highlightedEdges: null };
-    const S = Cs(h, v, Y, Te ? "upstream" : "downstream"), W = Es(S, v);
-    return { highlightedNodes: S, highlightedEdges: W };
-  }, [pe, ye, Te, v, Y, O]);
-  u.useEffect(() => {
-    if (!x) return;
-    let h = 0;
-    const k = () => {
-      const S = R.current;
-      if (!S) return;
-      if (S.tick(Y), !ae.current && S.alpha < 0.3) {
-        const me = de.current;
-        if (me) {
-          const { width: _e, height: Le } = me.getBoundingClientRect();
-          _e > 0 && Le > 0 && (b(Dn(M, _e, Le)), ae.current = !0);
+    const v = Ia(l, g);
+    return { visibleNodes: l, visibleEdges: g, visibleIds: c, nodeSummaries: y, downstreamScores: v };
+  }, [s, o, n]);
+}
+function Ba({
+  simRef: e,
+  running: n,
+  setRunning: s,
+  visibleIds: o,
+  visibleNodes: a,
+  downstreamScores: r,
+  visibleTypes: c,
+  selectedFiles: l,
+  hoveredNodeId: i,
+  selectedNodeId: d,
+  containerRef: h,
+  initialFitDone: g,
+  pendingCenterRef: p,
+  setViewport: y,
+  setSelectedNodeId: v
+}) {
+  const [k, A] = m.useState(0), P = m.useRef({ frames: 0, lastStamp: 0 });
+  m.useEffect(() => {
+    if (!n) return;
+    let b = 0;
+    P.current = { frames: 0, lastStamp: 0 };
+    const C = () => {
+      const F = e.current;
+      if (!F) return;
+      if (F.tick(o, r), !g.current && F.alpha < 0.3) {
+        const re = h.current;
+        if (re) {
+          const { width: j, height: ne } = re.getBoundingClientRect();
+          j > 0 && ne > 0 && (y(ct(a, j, ne)), g.current = !0);
         }
       }
-      if (ae.current && ue.current) {
-        const me = S.getNode(ue.current.nodeId);
-        if (me) {
-          const _e = de.current;
-          if (_e) {
-            const { width: Le, height: xn } = _e.getBoundingClientRect();
-            b((q) => ({
-              scale: Math.max(q.scale, 1.2),
-              x: Le / 2 - me.x * Math.max(q.scale, 1.2),
-              y: xn / 2 - me.y * Math.max(q.scale, 1.2)
-            })), ne(me.id);
+      if (g.current && p.current) {
+        const re = F.getNode(p.current.nodeId);
+        if (re) {
+          const j = h.current;
+          if (j) {
+            const { width: ne, height: ie } = j.getBoundingClientRect();
+            y((T) => ({
+              scale: Math.max(T.scale, 1.2),
+              x: ne / 2 - re.x * Math.max(T.scale, 1.2),
+              y: ie / 2 - re.y * Math.max(T.scale, 1.2)
+            })), v(re.id);
           }
         }
-        ue.current = null;
+        p.current = null;
       }
-      const W = performance.now(), A = ge.current;
-      A.frames++, A.lastStamp === 0 && (A.lastStamp = W);
-      const oe = W - A.lastStamp;
-      if (oe >= 500) {
-        const me = Math.round(A.frames * 1e3 / oe);
-        ce((_e) => _e === me ? _e : me), A.frames = 0, A.lastStamp = W;
+      const w = performance.now(), R = P.current;
+      R.frames++, R.lastStamp === 0 && (R.lastStamp = w);
+      const V = w - R.lastStamp;
+      if (V >= 500) {
+        const re = Math.round(R.frames * 1e3 / V);
+        A((j) => j === re ? j : re), R.frames = 0, R.lastStamp = w;
       }
-      if (S.isStable()) {
-        _(!1);
+      if (F.isStable()) {
+        s(!1);
         return;
       }
-      h = requestAnimationFrame(k);
+      b = requestAnimationFrame(C);
     };
-    return h = requestAnimationFrame(k), () => {
-      h && cancelAnimationFrame(h);
+    return b = requestAnimationFrame(C), () => {
+      b && cancelAnimationFrame(b);
     };
-  }, [x, Y, M, ye]);
-  const [, ee] = u.useState(0);
-  u.useEffect(() => {
-    if (!x || !pe) return;
-    const h = window.setInterval(() => ee((k) => k + 1), 100);
-    return () => window.clearInterval(h);
-  }, [x, pe]);
-  const te = u.useRef(N);
-  u.useEffect(() => {
-    const h = te.current;
-    if (h === N) return;
-    const k = R.current;
-    if (k) {
-      for (const S of k.nodes) {
-        const W = ln(S.nodeType);
-        if (N.has(W) && !h.has(W)) {
-          let A = S.parentId;
-          for (; A; ) {
-            const oe = k.getNode(A);
-            if (!oe) break;
-            if (N.has(ln(oe.nodeType))) {
-              k.seedAt(S.id, oe.x, oe.y);
+  }, [n, o, a, d]);
+  const [, $] = m.useState(0);
+  m.useEffect(() => {
+    if (!n || !i) return;
+    const b = window.setInterval(() => $((C) => C + 1), 100);
+    return () => window.clearInterval(b);
+  }, [n, i]);
+  const D = m.useRef(c);
+  m.useEffect(() => {
+    const b = D.current;
+    if (b === c) return;
+    const C = e.current;
+    if (C) {
+      for (const F of C.nodes) {
+        const w = mn(F.nodeType);
+        if (c.has(w) && !b.has(w)) {
+          let R = F.parentId;
+          for (; R; ) {
+            const V = C.getNode(R);
+            if (!V) break;
+            if (c.has(mn(V.nodeType))) {
+              C.seedAt(F.id, V.x, V.y);
               break;
             }
-            A = oe.parentId;
+            R = V.parentId;
           }
         }
       }
-      k.reheat(0.5), _(!0), ae.current = !1;
+      C.reheat(0.5), s(!0), g.current = !1;
     }
-    te.current = N;
-  }, [N]);
-  const G = u.useRef(f);
-  u.useEffect(() => {
-    if (G.current === f) return;
-    const k = R.current;
-    k && (k.reheat(0.3), _(!0)), G.current = f;
-  }, [f]);
-  const fe = u.useCallback((h, k) => {
-    be((S) => {
-      var A;
-      const W = { ...S, [h]: k };
-      return (A = R.current) == null || A.setParams(W), W;
-    });
-  }, []), se = u.useCallback((h, k, S) => {
-    var W, A;
-    ie.current = h, (W = R.current) == null || W.pinNode(h, k, S), (A = R.current) == null || A.reheat(0.3), _(!0);
-  }, []), re = u.useCallback((h, k) => {
-    var S;
-    ie.current && ((S = R.current) == null || S.pinNode(ie.current, h, k));
-  }, []), ve = u.useCallback(() => {
-    var h;
-    ie.current && ((h = R.current) == null || h.unpinNode(ie.current), ie.current = null);
-  }, []), Me = u.useCallback((h) => {
-    const k = R.current, S = de.current;
-    if (!k || !S || !k.getNode(h)) return;
-    const A = /* @__PURE__ */ new Set([h]);
-    for (const Le of k.edges)
-      Le.sourceId === h && A.add(Le.targetId), Le.targetId === h && A.add(Le.sourceId);
-    const oe = k.nodes.filter((Le) => A.has(Le.id)), { width: me, height: _e } = S.getBoundingClientRect();
-    b(Dn(oe, me, _e, 80));
-  }, []), Ne = u.useCallback(() => {
-    const h = de.current;
-    if (!h) return;
-    const { width: k, height: S } = h.getBoundingClientRect();
-    b(Dn(M, k, S));
-  }, [M]), Ee = u.useCallback(() => {
-    var h;
-    x ? _(!1) : ((h = R.current) == null || h.reheat(0.5), _(!0));
-  }, [x]), De = u.useCallback(() => {
-    var h;
-    (h = R.current) == null || h.reheat(1), _(!0);
-  }, []), je = (h) => {
-    const k = new Set(o.visibleTypes);
-    k.has(h) ? k.delete(h) : k.add(h), a({ ...o, visibleTypes: k });
-  }, Ye = (h) => {
-    const k = new Set(o.selectedFiles);
-    k.has(h) ? k.delete(h) : k.add(h), a({ ...o, selectedFiles: k });
-  }, xe = () => {
-    d ? m("", !1) : (m(p, !0), setTimeout(() => {
-      var h;
-      return (h = he.current) == null ? void 0 : h.focus();
+    D.current = c;
+  }, [c]);
+  const M = m.useRef(l);
+  return m.useEffect(() => {
+    if (M.current === l) return;
+    const C = e.current;
+    C && (C.reheat(0.3), s(!0)), M.current = l;
+  }, [l]), { fps: k };
+}
+function _a({
+  active: e,
+  ast: n,
+  parserGraph: s,
+  onShowInTree: o,
+  filter: a,
+  onFilterChange: r,
+  pins: c,
+  onPinsChange: l,
+  searchQuery: i,
+  searchActive: d,
+  onSearchChange: h,
+  pendingFocus: g,
+  onFocusConsumed: p,
+  overriddenPins: y,
+  onOverriddenPinsConsumed: v
+}) {
+  const k = a.visibleTypes, A = a.selectedFiles, { viewport: P, setViewport: $, containerRef: D, initialFitDone: M, pendingCenterRef: b, fit: C } = Ca(), F = m.useRef(null), [w, R] = m.useState(!1), {
+    graph: V,
+    allFiles: re,
+    recentlyChanged: j,
+    errors: ne,
+    diagnostics: ie
+  } = $a(n, s, a), T = m.useCallback(() => {
+    M.current = !1;
+  }, [M]), {
+    simRef: z,
+    simVersion: X,
+    running: pe,
+    setRunning: Ee,
+    forceParams: Ce,
+    getNode: Ne,
+    onParamChange: Ie,
+    onForceAdjust: De,
+    onGravityChange: H,
+    onNodeDragStart: E,
+    onNodeDragMove: u,
+    onNodeDragEnd: W,
+    onToggleRunning: U
+  } = Pa(V, T), [B, S] = m.useState(ps), I = m.useCallback((L) => {
+    S((G) => ({ ...G, ...L }));
+  }, []);
+  m.useEffect(() => {
+    if (y.size === 0) return;
+    const L = setTimeout(v, 600);
+    return () => clearTimeout(L);
+  }, [y, v]);
+  const { visibleNodes: x, visibleEdges: q, visibleIds: Y, nodeSummaries: le, downstreamScores: ce } = La(z, X, k, A), {
+    hoveredNodeId: _,
+    setHoveredNodeId: N,
+    selectedNodeId: Z,
+    setSelectedNodeId: ge,
+    setFocusedIndex: vn,
+    shiftHeld: bn,
+    focusedNodeId: qe,
+    highlightedNodes: sn,
+    highlightedEdges: wn,
+    activeSection: Bn,
+    setActiveSection: xn,
+    activeChargeType: Nn,
+    setActiveChargeType: J,
+    activeGravityType: fe,
+    setActiveGravityType: he,
+    activePullEdge: Q,
+    setActivePullEdge: K
+  } = Aa(x, q, Y, Ne, V), { visibleMatchIds: oe, hiddenMatchCount: ae } = m.useMemo(() => {
+    if (!i) return { visibleMatchIds: null, hiddenMatchCount: 0 };
+    const L = i.toLowerCase(), G = z.current;
+    if (!G) return { visibleMatchIds: /* @__PURE__ */ new Set(), hiddenMatchCount: 0 };
+    const xe = /* @__PURE__ */ new Set();
+    let O = 0;
+    for (const se of G.nodes)
+      se.name.toLowerCase().includes(L) && (Y.has(se.id) ? xe.add(se.id) : O++);
+    return { visibleMatchIds: xe, hiddenMatchCount: O };
+  }, [i, Y]), { fps: be } = Ba({
+    simRef: z,
+    running: pe,
+    setRunning: Ee,
+    visibleIds: Y,
+    visibleNodes: x,
+    downstreamScores: ce,
+    visibleTypes: k,
+    selectedFiles: A,
+    hoveredNodeId: _,
+    selectedNodeId: Z,
+    containerRef: D,
+    initialFitDone: M,
+    pendingCenterRef: b,
+    setViewport: $,
+    setSelectedNodeId: ge
+  }), ee = m.useCallback((L) => {
+    const G = z.current;
+    if (!G || !G.getNode(L)) return;
+    const O = /* @__PURE__ */ new Set([L]);
+    for (const de of G.edges)
+      de.sourceId === L && O.add(de.targetId), de.targetId === L && O.add(de.sourceId);
+    const se = G.nodes.filter((de) => O.has(de.id));
+    C(se, 80);
+  }, [C]), me = m.useCallback(() => {
+    C(x);
+  }, [C, x]), ye = () => {
+    d ? h("", !1) : (h(i, !0), setTimeout(() => {
+      var L;
+      return (L = F.current) == null ? void 0 : L.focus();
     }, 50));
-  }, $e = () => r({ ...l, files: !l.files }), Ie = () => r({ ...l, types: !l.types }), He = u.useCallback((h, k, S) => {
-    Ae({ x: k, y: S, nodeId: h });
-  }, []), We = u.useCallback(() => Ae(null), []), Ke = u.useMemo(() => {
-    var k;
-    if (!Ce || !s) return [];
-    const h = (k = R.current) == null ? void 0 : k.getNode(Ce.nodeId);
-    return h ? [{
-      label: "Show in Tree",
-      onClick: () => s(h.name, ln(h.nodeType))
-    }] : [];
-  }, [Ce, s]), dn = (h) => {
-    ne(h);
-    const k = R.current, S = de.current;
-    if (!k || !S) return;
-    const W = k.getNode(h);
-    if (!W) return;
-    const { width: A, height: oe } = S.getBoundingClientRect();
-    b({
+  }, te = m.useRef(null), Te = m.useCallback(() => {
+    te.current !== null && (clearTimeout(te.current), te.current = null);
+  }, []), we = m.useCallback((L) => {
+    Te(), L !== null ? N(L) : te.current = window.setTimeout(() => {
+      N(null), te.current = null;
+    }, 150);
+  }, [Te, N]), ve = (L) => {
+    ge(L);
+    const G = z.current, xe = D.current;
+    if (!G || !xe) return;
+    const O = G.getNode(L);
+    if (!O) return;
+    const { width: se, height: de } = xe.getBoundingClientRect();
+    $({
       scale: P.scale,
-      x: A / 2 - W.x * P.scale,
-      y: oe / 2 - W.y * P.scale
+      x: se / 2 - O.x * P.scale,
+      y: de / 2 - O.y * P.scale
     });
-  }, Ve = J >= 0 && J < M.length ? M[J].id : null;
-  u.useEffect(() => {
-    var A;
-    if (!T) return;
-    const { name: h, defType: k } = T, S = to(k), W = R.current;
-    if (W) {
-      const oe = W.nodes.find((me) => me.name === h && me.nodeType === S);
-      oe && (ue.current = { nodeId: oe.id }, x || ((A = R.current) == null || A.reheat(0.1), _(!0)));
+  };
+  m.useEffect(() => {
+    var se;
+    if (!g) return;
+    const { name: L, defType: G } = g, xe = ro(G), O = z.current;
+    if (O) {
+      const de = O.nodes.find((ze) => ze.name === L && ze.nodeType === xe);
+      de && (b.current = { nodeId: de.id }, pe || ((se = z.current) == null || se.reheat(0.1), Ee(!0)));
     }
-    $();
-  }, [T]), u.useEffect(() => {
-    const h = (S) => {
-      S.key === "Shift" && V(!0);
-    }, k = (S) => {
-      S.key === "Shift" && V(!1);
-    };
-    return window.addEventListener("keydown", h), window.addEventListener("keyup", k), () => {
-      window.removeEventListener("keydown", h), window.removeEventListener("keyup", k);
-    };
-  }, []), u.useEffect(() => {
-    const h = (k) => {
-      var S;
-      if (!(k.target instanceof HTMLInputElement || k.target instanceof HTMLTextAreaElement))
-        switch (k.key) {
+    p();
+  }, [g]), m.useEffect(() => {
+    if (!e) return;
+    const L = (G) => {
+      var xe;
+      if (!(G.target instanceof HTMLInputElement || G.target instanceof HTMLTextAreaElement))
+        switch (G.key) {
           case "Tab": {
-            k.preventDefault();
-            const W = M.length;
-            if (W === 0) return;
-            k.shiftKey ? Be((A) => A > 0 ? A - 1 : W - 1) : Be((A) => A < W - 1 ? A + 1 : 0);
+            G.preventDefault();
+            const O = x.length;
+            if (O === 0) return;
+            G.shiftKey ? vn((se) => se > 0 ? se - 1 : O - 1) : vn((se) => se < O - 1 ? se + 1 : 0);
             break;
           }
           case "Enter": {
-            k.preventDefault(), Ve && ne(Ve);
+            G.preventDefault(), qe && ge(qe);
             break;
           }
           case "Escape": {
-            if (k.preventDefault(), Se) {
-              L(!1);
+            if (G.preventDefault(), w) {
+              R(!1);
               break;
             }
             if (d) {
-              xe();
+              ye();
               break;
             }
-            if (ye) {
-              ne(null);
+            if (Z) {
+              ge(null);
               break;
             }
             break;
@@ -3300,378 +4436,308 @@ function so({
           case "ArrowRight":
           case "ArrowUp":
           case "ArrowDown": {
-            k.preventDefault();
-            const W = 30, A = k.key === "ArrowLeft" ? W : k.key === "ArrowRight" ? -W : 0, oe = k.key === "ArrowUp" ? W : k.key === "ArrowDown" ? -W : 0;
-            b((me) => ({ ...me, x: me.x + A, y: me.y + oe }));
+            G.preventDefault();
+            const O = 30, se = G.key === "ArrowLeft" ? O : G.key === "ArrowRight" ? -O : 0, de = G.key === "ArrowUp" ? O : G.key === "ArrowDown" ? -O : 0;
+            $((ze) => ({ ...ze, x: ze.x + se, y: ze.y + de }));
             break;
           }
           case "+":
           case "=": {
-            k.preventDefault(), b((W) => {
-              var A, oe;
-              return Kn(W, (((A = de.current) == null ? void 0 : A.clientWidth) ?? 400) / 2, (((oe = de.current) == null ? void 0 : oe.clientHeight) ?? 400) / 2, 1.15);
+            G.preventDefault(), $((O) => {
+              var se, de;
+              return Yn(O, (((se = D.current) == null ? void 0 : se.clientWidth) ?? 400) / 2, (((de = D.current) == null ? void 0 : de.clientHeight) ?? 400) / 2, 1.15);
             });
             break;
           }
           case "-":
           case "_": {
-            k.preventDefault(), b((W) => {
-              var A, oe;
-              return Kn(W, (((A = de.current) == null ? void 0 : A.clientWidth) ?? 400) / 2, (((oe = de.current) == null ? void 0 : oe.clientHeight) ?? 400) / 2, 0.85);
+            G.preventDefault(), $((O) => {
+              var se, de;
+              return Yn(O, (((se = D.current) == null ? void 0 : se.clientWidth) ?? 400) / 2, (((de = D.current) == null ? void 0 : de.clientHeight) ?? 400) / 2, 0.85);
             });
             break;
           }
           case "f":
           case "F": {
-            k.preventDefault(), Ne();
+            G.preventDefault(), me();
             break;
           }
           case "/": {
-            k.preventDefault(), d ? (S = he.current) == null || S.focus() : (m(p, !0), setTimeout(() => {
-              var W;
-              return (W = he.current) == null ? void 0 : W.focus();
+            G.preventDefault(), d ? (xe = F.current) == null || xe.focus() : (h(i, !0), setTimeout(() => {
+              var O;
+              return (O = F.current) == null ? void 0 : O.focus();
             }, 50));
             break;
           }
           case " ": {
-            k.preventDefault(), Ee();
+            G.preventDefault(), U();
             break;
           }
           case "?": {
-            k.preventDefault(), L((W) => !W);
+            G.preventDefault(), R((O) => !O);
             break;
           }
         }
     };
-    return window.addEventListener("keydown", h), () => window.removeEventListener("keydown", h);
-  }, [M, Ve, ye, d, p, m, Se, Ne, Ee]);
-  const tn = e.errors || [], { shownFileErrors: Nn, hiddenFileErrors: wt } = u.useMemo(() => {
-    if (f.size === 0) return { shownFileErrors: tn, hiddenFileErrors: [] };
-    const h = [], k = [];
-    for (const S of tn)
-      f.has(S.file) ? h.push(S) : k.push(S);
-    return { shownFileErrors: h, hiddenFileErrors: k };
-  }, [tn, f]), vt = Q.length > 0, Nt = tn.length > 0, xt = f.size === 0, zn = M.length, Gn = v.length;
-  return /* @__PURE__ */ i("div", { className: "graph-view", ref: de, children: [
-    /* @__PURE__ */ i("div", { className: "graph-canvas-area", children: [
-      /* @__PURE__ */ n(
-        Ls,
+    return window.addEventListener("keydown", L), () => window.removeEventListener("keydown", L);
+  }, [e, x, qe, Z, d, i, h, w, me, U]);
+  const $e = x.length, Se = q.length, Fe = ae > 0 ? /* @__PURE__ */ f("span", { className: "header-search-badge", title: `${ae} match${ae !== 1 ? "es" : ""} hidden by filters`, children: [
+    "+",
+    ae
+  ] }) : null;
+  return /* @__PURE__ */ f("div", { className: "graph-view", ref: D, children: [
+    /* @__PURE__ */ f("div", { className: "graph-canvas-area", children: [
+      /* @__PURE__ */ t(
+        Io,
         {
-          nodes: M,
-          edges: v,
+          nodes: x,
+          edges: q,
           viewport: P,
-          onViewportChange: b,
-          onNodeDragStart: se,
-          onNodeDragMove: re,
-          onNodeDragEnd: ve,
-          onDoubleClickNode: Me,
-          onHoverNode: Fe,
-          onSelectNode: ne,
-          onNodeContextMenu: He,
-          highlightedNodes: vn,
-          highlightedEdges: H,
-          hoveredNodeId: pe,
-          selectedNodeId: ye,
-          focusedNodeId: Ve,
-          searchMatchIds: en,
-          running: x,
-          showForceFields: Z,
-          forceParams: U,
-          activeSection: we,
-          activeChargeType: c,
-          activeGravityType: j,
-          nodeSummaries: ke
+          onViewportChange: $,
+          onNodeDragStart: E,
+          onNodeDragMove: u,
+          onNodeDragEnd: W,
+          onDoubleClickNode: ee,
+          onHoverNode: we,
+          onSelectNode: ge,
+          highlightedNodes: sn,
+          highlightedEdges: wn,
+          hoveredNodeId: _,
+          selectedNodeId: Z,
+          focusedNodeId: qe,
+          searchMatchIds: oe,
+          running: pe,
+          forceParams: Ce,
+          activeSection: Bn,
+          activeChargeType: Nn,
+          activeGravityType: fe,
+          activePullEdge: Q,
+          nodeScale: B
         }
       ),
-      /* @__PURE__ */ n(
-        oo,
+      /* @__PURE__ */ t(
+        Wa,
         {
-          hoveredNodeId: pe,
-          simRef: R,
-          visibleEdges: v,
+          hoveredNodeId: _,
+          simRef: z,
+          visibleEdges: q,
           visibleIds: Y,
           viewport: P,
-          shiftHeld: Te,
-          duplicateGroups: O.duplicateGroups
+          shiftHeld: bn,
+          duplicateGroups: V.duplicateGroups,
+          nodeSummaries: le,
+          onShowInTree: o,
+          onMouseEnter: Te,
+          onMouseLeave: () => we(null)
         }
       )
     ] }),
-    /* @__PURE__ */ i("div", { className: "graph-overlay", children: [
-      /* @__PURE__ */ i("div", { className: "canvas-header", children: [
-        vt && /* @__PURE__ */ i(gn, { children: [
-          /* @__PURE__ */ i("div", { className: `header-files-section${l.files ? " section-pinned" : ""}`, children: [
-            /* @__PURE__ */ n("div", { className: "header-files-row", children: Q.map((h) => {
-              const k = h.split("/").pop() || h, S = f.has(h), W = w.has(`file:${h}`), A = [
-                "header-file-tag",
-                xt ? "all-included" : S ? "selected" : "",
-                W ? "recently-changed" : ""
-              ].filter(Boolean).join(" ");
-              return /* @__PURE__ */ i("button", { className: A, onClick: () => Ye(h), title: h, children: [
-                /* @__PURE__ */ n("span", { className: "header-file-icon", children: "📄" }),
-                /* @__PURE__ */ n("span", { className: "header-file-name", children: k })
-              ] }, h);
-            }) }),
-            /* @__PURE__ */ n(
-              Fn,
-              {
-                pinned: l.files,
-                onClick: $e,
-                flashing: y.has("files"),
-                label: "Files"
-              }
-            )
-          ] }),
-          /* @__PURE__ */ n("div", { className: "header-divider" })
-        ] }),
-        /* @__PURE__ */ i("div", { className: `header-types-section${l.types ? " section-pinned" : ""}`, children: [
-          /* @__PURE__ */ n("div", { className: "header-types-row", children: yn.map((h) => {
-            const k = N.has(h.type), S = w.has(`type:${h.type}`), W = [
-              "header-type-tag",
-              k ? "active" : "",
-              `header-type-${h.type}`,
-              S ? "recently-changed" : ""
-            ].filter(Boolean).join(" ");
-            return /* @__PURE__ */ i(
-              "button",
-              {
-                className: W,
-                onClick: () => je(h.type),
-                title: k ? `Hide ${h.label.toLowerCase()}` : `Show ${h.label.toLowerCase()}`,
-                children: [
-                  /* @__PURE__ */ n("span", { className: "header-type-icon", children: h.icon }),
-                  /* @__PURE__ */ n("span", { className: "header-type-label", children: h.label })
-                ]
-              },
-              h.type
-            );
-          }) }),
-          /* @__PURE__ */ n(
-            Fn,
-            {
-              pinned: l.types,
-              onClick: Ie,
-              flashing: y.has("types"),
-              label: "Types"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ n("div", { className: "header-divider" }),
-        /* @__PURE__ */ n("div", { className: "header-controls-section", children: /* @__PURE__ */ i("div", { className: `header-search ${d ? "active" : ""}`, children: [
-          /* @__PURE__ */ n("button", { className: "header-search-toggle", onClick: xe, title: "Search nodes (/)", children: /* @__PURE__ */ n(rt, { size: 14 }) }),
-          d && /* @__PURE__ */ n(
-            "input",
-            {
-              ref: he,
-              className: "header-search-input",
-              type: "text",
-              placeholder: "Search nodes...",
-              value: p,
-              onChange: (h) => m(h.target.value, !0),
-              onKeyDown: (h) => {
-                h.key === "Escape" && xe();
-              }
-            }
-          ),
-          nn > 0 && /* @__PURE__ */ i("span", { className: "header-search-badge", title: `${nn} match${nn !== 1 ? "es" : ""} hidden by filters`, children: [
-            "+",
-            nn
-          ] })
-        ] }) })
-      ] }),
-      /* @__PURE__ */ i("div", { className: "graph-toolbar", children: [
-        /* @__PURE__ */ i("span", { className: "graph-toolbar-count", children: [
-          zn,
-          " node",
-          zn !== 1 ? "s" : "",
-          ", ",
-          Gn,
-          " edge",
-          Gn !== 1 ? "s" : "",
-          x && /* @__PURE__ */ i("span", { className: "graph-toolbar-fps", title: "Simulation frames per second", children: [
-            "  ·  ",
-            Oe,
-            " fps"
-          ] })
-        ] }),
-        ye && s && (() => {
-          var k;
-          const h = (k = R.current) == null ? void 0 : k.getNode(ye);
-          return h ? /* @__PURE__ */ n(
-            "button",
-            {
-              className: "graph-toolbar-btn",
-              onClick: () => s(h.name, ln(h.nodeType)),
-              title: "Show in Tree view",
-              children: "Show in Tree"
-            }
-          ) : null;
-        })(),
-        /* @__PURE__ */ n("button", { className: "graph-toolbar-btn", onClick: Ne, title: "Fit to view (F)", children: "Fit" }),
-        /* @__PURE__ */ n(
-          "button",
-          {
-            className: `graph-toolbar-btn ${x ? "active" : ""}`,
-            onClick: Ee,
-            title: x ? "Pause simulation (Space)" : "Resume simulation (Space)",
-            children: x ? "Pause" : "Play"
-          }
-        )
-      ] }),
-      en && en.size > 0 && d && /* @__PURE__ */ n("div", { className: "graph-search-results", children: M.filter((h) => en.has(h.id)).map((h) => /* @__PURE__ */ i(
+    /* @__PURE__ */ f("div", { className: "graph-overlay", children: [
+      /* @__PURE__ */ t(
+        Ht,
+        {
+          ast: n,
+          allFiles: re,
+          filter: a,
+          onFilterChange: r,
+          pins: c,
+          onPinsChange: l,
+          overriddenPins: y,
+          recentlyChanged: j,
+          searchQuery: i,
+          searchActive: d,
+          onSearchChange: h,
+          searchInputRef: F,
+          searchTitle: "Search nodes (/)",
+          searchPlaceholder: "Search nodes...",
+          searchExtra: Fe,
+          errors: ne,
+          diagnostics: ie
+        }
+      ),
+      oe && oe.size > 0 && d && /* @__PURE__ */ t("div", { className: "graph-search-results", children: x.filter((L) => oe.has(L.id)).map((L) => /* @__PURE__ */ f(
         "button",
         {
           className: "graph-search-result",
-          onClick: () => dn(h.id),
+          onClick: () => ve(L.id),
           children: [
-            /* @__PURE__ */ n("span", { className: "graph-search-result-type", children: h.nodeType }),
-            /* @__PURE__ */ n("span", { className: "graph-search-result-name", children: h.name })
+            /* @__PURE__ */ t("span", { className: "graph-search-result-type", children: L.nodeType }),
+            /* @__PURE__ */ t("span", { className: "graph-search-result-name", children: L.name })
           ]
         },
-        h.id
-      )) }),
-      Nt && /* @__PURE__ */ n(ao, { shownFileErrors: Nn, hiddenFileErrors: wt })
+        L.id
+      )) })
     ] }),
-    /* @__PURE__ */ n(
-      js,
+    /* @__PURE__ */ t("div", { className: `graph-bottom-left${w ? " shifted" : ""}`, children: /* @__PURE__ */ f("span", { className: "graph-count", children: [
+      $e,
+      " node",
+      $e !== 1 ? "s" : "",
+      ", ",
+      Se,
+      " edge",
+      Se !== 1 ? "s" : ""
+    ] }) }),
+    /* @__PURE__ */ f("div", { className: "graph-bottom-center", children: [
+      /* @__PURE__ */ t("button", { className: "graph-toolbar-btn", onClick: me, title: "Fit to view (F)", children: "Fit" }),
+      /* @__PURE__ */ t(
+        "button",
+        {
+          className: `graph-toolbar-btn ${pe ? "active" : ""}`,
+          onClick: U,
+          title: pe ? "Pause simulation (Space)" : "Resume simulation (Space)",
+          children: pe ? "Pause" : "Play"
+        }
+      ),
+      /* @__PURE__ */ f("span", { className: `graph-count-fps${pe ? "" : " hidden"}`, title: "Simulation frames per second", children: [
+        be,
+        " fps"
+      ] })
+    ] }),
+    /* @__PURE__ */ t(
+      va,
       {
-        params: U,
-        onParamChange: fe,
-        running: x,
-        onToggleRunning: Ee,
-        onReheat: De,
-        showForceFields: Z,
-        onToggleForceFields: () => X((h) => !h),
-        onActiveSection: E,
-        onActiveChargeType: B,
-        onActiveGravityType: K
+        params: Ce,
+        onParamChange: Ie,
+        onAdjust: De,
+        onGravityChange: H,
+        onActiveSection: xn,
+        onActiveChargeType: J,
+        onActiveGravityType: he,
+        onActivePullEdge: K,
+        nodeScale: B,
+        onNodeScaleChange: I
       }
     ),
-    Ce && Ke.length > 0 && /* @__PURE__ */ n(
-      eo,
-      {
-        x: Ce.x,
-        y: Ce.y,
-        items: Ke,
-        onClose: We
-      }
-    ),
-    Se && /* @__PURE__ */ i("div", { className: "graph-shortcuts-panel", children: [
-      /* @__PURE__ */ i("div", { className: "graph-shortcuts-title", children: [
+    w && /* @__PURE__ */ f("div", { className: "graph-shortcuts-panel", children: [
+      /* @__PURE__ */ f("div", { className: "graph-shortcuts-title", children: [
         "Keyboard Shortcuts",
-        /* @__PURE__ */ n("button", { className: "graph-shortcuts-close", onClick: () => L(!1), children: "×" })
+        /* @__PURE__ */ t("button", { className: "graph-shortcuts-close", onClick: () => R(!1), children: "×" })
       ] }),
-      /* @__PURE__ */ i("div", { className: "graph-shortcuts-list", children: [
-        /* @__PURE__ */ n(ze, { keys: "Tab / Shift+Tab", desc: "Cycle focus" }),
-        /* @__PURE__ */ n(ze, { keys: "Enter", desc: "Select focused node" }),
-        /* @__PURE__ */ n(ze, { keys: "Escape", desc: "Deselect / close" }),
-        /* @__PURE__ */ n(ze, { keys: "Arrow keys", desc: "Pan viewport" }),
-        /* @__PURE__ */ n(ze, { keys: "+ / -", desc: "Zoom in / out" }),
-        /* @__PURE__ */ n(ze, { keys: "F", desc: "Fit to view" }),
-        /* @__PURE__ */ n(ze, { keys: "/", desc: "Open search" }),
-        /* @__PURE__ */ n(ze, { keys: "Space", desc: "Toggle simulation" }),
-        /* @__PURE__ */ n(ze, { keys: "Shift + hover", desc: "Upstream deps" }),
-        /* @__PURE__ */ n(ze, { keys: "?", desc: "This panel" })
+      /* @__PURE__ */ f("div", { className: "graph-shortcuts-list", children: [
+        /* @__PURE__ */ t(_e, { keys: "Tab / Shift+Tab", desc: "Cycle focus" }),
+        /* @__PURE__ */ t(_e, { keys: "Enter", desc: "Select focused node" }),
+        /* @__PURE__ */ t(_e, { keys: "Escape", desc: "Deselect / close" }),
+        /* @__PURE__ */ t(_e, { keys: "Arrow keys", desc: "Pan viewport" }),
+        /* @__PURE__ */ t(_e, { keys: "+ / -", desc: "Zoom in / out" }),
+        /* @__PURE__ */ t(_e, { keys: "F", desc: "Fit to view" }),
+        /* @__PURE__ */ t(_e, { keys: "/", desc: "Open search" }),
+        /* @__PURE__ */ t(_e, { keys: "Space", desc: "Toggle simulation" }),
+        /* @__PURE__ */ t(_e, { keys: "Shift + hover", desc: "Upstream deps" }),
+        /* @__PURE__ */ t(_e, { keys: "?", desc: "This panel" })
       ] })
     ] })
   ] });
 }
-function oo({ hoveredNodeId: e, simRef: t, visibleEdges: s, visibleIds: o, viewport: a, shiftHeld: l, duplicateGroups: r }) {
-  var U, be;
+function Ct(e) {
+  if (!e) return;
+  const n = e.indexOf(":");
+  return n >= 0 ? e.slice(n + 1) : e;
+}
+function Wa({ hoveredNodeId: e, simRef: n, visibleEdges: s, visibleIds: o, viewport: a, shiftHeld: r, duplicateGroups: c, nodeSummaries: l, onShowInTree: i, onMouseEnter: d, onMouseLeave: h }) {
+  var re, j;
   if (!e) return null;
-  const p = t.current;
+  const g = n.current;
+  if (!g) return null;
+  const p = g.getNode(e);
   if (!p) return null;
-  const d = p.getNode(e);
-  if (!d) return null;
-  const m = d.parentId ? (U = p.getNode(d.parentId)) == null ? void 0 : U.name : void 0, T = yn.find((R) => R.type === ln(d.nodeType)), $ = (be = d.sourceFile) == null ? void 0 : be.split("/").pop();
-  let y = 0, I = 0;
-  for (const R of s)
-    R.edgeType !== "containment" && (R.sourceId === e && y++, R.targetId === e && I++);
-  const N = r.get(d.definitionKey), f = N ? Array.from(N).filter((R) => o.has(R)) : [d.id], P = f.length, b = P > 1 ? f.indexOf(d.id) + 1 : 0, [x, _] = qe(a, d.x, d.y);
-  return /* @__PURE__ */ i("div", { className: "graph-hover-tooltip", style: { left: x, top: _ }, children: [
-    /* @__PURE__ */ i("div", { className: "tooltip-identity", children: [
-      T && /* @__PURE__ */ n("span", { className: "tooltip-type-icon", children: T.icon }),
-      /* @__PURE__ */ n("span", { className: "tooltip-name", children: d.name })
-    ] }),
-    m && /* @__PURE__ */ n("div", { className: "tooltip-parent", children: m }),
-    $ && /* @__PURE__ */ n("div", { className: "tooltip-file", children: $ }),
-    P > 1 && /* @__PURE__ */ i("div", { className: "tooltip-duplicates", title: "This definition is registered on multiple workers. Hovering any copy highlights all copies.", children: [
-      "copy ",
-      b,
-      " of ",
-      P
-    ] }),
-    (y > 0 || I > 0) && /* @__PURE__ */ i("div", { className: "tooltip-connections", children: [
-      y > 0 && /* @__PURE__ */ i("span", { className: "tooltip-conn-out", children: [
-        "→",
-        y
-      ] }),
-      I > 0 && /* @__PURE__ */ i("span", { className: "tooltip-conn-in", children: [
-        "←",
-        I
-      ] })
-    ] }),
-    /* @__PURE__ */ n("div", { className: "tooltip-direction", children: l ? "dependents" : "dependencies" })
+  const y = p.parentId ? (re = g.getNode(p.parentId)) == null ? void 0 : re.name : void 0;
+  let v;
+  switch (p.nodeType) {
+    case "nexusEndpoint":
+      v = [y, p.queue].filter(Boolean).join(" · ") || void 0;
+      break;
+    case "nexusService":
+      v = [Ct(p.worker), p.queue].filter(Boolean).join(" · ") || void 0;
+      break;
+    case "nexusOperation":
+      v = [y, Ct(p.worker), p.queue].filter(Boolean).join(" · ") || void 0;
+      break;
+    default:
+      v = y;
+  }
+  const k = st.find((ne) => ne.type === mn(p.nodeType)), A = (j = p.sourceFile) == null ? void 0 : j.split("/").pop(), P = Ye(p.nodeType).summaryKind, $ = (P === "containerCount" || P === "hostRegistrations") && l.get(e) || void 0;
+  let D = 0, M = 0;
+  for (const ne of s)
+    ne.edgeType !== "containment" && (ne.sourceId === e && D++, ne.targetId === e && M++);
+  const b = c.get(p.definitionKey), C = b ? Array.from(b).filter((ne) => o.has(ne)) : [p.id], F = C.length, w = F > 1 ? C.indexOf(p.id) + 1 : 0, [R, V] = Pe(a, p.x, p.y);
+  return /* @__PURE__ */ f(
+    "div",
+    {
+      className: "graph-hover-tooltip",
+      style: { left: R, top: V },
+      onMouseEnter: d,
+      onMouseLeave: h,
+      children: [
+        /* @__PURE__ */ f("div", { className: "tooltip-identity", children: [
+          k && /* @__PURE__ */ t("span", { className: "tooltip-type-icon", children: k.icon }),
+          /* @__PURE__ */ t("span", { className: "tooltip-name", children: p.name })
+        ] }),
+        v && /* @__PURE__ */ t("div", { className: "tooltip-parent", children: v }),
+        $ && /* @__PURE__ */ t("div", { className: "tooltip-summary", children: $ }),
+        A && /* @__PURE__ */ t("div", { className: "tooltip-file", children: A }),
+        F > 1 && /* @__PURE__ */ f("div", { className: "tooltip-duplicates", title: "This definition is registered on multiple workers. Hovering any copy highlights all copies.", children: [
+          "copy ",
+          w,
+          " of ",
+          F
+        ] }),
+        (D > 0 || M > 0) && /* @__PURE__ */ f("div", { className: "tooltip-connections", children: [
+          D > 0 && /* @__PURE__ */ f("span", { className: "tooltip-conn-out", children: [
+            "→",
+            D
+          ] }),
+          M > 0 && /* @__PURE__ */ f("span", { className: "tooltip-conn-in", children: [
+            "←",
+            M
+          ] })
+        ] }),
+        /* @__PURE__ */ t("div", { className: "tooltip-direction", children: r ? "dependents" : "dependencies" }),
+        i && /* @__PURE__ */ t(
+          "button",
+          {
+            className: "tooltip-show-in-tree",
+            onClick: () => i(p.name, mn(p.nodeType)),
+            title: "Show in Tree view",
+            children: "Show in Tree"
+          }
+        )
+      ]
+    }
+  );
+}
+function _e({ keys: e, desc: n }) {
+  return /* @__PURE__ */ f("div", { className: "graph-shortcut-row", children: [
+    /* @__PURE__ */ t("kbd", { className: "graph-shortcut-key", children: e }),
+    /* @__PURE__ */ t("span", { className: "graph-shortcut-desc", children: n })
   ] });
 }
-function ze({ keys: e, desc: t }) {
-  return /* @__PURE__ */ i("div", { className: "graph-shortcut-row", children: [
-    /* @__PURE__ */ n("kbd", { className: "graph-shortcut-key", children: e }),
-    /* @__PURE__ */ n("span", { className: "graph-shortcut-desc", children: t })
-  ] });
-}
-function ao({ shownFileErrors: e, hiddenFileErrors: t }) {
-  const [s, o] = u.useState(!0), a = e.length + t.length;
-  return /* @__PURE__ */ i("div", { className: "graph-errors-header", children: [
-    /* @__PURE__ */ i("div", { className: "graph-errors-bar", onClick: () => o(!s), children: [
-      /* @__PURE__ */ n("span", { className: "block-toggle", children: s ? "▼" : "▶" }),
-      /* @__PURE__ */ n("span", { className: "graph-errors-icon", children: C.error.icon }),
-      /* @__PURE__ */ i("span", { className: "graph-errors-title", children: [
-        a,
-        " ",
-        a === 1 ? "error" : "errors"
-      ] })
-    ] }),
-    s && /* @__PURE__ */ i("div", { className: "graph-errors-body", children: [
-      e.map((l, r) => /* @__PURE__ */ i("div", { className: "graph-error-item", children: [
-        /* @__PURE__ */ n("span", { className: "graph-error-file", children: l.file.split("/").pop() }),
-        /* @__PURE__ */ n("pre", { className: "graph-error-msg", children: l.stderr || l.error })
-      ] }, `s${r}`)),
-      t.length > 0 && /* @__PURE__ */ i("div", { className: "graph-error-hidden-label", children: [
-        t.length,
-        " error",
-        t.length !== 1 ? "s" : "",
-        " in hidden files"
-      ] })
-    ] })
-  ] });
-}
-function co(e, t, s, o) {
+function Va(e, n, s, o) {
   switch (o.kind) {
     case "manual":
-      return lo(e, t, s);
+      return Ga(e, n, s);
     case "focus":
-      return ro(e, s, o.target);
+      return Ha(e, s, o.target);
   }
 }
-function lo(e, t, s) {
-  const o = lt(e);
-  return s.files || (o.selectedFiles = new Set(t.selectedFiles)), s.types || (o.visibleTypes = new Set(t.visibleTypes)), {
-    filter: In(o, e) ? e : o,
+function Ga(e, n, s) {
+  const o = Rt(e);
+  return s.files || (o.selectedFiles = new Set(n.selectedFiles)), s.types || (o.visibleTypes = new Set(n.visibleTypes)), {
+    filter: Rn(o, e) ? e : o,
     overriddenPins: /* @__PURE__ */ new Set()
   };
 }
-function ro(e, t, s) {
-  const o = lt(e), a = /* @__PURE__ */ new Set();
-  return o.visibleTypes.has(s.defType) || (o.visibleTypes.add(s.defType), t.types && a.add("types")), s.sourceFile && e.selectedFiles.size > 0 && !e.selectedFiles.has(s.sourceFile) && (o.selectedFiles.add(s.sourceFile), t.files && a.add("files")), {
-    filter: In(o, e) ? e : o,
+function Ha(e, n, s) {
+  const o = Rt(e), a = /* @__PURE__ */ new Set();
+  return o.visibleTypes.has(s.defType) || (o.visibleTypes.add(s.defType), n.types && a.add("types")), s.sourceFile && e.selectedFiles.size > 0 && !e.selectedFiles.has(s.sourceFile) && (o.selectedFiles.add(s.sourceFile), n.files && a.add("files")), {
+    filter: Rn(o, e) ? e : o,
     overriddenPins: a
   };
 }
-const An = "temporal-architect-visualizer-state";
-let cn = null, tt = !1;
-function kt() {
-  if (tt) return cn;
-  tt = !0;
+const In = "temporal-architect-visualizer-state";
+let cn = null, Dt = !1;
+function ts() {
+  if (Dt) return cn;
+  Dt = !0;
   const e = window;
   if (e.__twfVsCodeApi)
     return cn = e.__twfVsCodeApi, cn;
@@ -3683,192 +4749,195 @@ function kt() {
     }
   return null;
 }
-function io() {
-  const e = kt();
+function qa() {
+  const e = ts();
   if (e) {
-    const t = e.getState();
-    if (t && typeof t == "object") {
-      const o = t[An];
+    const n = e.getState();
+    if (n && typeof n == "object") {
+      const o = n[In];
       if (o && typeof o == "object")
         return o;
     }
     return {};
   }
   try {
-    const t = localStorage.getItem(An);
-    return t ? JSON.parse(t) : {};
+    const n = localStorage.getItem(In);
+    return n ? JSON.parse(n) : {};
   } catch {
     return {};
   }
 }
-function uo(e) {
-  const t = kt();
-  if (t) {
-    const s = t.getState(), o = s && typeof s == "object" ? { ...s } : {};
-    o[An] = e, t.setState(o);
+function za(e) {
+  const n = ts();
+  if (n) {
+    const s = n.getState(), o = s && typeof s == "object" ? { ...s } : {};
+    o[In] = e, n.setState(o);
     return;
   }
   try {
-    localStorage.setItem(An, JSON.stringify(e));
+    localStorage.setItem(In, JSON.stringify(e));
   } catch {
   }
 }
-const Xe = u.createContext({
+const Ke = m.createContext({
   workflows: /* @__PURE__ */ new Map(),
   activities: /* @__PURE__ */ new Map(),
   workers: /* @__PURE__ */ new Map(),
   nexusServices: /* @__PURE__ */ new Map(),
   namespaces: /* @__PURE__ */ new Map()
-}), wn = u.createContext({
+}), kn = m.createContext({
   signals: /* @__PURE__ */ new Map(),
   queries: /* @__PURE__ */ new Map(),
   updates: /* @__PURE__ */ new Map()
-}), bt = u.createContext({
+}), ss = m.createContext({
   callers: /* @__PURE__ */ new Map(),
   workerOf: /* @__PURE__ */ new Map(),
   namespaceOf: /* @__PURE__ */ new Map(),
   navigateTo: () => {
   }
-}), po = yn.filter((e) => e.defaultOn).map((e) => e.type);
-function st(e) {
+}), Xa = st.filter((e) => e.defaultOn).map((e) => e.type);
+function Ft(e) {
   return {
     selectedFiles: e.focusedFile ? /* @__PURE__ */ new Set([e.focusedFile]) : /* @__PURE__ */ new Set(),
-    visibleTypes: new Set(po)
+    visibleTypes: new Set(Xa)
   };
 }
-const ot = { files: !1, types: !1 };
-function at(e, t) {
+const At = { files: !1, types: !1 };
+function Pt(e, n) {
   return e ? {
     selectedFiles: new Set(e.selectedFiles),
     visibleTypes: new Set(e.visibleTypes)
-  } : t;
+  } : n;
 }
-function ct(e) {
+function It(e) {
   return {
     selectedFiles: Array.from(e.selectedFiles),
     visibleTypes: Array.from(e.visibleTypes)
   };
 }
-function go({ ast: e, parserGraph: t, onOpenFile: s, onRefocus: o, className: a, style: l }) {
-  const r = t ?? Mt, p = u.useMemo(() => io(), []), [d, m] = u.useState("tree"), [T, $] = u.useState(
-    () => at(p.treeFilter, st(e))
-  ), [y, I] = u.useState(
-    () => at(p.graphFilter, st(e))
-  ), [N, f] = u.useState(() => p.treePins ?? ot), [P, b] = u.useState(() => p.graphPins ?? ot), [x, _] = u.useState(p.searchQuery ?? ""), [U, be] = u.useState(!1), [R, ie] = u.useState(null), [ae, de] = u.useState(/* @__PURE__ */ new Set()), [ue, Oe] = u.useState(/* @__PURE__ */ new Set());
-  u.useEffect(() => {
-    uo({
-      treeFilter: ct(T),
-      graphFilter: ct(y),
-      treePins: N,
-      graphPins: P,
-      searchQuery: x
+function ja({ ast: e, parserGraph: n, onOpenFile: s, onRefocus: o, className: a, style: r }) {
+  const c = n ?? is, l = e.definitions.length === 0, i = m.useMemo(() => qa(), []), [d, h] = m.useState(l ? "graph" : "tree"), [g, p] = m.useState(l), [y, v] = m.useState(
+    () => Pt(i.treeFilter, Ft(e))
+  ), [k, A] = m.useState(
+    () => Pt(i.graphFilter, Ft(e))
+  ), [P, $] = m.useState(() => i.treePins ?? At), [D, M] = m.useState(() => i.graphPins ?? At), [b, C] = m.useState(i.searchQuery ?? ""), [F, w] = m.useState(!1), [R, V] = m.useState(null), [re, j] = m.useState(/* @__PURE__ */ new Set()), [ne, ie] = m.useState(/* @__PURE__ */ new Set());
+  m.useEffect(() => {
+    za({
+      treeFilter: It(y),
+      graphFilter: It(k),
+      treePins: P,
+      graphPins: D,
+      searchQuery: b
     });
-  }, [T, y, N, P, x]), u.useEffect(() => {
-    const V = /* @__PURE__ */ new Set();
-    for (const X of e.definitions)
-      X.sourceFile && V.add(X.sourceFile);
-    const Z = (X) => {
-      const we = new Set([...X.selectedFiles].filter((E) => V.has(E)));
-      return we.size === X.selectedFiles.size ? X : { ...X, selectedFiles: we };
+  }, [y, k, P, D, b]), m.useEffect(() => {
+    const H = /* @__PURE__ */ new Set();
+    for (const u of e.definitions)
+      u.sourceFile && H.add(u.sourceFile);
+    const E = (u) => {
+      const W = new Set([...u.selectedFiles].filter((U) => H.has(U)));
+      return W.size === u.selectedFiles.size ? u : { ...u, selectedFiles: W };
     };
-    $(Z), I(Z);
-  }, [e.definitions]), u.useEffect(() => {
-    N.files || e.focusedFile && $((V) => {
-      const Z = /* @__PURE__ */ new Set([e.focusedFile]);
-      return V.selectedFiles.size === 1 && V.selectedFiles.has(e.focusedFile) ? V : { ...V, selectedFiles: Z };
+    v(E), A(E);
+  }, [e.definitions]), m.useEffect(() => {
+    P.files || e.focusedFile && v((H) => {
+      const E = /* @__PURE__ */ new Set([e.focusedFile]);
+      return H.selectedFiles.size === 1 && H.selectedFiles.has(e.focusedFile) ? H : { ...H, selectedFiles: E };
     });
-  }, [e.focusedFile, N.files]);
-  const ce = u.useMemo(() => {
-    const V = /* @__PURE__ */ new Map(), Z = /* @__PURE__ */ new Map(), X = /* @__PURE__ */ new Map(), we = /* @__PURE__ */ new Map(), E = /* @__PURE__ */ new Map();
-    for (const c of e.definitions)
-      c.type === "workflowDef" ? V.set(c.name, c) : c.type === "activityDef" ? Z.set(c.name, c) : c.type === "workerDef" ? X.set(c.name, c) : c.type === "nexusServiceDef" ? we.set(c.name, c) : c.type === "namespaceDef" && E.set(c.name, c);
-    return { workflows: V, activities: Z, workers: X, nexusServices: we, namespaces: E };
-  }, [e]), ge = u.useCallback((V, Z) => {
-    if (V === d && Z.kind === "manual") return;
-    const X = V === "tree" ? T : y, we = V === "tree" ? y : T, E = V === "tree" ? N : P, { filter: c, overriddenPins: B } = co(X, we, E, Z);
-    V === "tree" ? (c !== X && $(c), de(B)) : (c !== X && I(c), Oe(B)), Z.kind === "focus" && ie({ name: Z.target.name, defType: Z.target.defType }), m(V);
-  }, [d, T, y, N, P]), pe = u.useCallback((V, Z) => {
-    const X = e.definitions.find((we) => we.name === V && we.type === Z);
-    ge("graph", {
+  }, [e.focusedFile, P.files]);
+  const T = m.useMemo(() => {
+    const H = /* @__PURE__ */ new Map(), E = /* @__PURE__ */ new Map(), u = /* @__PURE__ */ new Map(), W = /* @__PURE__ */ new Map(), U = /* @__PURE__ */ new Map();
+    for (const B of e.definitions)
+      B.type === "workflowDef" ? H.set(B.name, B) : B.type === "activityDef" ? E.set(B.name, B) : B.type === "workerDef" ? u.set(B.name, B) : B.type === "nexusServiceDef" ? W.set(B.name, B) : B.type === "namespaceDef" && U.set(B.name, B);
+    return { workflows: H, activities: E, workers: u, nexusServices: W, namespaces: U };
+  }, [e]), z = m.useCallback((H, E) => {
+    if (H === "tree" && l || H === d && E.kind === "manual") return;
+    const u = H === "tree" ? y : k, W = H === "tree" ? k : y, U = H === "tree" ? P : D, { filter: B, overriddenPins: S } = Va(u, W, U, E);
+    H === "tree" ? (B !== u && v(B), j(S)) : (B !== u && A(B), ie(S)), E.kind === "focus" && V({ name: E.target.name, defType: E.target.defType }), H === "graph" && p(!0), h(H);
+  }, [d, y, k, P, D, l]), X = m.useCallback((H, E) => {
+    const u = e.definitions.find((W) => W.name === H && W.type === E);
+    z("graph", {
       kind: "focus",
-      target: { name: V, defType: Z, sourceFile: X == null ? void 0 : X.sourceFile }
+      target: { name: H, defType: E, sourceFile: u == null ? void 0 : u.sourceFile }
     });
-  }, [e.definitions, ge]), Fe = u.useCallback((V, Z) => {
-    const X = e.definitions.find((we) => we.name === V && we.type === Z);
-    ge("tree", {
+  }, [e.definitions, z]), pe = m.useCallback((H, E) => {
+    const u = e.definitions.find((W) => W.name === H && W.type === E);
+    z("tree", {
       kind: "focus",
-      target: { name: V, defType: Z, sourceFile: X == null ? void 0 : X.sourceFile }
+      target: { name: H, defType: E, sourceFile: u == null ? void 0 : u.sourceFile }
     });
-  }, [e.definitions, ge]), ye = u.useCallback(() => ie(null), []), ne = u.useCallback((V, Z) => {
-    _(V), be(Z);
-  }, []), J = u.useCallback(() => {
-    de((V) => V.size === 0 ? V : /* @__PURE__ */ new Set());
-  }, []), Be = u.useCallback(() => {
-    Oe((V) => V.size === 0 ? V : /* @__PURE__ */ new Set());
+  }, [e.definitions, z]), Ee = m.useCallback(() => V(null), []), Ce = m.useCallback((H, E) => {
+    C(H), w(E);
+  }, []), Ne = m.useCallback(() => {
+    j((H) => H.size === 0 ? H : /* @__PURE__ */ new Set());
+  }, []), Ie = m.useCallback(() => {
+    ie((H) => H.size === 0 ? H : /* @__PURE__ */ new Set());
   }, []);
-  u.useEffect(() => {
-    T.selectedFiles.size === 1 && s && s(T.selectedFiles.values().next().value);
-  }, [T.selectedFiles, s]);
-  const Te = a ? `view-shell ${a}` : "view-shell";
-  return /* @__PURE__ */ n(Xe.Provider, { value: ce, children: /* @__PURE__ */ i("div", { className: Te, style: l, onClick: o, children: [
-    /* @__PURE__ */ i("div", { className: "tab-bar", children: [
-      /* @__PURE__ */ n(
+  m.useEffect(() => {
+    y.selectedFiles.size === 1 && s && s(y.selectedFiles.values().next().value);
+  }, [y.selectedFiles, s]);
+  const De = a ? `view-shell ${a}` : "view-shell";
+  return /* @__PURE__ */ t(Ke.Provider, { value: T, children: /* @__PURE__ */ f("div", { className: De, style: r, onClick: o, children: [
+    /* @__PURE__ */ f("div", { className: "tab-bar", children: [
+      !l && /* @__PURE__ */ t(
         "button",
         {
           className: `tab-bar-btn ${d === "tree" ? "active" : ""}`,
-          onClick: () => ge("tree", { kind: "manual" }),
+          onClick: () => z("tree", { kind: "manual" }),
           children: "Tree"
         }
       ),
-      /* @__PURE__ */ n(
+      /* @__PURE__ */ t(
         "button",
         {
           className: `tab-bar-btn ${d === "graph" ? "active" : ""}`,
-          onClick: () => ge("graph", { kind: "manual" }),
+          onClick: () => z("graph", { kind: "manual" }),
           children: "Graph"
         }
       )
     ] }),
-    d === "tree" ? /* @__PURE__ */ n(
-      fs,
+    !l && /* @__PURE__ */ t("div", { className: `view-pane${d === "tree" ? "" : " hidden"}`, children: /* @__PURE__ */ t(
+      oo,
       {
+        active: d === "tree",
         ast: e,
-        onShowInGraph: pe,
-        filter: T,
-        onFilterChange: $,
-        pins: N,
-        onPinsChange: f,
-        searchQuery: x,
-        searchActive: U,
-        onSearchChange: ne,
-        pendingFocus: R,
-        onFocusConsumed: ye,
-        overriddenPins: ae,
-        onOverriddenPinsConsumed: J
-      }
-    ) : /* @__PURE__ */ n(
-      so,
-      {
-        ast: e,
-        parserGraph: r,
-        onShowInTree: Fe,
+        onShowInGraph: X,
         filter: y,
-        onFilterChange: I,
+        onFilterChange: v,
         pins: P,
-        onPinsChange: b,
-        searchQuery: x,
-        searchActive: U,
-        onSearchChange: ne,
+        onPinsChange: $,
+        searchQuery: b,
+        searchActive: F,
+        onSearchChange: Ce,
         pendingFocus: R,
-        onFocusConsumed: ye,
-        overriddenPins: ue,
-        onOverriddenPinsConsumed: Be
+        onFocusConsumed: Ee,
+        overriddenPins: re,
+        onOverriddenPinsConsumed: Ne
       }
-    )
+    ) }),
+    g && /* @__PURE__ */ t("div", { className: `view-pane${d === "graph" ? "" : " hidden"}`, children: /* @__PURE__ */ t(
+      _a,
+      {
+        active: d === "graph",
+        ast: e,
+        parserGraph: c,
+        onShowInTree: l ? void 0 : pe,
+        filter: k,
+        onFilterChange: A,
+        pins: D,
+        onPinsChange: M,
+        searchQuery: b,
+        searchActive: F,
+        onSearchChange: Ce,
+        pendingFocus: R,
+        onFocusConsumed: Ee,
+        overriddenPins: ne,
+        onOverriddenPinsConsumed: Ie
+      }
+    ) })
   ] }) });
 }
 export {
-  Mt as EMPTY_PARSER_GRAPH,
-  go as Visualizer
+  is as EMPTY_PARSER_GRAPH,
+  ja as Visualizer
 };
 //# sourceMappingURL=lib.js.map

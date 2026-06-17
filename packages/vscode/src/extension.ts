@@ -10,30 +10,14 @@ import {
   LanguageClientOptions,
   ServerOptions,
 } from "vscode-languageclient/node";
+// Wire-format diagnostic produced inside the JSON envelope by every `twf`
+// subcommand. Generated from the Go DTO layer (envelope.Diagnostic) and shared
+// via the @temporal-architect/wire-types package; consumed type-only (the
+// import is erased at compile time, so it adds no runtime dependency).
+import type { Diagnostic as TwfDiagnostic } from "@temporal-architect/wire-types";
 
 const execFileAsync = promisify(execFile);
 const copyFileAsync = promisify(fs.copyFile);
-
-// Wire-format diagnostic produced inside the JSON envelope by every
-// `twf` subcommand. Mirrors tools/lsp/cmd/twf/diagnostic.go and the
-// authoritative schema at tools/lsp/cmd/twf/twf.schema.json. Duplicated
-// here (rather than imported from the visualizer package) because the
-// extension is a separate npm package with its own tsconfig and does
-// not depend on the visualizer's library exports.
-interface TwfPosition {
-  line: number;
-  column: number;
-}
-interface TwfDiagnostic {
-  severity: "error" | "warning";
-  kind: "parse" | "resolve" | "validate" | "graph";
-  code: string;
-  file?: string;
-  start: TwfPosition;
-  end: TwfPosition;
-  message: string;
-  name?: string;
-}
 
 let client: LanguageClient | undefined;
 // Track the last active text editor for returning focus after webview clicks

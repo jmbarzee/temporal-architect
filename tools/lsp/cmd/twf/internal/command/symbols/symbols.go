@@ -13,26 +13,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type subSymbol struct {
+// SubSymbol is a nested symbol (a signal/query/update on a workflow, or a
+// member registered on a worker/namespace/nexus service). It is part of the
+// `twf symbols --json` wire contract — see tools/wire-types.
+type SubSymbol struct {
 	Name       string `json:"name"`
 	Params     string `json:"params,omitempty"`
 	ReturnType string `json:"returnType,omitempty"`
 }
 
-type symbolJSON struct {
+// SymbolJSON is one top-level symbol in the `twf symbols --json` payload
+// (a workflow, activity, worker, namespace, or nexus service). It is part of
+// the wire contract — see tools/wire-types.
+type SymbolJSON struct {
 	Kind       string      `json:"kind"`
 	Name       string      `json:"name"`
 	Params     string      `json:"params,omitempty"`
 	ReturnType string      `json:"returnType,omitempty"`
-	Signals    []subSymbol `json:"signals,omitempty"`
-	Queries    []subSymbol `json:"queries,omitempty"`
-	Updates    []subSymbol `json:"updates,omitempty"`
-	Workflows  []subSymbol `json:"workflows,omitempty"`
-	Activities []subSymbol `json:"activities,omitempty"`
-	Services   []subSymbol `json:"services,omitempty"`
-	Workers    []subSymbol `json:"workers,omitempty"`
-	Endpoints  []subSymbol `json:"endpoints,omitempty"`
-	Operations []subSymbol `json:"operations,omitempty"`
+	Signals    []SubSymbol `json:"signals,omitempty"`
+	Queries    []SubSymbol `json:"queries,omitempty"`
+	Updates    []SubSymbol `json:"updates,omitempty"`
+	Workflows  []SubSymbol `json:"workflows,omitempty"`
+	Activities []SubSymbol `json:"activities,omitempty"`
+	Services   []SubSymbol `json:"services,omitempty"`
+	Workers    []SubSymbol `json:"workers,omitempty"`
+	Endpoints  []SubSymbol `json:"endpoints,omitempty"`
+	Operations []SubSymbol `json:"operations,omitempty"`
 }
 
 // New builds the `symbols` command.
@@ -76,33 +82,33 @@ func run(paths []string, jsonOutput bool) int {
 }
 
 // extractSymbols collects workflow and activity definitions into a uniform slice.
-func extractSymbols(file *ast.File) []symbolJSON {
-	var symbols []symbolJSON
+func extractSymbols(file *ast.File) []SymbolJSON {
+	var symbols []SymbolJSON
 
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			sym := symbolJSON{
+			sym := SymbolJSON{
 				Kind:       "workflow",
 				Name:       d.Name,
 				Params:     d.Params,
 				ReturnType: d.ReturnType,
 			}
 			for _, s := range d.Signals {
-				sym.Signals = append(sym.Signals, subSymbol{
+				sym.Signals = append(sym.Signals, SubSymbol{
 					Name:   s.Name,
 					Params: s.Params,
 				})
 			}
 			for _, q := range d.Queries {
-				sym.Queries = append(sym.Queries, subSymbol{
+				sym.Queries = append(sym.Queries, SubSymbol{
 					Name:       q.Name,
 					Params:     q.Params,
 					ReturnType: q.ReturnType,
 				})
 			}
 			for _, u := range d.Updates {
-				sym.Updates = append(sym.Updates, subSymbol{
+				sym.Updates = append(sym.Updates, SubSymbol{
 					Name:       u.Name,
 					Params:     u.Params,
 					ReturnType: u.ReturnType,
@@ -110,41 +116,41 @@ func extractSymbols(file *ast.File) []symbolJSON {
 			}
 			symbols = append(symbols, sym)
 		case *ast.ActivityDef:
-			symbols = append(symbols, symbolJSON{
+			symbols = append(symbols, SymbolJSON{
 				Kind:       "activity",
 				Name:       d.Name,
 				Params:     d.Params,
 				ReturnType: d.ReturnType,
 			})
 		case *ast.WorkerDef:
-			sym := symbolJSON{
+			sym := SymbolJSON{
 				Kind: "worker",
 				Name: d.Name,
 			}
 			for _, w := range d.Workflows {
-				sym.Workflows = append(sym.Workflows, subSymbol{Name: w.Name})
+				sym.Workflows = append(sym.Workflows, SubSymbol{Name: w.Name})
 			}
 			for _, a := range d.Activities {
-				sym.Activities = append(sym.Activities, subSymbol{Name: a.Name})
+				sym.Activities = append(sym.Activities, SubSymbol{Name: a.Name})
 			}
 			for _, s := range d.Services {
-				sym.Services = append(sym.Services, subSymbol{Name: s.Name})
+				sym.Services = append(sym.Services, SubSymbol{Name: s.Name})
 			}
 			symbols = append(symbols, sym)
 		case *ast.NamespaceDef:
-			sym := symbolJSON{
+			sym := SymbolJSON{
 				Kind: "namespace",
 				Name: d.Name,
 			}
 			for _, w := range d.Workers {
-				sym.Workers = append(sym.Workers, subSymbol{Name: w.Worker.Name})
+				sym.Workers = append(sym.Workers, SubSymbol{Name: w.Worker.Name})
 			}
 			for _, e := range d.Endpoints {
-				sym.Endpoints = append(sym.Endpoints, subSymbol{Name: e.EndpointName})
+				sym.Endpoints = append(sym.Endpoints, SubSymbol{Name: e.EndpointName})
 			}
 			symbols = append(symbols, sym)
 		case *ast.NexusServiceDef:
-			sym := symbolJSON{
+			sym := SymbolJSON{
 				Kind: "nexusService",
 				Name: d.Name,
 			}
@@ -153,7 +159,7 @@ func extractSymbols(file *ast.File) []symbolJSON {
 				if op.OpType == ast.NexusOpAsync {
 					opKind = "async"
 				}
-				sym.Operations = append(sym.Operations, subSymbol{
+				sym.Operations = append(sym.Operations, SubSymbol{
 					Name:   op.Name,
 					Params: opKind,
 				})
@@ -216,12 +222,12 @@ func printText(file *ast.File) int {
 // its payload. Diagnostics ride along inside the envelope so callers never
 // need a second invocation to learn what went wrong with a partial parse.
 func printJSON(file *ast.File, diags []envelope.Diagnostic) int {
-	var symbols []symbolJSON
+	var symbols []SymbolJSON
 	if file != nil {
 		symbols = extractSymbols(file)
 	}
 	if symbols == nil {
-		symbols = []symbolJSON{}
+		symbols = []SymbolJSON{}
 	}
 	env := envelope.Envelope{
 		Summary:     envelope.Summarize(file, diags),
