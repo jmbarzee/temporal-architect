@@ -1,6 +1,6 @@
 # Skill: Temporal Architect — System Design
 
-**Goal:** Guide an AI to design well-structured Temporal workflows using the TWF DSL — making sound architectural decisions about workflow boundaries, activity decomposition, and primitive selection.
+**Goal:** Guide an AI to design well-structured Temporal systems using `.twf` — making sound architectural decisions about workflow boundaries, activity decomposition, and primitive selection.
 
 **Primary focus:** Judgment. The hard part is not syntax — it's knowing *when* to use each primitive, *where* to draw boundaries, and *how* to model async behavior clearly. This skill teaches those decisions.
 

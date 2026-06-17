@@ -1,7 +1,7 @@
 {
   "name": "@temporal-architect/visualizer",
   "version": "0.8.4",
-  "description": "React component for visualizing Temporal Workflow Format (.twf) ASTs as an interactive tree and force-directed graph.",
+  "description": "React component for visualizing Temporal system architecture — namespaces, workers, workflows, and Nexus — as an interactive tree and dependency graph.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/tools/visualizer",
@@ -17,9 +17,10 @@
     "temporal",
     "workflow",
     "twf",
+    "architecture",
+    "system design",
     "visualizer",
-    "react",
-    "ast"
+    "react"
   ],
   "main": "./dist-lib/lib.js",
   "module": "./dist-lib/lib.js",

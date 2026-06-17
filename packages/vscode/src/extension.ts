@@ -70,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
         await installSkills(context);
         const cursorSkillsDir = path.join(os.homedir(), ".cursor", "skills");
         vscode.window.showInformationMessage(
-          `Temporal skills installed to ${cursorSkillsDir}`
+          `Temporal Architect skills installed to ${cursorSkillsDir}`
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

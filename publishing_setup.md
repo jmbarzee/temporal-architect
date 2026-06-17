@@ -82,7 +82,7 @@ Both block their corresponding publish jobs. Both are independent and can be don
 
 ### Verification gate
 
-- [x] No live references to the old project name in source — confirmed clean as of this writing; only this file mentions it, in the historical "what changed" context above.
+- [x] No live *branding* references to the old project name in source — the storefront and docs are repositioned. Two deliberate, non-branding references remain: the `temporal-skills` LEGACY cleanup constant in `packages/vscode/src/extension.ts` (functional — it removes stale installs) and the on-disk working-tree directory name (cosmetic; the GitHub repo is already renamed). Neither is user-facing copy.
 
 ---
 

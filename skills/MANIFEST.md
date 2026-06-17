@@ -36,6 +36,9 @@ skills/
   temporal-architect-author-go/
     SKILL.md
     reference/...
+  temporal-architect-author-infra/
+    SKILL.md
+    reference/...
 ```
 
 The top-level directory is always `skills/`. Untar in place to drop the

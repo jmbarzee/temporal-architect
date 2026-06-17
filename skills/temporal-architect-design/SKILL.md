@@ -5,7 +5,7 @@ description: Design Temporal systems — workflows, activities, workers, namespa
 
 # Temporal Architect: System Design
 
-Design Temporal workflows using `.twf` (Temporal Workflow Format) — a language-agnostic DSL capturing workflow structure, activity boundaries, and Temporal primitives. Always produce `.twf` files as deliverables, never SDK code.
+Design entire Temporal systems using `.twf` (Temporal Workflow Format) — capturing system topology, workflow structure, activity boundaries, and Temporal primitives as a parseable source of truth. Always produce `.twf` files as deliverables, never SDK code.
 
 ---
 

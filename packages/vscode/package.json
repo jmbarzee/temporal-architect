@@ -1,7 +1,7 @@
 {
   "name": "twf-syntax",
-  "displayName": "Temporal Workflow (.twf)",
-  "description": "Design Temporal workflows with the TWF notation — language server, interactive visualizer, and AI design skills for activities, child workflows, signals, queries, updates, timers, promises, and Nexus",
+  "displayName": "Temporal Architect",
+  "description": "Design, visualize, and implement entire Temporal systems in `.twf` — namespaces, workers, workflows, and Nexus — with a deterministic language server and an interactive architecture visualizer. Covers activities, child workflows, signals, queries, updates, timers, promises, and Nexus.",
   "version": "0.8.4",
   "publisher": "jmbarzee",
   "license": "MIT",
@@ -20,7 +20,9 @@
     "temporal",
     "workflow",
     "twf",
-    "dsl",
+    "architecture",
+    "system design",
+    "deployment topology",
     "durable execution",
     "orchestration",
     "activities",
@@ -75,8 +77,8 @@
       },
       {
         "command": "twf.installSkills",
-        "title": "Install Temporal Skills",
-        "category": "TWF",
+        "title": "Install Skills",
+        "category": "Temporal Architect",
         "icon": "$(lightbulb)"
       }
     ],

@@ -1,11 +1,11 @@
 # @temporal-architect/visualizer
 
-A React component for visualizing Temporal Workflow Format (`.twf`) ASTs as
-an interactive tree and force-directed graph.
+A React component for visualizing Temporal system architecture — namespaces,
+workers, workflows, and Nexus — as an interactive tree and dependency graph.
 
 This is the npm-publishable surface of the visualizer that ships inside the
-[TWF VS Code extension](https://github.com/jmbarzee/temporal-architect). Host
-applications can embed the same component directly in their own React apps —
+[Temporal Architect VS Code extension](https://github.com/jmbarzee/temporal-architect).
+Host applications can embed the same component directly in their own React apps —
 spec builders, doc sites, internal review tools.
 
 ## Install

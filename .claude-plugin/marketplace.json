@@ -1,7 +1,7 @@
 {
   "name": "temporal-architect",
   "owner": { "name": "jmbarzee" },
-  "description": "TWF design + Go authoring skills, plus the twf MCP server. Plugin payload ships from npm; this directory exists only because Claude Code reads marketplace.json from this fixed path.",
+  "description": "Design, validate, and implement entire Temporal systems: a `.twf` architecture toolchain with design, Go-authoring, and infra-provisioning skills, plus the twf MCP server. Plugin payload ships from npm; this directory exists only because Claude Code reads marketplace.json from this fixed path.",
   "plugins": [
     {
       "name": "temporal-architect",
@@ -11,11 +11,11 @@
       },
       "strict": false,
       "version": "0.8.4",
-      "description": "TWF design + Go authoring skills, plus the twf MCP server.",
+      "description": "Design, validate, and implement entire Temporal systems: a `.twf` architecture toolchain with design, Go-authoring, and infra-provisioning skills, plus the twf MCP server.",
       "author": { "name": "jmbarzee" },
       "license": "MIT",
       "homepage": "https://github.com/jmbarzee/temporal-architect",
-      "keywords": ["temporal", "workflow", "twf", "dsl", "mcp", "lsp"],
+      "keywords": ["temporal", "workflow", "twf", "architecture", "system design", "mcp", "lsp"],
       "category": "languages",
       "skills": ["./skills"],
       "mcpServers": {

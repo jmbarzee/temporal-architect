@@ -169,7 +169,7 @@ Embed skills in the `twf` binary and add a `twf skill` subcommand mirroring `twf
 
 ### M3 — Agent-discoverable binary on PATH
 
-**Status:** 3.1 + 3.2 done — `linkTwfOnPath` in `packages/vscode/src/extension.ts` symlinks the bundled `twf` into `~/.local/bin` on activation (copy on Windows), refreshes per version, and guards a user-managed `twf` via a `globalState`-recorded ownership marker. 3.3 (skill/onboarding note) outstanding.
+**Status:** 3.1 + 3.2 + 3.3 done — `linkTwfOnPath` in `packages/vscode/src/extension.ts` symlinks the bundled `twf` into `~/.local/bin` on activation (copy on Windows), refreshes per version, and guards a user-managed `twf` via a `globalState`-recorded ownership marker. 3.3 (skill/onboarding note) landed via the reposition: the README "Agent vs. human surfaces" note documents that skills assume `twf` on PATH and the agent's graph surface is `twf graph --json` (the visualizer GUI stays human-facing via `twf.visualize`).
 
 The extension bundles `twf` and prepends its `bin/` to the **integrated terminal** via
 `environmentVariableCollection` (`setupTerminalPath`), but that does **not** reach the AI agent's
@@ -182,7 +182,7 @@ or runs full paths. (This was the reverse-engineering reflection's recurring fri
 |---|---|---|
 | 3.1 | On activation, symlink (or copy) bundled `twf` into a dir already on the agent PATH — `~/.local/bin/twf` on macOS/Linux (confirmed present; already holds `claude`), platform equivalent on Windows. Refresh on each activation so it tracks the extension version. | S |
 | 3.2 | Guard: don't clobber a user-managed `twf` (e.g. if `~/.local/bin/twf` exists and isn't our symlink, leave it / warn). Keep the existing integrated-terminal `environmentVariableCollection` for human terminals. | S |
-| 3.3 | Skill/onboarding note: skills assume `twf` on PATH; the **visualizer** is not a CLI — the agent's surface to graph data is `twf graph --json` (the GUI stays human-facing via the `twf.visualize` command). | S |
+| 3.3 | **Done.** Skill/onboarding note: skills assume `twf` on PATH; the **visualizer** is not a CLI — the agent's surface to graph data is `twf graph --json` (the GUI stays human-facing via the `twf.visualize` command). Landed in the README "Agent vs. human surfaces" note via the reposition. | S |
 
 **Acceptance:** With only the extension installed (no `go install`), a fresh agent shell resolves
 `twf` on PATH and `twf graph --json` works. No path-digging.

@@ -1,6 +1,6 @@
 # Temporal Workflow Examples
 
-Production-grade workflow designs showcasing Temporal's strengths across real-world domains. Each example uses the `.twf` DSL to capture the full architecture — namespaces, workers, workflows, activities, and Temporal primitives — before any SDK code is written.
+Production-grade workflow designs showcasing Temporal's strengths across real-world domains. Each example uses `.twf` to capture the full architecture — namespaces, workers, workflows, activities, and Temporal primitives — before any SDK code is written.
 
 ## Examples
 

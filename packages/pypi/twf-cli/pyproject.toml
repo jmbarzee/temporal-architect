@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "twf-cli"
 version = "0.8.4"
-description = "TWF (Temporal Workflow Format) CLI, language server, and MCP server."
+description = "Toolchain for designing and validating entire Temporal systems in .twf — CLI, language server, and MCP server."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
 authors = [{ name = "Jamie Barzee" }]
-keywords = ["temporal", "workflow", "twf", "dsl", "mcp", "lsp", "cli"]
+keywords = ["temporal", "workflow", "twf", "architecture", "system design", "mcp", "lsp", "cli"]
 classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: MacOS",

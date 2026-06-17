@@ -1,7 +1,7 @@
 {
   "name": "@temporal-architect/claude-plugin",
   "version": "0.8.4",
-  "description": "Claude Code plugin payload for temporal-architect (TWF design + Go authoring skills, plus the twf MCP server).",
+  "description": "Claude Code plugin payload for temporal-architect — the `.twf` architecture toolchain for designing, validating, and implementing entire Temporal systems (design, Go-authoring, and infra-provisioning skills, plus the twf MCP server).",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/packages/npm/claude-plugin",
   "repository": {
@@ -18,7 +18,8 @@
     "temporal",
     "workflow",
     "twf",
-    "dsl",
+    "architecture",
+    "system design",
     "mcp"
   ],
   "files": [

@@ -1,6 +1,6 @@
 # TWF Visualizer — Product Vision
 
-The TWF Visualizer renders Temporal workflow definitions from the `.twf` DSL as an interactive, explorable interface. It gives developers a visual understanding of their workflow system — both the fine-grained logic of individual definitions and the architectural relationships between them.
+The TWF Visualizer renders Temporal system architecture from `.twf` as an interactive, explorable interface. It gives developers a visual understanding of their workflow system — both the fine-grained logic of individual definitions and the architectural relationships between them.
 
 Two views compose into a single product:
 

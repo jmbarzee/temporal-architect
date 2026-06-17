@@ -1,11 +1,13 @@
 # temporal-architect
 
-A language-agnostic DSL (`.twf`) for Temporal workflows — capturing workflow structure, activity boundaries, and Temporal primitives before writing SDK code.
+Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — as a validated, visual source of truth. `.twf` is the artifact; `twf` is the deterministic harness that gives your AI compiler-grade feedback at system scale.
 
-`.twf` serves two goals:
+`temporal-architect` is the architecture layer above SDK codegen. It extends the complexity horizon of AI-assisted development: instead of working at code scale — error handling, library choices, SDK pedantics — an agent works at *system* scale, reasoning about deployment topology, scaling, reliability, and availability against a parseable model the `twf` parser and language server validate. The deployment graph can be built from your `.twf` source of truth *or* recovered straight from production history (`twf graph --history`), so the harness reads a *running* system, not just a design.
 
-1. **Document Temporal Architectures** — Describe production-scale systems with namespaces, workers, workflows, activities, and Nexus services in a single readable notation.
-2. **Facilitate AI-Driven Development** — Give AI agents a structured, parseable representation they can design against and translate into SDK code.
+<!-- [SCREENSHOT: S1 — Graph View, full system, namespace→worker→workflow with dependency edges] → docs/images/graph-view-system.png -->
+<!-- [SCREENSHOT: S2 — Tree View, one workflow expanded with inline call expansion] → docs/images/tree-view-expanded.png -->
+
+The `twf` CLI is self-documenting — every command and flag is discoverable via `twf --help` and `twf <command> --help`, so the agent never guesses at the harness surface.
 
 ## Quick install
 
@@ -13,8 +15,8 @@ Pick the install line for your environment:
 
 | Audience / tool | Install |
 |---|---|
-| **Cursor / VS Code** | Install **Temporal Workflow (.twf)** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) or [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax). Bundles the binary, AI skills (auto-installed to `~/.cursor/skills/`), and the workflow visualizer. |
-| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-architect` then `/plugin install temporal-architect@temporal-architect`. Bundles both skills and the `twf` MCP server. |
+| **Cursor / VS Code** | Install **Temporal Architect** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) or [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax). Bundles the `twf` binary, the system-design skills (auto-installed to `~/.cursor/skills/`), and the architecture visualizer. |
+| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-architect` then `/plugin install temporal-architect@temporal-architect`. Bundles the design, Go-authoring, and infra-provisioning skills plus the `twf` MCP server. |
 | **Any MCP-compatible client** (Claude Desktop, Cursor MCP, Continue, Windsurf, Zed) | Add to your MCP client config: `{"twf": {"command": "npx", "args": ["-y", "@temporal-architect/twf", "mcp"]}}` |
 | **Node / JS / TS projects** | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm install -g @temporal-architect/twf`. |
 | **Python projects** | `pip install twf-cli` |
@@ -36,20 +38,29 @@ A Go binary providing parsing, validation, symbol extraction, and a full LSP ser
 | `twf parse <file...>` | Output the AST as JSON (always emits partial AST, even with errors) |
 | `twf symbols <file...>` | List workflows and activities with their signatures |
 | `twf graph <file...>` | Emit the resolved deployment graph (nodes are deployments, edges are dispatches) |
+| `twf graph --history <dir>` | Recover a deployment graph straight from sampled production histories — no `.twf` required |
 | `twf spec [--list \| <slug>]` | Print the embedded TWF language specification |
 | `twf lsp` | Start the language server over stdio |
 
 Options: `--json` (JSON output where applicable), `--lenient` (continue past resolve errors).
 
+**Graph from production history.** `twf graph --history <dir>` reconstructs a deterministic deployment graph directly from a tree of sampled workflow histories — the harness reads a *running* system, not just a design. The [`tools/sampler/`](./tools/sampler/) collector pulls a representative sample from a live Temporal namespace into the layout `--history` consumes. This is the seed of the **observed-vs-designed overlay**: diff a history-derived graph against a `.twf`-derived one to surface drift between design and production.
+
+<!-- [SCREENSHOT: S7 — Graph View rendered from sampled history, beside the same system's .twf-designed graph] → docs/images/graph-view-history.png -->
+
 The language server provides real-time diagnostics, symbol resolution, completions, hover, go-to-definition, references, rename, code actions, folding, inlay hints, semantic tokens, and signature help.
 
-### Workflow Visualizer
+### Architecture Visualizer
 
-A React + TypeScript webview (Vite-built) that renders parsed `.twf` ASTs. Runs standalone for development or embedded in the VS Code extension.
+A React + TypeScript webview (Vite-built) that renders the system architecture defined in `.twf` — namespaces, workers, workflows, and Nexus. Runs standalone for development or embedded in the VS Code extension.
 
 **[Tree View](./tools/visualizer/spec/TREE_VIEW.md)** — Renders every definition as a collapsible, color-coded block in a vertical list. Supports inline expansion of cross-references (a workflow call expands to show the target workflow's body in place), file filtering, definition type toggles, and search. Full light/dark theme support.
 
 **[Graph View](./tools/visualizer/spec/GRAPH_VIEW.md)** — A force-directed graph showing how definitions relate to each other. Three node levels (Namespace → Worker → Workflow) form a containment hierarchy with dependency edges derived by graph coarsening. Semantic zoom lets you select which abstraction levels are visible. Includes interactive force-tuning controls, animated level transitions, and hover/selection highlighting.
+
+### Agent vs. human surfaces
+
+The skills assume `twf` is **on PATH** (the VS Code/Cursor extension symlinks the bundled binary into a PATH dir on activation; otherwise install via any [Quick install](#quick-install) line). An AI agent reads graph data through `twf graph --json` — a structured, deterministic surface it drives directly. The **visualizer GUI stays human-facing**, opened via the `twf.visualize` editor command; it is not a CLI the agent drives. Keeping the agent on the JSON surface and out of "where is the tool" busywork is exactly the context-protection the project is built on.
 
 ## Temporal Features
 
@@ -82,14 +93,15 @@ The TWF notation covers the core Temporal feature set:
 
 ## Skills
 
-- **[temporal-architect-design](./skills/temporal-architect-design/SKILL.md)** — Design Temporal systems in `.twf`, a language-agnostic DSL with parser/LSP tooling and visualization
+- **[temporal-architect-design](./skills/temporal-architect-design/SKILL.md)** — Design entire Temporal systems in `.twf` — workflows, activities, workers, namespaces, and Nexus — with parser/LSP validation and visualization
 - **[temporal-architect-author-go](./skills/temporal-architect-author-go/SKILL.md)** — Generate Go code from `.twf` designs using the Temporal Go SDK
+- **[temporal-architect-author-infra](./skills/temporal-architect-author-infra/SKILL.md)** — Provision the control-plane resources a `.twf` design needs — namespaces, Nexus endpoints, search attributes — via the Temporal Cloud Terraform provider or self-hosted `tcld` / `temporal operator`
 
 ### Planned
 
-- **Implementers** — More authorship skills (TypeScript, Python, Java, etc.)
-- **Translators** — Analyze existing systems (event-based architectures, SQS/Lambda, etc.) and generate equivalent DSL designs
-- **Debuggers & Optimizers** — Assist with debugging, profiling, and optimizing existing Temporal workflows
+- **More implementers** — Additional authorship skills beyond Go and infra (TypeScript, Python, Java, etc.)
+- **Translators** — Analyze existing systems (event-based architectures, SQS/Lambda, etc.) and generate equivalent `.twf` designs
+- **Debuggers & Optimizers** — Assist with debugging, profiling, and optimizing existing Temporal systems
 
 ## Packaging & Distribution
 
@@ -97,7 +109,7 @@ Every way `twf` and the skills ship — the canonical channel matrix. For user-f
 
 | Channel | Artifact | Install | Bundles | Source |
 |---|---|---|---|---|
-| **VS Code Marketplace** / **Open VSX** | `jmbarzee.twf-syntax` (VSIX, 5 platforms) | Search "Temporal Workflow (.twf)" in Extensions, or install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) / [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax) | `twf` binary, LSP client, visualizer webview, skills (auto-installed to `~/.cursor/skills/` on activation) | [`packages/vscode/`](./packages/vscode/) |
+| **VS Code Marketplace** / **Open VSX** | `jmbarzee.twf-syntax` (VSIX, 5 platforms) | Search "Temporal Architect" in Extensions, or install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) / [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax) | `twf` binary, LSP client, visualizer webview, skills (auto-installed to `~/.cursor/skills/` on activation) | [`packages/vscode/`](./packages/vscode/) |
 | **Claude Code marketplace** | `@temporal-architect/claude-plugin` (payload) | `/plugin marketplace add jmbarzee/temporal-architect` → `/plugin install temporal-architect@temporal-architect` | skills tree + plugin manifest declaring the `twf` MCP server | catalog at [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json); payload built from [`packages/npm/claude-plugin/`](./packages/npm/claude-plugin/) |
 | **npm (wrapper + platform sub-packages)** | `@temporal-architect/twf` + `@temporal-architect/twf-{darwin-arm64,darwin-x64,linux-arm64,linux-x64,win32-x64}` | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm i -g @temporal-architect/twf` | `twf` binary (resolved via `optionalDependencies` per platform) | [`packages/npm/twf/`](./packages/npm/twf/) wrapper + [`packages/npm/twf-*/`](./packages/npm/) sub-packages |
 | **npm (visualizer)** | `@temporal-architect/visualizer` | `npm install @temporal-architect/visualizer` then `import { Visualizer } from '@temporal-architect/visualizer'` | React `<Visualizer>` component + AST/diagnostic types + sibling `styles.css` | [`tools/visualizer/`](./tools/visualizer/) (built via `vite.lib.config.ts`) |
@@ -105,7 +117,7 @@ Every way `twf` and the skills ship — the canonical channel matrix. For user-f
 | **Homebrew tap** | `jmbarzee/homebrew-twf` formula `twf` | `brew install jmbarzee/twf/twf` | `twf` binary | formula auto-bumped by [`internal/release/bump-brew/`](./internal/release/bump-brew/) against the tap repo |
 | **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + `SHA256SUMS` + `install.sh` | `curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh \| bash` (binary only) or download individually | platform binary; `skills/` tree with `MANIFEST.json` | built by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/) and [`skills/`](./skills/) via [`internal/release/gen-skills-manifest/`](./internal/release/gen-skills-manifest/) |
 | **Go install** | `github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf` | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` | `twf` binary (built from source by the user's Go toolchain) | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) |
-| **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/temporal-architect-design/`](./skills/temporal-architect-design/) and [`skills/temporal-architect-author-go/`](./skills/temporal-architect-author-go/) |
+| **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/temporal-architect-design/`](./skills/temporal-architect-design/), [`skills/temporal-architect-author-go/`](./skills/temporal-architect-author-go/), and [`skills/temporal-architect-author-infra/`](./skills/temporal-architect-author-infra/) |
 | **MCP** (planned, M2) | `twf mcp` over stdio | configure any MCP client to launch `npx -y @temporal-architect/twf mcp` (or `twf mcp` if installed) | tools wrapping `check`/`parse`/`symbols`/`spec`/`skill`; resources for spec sections and skill files; prompts per skill | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) (subcommand to be added) |
 | **Smithery MCP registry** (planned, post-M2) | listing pointing at the `twf mcp` install line | discover and install via the Smithery UI / CLI | (registry listing only — no payload) | submission only; no source in this repo |
 

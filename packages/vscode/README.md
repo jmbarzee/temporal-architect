@@ -1,11 +1,12 @@
-# Temporal Workflow (.twf)
+# Temporal Architect
 
-A language-agnostic DSL for Temporal workflows — capturing workflow structure, activity boundaries, and Temporal primitives before writing SDK code.
+Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — as a validated, visual source of truth. `.twf` is the artifact; `twf` is the deterministic harness that gives your AI compiler-grade feedback at system scale.
 
-`.twf` serves two goals:
+This is the architecture layer above SDK codegen: a parseable model of your whole deployment, validated by a real parser and language server and rendered as an interactive architecture graph — not a per-workflow assist.
 
-1. **Document Temporal Architectures** — Describe production-scale systems with namespaces, workers, workflows, activities, and Nexus services in a single readable notation.
-2. **Facilitate AI-Driven Development** — Give AI agents a structured, parseable representation they can design against and translate into SDK code.
+<!-- [SCREENSHOT: S1 — Graph View, full system (namespace→worker→workflow) with dependency edges] → images/graph-view-system.png -->
+<!-- [SCREENSHOT: S3 — Graph View, dark theme, in the VS Code/Cursor webview with the editor beside it] → images/graph-view-webview.png -->
+<!-- [SCREENSHOT: S4 — Live diagnostics: red squiggle + hover on an undefined activity] → images/diagnostics.png -->
 
 ## Features
 
@@ -33,12 +34,13 @@ Two complementary views:
 - **Tree View** — Every definition rendered as a collapsible, color-coded block. Expand a workflow call to see the target workflow's body inline. Filter by file, definition type, or search by name.
 - **Graph View** — A force-directed graph showing relationships across namespaces, workers, and workflows. Semantic zoom lets you switch between abstraction levels. Interactive force-tuning controls and animated transitions.
 
-### AI Design Skills
+### System-Design Skills
 
-Installs Temporal design skills for Cursor's AI agent:
+Installs the `temporal-architect` skills for Cursor's AI agent — a deterministic harness that lets the agent reason at system scale instead of code scale:
 
-- **Workflow design** — guides the agent through designing workflows with proper determinism, idempotency, and decomposition
+- **Design** — guides the agent through designing entire systems (workflows, activities, workers, namespaces, Nexus) with proper determinism, idempotency, and decomposition
 - **Go authoring** — translates `.twf` designs into Temporal Go SDK code
+- **Infra provisioning** — provisions the control-plane resources a design needs (namespaces, Nexus endpoints, search attributes) via the Temporal Cloud Terraform provider or self-hosted `tcld` / `temporal operator`
 
 ### `twf` CLI
 
@@ -49,7 +51,11 @@ The bundled `twf` binary is also available as a standalone CLI:
 | `twf check <file...>` | Parse and validate `.twf` files |
 | `twf parse <file...>` | Output the AST as JSON |
 | `twf symbols <file...>` | List workflows and activities with signatures |
+| `twf graph <file...>` | Emit the resolved deployment graph |
+| `twf graph --history <dir>` | Recover a deployment graph from sampled production histories (no `.twf` required) |
 | `twf lsp` | Start the language server (stdio) |
+
+`twf graph --history` reconstructs a deterministic deployment graph straight from a tree of sampled production workflow histories — the harness reads a *running* system, not just a design. The `tools/sampler/` collector pulls a representative sample from a live namespace into the layout it consumes.
 
 ## Temporal Features
 
@@ -82,7 +88,7 @@ The TWF notation covers the core Temporal feature set:
 
 ## Installation
 
-Search for **"Temporal Workflow"** in the VS Code or Cursor extension marketplace.
+Search for **"Temporal Architect"** in the VS Code or Cursor extension marketplace.
 
 The extension bundles the `twf` binary (language server + parser). No additional setup required.
 
@@ -92,7 +98,7 @@ The extension bundles the `twf` binary (language server + parser). No additional
 |---------|-------------|
 | **TWF: Visualize Workflow** | Open the interactive visualizer for the current `.twf` file |
 | **TWF: Visualize All Workflows in Folder** | Visualize all `.twf` files in a folder |
-| **TWF: Install Temporal Skills** | Re-install AI design skills to `~/.cursor/skills/` |
+| **Temporal Architect: Install Skills** | Re-install the system-design skills to `~/.cursor/skills/` |
 
 ## License
 

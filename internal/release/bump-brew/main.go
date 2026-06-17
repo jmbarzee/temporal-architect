@@ -57,7 +57,7 @@ var Platforms = []Platform{
 // formulaTemplate renders Formula/twf.rb. The template uses Go's text/template
 // syntax. SHA values come from per-platform archive downloads.
 const formulaTemplate = `class Twf < Formula
-  desc "TWF (Temporal Workflow Format) CLI, language server, and MCP server"
+  desc "Toolchain for designing and validating entire Temporal systems in .twf"
   homepage "https://github.com/{{.SourceRepo}}"
   version "{{.Version}}"
   license "MIT"

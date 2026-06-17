@@ -15,8 +15,8 @@ user installs the `temporal-architect` plugin.
 
 Bundles:
 
-- **Skills** — `temporal-architect-design` and `temporal-architect-author-go`, available
-  to Claude as auto-discoverable agent skills.
+- **Skills** — `temporal-architect-design`, `temporal-architect-author-go`, and
+  `temporal-architect-author-infra`, available to Claude as auto-discoverable agent skills.
 - **MCP server** — the `twf` MCP server (via `npx -y @temporal-architect/twf mcp`),
   exposing TWF parser tools, embedded spec resources, and skill prompts.
 

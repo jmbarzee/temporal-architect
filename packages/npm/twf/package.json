@@ -1,7 +1,7 @@
 {
   "name": "@temporal-architect/twf",
   "version": "0.8.4",
-  "description": "TWF (Temporal Workflow Format) CLI, language server, and MCP server.",
+  "description": "Toolchain for designing and validating entire Temporal systems in `.twf` — CLI, language server, and MCP server.",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/packages/npm/twf",
   "repository": {
@@ -16,7 +16,8 @@
     "temporal",
     "workflow",
     "twf",
-    "dsl",
+    "architecture",
+    "system design",
     "mcp",
     "lsp",
     "cli"
