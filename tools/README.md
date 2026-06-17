@@ -5,7 +5,9 @@ consumed by users of the project, either directly (e.g. `tools/spec`
 imported as a Go module) or after compilation/packaging (e.g.
 `tools/lsp` → `twf` binary).
 
-For the *packaged artifacts* that result, see [`packages/`](../packages/).
+For the *packaged artifacts* that result (the VS Code/Cursor extension, npm,
+PyPI, Homebrew, Claude plugin), see the distribution repo
+[`jmbarzee/temporal-architect-dist`](https://github.com/jmbarzee/temporal-architect-dist).
 For the [`internal/`](../internal/) tree, that's everything dev-only —
 release tooling, the dev-cycle orchestrator, helper scripts.
 

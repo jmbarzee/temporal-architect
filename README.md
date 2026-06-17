@@ -63,7 +63,7 @@ Pick the install line for your environment:
 | **Node / JS / TS projects** | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm install -g @temporal-architect/twf` |
 | **Python projects** | `pip install twf-cli` |
 | **Homebrew** (macOS / Linux) | `brew install jmbarzee/twf/twf` |
-| **Direct binary** | `curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh \| bash` |
+| **Direct binary** | `curl -sSL https://raw.githubusercontent.com/jmbarzee/temporal-architect-dist/main/packages/install.sh \| bash` |
 | **Go projects** | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` |
 
 All install paths converge on the same `twf` binary and the same embedded skills + spec.
@@ -175,7 +175,7 @@ Registry **identifiers** are unchanged by the split (npm scope `@temporal-archit
 | **npm (wire-types)** | `@temporal-architect/wire-types` | `npm install @temporal-architect/wire-types` (type-only) | TypeScript projection of the JSON wire contract (generated from the Go DTOs) | built here from [`tools/wire-types/`](./tools/wire-types/); published from the dist repo |
 | **PyPI** | `twf-cli` (wheel, 5 platforms) | `pip install twf-cli` | `twf` binary force-included per wheel; MCP server entrypoint | `packages/pypi/twf-cli/` (dist repo) |
 | **Homebrew tap** | `jmbarzee/homebrew-twf` formula `twf` | `brew install jmbarzee/twf/twf` | `twf` binary | formula auto-bumped by `internal/release/bump-brew/` (dist repo) against the tap repo |
-| **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + visualizer lib/webview + wire-types tarballs + `SHA256SUMS` + `install.sh` | `curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh \| bash` (binary only) or download individually | platform binary; `skills/` tree with `MANIFEST.json`; visualizer + wire-types tarballs | cut **here** by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/), [`tools/visualizer/`](./tools/visualizer/), [`tools/wire-types/`](./tools/wire-types/), and [`skills/`](./skills/) |
+| **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + visualizer lib/webview + wire-types tarballs + `SHA256SUMS` | `curl -sSL https://raw.githubusercontent.com/jmbarzee/temporal-architect-dist/main/packages/install.sh \| bash` (binary only; the installer lives in the dist repo and downloads these assets) or download individually | platform binary; `skills/` tree with `MANIFEST.json`; visualizer + wire-types tarballs | cut **here** by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/), [`tools/visualizer/`](./tools/visualizer/), [`tools/wire-types/`](./tools/wire-types/), and [`skills/`](./skills/) |
 | **Go install** | `github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf` | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` | `twf` binary (built from source by the user's Go toolchain) | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) |
 | **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/temporal-architect-design/`](./skills/temporal-architect-design/), [`skills/temporal-architect-author-go/`](./skills/temporal-architect-author-go/), and [`skills/temporal-architect-author-infra/`](./skills/temporal-architect-author-infra/) |
 | **MCP** (planned, M2) | `twf mcp` over stdio | configure any MCP client to launch `npx -y @temporal-architect/twf mcp` (or `twf mcp` if installed) | tools wrapping `check`/`parse`/`symbols`/`spec`/`skill`; resources for spec sections and skill files; prompts per skill | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) (subcommand to be added) |
@@ -202,9 +202,6 @@ tools/
   sampler/          History collector for `twf graph --history`
 skills/             AI skill definitions (SKILL.md + reference docs)
 
-# Canonical release surface (cut where the GitHub Release is cut)
-packages/install.sh Curl-bash installer (no package manager required)
-
 # Dev — release tooling, dev-cycle orchestration, version helper
 internal/
   release/          Go tools that build the release assets (skills tarball)
@@ -224,7 +221,8 @@ examples/           Example `.twf` files
 This repository is a **pure toolchain**: it builds the engine and rendering source,
 then cuts a single **GitHub Release** of primitive artifacts — per-platform `twf`
 binaries, the `skills-vX.Y.Z.tar.gz` tarball, the visualizer library + webview bundle,
-the `@temporal-architect/wire-types` tarball, `SHA256SUMS`, and `install.sh`.
+the `@temporal-architect/wire-types` tarball, and `SHA256SUMS`. (The curl-bash
+`install.sh` itself lives in the dist repo and downloads these assets.)
 
 A separate **distribution repo** ([`jmbarzee/temporal-architect-dist`](https://github.com/jmbarzee/temporal-architect-dist))
 consumes those assets and produces every shippable package: the VS Code/Cursor

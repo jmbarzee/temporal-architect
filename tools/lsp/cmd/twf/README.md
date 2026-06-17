@@ -23,14 +23,14 @@ file is published alongside every release for checksum verification.
 **One-liner (macOS / Linux):**
 
 ```bash
-curl -sSL https://github.com/jmbarzee/temporal-architect/releases/latest/download/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/jmbarzee/temporal-architect-dist/main/packages/install.sh | bash
 ```
 
 To pin a specific version or change the install directory:
 
 ```bash
 VERSION=v0.3.0 INSTALL_DIR=/usr/local/bin \
-  curl -sSL https://github.com/jmbarzee/temporal-architect/releases/download/v0.3.0/install.sh | bash
+  curl -sSL https://raw.githubusercontent.com/jmbarzee/temporal-architect-dist/main/packages/install.sh | bash
 ```
 
 **Manual install:**

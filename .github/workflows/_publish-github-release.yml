@@ -55,5 +55,4 @@ jobs:
             dist/*.tgz
             dist/visualizer-webview-*
             dist/SHA256SUMS
-            packages/install.sh
           generate_release_notes: true
