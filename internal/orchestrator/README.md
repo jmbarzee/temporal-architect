@@ -26,18 +26,17 @@ DevCycleWorkflow
 
 ## Components
 
-The authoritative component graph lives in `internal/harness/components.md`; the table below is an illustrative summary (and omits `author-infra-skill`, which the manifest includes).
+The authoritative component graph lives in `internal/harness/components.md`; the table below is an illustrative summary. The `skills` component covers all skills (design, author-go, author-infra, and the `temporal-architect` front-door) as one node.
 
 Each component maps to a directory scope, review commands, and downstream edges:
 
 | Component | Scope | Quality Review | Alignment Review(s) | Downstream |
 |-----------|-------|----------------|---------------------|------------|
 | `dsl` | `tools/spec/sections/` | `review-quality-dsl-spec` | — | parser |
-| `parser` | `tools/lsp/` | `review-quality-parser` | `review-alignment-parser` | visualizer, design-skill |
+| `parser` | `tools/lsp/` | `review-quality-parser` | `review-alignment-parser` | visualizer, skills |
 | `visualizer-spec` | `tools/visualizer/spec/` | `review-quality-visualizer-spec` | — | visualizer |
 | `visualizer` | `tools/visualizer/` (minus spec/) | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — |
-| `design-skill` | `skills/temporal-architect-design/` | `review-quality-skill` | `review-alignment-design-skill` | author-go-skill |
-| `author-go-skill` | `skills/temporal-architect-author-go/` | `review-quality-skill` | `review-alignment-author-skills` | — |
+| `skills` | `skills/` | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — |
 
 ## File Conventions
 
@@ -53,10 +52,13 @@ internal/changes/
     quality_REVISIONS_001.md
     parser-output_REVISIONS_001.md
     CHANGES_001.md
-  design-skill/
-    quality_REVISIONS_001.md
-    alignment_REVISIONS_001.md
+  skills/
+    quality-design_REVISIONS_001.md
+    alignment-design_REVISIONS_001.md
+    alignment-author_REVISIONS_001.md
 ```
+
+All skill reviews share the single `skills/` directory, so the `{type}` prefix is source-encoded (e.g. `quality-design`, `alignment-author`) to keep concurrent reviews from colliding. `address-review` merges every `skills/*_REVISIONS_*.md` into one `skills/CHANGES_{NNN}.md`.
 
 **Rules:**
 
@@ -110,13 +112,12 @@ Components with no upstream/downstream relationship run in parallel. The depende
 
 ```
 Wave 1: dsl, parser (independent — dsl is spec-only, parser is implementation)
-Wave 2: visualizer + design-skill + visualizer-spec (parallel, non-overlapping directories)
-Wave 3: author-go-skill
+Wave 2: visualizer + skills + visualizer-spec (parallel, non-overlapping directories)
 ```
 
 Within a wave, children are independent and run concurrently. Between waves, the main workflow waits for all children to complete, commits their changes, and scans for new REVISIONS before starting the next wave.
 
-Leaf nodes (visualizer, author-go-skill) terminate the propagation chain.
+Leaf nodes (visualizer, skills) terminate the propagation chain.
 
 ### Filesystem safety invariant
 

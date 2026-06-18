@@ -20,12 +20,20 @@ Review prompts referenced below live at `.claude/skills/dev-cycle/references/<na
 | `parser` | `tools/lsp/` | `internal/changes/parser/` | `review-quality-parser` | `review-alignment-parser` | `visualizer` [Schema, API], `visualizer-spec` [Schema], `skills` [Grammar, Semantic] |
 | `visualizer-spec` | `tools/visualizer/spec/` | `internal/changes/visualizer-spec/` | `review-quality-visualizer-spec` | — | `visualizer` [Spec] |
 | `visualizer` | `tools/visualizer/` (excluding `spec/`) | `internal/changes/visualizer/` | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — (leaf) |
-| `skills` | `skills/` | `internal/changes/` (per-skill subdirs: `design-skill/`, `author-go-skill/`, `author-infra-skill/`, `harness-skill/`) | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — (leaf) |
+| `skills` | `skills/` | `internal/changes/skills/` | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — (leaf) |
 
 The skill set — design, the two authors, and the `temporal-architect` harness front-door — is **one
 component**. Its members have dependencies flowing in many internal directions (design ↔ authors ↔
 harness), so those edges are **intra-component**, not modeled in the DAG. The skills are downstream; the
 only inbound edge is from `parser`.
+
+All skill reviews share the single `internal/changes/skills/` directory, so the `{type}` token in the
+`{type}_REVISIONS_{NNN}.md` naming convention is **source-encoded** to keep concurrent reviews from
+colliding: quality reviews write `quality-{skill}_REVISIONS_{NNN}.md` (`quality-design`,
+`quality-author-go`, `quality-author-infra`, `quality-architect`); alignment reviews write
+`alignment-design_REVISIONS_{NNN}.md` and `alignment-author_REVISIONS_{NNN}.md`. `address-review` still
+merges every `internal/changes/skills/*_REVISIONS_*.md` into one sequence and writes a single
+`skills/CHANGES_{NNN}.md`.
 
 `internal/changes/orchestrator/` is **not** a cycle component — it is coordination scratch for the
 orchestrator's own design and is excluded.

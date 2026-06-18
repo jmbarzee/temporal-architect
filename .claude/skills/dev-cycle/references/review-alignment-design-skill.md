@@ -13,7 +13,7 @@ Skill craft and structure belong in `.claude/skills/dev-cycle/references/review-
 - `skills/temporal-architect-design/README.md` — declared goal and scope of the skill
 - `skills/temporal-architect-design/SKILL.md` and `skills/temporal-architect-design/reference/` — the target under review
 - in-flight files in `internal/changes/` (especially `dsl/` and `parser/`) — changes in flight that may introduce new constructs requiring pre-emptive documentation
-- All existing files in `internal/changes/design-skill/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
+- All existing files in `internal/changes/skills/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -53,15 +53,15 @@ Merge all findings. For each issue:
 - **Gap**: what's absent, inaccurate, or outdated
 - **Severity**: `critical` (common construct or frequent error, undocumented) | `moderate` | `minor`
 
-Drop anything already tracked in existing `internal/changes/design-skill/*_REVISIONS_*.md` or `internal/changes/design-skill/CHANGES_*.md` files.
+Drop anything already tracked in existing `internal/changes/skills/*_REVISIONS_*.md` or `internal/changes/skills/CHANGES_*.md` files.
 
 ### Phase 4: Group & Prioritize
 
 Group by construct family. Order: stale content first (actively misleads users), then missing critical constructs, then partial coverage, then minor gaps.
 
-### Phase 5: Write to `internal/changes/design-skill/alignment_REVISIONS_{NNN}.md`
+### Phase 5: Write to `internal/changes/skills/alignment-design_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/design-skill/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/design-skill/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/skills/alignment-design_REVISIONS_{NNN}.md` (create the `internal/changes/skills/` directory if needed). The filename is source-encoded (`alignment-design`) because all skills share the single `skills` component directory. Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: coverage state, stale content found, `twf check` result summary
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Internal`), parallelism notes

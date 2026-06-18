@@ -89,15 +89,17 @@ Group by theme. Order by:
 3. Example and grounding issues
 4. Minor density and structure improvements
 
-### Phase 4: Write to `internal/changes/{component}/quality_REVISIONS_{NNN}.md`
+### Phase 4: Write to `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md`
 
-Derive the component name from the skill path:
-- `skills/temporal-architect-design` → `design-skill`
-- `skills/temporal-architect-author-go` → `author-go-skill`
+All skills share the single `skills` component directory, so the REVISIONS filename is source-encoded by skill. Derive `{skill}` from the skill path:
+- `skills/temporal-architect-design` → `quality-design`
+- `skills/temporal-architect-author-go` → `quality-author-go`
+- `skills/temporal-architect-author-infra` → `quality-author-infra`
+- `skills/temporal-architect` → `quality-architect`
 
-Write the grouped plan to `internal/changes/{component}/quality_REVISIONS_{NNN}.md` (create the directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md` (create the directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 
-Also read all existing files in `internal/changes/{component}/` before starting — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed.
+Also read all existing files in `internal/changes/skills/` before starting — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed.
 - Brief summary: skill under review, overall quality assessment
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Internal`), parallelism notes

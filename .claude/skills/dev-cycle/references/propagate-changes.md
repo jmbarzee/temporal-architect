@@ -33,7 +33,7 @@ For each non-internal change, map to downstream layers using the dependency grap
 | CHANGES file | Change type | Downstream component | Review command |
 |---|---|---|---|
 | internal/changes/parser/CHANGES_001.md | Schema | visualizer | review-quality-visualizer |
-| internal/changes/dsl/CHANGES_001.md | Grammar | design-skill | review-alignment-design-skill |
+| internal/changes/parser/CHANGES_001.md | Grammar | skills | review-alignment-design-skill |
 | ... | | | |
 
 Deduplicate: if the same review command is triggered by multiple change types, merge the context — one sub-agent handles all relevant changes for that layer.

@@ -12,8 +12,8 @@ Skill craft belongs in `.claude/skills/dev-cycle/references/review-quality-skill
 - Temporal Go SDK via **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowledge_sources`) — authoritative: current SDK API, patterns, and idioms
 - `skills/temporal-architect-author-go/README.md` — declared scope of the skill
 - `skills/temporal-architect-author-go/SKILL.md` and `skills/temporal-architect-author-go/reference/` — the target under review
-- in-flight files in `internal/changes/` (especially `parser/` and `design-skill/`) — changes in flight that may introduce new design constructs requiring new Go mappings
-- All existing files in `internal/changes/author-go-skill/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
+- in-flight files in `internal/changes/` (especially `parser/` and `skills/`) — changes in flight that may introduce new design constructs requiring new Go mappings
+- All existing files in `internal/changes/skills/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -57,15 +57,15 @@ Merge all findings. For each issue:
 - **Gap**: what's absent, stale, or wrong
 - **Severity**: `critical` (common construct unmapped, or SDK usage that would produce broken code) | `moderate` | `minor`
 
-Drop anything already tracked in existing `internal/changes/author-go-skill/*_REVISIONS_*.md` or `internal/changes/author-go-skill/CHANGES_*.md` files.
+Drop anything already tracked in existing `internal/changes/skills/*_REVISIONS_*.md` or `internal/changes/skills/CHANGES_*.md` files.
 
 ### Phase 4: Group & Prioritize
 
 Group by construct family. Order: incorrect SDK usage first (produces broken code), then missing mappings for common constructs, then coverage gaps, then minor accuracy issues.
 
-### Phase 5: Write to `internal/changes/author-go-skill/alignment_REVISIONS_{NNN}.md`
+### Phase 5: Write to `internal/changes/skills/alignment-author_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/author-go-skill/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/author-go-skill/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/skills/alignment-author_REVISIONS_{NNN}.md` (create the `internal/changes/skills/` directory if needed). The filename is source-encoded (`alignment-author`) because all skills share the single `skills` component directory. Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
 - Brief summary: coverage state, SDK accuracy state
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Internal`), parallelism notes

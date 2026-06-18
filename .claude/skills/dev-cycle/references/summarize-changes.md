@@ -44,8 +44,8 @@ Present a consolidated report:
 ```
 ## Remaining
 
-### design-skill
-- alignment_REVISIONS_001.md: 3 groups, moderate severity
+### skills
+- alignment-design_REVISIONS_001.md: 3 groups, moderate severity
 ```
 
 **Propagation status** — which CHANGES triggered downstream REVISIONS, and whether those were addressed:
@@ -53,7 +53,7 @@ Present a consolidated report:
 ## Propagation
 
 parser/CHANGES_001.md (Schema) → visualizer/quality_REVISIONS_001.md → visualizer/CHANGES_001.md ✓
-parser/CHANGES_001.md (Grammar) → design-skill/alignment_REVISIONS_001.md → pending
+parser/CHANGES_001.md (Grammar) → skills/alignment-design_REVISIONS_001.md → pending
 ```
 
 ### Phase 4: Write Summary (optional)

@@ -526,7 +526,7 @@ worker ExtractionWorker:
     activity RunExtraction
 ```
 
-**Why needed:** The design skill is being revised to make "defer large payloads to the codec server" the default answer (see `design-skill/REVISIONS_003.md`). If that's the blessed pattern, the DSL should be able to *say* a codec is in play, so the decision is visible rather than implied.
+**Why needed:** The design skill is being revised to make "defer large payloads to the codec server" the default answer (see `skills/alignment-design_REVISIONS_003.md`). If that's the blessed pattern, the DSL should be able to *say* a codec is in play, so the decision is visible rather than implied.
 
 **Key challenge — codecs are worker-level, calls cross workers.** A payload codec is configured on the **data converter at the worker level**. But a workflow on worker A frequently calls an activity or child workflow that runs on worker B (different task queue, namespace, or across a Nexus boundary). The encoded payload produced under A's codec must be **decodable by B's codec** — if B isn't configured with a compatible codec, it gets an opaque/encrypted blob it can't read. So the hard part isn't representing the codec; it's **validating cross-worker codec compatibility**: every deployment on the receiving end of a dispatch edge must share (or be able to decode) the sender's codec. This is a routing-style check analogous to the existing task-queue routing validation, but over codec configuration rather than queues.
 

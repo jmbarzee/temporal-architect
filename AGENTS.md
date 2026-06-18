@@ -65,7 +65,7 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Stay on `0.x` until a deliberate first major release.** While pre-v1, *every* release is a minor or patch bump — breaking changes ship as `0.x` **minor** bumps (the CHANGELOG history follows this: each new construct or breaking change is a minor bump). Never run `make release TYPE=major` or pass an explicit `VERSION=1.x.x` until the team explicitly decides to cut `v1.0.0`. The release tooling never crosses into `1.x` on its own — a major only happens if someone asks for it. The package release tag tracks the DSL version in `CHANGELOG.md`.
 
-**Coordinate breaking changes through the `internal/changes/` directory.** Each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/orchestrator/`, `internal/changes/design-skill/`, `internal/changes/author-go-skill/`) owns three file types:
+**Coordinate breaking changes through the `internal/changes/` directory.** Each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/orchestrator/`, `internal/changes/skills/`) owns three file types:
 
 - `REVISIONS_NNN.md` — planned work for an active dev cycle
 - `CHANGES_NNN.md` — completed work, consumed and archived
