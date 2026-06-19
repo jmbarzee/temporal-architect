@@ -64,30 +64,62 @@ every node carries the base complexity.
 
 Strategies are **not** applied in priority order with first-match-wins. For each
 over-ceiling chunk, `exploreStrategies` runs *every* requested strategy
-(`selectStrategies` returns `[tree, nexus, worker, namespace, hub]`, or the
-`--by` subset) **independently** to produce a candidate split. Candidates that
-don't actually divide the chunk (<2 sections) or that would yield a sub-floor
-section are dropped. The survivors are then **ranked by whole-compound balance**
-(`rankDivisions`) and assigned `Rank` 1..N. Rank 1 is the best.
+(`selectStrategies` returns `[tree, nexus, worker, namespace, service, subtree]`,
+or the `--by` subset) **independently** to produce a candidate split. Candidates
+that don't actually divide the chunk (<2 sections) or that would yield a
+sub-floor section are dropped. The survivors are then **ranked by whole-compound
+balance** (`rankDivisions`) and assigned `Rank` 1..N. Rank 1 is the best.
 
-The cut strategies themselves live in `strategies.go` as `splitBy*` functions
-(member → section labeling); `buildSections` turns a labeling into sections + a
-dependency DAG. The `hub` strategy peels the single highest-fan-in shared node
-into its own section and leaves a `core`; on hub-dominated designs it un-sticks
-the structural strategies once the core is recursed (below).
+The cut strategies live in `strategies.go` as `splitBy*` functions (member →
+section labeling); `buildSections` turns a labeling into sections + a dependency
+DAG. There are two lenses:
+
+- **Use-case / balance lens** — `tree` (reachable-subtree seams), `nexus`
+  (contract closures), `worker` / `namespace` (deployment grouping). Good for
+  discovering use-cases from a reverse-history graph.
+- **Authorship-parallelism lens** (`dominators.go`) — `service` and `subtree`,
+  built for *extracting dependencies so authorship can be parallelized*:
+  - **`service`** extracts a shared service — the highest-fan-in hub *plus its
+    dominated closure* (the private nodes reachable only through it, recovered
+    via dominators, not raw in-degree) — then splits the remainder into its
+    binding components. When the hub is an articulation point joining
+    otherwise-separable subsystems, this exposes them as independent units.
+  - **`subtree`** selectively peels the heaviest *dominated child-workflow*
+    subtrees (workflow-call seams only, so activities stay glued to their caller)
+    until the trunk fits under the ceiling, leaving light branches inline.
+
+  Thin-neck composition subtrees and thick-neck shared services need opposite
+  edge-count signals, so no single balance metric handles both — hence two
+  strategies plus a parallel-width term (below) that credits extraction even when
+  the extracted piece itself isn't "balanced".
+
+### Effective complexity (coupling-aware)
+
+The explore phase's decisions use a coupling-aware **effective complexity**
+`Ec(S) = N(S) + λ·Ein(S)` (λ=1), where `N` is the additive node-complexity sum
+and `Ein` is the count of binding edges internal to `S` (`workgraph.go`
+`internalBindingEdges`). A tangled unit costs more than the sum of its parts (the
+severed edges drop out of the children), which is the "tree > sum of subtrees"
+property that lets a cut reduce effective complexity. `Ec` is used **only** for
+the recursion's over-ceiling test and for ranking; the public
+`Section`/`Chunk.Complexity` stays the additive `N`, so the wire contract and the
+ceiling/floor thresholds stay interpretable.
 
 ### Recursive re-division (compounding)
 
 A single cut is often not enough: the rank-1 division can still leave one section
 over the ceiling. So after building each candidate, `exploreStrategies`
-**lazily recurses** — every section that is still over the ceiling, spans ≥2 SCCs
-(loops are never cut, at any level), and re-divides cleanly is itself re-divided
-(`expandSections` → `subChunk` → the strategy menu again). The recursion is:
+**lazily recurses** — every section that is still over the ceiling (by `Ec`),
+spans ≥2 SCCs (loops are never cut, at any level), and re-divides cleanly is
+itself re-divided (`expandSections` → `subChunk` → `bestDivision` → the strategy
+menu again). The recursion is:
 
 - **lazy** — only over-ceiling sections are expanded;
-- **greedy inner** — a recursed section keeps a *single* locally-best
-  sub-division (`Section.Divisions`), not the whole menu, so the suggestion tree
-  stays compact;
+- **look-ahead** — a recursed section keeps a *single* sub-division, but it is
+  chosen by `bestDivision` which fully expands *every* candidate before ranking,
+  so the choice reflects each candidate's whole-recursed-compound balance (a
+  myopic flat choice would prefer "one big component" over "several medium
+  sections" and recurse far worse);
 - a **portfolio at the top** — every top-level strategy is fully expanded, then
   the whole compounds are ranked against each other;
 - **depth-capped** by `--max-depth` (`Options.MaxDepth`, default
@@ -95,22 +127,46 @@ over the ceiling. So after building each candidate, `exploreStrategies`
   recursion already terminates because every division yields ≥2 strictly-smaller
   sections.
 
-Candidates are ranked by the **worst *leaf* complexity** (the largest unit left
-after full recursion), then leaf count, then nesting depth, then total section
-count, then strategy name. For a flat (un-recursed) division this reduces to the
-original "max-section complexity, then section count, then name" ordering, so the
-two-level behavior is a strict generalization of the single-level one.
+### Ranking key
+
+`rankDivisions` orders whole compounds by a deterministic lexicographic key
+(see `METRIC_CALIBRATION.md` for the calibration against `temporal-compranda`):
+
+1. **fewer cuttable leaves still over the ceiling** — did the compound tame what
+   it could (a loop / single-node leaf is uncuttable and never counts as a
+   failure, see `leavesOverCeiling`);
+2. **lower worst-leaf `Ec`** — coupling-aware balance;
+3. **fewer top-level sections** — coherence / anti-shatter (the harness reads the
+   top level first, so a few coherent units beat a spray of fragments);
+4. **greater parallel width** — the decoupling reward: the maximum antichain of
+   the leaf dependency poset (`parallel.go`, Dilworth: leaves − maximum matching
+   of strict reachability), i.e. how many units are authorable in parallel;
+5. **fewer total sections**, then **shallower depth**;
+6. **strategy priority** (call-structure strategies before deployment ones), then
+   **name**, for determinism.
 
 `Section.Members` and `Section.Complexity` stay authoritative at every level — a
 consumer that doesn't walk `Section.Divisions` sees a flat top-level menu exactly
 as before.
+
+### Contract-promotion advisory
+
+The decide phase also emits an informational `suggestContract` **advisory**
+(`Chunk.Advisories`, `components.go` `contractAdvisories`) when a chunk contains a
+heavily-shared workflow / nexus-operation hub (binding in-degree ≥ 3) that is an
+articulation point — removing its dominated closure splits the remainder into ≥2
+binding components. It suggests promoting the in-process shared service to a Nexus
+contract for an independently-deployable boundary. Like every output here it
+**informs; it is never auto-applied**.
 
 ## Edge semantics
 
 Definition-keyed edges are classified by call semantics:
 
 - **binding** (`activityCall`, `workflowCall`, `asyncBacking`) — call structure;
-  drives reachability, SCC condensation, and the partition.
+  drives reachability, SCC condensation, and the partition. The `workflowCall`
+  subset is retained separately (`childWf`) as the only seam the `subtree`
+  strategy peels along, so activities stay glued to their caller.
 - **soft** (`signalSend`) — keeps two workflows in the same blob (same chunk) but
   they stay *separate* roots; never treated as a binding call edge.
 - **contract** (`nexusCall`) — the cleanest contract cut (cross-namespace/worker
@@ -148,6 +204,8 @@ attributes for the deferred language-boundary split and grouping lens.
 | `workgraph.go` | internal definition-keyed graph, its construction, ID/set helpers |
 | `complexity.go` | the complexity metric and the floor |
 | `roots.go` | heuristic root seeding |
-| `components.go` | SCC condensation + the decide phase (`partition`) |
-| `divisions.go` | the explore phase: orchestration, ranking, section building |
+| `components.go` | SCC condensation + the decide phase (`partition`) + contract advisories |
+| `dominators.go` | binding-graph dominators + dominated closures (service / subtree) |
+| `divisions.go` | the explore phase: orchestration, recursion, ranking, section building |
+| `parallel.go` | parallel width (max antichain via Dilworth) for the ranking key |
 | `strategies.go` | the menu of `splitBy*` cut strategies |

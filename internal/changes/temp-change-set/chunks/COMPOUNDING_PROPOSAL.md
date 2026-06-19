@@ -1,5 +1,17 @@
 # Explore Stage: Compounding Decomposition Strategies — Proposal
 
+> **Status (landed):** P1 (hub) + P2 (lazy recursion) shipped in the first pass.
+> A second pass then **superseded the hub strategy and the worst-leaf ranking**
+> with the authorship-parallelism lens settled in [`METRIC_CALIBRATION.md`](./METRIC_CALIBRATION.md)
+> and shipped via [`../../parser/CHANGES_007.md`](../../parser/CHANGES_007.md):
+> P3's dominator-tree idea is realized as the **`service`** strategy (hub + its
+> dominated closure + remainder components), a new **`subtree`** strategy
+> (selective dominated child-workflow peeling), a coupling-aware effective
+> complexity `Ec = N + Ein`, a parallel-width (max-antichain) ranking term,
+> look-ahead recursion, and a `suggestContract` advisory. The text below is the
+> *original* P1–P4 proposal, kept for provenance; the `hub` enum and the
+> worst-leaf-only ranking it describes no longer exist.
+
 A review/ideation deliverable for evolving the **explore** stage of
 `tools/lsp/parser/decompose` from "one strategy per candidate, flat, one level"
 to **compounding** decomposition, while staying inside the package's

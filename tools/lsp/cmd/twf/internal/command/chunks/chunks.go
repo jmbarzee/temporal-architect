@@ -43,7 +43,7 @@ section still over the ceiling. Recommendations are never auto-applied.`,
 	cmd.Flags().IntVar(&ceiling, "ceiling", 0, "Complexity ceiling; chunks above it get #2 ranked divisions (0 = hard partition only)")
 	cmd.Flags().IntVar(&floor, "floor", 0, "Complexity floor; chunks below it are flagged too-granular (0 = default, negative = disabled)")
 	cmd.Flags().IntVar(&maxDepth, "max-depth", 0, "Max nesting depth for recursive re-division of over-ceiling sections (0 = default, negative = no recursion)")
-	cmd.Flags().StringVar(&by, "by", "", "Comma-separated division strategy bias: tree,nexus,worker,namespace,hub")
+	cmd.Flags().StringVar(&by, "by", "", "Comma-separated division strategy bias: tree,nexus,worker,namespace,service,subtree")
 	return cmd
 }
 
@@ -84,7 +84,7 @@ func run(paths []string, jsonOutput bool, historyDir string, ceiling, floor, max
 
 	// .twf mode.
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf graph chunks [--json] [--ceiling N] [--floor M] [--by tree,nexus,worker,namespace] [--history <dir>] <file...>")
+		fmt.Fprintln(os.Stderr, "usage: twf graph chunks [--json] [--ceiling N] [--floor M] [--by tree,nexus,worker,namespace,service,subtree] [--history <dir>] <file...>")
 		return 1
 	}
 
@@ -177,6 +177,9 @@ func printText(res *decompose.Result) int {
 		fmt.Printf("  members: %s\n", strings.Join(c.Members, ", "))
 		if len(c.Overlap) > 0 {
 			fmt.Printf("  overlap: %s\n", strings.Join(c.Overlap, ", "))
+		}
+		for _, a := range c.Advisories {
+			fmt.Printf("  advisory [%s] %s: %s\n", a.Kind, a.Subject, a.Detail)
 		}
 		printDivisions(c.Divisions, "  ")
 		fmt.Println()

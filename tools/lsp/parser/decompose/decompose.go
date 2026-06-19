@@ -113,6 +113,9 @@ func Decompose(file *ast.File, g *graph.Graph, opts Options) *Result {
 	res.Chunks, res.ChunkEdges = wg.partition(roots)
 
 	applyFloor(res, floor)
+	for i := range res.Chunks {
+		res.Chunks[i].Advisories = wg.contractAdvisories(&res.Chunks[i])
+	}
 	if opts.Ceiling > 0 {
 		exploreDivisions(wg, res, opts)
 	}

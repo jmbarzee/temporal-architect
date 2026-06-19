@@ -517,12 +517,15 @@ namespace ns:
 }
 
 // ---------------------------------------------------------------------------
-// 9. Hub-extraction strategy isolates a shared high-fan-in node (R-1)
+// 9. Service-extraction strategy peels a shared hub + its dominated closure and
+//    separates the remainder into components (Phase 3b)
 // ---------------------------------------------------------------------------
 
-func TestHubStrategyIsolatesSharedNode(t *testing.T) {
-	// R1 and R2 both call Shared, which fans into three activities. Shared has
-	// the only in-degree ≥ 2 in the chunk, so the hub strategy must peel it.
+func TestServiceStrategyExtractsClosure(t *testing.T) {
+	// R1 and R2 both call Shared, which fans into three private activities.
+	// Shared has the only in-degree ≥ 2, so the service strategy peels Shared
+	// plus its dominated closure (S1/S2/S3 are reachable only via Shared) and
+	// separates the two callers — articulated by Shared — into components.
 	src := `
 workflow R1():
     workflow Shared()
@@ -562,25 +565,219 @@ namespace ns:
 	shared := graph.DefKey(graph.KindWorkflow, "Shared")
 	c := chunkWithMember(t, res, shared)
 
-	var hub *Division
+	var svc *Division
 	for i := range c.Divisions {
-		if c.Divisions[i].Strategy == StrategyHub {
-			hub = &c.Divisions[i]
+		if c.Divisions[i].Strategy == StrategyService {
+			svc = &c.Divisions[i]
 			break
 		}
 	}
-	if hub == nil {
-		t.Fatalf("expected a hub division; got strategies %v", divisionStrategies(c.Divisions))
+	if svc == nil {
+		t.Fatalf("expected a service division; got strategies %v", divisionStrategies(c.Divisions))
 	}
-	// The hub division isolates Shared into its own single-member section.
-	isolated := false
-	for _, s := range hub.Sections {
-		if len(s.Members) == 1 && s.Members[0] == shared {
-			isolated = true
+
+	want := setOf([]string{
+		shared,
+		graph.DefKey(graph.KindActivity, "S1"),
+		graph.DefKey(graph.KindActivity, "S2"),
+		graph.DefKey(graph.KindActivity, "S3"),
+	})
+	var service *Section
+	for i := range svc.Sections {
+		if strings.Contains(svc.Sections[i].ID, "service:"+shared) {
+			service = &svc.Sections[i]
 		}
 	}
-	if !isolated {
-		t.Errorf("hub division should isolate %s into its own section; sections %+v", shared, hub.Sections)
+	if service == nil {
+		t.Fatalf("service division should carry a service:%s section; sections %+v", shared, svc.Sections)
+	}
+	if len(service.Members) != len(want) {
+		t.Errorf("service section members = %v, want the closure %v", service.Members, setKeys(want))
+	}
+	for _, m := range service.Members {
+		if !want[m] {
+			t.Errorf("service section contains %s, not in the dominated closure", m)
+		}
+	}
+	// R1 and R2 land in separate component sections once the hub is peeled out.
+	r1 := graph.DefKey(graph.KindWorkflow, "R1")
+	r2 := graph.DefKey(graph.KindWorkflow, "R2")
+	secOf := map[string]string{}
+	for _, s := range svc.Sections {
+		for _, m := range s.Members {
+			secOf[m] = s.ID
+		}
+	}
+	if secOf[r1] == "" || secOf[r1] == secOf[r2] {
+		t.Errorf("R1 and R2 should be separate component sections; got %q and %q", secOf[r1], secOf[r2])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 9b. Subtree-extraction peels heavy child-workflow subtrees, keeps activities
+//     glued and light branches inline (Phase 3a)
+// ---------------------------------------------------------------------------
+
+func TestSubtreeStrategyPeelsHeavySubtrees(t *testing.T) {
+	// Orchestrator calls two heavy child workflows (each fanning into three
+	// activities) and one light one. The subtree strategy peels the heavy
+	// subtrees — activities glued to their workflow — until the trunk fits,
+	// leaving the light branch inline.
+	src := `
+workflow Orchestrator():
+    workflow HeavyA()
+    workflow HeavyB()
+    workflow Light()
+    close complete
+
+workflow HeavyA():
+    activity A1()
+    activity A2()
+    activity A3()
+    close complete
+
+workflow HeavyB():
+    activity B1()
+    activity B2()
+    activity B3()
+    close complete
+
+workflow Light():
+    activity L1()
+    close complete
+
+activity A1():
+    return
+activity A2():
+    return
+activity A3():
+    return
+activity B1():
+    return
+activity B2():
+    return
+activity B3():
+    return
+activity L1():
+    return
+
+worker w:
+    workflow Orchestrator
+    workflow HeavyA
+    workflow HeavyB
+    workflow Light
+    activity A1
+    activity A2
+    activity A3
+    activity B1
+    activity B2
+    activity B3
+    activity L1
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`
+	// Ceiling 30: the whole chunk (≈65) triggers the explore phase; peeling the
+	// two heavy subtrees (Ec ≈ 20 each) leaves a trunk of Orchestrator+Light+L1
+	// (Ec ≈ 23) under the ceiling, so the light branch stays inline.
+	res := decomposeTWF(t, src, Options{Ceiling: 30, Floor: -1, By: []string{StrategySubtree}})
+	orch := graph.DefKey(graph.KindWorkflow, "Orchestrator")
+	c := chunkByID(t, res, "chunk:"+orch)
+	if len(c.Divisions) == 0 {
+		t.Fatalf("expected a subtree division; got none")
+	}
+	div := c.Divisions[0]
+	if div.Strategy != StrategySubtree {
+		t.Fatalf("division strategy = %q, want %q", div.Strategy, StrategySubtree)
+	}
+
+	heavyA := graph.DefKey(graph.KindWorkflow, "HeavyA")
+	light := graph.DefKey(graph.KindWorkflow, "Light")
+	secOf := map[string]string{}
+	for _, s := range div.Sections {
+		for _, m := range s.Members {
+			secOf[m] = s.ID
+		}
+	}
+	// HeavyA peeled into its own subtree section, with its activities glued.
+	heavyASec := sectionBySuffix(t, div.Sections, "subtree:"+heavyA)
+	for _, a := range []string{"A1", "A2", "A3"} {
+		if !contains(heavyASec.Members, graph.DefKey(graph.KindActivity, a)) {
+			t.Errorf("activity %s should stay glued to HeavyA in %v", a, heavyASec.Members)
+		}
+	}
+	// The light branch is left inline (no subtree:Light section).
+	for _, s := range div.Sections {
+		if strings.HasSuffix(s.ID, "subtree:"+light) {
+			t.Errorf("light branch should be left inline, not peeled: %s", s.ID)
+		}
+	}
+	// Orchestrator (the root) stays in the trunk.
+	if got := secOf[orch]; !strings.HasSuffix(got, "/trunk") {
+		t.Errorf("Orchestrator should be in the trunk, got %q", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 9c. Contract-promotion advisory for a heavily-shared articulation service
+//     (Phase 5)
+// ---------------------------------------------------------------------------
+
+func TestContractAdvisoryForSharedService(t *testing.T) {
+	// Three callers share one workflow that fans into private activities.
+	// Shared's binding in-degree is 3 and it is an articulation point, so a
+	// suggestContract advisory must fire for it.
+	src := `
+workflow R1():
+    workflow Shared()
+    close complete
+workflow R2():
+    workflow Shared()
+    close complete
+workflow R3():
+    workflow Shared()
+    close complete
+
+workflow Shared():
+    activity S1()
+    activity S2()
+    close complete
+
+activity S1():
+    return
+activity S2():
+    return
+
+worker w:
+    workflow R1
+    workflow R2
+    workflow R3
+    workflow Shared
+    activity S1
+    activity S2
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`
+	res := decomposeTWF(t, src, Options{})
+	shared := graph.DefKey(graph.KindWorkflow, "Shared")
+	c := chunkWithMember(t, res, shared)
+
+	var adv *Advisory
+	for i := range c.Advisories {
+		if c.Advisories[i].Kind == AdvisorySuggestContract && c.Advisories[i].Subject == shared {
+			adv = &c.Advisories[i]
+		}
+	}
+	if adv == nil {
+		t.Fatalf("expected a suggestContract advisory for %s; got %+v", shared, c.Advisories)
+	}
+	if !contains(adv.Members, shared) {
+		t.Errorf("advisory closure should include %s; got %v", shared, adv.Members)
 	}
 }
 
@@ -633,7 +830,9 @@ namespace ns:
 // ---------------------------------------------------------------------------
 
 func TestRecursiveReDivision(t *testing.T) {
-	res := decomposeTWF(t, recursionSrc, Options{Ceiling: 12, Floor: -1})
+	// Pin to the tree strategy so the test exercises recursion mechanics, not
+	// the cross-strategy ranking (which the service/subtree tests cover).
+	res := decomposeTWF(t, recursionSrc, Options{Ceiling: 12, Floor: -1, By: []string{StrategyTree}})
 	top := graph.DefKey(graph.KindWorkflow, "Top")
 	c := chunkByID(t, res, "chunk:"+top)
 	if len(c.Divisions) == 0 {
@@ -666,8 +865,10 @@ func TestRecursiveReDivision(t *testing.T) {
 		t.Errorf("nested division should isolate %s; sections %+v", a1, nested.Sections)
 	}
 	// Every leaf of the chosen compound is now within the ceiling.
-	if w := worstLeafComplexity(div); w > res.Ceiling {
-		t.Errorf("worst leaf complexity %d should be within ceiling %d after recursion", w, res.Ceiling)
+	for _, leaf := range collectLeaves(div) {
+		if leaf.Complexity > res.Ceiling {
+			t.Errorf("leaf %s complexity %d should be within ceiling %d after recursion", leaf.ID, leaf.Complexity, res.Ceiling)
+		}
 	}
 }
 
@@ -676,7 +877,7 @@ func TestRecursiveReDivision(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestMaxDepthDisablesRecursion(t *testing.T) {
-	res := decomposeTWF(t, recursionSrc, Options{Ceiling: 12, Floor: -1, MaxDepth: -1})
+	res := decomposeTWF(t, recursionSrc, Options{Ceiling: 12, Floor: -1, MaxDepth: -1, By: []string{StrategyTree}})
 	top := graph.DefKey(graph.KindWorkflow, "Top")
 	c := chunkByID(t, res, "chunk:"+top)
 	div := c.Divisions[0]

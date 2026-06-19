@@ -31,6 +31,7 @@ type workGraph struct {
 	nodes map[string]*workNode
 
 	binding  edgeSet // call structure: activityCall, workflowCall, asyncBacking
+	childWf  edgeSet // workflow→workflow call structure only (a subset of binding)
 	soft     edgeSet // signalSend
 	contract edgeSet // nexusCall (contract cut)
 
@@ -69,6 +70,7 @@ func buildWorkGraph(g *graph.Graph) *workGraph {
 	wg := &workGraph{
 		nodes:       map[string]*workNode{},
 		binding:     edgeSet{},
+		childWf:     edgeSet{},
 		soft:        edgeSet{},
 		contract:    edgeSet{},
 		asyncBackTo: map[string]bool{},
@@ -108,7 +110,14 @@ func buildWorkGraph(g *graph.Graph) *workGraph {
 		switch e.Kind {
 		case graph.EdgeActivityCall, graph.EdgeWorkflowCall, graph.EdgeAsyncBacking:
 			wg.binding.add(from, to)
-			if e.Kind == graph.EdgeAsyncBacking {
+			switch e.Kind {
+			case graph.EdgeWorkflowCall:
+				// Child-workflow calls are the only binding seams a
+				// composition subtree may be peeled along (activities stay
+				// glued to their caller). Retained separately so the subtree
+				// strategy can prefer them.
+				wg.childWf.add(from, to)
+			case graph.EdgeAsyncBacking:
 				wg.asyncBackTo[to] = true
 			}
 		case graph.EdgeSignalSend:
@@ -165,6 +174,23 @@ func (wg *workGraph) sortedKeys() []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// internalBindingEdges counts the binding edges with both endpoints inside the
+// member set — the internal coupling term Ein used by the coupling-aware
+// effective-complexity metric (see effectiveComplexity in divisions.go). A
+// tangled unit has more internal edges, so it costs more than the sum of its
+// parts, which is what lets a cut "drop" effective complexity.
+func (wg *workGraph) internalBindingEdges(memberSet map[string]bool) int {
+	n := 0
+	for from := range memberSet {
+		for to := range wg.binding[from] {
+			if memberSet[to] {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // ---------------------------------------------------------------------------
@@ -235,6 +261,16 @@ func setOf(keys []string) map[string]bool {
 		m[k] = true
 	}
 	return m
+}
+
+// setKeys returns a set's members as an unsorted slice (callers that need order
+// sort it themselves).
+func setKeys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
 
 // sortedSet returns a set's members as a sorted slice, or nil when empty.

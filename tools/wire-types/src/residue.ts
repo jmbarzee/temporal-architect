@@ -167,7 +167,11 @@ export type DivisionStrategy =
   | "nexus"
   | "worker"
   | "namespace"
-  | "hub";
+  | "service"
+  | "subtree";
+
+/** decompose Advisory kinds in decompose/result.go. */
+export type AdvisoryKind = "suggestContract";
 
 // ── Leaf aliases (generated shape already matches the ergonomic shape) ───────
 

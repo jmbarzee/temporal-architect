@@ -127,7 +127,7 @@ twf graph chunks [flags] <file...>
 ### Options
 
 ```
-      --by string       Comma-separated division strategy bias: tree,nexus,worker,namespace,hub
+      --by string       Comma-separated division strategy bias: tree,nexus,worker,namespace,service,subtree
       --ceiling int     Complexity ceiling; chunks above it get #2 ranked divisions (0 = hard partition only)
       --floor int       Complexity floor; chunks below it are flagged too-granular (0 = default, negative = disabled)
   -h, --help            help for chunks

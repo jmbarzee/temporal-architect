@@ -2,6 +2,7 @@ package decompose
 
 import (
 	"sort"
+	"strconv"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
@@ -206,6 +207,66 @@ func (wg *workGraph) buildChunk(members []string, roots map[string]*Root) Chunk 
 		Complexity: complexity,
 		Cyclic:     cyclic,
 	}
+}
+
+// contractAdvisoryMinFanIn is the binding in-degree at which a shared workflow
+// or nexus operation is "heavily shared" enough to suggest promoting it to a
+// contract boundary. A documented heuristic, not a calibrated value; paired with
+// the articulation-point test below so the advisory only fires for genuine
+// service seams, not every util called two or three times.
+const contractAdvisoryMinFanIn = 3
+
+// contractAdvisories looks for an in-process shared service inside a chunk and,
+// if found, emits a single suggestContract advisory. The candidate is the
+// workflow / nexus-operation with the greatest binding in-degree (≥
+// contractAdvisoryMinFanIn); it qualifies only when it is an articulation point
+// — removing its dominated closure splits the chunk's remainder into ≥2 binding
+// components — which is exactly the shape of a shared service straddling
+// otherwise-separable subsystems. Activities are never suggested (a contract is
+// fronted by a workflow / operation, not a raw activity). Informational only.
+func (wg *workGraph) contractAdvisories(c *Chunk) []Advisory {
+	memberSet := setOf(c.Members)
+	indeg := map[string]int{}
+	for _, from := range c.Members {
+		for _, to := range sortedSet(wg.binding[from]) {
+			if memberSet[to] {
+				indeg[to]++
+			}
+		}
+	}
+	hub, best := "", 0
+	for _, m := range c.Members { // sorted → smallest key wins ties
+		switch wg.nodes[m].kind {
+		case graph.KindWorkflow, graph.KindNexusOperation:
+			if indeg[m] > best {
+				hub, best = m, indeg[m]
+			}
+		}
+	}
+	if best < contractAdvisoryMinFanIn {
+		return nil
+	}
+
+	closure := dominatedClosure(hub, wg.bindingDominators(rootKeysOf(c), memberSet))
+	var remainder []string
+	for _, m := range c.Members {
+		if !closure[m] {
+			remainder = append(remainder, m)
+		}
+	}
+	if len(wg.bindingComponents(remainder)) < 2 {
+		return nil // not an articulation point — no clean contract seam
+	}
+
+	members := setKeys(closure)
+	sort.Strings(members)
+	return []Advisory{{
+		Kind:    AdvisorySuggestContract,
+		Subject: hub,
+		Members: members,
+		Detail: "shared service with binding in-degree " + strconv.Itoa(best) +
+			"; it is an articulation point joining otherwise-separable subsystems — consider promoting it to a Nexus contract for an independently-deployable boundary",
+	}}
 }
 
 // bindingReachable returns the set of members reachable from root over binding

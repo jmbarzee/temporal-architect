@@ -33,27 +33,48 @@ func exploreDivisions(wg *workGraph, res *Result, opts Options) {
 // recursively re-divides any section that is still over the ceiling, and returns
 // the ranked candidate divisions. Each strategy that yields ≥2 sections — none
 // below the floor — is a candidate. The candidates form a *portfolio* (every
-// top-level strategy is fully expanded); within each, recursion is greedy —
-// every over-ceiling section keeps only its single locally-best sub-division
-// (see expandSections). Candidates are ranked by whole-compound balance
+// top-level strategy is fully expanded); within each, every over-ceiling section
+// is replaced by the single best fully-recursed sub-division (bestDivision picks
+// it with look-ahead). Candidates are ranked by whole-compound balance
 // (rankDivisions). Strategies are explored independently, not in priority order.
 func (wg *workGraph) exploreStrategies(c *Chunk, opts Options, floor int) []Division {
-	divs := wg.candidateDivisions(c, opts.By, floor)
+	divs := wg.candidateDivisions(c, opts.By, floor, opts.Ceiling)
 	maxDepth := opts.effectiveMaxDepth()
 	for i := range divs {
 		wg.expandSections(divs[i].Sections, opts.By, floor, opts.Ceiling, maxDepth, 1)
 	}
-	rankDivisions(divs)
+	wg.rankDivisions(divs, opts.Ceiling)
 	return divs
+}
+
+// bestDivision returns the fully-expanded, top-ranked division for a (sub-)chunk
+// at nesting level depth, or nil when no strategy divides it. Every candidate is
+// recursively expanded *before* ranking, so the choice is made on each
+// candidate's whole-recursed-compound balance, not its flat first-cut profile —
+// without this lookahead a strategy that leaves "one big component" out-ranks one
+// that leaves "several medium sections" purely because the former has fewer
+// immediate over-ceiling leaves, even though it recurses far worse.
+func (wg *workGraph) bestDivision(c *Chunk, by []string, floor, ceiling, maxDepth, depth int) *Division {
+	cands := wg.candidateDivisions(c, by, floor, ceiling)
+	if len(cands) == 0 {
+		return nil
+	}
+	for i := range cands {
+		wg.expandSections(cands[i].Sections, by, floor, ceiling, maxDepth, depth)
+	}
+	wg.rankDivisions(cands, ceiling)
+	chosen := cands[0]
+	chosen.Rank = 1
+	return &chosen
 }
 
 // candidateDivisions runs each requested strategy once over a (sub-)chunk and
 // returns the flat (un-recursed) divisions that actually split it — ≥2 sections,
 // none below the floor. Ranking and recursion are layered on by the callers.
-func (wg *workGraph) candidateDivisions(c *Chunk, by []string, floor int) []Division {
+func (wg *workGraph) candidateDivisions(c *Chunk, by []string, floor, ceiling int) []Division {
 	divs := []Division{}
 	for _, strat := range selectStrategies(by) {
-		labels := wg.splitBy(strat, c)
+		labels := wg.splitBy(strat, c, ceiling)
 		sections, dag := wg.buildSections(c, labels)
 		if len(sections) < 2 {
 			continue // strategy didn't actually divide the chunk
@@ -72,34 +93,29 @@ func (wg *workGraph) candidateDivisions(c *Chunk, by []string, floor int) []Divi
 }
 
 // expandSections lazily re-divides each over-ceiling section in place. It
-// recurses only into sections that are over the ceiling, span ≥2 SCCs (loops are
-// never cut, at any level), and re-divide cleanly; the section keeps a single
-// locally-best sub-division (greedy inner choice — rank-1 by the same metric),
-// which is itself recursively expanded. curDepth is the level of the division
-// owning these sections (top-level == 1); nested divisions land at curDepth+1
-// and are bounded by maxDepth. Floors are enforced by candidateDivisions.
+// recurses only into sections that are over the ceiling (by effective
+// complexity), span ≥2 SCCs (loops are never cut, at any level), and re-divide
+// cleanly; the section keeps the single best fully-recursed sub-division chosen
+// by bestDivision (look-ahead — every candidate is expanded before the choice is
+// made). curDepth is the level of the division owning these sections (top-level
+// == 1); nested divisions land at curDepth+1 and are bounded by maxDepth. Floors
+// are enforced by candidateDivisions.
 func (wg *workGraph) expandSections(sections []Section, by []string, floor, ceiling, maxDepth, curDepth int) {
 	if curDepth >= maxDepth {
 		return // a nested division here would exceed the depth budget
 	}
 	for i := range sections {
 		s := &sections[i]
-		if s.Complexity <= ceiling {
-			continue // lazy: only break down sections that are still too big
+		if wg.effectiveComplexity(s.Members) <= ceiling {
+			continue // lazy: only break down sections still too big (coupling-aware)
 		}
 		if wg.distinctSCCs(s.Members) < 2 {
 			continue // loop / single-node section — no seam to cut
 		}
 		sub := wg.subChunk(s.ID, s.Members)
-		cands := wg.candidateDivisions(sub, by, floor)
-		if len(cands) == 0 {
-			continue
+		if best := wg.bestDivision(sub, by, floor, ceiling, maxDepth, curDepth+1); best != nil {
+			s.Divisions = []Division{*best}
 		}
-		rankDivisions(cands)
-		chosen := cands[0]
-		wg.expandSections(chosen.Sections, by, floor, ceiling, maxDepth, curDepth+1)
-		chosen.Rank = 1
-		s.Divisions = []Division{chosen}
 	}
 }
 
@@ -132,25 +148,68 @@ func (wg *workGraph) subChunk(id string, members []string) *Chunk {
 	return &Chunk{ID: id, Roots: roots, Members: members}
 }
 
-// rankDivisions sorts candidates by whole-compound balance and assigns 1-based
-// ranks. The primary key is the worst *leaf* complexity (the largest unit left
-// after full recursion — smaller is better), then leaf count, then nesting
-// depth (shallower wins for an equal result), then total section count, then
-// strategy name. For a flat (un-recursed) division this reduces to the original
-// "max-section complexity, then section count, then name" ordering.
-func rankDivisions(divs []Division) {
+// effectiveComplexity is the coupling-aware Ec(S) = N(S) + λ·Ein(S) with λ=1:
+// the additive node-complexity sum N plus the count of binding edges internal
+// to S. A tangled unit therefore costs more than the sum of its sub-units (the
+// severed edges drop out of the children), which is what lets a cut reduce
+// effective complexity — the "tree > sum of subtrees" property. Used only for
+// the explore phase's decision logic (the recursion over-ceiling test and the
+// ranking); the public Section/Chunk complexity stays the additive N.
+func (wg *workGraph) effectiveComplexity(members []string) int {
+	n := 0
+	for _, m := range members {
+		n += wg.nodes[m].complexity
+	}
+	return n + wg.internalBindingEdges(setOf(members))
+}
+
+// rankDivisions sorts whole-compound candidates by the coupling-aware ranking
+// key and assigns 1-based ranks. The deterministic lexicographic key, evaluated
+// on the fully-recursed compound:
+//
+//  1. fewer leaves still over the ceiling *that were cuttable* (did the compound
+//     tame what it could — loop/single-node residue does not count, see
+//     leavesOverCeiling);
+//  2. lower worst-leaf effective complexity Ec (coupling-aware balance — the
+//     biggest authorable unit left behind);
+//  3. fewer top-level sections (coherence / anti-shatter — the harness reads the
+//     top level first, so a few coherent units beat a spray of fragments);
+//  4. greater parallel width (the decoupling reward — more mutually-independent
+//     authorable units — as a tie-break once taming and coherence agree);
+//  5. fewer total sections, then shallower depth (parsimony);
+//  6. strategy priority (structural-call strategies before deployment ones, see
+//     strategyPriority): when two cuts are otherwise equivalent, prefer the one
+//     intrinsic to the call structure over one that merely follows the
+//     deployment layout, and break final ties deterministically by name.
+//
+// Why this order (calibrated against temporal-compranda; see
+// internal/changes/temp-change-set/chunks/METRIC_CALIBRATION.md): parallel width
+// measured on the recursed leaves rewards gratuitous shattering, so it must sit
+// *below* the coherence brake, not above it; and once recursion has a proper
+// look-ahead the strategies converge on the same leaves, so the headline choice
+// comes down to which top-level grouping is most coherent and structural.
+func (wg *workGraph) rankDivisions(divs []Division, ceiling int) {
 	sort.SliceStable(divs, func(i, j int) bool {
-		if wi, wj := worstLeafComplexity(divs[i]), worstLeafComplexity(divs[j]); wi != wj {
+		if oi, oj := wg.leavesOverCeiling(divs[i], ceiling), wg.leavesOverCeiling(divs[j], ceiling); oi != oj {
+			return oi < oj
+		}
+		if wi, wj := wg.worstLeafEc(divs[i]), wg.worstLeafEc(divs[j]); wi != wj {
 			return wi < wj
 		}
-		if li, lj := leafCount(divs[i]), leafCount(divs[j]); li != lj {
-			return li < lj
+		if ti, tj := len(divs[i].Sections), len(divs[j].Sections); ti != tj {
+			return ti < tj
+		}
+		if pi, pj := wg.parallelWidth(divs[i]), wg.parallelWidth(divs[j]); pi != pj {
+			return pi > pj
+		}
+		if si, sj := totalSectionCount(divs[i]), totalSectionCount(divs[j]); si != sj {
+			return si < sj
 		}
 		if di, dj := divisionDepth(divs[i]), divisionDepth(divs[j]); di != dj {
 			return di < dj
 		}
-		if si, sj := totalSectionCount(divs[i]), totalSectionCount(divs[j]); si != sj {
-			return si < sj
+		if ai, aj := strategyPriority(divs[i].Strategy), strategyPriority(divs[j].Strategy); ai != aj {
+			return ai < aj
 		}
 		return divs[i].Strategy < divs[j].Strategy
 	})
@@ -159,38 +218,75 @@ func rankDivisions(divs []Division) {
 	}
 }
 
-// worstLeafComplexity is the largest complexity among a division's leaf sections
-// (those with no sub-division), recursing through nested divisions. It is the
-// whole-compound balance metric: the biggest authorable unit the compound leaves
-// behind.
-func worstLeafComplexity(d Division) int {
-	m := 0
+// strategyPriority orders strategies for the ranking's penultimate tie-break:
+// the call-structure strategies (service, subtree, tree, nexus) — intrinsic to
+// the design — are preferred over the deployment strategies (worker, namespace),
+// which merely follow how the design happens to be deployed. service and subtree
+// lead because surfacing a shared service or a composition seam is the headline
+// structural insight for authorship parallelism.
+func strategyPriority(s string) int {
+	switch s {
+	case StrategyService:
+		return 0
+	case StrategySubtree:
+		return 1
+	case StrategyTree:
+		return 2
+	case StrategyNexus:
+		return 3
+	case StrategyWorker:
+		return 4
+	case StrategyNamespace:
+		return 5
+	default:
+		return 6
+	}
+}
+
+// collectLeaves returns a division's leaf sections (those with no sub-division)
+// after full recursion — the authorable units the compound leaves behind.
+func collectLeaves(d Division) []Section {
+	var out []Section
 	for _, s := range d.Sections {
 		if len(s.Divisions) == 0 {
-			if s.Complexity > m {
-				m = s.Complexity
-			}
+			out = append(out, s)
 			continue
 		}
 		for _, nd := range s.Divisions {
-			if w := worstLeafComplexity(nd); w > m {
-				m = w
-			}
+			out = append(out, collectLeaves(nd)...)
+		}
+	}
+	return out
+}
+
+// worstLeafEc is the largest effective complexity Ec among a division's leaf
+// sections — the coupling-aware balance metric (the biggest authorable unit the
+// compound leaves behind).
+func (wg *workGraph) worstLeafEc(d Division) int {
+	m := 0
+	for _, s := range collectLeaves(d) {
+		if ec := wg.effectiveComplexity(s.Members); ec > m {
+			m = ec
 		}
 	}
 	return m
 }
 
-// leafCount counts the division's leaf sections after full recursion.
-func leafCount(d Division) int {
+// leavesOverCeiling counts the leaf sections the compound *failed to tame*:
+// over the ceiling (by effective complexity) and still cuttable — i.e. spanning
+// ≥2 SCCs. A leaf that is a single loop or a single node is uncuttable by this
+// pass (loops are never cut), so leaving it over the ceiling is not a failure
+// and must not be counted against a division — otherwise the cleanest
+// structural cut is penalized for the chunk's irreducible tangle. This is the
+// "did the compound tame what it could" key.
+func (wg *workGraph) leavesOverCeiling(d Division, ceiling int) int {
+	if ceiling <= 0 {
+		return 0
+	}
 	n := 0
-	for _, s := range d.Sections {
-		if len(s.Divisions) == 0 {
+	for _, s := range collectLeaves(d) {
+		if wg.effectiveComplexity(s.Members) > ceiling && wg.distinctSCCs(s.Members) >= 2 {
 			n++
-			continue
-		}
-		for _, nd := range s.Divisions {
-			n += leafCount(nd)
 		}
 	}
 	return n

@@ -76,6 +76,34 @@ export interface Chunk {
   belowFloor?: boolean;
   mergeInto?: string;
   divisions?: Division[];
+  /**
+   * Advisories are informational design observations about the chunk —
+   * never auto-applied. Today the only kind is a contract-promotion
+   * suggestion for an in-process shared service (see Advisory).
+   */
+  advisories?: Advisory[];
+}
+/**
+ * Advisory kinds.
+ */
+/**
+ * AdvisorySuggestContract flags an in-process shared service — a hub with
+ * high binding fan-in whose dominated closure, once removed, splits the
+ * rest of the chunk into separate binding components (an articulation
+ * point). Promoting it to a Nexus contract would give it an explicit,
+ * independently-deployable boundary. Purely informational.
+ */
+export const AdvisorySuggestContract = "suggestContract";
+/**
+ * Advisory is an informational design observation about a chunk — a suggestion
+ * the harness MAY act on, never an imposed change. Subject is the definition the
+ * advisory is about; Members lists the affected closure when relevant.
+ */
+export interface Advisory {
+  kind: string;
+  subject: string;
+  members?: string[];
+  detail: string;
 }
 /**
  * ChunkRoot is one root inside a chunk together with the SCC-collapsed set of
@@ -113,12 +141,23 @@ export const StrategyWorker = "worker";
  */
 export const StrategyNamespace = "namespace";
 /**
- * StrategyHub peels the single highest-fan-in shared node (the hub) into
- * its own section, leaving the rest as "core". On hub-dominated designs it
- * un-sticks the structural strategies, which then apply cleanly to the core
- * once the hub is recursed away.
+ * StrategyService extracts a shared service: the highest-fan-in hub node
+ * plus its dominated closure (the private nodes reachable only through it),
+ * then splits the remainder into its binding components so the parallel
+ * width freed by the extraction is visible at the cut. It generalizes and
+ * replaces the older single-node hub peel — on a graph where the hub is an
+ * articulation point joining otherwise-separate subsystems, removing the
+ * service disconnects them into independently-authorable units.
  */
-export const StrategyHub = "hub";
+export const StrategyService = "service";
+/**
+ * StrategySubtree selectively peels the heaviest dominated child-workflow
+ * subtrees into their own sections — workflow-call seams only, so activities
+ * stay glued to their caller — until the trunk fits under the ceiling,
+ * leaving light branches inline. It is the composition-tree counterpart to
+ * the service (shared-hub) extraction.
+ */
+export const StrategySubtree = "subtree";
 /**
  * Division is one candidate way to cut an over-ceiling chunk into sections,
  * plus a dependency DAG ordering those sections. Rank is 1-based; rank 1 is the
