@@ -1,6 +1,6 @@
 {
   "name": "@temporal-architect/wire-types",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "TypeScript projection of twf's JSON wire contract, generated from the Go DTO layer. Consumed type-only by the visualizer and the VS Code extension.",
   "type": "module",
   "license": "MIT",

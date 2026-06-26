@@ -1,6 +1,6 @@
 {
   "name": "@temporal-architect/visualizer",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "React component for visualizing Temporal system architecture — namespaces, workers, workflows, and Nexus — as an interactive tree and dependency graph.",
   "type": "module",
   "license": "MIT",
