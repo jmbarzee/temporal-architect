@@ -11,11 +11,13 @@ name: Release
 #   _check-versions.yml          — assert the visualizer + wire-types manifests match the tag
 #   _build-binaries.yml          — matrix builds the twf binary archives
 #   _build-skills-tarball.yml    — package skills/ as a release asset
-#   _build-artifacts.yml         — visualizer lib + webview bundle + wire-types tarballs
+#   _build-artifacts.yml         — visualizer lib + wire-types tarballs
+#   _publish-npm-libs.yml        — publish the two libraries to npm (OIDC + provenance)
 #   _publish-github-release.yml  — checksums + GitHub Release with all assets
 #
-# This file is intentionally thin: declare the dependency graph and pass the
-# dispatch secret. Registry publishing lives in the distribution repo.
+# This file is thin: declare the dependency graph and pass the dispatch secret.
+# The toolchain publishes its own libraries (wire-types, visualizer); every
+# end-user consumption model is published from the distribution repo.
 
 on:
   push:
@@ -50,6 +52,20 @@ jobs:
   build-artifacts:
     needs: check-versions
     uses: ./.github/workflows/_build-artifacts.yml
+    with:
+      version: ${{ github.ref_name }}
+
+  # ── Publish the toolchain's own libraries to npm ─────────────────────────
+
+  publish-npm-libs:
+    # Libraries (wire-types, visualizer) publish from the repo that owns their
+    # identity. OIDC trusted publishing + provenance; id-token:write is required
+    # here and in the reusable workflow.
+    needs: build-artifacts
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/_publish-npm-libs.yml
     with:
       version: ${{ github.ref_name }}
 

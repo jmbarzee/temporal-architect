@@ -5,7 +5,7 @@ name: _publish-github-release
 # repo and the Homebrew tap pin to. Consumes:
 #   twf-archive-*       (from _build-binaries.yml)   — per-platform binary archives
 #   skills-tarball      (from _build-skills-tarball.yml)
-#   release-artifacts   (from _build-artifacts.yml)  — visualizer lib + webview + wire-types
+#   release-artifacts   (from _build-artifacts.yml)  — visualizer lib + wire-types
 
 on:
   workflow_call:
@@ -44,7 +44,7 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           cd dist
-          sha256sum twf-* skills-* *.tgz visualizer-webview-* > SHA256SUMS
+          sha256sum twf-* skills-* *.tgz > SHA256SUMS
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -53,6 +53,5 @@ jobs:
             dist/twf-*
             dist/skills-*
             dist/*.tgz
-            dist/visualizer-webview-*
             dist/SHA256SUMS
           generate_release_notes: true

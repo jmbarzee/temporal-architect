@@ -79,6 +79,21 @@ const ast: TWFFile = {
 | `className`   | `string`                            | undefined | Appended to the built-in `view-shell` class on the outer container.            |
 | `style`       | `React.CSSProperties`               | undefined | Inline style on the outer container.                                           |
 
+### Host-embedding kit
+
+Beyond `<Visualizer>`, the package exports the host-agnostic pieces an embedder
+needs to mount the visualizer inside an arbitrary shell:
+
+- `normalizePayload(data)` → `NormalizedPayload | null` — coerces the three
+  parser wire shapes (`{ ast, parserGraph }`, `twf graph --json`'s `{ graph }`,
+  or a bare `TWFFile`) into `{ ast, parserGraph? }`.
+- `mountNodeTypeStyles()` — injects the registry-derived node-type CSS variables
+  once at load (call before first render).
+- `StyleGuide` — the built-in style-guide overlay component.
+
+The VS Code webview bundle in the distribution repo (`packages/webview`) is built
+on exactly this kit; the VS Code-specific glue lives there, not in this library.
+
 ### Exported types
 
 The package re-exports the full TWF AST type graph so host apps can write
@@ -125,10 +140,11 @@ or load it dynamically with `{ ssr: false }`.
 
 ## Versioning
 
-This package follows the upstream `temporal-architect` repo's `v*` Git tags
-exactly — `0.3.2` of the package is built from the `v0.3.2` source tree.
-The release pipeline (`/.github/workflows/release.yml` in the upstream
-repo) publishes a new npm version on every tag push.
+This package follows the `temporal-architect` toolchain repo's `v*` Git tags
+exactly — `0.3.2` of the package is built from the `v0.3.2` source tree. As a
+library, it is published to npm directly from the toolchain: the release pipeline
+([`/.github/workflows/release.yml`](https://github.com/jmbarzee/temporal-architect/blob/main/.github/workflows/release.yml))
+publishes a new version (with provenance) on every tag push.
 
 ## License
 

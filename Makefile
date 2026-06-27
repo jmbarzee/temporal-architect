@@ -32,12 +32,12 @@ PLATFORMS := \
 
 .PHONY: build clean
 
-## Build the toolchain for the local platform (binary + visualizer)
-build: build-lsp build-visualizer build-visualizer-lib
+## Build the toolchain for the local platform (binary + visualizer lib)
+build: build-lsp build-visualizer-lib
 
 # ── Build targets ────────────────────────────────────────────────────────────
 
-.PHONY: build-lsp build-twf-archive build-skills-archive build-visualizer build-visualizer-lib
+.PHONY: build-lsp build-twf-archive build-skills-archive build-visualizer-lib
 
 ## Build the twf binary for the current (or specified) platform
 build-lsp:
@@ -77,23 +77,22 @@ build-skills-archive:
 	go run ./internal/release/gen-skills-manifest --source skills --out $$OUT --version v$$VER; \
 	echo "Packaged $$OUT"
 
-## Build the visualizer webview IIFE bundle (→ dist/webview).
-build-visualizer:
-	cd tools/visualizer && npm run build:webview
-	@echo "Built visualizer (webview bundle → dist/webview)"
-
 ## Build the visualizer as a publishable npm library (ESM + types + sibling CSS).
+## The VS Code webview IIFE bundle is built in the distribution repo from this
+## published library (packages/webview); the toolchain no longer builds it.
 build-visualizer-lib:
 	cd tools/visualizer && npm run build:lib
 	@echo "Built visualizer (npm library)"
 
-# ── Release asset packaging ──────────────────────────────────────────────────
-# The toolchain cuts a GitHub Release of primitive artifacts; the distribution
-# repo (jmbarzee/temporal-architect-dist) downloads these and produces every
-# shippable registry package. Build stays here (source + version stamp live
-# here); publish happens in dist (where the registry tokens live).
+# ── Release asset packaging + library publish ────────────────────────────────
+# The toolchain cuts a GitHub Release of primitive artifacts that the
+# distribution repo (jmbarzee/temporal-architect-dist) downloads to build every
+# end-user consumption model (CLI, VSIX, claude-plugin, …). The toolchain's own
+# *libraries* (visualizer, wire-types) it both attaches to the Release — so dist
+# can consume them at build time via file: — and publishes to npm itself, where
+# their repository.url matches and provenance succeeds.
 
-.PHONY: pack-visualizer-lib pack-visualizer-webview pack-wire-types
+.PHONY: pack-visualizer-lib pack-wire-types publish-npm-libs
 
 ## Pack the visualizer npm library into a release tarball (dist/).
 pack-visualizer-lib: build-visualizer-lib
@@ -101,20 +100,23 @@ pack-visualizer-lib: build-visualizer-lib
 	cd tools/visualizer && npm pack --pack-destination ../../dist
 	@echo "Packed visualizer lib tarball into dist/"
 
-## Pack the prebuilt webview IIFE bundle into a versioned release tarball (dist/).
-## Usage: make pack-visualizer-webview VERSION=1.2.3
-pack-visualizer-webview: build-visualizer
-	@mkdir -p dist
-	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
-	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
-	tar czf dist/visualizer-webview-v$$VER.tar.gz -C dist/webview .; \
-	echo "Packed dist/visualizer-webview-v$$VER.tar.gz"
-
 ## Pack the wire-types type-only package into a release tarball (dist/).
 pack-wire-types:
 	@mkdir -p dist
 	cd tools/wire-types && npm pack --pack-destination ../../dist
 	@echo "Packed wire-types tarball into dist/"
+
+## Publish the toolchain's two libraries to npm from their packed tarballs.
+## CI-only: relies on OIDC trusted publishing (no NPM_TOKEN). --provenance
+## succeeds because each package's repository.url points at this repo. Requires
+## the dist/*.tgz produced by pack-visualizer-lib + pack-wire-types.
+## Usage: make publish-npm-libs VERSION=1.2.3
+publish-npm-libs:
+	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
+	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
+	npm publish --access public --provenance ./dist/temporal-architect-wire-types-$$VER.tgz; \
+	npm publish --access public --provenance ./dist/temporal-architect-visualizer-$$VER.tgz; \
+	echo "Published wire-types + visualizer $$VER to npm"
 
 # ── Test targets ─────────────────────────────────────────────────────────────
 

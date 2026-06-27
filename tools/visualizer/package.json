@@ -46,7 +46,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:webview": "vite build --config vite.webview.config.ts",
     "build:lib": "vite build --config vite.lib.config.ts",
     "preview": "vite preview",
     "prepack": "cp ../../LICENSE LICENSE",

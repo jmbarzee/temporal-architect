@@ -1,0 +1,52 @@
+name: _publish-npm-libs
+
+# Reusable: publish the toolchain's two libraries — @temporal-architect/wire-types
+# and @temporal-architect/visualizer — to npm. These are *libraries* (build inputs
+# with an API contract), so they publish from the repo that owns their source and
+# identity (this one), not from the distribution repo.
+#
+# Authentication is GitHub OIDC trusted publishing (no NPM_TOKEN). Because each
+# package's repository.url points at THIS repo, provenance succeeds (no
+# NPM_CONFIG_PROVENANCE=false workaround — that was only needed when the dist repo
+# re-published these toolchain-built tarballs).
+#
+# npm validates the *calling* (top-level) workflow filename, so the trusted
+# publisher for both packages is configured on npmjs.com as
+# repo=temporal-architect, workflow=release.yml. id-token:write must be granted on
+# BOTH the caller job in release.yml and this reusable workflow.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    name: Publish wire-types + visualizer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Ensure npm supports OIDC (>= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Download library tarballs
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+
+      - name: Publish libraries to npm
+        run: make publish-npm-libs VERSION=${{ inputs.version }}

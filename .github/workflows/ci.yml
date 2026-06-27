@@ -43,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: cd tools/visualizer && npm ci
 
-      - name: Build toolchain (binary + visualizer lib/webview)
+      - name: Build toolchain (binary + visualizer lib)
         run: make build
 
       - name: Verify release artifacts pack

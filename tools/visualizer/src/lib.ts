@@ -7,6 +7,16 @@
 
 export { WorkflowCanvas as Visualizer } from './components/WorkflowCanvas'
 
+// Host-embedding kit. These are host-agnostic rendering pieces an embedder
+// needs to mount the visualizer inside an arbitrary shell (e.g. a VS Code
+// webview): a payload normalizer for the parser's wire shapes, the runtime
+// node-type CSS injector, and the debug style guide. The VS Code-specific glue
+// (acquireVsCodeApi, the editor message protocol) lives in the host, not here.
+export { StyleGuide } from './components/StyleGuide'
+export { normalizePayload } from './types/payload'
+export type { NormalizedPayload } from './types/payload'
+export { mountNodeTypeStyles } from './graph/node-type-styles'
+
 // Re-export the AST types so consumers can type their `ast` prop and walk
 // it for custom integrations (badges, side panels, link-outs, …) without
 // having to vendor or re-declare the shapes.

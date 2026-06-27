@@ -1,14 +1,16 @@
 name: _build-artifacts
 
-# Reusable: build the platform-independent release tarballs the distribution
-# repo re-publishes / embeds.
+# Reusable: build the platform-independent library tarballs.
 #
-# Outputs (as workflow artifacts, consumed by _publish-github-release.yml):
-#   release-artifacts         — visualizer lib tarball, webview bundle tarball,
-#                               and wire-types tarball (all under dist/)
+# Outputs (as workflow artifacts, consumed by _publish-github-release.yml and
+# _publish-npm-libs.yml):
+#   release-artifacts         — visualizer lib tarball + wire-types tarball
+#                               (both under dist/)
 #
-# These are *built* here (their source + version stamp live in the toolchain)
-# and *published* from the distribution repo (which holds the registry tokens).
+# These libraries are built AND published to npm here (their source, version
+# stamp, and repository.url all live in the toolchain). They are also attached
+# to the GitHub Release so the distribution repo can consume them at build time
+# (file:) without an npm round-trip.
 
 on:
   workflow_call:
@@ -32,10 +34,8 @@ jobs:
       - name: Install visualizer dependencies
         run: cd tools/visualizer && npm ci
 
-      - name: Pack visualizer lib + webview bundle
-        run: |
-          make pack-visualizer-lib
-          make pack-visualizer-webview VERSION=${{ inputs.version }}
+      - name: Pack visualizer lib
+        run: make pack-visualizer-lib
 
       - name: Pack wire-types
         run: make pack-wire-types
@@ -46,4 +46,3 @@ jobs:
           name: release-artifacts
           path: |
             dist/*.tgz
-            dist/visualizer-webview-*.tar.gz

@@ -17,9 +17,13 @@ Prefix every Go command with `GOMODCACHE=$HOME/go/pkg/mod` (e.g. `GOMODCACHE=$HO
 See [README — How it ships](./README.md#how-it-ships) for the two-repo topology. This
 repo is the **toolchain** (engine + language + rendering source); everything a user
 installs is **packaged** in the separate distribution repo
-(`jmbarzee/temporal-architect-dist`). The toolchain cuts a GitHub Release of primitive
-artifacts; dist consumes them and publishes every registry package. Additional internal
-detail relevant to working in this repo:
+(`jmbarzee/temporal-architect-dist`). The dividing line is **library vs. distribution**,
+not which registry a package lands on: a *library* (a build input with an API contract)
+is published by the repo that owns its identity, so the toolchain publishes its own npm
+libraries (`visualizer`, `wire-types`) and the `spec` Go module, while dist owns every
+*end-user consumption model* (CLI wrappers, VSIX, claude-plugin, PyPI, Homebrew). The
+toolchain also cuts a GitHub Release of primitive artifacts that dist consumes at build
+time. Additional internal detail relevant to working in this repo:
 
 ```
 # Engine + language + rendering source
@@ -36,8 +40,8 @@ tools/lsp/
   parser/graph/         Resolved deployment graph extraction
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
   cmd/twf/              CLI binary (check, parse, symbols, deps, spec, lsp); owns the Go DTO layer
-tools/wire-types/       TS projection of the JSON wire contract (tygo-generated from the DTOs); published release artifact
-tools/visualizer/       React workflow visualizer; toolchain builds the npm lib tarball + webview IIFE bundle as release assets
+tools/wire-types/       TS projection of the JSON wire contract (tygo-generated from the DTOs); published to npm from here
+tools/visualizer/       React workflow visualizer; built + published to npm from here (the VS Code webview bundle is built in the dist repo from this library)
 skills/                 AI skill definitions (canonical source; cut into the skills release tarball)
 
 # Dev — release tooling and dev-cycle apparatus
@@ -53,9 +57,11 @@ go.work                 Workspace wiring tools/lsp, tools/spec, tools/sampler, a
 
 **Packaging surfaces (VSIX, npm wrapper/sub-packages, PyPI wheel, Claude plugin payload +
 `.claude-plugin/` catalog, Homebrew bumper) and all registry-publish workflows live in the
-distribution repo, not here.** The visualizer and wire-types *source* stay here (welded to
-the parser via `make gen-types`/`check-types`); the dist repo only downloads and re-publishes
-their prebuilt tarballs.
+distribution repo, not here.** The visualizer and wire-types are *libraries* — built,
+version-stamped, and **published to npm from here** (welded to the parser via
+`make gen-types`/`check-types`); their `repository.url` points at this repo, so npm
+provenance succeeds. The dist repo only **downloads** their Release tarballs to consume at
+build time (VSIX type-check + the webview bundle it builds from the visualizer library).
 
 ## Project Status
 
