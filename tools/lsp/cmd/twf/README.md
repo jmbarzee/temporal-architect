@@ -352,6 +352,50 @@ Nexus services define typed operation groups for cross-namespace communication:
 
 ---
 
+### `twf mcp`
+
+Run a [Model Context Protocol](https://modelcontextprotocol.io) server over
+stdio — the agent entry point. Point any MCP client (Claude Desktop, Cursor,
+Continue, Windsurf, Zed) at `twf mcp` and it serves a single client over
+stdin/stdout, exiting when the client disconnects.
+
+```bash
+twf mcp
+```
+
+Example client config:
+
+```json
+{
+  "mcpServers": {
+    "twf": { "command": "npx", "args": ["-y", "@temporal-architect/twf", "mcp"] }
+  }
+}
+```
+
+**Tools** are thin wrappers over the same parser pipeline as the CLI, so their
+JSON output is identical to the corresponding subcommand. Each file tool takes
+`paths` (resolved on the filesystem where the server runs) **or** inline
+`source`:
+
+| Tool | Mirrors |
+|---|---|
+| `twf_check` | `twf check` (diagnostics envelope) |
+| `twf_parse` | `twf parse` |
+| `twf_symbols` | `twf symbols --json` |
+| `twf_graph` | `twf graph --json` |
+| `twf_graph_chunks` | `twf graph chunks --json` (with `ceiling`/`floor`/`maxDepth`/`by` knobs) |
+| `twf_spec_list` | `twf spec --list` |
+| `twf_spec_get` | `twf spec <slug>` |
+
+**Resources** expose the embedded language spec: the full spec at `twf://spec`
+and each section at `twf://spec/<slug>`.
+
+Skills are not exposed (the binary does not embed them) and the transport is
+stdio-only.
+
+---
+
 ## Use Cases
 
 ### CI/CD Validation

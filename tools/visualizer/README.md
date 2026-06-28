@@ -15,8 +15,8 @@ npm install @temporal-architect/visualizer
 ```
 
 `react` and `react-dom` are peer dependencies (`^18 || ^19`). Versions are
-synced to the upstream `temporal-architect` Git tag, so `0.3.x` of this package
-corresponds to `v0.3.x` of the toolchain.
+synced to the upstream `temporal-architect` Git tag, so `0.8.x` of this package
+corresponds to `v0.8.x` of the toolchain.
 
 ## Usage
 

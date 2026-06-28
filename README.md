@@ -66,7 +66,7 @@ Pick the install line for your environment:
 | **Direct binary** | `curl -sSL https://raw.githubusercontent.com/jmbarzee/temporal-architect-dist/main/packages/install.sh \| bash` |
 | **Go projects** | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` |
 
-All install paths converge on the same `twf` binary and the same embedded skills + spec.
+Every channel delivers the same `twf` binary with the same embedded language spec; the editor and Claude Code channels additionally bundle the skills (all derived from the canonical `skills/` tree).
 
 ## Quickstart
 
@@ -178,8 +178,8 @@ Registry **identifiers** are unchanged by the split (npm scope `@temporal-archit
 | **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + visualizer + wire-types tarballs + `SHA256SUMS` | `curl -sSL https://raw.githubusercontent.com/jmbarzee/temporal-architect-dist/main/packages/install.sh \| bash` (binary only; the installer lives in the dist repo and downloads these assets) or download individually | platform binary; `skills/` tree with `MANIFEST.json`; visualizer + wire-types tarballs (consumed by the dist repo at build time) | cut **here** by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/), [`tools/visualizer/`](./tools/visualizer/), [`tools/wire-types/`](./tools/wire-types/), and [`skills/`](./skills/) |
 | **Go install** | `github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf` | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` | `twf` binary (built from source by the user's Go toolchain) | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) |
 | **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/temporal-architect-design/`](./skills/temporal-architect-design/), [`skills/temporal-architect-author-go/`](./skills/temporal-architect-author-go/), and [`skills/temporal-architect-author-infra/`](./skills/temporal-architect-author-infra/) |
-| **MCP** (planned, M2) | `twf mcp` over stdio | configure any MCP client to launch `npx -y @temporal-architect/twf mcp` (or `twf mcp` if installed) | tools wrapping `check`/`parse`/`symbols`/`spec`/`skill`; resources for spec sections and skill files; prompts per skill | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) (subcommand to be added) |
-| **Smithery MCP registry** (planned, post-M2) | listing pointing at the `twf mcp` install line | discover and install via the Smithery UI / CLI | (registry listing only — no payload) | submission only; no source in this repo |
+| **MCP** | `twf mcp` over stdio | configure any MCP client to launch `npx -y @temporal-architect/twf mcp` (or `twf mcp` if installed) | tools wrapping `check`/`parse`/`symbols`/`graph`/`graph chunks`/`spec`; resources for spec sections (`twf://spec`, `twf://spec/<slug>`) | [`tools/lsp/cmd/twf/internal/command/mcp/`](./tools/lsp/cmd/twf/internal/command/mcp/) |
+| **Smithery MCP registry** (planned) | listing pointing at the `twf mcp` install line | discover and install via the Smithery UI / CLI | (registry listing only — no payload) | submission only; no source in this repo |
 
 All `twf` artifacts converge on the same binary (cross-built from `tools/lsp/`) and the same embedded language spec (`tools/spec/sections/*.md`); all skill artifacts converge on `skills/`.
 
