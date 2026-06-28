@@ -198,3 +198,19 @@ Implement the `twf mcp` server that the distribution **already advertises but do
 **Open questions:** Minimum-viable first cut (diagnostics + spec + the core verbs) vs full surface (incl. skill prompts)? Should it run the LSP internally for `publishDiagnostics` caching, or compute on demand per tool call? Tool naming/namespacing convention? Where does the MCP server's code live — `cmd/twf/mcp.go` alongside `lsp.go`, or its own package?
 
 **Note:** Independent of when this is built, the packaging already promises it — worth either implementing or softening the README/marketplace claims so the advertised contract matches reality.
+
+**Status (update):** The MVP **is now implemented** — `internal/command/mcp/` ships `twf_check`, `twf_parse`, `twf_symbols`, `twf_graph`, `twf_graph_chunks`, `twf_spec_list`, `twf_spec_get` (tools take file `paths` or inline `source`) plus `twf://spec` / `twf://spec/<slug>` resources, built on the official `modelcontextprotocol/go-sdk` over stdio. Skills/prompts were dropped (the binary does not embed skills). Deferred enhancements are consolidated below.
+
+### `twf mcp` Enhancements (post-MVP)
+
+Deferred follow-ups to the shipped `twf mcp` MVP, in rough priority order:
+
+- **Structured tool output.** Tools return JSON as text content with `Out = any`, so clients get no `StructuredContent` and no output schema. The blocker to doing this *well* is that the envelope payloads (`Definitions`/`Symbols`/`Graph`/`Chunks`) are `interface{}` — they infer to an unrestricted (`{}`) schema, so a quick version would populate `StructuredContent` but advertise a schema that describes nothing for the payloads (only `summary`/`diagnostics` would be typed). The real work is typing the payloads in Go (effectively mirroring the `wire-types` discriminated unions) so the output schema is meaningful — large, and welded to the DTO/tygo pipeline.
+- **History mode.** Expose the CLI's `twf graph --history <dir>` / `graph chunks --history` (decompose from a sampler output tree) as tool inputs; today the tools only accept `.twf` paths or inline source.
+- **Spec resource template.** Offer `twf://spec/{slug}` as a parameterized `ResourceTemplate` (lets clients construct URIs and enables argument completion) in addition to / instead of the static per-section resources.
+- **Completion handler.** Wire the SDK `CompletionHandler` for argument autocompletion (e.g. `twf_spec_get.slug`, and any future enum like the chunks `by` strategies).
+- **Richer tool annotations.** Only `ReadOnlyHint` is set; consider `IdempotentHint` / `OpenWorldHint:false`.
+
+**Related (tracked elsewhere):** question-shaped query tools (`twf_callers`/`twf_calls`/`twf_show`/`twf_unused`/reachability) are the relationship-query backlog item above; skill prompts/resources depend on embedding skills in the binary (the parked M1 in `ROADMAP.md`).
+
+**Intentional cuts (not deferrals):** push diagnostics via an internal LSP (`publishDiagnostics`) — tools compute on demand; and non-stdio transports (HTTP/SSE) — local `npx … twf mcp` only.

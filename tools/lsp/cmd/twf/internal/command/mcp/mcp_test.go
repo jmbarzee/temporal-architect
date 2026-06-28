@@ -128,12 +128,44 @@ func TestParseToolMatchesBuilder(t *testing.T) {
 
 	// The tool must return byte-identical output to the shared builder the CLI
 	// also uses, proving the single-code-path contract.
-	want, err := buildParse([]string{cleanTWF})
+	want, err := buildParse(filesInput{Paths: []string{cleanTWF}})
 	if err != nil {
 		t.Fatalf("buildParse: %v", err)
 	}
 	if got != string(want) {
 		t.Errorf("twf_parse output diverged from buildParse\n got: %s\nwant: %s", got, want)
+	}
+}
+
+func TestInlineSource(t *testing.T) {
+	cs := connect(t)
+
+	const src = "activity Charge(amt: Money) -> (Receipt):\n  return ok\n\nworkflow Pay(amt: Money) -> (Receipt):\n  activity Charge(amt) -> r\n  return r\n"
+
+	res := callTool(t, cs, "twf_symbols", map[string]any{"source": src})
+	var env struct {
+		Summary struct {
+			Errors int `json:"errors"`
+		} `json:"summary"`
+		Symbols []struct {
+			Kind string `json:"kind"`
+			Name string `json:"name"`
+		} `json:"symbols"`
+	}
+	if err := json.Unmarshal([]byte(toolText(t, res)), &env); err != nil {
+		t.Fatalf("decode symbols envelope: %v", err)
+	}
+	if env.Summary.Errors != 0 {
+		t.Errorf("inline source reported %d errors, want 0", env.Summary.Errors)
+	}
+	if len(env.Symbols) != 2 {
+		t.Fatalf("got %d symbols from inline source, want 2: %+v", len(env.Symbols), env.Symbols)
+	}
+
+	// Neither paths nor source -> tool error.
+	bad := callTool(t, cs, "twf_check", map[string]any{})
+	if !bad.IsError {
+		t.Error("twf_check with no paths and no source should be a tool error")
 	}
 }
 

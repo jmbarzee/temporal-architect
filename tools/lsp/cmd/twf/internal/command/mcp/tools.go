@@ -4,28 +4,44 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/symbols"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// filesInput is the shared input for the file-oriented tools: one or more .twf
-// paths resolved on the local filesystem where the server runs.
+// filesInput is the shared input for the file-oriented tools. Provide either
+// paths (read from the local filesystem) or inline source — at least one.
 type filesInput struct {
-	Paths []string `json:"paths" jsonschema:"One or more .twf file paths to analyze, resolved on the local filesystem where this server runs."`
+	Paths  []string `json:"paths,omitempty" jsonschema:"One or more .twf file paths to analyze, resolved on the local filesystem where this server runs. Provide this or source."`
+	Source string   `json:"source,omitempty" jsonschema:"Inline TWF source to analyze instead of reading from disk (e.g. an unsaved editor buffer). Provide this or paths."`
 }
 
 // chunksInput extends filesInput with the decomposition knobs of
 // `twf graph chunks`.
 type chunksInput struct {
-	Paths    []string `json:"paths" jsonschema:"One or more .twf file paths to decompose, resolved on the local filesystem where this server runs."`
+	Paths    []string `json:"paths,omitempty" jsonschema:"One or more .twf file paths to decompose, resolved on the local filesystem where this server runs. Provide this or source."`
+	Source   string   `json:"source,omitempty" jsonschema:"Inline TWF source to decompose instead of reading from disk. Provide this or paths."`
 	Ceiling  int      `json:"ceiling,omitempty" jsonschema:"Complexity ceiling; chunks above it get ranked soft divisions. 0 (default) emits the hard partition only."`
 	Floor    int      `json:"floor,omitempty" jsonschema:"Complexity floor; chunks below it are flagged too-granular. 0 selects the default, negative disables."`
 	MaxDepth int      `json:"maxDepth,omitempty" jsonschema:"Max nesting depth for recursive re-division of over-ceiling sections. 0 selects the default, negative disables recursion."`
 	By       []string `json:"by,omitempty" jsonschema:"Division strategy bias for over-ceiling chunks: any of tree, nexus, worker, namespace, service, subtree. Empty means all applicable."`
+}
+
+// resolveInput parses from inline source when provided, otherwise from the
+// given file paths. It errors if neither is supplied.
+func resolveInput(paths []string, src string) (*ast.File, []envelope.Diagnostic, error) {
+	if strings.TrimSpace(src) != "" {
+		return envelope.ParseSource("input.twf", src)
+	}
+	if len(paths) == 0 {
+		return nil, nil, fmt.Errorf("provide either paths or source")
+	}
+	return envelope.ParseFiles(paths)
 }
 
 // slugInput selects one spec section by slug.
@@ -50,7 +66,7 @@ func registerTools(s *mcp.Server) {
 		Description: "Parse and resolve one or more .twf files and return the diagnostics envelope (summary + diagnostics, no payload). The grammar/semantics gate to run after every .twf edit.",
 		Annotations: readOnly,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in filesInput) (*mcp.CallToolResult, any, error) {
-		return jsonResult(buildCheck(in.Paths))
+		return jsonResult(buildCheck(in))
 	})
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -59,7 +75,7 @@ func registerTools(s *mcp.Server) {
 		Description: "Emit the canonical JSON envelope for one or more .twf files: the AST definitions plus diagnostics and a summary. Use to inspect the full parsed design.",
 		Annotations: readOnly,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in filesInput) (*mcp.CallToolResult, any, error) {
-		return jsonResult(buildParse(in.Paths))
+		return jsonResult(buildParse(in))
 	})
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -68,7 +84,7 @@ func registerTools(s *mcp.Server) {
 		Description: "List the workflows, activities, workers, namespaces, and Nexus services defined across one or more .twf files, with their signatures.",
 		Annotations: readOnly,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in filesInput) (*mcp.CallToolResult, any, error) {
-		return jsonResult(buildSymbols(in.Paths))
+		return jsonResult(buildSymbols(in))
 	})
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -77,7 +93,7 @@ func registerTools(s *mcp.Server) {
 		Description: "Emit the resolved deployment graph of one or more .twf files: nodes are runtime deployments, edges are confirmed dispatches between them.",
 		Annotations: readOnly,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in filesInput) (*mcp.CallToolResult, any, error) {
-		return jsonResult(buildGraph(in.Paths))
+		return jsonResult(buildGraph(in))
 	})
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -127,8 +143,8 @@ func textResult(text string) *mcp.CallToolResult {
 
 // buildCheck mirrors `twf check` as structured output: the envelope carries the
 // summary and diagnostics with no payload (check IS diagnostics).
-func buildCheck(paths []string) ([]byte, error) {
-	file, diags, err := envelope.ParseFiles(paths)
+func buildCheck(in filesInput) ([]byte, error) {
+	file, diags, err := resolveInput(in.Paths, in.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -141,8 +157,8 @@ func buildCheck(paths []string) ([]byte, error) {
 
 // buildParse mirrors `twf parse`: the AST definitions spliced into the envelope
 // alongside diagnostics and the summary.
-func buildParse(paths []string) ([]byte, error) {
-	file, diags, err := envelope.ParseFiles(paths)
+func buildParse(in filesInput) ([]byte, error) {
+	file, diags, err := resolveInput(in.Paths, in.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -170,8 +186,8 @@ func buildParse(paths []string) ([]byte, error) {
 }
 
 // buildSymbols mirrors `twf symbols --json`.
-func buildSymbols(paths []string) ([]byte, error) {
-	file, diags, err := envelope.ParseFiles(paths)
+func buildSymbols(in filesInput) ([]byte, error) {
+	file, diags, err := resolveInput(in.Paths, in.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -191,8 +207,8 @@ func buildSymbols(paths []string) ([]byte, error) {
 }
 
 // buildGraph mirrors `twf graph --json`.
-func buildGraph(paths []string) ([]byte, error) {
-	file, diags, err := envelope.ParseFiles(paths)
+func buildGraph(in filesInput) ([]byte, error) {
+	file, diags, err := resolveInput(in.Paths, in.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +227,7 @@ func buildGraph(paths []string) ([]byte, error) {
 
 // buildChunks mirrors `twf graph chunks --json`.
 func buildChunks(in chunksInput) ([]byte, error) {
-	file, diags, err := envelope.ParseFiles(in.Paths)
+	file, diags, err := resolveInput(in.Paths, in.Source)
 	if err != nil {
 		return nil, err
 	}

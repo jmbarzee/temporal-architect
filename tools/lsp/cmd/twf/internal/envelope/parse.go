@@ -11,6 +11,13 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 )
 
+// source is one named TWF input: its base name (for diagnostic attribution)
+// and its raw content.
+type source struct {
+	base    string
+	content string
+}
+
 // ParseFiles reads and parses the given files, returning the merged AST and
 // any diagnostics. Each file is parsed independently with per-file line
 // numbers; definitions are stamped with their source file and merged into
@@ -24,27 +31,13 @@ func ParseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 		return nil, nil, fmt.Errorf("no input files")
 	}
 
-	merged := &ast.File{}
-	var diags []Diagnostic
-
+	sources := make([]source, 0, len(paths))
 	for _, path := range paths {
-		base := filepath.Base(path)
-
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return nil, nil, fmt.Errorf("read %s: %w", path, err)
 		}
-
-		file, parseErrs := parser.ParseFileAll(string(data))
-
-		for _, e := range parseErrs {
-			diags = append(diags, FromParseError(e, base))
-		}
-
-		for _, def := range file.Definitions {
-			setSourceFile(def, base)
-			merged.Definitions = append(merged.Definitions, def)
-		}
+		sources = append(sources, source{base: filepath.Base(path), content: string(data)})
 	}
 
 	// Single-file mode: every resolve/validate diagnostic is attributable to
@@ -54,6 +47,45 @@ func ParseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 	defaultFile := ""
 	if len(paths) == 1 {
 		defaultFile = filepath.Base(paths[0])
+	}
+
+	file, diags := parseSources(sources, defaultFile)
+	return file, diags, nil
+}
+
+// ParseSource parses a single in-memory TWF document, returning the AST and
+// diagnostics. It is the file-less twin of ParseFiles for callers that already
+// hold the source text (e.g. the `twf mcp` tools checking an editor buffer).
+// name is used only for diagnostic attribution; an empty name defaults to
+// "<source>.twf".
+func ParseSource(name, content string) (*ast.File, []Diagnostic, error) {
+	base := filepath.Base(name)
+	if name == "" {
+		base = "<source>.twf"
+	}
+	file, diags := parseSources([]source{{base: base, content: content}}, base)
+	return file, diags, nil
+}
+
+// parseSources is the shared pipeline behind ParseFiles and ParseSource: parse
+// each source independently, stamp and merge definitions, then resolve and
+// validate the merged AST once. defaultFile is the fallback file attribution
+// for resolve/validate diagnostics that are not definition-keyed.
+func parseSources(sources []source, defaultFile string) (*ast.File, []Diagnostic) {
+	merged := &ast.File{}
+	var diags []Diagnostic
+
+	for _, s := range sources {
+		file, parseErrs := parser.ParseFileAll(s.content)
+
+		for _, e := range parseErrs {
+			diags = append(diags, FromParseError(e, s.base))
+		}
+
+		for _, def := range file.Definitions {
+			setSourceFile(def, s.base)
+			merged.Definitions = append(merged.Definitions, def)
+		}
 	}
 
 	resolveErrs := resolver.Resolve(merged)
@@ -66,7 +98,7 @@ func ParseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 		diags = append(diags, FromValidateError(e, fileForDiagnostic(merged, e.Name, defaultFile)))
 	}
 
-	return merged, diags, nil
+	return merged, diags
 }
 
 // fileForDiagnostic chooses the best source-file attribution for a
