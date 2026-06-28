@@ -81,8 +81,11 @@ func run(paths []string, jsonOutput bool) int {
 	return printText(file)
 }
 
-// extractSymbols collects workflow and activity definitions into a uniform slice.
-func extractSymbols(file *ast.File) []SymbolJSON {
+// Extract collects every top-level definition into the uniform SymbolJSON
+// slice that backs `twf symbols --json`. It is exported so other front-ends
+// (e.g. the `twf mcp` server) can produce the identical symbol payload from
+// the same code path, keeping the wire contract single-sourced.
+func Extract(file *ast.File) []SymbolJSON {
 	var symbols []SymbolJSON
 
 	for _, def := range file.Definitions {
@@ -172,7 +175,7 @@ func extractSymbols(file *ast.File) []SymbolJSON {
 }
 
 func printText(file *ast.File) int {
-	for _, sym := range extractSymbols(file) {
+	for _, sym := range Extract(file) {
 		fmt.Printf("%s %s(%s)", sym.Kind, sym.Name, sym.Params)
 		if sym.ReturnType != "" {
 			fmt.Printf(" -> (%s)", sym.ReturnType)
@@ -224,7 +227,7 @@ func printText(file *ast.File) int {
 func printJSON(file *ast.File, diags []envelope.Diagnostic) int {
 	var symbols []SymbolJSON
 	if file != nil {
-		symbols = extractSymbols(file)
+		symbols = Extract(file)
 	}
 	if symbols == nil {
 		symbols = []SymbolJSON{}
