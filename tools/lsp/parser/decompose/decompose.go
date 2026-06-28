@@ -21,10 +21,19 @@ import (
 // result.go.
 
 // DefaultFloor is the complexity floor below which a hard chunk is flagged as
-// "too granular for its own subagent". It is a documented default, not a
-// calibrated value — tune it from real designs. The ceiling has no default:
+// "too granular for its own subagent", and (in the explore phase) below which a
+// division yielding such a section is rejected. It is a documented default, not
+// a calibrated value — tune it from real designs. The ceiling has no default:
 // soft divisions are only explored when the caller instructs a ceiling.
-const DefaultFloor = 2
+//
+// Set to 4: a single base node scores weightBase (1) and a trivial activity
+// 2-4, so a floor of 2 let the recursive subtree/service peels shatter chunks
+// into one-activity sections (on the example designs, 30-40 singleton sections
+// per chunk). A floor of 4 suppresses those single-node peels — the division
+// portfolio is preserved, but the cuts that produce sub-floor sections are no
+// longer offered — collapsing the same chunks to a handful of meaningful
+// sections with few or no singletons.
+const DefaultFloor = 4
 
 // DefaultMaxDepth bounds how many levels of divisions the explore phase nests
 // when recursively re-dividing over-ceiling sections (the top-level divisions

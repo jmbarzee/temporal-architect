@@ -97,6 +97,22 @@ export function GraphView({
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
 
+  // The toolbar (filter chips + file row + search + error/warning bars) floats
+  // over the full-bleed canvas, and its height is dynamic (it grows when error
+  // bars expand or chips wrap). Measure it so the Groups modal can sit just
+  // below it instead of guessing with a magic offset that the toolbar outgrows.
+  const toolbarRef = React.useRef<HTMLDivElement>(null)
+  const [toolbarHeight, setToolbarHeight] = React.useState(0)
+  React.useLayoutEffect(() => {
+    const el = toolbarRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const update = () => setToolbarHeight(el.getBoundingClientRect().height)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // Pure data layer (graph build, file list, filter-change flash, diagnostics
   // partition) — everything derived straight from props, no sim/DOM.
   const {
@@ -420,7 +436,11 @@ export function GraphView({
   ) : null
 
   return (
-    <div className="graph-view" ref={containerRef}>
+    <div
+      className="graph-view"
+      ref={containerRef}
+      style={toolbarHeight ? ({ ['--toolbar-height' as string]: `${toolbarHeight}px` } as React.CSSProperties) : undefined}
+    >
       {/* Canvas fills the full viewport beneath the floating overlay */}
       <div className="graph-canvas-area">
         <GraphCanvas
@@ -466,25 +486,29 @@ export function GraphView({
 
       {/* Floating overlay: shared filter bar (with the error/warning bars) */}
       <div className="graph-overlay">
-        <FilterBar
-          ast={ast}
-          allFiles={allFiles}
-          filter={filter}
-          onFilterChange={onFilterChange}
-          pins={pins}
-          onPinsChange={onPinsChange}
-          overriddenPins={overriddenPins}
-          recentlyChanged={recentlyChanged}
-          searchQuery={searchQuery}
-          searchActive={searchActive}
-          onSearchChange={onSearchChange}
-          searchInputRef={searchInputRef}
-          searchTitle="Search nodes (/)"
-          searchPlaceholder="Search nodes..."
-          searchExtra={searchExtra}
-          errors={errors}
-          diagnostics={diagnostics}
-        />
+        {/* Measured wrapper: its height drives where the Groups modal sits, so
+            the modal tracks the real toolbar bottom (not a fixed offset). */}
+        <div className="graph-toolbar" ref={toolbarRef}>
+          <FilterBar
+            ast={ast}
+            allFiles={allFiles}
+            filter={filter}
+            onFilterChange={onFilterChange}
+            pins={pins}
+            onPinsChange={onPinsChange}
+            overriddenPins={overriddenPins}
+            recentlyChanged={recentlyChanged}
+            searchQuery={searchQuery}
+            searchActive={searchActive}
+            onSearchChange={onSearchChange}
+            searchInputRef={searchInputRef}
+            searchTitle="Search nodes (/)"
+            searchPlaceholder="Search nodes..."
+            searchExtra={searchExtra}
+            errors={errors}
+            diagnostics={diagnostics}
+          />
+        </div>
 
         {/* Search results dropdown */}
         {visibleMatchIds && visibleMatchIds.size > 0 && searchActive && (

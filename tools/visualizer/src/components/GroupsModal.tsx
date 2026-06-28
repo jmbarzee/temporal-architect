@@ -33,21 +33,6 @@ function shortSectionId(id: string): string {
   return i >= 0 ? id.slice(i + 1) : id
 }
 
-// Collect every section id in a division that carries a nested sub-division
-// (i.e. is drillable) — used by "expand all" / "collapse all".
-function drillableSectionIds(division: Division): string[] {
-  const out: string[] = []
-  const walk = (s: Section) => {
-    const nested = s.divisions?.[0]
-    if (nested && nested.sections.length > 0) {
-      out.push(s.id)
-      for (const child of nested.sections) walk(child)
-    }
-  }
-  for (const s of division.sections) walk(s)
-  return out
-}
-
 export function GroupsModal({
   decomposition,
   selection,
@@ -76,6 +61,10 @@ export function GroupsModal({
   // for designs with no over-ceiling chunks, or hosts that send no decomposition).
   if (!decomposition || divisibleChunks.length === 0) return null
 
+  const setGlowEnabled = (glowEnabled: boolean) => {
+    onSelectionChange({ ...selection, glowEnabled })
+  }
+
   const toggleEnabled = (chunkId: string) => {
     const enabledChunks = new Set(selection.enabledChunks)
     if (enabledChunks.has(chunkId)) enabledChunks.delete(chunkId)
@@ -97,13 +86,13 @@ export function GroupsModal({
     onSelectionChange({ ...selection, expandedSections })
   }
 
-  const setExpanded = (ids: string[], expanded: boolean) => {
-    const expandedSections = new Set(selection.expandedSections)
-    for (const id of ids) {
-      if (expanded) expandedSections.add(id)
-      else expandedSections.delete(id)
-    }
-    onSelectionChange({ ...selection, expandedSections })
+  // Show/hide the selected division's section list in the modal tree. Pure
+  // browsing — it does not change what glows on the canvas.
+  const toggleChunkCollapsed = (chunkId: string) => {
+    const collapsedChunks = new Set(selection.collapsedChunks)
+    if (collapsedChunks.has(chunkId)) collapsedChunks.delete(chunkId)
+    else collapsedChunks.add(chunkId)
+    onSelectionChange({ ...selection, collapsedChunks })
   }
 
   const activeDivisionOf = (chunk: Chunk): Division => {
@@ -113,13 +102,30 @@ export function GroupsModal({
 
   return (
     <div className={`groups-modal graph-control-panel ${open ? 'open' : ''}`}>
-      <button
-        className="graph-control-panel-toggle"
-        onClick={() => setOpen(!open)}
-        title="Toggle decomposition groups"
-      >
-        {open ? '\u25BC Groups' : '\u25B6 Groups'}
-      </button>
+      {/* Header: collapse toggle + the master glow switch. The switch is always
+          shown (collapsed or open) so the overlay can be turned on/off without
+          expanding the panel. */}
+      <div className="groups-modal-header">
+        <button
+          className="graph-control-panel-toggle"
+          onClick={() => setOpen(!open)}
+          title="Toggle decomposition groups panel"
+        >
+          {open ? '\u25BC Groups' : '\u25B6 Groups'}
+        </button>
+        <label
+          className={`switch${selection.glowEnabled ? ' on' : ''}`}
+          title="Show group glow on the canvas"
+        >
+          <input
+            type="checkbox"
+            checked={selection.glowEnabled}
+            onChange={e => setGlowEnabled(e.target.checked)}
+            aria-label="Show group glow"
+          />
+          <span className="switch-track"><span className="switch-knob" /></span>
+        </label>
+      </div>
 
       {open && (
         <div className="graph-control-panel-body">
@@ -145,9 +151,8 @@ export function GroupsModal({
           {tab === 'groups' && (
             <div className="groups-tree" onMouseLeave={() => onHover(null)}>
               {divisibleChunks.map(chunk => {
-                const division = activeDivisionOf(chunk)
+                const activeDivision = activeDivisionOf(chunk)
                 const enabled = selection.enabledChunks.has(chunk.id)
-                const drillable = drillableSectionIds(division)
                 return (
                   <div key={chunk.id} className="groups-chunk">
                     <label className="groups-chunk-head" title={chunk.id}>
@@ -160,46 +165,72 @@ export function GroupsModal({
                       <span className="groups-chunk-meta">c{chunk.complexity}</span>
                     </label>
 
-                    {/* Division options — pick the cut for this chunk. Hover an
-                        option (selected or not) to preview it on the canvas. */}
-                    <div className="groups-options">
-                      {chunk.divisions!.map(div => (
-                        <label
-                          key={div.strategy}
-                          className="groups-option"
-                          title={div.rationale}
-                          onMouseEnter={() => onHover({ chunkId: chunk.id, strategy: div.strategy })}
-                          onMouseLeave={() => onHover(null)}
-                        >
-                          <input
-                            type="radio"
-                            name={`groups-div-${chunk.id}`}
-                            checked={division.strategy === div.strategy}
-                            onChange={() => setActiveStrategy(chunk.id, div.strategy)}
-                          />
-                          <span className="groups-option-rank">#{div.rank}</span>
-                          <span className="groups-option-strategy">{div.strategy}</span>
-                        </label>
-                      ))}
+                    {/* Division options live in the same tree as the sections
+                        they produce: each option is a selectable radio row, and
+                        the selected option expands to reveal its sections nested
+                        beneath it. Hover any option (selected or not) to preview
+                        it on the canvas. */}
+                    <div className="groups-divisions">
+                      {chunk.divisions!.map(div => {
+                        const selected = activeDivision.strategy === div.strategy
+                        const hasSections = div.sections.length > 0
+                        const showSections = selected && hasSections && !selection.collapsedChunks.has(chunk.id)
+                        return (
+                          <div
+                            key={div.strategy}
+                            className={`groups-division${selected ? ' selected' : ''}`}
+                          >
+                            <div className="groups-option-row">
+                              {/* Only the selected option owns sections, so only
+                                  it carries a disclosure caret — show/hide its
+                                  sections (VIEW_FRAMEWORK.md § Expand/Collapse
+                                  Affordance). Collapsing is browsing only; it
+                                  doesn't change the glow. Other rows get a spacer
+                                  so every radio stays aligned. */}
+                              {selected && hasSections ? (
+                                <button
+                                  className="groups-expand"
+                                  onClick={() => toggleChunkCollapsed(chunk.id)}
+                                  title={showSections ? 'Hide sections' : 'Show sections'}
+                                >
+                                  {showSections ? '\u25BC' : '\u25B6'}
+                                </button>
+                              ) : (
+                                <span className="groups-expand-spacer" />
+                              )}
+                              <label
+                                className="groups-option"
+                                title={div.rationale}
+                                onMouseEnter={() => onHover({ chunkId: chunk.id, strategy: div.strategy })}
+                                onMouseLeave={() => onHover(null)}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`groups-div-${chunk.id}`}
+                                  checked={selected}
+                                  onChange={() => setActiveStrategy(chunk.id, div.strategy)}
+                                />
+                                <span className="groups-option-rank">#{div.rank}</span>
+                                <span className="groups-option-strategy">{div.strategy}</span>
+                              </label>
+                            </div>
+
+                            {showSections && (
+                              <SectionRows
+                                chunkId={chunk.id}
+                                sections={div.sections}
+                                depth={1}
+                                selection={selection}
+                                onToggleExpand={toggleExpand}
+                                hover={hover}
+                                onHover={onHover}
+                                colorById={colorById}
+                              />
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
-
-                    {drillable.length > 0 && (
-                      <div className="groups-expand-all">
-                        <button onClick={() => setExpanded(drillable, true)}>expand all</button>
-                        <button onClick={() => setExpanded(drillable, false)}>collapse all</button>
-                      </div>
-                    )}
-
-                    <SectionRows
-                      chunkId={chunk.id}
-                      sections={division.sections}
-                      depth={0}
-                      selection={selection}
-                      onToggleExpand={toggleExpand}
-                      hover={hover}
-                      onHover={onHover}
-                      colorById={colorById}
-                    />
                   </div>
                 )
               })}
@@ -264,13 +295,10 @@ function SectionRows({
               ) : (
                 <span className="groups-expand-spacer" />
               )}
-              <span
-                className="groups-swatch"
-                style={{
-                  background: color ?? 'transparent',
-                  borderColor: color ?? 'var(--color-border)',
-                }}
-              />
+              {/* Color legend for the canvas glow — a thin bar (not a box), so
+                  it never reads as a checkbox, and invisible when this section
+                  isn't currently a glow group. */}
+              <span className="groups-swatch" style={{ background: color ?? 'transparent' }} />
               <span className="groups-section-name" title={section.id}>
                 {shortSectionId(section.id)}
               </span>

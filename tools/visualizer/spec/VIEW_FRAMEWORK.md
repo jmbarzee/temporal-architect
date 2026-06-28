@@ -156,6 +156,17 @@ The graph adds one behavior on top of the shared filter bar: when a type is togg
 
 Both views use the same color palette, icon system, and theming. See [PRODUCT.md](./PRODUCT.md) § Visual Identity for the authoritative definitions.
 
+### Expand/Collapse Affordance
+
+Anything that can be expanded or collapsed to reveal/hide nested children — a tree
+node, a definition block, a decomposition group/division with subsections — uses a
+**disclosure caret** (`▶` collapsed, `▼` expanded), never a text "expand"/"collapse"
+label or a separate button pair. Each caret controls exactly one thing: the
+show/hide state of **its own row's direct children**. The caret sits at the leading
+edge of the row; rows with no children render a same-width spacer in its place so
+siblings stay aligned. This is the single, recognizable "there is more underneath"
+signal across the whole visualizer.
+
 
 ## Initial Defaults
 

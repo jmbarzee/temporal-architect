@@ -35,14 +35,22 @@ export const GROUP_PALETTE = [
 export const HOVER_STRENGTH = 1.9
 
 // GroupSelection is the persistent, user-driven overlay state owned by
-// GraphView. activeStrategyByChunk records which division option is active per
-// chunk (absent = the rank-1 default); enabledChunks are the chunks whose
-// active division is currently glowing; expandedSections are the section rows
-// the user has drilled into (which scopes the glow to that section's children).
+// GraphView. glowEnabled is the master on/off for the whole overlay (the switch
+// at the top of the modal); when false nothing glows regardless of the rest.
+// activeStrategyByChunk records which division option is active per chunk
+// (absent = the rank-1 default); enabledChunks are the chunks whose active
+// division is currently glowing; expandedSections are the section rows the user
+// has drilled into (which scopes the glow to that section's children).
+// collapsedChunks holds chunks whose active division's section list is collapsed
+// in the modal tree — purely a browsing/disclosure concern (it does NOT change
+// what glows); absent = expanded (the default), so the recommended grouping is
+// visible on load.
 export interface GroupSelection {
+  glowEnabled: boolean
   activeStrategyByChunk: Record<string, string>
   enabledChunks: Set<string>
   expandedSections: Set<string>
+  collapsedChunks: Set<string>
 }
 
 // GroupHover is the transient preview: hovering a division option previews that
@@ -81,7 +89,13 @@ export function initialGroupSelection(decomposition: Decomposition | undefined):
       if (chunk.divisions && chunk.divisions.length > 0) enabledChunks.add(chunk.id)
     }
   }
-  return { activeStrategyByChunk: {}, enabledChunks, expandedSections: new Set() }
+  return {
+    glowEnabled: true,
+    activeStrategyByChunk: {},
+    enabledChunks,
+    expandedSections: new Set(),
+    collapsedChunks: new Set(),
+  }
 }
 
 // activeDivisionFor resolves the division a chunk should render given the
@@ -132,7 +146,7 @@ export function computeActiveGroups(
   duplicateGroups: Map<string, Set<string>>,
   visibleIds: Set<string>,
 ): ActiveGroup[] {
-  if (!decomposition) return []
+  if (!decomposition || !selection.glowEnabled) return []
 
   const groups: ActiveGroup[] = []
   let colorSeq = 0

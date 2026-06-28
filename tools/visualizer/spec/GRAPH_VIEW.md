@@ -705,18 +705,35 @@ is already on screen.
 
 ### Groups Modal
 
-A collapsible floating overlay, **collapsed by default** (the toggle reads
-"Groups"), mirroring the Control Panel's pattern (§ Control Panel). Two tabs:
+A collapsible floating overlay anchored **top-right, below the toolbar**
+(the Control Panel holds bottom-right), **collapsed by default** (the toggle
+reads "Groups"), mirroring the Control Panel's pattern (§ Control Panel). Its
+header carries an **always-visible glow switch** (the Control Panel's sliding
+switch style) — the master on/off for the overlay, shown whether the panel is
+collapsed or open, so the glow can be toggled without expanding the panel. When
+off, nothing glows regardless of the selection below. Two tabs:
 
-- **Groups** (browser) — per hard chunk, the ranked **division options** (one per
-  strategy; the rank-1 division is selected by default). Selecting a division
-  switches the active grouping for that chunk (client-side, no recompute). Its
-  **sections** render as nested, collapsible rows; recursive sub-divisions nest
-  further. Hovering a row **previews** its group(s), transiently overriding the
-  pinned selection (hover is exploratory); clicking **pins** it. Enabling a
-  division lights all of its subsections. **Only one division per chunk is active
-  at a time** — competing divisions partition the same nodes, so their glows would
-  conflict.
+- **Groups** (browser) — per hard chunk, the ranked **division options** and the
+  **sections** they produce form **one tree**, with three distinct, non-overlapping
+  controls so the user is never guessing what a widget does:
+    - a **chunk checkbox** (multi-select) — whether this chunk participates in the
+      glow; any subset of chunks can be on at once;
+    - **option radios** (single-select) — which *one* division is active for the
+      chunk (the rank-1 division by default). Competing divisions partition the
+      same nodes, so **only one is active at a time**; switching is client-side, no
+      recompute.
+    - **disclosure carets** — show/hide a row's direct children, and *only* that.
+      The selected option carries a caret to show/hide its section list (open by
+      default); each section with a recursive sub-division carries its own caret.
+      Collapsing is **browsing only** — it never changes what glows. Non-selected
+      options own no sections, so they show no caret.
+
+  Sections carry a thin **color bar** legend (not a box) keyed to their canvas
+  glow, plus a member/complexity count. Hovering any row **previews** its group(s),
+  transiently overriding the pinned selection (hover is exploratory); the radio
+  **pins** the active division. A bulk "expand all / collapse all" is deferred (see
+  [internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
+  § Deferred — decomposition overlay).
 - **Params** (read-only) — the analysis inputs that produced the grouping:
   ceiling, floor, max-depth, and the strategies considered. A visible placeholder
   for the future recompute controls.
@@ -750,7 +767,11 @@ size) in the glow radius.
 
 The glow is **non-destructive** and stacks beneath the existing focus/context
 lenses (search dim, hover dependency highlight); it never changes which nodes are
-visible.
+visible. While the glow is active the focus/context **dim floor is softened**
+(un-highlighted nodes fade less than the no-glow default) — the glow already
+pulls the eye to the grouped nodes, so the full dim would render the rest
+illegible; the un-grouped context stays readable without losing the hover/search
+focus effect when no glow is shown.
 
 ### Advisory (note)
 

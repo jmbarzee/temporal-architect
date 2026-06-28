@@ -36,6 +36,11 @@ const EDGE_STYLE = {
 const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#FFFFFF'
 const DIM_ALPHA = 0.2
+// A gentler dim floor used while the decomposition group glow is active. The
+// glow already pulls the eye to the grouped nodes, so the full 0.2 dim on the
+// rest makes them illegible — a softer fade keeps the un-grouped context
+// readable without losing the hover/search focus effect when no glow is shown.
+const DIM_ALPHA_GROUPS = 0.5
 
 // Decomposition group glow (drawn behind everything; see GRAPH_VIEW.md
 // § Decomposition Group Overlay). A member's halo extends GROUP_GLOW_PAD screen
@@ -440,6 +445,8 @@ export function GraphCanvas({
       const d = drawData.current
       const { w, h } = size
       const hasHighlight = d.highlightedNodes !== null && d.highlightedNodes.size > 0
+      // Soften the dim while the group glow is on (see DIM_ALPHA_GROUPS).
+      const dimAlpha = d.groupGlows.length > 0 ? DIM_ALPHA_GROUPS : DIM_ALPHA
 
       // Resolve theme-tracking colours every frame. Cheap (CSS lookup +
       // string trim per draw) and guarantees the canvas text follows a
@@ -548,8 +555,8 @@ export function GraphCanvas({
         // Highlights override the per-style alpha so the active subgraph
         // pops; dim non-highlighted/non-matching edges down to DIM_ALPHA.
         ctx.globalAlpha = hasHighlight
-          ? (edgeHighlighted ? 1 : DIM_ALPHA)
-          : (edgeSearchDimmed ? DIM_ALPHA : baseAlpha)
+          ? (edgeHighlighted ? 1 : dimAlpha)
+          : (edgeSearchDimmed ? dimAlpha : baseAlpha)
 
         ctx.beginPath()
         ctx.setLineDash([...style.dash])
@@ -892,7 +899,7 @@ export function GraphCanvas({
         const nodeHighlighted = d.highlightedNodes?.has(node.id) ?? false
         const searchDimmed = d.searchMatchIds !== null && !d.searchMatchIds.has(node.id)
         const nodeDimmed = (hasHighlight && !nodeHighlighted) || searchDimmed
-        ctx.globalAlpha = nodeDimmed ? DIM_ALPHA : 1
+        ctx.globalAlpha = nodeDimmed ? dimAlpha : 1
 
         const fill   = def.color.fill
         const border = def.color.border
@@ -916,7 +923,7 @@ export function GraphCanvas({
           ctx.save()
           ctx.font = `${def.size.iconSize * mul}px ${ICON_FONT_FAMILY}`
           ctx.fillStyle = '#FFFFFF'
-          ctx.globalAlpha = (nodeDimmed ? DIM_ALPHA : 1) * 0.92
+          ctx.globalAlpha = (nodeDimmed ? dimAlpha : 1) * 0.92
           ctx.fillText(icon, sx, sy + 0.5)
           ctx.restore()
         }

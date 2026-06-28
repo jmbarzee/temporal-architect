@@ -68,6 +68,12 @@ cycling palette, modal-as-legend). Deferred polish:
   the same active group so members drift together, without a dedicated clustering
   force. Reuses the existing per-edge spring system (GRAPH_VIEW.md § Control Panel
   → PULL); not a new gravity force.
+- **Bulk expand/collapse all** — the modal tree expands/collapses one row at a
+  time via its disclosure caret. A bulk "expand all / collapse all" (over a chunk's
+  active division, or the whole tree) was dropped from v1 for lack of an obvious,
+  uncluttered home — it must stay visually distinct from the per-row disclosure
+  carets (VIEW_FRAMEWORK.md § Expand/Collapse Affordance), e.g. a labeled control
+  in the tab header or a clearly-different icon, not another caret.
 - **Advisory surfacing** — the decomposition carries `suggestContract` advisories
   (`Chunk.advisories`); surfacing them in the graph (e.g. a node badge or modal
   callout) is deferred. Orthogonal to the groups overlay.
