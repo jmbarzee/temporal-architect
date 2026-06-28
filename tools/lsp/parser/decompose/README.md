@@ -67,8 +67,11 @@ over-ceiling chunk, `exploreStrategies` runs *every* requested strategy
 (`selectStrategies` returns `[tree, nexus, worker, namespace, service, subtree]`,
 or the `--by` subset) **independently** to produce a candidate split. Candidates
 that don't actually divide the chunk (<2 sections) or that would yield a
-sub-floor section are dropped. The survivors are then **ranked by whole-compound
-balance** (`rankDivisions`) and assigned `Rank` 1..N. Rank 1 is the best.
+sub-floor section (any section under `Options.Floor`, default `DefaultFloor`) are
+dropped — this is what keeps the recursive subtree/service peels from shattering
+a chunk into one-activity sections. The survivors are then **ranked by
+whole-compound balance** (`rankDivisions`) and assigned `Rank` 1..N. Rank 1 is
+the best.
 
 The cut strategies live in `strategies.go` as `splitBy*` functions (member →
 section labeling); `buildSections` turns a labeling into sections + a dependency

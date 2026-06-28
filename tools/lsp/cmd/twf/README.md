@@ -46,11 +46,10 @@ mv twf ~/.local/bin/twf
 
 ### From source (requires Go)
 
-```bash
-go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest
-```
+Clone the repo and build from the module. (External `go install …@latest` is
+unsupported: `tools/lsp/go.mod` uses `replace` directives that `go install
+pkg@version` ignores.)
 
-Or from the repo root:
 ```bash
 cd tools/lsp
 go install ./cmd/twf
