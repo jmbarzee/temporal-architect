@@ -183,9 +183,10 @@ func (wg *workGraph) effectiveComplexity(members []string) int {
 //     deployment layout, and break final ties deterministically by name.
 //
 // Why this order (calibrated against temporal-compranda; see
-// internal/changes/temp-change-set/chunks/METRIC_CALIBRATION.md): parallel width
-// measured on the recursed leaves rewards gratuitous shattering, so it must sit
-// *below* the coherence brake, not above it; and once recursion has a proper
+// internal/changes/temp-change-set/chunks/BACKLOG.md § Metric & calibration):
+// parallel width measured on the recursed leaves rewards gratuitous shattering,
+// so it must sit *below* the coherence brake, not above it; and once recursion
+// has a proper
 // look-ahead the strategies converge on the same leaves, so the headline choice
 // comes down to which top-level grouping is most coherent and structural.
 func (wg *workGraph) rankDivisions(divs []Division, ceiling int) {

@@ -130,7 +130,8 @@ menu again). The recursion is:
 ### Ranking key
 
 `rankDivisions` orders whole compounds by a deterministic lexicographic key
-(see `METRIC_CALIBRATION.md` for the calibration against `temporal-compranda`):
+(see `internal/changes/temp-change-set/chunks/BACKLOG.md` § Metric & calibration
+for the calibration against `temporal-compranda`):
 
 1. **fewer cuttable leaves still over the ceiling** — did the compound tame what
    it could (a loop / single-node leaf is uncuttable and never counts as a

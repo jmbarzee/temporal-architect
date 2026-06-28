@@ -1,7 +1,7 @@
 # Parser Changes: explore-stage authorship-parallelism lens — `service` + `subtree` strategies, coupling-aware ranking
 
-**Source review(s):** [`internal/changes/temp-change-set/chunks/COMPOUNDING_PROPOSAL.md`](../temp-change-set/chunks/COMPOUNDING_PROPOSAL.md) (P3/P4 ideation) and the settled design in [`internal/changes/temp-change-set/chunks/METRIC_CALIBRATION.md`](../temp-change-set/chunks/METRIC_CALIBRATION.md).
-**REVISIONS file(s):** none (promoted directly from the calibration note + handoff).
+**Source review(s):** the chunks workstream design-of-record + metric/calibration reference, now consolidated into [`internal/changes/temp-change-set/chunks/BACKLOG.md`](../temp-change-set/chunks/BACKLOG.md) (the prior `COMPOUNDING_PROPOSAL.md` ideation and `METRIC_CALIBRATION.md` note were folded in once this work shipped).
+**REVISIONS file(s):** none (promoted directly from the chunks design-of-record).
 **Design-of-record:** [`internal/changes/temp-change-set/chunks/BACKLOG.md`](../temp-change-set/chunks/BACKLOG.md).
 
 ## Summary
@@ -135,7 +135,8 @@ default 4; lazy over-ceiling expansion; `temporal-compranda` ≈ 0.04s).
 
 - **Metric weights:** λ=1 and the pure-lexicographic ranking (no explicit
   parallel-width weight) reproduce the compranda ground truth; revisit if another
-  design ranks poorly. See `METRIC_CALIBRATION.md` §8.
+  design ranks poorly. See [`chunks/BACKLOG.md`](../temp-change-set/chunks/BACKLOG.md)
+  § Metric & calibration.
 - **Replace vs augment:** `Ec` still only drives explore-phase decisions; whether
   to let it drive the public ceiling/floor remains a documented future option.
 - **Advisory threshold:** the `contractAdvisoryMinFanIn = 3` + articulation gate

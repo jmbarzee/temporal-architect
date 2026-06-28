@@ -1,132 +1,86 @@
-# chunks Workstream Backlog
+# chunks — decomposition workstream (backlog)
 
-Dedicated backlog for the **chunks** effort: topology-based graph decomposition — "what are the composable
-chunks of work?" — that lets the harness skill break implementation out to author subagents at contract
-boundaries. Kept separate from the per-component backlogs (`parser`, `visualizer`, `dsl`, …) so this
-project's deferred work isn't lost behind slower component workstreams.
+Topology-based graph decomposition: "what are the composable chunks of work, and
+where must / where could the work be split?" It **informs; it does not impose**.
+The harness skill uses it to break implementation out to author subagents at
+contract boundaries; the visualizer renders it as a group overlay.
 
-This is the un-deferral of Stage 3 #8 in
-[skill-retro/ordered_implementation_plan.md](../skill-retro/ordered_implementation_plan.md). It does
-**not** depend on declared inbound roots (#7, deferred — *Connecting In and Out of Temporal*); roots stay
-heuristic and #7 slots in additively later.
-
-**Cycle work — landed:** the call-structure decomposition (`tools/lsp/parser/decompose` +
-`twf graph chunks`) shipped via [`internal/changes/parser/CHANGES_005.md`](../../parser/CHANGES_005.md)
-(REVISIONS_005, consumed). The deferred / genuinely-open work below remains owned here; the shipped scope
-and its spillover are tracked under `internal/changes/parser/BACKLOG.md` → *Graph Decomposition*. This
-file owns the design-of-record.
-
-**Reading:** `internal/changes/parser/BACKLOG.md` → *Graph Decomposition: Composable Chunks / Workflow
-Trees*; `tools/lsp/parser/graph/graph.go` (the resolved deployment graph this rides on).
+The feature shipped (engine + visualizer overlay + extension wiring) — see
+[`STATE.md`](./STATE.md) for the current-state orientation and file map. This file
+is the forward-looking parking lot: deferred and open work only.
 
 ---
 
-## Goal
+## Deferred — decomposition engine
 
-A tool that **guides implementation breakout to subagents** for the main harness skill — "what are the
-composable chunks of work, and where must / where could the work be split?" The tool **informs; it does
-not impose** the decomposition.
-
-## Architecture — separate package, no parser-pipeline changes
-
-New package **`tools/lsp/parser/decompose`** (sibling of `graph`), a *consumer* of existing types — same
-posture as the validator/LSP/codegen consumers. Zero changes to lexer/parser/resolver.
-
-- **Nodes from the AST** — definitions are naturally unique there (the *graph* is what duplicates by
-  deployment context). The AST is also where the complexity metric's body counts live.
-- **Structure from the graph edges** — map each edge endpoint to its **definition key** (the leftmost
-  `kind:Name` segment of the node ID, already encoded by `graph/`). This collapses deployment-duplicates
-  (e.g. one workflow on two workers) back to one authorable unit **without a separate "projection"
-  construct** — AST + graph used together.
-- Retain deployment facts (which workers / namespaces / langs host a def) as **attributes** on the node,
-  so #1b (language split) and the deferred worker/namespace/nexus grouping lens can read them later.
-- CLI: a thin `twf graph chunks` wrapper in `cmd/twf`, mirroring how `graph` wraps `graph.Extract`.
-
-## The two-typed-problems model
-
-| | **#1 Hard boundaries** | **#2 Soft divisions** |
-|---|---|---|
-| Nature | Discovered *facts* about the graph | Discovered *options* over a too-big chunk |
-| Sources | 1a isolated components (today) · 1b enforced boundaries — language, later others (additive) | reachable-set cuts, nexus cuts, worker/ns cuts, articulation seams, community detection (last resort) |
-| Harness contract | **MUST** dispatch separate subagents | **MAY** dispatch — a suggestion + ordering/dependency DAG |
-| Trigger | Always emitted | Only when a chunk exceeds the **complexity ceiling** |
-| Output | A partition (every node in exactly one hard chunk) | Ranked candidate cuts + inter-section dependency DAG |
-
-Algorithm: **partition into hard chunks → score each → for any over the ceiling, emit ranked soft-division
-options.**
-
-## Complexity metric (AST-based)
-
-A single **deterministic scalar** rolled per-definition then per-chunk — body statement count, distinct
-call fan-out, branch/loop depth, handler count, child-workflow count (documented + tunable, *not* a
-calibrated model for v1). Drives two thresholds:
-
-- **Ceiling** (caller-instructed, e.g. `--ceiling N`): triggers #2 soft divisions.
-- **Floor**: a #1 chunk below the floor is "too granular for its own subagent" → recommend merging into
-  the chunk that dispatches into it. The floor makes #1 a **stronger boundary** (real chunks, not a spray
-  of one-activity fragments) and also gates #2 (never propose a cut that yields a sub-chunk under the floor).
-
-## Roots (heuristic; #7-additive)
-
-Seed set = in-degree-0 ∪ `asyncBacking` targets ∪ handler-bearing workflows ∪ in-cycle-with-no-external-in-edge.
-Each emitted root carries `source: heuristic|declared` from day one, so declared inbound roots (#7) later
-become a higher-priority seed source without reshaping the pipeline.
-
-Edge semantics that matter:
-- **`nexusCall`** = the cleanest **contract cut** (cross-namespace/worker by construction).
-- **`asyncBacking`** target = a **root** (external entry) despite having an in-edge.
-- **`signalSend`** = a **soft edge** — keeps two workflows in the same blob but they are *separate*
-  roots/chunks; must not be treated as a binding call edge.
-
-## Unit & loops
-
-Chunk unit = **SCC-collapsed reachable-set per heuristic root, shared nodes reported as overlap (not
-duplicated)**. SCC condensation collapses workflow-call cycles into one node.
-
-**Loops are never cut this pass.** The "raised loop ceiling above which a cut is enforced (via non-cutting
-strategies like subtree extraction until then, then community detection)" → **deferred** (see below).
-
-## Tool surface (sketch)
-
-- `twf graph chunks` — hard partition (#1) + per-chunk complexity score + floor-merge recommendations.
-- `twf graph chunks --ceiling N` — additionally emit ranked #2 soft divisions + dependency DAG for chunks
-  over the ceiling. `--by worker|namespace|nexus|tree` selects/biases cut strategies. Many suggestions
-  supported.
-- Definition-collapse is **internal**; expose a `twf graph defs` lens only if a consumer asks.
-
-## Test plan (sampler + `twf graph --history`)
-
-Reuse the existing round-trip harness (`tools/sampler` → `twf graph --history`); add assertions over the
-same graph: hard-partition grouping (isolated components), floor merges of trivial chunks, ceiling-triggered
-soft divisions + dependency ordering, and SCC collapse of workflow-call cycles (one chunk, **no** cut).
+- **Loop cut ceiling** — a raised ceiling above which a loop's subtrees (then,
+  last resort, community detection) may be cut. Loops are never cut until this
+  lands.
+- **Chunk ↔ impl reconciliation** — a first-class staleness signal tying chunk
+  identity + the `# impl:` link + a quick verify into "this chunk's
+  implementation is in/out of sync with its `.twf`", so the harness can skip
+  unchanged chunks. Shares a surface with drift detection.
+- **Worker / namespace / nexus grouping lens** — an alternate grouping dimension
+  over the same node set, riding the coarsened worker/namespace edges + nexus
+  tiers. Parallel to the call-structure decomposition; likely promote to
+  `parser/BACKLOG.md`.
+- **#7 declared inbound roots** — additively sharpens root identification
+  (`source: declared`); see `dsl/BACKLOG.md` → *Connecting In and Out of Temporal*.
+- **#1b language boundaries** — depends on `@lang` annotations; reads the retained
+  per-node deployment attributes; additive to the #1 partition.
+- **Alternatives at depth** — recursion keeps only the single best sub-division
+  per section; the full ranked portfolio exists only at the chunk top level.
+  Retaining *one-level-deep* candidate alternatives per section (the losers
+  `bestDivision` already computes) would let the visualizer modal "break open" any
+  node. Bounded change; distinct from the rejected exponential full alternative
+  tree.
+- **Metric: replace, not just augment** — `Ec` currently drives only explore-phase
+  decisions; the public `complexity` scalar and the ceiling/floor stay additive
+  `N` (see [`STATE.md`](./STATE.md) for the metric mechanics). Letting `Ec` drive
+  the public scalar + thresholds is a clean future option.
 
 ---
 
-## Deferred / open work
+## Deferred — decomposition overlay (visualizer)
 
-- **Chunk ↔ existing-impl reconciliation + cheap implementation-status check** — the harness consumer
-  decomposes over the *design*, but `twf graph chunks` doesn't know what's already implemented. Selective
-  dispatch (don't re-author unchanged chunks; skip components that don't need altering) currently relies
-  on a coarse stopgap: resolve the chunk's `# impl: <dirs>` link and use the author skill's build/test
-  verify as a changed-vs-unchanged signal. Wanted: a first-class staleness signal tying **chunk identity**
-  (from the chunker) + the `# impl:` link + a quick verify into a "this chunk's implementation is
-  in/out of sync with its `.twf`" check. Shares a surface with drift detection (author feedback /
-  sampler-on-production). Consumer: the `temporal-architect` harness skill.
-- **Loop cut ceiling** — the raised ceiling above which a loop's subtrees (then, last-resort, community
-  detection) may be cut. Explicitly out of the first pass; loops are never cut until this lands.
-- **Worker / namespace / nexus grouping lens** — an alternate grouping dimension over the same node set;
-  rides the existing coarsened worker/namespace edges + nexus tiers. Parallel to the call-structure
-  decomposition, not on its critical path. (Rides an existing component → its own backlog entry; likely
-  promote into `parser/BACKLOG.md`.)
-- **#7 declared inbound roots** — sharpens root identification additively (`source: declared`); see
-  `dsl/BACKLOG.md` → *Connecting In and Out of Temporal*.
-- **#1b language boundaries** — depends on `@lang` annotations (dsl/BACKLOG); reads the retained per-node
-  deployment attributes; additive to the #1 partition.
+The Graph-view group overlay shipped read-only (precomputed decomposition, simple
+cycling palette, modal-as-legend). Deferred polish:
 
-## Open questions (carried, non-blocking)
+- **Recompute** — the overlay consumes a precomputed decomposition; re-running it
+  from new analysis parameters (ceiling, floor, strategy set, max-depth) needs a
+  host **request → response vector**: the webview posts `recomputeDecomposition`,
+  the host runs the CLI and posts back a fresh decomposition, and the Params tab
+  becomes editable (gated on a host `canRecompute` capability). Separate the
+  *view* tools (instant, client-side) from the *change* tools (a recompute that
+  resets the selection); recompute is an explicit "Apply" so the reset is honest.
+  Standalone has no Go runtime, so live recompute there needs WASM-compiling
+  `parser/decompose` or a small server — a separable project; standalone stays
+  read-only until then.
+- **Coloring** — v1 uses a small cycling palette with the modal as the legend and
+  hover-strengthen for differentiation. Smarter assignment: **structural
+  map-coloring** (reuse a small palette so only *adjacent* groups differ — and
+  since there is no 2D boundary, "adjacent" must be defined structurally, by
+  shared edges / neighbors in the dependency DAG) and a **stable semantic hue**
+  for the dominant shared service (one consistent color; smaller groups vary).
+- **Glow metric encoding** — encode a group metric (`Ec` or member count) in the
+  glow **radius / intensity** as a second perceptual channel independent of hue.
+- **Cohesion force** — boost **link stiffness** on edges whose endpoints are in
+  the same active group so members drift together, without a dedicated clustering
+  force. Reuses the existing per-edge spring system (GRAPH_VIEW.md § Control Panel
+  → PULL); not a new gravity force.
+- **Advisory surfacing** — the decomposition carries `suggestContract` advisories
+  (`Chunk.advisories`); surfacing them in the graph (e.g. a node badge or modal
+  callout) is deferred. Orthogonal to the groups overlay.
 
-- Default floor/ceiling values and metric weights — ship documented defaults, tune from real designs.
-- Should `twf graph chunks` ever auto-apply the floor merge, or only *recommend* it? (Lean: recommend
-  only — consistent with "informs, does not impose".)
-- Multi-file designs: cross-file callers already resolve in the graph, so the chunker inherits that;
-  verify in a sampler fixture.
+(Generic, non-decomposition visualizer deferrals — node selection, info panel,
+etc. — live in [`../../visualizer/BACKLOG.md`](../../visualizer/BACKLOG.md).)
+
+---
+
+## Open questions (non-blocking)
+
+- Default floor/ceiling values and metric weights — ship documented defaults,
+  tune from real designs.
+- Should `twf graph chunks` ever auto-apply the floor merge, or only recommend?
+  (Lean: recommend only — consistent with informs-not-imposes.)
+- Multi-file designs: verify cross-file resolution in a sampler fixture.

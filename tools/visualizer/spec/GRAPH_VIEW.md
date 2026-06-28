@@ -656,11 +656,11 @@ The transitive chain follows only **visible edges** — including graduated edge
 
 ### Selection
 
-Deferred. See [VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Node Selection. The hover info tooltip (§ Hover: Dependency Highlighting) serves the immediate identity and connection discoverability need without requiring persistent selection state.
+Deferred. See [internal/changes/visualizer/BACKLOG.md](../../../internal/changes/visualizer/BACKLOG.md) (Node Selection + Info Panel). The hover info tooltip (§ Hover: Dependency Highlighting) serves the immediate identity and connection discoverability need without requiring persistent selection state.
 
 ### Info Panel
 
-Deferred alongside selection. See [VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Node Selection.
+Deferred alongside selection. See [internal/changes/visualizer/BACKLOG.md](../../../internal/changes/visualizer/BACKLOG.md) (Node Selection + Info Panel).
 
 ### Multi-Select (future consideration)
 
@@ -686,8 +686,8 @@ is unaffected.
 v1 consumes a **precomputed** decomposition (the ranked portfolio at a host-chosen
 ceiling). There is no in-view recompute — changing the analysis parameters
 (ceiling, floor, strategies) is a separate, deferred capability (see
-[VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Decomposition
-Recompute).
+[internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
+§ Deferred — decomposition overlay → Recompute).
 
 ### Data
 
@@ -744,8 +744,9 @@ by the branching factor rather than the total leaf count, so a small palette
 suffices. Smarter assignment — structural-adjacency map-coloring (there is no 2D
 boundary, so "adjacent" is defined by shared edges / the dependency DAG, not
 geography) and a stable semantic hue for the dominant shared service — is deferred
-(see [VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Decomposition
-Coloring), as is encoding a metric (Ec / size) in the glow radius.
+(see [internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
+§ Deferred — decomposition overlay → Coloring), as is encoding a metric (Ec /
+size) in the glow radius.
 
 The glow is **non-destructive** and stacks beneath the existing focus/context
 lenses (search dim, hover dependency highlight); it never changes which nodes are
@@ -756,8 +757,8 @@ visible.
 The decomposition may carry `suggestContract` advisories (a heavily-shared hub
 that is an articulation point — a candidate Nexus contract boundary). Surfacing
 these in the graph (e.g. a node badge) is **deferred**; see
-[VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Decomposition Advisory
-Surfacing.
+[internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
+§ Deferred — decomposition overlay → Advisory surfacing.
 
 ---
 

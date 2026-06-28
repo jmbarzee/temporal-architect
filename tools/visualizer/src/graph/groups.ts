@@ -16,7 +16,8 @@ import type { Decomposition, Chunk, Division, Section } from '../types/decomposi
 // legend), so colors only need to separate the handful of sibling groups shown
 // at the currently-expanded depth — not be globally unique. Smarter assignment
 // (structural map-coloring, stable semantic hue) is deferred (see
-// VISUALIZER_DEFERRED.md § Decomposition Coloring).
+// internal/changes/temp-change-set/chunks/BACKLOG.md
+// § Deferred — decomposition overlay → Coloring).
 export const GROUP_PALETTE = [
   '#2DD4BF', // teal
   '#F59E0B', // amber
