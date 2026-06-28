@@ -39,7 +39,7 @@ tools/lsp/
   parser/validator/     Post-resolution semantic checks
   parser/graph/         Resolved deployment graph extraction
   internal/server/      LSP server (hover, completions, diagnostics, etc.)
-  cmd/twf/              CLI binary (check, parse, symbols, deps, spec, lsp); owns the Go DTO layer
+  cmd/twf/              CLI binary (check, parse, symbols, graph, spec, lsp, mcp); owns the Go DTO layer
 tools/wire-types/       TS projection of the JSON wire contract (tygo-generated from the DTOs); published to npm from here
 tools/visualizer/       React workflow visualizer; built + published to npm from here (the VS Code webview bundle is built in the dist repo from this library)
 skills/                 AI skill definitions (canonical source; cut into the skills release tarball)

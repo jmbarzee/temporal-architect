@@ -49,6 +49,7 @@ twf [flags]
 * [twf check](#twf-check)	 - Validate files; exit non-zero on error severity (text only)
 * [twf graph](#twf-graph)	 - Show the resolved deployment graph; --json for envelope output
 * [twf lsp](#twf-lsp)	 - Start the language server (stdio)
+* [twf mcp](#twf-mcp)	 - Run the MCP server over stdio (parser tools + spec resources)
 * [twf parse](#twf-parse)	 - Emit the canonical JSON envelope (AST + diagnostics + summary)
 * [twf spec](#twf-spec)	 - Print the embedded TWF language specification
 * [twf symbols](#twf-symbols)	 - List workflows and activities; --json for envelope output
@@ -157,6 +158,36 @@ twf lsp [flags]
 
 ```
   -h, --help   help for lsp
+```
+
+### SEE ALSO
+
+* [twf](#twf)	 - Temporal Workflow Format CLI
+
+## twf mcp
+
+Run the MCP server over stdio (parser tools + spec resources)
+
+### Synopsis
+
+Run a Model Context Protocol server over stdio.
+
+Exposes the TWF parser as MCP tools (twf_check, twf_parse, twf_symbols,
+twf_graph, twf_graph_chunks, twf_spec_list, twf_spec_get) and the embedded
+language specification as MCP resources (twf://spec, twf://spec/<slug>).
+
+This is the agent entry point: point any MCP client (Claude Desktop, Cursor,
+Continue) at `twf mcp`. The process serves a single client over stdin/stdout
+and exits when the client disconnects.
+
+```
+twf mcp [flags]
+```
+
+### Options
+
+```
+  -h, --help   help for mcp
 ```
 
 ### SEE ALSO
