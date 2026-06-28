@@ -13,15 +13,24 @@
 
 import type { TWFFile } from './ast'
 import type { ParserGraph } from './parser-graph'
+import type { Decomposition } from './decomposition'
 
-/** Normalized payload: a non-null AST plus an optional deployment graph. */
+/**
+ * Normalized payload: a non-null AST plus an optional deployment graph and an
+ * optional decomposition (`twf graph chunks`). The decomposition is additive —
+ * absent for hosts that don't supply it; the Graph view's group overlay is
+ * simply inert when it's missing.
+ */
 export interface NormalizedPayload {
   ast: TWFFile
   parserGraph?: ParserGraph
+  decomposition?: Decomposition
 }
 
-/** Wrapped `{ ast, parserGraph }` envelope. */
-export function isWrappedPayload(d: unknown): d is { ast: TWFFile; parserGraph?: ParserGraph } {
+/** Wrapped `{ ast, parserGraph, decomposition }` envelope. */
+export function isWrappedPayload(
+  d: unknown,
+): d is { ast: TWFFile; parserGraph?: ParserGraph; decomposition?: Decomposition } {
   return d != null && typeof d === 'object' && 'ast' in (d as Record<string, unknown>) &&
     (d as { ast: unknown }).ast != null
 }
@@ -45,7 +54,7 @@ export function isGraphEnvelope(d: unknown): d is { graph: ParserGraph } {
  */
 export function normalizePayload(d: unknown): NormalizedPayload | null {
   if (isWrappedPayload(d)) {
-    return { ast: d.ast, parserGraph: d.parserGraph }
+    return { ast: d.ast, parserGraph: d.parserGraph, decomposition: d.decomposition }
   }
   if (isGraphEnvelope(d)) {
     return { ast: { definitions: [] }, parserGraph: d.graph }

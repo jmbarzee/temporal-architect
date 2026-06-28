@@ -28,6 +28,9 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  // Don't copy public/ (dev fixtures, etc.) into the published library — the
+  // standalone build (vite.config.ts) still serves them for `?ast=` testing.
+  publicDir: false,
   build: {
     outDir: 'dist-lib',
     emptyOutDir: true,

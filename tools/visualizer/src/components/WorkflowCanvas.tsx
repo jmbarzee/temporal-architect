@@ -2,6 +2,7 @@ import React from 'react'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import { EMPTY_PARSER_GRAPH } from '../types/parser-graph'
+import type { Decomposition } from '../types/decomposition'
 import { TreeView } from './TreeView'
 import { GraphView } from './GraphView'
 import type { FilterState, PinState, ViewTransition, FilterDimension } from '../filter/types'
@@ -21,6 +22,10 @@ interface WorkflowCanvasProps {
    * draw), which is the right behaviour for hosts that don't yet ship
    * `twf graph` output (older extension builds, AST-only fixtures). */
   parserGraph?: ParserGraph
+  /** Decomposition from `twf graph chunks` — drives the Graph view's group
+   * overlay. Optional and additive: when absent the overlay is inert (no
+   * Groups modal content). The tree view does not consume it. */
+  decomposition?: Decomposition
   /** Invoked when the user narrows the file filter to exactly one file —
    * a hint to host applications (e.g. VS Code) to focus that file in their
    * editor. Optional; ignored when not provided. */
@@ -124,7 +129,7 @@ function filterToPersisted(f: FilterState): PersistedFilter {
   }
 }
 
-export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, className, style }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, onRefocus, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
   // History mode: a graph-only payload (e.g. `twf graph --history`) has no
   // AST definitions. The Tree view has nothing to render, so we hide its tab
@@ -372,6 +377,7 @@ export function WorkflowCanvas({ ast, parserGraph, onOpenFile, onRefocus, classN
               active={activeView === 'graph'}
               ast={ast}
               parserGraph={graphInput}
+              decomposition={decomposition}
               onShowInTree={historyMode ? undefined : showInTree}
               filter={graphFilter}
               onFilterChange={setGraphFilter}

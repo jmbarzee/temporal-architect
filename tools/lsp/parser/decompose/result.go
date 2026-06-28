@@ -12,6 +12,13 @@ type Result struct {
 	ChunkEdges []ChunkEdge `json:"chunkEdges"`
 	Floor      int         `json:"floor"`
 	Ceiling    int         `json:"ceiling"`
+	// MaxDepth and Strategies echo the resolved analysis parameters used to
+	// produce this decomposition (after Options defaulting) so consumers can
+	// display "what produced these groups" without re-deriving it. MaxDepth is
+	// the recursion cap; Strategies is the explore-phase strategy menu in
+	// canonical order.
+	MaxDepth   int      `json:"maxDepth"`
+	Strategies []string `json:"strategies"`
 }
 
 // Node is one authorable definition (a unique AST entry). Structure between

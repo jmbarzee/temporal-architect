@@ -4,6 +4,7 @@
 import React from 'react'
 import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
+import type { Decomposition } from '../types/decomposition'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
@@ -14,6 +15,13 @@ import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { GraphCanvas } from './GraphCanvas'
 import { GraphControlPanel } from './GraphControlPanel'
+import { GroupsModal } from './GroupsModal'
+import {
+  computeActiveGroups,
+  initialGroupSelection,
+  type GroupSelection,
+  type GroupHover,
+} from '../graph/groups'
 import { FilterBar } from './FilterBar'
 import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 import { useGraphModel } from './graph-view/useGraphModel'
@@ -31,6 +39,9 @@ interface GraphViewProps {
   // Deployment graph from `twf graph` — primary input. AST is secondary
   // (sourceFile lookup, hover details). See visualizer/REVISIONS_003.
   parserGraph: ParserGraph
+  // Decomposition from `twf graph chunks` — drives the group overlay. Optional;
+  // when absent the Groups modal/overlay is inert.
+  decomposition?: Decomposition
   onShowInTree?: (name: string, defType: string) => void
   filter: FilterState
   onFilterChange: (next: FilterState) => void
@@ -52,6 +63,7 @@ export function GraphView({
   active,
   ast,
   parserGraph,
+  decomposition,
   onShowInTree,
   filter,
   onFilterChange,
@@ -142,6 +154,20 @@ export function GraphView({
   const { visibleNodes, visibleEdges, visibleIds, nodeSummaries, downstreamScores } =
     useVisibleGraph(simRef, simVersion, visibleTypes, selectedFiles)
 
+  // --- Decomposition group overlay (GRAPH_VIEW.md § Decomposition Group
+  // Overlay). Selection (which division per chunk is active/enabled/expanded)
+  // and the transient hover preview are owned here; the active glow groups are
+  // derived from them + the decomposition + the visible set. Selection resets
+  // when a new decomposition arrives. ---
+  const [groupSelection, setGroupSelection] = React.useState<GroupSelection>(
+    () => initialGroupSelection(decomposition),
+  )
+  const [groupHover, setGroupHover] = React.useState<GroupHover | null>(null)
+  React.useEffect(() => {
+    setGroupSelection(initialGroupSelection(decomposition))
+    setGroupHover(null)
+  }, [decomposition])
+
   // Selection / hover / keyboard-focus / shift + control-panel preview state,
   // plus the derived transitive-dependency highlight sets and focusedNodeId.
   const {
@@ -156,6 +182,15 @@ export function GraphView({
     activeGravityType, setActiveGravityType,
     activePullEdge, setActivePullEdge,
   } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph)
+
+  // Active glow groups for the overlay: each frontier section of every
+  // enabled/hovered division, resolved to the visible node ids it covers (via
+  // duplicateGroups, intersected with the visible set). Drives both the canvas
+  // glow and the modal's color swatches.
+  const activeGroups = React.useMemo(
+    () => computeActiveGroups(decomposition, groupSelection, groupHover, graph.duplicateGroups, visibleIds),
+    [decomposition, groupSelection, groupHover, graph.duplicateGroups, visibleIds],
+  )
 
   // Search matches against all nodes (not just visible). When search is
   // active we return a Set even if empty so the canvas dims everything —
@@ -412,6 +447,7 @@ export function GraphView({
           activeGravityType={activeGravityType}
           activePullEdge={activePullEdge}
           nodeScale={nodeScale}
+          groupGlows={activeGroups}
         />
         <GraphHoverTooltip
           hoveredNodeId={hoveredNodeId}
@@ -502,6 +538,17 @@ export function GraphView({
         onActivePullEdge={setActivePullEdge}
         nodeScale={nodeScale}
         onNodeScaleChange={handleNodeScaleChange}
+      />
+
+      {/* Groups modal — decomposition overlay control (top-left). Renders
+          nothing when no decomposition / no divisible chunks. */}
+      <GroupsModal
+        decomposition={decomposition}
+        selection={groupSelection}
+        onSelectionChange={setGroupSelection}
+        hover={groupHover}
+        onHover={setGroupHover}
+        activeGroups={activeGroups}
       />
 
       {/* Shortcuts panel */}

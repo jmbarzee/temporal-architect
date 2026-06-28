@@ -5,6 +5,14 @@
 // version bump. When adding new exports, prefer a deliberate, named re-export
 // to `export *` so the public API is grep-able in one place.
 
+// Global layout / filter-bar / graph-overlay / control-panel / groups-modal
+// styles. Imported here (not just in the standalone main.tsx) so the published
+// library's single `styles.css` is complete — host webviews load only that
+// sibling stylesheet, so anything omitted here is simply unstyled for them.
+// Component-level CSS (blocks.css, style-guide.css) is pulled in transitively
+// by the components below and folds into the same bundle.
+import './styles/index.css'
+
 export { WorkflowCanvas as Visualizer } from './components/WorkflowCanvas'
 
 // Host-embedding kit. These are host-agnostic rendering pieces an embedder
@@ -68,6 +76,18 @@ export type {
   DefinitionKey,
 } from './types/parser-graph'
 export { EMPTY_PARSER_GRAPH } from './types/parser-graph'
+
+// Decomposition types — the wire shape of `twf graph chunks`'s `chunks`
+// payload. Host applications that want to drive the Graph view's group overlay
+// pass a `decomposition` alongside the AST and parser graph.
+export type {
+  Decomposition,
+  Chunk,
+  Division,
+  Section,
+  SectionEdge,
+  Advisory,
+} from './types/decomposition'
 
 // Statement union and primitives — exported so host apps can write their
 // own walkers / custom statement renderers without re-defining the discriminated

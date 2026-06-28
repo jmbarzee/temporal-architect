@@ -15,6 +15,15 @@ export interface Result {
   chunkEdges: ChunkEdge[];
   floor: number /* int */;
   ceiling: number /* int */;
+  /**
+   * MaxDepth and Strategies echo the resolved analysis parameters used to
+   * produce this decomposition (after Options defaulting) so consumers can
+   * display "what produced these groups" without re-deriving it. MaxDepth is
+   * the recursion cap; Strategies is the explore-phase strategy menu in
+   * canonical order.
+   */
+  maxDepth: number /* int */;
+  strategies: string[];
 }
 /**
  * Node is one authorable definition (a unique AST entry). Structure between

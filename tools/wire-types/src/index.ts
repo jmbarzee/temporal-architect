@@ -17,6 +17,19 @@ export type * from "./generated/ast";
 // `twf symbols --json` payload.
 export type * from "./generated/symbols";
 
+// Decomposition payload — the `chunks` field of `twf graph chunks --json`.
+// `Decomposition` is the top-level Result; the rest are its nested shapes.
+// Listed explicitly (not star-exported) so the public surface stays grep-able
+// and the generic generated names (`Result`, `Node`) don't leak.
+export type {
+  Result as Decomposition,
+  Chunk,
+  Division,
+  Section,
+  SectionEdge,
+  Advisory,
+} from "./generated/decompose";
+
 import type {
   Graph as GraphJSON,
   Node as GraphNodeJSON,

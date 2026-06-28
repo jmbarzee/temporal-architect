@@ -98,6 +98,8 @@ func Decompose(file *ast.File, g *graph.Graph, opts Options) *Result {
 		ChunkEdges: []ChunkEdge{},
 		Floor:      floor,
 		Ceiling:    opts.Ceiling,
+		MaxDepth:   opts.effectiveMaxDepth(),
+		Strategies: selectStrategies(opts.By),
 	}
 	if g == nil {
 		return res

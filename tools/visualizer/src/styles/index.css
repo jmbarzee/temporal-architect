@@ -2256,3 +2256,184 @@ body {
 .vscode-dark .graph-context-menu-item:hover {
   background: rgba(168, 155, 216, 0.16);
 }
+
+/* ---------------------------------------------------------------------------
+   Groups modal (decomposition overlay). Reuses the .graph-control-panel
+   collapse/tab chrome but anchors top-left instead of bottom-right so the two
+   panels never collide. See GRAPH_VIEW.md § Decomposition Group Overlay.
+   --------------------------------------------------------------------------- */
+.groups-modal {
+  top: 56px;
+  left: 12px;
+  bottom: auto;
+  right: auto;
+}
+
+.groups-modal.open {
+  width: 300px;
+}
+
+.groups-tree {
+  margin-top: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.groups-chunk {
+  margin-bottom: 10px;
+}
+
+.groups-chunk-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.groups-chunk-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.groups-chunk-meta {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.groups-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 4px 0 4px 18px;
+}
+
+.groups-option {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+
+.groups-option:hover {
+  color: var(--color-text);
+  background: rgba(139, 126, 200, 0.12);
+}
+
+.groups-option-rank {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.groups-option-strategy {
+  color: var(--color-text);
+}
+
+.groups-expand-all {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 4px 18px;
+}
+
+.groups-expand-all button {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  font-family: var(--font-sans);
+}
+
+.groups-expand-all button:hover {
+  color: var(--color-text);
+}
+
+.groups-section-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.groups-section-row.hover {
+  background: rgba(139, 126, 200, 0.14);
+}
+
+.groups-expand {
+  width: 14px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  padding: 0;
+  line-height: 1;
+}
+
+.groups-expand-spacer {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.groups-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.groups-section-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+}
+
+.groups-section-meta {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.groups-params {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.groups-params-note {
+  color: var(--color-text-muted);
+  margin: 0 0 8px;
+  font-size: 11px;
+}
+
+.groups-param-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.groups-param-label {
+  color: var(--color-text-muted);
+}
+
+.groups-param-value {
+  color: var(--color-text);
+  font-family: var(--font-mono, monospace);
+  text-align: right;
+  word-break: break-word;
+}

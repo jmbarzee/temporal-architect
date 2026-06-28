@@ -675,6 +675,92 @@ The graph view uses modifier keys for interaction variants (e.g., Shift+hover fo
 
 ---
 
+## Decomposition Group Overlay
+
+The graph view can overlay the **chunk decomposition** (`twf graph chunks`) — the
+topology-based grouping of definitions into independently-authorable units — as a
+**non-destructive glow highlight**. It answers "what are the composable groups of
+work, and which nodes belong to each?" This is **graph-view only**; the tree view
+is unaffected.
+
+v1 consumes a **precomputed** decomposition (the ranked portfolio at a host-chosen
+ceiling). There is no in-view recompute — changing the analysis parameters
+(ceiling, floor, strategies) is a separate, deferred capability (see
+[VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Decomposition
+Recompute).
+
+### Data
+
+The decomposition payload rides alongside `ast` / `parserGraph` (additive; absent
+for hosts that don't supply it). Its sections' members are `definition` keys —
+identical to `node.definitionKey` — so membership joins onto graph nodes directly,
+and `Graph.duplicateGroups` maps each member to all its sister deployment copies.
+
+Group membership is **not** baked into the static graph; it is derived reactively
+from the decomposition plus the modal's current selection, exactly like the
+hover/search highlight sets. The glow only ever covers nodes that pass the current
+type/file filters (the visible set) — filter-as-source-of-truth (§ Search and
+Filtering). A group's hidden members do not pop into view; the glow extends what
+is already on screen.
+
+### Groups Modal
+
+A collapsible floating overlay, **collapsed by default** (the toggle reads
+"Groups"), mirroring the Control Panel's pattern (§ Control Panel). Two tabs:
+
+- **Groups** (browser) — per hard chunk, the ranked **division options** (one per
+  strategy; the rank-1 division is selected by default). Selecting a division
+  switches the active grouping for that chunk (client-side, no recompute). Its
+  **sections** render as nested, collapsible rows; recursive sub-divisions nest
+  further. Hovering a row **previews** its group(s), transiently overriding the
+  pinned selection (hover is exploratory); clicking **pins** it. Enabling a
+  division lights all of its subsections. **Only one division per chunk is active
+  at a time** — competing divisions partition the same nodes, so their glows would
+  conflict.
+- **Params** (read-only) — the analysis inputs that produced the grouping:
+  ceiling, floor, max-depth, and the strategies considered. A visible placeholder
+  for the future recompute controls.
+
+The modal **is the legend**: a group's identity ("which group is this?") is read
+from the modal (hover a section row to make it glow), not decoded from color.
+
+### Glow Display
+
+The active and hovered groups render as a **soft glow behind all other canvas
+content** (drawn before edges and nodes, so it never occludes them):
+
+- Each visible **member node** gets a radial-gradient halo in its group's color,
+  fading to transparent so adjacent members fuse into a continuous blob with no
+  hard boundary.
+- An **edge** glows when **both** of its endpoints are in the same group (the same
+  rule as the dependency-highlight edge set).
+- The **hovered / overridden** group draws at a stronger intensity to catch the
+  eye.
+
+**Color** is a small cycling palette assigned per shown group. Because only the
+**currently-expanded depth's** sibling groups glow at once (progressive disclosure
+of color, driven by the modal's expand state), the simultaneous count stays bounded
+by the branching factor rather than the total leaf count, so a small palette
+suffices. Smarter assignment — structural-adjacency map-coloring (there is no 2D
+boundary, so "adjacent" is defined by shared edges / the dependency DAG, not
+geography) and a stable semantic hue for the dominant shared service — is deferred
+(see [VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Decomposition
+Coloring), as is encoding a metric (Ec / size) in the glow radius.
+
+The glow is **non-destructive** and stacks beneath the existing focus/context
+lenses (search dim, hover dependency highlight); it never changes which nodes are
+visible.
+
+### Advisory (note)
+
+The decomposition may carry `suggestContract` advisories (a heavily-shared hub
+that is an articulation point — a candidate Nexus contract boundary). Surfacing
+these in the graph (e.g. a node badge) is **deferred**; see
+[VISUALIZER_DEFERRED.md](../../../VISUALIZER_DEFERRED.md) § Decomposition Advisory
+Surfacing.
+
+---
+
 ## Future: Message Flow Edges
 
 The current graph models **call** relationships (workflow calls workflow, workflow calls activity). Temporal workflows also communicate through **messages** — signals, queries, and updates — which represent a different kind of dependency.

@@ -3,6 +3,7 @@ import { WorkflowCanvas } from './components/WorkflowCanvas'
 import { StyleGuide } from './components/StyleGuide'
 import type { TWFFile } from './types/ast'
 import type { ParserGraph } from './types/parser-graph'
+import type { Decomposition } from './types/decomposition'
 import { normalizePayload } from './types/payload'
 import { mountNodeTypeStyles } from './graph/node-type-styles'
 
@@ -24,6 +25,7 @@ mountNodeTypeStyles()
 function App() {
   const [ast, setAst] = React.useState<TWFFile | null>(null)
   const [parserGraph, setParserGraph] = React.useState<ParserGraph | undefined>(undefined)
+  const [decomposition, setDecomposition] = React.useState<Decomposition | undefined>(undefined)
   const [error, setError] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [showStyleGuide, setShowStyleGuide] = React.useState(false)
@@ -55,6 +57,7 @@ function App() {
         if (norm) {
           setAst(norm.ast)
           setParserGraph(norm.parserGraph)
+          setDecomposition(norm.decomposition)
           setError(null)
         } else {
           setError('Unrecognized payload shape')
@@ -64,6 +67,7 @@ function App() {
         setError(message.message)
         setAst(null)
         setParserGraph(undefined)
+        setDecomposition(undefined)
       }
     }
 
@@ -81,6 +85,7 @@ function App() {
           if (norm) {
             setAst(norm.ast)
             setParserGraph(norm.parserGraph)
+            setDecomposition(norm.decomposition)
           } else {
             setError('Unrecognized payload shape')
           }
@@ -108,6 +113,7 @@ function App() {
         if (norm) {
           setAst(norm.ast)
           setParserGraph(norm.parserGraph)
+          setDecomposition(norm.decomposition)
           setError(null)
         } else {
           setError('Unrecognized payload shape')
@@ -158,7 +164,7 @@ function App() {
     return <StyleGuide onClose={() => setShowStyleGuide(false)} />
   }
 
-  return <WorkflowCanvas ast={ast} parserGraph={parserGraph} />
+  return <WorkflowCanvas ast={ast} parserGraph={parserGraph} decomposition={decomposition} />
 }
 
 export default App

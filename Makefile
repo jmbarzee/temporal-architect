@@ -97,12 +97,18 @@ build-visualizer-lib:
 ## Pack the visualizer npm library into a release tarball (dist/).
 pack-visualizer-lib: build-visualizer-lib
 	@mkdir -p dist
+	@# Drop any stale tarballs first so dist/ holds only the freshly-packed
+	@# version. npm pack names the file by the manifest version, so iterative
+	@# local builds across versions otherwise accumulate (the dist repo's
+	@# file: copy then matches more than one and breaks).
+	@rm -f dist/temporal-architect-visualizer-*.tgz
 	cd tools/visualizer && npm pack --pack-destination ../../dist
 	@echo "Packed visualizer lib tarball into dist/"
 
 ## Pack the wire-types type-only package into a release tarball (dist/).
 pack-wire-types:
 	@mkdir -p dist
+	@rm -f dist/temporal-architect-wire-types-*.tgz
 	cd tools/wire-types && npm pack --pack-destination ../../dist
 	@echo "Packed wire-types tarball into dist/"
 

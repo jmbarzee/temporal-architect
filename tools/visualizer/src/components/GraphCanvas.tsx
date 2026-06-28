@@ -37,6 +37,14 @@ const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#FFFFFF'
 const DIM_ALPHA = 0.2
 
+// Decomposition group glow (drawn behind everything; see GRAPH_VIEW.md
+// § Decomposition Group Overlay). A member's halo extends GROUP_GLOW_PAD screen
+// px beyond its node body so adjacent members' halos overlap and fuse.
+const GROUP_GLOW_PAD = 16
+const GROUP_GLOW_CENTER_ALPHA = 0.42
+const GROUP_GLOW_EDGE_ALPHA = 0.16
+const GROUP_GLOW_EDGE_WIDTH = 9
+
 const ICON_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 const LABEL_FONT_PX = 11
 // Slight translucency on node labels so they don't read as the only bright
@@ -72,6 +80,16 @@ function cssVar(el: Element | null, name: string, fallback: string): string {
   if (!target) return fallback
   const v = getComputedStyle(target).getPropertyValue(name).trim()
   return v || fallback
+}
+
+// withAlpha turns a #RRGGBB hex into an rgba() string at the given alpha — used
+// for the group-glow gradient stops so a member halo fades cleanly to nothing.
+function withAlpha(hex: string, alpha: number): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 // Pick the right entry from EDGE_STYLE for a given edge.
@@ -134,6 +152,15 @@ const CULL_MARGIN = 100
 const LABEL_ELIDE_SCALE = 0.25    // hide name labels below this scale (except hovered/selected)
 const DETAIL_REDUCE_SCALE = 0.1   // drop decorative rings below this scale
 
+// A group glow request: the visible node ids that belong to one decomposition
+// group, the color to glow them, and a strength multiplier (hovered groups glow
+// stronger). ActiveGroup from graph/groups.ts is structurally assignable.
+export interface GroupGlow {
+  nodeIds: Set<string>
+  color: string
+  strength: number
+}
+
 interface GraphCanvasProps {
   nodes: SimNode[]
   edges: GraphEdge[]
@@ -162,6 +189,8 @@ interface GraphCanvasProps {
   activeGravityType: NodeType | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
+  // Decomposition group glow layer (drawn behind everything). Empty = no overlay.
+  groupGlows: GroupGlow[]
 }
 
 // All data the draw function needs, stored in a ref to avoid effect teardown
@@ -170,6 +199,7 @@ interface DrawData {
   edges: GraphEdge[]
   nodeMap: Map<string, SimNode>
   viewport: Viewport
+  groupGlows: GroupGlow[]
   highlightedNodes: Set<string> | null
   highlightedEdges: Set<string> | null
   hoveredNodeId: string | null
@@ -199,7 +229,7 @@ export function GraphCanvas({
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, forceParams, activeSection, activeChargeType,
-  activeGravityType, activePullEdge, nodeScale,
+  activeGravityType, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -245,13 +275,13 @@ export function GraphCanvas({
 
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
-    nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
+    nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
     forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
-    nodes, edges, nodeMap, viewport, highlightedNodes, highlightedEdges,
+    nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
     forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
@@ -429,8 +459,71 @@ export function GraphCanvas({
       // re-centering offset is needed.
       const vp = d.viewport
 
+      // Node + label size multiplier for the current zoom (clamped, tunable).
+      // Hoisted so the group-glow layer (drawn first) and the node layer below
+      // share one value.
+      const mul = nodeSizeMul(vp.scale, d.nodeScale)
+
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
+
+      // --- Decomposition group glow (behind everything) ---
+      // Drawn before edges/nodes/labels so they all sit on top. Each member
+      // node gets a soft radial halo in its group color; adjacent members'
+      // halos overlap and fuse into a continuous blob (no hard boundary). An
+      // edge whose endpoints share a group glows as a connecting corridor.
+      // Sections partition members, so a node belongs to at most one group.
+      if (d.groupGlows.length > 0) {
+        const glowByNode = new Map<string, { color: string; strength: number }>()
+        for (const g of d.groupGlows) {
+          for (const id of g.nodeIds) glowByNode.set(id, { color: g.color, strength: g.strength })
+        }
+
+        ctx.save()
+        ctx.lineCap = 'round'
+        // Edge corridors first, so node halos sit on top of them.
+        for (const edge of d.edges) {
+          const gs = glowByNode.get(edge.sourceId)
+          const gt = glowByNode.get(edge.targetId)
+          if (!gs || !gt || gs.color !== gt.color) continue
+          const src = d.nodeMap.get(edge.sourceId)
+          const tgt = d.nodeMap.get(edge.targetId)
+          if (!src || !tgt) continue
+          const [sx, sy] = worldToScreen(vp, src.x, src.y)
+          const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
+          if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
+            Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
+          ctx.globalAlpha = Math.min(0.5, GROUP_GLOW_EDGE_ALPHA * gs.strength)
+          ctx.strokeStyle = gs.color
+          ctx.lineWidth = GROUP_GLOW_EDGE_WIDTH
+          ctx.beginPath()
+          ctx.moveTo(sx, sy)
+          ctx.lineTo(tx, ty)
+          ctx.stroke()
+        }
+
+        // Node halos: radial gradient from the group color (at strength-scaled
+        // alpha) to transparent, so overlapping members merge with no gap.
+        ctx.globalAlpha = 1
+        for (const [id, g] of glowByNode) {
+          const node = d.nodeMap.get(id)
+          if (!node) continue
+          const [sx, sy] = worldToScreen(vp, node.x, node.y)
+          const gr = definitionFor(node.nodeType).size.r * mul + GROUP_GLOW_PAD
+          if (sx + gr < 0 || sx - gr > w || sy + gr < 0 || sy - gr > h) continue
+          const a = Math.min(0.85, GROUP_GLOW_CENTER_ALPHA * g.strength)
+          const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, gr)
+          grad.addColorStop(0, withAlpha(g.color, a))
+          grad.addColorStop(0.6, withAlpha(g.color, a * 0.5))
+          grad.addColorStop(1, withAlpha(g.color, 0))
+          ctx.fillStyle = grad
+          ctx.beginPath()
+          ctx.arc(sx, sy, gr, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.restore()
+        ctx.globalAlpha = 1
+      }
 
       // Draw edges
       for (const edge of d.edges) {
@@ -774,9 +867,6 @@ export function GraphCanvas({
       // Draw nodes
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-
-      // Node + label size multiplier for the current zoom (clamped, tunable).
-      const mul = nodeSizeMul(vp.scale, d.nodeScale)
 
       // Bounding boxes of labels already placed this frame, for collision
       // avoidance (see the label block below). Reset every frame.
