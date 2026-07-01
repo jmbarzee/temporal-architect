@@ -3,6 +3,12 @@ node_modules/
 
 *.npm-cache
 
+# Orphan root lockfile — this repo has no root npm package; npm only runs under
+# tools/visualizer and tools/wire-types. A stray `npm` at the repo root keeps
+# re-creating an empty package-lock.json here. Root-anchored so it never touches
+# the real tools/* lockfiles.
+/package-lock.json
+
 # Publish tokens (contains secrets)
 .env.publish
 
