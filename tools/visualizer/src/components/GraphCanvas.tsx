@@ -49,6 +49,14 @@ const GROUP_GLOW_PAD = 16
 const GROUP_GLOW_CENTER_ALPHA = 0.42
 const GROUP_GLOW_EDGE_ALPHA = 0.16
 const GROUP_GLOW_EDGE_WIDTH = 9
+// A focused group (strength > 1 — node hover/select or modal hover) doesn't just
+// brighten, it SWELLS: its halo radius and corridor width grow so the group lifts
+// out of a field of faint ones. This is the fraction of the strength boost applied
+// to size (0 = brighten only, 1 = size grows in lockstep with alpha).
+const GROUP_GLOW_FOCUS_SWELL = 0.6
+function glowSwell(strength: number): number {
+  return 1 + Math.max(0, strength - 1) * GROUP_GLOW_FOCUS_SWELL
+}
 
 const ICON_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 const LABEL_FONT_PX = 11
@@ -502,7 +510,7 @@ export function GraphCanvas({
             Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
           ctx.globalAlpha = Math.min(0.5, GROUP_GLOW_EDGE_ALPHA * gs.strength)
           ctx.strokeStyle = gs.color
-          ctx.lineWidth = GROUP_GLOW_EDGE_WIDTH
+          ctx.lineWidth = GROUP_GLOW_EDGE_WIDTH * glowSwell(gs.strength)
           ctx.beginPath()
           ctx.moveTo(sx, sy)
           ctx.lineTo(tx, ty)
@@ -516,9 +524,9 @@ export function GraphCanvas({
           const node = d.nodeMap.get(id)
           if (!node) continue
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
-          const gr = definitionFor(node.nodeType).size.r * mul + GROUP_GLOW_PAD
+          const gr = definitionFor(node.nodeType).size.r * mul + GROUP_GLOW_PAD * glowSwell(g.strength)
           if (sx + gr < 0 || sx - gr > w || sy + gr < 0 || sy - gr > h) continue
-          const a = Math.min(0.85, GROUP_GLOW_CENTER_ALPHA * g.strength)
+          const a = Math.min(0.92, GROUP_GLOW_CENTER_ALPHA * g.strength)
           const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, gr)
           grad.addColorStop(0, withAlpha(g.color, a))
           grad.addColorStop(0.6, withAlpha(g.color, a * 0.5))

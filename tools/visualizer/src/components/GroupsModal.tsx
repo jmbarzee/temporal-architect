@@ -8,6 +8,7 @@ import React from 'react'
 import type { Decomposition, Chunk, Division, Section } from '../types/decomposition'
 import {
   defaultStrategyForChunk,
+  initializedSelection,
   type GroupSelection,
   type GroupHover,
   type ActiveGroup,
@@ -50,19 +51,33 @@ export function GroupsModal({
     return m
   }, [activeGroups])
 
-  // Chunks worth showing in the browser: those the explore phase actually
-  // divided (loop/under-ceiling chunks have no divisions to choose between).
-  const divisibleChunks = React.useMemo(
-    () => (decomposition?.chunks ?? []).filter(c => c.divisions && c.divisions.length > 0),
+  // The whole partition, heaviest first — over-ceiling chunks (which carry
+  // division options) naturally sort to the top, the many single-group
+  // under-ceiling chunks below. Showing them all is what makes the overlay
+  // answer "what are all the chunks", not just "which ones can be split".
+  const sortedChunks = React.useMemo(
+    () => [...(decomposition?.chunks ?? [])].sort((a, b) => b.complexity - a.complexity),
     [decomposition],
   )
 
-  // Nothing to overlay → don't render the modal at all (keeps the canvas clean
-  // for designs with no over-ceiling chunks, or hosts that send no decomposition).
-  if (!decomposition || divisibleChunks.length === 0) return null
+  // Nothing to overlay → don't render the modal at all (no decomposition, or a
+  // host that sent an empty partition).
+  if (!decomposition || sortedChunks.length === 0) return null
 
-  const setGlowEnabled = (glowEnabled: boolean) => {
-    onSelectionChange({ ...selection, glowEnabled })
+  // First engagement bootstraps the overlay (glow on, every chunk enabled); see
+  // initializedSelection. Opening the panel and flipping the master switch on are
+  // both "engage" actions.
+  const engage = () => onSelectionChange(initializedSelection(selection, decomposition))
+
+  const handleToggleOpen = () => {
+    const next = !open
+    setOpen(next)
+    if (next && !selection.initialized) engage()
+  }
+
+  const handleGlowToggle = (checked: boolean) => {
+    if (checked && !selection.initialized) engage()
+    else onSelectionChange({ ...selection, glowEnabled: checked })
   }
 
   const toggleEnabled = (chunkId: string) => {
@@ -108,7 +123,7 @@ export function GroupsModal({
       <div className="groups-modal-header">
         <button
           className="graph-control-panel-toggle"
-          onClick={() => setOpen(!open)}
+          onClick={handleToggleOpen}
           title="Toggle decomposition groups panel"
         >
           {open ? '\u25BC Groups' : '\u25B6 Groups'}
@@ -120,7 +135,7 @@ export function GroupsModal({
           <input
             type="checkbox"
             checked={selection.glowEnabled}
-            onChange={e => setGlowEnabled(e.target.checked)}
+            onChange={e => handleGlowToggle(e.target.checked)}
             aria-label="Show group glow"
           />
           <span className="switch-track"><span className="switch-knob" /></span>
@@ -150,29 +165,38 @@ export function GroupsModal({
 
           {tab === 'groups' && (
             <div className="groups-tree" onMouseLeave={() => onHover(null)}>
-              {divisibleChunks.map(chunk => {
-                const activeDivision = activeDivisionOf(chunk)
+              {sortedChunks.map(chunk => {
+                const divisions = chunk.divisions ?? []
                 const enabled = selection.enabledChunks.has(chunk.id)
+                const activeDivision = divisions.length > 0 ? activeDivisionOf(chunk) : undefined
                 return (
                   <div key={chunk.id} className="groups-chunk">
-                    <label className="groups-chunk-head" title={chunk.id}>
+                    {/* Hovering the chunk head previews its glow even when it's
+                        toggled off — discoverability for the many single-group
+                        (under-ceiling) chunks. */}
+                    <label
+                      className="groups-chunk-head"
+                      title={chunk.id}
+                      onMouseEnter={() => onHover({ chunkId: chunk.id })}
+                    >
                       <input
                         type="checkbox"
                         checked={enabled}
                         onChange={() => toggleEnabled(chunk.id)}
                       />
                       <span className="groups-chunk-name">{shortSectionId(chunk.id)}</span>
-                      <span className="groups-chunk-meta">c{chunk.complexity}</span>
+                      <span className="groups-chunk-meta">{chunk.members.length}n · c{chunk.complexity}</span>
                     </label>
 
-                    {/* Division options live in the same tree as the sections
-                        they produce: each option is a selectable radio row, and
-                        the selected option expands to reveal its sections nested
-                        beneath it. Hover any option (selected or not) to preview
-                        it on the canvas. */}
+                    {/* Over-ceiling chunks carry division options; under-ceiling
+                        chunks are a single group (the head is the whole control).
+                        Options and the sections they produce share one tree: each
+                        option is a radio row, and the selected option expands to
+                        reveal its sections. Hover any option to preview it. */}
+                    {divisions.length > 0 && (
                     <div className="groups-divisions">
-                      {chunk.divisions!.map(div => {
-                        const selected = activeDivision.strategy === div.strategy
+                      {divisions.map(div => {
+                        const selected = activeDivision?.strategy === div.strategy
                         const hasSections = div.sections.length > 0
                         const showSections = selected && hasSections && !selection.collapsedChunks.has(chunk.id)
                         return (
@@ -231,6 +255,7 @@ export function GroupsModal({
                         )
                       })}
                     </div>
+                    )}
                   </div>
                 )
               })}

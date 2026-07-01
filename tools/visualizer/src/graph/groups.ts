@@ -31,21 +31,36 @@ export const GROUP_PALETTE = [
   '#E879F9', // fuchsia
 ] as const
 
-// Glow intensity multiplier for a hovered group (vs. the default 1).
-export const HOVER_STRENGTH = 1.9
+// Glow intensity multiplier for a hovered group (vs. the default 1). Drives both
+// brightness and — since the canvas swells focused groups — halo/corridor size.
+export const HOVER_STRENGTH = 2.2
+
+// Glow intensity multiplier for the group that contains the node currently
+// hovered/selected on the canvas. This is the antidote to "tons of groups": with
+// many faint groups shown at once, moving over the graph makes the group under
+// the pointer surface, so the user can read which group any node belongs to
+// without hunting in the modal legend. It brightens *and* swells the group's glow
+// (see GROUP_GLOW_FOCUS_SWELL in GraphCanvas) so it clearly lifts out of the field.
+export const NODE_FOCUS_STRENGTH = 2.2
 
 // GroupSelection is the persistent, user-driven overlay state owned by
-// GraphView. glowEnabled is the master on/off for the whole overlay (the switch
-// at the top of the modal); when false nothing glows regardless of the rest.
+// GraphView. The overlay is an **initially-off** feature: on load nothing glows
+// (initialized=false, glowEnabled=false, enabledChunks empty), so the canvas is
+// clean and the decomposition is opt-in. The first engagement — opening the
+// modal or flipping the master switch on — *initializes* it (enables every chunk
+// and turns the glow on); after that it behaves like normal persistent state.
+//
+// glowEnabled is the master on/off for the whole overlay (the switch at the top
+// of the modal); when false nothing glows regardless of the rest.
 // activeStrategyByChunk records which division option is active per chunk
 // (absent = the rank-1 default); enabledChunks are the chunks whose active
-// division is currently glowing; expandedSections are the section rows the user
-// has drilled into (which scopes the glow to that section's children).
-// collapsedChunks holds chunks whose active division's section list is collapsed
-// in the modal tree — purely a browsing/disclosure concern (it does NOT change
-// what glows); absent = expanded (the default), so the recommended grouping is
-// visible on load.
+// division (or, for an under-ceiling chunk, whose whole member set) is currently
+// glowing; expandedSections are the section rows the user has drilled into (which
+// scopes the glow to that section's children). collapsedChunks holds chunks whose
+// selected division's section list is collapsed in the modal tree — purely a
+// browsing/disclosure concern (it does NOT change what glows).
 export interface GroupSelection {
+  initialized: boolean
   glowEnabled: boolean
   activeStrategyByChunk: Record<string, string>
   enabledChunks: Set<string>
@@ -79,23 +94,34 @@ export function defaultStrategyForChunk(chunk: Chunk): string | undefined {
   return chunk.divisions?.[0]?.strategy
 }
 
-// initialGroupSelection enables every chunk that has divisions at its rank-1
-// division ("default to the best-scoring option", per the design), with nothing
-// drilled in — so the overlay shows the recommended top-level grouping on load.
-export function initialGroupSelection(decomposition: Decomposition | undefined): GroupSelection {
-  const enabledChunks = new Set<string>()
-  if (decomposition) {
-    for (const chunk of decomposition.chunks) {
-      if (chunk.divisions && chunk.divisions.length > 0) enabledChunks.add(chunk.id)
-    }
-  }
+// initialGroupSelection is the **off / uninitialized** state: nothing enabled,
+// glow off. The overlay stays dark until the user first engages it (see
+// initializedSelection), so a freshly-loaded design isn't blanketed in glow. The
+// decomposition arg is unused now (kept for call-site symmetry with the reset
+// effect that rebuilds this on every new decomposition).
+export function initialGroupSelection(_decomposition?: Decomposition): GroupSelection {
   return {
-    glowEnabled: true,
+    initialized: false,
+    glowEnabled: false,
     activeStrategyByChunk: {},
-    enabledChunks,
+    enabledChunks: new Set(),
     expandedSections: new Set(),
     collapsedChunks: new Set(),
   }
+}
+
+// initializedSelection is the one-time bootstrap applied on first engagement:
+// turn the glow on and enable every chunk (the full partition lights up), so the
+// user sees the whole decomposition the moment they open it. After this the
+// selection behaves normally — toggling the master switch or individual chunks
+// no longer re-bootstraps.
+export function initializedSelection(
+  selection: GroupSelection,
+  decomposition: Decomposition | undefined,
+): GroupSelection {
+  const enabledChunks = new Set<string>()
+  if (decomposition) for (const chunk of decomposition.chunks) enabledChunks.add(chunk.id)
+  return { ...selection, initialized: true, glowEnabled: true, enabledChunks }
 }
 
 // activeDivisionFor resolves the division a chunk should render given the
@@ -156,17 +182,27 @@ export function computeActiveGroups(
     if (!shown) continue
 
     const division = activeDivisionFor(chunk, selection, hover)
-    if (!division) continue
+
+    // Under-ceiling chunk (no divisions): the chunk *is* the group — glow its
+    // whole member set as one. This is what makes the overlay show the full
+    // partition, not just the over-ceiling chunks that carry division options.
+    if (!division) {
+      const nodeIds = resolveMembers(chunk.members, duplicateGroups, visibleIds)
+      if (nodeIds.size === 0) continue
+      const chunkHovered = hover?.chunkId === chunk.id && !hover.sectionId && !hover.strategy
+      groups.push({
+        id: chunk.id,
+        chunkId: chunk.id,
+        color: GROUP_PALETTE[colorSeq % GROUP_PALETTE.length],
+        strength: chunkHovered ? HOVER_STRENGTH : 1,
+        nodeIds,
+      })
+      colorSeq++
+      continue
+    }
 
     for (const section of frontierSections(division, selection.expandedSections)) {
-      const nodeIds = new Set<string>()
-      for (const member of section.members) {
-        const copies = duplicateGroups.get(member)
-        if (!copies) continue
-        for (const id of copies) {
-          if (visibleIds.has(id)) nodeIds.add(id)
-        }
-      }
+      const nodeIds = resolveMembers(section.members, duplicateGroups, visibleIds)
       if (nodeIds.size === 0) continue
 
       groups.push({
@@ -181,4 +217,44 @@ export function computeActiveGroups(
   }
 
   return groups
+}
+
+// boostGroupsForNodes strengthens any active group that contains one of the
+// focused node ids (the node hovered or selected on the canvas), so that group
+// surfaces out of a field of many faint ones. Returns the same array when no
+// focus node lands in any group, so the common case allocates nothing.
+export function boostGroupsForNodes(
+  groups: ActiveGroup[],
+  focusIds: Array<string | null>,
+): ActiveGroup[] {
+  const ids = focusIds.filter((id): id is string => !!id)
+  if (ids.length === 0) return groups
+  let changed = false
+  const boosted = groups.map(g => {
+    if (ids.some(id => g.nodeIds.has(id))) {
+      changed = true
+      return { ...g, strength: Math.max(g.strength, NODE_FOCUS_STRENGTH) }
+    }
+    return g
+  })
+  return changed ? boosted : groups
+}
+
+// resolveMembers maps a list of definition keys to the visible graph node ids
+// they cover (each member through its sister-copies, intersected with the
+// current visible set — filter-as-source-of-truth).
+function resolveMembers(
+  members: string[],
+  duplicateGroups: Map<string, Set<string>>,
+  visibleIds: Set<string>,
+): Set<string> {
+  const nodeIds = new Set<string>()
+  for (const member of members) {
+    const copies = duplicateGroups.get(member)
+    if (!copies) continue
+    for (const id of copies) {
+      if (visibleIds.has(id)) nodeIds.add(id)
+    }
+  }
+  return nodeIds
 }

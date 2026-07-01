@@ -711,27 +711,39 @@ reads "Groups"), mirroring the Control Panel's pattern (§ Control Panel). Its
 header carries an **always-visible glow switch** (the Control Panel's sliding
 switch style) — the master on/off for the overlay, shown whether the panel is
 collapsed or open, so the glow can be toggled without expanding the panel. When
-off, nothing glows regardless of the selection below. Two tabs:
+off, nothing glows regardless of the selection below.
 
-- **Groups** (browser) — per hard chunk, the ranked **division options** and the
-  **sections** they produce form **one tree**, with three distinct, non-overlapping
-  controls so the user is never guessing what a widget does:
+**Initially off, then normal.** The overlay is an opt-in feature: on load nothing
+glows (the switch reads off, no chunks selected), so a freshly-loaded design isn't
+blanketed in color. The **first engagement** — opening the panel *or* flipping the
+switch on — **initializes** it: the glow turns on and **every chunk is enabled**, so
+the user sees the whole decomposition at once. After that it behaves like ordinary
+persistent state (toggling the switch or individual chunks never re-bootstraps).
+
+The browser shows the **full partition**, not just the splittable chunks:
+
+- **Groups** (browser) — every hard chunk is a row, heaviest first. Three distinct,
+  non-overlapping controls so the user is never guessing what a widget does:
     - a **chunk checkbox** (multi-select) — whether this chunk participates in the
       glow; any subset of chunks can be on at once;
-    - **option radios** (single-select) — which *one* division is active for the
-      chunk (the rank-1 division by default). Competing divisions partition the
-      same nodes, so **only one is active at a time**; switching is client-side, no
-      recompute.
+    - **option radios** (single-select) — for an **over-ceiling** chunk, which *one*
+      division is active (the rank-1 division by default). Competing divisions
+      partition the same nodes, so **only one is active at a time**; switching is
+      client-side, no recompute. An **under-ceiling** chunk has no divisions — it is
+      a **single group** (the chunk's whole member set glows as one), so its row is
+      just the checkbox, with no options or sections beneath it.
     - **disclosure carets** — show/hide a row's direct children, and *only* that.
       The selected option carries a caret to show/hide its section list (open by
       default); each section with a recursive sub-division carries its own caret.
       Collapsing is **browsing only** — it never changes what glows. Non-selected
-      options own no sections, so they show no caret.
+      options (and single-group chunks) own no sections, so they show no caret.
 
   Sections carry a thin **color bar** legend (not a box) keyed to their canvas
-  glow, plus a member/complexity count. Hovering any row **previews** its group(s),
-  transiently overriding the pinned selection (hover is exploratory); the radio
-  **pins** the active division. A bulk "expand all / collapse all" is deferred (see
+  glow, plus a member/complexity count (the chunk row shows the same count for its
+  whole partition cell). Hovering any row **previews** its group(s) — including a
+  toggled-off chunk's single group — transiently overriding the pinned selection
+  (hover is exploratory); the radio **pins** the active division. A bulk "expand
+  all / collapse all" is deferred (see
   [internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
   § Deferred — decomposition overlay).
 - **Params** (read-only) — the analysis inputs that produced the grouping:
@@ -751,8 +763,18 @@ content** (drawn before edges and nodes, so it never occludes them):
   hard boundary.
 - An **edge** glows when **both** of its endpoints are in the same group (the same
   rule as the dependency-highlight edge set).
-- The **hovered / overridden** group draws at a stronger intensity to catch the
-  eye.
+- A **focused** group — the modal-hovered/overridden group, or the group
+  containing the node currently **hovered or selected on the canvas** — both
+  **brightens and swells**: its halo radius and edge-corridor width grow with the
+  focus strength, so it visibly lifts out of the field rather than just getting a
+  little brighter.
+- **Node-focus strengthening** is the direct counter to "tons of groups": with
+  many faint groups shown at once, sweeping the pointer over the graph surfaces one
+  group at a time, so the user can read which group any node belongs to in place —
+  no round-trip to the modal legend. It composes with (takes the max of) the
+  modal-hover strengthening, and rides the same hover/selection state as the
+  dependency highlight, so a single hover both lights a node's dependencies and
+  surfaces its group.
 
 **Color** is a small cycling palette assigned per shown group. Because only the
 **currently-expanded depth's** sibling groups glow at once (progressive disclosure

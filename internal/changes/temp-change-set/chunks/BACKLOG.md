@@ -20,10 +20,45 @@ is the forward-looking parking lot: deferred and open work only.
   identity + the `# impl:` link + a quick verify into "this chunk's
   implementation is in/out of sync with its `.twf`", so the harness can skip
   unchanged chunks. Shares a surface with drift detection.
-- **Worker / namespace / nexus grouping lens** — an alternate grouping dimension
-  over the same node set, riding the coarsened worker/namespace edges + nexus
-  tiers. Parallel to the call-structure decomposition; likely promote to
-  `parser/BACKLOG.md`.
+- **Deployment "group up" phase (worker / namespace grouping lens)** — an
+  optional, configurable phase *after* the "cut up" phase (the call/contract
+  partition + explore). Where "cut up" answers *"what must be authored together"*
+  (call/contract coupling), "group up" answers the gentler *"what ships /
+  co-locates together"* over the **same node set**, riding the retained per-node
+  `Node.Workers` / `Node.Namespaces` (and nexus tiers). It generalizes the existing
+  `worker` / `namespace` **division strategies** (`splitByAttr`, which today only
+  *split* an over-ceiling chunk) into a first-class alternate grouping the
+  visualizer overlay can toggle (`group by: call | worker | namespace`).
+
+  Relatedness is a **hierarchy, gentler = coarser**: `call/contract chunk ⊂ worker
+  ⊂ namespace`. These are nested lenses, not competing partitions.
+
+  **Invariant — never merge the authorship partition.** Co-location is a
+  *deployment* fact, not a code-coupling one: two unrelated workflows sharing a
+  worker are still two independently-authorable units, and folding them into one
+  chunk would drag unrelated code into one agent's context (the opposite of the
+  North Star). So "group up" is a **parallel lens emitted alongside** the
+  call-structure chunks — it MUST NOT add edges into the binding+soft WCC
+  partition. Its only permitted influence on the call lens is *soft*: a ranking
+  **tie-breaker** (prefer divisions that keep co-hosted nodes together) and a
+  layout **cohesion force** (nudge co-hosted nodes together) — nudges, never a
+  merge.
+
+  **Purpose fork (decide before building):** *comprehension* → a visualizer
+  grouping lens (clean, additive, the recommended framing); vs *authorship /
+  orchestration* → at most a scheduling/batching hint for the harness ("same worker
+  → same agent for context-locality"), still not a partition change.
+
+  **DSL gap:** *why* things are co-hosted (incidental vs. intentional shared
+  state / task queue / resource pool) isn't expressed in `.twf` today, so the
+  engine must treat all co-location as the same gentle weight until the DSL can
+  distinguish intent — worth a line in `dsl/BACKLOG.md`.
+
+  Note the parser graph *already* models worker/namespace containment + coarsening,
+  so comprehension is partly served by the existing graph levels; the net-new work
+  is surfacing deployment as a grouping dimension of the **chunk overlay**. Lower
+  priority than first assumed — a nice-to-have refinement, not a correctness gap.
+  Likely promote to `parser/BACKLOG.md`.
 - **#7 declared inbound roots** — additively sharpens root identification
   (`source: declared`); see `dsl/BACKLOG.md` → *Connecting In and Out of Temporal*.
 - **#1b language boundaries** — depends on `@lang` annotations; reads the retained

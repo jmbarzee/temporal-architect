@@ -18,6 +18,7 @@ import { GraphControlPanel } from './GraphControlPanel'
 import { GroupsModal } from './GroupsModal'
 import {
   computeActiveGroups,
+  boostGroupsForNodes,
   initialGroupSelection,
   type GroupSelection,
   type GroupHover,
@@ -206,6 +207,15 @@ export function GraphView({
   const activeGroups = React.useMemo(
     () => computeActiveGroups(decomposition, groupSelection, groupHover, graph.duplicateGroups, visibleIds),
     [decomposition, groupSelection, groupHover, graph.duplicateGroups, visibleIds],
+  )
+
+  // Canvas glow set: the active groups with the group under the hovered/selected
+  // node strengthened, so one group surfaces from many faint ones as the pointer
+  // moves. The modal keeps the un-boosted activeGroups (its legend colors don't
+  // depend on strength).
+  const glowGroups = React.useMemo(
+    () => boostGroupsForNodes(activeGroups, [hoveredNodeId, selectedNodeId]),
+    [activeGroups, hoveredNodeId, selectedNodeId],
   )
 
   // Search matches against all nodes (not just visible). When search is
@@ -467,7 +477,7 @@ export function GraphView({
           activeGravityType={activeGravityType}
           activePullEdge={activePullEdge}
           nodeScale={nodeScale}
-          groupGlows={activeGroups}
+          groupGlows={glowGroups}
         />
         <GraphHoverTooltip
           hoveredNodeId={hoveredNodeId}
