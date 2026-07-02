@@ -57,8 +57,8 @@ func TestChunksCommand_JSON(t *testing.T) {
 	if len(env.Chunks.Nodes) != 2 {
 		t.Errorf("chunks.nodes = %d, want 2; payload: %s", len(env.Chunks.Nodes), out)
 	}
-	if env.Chunks.Floor != 2 {
-		t.Errorf("default floor = %d, want 2", env.Chunks.Floor)
+	if env.Chunks.Floor != 4 {
+		t.Errorf("default floor = %d, want 4 (decompose.DefaultFloor)", env.Chunks.Floor)
 	}
 }
 
