@@ -47,7 +47,6 @@ twf [flags]
 ### SEE ALSO
 
 * [twf check](#twf-check)	 - Validate files; exit non-zero on error severity (text only)
-* [twf docs](#twf-docs)	 - Print embedded documentation fragments (README source of truth)
 * [twf graph](#twf-graph)	 - Show the resolved deployment graph; --json for envelope output
 * [twf lsp](#twf-lsp)	 - Start the language server (stdio)
 * [twf mcp](#twf-mcp)	 - Run the MCP server over stdio (parser tools + spec resources)
@@ -75,36 +74,6 @@ twf check [flags] <file...>
 ```
   -h, --help      help for check
       --lenient   Exit 0 even if errors are present.
-```
-
-### SEE ALSO
-
-* [twf](#twf)	 - Temporal Workflow Format CLI
-
-## twf docs
-
-Print embedded documentation fragments (README source of truth)
-
-### Synopsis
-
-Print the embedded, composable documentation fragments.
-
-  twf docs --list          List fragment slugs
-  twf docs <slug>          Print one fragment by slug (e.g. global, parser, mcp)
-  twf docs descriptions    Print the short component descriptions as JSON
-
-These fragments are the engine's share of every registry listing; downstream
-packaging composes them (plus a per-channel header) into the published README.
-
-```
-twf docs [flags] [slug]
-```
-
-### Options
-
-```
-  -h, --help   help for docs
-      --list   List fragment slugs
 ```
 
 ### SEE ALSO
