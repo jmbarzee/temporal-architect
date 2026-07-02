@@ -21,6 +21,9 @@ tools/visualizer/dist-lib/
 tools/visualizer/LICENSE
 tools/wire-types/LICENSE
 
+# Visualizer doc fragment copied in by prepack (canonical: docs/fragments/visualizer.md)
+tools/visualizer/FRAGMENT.md
+
 # Release packaging staging (binary, archives, skills/visualizer/wire-types tarballs)
 dist/
 

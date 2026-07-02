@@ -50,20 +50,27 @@ build-lsp:
 ## Package the twf binary into a standalone archive for release.
 ## VERSION may be passed with or without a leading "v"; the archive is always
 ## named twf-v<X.Y.Z>-<goos>-<goarch>.{tar.gz,zip}.
+##
+## The archive also carries the binary-covering doc fragments (docs/*.md) so the
+## engine's published pitch ships *inside* the artifact it describes — the
+## distribution repo reads these directly when composing its listings. No `twf
+## docs` command; plain markdown. See docs/README.md.
 ## Usage: make build-twf-archive VERSION=1.2.3 GOOS=darwin GOARCH=arm64
 build-twf-archive: build-lsp
 	@mkdir -p dist
 	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
 	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
 	ARCHIVE=twf-v$$VER-$(GOOS)-$(GOARCH); \
+	rm -rf dist/docs && mkdir -p dist/docs; \
+	cp docs/fragments/global.md docs/fragments/parser.md docs/fragments/mcp.md dist/docs/; \
 	if [ "$(GOOS)" = "windows" ]; then \
 		cp $(BIN_DIR)/twf.exe dist/twf.exe; \
-		cd dist && zip $$ARCHIVE.zip twf.exe && rm twf.exe; \
+		cd dist && zip -rq $$ARCHIVE.zip twf.exe docs && rm -rf twf.exe docs; \
 	else \
 		cp $(BIN_DIR)/twf dist/twf; \
-		cd dist && tar czf $$ARCHIVE.tar.gz twf && rm twf; \
+		cd dist && tar czf $$ARCHIVE.tar.gz twf docs && rm -rf twf docs; \
 	fi; \
-	echo "Packaged $$ARCHIVE"
+	echo "Packaged $$ARCHIVE (binary + docs fragments)"
 
 ## Package the skills/ tree into a deterministic release asset.
 ## VERSION may be passed with or without a leading "v"; the archive is always
@@ -215,5 +222,5 @@ release:
 ## Remove all build artifacts
 clean:
 	rm -rf dist/ tools/visualizer/dist tools/visualizer/dist-lib
-	rm -f tools/visualizer/LICENSE tools/wire-types/LICENSE
+	rm -f tools/visualizer/LICENSE tools/wire-types/LICENSE tools/visualizer/FRAGMENT.md
 	@echo "Cleaned"

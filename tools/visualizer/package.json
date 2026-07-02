@@ -35,6 +35,7 @@
   "files": [
     "dist-lib",
     "README.md",
+    "FRAGMENT.md",
     "LICENSE"
   ],
   "sideEffects": [
@@ -48,8 +49,8 @@
     "build": "tsc && vite build",
     "build:lib": "vite build --config vite.lib.config.ts",
     "preview": "vite preview",
-    "prepack": "cp ../../LICENSE LICENSE",
-    "postpack": "rm -f LICENSE",
+    "prepack": "cp ../../LICENSE LICENSE && cp ../../docs/fragments/visualizer.md FRAGMENT.md",
+    "postpack": "rm -f LICENSE FRAGMENT.md",
     "prepublishOnly": "npm run build:lib"
   },
   "peerDependencies": {
