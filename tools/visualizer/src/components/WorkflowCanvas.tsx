@@ -332,14 +332,25 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     <DefinitionContext.Provider value={context}>
       <div className={shellClassName} style={style} onClick={onRefocus}>
         <div className="tab-bar">
-          {!historyMode && (
+          {/* In history mode there's no AST to render as a tree, so the Tree
+              tab is disabled rather than hidden — the wrapping span carries the
+              tooltip because a disabled button swallows hover in some engines. */}
+          <span
+            className="tab-bar-btn-wrap"
+            title={
+              historyMode
+                ? 'Tree view needs a .twf design source. This graph was derived from sampled runtime histories, which have no design AST.'
+                : undefined
+            }
+          >
             <button
               className={`tab-bar-btn ${activeView === 'tree' ? 'active' : ''}`}
               onClick={() => switchView('tree', { kind: 'manual' })}
+              disabled={historyMode}
             >
               Tree
             </button>
-          )}
+          </span>
           <button
             className={`tab-bar-btn ${activeView === 'graph' ? 'active' : ''}`}
             onClick={() => switchView('graph', { kind: 'manual' })}

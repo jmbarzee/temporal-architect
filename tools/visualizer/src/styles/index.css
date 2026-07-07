@@ -148,8 +148,29 @@ body {
   border-bottom-color: var(--color-workflow);
 }
 
+/* Disabled tab (e.g. Tree in history mode): dimmed and non-interactive. The
+   :disabled override wins over :hover because it's declared later. */
+.tab-bar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tab-bar-btn:disabled:hover {
+  color: var(--color-text-muted);
+  background: transparent;
+}
+
 .vscode-dark .tab-bar-btn:hover {
   background: rgba(255, 255, 255, 0.04);
+}
+
+.vscode-dark .tab-bar-btn:disabled:hover {
+  background: transparent;
+}
+
+/* The wrapper exists only to carry the tooltip while the button is disabled. */
+.tab-bar-btn-wrap {
+  display: inline-flex;
 }
 
 /* Workflow Canvas (Tree View content area) */
