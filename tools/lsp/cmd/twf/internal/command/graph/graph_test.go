@@ -4,27 +4,32 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/clitest"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
 	graphcmd "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
 
-// runGraph drives the assembled `graph` command (with its `chunks` child) with
-// raw args and returns the process exit code, mirroring how main invokes it.
+// runGraph drives the assembled `graph` command (with its `chunks` child) under
+// a root, mirroring how main mounts it: `graph` has a parent in the real CLI,
+// so positional `.twf` args reach its RunE rather than cobra's root-level
+// unknown-subcommand guard.
 func runGraph(args []string) int {
-	cmd := graphcmd.New()
-	cmd.SetArgs(args)
-	return cmdutil.Exec(cmd)
+	root := &cobra.Command{Use: "twf"}
+	root.AddCommand(graphcmd.New())
+	root.SetArgs(append([]string{"graph"}, args...))
+	return cmdutil.Exec(root)
 }
 
 // ---------------------------------------------------------------------------
-// graph --history — acceptance test
+// graph <file> --json — acceptance test
 // ---------------------------------------------------------------------------
 
-func TestGraphCommand_HistoryJSON(t *testing.T) {
+func TestGraphCommand_FileJSON(t *testing.T) {
 	out, err := clitest.CaptureStdout(func() {
-		code := runGraph([]string{"--history", clitest.Testdata("sample"), "--json"})
+		code := runGraph([]string{clitest.Testdata("clean.twf"), "--json"})
 		if code != 0 {
 			t.Errorf("graph exit code = %d, want 0", code)
 		}
@@ -33,7 +38,6 @@ func TestGraphCommand_HistoryJSON(t *testing.T) {
 		t.Fatalf("CaptureStdout: %v", err)
 	}
 
-	// Unmarshal as a generic envelope.
 	var env struct {
 		Summary     map[string]any   `json:"summary"`
 		Diagnostics []map[string]any `json:"diagnostics"`
@@ -48,53 +52,21 @@ func TestGraphCommand_HistoryJSON(t *testing.T) {
 	if env.Summary == nil {
 		t.Fatal("envelope summary is null")
 	}
-
-	// Must have nodes from both namespaces.
-	nsEcommerce := graph.NamespaceID("ecommerce")
-	nsPartner := graph.NamespaceID("partner")
-	hasEcommerce, hasPartner := false, false
-	for _, n := range env.Graph.Nodes {
-		if n.ID == nsEcommerce {
-			hasEcommerce = true
-		}
-		if n.ID == nsPartner {
-			hasPartner = true
-		}
-	}
-	if !hasEcommerce {
-		t.Errorf("missing ecommerce namespace node")
-	}
-	if !hasPartner {
-		t.Errorf("missing partner namespace node")
-	}
-
-	// Cross-namespace workflowCall: PartnerCheckout → OrderWorkflow in ecommerce.
-	partnerWF := graph.HostedID(graph.KindWorkflow, "PartnerCheckout", "partner", "partner", false)
-	orderWF := graph.HostedID(graph.KindWorkflow, "OrderWorkflow", "orders", "ecommerce", false)
-	foundEdge := false
-	for _, e := range env.Graph.Edges {
-		if e.From == partnerWF && e.To == orderWF && e.Kind == graph.EdgeWorkflowCall {
-			foundEdge = true
-		}
-	}
-	if !foundEdge {
-		t.Errorf("missing cross-namespace workflowCall %s → %s", partnerWF, orderWF)
-	}
-
-	// Diagnostics must be an array (never null).
 	if env.Diagnostics == nil {
 		t.Error("envelope diagnostics is null, want []")
 	}
-}
 
-// ---------------------------------------------------------------------------
-// Mutual exclusion
-// ---------------------------------------------------------------------------
-
-func TestGraphCommand_HistoryMutualExclusion(t *testing.T) {
-	code := runGraph([]string{"--history", clitest.Testdata("sample"), "some.twf"})
-	if code == 0 {
-		t.Error("expected non-zero exit when --history and file args both present")
+	// clean.twf defines ProcessOrder → ValidateOrder; the workflow node must
+	// be present (orphan, since there's no worker/namespace).
+	wantDef := graph.DefKey(graph.KindWorkflow, "ProcessOrder")
+	found := false
+	for _, n := range env.Graph.Nodes {
+		if n.Definition == wantDef {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("missing workflow node %q in %+v", wantDef, env.Graph.Nodes)
 	}
 }
 
@@ -102,9 +74,9 @@ func TestGraphCommand_HistoryMutualExclusion(t *testing.T) {
 // Text mode smoke test
 // ---------------------------------------------------------------------------
 
-func TestGraphCommand_HistoryText(t *testing.T) {
+func TestGraphCommand_FileText(t *testing.T) {
 	out, err := clitest.CaptureStdout(func() {
-		code := runGraph([]string{"--history", clitest.Testdata("sample")})
+		code := runGraph([]string{clitest.Testdata("clean.twf")})
 		if code != 0 {
 			t.Errorf("graph text mode exit code = %d, want 0", code)
 		}
@@ -114,5 +86,16 @@ func TestGraphCommand_HistoryText(t *testing.T) {
 	}
 	if len(out) == 0 {
 		t.Error("text output is empty")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Usage error
+// ---------------------------------------------------------------------------
+
+func TestGraphCommand_NoArgs(t *testing.T) {
+	code := runGraph([]string{"--json"})
+	if code == 0 {
+		t.Error("expected non-zero exit when no file arguments are given")
 	}
 }

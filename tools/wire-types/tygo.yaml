@@ -22,6 +22,27 @@ packages:
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
 
+  - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
+    output_path: "tools/wire-types/src/generated/observe.ts"
+    preserve_comments: "types"
+    # observe.go is the observed-graph wire family (ObservedGraph, ObservedEdge,
+    # Window); merge.go / observe.go's transforms are Go-only. ObservedEdge
+    # embeds graph.Edge and the graph reuses graph.Node/CoarsenedEdge/…, mapped
+    # to the sibling generated graph.ts names below.
+    include_files:
+      - "observe.go"
+    type_mappings:
+      graph.Summary: "Summary"
+      graph.Node: "Node"
+      graph.Edge: "Edge"
+      graph.CoarsenedEdge: "CoarsenedEdge"
+      graph.Unresolved: "Unresolved"
+      graph.Diagnostic: "Diagnostic"
+    frontmatter: |
+      // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
+      // String-literal enums and discriminated unions live in ../residue.ts.
+      import type { Summary, Node, Edge, CoarsenedEdge, Unresolved, Diagnostic } from "./graph";
+
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
     output_path: "tools/wire-types/src/generated/decompose.ts"
     preserve_comments: "types"

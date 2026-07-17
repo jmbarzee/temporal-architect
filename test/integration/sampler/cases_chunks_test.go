@@ -13,7 +13,8 @@ import (
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/history"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
+	"github.com/jmbarzee/temporal-architect/tools/sampler/history"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/sampling"
 )
 
@@ -151,7 +152,7 @@ func TestChunksRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sample: %v", err)
 	}
-	g := history.Build(histories, history.Context{})
+	g := observe.ToGraph(history.Build(histories, history.Options{}))
 
 	indepOne := graph.DefKey(graph.KindWorkflow, "IndepOneWorkflow")
 	indepOneAct := graph.DefKey(graph.KindActivity, "IndepOneActivity")

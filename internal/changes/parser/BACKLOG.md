@@ -99,13 +99,15 @@ the same resolved graph the visualizer already consumes.
 **Consumer:** the harness / `temporal-engineer` entry-point skill (decomposition + dispatch). This is
 the tool-computed answer to "what are the composable chunks?"
 
-**Testing (sampler + `twf graph`):** integration tests for the sampler + `twf graph` combo are in
+**Testing (sampler + `twf graph`):** integration tests for the sampler are in
 flight. When the sub-tree / chunk-identification work lands, **expand that coverage to verify
-decomposition** — drive sampled histories (or fixtures in the sampler's `<ns>/<wfType>/<id>.json`
-layout) through `twf graph --history` and assert the chunk/tree output: connected-component grouping,
+decomposition** — drive sampled histories through the sampler → `observe.ToGraph`
+and assert the chunk/tree output: connected-component grouping,
 cycle handling (workflow-call loops collapse into one chunk rather than blowing up), and oversized-tree
-cuts. The round-trip harness already exists (`tools/sampler` → `twf graph --history`); the sub-tree
-cases are new assertions over the same graph, not a new test rig.
+cuts. The round-trip harness already exists (`tools/sampler.Sample` → `history.Build` → `observe.ToGraph`);
+the sub-tree cases are new assertions over the same graph, not a new test rig. (History-mode
+decomposition via the CLI was removed with `twf graph --history`; see the reverse-history backlog
+§ "Deferred: history-mode decomposition".)
 
 **Open questions:** Is a "tree" the right unit, or connected-component (handles shared sub-workflows
 and cycles)? How to present overlap when two roots share a child workflow? How to decide a chunk is
@@ -206,7 +208,7 @@ Implement the `twf mcp` server that the distribution **already advertises but do
 Deferred follow-ups to the shipped `twf mcp` MVP, in rough priority order:
 
 - **Structured tool output.** Tools return JSON as text content with `Out = any`, so clients get no `StructuredContent` and no output schema. The blocker to doing this *well* is that the envelope payloads (`Definitions`/`Symbols`/`Graph`/`Chunks`) are `interface{}` — they infer to an unrestricted (`{}`) schema, so a quick version would populate `StructuredContent` but advertise a schema that describes nothing for the payloads (only `summary`/`diagnostics` would be typed). The real work is typing the payloads in Go (effectively mirroring the `wire-types` discriminated unions) so the output schema is meaningful — large, and welded to the DTO/tygo pipeline.
-- **History mode.** Expose the CLI's `twf graph --history <dir>` / `graph chunks --history` (decompose from a sampler output tree) as tool inputs; today the tools only accept `.twf` paths or inline source.
+- **History mode.** Accept the sampler's `observed-graph.json` as a tool input (project via `observe.ToGraph` for graph/decompose tools); today the tools only accept `.twf` paths or inline source. (The old `twf graph --history` intake was removed when extraction moved to the sampler.)
 - **Spec resource template.** Offer `twf://spec/{slug}` as a parameterized `ResourceTemplate` (lets clients construct URIs and enables argument completion) in addition to / instead of the static per-section resources.
 - **Completion handler.** Wire the SDK `CompletionHandler` for argument autocompletion (e.g. `twf_spec_get.slug`, and any future enum like the chunks `by` strategies).
 - **Richer tool annotations.** Only `ReadOnlyHint` is set; consider `IdempotentHint` / `OpenWorldHint:false`.

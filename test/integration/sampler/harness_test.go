@@ -15,7 +15,8 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/history"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
+	"github.com/jmbarzee/temporal-architect/tools/sampler/history"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/sampling"
 )
 
@@ -447,7 +448,7 @@ func runCase(t *testing.T, c Case) {
 			}
 			all = append(all, hs...)
 		}
-		g := history.Build(all, history.Context{})
+		g := observe.ToGraph(history.Build(all, history.Options{}))
 		final := i == len(expansionSchedule)-1
 		if ok, miss := satisfied(g, c.Expect, final); ok {
 			return

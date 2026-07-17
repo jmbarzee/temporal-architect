@@ -89,8 +89,8 @@ Show the resolved deployment graph; --json for envelope output
 Emit the resolved deployment graph of the input files. Nodes are runtime
 deployments; edges are confirmed dispatches between them.
 
-Default input: one or more .twf files. History input (--history <dir>): a
-sampler output tree rooted at <dir> with layout <namespace>/<type>/<id>.json.
+Input: one or more .twf files. To reconstruct a graph from live executions,
+use the sampler (which writes an observed-graph JSON directly).
 
 ```
 twf graph [flags] <file...>
@@ -99,9 +99,8 @@ twf graph [flags] <file...>
 ### Options
 
 ```
-  -h, --help             help for graph
-      --history string   Root dir of sampler output (<ns>/<type>/<id>.json); mutually exclusive with file arguments
-      --json             Output in JSON envelope (default: text)
+  -h, --help   help for graph
+      --json   Output in JSON envelope (default: text)
 ```
 
 ### SEE ALSO
@@ -138,8 +137,7 @@ twf graph chunks [flags] <file...>
 ### Options inherited from parent commands
 
 ```
-      --history string   Root dir of sampler output (<ns>/<type>/<id>.json); mutually exclusive with file arguments
-      --json             Output in JSON envelope (default: text)
+      --json   Output in JSON envelope (default: text)
 ```
 
 ### SEE ALSO

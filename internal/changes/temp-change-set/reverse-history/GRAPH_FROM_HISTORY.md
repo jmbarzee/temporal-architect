@@ -4,6 +4,8 @@ Reverse-engineer a deployment graph — the same node/edge structure `twf graph`
 
 **Status: v1 shipped (Pre + Stages 1–4).** This document is now the design-of-record and use-case reference. Remaining work lives in the [reverse-history backlog](./BACKLOG.md).
 
+> **Superseded pipeline (post-v1).** The v1 topology described below — the sampler writing a `<ns>/<type>/<id>.json` history tree that `twf graph --history` folds into a graph — has been replaced. Extraction now lives in the sampler (`tools/sampler/history`, moved out of `tools/lsp/parser/history` so the parser is Temporal-free); the sampler emits a single `observed-graph.json` (`observe.ObservedGraph`, a superset of the `twf graph` payload with a per-edge occurrence time series), and `twf graph --history` / `graph chunks --history` were removed. The event→graph *mapping* and node-ID contract below are unchanged; only the packaging (in-memory build, single-file output, no CLI history intake) differs. See the [reverse-history backlog](./BACKLOG.md) for the current open items.
+
 ---
 
 ## 1. Context & Goal

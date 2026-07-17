@@ -13,70 +13,36 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/history"
 	"github.com/spf13/cobra"
 )
 
-// New builds the `graph` command and attaches its `chunks` child. --json and
-// --history are persistent flags so the child inherits them and reads them off
-// the merged flag set.
+// New builds the `graph` command and attaches its `chunks` child. --json is a
+// persistent flag so the child inherits it and reads it off the merged flag set.
 func New() *cobra.Command {
 	var jsonOutput bool
-	var historyDir string
 	cmd := cmdutil.Silence(&cobra.Command{
 		Use:   "graph [flags] <file...>",
 		Short: "Show the resolved deployment graph; --json for envelope output",
 		Long: `Emit the resolved deployment graph of the input files. Nodes are runtime
 deployments; edges are confirmed dispatches between them.
 
-Default input: one or more .twf files. History input (--history <dir>): a
-sampler output tree rooted at <dir> with layout <namespace>/<type>/<id>.json.`,
+Input: one or more .twf files. To reconstruct a graph from live executions,
+use the sampler (which writes an observed-graph JSON directly).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmdutil.CodeToErr(run(args, jsonOutput, historyDir))
+			return cmdutil.CodeToErr(run(args, jsonOutput))
 		},
 	})
 	cmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON envelope (default: text)")
-	cmd.PersistentFlags().StringVar(&historyDir, "history", "", "Root dir of sampler output (<ns>/<type>/<id>.json); mutually exclusive with file arguments")
 	cmd.AddCommand(chunks.New())
 	return cmd
 }
 
-// run extracts and outputs the resolved deployment graph.
-//
-// Default input: one or more .twf files parsed into an AST → graph.Extract.
-// History input (historyDir): a sampler output tree rooted at <dir>
-// with layout <namespace>/<workflowType>/<id>.json → history.Build.
-//
-// Both modes emit the same JSON envelope so downstream tooling reads
-// diagnostics and graph in one payload.
-func run(paths []string, jsonOutput bool, historyDir string) int {
-	// Mutual exclusion.
-	if historyDir != "" && len(paths) > 0 {
-		fmt.Fprintln(os.Stderr, "error: --history and file arguments are mutually exclusive")
-		return 1
-	}
-
-	// History mode.
-	if historyDir != "" {
-		histories, err := envelope.LoadHistories(historyDir)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error loading histories: %v\n", err)
-			return 1
-		}
-		g := history.Build(histories, history.Context{})
-		diags := envelope.HistoryDiagnostics(g)
-		if jsonOutput {
-			return printJSON(nil, diags, g)
-		}
-		for _, d := range diags {
-			fmt.Fprintln(os.Stderr, envelope.FormatDiagnostic(d))
-		}
-		return printText(g)
-	}
-
-	// .twf mode.
+// run extracts and outputs the resolved deployment graph from one or more .twf
+// files parsed into an AST → graph.Extract, emitting the standard JSON envelope
+// under --json.
+func run(paths []string, jsonOutput bool) int {
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf graph [--json] [--history <dir>] <file...>")
+		fmt.Fprintln(os.Stderr, "usage: twf graph [--json] <file...>")
 		return 1
 	}
 

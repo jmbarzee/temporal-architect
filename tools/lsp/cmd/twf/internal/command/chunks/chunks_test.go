@@ -11,8 +11,8 @@ import (
 )
 
 // runChunks drives `graph chunks` through the assembled graph command, since
-// chunks is only ever reached as a child of graph (it inherits --json/--history
-// from the parent). This mirrors the real invocation path.
+// chunks is only ever reached as a child of graph (it inherits --json from the
+// parent). This mirrors the real invocation path.
 func runChunks(args []string) int {
 	cmd := graphcmd.New()
 	cmd.SetArgs(append([]string{"chunks"}, args...))

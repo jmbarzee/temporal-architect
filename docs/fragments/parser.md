@@ -12,7 +12,6 @@ A single Go binary: parser, validator, deployment-graph extractor, and a full LS
 | `twf symbols <file...>` | List workflows and activities with their signatures |
 | `twf graph <file...>` | Emit the resolved deployment graph (nodes are deployments, edges are dispatches) |
 | `twf graph chunks <file...>` | Decompose a design into independently-implementable chunks at contract boundaries |
-| `twf graph --history <dir>` | Recover a deployment graph from sampled production histories — no `.twf` required |
 | `twf spec [--list \| <slug>]` | Print the embedded TWF language specification |
 | `twf mcp` | Start the MCP server over stdio (agent entry point) |
 | `twf lsp` | Start the language server over stdio |

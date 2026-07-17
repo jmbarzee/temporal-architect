@@ -44,6 +44,10 @@ import type {
   Diagnostic as EnvelopeDiagnosticJSON,
   Position as EnvelopePositionJSON,
 } from "./generated/envelope";
+import type {
+  ObservedGraph as ObservedGraphJSON,
+  Window as ObservedWindowJSON,
+} from "./generated/observe";
 import type { FileSummary } from "./generated/ast";
 import type {
   EdgeKind,
@@ -111,6 +115,36 @@ export type ParserGraph = Omit<
   "edges" | "coarsenedEdges" | "unresolved" | "diagnostics"
 > & {
   edges: ParserEdge[];
+  coarsenedEdges: CoarsenedEdge[];
+  unresolved: ParserUnresolved[];
+  diagnostics: ParserGraphDiagnostic[];
+};
+
+// ── Observed graph payload (sampler `observedGraph`) ──────────────────────────
+// The sampler's output: the ParserGraph shape plus a time axis (ObservedWindow)
+// and a per-edge occurrence series (ObservedEdge.buckets). It is a superset of
+// ParserGraph — see observe.go.
+
+/** The time axis the per-edge occurrence buckets are laid out on. */
+export type ObservedWindow = ObservedWindowJSON;
+
+/**
+ * A dispatch edge observed in history: a ParserEdge plus its occurrence series.
+ *
+ * NB: the Go ObservedEdge embeds graph.Edge, which encoding/json flattens onto
+ * the edge object. tygo cannot express a cross-package embed and renders it as a
+ * nested `Edge` field in ./generated/observe (which does NOT match the wire
+ * bytes), so the true flattened shape is restated here — the same residue
+ * pattern the AST unions use.
+ */
+export type ObservedEdge = ParserEdge & { buckets: number[] };
+
+/** The full payload emitted by the sampler (the envelope's `observedGraph`). */
+export type ObservedGraph = Omit<
+  ObservedGraphJSON,
+  "edges" | "coarsenedEdges" | "unresolved" | "diagnostics"
+> & {
+  edges: ObservedEdge[];
   coarsenedEdges: CoarsenedEdge[];
   unresolved: ParserUnresolved[];
   diagnostics: ParserGraphDiagnostic[];

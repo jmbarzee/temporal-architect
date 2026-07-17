@@ -1,18 +1,22 @@
 // Payload normalization shared by the standalone (App.tsx) and webview
 // (webview.tsx) entry points.
 //
-// The visualizer accepts three input shapes, in precedence order:
+// The visualizer accepts four input shapes, in precedence order:
 //
 //  1. Wrapped envelope `{ ast, parserGraph }` — the host-preferred shape;
 //     `twf parse` AST plus the resolved deployment graph.
-//  2. Graph envelope `{ summary, diagnostics, graph }` — the output of
-//     `twf graph --json` (including `twf graph --history`). There is no AST,
-//     so we synthesize an empty one; WorkflowCanvas renders in history
-//     (Graph-only) mode when `definitions` is empty.
-//  3. Bare `TWFFile` — legacy / AST-only fixtures.
+//  2. Observed-graph envelope `{ observedGraph }` — the sampler's output: the
+//     deployment graph reconstructed from live history plus a per-edge
+//     occurrence time series. Projected to a ParserGraph (buckets dropped for
+//     rendering); there is no AST, so history (Graph-only) mode applies.
+//  3. Graph envelope `{ summary, diagnostics, graph }` — the output of
+//     `twf graph --json`. There is no AST, so we synthesize an empty one;
+//     WorkflowCanvas renders in history (Graph-only) mode when `definitions`
+//     is empty.
+//  4. Bare `TWFFile` — legacy / AST-only fixtures.
 
 import type { TWFFile } from './ast'
-import type { ParserGraph } from './parser-graph'
+import type { ObservedGraph, ParserGraph } from './parser-graph'
 import type { Decomposition } from './decomposition'
 
 /**
@@ -48,13 +52,46 @@ export function isGraphEnvelope(d: unknown): d is { graph: ParserGraph } {
 }
 
 /**
+ * Observed-graph envelope from the sampler: `{ observedGraph }`. The
+ * observedGraph is a superset of a ParserGraph (extra `window` field and a
+ * `buckets` series on each edge); there is no AST.
+ */
+export function isObservedGraphEnvelope(d: unknown): d is { observedGraph: ObservedGraph } {
+  if (d == null || typeof d !== 'object') return false
+  const obj = d as Record<string, unknown>
+  return 'observedGraph' in obj && obj.observedGraph != null && !('ast' in obj)
+}
+
+/**
+ * Project an observed graph onto the ParserGraph the render pipeline consumes.
+ * The occurrence series is dropped for now (edge weight = sum of buckets is a
+ * future feature); everything else is already the ParserGraph shape.
+ */
+export function observedToParserGraph(og: ObservedGraph): ParserGraph {
+  return {
+    summary: og.summary,
+    nodes: og.nodes,
+    // Each ObservedEdge is a ParserEdge plus `buckets`; the extra field is inert
+    // for rendering. Kept as-is (structurally a ParserEdge) rather than stripped.
+    edges: og.edges,
+    coarsenedEdges: og.coarsenedEdges,
+    unresolved: og.unresolved,
+    diagnostics: og.diagnostics,
+  }
+}
+
+/**
  * Normalize an arbitrary loaded payload into `{ ast, parserGraph? }`, or null
  * when the input is not a recognized shape. Precedence: wrapped envelope →
- * graph envelope (synthesizes an empty AST) → bare TWFFile.
+ * observed-graph envelope → graph envelope (both synthesize an empty AST) →
+ * bare TWFFile.
  */
 export function normalizePayload(d: unknown): NormalizedPayload | null {
   if (isWrappedPayload(d)) {
     return { ast: d.ast, parserGraph: d.parserGraph, decomposition: d.decomposition }
+  }
+  if (isObservedGraphEnvelope(d)) {
+    return { ast: { definitions: [] }, parserGraph: observedToParserGraph(d.observedGraph) }
   }
   if (isGraphEnvelope(d)) {
     return { ast: { definitions: [] }, parserGraph: d.graph }

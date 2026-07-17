@@ -41,7 +41,7 @@ Detect the **situation** cheaply (no subagent needed) and enter the matching pat
 | **`.twf` exists — implement / evolve** | `.twf` present | Edit the `.twf` first → propagate forward (A) |
 | **Drift** | Code and `.twf` disagree | Reconcile into the `.twf` (B) → then forward (A) |
 
-**On drift:** the steady state keeps the `.twf` authoritative, so drift should be rare — but the *hard problem is catching it*. There is no first-class detector yet. Lean on the feedback surfaces that exist: the author skills' build/test verify against the linked implementation, and (for production divergence) sampler-driven `twf graph --history` checks. When drift is found, route the fix **through the `.twf`** (B), then re-author forward — never patch the code and leave the `.twf` stale.
+**On drift:** the steady state keeps the `.twf` authoritative, so drift should be rare — but the *hard problem is catching it*. There is no first-class detector yet. Lean on the feedback surfaces that exist: the author skills' build/test verify against the linked implementation, and (for production divergence) the sampler's observed-graph output. When drift is found, route the fix **through the `.twf`** (B), then re-author forward — never patch the code and leave the `.twf` stale.
 
 Always check for prior artifacts first (existing `.twf`, `DESIGN.md`); the design skill's Orient covers this in depth. The detection-signal style here mirrors `temporal-architect-author-infra`'s Orient.
 

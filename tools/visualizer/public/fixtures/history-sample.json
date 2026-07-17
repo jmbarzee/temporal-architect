@@ -1,13 +1,10 @@
 {
-  "summary": {
-    "namespaces": 0,
-    "workers": 0,
-    "workflows": 0,
-    "activities": 0,
-    "nexusServices": 0
-  },
-  "diagnostics": [],
-  "graph": {
+  "observedGraph": {
+    "window": {
+      "since": "2026-01-01T00:00:00Z",
+      "until": "2026-01-01T03:00:00Z",
+      "buckets": 3
+    },
     "summary": {
       "nodes": 8,
       "edges": 9,
@@ -56,58 +53,67 @@
         "from": "activity:ChargePayment/worker:orders/namespace:ecommerce",
         "to": "worker:orders/namespace:ecommerce",
         "kind": "containment",
-        "line": 0
+        "line": 0,
+        "buckets": [0, 0, 0]
       },
       {
         "from": "activity:ValidateOrder/worker:orders/namespace:ecommerce",
         "to": "worker:orders/namespace:ecommerce",
         "kind": "containment",
-        "line": 0
+        "line": 0,
+        "buckets": [0, 0, 0]
       },
       {
         "from": "worker:orders/namespace:ecommerce",
         "to": "namespace:ecommerce",
         "kind": "containment",
-        "line": 0
+        "line": 0,
+        "buckets": [0, 0, 0]
       },
       {
         "from": "worker:partner/namespace:partner",
         "to": "namespace:partner",
         "kind": "containment",
-        "line": 0
+        "line": 0,
+        "buckets": [0, 0, 0]
       },
       {
         "from": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
         "to": "activity:ChargePayment/worker:orders/namespace:ecommerce",
         "kind": "activityCall",
         "line": 0,
-        "routing": {}
+        "routing": {},
+        "buckets": [1, 2, 0]
       },
       {
         "from": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
         "to": "activity:ValidateOrder/worker:orders/namespace:ecommerce",
         "kind": "activityCall",
         "line": 0,
-        "routing": {}
+        "routing": {},
+        "buckets": [2, 1, 1]
       },
       {
         "from": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
         "to": "worker:orders/namespace:ecommerce",
         "kind": "containment",
-        "line": 0
+        "line": 0,
+        "buckets": [0, 0, 0]
       },
       {
         "from": "workflow:PartnerCheckout/worker:partner/namespace:partner",
         "to": "worker:partner/namespace:partner",
         "kind": "containment",
-        "line": 0
+        "line": 0,
+        "buckets": [0, 0, 0]
       },
       {
         "from": "workflow:PartnerCheckout/worker:partner/namespace:partner",
         "to": "workflow:OrderWorkflow/worker:orders/namespace:ecommerce",
         "kind": "workflowCall",
         "line": 0,
-        "routing": {}
+        "routing": {},
+        "buckets": [0, 1, 1]
       }
     ],
     "coarsenedEdges": [

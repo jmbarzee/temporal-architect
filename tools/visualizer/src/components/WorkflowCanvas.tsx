@@ -131,8 +131,8 @@ function filterToPersisted(f: FilterState): PersistedFilter {
 
 export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, onRefocus, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
-  // History mode: a graph-only payload (e.g. `twf graph --history`) has no
-  // AST definitions. The Tree view has nothing to render, so we hide its tab
+  // History mode: a graph-only payload (e.g. the sampler's observed graph) has
+  // no AST definitions. The Tree view has nothing to render, so we hide its tab
   // and default to the Graph view.
   const historyMode = ast.definitions.length === 0
   // Load persisted state once on mount. Sets are restored as Set<string>

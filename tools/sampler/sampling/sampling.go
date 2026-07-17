@@ -3,7 +3,8 @@
 // returns them in memory as []history.History, ready for history.Build.
 //
 // The sampler CLI (package main) wraps Sample with flag parsing, a client
-// connection, and disk writing. Tests call Sample directly.
+// connection, the history→graph build, and writing the single observed-graph
+// JSON. Tests call Sample directly.
 package sampling
 
 import (
@@ -19,7 +20,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/history"
+	"github.com/jmbarzee/temporal-architect/tools/sampler/history"
 )
 
 // Options configures one Sample call. Namespace is required; the returned

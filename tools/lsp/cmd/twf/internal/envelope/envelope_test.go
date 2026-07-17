@@ -203,31 +203,3 @@ func TestFormatDiagnostic(t *testing.T) {
 		t.Errorf("FormatDiagnostic =\n  %q\nwant\n  %q", got, want)
 	}
 }
-
-// TestLoadHistories verifies the sampler-output loader walks the two-level
-// <namespace>/<type>/<id>.json tree and stamps each history's namespace.
-func TestLoadHistories(t *testing.T) {
-	histories, err := envelope.LoadHistories(clitest.Testdata("sample"))
-	if err != nil {
-		t.Fatalf("LoadHistories: %v", err)
-	}
-	if len(histories) != 2 {
-		t.Fatalf("got %d histories, want 2", len(histories))
-	}
-
-	nsSeen := map[string]int{}
-	for _, h := range histories {
-		if h.Namespace == "" {
-			t.Errorf("history %q has empty namespace", h.WorkflowID)
-		}
-		nsSeen[h.Namespace]++
-		if len(h.Events) == 0 {
-			t.Errorf("history %q has no events", h.WorkflowID)
-		}
-	}
-	for _, ns := range []string{"ecommerce", "partner"} {
-		if nsSeen[ns] == 0 {
-			t.Errorf("no history found for namespace %q", ns)
-		}
-	}
-}

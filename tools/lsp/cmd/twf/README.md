@@ -199,7 +199,6 @@ twf graph chunks workflow.twf                        # text
 twf graph chunks --json workflow.twf                 # JSON, payload key `chunks`
 twf graph chunks --ceiling 20 --json workflow.twf    # also emit #2 divisions
 twf graph chunks --ceiling 20 --floor 3 --by tree,nexus workflow.twf
-twf graph chunks --history ./sample                  # over a sampled-history graph
 ```
 
 Two cleanly-typed outputs:
@@ -219,8 +218,7 @@ Two cleanly-typed outputs:
 distinct call fan-out, branch/loop depth, handler count, child-workflow
 count — documented, tunable weights; not a calibrated model). Chunks
 below `--floor M` (default 2; negative disables) are flagged too-granular
-with a recommended merge target. Over a `--history` graph there is no AST,
-so complexity is base-only and the decomposition is purely structural.
+with a recommended merge target.
 
 The `chunks` payload shape is the `decompose.Result` family in
 [`decompose/result.go`](../../parser/decompose/result.go), projected to

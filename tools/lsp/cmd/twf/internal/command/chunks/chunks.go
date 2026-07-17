@@ -1,7 +1,7 @@
 // Package chunks implements `twf graph chunks` — the topology-based
 // decomposition of a design into independently-implementable chunks of work.
 // It is wired as a child of the `graph` command, from which it inherits the
-// --json and --history flags.
+// --json flag.
 package chunks
 
 import (
@@ -16,13 +16,12 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/history"
 	"github.com/spf13/cobra"
 )
 
-// New builds the `graph chunks` child command. --json and --history are
-// inherited persistent flags declared on the parent `graph` command and read
-// here via the merged flag set; --ceiling, --floor, and --by are local.
+// New builds the `graph chunks` child command. --json is an inherited
+// persistent flag declared on the parent `graph` command and read here via the
+// merged flag set; --ceiling, --floor, and --by are local.
 func New() *cobra.Command {
 	var ceiling, floor, maxDepth int
 	var by string
@@ -36,8 +35,7 @@ ranked divisions for any chunk over the ceiling, recursively re-dividing any
 section still over the ceiling. Recommendations are never auto-applied.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			jsonOutput, _ := cmd.Flags().GetBool("json")
-			historyDir, _ := cmd.Flags().GetString("history")
-			return cmdutil.CodeToErr(run(args, jsonOutput, historyDir, ceiling, floor, maxDepth, by))
+			return cmdutil.CodeToErr(run(args, jsonOutput, ceiling, floor, maxDepth, by))
 		},
 	})
 	cmd.Flags().IntVar(&ceiling, "ceiling", 0, "Complexity ceiling; chunks above it get #2 ranked divisions (0 = hard partition only)")
@@ -50,11 +48,10 @@ section still over the ceiling. Recommendations are never auto-applied.`,
 // run implements `twf graph chunks` — the topology-based decomposition of a
 // design into independently-implementable chunks.
 //
-// It runs the existing parse → resolve → graph.Extract pipeline (or
-// envelope.LoadHistories + history.Build under historyDir), feeds the result
-// to decompose.Decompose, and emits the standard JSON envelope under a
-// "chunks" payload.
-func run(paths []string, jsonOutput bool, historyDir string, ceiling, floor, maxDepth int, by string) int {
+// It runs the parse → resolve → graph.Extract pipeline, feeds the result to
+// decompose.Decompose, and emits the standard JSON envelope under a "chunks"
+// payload.
+func run(paths []string, jsonOutput bool, ceiling, floor, maxDepth int, by string) int {
 	opts := decompose.Options{
 		Ceiling:  ceiling,
 		Floor:    floor,
@@ -62,29 +59,8 @@ func run(paths []string, jsonOutput bool, historyDir string, ceiling, floor, max
 		By:       splitStrategies(by),
 	}
 
-	if historyDir != "" && len(paths) > 0 {
-		fmt.Fprintln(os.Stderr, "error: --history and file arguments are mutually exclusive")
-		return 1
-	}
-
-	// History mode: decompose a graph reconstructed from sampled executions.
-	// No AST is available, so complexity is base-only and handler roots are not
-	// detected — the decomposition is purely structural.
-	if historyDir != "" {
-		histories, err := envelope.LoadHistories(historyDir)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error loading histories: %v\n", err)
-			return 1
-		}
-		g := history.Build(histories, history.Context{})
-		res := decompose.Decompose(nil, g, opts)
-		diags := envelope.HistoryDiagnostics(g)
-		return emitChunks(nil, diags, res, jsonOutput)
-	}
-
-	// .twf mode.
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf graph chunks [--json] [--ceiling N] [--floor M] [--by tree,nexus,worker,namespace,service,subtree] [--history <dir>] <file...>")
+		fmt.Fprintln(os.Stderr, "usage: twf graph chunks [--json] [--ceiling N] [--floor M] [--by tree,nexus,worker,namespace,service,subtree] <file...>")
 		return 1
 	}
 

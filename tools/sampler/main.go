@@ -1,47 +1,55 @@
 // Command sampler pulls a representative sample of workflow histories from a
-// live Temporal namespace and writes them as protojson into the folder layout
-// `twf graph --history` consumes: <out>/<namespace>/<workflowType>/<id>.json.
+// live Temporal namespace, extracts the meaningful events in memory, and writes
+// a single "observed graph" JSON — the deployment-graph shape plus a per-edge
+// occurrence time series (see tools/lsp/parser/observe). The visualizer reads
+// that file directly; there is no intermediate on-disk history tree.
 //
-// The core sampling logic lives in the importable ./sampling package; this
-// command is a thin wrapper that adds flag parsing, the client connection, and
-// disk writing.
-//
-// Run it once per namespace into the same --out to build a multi-namespace
-// tree for `twf graph --history <out>`.
+// The core sampling logic lives in the importable ./sampling package and the
+// history→graph extraction in ./history; this command is a thin wrapper that
+// adds flag parsing, the client connection, the build, and the file write.
 package main
 
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
-	enumspb "go.temporal.io/api/enums/v1"
-	historypb "go.temporal.io/api/history/v1"
-	"go.temporal.io/api/temporalproto"
 	"go.temporal.io/sdk/client"
 
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/history"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
+	"github.com/jmbarzee/temporal-architect/tools/sampler/history"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/sampling"
 )
 
 type options struct {
-	address       string
-	namespace     string
-	tlsCertPath   string
-	tlsKeyPath    string
-	out           string
+	address     string
+	namespace   string
+	tlsCertPath string
+	tlsKeyPath  string
+	out         string
+
 	samplePercent int
 	minPerType    int
+	buckets       int
 
 	// since / until are the raw --since / --until flag values (RFC3339 or a
-	// duration like "24h"), parsed into a StartTime window in run.
+	// duration like "24h"), parsed into a StartTime window in run. They both
+	// filter executions and define the bucket time window.
 	since  string
 	until  string
 	status string
+}
+
+// output is the top-level JSON envelope the sampler writes. A single
+// observedGraph key mirrors the `graph` key of `twf graph --json`.
+type output struct {
+	ObservedGraph *observe.ObservedGraph `json:"observedGraph"`
 }
 
 func main() {
@@ -59,11 +67,12 @@ func parseFlags(args []string) options {
 	fs.StringVar(&opts.namespace, "namespace", "default", "Namespace to sample")
 	fs.StringVar(&opts.tlsCertPath, "tls-cert-path", "", "Client TLS certificate (mTLS)")
 	fs.StringVar(&opts.tlsKeyPath, "tls-key-path", "", "Client TLS private key (mTLS)")
-	fs.StringVar(&opts.out, "out", "./", "Output root dir for <namespace>/<type>/<id>.json")
+	fs.StringVar(&opts.out, "out", "./", "Output path for the observed-graph JSON (a directory receives observed-graph.json)")
 	fs.IntVar(&opts.samplePercent, "sample-percent", 10, "Percent of each type's executions to sample")
 	fs.IntVar(&opts.minPerType, "min-per-type", 5, "Minimum executions to sample per type")
-	fs.StringVar(&opts.since, "since", "", "StartTime lower bound: RFC3339 timestamp or duration like 24h (relative to now)")
-	fs.StringVar(&opts.until, "until", "", "StartTime upper bound: RFC3339 timestamp or duration like 1h (relative to now)")
+	fs.IntVar(&opts.buckets, "buckets", 1, "Number of equal-width time buckets to divide [--since, --until] into (1 = a single total). >1 requires --since")
+	fs.StringVar(&opts.since, "since", "", "StartTime lower bound / bucket epoch: RFC3339 timestamp or duration like 24h (relative to now)")
+	fs.StringVar(&opts.until, "until", "", "StartTime upper bound / bucket window end: RFC3339 timestamp or duration like 1h (defaults to now)")
 	fs.StringVar(&opts.status, "status", "", "ExecutionStatus filter (e.g. Running, Completed, Failed)")
 	_ = fs.Parse(args)
 	return opts
@@ -96,6 +105,30 @@ func run(ctx context.Context, opts options) error {
 		return fmt.Errorf("--until: %w", err)
 	}
 
+	buckets := opts.buckets
+	if buckets < 1 {
+		buckets = 1
+	}
+	if buckets > 1 && since.IsZero() {
+		return fmt.Errorf("--buckets %d requires --since (the bucket epoch)", buckets)
+	}
+
+	window := observe.Window{Buckets: buckets}
+	if !since.IsZero() {
+		window.Since = since.UTC().Format(time.RFC3339)
+	}
+	switch {
+	case buckets > 1:
+		// Bucketing needs a window end; default it to now.
+		end := until
+		if end.IsZero() {
+			end = now
+		}
+		window.Until = end.UTC().Format(time.RFC3339)
+	case !until.IsZero():
+		window.Until = until.UTC().Format(time.RFC3339)
+	}
+
 	c, err := dial(opts)
 	if err != nil {
 		return fmt.Errorf("connect to %s: %w", opts.address, err)
@@ -118,13 +151,43 @@ func run(ctx context.Context, opts options) error {
 		return nil
 	}
 
-	for _, h := range histories {
-		if err := writeHistory(opts.out, h); err != nil {
-			return fmt.Errorf("write history %s: %w", h.WorkflowID, err)
+	og := history.Build(histories, history.Options{Namespace: opts.namespace, Window: window})
+
+	path := resolveOutPath(opts.out)
+	if err := writeObservedGraph(path, og); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	fmt.Fprintf(os.Stderr, "sampled %d execution(s) → %d node(s), %d edge(s); wrote %s\n",
+		len(histories), og.Summary.Nodes, og.Summary.Edges, path)
+	return nil
+}
+
+// resolveOutPath treats an existing directory (or a path with a trailing
+// separator) as the destination folder for observed-graph.json; anything else
+// is used verbatim as the output file path.
+func resolveOutPath(out string) string {
+	if info, err := os.Stat(out); err == nil && info.IsDir() {
+		return filepath.Join(out, "observed-graph.json")
+	}
+	if strings.HasSuffix(out, string(os.PathSeparator)) {
+		return filepath.Join(out, "observed-graph.json")
+	}
+	return out
+}
+
+// writeObservedGraph serializes the observed graph as the single-key JSON
+// envelope the visualizer consumes.
+func writeObservedGraph(path string, og *observe.ObservedGraph) error {
+	data, err := json.MarshalIndent(output{ObservedGraph: og}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal observed graph: %w", err)
+	}
+	if dir := filepath.Dir(path); dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create dir: %w", err)
 		}
 	}
-	fmt.Fprintf(os.Stderr, "wrote %d history file(s) under %s\n", len(histories), opts.out)
-	return nil
+	return os.WriteFile(path, data, 0o644)
 }
 
 // dial opens a Temporal client, configuring mTLS when both cert and key
@@ -144,35 +207,4 @@ func dial(opts options) (client.Client, error) {
 		}
 	}
 	return client.Dial(co)
-}
-
-// writeHistory serializes one sampled history as protojson (matching
-// `temporal workflow show -o json`) and writes it to
-// <out>/<namespace>/<workflowType>/<workflowId>.json.
-func writeHistory(out string, h history.History) error {
-	hist := &historypb.History{Events: h.Events}
-	data, err := temporalproto.CustomJSONMarshalOptions{Indent: "  "}.Marshal(hist)
-	if err != nil {
-		return fmt.Errorf("marshal history: %w", err)
-	}
-
-	path := outputPath(out, h.Namespace, workflowTypeOf(h), h.WorkflowID)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create dir: %w", err)
-	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return fmt.Errorf("write file: %w", err)
-	}
-	return nil
-}
-
-// workflowTypeOf reads the workflow type from the history's
-// WORKFLOW_EXECUTION_STARTED event (used only for the on-disk folder layout).
-func workflowTypeOf(h history.History) string {
-	for _, e := range h.Events {
-		if e.GetEventType() == enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED {
-			return e.GetWorkflowExecutionStartedEventAttributes().GetWorkflowType().GetName()
-		}
-	}
-	return "UnknownWorkflowType"
 }

@@ -12,13 +12,14 @@ The full reverse path against a real Temporal server:
 ```
 dev server → worker runs GraphTestWorkflow (calls GraphTestActivity)
            → execute + wait
-           → sampler pulls the history
-           → twf graph --history rebuilds the deployment graph
+           → sampler pulls the history and writes observed-graph.json
+           → read + project the observed graph
            → assert: workflow node + activity node + activityCall edge
 ```
 
-It exercises the real `sampler` and `twf` binaries as subprocesses (via
-`go run`), so the actual CLI surfaces are tested — not internal functions.
+It exercises the real `sampler` binary as a subprocess (via `go run`) and reads
+the single observed-graph JSON it writes, so the actual CLI surface is tested —
+not internal functions.
 
 ## Running
 

@@ -15,12 +15,13 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
 )
 
-// TestSamplerE2E is the command-level test: it drives the real `sampler` and
-// `twf graph --history` binaries as subprocesses, complementing the direct-call
-// suite (which bypasses the CLI). Shared fixtures and matchers live in
-// harness_test.go.
+// TestSamplerE2E is the command-level test: it drives the real `sampler` binary
+// as a subprocess and reads the single observed-graph.json it writes,
+// complementing the direct-call suite (which bypasses the CLI). Shared fixtures
+// and matchers live in harness_test.go.
 func TestSamplerE2E(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test: skipped in -short mode")
@@ -59,7 +60,7 @@ func TestSamplerE2E(t *testing.T) {
 
 	waitForVisibleCount(ctx, t, c, defaultNamespace, 1)
 
-	// Run the real sampler binary into a temp dir.
+	// Run the real sampler binary into a temp dir; it writes observed-graph.json.
 	root := repoRoot(t)
 	outDir := t.TempDir()
 	runGo(ctx, t, root,
@@ -70,28 +71,29 @@ func TestSamplerE2E(t *testing.T) {
 		"--min-per-type", "1",
 	)
 
-	historyPath := filepath.Join(outDir, defaultNamespace, graphTestWorkflowType)
-	if entries, err := os.ReadDir(historyPath); err != nil || len(entries) == 0 {
-		t.Fatalf("expected history files under %s; err=%v", historyPath, err)
+	outPath := filepath.Join(outDir, "observed-graph.json")
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("read observed-graph.json: %v", err)
 	}
-
-	// Run the real twf graph --history binary over the sampled tree.
-	stdout := runGo(ctx, t, root,
-		"run", "./tools/lsp/cmd/twf",
-		"graph", "--history", outDir, "--json",
-	)
 
 	var env struct {
-		Graph *graph.Graph `json:"graph"`
+		ObservedGraph *observe.ObservedGraph `json:"observedGraph"`
 	}
-	if err := json.Unmarshal([]byte(stdout), &env); err != nil {
-		t.Fatalf("unmarshal twf envelope: %v\noutput: %s", err, stdout)
+	if err := json.Unmarshal(data, &env); err != nil {
+		t.Fatalf("unmarshal observed-graph envelope: %v\noutput: %s", err, data)
 	}
-	if env.Graph == nil {
-		t.Fatalf("twf envelope has null graph\noutput: %s", stdout)
+	if env.ObservedGraph == nil {
+		t.Fatalf("envelope has null observedGraph\noutput: %s", data)
+	}
+	// Default single-bucket window: every edge carries a length-1 series.
+	if env.ObservedGraph.Window.Buckets != 1 {
+		t.Errorf("default window buckets = %d, want 1", env.ObservedGraph.Window.Buckets)
 	}
 
-	// Assert with the same expectation vocabulary as the suite.
+	// Assert with the same expectation vocabulary as the suite, over the
+	// projected deployment graph.
+	g := observe.ToGraph(env.ObservedGraph)
 	exp := Expect{
 		Nodes: []ExpectNode{
 			{Kind: graph.KindWorkflow, Name: graphTestWorkflowType},
@@ -105,8 +107,8 @@ func TestSamplerE2E(t *testing.T) {
 			},
 		},
 	}
-	if ok, miss := satisfied(env.Graph, exp, true); !ok {
-		t.Fatalf("CLI-produced graph missing expected structure: %s", miss)
+	if ok, miss := satisfied(g, exp, true); !ok {
+		t.Fatalf("sampler-produced graph missing expected structure: %s", miss)
 	}
 }
 

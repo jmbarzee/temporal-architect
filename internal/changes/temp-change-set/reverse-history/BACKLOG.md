@@ -10,7 +10,7 @@ Design/architecture hub: [GRAPH_FROM_HISTORY.md](./GRAPH_FROM_HISTORY.md) — th
 
 The forward-graph nexus half shipped (see GRAPH_FROM_HISTORY.md § "Since v1"). What remains is the *history* side:
 
-- Decode `NEXUS_OPERATION_SCHEDULED` (and its started/completed siblings) in `tools/lsp/parser/history`.
+- Decode `NEXUS_OPERATION_SCHEDULED` (and its started/completed siblings) in `tools/sampler/history`.
 - Emit `nexusCall` edges; synthesize endpoint / service / operation nodes from the observed `endpoint` / `service` / `operation` names.
 
 **Open question:** endpoint→namespace mapping. Nexus endpoints are namespace-scoped routing aliases; history gives `endpoint`/`endpointId` but not the backing namespace/queue, so reconstructing endpoint placement from history alone needs design.
@@ -25,7 +25,7 @@ Resolve `signalSend` edges to real workflow-type nodes using the cross-file `wor
 
 ### Local activities
 
-Local activities appear as `MARKER_RECORDED` ("LocalActivity") events, not `ACTIVITY_TASK_SCHEDULED`. Add a marker decoder to `tools/lsp/parser/history` to recover them as activity nodes/edges.
+Local activities appear as `MARKER_RECORDED` ("LocalActivity") events, not `ACTIVITY_TASK_SCHEDULED`. Add a marker decoder to `tools/sampler/history` to recover them as activity nodes/edges.
 
 ---
 
@@ -36,7 +36,23 @@ Local activities appear as `MARKER_RECORDED` ("LocalActivity") events, not `ACTI
 - **Transitive sampling:** auto-fetch child-workflow and nexus-target histories so the graph is complete without separate runs per type.
 - Concurrency and rate limiting against the server.
 - Temporal Cloud auth via environment variables (parallel to the `temporal` CLI's env handling).
-- **Continue-as-new run boundaries:** the `<ns>/<wfType>/<id>.json` layout is keyed by WorkflowID, so chained CAN runs (same WorkflowID, new RunID) collide/overwrite, and `history.Build` reads only the first run — activities in later runs are invisible. Needs a layout/decoding fix.
+- **Continue-as-new run boundaries:** `history.Build`'s `workflowID → startInfo` index is keyed by WorkflowID, so chained CAN runs (same WorkflowID, new RunID) collapse and only the first run's events are folded — activities in later runs are invisible. Needs a RunID-aware decode.
+
+---
+
+## Deferred: observed-graph time series & merge
+
+The sampler now emits a single `observed-graph.json` (`observe.ObservedGraph`) with a per-edge occurrence time series (`ObservedEdge.Buckets`) laid out on an absolute-time `Window`. The shape was designed so the following are additive, not redesigns — none are wired yet:
+
+- **Parallel / multi-namespace sampling.** `observe.Merge(a, b)` folds two graphs sampled over the *same* `Window` by unioning nodes/edges and summing buckets element-wise (associative). The sampler CLI still samples one namespace serially and never calls `Merge`. Wiring: shard history fetch across goroutines (and/or namespaces) with a shared `Window`, fold the shards, write once. Depends on the concurrency item above.
+- **Per-node occurrence series (node "heat").** `ObservedGraph.Nodes` is structural only. A symmetric `ObservedNode { graph.Node; Buckets []int }` — populated from the `WORKFLOW_EXECUTION_STARTED` event already visited — would capture root-workflow execution counts per bucket (the one datum not derivable from incident edges). Cheap; adds node-throughput to the wire for the visualizer's future heat encoding.
+- **Visualizer consumption.** The per-edge series reaches the visualizer on the wire but is dropped in the client projection today. Edge-weight (thickness/opacity by `sum(buckets)`) and time-based edge appear/decay animation are tracked in [`internal/changes/visualizer/BACKLOG.md`](../../visualizer/BACKLOG.md).
+
+---
+
+## Deferred: history-mode decomposition
+
+`twf graph chunks --history` was removed alongside `twf graph --history` when history extraction moved into the sampler (the parser is now Temporal-free). A sampled deployment graph therefore no longer has a chunk-decomposition overlay in the visualizer's history mode. `decompose.Decompose` still operates on a `*graph.Graph`, so restoring this means giving it an observed-graph input path — e.g. the sampler additionally emitting a `chunks` payload, or a small `twf` subcommand that decomposes an `observed-graph.json` (via `observe.ToGraph`). Owner: parser (`decompose`) + sampler.
 
 ### Integration-suite harness gaps
 
@@ -51,7 +67,7 @@ The case set in `test/integration/sampler/` is implemented; two harness ergonomi
 
 ### VS Code / Cursor entry point
 
-A "Visualize from workflow history" command that runs the sampler (or accepts a JSON file/folder) and feeds the `twf graph --history` envelope to the webview.
+Shipped (dist repo): "Visualize All Workflows in Folder" detects a sampler `observed-graph.json` under the folder, projects it to a `ParserGraph`, and renders it in history mode. Still open: a first-class "run the sampler from the extension" command (today the user runs the sampler binary, then opens the output folder).
 
 ### Observed-vs-designed overlay
 
@@ -61,7 +77,7 @@ Because the importer emits the same node-ID scheme as `graph.Extract`, a future 
 
 ## Validation & rollout (planned next)
 
-Dogfood against a real namespace: run the sampler, build the graph with `twf graph --history`, and diff it against a hand-written `.twf` for a system we own. Expect the history graph to be a subset of the design graph; investigate any node/edge present in one but not the other. Validates the event→graph mapping end to end and seeds the observed-vs-designed overlay.
+Dogfood against a real namespace: run the sampler to produce `observed-graph.json`, project it (`observe.ToGraph`), and diff it against a hand-written `.twf` for a system we own. Expect the history graph to be a subset of the design graph; investigate any node/edge present in one but not the other. Validates the event→graph mapping end to end and seeds the observed-vs-designed overlay.
 
 Step-by-step instructions: [VALIDATION_RUNBOOK.md](./VALIDATION_RUNBOOK.md).
 

@@ -12,7 +12,7 @@ Write your architecture in `.twf` and a real parser, language server, and visual
 - **Catch design errors before code.** A real parser and language server validate the whole system — undefined activities, broken Nexus routing, misplaced determinism — while it's still a design, not a production incident.
 - **See the whole deployment.** An interactive graph of namespaces → workers → workflows, plus a tree view that expands calls inline. Architecture you can actually look at.
 - **One parseable source of truth.** `.twf` is a file every teammate and every tool reads and validates — not architecture prose buried in a prompt.
-- **Design → running system.** Generate Temporal Go SDK code and provision control-plane infra from the same `.twf` — or recover a deployment graph straight from production history with `twf graph --history`.
+- **Design → running system.** Generate Temporal Go SDK code and provision control-plane infra from the same `.twf` — or recover a deployment graph straight from production history with the sampler.
 
 ## What `.twf` looks like
 
@@ -111,13 +111,12 @@ A single Go binary: parser, validator, deployment-graph extractor, and a full LS
 | `twf parse <file...>` | Output the AST as JSON (partial AST even with errors) |
 | `twf symbols <file...>` | List workflows and activities with their signatures |
 | `twf graph <file...>` | Emit the resolved deployment graph (nodes are deployments, edges are dispatches) |
-| `twf graph --history <dir>` | Recover a deployment graph from sampled production histories — no `.twf` required |
 | `twf spec [--list \| <slug>]` | Print the embedded TWF language specification |
 | `twf lsp` | Start the language server over stdio |
 
 Common options: `--json` (structured output) and `--lenient` (continue past resolve errors). The language server adds real-time diagnostics, completions, hover, go-to-definition, references, rename, code actions, folding, inlay hints, semantic tokens, and signature help.
 
-**Graph from production history.** `twf graph --history <dir>` reconstructs a deterministic deployment graph from a tree of sampled workflow histories — the harness reads a *running* system, not just a design. The [`tools/sampler/`](./tools/sampler/) collector pulls a representative sample from a live namespace into the layout `--history` consumes. This seeds the **observed-vs-designed overlay**: diff a history-derived graph against a `.twf`-derived one to surface drift between design and production.
+**Graph from production history.** The [`tools/sampler/`](./tools/sampler/) collector reads a *running* system, not just a design: it pulls a representative sample from a live namespace and writes a deterministic **observed graph** — the same deployment-graph shape as `twf graph`, plus a per-edge occurrence time series — as a single JSON the visualizer opens directly. This seeds the **observed-vs-designed overlay**: diff a history-derived graph against a `.twf`-derived one to surface drift between design and production.
 
 <!-- [SCREENSHOT: S7 — Graph View rendered from sampled history, beside the same system's .twf-designed graph] → docs/images/graph-view-history.png -->
 
@@ -198,7 +197,7 @@ tools/
   lsp/              Go parser, resolver, validator, language server, twf CLI, Go DTOs
   wire-types/       TS projection of the JSON wire contract (tygo-generated from the DTOs)
   visualizer/       React architecture visualizer (tree view + graph view)
-  sampler/          History collector for `twf graph --history`
+  sampler/          Live-history collector; emits the observed graph JSON
 skills/             AI skill definitions (SKILL.md + reference docs)
 
 # Dev — release tooling, dev-cycle orchestration, version helper

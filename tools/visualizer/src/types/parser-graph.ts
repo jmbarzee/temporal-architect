@@ -20,6 +20,9 @@ export type {
   ParserGraphDiagnosticCode,
   ParserGraphDiagnosticSeverity,
   DefinitionKey,
+  ObservedGraph,
+  ObservedEdge,
+  ObservedWindow,
 } from '@temporal-architect/wire-types'
 
 import type { ParserGraph } from '@temporal-architect/wire-types'

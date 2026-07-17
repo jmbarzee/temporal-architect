@@ -10,7 +10,7 @@ Write your architecture in `.twf` and a real parser, language server, and visual
 - **Catch design errors before code.** A real parser and language server validate the whole system — undefined activities, broken Nexus routing, misplaced determinism — while it's still a design, not a production incident.
 - **See the whole deployment.** An interactive graph of namespaces → workers → workflows, plus a tree view that expands calls inline. Architecture you can actually look at.
 - **One parseable source of truth.** `.twf` is a file every teammate and every tool reads and validates — not architecture prose buried in a prompt.
-- **Design → running system.** Generate Temporal Go SDK code and provision control-plane infra from the same `.twf` — or recover a deployment graph straight from production history with `twf graph --history`.
+- **Design → running system.** Generate Temporal Go SDK code and provision control-plane infra from the same `.twf` — or recover a deployment graph straight from production history with the sampler.
 
 ```twf
 activity ReserveFunds(amount: Money) -> (Hold):
