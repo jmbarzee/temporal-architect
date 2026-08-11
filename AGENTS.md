@@ -73,7 +73,7 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Feature backlog and long-term planning live in [GitHub issues](https://github.com/jmbarzee/temporal-architect/issues), not in the repo.** Deferred features, design ideas, open questions, and cross-component work are all filed there and labelled by area (`area:dsl`, `area:parser`, `area:cli`, `area:decompose`, `area:visualizer`, `area:sampler`, `area:orchestrator`, `area:skills`) plus `epic`, `blocked`, `needs-design`, and `tech-debt`. When you defer something, open an issue — do not start a backlog file.
 
-**Coordinate breaking changes through the `internal/changes/` directory — as scratch space, not an archive.** It is **empty between cycles**. While a cycle is running, each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/orchestrator/`, `internal/changes/skills/`) may hold two file types:
+**Coordinate breaking changes through the `internal/changes/` directory — as scratch space, not an archive.** It is **empty between cycles**. While a cycle is running, each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/sampler/`, `internal/changes/skills/`) may hold two file types:
 
 - `REVISIONS_NNN.md` — planned work; deleted once consumed
 - `CHANGES_NNN.md` — completed work; the handoff that `propagate-changes` reads to fan a change out downstream
@@ -105,6 +105,7 @@ The dev-cycle harness is a **skill** at `.claude/skills/dev-cycle/` (read by bot
 | **Quality Reviews** | |
 | `review-quality-parser` | Go parser, AST, resolver — code quality and design |
 | `review-quality-visualizer` | Visualizer TypeScript — code quality and contract consumption |
+| `review-quality-sampler` | Sampler Go — code quality and observed-graph contract population |
 | `review-quality-dsl-spec` | DSL design — coverage and representation against Temporal primitives |
 | `review-quality-visualizer-spec` | Visualizer — product and UX against spec |
 | `review-quality-skill` | Single skill — craft, focus, and information density |

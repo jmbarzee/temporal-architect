@@ -33,9 +33,10 @@ Each component maps to a directory scope, review commands, and downstream edges:
 | Component | Scope | Quality Review | Alignment Review(s) | Downstream |
 |-----------|-------|----------------|---------------------|------------|
 | `dsl` | `tools/spec/sections/` | `review-quality-dsl-spec` | — | parser |
-| `parser` | `tools/lsp/` | `review-quality-parser` | `review-alignment-parser` | visualizer, skills |
+| `parser` | `tools/lsp/` | `review-quality-parser` | `review-alignment-parser` | visualizer, skills, sampler |
 | `visualizer-spec` | `tools/visualizer/spec/` | `review-quality-visualizer-spec` | — | visualizer |
 | `visualizer` | `tools/visualizer/` (minus spec/) | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — |
+| `sampler` | `tools/sampler/` | `review-quality-sampler` | — | — |
 | `skills` | `skills/` | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — |
 
 ## File Conventions
@@ -56,6 +57,8 @@ internal/changes/
     quality-design_REVISIONS_001.md
     alignment-design_REVISIONS_001.md
     alignment-author_REVISIONS_001.md
+  sampler/
+    quality_REVISIONS_001.md
 ```
 
 All skill reviews share the single `skills/` directory, so the `{type}` prefix is source-encoded (e.g. `quality-design`, `alignment-author`) to keep concurrent reviews from colliding. `address-review` merges every `skills/*_REVISIONS_*.md` into one `skills/CHANGES_{NNN}.md`.
@@ -112,12 +115,12 @@ Components with no upstream/downstream relationship run in parallel. The depende
 
 ```
 Wave 1: dsl, parser (independent — dsl is spec-only, parser is implementation)
-Wave 2: visualizer + skills + visualizer-spec (parallel, non-overlapping directories)
+Wave 2: visualizer + skills + visualizer-spec + sampler (parallel, non-overlapping directories)
 ```
 
 Within a wave, children are independent and run concurrently. Between waves, the main workflow waits for all children to complete, commits their changes, and scans for new REVISIONS before starting the next wave.
 
-Leaf nodes (visualizer, skills) terminate the propagation chain.
+Leaf nodes (visualizer, skills, sampler) terminate the propagation chain.
 
 ### Filesystem safety invariant
 

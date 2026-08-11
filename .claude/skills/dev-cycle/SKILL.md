@@ -103,6 +103,7 @@ paper over failures.
 | Go — `parser` (`tools/lsp/`) | `GOMODCACHE=$HOME/go/pkg/mod go build ./... && go test ./...` from `tools/lsp/` |
 | Skills / spec — `dsl`, `skills` | `twf check` against affected `.twf` files (e.g. under `examples/`) |
 | Visualizer — `visualizer`, `visualizer-spec` | `npm run build` from `tools/visualizer/` |
+| Go — `sampler` (`tools/sampler/`) | `GOMODCACHE=$HOME/go/pkg/mod go build ./... && go test ./...` from `tools/sampler/` (its own module) |
 
 The `GOMODCACHE` prefix is required in this sandbox (see `AGENTS.md`).
 
@@ -154,6 +155,7 @@ Dispatch the matching prompt on demand; do not read them all up front.
 | `review-quality-dsl-spec.md` | DSL spec coverage/representation against Temporal primitives |
 | `review-quality-parser.md` | Go parser / AST / resolver code quality |
 | `review-quality-visualizer.md` | Visualizer TypeScript quality + contract consumption |
+| `review-quality-sampler.md` | Sampler Go quality + observed-graph contract population |
 | `review-quality-visualizer-spec.md` | Visualizer product/UX against its spec |
 | `review-quality-skill.md` | Single skill craft/focus/density (design, author-go, author-infra) |
 | `review-alignment-parser.md` | Parser implementation vs `tools/spec/sections/` |
