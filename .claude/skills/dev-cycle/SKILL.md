@@ -12,6 +12,11 @@ The filesystem is the source of truth: `*_REVISIONS_*.md` = pending work, `CHANG
 completed work, both under `internal/changes/{component}/`. A crashed or resumed session
 recovers by re-scanning — there is no hidden state.
 
+**Both file types are scoped to one cycle and are deleted when it closes.** They are working
+files for the loop below, not an archive: git history holds what changed, `CHANGELOG.md` holds
+what shipped, and **GitHub issues hold everything still to do**. Anything unfinished at close
+becomes an issue — never a file left behind. The repo does not track its own backlog.
+
 **Always read `internal/harness/components.md` first.** It is the single source of truth for
 the component graph: source scopes, coordination dirs, review mappings, propagation routing,
 and wave ordering. Do not restate the graph from memory.
@@ -47,7 +52,16 @@ its review prompt to completion and writes a REVISIONS file into `internal/chang
 8. Re-scan and continue.
 
 **Finalize (gate 2).** Dispatch a **summarize-changes** subagent, present the consolidated
-summary, and **wait for approval** before any PR creation or `internal/changes/` cleanup.
+summary, and **wait for approval**. On approval:
+1. File a GitHub issue for every deferral, unpropagated downstream item, and open question the
+   cycle produced — each CHANGES record's "Deferred" and "Downstream propagation" sections are
+   the checklist. Reference the issue number from the PR body.
+2. Delete every `*_REVISIONS_*.md` and `CHANGES_*.md` the cycle touched, leaving
+   `internal/changes/` empty for the next run.
+3. Create the PR.
+
+Step 1 gates step 2: do not delete a record until its open items exist as issues. A propagation
+bullet that was never executed is exactly the kind of debt that goes invisible otherwise.
 
 ## Autonomy policy
 

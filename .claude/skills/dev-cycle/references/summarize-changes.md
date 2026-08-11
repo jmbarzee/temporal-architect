@@ -56,7 +56,33 @@ parser/CHANGES_001.md (Schema) → visualizer/quality_REVISIONS_001.md → visua
 parser/CHANGES_001.md (Grammar) → skills/alignment-design_REVISIONS_001.md → pending
 ```
 
-### Phase 4: Write Summary (optional)
+### Phase 4: Close-out list
+
+The report's real product. Every item below must become a **GitHub issue** before the cycle's
+`internal/changes/` files are deleted — they are working files, not an archive, and an
+unexecuted propagation bullet left in a deleted file is debt that goes invisible.
+
+Walk each `CHANGES_*.md` and collect:
+- every bullet under **Downstream propagation** that was *not* executed this cycle
+- every item under **Deferred**
+- every open question or "owed" note in the body
+
+Present them as a checklist with a proposed issue title and area label for each, so the
+operator can approve the batch in one pass:
+
+```
+## To file as issues
+
+- [ ] visualizer — render the new `signalSend` edge kind  (area:visualizer)
+      from parser/CHANGES_001.md § Downstream propagation, not executed
+- [ ] dsl — external-addressed signal sends  (area:dsl, blocked)
+      from dsl/CHANGES_003.md § Deferred
+```
+
+State the count plainly: *"N items to file before cleanup."* If the list is empty, say so
+explicitly — that is the signal the cycle is safe to close with nothing left behind.
+
+### Phase 5: Write Summary (optional)
 
 If requested, write a consolidated summary to `internal/changes/SUMMARY.md` suitable for use as a PR description.
 

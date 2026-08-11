@@ -33,8 +33,8 @@ would let a user assemble the rest is thin or broken.
 1. **MCP is shipped (parser tools + spec resources).** `twf mcp` exists and is
    wired into every binary channel; the long-standing "advertised but doesn't
    exist" broken promise is resolved. Residual: **skills are not exposed over
-   MCP** (the binary doesn't embed them — parked M1 in `ROADMAP.md`), so any
-   "MCP exposes skill prompts" copy stays aspirational until M1 lands.
+   MCP** (the binary doesn't embed them — [#77](https://github.com/jmbarzee/temporal-architect/issues/77)),
+   so any "MCP exposes skill prompts" copy stays aspirational until that lands.
 
 2. **Skill-only users have no in-skill path to the binary.** `SKILL.md` files
    assume `twf` is on PATH but never say how to install it; the acquisition hint

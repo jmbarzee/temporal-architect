@@ -13,9 +13,10 @@ surfaces (and the `bump-brew` formula tool) live in the distribution repo
 | Path | Purpose |
 |---|---|
 | [`release/gen-skills-manifest/`](./release/gen-skills-manifest/) | Go tool — emits `skills/MANIFEST.md` and the `skills-vX.Y.Z.tar.gz` release asset |
-| [`harness/`](./harness/) | `components.md` — the dev-cycle component manifest (graph, scopes, review mappings, propagation routing). Consumed by the `/dev-cycle` skill (`.claude/skills/dev-cycle/`, the agent-loop runtime) and the orchestrator. Pairs with [`changes/`](./changes/) |
-| [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate) — the durable twin of the `/dev-cycle` skill. Pairs with [`changes/`](./changes/) |
+| [`harness/`](./harness/) | `components.md` — the dev-cycle component manifest (graph, scopes, review mappings, propagation routing). Consumed by the `/dev-cycle` skill (`.claude/skills/dev-cycle/`, the agent-loop runtime) and the orchestrator |
+| [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate) — the durable twin of the `/dev-cycle` skill |
 | [`version.sh`](./version.sh) | Shell helper for `make release` — computes the next semver from `git describe` |
+| `changes/` | Scratch space for an in-flight dev cycle (`REVISIONS_NNN` / `CHANGES_NNN`). **Absent between cycles** — the harness creates it and deletes it at close. Backlog and planning live in [GitHub issues](https://github.com/jmbarzee/temporal-architect/issues), not here |
 
 ## Why `internal/`
 
