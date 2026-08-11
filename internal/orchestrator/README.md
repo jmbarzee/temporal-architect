@@ -144,13 +144,15 @@ Git history reads as a sequence of component-scoped changes, making review strai
 
 **Final cleanup before PR:**
 
-1. Run `summarize-changes` — reads all CHANGES files, generates consolidated summary
-2. Commit the summary
+1. Run `summarize-changes` — reads all CHANGES files, and returns two things **as text**: the close-out list and the PR body. It writes no files, so there is nothing here to commit.
+2. File a GitHub issue for every item on the close-out list — each unexecuted propagation bullet and each deferral. **This gates the next step.**
 3. Delete the entire `internal/changes/` directory
 4. Commit the cleanup ("remove orchestration artifacts")
-5. Create PR using the summary as the PR description
+5. Create PR using the returned summary as the description — skipped when `config.createPR` is false, in which case the caller owns the git tail.
 
-This preserves the full trail in git history (REVISIONS → CHANGES → summary) while keeping the PR's final state clean.
+Step 2 gates step 3 for a reason: deletion must not outrun filing. An unexecuted propagation left inside a deleted record is debt that exists nowhere, which is how eight of them once accumulated.
+
+The trail lives in git history (REVISIONS → CHANGES as component-scoped commits) plus the PR body; the repo keeps no per-cycle status file.
 
 ## Limits & Safety
 

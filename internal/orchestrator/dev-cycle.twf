@@ -138,16 +138,12 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
                 totalRounds = totalRounds + 1
 
     # --- Finalization ---
+    # summarize-changes writes no files: its products are the close-out list and
+    # the PR body, both returned as text. There is nothing here to commit.
     activity InvokeClaudeCode(worktreePath, "summarize-changes", SummarizeArgs{}) -> summary
         options:
             start_to_close_timeout: 30m
             heartbeat_timeout: 60s
-    activity GitCommit(worktreePath, "summarize changes", summary.changedPaths) -> summarySha
-        options:
-            start_to_close_timeout: 30s
-            retry_policy:
-                maximum_attempts: 3
-    commitCount = commitCount + 1
 
     activity CleanupChangesDir(worktreePath)
         options:

@@ -79,7 +79,9 @@ When all groups are complete (or the user decides to close the cycle), perform t
 
 **Step A: Final review**
 
-Present a consolidated summary of all changes made across all groups. **Wait for user approval.**
+Present a consolidated summary of all changes made across all groups.
+
+This is the last point before durable mutation — Step B writes the CHANGES record and Step C deletes the consumed REVISIONS files. It follows the `close-gate` value your dispatcher passed: under `ask` (the default, and any manual run) **wait for approval**; under `auto` present the summary and proceed. Present it either way — an unattended run still needs the record of what it decided.
 
 **Step B: Write CHANGES file**
 

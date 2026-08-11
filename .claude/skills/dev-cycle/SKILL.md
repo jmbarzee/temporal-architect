@@ -26,16 +26,49 @@ and wave ordering. Do not restate the graph from memory.
 - **dev** — run the full loop (default; see The Loop).
 - **review** — run a single review for one component without the loop (see Review Entrypoint).
 
+## Invocation
+
+Both human gates are **parameters**, so this skill can run interactively or as a subroutine of
+another skill. Arguments arrive as free text: recognize these keys wherever they appear, and
+ignore surrounding prose.
+
+| Key | Values | Default |
+|---|---|---|
+| `scope-gate` | `ask` \| `given` | `ask` |
+| `close-gate` | `ask` \| `auto` | `ask` |
+| `finish` | `pr` \| `return` | `pr` |
+| `start` | `fresh` \| `resume` \| `targeted` | asked |
+| `components` | comma list of component names | — |
+| `revisions` | explicit REVISIONS file paths | — |
+
+One preset, so a caller passes a single token — `mode=subroutine` (also accept `subroutine` or
+`autonomous`) means `scope-gate: given`, `close-gate: auto`, `finish: return`.
+
+**`mode=subroutine` requires `components` or `revisions`.** If neither is present, stop
+immediately with `outcome: bad_invocation` — write no files, run no reviews, dispatch nothing. A
+subroutine run has no human to fall back to asking, so guessing at scope is the one failure that
+cannot be recovered from later.
+
+With no arguments at all, behaviour is exactly as it has always been: both gates, and a PR at
+the end.
+
 ## The Loop (dev entrypoint)
 
 Transcribed from `DevCycleWorkflow` in `internal/orchestrator/dev-cycle.twf`. Pass 1 is
 serial: dispatch one step-subagent at a time.
 
-**Phase 0 — Scope (gate 1).** Ask the user:
+**Phase 0 — Scope (gate 1).**
+
+When `scope-gate: ask` (default), ask the user:
 1. Starting point: *fresh* (review from scratch), *resume* (use existing REVISIONS/CHANGES in `internal/changes/`), or *targeted* (specific components).
 2. Which layers to review this cycle (from the component list in the manifest).
 
 Present the proposed scope and **wait for confirmation**.
+
+When `scope-gate: given`, derive the scope from `start` / `components` / `revisions` and proceed
+without asking. **State the derived scope as the first line of output** — it is the scope of
+record, and a caller that passed something ambiguous needs to see what you concluded. If it
+cannot be derived, stop with `outcome: bad_invocation` rather than falling back to a default.
 
 **Phase 1 — Initial reviews** (only when a fresh/targeted scope is requested). Dispatch a
 review subagent per chosen layer (per the manifest's quality/alignment mappings). Each runs
@@ -51,23 +84,58 @@ its review prompt to completion and writes a REVISIONS file into `internal/chang
 7. Dispatch a **propagate-changes** subagent (`references/propagate-changes.md`) with the CHANGES file. It writes downstream REVISIONS per the manifest's propagation routing.
 8. Re-scan and continue.
 
-**Finalize (gate 2).** Dispatch a **summarize-changes** subagent, present the consolidated
-summary, and **wait for approval**. On approval:
+**Finalize (gate 2).** Dispatch a **summarize-changes** subagent and present the consolidated
+summary. When `close-gate: ask` (default), **wait for approval**; when `close-gate: auto`,
+proceed straight into close-out. Either way close-out is the same three steps:
+
 1. File a GitHub issue for every deferral, unpropagated downstream item, and open question the
    cycle produced — each CHANGES record's "Deferred" and "Downstream propagation" sections are
-   the checklist. Reference the issue number from the PR body.
+   the checklist, and `propagate-changes`' own coverage report already names which bullets went
+   uncarried. Keep the issue numbers; they go in the result.
 2. Delete `internal/changes/` outright. Sweep the **whole directory**, not a name pattern —
    scratch files that don't match `*_REVISIONS_*.md` / `CHANGES_*.md` (reflection notes,
    summaries) would otherwise survive and become the archive this project does not keep.
-3. Create the PR.
+3. Then branch on `finish`:
+   - **`pr`** (default) — create the PR.
+   - **`return`** — do **not** commit, push, or open a PR. Leave the working tree as it is and
+     emit the result block below. The caller owns the git tail.
 
 Step 1 gates step 2: do not delete a record until its open items exist as issues. A propagation
 bullet that was never executed is exactly the kind of debt that goes invisible otherwise.
 
+**Step 1 stays here even under `finish: return`.** It is tempting to let the caller file the
+issues, but deletion happens inside this skill — so a caller filing them afterwards would be
+filing *after* the records were already gone. The gate's whole integrity is that deletion cannot
+outrun filing, and that only holds while both live in the same step.
+
+### Result
+
+Emit this as the final message, always. Under `finish: return` it is the caller's only channel;
+under `finish: pr` it is still the honest summary of what happened.
+
+```
+## Cycle result
+outcome: completed | wave_limit_reached | bad_invocation
+gates: scope=given close=auto finish=return
+components: parser, sampler
+validation: parser ok, sampler ok
+issues filed: #71, #72
+undrained revisions: none
+```
+
+Then, when `finish: return`, a `## PR body` section containing the `summarize-changes` Phase 5
+summary verbatim — ready to paste. **Nothing is written to a file.** A per-cycle status report
+committed to the repo is precisely the archive this project does not keep.
+
 ## Autonomy policy
 
-Two human gates only: **scope confirmation** (start) and **final review** (end). Between them,
-auto-proceed across groups, components, and propagation — bounded by Limits.
+Two human gates, **both parameterized**: **scope confirmation** (start, `scope-gate`) and
+**final review** (end, `close-gate`). Between them, auto-proceed across groups, components, and
+propagation — bounded by Limits.
+
+**Under `close-gate: auto` there are zero human gates**, and the Limits table below becomes the
+only backstop against a runaway loop. A caller running unattended should lower max rounds rather
+than rely on someone noticing.
 
 The step prompts under `references/` run to completion on their own — they hold no approval
 pauses, so there is nothing for the loop to override. The two gates above live here, in the main
@@ -79,7 +147,8 @@ only reason a step returns early.
 
 One real gate does survive inside a step: `address-review.md` Step A presents a consolidated
 summary before it writes the CHANGES record and deletes the consumed REVISIONS files. That is
-the last point before durable mutation, which is why it is the one kept.
+the last point before durable mutation, which is why it is the one kept. It follows
+`close-gate` — dispatch it with the resolved value, and under `auto` it presents and proceeds.
 
 ## Limits
 
