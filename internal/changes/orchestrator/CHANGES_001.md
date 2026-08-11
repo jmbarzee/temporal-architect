@@ -1,11 +1,11 @@
 # Orchestrator Changes: Failure Handling + Retry/Timeout Configuration
 
-**Source:** Originally `ORCHESTRATOR_REVISIONS.md` Groups 1 + 2 (renamed into the `internal/changes/` flow). Groups 3 + 4 of the original file are now `internal/changes/orchestrator/REVISIONS_001.md` (pending work).
-**Reflection file:** `REFLECTION_DESIGN.md` (consumed)
+**Source:** Originally `ORCHESTRATOR_REVISIONS.md` Groups 1 + 2 (consumed and removed — the dev cycle deletes a REVISIONS file once its CHANGES record lands). Groups 3 + 4 of the original file became `orchestrator/REVISIONS_001.md` (likewise consumed and removed); the orchestrator drift still outstanding is tracked as [#73](https://github.com/jmbarzee/temporal-architect/issues/73) (README/retry-policy disagreement) and [#74](https://github.com/jmbarzee/temporal-architect/issues/74) (worktree orphaned on parent failure).
+**Reflection:** a design-skill reflection informed these groups.
 
 ## Summary
 
-These two groups were marked **COMPLETED** in the original revision plan. They captured the first pass of hardening `tools/orchestrator/dev-cycle.twf`: child failure handling and retry/timeout configuration on every activity call. One sub-item (Group 2 / D9) remains deferred — it is blocked on the parser fix tracked in `internal/changes/parser/REVISIONS_001.md`.
+These two groups were marked **COMPLETED** in the original revision plan. They captured the first pass of hardening `internal/orchestrator/dev-cycle.twf`: child failure handling and retry/timeout configuration on every activity call. One sub-item (Group 2 / D9) was deferred at the time behind a parser bug; that blocker has since been fixed and D9 was applied during the backlog migration.
 
 ## Group 1: Child Workflow Failure Handling — COMPLETED
 
@@ -13,7 +13,7 @@ These two groups were marked **COMPLETED** in the original revision plan. They c
 - **D1** (High): `await all` in `DevCycleWorkflow` has no error handling. In Temporal, `await all` is `Promise.all` — if one `ComponentCycleWorkflow` fails, the parent gets an immediate `ChildWorkflowFailure`, the commit loop is never reached, and all other children's results are lost.
 - **O1**: The README doesn't specify what happens when a child workflow fails mid-wave. The design had to guess and guessed wrong (no handling at all).
 
-**Files touched:** `tools/orchestrator/dev-cycle.twf`, `tools/orchestrator/README.md`
+**Files touched:** `internal/orchestrator/dev-cycle.twf`, `internal/orchestrator/README.md`
 **Change type:** `Internal`
 **Parallelism:** Independent of other groups.
 
@@ -28,10 +28,10 @@ These two groups were marked **COMPLETED** in the original revision plan. They c
 **Findings:**
 - **D2** (High): Zero retry policies and zero timeout specifications on any activity call. `InvokeClaudeCode` could run for 30+ minutes with no `start_to_close_timeout` or `heartbeat_timeout`. In Go SDK, activities without `start_to_close_timeout` fail at registration time.
 - **D8** (Medium): `InvokeClaudeCode` needs `heartbeat_timeout` at call sites (e.g., 60s) to detect stuck subprocesses within the 30-minute window.
-- **D9** (Medium, **deferred**): `workflow_execution_timeout: 30m` on child workflows was forced to a comment by a parser limitation. Should be applied once the parser bug is fixed. **Tracked in `internal/changes/parser/REVISIONS_001.md` Group 1.**
+- **D9** (Medium, **deferred at the time**): `workflow_execution_timeout: 30m` on child workflows was forced to a comment by a parser limitation. **The parser blocker has since been resolved and D9 was applied during the backlog migration.**
 - **D7** (Medium): `GitCommit` idempotency not addressed. Retrying a commit on an empty diff (changes already committed) should be a no-op, not an error.
 
-**Files touched:** `tools/orchestrator/dev-cycle.twf`
+**Files touched:** `internal/orchestrator/dev-cycle.twf`
 **Change type:** `Internal`
 **Parallelism:** Independent of Group 1.
 
@@ -46,4 +46,4 @@ These two groups were marked **COMPLETED** in the original revision plan. They c
 
 2. Add idempotency comment to `GitCommit` activity body: "Idempotent: if no changes to stage, returns empty SHA without error."
 
-3. **Deferred — D9.** Once parser bug P1 (`internal/changes/parser/REVISIONS_001.md` Group 1) is fixed, move `workflow_execution_timeout: 30m` from a comment to an actual `options:` block on the child workflow call.
+3. **D9 (deferred at the time, since applied).** Parser bug P1 has been fixed, and `workflow_execution_timeout: 30m` was moved from a comment to an actual `options:` block on the child workflow call during the backlog migration.

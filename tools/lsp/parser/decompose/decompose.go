@@ -53,7 +53,9 @@ type Options struct {
 	Ceiling int
 	// By biases / filters the division strategies emitted for over-ceiling
 	// chunks. Empty means "all applicable strategies". Recognized values:
-	// StrategyTree, StrategyNexus, StrategyWorker, StrategyNamespace, StrategyHub.
+	// StrategyTree, StrategyNexus, StrategyWorker, StrategyNamespace (the
+	// use-case / balance lens) and StrategyService, StrategySubtree (the
+	// authorship-parallelism lens).
 	By []string
 	// MaxDepth bounds recursive re-division of over-ceiling sections. Zero
 	// selects DefaultMaxDepth; a negative value disables recursion (one level

@@ -1,5 +1,5 @@
 # Source: signals-queries-updates.md
-# Patterns: signal/query/update declarations, watch blocks, approval flows
+# Patterns: signal/query/update declarations, handler options, watch blocks, approval flows
 
 # --- Signal-driven order workflow ---
 
@@ -84,11 +84,18 @@ workflow BatchCollector(batchId: string) -> (BatchResult):
 # Updates are read-write: caller sends data and blocks for a result.
 
 workflow SubscriptionWorkflow(userId: string):
+    # Handler options: abandoning this handler at workflow exit is the design
+    # intent, so the default warning would be noise.
     signal Cancel():
+        options:
+            unfinished_policy: abandon
+            description: "Cancels the subscription"
         cancelled = true
 
     # Simple update: immediate state mutation + return
     update AddCredits(amount: int) -> (CreditResult):
+        options:
+            description: "Adds prepaid credits and returns the new balance"
         credits = credits + amount
         return CreditResult{total: credits}
 
@@ -102,6 +109,8 @@ workflow SubscriptionWorkflow(userId: string):
             return ChangeResult{success: false, error: validation.reason}
 
     query GetPlan() -> (string):
+        options:
+            description: "Current plan tier"
         return plan
 
     plan = "free"

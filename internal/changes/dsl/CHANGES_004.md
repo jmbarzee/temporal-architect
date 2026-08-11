@@ -1,7 +1,7 @@
 # DSL Changes
 
 **Source review(s):** ad-hoc design review of signal/query/update completeness (June 2026), follow-up to `REVISIONS_001`; adjusted by handler-option research (see below).
-**REVISIONS file(s):** `internal/changes/dsl/REVISIONS_002.md` (consumed)
+**REVISIONS file(s):** `dsl/REVISIONS_002.md` (consumed and removed — the dev cycle deletes a REVISIONS file once its CHANGES record lands)
 
 ## Summary
 
@@ -13,7 +13,7 @@ A review of the actual Temporal handler-option surface (Go SDK, cross-checked ag
 
 - **`description` is admitted on all three handler kinds**, superseding D4's "empty query key set." `description` is the single universal handler option and the *only* query option (`QueryHandlerOptions.Description`, Go SDK v1.29.0), so queries get a real key rather than an empty slot.
 - **`unfinished_policy` is design-intent on signal + update**, but the Go SDK exposes it only on update handlers (`UpdateHandlerOptions.UnfinishedPolicy`); `SignalChannelOptions` has only `Description`. So a signal-level policy is expressible in the DSL but not emittable to Go — to be documented in the author-go propagation. This corrects REVISIONS_002's reference to a non-existent `workflow.SignalHandlerOptions{UnfinishedPolicy}`.
-- `validator` (update-only, a function reference) remains deferred to BACKLOG.
+- `validator` (update-only, a function reference) remains deferred, tracked as a GitHub issue.
 
 ## Changes by Type
 
@@ -33,9 +33,9 @@ A review of the actual Temporal handler-option surface (Go SDK, cross-checked ag
 
 - **`internal/changes/parser/`** — covered by `internal/changes/parser/CHANGES_002.md` (landed in the same effort): `Options *OptionsBlock` on the three handler AST nodes, options-block parsing at the handler-body head, three new `OptionsContext` schemas, JSON `options` on handler decls.
 - **`internal/changes/visualizer/`** — display handler-level options on handler nodes (small chip / annotation near the handler name when present). No new edge kinds. Minor.
-- **`internal/changes/design-skill/`** — extend `skills/design/topics/signals-queries-updates.md` with a "Handler Options" subsection: `unfinished_policy` semantics, when each value is appropriate, the update-caller `NotFound` implication, and that `description` is available on all three kinds.
-- **`internal/changes/author-go-skill/`** — map `unfinished_policy` → `workflow.UpdateHandlerOptions{UnfinishedPolicy}` (update) and `description` → the `Description` field on `UpdateHandlerOptions` / `SignalChannelOptions` / `QueryHandlerOptions`. **Document the Go gap:** `SignalChannelOptions` has no `UnfinishedPolicy`, so a signal-handler `unfinished_policy` is design-intent that Go cannot currently emit.
+- **`internal/changes/design-skill/`** — **Done.** Extend `skills/temporal-architect-design/topics/signals-queries-updates.md` with a "Handler Options" subsection: `unfinished_policy` semantics, when each value is appropriate, the update-caller `NotFound` implication, and that `description` is available on all three kinds.
+- **`internal/changes/author-go-skill/`** — **Done.** Map `unfinished_policy` → `workflow.UpdateHandlerOptions{UnfinishedPolicy}` (update) and `description` → the `Description` field on `UpdateHandlerOptions` / `SignalChannelOptions` / `QueryHandlerOptions`. **Document the Go gap:** `SignalChannelOptions` has no `UnfinishedPolicy`, so a signal-handler `unfinished_policy` is design-intent that Go cannot currently emit.
 
 ## Future per-handler options to reserve mental space for
 
-- `validator` — update-only; a validation function reference. Deferred (BACKLOG).
+- `validator` — update-only; a validation function reference. Deferred (tracked as a GitHub issue).

@@ -163,7 +163,7 @@ The "Forces" control panel was reorganized and its first force section (Pull) wa
 - `ForceCurves` (the Graph) keeps its layout but its exp control is now a `Slider`. Spacing normalized to one set of gaps across maps (row-gap 2, margin-top 10); the band X-range still hugs the plot.
 
 **Files touched:** `tools/visualizer/src/components/controls/{Slider,Equation,Plot}.tsx` (new), `tools/visualizer/src/components/ForceMap.tsx`, `tools/visualizer/src/components/GravityControls.tsx`, `tools/visualizer/src/components/GraphControlPanel.tsx`, `tools/visualizer/src/styles/index.css`
-**Change type:** `Internal`. Tracked in `control-panel-overhaul.md` (WS1).
+**Change type:** `Internal`. (Work-stream WS1.)
 
 ## Group 15: Control-panel usability tweaks (WS2) — COMPLETED
 
@@ -174,7 +174,7 @@ The "Forces" control panel was reorganized and its first force section (Pull) wa
 - **Adaptive curve gridlines** — `ForceCurves` takes an optional `xMax` (data-domain) and draws light value-anchored vertical gridlines at a `niceStep(max, 6)` interval; Spring/Charge curves pass their dynamic `dMax` so the lines re-space as the scale changes (band curve passes `1`).
 
 **Files touched:** `tools/visualizer/src/components/controls/{PopContext.tsx (new),Slider.tsx}`, `tools/visualizer/src/components/{ForceMap,ChargeControls,SpringControls,GravityControls,GraphControlPanel}.tsx`, `tools/visualizer/src/styles/index.css`, `tools/visualizer/spec/GRAPH_VIEW.md`
-**Change type:** `Internal`. Tracked in `control-panel-overhaul.md` (WS2).
+**Change type:** `Internal`. (Work-stream WS2.)
 
 ## Group 16: Edge-type registry + schema-derived collections (WS3 A+C) — COMPLETED
 
@@ -185,10 +185,10 @@ The "Forces" control panel was reorganized and its first force section (Pull) wa
 - **`DEFAULT_PARAMS`** link/dist values now sourced from `EDGE_TYPE_REGISTRY[...].physics` (was 28 inline magic numbers divorced from the pair definitions). (`simulation.ts`)
 - **Band-plot columns** — `node-types.ts` gained `MAIN_LADDER` / `NEXUS_LADDER` (tier-ordered per family); `GravityControls` derives `COL_ORDER` / `MAIN_COUNT` from them and drops the duplicated `ABBREV` in favour of `sliderLabelFor`. (`node-types.ts`, `GravityControls.tsx`)
 
-**Deferred:** WS3-B (replace flat per-type/per-edge `ForceParams` fields with id-keyed maps) — the largest ripple; A+C already remove the duplication. Tracked in `control-panel-overhaul.md`.
+**Deferred:** WS3-B (replace flat per-type/per-edge `ForceParams` fields with id-keyed maps) — the largest ripple; A+C already remove the duplication.
 
 **Files touched:** `tools/visualizer/src/graph/edge-types.ts` (new), `tools/visualizer/src/graph/{forces,simulation,node-types}.ts`, `tools/visualizer/src/components/{SpringControls,GravityControls}.tsx`
-**Change type:** `Internal`. Tracked in `control-panel-overhaul.md` (WS3 A+C).
+**Change type:** `Internal`. (Work-stream WS3 A+C.)
 
 ## Group 17: id-keyed param maps (WS3 B) — COMPLETED
 
@@ -201,7 +201,7 @@ The "Forces" control panel was reorganized and its first force section (Pull) wa
 Net: per-type/per-edge params are now `Record<id, …>` keyed by `NodeType`/`EdgeTypeId`, so a mis-addressed control is a compile error, and the param shape is config-injection/persistence-friendly. Defaults still source from the registries (identical values).
 
 **Files touched:** `tools/visualizer/src/graph/{simulation,forces,edge-types}.ts`, `tools/visualizer/src/components/{GraphView,GraphControlPanel,ChargeControls,SpringControls,GravityControls}.tsx`
-**Change type:** `Internal`. Tracked in `control-panel-overhaul.md` (WS3-B).
+**Change type:** `Internal`. (Work-stream WS3-B.)
 
 ## Group 18: GraphView decomposition into hooks — COMPLETED
 
@@ -220,12 +220,12 @@ Key design points: the sim/data/loop cycle is resolved by separating the sim *in
 
 ## Group 19: Topological gravity — containers strictly out-rank their contents — COMPLETED
 
-**Change:** `computeDownstreamScores` ([useVisibleGraph.ts](tools/visualizer/src/components/graph-view/useVisibleGraph.ts)) now adds **one rank per containment tier** as it propagates depth up the `parentId` chain (was: set ancestor to the *max* descendant depth, leaving a namespace *equal* to its deepest workflow). Scores are then normalized by the post-propagation max (the top container). Because topological gravity is a distance-proportional spring toward the focal point, equal scores previously let a deep workflow overshoot *above* its namespace under a strong strength setting; strictly-greater container scores keep the tier order intact under topological gravity without relying on band gravity to break the tie.
+**Change:** `computeDownstreamScores` (`tools/visualizer/src/components/graph-view/useVisibleGraph.ts`) now adds **one rank per containment tier** as it propagates depth up the `parentId` chain (was: set ancestor to the *max* descendant depth, leaving a namespace *equal* to its deepest workflow). Scores are then normalized by the post-propagation max (the top container). Because topological gravity is a distance-proportional spring toward the focal point, equal scores previously let a deep workflow overshoot *above* its namespace under a strong strength setting; strictly-greater container scores keep the tier order intact under topological gravity without relying on band gravity to break the tie.
 
 **Files touched:** `tools/visualizer/src/components/graph-view/useVisibleGraph.ts`
 **Change type:** `Internal`.
 
-## Follow-ups (not in this change)
+## Follow-ups (not in this change; tracked as [#75](https://github.com/jmbarzee/temporal-architect/issues/75))
 
 - **Nexus grouping**: treat the nexus ladder as an explicit optional dimension/group in the controls (e.g. collapsible) rather than tokens that merely render in nexus colours.
 - **Gravity / Dynamics tabs**: not yet revisited under the new principles.

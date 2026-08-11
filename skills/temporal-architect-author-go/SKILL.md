@@ -142,6 +142,7 @@ Read only what the current generation step requires.
 |---------------|------------|------|
 | `activity Name(args) -> result` | `workflow.ExecuteActivity` | [activity-call.md](./reference/activity-call.md) |
 | `workflow Name(args) -> result` | `workflow.ExecuteChildWorkflow` | [workflow-call.md](./reference/workflow-call.md) |
+| `signal handle.Name(args)` | `ChildWorkflowFuture.SignalChildWorkflow` | [signal-send.md](./reference/signal-send.md) |
 | `nexus Endpoint Service.Op(args) -> result` | `NexusClient.ExecuteOperation` | [nexus.md](./reference/nexus.md) |
 
 ### Handlers

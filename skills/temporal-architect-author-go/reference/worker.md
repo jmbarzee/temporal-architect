@@ -182,7 +182,7 @@ w := worker.New(c, "orders", worker.Options{
 })
 ```
 
-> **Permissive-union caveat:** the DSL worker-options set is the SDK *union* accepted permissively, so a `.twf` may carry a key the Go SDK has no field for (a per-language one-off). When a key has no `worker.Options` field, **drop it — do not invent an API.** The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred in `internal/changes/dsl/BACKLOG.md`.
+> **Permissive-union caveat:** the DSL worker-options set is the SDK *union* accepted permissively, so a `.twf` may carry a key the Go SDK has no field for (a per-language one-off). When a key has no `worker.Options` field, **drop it — do not invent an API.** The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred — see [#20](https://github.com/jmbarzee/temporal-architect/issues/20).
 
 ### `versioning` (not 1:1)
 

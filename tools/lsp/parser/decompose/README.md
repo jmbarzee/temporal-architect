@@ -1,13 +1,21 @@
 # decompose
 
 Computes how a `.twf` design breaks into independently-implementable **chunks of
-work** — the analysis behind `twf graph chunks`. The sole consumer is the
+work** — the analysis behind `twf graph chunks`. The primary consumer is the
 temporal-architect harness skill, which uses the decomposition to fan
 implementation out to author subagents at contract boundaries.
 
 **The tool informs; it does not impose.** Every recommendation (chunk
 boundaries, floor merges, division suggestions) is advisory — nothing is
 auto-applied.
+
+Two other consumers read the same output. The visualizer renders the
+decomposition as a non-destructive group overlay in the graph view (spec:
+[`tools/visualizer/spec/GRAPH_VIEW.md`](../../../visualizer/spec/GRAPH_VIEW.md)
+§ Decomposition Group Overlay). The VS Code extension — in the separate repo
+`jmbarzee/temporal-architect-dist` — runs `twf graph chunks --json --ceiling N`
+and bundles the result into the webview payload, gated by the
+`twf.decompose.ceiling` setting.
 
 `decompose` is a pure *consumer* of `parser/graph` + `parser/ast`, exactly like
 the validator / LSP / codegen consumers. It makes no changes to the parser
@@ -26,10 +34,6 @@ distinction:
 | Harness contract | **MUST** dispatch separate subagents | **MAY** use a suggestion |
 | Trigger | always | only for chunks over the `--ceiling` |
 | Output | a partition (every definition in exactly one chunk) + an inter-chunk contract DAG | ranked candidate cuts + a per-division dependency DAG |
-
-> The design-of-record (`internal/changes/temp-change-set/chunks/BACKLOG.md`)
-> calls these `#1` and `#2`; in the code they are the **decide** and **explore**
-> phases.
 
 ## High-level flow
 
@@ -133,8 +137,7 @@ menu again). The recursion is:
 ### Ranking key
 
 `rankDivisions` orders whole compounds by a deterministic lexicographic key
-(see `internal/changes/temp-change-set/chunks/BACKLOG.md` § Metric & calibration
-for the calibration against `temporal-compranda`):
+(calibrated against `temporal-compranda`, see [Calibration](#calibration)):
 
 1. **fewer cuttable leaves still over the ceiling** — did the compound tame what
    it could (a loop / single-node leaf is uncuttable and never counts as a
@@ -152,6 +155,16 @@ for the calibration against `temporal-compranda`):
 `Section.Members` and `Section.Complexity` stay authoritative at every level — a
 consumer that doesn't walk `Section.Divisions` sees a flat top-level menu exactly
 as before.
+
+### Calibration
+
+The regression target is the `temporal-compranda` design (in the separate
+`playground` repo): rank-1 `service` extracts the `AgenticTask` articulation hub
+(binding in-degree 15) and the recursion peels the orchestrator subtrees, without
+shattering single activities or cutting the outer-loop SCC. Output is
+deterministic — the same design always yields the same ranked portfolio. The
+behavior is pinned by the saved `chunks-decomposition.*` artifacts in that repo
+plus this package's tests.
 
 ### Contract-promotion advisory
 
@@ -186,8 +199,9 @@ an in-edge.
 Workflow-call cycles are condensed with Tarjan's SCC algorithm into a single
 node, so a chunk that is one cycle condenses to one node with no internal seam to
 cut. **Loops are never cut this pass** — a chunk spanning fewer than two SCCs is
-exempt from the explore phase regardless of score. (The raised loop ceiling above
-which subtrees may be extracted is deferred; see the chunks BACKLOG.)
+exempt from the explore phase regardless of score. (A raised loop ceiling above
+which subtrees may be extracted is deferred; see
+[#38](https://github.com/jmbarzee/temporal-architect/issues/38).)
 
 ## Collapsing deployment-duplicates
 

@@ -119,10 +119,11 @@ workflow DevCycleWorkflow(config: DevCycleConfig) -> (DevCycleResult):
         # retry exhaustion) is skipped — its worktree changes were already
         # rolled back by its saga compensation. Successful children proceed
         # to the commit loop below.
-        # workflow_execution_timeout: 30m per child (parser bug P1 blocks options: here)
         await all:
             for (entry in waveManifest.entries):
                 workflow ComponentCycleWorkflow(worktreePath, entry.component, entry.revisionsFiles) -> entry.result
+                    options:
+                        workflow_execution_timeout: 30m
 
         # Serialize one commit per child after wave completes
         activeChildCount = 0

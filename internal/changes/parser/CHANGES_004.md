@@ -1,7 +1,7 @@
 # Parser Changes: Forward-graph nexus normalization
 
-**Source review(s):** `internal/changes/parser/REVISIONS_004.md` (promoted from the reverse-history workstream — [reverse-history/BACKLOG.md](../temp-change-set/reverse-history/BACKLOG.md) § "Forward-graph nexus normalization")
-**REVISIONS file(s):** `REVISIONS_004.md` (consumed)
+**Source review(s):** `parser/REVISIONS_004.md` (promoted from the reverse-history workstream § "Forward-graph nexus normalization"; that workstream's reference content now lives in `tools/sampler/README.md` and its open work is issues [#57](https://github.com/jmbarzee/temporal-architect/issues/57)–[#68](https://github.com/jmbarzee/temporal-architect/issues/68))
+**REVISIONS file(s):** `parser/REVISIONS_004.md` (consumed and removed — the dev cycle deletes a REVISIONS file once its CHANGES record lands)
 
 ## Summary
 
@@ -11,7 +11,7 @@ The nexus endpoint↔operation composition is now materialized **upstream** as a
 
 ### Schema
 
-- **`tools/lsp/cmd/twf/twf.schema.json`**: added `"nexusRoute"` to the `GraphEdge.kind` enum. `GraphNode.namespace` retained (still emitted on `nexusService`). **Breaking** twf graph JSON contract — landed in lockstep with the visualizer.
+- **twf graph JSON wire contract** (then a hand-maintained `twf.schema.json`; the contract is now generated into `tools/wire-types/` via `make gen-types`, CI-gated by `make check-types`): added `"nexusRoute"` to the `GraphEdge.kind` enum. `GraphNode.namespace` retained (still emitted on `nexusService`). **Breaking** twf graph JSON contract — landed in lockstep with the visualizer.
 - Wire shape: `nexusEndpoint` / `nexusOperation` nodes no longer carry `namespace`. New `nexusRoute` edges (`from` = operation deployment, `to` = endpoint deployment) carry no `routing` block and never appear in `coarsenedEdges`.
 
 ### API
@@ -32,4 +32,4 @@ The nexus endpoint↔operation composition is now materialized **upstream** as a
 ## Downstream propagation
 
 - **`internal/changes/visualizer/CHANGES_003.md`** — consumed in lockstep (this is a breaking Schema change). The visualizer now reads the `nexusRoute` edge and no longer derives nexus topology from `(namespace, queue)`; the visualizer spec (`GRAPH_VIEW.md`) was aligned in the same effort. No pending downstream REVISIONS remain.
-- **`vscode`** (`packages/vscode/`) — parser Schema change; flagged for manual review per the harness manifest (no automated review command).
+- **`vscode`** (the VS Code extension lives in the separate `jmbarzee/temporal-architect-dist` repo) — parser Schema change; flagged for manual review per the harness manifest (no automated review command).

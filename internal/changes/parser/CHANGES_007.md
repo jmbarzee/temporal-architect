@@ -1,8 +1,8 @@
 # Parser Changes: explore-stage authorship-parallelism lens — `service` + `subtree` strategies, coupling-aware ranking
 
-**Source review(s):** the chunks workstream design-of-record + metric/calibration reference, now consolidated into [`internal/changes/temp-change-set/chunks/BACKLOG.md`](../temp-change-set/chunks/BACKLOG.md) (the prior `COMPOUNDING_PROPOSAL.md` ideation and `METRIC_CALIBRATION.md` note were folded in once this work shipped).
+**Source review(s):** the chunks workstream design-of-record + metric/calibration reference (the prior compounding-proposal ideation and metric-calibration note were folded in once this work shipped).
 **REVISIONS file(s):** none (promoted directly from the chunks design-of-record).
-**Design-of-record:** [`internal/changes/temp-change-set/chunks/BACKLOG.md`](../temp-change-set/chunks/BACKLOG.md).
+**Design-of-record:** `tools/lsp/parser/decompose/README.md`; forward work is tracked as issues [#38](https://github.com/jmbarzee/temporal-architect/issues/38)–[#45](https://github.com/jmbarzee/temporal-architect/issues/45).
 
 ## Summary
 
@@ -135,8 +135,8 @@ default 4; lazy over-ceiling expansion; `temporal-compranda` ≈ 0.04s).
 
 - **Metric weights:** λ=1 and the pure-lexicographic ranking (no explicit
   parallel-width weight) reproduce the compranda ground truth; revisit if another
-  design ranks poorly. See [`chunks/BACKLOG.md`](../temp-change-set/chunks/BACKLOG.md)
-  § Metric & calibration.
+  design ranks poorly. See `tools/lsp/parser/decompose/README.md` and
+  [#41](https://github.com/jmbarzee/temporal-architect/issues/41).
 - **Replace vs augment:** `Ec` still only drives explore-phase decisions; whether
   to let it drive the public ceiling/floor remains a documented future option.
 - **Advisory threshold:** the `contractAdvisoryMinFanIn = 3` + articulation gate

@@ -6,7 +6,9 @@ import type {
   PromiseStmt,
   SetStmt,
   UnsetStmt,
+  SignalSendStmt,
 } from '../../types/ast'
+import { ContextualNavButtons } from './ContextualNav'
 // Return
 export function ReturnBlock({ stmt }: { stmt: ReturnStmt }) {
   return (
@@ -126,6 +128,30 @@ export function SetBlock({ stmt }: { stmt: SetStmt }) {
         <span className="block-toggle-placeholder" />
         <span className="block-keyword">set</span>
         <span className="block-signature">{stmt.name}</span>
+      </div>
+    </div>
+  )
+}
+
+// Cross-workflow signal send — `signal handle.Name(args)`.
+//
+// Statement-only and fire-and-forget: the send resolves on acceptance, never on
+// the receiver's handler running, so there is no result to expand into. The
+// resolver follows the handle to its target workflow; when it resolves we offer
+// a jump to that definition, and when it doesn't we mark it unresolved the same
+// way call blocks do.
+export function SignalSendBlock({ stmt }: { stmt: SignalSendStmt }) {
+  const target = stmt.resolved?.name
+  const signature = `${stmt.handle}.${stmt.signal}(${stmt.args || ''})`
+
+  return (
+    <div className={`block block-signal-send collapsed ${!target ? 'block-unresolved' : ''}`}>
+      {target && <ContextualNavButtons showDefinition={{ name: target, type: 'workflowDef' }} />}
+      <div className="block-header">
+        <span className="block-toggle-placeholder" />
+        <span className="block-keyword">signal</span>
+        <span className="block-signature" title={signature}>{signature}</span>
+        {!target && <span className="block-unresolved-badge">?</span>}
       </div>
     </div>
   )

@@ -173,7 +173,7 @@ These are tuned on the 2D charge map (see § Control Panel → PUSH), not a stac
 
 **Spring strengths** (one stiffness + rest length per edge category — positive, attraction). Each nexus relationship is its own first-class category rather than folding into a main-ladder neighbour, and the workflow/operation dependency is split by direction:
 - Containment: `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`, `Nx↔Op`, `Ep↔NS`, `Ep↔Op`
-- Dependency: `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`, `Wf→Op` (a workflow makes a nexus call), `Op→Wf` (an operation delegates to / calls a workflow), `Op↔Act`
+- Dependency: `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf→Sig` (a fire-and-forget signal send), `Wf↔Act`, `Wf→Op` (a workflow makes a nexus call), `Op→Wf` (an operation delegates to / calls a workflow), `Op↔Act`
 
 These are tuned on the 2D spring map (see § Control Panel → PULL), not a stack of sliders; the map plots every category on shared length × stiffness axes so their relative values are directly comparable.
 
@@ -404,7 +404,7 @@ The graph's own state and quick controls float at the bottom of the canvas, out 
 - **Node / edge count** (bottom-left) — `N nodes, M edges` (counts the currently visible/graduated set). Informational; updates reactively with filters. Shifts right when the keyboard-shortcuts panel (bottom-left) is open so the two don't overlap.
 - **Fit / Play-Pause / fps** (bottom-center) — a single centred cluster: **Fit** frames the viewport to all visible nodes (`F`); **Play / Pause** toggles simulation ticking (`Space`); and the live `fps` reads out while the simulation runs.
 
-(Reheat is not currently surfaced as a button.) **Show in Tree** is no longer a toolbar control — it lives in the node hover tooltip (§ Interaction States: Hover).
+(There is no manual Reheat button; reheating is automatic.) **Show in Tree** is no longer a toolbar control — it lives in the node hover tooltip (§ Interaction States: Hover).
 
 ---
 
@@ -449,7 +449,7 @@ Each edge category has two values: a spring **stiffness** (`k`) and a rest **len
 
 Below the map, a read-only **force-curve visualization** (a boxed plot with `force` and `distance` axis labels) plots each spring's displacement response (`stiffness · Δ^exp`) around its rest length — the zero crossing (the length) sits low so the readable tension side gets most of the height; the slope is the stiffness, and the curvature is `exp`. All curves are drawn faint; hovering a token on the map brightens its curve and dims the rest (and vice versa). The one global shape parameter, `exp`, is controlled by a slider beneath the plot, where its effect on curve shape is visible.
 
-The covered edge categories: containment `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`, `Nx↔Op`, `Ep↔NS`, `Ep↔Op`; dependency `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf↔Act`, `Wf→Op`, `Op→Wf`, `Op↔Act`. The nexus edges (`Ep↔NS`, `Ep↔Op`, `Wf→Op`, `Op→Wf`, `Op↔Act`) are first-class spring categories rather than folding into their main-ladder neighbours, so each nexus relationship is tunable on its own. The workflow/operation dependency is **directional** — `Wf→Op` (a workflow makes a nexus call) and `Op→Wf` (an operation delegates to a backing workflow, or a sync-op body calls one) are separate springs because they serve different purposes. (An endpoint fronts an operation, so `Ep↔Op` is its own containment spring distinct from the service's `Nx↔Op`. Operation→operation calls are not modelled as a distinct relationship — they fold into `Wf→Op`.)
+The covered edge categories: containment `NS↔Wk`, `Wk↔Wf`, `Wk↔Act`, `Wk↔Nx`, `Nx↔Op`, `Ep↔NS`, `Ep↔Op`; dependency `NS↔NS`, `Wk↔Wk`, `Wf↔Wf`, `Wf→Sig`, `Wf↔Act`, `Wf→Op`, `Op→Wf`, `Op↔Act`. The nexus edges (`Ep↔NS`, `Ep↔Op`, `Wf→Op`, `Op→Wf`, `Op↔Act`) are first-class spring categories rather than folding into their main-ladder neighbours, so each nexus relationship is tunable on its own. The workflow/operation dependency is **directional** — `Wf→Op` (a workflow makes a nexus call) and `Op→Wf` (an operation delegates to a backing workflow, or a sync-op body calls one) are separate springs because they serve different purposes. (An endpoint fronts an operation, so `Ep↔Op` is its own containment spring distinct from the service's `Nx↔Op`. Operation→operation calls are not modelled as a distinct relationship — they fold into `Wf→Op`. `Wf→Sig` is workflow→workflow like `Wf↔Wf`, so the endpoint node types cannot separate them — the parser's edge kind does. It is deliberately weaker and longer: a signal send couples two workflows without binding them, since the sender never waits on the receiver's handler.)
 
 When a token is being tuned, the canvas highlights only that edge category — drawn as a coloured border (a tension-coloured casing with the edge's own colour on top) so the edge's identity colour stays clear, rather than recolouring every edge.
 
@@ -489,7 +489,7 @@ The equation-oriented grouping means each section is self-contained: the formula
 
 ### Simulation Controls
 
-Simulation controls live in the bottom-right corner (see § Bottom Controls), not the control panel: **Play / Pause** toggles ticking. (Reheat — re-energising the layout with a strong kick whose cooling scales with the kick — is implemented but not currently surfaced as a button.) There is no Reset button. The control panel itself holds only the force-shaping controls.
+Simulation controls live in the bottom-right corner (see § Bottom Controls), not the control panel: **Play / Pause** toggles ticking. There is no manual Reheat control and no Reset button — reheating happens automatically on structural and parameter changes (§ Live Reheat). The control panel itself holds only the force-shaping controls.
 
 ### Design Decisions
 
@@ -656,11 +656,11 @@ The transitive chain follows only **visible edges** — including graduated edge
 
 ### Selection
 
-Deferred. See [internal/changes/visualizer/BACKLOG.md](../../../internal/changes/visualizer/BACKLOG.md) (Node Selection + Info Panel). The hover info tooltip (§ Hover: Dependency Highlighting) serves the immediate identity and connection discoverability need without requiring persistent selection state.
+Deferred. See [#48](https://github.com/jmbarzee/temporal-architect/issues/48) (Node Selection + Info Panel). The hover info tooltip (§ Hover: Dependency Highlighting) serves the immediate identity and connection discoverability need without requiring persistent selection state.
 
 ### Info Panel
 
-Deferred alongside selection. See [internal/changes/visualizer/BACKLOG.md](../../../internal/changes/visualizer/BACKLOG.md) (Node Selection + Info Panel).
+Deferred alongside selection. See [#48](https://github.com/jmbarzee/temporal-architect/issues/48) (Node Selection + Info Panel).
 
 ### Multi-Select (future consideration)
 
@@ -685,9 +685,8 @@ is unaffected.
 
 v1 consumes a **precomputed** decomposition (the ranked portfolio at a host-chosen
 ceiling). There is no in-view recompute — changing the analysis parameters
-(ceiling, floor, strategies) is a separate, deferred capability (see
-[internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
-§ Deferred — decomposition overlay → Recompute).
+(ceiling, floor, strategies) is a separate, deferred capability
+([#43](https://github.com/jmbarzee/temporal-architect/issues/43)).
 
 ### Data
 
@@ -743,9 +742,8 @@ The browser shows the **full partition**, not just the splittable chunks:
   whole partition cell). Hovering any row **previews** its group(s) — including a
   toggled-off chunk's single group — transiently overriding the pinned selection
   (hover is exploratory); the radio **pins** the active division. A bulk "expand
-  all / collapse all" is deferred (see
-  [internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
-  § Deferred — decomposition overlay).
+  all / collapse all" is deferred
+  ([#45](https://github.com/jmbarzee/temporal-architect/issues/45)).
 - **Params** (read-only) — the analysis inputs that produced the grouping:
   ceiling, floor, max-depth, and the strategies considered. A visible placeholder
   for the future recompute controls.
@@ -783,9 +781,8 @@ by the branching factor rather than the total leaf count, so a small palette
 suffices. Smarter assignment — structural-adjacency map-coloring (there is no 2D
 boundary, so "adjacent" is defined by shared edges / the dependency DAG, not
 geography) and a stable semantic hue for the dominant shared service — is deferred
-(see [internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
-§ Deferred — decomposition overlay → Coloring), as is encoding a metric (Ec /
-size) in the glow radius.
+([#44](https://github.com/jmbarzee/temporal-architect/issues/44)), as is encoding
+a metric (Ec / size) in the glow radius.
 
 The glow is **non-destructive** and stacks beneath the existing focus/context
 lenses (search dim, hover dependency highlight); it never changes which nodes are
@@ -800,8 +797,7 @@ focus effect when no glow is shown.
 The decomposition may carry `suggestContract` advisories (a heavily-shared hub
 that is an articulation point — a candidate Nexus contract boundary). Surfacing
 these in the graph (e.g. a node badge) is **deferred**; see
-[internal/changes/temp-change-set/chunks/BACKLOG.md](../../../internal/changes/temp-change-set/chunks/BACKLOG.md)
-§ Deferred — decomposition overlay → Advisory surfacing.
+[#44](https://github.com/jmbarzee/temporal-architect/issues/44).
 
 ---
 
@@ -811,7 +807,7 @@ The current graph models **call** relationships (workflow calls workflow, workfl
 
 ### Vision
 
-When the DSL supports typed signal/query/update send statements (see `POSSIBLE_DSL_FEATURES.md`), the graph can derive **message flow edges** alongside call edges:
+The DSL supports handle-bound signal sends today (the parser emits a `signalSend` edge); typed query/update sends remain deferred ([#12](https://github.com/jmbarzee/temporal-architect/issues/12)). With those, the graph can derive **message flow edges** alongside call edges ([#46](https://github.com/jmbarzee/temporal-architect/issues/46)):
 
 - **Workflow → Workflow** ("signals/queries/updates") — WorkflowA sends a signal to WorkflowB.
 

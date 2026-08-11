@@ -25,7 +25,7 @@
 | `await one:` | Race: first to complete wins (timeouts, signal-or-timer patterns). Non-winning operations are **not** cancelled — they keep running until the workflow run ends |
 | `await all:` | Join: wait for all (parallel execution) |
 | `heartbeat()` | Report progress from long-running activity (detect worker death) |
-| `options: key: value` | Options block for activity/workflow/nexus calls |
+| `options: key: value` | Options block for activity/workflow/nexus calls and signal/query/update handler declarations |
 | `-> (Type)` | Return type (always parenthesized) |
 | `-> result` | Bind preceding result |
 | `close complete\|fail\|continue_as_new(Value)` | End workflow with result, failure, or continuation |
@@ -64,6 +64,8 @@
 | `priority` | activity, workflow, nexus | Relative dispatch priority |
 
 > The child-workflow **ID** itself is an SDK-level concern, not a TWF call option — see [child-workflows.md](../topics/child-workflows.md#workflow-id-design). `task_queue` is intentionally **not** a nexus-call option; nexus routing comes from the endpoint declaration.
+
+> **Handler-declaration `options:` are a separate set** — they lead the body of a `signal` / `query` / `update` declaration. Signal and update admit `unfinished_policy` (`abandon` | `warn_and_abandon`, default `warn_and_abandon`); all three admit `description` (string). See [signals-queries-updates.md](../topics/signals-queries-updates.md#handler-options).
 
 > **Worker-instantiation `options:` are a separate set** from the call options above — they attach to a `worker` (or `nexus endpoint`) inside a `namespace`, not to a call. `task_queue` is required; `versioning` (`none` / `build_id` / `deployment`) is the design-altitude strategy key. The set is the SDK union, accepted permissively — see [task-queues.md](../topics/task-queues.md#worker-options) and `twf spec`.
 

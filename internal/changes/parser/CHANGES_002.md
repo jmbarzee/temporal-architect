@@ -32,7 +32,7 @@ Added parser tests: options on each handler kind; `unfinished_policy` enum valid
 
 ## Note on a surfaced backlog item
 
-Option key/type/enum validation happens at parse time (`parseOptionEntry` consulting `schemaForContext`), so these checks ship as generic `SYNTAX` `ParseError`s rather than structured semantic codes. Moving option-schema validation into the resolver (with dedicated `ErrorKind` codes and full multi-error recovery) is recorded in `internal/changes/parser/BACKLOG.md` as a cross-cutting refactor across all option contexts.
+Option key/type/enum validation happens at parse time (`parseOptionEntry` consulting `schemaForContext`), so these checks ship as generic `SYNTAX` `ParseError`s rather than structured semantic codes. Moving option-schema validation into the resolver (with dedicated `ErrorKind` codes and full multi-error recovery) is tracked as [#33](https://github.com/jmbarzee/temporal-architect/issues/33) — a cross-cutting refactor across all option contexts.
 
 ## Downstream propagation
 

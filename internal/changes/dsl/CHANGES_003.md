@@ -1,11 +1,11 @@
 # DSL Changes
 
 **Source review(s):** ad-hoc design review of signal-handling coverage (May 2026), narrowed by a critical design review (June 2026) that scoped the feature to handle-bound, statement-only sends.
-**REVISIONS file(s):** `internal/changes/dsl/REVISIONS_001.md` (consumed)
+**REVISIONS file(s):** `dsl/REVISIONS_001.md` (consumed and removed — the dev cycle deletes a REVISIONS file once its CHANGES record lands)
 
 ## Summary
 
-Added send-side syntax for signals: a workflow can now signal a child it holds a handle to, via `signal handle.Name(args)`. The feature is deliberately minimal — **handle-bound only** (no external/ID addressing) and **statement-only** (no `await`/`promise`/`await one` form), because a signal carries no return value and the only awaitable thing is send-acceptance, which is not handler execution. External-addressed sends were scoped out and recorded in `BACKLOG.md`.
+Added send-side syntax for signals: a workflow can now signal a child it holds a handle to, via `signal handle.Name(args)`. The feature is deliberately minimal — **handle-bound only** (no external/ID addressing) and **statement-only** (no `await`/`promise`/`await one` form), because a signal carries no return value and the only awaitable thing is send-acceptance, which is not handler execution. External-addressed sends were scoped out and are tracked as [#10](https://github.com/jmbarzee/temporal-architect/issues/10).
 
 ## Changes by Type
 
@@ -35,10 +35,10 @@ Added send-side syntax for signals: a workflow can now signal a child it holds a
   - **Existence / resolution check** — the handle must resolve to a workflow-bound `promise`, and the target workflow must *declare* the named signal. This is the first resolver rule that follows a promise to *what it resolves to* (`PromiseStmt.Target` is a `*WorkflowTarget`) and then inspects that target's signal set. Two new errors: handle-not-workflow-typed; signal-not-declared-by-target.
   - **Graph edge kind** — emit a distinct `signalSend` edge from the sending workflow/handler to the target workflow (keyed on the resolved handle, not the promise name), as its own filterable category (fire-and-forget, no result) — not a reuse of the call edge.
   - **Interaction caveats** — a fire-and-forget send is valid even if the handle is never awaited, so do not fold signal-send into unused-promise heuristics; and a workflow-bound promise used *only* as a signal target (never awaited) must not be flagged "result never consumed."
-- **`internal/changes/visualizer/`** — render the `signalSend` edge kind; unblock "Message Flow Edges" and "Handler Show Callers" from `visualizer/BACKLOG.md`; add it as its own toggle in the unified filter bar.
-- **`internal/changes/design-skill/`** — extend `skills/design/topics/signals-queries-updates.md` with a "Sending Signals to a Child Workflow" section (handle-bound statement form; fire-and-forget semantics explicit). Do not describe await/promise send forms — they do not exist.
-- **`internal/changes/author-go-skill/`** — new `skills/author-go/reference/signal-send.md` mapping the statement form to `ChildWorkflowFuture.SignalChildWorkflow` (the SDK returns a future; the DSL statement maps to the fire-and-forget call); add a forward reference from `workflow-call.md`.
+- **`internal/changes/visualizer/`** — render the `signalSend` edge kind; unblock "Message Flow Edges" and "Handler Show Callers" (tracked as GitHub issues); add it as its own toggle in the unified filter bar. **Done** — see `internal/changes/visualizer/CHANGES_004.md`. The filter toggle is the one part still outstanding: the visualizer has no edge-type toggles at all yet, so it waits on the unified filter bar ([#49](https://github.com/jmbarzee/temporal-architect/issues/49)).
+- **`internal/changes/design-skill/`** — extend `skills/temporal-architect-design/topics/signals-queries-updates.md` with a "Sending Signals to a Child Workflow" section (handle-bound statement form; fire-and-forget semantics explicit). Do not describe await/promise send forms — they do not exist.
+- **`internal/changes/author-go-skill/`** — **Done** — new `skills/temporal-architect-author-go/reference/signal-send.md` mapping the statement form to `ChildWorkflowFuture.SignalChildWorkflow` (the SDK returns a future; the DSL statement maps to the fire-and-forget call); add a forward reference from `workflow-call.md`.
 
-## Deferred (in `BACKLOG.md`)
+## Deferred (tracked as GitHub issues)
 
-- **External-Addressed Signal Sends** — `signal external X(id).Name(args)`. Syntax settled; blocked on a workflow-identity (runtime workflow-ID) mechanism, the same gap that defers the `Workflow ID Call Option`. Should be designed alongside it. Soft keyword for `external` (special only after `signal`) preferred when it returns.
+- **External-Addressed Signal Sends** ([#10](https://github.com/jmbarzee/temporal-architect/issues/10)) — `signal external X(id).Name(args)`. Syntax settled; blocked on a workflow-identity (runtime workflow-ID) mechanism, the same gap that defers the `Workflow ID Call Option` ([#11](https://github.com/jmbarzee/temporal-architect/issues/11)). Should be designed alongside it. Soft keyword for `external` (special only after `signal`) preferred when it returns.

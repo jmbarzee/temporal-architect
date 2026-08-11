@@ -1,7 +1,7 @@
 # Parser Changes
 
 **Source review(s):** `review-alignment-parser` (propagated from `internal/changes/dsl/CHANGES_003.md` — cross-workflow signal send)
-**REVISIONS file(s):** `internal/changes/parser/alignment_REVISIONS_001.md` (consumed)
+**REVISIONS file(s):** `parser/alignment_REVISIONS_001.md` (consumed and removed — the dev cycle deletes a REVISIONS file once its CHANGES record lands)
 
 ## Summary
 
@@ -40,5 +40,5 @@ Propagated the handle-bound, statement-only cross-workflow signal send (`signal 
 
 `/project:propagate-changes` should fan this out:
 
-- **`internal/changes/visualizer/`** — render the new `signalSend` edge kind. Reuse the existing edge-kind rendering and filtering affordances; **do not add a signal-specific filter mechanism** — `signalSend` should ride the existing edge-kind handling like any other edge kind. The `resolved` target-workflow ref on the `signalSend` node is available if a node-level affordance is wanted.
-- **`internal/changes/design-skill/`** — covered by `internal/changes/design-skill/CHANGES_001.md` (send-side section added).
+- **`internal/changes/visualizer/`** — render the new `signalSend` edge kind. Reuse the existing edge-kind rendering and filtering affordances; **do not add a signal-specific filter mechanism** — `signalSend` should ride the existing edge-kind handling like any other edge kind. The `resolved` target-workflow ref on the `signalSend` node is available if a node-level affordance is wanted. **Done** — see `internal/changes/visualizer/CHANGES_004.md`.
+- **`internal/changes/design-skill/`** — covered; the send-side section landed in `skills/temporal-architect-design/topics/signals-queries-updates.md`.

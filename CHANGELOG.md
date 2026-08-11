@@ -47,7 +47,7 @@ A workflow-bound promise serves two roles on the same handle: an awaitable (`awa
 
 ### Deferred
 
-- External-addressed sends (`signal external X(id).Name(args)`) are scoped out, blocked on a workflow-identity mechanism. Recorded in `BACKLOG.md`.
+- External-addressed sends (`signal external X(id).Name(args)`) are scoped out, blocked on a workflow-identity mechanism. Tracked as [#10](https://github.com/jmbarzee/temporal-architect/issues/10).
 
 ---
 

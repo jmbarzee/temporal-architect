@@ -2,7 +2,7 @@ import type { Statement } from '../../types/ast'
 import { ActivityCallBlock, WorkflowCallBlock, NexusCallBlock } from './CallBlocks'
 import { AwaitStmtBlock, AwaitAllBlockComponent, AwaitOneBlockComponent } from './AwaitBlocks'
 import { SwitchBlockComponent, IfBlock, ForBlock } from './ControlFlowBlocks'
-import { ReturnBlock, CloseBlock, RawBlock, CommentBlock, SimpleBlock, PromiseBlock, SetBlock, UnsetBlock } from './LeafBlocks'
+import { ReturnBlock, CloseBlock, RawBlock, CommentBlock, SimpleBlock, PromiseBlock, SetBlock, UnsetBlock, SignalSendBlock } from './LeafBlocks'
 import './blocks.css'
 
 interface StatementBlockProps {
@@ -31,6 +31,8 @@ export function StatementBlock({ statement }: StatementBlockProps) {
       return <WorkflowCallBlock stmt={statement} />
     case 'nexusCall':
       return <NexusCallBlock stmt={statement} />
+    case 'signalSend':
+      return <SignalSendBlock stmt={statement} />
     case 'await':
       return <AwaitStmtBlock stmt={statement} />
     case 'awaitAll':

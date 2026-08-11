@@ -13,7 +13,10 @@ generated from the binary, so it never drifts from this prose. What the flags
 - `twf graph chunks` (no flags) — emits the **#1 hard partition** (every definition in exactly one chunk) + a per-chunk complexity score + floor-merge recommendations.
 - the **ceiling** flag — additionally emits **#2 soft divisions** (ranked candidate cuts + a dependency DAG) for any chunk scoring over it.
 - the **floor** flag — chunks below it are flagged "too granular for their own subagent."
-- the **by** flag — biases which soft-division strategy is suggested (reachable-subtree, `nexusCall`-boundary, worker, namespace).
+- the **by** flag — biases which soft-division strategy is suggested. Two lenses, because thin-neck composition trees and thick-neck shared services need opposite signals:
+    - *use-case / balance* — `tree` (reachable-subtree), `nexus` (`nexusCall`-boundary), `worker`, `namespace`.
+    - *authorship-parallelism* — `service` (extract the highest-fan-in hub plus its dominated closure, then split the remainder into binding components) and `subtree` (peel the heaviest dominated child-workflow subtrees until the trunk fits, leaving light branches inline).
+- the **max-depth** flag — bounds how deep the explore phase recursively re-divides an over-ceiling section. Level 1 is the chunk's own divisions.
 
 See [Complexity floor + ceiling](#complexity-floor--ceiling) below for how to choose the thresholds. If the subcommand is absent, use the [manual fallback](#manual-fallback).
 
@@ -34,6 +37,11 @@ Soft divisions appear only when a chunk exceeds the ceiling you set. They are **
 - Treat the **ranked candidate cuts** as suggestions; pick the one that matches a real boundary in the domain, or decline to cut.
 - The **inter-section dependency DAG is the build order.** Author independent sections first, then the sections they unblock. This is the PERT walk — not a blind parallel fan-out.
 - **Loops are never cut.** An SCC-collapsed chunk (workflow-call cycle) is exempt regardless of score — implement it as one unit.
+- **Sections recurse.** An over-ceiling section inside a division is itself re-divided, down to the max-depth bound, so a rank-1 division can carry nested structure. Read the whole tree before dispatching, not just the top level.
+
+## Advisories
+
+A chunk may carry **`advisories`** alongside its sections. Today there is one kind, `suggestContract`: a node so heavily shared that promoting it to an explicit contract (a Nexus operation, or a pinned signature every dependent agrees to) would buy more than cutting around it. Treat an advisory as a prompt to *pin a contract*, not as a cut — it fires exactly where the graph says "many things depend on this," which is where an unpinned signature costs the most in rework.
 
 ## Complexity floor + ceiling
 
@@ -59,7 +67,7 @@ The decomposition is computed over the **design**. It does not know what is alre
 3. If there **is** linked code, run the author skill's fast verify on it as a cheap changed-vs-unchanged signal — e.g. `author-go`'s `go build` / `go test` on the linked package. Treat a clean build/test against the current `.twf` as "unchanged, skip"; a failure or a `.twf` edit touching that chunk as "changed, dispatch."
 4. **Skip unchanged chunks.** Never re-author a component that doesn't need altering — that is wasted context and risks churning working code.
 
-This is a stopgap: there is no first-class chunk↔impl staleness check (chunk identity + impl link + a quick verify). The build/test signal is coarse but cheap. Tracked as a chunks-consumer backlog item.
+This is a stopgap: there is no first-class chunk↔impl staleness check (chunk identity + impl link + a quick verify). The build/test signal is coarse but cheap. Tracked as [#40](https://github.com/jmbarzee/temporal-architect/issues/40).
 
 ## Pin contracts only where it pays
 

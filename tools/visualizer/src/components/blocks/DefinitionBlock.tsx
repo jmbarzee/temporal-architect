@@ -314,9 +314,13 @@ function computeSummary(def: Definition): string {
     const calls = (def.body || []).filter(s =>
       s.type === 'activityCall' || s.type === 'workflowCall' || s.type === 'nexusCall'
     ).length
+    // Counted apart from calls: a signal send dispatches but returns nothing,
+    // so folding it into "calls" would overstate the request/response surface.
+    const sends = (def.body || []).filter(s => s.type === 'signalSend').length
     const handlers = (def.signals?.length || 0) + (def.queries?.length || 0) + (def.updates?.length || 0)
     if (steps > 0) parts.push(`${steps} step${steps !== 1 ? 's' : ''}`)
     if (calls > 0) parts.push(`${calls} call${calls !== 1 ? 's' : ''}`)
+    if (sends > 0) parts.push(`${sends} send${sends !== 1 ? 's' : ''}`)
     if (handlers > 0) parts.push(`${handlers} handler${handlers !== 1 ? 's' : ''}`)
   } else if (def.type === 'activityDef') {
     const steps = def.body?.length || 0

@@ -28,7 +28,7 @@ Write the [impl-link header](./twf-conventions.md) as you extract, so the new `.
 A `.twf` exists but the code has moved on. Two halves, with different readiness:
 
 - **Check (available now):** on a bounded slice, compare the `.twf` against current code and report divergences — missing activities, changed boundaries, dropped signals. This needs no new tooling.
-- **Sync (deferred):** mechanically reconciling `.twf` ↔ implementation depends on the future twf↔impl mapping (`dsl/BACKLOG.md` → Reference Annotations / `@ref`). Until that lands, reconcile by hand: re-extract the drifted slice (B1a steps 2-4) and update the `.twf`, treating the code as the source of truth for *behavior* and the existing `.twf` as the source of truth for *intent*.
+- **Sync (deferred):** mechanically reconciling `.twf` ↔ implementation depends on the future twf↔impl mapping ([#24](https://github.com/jmbarzee/temporal-architect/issues/24) — reference annotations / `@ref`). Until that lands, reconcile by hand: re-extract the drifted slice (B1a steps 2-4) and update the `.twf`, treating the code as the source of truth for *behavior* and the existing `.twf` as the source of truth for *intent*.
 
 ## Reading strategy
 

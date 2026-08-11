@@ -15,9 +15,8 @@ import type { Decomposition, Chunk, Division, Section } from '../types/decomposi
 // A small cycling palette. Identity is carried by the Groups modal (the
 // legend), so colors only need to separate the handful of sibling groups shown
 // at the currently-expanded depth — not be globally unique. Smarter assignment
-// (structural map-coloring, stable semantic hue) is deferred (see
-// internal/changes/temp-change-set/chunks/BACKLOG.md
-// § Deferred — decomposition overlay → Coloring).
+// (structural map-coloring, stable semantic hue) is deferred — see
+// https://github.com/jmbarzee/temporal-architect/issues/44.
 export const GROUP_PALETTE = [
   '#2DD4BF', // teal
   '#F59E0B', // amber

@@ -55,11 +55,11 @@ Map the Temporal inventory against the DSL inventory. For each Temporal concept:
 
 Also flag DSL constructs with no clear Temporal mapping.
 
-Cross-reference against existing files in `internal/changes/dsl/`. Drop findings that are already planned.
+Cross-reference against existing files in `internal/changes/dsl/` **and against the open GitHub issues labelled `area:dsl`** (`gh issue list --label area:dsl --state open`). Drop findings that are already planned or already filed.
 
 ### Phase 3: Evaluate Possible Features
 
-Read `POSSIBLE_DSL_FEATURES.md`. For each proposed feature:
+Read the open `area:dsl` issues — that is where proposed language features live (`gh issue list --label area:dsl --state open`; `gh issue view <n>` for the full write-up). Issues labelled `needs-design` still carry unresolved open questions and are the richest candidates. For each proposed feature:
 - Does it address a gap identified in Phase 2? If so, does the proposed approach resolve it well?
 - Is it motivated by a real Temporal primitive or pattern, or is it speculative?
 - Does it fit consistently with the existing DSL grammar and style?
@@ -77,7 +77,7 @@ Each group should have:
 - List of gaps or inconsistencies it addresses
 - Whether it requires a grammar change, a rename, or a new construct
 - Whether it would be a breaking change to existing `.twf` files
-- Any validated `POSSIBLE_DSL_FEATURES.md` proposals that belong here
+- Any validated `area:dsl` issues that belong here, referenced by number
 
 ### Phase 5: Write to `internal/changes/dsl/quality_REVISIONS_{NNN}.md`
 

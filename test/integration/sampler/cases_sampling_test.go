@@ -230,7 +230,7 @@ func lowVolumeTypeMinPerType() Case {
 // branches. The union of the *sampled* subset reconstructs the full edge set
 // {A,B,C} — the expansion ladder (SamplePercent + MinPerType) need not pull
 // every execution to satisfy the expectation. Documents the partial-by-design
-// limitation in GRAPH_FROM_HISTORY.
+// limitation documented in tools/sampler/README.md § Limitations.
 func highVolumeSamplingSufficiency() Case {
 	const tq = "r5-tq"
 	wf := ExpectNode{Kind: graph.KindWorkflow, Name: branchingWorkflowType}

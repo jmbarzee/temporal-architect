@@ -32,9 +32,12 @@ resources / per-skill prompts (the binary does not embed skills — that is M1),
 push diagnostics via an internal LSP, and non-stdio transports (local
 `npx … twf mcp` only).
 
-**Deferred enhancements** (structured/typed tool output, history-mode inputs,
-completion handler, richer annotations) are tracked in
-`internal/changes/parser/BACKLOG.md` under "`twf mcp` Enhancements (post-MVP)".
+**Deferred enhancements** are tracked as GitHub issues:
+[#35](https://github.com/jmbarzee/temporal-architect/issues/35) (structured/typed
+tool output), [#36](https://github.com/jmbarzee/temporal-architect/issues/36)
+(history-mode inputs), and
+[#37](https://github.com/jmbarzee/temporal-architect/issues/37) (spec resource
+template, completion handler, richer annotations).
 
 **Remaining polish:** example MCP client configs for Claude Desktop / Cursor /
 Continue in the docs.

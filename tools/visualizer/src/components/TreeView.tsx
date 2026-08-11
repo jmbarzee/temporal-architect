@@ -131,6 +131,13 @@ export function TreeView({
           case 'nexusCall':
             addCaller(`nexusServiceDef:${stmt.service}`, { defName: callerDef.name, defType: callerDef.type })
             break
+          case 'signalSend':
+            // A send is a real inbound reference for "show callers", but only
+            // once the resolver has followed the handle to a target workflow.
+            if (stmt.resolved) {
+              addCaller(`workflowDef:${stmt.resolved.name}`, { defName: callerDef.name, defType: callerDef.type })
+            }
+            break
           case 'await':
             walkTarget(stmt.target, callerDef)
             break

@@ -20,6 +20,7 @@ if err != nil {
 
 - The child workflow function is passed by reference — `workflow.ExecuteChildWorkflow(ctx, FuncName, args...)`
 - `ctx` must carry child workflow options; see [options.md](./options.md) for setting `ChildWorkflowOptions`
+- Binding the call to a promise yields a `ChildWorkflowFuture` handle; that handle is also the target for `signal handle.Name(args)` — see [signal-send.md](./signal-send.md)
 - For fire-and-forget, see [detach.md](./detach.md)
 - For cross-namespace, see [nexus.md](./nexus.md)
 

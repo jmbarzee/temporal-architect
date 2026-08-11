@@ -43,6 +43,36 @@ if err != nil {
 - Update handlers cannot call `close` — only the main workflow body can terminate the workflow
 - Register updates at the very start of the workflow function, before any blocking calls
 
+## Handler options
+
+### DSL
+
+```twf
+update SubmitJob(job: Job) -> (JobId):
+    options:
+        unfinished_policy: warn_and_abandon
+        description: "Queues a job and returns its id"
+    activity ValidateJob(job)
+    return uuid()
+```
+
+### Go
+
+```go
+err := workflow.SetUpdateHandlerWithOptions(ctx, "SubmitJob",
+    func(ctx workflow.Context, job Job) (string, error) { /* ... */ },
+    workflow.UpdateHandlerOptions{
+        UnfinishedPolicy: workflow.HandlerUnfinishedPolicyWarnAndAbandon,
+        Description:      "Queues a job and returns its id",
+    },
+)
+```
+
+- `unfinished_policy: warn_and_abandon` → `workflow.HandlerUnfinishedPolicyWarnAndAbandon` (the SDK default; may be left unset)
+- `unfinished_policy: abandon` → `workflow.HandlerUnfinishedPolicyAbandon`
+- `description` → `Description` — short human-facing text surfaced in UI/CLI, no runtime behavior (SDK field marked Experimental)
+- These are the only two handler option keys TWF admits on updates; a `validator` is authored directly in Go (below), not derived from the DSL
+
 ## Validators
 
 - Set via `workflow.UpdateHandlerOptions{Validator: func(...) error{...}}` in `SetUpdateHandlerWithOptions`
@@ -56,9 +86,9 @@ if err != nil {
 ## Pitfalls
 
 - **Missing validator.** The example above performs validation via an activity inside the handler — this is post-acceptance validation. To reject invalid updates without writing to History, add a validator
-- **Handler lifetime vs workflow completion.** Default `HandlerUnfinishedPolicy` is `WarnAndAbandon` — if the workflow completes or calls Continue-As-New while an update handler is still running, the handler is abandoned and the caller receives `ServiceError` "workflow execution already completed"
+- **Handler lifetime vs workflow completion.** Default `HandlerUnfinishedPolicy` is `WarnAndAbandon` — if the workflow completes or calls Continue-As-New while an update handler is still running, the handler is abandoned and the caller receives a `serviceerror.NotFound` whose message says the workflow already completed
 - To avoid abandoned handlers, wait before exiting:
   ```go
   err = workflow.Await(ctx, func() bool { return workflow.AllHandlersFinished(ctx) })
   ```
-- **Continue-As-New during handler execution.** The caller gets "workflow execution already completed." The update is lost. Drain handlers before CAN
+- **Continue-As-New during handler execution.** The caller gets the same `serviceerror.NotFound`. The update is lost. Drain handlers before CAN
