@@ -120,13 +120,15 @@ The dev-cycle harness is a **skill** at `.claude/skills/dev-cycle/` (read by bot
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
 | `summarize-changes` | Scan `internal/changes/` and produce consolidated report |
 
-Two standalone helpers ship as their own **skills** under `.claude/skills/` (not part of the dev-cycle harness):
+Three standalone skills ship under `.claude/skills/` alongside the dev-cycle harness:
 
 | Skill (`.claude/skills/<name>/SKILL.md`) | Purpose |
 |---------|---------|
+| `dev-issue` | Take one GitHub issue to a PR: triage, settle the design with the user, run `/dev-cycle` as a subroutine, land it |
 | `expand-idea` | Expand a one-sentence idea into a full Temporal architecture vision with draft `.twf` |
 | `reflect-skill` | Reflect on a recent task and propose updates to the responsible skill |
 
+**Start here for one issue:** invoke `/dev-issue <number>`.
 **Start here for a new cycle:** invoke the `/dev-cycle` skill.
 **Start here for targeted work:** use the dev-cycle skill's "review" entrypoint for the layer you're focused on.
 **Start here for a new design:** use the `expand-idea` skill.
