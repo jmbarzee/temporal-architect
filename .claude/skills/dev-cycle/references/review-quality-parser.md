@@ -98,7 +98,7 @@ The **change type** field is used by `.claude/skills/dev-cycle/references/propag
 - `Semantic` — behavior changes with no type signature change
 - `Internal` — refactors with no downstream contract impact
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
+**Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 
 ## Constraints
 

@@ -4,7 +4,9 @@ Review an AI skill for quality, focus, and effectiveness. Evaluate whether the s
 
 ## Skill Selection
 
-If a skill path is not provided in context, list the contents of `skills/` and present the options. Wait for selection before proceeding.
+This review covers **one** skill. Its path must be supplied by whoever dispatches it — under the dev-cycle loop that is the `skills` component sweep, which reviews each skill in turn.
+
+If no skill path is given, do not guess and do not review all of them: report that the path is missing and escalate to the dispatching agent (the user, when a human is driving this directly). Reviewing the wrong skill wastes a full pass and writes a misleading REVISIONS file.
 
 ## Context
 
@@ -106,7 +108,7 @@ Also read all existing files in `internal/changes/skills/` before starting — b
 
 Skill changes are always `Internal` — they don't propagate downstream via the dependency graph.
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
+**Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 
 ## Constraints
 - **Evaluate against the skill's own stated goal.** `README.md` defines intent. Judge the skill against that, not against what you think it should do.

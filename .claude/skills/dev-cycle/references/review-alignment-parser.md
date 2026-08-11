@@ -66,7 +66,7 @@ Write the grouped plan to `internal/changes/parser/alignment_REVISIONS_{NNN}.md`
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Grammar` | `API` | `Semantic`), parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
+**Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 
 ## Constraints
 

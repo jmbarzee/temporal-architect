@@ -70,7 +70,7 @@ Write the grouped plan to `internal/changes/visualizer/alignment_REVISIONS_{NNN}
 - One `## Group N: Title` section per group
 - Each group: spec features addressed, files touched, change type (`Internal`), blocked status, parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
+**Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 
 ## Constraints
 

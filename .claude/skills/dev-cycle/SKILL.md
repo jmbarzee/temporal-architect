@@ -69,11 +69,17 @@ bullet that was never executed is exactly the kind of debt that goes invisible o
 Two human gates only: **scope confirmation** (start) and **final review** (end). Between them,
 auto-proceed across groups, components, and propagation — bounded by Limits.
 
-The step prompts under `references/` were written for manual use and contain their own
-"STOP / wait for approval" points. When running the loop, the main agent owns the two gates
-above; instruct each dispatched subagent to run its workflow to completion and return results
-rather than stopping at those internal approval points. Subagents execute; they escalate
-genuine ambiguity back to the main agent, and never resolve it silently.
+The step prompts under `references/` run to completion on their own — they hold no approval
+pauses, so there is nothing for the loop to override. The two gates above live here, in the main
+agent, and nowhere else.
+
+Subagents execute; they escalate genuine ambiguity — two valid designs with different
+consequences — back to the dispatching agent, and never resolve it silently. Escalation is the
+only reason a step returns early.
+
+One real gate does survive inside a step: `address-review.md` Step A presents a consolidated
+summary before it writes the CHANGES record and deletes the consumed REVISIONS files. That is
+the last point before durable mutation, which is why it is the one kept.
 
 ## Limits
 

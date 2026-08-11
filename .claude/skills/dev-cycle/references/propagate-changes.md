@@ -17,7 +17,7 @@ the graph from memory.
 
 ### Phase 1: Read CHANGES File
 
-A specific CHANGES file path must be provided (e.g., `internal/changes/parser/CHANGES_001.md`). If none is provided, scan all `internal/changes/*/CHANGES_*.md` files and ask the user to select one.
+A specific CHANGES file path must be provided (e.g., `internal/changes/parser/CHANGES_001.md`). If none is provided, scan `internal/changes/*/CHANGES_*.md` and propagate each un-propagated one in manifest wave order; if that scan is empty, report it and stop.
 
 Read the specified file and extract:
 - Source review command
@@ -51,9 +51,7 @@ Each sub-agent:
 2. Receives the relevant changes as additional context: "Focus this review on the impact of these specific changes: [list]"
 3. Follows the review command's full workflow — Explore → Catalog → Group → Write REVISIONS file to `internal/changes/{downstream-component}/` using the next available sequence number
 
-Sub-agents run in parallel where the downstream layers are independent.
-
-**Do not wait for sub-agents to complete before reporting Phase 3 has started.**
+Sub-agents run in parallel where the downstream layers are independent. **Await them all** — Phase 4 reports their results, and the dev-cycle loop awaits this step before advancing a wave.
 
 ### Phase 4: Report
 
@@ -66,10 +64,10 @@ When all sub-agents complete:
    - Any VS Code Extension impacts that need manual review
    - Recommended order for running `.claude/skills/dev-cycle/references/address-review.md` on each REVISIONS file
 
-**STOP. Present the report and wait for the user to begin addressing each new revision file.**
+**Return the report.** Do not begin addressing the new REVISIONS files — the dev-cycle loop picks them up on its next scan, in manifest wave order.
 
 ## Constraints
-- **CHANGES files persist.** Do not delete CHANGES files. They are the historical record.
+- **Do not delete the CHANGES file you are propagating.** It is this cycle's working record and the loop still needs it. It is *not* an archive: the cycle's Finalize gate deletes `internal/changes/` outright once every open item in it has become a GitHub issue.
 - **Sub-agents write REVISIONS files to `internal/changes/{downstream-component}/`, not you.** Your output is the propagation report.
 - **Internal-only changes stop here.** No downstream reviews needed.
 - **Don't duplicate a review already in progress.** Skip a layer only if an existing REVISIONS file in that component's directory already has this CHANGES file as its source. Multiple REVISIONS files with different sources coexist — that is expected and correct.

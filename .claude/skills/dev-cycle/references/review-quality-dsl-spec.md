@@ -88,7 +88,7 @@ Write the grouped plan to `internal/changes/dsl/quality_REVISIONS_{NNN}.md` (cre
 
 DSL changes are `Grammar` if they require syntax changes, `Semantic` if they clarify or correct meaning without changing syntax.
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
+**Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 
 ## Constraints
 - **Spec lens only.** Don't review parser implementation, AST structure, or resolver behavior — those belong in `.claude/skills/dev-cycle/references/review-quality-parser.md`.
