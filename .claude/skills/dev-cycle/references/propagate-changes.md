@@ -51,7 +51,7 @@ Deduplicate by **component**, not by change type: one sub-agent per downstream c
 For each downstream layer in the propagation map, check whether an existing REVISIONS file already covers this propagation:
 
 - Read any existing `*_REVISIONS_*.md` files in `internal/changes/{downstream-component}/`.
-- If an existing file's **Source** field references the same CHANGES file being propagated, skip that layer — the impact is already tracked.
+- If an existing file's `**Source:**` **string** matches the CHANGES file being propagated, skip that layer — the impact is already tracked. Compare as strings, not paths: a Source may legally read `—`, `issue #N`, or `reflect-skill` (see `SKILL.md` § REVISIONS file contract), and only an exact match means "same trigger."
 - Otherwise, launch a sub-agent regardless of how many REVISIONS files already exist. REVISIONS files are numbered for a reason; a pre-existing file from a different source is unrelated pending work, not a duplicate.
 
 Each sub-agent:

@@ -179,13 +179,13 @@ Write the results to `internal/changes/skills/REFLECTION-{skill}.md`, where `{sk
 
 ### Phase 4: Distill
 
-Take the user's selections and group them by theme. Write `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md` following the standard revisions format — the source-encoded naming in `internal/harness/components.md` § skills, so concurrent skill reviews do not collide and `address-review` picks it up:
+Take the user's selections and group them by theme. Write `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md` — the source-encoded naming in `internal/harness/components.md` § skills, so concurrent skill reviews do not collide and `address-review` picks it up. It must satisfy `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract; `reflect-skill` is one of the four legal `**Source:**` forms.
 
 ```
 # Skill Revisions: {Skill Name}
 
 **Source:** `reflect-skill`
-**Reflection file:** `REFLECTION_{NAME}.md` (consumed)
+**Reflection file:** `internal/changes/skills/REFLECTION-{skill}.md` (consumed)
 
 ## Summary
 {1-2 sentences on what the reflection surfaced and what will change}

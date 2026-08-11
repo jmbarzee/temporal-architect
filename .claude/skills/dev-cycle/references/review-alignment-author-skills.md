@@ -65,7 +65,8 @@ Group by construct family. Order: incorrect SDK usage first (produces broken cod
 
 ### Phase 5: Write to `internal/changes/skills/alignment-author_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/skills/alignment-author_REVISIONS_{NNN}.md` (create the `internal/changes/skills/` directory if needed). The filename is source-encoded (`alignment-author`) because all skills share the single `skills` component directory. Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/skills/alignment-author_REVISIONS_{NNN}.md` (create the `internal/changes/skills/` directory if needed). The filename is source-encoded (`alignment-author`) because all skills share the single `skills` component directory. Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
+- `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: coverage state, SDK accuracy state
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Internal`), parallelism notes

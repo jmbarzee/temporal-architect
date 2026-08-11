@@ -99,9 +99,10 @@ All skills share the single `skills` component directory, so the REVISIONS filen
 - `skills/temporal-architect-author-infra` → `quality-author-infra`
 - `skills/temporal-architect` → `quality-architect`
 
-Write the grouped plan to `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md` (create the directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md` (create the directory if needed). Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
 
 Also read all existing files in `internal/changes/skills/` before starting — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed.
+- `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: skill under review, overall quality assessment
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Internal`), parallelism notes

@@ -15,9 +15,17 @@ Each group in the plan should have:
 - A list of findings with locations
 - An estimated scope (which files are touched)
 
+### If the file opens with a `## Design` section
+
+**Read it.** It is the agreed rationale — why the approach is what it is, which alternatives were already rejected, and which constraints must hold. It is present when a human settled the approach before dispatch.
+
+It contains **no work items**: execute only the `## Group N` sections. But do not skim past it either. The failure mode is not an agent executing the design section — it is an agent ignoring it and re-deriving an approach that was already considered and rejected, which wastes the decision the section exists to record.
+
+If a group and the design conflict, **escalate**. Do not resolve it silently in either direction. If execution forces you to renegotiate a stated constraint, say so under `## Deferred` in the CHANGES record.
+
 ## Workflow
 
-Repeat the following loop for each group, in order. Do not skip ahead.
+Repeat the following loop for each `## Group N` section, in order. Do not skip ahead.
 
 ### For Each Group:
 

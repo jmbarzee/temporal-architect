@@ -63,7 +63,8 @@ Group findings by theme. Order by critical severity first, then contract mismatc
 
 ### Phase 4: Write to `internal/changes/visualizer/quality_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/visualizer/quality_REVISIONS_{NNN}.md` (create the `internal/changes/visualizer/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/visualizer/quality_REVISIONS_{NNN}.md` (create the `internal/changes/visualizer/` directory if needed). Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
+- `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: scope of this review, what was found
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Schema` | `Internal`), parallelism notes

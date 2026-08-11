@@ -116,6 +116,35 @@ The **main agent allocates** the next `_{NNN}` sequence number when instructing 
 write a REVISIONS or CHANGES file, so concurrent or repeated writes to the same component
 directory never collide. (Source-encoded names and worktree isolation come in Pass 2.)
 
+## REVISIONS file contract
+
+The invariants every REVISIONS file must satisfy, wherever it came from. Each review prompt owns
+its own field labels and wording — **this is not a template**, and the variation between prompts is
+deliberate. Only what another step reads is fixed here.
+
+- **Path** — `internal/changes/{component}/{type}_REVISIONS_{NNN}.md`. The `{type}` token is
+  source-encoded so concurrent reviews of one component don't collide (see the manifest).
+- **`**Source:**`** — a bold-label line immediately after the H1. **Required.** `propagate-changes`
+  dedups on it: a downstream layer is skipped when an existing file in that directory already
+  carries the same Source. Four legal forms, compared as **strings**, not paths:
+  | Form | Written by |
+  |---|---|
+  | `internal/changes/{component}/CHANGES_{NNN}.md` | a propagation |
+  | `—` | a fresh review with no upstream trigger |
+  | `issue #N` | work picked up from a GitHub issue |
+  | `reflect-skill` | a skill reflection |
+- **`## Design`** — *optional.* Agreed rationale, rejected alternatives, and constraints that must
+  hold. It carries **no work items**: `address-review` reads it for context and executes only the
+  groups. Present when a human settled the approach before dispatch; absent in review-generated
+  files.
+- **`## Summary`** — what this file covers.
+- **`## Group N: Title`** — one or more. The unit `address-review` executes, in order. Each group
+  states what it addresses, which files it touches, its change type, and its parallelism — in
+  whatever labels its originating prompt prefers.
+
+A group's `**Change type:**` is routinely compound (`` `Grammar` + `API` ``) and is read by humans
+only; `propagate-changes` takes change types from the CHANGES record, not from here.
+
 ## Step index (`references/`)
 
 Dispatch the matching prompt on demand; do not read them all up front.
