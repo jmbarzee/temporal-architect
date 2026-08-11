@@ -1,0 +1,266 @@
+# impl: tools/sampler/temporal/workflows, tools/sampler/temporal/activities
+# =============================================================================
+# Namespace Sampler — parallel, observable history sampling as a Temporal system
+# =============================================================================
+# The durable twin of the single-process `sampler` CLI (tools/sampler). Instead
+# of one synchronous pull, the sample is orchestrated as a workflow tree so we
+# get the Web UI's live child/activity progress tree, a queryable progress
+# handler, durability/retries, and bounded fan-out concurrency.
+#
+# TWO NAMESPACES, DON'T CONFUSE THEM:
+#   - This *design's* namespace (`sampler`, below) is where the orchestration
+#     workflows and their worker live.
+#   - The *target* namespace being sampled (e.g. production.urgaq) is a plain
+#     string INPUT (req.namespace). All target-namespace IO happens inside the
+#     activities, which construct the sampling.Backend worker-side. A live
+#     Temporal client is NEVER carried through workflow state.
+#
+# WINDOW ALIGNMENT (the load-bearing invariant):
+#   observe.Merge sums per-edge bucket arrays index-wise, and bucket boundaries
+#   are absolute (anchored on Window.Since/Until). So EVERY partial graph must
+#   be built with the exact same Window. The starter resolves --since/--until to
+#   absolute RFC3339 (never a relative "24h" that would drift on replay), and the
+#   one Window in the request is threaded UNCHANGED to every SampleTypeWorkflow
+#   and every FetchFoldHistoryActivity. Nothing downstream recomputes it.
+#
+# TYPE COVERAGE (the sample's self-assessment):
+#   A sample is only as trustworthy as its type list — a type never discovered is
+#   a subgraph silently missing from the output, indistinguishable from a system
+#   that genuinely has no such workflow. Discovery can PROVE completeness (see
+#   EnumerateTypesActivity), so that proof is treated as a first-class result,
+#   not a log line: TypeCoverage travels with the graph through the child
+#   workflow, is exposed on the live progress query, and is written into the
+#   output artifact beside the ObservedGraph. A consumer can therefore tell an
+#   exhaustive graph from a partial one WITHOUT re-querying the namespace, which
+#   is the difference between "this is the system" and "this is some of it".
+#
+# DETERMINISM:
+#   Workflow code stays pure — no Count/List/GetHistory, no time.Now (the Window
+#   is already absolute in the input, so no clock read is needed). The pure,
+#   deterministic observe.Merge fold runs in workflow code; all Temporal-server
+#   IO is confined to the three activities.
+#
+# SECRETS:
+#   The target-namespace credential (Temporal Cloud API key / mTLS / bearer) is
+#   read inside the activities from the environment / secret store — never placed
+#   in workflow inputs, results, or search attributes, all of which persist in
+#   history. A short-lived browser JWT will expire mid-run; a durable run needs a
+#   long-lived credential (API key / mTLS) or a re-reading credentials callback.
+
+
+# =============================================================================
+# SampleNamespaceWorkflow — orchestrator (one per sample run)
+# =============================================================================
+# Discover the types (child), fan out one SampleTypeWorkflow per type with
+# bounded concurrency, fold the per-type ObservedGraphs with observe.Merge, and
+# return the merged graph PLUS its coverage assurance to the starter (which
+# writes observed-graph.json).
+
+workflow SampleNamespaceWorkflow(req: SampleRequest) -> (SampleResult):
+    state:
+        typesTotal = 0
+        typesDone = 0
+        executionsSampled = 0
+        # perType maps workflowType -> {sampled, target}; filled as types finish.
+        perType = {}
+        # coverage answers "is this graph the whole system?" — see TYPE COVERAGE.
+        coverage = TypeCoverage{}
+
+    # The point of the rebuild: live progress beyond the free Web UI tree.
+    # Coverage is included so an operator can tell mid-run whether the type list
+    # was proven complete, rather than discovering the gap after the fact.
+    query GetProgress() -> (SampleProgress):
+        return SampleProgress{typesTotal: typesTotal, typesDone: typesDone, executionsSampled: executionsSampled, perType: perType, coverage: coverage}
+
+    # --- Phase A: discover types (child wraps the discovery activity) ---
+    workflow EnumerateTypesWorkflow(EnumerateRequest{namespace: req.namespace, window: req.window}) -> discovery
+    typeCounts = discovery.typeCounts
+    coverage = discovery.coverage
+    typesTotal = typeCounts.length
+
+    # --- Phase B: one child per type, bounded fan-out ---
+    # K = req.typeConcurrency in-flight children. TWF expresses the fan-out as
+    # `await all`; the Go author bounds it with a workflow.NewSemaphore(K) so we
+    # don't hammer the target frontend / web API. The same req.window is threaded
+    # into every child unchanged (see WINDOW ALIGNMENT above).
+    await all:
+        for (tc in typeCounts):
+            workflow SampleTypeWorkflow(SampleTypeRequest{namespace: req.namespace, workflowType: tc.workflowType, target: sampleTarget(tc.count, req.samplePercent, req.minPerType), status: req.status, window: req.window, batchSize: req.batchSize, batchesPerRun: req.batchesPerRun, execConcurrency: req.execConcurrency}) -> tc.sample
+
+    # --- Phase C: fold per-type graphs (observe.Merge — pure + deterministic) ---
+    # Each child returns TypeSample{graph, sampled}. The Go author folds
+    # incrementally as each child future resolves (selector), updating the
+    # progress counters / perType map so GetProgress is live; the loop here is the
+    # design-level view of that fan-in.
+    merged = observe.New()
+    for (tc in typeCounts):
+        merged = observe.Merge(merged, tc.sample.graph)
+        typesDone = typesDone + 1
+        executionsSampled = executionsSampled + tc.sample.sampled
+        perType[tc.workflowType] = TypeProgress{sampled: tc.sample.sampled, target: tc.sample.target}
+
+    # The graph and the assurance about it are one artifact — a caller must not
+    # be able to hold the graph without the caveat that qualifies it.
+    close complete(SampleResult{graph: merged, coverage: coverage})
+
+
+# =============================================================================
+# EnumerateTypesWorkflow — "find the types" (child workflow)
+# =============================================================================
+# A thin child around the discovery activity so the "find the types" step shows
+# up as its own node in the Web UI progress tree and has its own failure/retry
+# boundary. Returns the distinct workflow types with their (filtered) counts,
+# and the coverage assurance describing how complete that list is.
+
+workflow EnumerateTypesWorkflow(req: EnumerateRequest) -> (TypeDiscovery):
+    activity EnumerateTypesActivity(req.namespace, req.window) -> discovery
+        options:
+            start_to_close_timeout: 5m
+            heartbeat_timeout: 60s
+            retry_policy:
+                maximum_attempts: 5
+                initial_interval: 2s
+                backoff_coefficient: 2.0
+    close complete(discovery)
+
+
+# =============================================================================
+# SampleTypeWorkflow — sample one workflow type (child workflow)
+# =============================================================================
+# Select this type's candidate executions, fan out the leaf activity over them
+# (batched + bounded), fold the partials with observe.Merge, return the per-type
+# ObservedGraph. Uses continue_as_new to bound its own history when a type has
+# many candidates: it processes req.batchesPerRun batches per run, carrying the
+# already-folded partial + a cursor forward.
+
+workflow SampleTypeWorkflow(req: SampleTypeRequest) -> (TypeSample):
+    query GetTypeProgress() -> (TypeProgress):
+        return TypeProgress{sampled: req.processed, target: req.target}
+
+    # First run selects the candidate executions once; continue-as-new runs carry
+    # them (plus the running partial + cursor) forward, so selection is not
+    # re-queried and stays stable across runs.
+    if (req.candidates == null):
+        activity SelectCandidatesActivity(SelectRequest{namespace: req.namespace, workflowType: req.workflowType, target: req.target, status: req.status, window: req.window}) -> selected
+        req.candidates = selected
+        req.accumulated = observe.New()
+        req.processed = 0
+
+    # Take up to req.batchesPerRun batches of req.batchSize executions this run.
+    # Each FetchFoldHistoryActivity grabs a batch's histories and folds them to
+    # one partial ObservedGraph (built with req.window). Bounded to
+    # req.execConcurrency in-flight via a Go semaphore.
+    wave = nextBatches(req.candidates, req.processed, req.batchSize, req.batchesPerRun)
+    await all:
+        for (batch in wave):
+            activity FetchFoldHistoryActivity(FetchRequest{namespace: req.namespace, executions: batch, window: req.window}) -> batch.graph
+                options:
+                    start_to_close_timeout: 10m
+                    heartbeat_timeout: 60s
+                    retry_policy:
+                        maximum_attempts: 5
+                        initial_interval: 2s
+                        backoff_coefficient: 2.0
+                        maximum_interval: 30s
+
+    # Fold this wave's partials into the running per-type graph (pure fold).
+    for (batch in wave):
+        req.accumulated = observe.Merge(req.accumulated, batch.graph)
+        req.processed = req.processed + batch.length
+
+    # More candidates remain → reset history and continue; else return the graph
+    # plus the count actually sampled (for the parent's progress + fold).
+    if (req.processed < req.candidates.length):
+        close continue_as_new(req)
+    close complete(TypeSample{graph: req.accumulated, sampled: req.processed, target: req.target})
+
+
+# =============================================================================
+# Activities — the only place target-namespace IO happens
+# =============================================================================
+
+activity EnumerateTypesActivity(namespace: string, window: Window) -> (TypeDiscovery):
+    # Construct the sampling.Backend worker-side (credential read from env /
+    # secret store — never from workflow input). Read-only → retries safe.
+    #
+    # The type list is DISCOVERED, not counted: no Temporal server supports
+    # CountWorkflowExecutions GROUP BY WorkflowType (GROUP BY is implemented for
+    # ExecutionStatus only), and the alternative — a paginated ListWorkflow scan —
+    # is O(executions), ~16k calls on a 16M-execution namespace against a 30 RPS
+    # Visibility limit.
+    #
+    # Instead, discovery runs an EXCLUSION loop: every query carries
+    # `WorkflowType != <each known type>`, so the server only returns types we
+    # have not seen. Two properties follow, and they are why this scales:
+    #   - Guaranteed progress — any returned row is a new type by construction,
+    #     so the loop is O(types), not O(executions), and never depends on a
+    #     random sample getting lucky against a type with 3M executions.
+    #   - Proven termination — Count over that same excluded set says how many
+    #     executions still have an unknown type. Zero means the list is provably
+    #     complete for the window; non-zero is an honest shortfall metric.
+    # Stratified time-slice probes run alongside as an accelerant (several new
+    # types per round), seeded from workflow input so replays probe identically.
+    # Each type is then sized with the supported filtered Count (WorkflowType='X').
+    #
+    # NOT IN is not a supported List Filter operator, so exclusion is chained !=,
+    # which bounds how many types a single query can exclude.
+    #
+    # An explicit type list skips the loop but still runs one verification count,
+    # so a caller-supplied list reports whether it actually covers the namespace.
+    #
+    # Types reachable only through relationships are closed over while sampling:
+    # histories name child types outright, and parents / roots / signal targets
+    # are resolved from workflow ID to type in batched IN queries.
+    #
+    # Returns TypeDiscovery{typeCounts, coverage}: the coverage half is the
+    # termination proof (exhaustive + how many executions remain unaccounted
+    # for), propagated upward so the final artifact can state whether the graph
+    # is the whole system or only part of it.
+    backend = connectBackend(namespace)
+    discovered = sampling.DiscoverTypes(backend, namespace, window, discovery)
+    return TypeDiscovery{typeCounts: sampling.CountTypes(backend, namespace, discovered.types, window), coverage: discovered.coverage}
+
+activity SelectCandidatesActivity(req: SelectRequest) -> (ExecutionList):
+    # Choose up to req.target candidate executions for one workflow type,
+    # preferring running executions then topping up with closed ones (skipping
+    # the prefer-running pass when a status filter is set). Applies the same
+    # window/status filters as enumeration so counts and candidates agree.
+    # Returns lightweight {workflowID, runID} refs only — no history, no client.
+    backend = connectBackend(req.namespace)
+    return sampling.SelectCandidates(backend, req.namespace, req.workflowType, req.target, req.status, req.window)
+
+activity FetchFoldHistoryActivity(req: FetchRequest) -> (ObservedGraph):
+    # THE leaf unit that fans back in: for each execution in the batch, download
+    # its full event history (paginated), then fold the whole batch to one
+    # partial ObservedGraph via history.Build(histories, {namespace, window}).
+    # Heartbeat while paginating (report executions + pages/events downloaded) so
+    # a long batch is observable and resumable. History fetch + fold is read-only
+    # and idempotent → a normal retry policy is safe. Built with req.window so the
+    # partial is index-aligned with every other partial for observe.Merge.
+    backend = connectBackend(req.namespace)
+    histories = []
+    for (exec in req.executions):
+        events = fetchFullHistory(backend, req.namespace, exec)   # paginate + heartbeat
+        histories.append(History{workflowID: exec.workflowID, namespace: req.namespace, events: events})
+    return history.Build(histories, HistoryOptions{namespace: req.namespace, window: req.window})
+
+
+# =============================================================================
+# Worker & Namespace (the sampler's own control plane, not the target)
+# =============================================================================
+# Bound fan-out at the worker too (MaxConcurrentActivityExecutionSize /
+# MaxConcurrentWorkflowTaskExecutionSize) so the in-workflow semaphores and the
+# worker limits together cap load on the target frontend / web API.
+
+worker samplerWorker:
+    workflow SampleNamespaceWorkflow
+    workflow EnumerateTypesWorkflow
+    workflow SampleTypeWorkflow
+    activity EnumerateTypesActivity
+    activity SelectCandidatesActivity
+    activity FetchFoldHistoryActivity
+
+namespace sampler:
+    worker samplerWorker
+        options:
+            task_queue: "sampler"

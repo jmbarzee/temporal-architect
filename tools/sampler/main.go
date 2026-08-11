@@ -11,7 +11,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,23 +19,28 @@ import (
 	"strings"
 	"time"
 
-	"go.temporal.io/sdk/client"
-
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/history"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/sampling"
+	"github.com/jmbarzee/temporal-architect/tools/sampler/transport"
 )
 
 type options struct {
 	address     string
 	namespace   string
+	transport   string
+	callerType  string
+	bearerFile  string
 	tlsCertPath string
 	tlsKeyPath  string
+	tls         bool
 	out         string
 
-	samplePercent int
-	minPerType    int
-	buckets       int
+	samplePercent  int
+	minPerType     int
+	buckets        int
+	scanLimit      int
+	noScanFallback bool
 
 	// since / until are the raw --since / --until flag values (RFC3339 or a
 	// duration like "24h"), parsed into a StartTime window in run. They both
@@ -63,14 +67,20 @@ func main() {
 func parseFlags(args []string) options {
 	fs := flag.NewFlagSet("sampler", flag.ExitOnError)
 	var opts options
-	fs.StringVar(&opts.address, "address", "127.0.0.1:7233", "Temporal frontend host:port")
-	fs.StringVar(&opts.namespace, "namespace", "default", "Namespace to sample")
+	fs.StringVar(&opts.address, "address", "127.0.0.1:7233", "Temporal frontend host:port (grpc), or web API base URL host (http), e.g. production.urgaq.web.tmprl.cloud")
+	fs.StringVar(&opts.namespace, "namespace", "default", "Namespace to sample (on Temporal Cloud use the fully-qualified <namespace>.<account>, e.g. production.urgaq)")
+	fs.StringVar(&opts.transport, "transport", "grpc", "Transport to reach Temporal: grpc (SDK) or http (Cloud web API; bearer token via TEMPORAL_API_KEY)")
+	fs.StringVar(&opts.callerType, "caller-type", "operator", "caller-type header sent on http transport (Cloud web API expects operator)")
+	fs.StringVar(&opts.bearerFile, "bearer-file", "", "Path to a file holding the bearer token, re-read before every request; survives a rotating short-lived token. Falls back to TEMPORAL_API_KEY when unset")
 	fs.StringVar(&opts.tlsCertPath, "tls-cert-path", "", "Client TLS certificate (mTLS)")
 	fs.StringVar(&opts.tlsKeyPath, "tls-key-path", "", "Client TLS private key (mTLS)")
+	fs.BoolVar(&opts.tls, "tls", false, "Enable server TLS without mTLS (implied when a bearer token is set via TEMPORAL_API_KEY)")
 	fs.StringVar(&opts.out, "out", "./", "Output path for the observed-graph JSON (a directory receives observed-graph.json)")
 	fs.IntVar(&opts.samplePercent, "sample-percent", 10, "Percent of each type's executions to sample")
 	fs.IntVar(&opts.minPerType, "min-per-type", 5, "Minimum executions to sample per type")
 	fs.IntVar(&opts.buckets, "buckets", 1, "Number of equal-width time buckets to divide [--since, --until] into (1 = a single total). >1 requires --since")
+	fs.IntVar(&opts.scanLimit, "scan-limit", sampling.DefaultScanLimit, "Cap on the ListWorkflow fallback scan (used only when CountWorkflowExecutions GROUP BY is unavailable) before it aborts; <0 = unbounded. Guards against an O(executions) walk of a huge namespace on a bad credential")
+	fs.BoolVar(&opts.noScanFallback, "no-scan-fallback", false, "Fail enumeration immediately if the O(1) grouped Count is unavailable, instead of falling back to a full ListWorkflow scan")
 	fs.StringVar(&opts.since, "since", "", "StartTime lower bound / bucket epoch: RFC3339 timestamp or duration like 24h (relative to now)")
 	fs.StringVar(&opts.until, "until", "", "StartTime upper bound / bucket window end: RFC3339 timestamp or duration like 1h (defaults to now)")
 	fs.StringVar(&opts.status, "status", "", "ExecutionStatus filter (e.g. Running, Completed, Failed)")
@@ -129,19 +139,21 @@ func run(ctx context.Context, opts options) error {
 		window.Until = until.UTC().Format(time.RFC3339)
 	}
 
-	c, err := dial(opts)
+	backend, cleanup, err := connect(opts)
 	if err != nil {
-		return fmt.Errorf("connect to %s: %w", opts.address, err)
+		return err
 	}
-	defer c.Close()
+	defer cleanup()
 
-	histories, err := sampling.Sample(ctx, c, sampling.Options{
-		Namespace:     opts.namespace,
-		SamplePercent: opts.samplePercent,
-		MinPerType:    opts.minPerType,
-		Status:        opts.status,
-		Since:         since,
-		Until:         until,
+	histories, err := sampling.Sample(ctx, backend, sampling.Options{
+		Namespace:           opts.namespace,
+		SamplePercent:       opts.samplePercent,
+		MinPerType:          opts.minPerType,
+		Status:              opts.status,
+		Since:               since,
+		Until:               until,
+		ScanLimit:           opts.scanLimit,
+		DisableScanFallback: opts.noScanFallback,
 	})
 	if err != nil {
 		return err
@@ -190,21 +202,19 @@ func writeObservedGraph(path string, og *observe.ObservedGraph) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-// dial opens a Temporal client, configuring mTLS when both cert and key
-// paths are provided.
-func dial(opts options) (client.Client, error) {
-	co := client.Options{
-		HostPort:  opts.address,
-		Namespace: opts.namespace,
-	}
-	if opts.tlsCertPath != "" && opts.tlsKeyPath != "" {
-		cert, err := tls.LoadX509KeyPair(opts.tlsCertPath, opts.tlsKeyPath)
-		if err != nil {
-			return nil, fmt.Errorf("load TLS key pair: %w", err)
-		}
-		co.ConnectionOptions = client.ConnectionOptions{
-			TLS: &tls.Config{Certificates: []tls.Certificate{cert}},
-		}
-	}
-	return client.Dial(co)
+// connect builds the sampling backend for the selected transport, delegating to
+// the shared transport package (which the Temporal worker's activities also use)
+// so there is one connection/auth implementation. The credential is resolved
+// from --bearer-file / TEMPORAL_API_KEY inside transport.Connect.
+func connect(opts options) (sampling.Backend, func(), error) {
+	return transport.Connect(transport.Config{
+		Address:     opts.address,
+		Namespace:   opts.namespace,
+		Transport:   opts.transport,
+		CallerType:  opts.callerType,
+		BearerFile:  opts.bearerFile,
+		TLSCertPath: opts.tlsCertPath,
+		TLSKeyPath:  opts.tlsKeyPath,
+		TLS:         opts.tls,
+	})
 }

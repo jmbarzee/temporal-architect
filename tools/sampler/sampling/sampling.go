@@ -23,6 +23,18 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/sampler/history"
 )
 
+// Backend is the subset of the Temporal SDK client the sampler depends on:
+// the three read RPCs used across enumeration, candidate selection, and history
+// download. *client.Client (the gRPC transport) satisfies it directly, and the
+// webapi package provides an HTTP-API implementation for Temporal Cloud's web
+// endpoint (where a browser-scoped bearer token is the only credential). This
+// seam is what lets one bearer token drive the sampler over either transport.
+type Backend interface {
+	CountWorkflow(ctx context.Context, request *workflowservice.CountWorkflowExecutionsRequest) (*workflowservice.CountWorkflowExecutionsResponse, error)
+	ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error)
+	GetWorkflowHistory(ctx context.Context, workflowID string, runID string, isLongPoll bool, filterType enumspb.HistoryEventFilterType) client.HistoryEventIterator
+}
+
 // Options configures one Sample call. Namespace is required; the returned
 // histories are tagged with it so history.Build groups them correctly.
 type Options struct {
@@ -37,6 +49,41 @@ type Options struct {
 	// candidate selection. A zero time means that side is unbounded.
 	Since time.Time
 	Until time.Time
+
+	// ScanLimit / DisableScanFallback govern the enumeration safety valve used
+	// when the O(1) grouped Count is unavailable (see EnumeratePolicy). Zero
+	// ScanLimit uses DefaultScanLimit.
+	ScanLimit           int
+	DisableScanFallback bool
+}
+
+// DefaultScanLimit caps the ListWorkflow fallback scan (used only when the O(1)
+// grouped Count is unavailable) so a failed/expired credential or an
+// unsupported GROUP BY cannot trigger an O(executions) walk of a large
+// namespace (e.g. millions of rows). Callers may raise it, allow an unbounded
+// scan with a negative value, or disable the fallback outright.
+const DefaultScanLimit = 200_000
+
+// EnumeratePolicy governs the enumeration safety valve: what happens when the
+// preferred O(1) grouped Count (CountWorkflowExecutions GROUP BY WorkflowType)
+// is unavailable and enumeration would otherwise fall back to a paginated
+// ListWorkflow scan of the whole namespace.
+type EnumeratePolicy struct {
+	// ScanLimit caps how many executions the fallback scan pages through before
+	// aborting with an error. 0 uses DefaultScanLimit; a negative value allows an
+	// unbounded scan (not recommended on large namespaces).
+	ScanLimit int
+	// DisableScanFallback makes enumeration fail immediately when grouped Count is
+	// unavailable, instead of scanning at all — the safest setting for a durable
+	// run pointed at a large namespace.
+	DisableScanFallback bool
+}
+
+func (p EnumeratePolicy) scanLimit() int {
+	if p.ScanLimit == 0 {
+		return DefaultScanLimit
+	}
+	return p.ScanLimit
 }
 
 // Sample pulls a bounded, representative sample of workflow histories from the
@@ -45,10 +92,16 @@ type Options struct {
 // Phase A enumerates the distinct workflow types and their counts. Phase B,
 // for each type, selects max(MinPerType, ceil(SamplePercent% * count))
 // executions (preferring running ones) and downloads their full histories.
-func Sample(ctx context.Context, c client.Client, opts Options) ([]history.History, error) {
-	f := filters{status: opts.Status, since: opts.Since, until: opts.Until}
+// Selection goes through the exported SelectExecutions — the same call the
+// parallel Temporal path makes — so both paths pick the identical execution set
+// for identical inputs. (They previously diverged: this path selected from the
+// enumeration scan's in-memory candidates while the parallel path re-queried per
+// type, which only agreed for an exhaustive sample.)
+func Sample(ctx context.Context, c Backend, opts Options) ([]history.History, error) {
+	sel := Selector{Status: opts.Status, Since: opts.Since, Until: opts.Until}
+	pol := EnumeratePolicy{ScanLimit: opts.ScanLimit, DisableScanFallback: opts.DisableScanFallback}
 
-	counts, candidates, err := enumerate(ctx, c, opts.Namespace, f)
+	counts, err := enumerate(ctx, c, opts.Namespace, sel.filters(), pol)
 	if err != nil {
 		return nil, fmt.Errorf("enumerate workflow types: %w", err)
 	}
@@ -67,26 +120,18 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 			continue
 		}
 
-		var selected []candidate
-		if candidates != nil {
-			// Fallback path already has every candidate in memory.
-			selected = selectCandidates(candidates[wfType], n)
-		} else {
-			// GROUP BY path: query just the executions we will keep.
-			cands, err := queryByType(ctx, c, opts.Namespace, wfType, n, f)
-			if err != nil {
-				return nil, fmt.Errorf("query %q executions: %w", wfType, err)
-			}
-			selected = selectCandidates(cands, n)
+		selected, err := SelectExecutions(ctx, c, opts.Namespace, wfType, n, sel)
+		if err != nil {
+			return nil, err
 		}
 
-		for _, cand := range selected {
-			events, err := fetchHistory(ctx, c, cand)
+		for _, e := range selected {
+			events, err := fetchHistory(ctx, c, candidate{workflowID: e.WorkflowID, runID: e.RunID, running: e.Running})
 			if err != nil {
-				return nil, fmt.Errorf("fetch history %s/%s: %w", wfType, cand.workflowID, err)
+				return nil, fmt.Errorf("fetch history %s/%s: %w", wfType, e.WorkflowID, err)
 			}
 			out = append(out, history.History{
-				WorkflowID: cand.workflowID,
+				WorkflowID: e.WorkflowID,
 				Namespace:  opts.Namespace,
 				Events:     events,
 			})
@@ -95,25 +140,43 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 	return out, nil
 }
 
-// enumerate returns the per-type execution counts and, when the fallback scan
-// is used, the candidate executions per type (so Phase B need not re-query).
+// enumerate returns the per-type execution counts.
 //
 // It first tries CountWorkflowExecutions with GROUP BY WorkflowType (one cheap
 // call, no per-execution listing). When the server doesn't support that
-// grouping, it falls back to a paginated ListWorkflow scan that yields counts
-// and candidates together.
-func enumerate(ctx context.Context, c client.Client, namespace string, f filters) (counts map[string]int, candidates map[string][]candidate, err error) {
-	if counts, err = countByType(ctx, c, namespace, f); err == nil && len(counts) > 0 {
-		return counts, nil, nil
+// grouping, it falls back — subject to the EnumeratePolicy — to a paginated
+// ListWorkflow scan that yields counts and candidates together. The policy caps
+// (or disables) that fallback so a failed/expired credential or an unsupported
+// GROUP BY can't trigger an O(executions) walk of a large namespace.
+func enumerate(ctx context.Context, c Backend, namespace string, f filters, pol EnumeratePolicy) (map[string]int, error) {
+	counts, cerr := countByType(ctx, c, namespace, f)
+	if cerr == nil && len(counts) > 0 {
+		return counts, nil
 	}
-	return scanByType(ctx, c, namespace, f)
+	if pol.DisableScanFallback {
+		if cerr == nil {
+			cerr = fmt.Errorf("grouped Count returned no groups")
+		}
+		return nil, fmt.Errorf("grouped CountWorkflowExecutions unavailable and scan fallback disabled: %w", cerr)
+	}
+	return scanByType(ctx, c, namespace, f, pol.scanLimit())
 }
 
 // countByType enumerates types and counts via a single grouped Count call,
 // applying any active filters so the counts match the filtered candidate path.
 // Returns an error when the server ignores GROUP BY (no groups), so the caller
 // falls back to a scan.
-func countByType(ctx context.Context, c client.Client, namespace string, f filters) (map[string]int, error) {
+//
+// KNOWN LIMITATION: no Temporal server supports this today. `GROUP BY` is
+// implemented only for ExecutionStatus — Cloud and OSS alike reject
+// `GROUP BY WorkflowType` with "operation is not supported: 'group by' clause is
+// only supported for ExecutionStatus search attribute". So this call currently
+// ALWAYS fails and enumeration always takes the scan fallback. It is kept
+// because it is the correct O(1) request the moment grouping by arbitrary search
+// attributes ships (promised "in a future release" since v1.20), and because the
+// wasted call is one request per run. Replacing it needs a different strategy for
+// discovering the distinct type list — see the sampler README.
+func countByType(ctx context.Context, c Backend, namespace string, f filters) (map[string]int, error) {
 	resp, err := c.CountWorkflow(ctx, &workflowservice.CountWorkflowExecutionsRequest{
 		Namespace: namespace,
 		Query:     countQuery(f),
@@ -145,10 +208,15 @@ func countByType(ctx context.Context, c client.Client, namespace string, f filte
 // per-type counts and the candidate execution lists. Portable fallback for
 // servers without GROUP BY support. Any active filters are applied via the
 // list query so the fallback's counts match the filtered candidate path.
-func scanByType(ctx context.Context, c client.Client, namespace string, f filters) (map[string]int, map[string][]candidate, error) {
+// limit caps how many executions are paged before the scan aborts (see
+// EnumeratePolicy); limit <= 0 means unbounded.
+// It accumulates only per-type COUNTS, never the executions themselves: on a
+// large namespace holding every candidate in memory is what makes this path
+// untenable, and selection re-queries per type anyway (see Sample).
+func scanByType(ctx context.Context, c Backend, namespace string, f filters, limit int) (map[string]int, error) {
 	counts := map[string]int{}
-	byType := map[string][]candidate{}
 	query := scanQuery(f)
+	total := 0
 	var token []byte
 	for {
 		resp, err := c.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
@@ -158,26 +226,23 @@ func scanByType(ctx context.Context, c client.Client, namespace string, f filter
 			NextPageToken: token,
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		for _, info := range resp.GetExecutions() {
-			wfType := info.GetType().GetName()
-			if wfType == "" {
-				continue
+			if wfType := info.GetType().GetName(); wfType != "" {
+				counts[wfType]++
 			}
-			counts[wfType]++
-			byType[wfType] = append(byType[wfType], candidate{
-				workflowID: info.GetExecution().GetWorkflowId(),
-				runID:      info.GetExecution().GetRunId(),
-				running:    info.GetStatus() == enumspb.WORKFLOW_EXECUTION_STATUS_RUNNING,
-			})
+		}
+		total += len(resp.GetExecutions())
+		if limit > 0 && total > limit {
+			return nil, fmt.Errorf("enumeration scan exceeded %d executions in namespace %q; refusing a full O(executions) walk (grouped Count is unavailable — no server supports GROUP BY WorkflowType — so raise --scan-limit if this namespace really must be scanned, or narrow the window with --since/--until)", limit, namespace)
 		}
 		token = resp.GetNextPageToken()
 		if len(token) == 0 {
 			break
 		}
 	}
-	return counts, byType, nil
+	return counts, nil
 }
 
 // queryByType pulls up to n candidate executions for one workflow type,
@@ -186,7 +251,7 @@ func scanByType(ctx context.Context, c client.Client, namespace string, f filter
 // with the rest; when a status filter is set the prefer-running pass is
 // skipped so the two never contradict. Used by the GROUP BY path so we list
 // only the executions we will keep.
-func queryByType(ctx context.Context, c client.Client, namespace, wfType string, n int, f filters) ([]candidate, error) {
+func queryByType(ctx context.Context, c Backend, namespace, wfType string, n int, f filters) ([]candidate, error) {
 	seen := map[string]bool{}
 	var out []candidate
 
@@ -207,7 +272,7 @@ func queryByType(ctx context.Context, c client.Client, namespace, wfType string,
 
 // pageInto appends candidates matching query (deduped by workflow ID) into out
 // until it holds limit entries or the result set is exhausted.
-func pageInto(ctx context.Context, c client.Client, namespace, query string, limit int, seen map[string]bool, out *[]candidate) error {
+func pageInto(ctx context.Context, c Backend, namespace, query string, limit int, seen map[string]bool, out *[]candidate) error {
 	var token []byte
 	for len(*out) < limit {
 		resp, err := c.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
@@ -243,7 +308,7 @@ func pageInto(ctx context.Context, c client.Client, namespace, query string, lim
 }
 
 // fetchHistory drains the full event history for one execution.
-func fetchHistory(ctx context.Context, c client.Client, cand candidate) ([]*historypb.HistoryEvent, error) {
+func fetchHistory(ctx context.Context, c Backend, cand candidate) ([]*historypb.HistoryEvent, error) {
 	iter := c.GetWorkflowHistory(ctx, cand.workflowID, cand.runID, false,
 		enumspb.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT)
 	var events []*historypb.HistoryEvent
