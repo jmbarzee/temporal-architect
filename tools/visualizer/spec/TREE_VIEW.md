@@ -244,7 +244,7 @@ Every block in the tree view supports **contextual navigation** — small action
 | Worker definition | Show namespace, Show in Graph |
 | Namespace definition | Show in Graph |
 | Call block (activity/workflow/nexus call) | Show definition, Show in Graph |
-| Handler declaration (signal/query/update) | Show callers *(future — requires send-side DSL syntax)* |
+| Handler declaration (signal/query/update) | Show callers *(deferred — [#46](https://github.com/jmbarzee/temporal-architect/issues/46))* |
 
 Buttons only appear when the action has at least one valid target. If a definition has no callers, "Show callers" does not appear.
 
@@ -274,7 +274,7 @@ The tree view is a flat list of definitions filtered by type, source file, and s
 - **Grouped headers** — When many definitions are visible, consider grouping by source file with collapsible file-level headers. This adds a navigation layer between "everything" and "individual definition" without changing the filter model.
 - **Search-first discovery** — At scale, browsing becomes impractical. The search bar becomes the primary navigation tool. Search should feel instant (no debounce delay at <500 definitions) and highlight matches in-place.
 
-These are progressive enhancements — the current flat-list-with-filters approach works well at the expected scale of most TWF projects. Add virtualization and grouping when real usage demonstrates the need.
+None of the three is implemented. The flat-list-with-filters approach works well at the expected scale of most TWF projects, so they stay deferred rather than pre-built — virtualized rendering is tracked as [#87](https://github.com/jmbarzee/temporal-architect/issues/87).
 
 
 ## Live Reload
@@ -304,9 +304,9 @@ The tree view supports keyboard navigation following the same model as VS Code's
 
 The currently focused block has a visible focus ring (distinct from hover and selection styles). Focus follows keyboard navigation and is independent of mouse hover.
 
-### Bulk Expand/Collapse (future)
+### Bulk Expand/Collapse
 
-For large ASTs with many definitions, expanding one at a time can be tedious. A future keyboard shortcut (e.g., **Ctrl+Shift+→** to expand all at the current level, **Ctrl+Shift+←** to collapse all) would help.
+Deferred — [#50](https://github.com/jmbarzee/temporal-architect/issues/50). For large ASTs with many definitions, expanding one at a time is tedious; a keyboard shortcut (e.g. **Ctrl+Shift+→** to expand all at the current level, **Ctrl+Shift+←** to collapse all) would address it.
 
 ### Accessibility
 

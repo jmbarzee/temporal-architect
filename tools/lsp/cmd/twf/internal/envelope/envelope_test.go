@@ -78,9 +78,9 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 				t.Errorf("start.line = 0, want >0 for diagnostic %+v", found)
 			}
 			if found.End != found.Start {
-				// End is allowed to differ once span tracking lands. For now
-				// the contract is end == start; flag drift so the test stays
-				// honest as that contract changes.
+				// The contract is end == start: diagnostics carry a point, not a
+				// span. Log rather than fail, so that widening it to a real span
+				// surfaces here instead of silently breaking the assertion.
 				t.Logf("end != start (span tracking has been added): %+v", found)
 			}
 			if found.File == "" {

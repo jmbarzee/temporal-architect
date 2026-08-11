@@ -150,7 +150,7 @@ Each force has a **strength** parameter that controls its magnitude. These stren
 A force-directed graph is a free-floating cloud by default — held together but not held *anywhere*. Gravity supplies cohesion and structure as **three independent, toggleable forces**:
 
 - **Band** — each node type has a rest band; the hierarchy reads from the bands. A node inside its band feels nothing; outside, it is pulled back with force `strength × dᵉˣᵖ` where `d` is the distance past the nearest band edge (`exp = 1` is the linear/Hooke spring). The bands are stored *relatively* and re-centred each tick on the **median** of the visible types' band centres, so editing or toggling them doesn't shift the whole graph.
-- **Topological** — a single-sided inward pull whose strength scales with a node's **downstream depth** (how many call-levels deep its subtree runs, linearly normalized): orchestrators atop deep call chains are drawn toward the focal point, leaves are left to charge. Depth is naturally tiered rather than combinatorially heavy-tailed (unlike raw reach count), so no log compression is needed. Depth is **propagated up the containment hierarchy** (a worker/service/namespace is scored at least as deep as anything it hosts) so the pull never drags a deep workflow above its own container — keeping it aligned with, rather than fighting, the bands. Origin-relative, so it is independent of the bands.
+- **Topological** — a single-sided inward pull whose strength scales with a node's **downstream depth** (how many call-levels deep its subtree runs, linearly normalized): orchestrators atop deep call chains are drawn toward the focal point, leaves are left to charge. Depth is naturally tiered rather than combinatorially heavy-tailed (unlike raw reach count), so no log compression is needed. Out-degree was considered as a secondary or blended signal and rejected: it is too local and too noisy to stand in for root-ness — a node with many immediate children but shallow subtrees is not an orchestrator. Depth is **propagated up the containment hierarchy** (a worker/service/namespace is scored at least as deep as anything it hosts) so the pull never drags a deep workflow above its own container — keeping it aligned with, rather than fighting, the bands. Origin-relative, so it is independent of the bands.
 - **Center** — a radial pull toward the world origin. It is the unexplained baseline: active only when neither Band nor Topological is on, keeping the graph cohesive and anchored. (Not surfaced as a control.)
 
 Band and Topological are interpreted through a **mode**:
@@ -503,7 +503,7 @@ Simulation controls live in the bottom-right corner (see § Bottom Controls), no
 
 **Adaptive curve gridlines.** The force-response curves (the Graph) draw light value-anchored vertical gridlines at a "nice" step. Because the curves' x-domain grows/shrinks as parameters change, the gridlines visibly re-space (the step jumps to keep ~6 divisions), signalling that the scale changed.
 
-**Future:** Named presets (e.g., "Tight clusters", "Spread out") that animate sliders to known-good values.
+Named presets (e.g. "Tight clusters", "Spread out") that animate sliders to known-good values are deferred — [#51](https://github.com/jmbarzee/temporal-architect/issues/51).
 
 ---
 
@@ -662,9 +662,9 @@ Deferred. See [#48](https://github.com/jmbarzee/temporal-architect/issues/48) (N
 
 Deferred alongside selection. See [#48](https://github.com/jmbarzee/temporal-architect/issues/48) (Node Selection + Info Panel).
 
-### Multi-Select (future consideration)
+### Multi-Select
 
-Lasso or modifier+click to select multiple nodes. Useful for "what connects these two namespaces?" queries. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Keyboard Modifier Vocabulary for modifier key assignments — multi-select should use Ctrl/Meta+click (not Shift, which is reserved for dependency direction).
+Deferred — [#50](https://github.com/jmbarzee/temporal-architect/issues/50). Lasso or modifier+click to select multiple nodes. Useful for "what connects these two namespaces?" queries. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Keyboard Modifier Vocabulary for modifier key assignments — multi-select should use Ctrl/Meta+click (not Shift, which is reserved for dependency direction).
 
 ### Hotkey Discoverability
 
@@ -798,42 +798,6 @@ The decomposition may carry `suggestContract` advisories (a heavily-shared hub
 that is an articulation point — a candidate Nexus contract boundary). Surfacing
 these in the graph (e.g. a node badge) is **deferred**; see
 [#44](https://github.com/jmbarzee/temporal-architect/issues/44).
-
----
-
-## Future: Message Flow Edges
-
-The current graph models **call** relationships (workflow calls workflow, workflow calls activity). Temporal workflows also communicate through **messages** — signals, queries, and updates — which represent a different kind of dependency.
-
-### Vision
-
-The DSL supports handle-bound signal sends today (the parser emits a `signalSend` edge); typed query/update sends remain deferred ([#12](https://github.com/jmbarzee/temporal-architect/issues/12)). With those, the graph can derive **message flow edges** alongside call edges ([#46](https://github.com/jmbarzee/temporal-architect/issues/46)):
-
-- **Workflow → Workflow** ("signals/queries/updates") — WorkflowA sends a signal to WorkflowB.
-
-These are visually distinct from call edges (different line style or color) and toggleable — the user can show/hide message flow edges independently to manage visual complexity.
-
-Message flow edges participate in the same systems as call edges:
-- Graph coarsening projects them up to Worker → Worker and Namespace → Namespace.
-- Transitive hover highlights follow them.
-- Search and filtering apply to them.
-
-### Data Contract (not yet available)
-
-Requires the parser to emit typed send statements in the AST with:
-- Source workflow (the sender)
-- Target workflow (the receiver)
-- Handler name (which signal/query/update)
-- Message type (signal vs query vs update)
-
-The DSL does not currently support send-side syntax. This feature is blocked on DSL and parser work.
-
-### Design Anticipation
-
-The edge data model, visual encoding tables, and interaction specs in this document are designed to accommodate message flow edges without structural changes. When the data becomes available:
-- Add a new edge type to the Fundamental Edges table.
-- Add a row to the Edge Appearance table (distinct line style for message flows).
-- Add a toggle to the filter controls for message flow visibility.
 
 ---
 

@@ -31,9 +31,8 @@ export interface NodeTypeDefinition {
    * 'main'  — standard Temporal deployment path (namespace → worker → workflow/activity)
    * 'nexus' — Nexus addressing path (namespace → endpoint; worker → service → operation)
    *
-   * Currently docs-only: not consumed by any layout logic in this revision.
-   * Introduced as a stable field so a future X-axis separation feature can
-   * read it without a schema change.
+   * Docs-only: no layout logic reads it. It is kept on the registry as a
+   * stable field so a consumer can start reading it without a schema change.
    */
   ladder: 'main' | 'nexus'
   /**
@@ -43,8 +42,8 @@ export interface NodeTypeDefinition {
    * 'orchestrator' — callable units that orchestrate work (workflow, nexusOperation)
    * 'leaf'         — leaf execution units (activity)
    *
-   * Registry-private this revision: consumers derive sizing and summary
-   * kind from the explicit registry fields rather than switching on tier.
+   * Registry-private: consumers derive sizing and summary kind from the
+   * explicit registry fields rather than switching on tier.
    */
   tier: 'container' | 'host' | 'orchestrator' | 'leaf'
   /**

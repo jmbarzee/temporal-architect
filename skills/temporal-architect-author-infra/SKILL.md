@@ -103,7 +103,7 @@ Two things the infra author needs are **not yet expressible in `.twf`**:
 - **Nexus endpoint access policy** — which caller namespaces may invoke an endpoint (`allowed_caller_namespaces` / `--allow-namespace`). Tracked as [#8](https://github.com/jmbarzee/temporal-architect/issues/8).
 - **Custom search attributes** — namespace-level attribute declarations (name + type). Tracked as [#8](https://github.com/jmbarzee/temporal-architect/issues/8).
 
-Until the grammar lands, **ask the user** for these (or read an interim annotation if the project uses one) rather than inventing them. Do not default an endpoint to "allow all callers" or guess attribute types — both are security- and schema-relevant. When the DSL backlog items are promoted, this skill consumes them from the topology like any other resource and the asking step drops away.
+Until the grammar lands, **ask the user** for these (or read an interim annotation if the project uses one) rather than inventing them. Do not default an endpoint to "allow all callers" or guess attribute types — both are security- and schema-relevant. When [#8](https://github.com/jmbarzee/temporal-architect/issues/8) lands, this skill consumes them from the topology like any other resource and the asking step drops away.
 
 ---
 
