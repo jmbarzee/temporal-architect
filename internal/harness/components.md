@@ -44,6 +44,14 @@ When a component's `CHANGES` file is propagated, each non-`Internal` change type
 specific review in the downstream component (transcribed for `propagate-changes`). `Internal`
 changes never propagate.
 
+**This table is a floor, not the whole map.** It encodes the edges that are always true, so an
+author who forgets a consumer is still caught. It cannot know a specific obligation — *"the
+author-go skill needs a reference file for this construct"* — because that depends on the change,
+not on the graph. So a CHANGES record's `## Downstream propagation` section is **authoritative
+beyond this table**: a component named there gets a review even with no edge here, and its review
+prompt comes from the Components table above. Both directions of mismatch are reported by
+`propagate-changes`, and neither silently wins.
+
 | Source | Change type | Triggers (downstream → review) |
 |---|---|---|
 | `dsl` | Grammar | `parser` → `review-alignment-parser` |

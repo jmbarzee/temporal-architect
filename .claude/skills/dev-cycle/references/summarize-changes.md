@@ -67,6 +67,10 @@ Walk each `CHANGES_*.md` and collect:
 - every item under **Deferred**
 - every open question or "owed" note in the body
 
+**Do not re-derive which propagations were executed.** `propagate-changes` Phase 4 already reports, per bullet, which REVISIONS file carried it and which bullets had no carrier (including back-edge bullets it declined to write). Take that report as the answer where you have it; walk the records yourself only to catch bullets from a component whose propagation step never ran.
+
+**Skip any `## Design` preamble in a REVISIONS file.** It is agreed rationale, not owed work — harvesting it would file issues for decisions that were already made.
+
 Present them as a checklist with a proposed issue title and area label for each, so the
 operator can approve the batch in one pass:
 

@@ -106,8 +106,8 @@ Write `internal/changes/{component}/CHANGES_{NNN}.md` using the next available s
 [Refactors with no downstream contract impact — list each briefly]
 
 ## Downstream propagation
-[Every consumer this change obligates, per the manifest's propagation routing —
- one bullet each, naming the component and the specific work owed.
+[Every consumer this change obligates — one bullet each. Start the bullet with the
+ component name as its leading token, then state the specific work owed.
  Write `None — leaf change.` if there genuinely is none.]
 
 ## Deferred
@@ -119,6 +119,10 @@ Write `internal/changes/{component}/CHANGES_{NNN}.md` using the next available s
 Within **Changes by Type**, only include sub-sections where changes occurred; empty ones are omitted.
 
 **`## Downstream propagation` and `## Deferred` are mandatory** — write `None` rather than omitting them. The cycle's close-out gate turns exactly these two sections into GitHub issues before the record is deleted, and it cannot tell an omitted section from an empty one. An omitted section reads as "nothing owed" and is how propagation debt goes invisible.
+
+**Write each propagation bullet as a brief for a downstream agent, not a note to yourself.** `propagate-changes` hands your bullet on **verbatim** to a sub-agent that has not read this change, has not read your reasoning, and may not know the SDK detail you just learned. Name the file to create or edit and the specific mapping or behaviour it must capture. *"Update the author-go skill"* tells that agent nothing it could not have guessed; *"new `reference/signal-send.md` mapping the statement form to `ChildWorkflowFuture.SignalChildWorkflow` — the SDK returns a future, the DSL statement is the fire-and-forget call"* is executable by someone starting cold.
+
+Do not limit the bullets to what the routing table already covers. It is a floor; your section is authoritative beyond it, and a component named here gets a review even with no edge in the manifest.
 
 **Step C: Delete consumed REVISIONS files**
 
