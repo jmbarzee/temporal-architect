@@ -13,14 +13,3 @@ https://raw.githubusercontent.com/jmbarzee/temporal-architect/v<VERSION>/docs/im
 
 so every registry (npm, PyPI, VS Code Marketplace, …) renders the picture that
 matches the published version.
-
-## Needed screenshots
-
-Drop real PNGs here and un-comment the matching `<!-- [SCREENSHOT: …] -->`
-placeholder in the fragment. Until then the placeholders keep published pages
-from showing broken images.
-
-| File | Shot |
-|------|------|
-| `graph-view-system.png` | Graph View — full system (namespace→worker→workflow) with dependency edges |
-| `tree-view-expanded.png` | Tree View — one workflow expanded with inline call expansion |

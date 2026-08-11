@@ -43,3 +43,8 @@ internal/release/gen-skills-manifest/gen-skills-manifest
 # Distribution repo working tree (seeded locally inside the workspace; its own
 # git repo, never tracked by the toolchain repo)
 /temporal-architect-dist/
+
+# Dev-cycle scratch. REVISIONS/CHANGES and any working notes a cycle produces are
+# deleted at its close (see .claude/skills/dev-cycle/SKILL.md); nothing here is a
+# durable record. Backlog and planning live in GitHub issues, never in the repo.
+internal/changes/

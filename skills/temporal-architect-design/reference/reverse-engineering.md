@@ -41,7 +41,7 @@ Read for **design structure**, not line-by-line behavior:
 
 ### Delegate SDK reading to the author skill
 
-Do not reconstruct SDK semantics yourself. The author skills already hold the DSL↔SDK mapping — **read their symbol tables backward.** For Go, use the `temporal-architect-author-go` references (e.g. `activity-call.md`, `workflow-call.md`, `await-all.md`) and, for generated code, its forthcoming `reference/proto-driven.md` Rosetta Stone (generated `XxxActivities` iface, `RegisterXxxActivities`, `XxxFuture`, etc. → the underlying `activity`/`workflow`). Forward mappings (DSL → Go) read in reverse give you Go → DSL for free.
+Do not reconstruct SDK semantics yourself. The author skills already hold the DSL↔SDK mapping — **read their symbol tables backward.** For Go, use the `temporal-architect-author-go` references (e.g. `activity-call.md`, `workflow-call.md`, `await-all.md`) and, for generated code, its `reference/proto-driven.md` Rosetta Stone (generated `XxxActivities` iface, `RegisterXxxActivities`, `XxxFuture`, etc. → the underlying `activity`/`workflow`). Forward mappings (DSL → Go) read in reverse give you Go → DSL for free.
 
 ## Fidelity first, then Design Review
 

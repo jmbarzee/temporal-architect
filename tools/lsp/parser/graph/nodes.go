@@ -167,7 +167,7 @@ func (idx *astIndex) deploymentsHosting(kind, name string) []workerDeployment {
 // ---------------------------------------------------------------------------
 
 // enumerateNodes walks the AST and emits one node per deployment per
-// the rules in REVISIONS_003 § "Node enumeration rules". Order doesn't
+// the rules in README.md § "Node enumeration rules". Order doesn't
 // matter — finalize() sorts before serialization.
 func (g *Graph) enumerateNodes(idx *astIndex) {
 	for _, ns := range idx.namespaces {

@@ -48,7 +48,7 @@ endpoints are independent axes:
 **Gotcha:** defining *one* local service retroactively turns *every other* service reference
 into a hard error — even references to genuinely external services in other namespaces. This is
 a sharp cliff for a partial / per-package file that both *calls* external services and *provides*
-its own. Until an explicit external marker exists, either (a) add a local stub definition for
+its own. Until an explicit external marker exists ([#31](https://github.com/jmbarzee/temporal-architect/issues/31)), either (a) add a local stub definition for
 each external service you call, or (b) define no nexus services in the file and accept the
 warnings.
 
@@ -56,7 +56,7 @@ warnings.
 
 All parse failures share the single code `SYNTAX`. The message carries the
 detail; pin programmatic dispatch to `kind=parse, code=SYNTAX` and match on
-the message for now (categorical parse codes are future work).
+the message for now (categorical parse codes are future work — [#32](https://github.com/jmbarzee/temporal-architect/issues/32)).
 
 | Message | Cause | Fix |
 |---------|-------|-----|

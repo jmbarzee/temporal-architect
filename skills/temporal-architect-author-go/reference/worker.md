@@ -104,7 +104,7 @@ w.RegisterNexusService(service)
 w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be registered
 ```
 
-Creating the Nexus **endpoint** that routes to this service is out-of-band infrastructure (`tcld` / Terraform), not worker code — that belongs to a future `author-infra` skill. See [nexus-service-def.md](./nexus-service-def.md) for the handler/operation patterns.
+Creating the Nexus **endpoint** that routes to this service is out-of-band infrastructure (`tcld` / Terraform), not worker code — that belongs to the `temporal-architect-author-infra` skill. See [nexus-service-def.md](./nexus-service-def.md) for the handler/operation patterns.
 
 ## Graceful shutdown
 

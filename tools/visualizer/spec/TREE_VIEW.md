@@ -10,42 +10,13 @@ This view serves goals 1–5 (individual definition questions) from [PRODUCT.md]
 
 ## Existing codebase context
 
-### Architecture
-- **React 18** + **TypeScript** + **Vite** (no additional UI libraries)
-- Entry points: `src/main.tsx` (standalone dev) and `src/webview.tsx` (VS Code webview)
-- Both entry points load AST data and pass it as `TWFFile` to `<WorkflowCanvas>`
-- Shared type definitions in `src/types/ast.ts`
-- Theme configuration (icons, labels, CSS variable prefixes) centralized in `src/theme/temporal-theme.tsx`
-- Styles split across `src/styles/index.css` (global layout, header, theme variables) and `src/components/blocks/blocks.css` (block-level variables and styles)
-- CSS variables provide full light/dark theme support; dark theme activates via `.vscode-dark` or `[data-theme="dark"]`
+- **React** + **TypeScript** + **Vite**, no additional UI libraries.
+- Two entry points into the same components: `src/main.tsx` → `src/App.tsx` is the standalone app (file upload, query-param loading); `src/lib.ts` is the published `@temporal-architect/visualizer` package surface that hosts (e.g. the VS Code extension, which lives in the distribution repo) mount. Both hand a `TWFFile` to `<WorkflowCanvas>`.
+- Shared wire/AST types in `src/types/`; theme configuration (icons, labels, CSS variable prefixes) in `src/theme/temporal-theme.tsx`.
+- Styles split between `src/styles/index.css` (global layout, header, theme variables) and `src/components/blocks/blocks.css` (block-level variables and styles). CSS variables give full light/dark support; dark activates via `.vscode-dark` or `[data-theme="dark"]`.
+- The tree view lives in `src/components/WorkflowCanvas.tsx` plus the block components under `src/components/blocks/`. The graph view (see [GRAPH_VIEW.md](./GRAPH_VIEW.md)) lives in `src/components/GraphView.tsx`, `src/components/graph-view/`, and `src/graph/`.
 
-### File structure
-```
-src/
-  App.tsx                          — Standalone app shell (file upload, query param loading)
-  main.tsx                         — Standalone entry point
-  webview.tsx                      — VS Code webview entry point
-  types/
-    ast.ts                         — TypeScript types mirroring the Go AST JSON
-  theme/
-    temporal-theme.tsx             — Central icon/label/CSS-prefix map for all primitives
-  styles/
-    index.css                      — Global styles, layout, header, theme variables
-  components/
-    WorkflowCanvas.tsx             — Main tree view component + DefinitionContext + header/filters
-    icons/
-      GearIcons.tsx                — SVG icons (search, single gear, interlocking gears)
-    blocks/
-      blocks.css                   — All block-level CSS variables and styles
-      useToggle.ts                 — Shared expand/collapse hook
-      DefinitionBlock.tsx          — Top-level definition router + namespace/worker/activity/nexus blocks
-      StatementBlock.tsx           — Statement router (dispatches to leaf/call/control-flow blocks)
-      WorkflowContent.tsx          — Workflow body renderer (state, handlers, body) + inline workflow/sync body blocks
-      CallBlocks.tsx               — Activity call, workflow call, nexus call blocks
-      AwaitBlocks.tsx              — Await statement, await all, await one blocks
-      ControlFlowBlocks.tsx        — Switch, if, for blocks
-      LeafBlocks.tsx               — Return, close, raw, promise, set, unset, break, continue blocks
-```
+For the current file list, read `tools/visualizer/src/` — it is not mirrored here, so it cannot go stale.
 
 
 ## Data flow

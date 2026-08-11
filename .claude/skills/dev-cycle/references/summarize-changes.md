@@ -82,9 +82,12 @@ operator can approve the batch in one pass:
 State the count plainly: *"N items to file before cleanup."* If the list is empty, say so
 explicitly — that is the signal the cycle is safe to close with nothing left behind.
 
-### Phase 5: Write Summary (optional)
+### Phase 5: Summary (optional)
 
-If requested, write a consolidated summary to `internal/changes/SUMMARY.md` suitable for use as a PR description.
+If requested, produce a consolidated summary suitable for use as a PR description. **Return it as
+text — do not write it to a file.** A per-cycle status report committed to the repo is the archive
+this project does not keep (`AGENTS.md` § Project Status); it belongs in the PR body, where it is
+already versioned and discoverable.
 
 The summary should include:
 - One-paragraph overview of the cycle
@@ -93,6 +96,6 @@ The summary should include:
 
 ## Constraints
 
-- **Read-only by default.** Only write `internal/changes/SUMMARY.md` if explicitly requested or if running as part of the automated workflow.
+- **Read-only.** This step writes no files. Its outputs are the Phase 4 close-out list and, optionally, the Phase 5 summary text.
 - **Report what exists.** Don't evaluate quality or correctness of changes — just catalog them.
 - **Follow the file conventions.** REVISIONS = pending, CHANGES = completed. Don't interpret them differently.

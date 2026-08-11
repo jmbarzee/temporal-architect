@@ -204,7 +204,7 @@ skills/             AI skill definitions (SKILL.md + reference docs)
 internal/
   release/          Go tools that build the release assets (skills tarball)
   changes/          Ephemeral coordination files for in-flight revisions
-  harness/          Runner-agnostic dev-cycle prompts (agent-loop runtime)
+  harness/          Dev-cycle component manifest (components.md); the step prompts live in .claude/skills/dev-cycle/references/
   orchestrator/     Temporal workflow design for the automated dev cycle (durable runtime)
   version.sh        Release version bump helper
 

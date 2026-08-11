@@ -5,7 +5,7 @@ import (
 )
 
 // emitContainment produces one edge per (child, parent) deployment
-// pair per the table in REVISIONS_003 § "Containment edges":
+// pair per the table in README.md § "Containment edges":
 //
 //	worker dep         → namespace
 //	endpoint dep       → namespace

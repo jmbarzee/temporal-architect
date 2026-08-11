@@ -26,7 +26,7 @@ Hard boundaries are discovered **facts** about the graph, not suggestions. Dispa
 
 - **Isolated components** — disconnected pieces of the call structure are independent work.
 - **`nexusCall` cuts** — the cleanest contract boundary (cross-namespace/worker by construction). The Nexus operation signature *is* the contract; pin it.
-- **Language boundaries** — once `@lang` lands, a hard split keyed on per-node language. Until then, infer language from project layout / the user.
+- **Language boundaries** — once `@lang` lands ([#23](https://github.com/jmbarzee/temporal-architect/issues/23)), a hard split keyed on per-node language. Until then, infer language from project layout / the user.
 
 Each definition belongs to exactly one hard chunk. A node reachable from two roots is reported as **overlap** (listed once, referenced by each root) — implement it once and let both chunks consume it; do not duplicate it across subagents.
 
@@ -54,7 +54,7 @@ Defaults ship documented and tunable; adjust per design rather than treating the
 
 ## Roots
 
-Roots are **heuristic**: in-degree-0 in the binding subgraph, `asyncBacking` targets (external entries despite an in-edge), handler-bearing workflows (signal/query/update), and in-cycle workflows with no external binding in-edge. Each root is tagged `source: heuristic|declared`. Today all are heuristic; that is acceptable. Declared inbound roots will later seed at higher priority without changing this protocol.
+Roots are **heuristic**: in-degree-0 in the binding subgraph, `asyncBacking` targets (external entries despite an in-edge), handler-bearing workflows (signal/query/update), and in-cycle workflows with no external binding in-edge. Each root is tagged `source: heuristic|declared`. Today all are heuristic; that is acceptable. Declared inbound roots will later seed at higher priority without changing this protocol ([#5](https://github.com/jmbarzee/temporal-architect/issues/5)).
 
 Edge semantics worth knowing when reading output: `nexusCall` = contract cut; `asyncBacking` target = a root; `signalSend` = a *soft* edge that keeps two workflows in one blob but as **separate** roots/chunks (never treat it as a binding call edge).
 

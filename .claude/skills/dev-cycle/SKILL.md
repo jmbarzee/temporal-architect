@@ -56,8 +56,9 @@ summary, and **wait for approval**. On approval:
 1. File a GitHub issue for every deferral, unpropagated downstream item, and open question the
    cycle produced — each CHANGES record's "Deferred" and "Downstream propagation" sections are
    the checklist. Reference the issue number from the PR body.
-2. Delete every `*_REVISIONS_*.md` and `CHANGES_*.md` the cycle touched, leaving
-   `internal/changes/` empty for the next run.
+2. Delete `internal/changes/` outright. Sweep the **whole directory**, not a name pattern —
+   scratch files that don't match `*_REVISIONS_*.md` / `CHANGES_*.md` (reflection notes,
+   summaries) would otherwise survive and become the archive this project does not keep.
 3. Create the PR.
 
 Step 1 gates step 2: do not delete a record until its open items exist as issues. A propagation

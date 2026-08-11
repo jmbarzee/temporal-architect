@@ -22,9 +22,9 @@ export interface SliderProps {
   ariaLabel?: string
   // Extra class for caller-side tweaks (rarely needed).
   className?: string
-  // Identity for the formula-hover "pop" (WS2): a formula token with the same id
-  // emphasizes this slider on hover. Emitted as a data attribute now; the hover
-  // wiring reads it later.
+  // Identity for the formula-hover "pop": hovering a FormulaValue token with the
+  // same id (see PopContext) emphasizes this slider. Also emitted as a
+  // `data-pop-id` attribute for styling/testing.
   popId?: string
 }
 

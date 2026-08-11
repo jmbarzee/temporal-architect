@@ -1,7 +1,7 @@
 // Package graph builds the resolved deployment graph from a parsed +
 // resolved AST. Nodes are runtime instances (a definition × deployment
 // context); edges are confirmed dispatches. The construction follows
-// the contract in internal/changes/parser/REVISIONS_003.md.
+// the contract in README.md.
 //
 // In-process consumers (validator, LSP server, future codegen) call
 // Extract directly. The twf CLI's `graph` command wraps the result in
@@ -68,8 +68,9 @@ type Routing struct {
 
 // isEmpty reports whether the routing block carries no information.
 // An empty routing block is still serialized as `{}` for dispatch edges
-// (per REVISIONS_003 — present-but-empty signals "implicit, no override"),
-// while containment edges omit it entirely via the pointer being nil.
+// (per README.md § "Edge field semantics" — present-but-empty signals
+// "implicit, no override"), while containment edges omit it entirely via
+// the pointer being nil.
 func (r Routing) isEmpty() bool {
 	return r.Explicit == "" && r.NexusEndpoint == ""
 }

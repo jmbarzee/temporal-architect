@@ -280,7 +280,7 @@ Per command, exactly one of `definitions` / `symbols` / `graph` is present.
 The complete list of `kind` + `code` combinations:
 
 **kind: `parse`**
-- `SYNTAX` — any parser failure (categorization is future work)
+- `SYNTAX` — any parser failure (categorization is future work — [#32](https://github.com/jmbarzee/temporal-architect/issues/32))
 
 **kind: `resolve`**
 - `DUPLICATE_WORKFLOW`, `DUPLICATE_ACTIVITY`, `DUPLICATE_WORKER`,
@@ -450,6 +450,11 @@ A few highlights:
 
 - `--json` — Emit the JSON envelope (`symbols` and `graph`; `parse` is always JSON).
 - `--lenient` — `check` only. Exit 0 even when errors are present (diagnostics still print).
+
+**Long flags require a double dash.** `twf graph --json` works; `twf graph -json` does not. Under
+`pflag` a single dash introduces shorthand flags, so `-json` parses as the cluster `-j -s -o -n`
+and fails. Earlier builds used the standard library's `flag` package, which accepted both forms.
+There are no shorthand flags today — the surface is long-only on purpose.
 
 ---
 

@@ -53,7 +53,7 @@ Once a `.twf` exists (or has been recovered), decompose it into independently-im
 
 Use **`twf graph chunks`**, which computes the decomposition from the design. **The tool informs; it does not impose** — you decide how to act on it. Its output has two cleanly-typed parts:
 
-- **#1 hard boundaries — you MUST dispatch separate subagents across these.** Discovered facts: isolated components today (a `nexusCall` is the cleanest contract cut, cross-namespace by construction), language boundaries later. Every definition lands in exactly one hard chunk.
+- **#1 hard boundaries — you MUST dispatch separate subagents across these.** Discovered facts: isolated components today (a `nexusCall` is the cleanest contract cut, cross-namespace by construction), language boundaries later ([#23](https://github.com/jmbarzee/temporal-architect/issues/23)). Every definition lands in exactly one hard chunk.
 - **#2 soft divisions — you MAY use these.** Only emitted for a chunk that exceeds a complexity **ceiling** you instruct: ranked candidate cuts plus an inter-section **dependency DAG**.
 
 Other knobs: a **floor** flags chunks too granular for their own subagent (merge them up); loops are collapsed into one chunk and never cut; roots are heuristic. Run `twf graph chunks --help` for the exact flags.
@@ -70,7 +70,7 @@ Dispatch authoring **progressively**, in the dependency-DAG order the decomposit
 
 - **Don't freeze every signature up front.** A global type freeze recreates waterfall's failure modes. Pin contracts rigidly **only** at the hard-boundary / cross-language cuts the decomposition surfaces (these are exactly the expensive-to-renegotiate interfaces). Everywhere else, start from a **loose API suggestion** and let constraints discovered during authoring feed back and refine it.
 - **Don't parallelize everything.** Build independent chunks first, then the now-unblocked dependents — a PERT walk over the dependency DAG, not a blind fan-out.
-- **Only dispatch what needs altering.** The decomposition is over the *design*; the tool doesn't know what's already implemented. For each chunk, resolve its code via the `# impl: <dirs>` link (see the design skill's `twf-conventions.md`) and **skip chunks that are new-free and unchanged** — never spin up an author for a component that doesn't need it. Use the relevant author skill's fast verify (e.g. `author-go`'s `go build`/`go test` on the linked package) as the cheap changed-vs-unchanged signal. A first-class chunk↔impl staleness check does not exist yet.
+- **Only dispatch what needs altering.** The decomposition is over the *design*; the tool doesn't know what's already implemented. For each chunk, resolve its code via the `# impl: <dirs>` link (see the design skill's `twf-conventions.md`) and **skip chunks that are new-free and unchanged** — never spin up an author for a component that doesn't need it. Use the relevant author skill's fast verify (e.g. `author-go`'s `go build`/`go test` on the linked package) as the cheap changed-vs-unchanged signal. A first-class chunk↔impl staleness check does not exist yet ([#40](https://github.com/jmbarzee/temporal-architect/issues/40)).
 
 ---
 
@@ -86,7 +86,7 @@ Named exceptions:
 - **Design in the main agent.** Because the whole point is an elevated surface to design *from*, the user often wants to be integrated in the design loop. For design-heavy or collaborative work, load `temporal-architect-design` **into the main agent** rather than dispatching it to a subagent. Dispatch authoring to subagents to protect context.
 - **A language boundary wants both authors.** A workflow in one language calling an activity in another is a genuine (not rare) case. Pin the boundary contract once, then prefer **isolated per-language author subagents that exchange only that contract** — this keeps two SDK-language authors out of a single context, where their overlapping vocabulary is *confusable*. Co-loading both is acceptable when the boundary is small and the isolation overhead isn't worth it; the confusability concern is the reason to default to separating them, not a hard prohibition.
 
-`@lang` annotations (coming to the spec) will become the explicit dispatch key per chunk — don't over-engineer language routing before then; the heuristic + boundary handling above is enough.
+`@lang` annotations (coming to the spec — [#23](https://github.com/jmbarzee/temporal-architect/issues/23)) will become the explicit dispatch key per chunk — don't over-engineer language routing before then; the heuristic + boundary handling above is enough.
 
 ---
 

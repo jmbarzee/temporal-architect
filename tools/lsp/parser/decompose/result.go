@@ -29,12 +29,12 @@ type Node struct {
 	Name       string   `json:"name"`
 	Workers    []string `json:"workers,omitempty"`    // hosting worker definition keys
 	Namespaces []string `json:"namespaces,omitempty"` // hosting namespace node IDs
-	Langs      []string `json:"langs,omitempty"`      // reserved for #1b (no @lang yet)
+	Langs      []string `json:"langs,omitempty"`      // reserved for the language-boundary split (issue 23; no @lang yet)
 	Complexity int      `json:"complexity"`
 }
 
 // Root source values. Roots discovered by the heuristics carry "heuristic";
-// "declared" is reserved for #7 (declared inbound roots), which slots in later
+// "declared" is reserved for declared inbound roots (issues 5 and 42), which slots in later
 // as a higher-priority seed source without reshaping anything.
 const (
 	SourceHeuristic = "heuristic"

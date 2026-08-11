@@ -38,7 +38,7 @@ interface GraphViewProps {
   active: boolean
   ast: TWFFile
   // Deployment graph from `twf graph` — primary input. AST is secondary
-  // (sourceFile lookup, hover details). See visualizer/REVISIONS_003.
+  // (sourceFile lookup, hover details).
   parserGraph: ParserGraph
   // Decomposition from `twf graph chunks` — drives the group overlay. Optional;
   // when absent the Groups modal/overlay is inert.

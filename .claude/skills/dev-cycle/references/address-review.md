@@ -107,13 +107,27 @@ Write `internal/changes/{component}/CHANGES_{NNN}.md` using the next available s
 
 ### Internal
 [Refactors with no downstream contract impact — list each briefly]
+
+## Downstream propagation
+[Every consumer this change obligates, per the manifest's propagation routing —
+ one bullet each, naming the component and the specific work owed.
+ Write `None — leaf change.` if there genuinely is none.]
+
+## Deferred
+[Everything in scope that this cycle did NOT do: spillover groups, known
+ limitations shipped on purpose, open questions raised and not settled.
+ Write `None.` if there genuinely is none.]
 ```
 
-Only include sections where changes occurred. Empty sections are omitted.
+Within **Changes by Type**, only include sub-sections where changes occurred; empty ones are omitted.
+
+**`## Downstream propagation` and `## Deferred` are mandatory** — write `None` rather than omitting them. The cycle's close-out gate turns exactly these two sections into GitHub issues before the record is deleted, and it cannot tell an omitted section from an empty one. An omitted section reads as "nothing owed" and is how propagation debt goes invisible.
 
 **Step C: Delete consumed REVISIONS files**
 
 Delete all `*_REVISIONS_*.md` files that were processed. The CHANGES file is now the record of this cycle.
+
+Anything left unfinished must appear under `## Deferred` above — a REVISIONS file is never the record of remaining work once it is deleted.
 
 ## Constraints
 

@@ -5,12 +5,14 @@ import (
 )
 
 // emitDispatchEdges walks every runnable body and emits dispatch edges
-// per the resolution rules in REVISIONS_003 § "Dispatch edges":
+// per the resolution rules in README.md § "Dispatch edges":
 //
 //   - activityCall / workflowCall with explicit task_queue: match
 //     callee deployments whose queue equals the literal.
 //   - activityCall / workflowCall implicit: match callee deployments
-//     whose queue is any queue the caller's definition is hosted on.
+//     whose queue equals *this* caller deployment's queue. The walk runs
+//     once per caller deployment, so a definition hosted on two workers
+//     resolves twice, each against its own queue — not against the union.
 //   - nexusCall: match callee deployments whose queue == endpoint.queue
 //     AND whose namespace == endpoint.namespace; routing.nexusEndpoint
 //     carries the endpoint deployment ID.

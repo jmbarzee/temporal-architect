@@ -40,14 +40,14 @@ Each component maps to a directory scope, review commands, and downstream edges:
 
 ## File Conventions
 
-All coordination files live under `internal/changes/` with component subdirectories:
+All coordination files live under `internal/changes/` with component subdirectories. This directory is **cycle scratch, not an archive**: it is gitignored, created by the harness when a cycle starts, and deleted when the cycle closes — it is absent between cycles.
 
 ```
 internal/changes/
   parser/
     quality_REVISIONS_001.md       ← pending (from review-quality-parser)
     alignment_REVISIONS_001.md     ← pending (from review-alignment-parser)
-    CHANGES_001.md                 ← completed round 1
+    CHANGES_001.md                 ← round 1 handoff (consumed by propagation)
   visualizer/
     quality_REVISIONS_001.md
     parser-output_REVISIONS_001.md
@@ -63,7 +63,7 @@ All skill reviews share the single `skills/` directory, so the `{type}` prefix i
 **Rules:**
 
 - **REVISIONS = pending work.** Presence of any `*_REVISIONS_*.md` file triggers a child workflow for that component.
-- **CHANGES = completed work.** Persists as the historical record. Never deleted during the workflow.
+- **CHANGES = completed work.** The handoff `propagate-changes` reads to fan a change out downstream. It survives for the rest of the cycle — never deleted mid-workflow — but it is **not** a historical record: it is deleted with the rest of `internal/changes/` when the cycle closes. Git history records what changed, `CHANGELOG.md` records what shipped, and GitHub issues record what is left to do; before a CHANGES file is deleted, every unexecuted propagation bullet and every deferral in it must be filed as an issue.
 - A child processes **all** `*_REVISIONS_*.md` files in its component directory, merging them into one execution sequence.
 - After processing, REVISIONS files are deleted and a `CHANGES_{NNN}.md` file is written.
 - Propagation reads the CHANGES file and writes new REVISIONS files into downstream component directories.
@@ -73,7 +73,7 @@ All skill reviews share the single `skills/` directory, so the `{type}` prefix i
 | Pattern | Meaning |
 |---------|---------|
 | `{type}_REVISIONS_{NNN}.md` | Pending work. `{type}` = review type (quality, alignment, parser-output). `{NNN}` = sequence number. |
-| `CHANGES_{NNN}.md` | Completed round. `{NNN}` = round number. |
+| `CHANGES_{NNN}.md` | Completed round, consumed by propagation. `{NNN}` = round number. Deleted at cycle close. |
 
 ## Main Workflow Loop
 

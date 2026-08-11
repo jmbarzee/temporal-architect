@@ -81,7 +81,7 @@ func buildWorkGraph(g *graph.Graph) *workGraph {
 	// namespaces, nexus services, and endpoints are deployment context, not
 	// decomposition nodes. Deployment attributes (hosting worker / namespace)
 	// are read off each instance's composite ID and retained for the deferred
-	// language-boundary split and grouping lens.
+	// language-boundary split (issue 23) and grouping lens (issue 39).
 	for _, n := range g.Nodes {
 		kind := kindOf(n.Definition)
 		if !isAuthorableKind(kind) {

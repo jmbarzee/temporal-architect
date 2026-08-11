@@ -83,6 +83,10 @@ history is an edge out of the root.
 
 ## Limitations
 
+**Non-goals.** The sampler produces a graph, never a design: no `.twf` generation, no AST, no
+control-flow recovery, and no semantic-fidelity claim. The graph reflects what ran in the sampled
+executions, not the system as designed.
+
 Inherent to history as an input:
 
 - **Partial by construction.** A history shows only what *that run* did;
