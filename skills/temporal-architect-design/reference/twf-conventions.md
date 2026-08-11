@@ -28,7 +28,7 @@ activity ChargePayment(order: Order) -> (Receipt):
 
 Because the one-package layout decouples `.twf` from code, the implementation link can no longer be inferred from location — it has to be explicit. The header is that link. It is also a [reverse-engineering](./reverse-engineering.md) aid: the [project-discovery subagent](./project-discovery-subagent.md) *reads* it to jump straight to the code, and extraction *writes* it when recovering a `.twf` from existing code.
 
-This is the interim form. The durable, machine-checkable version is per-symbol reference annotations (`@ref`), deferred in `dsl/BACKLOG.md` — when that lands, the header convention gives way to it.
+This is the interim form. The durable, machine-checkable version is per-symbol reference annotations (`@ref`), deferred — see [#24](https://github.com/jmbarzee/temporal-architect/issues/24) — when that lands, the header convention gives way to it.
 
 ### Cross-domain stub marker
 

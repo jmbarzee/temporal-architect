@@ -290,6 +290,54 @@ See [promises-conditions.md](./promises-conditions.md) for more on conditions an
 
 ---
 
+## Handler Options
+
+Any signal, query, or update declaration may carry an optional `options:` block at the head of its handler body — before any statements, the same placement a `state:` block gets at the top of a workflow.
+
+| Key | Signal | Query | Update | Values |
+|-----|--------|-------|--------|--------|
+| `unfinished_policy` | yes | — | yes | `abandon`, `warn_and_abandon` (default `warn_and_abandon`) |
+| `description` | yes | yes | yes | string |
+
+```twf
+workflow SubscriptionWorkflow(userId: string):
+    signal Cancel():
+        options:
+            unfinished_policy: abandon
+            description: "Cancels the subscription at the end of the billing period"
+        cancelled = true
+
+    update AddCredits(amount: int) -> (CreditResult):
+        options:
+            description: "Adds prepaid credits and returns the new balance"
+        credits = credits + amount
+        return CreditResult{total: credits}
+
+    query GetPlan() -> (string):
+        options:
+            description: "Current plan tier"
+        return plan
+```
+
+### `unfinished_policy`
+
+`unfinished_policy` declares what should happen to a handler invocation that is **still running when the workflow exits** (completes, fails, or continues-as-new). Both values drop the in-flight handler; they differ only in whether the drop is announced:
+
+- **`warn_and_abandon`** (default) — the handler is dropped and a warning is logged. Use it whenever an unfinished handler represents work that *should* have finished. The warning is how you find out that the workflow is racing its own handlers.
+- **`abandon`** — the handler is dropped silently. Reserve it for handlers where being cut off at workflow exit is the expected, designed outcome, so the warning would be pure noise. A `Cancel` signal handler whose whole purpose is to end the workflow is the archetype.
+
+Note that `unfinished_policy` is not a way to *wait* for handlers. It only chooses how loudly they are abandoned. If the handler's work matters, the design must keep the workflow alive until handlers drain — do not reach for `abandon` to quiet a warning you should be fixing.
+
+**For updates, abandonment is caller-visible.** An update caller is blocked waiting for a result; if the workflow exits with the handler unfinished, that caller gets `NotFound` rather than a result or a meaningful error. `abandon` on an update handler therefore hides a real failure mode from the only party positioned to notice it — it is rarely the right choice. Prefer `warn_and_abandon` on updates, and design the main body so updates finish before it closes.
+
+Queries do not admit `unfinished_policy`: they are synchronous and read-only, so there is no in-flight handler to abandon.
+
+### `description`
+
+`description` is a short, human-facing string, available on all three handler kinds. It documents the handler for operators reading the workflow in the UI and CLI — it has no runtime behavior and does not affect determinism. Write it for the person debugging a stuck workflow at 3am: what the handler is for, not how it is implemented.
+
+---
+
 ## Choosing Between Primitives
 
 **Use QUERY (read) when:**

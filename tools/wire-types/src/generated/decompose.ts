@@ -35,18 +35,18 @@ export interface Node {
   name: string;
   workers?: string[]; // hosting worker definition keys
   namespaces?: string[]; // hosting namespace node IDs
-  langs?: string[]; // reserved for #1b (no @lang yet)
+  langs?: string[]; // reserved for the language-boundary split (issue 23; no @lang yet)
   complexity: number /* int */;
 }
 /**
  * Root source values. Roots discovered by the heuristics carry "heuristic";
- * "declared" is reserved for #7 (declared inbound roots), which slots in later
+ * "declared" is reserved for declared inbound roots (issues 5 and 42), which slots in later
  * as a higher-priority seed source without reshaping anything.
  */
 export const SourceHeuristic = "heuristic";
 /**
  * Root source values. Roots discovered by the heuristics carry "heuristic";
- * "declared" is reserved for #7 (declared inbound roots), which slots in later
+ * "declared" is reserved for declared inbound roots (issues 5 and 42), which slots in later
  * as a higher-priority seed source without reshaping anything.
  */
 export const SourceDeclared = "declared";

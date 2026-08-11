@@ -27,7 +27,6 @@ export interface SimulationController {
   onNodeDragMove: (wx: number, wy: number) => void
   onNodeDragEnd: () => void
   onToggleRunning: () => void
-  onReheat: () => void
 }
 
 export function useSimulation(
@@ -110,17 +109,10 @@ export function useSimulation(
     }
   }, [running])
 
-  // Strong reheat; the cooling rate scales with the kick so it settles in the
-  // same fixed window (moves further, not longer).
-  const onReheat = React.useCallback(() => {
-    simRef.current?.reheat(2)
-    setRunning(true)
-  }, [])
-
   return {
     simRef, simVersion, running, setRunning, forceParams, getNode,
     onParamChange, onForceAdjust, onGravityChange,
     onNodeDragStart, onNodeDragMove, onNodeDragEnd,
-    onToggleRunning, onReheat,
+    onToggleRunning,
   }
 }

@@ -1,23 +1,31 @@
-# Execute Approved Review Group
+# Execute a Review's Groups
 
-Execute the groups produced by a review command. This command owns the inner loop: plan → approve → execute → validate → document → repeat.
+Execute the groups produced by a review command. This command owns the inner loop: plan → execute → validate → document → repeat.
 
-Invoke this after any review command has produced a grouped finding plan and you are ready to begin addressing it.
+Invoke this after any review command has produced a grouped finding plan.
 
 ## Input
 
 **Option 1 (default; required under the dev-cycle loop): Explicit REVISIONS file paths.** Specific REVISIONS files are provided (e.g., `internal/changes/parser/quality_REVISIONS_001.md`, `internal/changes/parser/alignment_REVISIONS_001.md`). Read those files and merge their grouped plans into one execution sequence. When dispatched as a subagent by the dev-cycle loop, this is the only valid input — work entirely from the named files, never from conversation context.
 
-**Option 2 (manual, interactive use only): Conversation context.** Only when a human is driving this command directly and the grouped plan is already in the conversation. If it is not, ask the user to point to the REVISIONS file(s) in `internal/changes/{component}/`. Subagents must not use this path.
+**Option 2 (manual, interactive use only): Conversation context.** Only when a human is driving this command directly and the grouped plan is already in the conversation. If no plan and no file path is available, that is a bad invocation — say so and stop. Do not guess at scope. Subagents must not use this path.
 
 Each group in the plan should have:
 - A theme name
 - A list of findings with locations
 - An estimated scope (which files are touched)
 
+### If the file opens with a `## Design` section
+
+**Read it.** It is the agreed rationale — why the approach is what it is, which alternatives were already rejected, and which constraints must hold. It is present when a human settled the approach before dispatch.
+
+It contains **no work items**: execute only the `## Group N` sections. But do not skim past it either. The failure mode is not an agent executing the design section — it is an agent ignoring it and re-deriving an approach that was already considered and rejected, which wastes the decision the section exists to record.
+
+If a group and the design conflict, **escalate**. Do not resolve it silently in either direction. If execution forces you to renegotiate a stated constraint, say so under `## Deferred` in the CHANGES record.
+
 ## Workflow
 
-Repeat the following loop for each group, in order. Do not skip ahead.
+Repeat the following loop for each `## Group N` section, in order. Do not skip ahead.
 
 ### For Each Group:
 
@@ -29,7 +37,7 @@ Before touching any code, write a concrete execution plan for this group:
 - Identify which changes are sequential (must be ordered)
 - Flag any finding in this group where the right approach is ambiguous
 
-Present the plan. **Wait for approval before proceeding.**
+State the plan, then carry it out. A finding whose approach is genuinely ambiguous — two valid designs with different consequences — is the one case to escalate rather than decide; see Constraints.
 
 **Step 2: Execute**
 
@@ -40,10 +48,7 @@ Carry out the plan. Where changes are independent, spawn parallel sub-agents —
 
 **Step 3: Validate**
 
-Run the appropriate checks for the layer that was changed:
-- Go code: `go build ./...` and `go test ./...` from `tools/lsp/`
-- Skills/examples: `twf check` against affected `.twf` files
-- TypeScript: `npm run build` from `tools/visualizer/`
+Run the check for the layer that was changed. **The commands live in one place: `.claude/skills/dev-cycle/SKILL.md` § Validation Contract.** Read them from there rather than from memory — several carry a required environment prefix, and a restated copy here would drift out of sync and fail silently in the sandbox.
 
 If validation fails, fix before moving on. Do not paper over failures.
 
@@ -60,11 +65,11 @@ Update the REVISIONS file(s) being processed:
 - Mark this group as completed
 - Add any new findings surfaced during execution as new tracked items
 
-**Step 6: Continue?**
+**Step 6: Next group**
 
-Ask: proceed to the next group, or stop here?
+Proceed to the next group. Work the sequence to the end — do not stop to ask between groups.
 
-If stopping: note which groups remain. They are recorded in the REVISIONS file(s) for the next session.
+If a hard blocker forces an early stop, name the groups that remain and carry them into `## Deferred` in the CHANGES record. A REVISIONS file is not a durable record of remaining work: Step C deletes it.
 
 ---
 
@@ -74,7 +79,9 @@ When all groups are complete (or the user decides to close the cycle), perform t
 
 **Step A: Final review**
 
-Present a consolidated summary of all changes made across all groups. **Wait for user approval.**
+Present a consolidated summary of all changes made across all groups.
+
+This is the last point before durable mutation — Step B writes the CHANGES record and Step C deletes the consumed REVISIONS files. It follows the `close-gate` value your dispatcher passed: under `ask` (the default, and any manual run) **wait for approval**; under `auto` present the summary and proceed. Present it either way — an unattended run still needs the record of what it decided.
 
 **Step B: Write CHANGES file**
 
@@ -107,17 +114,35 @@ Write `internal/changes/{component}/CHANGES_{NNN}.md` using the next available s
 
 ### Internal
 [Refactors with no downstream contract impact — list each briefly]
+
+## Downstream propagation
+[Every consumer this change obligates — one bullet each. Start the bullet with the
+ component name as its leading token, then state the specific work owed.
+ Write `None — leaf change.` if there genuinely is none.]
+
+## Deferred
+[Everything in scope that this cycle did NOT do: spillover groups, known
+ limitations shipped on purpose, open questions raised and not settled.
+ Write `None.` if there genuinely is none.]
 ```
 
-Only include sections where changes occurred. Empty sections are omitted.
+Within **Changes by Type**, only include sub-sections where changes occurred; empty ones are omitted.
+
+**`## Downstream propagation` and `## Deferred` are mandatory** — write `None` rather than omitting them. The cycle's close-out gate turns exactly these two sections into GitHub issues before the record is deleted, and it cannot tell an omitted section from an empty one. An omitted section reads as "nothing owed" and is how propagation debt goes invisible.
+
+**Write each propagation bullet as a brief for a downstream agent, not a note to yourself.** `propagate-changes` hands your bullet on **verbatim** to a sub-agent that has not read this change, has not read your reasoning, and may not know the SDK detail you just learned. Name the file to create or edit and the specific mapping or behaviour it must capture. *"Update the author-go skill"* tells that agent nothing it could not have guessed; *"new `reference/signal-send.md` mapping the statement form to `ChildWorkflowFuture.SignalChildWorkflow` — the SDK returns a future, the DSL statement is the fire-and-forget call"* is executable by someone starting cold.
+
+Do not limit the bullets to what the routing table already covers. It is a floor; your section is authoritative beyond it, and a component named here gets a review even with no edge in the manifest.
 
 **Step C: Delete consumed REVISIONS files**
 
 Delete all `*_REVISIONS_*.md` files that were processed. The CHANGES file is now the record of this cycle.
 
+Anything left unfinished must appear under `## Deferred` above — a REVISIONS file is never the record of remaining work once it is deleted.
+
 ## Constraints
 
 - **One group at a time.** Do not start group N+1 until group N is validated and documented.
 - **Surgical changes only.** If execution reveals a larger problem, add it as a new finding — don't expand the current group's scope.
-- **Sub-agents execute, don't decide.** Ambiguity gets escalated to the user, not resolved silently by a sub-agent.
+- **Sub-agents execute, don't decide.** Genuine ambiguity — two valid designs with different consequences — gets escalated to **the dispatching agent** (the main agent under the dev-cycle loop; the user when a human is driving this directly). It is never resolved silently by a sub-agent, and never resolved by picking the first option that compiles.
 - **Validation is not optional.** A group is not done until the build passes.

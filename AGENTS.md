@@ -47,7 +47,7 @@ skills/                 AI skill definitions (canonical source; cut into the ski
 # Dev — release tooling and dev-cycle apparatus
 internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
-internal/changes/       Per-component coordination files: REVISIONS_NNN, CHANGES_NNN, and BACKLOG
+internal/changes/       Scratch space for an in-flight dev cycle: REVISIONS_NNN, CHANGES_NNN. Empty between cycles.
 internal/harness/       Dev-cycle component manifest (components.md), shared by the /dev-cycle skill and the orchestrator
 internal/orchestrator/  Temporal workflow design for the automated dev cycle (the durable twin of the /dev-cycle skill)
 internal/version.sh     Release version bump helper
@@ -71,15 +71,18 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Stay on `0.x` until a deliberate first major release.** While pre-v1, *every* release is a minor or patch bump — breaking changes ship as `0.x` **minor** bumps (the CHANGELOG history follows this: each new construct or breaking change is a minor bump). Never run `make release TYPE=major` or pass an explicit `VERSION=1.x.x` until the team explicitly decides to cut `v1.0.0`. The release tooling never crosses into `1.x` on its own — a major only happens if someone asks for it. The package release tag tracks the DSL version in `CHANGELOG.md`.
 
-**Coordinate breaking changes through the `internal/changes/` directory.** Each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/orchestrator/`, `internal/changes/skills/`) owns three file types:
+**Feature backlog and long-term planning live in [GitHub issues](https://github.com/jmbarzee/temporal-architect/issues), not in the repo.** Deferred features, design ideas, open questions, and cross-component work are all filed there and labelled by area (`area:dsl`, `area:parser`, `area:cli`, `area:decompose`, `area:visualizer`, `area:sampler`, `area:orchestrator`, `area:skills`) plus `epic`, `blocked`, `needs-design`, and `tech-debt`. When you defer something, open an issue — do not start a backlog file.
 
-- `REVISIONS_NNN.md` — planned work for an active dev cycle
-- `CHANGES_NNN.md` — completed work, consumed and archived
-- `BACKLOG.md` — informal ideas and deferred features; not cycle-committed, just a place to drop thoughts
+**Coordinate breaking changes through the `internal/changes/` directory — as scratch space, not an archive.** It is **empty between cycles**. While a cycle is running, each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/sampler/`, `internal/changes/skills/`) may hold two file types:
 
-The automated dev cycle drives the REVISIONS/CHANGES flow — see the [Development Commands](#development-commands) below, with the `/dev-cycle` skill (`.claude/skills/dev-cycle/`) as the entry point and its `propagate-changes` step for fanning a completed change out to downstream consumers.
+- `REVISIONS_NNN.md` — planned work; deleted once consumed
+- `CHANGES_NNN.md` — completed work; the handoff that `propagate-changes` reads to fan a change out downstream
 
-Long-lived reference docs that don't belong to a single component live at the repo root (e.g. `issues_blocking_downstream_adoption.md`, `ROADMAP.md` — the engine feature roadmap). Packaging/distribution docs (`packaging.md`, `publishing_setup.md`) live in the distribution repo (`jmbarzee/temporal-architect-dist`).
+**Both are deleted when the cycle closes.** Git history records what changed, `CHANGELOG.md` records what shipped, and GitHub issues record what is left to do. Before deleting a CHANGES record, file an issue for every unexecuted propagation bullet and every deferral in it — that is the close-out gate in the `/dev-cycle` skill, and skipping it is how propagation debt goes invisible.
+
+The automated dev cycle drives this flow — see the [Development Commands](#development-commands) below, with the `/dev-cycle` skill (`.claude/skills/dev-cycle/`) as the entry point.
+
+Durable reference documentation lives next to the code it describes (e.g. `tools/lsp/parser/decompose/README.md`, `tools/sampler/README.md`, `tools/visualizer/spec/`). Roadmap and milestone planning live in GitHub issues (`epic`-labelled), not in a repo file. Packaging/distribution docs (`packaging.md`, `publishing_setup.md`) live in the distribution repo (`jmbarzee/temporal-architect-dist`).
 
 When the parser's JSON output changes, the Go DTO structs are the single source of truth: their TypeScript projection is generated into the `@temporal-architect/wire-types` package (`tools/wire-types`, via `make gen-types`, CI-gated by `make check-types`). The visualizer consumes it in-tree (`file:`); the VS Code extension (in the dist repo) consumes the **published, version-pinned** `@temporal-architect/wire-types@X.Y.Z` — so a DTO change reaches the extension as a version bump, not an in-repo edit. Only the hand-written residue (discriminated-union overlays + string-literal enums) is updated alongside.
 
@@ -102,6 +105,7 @@ The dev-cycle harness is a **skill** at `.claude/skills/dev-cycle/` (read by bot
 | **Quality Reviews** | |
 | `review-quality-parser` | Go parser, AST, resolver — code quality and design |
 | `review-quality-visualizer` | Visualizer TypeScript — code quality and contract consumption |
+| `review-quality-sampler` | Sampler Go — code quality and observed-graph contract population |
 | `review-quality-dsl-spec` | DSL design — coverage and representation against Temporal primitives |
 | `review-quality-visualizer-spec` | Visualizer — product and UX against spec |
 | `review-quality-skill` | Single skill — craft, focus, and information density |

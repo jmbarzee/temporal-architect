@@ -33,21 +33,22 @@ Each component maps to a directory scope, review commands, and downstream edges:
 | Component | Scope | Quality Review | Alignment Review(s) | Downstream |
 |-----------|-------|----------------|---------------------|------------|
 | `dsl` | `tools/spec/sections/` | `review-quality-dsl-spec` | — | parser |
-| `parser` | `tools/lsp/` | `review-quality-parser` | `review-alignment-parser` | visualizer, skills |
+| `parser` | `tools/lsp/` | `review-quality-parser` | `review-alignment-parser` | visualizer, skills, sampler |
 | `visualizer-spec` | `tools/visualizer/spec/` | `review-quality-visualizer-spec` | — | visualizer |
 | `visualizer` | `tools/visualizer/` (minus spec/) | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — |
+| `sampler` | `tools/sampler/` | `review-quality-sampler` | — | — |
 | `skills` | `skills/` | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — |
 
 ## File Conventions
 
-All coordination files live under `internal/changes/` with component subdirectories:
+All coordination files live under `internal/changes/` with component subdirectories. This directory is **cycle scratch, not an archive**: it is gitignored, created by the harness when a cycle starts, and deleted when the cycle closes — it is absent between cycles.
 
 ```
 internal/changes/
   parser/
     quality_REVISIONS_001.md       ← pending (from review-quality-parser)
     alignment_REVISIONS_001.md     ← pending (from review-alignment-parser)
-    CHANGES_001.md                 ← completed round 1
+    CHANGES_001.md                 ← round 1 handoff (consumed by propagation)
   visualizer/
     quality_REVISIONS_001.md
     parser-output_REVISIONS_001.md
@@ -56,6 +57,8 @@ internal/changes/
     quality-design_REVISIONS_001.md
     alignment-design_REVISIONS_001.md
     alignment-author_REVISIONS_001.md
+  sampler/
+    quality_REVISIONS_001.md
 ```
 
 All skill reviews share the single `skills/` directory, so the `{type}` prefix is source-encoded (e.g. `quality-design`, `alignment-author`) to keep concurrent reviews from colliding. `address-review` merges every `skills/*_REVISIONS_*.md` into one `skills/CHANGES_{NNN}.md`.
@@ -63,7 +66,7 @@ All skill reviews share the single `skills/` directory, so the `{type}` prefix i
 **Rules:**
 
 - **REVISIONS = pending work.** Presence of any `*_REVISIONS_*.md` file triggers a child workflow for that component.
-- **CHANGES = completed work.** Persists as the historical record. Never deleted during the workflow.
+- **CHANGES = completed work.** The handoff `propagate-changes` reads to fan a change out downstream. It survives for the rest of the cycle — never deleted mid-workflow — but it is **not** a historical record: it is deleted with the rest of `internal/changes/` when the cycle closes. Git history records what changed, `CHANGELOG.md` records what shipped, and GitHub issues record what is left to do; before a CHANGES file is deleted, every unexecuted propagation bullet and every deferral in it must be filed as an issue.
 - A child processes **all** `*_REVISIONS_*.md` files in its component directory, merging them into one execution sequence.
 - After processing, REVISIONS files are deleted and a `CHANGES_{NNN}.md` file is written.
 - Propagation reads the CHANGES file and writes new REVISIONS files into downstream component directories.
@@ -73,7 +76,7 @@ All skill reviews share the single `skills/` directory, so the `{type}` prefix i
 | Pattern | Meaning |
 |---------|---------|
 | `{type}_REVISIONS_{NNN}.md` | Pending work. `{type}` = review type (quality, alignment, parser-output). `{NNN}` = sequence number. |
-| `CHANGES_{NNN}.md` | Completed round. `{NNN}` = round number. |
+| `CHANGES_{NNN}.md` | Completed round, consumed by propagation. `{NNN}` = round number. Deleted at cycle close. |
 
 ## Main Workflow Loop
 
@@ -112,12 +115,12 @@ Components with no upstream/downstream relationship run in parallel. The depende
 
 ```
 Wave 1: dsl, parser (independent — dsl is spec-only, parser is implementation)
-Wave 2: visualizer + skills + visualizer-spec (parallel, non-overlapping directories)
+Wave 2: visualizer + skills + visualizer-spec + sampler (parallel, non-overlapping directories)
 ```
 
 Within a wave, children are independent and run concurrently. Between waves, the main workflow waits for all children to complete, commits their changes, and scans for new REVISIONS before starting the next wave.
 
-Leaf nodes (visualizer, skills) terminate the propagation chain.
+Leaf nodes (visualizer, skills, sampler) terminate the propagation chain.
 
 ### Filesystem safety invariant
 
@@ -141,13 +144,15 @@ Git history reads as a sequence of component-scoped changes, making review strai
 
 **Final cleanup before PR:**
 
-1. Run `summarize-changes` — reads all CHANGES files, generates consolidated summary
-2. Commit the summary
+1. Run `summarize-changes` — reads all CHANGES files, and returns two things **as text**: the close-out list and the PR body. It writes no files, so there is nothing here to commit.
+2. File a GitHub issue for every item on the close-out list — each unexecuted propagation bullet and each deferral. **This gates the next step.**
 3. Delete the entire `internal/changes/` directory
 4. Commit the cleanup ("remove orchestration artifacts")
-5. Create PR using the summary as the PR description
+5. Create PR using the returned summary as the description — skipped when `config.createPR` is false, in which case the caller owns the git tail.
 
-This preserves the full trail in git history (REVISIONS → CHANGES → summary) while keeping the PR's final state clean.
+Step 2 gates step 3 for a reason: deletion must not outrun filing. An unexecuted propagation left inside a deleted record is debt that exists nowhere, which is how eight of them once accumulated.
+
+The trail lives in git history (REVISIONS → CHANGES as component-scoped commits) plus the PR body; the repo keeps no per-cycle status file.
 
 ## Limits & Safety
 

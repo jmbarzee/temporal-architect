@@ -50,6 +50,29 @@ func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
 - When a signal is also used in `await one:`, the selector reads from the same channel — see [await-one.md](./await-one.md)
 - `decimal` type in DSL maps to `float64` by default. For financial values where precision matters, consider `shopspring/decimal` or integer-cents representation instead
 
+## Handler options
+
+### DSL
+
+```twf
+signal Cancel():
+    options:
+        unfinished_policy: abandon
+        description: "Cancels the subscription"
+    cancelled = true
+```
+
+### Go
+
+```go
+// unfinished_policy: abandon — design intent only, no Go equivalent (see below)
+cancelCh := workflow.GetSignalChannelWithOptions(ctx, "Cancel",
+    workflow.SignalChannelOptions{Description: "Cancels the subscription"})
+```
+
+- `description` → `workflow.SignalChannelOptions{Description}`, passed via `GetSignalChannelWithOptions`. Use plain `GetSignalChannel` when the handler has no options (`SignalChannelOptions` is marked Experimental in the SDK)
+- **`unfinished_policy` has no Go equivalent on signal handlers.** `workflow.SignalChannelOptions` carries only `Description`; `UnfinishedPolicy` exists solely on `workflow.UpdateHandlerOptions`. A signal-handler `unfinished_policy` in TWF is design intent the Go SDK cannot currently express — get the channel without it and leave a comment recording the intent. Do **not** invent an API for it: there is no `workflow.SignalHandlerOptions`, no per-channel policy setter, and no signal equivalent of `HandlerUnfinishedPolicy`
+
 ## When to use each pattern
 
 - **Goroutine loop** (`workflow.Go` + `Receive` in a loop, as shown above): use when every signal must be processed as it arrives, independent of the main workflow flow. Most common pattern

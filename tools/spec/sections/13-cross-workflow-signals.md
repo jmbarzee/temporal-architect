@@ -43,3 +43,26 @@ A workflow-bound promise can be used two ways on the same handle:
 Both are valid on the same promise; sending a signal to a handle does not consume or affect a later `await` on it.
 
 This section documents only what the DSL provides. It does not enumerate absent capabilities — addressing a workflow you did not start, or sending cross-workflow queries or updates — consistent with how the spec treats every other unimplemented Temporal feature.
+
+## A send cannot be the first statement in a workflow body
+
+A workflow body opens in a *declaration region*, where `signal` introduces a signal **handler**.
+The parser only leaves that region once it has seen a body statement, so a `signal` at the very
+top is read as a malformed handler declaration rather than a send:
+
+```twf
+workflow Coordinator(id: string):
+    signal worker.Start(id)          # error: parsed as a signal declaration
+```
+
+Put any body statement ahead of it. **A comment does not work** — comments are skipped inside the
+declaration region, so they never trigger the transition:
+
+```twf
+workflow Coordinator(id: string):
+    promise worker <- workflow Worker(id)
+    signal worker.Start(id)          # fine
+```
+
+In practice this is rarely a constraint: the handle has to be bound by an earlier statement
+anyway, and that statement is itself the transition out of the declaration region.

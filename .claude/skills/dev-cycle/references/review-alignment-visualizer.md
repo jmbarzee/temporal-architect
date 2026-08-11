@@ -21,20 +21,21 @@ Briefly scan all spec files and the TypeScript source directory structure. Confi
 
 **Standard comparison units:**
 
-| # | Topic | Source (spec) | Target (TypeScript) | Blocked? |
-|---|-------|---------------|---------------------|---------|
-| 1 | Header & filter controls | TREE_VIEW.md §Header and filtering (60–87) | `WorkflowCanvas.tsx` (header state, search, file filtering) | No |
-| 2 | Block rendering & anatomy | TREE_VIEW.md §Block rendering (89–128) | `DefinitionBlock.tsx`, `StatementBlock.tsx`, all block component files, `blocks.css` | No |
-| 3 | Definition types & color scheme | `PRODUCT.md` §Visual Identity; TREE_VIEW.md §Definition types (130–165) | `temporal-theme.tsx`, `blocks.css` CSS variables | No |
-| 4 | Statement block routing & dispatch | TREE_VIEW.md §Statement types (167–223) | `StatementBlock.tsx` dispatch logic + all specialized block files | No |
-| 5 | Call blocks with inline expansion | TREE_VIEW.md §Call blocks, §Cross-reference resolution | `CallBlocks.tsx`, `DefinitionContext` | No |
-| 6 | Await blocks & handler resolution | TREE_VIEW.md §Await blocks (181–197) | `AwaitBlocks.tsx`, `HandlerContext` | **Blocked: parser must emit handler decls in workflow bodies** |
-| 7 | Workflow content (state, handlers, body sections) | TREE_VIEW.md §Workflow definition (147–155) | `WorkflowContent.tsx` | **Blocked: parser must emit full state block + handler decls** |
-| 8 | Keyboard navigation | TREE_VIEW.md §Keyboard Navigation (276–303) | Event handlers in canvas + block components, focus ring styling | No |
-| 9 | Cross-reference reverse index & navigation | TREE_VIEW.md §Contextual navigation buttons (237–263) | Not yet implemented | No (UX work) |
-| 10 | View framework & tab switching | `VIEW_FRAMEWORK.md` §View Model, §Shared Filter Vocabulary | `App.tsx`, view state management | **Blocked: Graph View not yet implemented** |
-| 11 | Error handling & display | TREE_VIEW.md §Errors header; `VIEW_FRAMEWORK.md` §Error Handling | `WorkflowCanvas.tsx`, `types/ast.ts` FileError | No |
-| 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload (119–165) | Reload logic in `App.tsx`/`WorkflowCanvas.tsx` | No |
+| # | Topic | Source (spec) | Target (TypeScript) |
+|---|-------|---------------|---------------------|
+| 1 | Header & filter controls | TREE_VIEW.md §Header and filtering | `WorkflowCanvas.tsx`, `FilterBar.tsx`, `filter/` |
+| 2 | Block rendering & anatomy | TREE_VIEW.md §Block rendering | `DefinitionBlock.tsx`, `StatementBlock.tsx`, all block component files, `blocks.css` |
+| 3 | Definition types & color scheme | `PRODUCT.md` §Visual Identity; TREE_VIEW.md §Definition types | `temporal-theme.tsx`, `blocks.css` CSS variables |
+| 4 | Statement block routing & dispatch | TREE_VIEW.md §Statement types | `StatementBlock.tsx` dispatch logic + all specialized block files |
+| 5 | Call blocks with inline expansion | TREE_VIEW.md §Call blocks, §Cross-reference resolution | `CallBlocks.tsx`, `DefinitionContext` |
+| 6 | Await blocks & handler resolution | TREE_VIEW.md §Await blocks | `AwaitBlocks.tsx`, `HandlerContext` |
+| 7 | Workflow content (state, handlers, body sections) | TREE_VIEW.md §Workflow definition | `WorkflowContent.tsx` |
+| 8 | Keyboard navigation | TREE_VIEW.md §Keyboard Navigation | Event handlers in canvas + block components, focus ring styling |
+| 9 | Cross-reference reverse index & navigation | TREE_VIEW.md §Contextual navigation buttons | `ContextualNav.tsx`, `WorkflowCanvas.tsx` |
+| 10 | View framework & tab switching | `VIEW_FRAMEWORK.md` §View Model, §Shared Filter Vocabulary | `App.tsx`, `TreeView.tsx`, `GraphView.tsx`, view state management |
+| 11 | Error handling & display | TREE_VIEW.md §Errors header; `VIEW_FRAMEWORK.md` §Error Handling | `WorkflowCanvas.tsx`, `types/ast.ts` FileError |
+| 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload | Reload logic in `App.tsx`/`WorkflowCanvas.tsx` |
+| 13 | Graph view model, layout & interaction | `GRAPH_VIEW.md` | `GraphView.tsx`, `components/graph-view/`, `graph/` |
 
 ### Phase 2: Parallel Alignment
 
@@ -64,12 +65,13 @@ Group by feature area. Order by tier first, then unblocked work before blocked.
 
 ### Phase 5: Write to `internal/changes/visualizer/alignment_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/visualizer/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/visualizer/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/visualizer/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/visualizer/` directory if needed). Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
+- `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: coverage state by tier, how many features are blocked on parser data
 - One `## Group N: Title` section per group
 - Each group: spec features addressed, files touched, change type (`Internal`), blocked status, parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
+**Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 
 ## Constraints
 

@@ -197,6 +197,10 @@ function parserEdgeToViewEdge(
     sourceNodeType: src.nodeType,
     targetNodeType: tgt.nodeType,
   }
+  // Carried through because the endpoint node types cannot distinguish a
+  // fire-and-forget send from a child-workflow call — both are workflow →
+  // workflow. `edgeTypeFor` reads this to pick the softer spring.
+  if (pe.kind === 'signalSend') out.dispatchKind = 'signalSend'
   if (pe.routing?.nexusEndpoint) {
     out.nexusEndpoint = pe.routing.nexusEndpoint
   }

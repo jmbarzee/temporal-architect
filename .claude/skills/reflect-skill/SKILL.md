@@ -135,7 +135,7 @@ For each sub-agent observation, engage with it before categorizing it:
 - **Confirming** — "I suspected this and now have validation." Strengthens existing direction.
 - **Novel reframe** — "I hadn't thought about it this way." Not yet actionable but shifts understanding.
 
-Write the results to `REFLECTION_{NAME}.md` at the repo root, where `{NAME}` is derived from the skill path (e.g., `skills/temporal-architect-design` → `REFLECTION_DESIGN.md`).
+Write the results to `internal/changes/skills/REFLECTION-{skill}.md`, where `{skill}` is the short skill name derived from the path (e.g. `skills/temporal-architect-design` → `REFLECTION-design.md`). It is a scratch file for the next phase — **never the repo root**, which nothing scans and nothing cleans up.
 
 ```
 # Reflection: {Skill Name}
@@ -179,13 +179,13 @@ Write the results to `REFLECTION_{NAME}.md` at the repo root, where `{NAME}` is 
 
 ### Phase 4: Distill
 
-Take the user's selections and group them by theme. Write `SKILL_{NAME}_REVISIONS.md` at the repo root following the standard revisions format:
+Take the user's selections and group them by theme. Write `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md` — the source-encoded naming in `internal/harness/components.md` § skills, so concurrent skill reviews do not collide and `address-review` picks it up. It must satisfy `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract; `reflect-skill` is one of the four legal `**Source:**` forms.
 
 ```
 # Skill Revisions: {Skill Name}
 
 **Source:** `reflect-skill`
-**Reflection file:** `REFLECTION_{NAME}.md` (consumed)
+**Reflection file:** `internal/changes/skills/REFLECTION-{skill}.md` (consumed)
 
 ## Summary
 {1-2 sentences on what the reflection surfaced and what will change}
@@ -200,9 +200,9 @@ Take the user's selections and group them by theme. Write `SKILL_{NAME}_REVISION
 **Parallelism:** {what can be done in parallel}
 ```
 
-Delete `REFLECTION_{NAME}.md` after writing the revisions file.
+Delete `REFLECTION-{skill}.md` after writing the revisions file.
 
-**Cross-layer changes (rare).** If the reflection surfaces a genuine issue in a layer other than the skill — for example, the parser doesn't support a construct the skill assumes exists, or the visualizer misrepresents something the skill relies on — write a `{LAYER}_CHANGES.md` for the affected layer and flag it for `.claude/skills/dev-cycle/references/propagate-changes.md`. The bar is high: "this is broken in the other layer," not "it would be nice if the other layer also changed." If you're unsure whether it meets the bar, it doesn't.
+**Cross-layer changes (rare).** If the reflection surfaces a genuine issue in a layer other than the skill — for example, the parser doesn't support a construct the skill assumes exists, or the visualizer misrepresents something the skill relies on — write `internal/changes/{layer}/{type}_REVISIONS_{NNN}.md` for the affected component (per `internal/harness/components.md`) and flag it for the dev-cycle loop. Do **not** write a CHANGES file — CHANGES records completed work, and this is work being requested. The bar is high: "this is broken in the other layer," not "it would be nice if the other layer also changed." If you're unsure whether it meets the bar, it doesn't.
 
 **To execute revisions, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
 
@@ -215,3 +215,12 @@ Delete `REFLECTION_{NAME}.md` after writing the revisions file.
 - **The skill is the target.** The goal is skill improvement, not self-criticism. Every observation should trace back to: what should the skill say differently?
 - **Depth before output.** Resist the pull toward producing the reflection file before you've genuinely understood what happened. The file is a byproduct of understanding, not the goal.
 - **Open-ended before evaluative.** When composing sub-agent prompts, prefer "what do you notice?" over "what's wrong?" Generation before judgment.
+
+## Where output goes
+
+Every file this skill writes lands under `internal/changes/` — **never the repo root**. That
+directory is cycle scratch: the dev-cycle Finalize gate files an issue for anything unfinished
+and then deletes it. A planning file written anywhere else is scanned by nothing, cleaned up by
+nothing, and becomes exactly the in-repo backlog this project does not keep (`AGENTS.md` §
+Project Status). If a reflection produces work nobody is going to do this cycle, the record of
+it is a **GitHub issue**, not a file.

@@ -104,7 +104,7 @@ w.RegisterNexusService(service)
 w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be registered
 ```
 
-Creating the Nexus **endpoint** that routes to this service is out-of-band infrastructure (`tcld` / Terraform), not worker code — that belongs to a future `author-infra` skill. See [nexus-service-def.md](./nexus-service-def.md) for the handler/operation patterns.
+Creating the Nexus **endpoint** that routes to this service is out-of-band infrastructure (`tcld` / Terraform), not worker code — that belongs to the `temporal-architect-author-infra` skill. See [nexus-service-def.md](./nexus-service-def.md) for the handler/operation patterns.
 
 ## Graceful shutdown
 
@@ -182,7 +182,7 @@ w := worker.New(c, "orders", worker.Options{
 })
 ```
 
-> **Permissive-union caveat:** the DSL worker-options set is the SDK *union* accepted permissively, so a `.twf` may carry a key the Go SDK has no field for (a per-language one-off). When a key has no `worker.Options` field, **drop it — do not invent an API.** The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred in `internal/changes/dsl/BACKLOG.md`.
+> **Permissive-union caveat:** the DSL worker-options set is the SDK *union* accepted permissively, so a `.twf` may carry a key the Go SDK has no field for (a per-language one-off). When a key has no `worker.Options` field, **drop it — do not invent an API.** The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred — see [#20](https://github.com/jmbarzee/temporal-architect/issues/20).
 
 ### `versioning` (not 1:1)
 

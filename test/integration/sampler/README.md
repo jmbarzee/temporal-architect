@@ -35,6 +35,7 @@ required). Subsequent runs reuse the cache.
 
 ## Scope
 
-Intentionally minimal for now: a single workflow that calls a single activity.
-Child-workflow / sub-tree and nexus coverage will be added alongside the
-transitive-sampling work tracked in the reverse-history backlog.
+Deliberately minimal: one workflow calling one activity. That covers the whole
+CLI path end to end without a large fixture. Child-workflow / sub-tree and nexus
+coverage lands with transitive sampling —
+[#59](https://github.com/jmbarzee/temporal-architect/issues/59).

@@ -63,12 +63,12 @@ export function edgeCategory(params: LinkParams, edge: GraphEdge): EdgeCategory 
   }
 }
 
-// ── Coordinate adapter (for the upcoming radial gravity mode) ────────────────
+// ── Coordinate adapter (for the deferred radial gravity mode, issue 51) ──────
 //
 // Polar conversion about the world origin, with a guard near r = 0 where the
 // angle is undefined and a radial force would otherwise spike. Not used by the
-// current cartesian forces; provided so the radial gravity work can express
-// targets in (r, theta) and convert back to (x, y) accelerations.
+// current cartesian forces; provided so the radial gravity work (issue 51) can
+// express targets in (r, theta) and convert back to (x, y) accelerations.
 export function toPolar(x: number, y: number): { r: number; theta: number } {
   const r = Math.hypot(x, y)
   if (r < 1e-6) return { r: 0, theta: 0 }
@@ -294,7 +294,7 @@ function applyBandGravityRadial(active: SimNode[], params: GravityParams, alpha:
 // charge handles spreading those outward. Origin-relative, so it is independent
 // of the band layout. In the (current) cartesian interpretation the focal point
 // is "up", toward the top of the world; the radial interpretation (focal =
-// origin) lands with the radial gravity mode.
+// origin) lands with the radial gravity mode (issue 51).
 const TOPOLOGICAL_FOCAL_Y = -350
 
 export function applyTopologicalGravity(

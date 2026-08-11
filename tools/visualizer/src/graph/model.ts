@@ -87,6 +87,11 @@ export interface GraphEdge {
   // the endpoint is per-call-site (the same operation can be reached via two
   // endpoints in different namespaces) so it stays on the edge.
   nexusEndpoint?: string
+  // The parser's dispatch kind, carried only where it disambiguates two edge
+  // types that share the same endpoint node types. `workflowCall` and
+  // `signalSend` are both workflow → workflow; nothing but the kind separates
+  // a binding call from a fire-and-forget send, so `edgeTypeFor` reads this.
+  dispatchKind?: 'signalSend'
 }
 
 export interface Graph {

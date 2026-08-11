@@ -54,6 +54,7 @@ export type {
   PromiseStmt,
   SetStmt,
   UnsetStmt,
+  SignalSendStmt,
   AsyncTarget,
   AsyncTargetKind,
   TimerTarget,

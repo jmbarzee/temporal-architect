@@ -28,7 +28,7 @@ Write the [impl-link header](./twf-conventions.md) as you extract, so the new `.
 A `.twf` exists but the code has moved on. Two halves, with different readiness:
 
 - **Check (available now):** on a bounded slice, compare the `.twf` against current code and report divergences — missing activities, changed boundaries, dropped signals. This needs no new tooling.
-- **Sync (deferred):** mechanically reconciling `.twf` ↔ implementation depends on the future twf↔impl mapping (`dsl/BACKLOG.md` → Reference Annotations / `@ref`). Until that lands, reconcile by hand: re-extract the drifted slice (B1a steps 2-4) and update the `.twf`, treating the code as the source of truth for *behavior* and the existing `.twf` as the source of truth for *intent*.
+- **Sync (deferred):** mechanically reconciling `.twf` ↔ implementation depends on the future twf↔impl mapping ([#24](https://github.com/jmbarzee/temporal-architect/issues/24) — reference annotations / `@ref`). Until that lands, reconcile by hand: re-extract the drifted slice (B1a steps 2-4) and update the `.twf`, treating the code as the source of truth for *behavior* and the existing `.twf` as the source of truth for *intent*.
 
 ## Reading strategy
 
@@ -41,7 +41,7 @@ Read for **design structure**, not line-by-line behavior:
 
 ### Delegate SDK reading to the author skill
 
-Do not reconstruct SDK semantics yourself. The author skills already hold the DSL↔SDK mapping — **read their symbol tables backward.** For Go, use the `temporal-architect-author-go` references (e.g. `activity-call.md`, `workflow-call.md`, `await-all.md`) and, for generated code, its forthcoming `reference/proto-driven.md` Rosetta Stone (generated `XxxActivities` iface, `RegisterXxxActivities`, `XxxFuture`, etc. → the underlying `activity`/`workflow`). Forward mappings (DSL → Go) read in reverse give you Go → DSL for free.
+Do not reconstruct SDK semantics yourself. The author skills already hold the DSL↔SDK mapping — **read their symbol tables backward.** For Go, use the `temporal-architect-author-go` references (e.g. `activity-call.md`, `workflow-call.md`, `await-all.md`) and, for generated code, its `reference/proto-driven.md` Rosetta Stone (generated `XxxActivities` iface, `RegisterXxxActivities`, `XxxFuture`, etc. → the underlying `activity`/`workflow`). Forward mappings (DSL → Go) read in reverse give you Go → DSL for free.
 
 ## Fidelity first, then Design Review
 

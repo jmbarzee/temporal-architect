@@ -106,7 +106,3 @@ temporal operator nexus endpoint get --name payments-endpoint
 Confirm each resource exists and its target task queue matches what the workers register on.
 
 ---
-
-## Future: `helm.md`
-
-Self-hosted **worker deployment** (k8s Helm chart) is a natural future variant — a separate reference + one routing row in SKILL.md. It is worker runtime, distinct from the control-plane resources this file provisions.

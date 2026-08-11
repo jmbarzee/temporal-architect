@@ -23,7 +23,7 @@ export type EdgeTypeId =
   | 'linkWorkerToActivity' | 'linkWorkerToNexus' | 'linkNexusToOperation'
   | 'linkEndpointToNamespace' | 'linkWorkflowToWorkflow' | 'linkWorkflowToActivity'
   | 'linkWorkflowToOperation' | 'linkOperationToWorkflow' | 'linkOperationToActivity'
-  | 'linkEndpointToOperation'
+  | 'linkEndpointToOperation' | 'linkSignalSend'
 
 export interface EdgeTypeDefinition {
   /** Stable id — also the key into the `link` / `dist` param maps and the
@@ -72,6 +72,13 @@ export const ALL_EDGE_TYPES: EdgeTypeDefinition[] = [
   { id: 'linkWorkflowToWorkflow', label: 'Wf↔Wf', sourceType: 'workflow', targetType: 'workflow',
     category: 'dependency', directional: false,
     physics: { strength: 0.50, distance: 420 }, tooltip: 'Workflow ↔ Workflow dependency' },
+  // Weaker and longer than the Wf↔Wf call spring on purpose: a signal send is a
+  // *soft* edge. It couples two workflows without binding them — the sender
+  // never waits on the receiver's handler — so the layout should let them drift
+  // apart rather than clamp them together the way a child-workflow call does.
+  { id: 'linkSignalSend', label: 'Wf→Sig', sourceType: 'workflow', targetType: 'workflow',
+    category: 'dependency', directional: true,
+    physics: { strength: 0.30, distance: 520 }, tooltip: 'Workflow → Workflow signal send (fire-and-forget)' },
   { id: 'linkWorkflowToActivity', label: 'Wf↔Act', sourceType: 'workflow', targetType: 'activity',
     category: 'dependency', directional: false,
     physics: { strength: 1.90, distance: 40 }, tooltip: 'Workflow ↔ Activity dependency' },
@@ -99,7 +106,7 @@ export const EDGE_TYPE_REGISTRY = Object.fromEntries(
 // operation pair, by direction. Unmatched cases fall through to the broadest
 // category in each branch (Worker↔Namespace containment; Workflow↔Activity dep).
 export function edgeTypeFor(
-  edge: Pick<GraphEdge, 'edgeType' | 'sourceNodeType' | 'targetNodeType'>,
+  edge: Pick<GraphEdge, 'edgeType' | 'sourceNodeType' | 'targetNodeType' | 'dispatchKind'>,
 ): EdgeTypeDefinition {
   const src = edge.sourceNodeType
   const tgt = edge.targetNodeType
@@ -116,7 +123,11 @@ export function edgeTypeFor(
     else if (src === 'activity' || tgt === 'activity') id = 'linkWorkerToActivity'
     else id = 'linkNsToWorker'
   } else {
-    if (src === 'namespace' || tgt === 'namespace') id = 'linkNsToNs'
+    // Checked before the node-type rules: a signal send is workflow → workflow
+    // like a child-workflow call, so the endpoint types alone cannot tell them
+    // apart. Only the parser's dispatch kind can.
+    if (edge.dispatchKind === 'signalSend') id = 'linkSignalSend'
+    else if (src === 'namespace' || tgt === 'namespace') id = 'linkNsToNs'
     else if (src === 'worker' || tgt === 'worker') id = 'linkWorkerToWorker'
     else if (src === 'workflow' && tgt === 'nexusOperation') id = 'linkWorkflowToOperation'
     else if (src === 'nexusOperation' && tgt === 'workflow') id = 'linkOperationToWorkflow'

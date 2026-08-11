@@ -3,10 +3,10 @@
 A single reusable primitive: **scan an existing repo on a bounded slice, return a compact summary.** Owned here (design-skill) and shared by every skill that has to understand a repo it didn't write:
 
 - **design reverse-engineering** — [reverse-engineering.md](./reverse-engineering.md) B1a bootstrap (no `.twf`) and B1b drift-check.
-- **author-go existing-repo Orient** — `temporal-architect-author-go/SKILL.md` (see `author-go-skill/REVISIONS_001` Group 1).
-- **author-infra** — repo/tooling discovery when that skill lands.
+- **author-go existing-repo Orient** — `temporal-architect-author-go/SKILL.md`.
+- **author-infra** — repo/tooling discovery.
 
-Design once, reuse. This spec is the broadened, shared form of the `sdk-explorer` agent sketched in [SUBAGENT_ADOPTION.md](../../temporal-architect-author-go/SUBAGENT_ADOPTION.md) — it answers that doc's open question ("should it also scan the user's existing project code for conventions?") with **yes**: project-convention discovery is this subagent's job, not the orchestrator's.
+Design once, reuse. This spec is the broadened, shared form of an `sdk-explorer`-style agent, and it settles where project-convention discovery belongs: **this subagent scans the user's existing project for conventions**, not the orchestrator.
 
 ## Why a subagent
 
@@ -47,7 +47,7 @@ A **compact structured summary** — conclusions, not raw dumps. Never paste who
 
 ## Agent definition
 
-Copy-pastable subagent prompt (frontmatter style matches `sdk-explorer` in [SUBAGENT_ADOPTION.md](../../temporal-architect-author-go/SUBAGENT_ADOPTION.md)):
+Copy-pastable subagent prompt:
 
 ```yaml
 ---

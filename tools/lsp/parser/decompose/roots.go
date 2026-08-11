@@ -24,7 +24,8 @@ const (
 //	  ∪ in-cycle-with-no-external-binding-in-edge
 //
 // Every root is tagged source "heuristic". The deferred declared-inbound-roots
-// feature later contributes source "declared" without changing this shape.
+// feature (issues 5 and 42) later contributes source "declared" without changing this
+// shape.
 // Requires condense() to have already run (the cycle heuristic reads the SCC
 // condensation).
 func (wg *workGraph) heuristicRoots(file *ast.File) map[string]*Root {

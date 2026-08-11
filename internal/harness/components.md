@@ -20,7 +20,15 @@ Review prompts referenced below live at `.claude/skills/dev-cycle/references/<na
 | `parser` | `tools/lsp/` | `internal/changes/parser/` | `review-quality-parser` | `review-alignment-parser` | `visualizer` [Schema, API], `visualizer-spec` [Schema], `skills` [Grammar, Semantic] |
 | `visualizer-spec` | `tools/visualizer/spec/` | `internal/changes/visualizer-spec/` | `review-quality-visualizer-spec` | — | `visualizer` [Spec] |
 | `visualizer` | `tools/visualizer/` (excluding `spec/`) | `internal/changes/visualizer/` | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — (leaf) |
+| `sampler` | `tools/sampler/` | `internal/changes/sampler/` | `review-quality-sampler` | — | — (leaf) |
 | `skills` | `skills/` | `internal/changes/skills/` | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — (leaf) |
+
+`sampler` (`tools/sampler/`) is a **leaf consumer of `parser`**, not a schema owner. The
+observed-graph wire shape is `observe.ObservedGraph`, which lives in `tools/lsp/parser/observe` —
+`tools/sampler/go.mod` requires `tools/lsp` and `main.go` imports it. The sampler *produces
+instances* of a shape the parser *defines*, so a change to that shape originates in `parser` and
+must reach **both** consumers: the visualizer, which projects it, and the sampler, which emits it.
+That second edge is the one this component exists to make visible.
 
 The skill set — design, the two authors, and the `temporal-architect` harness front-door — is **one
 component**. Its members have dependencies flowing in many internal directions (design ↔ authors ↔
@@ -44,12 +52,20 @@ When a component's `CHANGES` file is propagated, each non-`Internal` change type
 specific review in the downstream component (transcribed for `propagate-changes`). `Internal`
 changes never propagate.
 
+**This table is a floor, not the whole map.** It encodes the edges that are always true, so an
+author who forgets a consumer is still caught. It cannot know a specific obligation — *"the
+author-go skill needs a reference file for this construct"* — because that depends on the change,
+not on the graph. So a CHANGES record's `## Downstream propagation` section is **authoritative
+beyond this table**: a component named there gets a review even with no edge here, and its review
+prompt comes from the Components table above. Both directions of mismatch are reported by
+`propagate-changes`, and neither silently wins.
+
 | Source | Change type | Triggers (downstream → review) |
 |---|---|---|
 | `dsl` | Grammar | `parser` → `review-alignment-parser` |
 | `parser` | Grammar | `skills` → `review-alignment-design-skill` |
-| `parser` | Schema | `visualizer` → `review-quality-visualizer`; `visualizer-spec` → `review-quality-visualizer-spec` |
-| `parser` | API | `visualizer` → `review-quality-visualizer` (TS types) |
+| `parser` | Schema | `visualizer` → `review-quality-visualizer`; `visualizer-spec` → `review-quality-visualizer-spec`; `sampler` → `review-quality-sampler` |
+| `parser` | API | `visualizer` → `review-quality-visualizer` (TS types); `sampler` → `review-quality-sampler` |
 | `parser` | Semantic | `skills` → `review-alignment-design-skill` |
 | `visualizer-spec` | Spec | `visualizer` → `review-alignment-visualizer` |
 
@@ -76,8 +92,10 @@ upstream change landing later:
 
 ```
 Wave 1: dsl, parser
-Wave 2: visualizer-spec, visualizer, skills
+Wave 2: visualizer-spec, visualizer, skills, sampler
 ```
+
+`sampler` joins Wave 2 as a leaf: it depends only on `parser`, and nothing depends on it.
 
 `skills` depends only on `parser`/`dsl` (Wave 1); the former per-skill waves collapse into the single
 `skills` node. Intra-`skills` ordering (design before authors before harness) is handled inside the

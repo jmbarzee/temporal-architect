@@ -65,7 +65,7 @@ export function isObservedGraphEnvelope(d: unknown): d is { observedGraph: Obser
 /**
  * Project an observed graph onto the ParserGraph the render pipeline consumes.
  * The occurrence series is dropped for now (edge weight = sum of buckets is a
- * future feature); everything else is already the ParserGraph shape.
+ * future feature, issue 55); everything else is already the ParserGraph shape.
  */
 export function observedToParserGraph(og: ObservedGraph): ParserGraph {
   return {

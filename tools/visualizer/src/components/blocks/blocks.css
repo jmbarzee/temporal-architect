@@ -1109,6 +1109,17 @@
   color: var(--block-promise-text);
 }
 
+/* Signal send - reuses the signal palette; the arrival and the send are the
+   same domain concept seen from opposite ends. */
+.block-signal-send {
+  background: var(--block-signal-bg);
+  border: 1px solid var(--block-signal-border);
+}
+
+.block-signal-send>.block-header {
+  color: var(--block-signal-text);
+}
+
 /* Set/Unset - Condition coloring (condition mutation) */
 .block-set,
 .block-unset {

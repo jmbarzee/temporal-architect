@@ -61,12 +61,13 @@ Group by construct family. Order: `incorrect` first (silent misparse is worse th
 
 ### Phase 5: Write to `internal/changes/parser/alignment_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/parser/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/parser/` directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/parser/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/parser/` directory if needed). Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
+- `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: coverage state, what's missing or incorrect
 - One `## Group N: Title` section per group
 - Each group: gaps addressed, files touched, change type (`Grammar` | `API` | `Semantic`), parallelism notes
 
-**STOP after writing. Present a summary and wait for approval. To execute, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
+**Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 
 ## Constraints
 

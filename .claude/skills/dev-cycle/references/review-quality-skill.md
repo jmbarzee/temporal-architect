@@ -4,7 +4,9 @@ Review an AI skill for quality, focus, and effectiveness. Evaluate whether the s
 
 ## Skill Selection
 
-If a skill path is not provided in context, list the contents of `skills/` and present the options. Wait for selection before proceeding.
+This review covers **one** skill. Its path must be supplied by whoever dispatches it — under the dev-cycle loop that is the `skills` component sweep, which reviews each skill in turn.
+
+If no skill path is given, do not guess and do not review all of them: report that the path is missing and escalate to the dispatching agent (the user, when a human is driving this directly). Reviewing the wrong skill wastes a full pass and writes a misleading REVISIONS file.
 
 ## Context
 
@@ -97,16 +99,17 @@ All skills share the single `skills` component directory, so the REVISIONS filen
 - `skills/temporal-architect-author-infra` → `quality-author-infra`
 - `skills/temporal-architect` → `quality-architect`
 
-Write the grouped plan to `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md` (create the directory if needed). Use `_001` as the default sequence number; if `_001` already exists, increment to `_002`, etc.
+Write the grouped plan to `internal/changes/skills/quality-{skill}_REVISIONS_{NNN}.md` (create the directory if needed). Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
 
 Also read all existing files in `internal/changes/skills/` before starting — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed.
+- `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: skill under review, overall quality assessment
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Internal`), parallelism notes
 
 Skill changes are always `Internal` — they don't propagate downstream via the dependency graph.
 
-**STOP after writing. Present a summary and wait for approval. To execute groups, invoke `.claude/skills/dev-cycle/references/address-review.md`.**
+**Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 
 ## Constraints
 - **Evaluate against the skill's own stated goal.** `README.md` defines intent. Judge the skill against that, not against what you think it should do.

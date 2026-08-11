@@ -119,7 +119,7 @@ workflow ReindexCatalog(cursor: Cursor):
 
 ### Design Review
 
-A clean `twf check` (and, when it exists, `twf lint`) does **not** mean the design is correct. Idempotency of side effects, concurrent-write races, and cross-file payload data flow are invisible to the tooling and remain review concerns. Before presenting, do one **fresh-eyes pass**: re-read the finished design as if reviewing someone else's PR — set the prose/intent aside, or dispatch a reviewer that sees only the `.twf` artifacts. Self-review with the authoring mindset reproduces the author's blind spots; the value is in the *independence* of the second look, not its existence.
+A clean `twf check` (and, when it exists, `twf lint` — [#28](https://github.com/jmbarzee/temporal-architect/issues/28)) does **not** mean the design is correct. Idempotency of side effects, concurrent-write races, and cross-file payload data flow are invisible to the tooling and remain review concerns. Before presenting, do one **fresh-eyes pass**: re-read the finished design as if reviewing someone else's PR — set the prose/intent aside, or dispatch a reviewer that sees only the `.twf` artifacts. Self-review with the authoring mindset reproduces the author's blind spots; the value is in the *independence* of the second look, not its existence.
 
 Grade against this rubric:
 
