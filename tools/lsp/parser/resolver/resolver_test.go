@@ -522,6 +522,88 @@ namespace ns:
 	}
 }
 
+// findNamespace returns the first NamespaceDef in the file, or nil.
+func findNamespace(file *ast.File) *ast.NamespaceDef {
+	for _, def := range file.Definitions {
+		if ns, ok := def.(*ast.NamespaceDef); ok {
+			return ns
+		}
+	}
+	return nil
+}
+
+func TestEndpointTaskQueuePopulated(t *testing.T) {
+	input := `nexus service OrderService:
+    async PlaceOrder workflow ProcessOrder
+
+workflow ProcessOrder(order: Order) -> (Result):
+    close complete(Result{})
+
+worker w:
+    workflow ProcessOrder
+    nexus service OrderService
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+    nexus endpoint OrderEndpoint
+        options:
+            task_queue: "endpointQueue"
+`
+	file := mustParse(t, input)
+	errs := Resolve(file)
+	for _, e := range errs {
+		t.Errorf("unexpected error: %v (severity: %s)", e, e.Severity)
+	}
+
+	ns := findNamespace(file)
+	if ns == nil {
+		t.Fatal("no namespace definition found")
+	}
+	if len(ns.Endpoints) != 1 {
+		t.Fatalf("expected 1 endpoint, got %d", len(ns.Endpoints))
+	}
+	if got := ns.Endpoints[0].TaskQueue; got != "endpointQueue" {
+		t.Errorf("endpoint TaskQueue = %q, expected 'endpointQueue'", got)
+	}
+}
+
+func TestEndpointTaskQueueAbsent(t *testing.T) {
+	input := `nexus service OrderService:
+    async PlaceOrder workflow ProcessOrder
+
+workflow ProcessOrder(order: Order) -> (Result):
+    close complete(Result{})
+
+worker w:
+    workflow ProcessOrder
+    nexus service OrderService
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+    nexus endpoint OrderEndpoint
+`
+	file := mustParse(t, input)
+	errs := Resolve(file)
+	for _, e := range errs {
+		t.Errorf("unexpected error: %v (severity: %s)", e, e.Severity)
+	}
+
+	ns := findNamespace(file)
+	if ns == nil {
+		t.Fatal("no namespace definition found")
+	}
+	if len(ns.Endpoints) != 1 {
+		t.Fatalf("expected 1 endpoint, got %d", len(ns.Endpoints))
+	}
+	if got := ns.Endpoints[0].TaskQueue; got != "" {
+		t.Errorf("endpoint TaskQueue = %q, expected empty string", got)
+	}
+}
+
 func TestNexusDuplicateService(t *testing.T) {
 	input := `nexus service Svc:
     async Op workflow W

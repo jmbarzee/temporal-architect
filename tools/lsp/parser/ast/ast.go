@@ -92,6 +92,7 @@ type NamespaceEndpoint struct {
 	Pos
 	EndpointName string
 	Namespace    string // set by resolver: name of the owning namespace
+	TaskQueue    string // set by resolver: endpoint's task_queue option
 	Options      *OptionsBlock
 }
 

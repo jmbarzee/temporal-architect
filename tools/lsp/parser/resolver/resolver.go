@@ -191,6 +191,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			ep.Namespace = ns.Name
+			ep.TaskQueue = endpointTaskQueue(ep.Options)
 			if existing, exists := allEndpoints[ep.EndpointName]; exists {
 				errs = append(errs, &ResolveError{
 					Msg:    fmt.Sprintf("duplicate nexus endpoint name %q: defined in namespace %s and namespace %s", ep.EndpointName, existing.Namespace, ns.Name),
@@ -561,4 +562,19 @@ func resolveWorkerRefs[T any](refs []ast.Ref[T], defs map[string]T, kind string,
 	for i := range refs {
 		resolveRef(&refs[i], defs, kind, errKind, errs)
 	}
+}
+
+// endpointTaskQueue extracts the task_queue value from an options block, or ""
+// if absent. Nil-safe. Mirrors graph.taskQueue / validator.extractTaskQueue —
+// kept local so the resolver package doesn't take a cross-package dependency.
+func endpointTaskQueue(opts *ast.OptionsBlock) string {
+	if opts == nil {
+		return ""
+	}
+	for _, e := range opts.Entries {
+		if e.Key == "task_queue" {
+			return e.Value
+		}
+	}
+	return ""
 }
