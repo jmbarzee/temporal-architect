@@ -374,6 +374,7 @@ type NamespaceEndpointJSON struct {
 	EndpointName string            `json:"endpointName"`
 	Line         int               `json:"line"`
 	Column       int               `json:"column"`
+	TaskQueue    string            `json:"taskQueue,omitempty"`
 	Options      *OptionsBlockJSON `json:"options,omitempty"`
 }
 
@@ -415,6 +416,7 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 			EndpointName: ep.EndpointName,
 			Line:         ep.Line,
 			Column:       ep.Column,
+			TaskQueue:    ep.TaskQueue,
 			Options:      marshalOptionsBlock(ep.Options),
 		})
 	}

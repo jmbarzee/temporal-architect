@@ -139,6 +139,7 @@ export interface NamespaceEndpointJSON {
   endpointName: string;
   line: number /* int */;
   column: number /* int */;
+  taskQueue?: string;
   options?: OptionsBlockJSON;
 }
 /**
