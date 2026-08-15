@@ -586,6 +586,27 @@ func TestDetachWithArrowError(t *testing.T) {
 	}
 }
 
+func TestBodylessDefinitionError(t *testing.T) {
+	// A definition header missing its ':' and indented body should report the
+	// author's actual mistake, not the awaited token.
+	input := `activity Foo(x) -> (R)
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for body-less definition, got nil")
+	}
+	pe, ok := err.(*ParseError)
+	if !ok {
+		t.Fatalf("expected ParseError, got %T: %v", err, err)
+	}
+	if pe.Msg != "definition requires ':' and an indented body" {
+		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+	if strings.Contains(pe.Msg, "expected COLON") {
+		t.Errorf("message still names the awaited token: %q", pe.Msg)
+	}
+}
+
 func TestOptionsOnCall(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
     activity CreateShipment(order) -> shipment
