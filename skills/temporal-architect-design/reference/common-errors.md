@@ -65,7 +65,7 @@ the message for now (categorical parse codes are future work — [#32](https://g
 | `expected ( after if` / `expected ( after for` | Missing parentheses around condition/iterator | Use `if (expr):` / `for (x in items):` |
 | `unexpected token <tok> at top level` | Statement or keyword that doesn't start a workflow or activity definition | Ensure all top-level items are `workflow`, `activity`, `worker`, `namespace`, or `nexus service` definitions |
 | `unexpected token <tok> in await one case` | Invalid case type inside `await one:` block | Cases must be `signal`, `update`, `timer`, `activity`, `workflow`, an identifier, or `await all` |
-| `expected COLON, got NEWLINE` | A definition is missing its `:` and indented body — a bare declaration like `activity Foo(x) -> (R)` with nothing under it. `activity`/`workflow`/`sync` nexus op definitions always require a body. (Often followed by a cascading `UNDEFINED_*` because the malformed definition didn't register.) | Add `:` and an indented body. For a not-yet-implemented stub, use a placeholder statement (e.g. `return Foo{}` or a single `log(...)`); a definition cannot be body-less. |
+| `definition requires ':' and an indented body` | A definition is missing its `:` and indented body — a bare declaration like `activity Foo(x) -> (R)` with nothing under it. `activity`/`workflow`/`sync` nexus op definitions always require a body. (Often followed by a cascading `UNDEFINED_*` because the malformed definition didn't register.) | Add `:` and an indented body. For a not-yet-implemented stub, use a placeholder statement (e.g. `return Foo{}` or a single `log(...)`); a definition cannot be body-less. |
 
 ## Validation diagnostics (kind: `validate`)
 
