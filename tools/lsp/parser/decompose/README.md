@@ -3,7 +3,11 @@
 Computes how a `.twf` design breaks into independently-implementable **chunks of
 work** — the analysis behind `twf graph chunks`. The primary consumer is the
 temporal-architect harness skill, which uses the decomposition to fan
-implementation out to author subagents at contract boundaries.
+implementation out to author subagents.
+
+The governing rule is **cut at contract boundaries, never finer** — and `.twf`
+*is* the contract. Cutting below a contract boundary splits work that has no
+agreed interface across the seam, which is what produces conflicting rework.
 
 **The tool informs; it does not impose.** Every recommendation (chunk
 boundaries, floor merges, division suggestions) is advisory — nothing is
@@ -143,8 +147,12 @@ menu again). The recursion is:
    it could (a loop / single-node leaf is uncuttable and never counts as a
    failure, see `leavesOverCeiling`);
 2. **lower worst-leaf `Ec`** — coupling-aware balance;
-3. **fewer top-level sections** — coherence / anti-shatter (the harness reads the
-   top level first, so a few coherent units beat a spray of fragments);
+3. **fewer top-level sections** — coherence / anti-shatter. This sits *above*
+   parallel width deliberately: width measured on recursed leaves rewards
+   gratuitous shattering, since cutting a chunk into ever-smaller pieces always
+   raises the antichain. The brake has to outrank the reward or the ranking
+   optimizes for fragmentation. (It also matches how the harness reads the
+   output — top level first, so a few coherent units beat a spray of fragments.)
 4. **greater parallel width** — the decoupling reward: the maximum antichain of
    the leaf dependency poset (`parallel.go`, Dilworth: leaves − maximum matching
    of strict reachability), i.e. how many units are authorable in parallel;

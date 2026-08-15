@@ -8,7 +8,7 @@ Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visu
 
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View spec (authoritative)
 - `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View spec (authoritative)
-- `tools/visualizer/spec/` (all other files) — product patterns, priority tiers, view framework
+- `tools/visualizer/spec/` (all other files) — product patterns, view framework
 - `tools/visualizer/src/` — TypeScript implementation (target under review)
 - in-flight files in `internal/changes/parser/` — parser changes in flight that may affect data availability
 - All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
@@ -54,20 +54,20 @@ Sub-agents run in parallel. **Every sub-agent reads both sides** — spec sectio
 Merge all findings. For each issue:
 - **Status**: `implemented` | `partial` | `missing` | `blocked`
 - **Gap**: what's absent or incomplete
-- **Tier**: priority tier from the spec's product eval plan
+- **Severity**: how far the implementation diverges from what the spec claims — a spec that asserts a behavior the code lacks outranks an unbuilt enhancement the spec marks as deferred
 - **Data dependency**: if `blocked`, describe the parser JSON fields required
 
 Drop anything already tracked in existing `internal/changes/visualizer/*_REVISIONS_*.md` or `internal/changes/visualizer/CHANGES_*.md` files.
 
 ### Phase 4: Group & Prioritize
 
-Group by feature area. Order by tier first, then unblocked work before blocked.
+Group by feature area. Order by severity first, then unblocked work before blocked.
 
 ### Phase 5: Write to `internal/changes/visualizer/alignment_REVISIONS_{NNN}.md`
 
 Write the grouped plan to `internal/changes/visualizer/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/visualizer/` directory if needed). Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
 - `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
-- Brief summary: coverage state by tier, how many features are blocked on parser data
+- Brief summary: coverage state per spec file, how many features are blocked on parser data
 - One `## Group N: Title` section per group
 - Each group: spec features addressed, files touched, change type (`Internal`), blocked status, parallelism notes
 

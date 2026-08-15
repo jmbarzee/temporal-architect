@@ -91,8 +91,9 @@ export interface GravityParams {
   // the band, stiffer far out. Mirrors the Pull tab's linkExponent.
   gravityBandExp: number
   // Topological gravity strength: scales the single-sided inward pull on each
-  // node by its (shaped) downstream-reach score. Default 0 (off). (Field name
-  // retained as `gravityDownstream` for now.)
+  // node by its (shaped) downstream-reach score. Default 0 (off).
+  // The name predates the force's current meaning; renaming it is breaking for
+  // library consumers, so it is tracked separately — see https://github.com/jmbarzee/temporal-architect/issues/90.
   gravityDownstream: number
   // Topological contrast: exponent applied to the reach score (score^exp) so
   // high-reach roots dominate. 1 = linear; higher = sharper tiering (only the

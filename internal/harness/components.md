@@ -46,6 +46,37 @@ merges every `internal/changes/skills/*_REVISIONS_*.md` into one sequence and wr
 `internal/changes/orchestrator/` is **not** a cycle component — it is coordination scratch for the
 orchestrator's own design and is excluded.
 
+## Routing an issue to a component
+
+`/dev-issue` needs to map a GitHub issue onto a component. The `area:*` labels do **not** map 1:1,
+so this table is the starting point and the *files the work touches* are the decider.
+
+| Label | Usually | Because |
+|---|---|---|
+| `area:dsl` | `dsl` | The spec is `tools/spec/sections/`. The parser half of any grammar change is a `dsl` → `parser` propagation, not part of the issue's own component. |
+| `area:parser` | `parser` | `tools/lsp/`. |
+| `area:cli` | `parser` | The CLI lives at `tools/lsp/cmd/twf/` — inside the parser's scope. |
+| `area:decompose` | `parser` | The engine is `tools/lsp/parser/decompose/`. |
+| `area:visualizer` | `visualizer` or `visualizer-spec` | Split by whether the work lands in `spec/`. |
+| `area:sampler` | `sampler` | `tools/sampler/`. |
+| `area:skills` | `skills` | `skills/`. |
+| `area:orchestrator` | **none** | `internal/orchestrator/` is excluded above. These issues are handled by hand. |
+
+Four ways the label misleads, each of which has actually happened:
+
+- **`area:decompose` is not always a component signal.** It sometimes means "about the decomposition
+  feature" — several such issues are pure visualizer overlay work with no `parser/decompose/` change.
+- **A single label can hide cross-component work.** An issue labelled only `area:sampler` that changes
+  a type in `tools/lsp/parser/observe/` is a `parser` **Schema** change fanning out to every consumer.
+- **`visualizer-spec` is unreachable from labels.** No `area:*` label maps to `tools/visualizer/spec/`,
+  so that pickup has to come from reading the body.
+- **A label can point at the wrong repository.** Work whose body describes a VS Code extension command
+  belongs to `jmbarzee/temporal-architect-dist`, whatever it is labelled here.
+
+Issues migrated from the old in-repo backlog carry a `<!--PROVENANCE-->` footer naming the file they
+came from, which is a stronger signal than the label. Two of those paths are workstreams rather than
+components: `temp-change-set/chunks` → `parser`, `temp-change-set/reverse-history` → `sampler`.
+
 ## Propagation routing
 
 When a component's `CHANGES` file is propagated, each non-`Internal` change type triggers a

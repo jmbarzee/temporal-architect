@@ -65,7 +65,7 @@ Summaries are secondary information — smaller, muted, never competing with the
 
 ### Density management
 
-The visualizer must remain useful as the system it displays grows. Filters and progressive disclosure handle moderate scale, but large projects (100+ definitions, 50+ visible graph nodes) require explicit density strategies: label elision at zoom levels, detail reduction at distance, and virtualized rendering for long lists. Each view defines its own density thresholds (see TREE_VIEW.md § Scale Behavior and GRAPH_VIEW.md § Performance Considerations). The goal is graceful degradation — the experience gets simpler at high density, never broken.
+The visualizer must remain useful as the system it displays grows. Filters and progressive disclosure handle moderate scale, but large projects (100+ definitions, 50+ visible graph nodes) require explicit density strategies: label elision at zoom levels and detail reduction at distance. Virtualized rendering for long lists is **not** implemented — deferred as [#87](https://github.com/jmbarzee/temporal-architect/issues/87). Each view defines its own density thresholds (see TREE_VIEW.md § Scale Behavior and GRAPH_VIEW.md § Performance Considerations). The goal is graceful degradation — the experience gets simpler at high density, never broken.
 
 
 ## Visual Identity

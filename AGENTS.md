@@ -47,7 +47,7 @@ skills/                 AI skill definitions (canonical source; cut into the ski
 # Dev — release tooling and dev-cycle apparatus
 internal/release/
   gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
-internal/changes/       Scratch space for an in-flight dev cycle: REVISIONS_NNN, CHANGES_NNN. Empty between cycles.
+internal/changes/       Scratch space for an in-flight dev cycle: REVISIONS_NNN, CHANGES_NNN. Gitignored; absent between cycles.
 internal/harness/       Dev-cycle component manifest (components.md), shared by the /dev-cycle skill and the orchestrator
 internal/orchestrator/  Temporal workflow design for the automated dev cycle (the durable twin of the /dev-cycle skill)
 internal/version.sh     Release version bump helper
@@ -73,7 +73,7 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Feature backlog and long-term planning live in [GitHub issues](https://github.com/jmbarzee/temporal-architect/issues), not in the repo.** Deferred features, design ideas, open questions, and cross-component work are all filed there and labelled by area (`area:dsl`, `area:parser`, `area:cli`, `area:decompose`, `area:visualizer`, `area:sampler`, `area:orchestrator`, `area:skills`) plus `epic`, `blocked`, `needs-design`, and `tech-debt`. When you defer something, open an issue — do not start a backlog file.
 
-**Coordinate breaking changes through the `internal/changes/` directory — as scratch space, not an archive.** It is **empty between cycles**. While a cycle is running, each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/sampler/`, `internal/changes/skills/`) may hold two file types:
+**Coordinate breaking changes through the `internal/changes/` directory — as scratch space, not an archive.** It is **absent between cycles** — gitignored, and deleted outright at close. While a cycle is running, each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/sampler/`, `internal/changes/skills/`) may hold two file types:
 
 - `REVISIONS_NNN.md` — planned work; deleted once consumed
 - `CHANGES_NNN.md` — completed work; the handoff that `propagate-changes` reads to fan a change out downstream
@@ -120,13 +120,15 @@ The dev-cycle harness is a **skill** at `.claude/skills/dev-cycle/` (read by bot
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |
 | `summarize-changes` | Scan `internal/changes/` and produce consolidated report |
 
-Two standalone helpers ship as their own **skills** under `.claude/skills/` (not part of the dev-cycle harness):
+Three standalone skills ship under `.claude/skills/` alongside the dev-cycle harness:
 
 | Skill (`.claude/skills/<name>/SKILL.md`) | Purpose |
 |---------|---------|
+| `dev-issue` | Take one GitHub issue to a PR: triage, settle the design with the user, run `/dev-cycle` as a subroutine, land it |
 | `expand-idea` | Expand a one-sentence idea into a full Temporal architecture vision with draft `.twf` |
 | `reflect-skill` | Reflect on a recent task and propose updates to the responsible skill |
 
+**Start here for one issue:** invoke `/dev-issue <number>`.
 **Start here for a new cycle:** invoke the `/dev-cycle` skill.
 **Start here for targeted work:** use the dev-cycle skill's "review" entrypoint for the layer you're focused on.
 **Start here for a new design:** use the `expand-idea` skill.

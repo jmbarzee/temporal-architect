@@ -32,7 +32,7 @@ This vocabulary unifies what would otherwise be separate features ("Show in Grap
 | `manual` | User clicks the destination tab in the tab bar. | For each filter dimension (files, types): if destination's dimension is **pinned** (§ Per-Dimension Pinning), leave it alone; otherwise adopt the source view's current value. |
 | `focus(target)` | User invokes "Show in [view]" on a definition or node. | Take destination's current filter and **expand** it only as needed to make the target visible (add the target's type if toggled off; add the target's source file if file filtering is active). Pins do not block expansion — a `focus` transition can override a pin, with a visible cue. The pin state itself is not changed. |
 
-A future `mirror` intent (force one view's filters onto the other, ignoring pins) is reserved for explicit power-user gestures and is not exposed today.
+A `mirror` intent (force one view's filters onto the other, ignoring pins) is deliberately **not** exposed: it would let one view silently discard the other's filter state. The name is reserved should an explicit power-user gesture ever justify it.
 
 ### The Filter Reconciler
 
@@ -306,6 +306,6 @@ Modifier keys have consistent meanings across the entire visualizer. This preven
 | **Shift** (with hover/focus) | Reverse dependency direction — show **upstream** dependents instead of downstream dependencies | Graph View: Interaction States |
 | **Shift+Tab** | Reverse focus cycling | Both views: standard browser/OS convention |
 
-### Future: Multi-Select
+### Multi-Select
 
-Multi-select (selecting multiple nodes) is a future feature for Graph View. Because Shift already has a defined meaning (dependency direction reversal), multi-select should use a different modifier — **Ctrl+click** (Windows/Linux) or **Meta+click** (macOS) — to avoid ambiguity.
+Deferred — [#50](https://github.com/jmbarzee/temporal-architect/issues/50); specced in [GRAPH_VIEW.md](./GRAPH_VIEW.md) § Multi-Select. The modifier assignment is fixed here because Shift already means dependency-direction reversal: multi-select uses **Ctrl+click** (Windows/Linux) or **Meta+click** (macOS).
