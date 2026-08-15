@@ -83,6 +83,12 @@ func (p *Parser) collectRawUntil(terminators ...token.TokenType) string {
 // expectBlock consumes the COLON NEWLINE INDENT sequence that opens an
 // indented block.
 func (p *Parser) expectBlock() error {
+	if p.current.Type != token.COLON {
+		// Name the author's actual mistake rather than the awaited token: a
+		// definition/declaration header must be followed by ':' and an indented
+		// body. Error position stays at the token where ':' was expected.
+		return p.errorf("definition requires ':' and an indented body")
+	}
 	if _, err := p.expect(token.COLON); err != nil {
 		return err
 	}
