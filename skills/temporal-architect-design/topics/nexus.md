@@ -196,8 +196,8 @@ The resolver validates all nexus references:
 |-----------|-------|
 | Duplicate `nexus service` name | `duplicate nexus service definition: X` |
 | Duplicate endpoint name across namespaces | `duplicate nexus endpoint name "X"` |
-| Endpoint not found (endpoints exist) | `undefined nexus endpoint: X` |
-| Service not found (services exist) | `undefined nexus service: X` |
+| Endpoint not found | `undefined nexus endpoint: X` |
+| Service not found (in its package) | `undefined nexus service: X` |
 | Operation not found on service | `nexus service X has no operation Y` |
 | `detach nexus ... -> result` | `detach nexus call cannot have a result` |
 | Async op references missing workflow | `async operation Y references undefined workflow: Z` |
@@ -210,8 +210,12 @@ The resolver validates all nexus references:
 | Condition | Warning |
 |-----------|---------|
 | Service not on any worker (namespaces exist) | `nexus service X is not referenced by any worker` |
-| Endpoint not found (no endpoints defined) | `unresolved nexus endpoint: X (may be external)` |
-| Service not found (no services defined) | `unresolved nexus service: X (may be external)` |
+
+> **Reaching a service in another package** — an undefined endpoint or service is now always a hard
+> error (the old per-category "may be external" warning is gone). A genuinely external service is
+> reached by qualifying the reference (`nexus Ep pkg.Service.Op`) and `import`ing that package; if
+> the package isn't in the tree the import is treated as external. Endpoints are flat-global and
+> never qualified. See [common-errors.md](../reference/common-errors.md#packages-imports-and-external-references).
 
 ---
 

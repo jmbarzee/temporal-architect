@@ -44,6 +44,10 @@
 | `nexus service Name` (in worker) | Register nexus service on worker |
 | `namespace name:` | Namespace definition (deployment with options) |
 | `nexus endpoint Name` (in namespace) | Nexus endpoint instantiation with task_queue |
+| `package Name` | Package clause — first line of a file; groups a directory's symbols (see [packages.md](../topics/packages.md)) |
+| `import "full/module/path"` | Import a package, referenced by its leaf name |
+| `import alias "full/module/path"` | Import a package under an explicit alias (disambiguates leaf clashes) |
+| `pkg.Name` (qualified reference) | Reference a symbol in an imported package by leaf name — e.g. `activity billing.ChargeCard`, `nexus Ep billing.PaymentService.Charge`. Same-package refs stay bare; endpoints are never qualified |
 
 ## Common `options:` Keys
 

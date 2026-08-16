@@ -1,12 +1,42 @@
 # `.twf` Conventions
 
-How to lay out `.twf` files and the small set of comment conventions that carry information the grammar doesn't yet express.
+How to lay out `.twf` files, group them into packages, and the small set of comment conventions that carry information the grammar doesn't express.
 
-## One package for all `.twf`
+## Package per domain directory
 
-**Recommendation: keep all of a project's `.twf` in one package** (one directory whose files resolve together). Cross-file references — an `activity` defined in one file and called in another, a `nexus service` provided in one file and called in another — resolve only within a shared file set. One package means every reference resolves and `twf check` sees the whole design at once.
+**Recommendation: give each domain its own package — one directory of `.twf` files with a `package` clause — and let the `.twf` layout mirror the code layout.** A package is a directory; every file in it starts with the same `package X` clause; symbols resolve per package.
 
-This decouples `.twf` layout from code layout: the files no longer mirror the directory structure of the implementation. That trade-off is worth it — resolution coverage matters more than co-location — and the [impl-link header](#impl-link-header) below restores the link to the code.
+```twf
+# orders/checkout.twf
+package orders
+
+workflow ProcessOrder(order: Order) -> (Result):
+    activity ChargePayment(order) -> receipt
+    close complete(Result{receipt})
+```
+
+Cross-package references are **qualified by the package leaf name** and require an explicit `import`:
+
+```twf
+# deploy/topology.twf
+package deploy
+
+import "github.com/acme/shop/orders"
+import "github.com/acme/shop/payments"
+
+worker orderWorker:
+    workflow orders.ProcessOrder
+    activity payments.ChargeCard
+```
+
+- **Package = directory.** One `package X` clause per file, first in the file (before imports and definitions). Files sharing a directory share a package and resolve together; a same-named symbol in a different package no longer collides.
+- **`import "<full/module/path>"`** — Go-style, the full module-prefixed path (`github.com/acme/shop/orders`). The path is carried verbatim as a future global-lookup key but is **not enforced** today (a single directory tree is assumed; there is no global package management yet).
+- **Reference by leaf name** — the last path segment (`orders`). Same-package references stay bare, exactly as before. Use `import alias "path"` when two imports would share a leaf name.
+- **A clause-less file is the implicit default package** and behaves exactly as `.twf` did before packages existed — nothing about single-package designs changes, and their node-IDs and error messages are byte-identical.
+
+This restores co-location: the `.twf` for a domain can sit beside (and mirror) the implementation directory it describes, instead of being forced into one flat package to keep references resolving. See the [packages topic](../topics/packages.md) for a worked `package` + `import` + qualified-reference example, and [common-errors.md](./common-errors.md#packages-imports-and-external-references) for how imports interact with resolution.
+
+> **`package` is not `namespace`.** `package` is a compile-time symbol grouping over a directory of `.twf` files with no runtime meaning. `namespace` is the Temporal deployment construct (workers, endpoints) and is unchanged. A topology file that wires domains together is itself just a package (e.g. a `deploy` package) that imports the domains it deploys.
 
 ## Comment conventions
 
@@ -18,6 +48,8 @@ A top-of-file comment linking a `.twf` to the implementation directory (or direc
 
 ```twf
 # impl: order-service/workflows, order-service/activities
+package orders
+
 workflow ProcessOrder(order: Order) -> (Result):
     activity ChargePayment(order) -> receipt
     close complete(Result{receipt})
@@ -26,18 +58,6 @@ activity ChargePayment(order: Order) -> (Receipt):
     charge(order.payment)
 ```
 
-Because the one-package layout decouples `.twf` from code, the implementation link can no longer be inferred from location — it has to be explicit. The header is that link. It is also a [reverse-engineering](./reverse-engineering.md) aid: the [project-discovery subagent](./project-discovery-subagent.md) *reads* it to jump straight to the code, and extraction *writes* it when recovering a `.twf` from existing code.
+Now that packages let the `.twf` layout mirror the code layout, the impl link is usually obvious from co-location — but it is still worth stating explicitly, because the mapping is a convention, not something the tooling enforces, and a package may describe code that lives under a differently-named directory. The header records that mapping in one place. It is also a [reverse-engineering](./reverse-engineering.md) aid: the [project-discovery subagent](./project-discovery-subagent.md) *reads* it to jump straight to the code, and extraction *writes* it when recovering a `.twf` from existing code.
 
-This is the interim form. The durable, machine-checkable version is per-symbol reference annotations (`@ref`), deferred — see [#24](https://github.com/jmbarzee/temporal-architect/issues/24) — when that lands, the header convention gives way to it.
-
-### Cross-domain stub marker
-
-A marker on a local stub definition that exists only to satisfy resolution for a symbol actually defined in another `.twf`:
-
-```twf
-# cross-domain stub — defined in payments.twf
-nexus service PaymentService:
-    sync ChargeCard(req: ChargeRequest) -> (Receipt)
-```
-
-Defining *one* local `nexus service` turns every other service reference in the file into a hard error — including genuinely external services in other namespaces (see [common-errors.md](./common-errors.md#nexus-resolution-external-warning-vs-local-error)). The stub marker documents that the definition is a local placeholder, not the real owner, so a partial / per-domain file can both call and provide services without tripping the resolution cliff. The marker makes the stub's intent obvious to readers and to the discovery subagent.
+This is the interim, file-level form. The durable, machine-checkable version is per-symbol reference annotations (`@ref`), deferred — see [#24](https://github.com/jmbarzee/temporal-architect/issues/24); when that lands, the per-symbol `@ref` supersedes the file-level header.

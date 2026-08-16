@@ -211,7 +211,7 @@ Read only what the current design requires.
 | Signal vs Update | Choosing between signal and update for external input | [signals-queries-updates.md](./topics/signals-queries-updates.md) |
 | Notation Examples | Control flow, handlers, timers, nexus in TWF | [notation-examples.md](./reference/notation-examples.md) |
 | Notation Reference | All TWF syntax constructs | [notation-reference.md](./reference/notation-reference.md) |
-| `.twf` Conventions | File placement + comment conventions (impl-link, cross-domain stub) | [twf-conventions.md](./reference/twf-conventions.md) |
+| `.twf` Conventions | Package-per-directory layout + comment conventions (impl-link header) | [twf-conventions.md](./reference/twf-conventions.md) |
 | Design Checklist | Final verification before presenting | [design-checklist.md](./reference/design-checklist.md) |
 | Anti-Patterns | Common Temporal design mistakes | [anti-patterns.md](./reference/anti-patterns.md) |
 | Reverse Engineering | Recovering `.twf` from existing code | [reverse-engineering.md](./reference/reverse-engineering.md) |
@@ -221,4 +221,5 @@ Read only what the current design requires.
 | Workers & Task Queues | Worker grouping, task queue routing, deployment | [task-queues.md](./topics/task-queues.md) |
 | Namespaces | Deciding namespace count / boundaries | [namespaces.md](./reference/namespaces.md) |
 | Nexus | Cross-namespace communication | [nexus.md](./topics/nexus.md) |
+| Packages & Imports | Grouping `.twf` by domain; cross-package references | [packages.md](./topics/packages.md) |
 Topic deep-dives are in `reference/` and `topics/` — consult as needed during design.
