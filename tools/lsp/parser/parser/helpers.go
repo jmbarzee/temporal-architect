@@ -9,9 +9,31 @@ import (
 )
 
 // advance moves to the next token.
+//
+// Structural lexer errors arrive as token.ILLEGAL tokens (unterminated string,
+// unterminated argument list, inconsistent indentation). They carry the lexer's
+// message as their literal and are positioned at the opening delimiter. We
+// record each one and skip past it, so the recursive-descent parser never has to
+// special-case ILLEGAL at every consumption site: the lexer already recovered to
+// the next line/EOF, giving the parser a clean boundary to resume from.
 func (p *Parser) advance() {
 	p.current = p.peek
 	p.peek = p.lex.NextToken()
+	for p.peek.Type == token.ILLEGAL {
+		p.recordLexError(p.peek)
+		p.peek = p.lex.NextToken()
+	}
+}
+
+// recordLexError converts a token.ILLEGAL into a ParseError carrying the lexer's
+// message and the offending delimiter's position.
+func (p *Parser) recordLexError(tok token.Token) {
+	p.lexErrors = append(p.lexErrors, &ParseError{
+		Msg:    tok.Literal,
+		Line:   tok.Line,
+		Column: tok.Column,
+		code:   CodeLexical,
+	})
 }
 
 // expect consumes the current token if it matches the expected type.

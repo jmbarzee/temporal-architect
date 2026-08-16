@@ -6,6 +6,8 @@ import (
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/clitest"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 )
 
 // TestParseFilesProducesStructuredDiagnostics covers the resolve and parse
@@ -107,6 +109,59 @@ func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
 		if d.Severity == "error" {
 			t.Errorf("unexpected error diagnostic: %+v", d)
 		}
+	}
+}
+
+// TestStructuralLexErrorSurfacesAndBlocksLenient covers issue #97: a string
+// literal containing a paren must not silently truncate the file. The lexer now
+// emits a loud, positioned diagnostic that reaches the shared diagnostic path,
+// and HasBlockingError reports it so `--lenient` cannot demote it to exit 0.
+func TestStructuralLexErrorSurfacesAndBlocksLenient(t *testing.T) {
+	// An unterminated string mid-file. The definition that follows must survive.
+	src := "workflow Foo(x: int) -> (Result):\n" +
+		"    activity Log(\"oops) -> ok\n" +
+		"\n" +
+		"activity Bar(y: string) -> (string):\n" +
+		"    return y\n"
+
+	file, diags, err := envelope.ParseSource("t.twf", src)
+	if err != nil {
+		t.Fatalf("ParseSource: %v", err)
+	}
+
+	var lex *envelope.Diagnostic
+	for i := range diags {
+		if diags[i].Kind == "parse" && diags[i].Code == parser.CodeLexical {
+			lex = &diags[i]
+			break
+		}
+	}
+	if lex == nil {
+		t.Fatalf("no structural lexical diagnostic; got %d: %+v", len(diags), diags)
+	}
+	if lex.Severity != "error" {
+		t.Errorf("severity = %q, want error", lex.Severity)
+	}
+	if lex.Message != "unterminated string literal" {
+		t.Errorf("message = %q, want 'unterminated string literal'", lex.Message)
+	}
+	if lex.Start.Line == 0 || lex.Start.Column == 0 {
+		t.Errorf("expected a positioned diagnostic, got %+v", lex.Start)
+	}
+
+	if !envelope.HasBlockingError(diags) {
+		t.Errorf("HasBlockingError = false, want true (--lenient must not demote a lex error)")
+	}
+
+	// The trailing definition must still parse — the truncation guarantee.
+	foundBar := false
+	for _, def := range file.Definitions {
+		if ad, ok := def.(*ast.ActivityDef); ok && ad.Name == "Bar" {
+			foundBar = true
+		}
+	}
+	if !foundBar {
+		t.Errorf("trailing activity Bar was truncated; got %d definitions", len(file.Definitions))
 	}
 }
 

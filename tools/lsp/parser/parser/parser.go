@@ -2,10 +2,25 @@ package parser
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
+)
+
+// Symbolic parse-error codes. Consumers should rely on the diagnostic's
+// kind+code+message and treat new codes as a non-breaking addition.
+const (
+	// CodeSyntax is the default code for uncategorized parse failures.
+	CodeSyntax = "SYNTAX"
+	// CodeLexical marks a structural lexical error surfaced from the lexer's
+	// token.ILLEGAL stream: an unterminated string, an unterminated argument
+	// list, or inconsistent indentation. The input could not be tokenized, so
+	// the parse is fundamentally broken — unlike a resolve/validate error over a
+	// well-formed token stream. Tooling uses this to refuse a clean `--lenient`
+	// exit: a tokenization failure is never a "lenient" condition.
+	CodeLexical = "LEX"
 )
 
 // ParseError represents a parse error with position info.
@@ -13,6 +28,7 @@ type ParseError struct {
 	Msg    string
 	Line   int
 	Column int
+	code   string // symbolic code; empty means CodeSyntax
 }
 
 func (e *ParseError) Error() string {
@@ -21,12 +37,15 @@ func (e *ParseError) Error() string {
 
 // Code returns a stable, symbolic error code for downstream tooling.
 //
-// Today the parser emits ad-hoc, message-shaped errors and does not classify
-// them by kind. All parse errors therefore share the single code "SYNTAX".
-// Categorizing parse failures (e.g. UNEXPECTED_TOKEN, INVALID_INDENT) is a
-// future refinement; consumers should rely on the diagnostic's kind+code+message
-// for now and treat new codes as a non-breaking addition.
-func (e *ParseError) Code() string { return "SYNTAX" }
+// Most parse errors are still uncategorized and share CodeSyntax. Structural
+// lexical errors carry CodeLexical (see recordLexError). Finer categorization of
+// the remaining syntax failures (e.g. UNEXPECTED_TOKEN) is a future refinement.
+func (e *ParseError) Code() string {
+	if e.code != "" {
+		return e.code
+	}
+	return CodeSyntax
+}
 
 type defParser func(p *Parser) (ast.Definition, error)
 type stmtParser func(p *Parser) (ast.Statement, error)
@@ -50,6 +69,13 @@ type Parser struct {
 
 	collecting bool          // true when collecting errors instead of bailing
 	errors     []*ParseError // accumulated errors in collecting mode
+
+	// lexErrors holds structural lexer errors (token.ILLEGAL) encountered while
+	// reading ahead. They are collected centrally in advance() rather than at
+	// each consumption site so an ILLEGAL token — which can surface anywhere,
+	// e.g. an unterminated string or argument list mid-body — is always reported
+	// exactly once, with the lexer's message and opening-delimiter position.
+	lexErrors []*ParseError
 }
 
 // Registration maps for keyword dispatch.
@@ -150,6 +176,13 @@ func ParseFile(input string) (*ast.File, error) {
 		}
 	}
 
+	// Structural lexer errors are recorded during token read-ahead and skipped
+	// so parsing can continue. If one occurred without a parser error stopping
+	// us first, surface it here so it is never silently dropped.
+	if len(p.lexErrors) > 0 {
+		return nil, p.lexErrors[0]
+	}
+
 	return file, nil
 }
 
@@ -191,7 +224,19 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 		}
 	}
 
-	return file, p.errors
+	// Merge structural lexer errors (collected during read-ahead) with the
+	// parser errors, ordered by source position so diagnostics read top-to-bottom.
+	// Lexer errors carry CodeLexical, which keeps the runaway-truncation bug from
+	// hiding behind a clean `twf check --lenient` exit code.
+	all := append(p.errors, p.lexErrors...)
+	sort.SliceStable(all, func(i, j int) bool {
+		if all[i].Line != all[j].Line {
+			return all[i].Line < all[j].Line
+		}
+		return all[i].Column < all[j].Column
+	})
+
+	return file, all
 }
 
 // parseBody parses statements inside an indented block (after INDENT, until DEDENT).

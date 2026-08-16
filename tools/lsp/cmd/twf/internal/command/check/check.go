@@ -55,6 +55,14 @@ func run(paths []string, lenient bool) int {
 		fmt.Fprintf(os.Stderr, "Partial parse: %d workflow(s), %d activity(s), %d error(s), %d warning(s)\n",
 			summary.Workflows, summary.Activities, summary.Errors, summary.Warnings)
 		if lenient {
+			// --lenient demotes ordinary errors to a clean exit, but not
+			// structural lexical errors: an unterminated string or argument list
+			// means the file could not be tokenized, so a green exit would hide
+			// the failure entirely (the bug behind issue #97).
+			if envelope.HasBlockingError(diags) {
+				fmt.Fprintln(os.Stderr, "Refusing --lenient exit 0: structural lexical error(s) mean the file could not be parsed.")
+				return 1
+			}
 			return 0
 		}
 		return 1
