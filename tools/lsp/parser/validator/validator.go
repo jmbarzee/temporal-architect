@@ -357,7 +357,15 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, callingWorkflow st
 		case *ast.WorkflowCall:
 			v.checkCallRouting("workflow", n.Workflow.Name, n.Options, callingWorkflow, n.Line, n.Column)
 		case *ast.NexusCall:
-			v.checkEndpointServiceLinkage(n.Endpoint.Name, n.Service.Name, n.Line, n.Column)
+			// Only a service that resolved to a local definition can be checked
+			// for endpoint↔worker linkage. An unresolved service is either
+			// external (resolved through an unresolved import — no error wanted,
+			// issue #109) or genuinely undefined (the resolver already reported
+			// UNDEFINED_SERVICE); either way the validator must not add a
+			// linkage error on top.
+			if n.Service.Resolved != nil {
+				v.checkEndpointServiceLinkage(n.Endpoint.Name, n.Service.Name, n.Line, n.Column)
+			}
 		case *ast.SignalSendStmt:
 			// A signal send is a *use* of its handle promise — no routing
 			// check applies (a signal is delivered to a child the sender
@@ -378,7 +386,9 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, callingWorkflow st
 }
 
 func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, line, column int) {
-	if nt, ok := target.(*ast.NexusTarget); ok {
+	if nt, ok := target.(*ast.NexusTarget); ok && nt.Service.Resolved != nil {
+		// See the NexusCall case in walkStatements: skip the linkage check for
+		// an unresolved (external / already-reported) service.
 		v.checkEndpointServiceLinkage(nt.Endpoint.Name, nt.Service.Name, line, column)
 	}
 }

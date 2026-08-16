@@ -196,14 +196,7 @@ func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.Ne
 	if err != nil {
 		return nil, err
 	}
-	service, err := p.expect(token.IDENT)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := p.expect(token.DOT); err != nil {
-		return nil, err
-	}
-	operation, err := p.expect(token.IDENT)
+	svcPkg, service, operation, err := p.parseNexusServiceRef()
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +206,7 @@ func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.Ne
 	}
 	t := &ast.NexusTarget{
 		Endpoint:  ast.Ref[*ast.NamespaceEndpoint]{Pos: ast.Pos{Line: endpoint.Line, Column: endpoint.Column}, Name: endpoint.Literal},
-		Service:   ast.Ref[*ast.NexusServiceDef]{Pos: ast.Pos{Line: service.Line, Column: service.Column}, Name: service.Literal},
+		Service:   ast.Ref[*ast.NexusServiceDef]{Pos: ast.Pos{Line: service.Line, Column: service.Column}, Package: svcPkg, Name: service.Literal},
 		Operation: ast.Ref[*ast.NexusOperation]{Pos: ast.Pos{Line: operation.Line, Column: operation.Column}, Name: operation.Literal},
 		Args:      args.Literal,
 		Detach:    detach,

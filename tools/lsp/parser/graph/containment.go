@@ -47,18 +47,19 @@ func (g *Graph) emitContainment(idx *astIndex) {
 		if wd.worker == nil {
 			continue
 		}
-		emitHostedContainment(g, wd, KindWorkflow, refNamesAndLines(wd.worker.Workflows))
-		emitHostedContainment(g, wd, KindActivity, refNamesAndLines(wd.worker.Activities))
-		emitHostedContainment(g, wd, KindNexusService, refNamesAndLines(wd.worker.Services))
+		emitHostedContainment(g, wd, KindWorkflow, refNamesAndLines(wd.worker.Workflows, idx))
+		emitHostedContainment(g, wd, KindActivity, refNamesAndLines(wd.worker.Activities, idx))
+		emitHostedContainment(g, wd, KindNexusService, refNamesAndLines(wd.worker.Services, idx))
 	}
 
 	for _, svc := range idx.nexusServices {
-		for _, wd := range idx.deploymentsHosting(KindNexusService, svc.Name) {
+		svcQName := idx.defQName(svc.Package, svc.Name)
+		for _, wd := range idx.deploymentsHosting(KindNexusService, svcQName) {
 			for _, op := range svc.Operations {
-				opName := nexusOpQualifiedName(svc.Name, op.Name)
+				opName := nexusOpQualifiedName(svcQName, op.Name)
 				g.Edges = append(g.Edges, Edge{
 					From: HostedID(KindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
-					To:   HostedID(KindNexusService, svc.Name, wd.WorkerName, wd.NamespaceName, false),
+					To:   HostedID(KindNexusService, svcQName, wd.WorkerName, wd.NamespaceName, false),
 					Kind: EdgeContainment,
 					Line: op.Line,
 				})
@@ -67,18 +68,23 @@ func (g *Graph) emitContainment(idx *astIndex) {
 	}
 }
 
-// refLine is a flat (name, line) pair used by emitHostedContainment so
-// the same emission helper works across Workflows / Activities /
-// Services without generics gymnastics for the per-element line.
+// refLine is a flat (qualified name, line) pair used by emitHostedContainment
+// so the same emission helper works across Workflows / Activities / Services
+// without generics gymnastics for the per-element line. Name is the ref's
+// QUALIFIED target name (package-aware) so the containment child ID matches the
+// hosted definition node's ID.
 type refLine struct {
 	Name string
 	Line int
 }
 
-func refNamesAndLines[T any](refs []ast.Ref[T]) []refLine {
+func refNamesAndLines[T interface {
+	comparable
+	ast.Packaged
+}](refs []ast.Ref[T], idx *astIndex) []refLine {
 	out := make([]refLine, 0, len(refs))
 	for _, r := range refs {
-		out = append(out, refLine{Name: r.Name, Line: r.Line})
+		out = append(out, refLine{Name: hostedRefQName(r, idx), Line: r.Line})
 	}
 	return out
 }

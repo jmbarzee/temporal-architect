@@ -153,6 +153,38 @@ func parseNexusCall(p *Parser) (ast.Statement, error) {
 	return parseNexusCallInner(p, pos, false)
 }
 
+// parseNexusServiceRef parses the "[pkg.]Service.Operation" portion of a nexus
+// call (the tokens after the endpoint), returning the optional service package
+// qualifier and the service and operation identifier tokens. A leading
+// `IDENT.` before `Service.Operation` — i.e. the three-segment
+// `pkg.Service.Operation` — is the package qualifier (issue #109, completing the
+// Ref[T].Package surface #108 landed on the AST/wire); the two-segment
+// `Service.Operation` form consumes exactly the same tokens as before, so
+// unpackaged nexus calls are byte-identical.
+func (p *Parser) parseNexusServiceRef() (svcPkg string, svc, op token.Token, err error) {
+	var zero token.Token
+	first, err := p.expect(token.IDENT)
+	if err != nil {
+		return "", zero, zero, err
+	}
+	if _, err = p.expect(token.DOT); err != nil {
+		return "", zero, zero, err
+	}
+	second, err := p.expect(token.IDENT)
+	if err != nil {
+		return "", zero, zero, err
+	}
+	if p.current.Type != token.DOT {
+		return "", first, second, nil // Service.Operation
+	}
+	p.advance() // consume the second DOT: pkg.Service.Operation
+	third, err := p.expect(token.IDENT)
+	if err != nil {
+		return "", zero, zero, err
+	}
+	return first.Literal, second, third, nil
+}
+
 // parseNexusCallInner is the shared parser for nexus calls (direct and detach).
 func parseNexusCallInner(p *Parser, pos ast.Pos, detach bool) (ast.Statement, error) {
 	p.advance() // consume NEXUS
@@ -162,16 +194,7 @@ func parseNexusCallInner(p *Parser, pos ast.Pos, detach bool) (ast.Statement, er
 		return nil, err
 	}
 
-	service, err := p.expect(token.IDENT)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := p.expect(token.DOT); err != nil {
-		return nil, err
-	}
-
-	operation, err := p.expect(token.IDENT)
+	svcPkg, service, operation, err := p.parseNexusServiceRef()
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +236,7 @@ func parseNexusCallInner(p *Parser, pos ast.Pos, detach bool) (ast.Statement, er
 		Pos:       pos,
 		Detach:    detach,
 		Endpoint:  ast.Ref[*ast.NamespaceEndpoint]{Pos: ast.Pos{Line: endpoint.Line, Column: endpoint.Column}, Name: endpoint.Literal},
-		Service:   ast.Ref[*ast.NexusServiceDef]{Pos: ast.Pos{Line: service.Line, Column: service.Column}, Name: service.Literal},
+		Service:   ast.Ref[*ast.NexusServiceDef]{Pos: ast.Pos{Line: service.Line, Column: service.Column}, Package: svcPkg, Name: service.Literal},
 		Operation: ast.Ref[*ast.NexusOperation]{Pos: ast.Pos{Line: operation.Line, Column: operation.Column}, Name: operation.Literal},
 		Args:      args.Literal,
 		Result:    result,

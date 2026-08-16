@@ -6,7 +6,16 @@ import (
 
 // astIndex precomputes the lookups needed to enumerate deployment nodes
 // and resolve dispatch edges. Built once per Extract call.
+//
+// The workflow / activity / nexus-service maps are keyed by the definition's
+// QUALIFIED name (graph.QualifiedName(pkg, name)) so same-named definitions in
+// different packages are distinct entries — the lockstep with the
+// package-aware resolver (issue #109). Endpoints stay flat-global; workers and
+// namespaces keep bare-name identity. filePkg is the merged file's package
+// (empty for a multi-package tree), the fallback for a def whose runtime stamp
+// is empty.
 type astIndex struct {
+	filePkg       string
 	workflows     map[string]*ast.WorkflowDef
 	activities    map[string]*ast.ActivityDef
 	workers       map[string]*ast.WorkerDef
@@ -48,6 +57,7 @@ type endpointDeployment struct {
 
 func indexAST(file *ast.File) *astIndex {
 	idx := &astIndex{
+		filePkg:         file.Package,
 		workflows:       map[string]*ast.WorkflowDef{},
 		activities:      map[string]*ast.ActivityDef{},
 		workers:         map[string]*ast.WorkerDef{},
@@ -59,15 +69,15 @@ func indexAST(file *ast.File) *astIndex {
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			idx.workflows[d.Name] = d
+			idx.workflows[idx.defQName(d.Package, d.Name)] = d
 		case *ast.ActivityDef:
-			idx.activities[d.Name] = d
+			idx.activities[idx.defQName(d.Package, d.Name)] = d
 		case *ast.WorkerDef:
 			idx.workers[d.Name] = d
 		case *ast.NamespaceDef:
 			idx.namespaces[d.Name] = d
 		case *ast.NexusServiceDef:
-			idx.nexusServices[d.Name] = d
+			idx.nexusServices[idx.defQName(d.Package, d.Name)] = d
 		}
 	}
 
@@ -93,6 +103,31 @@ func indexAST(file *ast.File) *astIndex {
 	}
 
 	return idx
+}
+
+// defQName is the qualified name of a definition — QualifiedName(effective
+// package, name), where the effective package is the def's runtime stamp or the
+// file's package. It is the name element of every workflow / activity /
+// nexus-service (and derived nexus-operation) node ID.
+func (idx *astIndex) defQName(defPkg, name string) string {
+	return QualifiedName(pkgOf(defPkg, idx.filePkg), name)
+}
+
+// hostedRefQName is the qualified target name of a worker registration ref: the
+// package it resolved to (its resolved def's stamp) joined with the ref name,
+// so a worker in package P registering a same-named workflow hosts P's copy —
+// not a same-named workflow in another package. An unresolved ref falls back to
+// the file's package (bare name for an unpackaged tree), matching no real node,
+// which is correct since there is no definition to host.
+func hostedRefQName[T interface {
+	comparable
+	ast.Packaged
+}](r ast.Ref[T], idx *astIndex) string {
+	var zero T
+	if r.Resolved != zero {
+		return QualifiedName(pkgOf(r.Resolved.PackageName(), idx.filePkg), r.Name)
+	}
+	return QualifiedName(idx.filePkg, r.Name)
 }
 
 // taskQueue extracts the task_queue value from an options block, or ""
@@ -135,21 +170,21 @@ func (idx *astIndex) deploymentsHosting(kind, name string) []workerDeployment {
 		switch kind {
 		case KindWorkflow:
 			for _, r := range wd.worker.Workflows {
-				if r.Name == name {
+				if hostedRefQName(r, idx) == name {
 					hosted = true
 					break
 				}
 			}
 		case KindActivity:
 			for _, r := range wd.worker.Activities {
-				if r.Name == name {
+				if hostedRefQName(r, idx) == name {
 					hosted = true
 					break
 				}
 			}
 		case KindNexusService:
 			for _, r := range wd.worker.Services {
-				if r.Name == name {
+				if hostedRefQName(r, idx) == name {
 					hosted = true
 					break
 				}
@@ -221,9 +256,10 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 	}
 
 	for _, svc := range idx.nexusServices {
-		serviceDeployments := idx.deploymentsHosting(KindNexusService, svc.Name)
+		svcQName := idx.defQName(svc.Package, svc.Name)
+		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
 		for _, op := range svc.Operations {
-			opName := nexusOpQualifiedName(svc.Name, op.Name)
+			opName := nexusOpQualifiedName(svcQName, op.Name)
 			if len(serviceDeployments) == 0 {
 				g.addNode(Node{
 					ID:         HostedID(KindNexusOperation, opName, "", "", true),

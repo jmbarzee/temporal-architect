@@ -18,12 +18,13 @@ package graph
 // rather than re-deriving it by matching node (namespace, queue) fields.
 func (g *Graph) emitNexusRoutes(idx *astIndex) {
 	for _, svc := range idx.nexusServices {
-		serviceDeployments := idx.deploymentsHosting(KindNexusService, svc.Name)
+		svcQName := idx.defQName(svc.Package, svc.Name)
+		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
 		if len(serviceDeployments) == 0 {
 			continue
 		}
 		for _, op := range svc.Operations {
-			opName := nexusOpQualifiedName(svc.Name, op.Name)
+			opName := nexusOpQualifiedName(svcQName, op.Name)
 			for _, opDep := range serviceDeployments {
 				fromID := HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
 				for _, ep := range idx.endpointsByName {

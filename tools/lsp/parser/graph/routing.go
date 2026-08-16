@@ -24,8 +24,9 @@ import (
 // diagnostic is added so the consumer knows the call landed nowhere.
 func (g *Graph) emitDispatchEdges(idx *astIndex) {
 	for _, wf := range idx.workflows {
-		for _, callerDep := range idx.deploymentsHosting(KindWorkflow, wf.Name) {
-			callerID := HostedID(KindWorkflow, wf.Name, callerDep.WorkerName, callerDep.NamespaceName, false)
+		wfQName := idx.defQName(wf.Package, wf.Name)
+		for _, callerDep := range idx.deploymentsHosting(KindWorkflow, wfQName) {
+			callerID := HostedID(KindWorkflow, wfQName, callerDep.WorkerName, callerDep.NamespaceName, false)
 			g.walkRunnable(idx, callerID, callerDep, wf.Body)
 			for _, s := range wf.Signals {
 				g.walkRunnable(idx, callerID, callerDep, s.Body)
@@ -40,16 +41,17 @@ func (g *Graph) emitDispatchEdges(idx *astIndex) {
 	}
 
 	for _, svc := range idx.nexusServices {
-		serviceDeployments := idx.deploymentsHosting(KindNexusService, svc.Name)
+		svcQName := idx.defQName(svc.Package, svc.Name)
+		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
 		for _, op := range svc.Operations {
-			opName := nexusOpQualifiedName(svc.Name, op.Name)
+			opName := nexusOpQualifiedName(svcQName, op.Name)
 			switch op.OpType {
 			case ast.NexusOpAsync:
 				if op.Workflow.Resolved == nil {
 					g.recordUnresolved(opName, op.Workflow.Name, EdgeAsyncBacking, op.Line, serviceDeployments)
 					continue
 				}
-				targetName := op.Workflow.Resolved.Name
+				targetName := idx.defQName(op.Workflow.Resolved.Package, op.Workflow.Resolved.Name)
 				for _, opDep := range serviceDeployments {
 					fromID := HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
 					g.emitAsyncBacking(idx, fromID, opDep, targetName, op.Line)
@@ -106,7 +108,7 @@ func (g *Graph) emitActivityCall(
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, ref.Resolved.Name, opts, line)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, idx.defQName(ref.Resolved.Package, ref.Resolved.Name), opts, line)
 }
 
 func (g *Graph) emitWorkflowCall(
@@ -119,7 +121,7 @@ func (g *Graph) emitWorkflowCall(
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, ref.Resolved.Name, opts, line)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, idx.defQName(ref.Resolved.Package, ref.Resolved.Name), opts, line)
 }
 
 // emitSignalSend emits the cross-workflow signal-send edge. Unlike a
@@ -146,13 +148,14 @@ func (g *Graph) emitSignalSend(
 		})
 		return
 	}
-	for _, calleeDep := range idx.deploymentsHosting(KindWorkflow, target.Name) {
+	targetQName := idx.defQName(target.Package, target.Name)
+	for _, calleeDep := range idx.deploymentsHosting(KindWorkflow, targetQName) {
 		if calleeDep.NamespaceName != callerDep.NamespaceName {
 			continue
 		}
 		g.Edges = append(g.Edges, Edge{
 			From:    callerID,
-			To:      HostedID(KindWorkflow, target.Name, calleeDep.WorkerName, calleeDep.NamespaceName, false),
+			To:      HostedID(KindWorkflow, targetQName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 			Kind:    EdgeSignalSend,
 			Line:    line,
 			Routing: &Routing{},
@@ -264,9 +267,10 @@ func (g *Graph) emitNexusCall(
 		return
 	}
 
-	opName := nexusOpQualifiedName(svcRef.Resolved.Name, opRef.Resolved.Name)
+	svcQName := idx.defQName(svcRef.Resolved.Package, svcRef.Resolved.Name)
+	opName := nexusOpQualifiedName(svcQName, opRef.Resolved.Name)
 	matched := false
-	for _, opDep := range idx.deploymentsHosting(KindNexusService, svcRef.Resolved.Name) {
+	for _, opDep := range idx.deploymentsHosting(KindNexusService, svcQName) {
 		if opDep.NamespaceName != ep.Namespace {
 			continue
 		}
