@@ -32,15 +32,38 @@ type FileSummary struct {
 }
 
 // FileJSON is the JSON-serializable representation of a File.
+//
+// Package and Imports are additive and omitempty: a clause-less file (the
+// implicit default package, every file today) emits neither, so its output is
+// byte-identical to before this slice.
 type FileJSON struct {
-	Summary     FileSummary     `json:"summary"`
-	Definitions []RawDefinition `json:"definitions"`
+	Summary     FileSummary      `json:"summary"`
+	Package     string           `json:"package,omitempty"`
+	Imports     []ImportDeclJSON `json:"imports,omitempty"`
+	Definitions []RawDefinition  `json:"definitions"`
+}
+
+// ImportDeclJSON is the JSON representation of an import declaration.
+type ImportDeclJSON struct {
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
+	Path   string `json:"path"`
+	Alias  string `json:"alias,omitempty"`
 }
 
 // MarshalJSON implements json.Marshaler for File.
 func (f *File) MarshalJSON() ([]byte, error) {
 	fj := FileJSON{
+		Package:     f.Package,
 		Definitions: make([]RawDefinition, 0, len(f.Definitions)),
+	}
+	for _, imp := range f.Imports {
+		fj.Imports = append(fj.Imports, ImportDeclJSON{
+			Line:   imp.Line,
+			Column: imp.Column,
+			Path:   imp.Path,
+			Alias:  imp.Alias,
+		})
 	}
 	for _, def := range f.Definitions {
 		switch def.(type) {
@@ -300,6 +323,7 @@ func (a *ActivityDef) MarshalJSON() ([]byte, error) {
 
 // WorkerRefJSON is the JSON representation of a Ref used in worker definitions.
 type WorkerRefJSON struct {
+	Package  string           `json:"package,omitempty"`
 	Name     string           `json:"name"`
 	Line     int              `json:"line"`
 	Column   int              `json:"column"`
@@ -317,9 +341,10 @@ func marshalWorkerRefs[T interface {
 	out := make([]WorkerRefJSON, 0, len(refs))
 	for _, ref := range refs {
 		rj := WorkerRefJSON{
-			Name:   ref.Name,
-			Line:   ref.Line,
-			Column: ref.Column,
+			Package: ref.Package,
+			Name:    ref.Name,
+			Line:    ref.Line,
+			Column:  ref.Column,
 		}
 		var zero T
 		if ref.Resolved != zero {
@@ -507,6 +532,7 @@ func marshalActivityCall(s *ActivityCall) (json.RawMessage, error) {
 		Type:    "activityCall",
 		Line:    s.Line,
 		Column:  s.Column,
+		Package: s.Activity.Package,
 		Name:    s.Activity.Name,
 		Args:    s.Args,
 		Result:  s.Result,
@@ -528,6 +554,7 @@ func marshalWorkflowCall(s *WorkflowCall) (json.RawMessage, error) {
 		Line:    s.Line,
 		Column:  s.Column,
 		Mode:    workflowCallModeString(s.Mode),
+		Package: s.Workflow.Package,
 		Name:    s.Workflow.Name,
 		Args:    s.Args,
 		Result:  s.Result,
@@ -545,16 +572,17 @@ func marshalWorkflowCall(s *WorkflowCall) (json.RawMessage, error) {
 
 func marshalNexusCall(s *NexusCall) (json.RawMessage, error) {
 	nj := NexusCallJSON{
-		Type:      "nexusCall",
-		Line:      s.Line,
-		Column:    s.Column,
-		Detach:    s.Detach,
-		Endpoint:  s.Endpoint.Name,
-		Service:   s.Service.Name,
-		Operation: s.Operation.Name,
-		Args:      s.Args,
-		Result:    s.Result,
-		Options:   marshalOptionsBlock(s.Options),
+		Type:           "nexusCall",
+		Line:           s.Line,
+		Column:         s.Column,
+		Detach:         s.Detach,
+		Endpoint:       s.Endpoint.Name,
+		ServicePackage: s.Service.Package,
+		Service:        s.Service.Name,
+		Operation:      s.Operation.Name,
+		Args:           s.Args,
+		Result:         s.Result,
+		Options:        marshalOptionsBlock(s.Options),
 	}
 	if s.Endpoint.Resolved != nil {
 		nj.ResolvedEndpoint = &ResolvedRefJSON{Name: s.Endpoint.Resolved.EndpointName, Line: s.Endpoint.Resolved.Line, Column: s.Endpoint.Resolved.Column}
@@ -793,6 +821,7 @@ type ActivityCallJSON struct {
 	Type     string            `json:"type"`
 	Line     int               `json:"line"`
 	Column   int               `json:"column"`
+	Package  string            `json:"package,omitempty"`
 	Name     string            `json:"name"`
 	Args     string            `json:"args"`
 	Result   string            `json:"result,omitempty"`
@@ -805,6 +834,7 @@ type WorkflowCallJSON struct {
 	Line     int               `json:"line"`
 	Column   int               `json:"column"`
 	Mode     string            `json:"mode"`
+	Package  string            `json:"package,omitempty"`
 	Name     string            `json:"name"`
 	Args     string            `json:"args"`
 	Result   string            `json:"result,omitempty"`
@@ -853,6 +883,7 @@ type UpdateTargetJSON struct {
 }
 
 type ActivityTargetJSON struct {
+	Package  string           `json:"package,omitempty"`
 	Name     string           `json:"name"`
 	Args     string           `json:"args,omitempty"`
 	Result   string           `json:"result,omitempty"`
@@ -860,6 +891,7 @@ type ActivityTargetJSON struct {
 }
 
 type WorkflowTargetJSON struct {
+	Package  string           `json:"package,omitempty"`
 	Name     string           `json:"name"`
 	Mode     string           `json:"mode"`
 	Args     string           `json:"args,omitempty"`
@@ -869,6 +901,7 @@ type WorkflowTargetJSON struct {
 
 type NexusTargetJSON struct {
 	Endpoint                  string           `json:"endpoint"`
+	ServicePackage            string           `json:"servicePackage,omitempty"`
 	Service                   string           `json:"service"`
 	Operation                 string           `json:"operation"`
 	Args                      string           `json:"args,omitempty"`
@@ -895,25 +928,26 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 	case *UpdateTarget:
 		at.Update = &UpdateTargetJSON{Name: t.Update.Name, Params: t.Params}
 	case *ActivityTarget:
-		aj := &ActivityTargetJSON{Name: t.Activity.Name, Args: t.Args, Result: t.Result}
+		aj := &ActivityTargetJSON{Package: t.Activity.Package, Name: t.Activity.Name, Args: t.Args, Result: t.Result}
 		if t.Activity.Resolved != nil {
 			aj.Resolved = &ResolvedRefJSON{Name: t.Activity.Resolved.Name, Line: t.Activity.Resolved.Line, Column: t.Activity.Resolved.Column}
 		}
 		at.Activity = aj
 	case *WorkflowTarget:
-		wj := &WorkflowTargetJSON{Name: t.Workflow.Name, Mode: workflowCallModeString(t.Mode), Args: t.Args, Result: t.Result}
+		wj := &WorkflowTargetJSON{Package: t.Workflow.Package, Name: t.Workflow.Name, Mode: workflowCallModeString(t.Mode), Args: t.Args, Result: t.Result}
 		if t.Workflow.Resolved != nil {
 			wj.Resolved = &ResolvedRefJSON{Name: t.Workflow.Resolved.Name, Line: t.Workflow.Resolved.Line, Column: t.Workflow.Resolved.Column}
 		}
 		at.Workflow = wj
 	case *NexusTarget:
 		nj := &NexusTargetJSON{
-			Endpoint:  t.Endpoint.Name,
-			Service:   t.Service.Name,
-			Operation: t.Operation.Name,
-			Args:      t.Args,
-			Result:    t.Result,
-			Detach:    t.Detach,
+			Endpoint:       t.Endpoint.Name,
+			ServicePackage: t.Service.Package,
+			Service:        t.Service.Name,
+			Operation:      t.Operation.Name,
+			Args:           t.Args,
+			Result:         t.Result,
+			Detach:         t.Detach,
 		}
 		if t.Endpoint.Resolved != nil {
 			nj.ResolvedEndpoint = &ResolvedRefJSON{Name: t.Endpoint.Resolved.EndpointName, Line: t.Endpoint.Resolved.Line, Column: t.Endpoint.Resolved.Column}
@@ -1071,16 +1105,17 @@ type UnsetStmtJSON struct {
 }
 
 type NexusCallJSON struct {
-	Type      string            `json:"type"`
-	Line      int               `json:"line"`
-	Column    int               `json:"column"`
-	Detach    bool              `json:"detach,omitempty"`
-	Endpoint  string            `json:"endpoint"`
-	Service   string            `json:"service"`
-	Operation string            `json:"operation"`
-	Args      string            `json:"args"`
-	Result    string            `json:"result,omitempty"`
-	Options   *OptionsBlockJSON `json:"options,omitempty"`
+	Type           string            `json:"type"`
+	Line           int               `json:"line"`
+	Column         int               `json:"column"`
+	Detach         bool              `json:"detach,omitempty"`
+	Endpoint       string            `json:"endpoint"`
+	ServicePackage string            `json:"servicePackage,omitempty"`
+	Service        string            `json:"service"`
+	Operation      string            `json:"operation"`
+	Args           string            `json:"args"`
+	Result         string            `json:"result,omitempty"`
+	Options        *OptionsBlockJSON `json:"options,omitempty"`
 	// Resolution links
 	ResolvedEndpoint          *ResolvedRefJSON `json:"resolvedEndpoint,omitempty"`
 	ResolvedEndpointNamespace string           `json:"resolvedEndpointNamespace,omitempty"`
@@ -1090,14 +1125,15 @@ type NexusCallJSON struct {
 
 // NexusOperationJSON is the JSON representation of a nexus operation.
 type NexusOperationJSON struct {
-	OpType       string         `json:"opType"`
-	Line         int            `json:"line"`
-	Column       int            `json:"column"`
-	Name         string         `json:"name"`
-	WorkflowName string         `json:"workflowName,omitempty"`
-	Params       string         `json:"params,omitempty"`
-	ReturnType   string         `json:"returnType,omitempty"`
-	Body         []RawStatement `json:"body,omitempty"`
+	OpType          string         `json:"opType"`
+	Line            int            `json:"line"`
+	Column          int            `json:"column"`
+	Name            string         `json:"name"`
+	WorkflowPackage string         `json:"workflowPackage,omitempty"`
+	WorkflowName    string         `json:"workflowName,omitempty"`
+	Params          string         `json:"params,omitempty"`
+	ReturnType      string         `json:"returnType,omitempty"`
+	Body            []RawStatement `json:"body,omitempty"`
 }
 
 // NexusServiceDefJSON is the JSON representation of NexusServiceDef.
@@ -1120,12 +1156,13 @@ func (n *NexusServiceDef) MarshalJSON() ([]byte, error) {
 	}
 	for _, op := range n.Operations {
 		opj := &NexusOperationJSON{
-			Line:         op.Line,
-			Column:       op.Column,
-			Name:         op.Name,
-			WorkflowName: op.Workflow.Name,
-			Params:       op.Params,
-			ReturnType:   op.ReturnType,
+			Line:            op.Line,
+			Column:          op.Column,
+			Name:            op.Name,
+			WorkflowPackage: op.Workflow.Package,
+			WorkflowName:    op.Workflow.Name,
+			Params:          op.Params,
+			ReturnType:      op.ReturnType,
 		}
 		if op.OpType == NexusOpAsync {
 			opj.OpType = "async"

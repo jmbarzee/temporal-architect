@@ -17,6 +17,21 @@ After parsing, the resolver performs symbol resolution:
    - Walk signal/query/update handler bodies and resolve references
 3. **Report errors:** Undefined references, duplicate definitions, etc.
 
+## Packages and Imports
+
+The [`package`/`import`](./14-packages-and-imports.md) surface is added **syntactically** in this
+slice; **cross-package resolution is deferred to the resolution slice (#109)** and is not performed
+here.
+
+- A clause-less file belongs to the **implicit default package**, which is **elided from all
+  formatting** — node-IDs, keys, `--json` output, and diagnostic messages for existing files stay
+  byte-identical. This implicit-default-package model is the only resolver behavior this slice adds.
+- A **bare or same-package** reference resolves exactly as it does today.
+- A package **qualifier** on a reference (`pkg.Name`) is **recorded but not resolved** in this
+  slice. Following an import to another package, and the accompanying **unresolved-import warning**
+  (an unresolved import is "treated as external"), arrive with cross-package resolution in #109 —
+  they are **not** emitted here.
+
 ## Error Handling
 
 The parser and resolver collect multiple errors before failing, allowing users to fix multiple issues in one pass.
@@ -24,6 +39,8 @@ The parser and resolver collect multiple errors before failing, allowing users t
 Common error types:
 - Undefined activity/workflow/signal/update/condition/promise
 - Duplicate definitions
+- Malformed `import` declaration (parse error — an `import` without a valid string path, e.g. `import foo` with no quoted path)
+- Duplicate or misplaced `package` clause (parse error — more than one `package` clause in a file, or a `package` clause that is not the first clause)
 - Temporal keywords in activity context
 - Invalid await targets (e.g., awaiting a query)
 - Signal-send handle is not a workflow-bound promise (the handle must come from `promise h <- workflow X(args)`)

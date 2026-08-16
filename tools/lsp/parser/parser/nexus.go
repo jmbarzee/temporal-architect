@@ -85,7 +85,7 @@ func parseAsyncOperation(p *Parser) (*ast.NexusOperation, error) {
 		return nil, err
 	}
 
-	wfName, err := p.expect(token.IDENT)
+	wfPkg, wfName, err := p.parseRefNameWithPackage()
 	if err != nil {
 		return nil, err
 	}
@@ -95,10 +95,10 @@ func parseAsyncOperation(p *Parser) (*ast.NexusOperation, error) {
 	}
 
 	return &ast.NexusOperation{
-		Pos:          pos,
-		OpType:       ast.NexusOpAsync,
-		Name:         opName.Literal,
-		Workflow:      ast.Ref[*ast.WorkflowDef]{Name: wfName.Literal},
+		Pos:      pos,
+		OpType:   ast.NexusOpAsync,
+		Name:     opName.Literal,
+		Workflow: ast.Ref[*ast.WorkflowDef]{Package: wfPkg, Name: wfName},
 	}, nil
 }
 
@@ -235,7 +235,7 @@ func parseWorkflowCallOrNexus(p *Parser) (ast.Statement, error) {
 		return nil, err
 	}
 
-	name, err := p.expect(token.IDENT)
+	pkg, name, err := p.parseRefNameWithPackage()
 	if err != nil {
 		return nil, err
 	}
@@ -274,9 +274,9 @@ func parseWorkflowCallOrNexus(p *Parser) (ast.Statement, error) {
 	}
 
 	return &ast.WorkflowCall{
-		Pos:     pos,
-		Mode:    ast.CallDetach,
-		Workflow: ast.Ref[*ast.WorkflowDef]{Pos: pos, Name: name.Literal},
+		Pos:      pos,
+		Mode:     ast.CallDetach,
+		Workflow: ast.Ref[*ast.WorkflowDef]{Pos: pos, Package: pkg, Name: name},
 		Args:     args.Literal,
 		Result:   result,
 		Options:  options,

@@ -8,7 +8,7 @@ nexus_service_def ::= 'nexus' 'service' IDENT ':' NEWLINE
 
 nexus_operation ::= async_operation | sync_operation
 
-async_operation ::= 'async' IDENT 'workflow' IDENT NEWLINE
+async_operation ::= 'async' IDENT 'workflow' qualified_ref NEWLINE
 
 sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
                     INDENT statement* DEDENT
@@ -16,7 +16,9 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
 
 - `service` is a soft keyword (IDENT checked contextually after `nexus`)
 - `sync` and `async` are hard keyword tokens
-- **Async operations** delegate to a named workflow (one-liner, no body)
+- **Async operations** delegate to a named workflow (one-liner, no body). The backing-workflow name
+  is a [`qualified_ref`](./14-packages-and-imports.md) — it may carry an optional `pkg.` package
+  qualifier when the workflow lives in another package.
 - **Sync operations** have a body using the workflow statement set (activities, queries, control flow, close)
 
 **Example:**
@@ -27,6 +29,22 @@ nexus service OrderService:
         activity FetchStatus(orderId) -> status
         close complete(status)
 ```
+
+## Nexus Qualification Table
+
+With [packages](./14-packages-and-imports.md), the three nexus reference kinds qualify differently,
+faithfully to Temporal's registries:
+
+| Kind | Scope | Qualification |
+|------|-------|---------------|
+| **Endpoint** | Flat-global (cluster-global endpoint registry) | **Never qualified.** Endpoints share one global namespace; a cross-package duplicate endpoint name stays an error. |
+| **Service** | Package-scoped | **Qualified cross-package** by package leaf name (or import alias): `nexus Ep pkg.Svc.Op`. Bare within the same package. |
+| **Operation** | Member of its service | **Never independently qualified.** The operation is selected off the (possibly qualified) service by the trailing `.Op`. |
+
+So in `nexus OrderEndpoint orders.OrderService.PlaceOrder(order)`, `OrderEndpoint` is the
+flat-global endpoint (unqualified), `orders.OrderService` is the package-qualified service, and
+`PlaceOrder` is the operation member. The package qualifier on the service is carried on the
+AST/wire but not resolved in this slice (cross-package resolution is deferred to #109).
 
 ## Resolution
 

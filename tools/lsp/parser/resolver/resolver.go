@@ -158,10 +158,22 @@ func (k ErrorKind) String() string {
 	return "UNKNOWN"
 }
 
+// externalPackage reports whether a reference qualifier names a package other
+// than the file's own (implicit-default) package. Empty means unqualified /
+// same-package; a qualifier equal to the file's own package is also
+// same-package. Cross-package (imported) references are OUT OF SCOPE this slice
+// (issue #109): they are recorded on the AST/wire but left unresolved here, with
+// no cross-package lookup and no diagnostic. In every current file the package
+// is the elided default and no ref carries a qualifier, so this is never true —
+// existing files resolve byte-identically.
+func externalPackage(refPkg, ownPkg string) bool {
+	return refPkg != "" && refPkg != ownPkg
+}
 
 // Resolve walks the AST, linking calls to their definitions.
 // Returns a list of errors (empty on success).
 func Resolve(file *ast.File) []*ResolveError {
+	ownPkg := file.Package
 	workflows := make(map[string]*ast.WorkflowDef)
 	activities := make(map[string]*ast.ActivityDef)
 	workers := make(map[string]*ast.WorkerDef)
@@ -246,15 +258,16 @@ func Resolve(file *ast.File) []*ResolveError {
 		}
 
 		ctx := &resolveCtx{
-			workflows:    workflows,
-			activities:   activities,
-			signals:      signals,
-			queries:      queries,
-			updates:      updates,
-			conditions:   conditions,
-			promises:     promises,
+			ownPackage:    ownPkg,
+			workflows:     workflows,
+			activities:    activities,
+			signals:       signals,
+			queries:       queries,
+			updates:       updates,
+			conditions:    conditions,
+			promises:      promises,
 			nexusServices: nexusServices,
-			allEndpoints: allEndpoints,
+			allEndpoints:  allEndpoints,
 		}
 
 		// Resolve handler bodies.
@@ -280,7 +293,12 @@ func Resolve(file *ast.File) []*ResolveError {
 		}
 		for _, op := range svc.Operations {
 			if op.OpType == ast.NexusOpAsync {
-				// Async operations reference a workflow by name.
+				// Async operations reference a workflow by name. A qualifier
+				// naming an imported package is recorded but left unresolved
+				// in this slice (cross-package resolution is #109).
+				if externalPackage(op.Workflow.Package, ownPkg) {
+					continue
+				}
 				if wf, ok := workflows[op.Workflow.Name]; ok {
 					op.Workflow.Resolved = wf
 				} else {
@@ -295,15 +313,16 @@ func Resolve(file *ast.File) []*ResolveError {
 			} else if op.OpType == ast.NexusOpSync {
 				// Sync operations have a body — resolve like a workflow body.
 				syncCtx := &resolveCtx{
-					workflows:    workflows,
-					activities:   activities,
-					signals:      make(map[string]*ast.SignalDecl),
-					queries:      make(map[string]*ast.QueryDecl),
-					updates:      make(map[string]*ast.UpdateDecl),
-					conditions:   make(map[string]*ast.ConditionDecl),
-					promises:     make(map[string]*ast.PromiseStmt),
+					ownPackage:    ownPkg,
+					workflows:     workflows,
+					activities:    activities,
+					signals:       make(map[string]*ast.SignalDecl),
+					queries:       make(map[string]*ast.QueryDecl),
+					updates:       make(map[string]*ast.UpdateDecl),
+					conditions:    make(map[string]*ast.ConditionDecl),
+					promises:      make(map[string]*ast.PromiseStmt),
 					nexusServices: nexusServices,
-					allEndpoints: allEndpoints,
+					allEndpoints:  allEndpoints,
 				}
 				syncCtx.resolveStatements(op.Body)
 				errs = append(errs, syncCtx.errs...)
@@ -313,9 +332,9 @@ func Resolve(file *ast.File) []*ResolveError {
 
 	// Pass 3: Resolve worker and namespace references.
 	for _, w := range workers {
-		resolveWorkerRefs(w.Workflows, workflows, "workflow", ErrWorkerUndefinedWorkflow, &errs)
-		resolveWorkerRefs(w.Activities, activities, "activity", ErrWorkerUndefinedActivity, &errs)
-		resolveWorkerRefs(w.Services, nexusServices, "nexus service", ErrWorkerUndefinedNexusService, &errs)
+		resolveWorkerRefs(w.Workflows, workflows, "workflow", ErrWorkerUndefinedWorkflow, ownPkg, &errs)
+		resolveWorkerRefs(w.Activities, activities, "activity", ErrWorkerUndefinedActivity, ownPkg, &errs)
+		resolveWorkerRefs(w.Services, nexusServices, "nexus service", ErrWorkerUndefinedNexusService, ownPkg, &errs)
 	}
 
 	for _, ns := range namespaces {
@@ -339,6 +358,7 @@ func Resolve(file *ast.File) []*ResolveError {
 }
 
 type resolveCtx struct {
+	ownPackage    string // the file's own (implicit-default) package name
 	workflows     map[string]*ast.WorkflowDef
 	activities    map[string]*ast.ActivityDef
 	signals       map[string]*ast.SignalDecl
@@ -355,15 +375,15 @@ func (c *resolveCtx) resolveStatements(stmts []ast.Statement) {
 	ast.WalkStatements(stmts, func(s ast.Statement) bool {
 		switch s := s.(type) {
 		case *ast.ActivityCall:
-			resolveRef(&s.Activity, c.activities, "activity", ErrUndefinedActivity, &c.errs)
+			resolveRef(&s.Activity, c.activities, "activity", ErrUndefinedActivity, c.ownPackage, &c.errs)
 		case *ast.WorkflowCall:
-			resolveRef(&s.Workflow, c.workflows, "workflow", ErrUndefinedWorkflow, &c.errs)
+			resolveRef(&s.Workflow, c.workflows, "workflow", ErrUndefinedWorkflow, c.ownPackage, &c.errs)
 		case *ast.NexusCall:
 			c.resolveNexusRefs(&s.Endpoint, &s.Service, &s.Operation)
 		case *ast.SetStmt:
-			resolveRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, &c.errs)
+			resolveRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, c.ownPackage, &c.errs)
 		case *ast.UnsetStmt:
-			resolveRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, &c.errs)
+			resolveRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, c.ownPackage, &c.errs)
 		case *ast.SignalSendStmt:
 			c.resolveSignalSend(s)
 		}
@@ -377,8 +397,14 @@ func (c *resolveCtx) resolveStatements(stmts []ast.Statement) {
 // resolveNexusRefs validates and resolves a nexus call site's endpoint, service,
 // and operation Ref fields.
 func (c *resolveCtx) resolveNexusRefs(endpoint *ast.Ref[*ast.NamespaceEndpoint], service *ast.Ref[*ast.NexusServiceDef], operation *ast.Ref[*ast.NexusOperation]) {
-	resolveRefWithWarn(endpoint, c.allEndpoints, "endpoint", ErrNexusUndefinedEndpoint, ErrNexusUnresolvedEndpoint, &c.errs)
-	if resolveRefWithWarn(service, c.nexusServices, "service", ErrNexusUndefinedService, ErrNexusUnresolvedService, &c.errs) {
+	// Endpoints are flat-global and never package-qualified. A service ref
+	// qualified with an imported package is recorded but left unresolved this
+	// slice (#109); when it is external the operation can't be resolved either.
+	resolveRefWithWarn(endpoint, c.allEndpoints, "endpoint", ErrNexusUndefinedEndpoint, ErrNexusUnresolvedEndpoint, c.ownPackage, &c.errs)
+	if externalPackage(service.Package, c.ownPackage) {
+		return
+	}
+	if resolveRefWithWarn(service, c.nexusServices, "service", ErrNexusUndefinedService, ErrNexusUnresolvedService, c.ownPackage, &c.errs) {
 		c.resolveNexusOperation(service.Resolved, operation)
 	}
 }
@@ -402,7 +428,10 @@ func (c *resolveCtx) resolveNexusOperation(svc *ast.NexusServiceDef, operation *
 
 // resolveRefWithWarn resolves a Ref against a definition map with special handling
 // for the case where no definitions exist (emits a warning instead of an error).
-func resolveRefWithWarn[T any](ref *ast.Ref[T], defs map[string]T, kind string, errUndef, errUnresolved ErrorKind, errs *[]*ResolveError) bool {
+func resolveRefWithWarn[T any](ref *ast.Ref[T], defs map[string]T, kind string, errUndef, errUnresolved ErrorKind, ownPkg string, errs *[]*ResolveError) bool {
+	if externalPackage(ref.Package, ownPkg) {
+		return false
+	}
 	if len(defs) == 0 {
 		*errs = append(*errs, &ResolveError{
 			Msg:      fmt.Sprintf("unresolved nexus %s: %s (no %ss defined — may be external)", kind, ref.Name, kind),
@@ -432,13 +461,13 @@ func resolveRefWithWarn[T any](ref *ast.Ref[T], defs map[string]T, kind string, 
 func (c *resolveCtx) resolveAsyncTarget(target ast.AsyncTarget, line, column int) {
 	switch t := target.(type) {
 	case *ast.SignalTarget:
-		resolveRef(&t.Signal, c.signals, "signal", ErrUndefinedSignal, &c.errs)
+		resolveRef(&t.Signal, c.signals, "signal", ErrUndefinedSignal, c.ownPackage, &c.errs)
 	case *ast.UpdateTarget:
-		resolveRef(&t.Update, c.updates, "update", ErrUndefinedUpdate, &c.errs)
+		resolveRef(&t.Update, c.updates, "update", ErrUndefinedUpdate, c.ownPackage, &c.errs)
 	case *ast.ActivityTarget:
-		resolveRef(&t.Activity, c.activities, "activity", ErrUndefinedActivity, &c.errs)
+		resolveRef(&t.Activity, c.activities, "activity", ErrUndefinedActivity, c.ownPackage, &c.errs)
 	case *ast.WorkflowTarget:
-		resolveRef(&t.Workflow, c.workflows, "workflow", ErrUndefinedWorkflow, &c.errs)
+		resolveRef(&t.Workflow, c.workflows, "workflow", ErrUndefinedWorkflow, c.ownPackage, &c.errs)
 	case *ast.NexusTarget:
 		c.resolveNexusRefs(&t.Endpoint, &t.Service, &t.Operation)
 	case *ast.IdentTarget:
@@ -542,8 +571,13 @@ func collectDef[T any](m map[string]T, name string, def T, kind string, errKind 
 }
 
 // resolveRef resolves a single Ref against a definition map, setting Resolved on
-// match or appending a ResolveError on miss.
-func resolveRef[T any](ref *ast.Ref[T], defs map[string]T, kind string, errKind ErrorKind, errs *[]*ResolveError) {
+// match or appending a ResolveError on miss. A reference qualified with an
+// imported package is recorded but left unresolved (no lookup, no error) — see
+// externalPackage; empty / same-package qualifiers resolve as before.
+func resolveRef[T any](ref *ast.Ref[T], defs map[string]T, kind string, errKind ErrorKind, ownPkg string, errs *[]*ResolveError) {
+	if externalPackage(ref.Package, ownPkg) {
+		return
+	}
 	if def, ok := defs[ref.Name]; ok {
 		ref.Resolved = def
 	} else {
@@ -558,9 +592,9 @@ func resolveRef[T any](ref *ast.Ref[T], defs map[string]T, kind string, errKind 
 }
 
 // resolveWorkerRefs resolves a slice of worker references against a definition map.
-func resolveWorkerRefs[T any](refs []ast.Ref[T], defs map[string]T, kind string, errKind ErrorKind, errs *[]*ResolveError) {
+func resolveWorkerRefs[T any](refs []ast.Ref[T], defs map[string]T, kind string, errKind ErrorKind, ownPkg string, errs *[]*ResolveError) {
 	for i := range refs {
-		resolveRef(&refs[i], defs, kind, errKind, errs)
+		resolveRef(&refs[i], defs, kind, errKind, ownPkg, errs)
 	}
 }
 

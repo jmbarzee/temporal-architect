@@ -28,15 +28,39 @@ func (p Pos) NodeLine() int   { return p.Line }
 func (p Pos) NodeColumn() int { return p.Column }
 
 // Ref is a named reference to another AST node, resolved after parsing.
+//
+// Package is an optional package qualifier written in a keyword-led call
+// position (e.g. `activity billing.Charge(...)` records Package="billing").
+// Empty means unqualified / same-package. In this slice the qualifier is only
+// recorded — cross-package resolution is deferred (issue #109) — so an empty
+// Package (every current file) behaves exactly as before.
 type Ref[T any] struct {
 	Pos
+	Package  string
 	Name     string
 	Resolved T
 }
 
 // File represents a parsed .twf file.
+//
+// Package is the file's declared package name; empty means the implicit default
+// package, which is elided from every key/ID/diagnostic so clause-less files
+// (all files today) are unaffected. Imports records the file's import
+// declarations verbatim; they are not resolved in this slice.
 type File struct {
+	Package     string
+	Imports     []*ImportDecl
 	Definitions []Definition
+}
+
+// ImportDecl is a single `import [alias] "path"` declaration at file scope.
+// Path is the imported module path, carried verbatim (not enforced in this
+// slice). Alias is the local name bound to the import; an empty Alias means the
+// import is referenced by its leaf name.
+type ImportDecl struct {
+	Pos
+	Path  string
+	Alias string
 }
 
 // ---------------------------------------------------------------------------
