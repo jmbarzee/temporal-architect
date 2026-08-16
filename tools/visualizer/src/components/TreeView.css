@@ -1,0 +1,70 @@
+/* Tree view: workflow canvas, no-workflows, search counter — extracted from styles/index.css (issue #56). */
+/* Workflow Canvas (Tree View content area) */
+.workflow-canvas {
+  flex: 1;
+  overflow: auto;
+  background: var(--color-bg-gradient);
+}
+
+/* Inner wrapper holds the padding so the sticky filter bar can sit
+   flush with the top of the scroll container. */
+.workflow-canvas-content {
+  padding: 24px;
+}
+
+/* Tree-view filter bar: flat sticky bar with translucent backdrop —
+   visually matches the Graph view's overlay treatment. Stays anchored
+   to the top of the scroll container as the user scrolls definitions. */
+.workflow-canvas > .canvas-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: none;
+  margin-bottom: 0;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* No workflows message */
+.no-workflows {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+}
+
+.no-workflows p {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.no-workflows-hint {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+/* "N of M" / "N matches" search counter inside the search bar */
+.header-search-counter {
+  flex: 0 0 auto;
+  padding: 0 8px 0 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.header-search-counter.empty {
+  color: var(--color-warning, #F59E0B);
+}
+

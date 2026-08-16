@@ -1,0 +1,423 @@
+/* Graph view: overlay, bottom controls, tooltip, search, shortcuts — extracted from styles/index.css (issue #56). */
+/* === Graph View === */
+.graph-view {
+  flex: 1;
+  position: relative;
+  background: var(--color-bg-gradient);
+  overflow: hidden;
+}
+
+/* Floating overlay: filter bar + toolbar + errors header. Sits above
+   the full-viewport canvas so zoomed content can extend visibly under
+   the overlay edges (spec § Overlay Layout). */
+.graph-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  /* Bounded so a long expanded error/warning list never covers the whole
+     canvas; the individual error bodies scroll internally past this. */
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  /* Don't intercept canvas pan/zoom in any transparent gaps within the
+     overlay — only the actual control elements should capture events. */
+  pointer-events: none;
+}
+
+.graph-overlay > * {
+  pointer-events: auto;
+}
+
+/* Filter bar context override: flat bar (no card radius/shadow/margin)
+   and translucent backdrop so canvas content is visible underneath. */
+.graph-view .canvas-header {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: none;
+  margin-bottom: 0;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Graph bottom controls — floating, anchored over the canvas. The left
+   carries the node/edge counts; the centre carries the simulation controls
+   and the live fps. */
+.graph-bottom-left,
+.graph-bottom-center {
+  position: absolute;
+  bottom: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.graph-bottom-left {
+  left: 12px;
+  transition: left 0.2s ease;
+}
+
+/* Shift right of the keyboard-shortcuts panel when it's open. */
+.graph-bottom-left.shifted {
+  left: 224px;
+}
+
+.graph-bottom-center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.graph-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.graph-count-fps {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  opacity: 0.7;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Fixed slot + centred text so the readout's changing digit count never
+     nudges the neighbouring controls. */
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Paused: keep the box (and its reserved width) but make it invisible, so the
+   Play/Pause button doesn't shift when ticking starts/stops. */
+.graph-count-fps.hidden {
+  visibility: hidden;
+}
+
+.graph-toolbar-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-sans);
+}
+
+.graph-toolbar-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-workflow);
+}
+
+.graph-toolbar-btn.active {
+  color: var(--color-workflow);
+  border-color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.08);
+}
+
+.vscode-dark .graph-toolbar-btn.active {
+  background: rgba(168, 155, 216, 0.12);
+}
+
+/* Graph Canvas Area — fills the full viewport. The floating overlay
+   sits on top of this via z-index, with bleed-under as the affordance
+   that zoomed content extends beyond the visible chrome. */
+.graph-canvas-area {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Graph Canvas Container — immediately follows the toolbar */
+.graph-canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.graph-canvas-container canvas {
+  display: block;
+  cursor: grab;
+}
+
+.graph-canvas-container canvas:active {
+  cursor: grabbing;
+}
+
+/* Hover Info Tooltip */
+.graph-hover-tooltip {
+  position: absolute;
+  transform: translate(14px, -50%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  /* Interactive: the tooltip carries a "Show in Tree" button, so it must
+     capture pointer events. A grace period in GraphView keeps it open while
+     the pointer travels from the node onto it. */
+  pointer-events: auto;
+  z-index: 20;
+  min-width: 140px;
+  max-width: 220px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.vscode-dark .graph-hover-tooltip {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* "Show in Tree" button inside the hover tooltip. */
+.tooltip-show-in-tree {
+  margin-top: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tooltip-show-in-tree:hover {
+  color: var(--color-workflow);
+  border-color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.08);
+}
+
+.vscode-dark .tooltip-show-in-tree:hover {
+  background: rgba(168, 155, 216, 0.12);
+}
+
+.tooltip-identity {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.tooltip-type-icon {
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tooltip-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tooltip-parent {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Composition counts (workers/endpoints/registrations) for container and
+   host nodes — relocated here from the under-node badge. */
+.tooltip-summary {
+  font-size: 11px;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tooltip-file {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+/* "copy N of M" line shown only when a definition is registered on
+   multiple workers and therefore renders as multiple nodes. Borrows the
+   workflow purple from the selection ring so the user can connect
+   "purple lights up around the sister nodes when I hover this one"
+   with "tooltip confirms there are multiple copies". */
+.tooltip-duplicates {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: #8B7EC8;
+  opacity: 0.85;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.tooltip-connections {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tooltip-conn-out,
+.tooltip-conn-in {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+
+.tooltip-direction {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+
+
+/* Hidden match badge inside the shared search control */
+.header-search-badge {
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 8px;
+  margin-right: 4px;
+}
+
+/* Graph Search Results Dropdown */
+.graph-search-results {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.graph-search-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-text);
+  transition: background 0.1s;
+}
+
+.graph-search-result:hover {
+  background: rgba(139, 126, 200, 0.08);
+}
+
+.graph-search-result-type {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  min-width: 60px;
+}
+
+.graph-search-result-name {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+/* Shortcuts Panel */
+.graph-shortcuts-panel {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  padding: 10px 14px;
+  min-width: 200px;
+}
+
+.graph-shortcuts-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.graph-shortcuts-close {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.graph-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.graph-shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.graph-shortcut-key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  min-width: 80px;
+  color: var(--color-text);
+}
+
+.vscode-dark .graph-shortcut-key {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.graph-shortcut-desc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+

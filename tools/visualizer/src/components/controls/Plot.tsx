@@ -9,6 +9,7 @@
 // math or drag handling.
 
 import React from 'react'
+import './controls.css'
 
 export function Plot({
   yLabel, ySlider, bottom, children,

@@ -1,0 +1,75 @@
+/* Control primitives: Slider + Plot — extracted from styles/index.css (issue #56). */
+/* ── Control primitives: Slider + Plot ──────────────────────────────────────
+   Slider — the one uniform range input (horizontal rows/exp/x-gutter, vertical
+   y-gutter). Plot — the shared layout shell for the node plot and band plot: a
+   y-axis label + vertical slider on the left gutter, the caller's <svg>, and a
+   bottom stack (x slider, x label, band X-range). See components/controls/. */
+.ctl-slider {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--color-workflow);
+}
+.ctl-slider-h { width: 100%; height: 4px; }
+.ctl-slider-v {
+  writing-mode: vertical-lr;
+  direction: rtl;  /* up = stronger */
+  width: 4px;
+  height: 100%;
+}
+
+/* Popped: the global slider whose formula token is being hovered. A soft accent
+   halo makes it stand out without moving layout. */
+.ctl-slider-popped {
+  border-radius: 5px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-workflow) 38%, transparent);
+}
+
+/* A hoverable value inside a governing equation; hovering pops its slider. */
+.ctl-formula-value {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+.ctl-formula-value:hover,
+.ctl-formula-value.active {
+  background: color-mix(in srgb, var(--color-workflow) 22%, transparent);
+  color: var(--color-text);
+}
+
+.ctl-plot {
+  display: grid;
+  grid-template-columns: 16px 14px 1fr;   /* ylabel | yslider | plot */
+  grid-template-rows: 1fr auto;            /* plot | bottom stack */
+  grid-template-areas:
+    "ylabel yslider plot"
+    ".      .       bottom";
+  align-items: stretch;
+  row-gap: 2px;
+  margin-top: 10px;
+}
+.ctl-plot-ylabel {
+  grid-area: ylabel;
+  align-self: center;
+  justify-self: center;
+  color: var(--color-text-muted);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+/* The vertical slider is absolutely positioned to fill the gutter so it never
+   contributes its (large) intrinsic height to the `1fr` plot row — a nested
+   percentage height against a flexible grid track would otherwise resolve to
+   auto and blow the slider (and the row) up. The plot SVG alone sizes the row. */
+.ctl-plot-yslider { grid-area: yslider; position: relative; }
+.ctl-plot-yslider .ctl-slider-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  height: auto;
+  transform: translateX(-50%);
+}
+.ctl-plot-main { grid-area: plot; min-width: 0; }
+.ctl-plot-bottom { grid-area: bottom; display: flex; flex-direction: column; row-gap: 2px; }
+.ctl-plot-xlabel { color: var(--color-text-muted); text-align: center; }
+

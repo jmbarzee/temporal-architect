@@ -5,6 +5,7 @@
 // plot positions — so the formula reads as a legend for the panel's knobs.
 
 import React from 'react'
+import './controls.css'
 
 interface PopCtx {
   popped: string | null

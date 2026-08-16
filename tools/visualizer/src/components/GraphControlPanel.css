@@ -1,0 +1,455 @@
+/* Graph control panel: panel chrome, force tabs, equations, sliders, switch, dual-range — extracted from styles/index.css (issue #56). */
+/* Graph Control Panel */
+.graph-control-panel {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100% - 70px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Widen only when open so the collapsed toggle stays compact. The spring map
+   needs more horizontal room than the old slider stack. */
+.graph-control-panel.open {
+  width: 330px;
+}
+
+.graph-control-panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  flex-shrink: 0;
+}
+
+.graph-control-panel-toggle:hover {
+  color: var(--color-text);
+}
+
+.graph-control-panel-body {
+  padding: 0 12px 10px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  /* Single source of truth for the panel's text. Children inherit this; the
+     normalization block below pins the few classes that still carry their own
+     size, and only numeric/equation text overrides the family to mono. */
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.graph-control-group {
+  margin-top: 8px;
+}
+
+.graph-control-group-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+/* Force tabs — one section visible at a time. */
+.graph-control-tabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.graph-control-tab {
+  flex: 1;
+  padding: 5px 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.graph-control-tab:hover {
+  color: var(--color-text);
+}
+
+.graph-control-tab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-text);
+}
+
+/* All four force sections are stacked in a single grid cell so the panel
+   sizes to the tallest/widest tab and never resizes on tab switch. Each slot
+   occupies the same cell (1 / 1); only the active one is visible. */
+.graph-control-sections {
+  display: grid;
+}
+
+.graph-control-section-slot {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  pointer-events: none;
+  min-width: 0;
+}
+
+.graph-control-section-slot.active {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Labelled sub-section grouping (used by the Misc tab to separate Dynamics
+   from Node scaling). A second sub-section gets a hairline divider above it. */
+.graph-control-subsection + .graph-control-subsection {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.graph-control-subsection-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+/* Equation-oriented sections. Only the active tab's section is visible, so it
+   sits at full opacity (no inter-section dimming to compete with). */
+.graph-control-equation-section {
+  margin-top: 10px;
+  padding-bottom: 6px;
+}
+
+.graph-control-equation-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.graph-control-equation-subtitle {
+  font-size: 9px;
+  color: var(--color-text-muted);
+}
+
+.graph-control-equation-formula {
+  font-family: var(--font-mono);
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  margin: 0 0 6px;
+  padding: 5px 8px;
+  white-space: pre-wrap;
+  text-align: center;
+  /* Unassuming card so the governing equation reads as a distinct band above
+     the controls rather than floating text. */
+  background: color-mix(in srgb, var(--color-text-muted) 7%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.graph-control-equation-body {
+  padding-left: 2px;
+}
+
+/* Sub-header for labeled columns within a section */
+.graph-control-sub-header {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.graph-control-sub-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+/* Sliding on/off switch (a styled checkbox), used on each sub-tab. */
+.switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.switch input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+.switch-track {
+  width: 26px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--color-border);
+  transition: background 0.15s ease;
+  position: relative;
+  display: inline-block;
+}
+.switch.on .switch-track { background: var(--color-workflow); }
+.switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s ease;
+}
+.switch.on .switch-knob { left: 14px; }
+.switch input:focus-visible + .switch-track { box-shadow: 0 0 0 2px var(--focus-ring-color); }
+
+/* Typography normalization: pin every panel text element to one size (12px,
+   matching the toolbar) so the modal reads consistently. Declared after the
+   base rules so it wins at equal specificity — the one place to change the
+   control-panel font size. */
+.graph-control-panel-toggle,
+.graph-control-tab,
+.graph-control-equation-formula,
+.graph-control-equation-subtitle,
+.graph-control-sub-label,
+.graph-control-slider-label,
+.graph-control-slider-value,
+.graph-control-band-label,
+.graph-control-band-value,
+.graph-control-checkbox {
+  font-size: 12px;
+}
+
+/* Equation fraction — the Pull tab renders its formula as a real fraction
+   ((d − length)^exp over d) instead of a flat "/ d". */
+.eq-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.eq-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.eq-num {
+  border-bottom: 1px solid currentColor;
+  padding: 0 4px;
+  line-height: 1.3;
+  /* Stretch to the fraction's full width (the wider of numerator/denominator)
+     so the dividing line spans the whole fraction, not just the numerator. */
+  align-self: stretch;
+  text-align: center;
+}
+
+.eq-den {
+  padding: 0 4px;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* ── Type colour theming ───────────────────────────────────────────────────
+   Per-type rows (charges, bands, edge endpoints) read from --type-color.
+   The .graph-control-typed-<nodeType> assignments that set --type-color are
+   generated at runtime by mountNodeTypeStyles() in App.tsx / webview.tsx.
+*/
+
+/* Rows that carry a single node type get a coloured left-accent and tint
+   their label + slider thumb to match. Applied to both per-type charge
+   sliders (PUSH section) and gravity Y-band sliders (GRAVITY section). */
+.graph-control-typed-row {
+  padding-left: 6px;
+  border-left: 2px solid var(--type-color, transparent);
+}
+
+.graph-control-typed-row input[type="range"] {
+  accent-color: var(--type-color);
+}
+
+.graph-control-typed-row .graph-control-slider-label,
+.graph-control-typed-row .graph-control-band-label {
+  color: var(--type-color);
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+/* Gravity Y-band row — label, dual-handle slider, two readouts. */
+.graph-control-band-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.graph-control-band-label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  min-width: 40px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.graph-control-band-value {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* Dual-handle range slider. Two transparent native range inputs are stacked
+   on top of each other; the visible track and fill are separate elements
+   beneath them. Pointer events are enabled only on the thumbs so both are
+   independently grabbable. */
+.dual-range {
+  position: relative;
+  flex: 1;
+  height: 18px;
+  min-width: 0;
+}
+
+.dual-range-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.dual-range-fill {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  border-radius: 2px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background: #94A3B8;
+  opacity: 0.7;
+}
+
+/* .dual-range-<nodeType> fill and thumb-border rules are generated at runtime
+   by mountNodeTypeStyles() — one rule per node type, derived from the registry. */
+
+.dual-range-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+
+.dual-range-input::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 18px;
+}
+
+.dual-range-input::-moz-range-track {
+  background: transparent;
+  height: 18px;
+  border: none;
+}
+
+.dual-range-input::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-text-muted);
+  cursor: pointer;
+  margin-top: -1px;
+  position: relative;
+  z-index: 1;
+}
+
+.dual-range-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-text-muted);
+  cursor: pointer;
+}
+
+/* Thumb-border rules per node type: generated at runtime by mountNodeTypeStyles(). */
+
+.dual-range-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+.dual-range-input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+/* Force field checkbox */
+.graph-control-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.graph-control-checkbox input[type="checkbox"] {
+  accent-color: var(--color-workflow);
+  cursor: pointer;
+}
+
+.graph-control-slider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.graph-control-slider-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  min-width: 70px;
+  white-space: nowrap;
+}
+
+.graph-control-slider-value {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  min-width: 30px;
+  text-align: right;
+}
+
+.graph-control-sim-buttons {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+

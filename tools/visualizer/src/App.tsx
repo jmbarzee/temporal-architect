@@ -1,4 +1,5 @@
 import React from 'react'
+import './App.css'
 import { WorkflowCanvas } from './components/WorkflowCanvas'
 import { StyleGuide } from './components/StyleGuide'
 import type { TWFFile } from './types/ast'

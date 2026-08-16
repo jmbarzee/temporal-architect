@@ -6,6 +6,8 @@
 // transition — that's signaled by the `flashing` prop, which the parent
 // sets for ~600ms after a focus transition that bypassed the pin.
 
+import './PinToggle.css'
+
 interface PinToggleProps {
   pinned: boolean
   onClick: () => void

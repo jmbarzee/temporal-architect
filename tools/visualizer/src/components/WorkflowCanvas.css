@@ -1,0 +1,81 @@
+/* View shell + tab bar — extracted from styles/index.css (issue #56). */
+/* View Shell */
+.view-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Keep-alive wrapper for each view. Both views stay mounted so their state
+   (graph viewport/layout, tree scroll/expand) survives tab switches; the
+   inactive one is hidden rather than unmounted. */
+.view-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.view-pane.hidden {
+  display: none;
+}
+
+/* Tab Bar */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.tab-bar-btn {
+  padding: 10px 20px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.tab-bar-btn:hover {
+  color: var(--color-text);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.tab-bar-btn.active {
+  color: var(--color-workflow);
+  border-bottom-color: var(--color-workflow);
+}
+
+/* Disabled tab (e.g. Tree in history mode): dimmed and non-interactive. The
+   :disabled override wins over :hover because it's declared later. */
+.tab-bar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tab-bar-btn:disabled:hover {
+  color: var(--color-text-muted);
+  background: transparent;
+}
+
+.vscode-dark .tab-bar-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.vscode-dark .tab-bar-btn:disabled:hover {
+  background: transparent;
+}
+
+/* The wrapper exists only to carry the tooltip while the button is disabled. */
+.tab-bar-btn-wrap {
+  display: inline-flex;
+}
+

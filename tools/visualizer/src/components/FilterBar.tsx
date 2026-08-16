@@ -10,6 +10,7 @@
 // is identical across views.
 
 import React from 'react'
+import './FilterBar.css'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { PinToggle } from './PinToggle'

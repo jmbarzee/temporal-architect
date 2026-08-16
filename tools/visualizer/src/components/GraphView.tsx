@@ -2,6 +2,7 @@
 // Wires together graph construction, simulation, viewport, rendering, and interaction.
 
 import React from 'react'
+import './GraphView.css'
 import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
