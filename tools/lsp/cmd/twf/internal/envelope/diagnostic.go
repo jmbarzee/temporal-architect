@@ -121,6 +121,20 @@ func HasErrors(diags []Diagnostic) bool {
 	return false
 }
 
+// HasBlockingError reports whether any diagnostic is severe enough that even
+// `--lenient` must not demote it to a clean exit. Structural lexical errors
+// (parser.CodeLexical) qualify: the input could not be tokenized, so the parse
+// is fundamentally broken and a green exit would actively mislead — consistent
+// with the rule that a `--lenient` exit code is not a health signal.
+func HasBlockingError(diags []Diagnostic) bool {
+	for _, d := range diags {
+		if d.Severity == "error" && d.Code == parser.CodeLexical {
+			return true
+		}
+	}
+	return false
+}
+
 // EnsureSlice returns the input slice or, if it is nil, a non-nil empty slice.
 // JSON consumers of the wire contract see an empty array, never null —
 // regardless of whether analysis produced no diagnostics or hit a fast path.

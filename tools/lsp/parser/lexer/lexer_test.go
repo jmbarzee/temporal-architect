@@ -157,21 +157,30 @@ func TestArgs(t *testing.T) {
 	}
 }
 
-func TestArgsNoNestedParens(t *testing.T) {
-	// First ) closes, so (a(b) captures "a(b" and the remaining ) is raw text.
-	input := "(a(b)"
-	l := New(input)
-	tok := l.NextToken() // ARGS
+func TestArgsTracksNestedParens(t *testing.T) {
+	// Nested parens are now balanced: the ARGS token ends at the ')' that
+	// matches the opening '(', not at the first ')'.
+	//
+	// "(a(b))" — the inner ')' closes the inner '(', the outer ')' closes the
+	// group: content is "a(b)".
+	l := New("(a(b))")
+	tok := l.NextToken()
 	if tok.Type != token.ARGS {
-		t.Fatalf("expected ARGS, got %s", tok.Type)
+		t.Fatalf("expected ARGS, got %s (%q)", tok.Type, tok.Literal)
 	}
-	// First ) closes: content is "a(b"
-	// Actually, we don't track nested parens — the first ) closes.
-	// Input: ( a ( b )
-	// The ( at pos 2 is part of the content. The ) at pos 4 closes.
-	// Content = "a(b"
-	if tok.Literal != "a(b" {
-		t.Fatalf("expected 'a(b', got %q", tok.Literal)
+	if tok.Literal != "a(b)" {
+		t.Fatalf("expected 'a(b)', got %q", tok.Literal)
+	}
+
+	// "(a(b)" — the outer '(' is never matched, so the group is unterminated: a
+	// loud error at the opening '(', not a silent close at the first ')'.
+	l = New("(a(b)")
+	tok = l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL for unbalanced parens, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "unterminated argument list" {
+		t.Fatalf("expected 'unterminated argument list', got %q", tok.Literal)
 	}
 }
 
@@ -440,27 +449,36 @@ func TestInconsistentDedent(t *testing.T) {
 }
 
 func TestUnclosedArgs(t *testing.T) {
+	// An argument group that runs to EOF with the '(' still open is a loud
+	// error at the opening '(', not a silent run-to-EOF captured as ARGS.
 	input := "(foo bar"
 	l := New(input)
 	tok := l.NextToken()
-	if tok.Type != token.ARGS {
-		t.Fatalf("expected ARGS, got %s", tok.Type)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
 	}
-	// Should capture everything up to EOF as the content.
-	if tok.Literal != "foo bar" {
-		t.Fatalf("expected literal 'foo bar', got %q", tok.Literal)
+	if tok.Literal != "unterminated argument list" {
+		t.Fatalf("expected 'unterminated argument list', got %q", tok.Literal)
+	}
+	if tok.Line != 1 || tok.Column != 1 {
+		t.Fatalf("expected error at opening '(' (1:1), got %d:%d", tok.Line, tok.Column)
 	}
 }
 
 func TestUnclosedString(t *testing.T) {
+	// A string that reaches EOF with no closing quote is a loud error at the
+	// opening '"', not a silent capture of the remainder.
 	input := `"hello world`
 	l := New(input)
 	tok := l.NextToken()
-	if tok.Type != token.STRING {
-		t.Fatalf("expected STRING, got %s", tok.Type)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
 	}
-	if tok.Literal != "hello world" {
-		t.Fatalf("expected literal 'hello world', got %q", tok.Literal)
+	if tok.Literal != "unterminated string literal" {
+		t.Fatalf("expected 'unterminated string literal', got %q", tok.Literal)
+	}
+	if tok.Line != 1 || tok.Column != 1 {
+		t.Fatalf("expected error at opening '\"' (1:1), got %d:%d", tok.Line, tok.Column)
 	}
 }
 
@@ -578,5 +596,142 @@ func TestOptionsBlockTokenStream(t *testing.T) {
 		if exp.lit != "" && tok.Literal != exp.lit {
 			t.Fatalf("token[%d]: expected literal %q, got %q", i, exp.lit, tok.Literal)
 		}
+	}
+}
+
+// firstOf returns the first token of the wanted type, stopping early on ILLEGAL
+// or EOF, so args/string tests can assert on the interesting token regardless of
+// the leading identifier/structural tokens.
+func firstOf(l *Lexer, want token.TokenType) token.Token {
+	for {
+		tok := l.NextToken()
+		if tok.Type == want || tok.Type == token.ILLEGAL || tok.Type == token.EOF {
+			return tok
+		}
+	}
+}
+
+func TestArgsBalancedParenInString(t *testing.T) {
+	// A ')' inside a string must not terminate the argument group early. The
+	// ARGS token spans to the real outer ')'.
+	input := `foo("org is required (bootstrap)")`
+	l := New(input)
+	tok := firstOf(l, token.ARGS)
+	if tok.Type != token.ARGS {
+		t.Fatalf("expected ARGS, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != `"org is required (bootstrap)"` {
+		t.Fatalf("ARGS ended at the wrong ')': got %q", tok.Literal)
+	}
+	// After the outer ')' a stray STRING would mean the old truncation bug is back.
+	if next := l.NextToken(); next.Type == token.STRING {
+		t.Fatalf("unexpected trailing STRING %q — args terminated at the wrong ')'", next.Literal)
+	}
+}
+
+func TestArgsUnbalancedParenIsLoud(t *testing.T) {
+	// A genuinely unbalanced '(' (an extra opener that never closes) is a loud
+	// error at the opening delimiter — never a silent run to EOF. The string
+	// span in between is skipped and does not paper over the imbalance.
+	input := `foo("bar" (baz`
+	l := New(input)
+	tok := firstOf(l, token.ARGS)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "unterminated argument list" {
+		t.Fatalf("expected 'unterminated argument list', got %q", tok.Literal)
+	}
+}
+
+func TestArgsNestedCalls(t *testing.T) {
+	// Nested calls: ARGS spans to the matching outer ')'.
+	input := `f(g(x))`
+	l := New(input)
+	tok := firstOf(l, token.ARGS)
+	if tok.Type != token.ARGS {
+		t.Fatalf("expected ARGS, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "g(x)" {
+		t.Fatalf("expected ARGS 'g(x)', got %q", tok.Literal)
+	}
+}
+
+func TestArgsUnterminatedAtEOF(t *testing.T) {
+	// Unterminated argument list at EOF: loud error at the opening '('.
+	input := "foo(a, b"
+	l := New(input)
+	tok := firstOf(l, token.ARGS)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "unterminated argument list" {
+		t.Fatalf("expected 'unterminated argument list', got %q", tok.Literal)
+	}
+	if tok.Column != 4 {
+		t.Fatalf("expected error at the opening '(' (col 4), got col %d", tok.Column)
+	}
+}
+
+func TestArgsUnterminatedStringInside(t *testing.T) {
+	// A string that never closes inside an argument group is a loud error at
+	// that string's opening '"'.
+	input := "foo(\"bar)\n"
+	l := New(input)
+	tok := firstOf(l, token.ARGS)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "unterminated string literal" {
+		t.Fatalf("expected 'unterminated string literal', got %q", tok.Literal)
+	}
+	if tok.Column != 5 {
+		t.Fatalf("expected error at the opening '\"' (col 5), got col %d", tok.Column)
+	}
+}
+
+func TestStringUnterminatedNewline(t *testing.T) {
+	// A newline before the closing quote is a loud error at the opening '"'.
+	input := "\"hello\nworld"
+	l := New(input)
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "unterminated string literal" {
+		t.Fatalf("expected 'unterminated string literal', got %q", tok.Literal)
+	}
+	if tok.Line != 1 || tok.Column != 1 {
+		t.Fatalf("expected error at opening '\"' (1:1), got %d:%d", tok.Line, tok.Column)
+	}
+}
+
+func TestStringUnterminatedEOF(t *testing.T) {
+	// EOF before the closing quote is a loud error at the opening '"'.
+	input := `x "tail`
+	l := New(input)
+	tok := firstOf(l, token.STRING)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "unterminated string literal" {
+		t.Fatalf("expected 'unterminated string literal', got %q", tok.Literal)
+	}
+	if tok.Column != 3 {
+		t.Fatalf("expected error at the opening '\"' (col 3), got col %d", tok.Column)
+	}
+}
+
+func TestTwoStringsOneLine(t *testing.T) {
+	// Two string literals on one line are scanned independently.
+	input := `"first" "second"`
+	l := New(input)
+	tok := l.NextToken()
+	if tok.Type != token.STRING || tok.Literal != "first" {
+		t.Fatalf("expected STRING 'first', got %s (%q)", tok.Type, tok.Literal)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING || tok.Literal != "second" {
+		t.Fatalf("expected STRING 'second', got %s (%q)", tok.Type, tok.Literal)
 	}
 }

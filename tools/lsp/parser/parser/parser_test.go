@@ -1245,6 +1245,75 @@ activity Bar(y: string) -> (string):
 	}
 }
 
+// TestBalancedParenInStringNoTruncation is the core regression for issue #97:
+// a string literal containing balanced parens must parse cleanly and must not
+// swallow the definitions that follow it.
+func TestBalancedParenInStringNoTruncation(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    activity Log("org is required (bootstrap)") -> ok
+
+activity Bar(y: string) -> (string):
+    return y
+`
+	file, errs := ParseFileAll(input)
+	if len(errs) != 0 {
+		t.Fatalf("expected no errors, got %d: %v", len(errs), errs)
+	}
+	if len(file.Definitions) != 2 {
+		t.Fatalf("expected 2 definitions (Foo and Bar), got %d", len(file.Definitions))
+	}
+	wf, ok := file.Definitions[0].(*ast.WorkflowDef)
+	if !ok {
+		t.Fatalf("expected WorkflowDef, got %T", file.Definitions[0])
+	}
+	call, ok := wf.Body[0].(*ast.ActivityCall)
+	if !ok {
+		t.Fatalf("expected ActivityCall, got %T", wf.Body[0])
+	}
+	if call.Args != `"org is required (bootstrap)"` {
+		t.Fatalf("args ended at the wrong ')': got %q", call.Args)
+	}
+	if _, ok := file.Definitions[1].(*ast.ActivityDef); !ok {
+		t.Fatalf("expected the trailing ActivityDef Bar to survive, got %T", file.Definitions[1])
+	}
+}
+
+// TestUnterminatedStringRecovers verifies that a genuinely unterminated string
+// produces a loud diagnostic AND that definitions after the offending line still
+// parse — the runaway-swallow that truncated the file no longer happens.
+func TestUnterminatedStringRecovers(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    activity Log("oops) -> ok
+
+activity Bar(y: string) -> (string):
+    return y
+`
+	file, errs := ParseFileAll(input)
+	if len(errs) == 0 {
+		t.Fatal("expected a loud diagnostic for the unterminated string, got none")
+	}
+	foundLex := false
+	for _, e := range errs {
+		if e.Msg == "unterminated string literal" {
+			foundLex = true
+		}
+	}
+	if !foundLex {
+		t.Fatalf("expected an 'unterminated string literal' diagnostic, got %v", errs)
+	}
+	// The trailing definition must still resolve — the truncation guarantee.
+	foundBar := false
+	for _, def := range file.Definitions {
+		if ad, ok := def.(*ast.ActivityDef); ok && ad.Name == "Bar" {
+			foundBar = true
+		}
+	}
+	if !foundBar {
+		t.Fatalf("expected the trailing activity Bar to survive truncation, got %d defs: %v",
+			len(file.Definitions), file.Definitions)
+	}
+}
+
 func TestParseAllTestdata(t *testing.T) {
 	// Test that all files in testdata/ parse successfully.
 	files, err := os.ReadDir("../testdata")

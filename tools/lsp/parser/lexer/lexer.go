@@ -223,39 +223,105 @@ func (l *Lexer) scanComment() token.Token {
 	return tok
 }
 
+// scanArgs consumes an argument group delimited by the opening '(' up to its
+// matching ')'. The scan is balanced and string-aware: it maintains a delimiter
+// stack (pushing on '(' '{' '[', popping on ')' '}' ']') so nested groups don't
+// terminate the token early, and it skips over "..." string spans entirely so a
+// paren inside a string never affects depth. The content between the delimiters
+// stays opaque — this only finds where the argument group ends. Multi-line
+// argument groups are allowed.
+//
+// Reaching EOF with the stack still open is a loud error: it returns a
+// token.ILLEGAL positioned at the opening '(', rather than silently swallowing
+// the rest of the input as valid ARGS content. An unterminated string span
+// inside the group is likewise a loud error at that string's opening '"'.
 func (l *Lexer) scanArgs() token.Token {
-	tok := l.makeToken(token.ARGS, "")
+	// openTok captures the opening '(' position; reused for ARGS or ILLEGAL.
+	openTok := l.makeToken(token.ARGS, "")
 	l.advance() // consume '('
 	start := l.pos
-	for l.pos < len(l.input) && l.input[l.pos] != ')' {
-		if l.input[l.pos] == '\n' {
+
+	stack := []byte{'('}
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+		switch ch {
+		case '\n':
 			l.line++
 			l.col = 0 // advance will set to 1
+			l.advance()
+		case '"':
+			// Skip the whole string span so delimiters inside a string never
+			// affect depth. An unterminated string is a loud error.
+			strTok := l.makeToken(token.ILLEGAL, "unterminated string literal")
+			if !l.skipStringSpan() {
+				return strTok
+			}
+		case '(', '{', '[':
+			stack = append(stack, ch)
+			l.advance()
+		case ')', '}', ']':
+			stack = stack[:len(stack)-1]
+			if len(stack) == 0 {
+				// Matched the opening '('; the argument group ends here.
+				tok := openTok
+				tok.Literal = string(l.input[start:l.pos])
+				l.advance() // consume the matching ')'
+				return tok
+			}
+			l.advance()
+		default:
+			l.advance()
+		}
+	}
+
+	// EOF with the stack still open: loud error at the opening '('.
+	openTok.Type = token.ILLEGAL
+	openTok.Literal = "unterminated argument list"
+	return openTok
+}
+
+// skipStringSpan advances the lexer past a "..."-delimited span, starting with
+// the position on the opening '"'. Strings are single-line: it returns false —
+// leaving the position at the offending newline or at EOF for error recovery —
+// when no closing '"' is found before a newline or EOF. On success it consumes
+// the closing '"' and returns true.
+func (l *Lexer) skipStringSpan() bool {
+	l.advance() // consume opening '"'
+	for l.pos < len(l.input) && l.input[l.pos] != '"' {
+		if l.input[l.pos] == '\n' {
+			return false // newline before closing quote
 		}
 		l.advance()
 	}
-	tok.Literal = string(l.input[start:l.pos])
-	if l.pos < len(l.input) {
-		l.advance() // consume ')'
+	if l.pos >= len(l.input) {
+		return false // EOF before closing quote
 	}
-	return tok
+	l.advance() // consume closing '"'
+	return true
 }
 
+// scanString consumes a "..."-delimited string literal. Strings are single-line:
+// a newline or EOF before the closing '"' is a loud error, returning a
+// token.ILLEGAL positioned at the opening '"' instead of running forward and
+// swallowing the rest of the file into one STRING token.
 func (l *Lexer) scanString() token.Token {
-	tok := l.makeToken(token.STRING, "")
+	// openTok captures the opening '"' position; reused for STRING or ILLEGAL.
+	openTok := l.makeToken(token.ILLEGAL, "unterminated string literal")
 	l.advance() // consume opening '"'
 	start := l.pos
 	for l.pos < len(l.input) && l.input[l.pos] != '"' {
 		if l.input[l.pos] == '\n' {
-			l.line++
-			l.col = 0
+			return openTok // newline before closing quote
 		}
 		l.advance()
 	}
-	tok.Literal = string(l.input[start:l.pos])
-	if l.pos < len(l.input) {
-		l.advance() // consume closing '"'
+	if l.pos >= len(l.input) {
+		return openTok // EOF before closing quote
 	}
+	tok := openTok
+	tok.Type = token.STRING
+	tok.Literal = string(l.input[start:l.pos])
+	l.advance() // consume closing '"'
 	return tok
 }
 
