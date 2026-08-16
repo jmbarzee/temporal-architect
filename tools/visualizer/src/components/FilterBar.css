@@ -1,0 +1,596 @@
+/* Shared filter bar: canvas header, chips, search, error/warning bars, diagnostics — extracted from styles/index.css (issue #56). */
+/* === Error / Warning bars =====================================
+   Two independent, collapsed-by-default bars at the bottom of the
+   shared filter bar: a red Errors bar and a yellow Warnings bar.
+   Shared by both views (FilterBar). Each bar's body scrolls so a long
+   list never pushes the rest of the toolbar off-screen.
+   ============================================================= */
+.filter-error-bars {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+}
+
+.severity-bar + .severity-bar {
+  border-top: 1px solid var(--color-border);
+}
+
+.severity-bar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s ease;
+}
+
+.severity-bar-icon {
+  font-size: 13px;
+}
+
+.severity-bar-title {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Red errors bar */
+.severity-bar-error .severity-bar-icon,
+.severity-bar-error .severity-bar-title {
+  color: var(--color-error);
+}
+.severity-bar-error .severity-bar-head:hover {
+  background: rgba(220, 38, 38, 0.04);
+}
+.vscode-dark .severity-bar-error .severity-bar-head:hover {
+  background: rgba(248, 113, 113, 0.06);
+}
+
+/* Yellow warnings bar */
+.severity-bar-warning .severity-bar-icon,
+.severity-bar-warning .severity-bar-title {
+  color: var(--warning-fg);
+}
+.severity-bar-warning .severity-bar-head:hover {
+  background: rgba(217, 119, 6, 0.05);
+}
+.vscode-dark .severity-bar-warning .severity-bar-head:hover {
+  background: rgba(251, 191, 36, 0.06);
+}
+
+/* Scrollable body — capped so it never eats the whole view. */
+.severity-bar-body {
+  max-height: 28vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-border);
+  padding: 4px 0;
+}
+
+.severity-bar-error .severity-bar-body {
+  border-top-color: var(--color-error-border);
+}
+.severity-bar-warning .severity-bar-body {
+  border-top-color: var(--warning-border);
+}
+
+/* Process-level FileError rows (rendered in the errors bar). */
+.severity-error-item {
+  padding: 6px 14px 6px 28px;
+}
+
+.severity-error-file {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-error-text);
+}
+
+.severity-error-msg {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-error-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  margin: 4px 0 0;
+}
+
+/* === Canvas Header === */
+.canvas-header {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* Transition indicator: subtle flash when AST refreshes */
+.canvas-header.refresh-flash {
+  animation: refreshFlash 0.6s ease;
+}
+
+@keyframes refreshFlash {
+  0% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+  30% { box-shadow: 0 0 0 2px rgba(139, 126, 200, 0.4), 0 1px 4px rgba(0, 0, 0, 0.06); }
+  100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+}
+
+.vscode-dark .canvas-header.refresh-flash {
+  animation: refreshFlashDark 0.6s ease;
+}
+
+@keyframes refreshFlashDark {
+  0% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+  30% { box-shadow: 0 0 0 2px rgba(168, 155, 216, 0.4), 0 1px 4px rgba(0, 0, 0, 0.06); }
+  100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+}
+
+/* --- Files Section --- */
+.header-files-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.header-files-section.section-pinned {
+  background: rgba(139, 126, 200, 0.04);
+  box-shadow: inset 2px 0 0 var(--color-workflow);
+}
+
+.vscode-dark .header-files-section.section-pinned {
+  background: rgba(168, 155, 216, 0.05);
+}
+
+.header-files-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.header-file-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.header-file-tag:hover {
+  border-color: var(--color-workflow);
+  color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.06);
+}
+
+.header-file-tag.selected {
+  border-color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.12);
+  color: var(--color-workflow);
+  font-weight: 500;
+}
+
+/* Third state: no files selected → all files implicitly included */
+.header-file-tag.all-included {
+  border-color: rgba(139, 126, 200, 0.3);
+  background: rgba(139, 126, 200, 0.05);
+  color: var(--color-text-muted);
+}
+
+.header-file-tag.all-included:hover {
+  border-color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.1);
+  color: var(--color-workflow);
+}
+
+.vscode-dark .header-file-tag:hover,
+.vscode-dark .header-file-tag.selected {
+  background: rgba(168, 155, 216, 0.15);
+}
+
+.vscode-dark .header-file-tag.all-included {
+  border-color: rgba(168, 155, 216, 0.25);
+  background: rgba(168, 155, 216, 0.06);
+}
+
+.vscode-dark .header-file-tag.all-included:hover {
+  background: rgba(168, 155, 216, 0.12);
+}
+
+.header-file-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.header-file-name {
+  line-height: 1;
+}
+
+/* --- Header Divider --- */
+.header-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0;
+}
+
+/* --- Controls Section --- */
+.header-controls-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  gap: 12px;
+}
+
+/* --- Search --- */
+.header-search {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  border: 1px solid transparent;
+}
+
+.header-search.active {
+  border-color: var(--color-border);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.vscode-dark .header-search.active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.header-search-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.header-search:not(.active) .header-search-toggle {
+  border: 1px solid var(--color-border);
+}
+
+.header-search-toggle:hover {
+  color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.08);
+}
+
+.header-search-input {
+  width: 200px;
+  height: 32px;
+  padding: 0 10px 0 2px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text);
+  outline: none;
+  animation: searchExpand 0.2s ease;
+}
+
+.header-search-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+@keyframes searchExpand {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 200px;
+    opacity: 1;
+  }
+}
+
+/* --- Definition Type Toggles --- */
+.header-types-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.header-types-section.section-pinned {
+  background: rgba(139, 126, 200, 0.04);
+  box-shadow: inset 2px 0 0 var(--color-workflow);
+}
+
+.vscode-dark .header-types-section.section-pinned {
+  background: rgba(168, 155, 216, 0.05);
+}
+
+.header-types-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.header-type-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.header-type-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.header-type-label {
+  line-height: 1;
+}
+
+/* Definition-count badge on the file and type chips — a muted count of the
+   top-level definitions the chip represents (type counts respect the file
+   filter; file counts are per-file totals). */
+.header-chip-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* All filter chips share the same hover / active recipe — the only thing
+   that varies per type is which palette variable drives the colour. The
+   --chip-tint and --chip-tint-bg pair is set per chip class below; the
+   shared rules read those vars so adding a new node type is "set the two
+   vars" not "duplicate fifteen lines of CSS". */
+.header-type-tag:hover {
+  border-color: var(--chip-tint, var(--color-border));
+  color: var(--chip-tint, var(--color-text-muted));
+  background: var(--chip-tint-bg-hover, transparent);
+}
+.header-type-tag.active {
+  border-color: var(--chip-tint, var(--color-border));
+  color: var(--chip-tint, var(--color-text-muted));
+  background: var(--chip-tint-bg-active, transparent);
+  font-weight: 500;
+}
+
+.header-type-tag.header-type-workflowDef {
+  --chip-tint: var(--color-workflow);
+  --chip-tint-bg-hover: rgba(139, 126, 200, 0.06);
+  --chip-tint-bg-active: rgba(139, 126, 200, 0.12);
+}
+.header-type-tag.header-type-activityDef {
+  --chip-tint: var(--color-activity);
+  --chip-tint-bg-hover: rgba(124, 185, 232, 0.06);
+  --chip-tint-bg-active: rgba(124, 185, 232, 0.12);
+}
+.header-type-tag.header-type-workerDef {
+  --chip-tint: var(--color-worker);
+  --chip-tint-bg-hover: rgba(148, 163, 184, 0.06);
+  --chip-tint-bg-active: rgba(148, 163, 184, 0.12);
+}
+.header-type-tag.header-type-nexusServiceDef {
+  --chip-tint: var(--color-nexus-service);
+  --chip-tint-bg-hover: rgba(219, 39, 119, 0.06);
+  --chip-tint-bg-active: rgba(219, 39, 119, 0.12);
+}
+.header-type-tag.header-type-nexusOperationDef {
+  --chip-tint: var(--color-nexus-operation);
+  --chip-tint-bg-hover: rgba(249, 168, 212, 0.10);
+  --chip-tint-bg-active: rgba(249, 168, 212, 0.18);
+}
+.header-type-tag.header-type-namespaceDef {
+  --chip-tint: var(--color-namespace);
+  --chip-tint-bg-hover: rgba(71, 85, 105, 0.06);
+  --chip-tint-bg-active: rgba(71, 85, 105, 0.12);
+}
+.header-type-tag.header-type-nexusEndpointDef {
+  --chip-tint: var(--color-nexus-endpoint);
+  --chip-tint-bg-hover: rgba(159, 18, 57, 0.06);
+  --chip-tint-bg-active: rgba(159, 18, 57, 0.12);
+}
+/* Nexus group chip — consolidates endpoint, service, and operation. Uses the
+   operation light pink as the group representative. The lighter hue keeps the
+   three deepest palette extremes (namespace slate, nexus-service pink, nexus-
+   endpoint rose) reserved for per-node-type accents and gives the group chip
+   a softer presence in the filter bar. */
+.header-type-tag.header-type-nexus {
+  --chip-tint: var(--color-nexus-operation);
+  --chip-tint-bg-hover: rgba(249, 168, 212, 0.10);
+  --chip-tint-bg-active: rgba(249, 168, 212, 0.18);
+}
+
+/* Dark mode bumps the active backgrounds a bit because the surface they
+   sit on is darker. */
+.vscode-dark .header-type-tag.header-type-workflowDef       { --chip-tint-bg-hover: rgba(168, 155, 216, 0.10); --chip-tint-bg-active: rgba(168, 155, 216, 0.18); }
+.vscode-dark .header-type-tag.header-type-activityDef       { --chip-tint-bg-hover: rgba(124, 185, 232, 0.10); --chip-tint-bg-active: rgba(124, 185, 232, 0.18); }
+.vscode-dark .header-type-tag.header-type-workerDef         { --chip-tint-bg-hover: rgba(203, 213, 225, 0.10); --chip-tint-bg-active: rgba(203, 213, 225, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexusServiceDef   { --chip-tint: var(--color-nexus-service); --chip-tint-bg-hover: rgba(236, 72, 153, 0.10);  --chip-tint-bg-active: rgba(236, 72, 153, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexusOperationDef { --chip-tint-bg-hover: rgba(249, 168, 212, 0.10); --chip-tint-bg-active: rgba(249, 168, 212, 0.18); }
+.vscode-dark .header-type-tag.header-type-namespaceDef      { --chip-tint-bg-hover: rgba(148, 163, 184, 0.10); --chip-tint-bg-active: rgba(148, 163, 184, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexusEndpointDef  { --chip-tint-bg-hover: rgba(190, 18, 60, 0.10);   --chip-tint-bg-active: rgba(190, 18, 60, 0.18); }
+.vscode-dark .header-type-tag.header-type-nexus             { --chip-tint-bg-hover: rgba(249, 168, 212, 0.10); --chip-tint-bg-active: rgba(249, 168, 212, 0.18); }
+
+/* Sub-group label inside an error/warning bar body ("Shown files (N)" /
+   "Hidden files (N)") — split shown when the file filter hides findings. */
+.error-group-label {
+  padding: 8px 14px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+/* === Diagnostic rows ===========================================
+   Validator/resolver/parse findings emitted in the JSON envelope by
+   `twf parse`. Rendered inside the error/warning bars (FilterBar).
+   ============================================================= */
+
+/* A single diagnostic row. Two-line layout:
+   [glyph] [CODE]  message
+                   file:line:col
+   Line 1 carries the severity glyph (✗ red / ⚠ amber), the diagnostic
+   code as a small monospace chip, and the message. Line 2 carries
+   the file + position in muted mono, indented to align with the
+   message column. */
+.diagnostic-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 6px 8px;
+  padding: 6px 14px 6px 28px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diagnostic-item:last-child {
+  border-bottom: none;
+}
+
+.diagnostic-item.severity-error {
+  border-bottom-color: var(--color-error-border);
+}
+
+.diagnostic-item.severity-warning {
+  border-bottom-color: var(--warning-border);
+}
+
+.diagnostic-glyph {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.diagnostic-item.severity-error .diagnostic-glyph {
+  color: var(--color-error);
+}
+
+.diagnostic-item.severity-warning .diagnostic-glyph {
+  color: var(--warning-accent);
+}
+
+.diagnostic-code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  text-transform: none;
+}
+
+.diagnostic-item.severity-error .diagnostic-code {
+  color: var(--color-error-text);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+}
+
+.diagnostic-item.severity-warning .diagnostic-code {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}
+
+.diagnostic-message {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.diagnostic-item.severity-warning .diagnostic-message {
+  color: var(--warning-fg);
+}
+
+.diagnostic-item.severity-error .diagnostic-message {
+  color: var(--color-error-text);
+}
+
+/* Location line spans across the glyph + code columns so it sits
+   under the message. Muted to read as secondary metadata. */
+.diagnostic-location {
+  grid-column: 3 / 4;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* Tiny badge on file chips / type toggles showing how many search
+   matches are hidden by that filter. */
+.header-hidden-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.16);
+  border-radius: 8px;
+  line-height: 1;
+}
+
+/* Filter chip / toggle animation when changed by a focus transition's
+   reconciler expansion (~400ms). */
+.header-file-tag.recently-changed,
+.header-type-tag.recently-changed {
+  animation: filterChipFlash 0.45s ease;
+}
+
+@keyframes filterChipFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(139, 126, 200, 0.5); }
+  40%  { box-shadow: 0 0 0 4px rgba(139, 126, 200, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(139, 126, 200, 0); }
+}
+

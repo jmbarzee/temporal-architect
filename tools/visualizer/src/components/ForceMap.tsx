@@ -14,6 +14,7 @@
 // Both reuse the `.spring-*` / `.force-curve-*` CSS classes (see index.css).
 
 import React from 'react'
+import './ForceMap.css'
 import { Plot } from './controls/Plot'
 import { Slider } from './controls/Slider'
 

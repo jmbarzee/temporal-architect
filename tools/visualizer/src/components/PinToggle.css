@@ -1,0 +1,57 @@
+/* Filter pin toggles — extracted from styles/index.css (issue #56). */
+/* ===========================================================
+   Shared-filter UI: pinning, search match counter,
+   hidden-match badges, focus-transition animation, search dim
+   =========================================================== */
+
+/* Per-dimension pin toggle on Files / Types sections */
+.pin-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.pin-toggle:hover {
+  opacity: 1;
+  color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.08);
+}
+
+.pin-toggle.pinned {
+  opacity: 1;
+  color: var(--color-workflow);
+  background: rgba(139, 126, 200, 0.12);
+  border-color: rgba(139, 126, 200, 0.35);
+}
+
+.vscode-dark .pin-toggle:hover {
+  background: rgba(168, 155, 216, 0.12);
+}
+
+.vscode-dark .pin-toggle.pinned {
+  background: rgba(168, 155, 216, 0.18);
+  border-color: rgba(168, 155, 216, 0.4);
+}
+
+/* Pin override flash on focus transitions (~600ms) */
+.pin-toggle.flashing {
+  animation: pinFlash 0.6s ease;
+}
+
+@keyframes pinFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); transform: scale(1); }
+  40%  { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); transform: scale(1.12); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); transform: scale(1); }
+}
+

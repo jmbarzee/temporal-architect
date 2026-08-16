@@ -1,0 +1,90 @@
+/* App-level loading / error / empty states — extracted from styles/index.css (issue #56). */
+/* Loading, error, and empty states */
+.loading-container,
+.error-container,
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+  background: var(--color-bg-gradient);
+}
+
+.loading-container p {
+  font-size: 16px;
+  color: var(--color-text-muted);
+}
+
+.error-container h2 {
+  color: var(--color-error);
+  margin-bottom: 16px;
+}
+
+.error-container pre {
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 600px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-error-text);
+  text-align: left;
+}
+
+.empty-content {
+  max-width: 400px;
+}
+
+.empty-content h2 {
+  color: var(--color-workflow);
+  margin-bottom: 16px;
+  font-size: 24px;
+}
+
+.empty-content p {
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.empty-content code {
+  background: rgba(139, 126, 200, 0.15);
+  color: var(--color-workflow);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+.empty-content .hint {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.file-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--color-workflow);
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: filter 0.2s;
+  margin: 16px 0;
+}
+
+.file-upload-btn:hover {
+  filter: brightness(1.1);
+}
+
+.file-upload-btn input {
+  display: none;
+}
+

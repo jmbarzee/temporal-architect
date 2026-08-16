@@ -1,0 +1,174 @@
+/* Gravity controls — extracted from styles/index.css (issue #56). */
+/* ── Gravity tab ────────────────────────────────────────────────────────────
+   A shared Cartesian/Radial mode switch, then Band/Topological *sub-tabs*: each
+   sub-tab carries a sliding on/off switch (so both forces' state is always
+   visible) and selects which body shows below. Bodies: the band "mini world
+   view" (per-type vertical sliders over rest-region stripes) and the topological
+   depth→pull curve + sliders. */
+.gravity-controls {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gravity-modes-row { display: flex; justify-content: center; }
+
+/* inline-grid with two 1fr tracks → both segments take the width of the wider
+   label ("Cartesian"), so the divider sits dead-centre. */
+.gravity-modes {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gravity-mode-btn {
+  padding: 4px 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+.gravity-mode-btn + .gravity-mode-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.gravity-mode-btn:hover:not(.active) { color: var(--color-text); }
+
+.gravity-mode-btn.active {
+  background: var(--color-workflow);
+  color: #fff;
+}
+
+/* Sub-tab bar — same underline-tab pattern as the main force tabs, but marked
+   as a sub-level by an accent-coloured underline (main tabs underline in the
+   text colour) and the inline on/off switch each tab carries. */
+.gravity-subtabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gravity-subtab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 4px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  user-select: none;
+}
+
+.gravity-subtab:hover { color: var(--color-text); }
+
+.gravity-subtab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-workflow);
+}
+
+.gravity-subtab-label { font-weight: 600; }
+
+/* Both sub-tab bodies stack in one grid cell so the panel sizes to the taller
+   body and never resizes when switching sub-tabs (mirrors .graph-control-sections). */
+.gravity-bodies { display: grid; }
+
+/* Stack both bodies; only hide the *inactive* one. Crucially we do NOT force the
+   active body `visibility: visible` — that would override the inherited `hidden`
+   from an inactive parent major-tab slot and paint the gravity body over whatever
+   tab is actually showing. Instead the active body inherits visibility from its
+   major-tab slot (visible only when the Gravity tab is active). */
+.gravity-body {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.gravity-body:not(.active) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The active body's tools dim (but stay usable) when its force switch is off. */
+.gravity-section-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gravity-section-tools.inactive { opacity: 0.5; }
+
+/* Band mini-world-view svg (the rest of the layout is the shared <Plot> shell). */
+.gravity-band-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+}
+
+/* X-band dual-range sits snug under the plot — short track height so the bar
+   hugs the bottom of the plot rather than floating in a tall slider row. */
+.gravity-xband { grid-area: xband; display: flex; align-items: flex-start; }
+.gravity-xband .dual-range,
+.gravity-xband .dual-range-input { height: 12px; }
+
+.gravity-band-bg { fill: var(--color-bg); opacity: 0.5; }
+
+/* Rest-region stripes — behind and non-interactive, so handles stay grabbable. */
+.gravity-band-stripes { pointer-events: none; }
+.gravity-band-stripe { opacity: 0.16; }
+.gravity-band-stripe.dim { opacity: 0.05; }
+.gravity-band-stripe.active { opacity: 0.30; }
+.gravity-xband-stripe { fill: var(--color-text-muted); opacity: 0.10; }
+.gravity-xband-stripe.active { opacity: 0.22; }
+
+/* Per-type vertical slider controls, on top of the stripes. */
+.gravity-band-track { stroke: var(--color-border); stroke-width: 1; opacity: 0.5; }
+.gravity-band-stem { stroke-width: 2; opacity: 0.7; }
+.gravity-band-dot { cursor: ns-resize; stroke: var(--color-surface); stroke-width: 1; }
+.gravity-band-label { font-family: var(--font-sans); font-size: 11px; }
+.gravity-band-col.dim { opacity: 0.35; }
+
+.gravity-topo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gravity-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gravity-topo-curve {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 2px;
+}
+
+.gravity-topo-curve-line {
+  fill: none;
+  stroke: var(--color-workflow);
+  stroke-width: 1.5;
+}
+
+.gravity-topo-curve-axis {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  fill: var(--color-text-muted);
+}
+
+

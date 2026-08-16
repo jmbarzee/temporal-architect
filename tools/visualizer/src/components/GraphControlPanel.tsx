@@ -2,6 +2,7 @@
 // Organized by force equation — each section shows its equation, then relevant sliders.
 
 import React from 'react'
+import './GraphControlPanel.css'
 import type { ForceParams } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
 import type { NodeScaleParams } from '../graph/node-types'

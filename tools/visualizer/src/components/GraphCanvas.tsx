@@ -185,10 +185,6 @@ interface GraphCanvasProps {
   onDoubleClickNode: (id: string) => void
   onHoverNode: (id: string | null) => void
   onSelectNode: (id: string | null) => void
-  // Right-click on a node — emits the node id and the page-relative
-  // coordinates of the cursor so the parent can render a floating
-  // context menu at that location.
-  onNodeContextMenu?: (nodeId: string, clientX: number, clientY: number) => void
   highlightedNodes: Set<string> | null
   highlightedEdges: Set<string> | null
   hoveredNodeId: string | null
@@ -238,7 +234,7 @@ interface DrawData {
 export function GraphCanvas({
   nodes, edges, viewport, onViewportChange,
   onNodeDragStart, onNodeDragMove, onNodeDragEnd,
-  onDoubleClickNode, onHoverNode, onSelectNode, onNodeContextMenu,
+  onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, forceParams, activeSection, activeChargeType,
@@ -410,21 +406,6 @@ export function GraphCanvas({
       onViewportChange(fitToView(nodes, size.w, size.h))
     }
   }, [hitTest, nodes, size, onViewportChange, onDoubleClickNode])
-
-  // Right-click on a node → open the floating context menu in the parent.
-  // We suppress the browser menu only when a node is hit; clicking the
-  // bare canvas still surfaces the default menu (useful for browser tools).
-  const handleContextMenu = React.useCallback((e: React.MouseEvent) => {
-    if (!onNodeContextMenu) return
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const sx = e.clientX - rect.left
-    const sy = e.clientY - rect.top
-    const node = hitTest(sx, sy)
-    if (node) {
-      e.preventDefault()
-      onNodeContextMenu(node.id, e.clientX, e.clientY)
-    }
-  }, [hitTest, onNodeContextMenu])
 
   // --- Render loop ---
   // Uses a ref for all draw data so the effect only tears down on size change.
@@ -1070,7 +1051,6 @@ export function GraphCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onDoubleClick={handleDoubleClick}
-        onContextMenu={handleContextMenu}
       />
     </div>
   )

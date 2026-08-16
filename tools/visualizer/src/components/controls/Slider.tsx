@@ -10,6 +10,7 @@
 // positions it. The two-handle band slider is a separate primitive (DualRange).
 
 import { usePop } from './PopContext'
+import './controls.css'
 
 export interface SliderProps {
   value: number

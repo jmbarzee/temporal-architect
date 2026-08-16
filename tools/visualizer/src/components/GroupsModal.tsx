@@ -5,6 +5,7 @@
 // It mirrors GraphControlPanel's collapse/tab structure and reuses its CSS.
 
 import React from 'react'
+import './GroupsModal.css'
 import type { Decomposition, Chunk, Division, Section } from '../types/decomposition'
 import {
   defaultStrategyForChunk,

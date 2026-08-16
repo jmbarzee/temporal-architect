@@ -1,0 +1,215 @@
+/* Groups (decomposition) modal — extracted from styles/index.css (issue #56). */
+/* ---------------------------------------------------------------------------
+   Groups modal (decomposition overlay). Reuses the .graph-control-panel
+   collapse/tab chrome but anchors top-right (below the toolbar) instead of
+   bottom-right; the Control Panel sits bottom-right, so the two never collide.
+   See GRAPH_VIEW.md § Decomposition Group Overlay.
+   --------------------------------------------------------------------------- */
+.groups-modal {
+  /* Anchored to the real bottom of the toolbar (measured into --toolbar-height
+     by GraphView) plus a gap, so it never rides up over a taller toolbar. The
+     fallback covers the first paint before the measurement lands. */
+  top: calc(var(--toolbar-height, 48px) + 12px);
+  right: 12px;
+  bottom: auto;
+  left: auto;
+  /* Never extend past the bottom toolbar row; scroll the body instead. */
+  max-height: calc(100% - var(--toolbar-height, 48px) - 60px);
+}
+
+.groups-modal.open {
+  width: 300px;
+}
+
+/* Header: collapse toggle (fills the row) + the always-visible glow switch. */
+.groups-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 10px;
+}
+
+.groups-modal-header .graph-control-panel-toggle {
+  flex: 1;
+}
+
+.groups-tree {
+  margin-top: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.groups-chunk {
+  margin-bottom: 10px;
+}
+
+.groups-chunk-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.groups-chunk-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.groups-chunk-meta {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+/* Division options and the sections they produce share one tree (indented
+   under the chunk head). Each option is a stacked radio row; the selected
+   option's sections nest beneath it (SectionRows at depth 1). Options read as a
+   *choice* (radio + rank + strategy); sections read as *subsets* (swatch +
+   name + count) — distinct vocabularies so the two perspectives don't blur. */
+.groups-divisions {
+  margin: 4px 0 4px 18px;
+}
+
+.groups-division + .groups-division {
+  margin-top: 1px;
+}
+
+.groups-option-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.groups-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+
+.groups-option:hover {
+  color: var(--color-text);
+  background: rgba(139, 126, 200, 0.12);
+}
+
+.groups-option-rank {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.groups-option-strategy {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The selected option is the one whose sections are showing — emphasise it so
+   the active choice is unmistakable among its siblings. */
+.groups-division.selected > .groups-option-row .groups-option-strategy {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* Checks/radios pick up the app accent (same convention as
+   .graph-control-checkbox in the Control Panel) so they read as one UI. */
+.groups-chunk-head input[type="checkbox"],
+.groups-option input[type="radio"] {
+  accent-color: var(--color-workflow);
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.groups-section-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.groups-section-row.hover {
+  background: rgba(139, 126, 200, 0.14);
+}
+
+.groups-expand {
+  width: 14px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  padding: 0;
+  line-height: 1;
+}
+
+.groups-expand-spacer {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+/* Color legend for the canvas glow — a thin rounded bar, deliberately NOT a
+   bordered square (which read as an unchecked checkbox). Transparent when the
+   section isn't a current glow group, so absence shows as a small gap, not a box. */
+.groups-swatch {
+  width: 4px;
+  height: 13px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.groups-section-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+}
+
+.groups-section-meta {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.groups-params {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.groups-params-note {
+  color: var(--color-text-muted);
+  margin: 0 0 8px;
+  font-size: 11px;
+}
+
+.groups-param-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.groups-param-label {
+  color: var(--color-text-muted);
+}
+
+.groups-param-value {
+  color: var(--color-text);
+  font-family: var(--font-mono, monospace);
+  text-align: right;
+  word-break: break-word;
+}

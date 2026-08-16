@@ -1,4 +1,5 @@
 import React from 'react'
+import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
 import type { CallerRef, NavigationContextType, CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'

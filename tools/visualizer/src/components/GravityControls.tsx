@@ -7,6 +7,7 @@
 // See GRAPH_VIEW spec § Gravity / Control Panel.
 
 import React from 'react'
+import './GravityControls.css'
 import type { ForceParams } from '../graph/simulation'
 import type { NodeType } from '../graph/model'
 import { NODE_TYPE_REGISTRY, MAIN_LADDER, NEXUS_LADDER, sliderLabelFor } from '../graph/node-types'
