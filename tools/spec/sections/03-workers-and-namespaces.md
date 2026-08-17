@@ -17,6 +17,12 @@ worker_entry ::= 'workflow' IDENT NEWLINE
 
 Worker names use lowerCamelCase convention. Workers contain workflow, activity, and nexus service references — deployment configuration (task_queue, etc.) is specified when the worker is instantiated in a namespace block.
 
+Each registration entry's referenced name is a [`qualified_ref`](./14-packages-and-imports.md): it
+may carry an optional `pkg.` package qualifier (`workflow orders.ProcessOrder`,
+`activity billing.ChargeCard`, `nexus service orders.OrderService`) to register a symbol declared
+in another package. The qualifier is bare for same-package symbols and is carried on the AST/wire
+but not resolved in this slice (cross-package resolution is deferred to #109).
+
 **Example:**
 ```
 worker orderTypes:
@@ -28,6 +34,12 @@ worker orderTypes:
 ```
 
 ## Namespace Definitions
+
+> **`namespace` is not `package`.** `namespace` is the Temporal **deployment** keyword described
+> below — it instantiates workers and endpoints into a deployment topology and has real runtime
+> meaning. The [`package`](./14-packages-and-imports.md) keyword is unrelated: it is a compile-time,
+> directory-scoped grouping of symbol *names* with **no runtime meaning**. Declaring or importing a
+> package changes nothing about namespaces or deployment.
 
 Namespaces instantiate workers with deployment options, defining the deployment topology:
 

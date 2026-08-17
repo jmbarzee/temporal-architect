@@ -35,10 +35,24 @@ export interface FileSummary {
 }
 /**
  * FileJSON is the JSON-serializable representation of a File.
+ * Package and Imports are additive and omitempty: a clause-less file (the
+ * implicit default package, every file today) emits neither, so its output is
+ * byte-identical to before this slice.
  */
 export interface FileJSON {
   summary: FileSummary;
+  package?: string;
+  imports?: ImportDeclJSON[];
   definitions: RawDefinition[];
+}
+/**
+ * ImportDeclJSON is the JSON representation of an import declaration.
+ */
+export interface ImportDeclJSON {
+  line: number /* int */;
+  column: number /* int */;
+  path: string;
+  alias?: string;
 }
 /**
  * OptionsBlockJSON is the JSON representation of an options block.
@@ -104,6 +118,7 @@ export interface ActivityDefJSON {
  * WorkerRefJSON is the JSON representation of a Ref used in worker definitions.
  */
 export interface WorkerRefJSON {
+  package?: string;
   name: string;
   line: number /* int */;
   column: number /* int */;
@@ -193,6 +208,7 @@ export interface ActivityCallJSON {
   type: string;
   line: number /* int */;
   column: number /* int */;
+  package?: string;
   name: string;
   args: string;
   result?: string;
@@ -204,6 +220,7 @@ export interface WorkflowCallJSON {
   line: number /* int */;
   column: number /* int */;
   mode: string;
+  package?: string;
   name: string;
   args: string;
   result?: string;
@@ -236,12 +253,14 @@ export interface UpdateTargetJSON {
   params?: string;
 }
 export interface ActivityTargetJSON {
+  package?: string;
   name: string;
   args?: string;
   result?: string;
   resolved?: ResolvedRefJSON;
 }
 export interface WorkflowTargetJSON {
+  package?: string;
   name: string;
   mode: string;
   args?: string;
@@ -250,6 +269,7 @@ export interface WorkflowTargetJSON {
 }
 export interface NexusTargetJSON {
   endpoint: string;
+  servicePackage?: string;
   service: string;
   operation: string;
   args?: string;
@@ -390,6 +410,7 @@ export interface NexusCallJSON {
   column: number /* int */;
   detach?: boolean;
   endpoint: string;
+  servicePackage?: string;
   service: string;
   operation: string;
   args: string;
@@ -411,6 +432,7 @@ export interface NexusOperationJSON {
   line: number /* int */;
   column: number /* int */;
   name: string;
+  workflowPackage?: string;
   workflowName?: string;
   params?: string;
   returnType?: string;

@@ -20,6 +20,15 @@ type ::= IDENT | type '[' type ']' | type '{' ... '}'
 
 **Important:** The state block (if present) must appear first, followed by signal/query/update declarations, then body statements. Each signal/query/update can only be declared once per workflow.
 
+**Cross-package references.** In a workflow *call* (`workflow Name(args)`, and its `detach` /
+`promise` / `await` / `await one` variants), the callee name is a
+[`qualified_ref`](./14-packages-and-imports.md) — it may carry an optional `pkg.` package
+qualifier (`workflow orders.ProcessOrder(order)`) to name a workflow declared in another package.
+The qualifier is bare for same-package workflows and is carried on the AST/wire but not resolved in
+this slice (cross-package resolution is deferred to #109). A cross-workflow signal send target
+(`signal handle.Name(args)`) is *not* package-qualified — its dot separates a handle from a signal
+name, not a package from a symbol.
+
 ## State Block
 
 The state block declares workflow state including named conditions and variable initializations. It must appear before signal/query/update declarations:

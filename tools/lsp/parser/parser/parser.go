@@ -163,6 +163,16 @@ func ParseFile(input string) (*ast.File, error) {
 		case p.current.Type == token.COMMENT:
 			p.advance()
 			continue
+		case p.current.Type == token.PACKAGE:
+			if err := p.parsePackageClause(file); err != nil {
+				return nil, err
+			}
+		case p.current.Type == token.IMPORT:
+			imp, err := p.parseImportDecl()
+			if err != nil {
+				return nil, err
+			}
+			file.Imports = append(file.Imports, imp)
 		default:
 			parser, ok := topLevelParsers[p.current.Type]
 			if !ok {
@@ -204,6 +214,25 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 			continue
 		case p.current.Type == token.COMMENT:
 			p.advance()
+			continue
+		case p.current.Type == token.PACKAGE:
+			if err := p.parsePackageClause(file); err != nil {
+				if pe, ok := err.(*ParseError); ok {
+					p.addError(pe)
+				}
+				p.recoverTopLevel()
+			}
+			continue
+		case p.current.Type == token.IMPORT:
+			imp, err := p.parseImportDecl()
+			if err != nil {
+				if pe, ok := err.(*ParseError); ok {
+					p.addError(pe)
+				}
+				p.recoverTopLevel()
+				continue
+			}
+			file.Imports = append(file.Imports, imp)
 			continue
 		default:
 			parser, ok := topLevelParsers[p.current.Type]

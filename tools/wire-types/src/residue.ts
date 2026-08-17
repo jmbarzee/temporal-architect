@@ -63,6 +63,7 @@ import type {
   OptionsBlockJSON,
   OptionEntryJSON,
   ResolvedRefJSON,
+  ImportDeclJSON,
   AsyncTargetJSON,
   TimerTargetJSON,
   SignalTargetJSON,
@@ -176,6 +177,7 @@ export type AdvisoryKind = "suggestContract";
 // ── Leaf aliases (generated shape already matches the ergonomic shape) ───────
 
 export type ResolvedRef = ResolvedRefJSON;
+export type ImportDecl = ImportDeclJSON;
 export type OptionsBlock = OptionsBlockJSON;
 export type OptionEntry = OptionEntryJSON;
 export type ConditionDecl = ConditionDeclJSON;

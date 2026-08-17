@@ -16,6 +16,11 @@ const (
 	INDENT
 	DEDENT
 
+	// Keywords -- packages and imports
+	PACKAGE
+	IMPORT
+	AS
+
 	// Keywords -- top-level defs
 	WORKFLOW
 	ACTIVITY
@@ -109,6 +114,9 @@ var tokenTable = [...]tokenInfo{
 	NEWLINE:         {"NEWLINE", false},
 	INDENT:          {"INDENT", false},
 	DEDENT:          {"DEDENT", false},
+	PACKAGE:         {"PACKAGE", true},
+	IMPORT:          {"IMPORT", true},
+	AS:              {"AS", true},
 	WORKFLOW:        {"WORKFLOW", true},
 	ACTIVITY:        {"ACTIVITY", true},
 	WORKER:          {"WORKER", true},

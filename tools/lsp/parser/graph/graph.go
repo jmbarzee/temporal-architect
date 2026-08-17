@@ -199,6 +199,23 @@ func DefKey(kind, name string) string {
 	return kind + ":" + name
 }
 
+// QualifiedName encodes a package qualifier INSIDE the name element of a
+// definition key — never as a new colon-segment. DefKey is `${kind}:${name}`
+// and the visualizer splits it on the FIRST colon (nexus operations already use
+// `.` inside the name), so the package must ride along in the name as
+// `pkg.Name`. The default (empty) package is elided, so this returns the bare
+// name for every single-package graph today — output stays byte-identical.
+//
+// This is the encoding path issue #109 switches on once definitions carry a
+// package; endpoints deliberately bypass it (see EndpointID) to keep their
+// flat-global identity.
+func QualifiedName(pkg, name string) string {
+	if pkg == "" {
+		return name
+	}
+	return pkg + "." + name
+}
+
 // NamespaceID returns the canonical node ID for a namespace deployment.
 func NamespaceID(name string) string {
 	return DefKey(KindNamespace, name)

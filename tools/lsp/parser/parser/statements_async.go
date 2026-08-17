@@ -119,7 +119,7 @@ func parseUpdateTarget(p *Parser, allowArrows bool) (*ast.UpdateTarget, error) {
 
 func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, error) {
 	p.advance() // consume ACTIVITY
-	name, err := p.expect(token.IDENT)
+	pkg, name, err := p.parseRefNameWithPackage()
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, erro
 	if err != nil {
 		return nil, err
 	}
-	t := &ast.ActivityTarget{Activity: ast.Ref[*ast.ActivityDef]{Name: name.Literal}, Args: args.Literal}
+	t := &ast.ActivityTarget{Activity: ast.Ref[*ast.ActivityDef]{Package: pkg, Name: name}, Args: args.Literal}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
 		result, err := p.parseDotQualifiedIdent()
@@ -156,7 +156,7 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 	if _, err := p.expect(token.WORKFLOW); err != nil {
 		return nil, err
 	}
-	name, err := p.expect(token.IDENT)
+	pkg, name, err := p.parseRefNameWithPackage()
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 		return nil, err
 	}
 	t := &ast.WorkflowTarget{
-		Workflow: ast.Ref[*ast.WorkflowDef]{Name: name.Literal},
+		Workflow: ast.Ref[*ast.WorkflowDef]{Package: pkg, Name: name},
 		Mode:     mode,
 		Args:     args.Literal,
 	}

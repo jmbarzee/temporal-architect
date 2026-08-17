@@ -158,6 +158,29 @@ func (p *Parser) parseDotQualifiedIdent() (string, error) {
 	return result, nil
 }
 
+// parseRefNameWithPackage parses a referenced name in a keyword-led call or
+// registration position, with an optional leading `IDENT.` package qualifier.
+// It returns (pkg, name): for `Foo` it returns ("", "Foo"); for `pkg.Foo` it
+// returns ("pkg", "Foo"). Because these positions are keyword-led, an
+// `IDENT DOT IDENT` prefix here is unambiguously a package-qualified name and
+// does not collide with `signal handle.Name` or the `nexus Ep Svc.Op` triple.
+// The unqualified form consumes exactly the same tokens as before.
+func (p *Parser) parseRefNameWithPackage() (pkg, name string, err error) {
+	first, err := p.expect(token.IDENT)
+	if err != nil {
+		return "", "", err
+	}
+	if p.current.Type == token.DOT {
+		p.advance() // consume DOT
+		second, err := p.expect(token.IDENT)
+		if err != nil {
+			return "", "", err
+		}
+		return first.Literal, second.Literal, nil
+	}
+	return "", first.Literal, nil
+}
+
 // parseOptionalOptionsLine checks for an options block after a call:
 // INDENT OPTIONS COLON NEWLINE INDENT entries DEDENT NEWLINE DEDENT
 // Returns the options block (nil if no options found).
