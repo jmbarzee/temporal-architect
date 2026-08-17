@@ -20,8 +20,9 @@ Worker names use lowerCamelCase convention. Workers contain workflow, activity, 
 Each registration entry's referenced name is a [`qualified_ref`](./14-packages-and-imports.md): it
 may carry an optional `pkg.` package qualifier (`workflow orders.ProcessOrder`,
 `activity billing.ChargeCard`, `nexus service orders.OrderService`) to register a symbol declared
-in another package. The qualifier is bare for same-package symbols and is carried on the AST/wire
-but not resolved in this slice (cross-package resolution is deferred to #109).
+in another package. The qualifier is bare for same-package symbols; a qualified registration resolves against the
+imported package that owns the symbol, and an unresolved (external) import makes qualified
+registrations resolve as external.
 
 **Example:**
 ```

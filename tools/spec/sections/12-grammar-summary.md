@@ -96,5 +96,6 @@ keyword-led call/registration positions: the callee of an activity or workflow c
 reference, and an async operation's backing-workflow reference. The nexus **endpoint** and
 **operation** are never qualified. Signal/update await targets, `ident_target`, `set`/`unset`
 condition names, and the `signal handle.Name` send target are not package-qualified — their names
-and dots refer to in-workflow constructs, not cross-package symbols. The qualifier is carried on the
-AST/wire but not resolved in this slice (cross-package resolution is deferred to #109).
+and dots refer to in-workflow constructs, not cross-package symbols. The qualifier resolves against
+the imported package that owns the referenced symbol; an unresolved (external) import makes qualified
+references resolve as external.
