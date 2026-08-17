@@ -19,18 +19,18 @@ After parsing, the resolver performs symbol resolution:
 
 ## Packages and Imports
 
-The [`package`/`import`](./14-packages-and-imports.md) surface is added **syntactically** in this
-slice; **cross-package resolution is deferred to the resolution slice (#109)** and is not performed
-here.
+The [`package`/`import`](./14-packages-and-imports.md) surface resolves **per package**: a reference
+is looked up in the package it names, and same-named symbols in different packages are distinct.
 
 - A clause-less file belongs to the **implicit default package**, which is **elided from all
   formatting** — node-IDs, keys, `--json` output, and diagnostic messages for existing files stay
-  byte-identical. This implicit-default-package model is the only resolver behavior this slice adds.
+  byte-identical.
 - A **bare or same-package** reference resolves exactly as it does today.
-- A package **qualifier** on a reference (`pkg.Name`) is **recorded but not resolved** in this
-  slice. Following an import to another package, and the accompanying **unresolved-import warning**
-  (an unresolved import is "treated as external"), arrive with cross-package resolution in #109 —
-  they are **not** emitted here.
+- A package **qualifier** on a reference (`pkg.Name`) resolves against the imported package that
+  owns the symbol. A qualifier with **no matching import** is a `QUALIFIED_REF_WITHOUT_IMPORT`
+  error; an import whose package is **absent from the tree** is an `UNRESOLVED_IMPORT` warning and
+  is **treated as external**, so qualified references through it resolve as external with no
+  `UNDEFINED_*` error; an import that resolves but is never referenced is an `UNUSED_IMPORT` warning.
 
 ## Error Handling
 
@@ -54,8 +54,8 @@ Common error types:
 - Worker instantiation missing `task_queue` option
 - Nexus endpoint instantiation missing `task_queue` option
 - Workers on same task queue with different type sets
-- Undefined nexus endpoint (when endpoints exist locally)
-- Undefined nexus service (when services exist locally)
+- Undefined nexus endpoint (hard error — endpoints are flat-global)
+- Undefined nexus service (hard error — resolved per package, following any qualifier + import)
 - Nexus service has no matching operation
 - Detach nexus call with result binding
 - Async nexus operation references undefined workflow
@@ -69,8 +69,9 @@ Common error types:
 - Empty namespace with no worker or endpoint instantiations (warning)
 - Empty workflow body (warning)
 - Empty activity body (warning)
-- Unresolved nexus endpoint when no endpoints defined (warning, may be external)
-- Unresolved nexus service when no services defined (warning, may be external)
+- Qualified reference with no matching import (`QUALIFIED_REF_WITHOUT_IMPORT`)
+- Unresolved import — imported package absent from the tree, treated as external (warning)
+- Unused import — a resolved import never referenced (warning)
 - Unknown option key in `options:` block (including handler `options:` blocks — e.g. `unfinished_policy` on a query handler, where only `description` is allowed)
 - Wrong value type for option key (e.g., number where duration expected)
 - Invalid enum value for option key (e.g., a value other than `abandon` / `warn_and_abandon` for `unfinished_policy`)
