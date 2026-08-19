@@ -30,6 +30,7 @@ Dispatch **deliberately, on a bounded slice** — never reflexively, never "scan
 - **Package layout** — directory structure, where workflows/activities live, `proto/` → `gen/` → `lib/` style splits.
 - **Temporal SDK usage** — `go.temporal.io/sdk` imports, `workflow.ExecuteActivity` / `ExecuteChildWorkflow` / Nexus call sites, signal/query/update handlers.
 - **Registration style** — `worker.New` + `RegisterWorkflow`/`RegisterActivity`, generated `RegisterXxxActivities/Workflows` helpers, DI wiring (`fx`), struct-vs-func activities.
+- **Shared-worker topology** — from that same registration wiring, capture per slice which shared worker process / task queue each domain's types register on: the **shared worker → task queue → registered types** mapping. This is the raw material the stitch step turns into the topology-owner package's qualified registrations (see [reverse-engineering.md](./reverse-engineering.md#deployment-topology-during-recovery)). Record the mapping, not the wiring code.
 - **`.twf` / `.tf` presence** — existing design files and Terraform/infra files for this slice.
 - **`.twf` package layout** — `package` clauses and `import` declarations (see [twf-conventions.md](./twf-conventions.md)); which directory owns which domain, and how packages reference each other.
 - **Comment conventions** — impl-link headers (see [twf-conventions.md](./twf-conventions.md)); these point discovery straight at the implementation.
@@ -42,6 +43,7 @@ A **compact structured summary** — conclusions, not raw dumps. Never paste who
 - Layout: where the relevant code lives for the scanned slice.
 - SDK usage: workflows/activities/nexus found, with their call sites.
 - Registration: how workers register the discovered types.
+- Shared-worker topology: the per-slice **shared worker → task queue → registered types** mapping, as a summary the stitch step can act on — not a wiring dump.
 - Existing `.twf`: present/absent, and what it covers.
 - Impl-links: any comment conventions found, and what they point to.
 - Open questions the caller must resolve.
@@ -70,11 +72,13 @@ Inputs:
 
 Scan for: build/codegen tooling (Makefile, buf.gen.yaml, //go:generate), package
 layout, Temporal SDK usage (workflow/activity/nexus call sites, handlers),
-registration style (worker.New + Register*, generated helpers, fx wiring), .twf/.tf
+registration style (worker.New + Register*, generated helpers, fx wiring) including the
+per-slice shared worker -> task queue -> registered types mapping, .twf/.tf
 presence (including .twf `package` / `import` layout), and impl-link comment conventions.
 
 Return a COMPACT STRUCTURED SUMMARY — conclusions only, never raw file dumps:
-tooling, layout, SDK usage, registration, existing .twf, impl-links, open questions.
+tooling, layout, SDK usage, registration (with the shared worker -> task queue -> types
+topology mapping), existing .twf, impl-links, open questions.
 
 For SDK-symbol meaning, delegate to the relevant author skill's reference (e.g.
 author-go references read backward) rather than reconstructing it yourself.
