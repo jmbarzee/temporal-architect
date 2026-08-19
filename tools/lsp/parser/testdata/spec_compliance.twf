@@ -169,6 +169,7 @@ workflow EdgeCases(input: Input):
             task_queue: "default"
             retry_policy:
                 maximum_attempts: 3
+                non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
 
 workflow MinimalWorkflow():
     # Minimal valid workflow

@@ -735,3 +735,39 @@ func TestTwoStringsOneLine(t *testing.T) {
 		t.Fatalf("expected STRING 'second', got %s (%q)", tok.Type, tok.Literal)
 	}
 }
+
+func TestListLiteralTokens(t *testing.T) {
+	// A bracketed inline list of string elements tokenizes into the new
+	// LBRACKET / COMMA / RBRACKET delimiters around STRING literals.
+	input := `["InvalidInput", "NotFound"]`
+	expected := []token.TokenType{
+		token.LBRACKET,
+		token.STRING, token.COMMA,
+		token.STRING,
+		token.RBRACKET,
+		token.NEWLINE, token.EOF,
+	}
+	l := New(input)
+	for i, exp := range expected {
+		tok := l.NextToken()
+		if tok.Type != exp {
+			t.Fatalf("token[%d]: expected %s, got %s (%q)", i, exp, tok.Type, tok.Literal)
+		}
+	}
+}
+
+func TestEmptyListLiteralTokens(t *testing.T) {
+	// An empty list is just the two delimiters back to back.
+	input := `[]`
+	expected := []token.TokenType{
+		token.LBRACKET, token.RBRACKET,
+		token.NEWLINE, token.EOF,
+	}
+	l := New(input)
+	for i, exp := range expected {
+		tok := l.NextToken()
+		if tok.Type != exp {
+			t.Fatalf("token[%d]: expected %s, got %s (%q)", i, exp, tok.Type, tok.Literal)
+		}
+	}
+}

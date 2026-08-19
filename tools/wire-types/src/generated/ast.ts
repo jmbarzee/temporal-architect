@@ -62,11 +62,14 @@ export interface OptionsBlockJSON {
 }
 /**
  * OptionEntryJSON is the JSON representation of a single option entry.
+ * Value holds the scalar literal for flat entries; Values holds the elements of
+ * a list-valued entry (valueType == "list"). The two are mutually exclusive.
  */
 export interface OptionEntryJSON {
   key: string;
   value?: string;
   valueType?: string;
+  values?: string[];
   nested?: OptionEntryJSON[];
 }
 /**

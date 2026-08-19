@@ -21,7 +21,8 @@ options_block ::= 'options' ':' NEWLINE INDENT option_entry+ DEDENT
 option_entry  ::= IDENT ':' value NEWLINE
                 | IDENT ':' NEWLINE INDENT option_entry+ DEDENT
 
-value ::= STRING | DURATION | NUMBER | IDENT
+value ::= STRING | DURATION | NUMBER | IDENT | list_value
+list_value ::= '[' [ STRING (',' STRING)* ] ']'
 
 DURATION ::= NUMBER ('ms' | 's' | 'm' | 'h' | 'd')
 NUMBER ::= [0-9]+ ['.' [0-9]+]
@@ -29,13 +30,19 @@ NUMBER ::= [0-9]+ ['.' [0-9]+]
 
 Options blocks use indentation-based nesting (same as the rest of TWF). Each key-value pair goes on its own line. Nested blocks (like `retry_policy`) use deeper indentation.
 
+A `list_value` is a bracketed inline list. Its elements are `STRING`s only. An empty list `[]` is
+allowed (an explicit "none"). No trailing comma is permitted (matching `arg_list`). The whole list
+is a single logical line — no `NEWLINE` may appear inside the brackets. Like the scalar value forms,
+a list is accepted anywhere a `value` is expected; which *keys* accept a list is a schema concern
+(see the per-context key tables below), not a grammar concern.
+
 **Allowed keys per context:**
 
 Activity call options: `task_queue`, `schedule_to_close_timeout`, `schedule_to_start_timeout`, `start_to_close_timeout`, `heartbeat_timeout`, `request_eager_execution`, `retry_policy`, `priority`
 
 Workflow call options: `task_queue`, `workflow_execution_timeout`, `workflow_run_timeout`, `workflow_task_timeout`, `parent_close_policy`, `workflow_id_reuse_policy`, `retry_policy`, `priority`. Recurring starts are **not** a call option — model them with Temporal Schedules, which TWF treats as platform configuration outside the language (see `skills/temporal-architect-design/topics/timers-scheduling.md`). `parent_close_policy` values: `TERMINATE` (default — child is killed when parent closes), `REQUEST_CANCEL` (child receives cancellation request), `ABANDON` (child continues independently). `workflow_id_reuse_policy` values: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, `TERMINATE_IF_RUNNING`.
 
-Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types`
+Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types`. `non_retryable_error_types` takes a `list_value` of strings (error-type names that should never be retried); an empty list `[]` means "no non-retryable types". It is the only key that takes a list today.
 
 Priority keys: `priority_key` (number, 1–n, lower = higher priority), `fairness_key` (string, fairness balancing key), `fairness_weight` (number, weight in [0.001, 1000])
 
@@ -56,6 +63,7 @@ activity ChargePayment(order) -> payment
         retry_policy:
             maximum_attempts: 3
             initial_interval: 1s
+            non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
         priority:
             priority_key: 1
             fairness_key: "high"
