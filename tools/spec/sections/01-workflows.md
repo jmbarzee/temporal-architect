@@ -3,6 +3,7 @@
 ```
 workflow_def ::= 'workflow' IDENT params ['->' return_type] ':' NEWLINE
                  INDENT
+                 [default_options_block]
                  [state_block]
                  [signal_decl*]
                  [query_decl*]
@@ -18,7 +19,9 @@ type_list ::= type (',' type)*
 type ::= IDENT | type '[' type ']' | type '{' ... '}'
 ```
 
-**Important:** The state block (if present) must appear first, followed by signal/query/update declarations, then body statements. Each signal/query/update can only be declared once per workflow.
+**Important:** An optional `default_options:` block (if present) appears **first** of all — before the state block — followed by the state block, then signal/query/update declarations, then body statements. Each signal/query/update can only be declared once per workflow.
+
+An optional `default_options:` block (see [Statement Syntax — Definition Default Options](./06-statement-syntax.md)) leads the workflow body, before the `state:` block. It supplies the call-option defaults (timeouts, id-reuse policy, retry policy, task queue, priority) for every call that starts this workflow; a call site's `options:` block overrides them per key. It appears above `state:` because a definition's defaults are its external invocation contract, which reads above its internal state.
 
 **Cross-package references.** In a workflow *call* (`workflow Name(args)`, and its `detach` /
 `promise` / `await` / `await one` variants), the callee name is a

@@ -69,6 +69,7 @@
 
 **Configuration:**
 - `options` - Options block for activity/workflow/nexus calls
+- `default_options` - Definition-level call-option defaults block, at the head of an `activity`/`workflow` definition body (soft/contextual keyword; call sites override per key with `options:`)
 
 ## Symbols
 

@@ -36,6 +36,15 @@ func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 		return nil, err
 	}
 
+	// Optional default_options block: the first body element, before state:.
+	// A definition's defaults are its external invocation contract, which reads
+	// above its internal state:.
+	p.skipBlankLinesAndComments()
+	defaultOptions, err := p.parseDefaultOptions(OptionsContextWorkflowDefaults)
+	if err != nil {
+		return nil, err
+	}
+
 	// Optional state block (must come before handlers and body).
 	p.skipBlankLinesAndComments()
 	var stateBlock *ast.StateBlock
@@ -92,15 +101,16 @@ declLoop:
 	}
 
 	return &ast.WorkflowDef{
-		Pos:        pos,
-		Name:       name.Literal,
-		Params:     params.Literal,
-		ReturnType: returnType,
-		State:      stateBlock,
-		Signals:    signals,
-		Queries:    queries,
-		Updates:    updates,
-		Body:       body,
+		Pos:            pos,
+		Name:           name.Literal,
+		Params:         params.Literal,
+		ReturnType:     returnType,
+		DefaultOptions: defaultOptions,
+		State:          stateBlock,
+		Signals:        signals,
+		Queries:        queries,
+		Updates:        updates,
+		Body:           body,
 	}, nil
 }
 
@@ -135,18 +145,40 @@ func parseActivityDef(p *Parser) (ast.Definition, error) {
 		return nil, err
 	}
 
+	// Optional default_options block at the head of the activity body.
+	defaultOptions, err := p.parseDefaultOptions(OptionsContextActivityDefaults)
+	if err != nil {
+		return nil, err
+	}
+
 	body, err := p.parseBodyAs(bodyActivity)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.ActivityDef{
-		Pos:        pos,
-		Name:       name.Literal,
-		Params:     params.Literal,
-		ReturnType: returnType,
-		Body:       body,
+		Pos:            pos,
+		Name:           name.Literal,
+		Params:         params.Literal,
+		ReturnType:     returnType,
+		DefaultOptions: defaultOptions,
+		Body:           body,
 	}, nil
+}
+
+// parseDefaultOptions parses an optional definition-level `default_options:`
+// block at the head of an activity or workflow definition body. The body INDENT
+// has already been consumed by expectBlock. `default_options` is a
+// soft/contextual keyword — it lexes as an IDENT and is special only here — so
+// it is matched on the literal rather than a dedicated token type. Returns nil
+// when the block is absent. The block reuses the call-option value grammar; ctx
+// selects the definition-defaults key partition (activity vs workflow).
+func (p *Parser) parseDefaultOptions(ctx OptionsContext) (*ast.OptionsBlock, error) {
+	if p.current.Type != token.IDENT || p.current.Literal != "default_options" {
+		return nil, nil
+	}
+	p.advance() // consume `default_options`
+	return p.parseOptionsBlock(ctx)
 }
 
 // parseHandlerOptions parses an optional options block at the head of a handler

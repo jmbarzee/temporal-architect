@@ -91,16 +91,17 @@ type Packaged interface {
 
 type WorkflowDef struct {
 	Pos
-	Name       string
-	Params     string // opaque content inside parens
-	ReturnType string // opaque, optional
-	State      *StateBlock
-	Signals    []*SignalDecl
-	Queries    []*QueryDecl
-	Updates    []*UpdateDecl
-	Body       []Statement
-	SourceFile string
-	Package    string // runtime-only; see Packaged note above
+	Name           string
+	Params         string        // opaque content inside parens
+	ReturnType     string        // opaque, optional
+	DefaultOptions *OptionsBlock // optional definition-level call-option defaults (first body element, before state:)
+	State          *StateBlock
+	Signals        []*SignalDecl
+	Queries        []*QueryDecl
+	Updates        []*UpdateDecl
+	Body           []Statement
+	SourceFile     string
+	Package        string // runtime-only; see Packaged note above
 }
 
 func (*WorkflowDef) defNode()              {}
@@ -108,12 +109,13 @@ func (d *WorkflowDef) PackageName() string { return d.Package }
 
 type ActivityDef struct {
 	Pos
-	Name       string
-	Params     string
-	ReturnType string
-	Body       []Statement
-	SourceFile string
-	Package    string // runtime-only; see Packaged note above
+	Name           string
+	Params         string
+	ReturnType     string
+	DefaultOptions *OptionsBlock // optional definition-level call-option defaults (head of body)
+	Body           []Statement
+	SourceFile     string
+	Package        string // runtime-only; see Packaged note above
 }
 
 func (*ActivityDef) defNode()              {}

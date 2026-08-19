@@ -80,6 +80,7 @@ export interface WorkflowDefJSON {
   name: string;
   params: string;
   returnType?: string;
+  defaultOptions?: OptionsBlockJSON;
   state?: StateBlockJSON;
   signals: (SignalDeclJSON | undefined)[];
   queries: (QueryDeclJSON | undefined)[];
@@ -112,6 +113,7 @@ export interface ActivityDefJSON {
   name: string;
   params: string;
   returnType?: string;
+  defaultOptions?: OptionsBlockJSON;
   body: RawStatement[];
 }
 /**
