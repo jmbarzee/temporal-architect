@@ -66,6 +66,26 @@ Two consequences:
 Edges are `containment` (child → parent) plus dispatch (`activityCall`,
 `workflowCall`, `nexusCall`, `asyncBacking`, `signalSend`).
 
+### `templateParams` is always empty on observed nodes
+
+`graph.Node` carries a `templateParams` field for parameterized design families
+(e.g. a single `fabric-shard-{org}` node whose name has a `{param}` hole). The
+sampler **never populates it**, and this is deliberate — not an unimplemented
+feature. Observed node names come entirely from resolved runtime history
+attributes (`h.Namespace`, `attr.GetNamespace()`, task-queue and type names),
+so a sampled name is always a concrete instance (`fabric-shard-acme`) with no
+`{param}` holes. There is nothing to extract, so `templateParams` is always
+absent/empty (the field is `omitempty`), keeping an observed node
+**byte-identical** to a statically extracted `twf graph` node.
+
+The consequence is a representation gap: a parameterized design family is one
+node with `templateParams`, while its observed counterpart is *one node per
+tenant instance* (`fabric-shard-acme`, `fabric-shard-globex`, …), each with no
+`templateParams`. So a design family never ID-matches an observed instance.
+Reconciling parameterized design nodes with observed instances is owned by the
+observed-vs-designed overlay work
+([#66](https://github.com/jmbarzee/temporal-architect/issues/66)).
+
 ### Event → graph mapping
 
 The root workflow type, task queue, and namespace come from

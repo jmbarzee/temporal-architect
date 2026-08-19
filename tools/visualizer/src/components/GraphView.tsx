@@ -683,6 +683,14 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       ? nodeSummaries.get(hoveredNodeId) || undefined
       : undefined
 
+  // Cardinality line for a parameterized-family representative (issue #100):
+  // this one node stands for a family that fans out once per template param.
+  // Mirrors the canvas `× {param}` badge. Absent on static nodes.
+  const cardinalityLine =
+    node.templateParams && node.templateParams.length > 0
+      ? node.templateParams.map(p => `× ${p}`).join(' ')
+      : undefined
+
   let outgoing = 0, incoming = 0
   for (const e of visibleEdges) {
     if (e.edgeType === 'containment') continue
@@ -717,6 +725,11 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       </div>
       {contextLine && <div className="tooltip-parent">{contextLine}</div>}
       {compositionLine && <div className="tooltip-summary">{compositionLine}</div>}
+      {cardinalityLine && (
+        <div className="tooltip-summary" title="Parameterized family: this node represents one instance per template parameter.">
+          {cardinalityLine}
+        </div>
+      )}
       {fileName && <div className="tooltip-file">{fileName}</div>}
       {copyCount > 1 && (
         <div className="tooltip-duplicates" title="This definition is registered on multiple workers. Hovering any copy highlights all copies.">

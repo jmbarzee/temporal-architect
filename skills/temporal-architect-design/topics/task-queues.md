@@ -85,6 +85,7 @@ A `nexus endpoint` in a namespace declaration exposes a nexus service to callers
 - Worker names use lowerCamelCase; workflow/activity names keep UpperCamelCase
 - Multiple workers can be instantiated on the same task queue (but must register the same type sets)
 - Workers not instantiated in any namespace produce warnings
+- **Naming is identifiers-only, with one exception:** worker/workflow/activity/service names are plain identifiers, but the three *deployment-name* positions — namespace name, nexus endpoint name, and nexus endpoint reference — take the `deploy_name` form (hyphens and `{param}` template holes). See [namespaces.md](../reference/namespaces.md#naming-the-deploy_name-form).
 
 ---
 
@@ -143,6 +144,17 @@ workflow TenantWorkflow(tenantId: string, data: Data) -> (Result):
         options:
             task_queue: "tenant-{tenantId}"
 ```
+
+### Template holes vs. runtime interpolation
+
+`{x}` in an option value means **two different things depending on position** — do not conflate them:
+
+| `{x}` position | Meaning | Bound / resolved by | Template check |
+|----------------|---------|---------------------|----------------|
+| **Workflow-body** activity/child-call option value — `task_queue: "tenant-{tenantId}"`, `"workers-{request.region}"`, `"request-{requestId}"` (the examples on this page) | **Runtime interpolation** — references a workflow parameter, resolved per-execution at runtime | The workflow's own parameters, at runtime | **Not** subject to `UNBOUND_TEMPLATE_PARAM` — these examples stay valid |
+| **Namespace name**, **endpoint name**, or a **namespace-level worker/endpoint** option value — `task_queue: "q-{org}-bootstrap"` under `namespace fabric-shard-{org}` | **Deploy-time template hole** — a family template parameter, fixed per family member at deploy time | The enclosing namespace/endpoint template | **Must** be bound by the enclosing template, else `UNBOUND_TEMPLATE_PARAM` |
+
+So the routing examples on this page (`"tenant-{tenantId}"` etc.) are runtime interpolation and are **unaffected** by the parameterized-family template checks — they raise no template error. The deploy-time holes live only in the three deployment-name positions and in namespace-level options. See [namespaces.md](../reference/namespaces.md#parameterized-namespaces-and-endpoints) for the family model and [common-errors.md](../reference/common-errors.md#resolve-errors-kind-resolve) for `UNBOUND_TEMPLATE_PARAM`.
 
 ### Capability-Based Routing
 

@@ -80,6 +80,53 @@ function labelFont(px: number): string {
   return `600 ${px.toFixed(1)}px ${ICON_FONT_FAMILY}`
 }
 
+// Cardinality badge for a parameterized-family representative node (issue
+// #100, collapsed-representative rendering). The parser hands the family down
+// as one node whose id/definition keep the full templated name; its
+// `templateParams` list names the `{param}` holes. We render one `× {param}`
+// chip per param, stacked in a row above the node, to signal that this single
+// node stands for a family that fans out once per param. Ghost-node depth is
+// out of scope this cycle (deferred → #129). Static nodes have no
+// `templateParams` and draw exactly as before.
+const BADGE_FONT_PX = 9
+const BADGE_PAD_X = 4          // horizontal text padding inside a chip
+const BADGE_PAD_Y = 2          // vertical text padding inside a chip
+const BADGE_GAP = 3            // gap between adjacent chips
+const BADGE_NODE_GAP = 4       // gap between the node's top edge and the chip row
+// Violet chip — deliberately outside the node-type palette so a cardinality
+// badge never reads as a node body of some type.
+const BADGE_FILL = '#7C3AED'
+const BADGE_TEXT_COLOR = '#FFFFFF'
+function badgeFont(px: number): string {
+  return `600 ${px.toFixed(1)}px ${ICON_FONT_FAMILY}`
+}
+function badgeChipText(param: string): string {
+  return `× ${param}` // "× org"
+}
+// Rounded-rect path helper (arcTo keeps it compatible without relying on
+// CanvasRenderingContext2D.roundRect being present).
+function roundRectPath(
+  ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number,
+): void {
+  const rr = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x + rr, y)
+  ctx.arcTo(x + w, y, x + w, y + h, rr)
+  ctx.arcTo(x + w, y + h, x, y + h, rr)
+  ctx.arcTo(x, y + h, x, y, rr)
+  ctx.arcTo(x, y, x + w, y, rr)
+  ctx.closePath()
+}
+// Total extra screen height a node's cardinality badge occupies above the
+// body at the given size multiplier, or 0 when there is no badge. Used both to
+// place the chip row and to grow the hit radius so the badge is part of the
+// node's clickable target.
+function badgeExtent(node: { templateParams?: string[] }, mul: number): number {
+  if (!node.templateParams || node.templateParams.length === 0) return 0
+  const chipH = BADGE_FONT_PX * mul + BADGE_PAD_Y * 2 * mul
+  return BADGE_NODE_GAP * mul + chipH
+}
+
 
 // Read a CSS custom property with a fallback, resolved against a specific
 // element. We resolve against the canvas (not `document.documentElement`)
@@ -311,11 +358,15 @@ export function GraphCanvas({
   // Hit test: find node under screen coordinates (circular distance check).
   const hitTest = React.useCallback((sx: number, sy: number): SimNode | null => {
     const [wx, wy] = screenToWorld(viewport, sx, sy)
+    const mul = nodeSizeMul(viewport.scale, nodeScale)
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i]
       // Match the on-screen size: screen radius is def.r × nodeSizeMul(scale);
-      // convert to world units by dividing by scale, plus a small slop.
-      const r = (definitionFor(n.nodeType).size.r * nodeSizeMul(viewport.scale, nodeScale)) / viewport.scale + 4
+      // convert to world units by dividing by scale, plus a small slop. A
+      // cardinality badge (parameterized family) sits above the body, so grow
+      // the target by its extent to keep the badge part of the clickable node.
+      const screenR = definitionFor(n.nodeType).size.r * mul + badgeExtent(n, mul)
+      const r = screenR / viewport.scale + 4
       if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
@@ -985,6 +1036,44 @@ export function GraphCanvas({
         }
 
         ctx.globalAlpha = 1
+
+        // Cardinality badge — a `× {param}` chip row above a parameterized
+        // family's representative node (issue #100). Gated on the same
+        // elision scale as icons/labels: at very low zoom the chips are noise.
+        // Static nodes (no templateParams) skip this entirely and render as
+        // before.
+        if (
+          node.templateParams && node.templateParams.length > 0 &&
+          vp.scale >= LABEL_ELIDE_SCALE
+        ) {
+          const badgePx = BADGE_FONT_PX * mul
+          const chipH = badgePx + BADGE_PAD_Y * 2 * mul
+          const padX = BADGE_PAD_X * mul
+          const gap = BADGE_GAP * mul
+          ctx.save()
+          ctx.font = badgeFont(badgePx)
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          // Measure each chip, then centre the whole row horizontally on the node.
+          const chips = node.templateParams.map(p => {
+            const text = badgeChipText(p)
+            return { text, w: ctx.measureText(text).width + padX * 2 }
+          })
+          const totalW = chips.reduce((s, c) => s + c.w, 0) + gap * (chips.length - 1)
+          const rowY = sy - r - BADGE_NODE_GAP * mul - chipH
+          let cx = sx - totalW / 2
+          ctx.globalAlpha = nodeDimmed ? dimAlpha : 1
+          for (const chip of chips) {
+            roundRectPath(ctx, cx, rowY, chip.w, chipH, chipH / 2)
+            ctx.fillStyle = BADGE_FILL
+            ctx.fill()
+            ctx.fillStyle = BADGE_TEXT_COLOR
+            ctx.fillText(chip.text, cx + chip.w / 2, rowY + chipH / 2 + 0.5)
+            cx += chip.w + gap
+          }
+          ctx.restore()
+          ctx.globalAlpha = 1
+        }
 
         // Label — node name only; all other detail lives in the hover box.
         // Elided at low zoom; always shown for the hovered/selected node.

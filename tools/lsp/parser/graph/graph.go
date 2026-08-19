@@ -52,8 +52,15 @@ type Node struct {
 	Namespace string `json:"namespace,omitempty"`
 	// Queue is the task queue name; intrinsic to worker and nexus-tier
 	// deployments. Display metadata only — not a structural input.
-	Queue  string `json:"queue,omitempty"`
-	Orphan bool   `json:"orphan,omitempty"`
+	Queue string `json:"queue,omitempty"`
+	// TemplateParams is populated on namespace and nexusEndpoint nodes whose
+	// deploy_name carries {param} template holes: the distinct params in order of
+	// first appearance (e.g. `fabric-shard-{org}` → ["org"]). Empty/omitted for a
+	// static node, so a graph with no templated families is byte-identical. A
+	// consumer reads it to collapse a parameterized family into one representative
+	// node plus a cardinality badge.
+	TemplateParams []string `json:"templateParams,omitempty"`
+	Orphan         bool     `json:"orphan,omitempty"`
 }
 
 // Routing is the diagnostic cause of a dispatch edge. The effect (which

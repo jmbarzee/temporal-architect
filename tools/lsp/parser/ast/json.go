@@ -404,33 +404,42 @@ type NamespaceWorkerJSON struct {
 
 // NamespaceEndpointJSON is the JSON representation of a nexus endpoint in a namespace.
 type NamespaceEndpointJSON struct {
-	EndpointName string            `json:"endpointName"`
-	Line         int               `json:"line"`
-	Column       int               `json:"column"`
-	TaskQueue    string            `json:"taskQueue,omitempty"`
-	Options      *OptionsBlockJSON `json:"options,omitempty"`
+	EndpointName string `json:"endpointName"`
+	Line         int    `json:"line"`
+	Column       int    `json:"column"`
+	TaskQueue    string `json:"taskQueue,omitempty"`
+	// TemplateParams is the distinct {param} holes in the endpoint name, in order
+	// of first appearance. Omitted (omitempty) for a static endpoint so its
+	// output stays byte-identical.
+	TemplateParams []string          `json:"templateParams,omitempty"`
+	Options        *OptionsBlockJSON `json:"options,omitempty"`
 }
 
 // NamespaceDefJSON is the JSON representation of NamespaceDef.
 type NamespaceDefJSON struct {
-	Type       string                  `json:"type"`
-	Line       int                     `json:"line"`
-	Column     int                     `json:"column"`
-	SourceFile string                  `json:"sourceFile,omitempty"`
-	Name       string                  `json:"name"`
-	Workers    []NamespaceWorkerJSON   `json:"workers"`
-	Endpoints  []NamespaceEndpointJSON `json:"endpoints"`
+	Type       string `json:"type"`
+	Line       int    `json:"line"`
+	Column     int    `json:"column"`
+	SourceFile string `json:"sourceFile,omitempty"`
+	Name       string `json:"name"`
+	// TemplateParams is the distinct {param} holes in the namespace name, in
+	// order of first appearance. Omitted (omitempty) for a static namespace so
+	// its output stays byte-identical.
+	TemplateParams []string                `json:"templateParams,omitempty"`
+	Workers        []NamespaceWorkerJSON   `json:"workers"`
+	Endpoints      []NamespaceEndpointJSON `json:"endpoints"`
 }
 
 func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 	nj := NamespaceDefJSON{
-		Type:       "namespaceDef",
-		Line:       n.Line,
-		Column:     n.Column,
-		SourceFile: n.SourceFile,
-		Name:       n.Name,
-		Workers:    make([]NamespaceWorkerJSON, 0, len(n.Workers)),
-		Endpoints:  make([]NamespaceEndpointJSON, 0, len(n.Endpoints)),
+		Type:           "namespaceDef",
+		Line:           n.Line,
+		Column:         n.Column,
+		SourceFile:     n.SourceFile,
+		Name:           n.Name,
+		TemplateParams: n.TemplateParams,
+		Workers:        make([]NamespaceWorkerJSON, 0, len(n.Workers)),
+		Endpoints:      make([]NamespaceEndpointJSON, 0, len(n.Endpoints)),
 	}
 	for _, w := range n.Workers {
 		wj := NamespaceWorkerJSON{
@@ -446,11 +455,12 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 	}
 	for _, ep := range n.Endpoints {
 		nj.Endpoints = append(nj.Endpoints, NamespaceEndpointJSON{
-			EndpointName: ep.EndpointName,
-			Line:         ep.Line,
-			Column:       ep.Column,
-			TaskQueue:    ep.TaskQueue,
-			Options:      marshalOptionsBlock(ep.Options),
+			EndpointName:   ep.EndpointName,
+			Line:           ep.Line,
+			Column:         ep.Column,
+			TaskQueue:      ep.TaskQueue,
+			TemplateParams: ep.TemplateParams,
+			Options:        marshalOptionsBlock(ep.Options),
 		})
 	}
 	return json.Marshal(nj)

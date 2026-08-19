@@ -118,6 +118,16 @@ Icons are defined in a central theme map (`temporal-theme.tsx`). Most are Unicod
 
 Level 3 node types share the same size tier but are distinguished by color and icon.
 
+### Node badges (Graph View)
+
+Badges are node **adornments** — small markers drawn beside a graph node, distinct from its name label. Both views describe them consistently through this shared vocabulary.
+
+| Badge | Applies to | Meaning |
+|-------|-----------|---------|
+| `?` unresolved | any node referencing an unresolved definition | Unresolved reference (mirrors the tree's `?` badge — see § Border conventions) |
+| "unassigned" (orphan) | Worker / L3 nodes | Definition is not contained by any parent (see GRAPH_VIEW.md § Orphan Definitions) |
+| Cardinality (`× {param}`) | Namespace / NexusEndpoint | The node is a parameterized family; one `× {param}` chip per entry in the node's `templateParams` wire field (chip count = array length, chip label = bare param name). See GRAPH_VIEW.md § Visual Encoding → Node Appearance. |
+
 ### Edge styles (Graph View)
 
 | Edge Type | Line Style | Direction |
