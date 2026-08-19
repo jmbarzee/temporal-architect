@@ -21,7 +21,7 @@ The repo has Temporal code but no design file. Recover one from scratch:
 3. **Fidelity check** — confirm the `.twf` matches what the code actually does (see [Fidelity first](#fidelity-first-then-design-review)).
 4. **Design Review** — only now run the standard [Design Review](../SKILL.md#design-review).
 
-Mirror the code's package layout: put each domain in its own [package](./twf-conventions.md#package-per-domain-directory) (a directory whose files share a `package` clause), `import` across packages for cross-domain references, and write the [impl-link header](./twf-conventions.md#impl-link-header) so the new `.twf` records where its implementation lives. Because packages let the `.twf` layout follow the code again, a recovered slice can sit beside the implementation directory it came from.
+Mirror the code's package layout: put each domain in its own [package](./twf-conventions.md#package-per-domain-directory) (a directory whose files share a `package` clause), `import` across packages for cross-domain references, and write the [impl-link header](./twf-conventions.md#impl-link-header) so the new `.twf` records where its implementation lives. Because packages let the `.twf` layout follow the code again, a recovered slice can sit beside the implementation directory it came from. For how a slice handles `worker`/`namespace` — the part package layout alone doesn't answer — see [Deployment topology during recovery](#deployment-topology-during-recovery).
 
 ### B1b — Drift / sync (`.twf` exists but is stale)
 
@@ -29,6 +29,16 @@ A `.twf` exists but the code has moved on. Two halves, with different readiness:
 
 - **Check (available now):** on a bounded slice, compare the `.twf` against current code and report divergences — missing activities, changed boundaries, dropped signals. This needs no new tooling.
 - **Sync (deferred):** mechanically reconciling `.twf` ↔ implementation depends on the future twf↔impl mapping ([#24](https://github.com/jmbarzee/temporal-architect/issues/24) — reference annotations / `@ref`). Until that lands, reconcile by hand: re-extract the drifted slice (B1a steps 2-4) and update the `.twf`, treating the code as the source of truth for *behavior* and the existing `.twf` as the source of truth for *intent*.
+
+## Deployment topology during recovery
+
+A real monorepo runs a few **shared worker processes**, each hosting many independently-owned domains' types on one task queue. A bounded slice recovers one domain and has no vantage over the whole shared worker — so guessing a `worker`/`namespace` per slice either collides on the shared name or invents a placeholder worker, producing the `UNINSTANTIATED_WORKER` / `UNCOVERED_*` warning wall. The discipline that sidesteps it:
+
+- **Domain slices emit symbols only.** Recover each domain's workflows/activities/nexus services into its own [package](./twf-conventions.md#package-per-domain-directory); do **not** declare a `worker` or `namespace` in a domain slice, and **never** invent a placeholder worker to quiet coverage warnings.
+- **Author the shared topology once, at stitch.** The shared physical workers and their namespaces live in a single topology-owner package (a `deploy` package) that `import`s each domain and registers its types by **package-qualified ref** — exactly one shared `worker` per real worker process. This is the forward `deploy/topology.twf` convention already documented in [twf-conventions.md](./twf-conventions.md#package-per-domain-directory) and the [packages topic](../topics/packages.md); recovery defers to it rather than scattering deployment facts across slices.
+- **Why this is safe — coverage is real, never suppressed.** Coverage and routing diagnostics only run for an analysis that has a `namespace`, so a symbols-only slice stays quiet on its own (the no-namespace guard), and at stitch the qualified registrations resolve to genuine `(package, name)` coverage on the instantiated shared worker. `UNCOVERED_*` / `UNINSTANTIATED_WORKER` then fire only on real gaps — nothing is masked. See the dsl spec's [Shared Workers: Joint Ownership](../../../tools/spec/sections/03-workers-and-namespaces.md#shared-workers-joint-ownership) and its [Validator interplay](../../../tools/spec/sections/03-workers-and-namespaces.md#validator-interplay).
+
+The [project-discovery subagent](./project-discovery-subagent.md) supplies the raw material for that topology-owner file: the shared worker → task queue → registered types mapping it reads from the code's registration wiring.
 
 ## Reading strategy
 

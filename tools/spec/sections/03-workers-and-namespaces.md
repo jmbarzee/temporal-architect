@@ -77,6 +77,72 @@ namespace staging:
             task_queue: "staging-orders"
 ```
 
+## Shared Workers: Joint Ownership
+
+One physical worker can host the workflows, activities, and nexus services of **many
+independently-owned domains**. This works because a `worker`'s registration entries take a
+[`qualified_ref`](./14-packages-and-imports.md) (see *Worker Definitions* above): each entry may
+carry a `pkg.` qualifier that names a symbol declared in another package.
+
+```
+worker sharedTypes:
+    workflow orders.ProcessOrder
+    activity billing.ChargeCard
+    nexus service orders.OrderService
+```
+
+The natural home for such a worker is a dedicated **topology package** — a file that `import`s each
+domain and declares the shared worker (and the `namespace` that instantiates it) once, registering
+every domain's types through qualified refs:
+
+```
+package deploy
+
+import "github.com/acme/orders"
+import "github.com/acme/billing"
+
+worker sharedTypes:
+    workflow orders.ProcessOrder
+    activity billing.ChargeCard
+    nexus service orders.OrderService
+
+namespace production:
+    worker sharedTypes
+        options:
+            task_queue: "shared"
+```
+
+Two consequences follow:
+
+- **Domain files need not declare a `worker` or `namespace`.** A domain package can define only its
+  workflows, activities, and nexus services; deployment topology can live entirely in the
+  topology-owner file. Recall that `namespace` is a **deployment** construct and `package` is a
+  compile-time symbol grouping with no runtime meaning — see the *`namespace` is not `package`* note
+  above and [Packages and Imports](./14-packages-and-imports.md). A worker/namespace declared in the
+  topology package draws its registered types across those package boundaries; it does not require a
+  matching worker or namespace in each domain.
+- **A shared worker is a single-vantage deployment fact.** The topology package is the one place
+  that owns the shared worker process and task queue. Ownership is central, not distributed across
+  the domains that contribute types to it.
+
+### Validator interplay
+
+Coverage diagnostics are judged on the **resolved `(package, name)`** of each registration, so
+qualified registrations onto an instantiated worker count as *genuine* coverage:
+
+- A domain workflow/activity/nexus service registered by qualified ref onto the shared worker is
+  **covered** — it does not raise `UNCOVERED_WORKFLOW`, `UNCOVERED_ACTIVITY`, or
+  `UNCOVERED_NEXUS_SERVICE`, and no placeholder worker is needed to silence such warnings.
+- The shared worker, being instantiated in the topology package's namespace, is not
+  `UNINSTANTIATED_WORKER`.
+- A type that **nobody** registers still warns — the coverage signal is preserved, not suppressed.
+
+Separately, coverage and call-routing diagnostics only run for an analysis that has a `namespace`
+(see [Resolution and Errors](./11-resolution-and-errors.md)): a symbols-only slice with no
+`namespace` produces no coverage/routing diagnostics of its own. This is existing behavior, not a
+suppression affordance — there is no "mark external to silence coverage" construct, and none is
+introduced here.
+
 ## Worker Options
 
 Worker instantiation options (all snake_case). This set is the **union/superset of SDK worker
