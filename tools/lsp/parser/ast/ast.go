@@ -544,7 +544,8 @@ type OptionsBlock struct {
 type OptionEntry struct {
 	Pos
 	Key       string
-	Value     string         // literal for flat entries
-	ValueType string         // "string", "duration", "number", "bool", "enum"
+	Value     string         // literal for flat scalar entries
+	ValueType string         // "string", "duration", "number", "bool", "enum", "list"
+	Values    []string       // list elements; populated iff ValueType == "list", mutually exclusive with Value
 	Nested    []*OptionEntry // non-nil for nested blocks (e.g. retry_policy)
 }

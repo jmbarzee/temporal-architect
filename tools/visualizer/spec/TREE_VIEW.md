@@ -98,6 +98,35 @@ Presentation:
 - It is collapsed by default (progressive disclosure). Collapsed, the header shows an `options` label and a muted summary of the top-level option keys. Expanded, it shows the full recursive key/value list.
 - Each entry renders as a `key: value` row in monospace; nested blocks (e.g. `retry_policy`, `priority`) indent their sub-entries by exactly one nesting level. **Indentation is the only thing that changes with depth — text size and color stay constant at every level** so deep option trees read calmly rather than chaotically.
 
+### List-valued entries
+
+Most option values are scalars, but some are **lists of strings** — most notably
+`non_retryable_error_types` inside a `retry_policy` block. The AST distinguishes these: a
+list-valued entry has `valueType === "list"` and carries its elements in `values: string[]`,
+while its scalar `value` field is empty. The rendering follows from that:
+
+- A list-valued entry (`valueType === "list"`) renders its `values` array as a bracketed,
+  quoted, comma-separated sequence on the value side of the `key: value` row — e.g. a
+  `retry_policy` whose `non_retryable_error_types` lists three error types reads:
+
+  ```
+  non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
+  ```
+
+  It must **not** fall back to the scalar `value` field, which is empty for list entries — doing
+  so would render a list-valued option as a blank value.
+- **Empty list.** When `valueType === "list"` but `values` is omitted (the source wrote `[]`),
+  the row renders the empty brackets `[]` — never a blank value or a fallback to `value`.
+- A list value obeys the same section rules as a scalar value: **constant text size and color at
+  every nesting depth** (per the `key: value` row rule above), so a `non_retryable_error_types`
+  list nested one level under `retry_policy` reads calmly at that indent level rather than
+  drawing the eye differently from its scalar siblings.
+
+Horizontal overflow of a long list (whether it wraps or the box scrolls) is left to the
+implementer's discretion and flagged for the spec author: the spec is currently silent on
+horizontal overflow for scalar values too, so it is deferred here rather than invented for lists
+alone.
+
 Because the options box lives in the expanded body, a block that carries options becomes **expandable even when its reference is unresolved or it has no inline body** (e.g. an activity call to an undefined activity, or a nexus endpoint, which otherwise would not expand). The toggle indicator appears whenever a block has either inline content or options.
 
 

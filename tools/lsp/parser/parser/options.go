@@ -24,7 +24,7 @@ const (
 // optionSchema describes the expected value type for an option key.
 // "nested" means the key introduces a nested block (e.g. retry_policy:).
 type optionSchema struct {
-	valueType string // "string", "duration", "number", "bool", "enum", "nested"
+	valueType string // "string", "duration", "number", "bool", "enum", "list", "nested"
 	nested    map[string]*optionSchema
 	allowed   []string // allowed values for enum type
 }
@@ -34,7 +34,7 @@ var retryPolicySchema = map[string]*optionSchema{
 	"backoff_coefficient":       {valueType: "number"},
 	"maximum_interval":          {valueType: "duration"},
 	"maximum_attempts":          {valueType: "number"},
-	"non_retryable_error_types": {valueType: "string"},
+	"non_retryable_error_types": {valueType: "list"},
 }
 
 var prioritySchema = map[string]*optionSchema{
@@ -270,11 +270,12 @@ func (p *Parser) parseOptionEntry(schema map[string]*optionSchema) (*ast.OptionE
 			}
 		}
 
-		value, valueType, err := p.parseOptionValue(sch)
+		value, values, valueType, err := p.parseOptionValue(sch)
 		if err != nil {
 			return nil, err
 		}
 		entry.Value = value
+		entry.Values = values
 		entry.ValueType = valueType
 	}
 
@@ -286,44 +287,64 @@ func (p *Parser) parseOptionEntry(schema map[string]*optionSchema) (*ast.OptionE
 	return entry, nil
 }
 
-// parseOptionValue parses a value after COLON. Returns value string and type.
-func (p *Parser) parseOptionValue(sch *optionSchema) (string, string, error) {
+// parseOptionValue parses a value after COLON. Returns (scalar value, list
+// values, value type). For scalar types `values` is nil; for the "list" type
+// `value` is empty and `values` holds the element literals — the two are
+// mutually exclusive.
+func (p *Parser) parseOptionValue(sch *optionSchema) (string, []string, string, error) {
 	switch p.current.Type {
 	case token.STRING:
 		val := p.current.Literal
 		p.advance()
 		if sch != nil && sch.valueType != "string" {
-			return "", "", &ParseError{
+			return "", nil, "", &ParseError{
 				Msg:    "expected " + sch.valueType + ", got string",
 				Line:   p.current.Line,
 				Column: p.current.Column,
 			}
 		}
-		return val, "string", nil
+		return val, nil, "string", nil
 
 	case token.DURATION:
 		val := p.current.Literal
 		p.advance()
 		if sch != nil && sch.valueType != "duration" {
-			return "", "", &ParseError{
+			return "", nil, "", &ParseError{
 				Msg:    "expected " + sch.valueType + ", got duration",
 				Line:   p.current.Line,
 				Column: p.current.Column,
 			}
 		}
-		return val, "duration", nil
+		return val, nil, "duration", nil
 
 	case token.NUMBER:
 		val := p.current.Literal
 		p.advance()
 		if sch != nil && sch.valueType != "number" {
-			return "", "", &ParseError{
+			return "", nil, "", &ParseError{
 				Msg:    "expected " + sch.valueType + ", got number",
 				Line:   p.current.Line,
 				Column: p.current.Column,
 			}
 		}
-		return val, "number", nil
+		return val, nil, "number", nil
+
+	case token.LBRACKET:
+		// Bracketed inline list of strings. Parsed for any key; the schema
+		// gate below decides acceptance, mirroring the scalar branches.
+		pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
+		values, err := p.parseListLiteral()
+		if err != nil {
+			return "", nil, "", err
+		}
+		if sch != nil && sch.valueType != "list" {
+			return "", nil, "", &ParseError{
+				Msg:    "expected " + sch.valueType + ", got list",
+				Line:   pos.Line,
+				Column: pos.Column,
+			}
+		}
+		return "", values, "list", nil
 
 	case token.IDENT:
 		val := p.current.Literal
@@ -331,13 +352,13 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, string, error) {
 		// Could be bool (true/false) or enum value.
 		if val == "true" || val == "false" {
 			if sch != nil && sch.valueType != "bool" {
-				return "", "", &ParseError{
+				return "", nil, "", &ParseError{
 					Msg:    "expected " + sch.valueType + ", got bool",
 					Line:   p.current.Line,
 					Column: p.current.Column,
 				}
 			}
-			return val, "bool", nil
+			return val, nil, "bool", nil
 		}
 		// Enum value.
 		if sch != nil && sch.valueType == "enum" {
@@ -349,18 +370,63 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, string, error) {
 				}
 			}
 			if !valid {
-				return "", "", &ParseError{
+				return "", nil, "", &ParseError{
 					Msg:    "invalid value " + val + " for enum option (allowed: " + strings.Join(sch.allowed, ", ") + ")",
 					Line:   p.current.Line,
 					Column: p.current.Column,
 				}
 			}
-			return val, "enum", nil
+			return val, nil, "enum", nil
 		}
 		// If no schema, treat as enum.
-		return val, "enum", nil
+		return val, nil, "enum", nil
 
 	default:
-		return "", "", p.errorf("expected value after colon, got %s", p.current.Type)
+		return "", nil, "", p.errorf("expected value after colon, got %s", p.current.Type)
+	}
+}
+
+// parseListLiteral parses a bracketed inline list of string elements:
+//
+//	'[' [ STRING (',' STRING)* ] ']'
+//
+// The current token must be LBRACKET. Syntax rules enforced: an empty list `[]`
+// is allowed; elements are strings only (a bare ident, number, or duration is a
+// parse error); no trailing comma; and the whole list is a single logical line
+// (a NEWLINE before the closing `]` is a parse error). Returns a non-nil slice
+// of the element literals (empty for `[]`).
+func (p *Parser) parseListLiteral() ([]string, error) {
+	p.advance() // consume '['
+
+	values := []string{}
+	if p.current.Type == token.RBRACKET {
+		p.advance() // consume ']'
+		return values, nil
+	}
+
+	for {
+		if p.current.Type == token.NEWLINE {
+			return nil, p.errorf("unexpected newline inside list literal (a list must be on a single line)")
+		}
+		if p.current.Type != token.STRING {
+			return nil, p.errorf("expected string element in list, got %s", p.current.Type)
+		}
+		values = append(values, p.current.Literal)
+		p.advance() // consume STRING
+
+		switch p.current.Type {
+		case token.COMMA:
+			p.advance() // consume ','
+			if p.current.Type == token.RBRACKET {
+				return nil, p.errorf("unexpected trailing comma in list literal")
+			}
+		case token.RBRACKET:
+			p.advance() // consume ']'
+			return values, nil
+		case token.NEWLINE:
+			return nil, p.errorf("unexpected newline inside list literal (a list must be on a single line)")
+		default:
+			return nil, p.errorf("expected ',' or ']' in list literal, got %s", p.current.Type)
+		}
 	}
 }

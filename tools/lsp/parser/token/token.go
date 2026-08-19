@@ -81,6 +81,9 @@ const (
 	ARROW      // ->
 	LEFT_ARROW // <-
 	DOT        // .
+	LBRACKET   // [
+	RBRACKET   // ]
+	COMMA      // ,
 
 	// Literals
 	NUMBER   // numeric literal (e.g. 3, 2.0)
@@ -156,6 +159,9 @@ var tokenTable = [...]tokenInfo{
 	ARROW:           {"ARROW", false},
 	LEFT_ARROW:      {"LEFT_ARROW", false},
 	DOT:             {"DOT", false},
+	LBRACKET:        {"LBRACKET", false},
+	RBRACKET:        {"RBRACKET", false},
+	COMMA:           {"COMMA", false},
 	NUMBER:          {"NUMBER", false},
 	DURATION:        {"DURATION", false},
 	IDENT:           {"IDENT", false},

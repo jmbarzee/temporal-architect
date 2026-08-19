@@ -41,7 +41,8 @@ nexus_call ::= ['detach'] 'nexus' IDENT qualified_ref '.' IDENT args ['->' resul
 options_block ::= 'options' ':' NEWLINE INDENT option_entry+ DEDENT
 option_entry  ::= IDENT ':' value NEWLINE
                 | IDENT ':' NEWLINE INDENT option_entry+ DEDENT
-value ::= STRING | DURATION | NUMBER | IDENT
+value ::= STRING | DURATION | NUMBER | IDENT | list_value
+list_value ::= '[' [ STRING (',' STRING)* ] ']'
 DURATION ::= NUMBER ('ms' | 's' | 'm' | 'h' | 'd')
 
 state_block ::= 'state' ':' NEWLINE INDENT state_stmt* DEDENT

@@ -53,10 +53,19 @@ function OptionEntryRow({ entry }: { entry: OptionEntry }) {
     )
   }
 
+  // A list-valued entry (valueType === 'list') carries its data in `values` and
+  // leaves the scalar `value` empty; the two are mutually exclusive per the wire
+  // contract. Render the list literal (e.g. ["InvalidInput", "NotFound"]) so it
+  // reads back as valid .twf list syntax; an empty list renders as `[]`.
+  const value =
+    entry.valueType === 'list'
+      ? `[${(entry.values ?? []).map((v) => `"${v}"`).join(', ')}]`
+      : entry.value
+
   return (
     <div className="option-entry">
       <span className="option-key">{entry.key}:</span>
-      <span className="option-value">{entry.value}</span>
+      <span className="option-value">{value}</span>
     </div>
   )
 }

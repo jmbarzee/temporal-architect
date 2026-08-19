@@ -125,7 +125,7 @@ export type AsyncTargetKind =
   | "nexus"
   | "ident";
 /** OptionEntryJSON.valueType — see OptionEntry in ast/statements.go. */
-export type OptionValueType = "string" | "duration" | "number" | "bool" | "enum";
+export type OptionValueType = "string" | "duration" | "number" | "bool" | "enum" | "list";
 
 /** SymbolJSON.kind in cmd/twf/internal/command/symbols/symbols.go. */
 export type SymbolKind =

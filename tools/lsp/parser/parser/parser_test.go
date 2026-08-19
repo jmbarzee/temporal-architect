@@ -1178,6 +1178,138 @@ func TestOptionsInvalidEnum(t *testing.T) {
 	}
 }
 
+func TestOptionsListValue(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    activity Bar(x) -> y
+        options:
+            retry_policy:
+                non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	call := wf.Body[0].(*ast.ActivityCall)
+	if call.Options == nil {
+		t.Fatal("expected options, got nil")
+	}
+	rp := call.Options.Entries[0]
+	if rp.Key != "retry_policy" {
+		t.Fatalf("expected retry_policy, got %q", rp.Key)
+	}
+	entry := rp.Nested[0]
+	if entry.Key != "non_retryable_error_types" {
+		t.Fatalf("expected non_retryable_error_types, got %q", entry.Key)
+	}
+	if entry.ValueType != "list" {
+		t.Errorf("expected valueType 'list', got %q", entry.ValueType)
+	}
+	if entry.Value != "" {
+		t.Errorf("expected empty scalar Value for a list entry, got %q", entry.Value)
+	}
+	want := []string{"InvalidInput", "NotFound", "Unauthorized"}
+	if len(entry.Values) != len(want) {
+		t.Fatalf("expected %d list elements, got %d (%v)", len(want), len(entry.Values), entry.Values)
+	}
+	for i, w := range want {
+		if entry.Values[i] != w {
+			t.Errorf("element[%d] = %q, want %q", i, entry.Values[i], w)
+		}
+	}
+}
+
+func TestOptionsEmptyListValue(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    activity Bar(x) -> y
+        options:
+            retry_policy:
+                non_retryable_error_types: []
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	call := wf.Body[0].(*ast.ActivityCall)
+	entry := call.Options.Entries[0].Nested[0]
+	if entry.ValueType != "list" {
+		t.Errorf("expected valueType 'list', got %q", entry.ValueType)
+	}
+	if len(entry.Values) != 0 {
+		t.Errorf("expected empty list, got %v", entry.Values)
+	}
+}
+
+func TestOptionsListRejectedOnScalarKey(t *testing.T) {
+	// A list literal supplied for a scalar (number) key is a type error.
+	input := `workflow Foo(x: int) -> (Result):
+    activity Bar(x) -> y
+        options:
+            retry_policy:
+                maximum_attempts: ["3"]
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for list on scalar key, got nil")
+	}
+	pe, ok := err.(*ParseError)
+	if !ok {
+		t.Fatalf("expected ParseError, got %T: %v", err, err)
+	}
+	if pe.Msg != "expected number, got list" {
+		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+}
+
+func TestOptionsScalarRejectedOnListKey(t *testing.T) {
+	// A bare string supplied for the list-typed key is a type error.
+	input := `workflow Foo(x: int) -> (Result):
+    activity Bar(x) -> y
+        options:
+            retry_policy:
+                non_retryable_error_types: "InvalidInput"
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for scalar on list key, got nil")
+	}
+	pe, ok := err.(*ParseError)
+	if !ok {
+		t.Fatalf("expected ParseError, got %T: %v", err, err)
+	}
+	if pe.Msg != "expected list, got string" {
+		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+}
+
+func TestOptionsListNonStringElement(t *testing.T) {
+	// Non-string elements (here a bare number) inside the brackets are rejected.
+	input := `workflow Foo(x: int) -> (Result):
+    activity Bar(x) -> y
+        options:
+            retry_policy:
+                non_retryable_error_types: ["InvalidInput", 3]
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for non-string list element, got nil")
+	}
+}
+
+func TestOptionsListTrailingComma(t *testing.T) {
+	input := `workflow Foo(x: int) -> (Result):
+    activity Bar(x) -> y
+        options:
+            retry_policy:
+                non_retryable_error_types: ["InvalidInput",]
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for trailing comma, got nil")
+	}
+}
+
 func TestOptionsEmpty(t *testing.T) {
 	// Empty options: with no indented content is a parse error
 	// (indentation-based syntax requires at least one entry).

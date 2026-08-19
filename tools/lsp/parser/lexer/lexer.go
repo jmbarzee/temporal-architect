@@ -97,6 +97,18 @@ func (l *Lexer) NextToken() token.Token {
 			tok = l.makeToken(token.DOT, ".")
 			l.advance()
 
+		case ch == '[':
+			tok = l.makeToken(token.LBRACKET, "[")
+			l.advance()
+
+		case ch == ']':
+			tok = l.makeToken(token.RBRACKET, "]")
+			l.advance()
+
+		case ch == ',':
+			tok = l.makeToken(token.COMMA, ",")
+			l.advance()
+
 		case isDigit(ch):
 			tok = l.scanNumber()
 

@@ -28,3 +28,26 @@ func TestLookupIdentKeywords(t *testing.T) {
 		}
 	}
 }
+
+// TestListDelimiterTokenNames covers the display names of the list-literal
+// delimiter tokens added for inline list option values. These are symbols, not
+// keywords, so LookupIdent never returns them; the compile-time tokenCount
+// assertion already enforces that each has a tokenTable entry.
+func TestListDelimiterTokenNames(t *testing.T) {
+	cases := []struct {
+		tt   TokenType
+		want string
+	}{
+		{LBRACKET, "LBRACKET"},
+		{RBRACKET, "RBRACKET"},
+		{COMMA, "COMMA"},
+	}
+	for _, c := range cases {
+		if got := c.tt.String(); got != c.want {
+			t.Errorf("TokenType(%d).String() = %q, want %q", int(c.tt), got, c.want)
+		}
+		if info := tokenTable[c.tt]; info.isKeyword {
+			t.Errorf("%s should not be a keyword", c.want)
+		}
+	}
+}

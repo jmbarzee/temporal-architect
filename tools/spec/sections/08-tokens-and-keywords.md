@@ -76,6 +76,9 @@
 - `<-` - Promise binding (async declaration)
 - `.` - Member access / nexus service.operation separator / package-leaf qualifier separator in a qualified name (`pkg.Name`, in keyword-led call positions only)
 - `:` - Block start
+- `[` - Opens a `list_value` in an option value
+- `]` - Closes a `list_value` in an option value
+- `,` - Separates elements within a `list_value` (and arguments within `arg_list`)
 - `#` - Comment
 
 ## Identifiers
@@ -95,6 +98,8 @@ STRING ::= '"' [^"]* '"'
 ```
 
 `NUMBER` and `DURATION` tokens are recognized everywhere. In raw expressions, digits that start a line or follow operators are consumed by the raw text scanner.
+
+A `list_value` (`'[' [ STRING (',' STRING)* ] ']'`, defined in [Statement Syntax](./06-statement-syntax.md)) is a compound option value rather than a single token: a bracketed, comma-separated inline list of `STRING` elements, empty list allowed, no trailing comma, no `NEWLINE` inside the brackets.
 
 ## Comments
 

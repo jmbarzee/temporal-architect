@@ -189,10 +189,13 @@ type OptionsBlockJSON struct {
 }
 
 // OptionEntryJSON is the JSON representation of a single option entry.
+// Value holds the scalar literal for flat entries; Values holds the elements of
+// a list-valued entry (valueType == "list"). The two are mutually exclusive.
 type OptionEntryJSON struct {
 	Key       string            `json:"key"`
 	Value     string            `json:"value,omitempty"`
 	ValueType string            `json:"valueType,omitempty"`
+	Values    []string          `json:"values,omitempty"`
 	Nested    []OptionEntryJSON `json:"nested,omitempty"`
 }
 
@@ -213,6 +216,7 @@ func marshalOptionEntries(entries []*OptionEntry) []OptionEntryJSON {
 			Key:       e.Key,
 			Value:     e.Value,
 			ValueType: e.ValueType,
+			Values:    e.Values,
 		}
 		if len(e.Nested) > 0 {
 			ej.Nested = marshalOptionEntries(e.Nested)
