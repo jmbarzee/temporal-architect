@@ -24,8 +24,9 @@ type ::= IDENT | type '[' type ']' | type '{' ... '}'
 `promise` / `await` / `await one` variants), the callee name is a
 [`qualified_ref`](./14-packages-and-imports.md) — it may carry an optional `pkg.` package
 qualifier (`workflow orders.ProcessOrder(order)`) to name a workflow declared in another package.
-The qualifier is bare for same-package workflows and is carried on the AST/wire but not resolved in
-this slice (cross-package resolution is deferred to #109). A cross-workflow signal send target
+The qualifier is bare for same-package workflows; a qualified callee resolves against the imported
+package that declares it, and if that import is unresolved (external) the qualified call resolves as
+external. A cross-workflow signal send target
 (`signal handle.Name(args)`) is *not* package-qualified — its dot separates a handle from a signal
 name, not a package from a symbol.
 

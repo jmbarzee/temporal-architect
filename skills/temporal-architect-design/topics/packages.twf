@@ -1,0 +1,42 @@
+# impl: shop/orders
+package orders
+
+# Cross-package references are qualified by the imported package's leaf name and
+# require an import. The payments package is not part of this single-file example,
+# so the import is "treated as external": payments.PaymentService below resolves
+# as external and emits only an UNRESOLVED_IMPORT warning — never an UNDEFINED
+# error. Drop payments/ into the same tree and it would resolve for real.
+import "github.com/acme/shop/payments"
+
+# Same-package service — declared here, referenced bare.
+nexus service OrderService:
+    async PlaceOrder workflow ProcessOrder
+
+workflow ProcessOrder(order):
+    activity ValidateOrder(order) -> checked
+    close complete(checked)
+
+activity ValidateOrder(order):
+    pass()
+
+# Checkout calls a same-package service (OrderService, bare) and a cross-package
+# one (payments.PaymentService, qualified) through the same endpoint. Endpoints
+# are flat-global and never carry a package qualifier.
+workflow Checkout(order):
+    nexus Gateway OrderService.PlaceOrder(order) -> placed
+    nexus Gateway payments.PaymentService.Charge(order) -> receipt
+    close complete(placed)
+
+worker orderWorker:
+    workflow ProcessOrder
+    workflow Checkout
+    activity ValidateOrder
+    nexus service OrderService
+
+namespace orders:
+    worker orderWorker
+        options:
+            task_queue: "orders"
+    nexus endpoint Gateway
+        options:
+            task_queue: "orders"

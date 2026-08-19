@@ -1,0 +1,7 @@
+package peer
+
+import "acme/orderer"
+
+workflow ChannelJoin(id):
+    workflow orderer.ChannelJoin(id) -> res
+    close complete(res)

@@ -28,29 +28,38 @@ consumers should match on `kind+code` rather than the message.
 | `CONDITION_RESULT_BINDING` | `condition "Foo" cannot have a result binding (-> identifier)` | `await Foo -> result` where `Foo` is a condition | Conditions are boolean — remove the `-> result` binding |
 | `NEXUS_ASYNC_UNDEFINED_WORKFLOW` | `async operation Foo references undefined workflow: Bar` | Async nexus op points at a workflow that doesn't exist | Add the workflow or fix the name |
 | `NEXUS_UNDEFINED_ENDPOINT` | `undefined nexus endpoint: Foo` | Endpoint referenced but not defined anywhere | Add a `nexus endpoint Foo:` in some namespace, or fix the name |
-| `NEXUS_UNDEFINED_SERVICE` | `undefined nexus service: Foo` | Service referenced but not defined | Add a `nexus service Foo:` block or fix the name |
+| `NEXUS_UNDEFINED_SERVICE` | `undefined nexus service: Foo` | Service referenced but not defined (in its package, following any qualifier + import) | Add a `nexus service Foo:` block, fix the name, or import the package that owns it |
 | `NEXUS_NO_OPERATION` | `nexus service Foo has no operation Bar` | Operation name not in the service | Add the operation or fix the name |
 | `WORKER_UNDEFINED_WORKFLOW` / `WORKER_UNDEFINED_ACTIVITY` / `WORKER_UNDEFINED_NEXUS_SERVICE` | `worker X references undefined ...` | Worker lists a name that doesn't exist | Add the definition or fix the name |
 | `NAMESPACE_UNDEFINED_WORKER` | `namespace X references undefined worker: Y` | Namespace uses unknown worker | Add worker block or fix name |
+| `QUALIFIED_REF_WITHOUT_IMPORT` | `qualified reference uses package "p" with no matching import in package "q"` | A `p.Name` reference names a package `p` the file never `import`ed | Add `import "…/p"` (or fix the qualifier / alias) |
+| `UNRESOLVED_IMPORT` | `import "p" is unresolved (no package "…/p" in the tree); treated as external` | An imported package isn't found in the tree — warning, exit 0 | None required — the package is treated as external (see below). Fix the path if it was a typo |
+| `UNUSED_IMPORT` | `unused import: "p" is never referenced` | An import that resolved but is never used — warning, exit 0 | Remove the import, or add the qualified reference you intended |
 
-### Nexus resolution: external (warning) vs. local (error)
+### Packages, imports, and external references
 
-Nexus references resolve in one of two modes, decided **per category** — services and
-endpoints are independent axes:
+Cross-package references are qualified by the package leaf name and require an `import` of the
+package that owns the symbol (see [`.twf` Conventions](./twf-conventions.md#package-per-domain-directory)
+and the [packages topic](../topics/packages.md)). Resolution follows the import:
 
-| Category | Nothing of that category defined in the file set | Any of that category defined |
-|----------|--------------------------------------------------|------------------------------|
-| Service  | `NEXUS_UNRESOLVED_SERVICE` — warning, exit 0 ("may be external") | `NEXUS_UNDEFINED_SERVICE` — error, exit 1 |
-| Endpoint | `NEXUS_UNRESOLVED_ENDPOINT` — warning, exit 0 ("may be external") | `NEXUS_UNDEFINED_ENDPOINT` — error, exit 1 |
+- **Bare or same-package** references resolve exactly as they always have.
+- A **qualified reference with a matching import that resolves** binds to the symbol in that
+  package. If the package is present but has no such symbol, the usual `UNDEFINED_*` /
+  `NEXUS_UNDEFINED_*` / `NEXUS_NO_OPERATION` error fires — resolution is now per-package.
+- A **qualified reference with no matching import** is a hard `QUALIFIED_REF_WITHOUT_IMPORT` error.
+- An **unresolved import** (a path with no package in the tree) is a `UNRESOLVED_IMPORT` **warning**
+  and is **treated as external**: qualified references through it resolve as external and emit **no**
+  `UNDEFINED_*` error. This is how packages subsume the old "declared elsewhere" workaround — external
+  is now something you *declare* (by importing a package that isn't in the tree), not something the
+  tool infers globally.
 
-(Endpoints are defined inside `namespace` blocks; services via top-level `nexus service`.)
-
-**Gotcha:** defining *one* local service retroactively turns *every other* service reference
-into a hard error — even references to genuinely external services in other namespaces. This is
-a sharp cliff for a partial / per-package file that both *calls* external services and *provides*
-its own. Until an explicit external marker exists ([#31](https://github.com/jmbarzee/temporal-architect/issues/31)), either (a) add a local stub definition for
-each external service you call, or (b) define no nexus services in the file and accept the
-warnings.
+**The nexus per-category cliff is gone.** Nexus endpoints and services no longer flip between a
+"may be external" warning and a hard error based on whether *any* endpoint/service is defined in the
+file set. Endpoints are flat-global and services are package-scoped, so an unresolved endpoint or
+service is simply `NEXUS_UNDEFINED_ENDPOINT` / `NEXUS_UNDEFINED_SERVICE` (a hard error), while a
+genuinely external service is reached through an unresolved import (`UNRESOLVED_IMPORT`) — no local
+stub definitions and no "define none to dodge the error" workaround. The retired
+`NEXUS_UNRESOLVED_ENDPOINT` / `NEXUS_UNRESOLVED_SERVICE` codes are no longer emitted.
 
 ## Parse errors (kind: `parse`)
 

@@ -23,6 +23,8 @@ The graph view is a **renderer over the parser-emitted deployment graph**. The p
 
 Cross-view identity threads through `node.definitionKey` (the parser's `definition` field — `${kind}:${name}`). Selecting `OrderWorkflow` in the tree view highlights every graph node whose `definitionKey === "workflow:OrderWorkflow"`, regardless of how many deployments that definition has.
 
+For **packaged** designs the `name` element carries a package qualifier (`workflow:billing.Charge`, `nexusOperation:billing.Svc.Op`) — see § Packages and Qualified Identity. The contract is unchanged: the kind is still everything before the **first** `:`, and the package `.` is part of the name, never a new key segment.
+
 ## Graph Data Model
 
 ### Two parallel ladders
@@ -52,6 +54,25 @@ The **nexus ladder** is the parallel three-rung Endpoint → Service → Operati
 **Per-worker duplication.** L3 nodes (Workflow, Activity, NexusOperation) and L2 NexusService nodes are emitted **per worker deployment** — an activity registered on three workers produces three distinct nodes, each parented to its respective worker. This makes the fact that a definition has multiple homes visible directly in the canvas, instead of collapsing it into a single node whose containment relationship to all-but-one of its workers is silently dropped. Duplication is performed upstream by `twf graph`; the visualizer consumes the already-duplicated nodes.
 
 Each duplicate shares a stable `definitionKey` (= the parser's `definition` field: `${nodeType}:${name}`, with the parent service name folded in for operations as `Service.Op`). The graph carries a `duplicateGroups: Map<definitionKey, Set<nodeId>>` index that the view uses during hover/select to keep sister copies visually grouped (see § Interaction States: Duplicate Highlighting). Definitions that are not registered on any worker remain orphan singletons (one node, no parent, `orphan: true`).
+
+### Packages and Qualified Identity
+
+A [`package`](../../../skills/temporal-architect-design/topics/packages.md) is the DSL's compile-time symbol grouping — a directory of `.twf` files whose symbols resolve together. When a design uses packages, the parser folds the owning package **into the name element** of the affected node identities. The visualizer treats this as a pure naming/grouping concern; it introduces **no new tier, node type, or containment level**.
+
+**The qualified-ID contract:**
+
+- For **workflow, activity, nexusService, and nexusOperation** nodes, the package rides as a leading segment of the name: `workflow:billing.Charge`, `activity:billing.ValidateOrder`, `nexusService:billing.PaymentService`, `nexusOperation:billing.PaymentService.Charge` (package **and** service both fold into the operation's name).
+- **NexusEndpoint, Worker, and Namespace** nodes keep **bare** identity — no package qualifier. Endpoints are flat-global (a cluster-global registry), and workers/namespaces are deployment topology, not package-scoped symbols.
+- The **default (clause-less) package is elided**, so an unpackaged design's node IDs are **byte-identical** to before packages existed. This is what keeps the feature purely additive for the visualizer: only designs that actually declare packages see qualified names.
+- `splitDefinitionKey` still splits on the **first** `:` — the package `.` lives entirely within the name element and is never mistaken for a kind/name boundary. Existing operation display (`displayNameFor` takes the last `.` segment) already yields the bare operation name `Charge` from `billing.PaymentService.Charge`; main-ladder labels render the qualified name (`billing.Charge`) as-is — the package **is** part of the name.
+
+**Where the package comes from.** There is no separate per-definition `package` field on the wire: `ast/json.go` does not serialize it, and each definition's AST `name` stays bare. The visualizer therefore reads a node's package **from its qualified node-ID name** (the leading `pkg.` segment before the final one or two name parts), not from an AST field. The file-level `package` clause is available on the merged AST (`FileJSON.package`) to reconcile the AST-side `sourceFile`/hover lookup — whose keys are built from bare definition names — against the parser's qualified node IDs.
+
+### Package Grouping Lens
+
+Package membership is a **grouping lens**, parallel to the existing source-file dimension (the per-file filter chip; today "package" ≈ that chip). Because a node's package is recoverable from its qualified `definitionKey`, the visualizer can group, badge, or filter nodes by package **without any new wire data** — the same way `duplicateGroups` is derived from `definitionKey`. Unpackaged designs collapse to a single implicit group (no qualifiers, nothing to show), so the lens is inert for them.
+
+Adopting the qualified IDs and surfacing the lens in the shipped host (`@temporal-architect/visualizer`, consumed by `temporal-architect-dist`) is a coordinated cross-repo follow-up; this spec fixes the contract the host adopts.
 
 Reading the table top-to-bottom on the main ladder is **organisation → hosting → orchestration → leaf work**:
 
@@ -107,7 +128,7 @@ Higher-level dependency edges are **derived** by projecting Level 3 dependency e
 
 The deployment graph is constructed **upstream** by `twf graph` (see `tools/lsp/parser/graph/`). The visualizer consumes the resulting JSON and translates each piece into its view counterpart. Construction inside the visualizer is a single pass over the parser payload:
 
-1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a view node with `id` (parser's composite deployment ID), `level` (derived from the parser's `definition` kind via `nodeLevel()`), `parentId` (looked up from the parser's containment edges), and `definitionKey` (= `parserGraph.nodes[i].definition`). The AST is consulted only to fill `sourceFile` so the per-file filter chip works; everything structural comes from the parser.
+1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a view node with `id` (parser's composite deployment ID), `level` (derived from the parser's `definition` kind via `nodeLevel()`), `parentId` (looked up from the parser's containment edges), and `definitionKey` (= `parserGraph.nodes[i].definition`). The AST is consulted only to fill `sourceFile` so the per-file filter chip works; everything structural comes from the parser. For packaged designs the `definitionKey` name is package-qualified (§ Packages and Qualified Identity); a node's package is read from that name, and the AST lookup for `sourceFile` — keyed on bare definition names — is reconciled against the qualified IDs via the file's `package` clause.
 2. **Translate edges.** For each `parserGraph.edges[i]`, emit a view edge. `kind: "containment"` and `kind: "nexusRoute"` (the endpoint↔operation composition) both become `edgeType: "containment"`; the dispatch kinds (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`) all become `edgeType: "dependency"`. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so the canvas can colour spliced caller-to-backing edges in the nexus palette. `nexusRoute` edges are not in the parser's containment set, so they never reassign an operation's `parentId` (which stays its owning service).
 3. **Translate coarsened edges.** For each `parserGraph.coarsenedEdges[i]`, emit an L2 (`tier === "worker"`) or L1 (`tier === "namespace"`) view dependency edge. No projection logic runs in the visualizer — the parser has already aggregated dispatch edges by `(from, to, tier)` and discarded self-loops.
 4. **Build `duplicateGroups`.** Index every view node by its `definitionKey`; the resulting `Map<definitionKey, Set<nodeId>>` powers the duplicate-highlight interaction (see § Interaction States: Duplicate Highlighting).

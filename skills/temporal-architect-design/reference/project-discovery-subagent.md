@@ -31,7 +31,8 @@ Dispatch **deliberately, on a bounded slice** — never reflexively, never "scan
 - **Temporal SDK usage** — `go.temporal.io/sdk` imports, `workflow.ExecuteActivity` / `ExecuteChildWorkflow` / Nexus call sites, signal/query/update handlers.
 - **Registration style** — `worker.New` + `RegisterWorkflow`/`RegisterActivity`, generated `RegisterXxxActivities/Workflows` helpers, DI wiring (`fx`), struct-vs-func activities.
 - **`.twf` / `.tf` presence** — existing design files and Terraform/infra files for this slice.
-- **Comment conventions** — impl-link headers and cross-domain stub markers (see [twf-conventions.md](./twf-conventions.md)); these point discovery straight at the implementation.
+- **`.twf` package layout** — `package` clauses and `import` declarations (see [twf-conventions.md](./twf-conventions.md)); which directory owns which domain, and how packages reference each other.
+- **Comment conventions** — impl-link headers (see [twf-conventions.md](./twf-conventions.md)); these point discovery straight at the implementation.
 
 ## Output
 
@@ -70,7 +71,7 @@ Inputs:
 Scan for: build/codegen tooling (Makefile, buf.gen.yaml, //go:generate), package
 layout, Temporal SDK usage (workflow/activity/nexus call sites, handlers),
 registration style (worker.New + Register*, generated helpers, fx wiring), .twf/.tf
-presence, and impl-link / cross-domain-stub comment conventions.
+presence (including .twf `package` / `import` layout), and impl-link comment conventions.
 
 Return a COMPACT STRUCTURED SUMMARY — conclusions only, never raw file dumps:
 tooling, layout, SDK usage, registration, existing .twf, impl-links, open questions.

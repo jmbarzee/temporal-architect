@@ -1,10 +1,12 @@
 # Packages and Imports
 
 Packages group symbols so that references can cross file and directory boundaries. This section
-freezes the **syntax and surface** only. Cross-package *resolution* — following an import to the
-package it names and binding a qualified reference to a symbol there — is **out of scope for this
-slice and deferred to the resolution slice (#109)**. In this slice the qualifier is parsed and
-carried on the AST/wire contract but is not resolved.
+freezes the **syntax and surface**. Cross-package *resolution* — following an import to the package
+it names and binding a qualified reference to a symbol there — is implemented: a qualified reference
+resolves against the imported package that owns the symbol, and an import whose package is absent
+from the tree is **treated as external**, so qualified references through it resolve as external.
+See [Referencing Symbols](#referencing-symbols) below and the resolver diagnostics in
+[the twf CLI reference](../../lsp/cmd/twf/README.md#diagnostic-codes).
 
 ## Package Clause
 
@@ -88,7 +90,9 @@ error messages, and `--json` output for clause-less files stay **byte-identical*
 change.
 
 A reference that is bare, or that names the file's own package, resolves exactly as it does today.
-A qualifier that names an *imported* package is recorded but left unresolved in this slice.
+A qualifier that names an *imported* package resolves against that package; if the import is
+unresolved (its package is absent from the tree), it is treated as external and the qualified
+reference resolves as external.
 
 ## Package vs. Namespace
 

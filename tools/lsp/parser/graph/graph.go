@@ -216,6 +216,19 @@ func QualifiedName(pkg, name string) string {
 	return pkg + "." + name
 }
 
+// pkgOf returns a definition's effective package: its runtime package stamp
+// (set by the envelope merge) when present, otherwise the file's own package.
+// Mirrors resolver.effPkg so the graph keys by the same (package, name) the
+// resolver used — the lockstep that keeps same-named cross-package defs distinct
+// (issue #109). For an unpackaged tree both are empty, so QualifiedName elides
+// the package and every ID stays byte-identical.
+func pkgOf(defPkg, filePkg string) string {
+	if defPkg != "" {
+		return defPkg
+	}
+	return filePkg
+}
+
 // NamespaceID returns the canonical node ID for a namespace deployment.
 func NamespaceID(name string) string {
 	return DefKey(KindNamespace, name)

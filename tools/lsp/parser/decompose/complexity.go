@@ -52,6 +52,16 @@ func (m bodyMetrics) score() int {
 		weightChildWf*m.childWorkflows
 }
 
+// pkgOf returns a definition's effective package (runtime stamp, else the
+// file's package) so complexity node-key lookups match the package-aware graph
+// node Definition keys (issue #109). Mirrors graph.pkgOf / resolver.effPkg.
+func pkgOf(defPkg, filePkg string) string {
+	if defPkg != "" {
+		return defPkg
+	}
+	return filePkg
+}
+
 // computeComplexity sets the deterministic per-definition complexity scalar on
 // every working node, derived from AST body counts. Workflow handler bodies are
 // folded into the owning workflow's score. With a nil AST the nodes keep their
@@ -63,7 +73,7 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			wn := wg.nodes[graph.DefKey(graph.KindWorkflow, d.Name)]
+			wn := wg.nodes[graph.DefKey(graph.KindWorkflow, graph.QualifiedName(pkgOf(d.Package, file.Package), d.Name))]
 			if wn == nil {
 				continue
 			}
@@ -81,14 +91,15 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 			wn.complexity = m.score()
 
 		case *ast.ActivityDef:
-			if wn := wg.nodes[graph.DefKey(graph.KindActivity, d.Name)]; wn != nil {
+			if wn := wg.nodes[graph.DefKey(graph.KindActivity, graph.QualifiedName(pkgOf(d.Package, file.Package), d.Name))]; wn != nil {
 				wn.complexity = measureBody(d.Body).score()
 			}
 
 		case *ast.NexusServiceDef:
+			svcQName := graph.QualifiedName(pkgOf(d.Package, file.Package), d.Name)
 			for _, op := range d.Operations {
 				// Sync ops carry a body; async ones don't (base score).
-				if wn := wg.nodes[graph.DefKey(graph.KindNexusOperation, d.Name+"."+op.Name)]; wn != nil {
+				if wn := wg.nodes[graph.DefKey(graph.KindNexusOperation, svcQName+"."+op.Name)]; wn != nil {
 					wn.complexity = measureBody(op.Body).score()
 				}
 			}

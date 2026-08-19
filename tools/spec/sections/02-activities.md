@@ -14,5 +14,6 @@ Activities have access to a restricted statement set (no temporal primitives lik
 **Cross-package references.** In an activity *call* (`activity Name(args)`), the callee name is a
 [`qualified_ref`](./14-packages-and-imports.md) — it may carry an optional `pkg.` package
 qualifier (`activity billing.ChargeCard(order)`) to name an activity declared in another package.
-The qualifier is bare for same-package activities. It is carried on the AST/wire but not resolved
-in this slice (cross-package resolution is deferred to #109).
+The qualifier is bare for same-package activities. A qualified callee resolves against the imported
+package that declares it; if that import is unresolved (external), the qualified call resolves as
+external.

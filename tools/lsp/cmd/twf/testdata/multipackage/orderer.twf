@@ -1,0 +1,8 @@
+package orderer
+
+workflow ChannelJoin(id):
+    activity Validate(id) -> ok
+    close complete(ok)
+
+activity Validate(id):
+    pass()

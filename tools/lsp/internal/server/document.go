@@ -1,6 +1,7 @@
 package server
 
 import (
+	"path/filepath"
 	"sync"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -20,7 +21,18 @@ type Document struct {
 }
 
 // analyze parses, resolves, and validates the document content.
-func (d *Document) analyze() {
+//
+// doc.File stays the single-buffer AST with the buffer's own line numbers, and
+// is always resolved in isolation so its Ref.Resolved pointers stay populated
+// for the positional features (hover, definition, references, rename,
+// signature-help, code-actions). doc.ParseErrs and doc.ValidateErrs stay
+// single-buffer (parse is intra-file, validation is intra-workflow).
+//
+// Only doc.ResolveErrs changes when a workspace root is set and the buffer has
+// a filesystem path: it becomes the resolve diagnostics of the merged `.twf`
+// tree, filtered to the open buffer. The merged AST is a separate parse used
+// only for diagnostics — it never becomes doc.File.
+func (d *Document) analyze(root string) {
 	d.File = nil
 	d.ParseErrs = nil
 	d.ResolveErrs = nil
@@ -34,12 +46,37 @@ func (d *Document) analyze() {
 		d.ResolveErrs = resolver.Resolve(f)
 		d.ValidateErrs = validator.Validate(f)
 	}
+
+	if root == "" {
+		return
+	}
+	bufAbs := uriToPath(d.URI)
+	if bufAbs == "" {
+		return
+	}
+	merged := mergeWorkspace(root, bufAbs, d.Content, filepath.Base(bufAbs))
+	mergedErrs := resolver.Resolve(merged)
+	d.ResolveErrs = filterMergedResolveErrs(mergedErrs, d.File)
 }
 
 // DocumentStore is a thread-safe store of open documents.
 type DocumentStore struct {
 	mu   sync.RWMutex
 	docs map[string]*Document
+	// root is the workspace root filesystem path captured at `initialize`
+	// (empty when no workspace is open or the client sent no resolvable root).
+	// When set, analyze resolves each open buffer against the merged `.twf`
+	// tree under this path; when empty, every document falls back to
+	// single-buffer analysis. Guarded by mu.
+	root string
+}
+
+// SetRoot records the workspace root filesystem path. An empty path leaves
+// documents in single-buffer mode. Safe for concurrent use.
+func (s *DocumentStore) SetRoot(path string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.root = path
 }
 
 // NewDocumentStore creates an empty document store.
@@ -54,7 +91,7 @@ func (s *DocumentStore) Open(uri, content string) *Document {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	doc := &Document{URI: uri, Content: content}
-	doc.analyze()
+	doc.analyze(s.root)
 	s.docs[uri] = doc
 	return doc
 }
@@ -69,7 +106,7 @@ func (s *DocumentStore) Update(uri, content string) *Document {
 		s.docs[uri] = doc
 	}
 	doc.Content = content
-	doc.analyze()
+	doc.analyze(s.root)
 	return doc
 }
 

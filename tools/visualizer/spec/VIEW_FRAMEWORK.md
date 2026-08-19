@@ -85,7 +85,7 @@ Both views display the same visual filter bar with the same three filter dimensi
 [file chips...] 🔒 | [NS] [Worker] [Wf] [Act] [Nxs] 🔒 | [🔍 search]
 ```
 
-**Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the filter narrows to a single file, the extension opens that file in the editor.
+**Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the filter narrows to a single file, the extension opens that file in the editor. For **packaged** designs, a node's [`package`](../../../skills/temporal-architect-design/topics/packages.md) is recoverable from its qualified node-ID (see GRAPH_VIEW.md § Packages and Qualified Identity), so package is available as a **derived grouping lens** parallel to the source-file dimension — no new wire data. Today "package" ≈ the source-file chip; an unpackaged design has a single implicit package, so the lens is inert for it.
 
 **Type toggles** — Five toggle buttons, one per definition type, using the type's color: NS (dark grey), Worker (medium grey), Wf (purple), Act (blue), Nxs (pink). Each toggle shows/hides all items of that type. Both views use the same five toggles — the graph has no separate level selector.
 

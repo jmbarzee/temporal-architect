@@ -57,15 +57,37 @@ type File struct {
 // Path is the imported module path, carried verbatim (not enforced in this
 // slice). Alias is the local name bound to the import; an empty Alias means the
 // import is referenced by its leaf name.
+//
+// Package is a RUNTIME-ONLY stamp (issue #109): the envelope merge records the
+// owning package of the file this import was declared in, so the resolver can
+// group imports into per-package binding tables. It is never serialized (not in
+// ast/json.go) — no wire-Schema change.
 type ImportDecl struct {
 	Pos
-	Path  string
-	Alias string
+	Path    string
+	Alias   string
+	Package string
 }
 
 // ---------------------------------------------------------------------------
 // Top-level definitions
 // ---------------------------------------------------------------------------
+
+// Package fields on the top-level definitions below are RUNTIME-ONLY stamps
+// (issue #109): the envelope merge records each definition's owning package so
+// the resolver and graph can key by (package, name) and encode the package
+// inside a node's name element via graph.QualifiedName. They are NEVER
+// serialized (the MarshalJSON methods in ast/json.go do not emit them), so
+// there is no wire-Schema change and unpackaged output stays byte-identical.
+// The empty string is the implicit default package. When a definition is
+// resolved without going through the merge (e.g. a single-file parse), the
+// stamp is empty and consumers fall back to File.Package.
+//
+// Packaged exposes that runtime package stamp so generic helpers can read it
+// off a Ref's resolved target without a per-type switch.
+type Packaged interface {
+	PackageName() string
+}
 
 type WorkflowDef struct {
 	Pos
@@ -78,9 +100,11 @@ type WorkflowDef struct {
 	Updates    []*UpdateDecl
 	Body       []Statement
 	SourceFile string
+	Package    string // runtime-only; see Packaged note above
 }
 
-func (*WorkflowDef) defNode() {}
+func (*WorkflowDef) defNode()              {}
+func (d *WorkflowDef) PackageName() string { return d.Package }
 
 type ActivityDef struct {
 	Pos
@@ -89,9 +113,11 @@ type ActivityDef struct {
 	ReturnType string
 	Body       []Statement
 	SourceFile string
+	Package    string // runtime-only; see Packaged note above
 }
 
-func (*ActivityDef) defNode() {}
+func (*ActivityDef) defNode()              {}
+func (d *ActivityDef) PackageName() string { return d.Package }
 
 type WorkerDef struct {
 	Pos
@@ -100,9 +126,11 @@ type WorkerDef struct {
 	Activities []Ref[*ActivityDef]
 	Services   []Ref[*NexusServiceDef] // nexus service references
 	SourceFile string
+	Package    string // runtime-only; see Packaged note above
 }
 
-func (*WorkerDef) defNode() {}
+func (*WorkerDef) defNode()              {}
+func (d *WorkerDef) PackageName() string { return d.Package }
 
 // NamespaceWorker is a worker instantiation inside a namespace block.
 type NamespaceWorker struct {
@@ -127,9 +155,11 @@ type NamespaceDef struct {
 	Workers    []NamespaceWorker
 	Endpoints  []NamespaceEndpoint
 	SourceFile string
+	Package    string // runtime-only; see Packaged note above
 }
 
-func (*NamespaceDef) defNode() {}
+func (*NamespaceDef) defNode()              {}
+func (d *NamespaceDef) PackageName() string { return d.Package }
 
 // ---------------------------------------------------------------------------
 // Workflow-level declarations (embedded in WorkflowDef)
@@ -498,12 +528,12 @@ const (
 // NexusOperation is an operation inside a nexus service definition.
 type NexusOperation struct {
 	Pos
-	OpType       NexusOperationType
-	Name         string
-	Workflow      Ref[*WorkflowDef] // async only: backing workflow
-	Params       string      // sync only
-	ReturnType   string      // sync only
-	Body         []Statement // sync only
+	OpType     NexusOperationType
+	Name       string
+	Workflow   Ref[*WorkflowDef] // async only: backing workflow
+	Params     string            // sync only
+	ReturnType string            // sync only
+	Body       []Statement       // sync only
 }
 
 // NexusServiceDef is a top-level nexus service definition.
@@ -512,9 +542,11 @@ type NexusServiceDef struct {
 	Name       string
 	Operations []*NexusOperation
 	SourceFile string
+	Package    string // runtime-only; see Packaged note above
 }
 
-func (*NexusServiceDef) defNode() {}
+func (*NexusServiceDef) defNode()              {}
+func (d *NexusServiceDef) PackageName() string { return d.Package }
 
 // NexusCall is a nexus service operation call inside a workflow body.
 type NexusCall struct {

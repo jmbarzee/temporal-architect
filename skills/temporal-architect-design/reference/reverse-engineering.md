@@ -21,7 +21,7 @@ The repo has Temporal code but no design file. Recover one from scratch:
 3. **Fidelity check** — confirm the `.twf` matches what the code actually does (see [Fidelity first](#fidelity-first-then-design-review)).
 4. **Design Review** — only now run the standard [Design Review](../SKILL.md#design-review).
 
-Write the [impl-link header](./twf-conventions.md) as you extract, so the new `.twf` records where its implementation lives.
+Mirror the code's package layout: put each domain in its own [package](./twf-conventions.md#package-per-domain-directory) (a directory whose files share a `package` clause), `import` across packages for cross-domain references, and write the [impl-link header](./twf-conventions.md#impl-link-header) so the new `.twf` records where its implementation lives. Because packages let the `.twf` layout follow the code again, a recovered slice can sit beside the implementation directory it came from.
 
 ### B1b — Drift / sync (`.twf` exists but is stale)
 

@@ -775,6 +775,10 @@ worker w:
 	}
 }
 
+// TestNexusCallNoEndpointsDefined: with the #31 nexus cliff removed (issue #109),
+// an endpoint that is defined nowhere is a hard undefined-endpoint error — no
+// more "may be external" warning. External is now expressed by an unresolved
+// import, not inferred from an empty endpoint set.
 func TestNexusCallNoEndpointsDefined(t *testing.T) {
 	input := `workflow W():
     nexus Ep Svc.Op(x) -> result
@@ -782,11 +786,14 @@ func TestNexusCallNoEndpointsDefined(t *testing.T) {
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
-	if !hasWarning(errs, "unresolved nexus endpoint: Ep") {
-		t.Error("expected warning about unresolved endpoint (no endpoints defined)")
+	if !hasError(errs, "undefined nexus endpoint: Ep") {
+		t.Error("expected hard error about undefined endpoint (cliff removed)")
 	}
 }
 
+// TestNexusCallNoServicesDefined: likewise, an unqualified service defined
+// nowhere (and with no import declaring it external) is a hard
+// undefined-service error, not a warning.
 func TestNexusCallNoServicesDefined(t *testing.T) {
 	input := `workflow W():
     nexus Ep Svc.Op(x) -> result
@@ -794,8 +801,8 @@ func TestNexusCallNoServicesDefined(t *testing.T) {
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
-	if !hasWarning(errs, "unresolved nexus service: Svc") {
-		t.Error("expected warning about unresolved service (no services defined)")
+	if !hasError(errs, "undefined nexus service: Svc") {
+		t.Error("expected hard error about undefined service (cliff removed)")
 	}
 }
 

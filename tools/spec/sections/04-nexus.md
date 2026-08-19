@@ -43,8 +43,9 @@ faithfully to Temporal's registries:
 
 So in `nexus OrderEndpoint orders.OrderService.PlaceOrder(order)`, `OrderEndpoint` is the
 flat-global endpoint (unqualified), `orders.OrderService` is the package-qualified service, and
-`PlaceOrder` is the operation member. The package qualifier on the service is carried on the
-AST/wire but not resolved in this slice (cross-package resolution is deferred to #109).
+`PlaceOrder` is the operation member. The package qualifier on the service resolves against the
+imported package that declares it; an unresolved (external) import makes the qualified service
+resolve as external.
 
 ## Resolution
 
