@@ -4,6 +4,8 @@ How to turn a `.twf` design into a dispatch plan for author subagents, using `tw
 
 The governing rule: **cut at `.twf` contract boundaries, never finer.** `.twf` *is* the contract. The tool **informs; it does not impose** — every output below is input to your judgment, not a command.
 
+This is the **forward** decomposition (`.twf` → code). The reverse direction (existing code → `.twf`) now has a **symmetric decompose step** — a `slice-mapper` subagent that proposes a slice map + cross-slice edge list before per-slice recovery — owned by the design skill, not here. The mechanics live in [`temporal-architect-design`'s reverse-engineering.md](../../temporal-architect-design/reference/reverse-engineering.md#decompose-a-large-repo-into-slices); this is only a signpost.
+
 ## The command
 
 Run `twf graph chunks --help` for the exact, current flag set — that help is

@@ -40,6 +40,26 @@ A real monorepo runs a few **shared worker processes**, each hosting many indepe
 
 The [project-discovery subagent](./project-discovery-subagent.md) supplies the raw material for that topology-owner file: the shared worker → task queue → registered types mapping it reads from the code's registration wiring.
 
+## Decompose a large repo into slices
+
+The two cases above assume you already know your slice. When the adoption target is **more than one bounded slice** — a whole service, a multi-domain monorepo, a repo whose boundaries you cannot yet name — carving it into slices and ordering the recoveries is itself the hard, easy-to-get-wrong step. This is the reverse-path analog of the forward decomposition (`twf graph chunks` → per-chunk author): here it is a **skills-level advisory protocol**, not an engine.
+
+1. **Map** — dispatch the [slice-mapper subagent](./slice-mapper-subagent.md) on the repo root. It scans cheaply and structurally (package tree, registration wiring, cross-package call sites) and returns a proposed **slice map** + a **cross-slice edge list** (`from` → `to`, `via` = the contract artifact) + a suggested recovery order. It recovers nothing.
+2. **Confirm** — the map is advisory. Confirm and narrow it **with the user** before any fan-out; do not act on proposed boundaries the human never agreed to.
+3. **Order** — recover in edge-list order, **contract producers before consumers**: pin the shared contracts first (the proto package / Nexus op / shared worker that other slices depend on), then their consumers. This mirrors the forward `ChunkEdge` DAG → build order, in prose rather than a computed PERT walk. It also pays off directly at stitch: a producer recovered first is a real package the consumer can `import`, so the cross-slice edge never needs a placeholder.
+4. **Fan out** — run one [project-discovery subagent](./project-discovery-subagent.md) + extraction (B1a steps 2-4) per confirmed slice, **in that order**, each into its own [package](./twf-conventions.md#package-per-domain-directory) under the symbols-only discipline of [Deployment topology during recovery](#deployment-topology-during-recovery). Each slice is a bounded single-slice recovery; the trigger discipline above still applies to each.
+
+This is analogous to — but deliberately **distinct** from — the forward codegen fan-out ([#85](https://github.com/jmbarzee/temporal-architect/issues/85)); don't couple them. A fully deterministic reverse engine (code → map without a subagent scan) was considered and deferred to its own design in [#128](https://github.com/jmbarzee/temporal-architect/issues/128); this protocol is the advisory, human-confirmed path that exists today.
+
+## Stitch & `twf check`
+
+Once every confirmed slice has been recovered into its own [package](./twf-conventions.md#package-per-domain-directory), **assemble** them into one coherent design. This is the reverse-path analog of the forward build's final integration — the step the adoption path previously left unnamed:
+
+1. **Collect** — gather the per-slice packages into one workspace (a single directory tree `twf check` resolves together). Each domain keeps its own `package`; the layout can mirror the code it came from.
+2. **Resolve cross-slice references** — where one slice calls a symbol another slice owns, the consumer `import`s the producer's package and refers to it by qualified leaf name. Because the [decompose step](#decompose-a-large-repo-into-slices) recovered **producers before consumers**, the producer package already exists when the consumer is recovered, so each cross-slice edge becomes a real `import` — there are no placeholder stubs to reconcile.
+3. **Author the shared topology** — fold the per-slice deployment facts into the single topology-owner (`deploy`) package from [Deployment topology during recovery](#deployment-topology-during-recovery): one shared `worker`/`namespace` per real worker process, registering each domain's types by package-qualified ref. Domain slices contributed symbols only; this is where they become instantiated and covered.
+4. **Check & iterate** — run `twf check` over the **whole workspace**, not slice by slice, and iterate to clean. A per-slice package that checked alone can still surface cross-package resolution or coverage gaps once every `import` and the shared worker have to resolve for real.
+
 ## Reading strategy
 
 Read for **design structure**, not line-by-line behavior:
