@@ -107,6 +107,14 @@ service MyService {
       id: "deploy-cluster-{{.Input.ClusterName}}"
     };
   }
+
+  rpc TeardownCluster(TeardownClusterInput) returns (TeardownClusterOutput) {
+    option (temporal.v1.workflow) = {
+      name: "myservice.v1.TeardownCluster"
+      id: "teardown-cluster-{{.Input.ClusterName}}"
+    };
+    option (.nexus.v1.operation).tags = "activity"; // opt out of Nexus exposure
+  }
 }
 
 message CreateThingInput {
@@ -118,6 +126,7 @@ message CreateThingInput {
 - `(temporal.v1.activity)` / `(temporal.v1.workflow)` mark an RPC; set a unique `name` and timeouts. Workflows and activities coexist in one service.
 - `(go.field).tags` injects struct tags on the generated Go type (requires `protopatch`).
 - Use `XxxInput` / `XxxOutput` naming — the Temporal ecosystem expects these, not `Request`/`Response`.
+- `(.nexus.v1.operation)` controls Nexus exposure — **default-on, opt-out**. With the Nexus plugins enabled (Tools § above), every `(temporal.v1.workflow)` RPC is exposed as a Nexus operation by default; tag an RPC `(.nexus.v1.operation).tags = "activity"` (as on `TeardownCluster`) to exclude it. This annotation is from the `nexus.v1` package — **outside** the `(temporal.v1.*)` namespace — so a scan of only `temporal.v1.*` annotations misses it and reports the wrong Nexus surface.
 
 ---
 
@@ -134,8 +143,11 @@ For each annotated service, `protoc-gen-go_temporal` emits these in `*_temporal.
 | `XxxWorkflows` interface | implement for workflows (if RPCs are annotated as workflows) |
 | `RegisterXxxWorkflows(worker, impl)` | register all workflows |
 | `XxxClient` struct | call activities/workflows from outside Temporal |
+| Nexus operation stub (present per exposed workflow RPC) | RPC is exposed via Nexus — its **absence** despite a `(temporal.v1.workflow)` annotation means the RPC was opted out with `(.nexus.v1.operation).tags = "activity"` |
 
 You never write these — only the implementations.
+
+**Reading the table backward for Nexus:** exposure is default-on, then opt-out. A `(temporal.v1.workflow)` RPC is Nexus-exposed unless tagged `(.nexus.v1.operation).tags = "activity"`, so recover the true surface from the generated Nexus stubs, not the `temporal.v1.*` annotations alone — a stub present ⇒ exposed; a stub missing for an annotated workflow RPC ⇒ opted out. (Only applies when the Nexus plugins are enabled in `buf.gen.yaml`.)
 
 ---
 
