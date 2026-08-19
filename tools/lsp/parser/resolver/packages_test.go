@@ -324,3 +324,167 @@ workflow Order(id):
 		t.Fatalf("expected QUALIFIED_REF_WITHOUT_IMPORT, got %v", errs)
 	}
 }
+
+// TestVersionedImportAliasedResolves: an aliased import of a Go-style versioned
+// module path binds the alias qualifier but targets the version-stripped package
+// (`import orders ".../orders/v1"` → package orders, present), so a reference
+// through the alias resolves rather than silently falling to external (#135).
+func TestVersionedImportAliasedResolves(t *testing.T) {
+	orders := `package orders
+
+workflow ProcessOrder(id):
+    close complete(id)
+`
+	app := `package app
+
+import orders "example.com/acme/orders/v1"
+
+workflow Caller(id):
+    workflow orders.ProcessOrder(id) -> r
+    close complete(r)
+`
+	file := mustMerge(t, orders, app)
+	errs := Resolve(file)
+	for _, e := range errs {
+		if e.Severity == "error" {
+			t.Errorf("unexpected error: %s %q", e.Kind, e.Msg)
+		}
+	}
+	caller := findWorkflow(t, file, "Caller")
+	call := caller.Body[0].(*ast.WorkflowCall)
+	if call.Workflow.Resolved == nil || call.Workflow.Resolved.Package != "orders" {
+		t.Fatalf("versioned aliased ref did not resolve to package orders: %+v", call.Workflow.Resolved)
+	}
+}
+
+// TestVersionedImportBareResolves: a bare (unaliased) versioned import defaults
+// its qualifier to the version-stripped leaf (`import ".../orders/v1"` →
+// qualifier and package "orders"), so `orders.ProcessOrder` resolves (#135).
+func TestVersionedImportBareResolves(t *testing.T) {
+	orders := `package orders
+
+workflow ProcessOrder(id):
+    close complete(id)
+`
+	app := `package app
+
+import "example.com/acme/orders/v1"
+
+workflow Caller(id):
+    workflow orders.ProcessOrder(id) -> r
+    close complete(r)
+`
+	file := mustMerge(t, orders, app)
+	errs := Resolve(file)
+	for _, e := range errs {
+		if e.Severity == "error" {
+			t.Errorf("unexpected error: %s %q", e.Kind, e.Msg)
+		}
+	}
+	caller := findWorkflow(t, file, "Caller")
+	call := caller.Body[0].(*ast.WorkflowCall)
+	if call.Workflow.Resolved == nil || call.Workflow.Resolved.Package != "orders" {
+		t.Fatalf("bare versioned ref did not resolve to package orders: %+v", call.Workflow.Resolved)
+	}
+}
+
+// TestVersionedImportAliasDistinctNameResolves: an alias whose name differs from
+// the leaf overrides only the local qualifier — the target is still the
+// version-stripped package (`import o ".../orders/v1"` → `o.X` targets orders).
+func TestVersionedImportAliasDistinctNameResolves(t *testing.T) {
+	orders := `package orders
+
+workflow ProcessOrder(id):
+    close complete(id)
+`
+	app := `package app
+
+import o "example.com/acme/orders/v1"
+
+workflow Caller(id):
+    workflow o.ProcessOrder(id) -> r
+    close complete(r)
+`
+	file := mustMerge(t, orders, app)
+	errs := Resolve(file)
+	for _, e := range errs {
+		if e.Severity == "error" {
+			t.Errorf("unexpected error: %s %q", e.Kind, e.Msg)
+		}
+	}
+	caller := findWorkflow(t, file, "Caller")
+	call := caller.Body[0].(*ast.WorkflowCall)
+	if call.Workflow.Resolved == nil || call.Workflow.Resolved.Package != "orders" {
+		t.Fatalf("distinct-alias versioned ref did not resolve to package orders: %+v", call.Workflow.Resolved)
+	}
+}
+
+// TestVersionedImportTypoRaisesUndefined: with coverage restored, a typo in a
+// reference through a versioned import (`orders.PorcessOrder`) now targets the
+// resolved package "orders" and raises UNDEFINED_WORKFLOW instead of silently
+// passing as external (#135 — the silent-failure this fix closes).
+func TestVersionedImportTypoRaisesUndefined(t *testing.T) {
+	orders := `package orders
+
+workflow ProcessOrder(id):
+    close complete(id)
+`
+	app := `package app
+
+import "example.com/acme/orders/v1"
+
+workflow Caller(id):
+    workflow orders.PorcessOrder(id) -> r
+    close complete(r)
+`
+	file := mustMerge(t, orders, app)
+	errs := Resolve(file)
+	var found bool
+	for _, e := range errs {
+		if e.Kind == ErrUndefinedWorkflow {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected UNDEFINED_WORKFLOW for typo through versioned import, got %v", errs)
+	}
+}
+
+// TestVersionedImportAbsentStaysExternal: a versioned import whose version-
+// stripped leaf is genuinely absent from the tree keeps resolving as external —
+// the reference is left unresolved with NO UNDEFINED_* error and a single
+// UNRESOLVED_IMPORT warning surfaces (the legitimate external path is preserved).
+func TestVersionedImportAbsentStaysExternal(t *testing.T) {
+	input := `package app
+
+import "example.com/acme/missing/v1"
+
+workflow Caller(id):
+    workflow missing.DoThing(id) -> r
+    close complete(r)
+`
+	file := mustParse(t, input)
+	errs := Resolve(file)
+	var warnings, errors int
+	for _, e := range errs {
+		if e.Severity == "warning" {
+			warnings++
+			if e.Kind != ErrUnresolvedImport {
+				t.Errorf("unexpected warning kind %s", e.Kind)
+			}
+		} else {
+			errors++
+		}
+	}
+	if errors != 0 {
+		t.Fatalf("absent versioned import should produce no error-severity diagnostics, got %v", errs)
+	}
+	if warnings != 1 {
+		t.Fatalf("expected exactly one unresolved-import warning, got %v", errs)
+	}
+	caller := findWorkflow(t, file, "Caller")
+	call := caller.Body[0].(*ast.WorkflowCall)
+	if call.Workflow.Resolved != nil {
+		t.Errorf("external versioned ref should be left unresolved, got %v", call.Workflow.Resolved)
+	}
+}

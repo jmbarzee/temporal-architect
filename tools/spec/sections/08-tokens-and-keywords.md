@@ -60,7 +60,7 @@
 
 **Packages and imports:**
 - `package` - Optional leading clause declaring the file's package (compile-time, directory-scoped symbol grouping; distinct from `namespace`). At most one per file, and it must be the first clause. See [Packages and Imports](./14-packages-and-imports.md).
-- `import` - Declares a dependency on another package: `import "<full/module/path>"` (reference the package by its leaf name) or `import alias "<full/module/path>"` (bind an explicit alias for the leaf name).
+- `import` - Declares a dependency on another package: `import "<full/module/path>"` (reference the package by its leaf name — the last path segment, with a trailing `/vN` version segment stripped, per Go's rule) or `import alias "<full/module/path>"` (bind an explicit alias as the local reference name; the target package is still the version-stripped leaf). See [Packages and Imports](./14-packages-and-imports.md).
 - `as` - Reserved hard keyword registered with `package`/`import` in this slice. It has no grammar role yet — the aliased-import surface this slice freezes is the leading-identifier form `import alias "path"` — so `as` is reserved (it cannot be used as an identifier) pending future use.
 
 **Soft keywords** (only special after `nexus`):

@@ -36,12 +36,21 @@ import_decl ::= 'import' [IDENT] STRING NEWLINE
 
 Two forms (Go-style, alias-first):
 
-- `import "<full/module/path>"` — import a package and reference it by its **leaf name** (the last
-  path segment). For example, `import "github.com/acme/orders/billing"` is referenced as
-  `billing`.
-- `import alias "<full/module/path>"` — bind an explicit **alias** (the leading identifier) for the
-  package, used to disambiguate when two imported packages would otherwise share the same leaf
-  name. For example, `import billingv2 "github.com/acme/orders/billing/v2"`.
+- `import "<full/module/path>"` — import a package and reference it by its **leaf name**. The leaf
+  name is the last path segment, except that a trailing `/vN` **version segment** (`v` followed by
+  one or more digits, with a preceding segment) is **stripped** and the preceding segment used
+  instead — this is Go's `importPathToAssumedName` rule, the semantics this syntax is modeled on.
+  For example, `import "github.com/acme/orders/billing"` is referenced as `billing`, and
+  `import "github.com/acme/orders/billing/v2"` is *also* referenced as `billing` (the `/v2` is
+  stripped, not treated as the package name).
+- `import alias "<full/module/path>"` — bind an explicit **alias** (the leading identifier) as the
+  **local** reference name for the package. The alias overrides only the local reference name; the
+  **target package** it resolves against is always the version-stripped leaf, never the alias. Use
+  an alias to disambiguate when two imports would otherwise share the same leaf name — the case that
+  still needs one is **v1 and v2 of the same package**, which strip to the same leaf. For example,
+  `import billing "github.com/acme/orders/billing"` alongside
+  `import billingv2 "github.com/acme/orders/billing/v2"`: both strip to `billing`, so the second is
+  aliased to `billingv2` to keep the two references distinct.
 
 Notes on the string path:
 
@@ -56,9 +65,10 @@ Notes on the string path:
 
 - **Same-package references are bare**: a symbol declared in the same package is referenced by its
   plain name, exactly as today.
-- **Cross-package references are qualified** by the package **leaf name** (or the import alias):
-  `billing.ChargeCard`. A qualified name is written `pkg.Name` and is only legal in the
-  **keyword-led call positions** enumerated below.
+- **Cross-package references are qualified** by the package **leaf name** — the version-stripped
+  leaf, per [Import Declarations](#import-declarations) — or the import alias: `billing.ChargeCard`.
+  A qualified name is written `pkg.Name` and is only legal in the **keyword-led call positions**
+  enumerated below.
 
 ```
 qualified_ref ::= [IDENT '.'] IDENT

@@ -212,13 +212,42 @@ func effPkg(defPkg, filePkg string) string {
 	return filePkg
 }
 
-// leafName is the last "/"-separated segment of an import path — the package
-// name a qualified reference uses (`import "acme/billing"` → "billing").
+// leafName is the package name a qualified reference uses for an import path.
+// It is the last "/"-separated segment, except that a trailing Go-style version
+// segment ("v" followed by one or more digits, e.g. "/v2") is stripped and the
+// preceding segment used instead — Go's importPathToAssumedName rule. So
+// `import "acme/billing"` and `import "acme/billing/v2"` both resolve to
+// "billing". A path with no "/" (or whose only meaningful segment is a version)
+// is returned as-is.
 func leafName(path string) string {
-	if i := strings.LastIndexByte(path, '/'); i >= 0 {
-		return path[i+1:]
+	i := strings.LastIndexByte(path, '/')
+	if i < 0 {
+		return path
 	}
-	return path
+	last := path[i+1:]
+	if isVersionSegment(last) {
+		// Strip the trailing /vN and use the preceding segment when one exists.
+		if j := strings.LastIndexByte(path[:i], '/'); j >= 0 {
+			return path[j+1 : i]
+		}
+		return path[:i]
+	}
+	return last
+}
+
+// isVersionSegment reports whether s is a Go-style module version segment: the
+// letter "v" followed by one or more decimal digits (v1, v2, v10). Such a
+// trailing segment is stripped in leaf-name derivation.
+func isVersionSegment(s string) bool {
+	if len(s) < 2 || s[0] != 'v' {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // importBinding is one qualifier→target-package binding derived from an import
@@ -226,6 +255,7 @@ func leafName(path string) string {
 type importBinding struct {
 	qualifier string // alias, or the path's leaf when no alias
 	targetPkg string // the leaf package name this qualifier resolves to
+	path      string // the import path as written, for self-consistent diagnostics
 	external  bool   // true when targetPkg is absent from the parsed tree
 	used      bool   // set once a reference resolves through this qualifier
 	line      int
@@ -361,6 +391,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		b := &importBinding{
 			qualifier: q,
 			targetPkg: leaf,
+			path:      imp.Path,
 			external:  !s.packages[leaf],
 			line:      imp.Line,
 			column:    imp.Column,
@@ -519,7 +550,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		switch {
 		case b.external:
 			s.errs = append(s.errs, &ResolveError{
-				Msg:      fmt.Sprintf("import %q is unresolved (no package %q in the tree); treated as external", b.qualifier, b.targetPkg),
+				Msg:      fmt.Sprintf("import %q is unresolved (no package %q in the tree); treated as external", b.path, b.targetPkg),
 				Severity: "warning",
 				Line:     b.line,
 				Column:   b.column,
