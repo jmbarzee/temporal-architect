@@ -24,7 +24,7 @@ Before drafting, glance for prior work — a quick discovery step, not a researc
 
 If found, read them **as requirements** and enter [Revising an Existing Design](#revising-an-existing-design) rather than drafting from scratch — drafting on top of validated prior work re-derives (and silently diverges from) boundaries someone already debated. When the task is migrating an existing orchestration (Claude-Code → Temporal, cron → Temporal, etc.), the prior artifacts *are* the requirements; discovering and reading them is the first step, not a detour.
 
-**When the source of truth is existing code** (an already-running Temporal app, no design doc — the dominant adoption path), the `.twf` is *recovered from the implementation*, not drafted. This is a distinct, **parallel** path — do not improvise it inline, and do not let it slow the greenfield loop. Trigger it deliberately on a **bounded slice** (one domain at a time, never the whole repo reflexively), dispatch the [project-discovery subagent](./reference/project-discovery-subagent.md) to scan in isolation, and follow [reverse-engineering.md](./reference/reverse-engineering.md) for the mechanics. The reverse path rejoins the core loop at [Design Review](#design-review).
+**When the source of truth is existing code** (an already-running Temporal app, no design doc — the dominant adoption path), the `.twf` is *recovered from the implementation*, not drafted. This is a distinct, **parallel** path — do not improvise it inline, and do not let it slow the greenfield loop. Trigger it deliberately on a **bounded slice** (one domain at a time, never the whole repo reflexively), dispatch the [project-discovery subagent](./reference/project-discovery-subagent.md) to scan in isolation, and follow [reverse-engineering.md](./reference/reverse-engineering.md) for the mechanics. **When the target is more than one slice** (a whole service, a multi-domain repo), start with the reverse-path *decompose* step — dispatch the [slice-mapper subagent](./reference/slice-mapper-subagent.md) to propose a slice map, confirm it with the user, then fan out per-slice recovery in producers-before-consumers order (see [reverse-engineering.md](./reference/reverse-engineering.md#decompose-a-large-repo-into-slices)). The reverse path rejoins the core loop at [Design Review](#design-review).
 
 ```
   ┌────────────┐
@@ -218,6 +218,7 @@ Read only what the current design requires.
 | Common Errors | Troubleshooting `twf check` parser/resolver errors | [common-errors.md](./reference/common-errors.md) |
 | Primitives Reference | Temporal primitive lookup | [primitives-reference.md](./reference/primitives-reference.md) |
 | Project Discovery Subagent | Scanning an existing repo on a bounded slice | [project-discovery-subagent.md](./reference/project-discovery-subagent.md) |
+| Slice-Mapper Subagent | Decomposing a multi-slice repo into a proposed slice map (reverse decompose) | [slice-mapper-subagent.md](./reference/slice-mapper-subagent.md) |
 | Workers & Task Queues | Worker grouping, task queue routing, deployment | [task-queues.md](./topics/task-queues.md) |
 | Namespaces | Deciding namespace count / boundaries | [namespaces.md](./reference/namespaces.md) |
 | Nexus | Cross-namespace communication | [nexus.md](./topics/nexus.md) |

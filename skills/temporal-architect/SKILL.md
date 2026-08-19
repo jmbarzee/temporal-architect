@@ -30,7 +30,7 @@ Everything below serves that: protect context, raise the level of abstraction, a
 The design↔code edge is traversed in **two directions**. Identify which one the task needs before doing anything else.
 
 - **Direction A — `.twf` → application code** (forward authoring). The steady-state ideal: once a project has a `.twf`, *changes are made in the `.twf` first, then propagated forward* to the authors. Most work lives here.
-- **Direction B — application code → `.twf`** (recovery / reconciliation). Bootstraps a `.twf` from an existing app, and reconciles drift back into the `.twf`.
+- **Direction B — application code → `.twf`** (recovery / reconciliation). Bootstraps a `.twf` from an existing app, and reconciles drift back into the `.twf`. Recovery now has its own **decompose step** for multi-slice targets — a `slice-mapper` subagent that proposes a slice map, the reverse-path sibling of `twf graph chunks` below. It is owned by the design skill; the mechanics stay there (see [`temporal-architect-design`'s reverse-engineering.md](../temporal-architect-design/reference/reverse-engineering.md#decompose-a-large-repo-into-slices)).
 
 Detect the **situation** cheaply (no subagent needed) and enter the matching path:
 
