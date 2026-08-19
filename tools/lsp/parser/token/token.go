@@ -192,11 +192,17 @@ func (t TokenType) String() string {
 }
 
 // Token represents a single lexical token.
+//
+// Offset is the byte offset of the token's first character in the source input.
+// It lets the parser rewind the lexer to a token's start to re-scan it under a
+// different sub-grammar (see Lexer.RescanDeployName) — the deploy-name positions
+// are the only ones that need this, because the lexer is otherwise context-free.
 type Token struct {
 	Type    TokenType
 	Literal string
 	Line    int
 	Column  int
+	Offset  int
 }
 
 func (t Token) String() string {

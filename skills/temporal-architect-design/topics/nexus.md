@@ -204,6 +204,8 @@ The resolver validates all nexus references:
 | Worker refs missing service | `worker W references undefined nexus service: X` |
 | Endpoint missing `task_queue` | `nexus endpoint X missing required task_queue option` |
 | Endpoint task queue has no worker with service | `no worker on that queue has service S` |
+| Endpoint under-parameterized for its family | `nexus endpoint "X" must be parameterized by all of namespace N's template params; missing <param>` (`ENDPOINT_PARAM_NOT_SUPERSET`) |
+| Unbound `{param}` in an endpoint/worker option value | `unbound template param {P} in endpoint E options: ...` / `... in worker options in namespace N: ...` (`UNBOUND_TEMPLATE_PARAM`) |
 
 ### Warnings
 
@@ -216,6 +218,15 @@ The resolver validates all nexus references:
 > reached by qualifying the reference (`nexus Ep pkg.Service.Op`) and `import`ing that package; if
 > the package isn't in the tree the import is treated as external. Endpoints are flat-global and
 > never qualified. See [common-errors.md](../reference/common-errors.md#packages-imports-and-external-references).
+
+> **Templated endpoint references bind by full-string identity.** A `{param}` hole in an endpoint
+> name (`nexus fabric-shard-{org}-BootstrapShard Svc.Op(...)`) is part of a *parameterized family* —
+> the reference binds its definition **iff the assembled name strings are identical** (holes matched
+> by spelling). A spelling mismatch, or a **static** reference to a templated endpoint, falls through
+> to `NEXUS_UNDEFINED_ENDPOINT` — it is not a new error. Endpoints remain flat-global and are never
+> package-qualified; parameterization does not change that. See
+> [namespaces.md](../reference/namespaces.md#parameterized-namespaces-and-endpoints) for the family
+> model and worked example.
 
 ---
 

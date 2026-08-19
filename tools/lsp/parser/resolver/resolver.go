@@ -88,6 +88,19 @@ const (
 	// tree — treated as external, its qualified refs resolve as external with no
 	// UNDEFINED_*. Warning severity.
 	ErrUnresolvedImport
+
+	// --- Parameterized-family errors (issue #100) ---
+
+	// ErrEndpointParamNotSuperset: a nexus endpoint's template-param set is not a
+	// superset of its owning namespace's. The endpoint's flat-global name would
+	// then collide across the namespace family (e.g. a static endpoint inside a
+	// `fabric-shard-{org}` namespace resolves to one name for every org).
+	ErrEndpointParamNotSuperset
+	// ErrUnboundTemplateParam: a `{param}` hole in an option-value string is not
+	// bound by the enclosing identifier template — the namespace template for a
+	// worker/namespace option, or the endpoint's own template or its owning
+	// namespace's for an endpoint option.
+	ErrUnboundTemplateParam
 )
 
 // ResolveError represents a resolution error with position info.
@@ -166,6 +179,10 @@ func (k ErrorKind) String() string {
 		return "QUALIFIED_REF_WITHOUT_IMPORT"
 	case ErrUnresolvedImport:
 		return "UNRESOLVED_IMPORT"
+	case ErrEndpointParamNotSuperset:
+		return "ENDPOINT_PARAM_NOT_SUPERSET"
+	case ErrUnboundTemplateParam:
+		return "UNBOUND_TEMPLATE_PARAM"
 	}
 	return "UNKNOWN"
 }
@@ -290,6 +307,17 @@ func Resolve(file *ast.File) []*ResolveError {
 			ep := &ns.Endpoints[i]
 			ep.Namespace = ns.Name
 			ep.TaskQueue = endpointTaskQueue(ep.Options)
+			// An endpoint's template-param set must be a superset of its owning
+			// namespace's, or its flat-global name collides across the family.
+			if missing := paramsNotIn(ns.TemplateParams, ep.TemplateParams); len(missing) > 0 {
+				s.errs = append(s.errs, &ResolveError{
+					Msg:    fmt.Sprintf("nexus endpoint %q must be parameterized by all of namespace %s's template params; missing %s", ep.EndpointName, ns.Name, strings.Join(missing, ", ")),
+					Line:   ep.Line,
+					Column: ep.Column,
+					Kind:   ErrEndpointParamNotSuperset,
+					Name:   ep.EndpointName,
+				})
+			}
 			if existing, exists := s.allEndpoints[ep.EndpointName]; exists {
 				s.errs = append(s.errs, &ResolveError{
 					Msg:    fmt.Sprintf("duplicate nexus endpoint name %q: defined in namespace %s and namespace %s", ep.EndpointName, existing.Namespace, ns.Name),
@@ -300,6 +328,23 @@ func Resolve(file *ast.File) []*ResolveError {
 				})
 			}
 			s.allEndpoints[ep.EndpointName] = ep
+		}
+	}
+
+	// Parameterized-family binding: every {param} hole appearing in an option
+	// STRING value must be bound by the enclosing identifier template. A worker's
+	// options are bound by the owning namespace's template; an endpoint's options
+	// by its own template plus its owning namespace's. Static nodes have an empty
+	// binding set, so any hole in their option strings is unbound.
+	for _, ns := range s.namespaces {
+		nsParams := ns.TemplateParams
+		for i := range ns.Workers {
+			s.checkOptionParams(ns.Workers[i].Options, nsParams, fmt.Sprintf("worker options in namespace %s", ns.Name))
+		}
+		for i := range ns.Endpoints {
+			ep := &ns.Endpoints[i]
+			bound := append(append([]string(nil), nsParams...), ep.TemplateParams...)
+			s.checkOptionParams(ep.Options, bound, fmt.Sprintf("endpoint %s options", ep.EndpointName))
 		}
 	}
 
@@ -763,6 +808,61 @@ func resolveLocalRef[T any](ref *ast.Ref[T], defs map[string]T, kind string, err
 		Kind:   errKind,
 		Name:   ref.Name,
 	})
+}
+
+// paramsNotIn returns the members of need that are absent from have, preserving
+// need's order. Used for the endpoint-⊇-namespace superset check: need is the
+// namespace params, have is the endpoint params.
+func paramsNotIn(need, have []string) []string {
+	if len(need) == 0 {
+		return nil
+	}
+	set := make(map[string]bool, len(have))
+	for _, p := range have {
+		set[p] = true
+	}
+	var missing []string
+	for _, p := range need {
+		if !set[p] {
+			missing = append(missing, p)
+		}
+	}
+	return missing
+}
+
+// checkOptionParams appends an ErrUnboundTemplateParam for every {param} hole in
+// a STRING option value (recursing into nested blocks) whose name is not in the
+// bound set. where labels the enclosing block for the diagnostic message.
+func (s *state) checkOptionParams(opts *ast.OptionsBlock, bound []string, where string) {
+	if opts == nil {
+		return
+	}
+	set := make(map[string]bool, len(bound))
+	for _, p := range bound {
+		set[p] = true
+	}
+	var scan func(entries []*ast.OptionEntry)
+	scan = func(entries []*ast.OptionEntry) {
+		for _, e := range entries {
+			if e.ValueType == "string" {
+				for _, hole := range ast.ExtractTemplateParams(e.Value) {
+					if !set[hole] {
+						s.errs = append(s.errs, &ResolveError{
+							Msg:    fmt.Sprintf("unbound template param {%s} in %s: option %q is not bound by any enclosing namespace/endpoint template", hole, where, e.Key),
+							Line:   e.Line,
+							Column: e.Column,
+							Kind:   ErrUnboundTemplateParam,
+							Name:   hole,
+						})
+					}
+				}
+			}
+			if len(e.Nested) > 0 {
+				scan(e.Nested)
+			}
+		}
+	}
+	scan(opts.Entries)
 }
 
 // endpointTaskQueue extracts the task_queue value from an options block, or ""

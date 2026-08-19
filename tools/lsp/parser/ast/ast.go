@@ -147,17 +147,25 @@ type NamespaceEndpoint struct {
 	EndpointName string
 	Namespace    string // set by resolver: name of the owning namespace
 	TaskQueue    string // set by resolver: endpoint's task_queue option
-	Options      *OptionsBlock
+	// TemplateParams holds the distinct {param} template holes in EndpointName,
+	// in order of first appearance (populated at parse time). Empty for a static
+	// endpoint name, so its serialization stays byte-identical.
+	TemplateParams []string
+	Options        *OptionsBlock
 }
 
 // NamespaceDef is a namespace definition that instantiates workers with options.
 type NamespaceDef struct {
 	Pos
-	Name       string
-	Workers    []NamespaceWorker
-	Endpoints  []NamespaceEndpoint
-	SourceFile string
-	Package    string // runtime-only; see Packaged note above
+	Name string
+	// TemplateParams holds the distinct {param} template holes in Name, in order
+	// of first appearance (populated at parse time). Empty for a static namespace
+	// name, so its serialization stays byte-identical.
+	TemplateParams []string
+	Workers        []NamespaceWorker
+	Endpoints      []NamespaceEndpoint
+	SourceFile     string
+	Package        string // runtime-only; see Packaged note above
 }
 
 func (*NamespaceDef) defNode()              {}

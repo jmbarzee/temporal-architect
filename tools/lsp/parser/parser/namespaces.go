@@ -11,7 +11,7 @@ func parseNamespaceDef(p *Parser) (ast.Definition, error) {
 	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume NAMESPACE
 
-	name, err := p.expect(token.IDENT)
+	name, nameParams, err := p.expectDeployName()
 	if err != nil {
 		return nil, err
 	}
@@ -21,8 +21,9 @@ func parseNamespaceDef(p *Parser) (ast.Definition, error) {
 	}
 
 	ns := &ast.NamespaceDef{
-		Pos:  pos,
-		Name: name.Literal,
+		Pos:            pos,
+		Name:           name.Literal,
+		TemplateParams: nameParams,
 	}
 
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
@@ -65,7 +66,7 @@ func parseNamespaceDef(p *Parser) (ast.Definition, error) {
 				return nil, p.errorf("expected 'endpoint' after 'nexus' in namespace block, got %s %q", p.current.Type, p.current.Literal)
 			}
 			p.advance() // consume "endpoint"
-			epName, err := p.expect(token.IDENT)
+			epName, epParams, err := p.expectDeployName()
 			if err != nil {
 				return nil, err
 			}
@@ -77,9 +78,10 @@ func parseNamespaceDef(p *Parser) (ast.Definition, error) {
 				return nil, err
 			}
 			ns.Endpoints = append(ns.Endpoints, ast.NamespaceEndpoint{
-				Pos:          epPos,
-				EndpointName: epName.Literal,
-				Options:      opts,
+				Pos:            epPos,
+				EndpointName:   epName.Literal,
+				TemplateParams: epParams,
+				Options:        opts,
 			})
 
 		default:

@@ -71,6 +71,14 @@ export interface GraphNode {
   namespace?: string
   /** Task queue name. Worker and nexus-tier nodes only. */
   queue?: string
+  /**
+   * Template holes of a parameterized `namespace`/`nexusEndpoint` family,
+   * in first-appearance order (e.g. `fabric-shard-{org}` → `['org']`).
+   * The parser collapses the family to one representative node; this drives
+   * the cardinality badge. Display-only metadata — like `worker/namespace/queue`,
+   * never identity. Absent/`[]` means a static node (renders unchanged).
+   */
+  templateParams?: string[]
 }
 
 export type EdgeType = 'containment' | 'dependency'

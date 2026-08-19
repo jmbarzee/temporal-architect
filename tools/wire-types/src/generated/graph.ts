@@ -48,6 +48,15 @@ export interface Node {
    * deployments. Display metadata only — not a structural input.
    */
   queue?: string;
+  /**
+   * TemplateParams is populated on namespace and nexusEndpoint nodes whose
+   * deploy_name carries {param} template holes: the distinct params in order of
+   * first appearance (e.g. `fabric-shard-{org}` → ["org"]). Empty/omitted for a
+   * static node, so a graph with no templated families is byte-identical. A
+   * consumer reads it to collapse a parameterized family into one representative
+   * node plus a cardinality badge.
+   */
+  templateParams?: string[];
   orphan?: boolean;
 }
 /**

@@ -90,6 +90,31 @@ IDENT ::= [a-zA-Z_][a-zA-Z0-9_]*
 
 Identifiers start with a letter or underscore, followed by any combination of letters, digits, or underscores.
 
+## Deployment Names
+
+Namespace names, nexus endpoint names, and the endpoint reference in a `nexus` call use a distinct
+**deployment-name** form rather than plain `IDENT`. It admits hyphens — real Temporal namespace and
+endpoint strings use them, and plain `IDENT` cannot spell `fabric-shard` — and inline `{param}`
+template holes, so a per-tenant family (`fabric-shard-{org}`) is expressible as one name:
+
+```
+template_hole ::= '{' IDENT '}'
+deploy_char   ::= [a-zA-Z0-9_-]
+deploy_name   ::= (letter | '_') deploy_char* (template_hole deploy_char*)*
+```
+
+A deployment name starts with a letter or underscore, ranges over the character class
+`[a-zA-Z0-9_-]`, and may interleave `{param}` template holes. Hyphens are admitted but a name may
+**not** start with a hyphen; dots are **not** admitted (they collide with the package-leaf
+qualifier and the `service.operation` separator). A static, hyphen-free deployment name is a lexical
+subset of `IDENT`, so existing names tokenize and format byte-identically.
+
+`deploy_name` is used in exactly three positions — `namespace <name>`, `nexus endpoint <name>`, and
+the endpoint reference in a `nexus` call. **All other identifiers** (workflow, activity, worker,
+package, service, operation) remain plain `IDENT`; they are code symbols, not runtime deployment
+strings. See [Worker and Namespace Definitions](./03-workers-and-namespaces.md) for the templating
+semantics.
+
 ## Literals
 
 ```
@@ -101,6 +126,11 @@ STRING ::= '"' [^"]* '"'
 `NUMBER` and `DURATION` tokens are recognized everywhere. In raw expressions, digits that start a line or follow operators are consumed by the raw text scanner.
 
 A `list_value` (`'[' [ STRING (',' STRING)* ] ']'`, defined in [Statement Syntax](./06-statement-syntax.md)) is a compound option value rather than a single token: a bracketed, comma-separated inline list of `STRING` elements, empty list allowed, no trailing comma, no `NEWLINE` inside the brackets.
+
+`{param}` template holes (`template_hole`, above) are also recognized **inside `STRING` option
+values** — e.g. `task_queue: "fabric-shard-{org}-bootstrap"` — so a per-tenant namespace can name a
+per-tenant task queue. The hole denotes the same per-tenant dimension as an identically-named hole
+in the enclosing deployment name; see [Worker and Namespace Definitions](./03-workers-and-namespaces.md).
 
 ## Comments
 

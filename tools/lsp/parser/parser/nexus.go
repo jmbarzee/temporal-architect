@@ -189,7 +189,7 @@ func (p *Parser) parseNexusServiceRef() (svcPkg string, svc, op token.Token, err
 func parseNexusCallInner(p *Parser, pos ast.Pos, detach bool) (ast.Statement, error) {
 	p.advance() // consume NEXUS
 
-	endpoint, err := p.expect(token.IDENT)
+	endpoint, _, err := p.expectDeployName()
 	if err != nil {
 		return nil, err
 	}

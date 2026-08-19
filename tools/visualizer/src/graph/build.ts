@@ -139,6 +139,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
       worker: pn.worker,
       namespace: pn.namespace,
       queue: pn.queue,
+      templateParams: pn.templateParams,
     })
   }
 

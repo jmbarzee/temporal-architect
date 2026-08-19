@@ -49,10 +49,11 @@ type workerDeployment struct {
 // resolver enforces global uniqueness of endpoint names, so a single
 // (namespace, queue) pair per endpoint is sufficient.
 type endpointDeployment struct {
-	Name      string
-	Namespace string
-	Queue     string
-	Line      int
+	Name           string
+	Namespace      string
+	Queue          string
+	Line           int
+	TemplateParams []string
 }
 
 func indexAST(file *ast.File) *astIndex {
@@ -94,10 +95,11 @@ func indexAST(file *ast.File) *astIndex {
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			idx.endpointsByName[ep.EndpointName] = &endpointDeployment{
-				Name:      ep.EndpointName,
-				Namespace: ns.Name,
-				Queue:     taskQueue(ep.Options),
-				Line:      ep.Line,
+				Name:           ep.EndpointName,
+				Namespace:      ns.Name,
+				Queue:          taskQueue(ep.Options),
+				Line:           ep.Line,
+				TemplateParams: ep.TemplateParams,
 			}
 		}
 	}
@@ -207,8 +209,9 @@ func (idx *astIndex) deploymentsHosting(kind, name string) []workerDeployment {
 func (g *Graph) enumerateNodes(idx *astIndex) {
 	for _, ns := range idx.namespaces {
 		g.addNode(Node{
-			ID:         NamespaceID(ns.Name),
-			Definition: DefKey(KindNamespace, ns.Name),
+			ID:             NamespaceID(ns.Name),
+			Definition:     DefKey(KindNamespace, ns.Name),
+			TemplateParams: ns.TemplateParams,
 		})
 	}
 
@@ -239,9 +242,10 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 		// the endpoint↔operation relationship is the nexusRoute edge. Only
 		// Queue (intrinsic, display-only) stays on the node.
 		g.addNode(Node{
-			ID:         EndpointID(ep.Name, ep.Namespace),
-			Definition: DefKey(KindNexusEndpoint, ep.Name),
-			Queue:      ep.Queue,
+			ID:             EndpointID(ep.Name, ep.Namespace),
+			Definition:     DefKey(KindNexusEndpoint, ep.Name),
+			Queue:          ep.Queue,
+			TemplateParams: ep.TemplateParams,
 		})
 	}
 

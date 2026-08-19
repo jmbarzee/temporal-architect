@@ -18,11 +18,46 @@ import (
 // the next line/EOF, giving the parser a clean boundary to resume from.
 func (p *Parser) advance() {
 	p.current = p.peek
-	p.peek = p.lex.NextToken()
-	for p.peek.Type == token.ILLEGAL {
-		p.recordLexError(p.peek)
-		p.peek = p.lex.NextToken()
+	p.peek = p.scan()
+}
+
+// scan reads the next token from the lexer, recording and skipping any
+// structural token.ILLEGAL tokens (see advance). Centralizing the skip here
+// lets both advance and the deploy-name re-sync path share it.
+func (p *Parser) scan() token.Token {
+	tok := p.lex.NextToken()
+	for tok.Type == token.ILLEGAL {
+		p.recordLexError(tok)
+		tok = p.lex.NextToken()
 	}
+	return tok
+}
+
+// expectDeployName consumes a deploy_name at the current position — a
+// hyphen- and {param}-permitting deployment name used in exactly the namespace
+// name, nexus endpoint name, and nexus endpoint-reference positions. It rewinds
+// the lexer to the current token's start and re-scans the run as one name (the
+// context-free lexer otherwise fragments `fabric-shard-{org}` into IDENT/RAW_TEXT
+// pieces), then re-syncs current/peek from the lexer's new position.
+//
+// It returns the assembled name token (Literal = full name, Line/Column at the
+// name's start) and the distinct {param} template holes in order of first
+// appearance (empty for a static name). On a malformed name it returns a
+// ParseError positioned at the name's start.
+func (p *Parser) expectDeployName() (token.Token, []string, error) {
+	start := p.current
+	if start.Type != token.IDENT {
+		return token.Token{}, nil, p.errorf("expected a name, got %s (%q)", start.Type, start.Literal)
+	}
+	nameTok, err := p.lex.RescanDeployName(start)
+	if err != nil {
+		return token.Token{}, nil, &ParseError{Msg: err.Error(), Line: start.Line, Column: start.Column}
+	}
+	// The lexer is now positioned immediately after the deploy_name; re-fill the
+	// two-token lookahead from there.
+	p.current = p.scan()
+	p.peek = p.scan()
+	return nameTok, ast.ExtractTemplateParams(nameTok.Literal), nil
 }
 
 // recordLexError converts a token.ILLEGAL into a ParseError carrying the lexer's
@@ -210,4 +245,3 @@ func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock
 	}
 	return opts, nil
 }
-

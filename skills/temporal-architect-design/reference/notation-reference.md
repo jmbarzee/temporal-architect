@@ -43,12 +43,14 @@
 | `sync OpName(params) -> (Type):` | Sync nexus operation (in service body) |
 | `worker name:` | Worker type set definition |
 | `nexus service Name` (in worker) | Register nexus service on worker |
-| `namespace name:` | Namespace definition (deployment with options) |
-| `nexus endpoint Name` (in namespace) | Nexus endpoint instantiation with task_queue |
+| `namespace name:` | Namespace definition (deployment with options). The name is a `deploy_name` — plain identifiers plus hyphens and `{param}` template holes (see [namespaces.md](./namespaces.md#parameterized-namespaces-and-endpoints)) |
+| `nexus endpoint Name` (in namespace) | Nexus endpoint instantiation with task_queue. The name is a `deploy_name` (hyphens and `{param}` holes allowed) |
 | `package Name` | Package clause — first line of a file; groups a directory's symbols (see [packages.md](../topics/packages.md)) |
 | `import "full/module/path"` | Import a package, referenced by its leaf name |
 | `import alias "full/module/path"` | Import a package under an explicit alias (disambiguates leaf clashes) |
 | `pkg.Name` (qualified reference) | Reference a symbol in an imported package by leaf name — e.g. `activity billing.ChargeCard`, `nexus Ep billing.PaymentService.Charge`. Same-package refs stay bare; endpoints are never qualified |
+
+> **Endpoint names in nexus calls are `deploy_name`s.** In the four nexus-call forms above — `nexus`, `detach nexus`, `promise p <- nexus`, and `await nexus` (also the `await one` case form) — the `Endpoint` position accepts the `deploy_name` form (hyphens and `{param}` holes), and a templated reference binds its definition by full-string identity. Only the endpoint name is a `deploy_name`; service and operation names stay plain identifiers. See [namespaces.md](./namespaces.md#parameterized-namespaces-and-endpoints).
 
 ## Common `options:` Keys
 

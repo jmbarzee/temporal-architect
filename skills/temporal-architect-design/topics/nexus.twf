@@ -146,3 +146,46 @@ namespace orders:
     worker checkoutWorker
         options:
             task_queue: "checkout"
+
+# --- Parameterized family: per-org namespace + endpoint ---
+# A {param} hole makes the namespace/endpoint a *family* (one member per org).
+# Identity is the full templated name string, holes matched by spelling: the
+# caller's reference binds the definition iff the assembled strings are identical.
+# The endpoint's {param} set must be a superset of the namespace's; option holes
+# ({org} in task_queue) are deploy-time template holes bound by the family.
+
+nexus service BootstrapService:
+    async BootstrapShard workflow BootstrapShardWorkflow
+
+workflow BootstrapShardWorkflow(shardId: string):
+    activity InitShard(shardId)
+    close complete
+
+activity InitShard(shardId: string):
+    init(shardId)
+
+workflow BootstrapCaller(org: string):
+    # Templated endpoint reference — identical string to the definition below.
+    nexus fabric-shard-{org}-BootstrapShard BootstrapService.BootstrapShard(org)
+    close complete
+
+worker bootstrapWorker:
+    workflow BootstrapShardWorkflow
+    activity InitShard
+    nexus service BootstrapService
+
+worker bootstrapCallerWorker:
+    workflow BootstrapCaller
+
+namespace fabric-shard-{org}:
+    worker bootstrapWorker
+        options:
+            task_queue: "q-{org}-bootstrap"
+    nexus endpoint fabric-shard-{org}-BootstrapShard
+        options:
+            task_queue: "q-{org}-bootstrap"
+
+namespace bootstrapApp:
+    worker bootstrapCallerWorker
+        options:
+            task_queue: "bootstrap-app"

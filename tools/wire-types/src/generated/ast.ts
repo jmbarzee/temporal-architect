@@ -160,6 +160,12 @@ export interface NamespaceEndpointJSON {
   line: number /* int */;
   column: number /* int */;
   taskQueue?: string;
+  /**
+   * TemplateParams is the distinct {param} holes in the endpoint name, in order
+   * of first appearance. Omitted (omitempty) for a static endpoint so its
+   * output stays byte-identical.
+   */
+  templateParams?: string[];
   options?: OptionsBlockJSON;
 }
 /**
@@ -171,6 +177,12 @@ export interface NamespaceDefJSON {
   column: number /* int */;
   sourceFile?: string;
   name: string;
+  /**
+   * TemplateParams is the distinct {param} holes in the namespace name, in
+   * order of first appearance. Omitted (omitempty) for a static namespace so
+   * its output stays byte-identical.
+   */
+  templateParams?: string[];
   workers: NamespaceWorkerJSON[];
   endpoints: NamespaceEndpointJSON[];
 }

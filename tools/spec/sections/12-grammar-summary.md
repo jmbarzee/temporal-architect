@@ -26,10 +26,10 @@ worker_entry ::= 'workflow' qualified_ref NEWLINE
                | 'activity' qualified_ref NEWLINE
                | 'nexus' 'service' qualified_ref NEWLINE
 
-namespace_def ::= 'namespace' IDENT ':' NEWLINE
+namespace_def ::= 'namespace' deploy_name ':' NEWLINE
                   INDENT namespace_entry* DEDENT
 namespace_entry ::= 'worker' IDENT NEWLINE [options_line]
-                  | 'nexus' 'endpoint' IDENT NEWLINE [options_line]
+                  | 'nexus' 'endpoint' deploy_name NEWLINE [options_line]
 
 nexus_service_def ::= 'nexus' 'service' IDENT ':' NEWLINE
                       INDENT nexus_operation* DEDENT
@@ -37,7 +37,7 @@ nexus_operation ::= 'async' IDENT 'workflow' qualified_ref NEWLINE
                   | 'sync' IDENT params '->' return_type ':' NEWLINE
                     INDENT statement* DEDENT
 
-nexus_call ::= ['detach'] 'nexus' IDENT qualified_ref '.' IDENT args ['->' result] [NEWLINE options_line]
+nexus_call ::= ['detach'] 'nexus' deploy_name qualified_ref '.' IDENT args ['->' result] [NEWLINE options_line]
 
 options_block ::= 'options' ':' NEWLINE INDENT option_entry+ DEDENT
 default_options_block ::= 'default_options' ':' NEWLINE INDENT option_entry+ DEDENT
@@ -70,7 +70,7 @@ set_stmt ::= 'set' IDENT NEWLINE
 unset_stmt ::= 'unset' IDENT NEWLINE
 
 await_stmt ::= 'await' (timer_target | signal_target | update_target | activity_target | workflow_target | nexus_target | ident_target) NEWLINE
-nexus_target ::= ['detach'] 'nexus' IDENT qualified_ref '.' IDENT args ['->' result]
+nexus_target ::= ['detach'] 'nexus' deploy_name qualified_ref '.' IDENT args ['->' result]
 ident_target ::= IDENT ['->' result]
 
 await_one_case ::= signal_case | update_case | timer_case | activity_case | workflow_case | nexus_case | await_all_case | ident_case
@@ -85,7 +85,7 @@ activity_case ::= 'activity' qualified_ref args ['->' result] ':' NEWLINE [INDEN
 
 workflow_case ::= ['detach'] 'workflow' qualified_ref args ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
 
-nexus_case ::= ['detach'] 'nexus' IDENT qualified_ref '.' IDENT args ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
+nexus_case ::= ['detach'] 'nexus' deploy_name qualified_ref '.' IDENT args ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
 
 ident_case ::= IDENT ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
 
@@ -102,3 +102,12 @@ condition names, and the `signal handle.Name` send target are not package-qualif
 and dots refer to in-workflow constructs, not cross-package symbols. The qualifier resolves against
 the imported package that owns the referenced symbol; an unresolved (external) import makes qualified
 references resolve as external.
+
+**Deployment names.** `deploy_name` is the hyphen- and template-permitting name form defined in
+[Tokens and Keywords](./08-tokens-and-keywords.md), used in place of `IDENT` in exactly three
+positions: the `namespace` name, the `nexus endpoint` name, and the endpoint reference in a `nexus`
+call (statement, `await` target, and `await one` case alike). It admits the char class
+`[a-zA-Z0-9_-]` (no leading hyphen, no dots) interleaved with `{param}` template holes. All other
+names remain plain `IDENT`. A static, hyphen-free `deploy_name` is a subset of `IDENT`, so static
+output is byte-identical. See [Worker and Namespace Definitions](./03-workers-and-namespaces.md) for
+the templating semantics and resolution rules.

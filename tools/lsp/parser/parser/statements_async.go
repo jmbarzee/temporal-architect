@@ -192,7 +192,7 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 // When detach is true and a result arrow is present, an error is returned.
 func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.NexusTarget, error) {
 	p.advance() // consume NEXUS
-	endpoint, err := p.expect(token.IDENT)
+	endpoint, _, err := p.expectDeployName()
 	if err != nil {
 		return nil, err
 	}

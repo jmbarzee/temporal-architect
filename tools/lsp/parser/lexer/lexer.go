@@ -1,16 +1,18 @@
 package lexer
 
 import (
+	"fmt"
+
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
 // Lexer tokenizes .twf source input with indentation-aware INDENT/DEDENT emission.
 type Lexer struct {
 	input   []byte
-	pos     int // current position in input
-	line    int // 1-based line number
-	col     int // 1-based column number
-	atBOL   bool // at beginning of line (for indent processing)
+	pos     int           // current position in input
+	line    int           // 1-based line number
+	col     int           // 1-based column number
+	atBOL   bool          // at beginning of line (for indent processing)
 	pending []token.Token // queued tokens (INDENT/DEDENT)
 
 	indentStack []int // stack of indent levels, starts at [0]
@@ -349,6 +351,75 @@ func (l *Lexer) scanIdentifier() token.Token {
 	return tok
 }
 
+// RescanDeployName rewinds the lexer to the byte offset of an already-scanned
+// token and re-reads the source from there as a single deploy_name, returning
+// the assembled name token (Type IDENT, Literal = the full name including any
+// {param} holes). On return the lexer is positioned immediately after the name,
+// so the parser can resume normal tokenization from that point.
+//
+// This exists because the lexer is context-free: it cannot know it is standing
+// in a namespace/endpoint name position, so `fabric-shard-{org}` tokenizes as a
+// jumble of IDENT / RAW_TEXT fragments in the default path. The parser calls
+// this at exactly the three deploy_name positions to re-scan the run as one
+// name. The default NextToken path is untouched, so every other construct —
+// including struct literals like `Result{ok: true}` — tokenizes exactly as
+// before.
+//
+// deploy_name grammar:
+//
+//	(letter | '_') [a-zA-Z0-9_-]* ( '{' IDENT '}' [a-zA-Z0-9_-]* )*
+//
+// No leading hyphen (guaranteed by the letter/underscore start) and no dots (a
+// '.' terminates the scan, leaving it for the parser to reject in a name
+// position). A malformed or unterminated `{...}` hole is a loud error.
+func (l *Lexer) RescanDeployName(tok token.Token) (token.Token, error) {
+	l.pos = tok.Offset
+	l.line = tok.Line
+	l.col = tok.Column
+	l.atBOL = false
+	l.pending = nil
+	l.eofEmitted = false
+	return l.scanDeployName()
+}
+
+// scanDeployName scans a deploy_name from the current position. See
+// RescanDeployName for the grammar and rationale.
+func (l *Lexer) scanDeployName() (token.Token, error) {
+	tok := l.makeToken(token.IDENT, "")
+	start := l.pos
+
+	if l.pos >= len(l.input) || !isIdentStart(l.input[l.pos]) {
+		return tok, fmt.Errorf("deployment name must start with a letter or underscore")
+	}
+
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+		switch {
+		case isIdentContinue(ch) || ch == '-':
+			l.advance()
+		case ch == '{':
+			l.advance() // consume '{'
+			if l.pos >= len(l.input) || !isIdentStart(l.input[l.pos]) {
+				return tok, fmt.Errorf("template hole must contain an identifier")
+			}
+			for l.pos < len(l.input) && isIdentContinue(l.input[l.pos]) {
+				l.advance()
+			}
+			if l.pos >= len(l.input) || l.input[l.pos] != '}' {
+				return tok, fmt.Errorf("unterminated template hole: expected '}'")
+			}
+			l.advance() // consume '}'
+		default:
+			// '.', ':', whitespace, '(', newline, EOF, etc. terminate the name.
+			tok.Literal = string(l.input[start:l.pos])
+			return tok, nil
+		}
+	}
+
+	tok.Literal = string(l.input[start:l.pos])
+	return tok, nil
+}
+
 func (l *Lexer) scanNumber() token.Token {
 	tok := l.makeToken(token.NUMBER, "")
 	start := l.pos
@@ -393,6 +464,7 @@ func (l *Lexer) makeToken(tt token.TokenType, literal string) token.Token {
 		Literal: literal,
 		Line:    l.line,
 		Column:  l.col,
+		Offset:  l.pos,
 	}
 }
 
@@ -418,4 +490,3 @@ func isIdentContinue(ch byte) bool {
 func isDigit(ch byte) bool {
 	return ch >= '0' && ch <= '9'
 }
-
