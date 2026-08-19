@@ -1,0 +1,44 @@
+# Source: default-options.md
+# Patterns: definition-level default_options, per-key call-site override, atomic-replace of nested blocks
+
+# --- Activity default_options: keep operational config with the definition ---
+
+activity ChargeCard(card: Card, amount: int) -> (Receipt):
+    default_options:
+        start_to_close_timeout: 30s
+        retry_policy:
+            maximum_attempts: 5
+            initial_interval: 1s
+            backoff_coefficient: 2.0
+    return charge(card, amount)
+
+# --- Workflow default_options: first body element, before state: ---
+
+workflow FulfillOrder(order: Order) -> (OrderResult):
+    default_options:
+        workflow_execution_timeout: 1h
+        retry_policy:
+            maximum_attempts: 3
+    state:
+        condition paid
+
+    # Uses the definition's default_options (30s timeout, 5 attempts).
+    activity ChargeCard(order.card, order.total) -> receipt
+
+    # Per-key override: this call keeps the default start_to_close_timeout,
+    # but its retry_policy atomic-replaces the default one (no deep merge).
+    activity ChargeCard(order.card, order.tip) -> tipReceipt
+        options:
+            retry_policy:
+                maximum_attempts: 1
+
+    close complete(OrderResult{status: "fulfilled"})
+
+worker fulfillmentWorker:
+    workflow FulfillOrder
+    activity ChargeCard
+
+namespace fulfillment:
+    worker fulfillmentWorker
+        options:
+            task_queue: "fulfillment"

@@ -116,6 +116,63 @@ fut := c.ExecuteOperation(ctx, "ChargePayment", payment, workflow.NexusOperation
 err := fut.Get(ctx, &paymentResult)
 ```
 
+## Definition-level `default_options:`
+
+A `default_options:` block on an `activity` or `workflow` **definition** supplies default option values for every call of that definition. It uses the same key/value grammar as a call-site `options:` block, but leads the definition body.
+
+### DSL
+
+```twf
+activity ChargeCard(card, amount) -> receipt
+    default_options:
+        start_to_close_timeout: 30s
+        retry_policy:
+            maximum_attempts: 5
+
+workflow FulfillOrder(order) -> (OrderResult):
+    default_options:
+        workflow_execution_timeout: 1h
+    state:
+        condition paid
+
+    # Uses the activity's default_options unchanged.
+    activity ChargeCard(order.card, order.total) -> receipt
+
+    # Per-key override; the call-site retry_policy atomic-replaces the default.
+    activity ChargeCard(order.card, order.tip) -> tipReceipt
+        options:
+            retry_policy:
+                maximum_attempts: 1
+```
+
+### Go
+
+The DSL `default_options:` has no single Go construct — it is the design-time convention that a definition's defaults apply to every call. In Go, realize it by building a base options value (`ActivityOptions` / `ChildWorkflowOptions`) once and reusing it, applying it with `workflow.WithActivityOptions` / `workflow.WithChildOptions` near each call. A call-site `options:` override becomes a per-call copy of that base value with the overridden fields replaced:
+
+```go
+// Base defaults for ChargeCard (mirrors default_options:).
+chargeDefaults := workflow.ActivityOptions{
+    StartToCloseTimeout: 30 * time.Second,
+    RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 5},
+}
+
+// Default call.
+ctxDefault := workflow.WithActivityOptions(ctx, chargeDefaults)
+err := workflow.ExecuteActivity(ctxDefault, ChargeCard, order.Card, order.Total).Get(ctx, &receipt)
+
+// Per-key override: copy the base, atomic-replace RetryPolicy (no field merge).
+tipOpts := chargeDefaults
+tipOpts.RetryPolicy = &temporal.RetryPolicy{MaximumAttempts: 1}
+ctxTip := workflow.WithActivityOptions(ctx, tipOpts)
+err = workflow.ExecuteActivity(ctxTip, ChargeCard, order.Card, order.Tip).Get(ctx, &tipReceipt)
+```
+
+### Rules
+
+- **Placement**: activity — head of the body (before statements); workflow — first body element, before the optional `state:` block.
+- **Key partition**: activity `default_options:` accepts every activity call-option key; workflow `default_options:` accepts every workflow call-option key **except** `parent_close_policy` (call-site-only — it describes one parent↔child bond, not the workflow type). `cron_schedule` is no longer an option key at all.
+- **Precedence**: a call-site `options:` block overrides `default_options:` **per key**; nested blocks (`retry_policy`, `priority`) **atomic-replace** — the whole nested block is replaced, there is no deep merge. In Go this is exactly a struct-field copy-then-replace, as shown above.
+
 ## Notes
 
 - When no `options:` block is specified, set a default `ActivityOptions` with `StartToCloseTimeout` on `ctx` near the top of the workflow function

@@ -33,7 +33,7 @@ Options blocks use indentation-based nesting (same as the rest of TWF). Each key
 
 Activity call options: `task_queue`, `schedule_to_close_timeout`, `schedule_to_start_timeout`, `start_to_close_timeout`, `heartbeat_timeout`, `request_eager_execution`, `retry_policy`, `priority`
 
-Workflow call options: `task_queue`, `workflow_execution_timeout`, `workflow_run_timeout`, `workflow_task_timeout`, `parent_close_policy`, `workflow_id_reuse_policy`, `cron_schedule`, `retry_policy`, `priority`. `parent_close_policy` values: `TERMINATE` (default — child is killed when parent closes), `REQUEST_CANCEL` (child receives cancellation request), `ABANDON` (child continues independently). `workflow_id_reuse_policy` values: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, `TERMINATE_IF_RUNNING`.
+Workflow call options: `task_queue`, `workflow_execution_timeout`, `workflow_run_timeout`, `workflow_task_timeout`, `parent_close_policy`, `workflow_id_reuse_policy`, `retry_policy`, `priority`. Recurring starts are **not** a call option — model them with Temporal Schedules, which TWF treats as platform configuration outside the language (see `skills/temporal-architect-design/topics/timers-scheduling.md`). `parent_close_policy` values: `TERMINATE` (default — child is killed when parent closes), `REQUEST_CANCEL` (child receives cancellation request), `ABANDON` (child continues independently). `workflow_id_reuse_policy` values: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, `TERMINATE_IF_RUNNING`.
 
 Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types`
 
@@ -75,6 +75,53 @@ update SubmitJob(job: Job) -> (JobId):
     activity ValidateJob(job)
     jobId = uuid()
     return jobId
+```
+
+## Definition Default Options
+
+Activity and workflow **definitions** may carry a `default_options:` block at the head of the definition body — the call-option defaults for every call to that definition. It is the definition-level counterpart to the call-site `options:` block above.
+
+```
+default_options_block ::= 'default_options' ':' NEWLINE INDENT option_entry+ DEDENT
+```
+
+The block contents **reuse `option_entry` verbatim** — identical keys, value grammar, and nested-block shape as a call-site `options:` block. Only the leading keyword and the semantics differ. `default_options` is a soft/contextual keyword: it is special only at the head of a definition body.
+
+**Placement.**
+- `activity_def`: the `default_options:` block leads the body, before any statements.
+- `workflow_def`: the `default_options:` block is the **first** body element, before the `state:` block — a definition's defaults are its external invocation contract, which reads above its internal `state:`.
+
+**Precedence — call-site `options:` overrides definition `default_options:`, per key.** For a given call, a key present in the call site's `options:` block wins; keys the call site omits fall back to the definition's `default_options:`. Nested blocks (`retry_policy`, `priority`) are **atomic** — a call-site `retry_policy:` replaces the definition's `retry_policy:` entirely, with no field-level deep merge. This is faithful to the SDKs (a RetryPolicy is passed as one struct) and avoids surprising cross-layer field combinations. TWF does not *compute* the merged result; the spec **states** the precedence so codegen and readers agree, and `twf check` validates each block's keys independently.
+
+**Valid keys at definition level.** A key that describes *the operation* is defaultable; a key that describes *a particular invocation* is call-site-only.
+
+- **Activity `default_options:`** — all activity call option keys are valid: `task_queue`, `schedule_to_close_timeout`, `schedule_to_start_timeout`, `start_to_close_timeout`, `heartbeat_timeout`, `request_eager_execution`, `retry_policy`, `priority`. None is inherently per-call.
+- **Workflow `default_options:`** — all workflow call option keys **except** `parent_close_policy`, which stays call-site-only. `parent_close_policy` is **relational**: it describes one specific parent↔child bond, not the workflow type (the same workflow may be a child of many parents, or a root).
+
+A call-site-only key used in a definition `default_options:` block is an error (see [Resolution and Errors — call-site-only option key](./11-resolution-and-errors.md)).
+
+The async-nexus case needs no grammar change: a workflow started only via a Nexus run operation (`async Op workflow Name`) carries its id-reuse policy and timeouts on the backing workflow's `default_options:` block.
+
+**Example:**
+```twf
+activity ChargePayment(order: Order) -> (Payment):
+    default_options:
+        task_queue: "payment-workers"
+        start_to_close_timeout: 60s
+        retry_policy:
+            maximum_attempts: 3
+    activity DoCharge(order) -> payment
+    return payment
+
+workflow ProcessOrder(order: Order) -> (Result):
+    default_options:
+        workflow_execution_timeout: 1h
+        workflow_id_reuse_policy: ALLOW_DUPLICATE
+    state:
+        condition charged
+    activity ChargePayment(order) -> payment
+    set charged
+    close complete(Result{payment})
 ```
 
 ## Workflow Call

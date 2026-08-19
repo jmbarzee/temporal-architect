@@ -2325,3 +2325,134 @@ func TestSignalSendRejectedInActivityBody(t *testing.T) {
 		t.Errorf("unexpected error message: %q", pe.Msg)
 	}
 }
+
+// --- Definition-level default_options: block (issue #98) -------------------
+
+func TestActivityDefaultOptions(t *testing.T) {
+	// A valid default_options: block at the head of an activity body parses
+	// cleanly — no `unexpected token RETURN` mis-parse.
+	input := `activity ChargePayment(order) -> (Payment):
+    default_options:
+        task_queue: "payment-workers"
+        start_to_close_timeout: 60s
+        retry_policy:
+            maximum_attempts: 3
+    payment := charge(order)
+    return payment
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	act := file.Definitions[0].(*ast.ActivityDef)
+	if act.DefaultOptions == nil {
+		t.Fatal("expected default_options, got nil")
+	}
+	if len(act.DefaultOptions.Entries) != 3 {
+		t.Fatalf("expected 3 default-option entries, got %d", len(act.DefaultOptions.Entries))
+	}
+	if act.DefaultOptions.Entries[0].Key != "task_queue" {
+		t.Errorf("expected first key 'task_queue', got %q", act.DefaultOptions.Entries[0].Key)
+	}
+	if act.DefaultOptions.Entries[2].Key != "retry_policy" || len(act.DefaultOptions.Entries[2].Nested) != 1 {
+		t.Errorf("expected nested retry_policy with 1 entry, got %q/%d", act.DefaultOptions.Entries[2].Key, len(act.DefaultOptions.Entries[2].Nested))
+	}
+	// Body still parses after the block.
+	if len(act.Body) != 2 {
+		t.Fatalf("expected 2 body statements, got %d", len(act.Body))
+	}
+}
+
+func TestWorkflowDefaultOptions(t *testing.T) {
+	// A valid default_options: block as the first workflow body element, before
+	// state:, parses cleanly.
+	input := `workflow ProcessOrder(order) -> (Result):
+    default_options:
+        workflow_execution_timeout: 1h
+        workflow_id_reuse_policy: ALLOW_DUPLICATE
+    state:
+        condition charged
+    activity ChargePayment(order) -> payment
+    set charged
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	if wf.DefaultOptions == nil {
+		t.Fatal("expected default_options, got nil")
+	}
+	if len(wf.DefaultOptions.Entries) != 2 {
+		t.Fatalf("expected 2 default-option entries, got %d", len(wf.DefaultOptions.Entries))
+	}
+	if wf.DefaultOptions.Entries[0].Key != "workflow_execution_timeout" {
+		t.Errorf("expected first key 'workflow_execution_timeout', got %q", wf.DefaultOptions.Entries[0].Key)
+	}
+	// The state: block still parses after the default_options: block.
+	if wf.State == nil || len(wf.State.Conditions) != 1 {
+		t.Fatalf("expected state block with 1 condition, got %+v", wf.State)
+	}
+}
+
+func TestWorkflowDefaultOptionsRejectsParentClosePolicy(t *testing.T) {
+	// parent_close_policy is relational (call-site-only): rejected in a workflow
+	// default_options: block with a targeted error, not the generic unknown-key one.
+	input := `workflow ProcessOrder(order) -> (Result):
+    default_options:
+        parent_close_policy: TERMINATE
+    return
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for parent_close_policy in default_options, got nil")
+	}
+	pe, ok := err.(*ParseError)
+	if !ok {
+		t.Fatalf("expected ParseError, got %T: %v", err, err)
+	}
+	if !strings.Contains(pe.Msg, "call-site-only option key") || !strings.Contains(pe.Msg, "parent_close_policy") {
+		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+}
+
+func TestWorkflowDefaultOptionsRejectsCronSchedule(t *testing.T) {
+	// cron_schedule was removed from the workflow schema entirely, so it is
+	// rejected as an unknown key inside a workflow default_options: block.
+	input := `workflow ProcessOrder(order) -> (Result):
+    default_options:
+        cron_schedule: "0 * * * *"
+    return
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for cron_schedule in default_options, got nil")
+	}
+	pe, ok := err.(*ParseError)
+	if !ok {
+		t.Fatalf("expected ParseError, got %T: %v", err, err)
+	}
+	if !strings.Contains(pe.Msg, "unknown option key") || !strings.Contains(pe.Msg, "cron_schedule") {
+		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+}
+
+func TestWorkflowCallRejectsCronSchedule(t *testing.T) {
+	// cron_schedule on a workflow call is now rejected as an unknown option key.
+	input := `workflow Foo(x: int) -> (Result):
+    workflow ShipOrder(order) -> result
+        options:
+            cron_schedule: "0 * * * *"
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for cron_schedule on workflow call, got nil")
+	}
+	pe, ok := err.(*ParseError)
+	if !ok {
+		t.Fatalf("expected ParseError, got %T: %v", err, err)
+	}
+	if !strings.Contains(pe.Msg, "unknown option key") || !strings.Contains(pe.Msg, "cron_schedule") {
+		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+}

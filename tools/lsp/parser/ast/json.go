@@ -224,18 +224,19 @@ func marshalOptionEntries(entries []*OptionEntry) []OptionEntryJSON {
 
 // WorkflowDefJSON is the JSON representation of WorkflowDef.
 type WorkflowDefJSON struct {
-	Type       string            `json:"type"`
-	Line       int               `json:"line"`
-	Column     int               `json:"column"`
-	SourceFile string            `json:"sourceFile,omitempty"`
-	Name       string            `json:"name"`
-	Params     string            `json:"params"`
-	ReturnType string            `json:"returnType,omitempty"`
-	State      *StateBlockJSON   `json:"state,omitempty"`
-	Signals    []*SignalDeclJSON `json:"signals"`
-	Queries    []*QueryDeclJSON  `json:"queries"`
-	Updates    []*UpdateDeclJSON `json:"updates"`
-	Body       []RawStatement    `json:"body"`
+	Type           string            `json:"type"`
+	Line           int               `json:"line"`
+	Column         int               `json:"column"`
+	SourceFile     string            `json:"sourceFile,omitempty"`
+	Name           string            `json:"name"`
+	Params         string            `json:"params"`
+	ReturnType     string            `json:"returnType,omitempty"`
+	DefaultOptions *OptionsBlockJSON `json:"defaultOptions,omitempty"`
+	State          *StateBlockJSON   `json:"state,omitempty"`
+	Signals        []*SignalDeclJSON `json:"signals"`
+	Queries        []*QueryDeclJSON  `json:"queries"`
+	Updates        []*UpdateDeclJSON `json:"updates"`
+	Body           []RawStatement    `json:"body"`
 }
 
 // StateBlockJSON is the JSON representation of a state: block.
@@ -253,13 +254,14 @@ type ConditionDeclJSON struct {
 
 func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 	wj := WorkflowDefJSON{
-		Type:       "workflowDef",
-		Line:       w.Line,
-		Column:     w.Column,
-		SourceFile: w.SourceFile,
-		Name:       w.Name,
-		Params:     w.Params,
-		ReturnType: w.ReturnType,
+		Type:           "workflowDef",
+		Line:           w.Line,
+		Column:         w.Column,
+		SourceFile:     w.SourceFile,
+		Name:           w.Name,
+		Params:         w.Params,
+		ReturnType:     w.ReturnType,
+		DefaultOptions: marshalOptionsBlock(w.DefaultOptions),
 	}
 	if w.State != nil {
 		sj := &StateBlockJSON{}
@@ -294,25 +296,27 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 
 // ActivityDefJSON is the JSON representation of ActivityDef.
 type ActivityDefJSON struct {
-	Type       string         `json:"type"`
-	Line       int            `json:"line"`
-	Column     int            `json:"column"`
-	SourceFile string         `json:"sourceFile,omitempty"`
-	Name       string         `json:"name"`
-	Params     string         `json:"params"`
-	ReturnType string         `json:"returnType,omitempty"`
-	Body       []RawStatement `json:"body"`
+	Type           string            `json:"type"`
+	Line           int               `json:"line"`
+	Column         int               `json:"column"`
+	SourceFile     string            `json:"sourceFile,omitempty"`
+	Name           string            `json:"name"`
+	Params         string            `json:"params"`
+	ReturnType     string            `json:"returnType,omitempty"`
+	DefaultOptions *OptionsBlockJSON `json:"defaultOptions,omitempty"`
+	Body           []RawStatement    `json:"body"`
 }
 
 func (a *ActivityDef) MarshalJSON() ([]byte, error) {
 	aj := ActivityDefJSON{
-		Type:       "activityDef",
-		Line:       a.Line,
-		Column:     a.Column,
-		SourceFile: a.SourceFile,
-		Name:       a.Name,
-		Params:     a.Params,
-		ReturnType: a.ReturnType,
+		Type:           "activityDef",
+		Line:           a.Line,
+		Column:         a.Column,
+		SourceFile:     a.SourceFile,
+		Name:           a.Name,
+		Params:         a.Params,
+		ReturnType:     a.ReturnType,
+		DefaultOptions: marshalOptionsBlock(a.DefaultOptions),
 	}
 	var err error
 	if aj.Body, err = marshalStatements(a.Body); err != nil {

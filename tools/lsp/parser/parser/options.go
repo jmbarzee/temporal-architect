@@ -19,6 +19,12 @@ const (
 	OptionsContextSignalHandler
 	OptionsContextUpdateHandler
 	OptionsContextQueryHandler
+	// Definition-level `default_options:` blocks. They reuse the call-option
+	// value grammar but partition the allowed keys by definition kind: a key
+	// describing the operation is defaultable, a key describing one particular
+	// invocation is call-site-only (see optionCallSiteOnly).
+	OptionsContextActivityDefaults
+	OptionsContextWorkflowDefaults
 )
 
 // optionSchema describes the expected value type for an option key.
@@ -92,9 +98,41 @@ var workflowOptionSchema = map[string]*optionSchema{
 	"workflow_task_timeout":      {valueType: "duration"},
 	"parent_close_policy":        {valueType: "enum", allowed: []string{"TERMINATE", "ABANDON", "REQUEST_CANCEL"}},
 	"workflow_id_reuse_policy":   {valueType: "enum", allowed: []string{"ALLOW_DUPLICATE", "ALLOW_DUPLICATE_FAILED_ONLY", "REJECT_DUPLICATE", "TERMINATE_IF_RUNNING"}},
-	"cron_schedule":              {valueType: "string"},
 	"retry_policy":               {valueType: "nested", nested: retryPolicySchema},
 	"priority":                   {valueType: "nested", nested: prioritySchema},
+}
+
+// Definition-level default-option schemas. A `default_options:` block declares
+// per-definition call-option defaults, so it reuses the call-option schemas but
+// partitions the keys: a key describing the operation is defaultable; a key
+// describing one particular invocation stays call-site-only.
+//
+//   - Activity: every activity call option is defaultable — no keys excluded.
+//   - Workflow: every workflow call option except `parent_close_policy`, which
+//     is relational (it describes one parent↔child bond, not the workflow type)
+//     and so stays call-site-only. `cron_schedule` was removed from
+//     workflowOptionSchema entirely, so it is excluded here automatically.
+var activityDefaultOptionSchema = schemaExcluding(activityOptionSchema)
+var workflowDefaultOptionSchema = schemaExcluding(workflowOptionSchema, "parent_close_policy")
+
+// optionCallSiteOnly maps a definition-defaults context to the keys that are
+// valid only at a call site. A key listed here is reported with a targeted
+// "call-site-only option key" error rather than the generic unknown-key error.
+var optionCallSiteOnly = map[OptionsContext]map[string]bool{
+	OptionsContextWorkflowDefaults: {"parent_close_policy": true},
+}
+
+// schemaExcluding returns a shallow copy of base with the given keys removed.
+// Values are shared by reference (schemas are never mutated after init).
+func schemaExcluding(base map[string]*optionSchema, exclude ...string) map[string]*optionSchema {
+	out := make(map[string]*optionSchema, len(base))
+	for k, v := range base {
+		out[k] = v
+	}
+	for _, k := range exclude {
+		delete(out, k)
+	}
+	return out
 }
 
 var nexusCallOptionSchema = map[string]*optionSchema{
@@ -128,14 +166,16 @@ var queryHandlerOptionSchema = map[string]*optionSchema{
 }
 
 var optionSchemas = map[OptionsContext]map[string]*optionSchema{
-	OptionsContextActivity:      activityOptionSchema,
-	OptionsContextWorkflow:      workflowOptionSchema,
-	OptionsContextWorker:        workerOptionSchema,
-	OptionsContextNexusCall:     nexusCallOptionSchema,
-	OptionsContextEndpoint:      endpointOptionSchema,
-	OptionsContextSignalHandler: signalHandlerOptionSchema,
-	OptionsContextUpdateHandler: updateHandlerOptionSchema,
-	OptionsContextQueryHandler:  queryHandlerOptionSchema,
+	OptionsContextActivity:         activityOptionSchema,
+	OptionsContextWorkflow:         workflowOptionSchema,
+	OptionsContextWorker:           workerOptionSchema,
+	OptionsContextNexusCall:        nexusCallOptionSchema,
+	OptionsContextEndpoint:         endpointOptionSchema,
+	OptionsContextSignalHandler:    signalHandlerOptionSchema,
+	OptionsContextUpdateHandler:    updateHandlerOptionSchema,
+	OptionsContextQueryHandler:     queryHandlerOptionSchema,
+	OptionsContextActivityDefaults: activityDefaultOptionSchema,
+	OptionsContextWorkflowDefaults: workflowDefaultOptionSchema,
 }
 
 func schemaForContext(ctx OptionsContext) map[string]*optionSchema {
@@ -158,7 +198,7 @@ func (p *Parser) parseOptionsBlock(ctx OptionsContext) (*ast.OptionsBlock, error
 	}
 
 	schema := schemaForContext(ctx)
-	entries, err := p.parseOptionEntries(schema)
+	entries, err := p.parseOptionEntries(schema, optionCallSiteOnly[ctx])
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +214,11 @@ func (p *Parser) parseOptionsBlock(ctx OptionsContext) (*ast.OptionsBlock, error
 }
 
 // parseOptionEntries parses key-value pairs until DEDENT is encountered.
-func (p *Parser) parseOptionEntries(schema map[string]*optionSchema) ([]*ast.OptionEntry, error) {
+// callSiteOnly names keys that are valid only at a call site; it is non-nil only
+// for the top-level entries of a definition `default_options:` block and is
+// passed as nil to nested blocks (a nested key is validated against its own
+// nested schema, never against the call-site-only partition).
+func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, callSiteOnly map[string]bool) ([]*ast.OptionEntry, error) {
 	var entries []*ast.OptionEntry
 
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
@@ -183,7 +227,7 @@ func (p *Parser) parseOptionEntries(schema map[string]*optionSchema) ([]*ast.Opt
 			continue
 		}
 
-		entry, err := p.parseOptionEntry(schema)
+		entry, err := p.parseOptionEntry(schema, callSiteOnly)
 		if err != nil {
 			return nil, err
 		}
@@ -194,7 +238,7 @@ func (p *Parser) parseOptionEntries(schema map[string]*optionSchema) ([]*ast.Opt
 }
 
 // parseOptionEntry parses a single option entry: IDENT COLON (value | NEWLINE INDENT nested DEDENT).
-func (p *Parser) parseOptionEntry(schema map[string]*optionSchema) (*ast.OptionEntry, error) {
+func (p *Parser) parseOptionEntry(schema map[string]*optionSchema, callSiteOnly map[string]bool) (*ast.OptionEntry, error) {
 	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 
 	var key string
@@ -215,6 +259,13 @@ func (p *Parser) parseOptionEntry(schema map[string]*optionSchema) (*ast.OptionE
 		var ok bool
 		sch, ok = schema[key]
 		if !ok {
+			if callSiteOnly[key] {
+				return nil, &ParseError{
+					Msg:    "call-site-only option key not allowed in default_options: " + key,
+					Line:   pos.Line,
+					Column: pos.Column,
+				}
+			}
 			return nil, &ParseError{
 				Msg:    "unknown option key: " + key,
 				Line:   pos.Line,
@@ -251,7 +302,7 @@ func (p *Parser) parseOptionEntry(schema map[string]*optionSchema) (*ast.OptionE
 			nestedSchema = sch.nested
 		}
 
-		nested, err := p.parseOptionEntries(nestedSchema)
+		nested, err := p.parseOptionEntries(nestedSchema, nil)
 		if err != nil {
 			return nil, err
 		}

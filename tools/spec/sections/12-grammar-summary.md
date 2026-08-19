@@ -11,13 +11,14 @@ qualified_ref  ::= [IDENT '.'] IDENT                 # optional leading package-
 
 workflow_def ::= 'workflow' IDENT params ['->' return_type] ':'
                  NEWLINE INDENT
+                 [default_options_block]
                  [state_block]
                  [signal_decl*] [query_decl*] [update_decl*]
                  statement*
                  DEDENT
 
 activity_def ::= 'activity' IDENT params ['->' return_type] ':'
-                 NEWLINE INDENT statement* DEDENT
+                 NEWLINE INDENT [default_options_block] statement* DEDENT
 
 worker_def ::= 'worker' IDENT ':' NEWLINE
                INDENT worker_entry* DEDENT
@@ -39,6 +40,7 @@ nexus_operation ::= 'async' IDENT 'workflow' qualified_ref NEWLINE
 nexus_call ::= ['detach'] 'nexus' IDENT qualified_ref '.' IDENT args ['->' result] [NEWLINE options_line]
 
 options_block ::= 'options' ':' NEWLINE INDENT option_entry+ DEDENT
+default_options_block ::= 'default_options' ':' NEWLINE INDENT option_entry+ DEDENT
 option_entry  ::= IDENT ':' value NEWLINE
                 | IDENT ':' NEWLINE INDENT option_entry+ DEDENT
 value ::= STRING | DURATION | NUMBER | IDENT

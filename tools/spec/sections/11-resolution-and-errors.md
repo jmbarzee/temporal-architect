@@ -73,6 +73,7 @@ Common error types:
 - Unresolved import — imported package absent from the tree, treated as external (warning)
 - Unused import — a resolved import never referenced (warning)
 - Unknown option key in `options:` block (including handler `options:` blocks — e.g. `unfinished_policy` on a query handler, where only `description` is allowed)
+- Call-site-only option key in a definition `default_options:` block (e.g. `parent_close_policy` in a workflow `default_options:` block — it describes a particular parent↔child invocation, not the workflow type, and is valid only at a call site)
 - Wrong value type for option key (e.g., number where duration expected)
 - Invalid enum value for option key (e.g., a value other than `abandon` / `warn_and_abandon` for `unfinished_policy`)
 

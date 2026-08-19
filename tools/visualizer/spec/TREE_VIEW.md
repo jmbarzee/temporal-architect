@@ -100,6 +100,12 @@ Presentation:
 
 Because the options box lives in the expanded body, a block that carries options becomes **expandable even when its reference is unresolved or it has no inline body** (e.g. an activity call to an undefined activity, or a nexus endpoint, which otherwise would not expand). The toggle indicator appears whenever a block has either inline content or options.
 
+### Definition-level default options (deferred)
+
+The wire AST now carries a **definition-level** `default_options` block on `activity` and `workflow` **definitions** — surfaced as `defaultOptions` on `ActivityDefJSON`/`WorkflowDefJSON` (same shape as the existing `OptionsBlockJSON`). This is distinct from the per-call `options:` block described above: `default_options` declares the defaults a definition supplies, while a call site's `options:` overrides them per key (nested blocks atomic-replace, no deep merge — the parser validates the two blocks independently and does not compute a merged view).
+
+**Rendering a definition's `default_options` is intentionally deferred to a follow-up and is NOT implemented in this change.** The eventual treatment: present it on activity and workflow definition nodes as a defaults badge or a dedicated "default options" section, visually distinct from the per-call `options:` box so a reader can tell definition-level defaults apart from a call-site override, and without implying a computed/merged view. This is recorded here so the gap is documented rather than silent: the data is available on the wire, its display is not yet specced.
+
 
 ## Block Summaries
 
