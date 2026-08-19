@@ -1,5 +1,107 @@
 # TWF Language Changelog
 
+> This changelog resumes at v0.11.0 after a gap: the v0.9.x and v0.10.x releases
+> (published, but never captured here) are not documented. The entry below covers
+> everything since v0.10.2.
+
+## v0.11.0 - Packages, Imports & Parameterized Namespaces
+
+The largest language batch since worker blocks. Multi-file systems get real
+package boundaries and imports; deployment names gain per-tenant templating;
+definitions carry their own default options; and option values accept list
+literals. Includes one breaking removal — see below.
+
+### ⚠️ Breaking: `cron_schedule` removed
+
+The `cron_schedule` workflow option is gone. Recurring execution is a
+runtime/deployment concern (a Schedule), not a `.twf` deployment-topology fact,
+so it no longer belongs in the language. Files that still set `cron_schedule`
+will not parse — remove it and drive recurrence from a Temporal Schedule.
+
+### New: packages & imports (multi-file systems)
+
+A file declares its package; cross-package references are qualified by the
+imported package's leaf name and require an `import`. Nexus endpoints stay
+**flat-global and are never package-qualified**.
+
+```twf
+package orders
+
+import "github.com/acme/shop/payments"
+
+workflow Checkout(order):
+    # same-package service, referenced bare; cross-package one, qualified
+    nexus Gateway OrderService.PlaceOrder(order) -> placed
+    nexus Gateway payments.PaymentService.Charge(order) -> receipt
+    close complete(placed)
+```
+
+An import that isn't present in the workspace resolves as **external** and emits
+only an `UNRESOLVED_IMPORT` warning — never an `UNDEFINED` error. Graph identity
+is package-aware, the validator is package-aware, and the LSP resolves imports
+across the workspace.
+
+### New: definition-level `default_options`
+
+An activity or workflow definition can carry a `default_options:` block; call
+sites inherit it and may override **per key**. Overriding a nested block
+(e.g. `retry_policy`) is an **atomic replace**, not a deep merge.
+
+```twf
+activity ChargeCard(card: Card, amount: int) -> (Receipt):
+    default_options:
+        start_to_close_timeout: 30s
+        retry_policy:
+            maximum_attempts: 5
+    return charge(card, amount)
+
+workflow FulfillOrder(order: Order) -> (OrderResult):
+    default_options:               # first body element, before `state:`
+        workflow_execution_timeout: 1h
+    ...
+    activity ChargeCard(order.tip) -> tipReceipt
+        options:
+            retry_policy:          # atomic-replaces the default retry_policy
+                maximum_attempts: 1
+```
+
+### New: parameterized per-tenant namespaces & endpoints
+
+Deployment names (namespace, nexus endpoint) accept inline `{param}` template
+holes, so a per-tenant/per-org/per-shard **family** is one declaration instead
+of one namespace apiece. Identity is the whole assembled name string, matched by
+spelling (token equality) — not runtime substitution.
+
+```twf
+namespace fabric-shard-{org}:
+    nexus endpoint fabric-shard-{org}-BootstrapShard
+```
+
+An endpoint's `{param}` set must be a **superset** of its namespace's, or the
+flat-global name would collide across the family (`ENDPOINT_PARAM_NOT_SUPERSET`);
+a `{param}` used but never bound raises `UNBOUND_TEMPLATE_PARAM`. The visualizer
+collapses a family to a representative node with a `× org` cardinality badge.
+
+### New: list literals in option values
+
+Option values accept list literals, e.g. non-retryable error types:
+
+```twf
+retry_policy:
+    non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
+```
+
+### Other language & tooling changes
+
+- **Shared-worker joint ownership** via a `topology-owner` convention, so a worker
+  hosted from multiple files has one unambiguous topology owner.
+- **Parser fix:** a `(` inside a string literal no longer silently truncates the
+  rest of the file.
+- Clearer diagnostic for **body-less definitions**; `task_queue` is now a
+  first-class field on the nexus-endpoint AST node.
+- Docs: the **Nexus opt-out** annotation is documented in the author-go
+  proto-driven Rosetta stone.
+
 ## v0.8.0 - Cross-Workflow Signals
 
 New construct for the *send* side of signals: a workflow can signal a child it started and still holds a handle to. The feature is deliberately minimal — **handle-bound only** (no external/ID addressing) and **statement-only** (no `await`/`promise`/`await one` form).
