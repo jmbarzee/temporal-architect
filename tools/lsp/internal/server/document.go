@@ -54,9 +54,10 @@ func (d *Document) analyze(root string) {
 	if bufAbs == "" {
 		return
 	}
-	merged := mergeWorkspace(root, bufAbs, d.Content, filepath.Base(bufAbs))
+	bufBase := filepath.Base(bufAbs)
+	merged := mergeWorkspace(root, bufAbs, d.Content, bufBase)
 	mergedErrs := resolver.Resolve(merged)
-	d.ResolveErrs = filterMergedResolveErrs(mergedErrs, d.File)
+	d.ResolveErrs = filterMergedResolveErrs(mergedErrs, bufBase)
 }
 
 // DocumentStore is a thread-safe store of open documents.

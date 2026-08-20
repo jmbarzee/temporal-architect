@@ -1,0 +1,13 @@
+package gamma
+
+import "acme/alpha"
+import "acme/beta"
+
+# gamma pulls in both alpha and beta, each of which
+# defines a Process workflow in its own package. The
+# bare call below does not name a package, so it only
+# looks in gamma and does not resolve — issue #136.
+
+workflow Gamma(id):
+    workflow Process(id) -> out
+    close complete(out)

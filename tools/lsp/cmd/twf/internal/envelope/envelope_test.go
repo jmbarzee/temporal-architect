@@ -112,6 +112,62 @@ func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
 	}
 }
 
+// TestParseFilesAttributesReferenceErrorToReferencingFile is the issue #136
+// regression: with three files where package gamma imports alpha and beta —
+// each of which defines a Process workflow — and makes a bare `Process` call,
+// the UNDEFINED_WORKFLOW diagnostic must be attributed to gamma.twf at the
+// reference site (12:5), NOT to a defining file (alpha.twf/beta.twf) it was
+// previously reverse-engineered onto from the error's name. The sibling
+// symptom is also asserted: the two UNUSED_IMPORT warnings now carry gamma.twf
+// instead of an empty file.
+func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
+	// Explicit file list, in order, mirroring `twf check alpha beta gamma`.
+	paths := []string{
+		clitest.Testdata("issue136", "alpha.twf"),
+		clitest.Testdata("issue136", "beta.twf"),
+		clitest.Testdata("issue136", "gamma.twf"),
+	}
+	_, diags, err := envelope.ParseFiles(paths)
+	if err != nil {
+		t.Fatalf("ParseFiles: %v", err)
+	}
+
+	var undef *envelope.Diagnostic
+	for i := range diags {
+		if diags[i].Kind == "resolve" && diags[i].Code == "UNDEFINED_WORKFLOW" {
+			undef = &diags[i]
+			break
+		}
+	}
+	if undef == nil {
+		t.Fatalf("no UNDEFINED_WORKFLOW diagnostic; got %d diagnostics: %+v", len(diags), diags)
+	}
+	if undef.File != "gamma.twf" {
+		t.Errorf("UNDEFINED_WORKFLOW file = %q, want gamma.twf (the referencing file)", undef.File)
+	}
+	if undef.Start.Line != 12 || undef.Start.Column != 5 {
+		t.Errorf("UNDEFINED_WORKFLOW at %d:%d, want 12:5 (the reference site)", undef.Start.Line, undef.Start.Column)
+	}
+	if undef.Name != "Process" {
+		t.Errorf("UNDEFINED_WORKFLOW name = %q, want Process", undef.Name)
+	}
+
+	// No resolve diagnostic may be attributed to a defining file: the bug
+	// pointed the reference error (and left the import warnings file-less) at
+	// alpha.twf/beta.twf.
+	for _, d := range diags {
+		if d.Kind != "resolve" {
+			continue
+		}
+		if d.File == "alpha.twf" || d.File == "beta.twf" {
+			t.Errorf("resolve diagnostic mis-attributed to a defining file: %+v", d)
+		}
+		if d.File == "" {
+			t.Errorf("resolve diagnostic carries no file (issue #136 sibling symptom): %+v", d)
+		}
+	}
+}
+
 // TestStructuralLexErrorSurfacesAndBlocksLenient covers issue #97: a string
 // literal containing a paren must not silently truncate the file. The lexer now
 // emits a loud, positioned diagnostic that reaches the shared diagnostic path,

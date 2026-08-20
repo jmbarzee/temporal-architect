@@ -132,6 +132,7 @@ func mergeSources(sources []wsSource) *ast.File {
 		// binding tables. Runtime-only — never serialized.
 		for _, imp := range file.Imports {
 			imp.Package = file.Package
+			imp.SourceFile = s.base
 			merged.Imports = append(merged.Imports, imp)
 		}
 
@@ -187,118 +188,25 @@ func setPackage(def ast.Definition, pkg string) {
 	}
 }
 
-// leafName is the package qualifier an import declares when it has no alias.
-// It is the last "/"-separated segment, except that a trailing Go-style version
-// segment ("v" followed by one or more digits, e.g. "/v2") is stripped and the
-// preceding segment used instead — Go's importPathToAssumedName rule. Mirrors
-// resolver.leafName (unexported there); the two must change in lockstep or LSP
-// hover/completion diverges from `twf check`.
-func leafName(path string) string {
-	i := strings.LastIndex(path, "/")
-	if i < 0 {
-		return path
-	}
-	last := path[i+1:]
-	if isVersionSegment(last) {
-		// Strip the trailing /vN and use the preceding segment when one exists.
-		if j := strings.LastIndex(path[:i], "/"); j >= 0 {
-			return path[j+1 : i]
-		}
-		return path[:i]
-	}
-	return last
-}
-
-// isVersionSegment reports whether s is a Go-style module version segment: the
-// letter "v" followed by one or more decimal digits (v1, v2, v10). Mirrors
-// resolver.isVersionSegment.
-func isVersionSegment(s string) bool {
-	if len(s) < 2 || s[0] != 'v' {
-		return false
-	}
-	for i := 1; i < len(s); i++ {
-		if s[i] < '0' || s[i] > '9' {
-			return false
-		}
-	}
-	return true
-}
-
 // filterMergedResolveErrs filters merged resolve errors down to the ones that
-// belong to the open buffer, using bufFile (the buffer's own single-buffer AST)
-// as the position/ownership oracle:
+// belong to the open buffer, keyed on the reference-site file the resolver now
+// stamps onto every error (issue #136): an error is kept iff its File equals
+// bufBase, the base name of the open buffer.
 //
-//   - import diagnostics (UNRESOLVED_IMPORT / UNUSED_IMPORT, whose Name is the
-//     import qualifier) are kept iff bufFile declares an import whose bound
-//     qualifier equals Name at the same line;
-//   - every other resolve error is kept iff bufFile owns a construct at the
-//     error's line, or bufFile defines a symbol named e.Name.
-//
-// Because the kept set is built from bufFile, a diagnostic can never render at a
-// line the open buffer does not own.
-func filterMergedResolveErrs(errs []*resolver.ResolveError, bufFile *ast.File) []*resolver.ResolveError {
-	if bufFile == nil {
+// This replaces the earlier name/line heuristics (bufDefinesSymbol /
+// findNodeAtLine): a reference error carries the *referencing* file, so a bare
+// undefined-workflow call in the open buffer surfaces here while never leaking
+// onto a sibling that merely defines a same-named symbol. Import warnings
+// attribute too, since ImportDecl.SourceFile is stamped in the merge.
+func filterMergedResolveErrs(errs []*resolver.ResolveError, bufBase string) []*resolver.ResolveError {
+	if bufBase == "" {
 		return nil
 	}
 	var out []*resolver.ResolveError
 	for _, e := range errs {
-		if e.Kind == resolver.ErrUnresolvedImport || e.Kind == resolver.ErrUnusedImport {
-			if bufImportQualifierAtLine(bufFile, e.Name, e.Line) {
-				out = append(out, e)
-			}
-			continue
-		}
-		if findNodeAtLine(bufFile, e.Line) != nil || bufDefinesSymbol(bufFile, e.Name) {
+		if e.File == bufBase {
 			out = append(out, e)
 		}
 	}
 	return out
-}
-
-// bufImportQualifierAtLine reports whether bufFile declares an import whose
-// bound qualifier (alias, else path leaf) equals name at the given line.
-func bufImportQualifierAtLine(bufFile *ast.File, name string, line int) bool {
-	for _, imp := range bufFile.Imports {
-		q := imp.Alias
-		if q == "" {
-			q = leafName(imp.Path)
-		}
-		if q == name && imp.Line == line {
-			return true
-		}
-	}
-	return false
-}
-
-// bufDefinesSymbol reports whether bufFile declares a top-level definition named
-// name (covers e.g. a duplicate whose header sits on the error's line).
-func bufDefinesSymbol(bufFile *ast.File, name string) bool {
-	if name == "" {
-		return false
-	}
-	for _, def := range bufFile.Definitions {
-		switch d := def.(type) {
-		case *ast.WorkflowDef:
-			if d.Name == name {
-				return true
-			}
-		case *ast.ActivityDef:
-			if d.Name == name {
-				return true
-			}
-		case *ast.WorkerDef:
-			if d.Name == name {
-				return true
-			}
-		case *ast.NamespaceDef:
-			if d.Name == name {
-				return true
-			}
-		case *ast.NexusServiceDef:
-			if d.Name == name {
-				return true
-			}
-		}
-	}
-	return false
 }

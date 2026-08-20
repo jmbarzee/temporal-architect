@@ -1,0 +1,4 @@
+package beta
+
+workflow Process(id):
+    close complete(id)

@@ -111,6 +111,14 @@ type ResolveError struct {
 	Severity string // "error" (default) or "warning"
 	Kind     ErrorKind
 	Name     string // primary entity referenced by this error
+	// File is the base name of the source file this error is attributed to
+	// (issue #136): the enclosing definition's SourceFile for a reference error,
+	// the redeclaration's own file for a duplicate, or the import's file for an
+	// import warning. It is the reference-site file even when Name points at a
+	// symbol defined elsewhere, so consumers must prefer it over reverse-
+	// engineering the file from Name. Empty when the merge left the enclosing
+	// node's SourceFile unstamped (e.g. a raw single-file parse).
+	File string
 }
 
 func (e *ResolveError) Error() string {
@@ -260,6 +268,7 @@ type importBinding struct {
 	used      bool   // set once a reference resolves through this qualifier
 	line      int
 	column    int
+	file      string // base name of the file this import was declared in (#136)
 }
 
 // ---------------------------------------------------------------------------
@@ -309,23 +318,23 @@ func Resolve(file *ast.File) []*ResolveError {
 		case *ast.WorkflowDef:
 			p := effPkg(d.Package, s.filePkg)
 			s.packages[p] = true
-			collectInto(s.workflows, pkgKey{p, d.Name}, d, "workflow", ErrDuplicateWorkflow, d.Line, d.Column, &s.errs)
+			collectInto(s.workflows, pkgKey{p, d.Name}, d, "workflow", ErrDuplicateWorkflow, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.ActivityDef:
 			p := effPkg(d.Package, s.filePkg)
 			s.packages[p] = true
-			collectInto(s.activities, pkgKey{p, d.Name}, d, "activity", ErrDuplicateActivity, d.Line, d.Column, &s.errs)
+			collectInto(s.activities, pkgKey{p, d.Name}, d, "activity", ErrDuplicateActivity, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.WorkerDef:
 			p := effPkg(d.Package, s.filePkg)
 			s.packages[p] = true
-			collectInto(s.workers, pkgKey{p, d.Name}, d, "worker", ErrDuplicateWorker, d.Line, d.Column, &s.errs)
+			collectInto(s.workers, pkgKey{p, d.Name}, d, "worker", ErrDuplicateWorker, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.NamespaceDef:
 			p := effPkg(d.Package, s.filePkg)
 			s.packages[p] = true
-			collectInto(s.namespaces, pkgKey{p, d.Name}, d, "namespace", ErrDuplicateNamespace, d.Line, d.Column, &s.errs)
+			collectInto(s.namespaces, pkgKey{p, d.Name}, d, "namespace", ErrDuplicateNamespace, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.NexusServiceDef:
 			p := effPkg(d.Package, s.filePkg)
 			s.packages[p] = true
-			collectInto(s.nexusServices, pkgKey{p, d.Name}, d, "nexus service", ErrDuplicateNexusService, d.Line, d.Column, &s.errs)
+			collectInto(s.nexusServices, pkgKey{p, d.Name}, d, "nexus service", ErrDuplicateNexusService, d.Line, d.Column, d.SourceFile, &s.errs)
 		}
 	}
 
@@ -346,6 +355,7 @@ func Resolve(file *ast.File) []*ResolveError {
 					Column: ep.Column,
 					Kind:   ErrEndpointParamNotSuperset,
 					Name:   ep.EndpointName,
+					File:   ns.SourceFile,
 				})
 			}
 			if existing, exists := s.allEndpoints[ep.EndpointName]; exists {
@@ -355,6 +365,7 @@ func Resolve(file *ast.File) []*ResolveError {
 					Column: ep.Column,
 					Kind:   ErrDuplicateEndpoint,
 					Name:   ep.EndpointName,
+					File:   ns.SourceFile,
 				})
 			}
 			s.allEndpoints[ep.EndpointName] = ep
@@ -369,12 +380,12 @@ func Resolve(file *ast.File) []*ResolveError {
 	for _, ns := range s.namespaces {
 		nsParams := ns.TemplateParams
 		for i := range ns.Workers {
-			s.checkOptionParams(ns.Workers[i].Options, nsParams, fmt.Sprintf("worker options in namespace %s", ns.Name))
+			s.checkOptionParams(ns.Workers[i].Options, nsParams, fmt.Sprintf("worker options in namespace %s", ns.Name), ns.SourceFile)
 		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			bound := append(append([]string(nil), nsParams...), ep.TemplateParams...)
-			s.checkOptionParams(ep.Options, bound, fmt.Sprintf("endpoint %s options", ep.EndpointName))
+			s.checkOptionParams(ep.Options, bound, fmt.Sprintf("endpoint %s options", ep.EndpointName), ns.SourceFile)
 		}
 	}
 
@@ -395,6 +406,7 @@ func Resolve(file *ast.File) []*ResolveError {
 			external:  !s.packages[leaf],
 			line:      imp.Line,
 			column:    imp.Column,
+			file:      imp.SourceFile,
 		}
 		if s.bindings[p] == nil {
 			s.bindings[p] = map[string]*importBinding{}
@@ -444,6 +456,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		ctx := &resolveCtx{
 			s:          s,
 			ownPkg:     ownPkg,
+			file:       wf.SourceFile,
 			signals:    signals,
 			queries:    queries,
 			updates:    updates,
@@ -473,7 +486,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		for _, op := range svc.Operations {
 			switch op.OpType {
 			case ast.NexusOpAsync:
-				targetPkg, external, ok := s.resolveQualifier(svcPkg, op.Workflow.Package, op.Line, op.Column)
+				targetPkg, external, ok := s.resolveQualifier(svcPkg, op.Workflow.Package, op.Line, op.Column, svc.SourceFile)
 				if !ok || external {
 					// Missing-import error already emitted, or the workflow lives
 					// in an external package — leave it unresolved without a
@@ -489,12 +502,14 @@ func Resolve(file *ast.File) []*ResolveError {
 						Column: op.Column,
 						Kind:   ErrNexusAsyncUndefinedWorkflow,
 						Name:   op.Workflow.Name,
+						File:   svc.SourceFile,
 					})
 				}
 			case ast.NexusOpSync:
 				syncCtx := &resolveCtx{
 					s:          s,
 					ownPkg:     svcPkg,
+					file:       svc.SourceFile,
 					signals:    map[string]*ast.SignalDecl{},
 					queries:    map[string]*ast.QueryDecl{},
 					updates:    map[string]*ast.UpdateDecl{},
@@ -510,13 +525,13 @@ func Resolve(file *ast.File) []*ResolveError {
 	for _, w := range s.workers {
 		wPkg := effPkg(w.Package, s.filePkg)
 		for i := range w.Workflows {
-			resolvePkgRef(s, wPkg, &w.Workflows[i], s.workflows, "workflow", ErrWorkerUndefinedWorkflow)
+			resolvePkgRef(s, wPkg, &w.Workflows[i], s.workflows, "workflow", ErrWorkerUndefinedWorkflow, w.SourceFile)
 		}
 		for i := range w.Activities {
-			resolvePkgRef(s, wPkg, &w.Activities[i], s.activities, "activity", ErrWorkerUndefinedActivity)
+			resolvePkgRef(s, wPkg, &w.Activities[i], s.activities, "activity", ErrWorkerUndefinedActivity, w.SourceFile)
 		}
 		for i := range w.Services {
-			resolvePkgRef(s, wPkg, &w.Services[i], s.nexusServices, "nexus service", ErrWorkerUndefinedNexusService)
+			resolvePkgRef(s, wPkg, &w.Services[i], s.nexusServices, "nexus service", ErrWorkerUndefinedNexusService, w.SourceFile)
 		}
 	}
 
@@ -524,7 +539,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		nsPkg := effPkg(ns.Package, s.filePkg)
 		for i := range ns.Workers {
 			nw := &ns.Workers[i]
-			targetPkg, external, ok := s.resolveQualifier(nsPkg, nw.Worker.Package, nw.Line, nw.Column)
+			targetPkg, external, ok := s.resolveQualifier(nsPkg, nw.Worker.Package, nw.Line, nw.Column, ns.SourceFile)
 			if !ok || external {
 				continue
 			}
@@ -537,6 +552,7 @@ func Resolve(file *ast.File) []*ResolveError {
 					Column: nw.Column,
 					Kind:   ErrNamespaceUndefinedWorker,
 					Name:   nw.Worker.Name,
+					File:   ns.SourceFile,
 				})
 			}
 		}
@@ -556,6 +572,7 @@ func Resolve(file *ast.File) []*ResolveError {
 				Column:   b.column,
 				Kind:     ErrUnresolvedImport,
 				Name:     b.qualifier,
+				File:     b.file,
 			})
 		case !b.used:
 			s.errs = append(s.errs, &ResolveError{
@@ -565,6 +582,7 @@ func Resolve(file *ast.File) []*ResolveError {
 				Column:   b.column,
 				Kind:     ErrUnusedImport,
 				Name:     b.qualifier,
+				File:     b.file,
 			})
 		}
 	}
@@ -580,7 +598,7 @@ func Resolve(file *ast.File) []*ResolveError {
 //     package is absent from the tree. The binding is marked used.
 //   - anything else → QUALIFIED_REF_WITHOUT_IMPORT error; ok is false so the
 //     caller leaves the reference unresolved without a second diagnostic.
-func (s *state) resolveQualifier(ownPkg, q string, line, column int) (targetPkg string, external, ok bool) {
+func (s *state) resolveQualifier(ownPkg, q string, line, column int, file string) (targetPkg string, external, ok bool) {
 	if q == "" || q == ownPkg {
 		return ownPkg, false, true
 	}
@@ -594,6 +612,7 @@ func (s *state) resolveQualifier(ownPkg, q string, line, column int) (targetPkg 
 		Column: column,
 		Kind:   ErrQualifiedRefWithoutImport,
 		Name:   q,
+		File:   file,
 	})
 	return "", false, false
 }
@@ -605,6 +624,7 @@ func (s *state) resolveQualifier(ownPkg, q string, line, column int) (targetPkg 
 type resolveCtx struct {
 	s          *state
 	ownPkg     string
+	file       string // SourceFile of the enclosing definition (#136)
 	signals    map[string]*ast.SignalDecl
 	queries    map[string]*ast.QueryDecl
 	updates    map[string]*ast.UpdateDecl
@@ -616,15 +636,15 @@ func (c *resolveCtx) resolveStatements(stmts []ast.Statement) {
 	ast.WalkStatements(stmts, func(s ast.Statement) bool {
 		switch s := s.(type) {
 		case *ast.ActivityCall:
-			resolvePkgRef(c.s, c.ownPkg, &s.Activity, c.s.activities, "activity", ErrUndefinedActivity)
+			resolvePkgRef(c.s, c.ownPkg, &s.Activity, c.s.activities, "activity", ErrUndefinedActivity, c.file)
 		case *ast.WorkflowCall:
-			resolvePkgRef(c.s, c.ownPkg, &s.Workflow, c.s.workflows, "workflow", ErrUndefinedWorkflow)
+			resolvePkgRef(c.s, c.ownPkg, &s.Workflow, c.s.workflows, "workflow", ErrUndefinedWorkflow, c.file)
 		case *ast.NexusCall:
 			c.resolveNexusRefs(&s.Endpoint, &s.Service, &s.Operation)
 		case *ast.SetStmt:
-			resolveLocalRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, &c.s.errs)
+			resolveLocalRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, c.file, &c.s.errs)
 		case *ast.UnsetStmt:
-			resolveLocalRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, &c.s.errs)
+			resolveLocalRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, c.file, &c.s.errs)
 		case *ast.SignalSendStmt:
 			c.resolveSignalSend(s)
 		}
@@ -649,10 +669,11 @@ func (c *resolveCtx) resolveNexusRefs(endpoint *ast.Ref[*ast.NamespaceEndpoint],
 			Column: endpoint.Column,
 			Kind:   ErrNexusUndefinedEndpoint,
 			Name:   endpoint.Name,
+			File:   c.file,
 		})
 	}
 
-	targetPkg, external, ok := c.s.resolveQualifier(c.ownPkg, service.Package, service.Line, service.Column)
+	targetPkg, external, ok := c.s.resolveQualifier(c.ownPkg, service.Package, service.Line, service.Column, c.file)
 	if !ok || external {
 		return
 	}
@@ -666,6 +687,7 @@ func (c *resolveCtx) resolveNexusRefs(endpoint *ast.Ref[*ast.NamespaceEndpoint],
 			Column: service.Column,
 			Kind:   ErrNexusUndefinedService,
 			Name:   service.Name,
+			File:   c.file,
 		})
 	}
 }
@@ -684,6 +706,7 @@ func (c *resolveCtx) resolveNexusOperation(svc *ast.NexusServiceDef, operation *
 		Column: operation.Column,
 		Kind:   ErrNexusNoOperation,
 		Name:   operation.Name,
+		File:   c.file,
 	})
 }
 
@@ -691,13 +714,13 @@ func (c *resolveCtx) resolveNexusOperation(svc *ast.NexusServiceDef, operation *
 func (c *resolveCtx) resolveAsyncTarget(target ast.AsyncTarget, line, column int) {
 	switch t := target.(type) {
 	case *ast.SignalTarget:
-		resolveLocalRef(&t.Signal, c.signals, "signal", ErrUndefinedSignal, &c.s.errs)
+		resolveLocalRef(&t.Signal, c.signals, "signal", ErrUndefinedSignal, c.file, &c.s.errs)
 	case *ast.UpdateTarget:
-		resolveLocalRef(&t.Update, c.updates, "update", ErrUndefinedUpdate, &c.s.errs)
+		resolveLocalRef(&t.Update, c.updates, "update", ErrUndefinedUpdate, c.file, &c.s.errs)
 	case *ast.ActivityTarget:
-		resolvePkgRef(c.s, c.ownPkg, &t.Activity, c.s.activities, "activity", ErrUndefinedActivity)
+		resolvePkgRef(c.s, c.ownPkg, &t.Activity, c.s.activities, "activity", ErrUndefinedActivity, c.file)
 	case *ast.WorkflowTarget:
-		resolvePkgRef(c.s, c.ownPkg, &t.Workflow, c.s.workflows, "workflow", ErrUndefinedWorkflow)
+		resolvePkgRef(c.s, c.ownPkg, &t.Workflow, c.s.workflows, "workflow", ErrUndefinedWorkflow, c.file)
 	case *ast.NexusTarget:
 		c.resolveNexusRefs(&t.Endpoint, &t.Service, &t.Operation)
 	case *ast.IdentTarget:
@@ -710,6 +733,7 @@ func (c *resolveCtx) resolveAsyncTarget(target ast.AsyncTarget, line, column int
 				Column: column,
 				Kind:   ErrUndefinedPromiseOrCondition,
 				Name:   t.Name,
+				File:   c.file,
 			})
 		}
 		if isPromise {
@@ -725,6 +749,7 @@ func (c *resolveCtx) resolveAsyncTarget(target ast.AsyncTarget, line, column int
 				Column: column,
 				Kind:   ErrConditionResultBinding,
 				Name:   t.Name,
+				File:   c.file,
 			})
 		}
 	case *ast.TimerTarget:
@@ -745,6 +770,7 @@ func (c *resolveCtx) resolveSignalSend(s *ast.SignalSendStmt) {
 			Column: s.Handle.Column,
 			Kind:   ErrUndefinedPromiseOrCondition,
 			Name:   s.Handle.Name,
+			File:   c.file,
 		})
 		return
 	}
@@ -757,6 +783,7 @@ func (c *resolveCtx) resolveSignalSend(s *ast.SignalSendStmt) {
 			Column: s.Handle.Column,
 			Kind:   ErrSignalSendHandleNotWorkflow,
 			Name:   s.Handle.Name,
+			File:   c.file,
 		})
 		return
 	}
@@ -781,13 +808,14 @@ func (c *resolveCtx) resolveSignalSend(s *ast.SignalSendStmt) {
 		Column: s.Column,
 		Kind:   ErrSignalSendUndefinedSignal,
 		Name:   s.Signal,
+		File:   c.file,
 	})
 }
 
 // collectInto registers a definition under its (package, name) key, appending a
 // duplicate error (per key, so same-named defs in different packages coexist)
 // if the key already exists.
-func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind ErrorKind, line, column int, errs *[]*ResolveError) {
+func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind ErrorKind, line, column int, file string, errs *[]*ResolveError) {
 	if _, exists := m[key]; exists {
 		*errs = append(*errs, &ResolveError{
 			Msg:    fmt.Sprintf("duplicate %s definition: %s", kind, key.name),
@@ -795,6 +823,7 @@ func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind 
 			Column: column,
 			Kind:   errKind,
 			Name:   key.name,
+			File:   file,
 		})
 	}
 	m[key] = def
@@ -806,8 +835,8 @@ func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind 
 // unresolved with no UNDEFINED_* error; a missing import is reported by
 // resolveQualifier; a same/imported-package name that is genuinely absent is an
 // undefined-reference error.
-func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkgKey]T, kind string, errKind ErrorKind) {
-	targetPkg, external, ok := s.resolveQualifier(ownPkg, ref.Package, ref.Line, ref.Column)
+func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkgKey]T, kind string, errKind ErrorKind, file string) {
+	targetPkg, external, ok := s.resolveQualifier(ownPkg, ref.Package, ref.Line, ref.Column, file)
 	if !ok || external {
 		return
 	}
@@ -821,13 +850,14 @@ func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkg
 		Column: ref.Column,
 		Kind:   errKind,
 		Name:   ref.Name,
+		File:   file,
 	})
 }
 
 // resolveLocalRef resolves a workflow-local reference (signal / update /
 // condition) against a bare-name map. These names are never package-qualified,
 // so any qualifier is ignored.
-func resolveLocalRef[T any](ref *ast.Ref[T], defs map[string]T, kind string, errKind ErrorKind, errs *[]*ResolveError) {
+func resolveLocalRef[T any](ref *ast.Ref[T], defs map[string]T, kind string, errKind ErrorKind, file string, errs *[]*ResolveError) {
 	if def, ok := defs[ref.Name]; ok {
 		ref.Resolved = def
 		return
@@ -838,6 +868,7 @@ func resolveLocalRef[T any](ref *ast.Ref[T], defs map[string]T, kind string, err
 		Column: ref.Column,
 		Kind:   errKind,
 		Name:   ref.Name,
+		File:   file,
 	})
 }
 
@@ -864,7 +895,7 @@ func paramsNotIn(need, have []string) []string {
 // checkOptionParams appends an ErrUnboundTemplateParam for every {param} hole in
 // a STRING option value (recursing into nested blocks) whose name is not in the
 // bound set. where labels the enclosing block for the diagnostic message.
-func (s *state) checkOptionParams(opts *ast.OptionsBlock, bound []string, where string) {
+func (s *state) checkOptionParams(opts *ast.OptionsBlock, bound []string, where, file string) {
 	if opts == nil {
 		return
 	}
@@ -884,6 +915,7 @@ func (s *state) checkOptionParams(opts *ast.OptionsBlock, bound []string, where 
 							Column: e.Column,
 							Kind:   ErrUnboundTemplateParam,
 							Name:   hole,
+							File:   file,
 						})
 					}
 				}

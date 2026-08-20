@@ -119,6 +119,69 @@ func TestWorkspaceNoRootIsolatedBuffer(t *testing.T) {
 	}
 }
 
+// TestWorkspaceReferenceErrorSurfacesOnlyOnReferencingBuffer is the issue #136
+// regression for the LSP path: gamma imports alpha and beta (each defining a
+// Process workflow) and makes a bare `Process` call. The merged UNDEFINED_WORKFLOW
+// must surface on the gamma buffer and must NOT leak onto alpha, which merely
+// defines a same-named symbol. Before the fix, the name/line heuristic kept the
+// error on any buffer defining `Process`.
+func TestWorkspaceReferenceErrorSurfacesOnlyOnReferencingBuffer(t *testing.T) {
+	dir := t.TempDir()
+
+	alpha := `package alpha
+
+workflow Process(id):
+    close complete(id)
+`
+	beta := `package beta
+
+workflow Process(id):
+    close complete(id)
+`
+	gamma := `package gamma
+
+import "acme/alpha"
+import "acme/beta"
+
+workflow Gamma(id):
+    workflow Process(id) -> out
+    close complete(out)
+`
+	alphaAbs, alphaURI := writeTWF(t, dir, "alpha.twf", alpha)
+	_ = alphaAbs
+	writeTWF(t, dir, "beta.twf", beta)
+	_, gammaURI := writeTWF(t, dir, "gamma.twf", gamma)
+
+	store := NewDocumentStore()
+	store.SetRoot(dir)
+
+	// The referencing buffer sees the undefined-workflow error, attributed to
+	// itself.
+	gammaDoc := store.Open(gammaURI, gamma)
+	var undef *resolver.ResolveError
+	for _, e := range gammaDoc.ResolveErrs {
+		if e.Kind == resolver.ErrUndefinedWorkflow {
+			undef = e
+			break
+		}
+	}
+	if undef == nil {
+		t.Fatalf("expected UNDEFINED_WORKFLOW on gamma buffer, got %v", gammaDoc.ResolveErrs)
+	}
+	if undef.File != "gamma.twf" {
+		t.Errorf("UNDEFINED_WORKFLOW file = %q, want gamma.twf", undef.File)
+	}
+	if undef.Line != 7 {
+		t.Errorf("UNDEFINED_WORKFLOW at line %d, want 7 (the reference site)", undef.Line)
+	}
+
+	// The defining buffer must not see the reference error leak onto it.
+	alphaDoc := store.Open(alphaURI, alpha)
+	if hasKind(alphaDoc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
+		t.Errorf("UNDEFINED_WORKFLOW leaked onto alpha (a defining buffer): %v", alphaDoc.ResolveErrs)
+	}
+}
+
 // TestWorkspaceSiblingErrorDoesNotLeak: with a root set, a sibling file's own
 // resolve error (an undefined activity in the sibling) does not leak onto the
 // open buffer, which is itself clean.

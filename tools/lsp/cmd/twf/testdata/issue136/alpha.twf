@@ -1,0 +1,4 @@
+package alpha
+
+workflow Process(id):
+    close complete(id)
