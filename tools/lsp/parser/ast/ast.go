@@ -62,11 +62,18 @@ type File struct {
 // owning package of the file this import was declared in, so the resolver can
 // group imports into per-package binding tables. It is never serialized (not in
 // ast/json.go) — no wire-Schema change.
+//
+// SourceFile is likewise a RUNTIME-ONLY stamp (issue #136): the envelope/LSP
+// merge records the base name of the file this import was declared in, so the
+// resolver can attribute import warnings (UNRESOLVED_IMPORT / UNUSED_IMPORT) to
+// the referencing file. Like Package it is NEVER serialized (no entry in
+// ast/json.go) — no wire-Schema change.
 type ImportDecl struct {
 	Pos
-	Path    string
-	Alias   string
-	Package string
+	Path       string
+	Alias      string
+	Package    string
+	SourceFile string
 }
 
 // ---------------------------------------------------------------------------

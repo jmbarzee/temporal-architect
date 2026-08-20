@@ -149,6 +149,7 @@ func parseSources(sources []source, defaultFile string) (*ast.File, []Diagnostic
 		// tables. Runtime-only — never serialized.
 		for _, imp := range file.Imports {
 			imp.Package = file.Package
+			imp.SourceFile = s.base
 			merged.Imports = append(merged.Imports, imp)
 		}
 
@@ -170,7 +171,15 @@ func parseSources(sources []source, defaultFile string) (*ast.File, []Diagnostic
 
 	resolveErrs := resolver.Resolve(merged)
 	for _, e := range resolveErrs {
-		diags = append(diags, FromResolveError(e, fileForDiagnostic(merged, e.Name, defaultFile)))
+		// Prefer the reference-site file the resolver now carries (issue #136);
+		// fall back to the name-lookup heuristic only when it is empty (e.g. a
+		// node the merge left unstamped). The validator path below keeps using
+		// fileForDiagnostic — validator errors carry no File.
+		file := e.File
+		if file == "" {
+			file = fileForDiagnostic(merged, e.Name, defaultFile)
+		}
+		diags = append(diags, FromResolveError(e, file))
 	}
 
 	validateErrs := validator.Validate(merged)
