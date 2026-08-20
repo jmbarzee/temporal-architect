@@ -135,7 +135,7 @@ export type SymbolKind =
   | "namespace"
   | "nexusService";
 
-/** envelope.Diagnostic.severity / .kind in cmd/twf/internal/envelope/model.go. */
+/** Diagnostic.severity / .kind in tools/lsp/pipeline/model.go. */
 export type DiagnosticSeverity = "error" | "warning";
 export type DiagnosticKind = "parse" | "resolve" | "validate" | "graph";
 

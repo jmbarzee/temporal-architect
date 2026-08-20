@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/symbols"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -34,14 +34,14 @@ type chunksInput struct {
 
 // resolveInput parses from inline source when provided, otherwise from the
 // given file paths. It errors if neither is supplied.
-func resolveInput(paths []string, src string) (*ast.File, []envelope.Diagnostic, error) {
+func resolveInput(paths []string, src string) (*ast.File, []pipeline.Diagnostic, error) {
 	if strings.TrimSpace(src) != "" {
-		return envelope.ParseSource("input.twf", src)
+		return pipeline.ParseSource("input.twf", src)
 	}
 	if len(paths) == 0 {
 		return nil, nil, fmt.Errorf("provide either paths or source")
 	}
-	return envelope.ParseFiles(paths)
+	return pipeline.ParseFiles(paths)
 }
 
 // slugInput selects one spec section by slug.
@@ -56,7 +56,7 @@ type emptyInput struct{}
 var readOnly = &mcp.ToolAnnotations{ReadOnlyHint: true}
 
 // registerTools installs the parser tool surface on the server. Each handler is
-// a thin shell over the same internal/envelope pipeline and parser packages the
+// a thin shell over the same tools/lsp/pipeline package and parser packages the
 // CLI commands use, so the JSON returned is byte-identical to the corresponding
 // `twf` subcommand output.
 func registerTools(s *mcp.Server) {
@@ -148,9 +148,9 @@ func buildCheck(in filesInput) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 	}
 	return json.MarshalIndent(env, "", "  ")
 }
@@ -162,9 +162,9 @@ func buildParse(in filesInput) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 	}
 
 	// Marshal the AST through its own MarshalJSON to get the `definitions`
@@ -198,9 +198,9 @@ func buildSymbols(in filesInput) ([]byte, error) {
 	if syms == nil {
 		syms = []symbols.SymbolJSON{}
 	}
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 		Symbols:     syms,
 	}
 	return json.MarshalIndent(env, "", "  ")
@@ -215,11 +215,11 @@ func buildGraph(in filesInput) ([]byte, error) {
 	var g *graph.Graph
 	if file != nil {
 		g = graph.Extract(file)
-		diags = append(diags, envelope.GraphDiagnostics(g)...)
+		diags = append(diags, pipeline.GraphDiagnostics(g)...)
 	}
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 		Graph:       g,
 	}
 	return json.MarshalIndent(env, "", "  ")
@@ -240,12 +240,12 @@ func buildChunks(in chunksInput) ([]byte, error) {
 	var res *decompose.Result
 	if file != nil {
 		g := graph.Extract(file)
-		diags = append(diags, envelope.GraphDiagnostics(g)...)
+		diags = append(diags, pipeline.GraphDiagnostics(g)...)
 		res = decompose.Decompose(file, g, opts)
 	}
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 		Chunks:      res,
 	}
 	return json.MarshalIndent(env, "", "  ")

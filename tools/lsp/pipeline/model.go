@@ -1,14 +1,17 @@
-// Package envelope is the twf wire contract and the front-door that produces
-// it. It owns the JSON envelope shape (summary + diagnostics + payload), the
-// structured Diagnostic model, the parse pipeline (ParseFiles), and the lifters
-// that turn pipeline/graph/history output into Diagnostics. Every command
-// package consumes it; nothing here knows about cobra.
+// Package pipeline is the twf parse→graph→assemble core and its wire contract.
+// It owns the JSON envelope shape (summary + diagnostics + payload), the
+// structured Diagnostic model, the parse pipeline (ParseFiles / ParseSource),
+// the lifters that turn parse/resolve/validate/graph output into Diagnostics,
+// and the high-level Build assembler. It is a public, importable package: every
+// in-tree command consumes it, and the out-of-module `twf serve` binary
+// (issue #138) imports it in-process. Nothing here knows about cobra or text
+// rendering — CLI-only rendering (FormatDiagnostic) lives on the cmd/twf side.
 //
 // The shapes below are the stable contract for downstream consumers
 // (visualizer, VS Code extension, skills). They are the source of truth; their
 // TypeScript projection is generated into the @temporal-architect/wire-types
 // package (tools/wire-types) and CI-gated via `make check-types`.
-package envelope
+package pipeline
 
 import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
