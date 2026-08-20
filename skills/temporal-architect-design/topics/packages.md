@@ -36,13 +36,14 @@ package orders
 After the package clause, import the packages you reference across boundaries:
 
 ```twf
-import "github.com/acme/shop/payments"          # referenced as: payments
-import billingv2 "github.com/acme/shop/billing/v2"   # aliased: billingv2
+import "github.com/acme/shop/payments"                # referenced as: payments
+import billing "github.com/acme/shop/billing"         # referenced as: billing
+import billingv2 "github.com/acme/shop/billing/v2"    # strips to leaf billing too → aliased billingv2 to avoid the clash
 ```
 
 - The string is the **full module-prefixed path**, carried verbatim as a future global-lookup key. It is **not enforced** today (a single directory tree is assumed; no global package management yet).
-- Reference the package by its **leaf name** (the last path segment) — `payments`.
-- Use the **alias form** (`import alias "path"`) only to disambiguate when two imports would share a leaf name.
+- Reference the package by its **leaf name** — the last path segment, except that a trailing `/vN` version segment (`v` + digits) is stripped and the preceding segment used (`.../billing/v2` resolves to leaf `billing`, not `v2`). This is Go's `importPathToAssumedName` rule.
+- Use the **alias form** (`import alias "path"`) only to disambiguate when two imports would share a leaf name — the canonical case is **v1 and v2 of the same package**, which strip to the same leaf (`billing`). The alias overrides only the **local** reference name; the target package it resolves against is always the version-stripped leaf, never the alias.
 
 ### Qualified reference
 

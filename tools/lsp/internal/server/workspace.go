@@ -187,14 +187,41 @@ func setPackage(def ast.Definition, pkg string) {
 	}
 }
 
-// leafName is the last "/"-separated segment of an import path — the package
-// qualifier used when an import declares no alias. Mirrors resolver.leafName
-// (unexported there).
+// leafName is the package qualifier an import declares when it has no alias.
+// It is the last "/"-separated segment, except that a trailing Go-style version
+// segment ("v" followed by one or more digits, e.g. "/v2") is stripped and the
+// preceding segment used instead — Go's importPathToAssumedName rule. Mirrors
+// resolver.leafName (unexported there); the two must change in lockstep or LSP
+// hover/completion diverges from `twf check`.
 func leafName(path string) string {
-	if i := strings.LastIndex(path, "/"); i >= 0 {
-		return path[i+1:]
+	i := strings.LastIndex(path, "/")
+	if i < 0 {
+		return path
 	}
-	return path
+	last := path[i+1:]
+	if isVersionSegment(last) {
+		// Strip the trailing /vN and use the preceding segment when one exists.
+		if j := strings.LastIndex(path[:i], "/"); j >= 0 {
+			return path[j+1 : i]
+		}
+		return path[:i]
+	}
+	return last
+}
+
+// isVersionSegment reports whether s is a Go-style module version segment: the
+// letter "v" followed by one or more decimal digits (v1, v2, v10). Mirrors
+// resolver.isVersionSegment.
+func isVersionSegment(s string) bool {
+	if len(s) < 2 || s[0] != 'v' {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // filterMergedResolveErrs filters merged resolve errors down to the ones that
