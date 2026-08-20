@@ -123,9 +123,9 @@ func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
 func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 	// Explicit file list, in order, mirroring `twf check alpha beta gamma`.
 	paths := []string{
-		clitest.Testdata("issue136", "alpha.twf"),
-		clitest.Testdata("issue136", "beta.twf"),
-		clitest.Testdata("issue136", "gamma.twf"),
+		clitest.Testdata("ambiguous_cross_package_ref", "alpha.twf"),
+		clitest.Testdata("ambiguous_cross_package_ref", "beta.twf"),
+		clitest.Testdata("ambiguous_cross_package_ref", "gamma.twf"),
 	}
 	_, diags, err := envelope.ParseFiles(paths)
 	if err != nil {
