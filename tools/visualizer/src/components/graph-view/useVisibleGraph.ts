@@ -45,7 +45,7 @@ function resolveDepEndpoint(
   nodeId: string,
   visible: boolean,
   side: 'src' | 'tgt',
-  sim: { edges: { edgeType: string; sourceId: string; targetId: string }[] },
+  sim: { edges: GraphEdge[] },
   visibleIds: Set<string>,
   getNode: (id: string) => SimNode | undefined,
 ): string[] {
@@ -75,7 +75,7 @@ function resolveDepEndpoint(
 // [0,1] by the top container. Keeps tiers ordered under topological gravity.
 function computeDownstreamScores(
   visibleNodes: SimNode[],
-  visibleEdges: { edgeType: string; sourceId: string; targetId: string }[],
+  visibleEdges: GraphEdge[],
 ): Map<string, number> {
   const adj = new Map<string, string[]>()
   for (const e of visibleEdges) {
@@ -149,7 +149,7 @@ function computeDownstreamScores(
 // Glanceable per-node summary string, dispatched on the registry's summaryKind.
 function computeGraphNodeSummary(
   node: SimNode,
-  visibleEdges: { edgeType: string; sourceId: string; targetId: string }[],
+  visibleEdges: GraphEdge[],
   nodeMap: Map<string, SimNode>,
 ): string {
   const { summaryKind } = definitionFor(node.nodeType)

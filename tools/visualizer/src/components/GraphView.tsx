@@ -9,12 +9,14 @@ import type { Decomposition } from '../types/decomposition'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
+import type { GraphEdge } from '../graph/model'
 import { nodeTypeToDefType, defTypeToNodeType } from './graph-view/nodeDefType'
 import { definitionFor, DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-types'
 import { worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
 import { GraphCanvas } from './GraphCanvas'
+import { CanvasErrorBoundary } from './CanvasErrorBoundary'
 import { GraphControlPanel } from './GraphControlPanel'
 import { GroupsModal } from './GroupsModal'
 import {
@@ -454,32 +456,34 @@ export function GraphView({
     >
       {/* Canvas fills the full viewport beneath the floating overlay */}
       <div className="graph-canvas-area">
-        <GraphCanvas
-          nodes={visibleNodes}
-          edges={visibleEdges}
-          viewport={viewport}
-          onViewportChange={setViewport}
-          onNodeDragStart={handleNodeDragStart}
-          onNodeDragMove={handleNodeDragMove}
-          onNodeDragEnd={handleNodeDragEnd}
-          onDoubleClickNode={handleDoubleClickNode}
-          onHoverNode={handleHoverNode}
-          onSelectNode={setSelectedNodeId}
-          highlightedNodes={highlightedNodes}
-          highlightedEdges={highlightedEdges}
-          hoveredNodeId={hoveredNodeId}
-          selectedNodeId={selectedNodeId}
-          focusedNodeId={focusedNodeId}
-          searchMatchIds={visibleMatchIds}
-          running={running}
-          forceParams={forceParams}
-          activeSection={activeSection}
-          activeChargeType={activeChargeType}
-          activeGravityType={activeGravityType}
-          activePullEdge={activePullEdge}
-          nodeScale={nodeScale}
-          groupGlows={glowGroups}
-        />
+        <CanvasErrorBoundary>
+          <GraphCanvas
+            nodes={visibleNodes}
+            edges={visibleEdges}
+            viewport={viewport}
+            onViewportChange={setViewport}
+            onNodeDragStart={handleNodeDragStart}
+            onNodeDragMove={handleNodeDragMove}
+            onNodeDragEnd={handleNodeDragEnd}
+            onDoubleClickNode={handleDoubleClickNode}
+            onHoverNode={handleHoverNode}
+            onSelectNode={setSelectedNodeId}
+            highlightedNodes={highlightedNodes}
+            highlightedEdges={highlightedEdges}
+            hoveredNodeId={hoveredNodeId}
+            selectedNodeId={selectedNodeId}
+            focusedNodeId={focusedNodeId}
+            searchMatchIds={visibleMatchIds}
+            running={running}
+            forceParams={forceParams}
+            activeSection={activeSection}
+            activeChargeType={activeChargeType}
+            activeGravityType={activeGravityType}
+            activePullEdge={activePullEdge}
+            nodeScale={nodeScale}
+            groupGlows={glowGroups}
+          />
+        </CanvasErrorBoundary>
         <GraphHoverTooltip
           hoveredNodeId={hoveredNodeId}
           simRef={simRef}
@@ -614,7 +618,7 @@ export function GraphView({
 interface GraphHoverTooltipProps {
   hoveredNodeId: string | null
   simRef: React.RefObject<Simulation | null>
-  visibleEdges: { edgeType: string; sourceId: string; targetId: string }[]
+  visibleEdges: GraphEdge[]
   visibleIds: Set<string>
   viewport: Viewport
   shiftHeld: boolean
