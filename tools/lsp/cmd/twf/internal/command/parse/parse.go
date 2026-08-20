@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/spf13/cobra"
 )
 
@@ -36,15 +36,15 @@ partial parse; hard I/O errors exit non-zero.`,
 // On hard I/O failures (e.g. file not found), it prints the error to stderr
 // and exits non-zero.
 func run(args []string) int {
-	file, diags, err := envelope.ParseFiles(args)
+	file, diags, err := pipeline.ParseFiles(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		return 1
 	}
 
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 	}
 
 	// Marshal the AST through its own MarshalJSON so we get the existing

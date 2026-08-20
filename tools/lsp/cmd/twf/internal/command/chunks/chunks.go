@@ -12,10 +12,10 @@ import (
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/spf13/cobra"
 )
 
@@ -64,7 +64,7 @@ func run(paths []string, jsonOutput bool, ceiling, floor, maxDepth int, by strin
 		return 1
 	}
 
-	file, diags, err := envelope.ParseFiles(paths)
+	file, diags, err := pipeline.ParseFiles(paths)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		return 1
@@ -73,7 +73,7 @@ func run(paths []string, jsonOutput bool, ceiling, floor, maxDepth int, by strin
 	var res *decompose.Result
 	if file != nil {
 		g := graph.Extract(file)
-		diags = append(diags, envelope.GraphDiagnostics(g)...)
+		diags = append(diags, pipeline.GraphDiagnostics(g)...)
 		res = decompose.Decompose(file, g, opts)
 	}
 
@@ -96,11 +96,11 @@ func splitStrategies(by string) []string {
 }
 
 // emitChunks renders the decomposition as JSON envelope or human-readable text.
-func emitChunks(file *ast.File, diags []envelope.Diagnostic, res *decompose.Result, jsonOutput bool) int {
+func emitChunks(file *ast.File, diags []pipeline.Diagnostic, res *decompose.Result, jsonOutput bool) int {
 	if jsonOutput {
-		env := envelope.Envelope{
-			Summary:     envelope.Summarize(file, diags),
-			Diagnostics: envelope.EnsureSlice(diags),
+		env := pipeline.Envelope{
+			Summary:     pipeline.Summarize(file, diags),
+			Diagnostics: pipeline.EnsureSlice(diags),
 			Chunks:      res,
 		}
 		data, err := json.MarshalIndent(env, "", "  ")
@@ -113,7 +113,7 @@ func emitChunks(file *ast.File, diags []envelope.Diagnostic, res *decompose.Resu
 	}
 
 	for _, d := range diags {
-		fmt.Fprintln(os.Stderr, envelope.FormatDiagnostic(d))
+		fmt.Fprintln(os.Stderr, cmdutil.FormatDiagnostic(d))
 	}
 	if res == nil {
 		return 1

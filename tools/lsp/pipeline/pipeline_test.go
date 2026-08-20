@@ -1,14 +1,28 @@
-package envelope_test
+package pipeline_test
 
 import (
 	"encoding/json"
+	"path/filepath"
+	"runtime"
 	"testing"
 
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/clitest"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
+
+// testdata returns the absolute path to a fixture under the shared
+// tools/lsp/cmd/twf/testdata tree. The fixtures live at the cmd/twf root so
+// every command package's tests can reach them; the pipeline package sits a
+// sibling directory up, so it resolves the same tree via ../cmd/twf/testdata
+// rather than importing the cmd-internal clitest helper (an internal package it
+// cannot import from outside cmd/twf).
+func testdata(elem ...string) string {
+	_, file, _, _ := runtime.Caller(0)
+	// file = .../tools/lsp/pipeline/pipeline_test.go → up to tools/lsp, then cmd/twf/testdata.
+	root := filepath.Join(filepath.Dir(file), "..", "cmd", "twf", "testdata")
+	return filepath.Join(append([]string{root}, elem...)...)
+}
 
 // TestParseFilesProducesStructuredDiagnostics covers the resolve and parse
 // pipelines through ParseFiles, which is the single source of diagnostics
@@ -25,7 +39,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 	}{
 		{
 			name:         "undefined activity reference",
-			path:         clitest.Testdata("undefined_activity.twf"),
+			path:         testdata("undefined_activity.twf"),
 			wantKind:     "resolve",
 			wantCode:     "UNDEFINED_ACTIVITY",
 			wantSeverity: "error",
@@ -33,7 +47,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 		},
 		{
 			name:         "duplicate workflow definition",
-			path:         clitest.Testdata("duplicate_workflow.twf"),
+			path:         testdata("duplicate_workflow.twf"),
 			wantKind:     "resolve",
 			wantCode:     "DUPLICATE_WORKFLOW",
 			wantSeverity: "error",
@@ -41,7 +55,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 		},
 		{
 			name:         "parser error",
-			path:         clitest.Testdata("syntax_error.twf"),
+			path:         testdata("syntax_error.twf"),
 			wantKind:     "parse",
 			wantCode:     "SYNTAX",
 			wantSeverity: "error",
@@ -50,7 +64,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			file, diags, err := envelope.ParseFiles([]string{tt.path})
+			file, diags, err := pipeline.ParseFiles([]string{tt.path})
 			if err != nil {
 				t.Fatalf("ParseFiles: %v", err)
 			}
@@ -58,7 +72,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 				t.Fatalf("ParseFiles returned nil file")
 			}
 
-			var found *envelope.Diagnostic
+			var found *pipeline.Diagnostic
 			for i := range diags {
 				if diags[i].Kind == tt.wantKind && diags[i].Code == tt.wantCode {
 					found = &diags[i]
@@ -98,7 +112,7 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 // TestParseFilesCleanFileYieldsNoErrors verifies the happy path: a valid
 // .twf with no errors or warnings produces an empty diagnostic slice.
 func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
-	file, diags, err := envelope.ParseFiles([]string{clitest.Testdata("clean.twf")})
+	file, diags, err := pipeline.ParseFiles([]string{testdata("clean.twf")})
 	if err != nil {
 		t.Fatalf("ParseFiles: %v", err)
 	}
@@ -123,16 +137,16 @@ func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
 func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 	// Explicit file list, in order, mirroring `twf check alpha beta gamma`.
 	paths := []string{
-		clitest.Testdata("ambiguous_cross_package_ref", "alpha.twf"),
-		clitest.Testdata("ambiguous_cross_package_ref", "beta.twf"),
-		clitest.Testdata("ambiguous_cross_package_ref", "gamma.twf"),
+		testdata("ambiguous_cross_package_ref", "alpha.twf"),
+		testdata("ambiguous_cross_package_ref", "beta.twf"),
+		testdata("ambiguous_cross_package_ref", "gamma.twf"),
 	}
-	_, diags, err := envelope.ParseFiles(paths)
+	_, diags, err := pipeline.ParseFiles(paths)
 	if err != nil {
 		t.Fatalf("ParseFiles: %v", err)
 	}
 
-	var undef *envelope.Diagnostic
+	var undef *pipeline.Diagnostic
 	for i := range diags {
 		if diags[i].Kind == "resolve" && diags[i].Code == "UNDEFINED_WORKFLOW" {
 			undef = &diags[i]
@@ -180,12 +194,12 @@ func TestStructuralLexErrorSurfacesAndBlocksLenient(t *testing.T) {
 		"activity Bar(y: string) -> (string):\n" +
 		"    return y\n"
 
-	file, diags, err := envelope.ParseSource("t.twf", src)
+	file, diags, err := pipeline.ParseSource("t.twf", src)
 	if err != nil {
 		t.Fatalf("ParseSource: %v", err)
 	}
 
-	var lex *envelope.Diagnostic
+	var lex *pipeline.Diagnostic
 	for i := range diags {
 		if diags[i].Kind == "parse" && diags[i].Code == parser.CodeLexical {
 			lex = &diags[i]
@@ -205,7 +219,7 @@ func TestStructuralLexErrorSurfacesAndBlocksLenient(t *testing.T) {
 		t.Errorf("expected a positioned diagnostic, got %+v", lex.Start)
 	}
 
-	if !envelope.HasBlockingError(diags) {
+	if !pipeline.HasBlockingError(diags) {
 		t.Errorf("HasBlockingError = false, want true (--lenient must not demote a lex error)")
 	}
 
@@ -225,11 +239,11 @@ func TestStructuralLexErrorSurfacesAndBlocksLenient(t *testing.T) {
 // error and warning severities correctly. The CLI exit-code logic depends
 // on this distinction (warnings must not flip exit codes).
 func TestSummarizeCountsDiagnostics(t *testing.T) {
-	file, diags, err := envelope.ParseFiles([]string{clitest.Testdata("undefined_activity.twf")})
+	file, diags, err := pipeline.ParseFiles([]string{testdata("undefined_activity.twf")})
 	if err != nil {
 		t.Fatalf("ParseFiles: %v", err)
 	}
-	s := envelope.Summarize(file, diags)
+	s := pipeline.Summarize(file, diags)
 	if s.Errors == 0 {
 		t.Errorf("summary.errors = 0, want >0")
 	}
@@ -241,7 +255,7 @@ func TestSummarizeCountsDiagnostics(t *testing.T) {
 // TestEnsureSliceNeverNullsDiagnostics guards the wire contract that
 // `diagnostics` is always a JSON array (never null), even on the happy path.
 func TestEnsureSliceNeverNullsDiagnostics(t *testing.T) {
-	s := envelope.EnsureSlice(nil)
+	s := pipeline.EnsureSlice(nil)
 	if s == nil {
 		t.Fatal("EnsureSlice returned nil")
 	}
@@ -257,7 +271,7 @@ func TestEnsureSliceNeverNullsDiagnostics(t *testing.T) {
 // TestEnvelopeJSONShape verifies that a successful parse round-trips through
 // the Envelope and produces the documented top-level keys.
 func TestEnvelopeJSONShape(t *testing.T) {
-	file, diags, err := envelope.ParseFiles([]string{clitest.Testdata("clean.twf")})
+	file, diags, err := pipeline.ParseFiles([]string{testdata("clean.twf")})
 	if err != nil {
 		t.Fatalf("ParseFiles: %v", err)
 	}
@@ -273,9 +287,9 @@ func TestEnvelopeJSONShape(t *testing.T) {
 		t.Fatalf("splice AST: %v", err)
 	}
 
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 		Definitions: inner.Definitions,
 	}
 	out, err := json.Marshal(env)
@@ -294,23 +308,45 @@ func TestEnvelopeJSONShape(t *testing.T) {
 	}
 }
 
-// TestFormatDiagnostic checks the text-mode rendering used by check / symbols
-// / graph for stderr diagnostics. The format is part of the human-facing
-// contract and is sensitive to changes (e.g. CI log filters); keep it stable.
-func TestFormatDiagnostic(t *testing.T) {
-	d := envelope.Diagnostic{
-		Severity: "error",
-		Kind:     "resolve",
-		Code:     "UNDEFINED_ACTIVITY",
-		File:     "foo.twf",
-		Start:    envelope.Position{Line: 12, Column: 3},
-		End:      envelope.Position{Line: 12, Column: 3},
-		Message:  "undefined activity: Foo",
-		Name:     "Foo",
+// TestBuildWrapsAstGraphDiagnostics verifies the high-level Build assembler:
+// it parses+extracts and marshals to the wrapped { ast, parserGraph,
+// diagnostics } shape the visualizer's normalizePayload consumes. This is the
+// in-process entry point the out-of-module `twf serve` binary (issue #138)
+// shares with the CLI.
+func TestBuildWrapsAstGraphDiagnostics(t *testing.T) {
+	payload, err := pipeline.Build([]string{testdata("clean.twf")})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
 	}
-	got := envelope.FormatDiagnostic(d)
-	want := "error [resolve/UNDEFINED_ACTIVITY] at foo.twf:12:3: undefined activity: Foo"
-	if got != want {
-		t.Errorf("FormatDiagnostic =\n  %q\nwant\n  %q", got, want)
+	if payload.AST == nil {
+		t.Fatalf("Build returned nil AST")
+	}
+	if payload.Graph == nil {
+		t.Errorf("Build returned nil Graph for a clean file")
+	}
+	if payload.Diagnostics == nil {
+		t.Errorf("Build diagnostics is nil, want non-nil slice (never null on the wire)")
+	}
+
+	out, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(out, &decoded); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	for _, key := range []string{"ast", "parserGraph", "diagnostics"} {
+		if _, ok := decoded[key]; !ok {
+			t.Errorf("payload missing top-level key %q (visualizer normalizePayload requires it)", key)
+		}
+	}
+	// The ast field must carry the definitions array the visualizer reads.
+	astObj, ok := decoded["ast"].(map[string]any)
+	if !ok {
+		t.Fatalf("payload.ast is not an object: %T", decoded["ast"])
+	}
+	if _, ok := astObj["definitions"]; !ok {
+		t.Errorf("payload.ast missing 'definitions'")
 	}
 }

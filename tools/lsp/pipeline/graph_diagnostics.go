@@ -1,4 +1,4 @@
-package envelope
+package pipeline
 
 import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"

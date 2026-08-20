@@ -1,4 +1,4 @@
-package envelope
+package pipeline
 
 import (
 	"fmt"
@@ -39,7 +39,7 @@ func ParseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 		return nil, nil, fmt.Errorf("no input files")
 	}
 
-	files, err := expandInputs(paths)
+	files, err := ExpandInputs(paths)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -69,12 +69,15 @@ func ParseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 	return file, diags, nil
 }
 
-// expandInputs turns a mix of file and directory arguments into a flat list of
+// ExpandInputs turns a mix of file and directory arguments into a flat list of
 // `.twf` file paths. A file argument is kept verbatim (order preserved, so an
 // explicit file list parses in the order given); a directory argument is walked
 // recursively and its `.twf` files spliced in at that position in lexical order
 // so a tree parses deterministically. A nonexistent path is a hard error.
-func expandInputs(paths []string) ([]string, error) {
+//
+// It is exported as the file-watch set an out-of-module server (issue #138)
+// needs to enumerate the `.twf` files a set of roots resolves to.
+func ExpandInputs(paths []string) ([]string, error) {
 	var out []string
 	for _, path := range paths {
 		info, err := os.Stat(path)

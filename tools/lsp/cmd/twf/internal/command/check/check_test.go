@@ -8,7 +8,7 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/clitest"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
 	checkcmd "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/check"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
 // runCheck drives the assembled `check` command under a root, mirroring main.
@@ -36,7 +36,7 @@ func TestCheckMultiPackageTree(t *testing.T) {
 	// Assert the diagnostic set through the shared envelope entrypoint (the same
 	// path the command runs) rather than scraping stderr: exactly the external
 	// import warning, and zero error-severity diagnostics.
-	_, diags, err := envelope.ParseFiles([]string{tree})
+	_, diags, err := pipeline.ParseFiles([]string{tree})
 	if err != nil {
 		t.Fatalf("ParseFiles: %v", err)
 	}

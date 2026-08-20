@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +62,7 @@ func New() *cobra.Command {
 // any diagnostics to stderr. JSON mode wraps the same data in the standard
 // twf envelope so consumers get diagnostics alongside the symbol list.
 func run(paths []string, jsonOutput bool) int {
-	file, diags, err := envelope.ParseFiles(paths)
+	file, diags, err := pipeline.ParseFiles(paths)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		return 1
@@ -73,7 +73,7 @@ func run(paths []string, jsonOutput bool) int {
 	}
 
 	for _, d := range diags {
-		fmt.Fprintln(os.Stderr, envelope.FormatDiagnostic(d))
+		fmt.Fprintln(os.Stderr, cmdutil.FormatDiagnostic(d))
 	}
 	if file == nil {
 		return 1
@@ -224,7 +224,7 @@ func printText(file *ast.File) int {
 // printJSON emits the standard twf envelope with the symbol list as
 // its payload. Diagnostics ride along inside the envelope so callers never
 // need a second invocation to learn what went wrong with a partial parse.
-func printJSON(file *ast.File, diags []envelope.Diagnostic) int {
+func printJSON(file *ast.File, diags []pipeline.Diagnostic) int {
 	var symbols []SymbolJSON
 	if file != nil {
 		symbols = Extract(file)
@@ -232,9 +232,9 @@ func printJSON(file *ast.File, diags []envelope.Diagnostic) int {
 	if symbols == nil {
 		symbols = []SymbolJSON{}
 	}
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 		Symbols:     symbols,
 	}
 	data, err := json.MarshalIndent(env, "", "  ")

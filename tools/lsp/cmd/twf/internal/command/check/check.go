@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/spf13/cobra"
 )
 
@@ -39,16 +39,16 @@ structured diagnostics, use ` + "`twf parse`" + `.`,
 // diagnostics should call `twf parse`, which emits the same diagnostics as
 // part of its JSON envelope.
 func run(paths []string, lenient bool) int {
-	file, diags, err := envelope.ParseFiles(paths)
+	file, diags, err := pipeline.ParseFiles(paths)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		return 1
 	}
 
-	summary := envelope.Summarize(file, diags)
+	summary := pipeline.Summarize(file, diags)
 
 	for _, d := range diags {
-		fmt.Fprintln(os.Stderr, envelope.FormatDiagnostic(d))
+		fmt.Fprintln(os.Stderr, cmdutil.FormatDiagnostic(d))
 	}
 
 	if summary.Errors > 0 {
@@ -59,7 +59,7 @@ func run(paths []string, lenient bool) int {
 			// structural lexical errors: an unterminated string or argument list
 			// means the file could not be tokenized, so a green exit would hide
 			// the failure entirely (the bug behind issue #97).
-			if envelope.HasBlockingError(diags) {
+			if pipeline.HasBlockingError(diags) {
 				fmt.Fprintln(os.Stderr, "Refusing --lenient exit 0: structural lexical error(s) mean the file could not be parsed.")
 				return 1
 			}

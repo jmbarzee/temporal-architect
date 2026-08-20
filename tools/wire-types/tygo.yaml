@@ -54,7 +54,7 @@ packages:
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
 
-  - path: "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
+  - path: "github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
     output_path: "tools/wire-types/src/generated/envelope.ts"
     preserve_comments: "types"
     include_files:

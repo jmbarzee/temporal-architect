@@ -10,9 +10,9 @@ import (
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/chunks"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/envelope"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +46,7 @@ func run(paths []string, jsonOutput bool) int {
 		return 1
 	}
 
-	file, diags, err := envelope.ParseFiles(paths)
+	file, diags, err := pipeline.ParseFiles(paths)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		return 1
@@ -55,7 +55,7 @@ func run(paths []string, jsonOutput bool) int {
 	var g *graph.Graph
 	if file != nil {
 		g = graph.Extract(file)
-		diags = append(diags, envelope.GraphDiagnostics(g)...)
+		diags = append(diags, pipeline.GraphDiagnostics(g)...)
 	}
 
 	if jsonOutput {
@@ -63,7 +63,7 @@ func run(paths []string, jsonOutput bool) int {
 	}
 
 	for _, d := range diags {
-		fmt.Fprintln(os.Stderr, envelope.FormatDiagnostic(d))
+		fmt.Fprintln(os.Stderr, cmdutil.FormatDiagnostic(d))
 	}
 	if g == nil {
 		return 1
@@ -74,10 +74,10 @@ func run(paths []string, jsonOutput bool) int {
 // printJSON emits the standard twf envelope. graph may be nil
 // when parsing failed catastrophically; the envelope still carries
 // diagnostics so callers can act on them.
-func printJSON(file *ast.File, diags []envelope.Diagnostic, g *graph.Graph) int {
-	env := envelope.Envelope{
-		Summary:     envelope.Summarize(file, diags),
-		Diagnostics: envelope.EnsureSlice(diags),
+func printJSON(file *ast.File, diags []pipeline.Diagnostic, g *graph.Graph) int {
+	env := pipeline.Envelope{
+		Summary:     pipeline.Summarize(file, diags),
+		Diagnostics: pipeline.EnsureSlice(diags),
 		Graph:       g,
 	}
 	data, err := json.MarshalIndent(env, "", "  ")

@@ -5,7 +5,7 @@
 // Cursor, Continue — launches via `npx … twf mcp`), so stdout is reserved for
 // the JSON-RPC protocol stream; all diagnostics must go to stderr.
 //
-// The tools are thin wrappers over the same internal/envelope pipeline and
+// The tools are thin wrappers over the same tools/lsp/pipeline package and
 // parser packages the CLI commands use, so the JSON they return is identical to
 // `twf parse`/`symbols --json`/`graph --json`/`graph chunks --json`. Skills are
 // intentionally not exposed yet (the binary does not embed them); the surface

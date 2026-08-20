@@ -1,8 +1,6 @@
-package envelope
+package pipeline
 
 import (
-	"fmt"
-
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
@@ -59,21 +57,6 @@ func FromValidateError(e *validator.Error, file string) Diagnostic {
 		Message:  e.Msg,
 		Name:     e.Name,
 	}
-}
-
-// FormatDiagnostic renders a Diagnostic in the legacy "kind error at L:C: msg"
-// shape, augmented with [code]. This keeps text output compact enough for
-// CI logs while still surfacing the symbolic code for grep.
-func FormatDiagnostic(d Diagnostic) string {
-	loc := fmt.Sprintf("%d:%d", d.Start.Line, d.Start.Column)
-	if d.File != "" {
-		loc = d.File + ":" + loc
-	}
-	sev := d.Severity
-	if sev == "" {
-		sev = "error"
-	}
-	return fmt.Sprintf("%s [%s/%s] at %s: %s", sev, d.Kind, d.Code, loc, d.Message)
 }
 
 // Summarize builds a FileSummary from a parsed AST and counts diagnostics
