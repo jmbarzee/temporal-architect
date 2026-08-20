@@ -5,13 +5,11 @@ go 1.25.4
 toolchain go1.25.11
 
 require (
-	github.com/jmbarzee/temporal-architect/tools/lsp v0.0.0-00010101000000-000000000000
+	github.com/jmbarzee/temporal-architect/tools/lsp v0.0.0-20260820203644-60afa992aaf9
 	go.temporal.io/api v1.62.13
 	go.temporal.io/sdk v1.44.1
 	google.golang.org/protobuf v1.36.11
 )
-
-replace github.com/jmbarzee/temporal-architect/tools/lsp => ../lsp
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
