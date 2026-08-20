@@ -375,7 +375,7 @@ export function GraphCanvas({
   // Mouse handlers
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
     e.preventDefault()
-    const rect = canvasRef.current!.getBoundingClientRect()
+    const rect = e.currentTarget.getBoundingClientRect()
     const sx = e.clientX - rect.left
     const sy = e.clientY - rect.top
     const factor = e.deltaY < 0 ? 1.15 : 0.85
@@ -383,7 +383,7 @@ export function GraphCanvas({
   }, [viewport, onViewportChange])
 
   const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
+    const rect = e.currentTarget.getBoundingClientRect()
     const sx = e.clientX - rect.left
     const sy = e.clientY - rect.top
     const node = hitTest(sx, sy)
@@ -399,7 +399,7 @@ export function GraphCanvas({
   }, [viewport, hitTest, onNodeDragStart])
 
   const handlePointerMove = React.useCallback((e: React.PointerEvent) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
+    const rect = e.currentTarget.getBoundingClientRect()
     const cx = e.clientX - rect.left
     const cy = e.clientY - rect.top
 
@@ -432,7 +432,7 @@ export function GraphCanvas({
       onNodeDragEnd()
       // Click (no drag) on node → select
       if (!ds.moved) {
-        const rect = canvasRef.current!.getBoundingClientRect()
+        const rect = e.currentTarget.getBoundingClientRect()
         const sx = e.clientX - rect.left
         const sy = e.clientY - rect.top
         const node = hitTest(sx, sy)
@@ -447,7 +447,7 @@ export function GraphCanvas({
   }, [onNodeDragEnd, onSelectNode, hitTest])
 
   const handleDoubleClick = React.useCallback((e: React.MouseEvent) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
+    const rect = e.currentTarget.getBoundingClientRect()
     const sx = e.clientX - rect.left
     const sy = e.clientY - rect.top
     const node = hitTest(sx, sy)

@@ -15,6 +15,7 @@
 import type { Definition, TWFFile } from '../types/ast'
 import type {
   CoarsenedEdge,
+  NodeKind,
   ParserEdge,
   ParserGraph,
 } from '../types/parser-graph'
@@ -80,17 +81,26 @@ function splitDefinitionKey(definitionKey: string): { kind: string; name: string
   return { kind: definitionKey.slice(0, i), name: definitionKey.slice(i + 1) }
 }
 
+// Exhaustive parser-kind → view-NodeType mapping. Keyed by the closed wire
+// union `NodeKind`, so a newly-added parser kind is a missing-key *compile*
+// error here rather than a silent mislabel. `nodeTypeFromKind` throws loudly
+// on any genuinely unknown runtime string instead of coercing to a default.
+const KIND_TO_NODE_TYPE: Record<NodeKind, NodeType> = {
+  namespace: 'namespace',
+  nexusEndpoint: 'nexusEndpoint',
+  worker: 'worker',
+  nexusService: 'nexusService',
+  workflow: 'workflow',
+  nexusOperation: 'nexusOperation',
+  activity: 'activity',
+}
+
 function nodeTypeFromKind(kind: string): NodeType {
-  switch (kind) {
-    case 'namespace': return 'namespace'
-    case 'nexusEndpoint': return 'nexusEndpoint'
-    case 'worker': return 'worker'
-    case 'nexusService': return 'nexusService'
-    case 'workflow': return 'workflow'
-    case 'nexusOperation': return 'nexusOperation'
-    case 'activity': return 'activity'
-    default: return 'workflow'  // defensive — parser kinds are closed
+  const nodeType = KIND_TO_NODE_TYPE[kind as NodeKind]
+  if (nodeType === undefined) {
+    throw new Error(`unknown parser node kind: ${kind}`)
   }
+  return nodeType
 }
 
 // Pretty name for the canvas label. Nexus operations come in as

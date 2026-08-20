@@ -12,6 +12,7 @@ export type {
   ParserNode,
   ParserEdge,
   ParserEdgeKind,
+  NodeKind,
   ParserRouting,
   ParserTier,
   CoarsenedEdge,
