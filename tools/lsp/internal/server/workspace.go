@@ -116,8 +116,9 @@ func mergeWorkspace(root, bufAbs, bufContent, bufBase string) *ast.File {
 }
 
 // mergeSources parses and stamps each source into a single merged AST, mirroring
-// envelope.parseSources' merge/stamp logic against the public parser/ast APIs.
-// (The envelope package is internal to cmd/twf and cannot be imported here.)
+// pipeline.parseSources' merge/stamp logic against the public parser/ast APIs.
+// (This predates tools/lsp/pipeline being public; consolidating this server onto
+// pipeline is a deferred follow-up — see issue #147.)
 func mergeSources(sources []wsSource) *ast.File {
 	merged := &ast.File{}
 	pkgSeen := map[string]bool{}
@@ -155,7 +156,7 @@ func mergeSources(sources []wsSource) *ast.File {
 }
 
 // setSourceFile stamps a definition with its source file name. Mirrors
-// envelope.setSourceFile.
+// pipeline.setSourceFile.
 func setSourceFile(def ast.Definition, sourceFile string) {
 	switch d := def.(type) {
 	case *ast.WorkflowDef:
@@ -172,7 +173,7 @@ func setSourceFile(def ast.Definition, sourceFile string) {
 }
 
 // setPackage stamps a definition with its owning package. Mirrors
-// envelope.setPackage.
+// pipeline.setPackage.
 func setPackage(def ast.Definition, pkg string) {
 	switch d := def.(type) {
 	case *ast.WorkflowDef:
