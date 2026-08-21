@@ -44,11 +44,30 @@ tar -xzf twf-vX.Y.Z-GOOS-GOARCH.tar.gz
 mv twf ~/.local/bin/twf
 ```
 
+### With `go install` (requires Go)
+
+Each release fans the repo tag out into path-prefixed module tags
+(`tools/lsp/vX.Y.Z`), so `twf` installs directly from the module path:
+
+```bash
+go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest
+# or pin a release:
+go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@vX.Y.Z
+```
+
+`go install` does not apply the build-time `-ldflags`, so `twf` recovers its
+version from the binary's embedded build info instead: `twf version` prints the
+installed module version (VCS revision for `@latest` off an untagged commit),
+not `dev`.
+
+The same `tools/lsp` / `tools/spec` module tags let other Go programs
+`go get github.com/jmbarzee/temporal-architect/tools/lsp@vX.Y.Z` to import the
+`tools/lsp/pipeline` package in-process — this is how dist's `twf-serve`
+consumes the pipeline, and what a future `go install` of `twf-serve` builds on.
+
 ### From source (requires Go)
 
-Clone the repo and build from the module. (External `go install …@latest` is
-unsupported: `tools/lsp/go.mod` uses `replace` directives that `go install
-pkg@version` ignores.)
+Clone the repo and build from the module:
 
 ```bash
 cd tools/lsp
