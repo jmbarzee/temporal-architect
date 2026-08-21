@@ -19,6 +19,11 @@ import (
 // step. When present it marshals to the `decomposition` key that
 // normalizePayload already reads as an optional field, so the wrapped payload is
 // additive on both sides.
+//
+// Nothing on this type enforces that Decomposition was computed from this Graph:
+// keeping Build and Decompose separable makes that a caller responsibility today.
+// That is a deliberately deferred choice — see pipeline.Decompose for the
+// build-vs-decompose consistency decision and when to revisit it.
 type Payload struct {
 	AST           *ast.File         `json:"ast"`
 	Graph         *graph.Graph      `json:"parserGraph,omitempty"`

@@ -28,6 +28,24 @@ import (
 // stays out of scope per issue #156's non-goal; keeping this graph-keyed is the
 // zero-cost factoring that leaves the seam open.
 //
+// Design note — a deliberately deferred decision (issue #156). This separable
+// API is one of two coherent shapes, and it is the simpler one, not the settled
+// one. Because Build and Decompose are distinct calls, nothing in the type system
+// stops a caller from holding a Payload whose Graph and Decomposition were
+// computed from different inputs: the overlay is only valid for the exact graph
+// it was derived from, yet that consistency is a *caller* responsibility here,
+// not a guarantee. The alternative is a single unified constructor that makes the
+// divergence unrepresentable — structural safety, bought at the cost of ever
+// producing an ast-only or decomposition-only payload, which the served recompute
+// loop and (later) the history/sampler graphs may actually want. We do not yet
+// know which pull is stronger, so we keep the simple separable form now and leave
+// the choice to the work that will actually test it: when history / sampler
+// decomposition is exercised for real, that should reveal whether to collapse
+// Build+Decompose into one always-consistent call or to commit to separate,
+// explicitly version-correlated payloads. Revisit then — not before. See also
+// Payload.Decomposition (build.go) and isWrappedPayload
+// (tools/visualizer/src/types/payload.ts) for the consumer-side face of this.
+//
 // A Payload with a nil Graph yields a nil-graph decomposition (an empty Result),
 // mirroring decompose.Decompose's own contract.
 func Decompose(p Payload, opts decompose.Options) Payload {
