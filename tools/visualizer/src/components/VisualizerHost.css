@@ -1,0 +1,35 @@
+/* VisualizerHost shell presentation — the shared error branch and the empty
+ * frame. Moved out of App.css (issue #150) so it folds into the published
+ * library's styles.css and every host renders these branches identically.
+ * Host-specific empty-state *content* (file pickers, hints, loading text) is
+ * the emptyState slot's concern and lives in the host's own stylesheet. */
+
+.error-container,
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+  background: var(--color-bg-gradient);
+}
+
+.error-container h2 {
+  color: var(--color-error);
+  margin-bottom: 16px;
+}
+
+.error-container pre {
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 600px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-error-text);
+  text-align: left;
+}

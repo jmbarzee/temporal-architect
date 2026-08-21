@@ -25,6 +25,25 @@ export { normalizePayload } from './types/payload'
 export type { NormalizedPayload } from './types/payload'
 export { mountNodeTypeStyles } from './graph/node-type-styles'
 
+// The host shell itself. `<VisualizerHost>` wraps the render core with the
+// payload de-dupe, normalization, StyleGuide toggle, and error/empty/canvas
+// branches that every host would otherwise copy. A host supplies two seams — a
+// `PayloadSource` (how inbound payloads arrive) and optional `HostActions`
+// (where outbound user intent goes) — plus an `emptyState` slot for its own
+// no-payload content. The `HostMessage` union is the inbound vocabulary a
+// `PayloadSource` speaks; `OutboundMessageType` canonicalizes the outbound wire
+// `type` values (`ready`/`openFile`/`refocus`) so every transport agrees on
+// them. The library never *implements* a transport — the concrete adapters
+// (postMessage / SSE / fetch) are the host's concern.
+export { VisualizerHost } from './components/VisualizerHost'
+export type {
+  VisualizerHostProps,
+  PayloadSource,
+  HostActions,
+} from './components/VisualizerHost'
+export type { HostMessage, OutboundMessage } from './components/protocol'
+export { OutboundMessageType } from './components/protocol'
+
 // Re-export the AST types so consumers can type their `ast` prop and walk
 // it for custom integrations (badges, side panels, link-outs, …) without
 // having to vendor or re-declare the shapes.
