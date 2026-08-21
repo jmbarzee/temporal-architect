@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/tliron/glsp"
-	protocol "github.com/tliron/glsp/protocol_3_16"
+	"github.com/jmbarzee/glsp"
+	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 )
 
 func didOpenHandler(store *DocumentStore) protocol.TextDocumentDidOpenFunc {

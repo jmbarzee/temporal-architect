@@ -3,8 +3,8 @@ package server
 import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
-	"github.com/tliron/glsp"
-	protocol "github.com/tliron/glsp/protocol_3_16"
+	"github.com/jmbarzee/glsp"
+	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 )
 
 // Semantic token type indices (must match legend order).

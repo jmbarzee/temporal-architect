@@ -136,8 +136,9 @@ publish-npm-libs:
 .PHONY: test vet
 
 ## Run Go tests
-# tools/sampler is its own module (go.mod with a replace onto ../lsp), so `./...`
-# from tools/lsp does not reach it. Both must be listed or the sampler ships untested.
+# tools/sampler is its own module (resolved against ../lsp via the repo-root
+# go.work), so `./...` from tools/lsp does not reach it. Both must be listed or
+# the sampler ships untested.
 test:
 	cd tools/lsp && go test ./...
 	cd tools/sampler && go test ./...

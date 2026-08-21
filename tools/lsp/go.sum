@@ -15,8 +15,10 @@ github.com/iancoleman/strcase v0.3.0 h1:nTXanmYxhfFAMjZL34Ov6gkzEsSJZ5DbhxWjvSAS
 github.com/iancoleman/strcase v0.3.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47ZCWhYzw7ho=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/jmbarzee/glsp v0.0.0-20260211184817-15faee801506 h1:11KWTio5Ke17wqbG0Cv5xxn2ptUHxaVyq5MjreKDJ4I=
-github.com/jmbarzee/glsp v0.0.0-20260211184817-15faee801506/go.mod h1:0mr4+bYwGddJfGuaxnUZBSxkshSzFOIyTmBRvfJDBo4=
+github.com/jmbarzee/glsp v0.0.0-20260820233936-145c48a808ca h1:S4RY9/Fq7jV5nw/G2LQ5LmChMTAjXmNb9ogI+7efOf0=
+github.com/jmbarzee/glsp v0.0.0-20260820233936-145c48a808ca/go.mod h1:Yf5iWP0p0Df04PDocDiL4zUg9mJvLdiUdG/X/HV7G0Y=
+github.com/jmbarzee/temporal-architect/tools/spec v0.0.0-20260820203644-60afa992aaf9 h1:lQhT2fcVtLL37PSm6msp4/E5E86jjmkBzthQiFihJf8=
+github.com/jmbarzee/temporal-architect/tools/spec v0.0.0-20260820203644-60afa992aaf9/go.mod h1:6TmyRh/zH58D5hK0FU8PDfjMajsU0pFT2Shs/wYgjto=
 github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=
 github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
