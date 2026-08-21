@@ -58,11 +58,8 @@ jobs:
   # ── Fan out per-module Go tags (additive; nothing depends on it) ─────────
 
   tag-modules:
-    # Turns the single vX.Y.Z tag into the path-prefixed module tags
-    # (tools/spec/vX.Y.Z, tools/lsp/vX.Y.Z) that `go get`/`go install` need for
-    # subdirectory modules, all at this release commit. Gated only on
-    # check-versions so it runs on a valid release; no publish job needs it, so
-    # a failure here cannot break npm / GitHub-Release / dist. See #151.
+    # Fan vX.Y.Z out into path-prefixed module tags for go get/install.
+    # Additive — nothing depends on it, so a failure can't break publishing.
     needs: check-versions
     uses: ./.github/workflows/_tag-modules.yml
     with:

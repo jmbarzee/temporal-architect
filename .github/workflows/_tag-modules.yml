@@ -1,27 +1,10 @@
 name: _tag-modules
 
-# Reusable: fan the single human-facing repo tag (vX.Y.Z) out into the
-# path-prefixed module tags Go requires to `go get` / `go install` a module
-# that lives in a subdirectory of the monorepo:
-#
-#   tools/spec/vX.Y.Z
-#   tools/lsp/vX.Y.Z
-#
-# All point at the SAME release commit as vX.Y.Z, so the module versions stay
-# in lockstep with the one repo version — no separate versioning mechanism.
-# These tags are what let external repos run
-#   go get  github.com/jmbarzee/temporal-architect/tools/lsp@vX.Y.Z
-#   go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest
-# and enable dist's Go twf-serve (#138) to import tools/lsp/pipeline in-process.
-#
-# Additive and self-contained: nothing in release.yml depends on this job, so a
-# failure here cannot break the npm / GitHub-Release / dist-dispatch jobs. Tags
-# are created idempotently via the REST API — re-running a release is safe.
-#
-# Cut in dependency order (spec before lsp). This does NOT rewrite intra-repo
-# requires to the new tags (stamp-then-tag); the existing pseudo-version
-# requires already resolve, and the fan-out tags alone unblock go get/install.
-# See issue #151 for the stamp-then-tag follow-up.
+# Fan the human-facing repo tag (vX.Y.Z) out into the path-prefixed module tags
+# Go needs to `go get` / `go install` a subdirectory module — tools/spec/vX.Y.Z
+# and tools/lsp/vX.Y.Z, both at the release commit. Additive: nothing depends on
+# this job, so a failure here can't break the other release jobs. Tags are
+# created idempotently, so re-running a release is safe. See #151.
 
 on:
   workflow_call:
@@ -41,20 +24,15 @@ jobs:
     steps:
       - name: Create path-prefixed module tags at the release commit
         env:
-          # Default GITHUB_TOKEN (contents:write). Mirrors the tag-auth model of
-          # the rest of the release: no PAT needed to write refs in this repo.
+          # Default GITHUB_TOKEN (contents:write) — no PAT needed to write refs.
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
-          # Externally-consumable modules from the go.work `use` list. Kept to
-          # the two modules meant for external consumption: tools/spec (the TWF
-          # language/parser contract) and tools/lsp (twf CLI + pipeline). Ordered
-          # spec-before-lsp so lsp's require of spec@vX.Y.Z resolves the moment
-          # its tag lands. tools/sampler is a dev/CLI tool that consumes tools/lsp
-          # and is not published for external `go get`; add it here if that changes.
+          # Modules published for external `go get`. tools/sampler is a dev/CLI
+          # tool consuming tools/lsp and is intentionally excluded.
           MODULES="tools/spec tools/lsp"
 
           for module in $MODULES; do

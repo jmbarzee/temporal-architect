@@ -55,15 +55,13 @@ go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest
 go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@vX.Y.Z
 ```
 
-`go install` does not apply the build-time `-ldflags`, so `twf` recovers its
-version from the binary's embedded build info instead: `twf version` prints the
-installed module version (VCS revision for `@latest` off an untagged commit),
-not `dev`.
+`go install` applies no `-ldflags`, so `twf version` reports the version from
+the binary's embedded build info (the VCS revision for `@latest` off an untagged
+commit) rather than `dev`.
 
-The same `tools/lsp` / `tools/spec` module tags let other Go programs
+The same module tags also let other Go programs
 `go get github.com/jmbarzee/temporal-architect/tools/lsp@vX.Y.Z` to import the
-`tools/lsp/pipeline` package in-process — this is how dist's `twf-serve`
-consumes the pipeline, and what a future `go install` of `twf-serve` builds on.
+`tools/lsp/pipeline` package in-process.
 
 ### From source (requires Go)
 

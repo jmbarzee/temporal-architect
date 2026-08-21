@@ -3,27 +3,23 @@ package main
 import (
 	"os"
 	"runtime/debug"
+	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
 )
 
-// version is stamped at build time via -ldflags "-X main.version=...".
-// Release/CI builds (make build-lsp) set it to the real version. Unstamped
-// builds — `go run`, or `go install …/cmd/twf@latest`, which does NOT apply
-// -ldflags — leave it "dev"; resolveVersion then recovers a real value from
-// the binary's build info. It must live in package main so the linker flag
-// resolves.
+// version is stamped at build time via -ldflags "-X main.version=..." (must
+// live in package main so the linker flag resolves). Unstamped builds leave it
+// "dev"; resolveVersion then recovers a real value from the binary build info.
 var version = "dev"
 
 func main() {
 	os.Exit(cmdutil.Exec(newRootCmd(resolveVersion(version))))
 }
 
-// resolveVersion returns the version to report. The linker-stamped value is
-// authoritative when present; otherwise it falls back to the module version
-// (populated for `go install pkg@version`) and then to the VCS revision
-// embedded by the Go toolchain, so `go install`ed binaries print a real
-// version instead of "dev".
+// resolveVersion prefers the linker-stamped version, falling back to the module
+// version (go install pkg@version) then the VCS revision, so go-installed
+// binaries report a real version instead of "dev".
 func resolveVersion(stamped string) string {
 	if stamped != "" && stamped != "dev" {
 		return stamped
@@ -34,13 +30,12 @@ func resolveVersion(stamped string) string {
 		return stamped
 	}
 
-	// `go install …/cmd/twf@vX.Y.Z` (and @latest) records the module version.
-	// Locally built modules report "(devel)", which is no better than "dev".
+	// Locally built modules report "(devel)", no better than "dev". Drop the
+	// "v" so go-installed binaries match the make/-ldflags version string.
 	if v := info.Main.Version; v != "" && v != "(devel)" {
-		return v
+		return strings.TrimPrefix(v, "v")
 	}
 
-	// Fall back to the VCS revision the toolchain stamps into module builds.
 	var rev string
 	var dirty bool
 	for _, s := range info.Settings {
