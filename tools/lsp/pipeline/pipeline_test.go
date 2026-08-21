@@ -3,10 +3,13 @@ package pipeline_test
 import (
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"testing"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
@@ -348,5 +351,74 @@ func TestBuildWrapsAstGraphDiagnostics(t *testing.T) {
 	}
 	if _, ok := astObj["definitions"]; !ok {
 		t.Errorf("payload.ast missing 'definitions'")
+	}
+}
+
+// TestDecomposeOverlayParity is the issue #156 anti-drift guard. The
+// decomposition overlay must be identical no matter which canonical path
+// produces it: the in-process pipeline.BuildDecompose(...) feed the served
+// visualizer consumes, and the decompose.Decompose(file, graph, opts)
+// value `twf graph chunks --json` wraps verbatim into its `chunks` envelope
+// field. Both paths key off the same extracted graph, so the same Options on the
+// same input must yield the same *decompose.Result — checked structurally
+// (reflect.DeepEqual) and byte-for-byte on the marshaled overlay, which is
+// exactly the bytes the CLI emits under `chunks`. If a future wrapper change
+// desyncs the two feeds, this fails.
+func TestDecomposeOverlayParity(t *testing.T) {
+	paths := []string{testdata("clean.twf")}
+
+	cases := []struct {
+		name string
+		opts decompose.Options
+	}{
+		{name: "default options", opts: decompose.Options{}},
+		{name: "ceiling triggers explore", opts: decompose.Options{Ceiling: 5}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Pipeline path: the wrapped Payload feed hosts consume.
+			got, err := pipeline.BuildDecompose(paths, tc.opts)
+			if err != nil {
+				t.Fatalf("BuildDecompose: %v", err)
+			}
+			if got.Decomposition == nil {
+				t.Fatalf("BuildDecompose left Decomposition nil for a clean file")
+			}
+
+			// Oracle path: recompute the decompose.Result directly from the
+			// same extracted graph, mirroring exactly what `twf graph chunks`
+			// feeds into the `chunks` field of its JSON envelope.
+			file, _, err := pipeline.ParseFiles(paths)
+			if err != nil {
+				t.Fatalf("ParseFiles: %v", err)
+			}
+			if file == nil {
+				t.Fatalf("ParseFiles returned nil file")
+			}
+			want := decompose.Decompose(file, graph.Extract(file), tc.opts)
+
+			// Structural parity.
+			if !reflect.DeepEqual(got.Decomposition, want) {
+				t.Errorf("pipeline.BuildDecompose overlay differs structurally from decompose.Decompose")
+			}
+
+			// Byte-identity: marshaling got.Decomposition must equal marshaling
+			// the CLI's Result value. The Envelope carries the same
+			// *decompose.Result under `chunks`, so identical bytes here mean the
+			// served `decomposition` overlay and the CLI `chunks` overlay cannot
+			// silently drift.
+			gotJSON, err := json.Marshal(got.Decomposition)
+			if err != nil {
+				t.Fatalf("marshal pipeline overlay: %v", err)
+			}
+			wantJSON, err := json.Marshal(want)
+			if err != nil {
+				t.Fatalf("marshal oracle overlay: %v", err)
+			}
+			if string(gotJSON) != string(wantJSON) {
+				t.Errorf("overlay bytes differ between paths:\n pipeline: %s\n cli:      %s", gotJSON, wantJSON)
+			}
+		})
 	}
 }

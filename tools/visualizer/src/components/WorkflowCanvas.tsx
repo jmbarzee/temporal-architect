@@ -4,6 +4,7 @@ import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusS
 import type { ParserGraph } from '../types/parser-graph'
 import { EMPTY_PARSER_GRAPH } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
+import type { DecompositionParams } from './protocol'
 import { TreeView } from './TreeView'
 import { GraphView } from './GraphView'
 import type { FilterState, PinState, ViewTransition, FilterDimension } from '../filter/types'
@@ -36,6 +37,12 @@ interface WorkflowCanvasProps {
    * Host applications wire this to whatever "refocus editor" means in their
    * environment. Optional; no-op when not provided. */
   onRefocus?: () => void
+  /** Invoked when the user adjusts decomposition parameters in the Graph view's
+   * Groups panel and asks to recompute. Host applications translate the
+   * `DecompositionParams` into a fresh `twf graph chunks` run and feed the result
+   * back through the `decomposition` prop. Optional; when absent the Groups
+   * panel's Params tab stays a read-only readout. */
+  onRequestDecomposition?: (params: DecompositionParams) => void
   /** Optional className applied to the outer container; appended after the
    * built-in `view-shell` class so consumers can layer overrides. */
   className?: string
@@ -130,7 +137,7 @@ function filterToPersisted(f: FilterState): PersistedFilter {
   }
 }
 
-export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, onRefocus, className, style }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
   // History mode: a graph-only payload (e.g. the sampler's observed graph) has
   // no AST definitions. The Tree view has nothing to render, so we hide its tab
@@ -390,6 +397,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               ast={ast}
               parserGraph={graphInput}
               decomposition={decomposition}
+              onRequestDecomposition={onRequestDecomposition}
               onShowInTree={historyMode ? undefined : showInTree}
               filter={graphFilter}
               onFilterChange={setGraphFilter}

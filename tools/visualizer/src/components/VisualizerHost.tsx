@@ -2,7 +2,7 @@ import React from 'react'
 import './VisualizerHost.css'
 import { WorkflowCanvas } from './WorkflowCanvas'
 import { StyleGuide } from './StyleGuide'
-import type { HostMessage } from './protocol'
+import type { HostMessage, DecompositionParams } from './protocol'
 import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
@@ -37,6 +37,14 @@ export interface HostActions {
   openFile?: (file: string) => void
   /** The user interacted with the canvas in a way that implies "refocus the editor". */
   refocus?: () => void
+  /**
+   * The user adjusted decomposition parameters and asked the host to recompute.
+   * The `params` mirror the Go `decompose.Options` field-for-field, so a host
+   * translates them 1:1 into a `twf graph chunks` invocation; the fresh overlay
+   * flows back in through the inbound `PayloadSource` as a new `decomposition`.
+   * A host with no producer to recompute against simply omits this.
+   */
+  requestDecomposition?: (params: DecompositionParams) => void
 }
 
 export interface VisualizerHostProps {
@@ -134,6 +142,7 @@ export function VisualizerHost({
       decomposition={decomposition}
       onOpenFile={actions?.openFile}
       onRefocus={actions?.refocus}
+      onRequestDecomposition={actions?.requestDecomposition}
       style={style}
     />
   )

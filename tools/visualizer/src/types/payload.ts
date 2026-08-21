@@ -31,7 +31,17 @@ export interface NormalizedPayload {
   decomposition?: Decomposition
 }
 
-/** Wrapped `{ ast, parserGraph, decomposition }` envelope. */
+/**
+ * Wrapped `{ ast, parserGraph, decomposition }` envelope.
+ *
+ * Keyed on `ast` being present, so a decomposition-only push is deliberately NOT
+ * recognized here — the overlay always rides with the graph it belongs to. This
+ * is the consumer-side face of a deferred toolchain decision (see
+ * `pipeline.BuildDecompose` in `tools/lsp/pipeline/decompose.go`): if the served
+ * recompute loop or the history/sampler work later needs to push a decomposition
+ * on its own, splitting it out starts here — a distinct message/branch keyed to a
+ * graph version, accepting the correlation cost the bundled shape avoids today.
+ */
 export function isWrappedPayload(
   d: unknown,
 ): d is { ast: TWFFile; parserGraph?: ParserGraph; decomposition?: Decomposition } {

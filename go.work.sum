@@ -92,6 +92,7 @@ github.com/spiffe/go-spiffe/v2 v2.6.0/go.mod h1:gm2SeUoMZEtpnzPNs2Csc0D/gX33k1xI
 github.com/stoewer/go-strcase v1.3.0/go.mod h1:fAH5hQ5pehh+j3nZfvwdk2RgEgQjAoM8wodgtPmh1xo=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/tliron/exturl v0.4.4/go.mod h1:3qhlToI3jc6+kVtVkf7lCaVzJgGH0DGWS6TUxe0tX0U=
+github.com/tliron/glsp v0.2.3-0.20250617204849-59d6e3155c81/go.mod h1:0mr4+bYwGddJfGuaxnUZBSxkshSzFOIyTmBRvfJDBo4=
 github.com/tliron/go-ard v0.2.17/go.mod h1:6cfX45C0wOMXeirtKlheG/cidBpeOErkzbI4dRhTUIc=
 github.com/tliron/go-transcribe v0.3.5/go.mod h1:2zb1ZWrlYtv18QXgi3fA6xIHtfPqPlnI4lUz9Exz8cc=
 github.com/tliron/yamlkeys v1.3.6/go.mod h1:K/uKQwMke5a9h6YW/Sj9pcp66vU3lRP97OrOjo/ELoU=

@@ -6,6 +6,7 @@ import './GraphView.css'
 import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
+import type { DecompositionParams } from './protocol'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
@@ -46,6 +47,10 @@ interface GraphViewProps {
   // Decomposition from `twf graph chunks` — drives the group overlay. Optional;
   // when absent the Groups modal/overlay is inert.
   decomposition?: Decomposition
+  // Outbound recompute request. When wired, the Groups panel's Params tab becomes
+  // editable and can request a fresh decomposition (including the first one,
+  // before any decomposition exists). Optional; absent for read-only hosts.
+  onRequestDecomposition?: (params: DecompositionParams) => void
   onShowInTree?: (name: string, defType: string) => void
   filter: FilterState
   onFilterChange: (next: FilterState) => void
@@ -68,6 +73,7 @@ export function GraphView({
   ast,
   parserGraph,
   decomposition,
+  onRequestDecomposition,
   onShowInTree,
   filter,
   onFilterChange,
@@ -580,7 +586,8 @@ export function GraphView({
       />
 
       {/* Groups modal — decomposition overlay control (top-left). Renders
-          nothing when no decomposition / no divisible chunks. */}
+          nothing when there is no decomposition AND no recompute action wired;
+          with an action it renders so the first request can be made. */}
       <GroupsModal
         decomposition={decomposition}
         selection={groupSelection}
@@ -588,6 +595,7 @@ export function GraphView({
         hover={groupHover}
         onHover={setGroupHover}
         activeGroups={activeGroups}
+        onRequestDecomposition={onRequestDecomposition}
       />
 
       {/* Shortcuts panel */}
