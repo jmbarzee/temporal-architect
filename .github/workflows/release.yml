@@ -55,6 +55,16 @@ jobs:
     with:
       version: ${{ github.ref_name }}
 
+  # ── Fan out per-module Go tags (additive; nothing depends on it) ─────────
+
+  tag-modules:
+    # Fan vX.Y.Z out into path-prefixed module tags for go get/install.
+    # Additive — nothing depends on it, so a failure can't break publishing.
+    needs: check-versions
+    uses: ./.github/workflows/_tag-modules.yml
+    with:
+      version: ${{ github.ref_name }}
+
   # ── Publish the toolchain's own libraries to npm ─────────────────────────
 
   publish-npm-libs:

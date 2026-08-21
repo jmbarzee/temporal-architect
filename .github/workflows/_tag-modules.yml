@@ -1,0 +1,57 @@
+name: _tag-modules
+
+# Fan the human-facing repo tag (vX.Y.Z) out into the path-prefixed module tags
+# Go needs to `go get` / `go install` a subdirectory module — tools/spec/vX.Y.Z
+# and tools/lsp/vX.Y.Z, both at the release commit. Additive: nothing depends on
+# this job, so a failure here can't break the other release jobs. Tags are
+# created idempotently, so re-running a release is safe. See #151.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  tag-modules:
+    name: Fan out per-module tags
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create path-prefixed module tags at the release commit
+        env:
+          # Default GITHUB_TOKEN (contents:write) — no PAT needed to write refs.
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Modules published for external `go get`. tools/sampler is a dev/CLI
+          # tool consuming tools/lsp and is intentionally excluded.
+          MODULES="tools/spec tools/lsp"
+
+          for module in $MODULES; do
+            tag="${module}/${VERSION}"
+            echo "::group::Tag ${tag} -> ${SHA}"
+
+            # Idempotent: if the ref already exists (re-run), leave it and move on.
+            if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
+              echo "Tag ${tag} already exists — skipping."
+              echo "::endgroup::"
+              continue
+            fi
+
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f "ref=refs/tags/${tag}" \
+              -f "sha=${SHA}"
+
+            echo "Created ${tag}."
+            echo "::endgroup::"
+          done
