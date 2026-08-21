@@ -1,0 +1,48 @@
+name: _release-guard
+
+# Reusable pre-flight gate for a release. Runs first; every build/publish job
+# depends on it, so a release that fails these checks publishes nothing.
+#   1. The tag is a valid vX.Y.Z (semver, leading "v").
+#   2. The tagged commit is on origin/main — releases are only ever cut from main.
+# Versions are no longer committed (they are stamped from the tag at build time),
+# so there is nothing here to compare against a manifest.
+# Called by release.yml; not directly triggerable.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Git tag including leading 'v', e.g. 'v0.3.2'."
+        type: string
+        required: true
+
+jobs:
+  guard:
+    name: Release guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag format
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! echo "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::tag '${VERSION}' is not a valid vX.Y.Z release tag"
+            exit 1
+          fi
+          echo "Tag ${VERSION} is valid."
+
+      - name: Require the tagged commit to be on main
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          git fetch --quiet origin main
+          if git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "Release commit ${SHA} is on origin/main."
+          else
+            echo "::error::release commit ${SHA} is not on origin/main — releases must be cut from main"
+            exit 1
+          fi

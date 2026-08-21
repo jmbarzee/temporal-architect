@@ -50,7 +50,7 @@ internal/release/
 internal/changes/       Scratch space for an in-flight dev cycle: REVISIONS_NNN, CHANGES_NNN. Gitignored; absent between cycles.
 internal/harness/       Dev-cycle component manifest (components.md), shared by the /dev-cycle skill and the orchestrator
 internal/orchestrator/  Temporal workflow design for the automated dev cycle (the durable twin of the /dev-cycle skill)
-internal/version.sh     Release version bump helper
+internal/version.sh     Release version bump helper (computes the next tag; see RELEASING.md)
 
 go.work                 Workspace wiring tools/lsp, tools/spec, tools/sampler, and internal/release/gen-skills-manifest
 ```
@@ -70,6 +70,8 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 **Breaking changes are expected and welcome.** Do not waste effort on backwards compatibility shims, deprecated field aliases, or migration paths. When a better design emerges, adopt it directly.
 
 **Stay on `0.x` until a deliberate first major release.** While pre-v1, *every* release is a minor or patch bump — breaking changes ship as `0.x` **minor** bumps (the CHANGELOG history follows this: each new construct or breaking change is a minor bump). Never run `make release TYPE=major` or pass an explicit `VERSION=1.x.x` until the team explicitly decides to cut `v1.0.0`. The release tooling never crosses into `1.x` on its own — a major only happens if someone asks for it. The package release tag tracks the DSL version in `CHANGELOG.md`.
+
+**Releasing is a bare tag push — the git tag is the single source of truth.** `make release-minor` (from `main`) tags and pushes; the `v*` tag drives everything, and every artifact's version is stamped from the tag at build time (nothing version-related is committed). See **RELEASING.md** for the full flow and the release guard.
 
 **Feature backlog and long-term planning live in [GitHub issues](https://github.com/jmbarzee/temporal-architect/issues), not in the repo.** Deferred features, design ideas, open questions, and cross-component work are all filed there and labelled by area (`area:dsl`, `area:parser`, `area:cli`, `area:decompose`, `area:visualizer`, `area:sampler`, `area:orchestrator`, `area:skills`) plus `epic`, `blocked`, `needs-design`, and `tech-debt`. When you defer something, open an issue — do not start a backlog file.
 
