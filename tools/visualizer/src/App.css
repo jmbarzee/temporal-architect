@@ -1,39 +1,13 @@
-/* App-level loading / error / empty states — extracted from styles/index.css (issue #56). */
-/* Loading, error, and empty states */
-.loading-container,
-.error-container,
-.empty-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 40px;
-  text-align: center;
-  background: var(--color-bg-gradient);
-}
+/* Standalone dev-app empty-state content (issue #150). The shared frame
+ * (`.empty-container` / `.error-container`) and error branch now live in the
+ * shell's stylesheet (components/VisualizerHost.css); what remains here is the
+ * standalone's own emptyState content — the transient loading text and the
+ * file picker — which the shell frames in `.empty-container`. */
 
-.loading-container p {
+/* Transient "Loading…" text shown while `?ast=` is in flight. */
+.loading {
   font-size: 16px;
   color: var(--color-text-muted);
-}
-
-.error-container h2 {
-  color: var(--color-error);
-  margin-bottom: 16px;
-}
-
-.error-container pre {
-  background: var(--color-error-bg);
-  border: 1px solid var(--color-error-border);
-  border-radius: 8px;
-  padding: 16px;
-  max-width: 600px;
-  overflow-x: auto;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--color-error-text);
-  text-align: left;
 }
 
 .empty-content {

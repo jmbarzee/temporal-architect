@@ -17,7 +17,7 @@ export default defineConfig({
       // suggest deep imports into our internal file tree.
       rollupTypes: true,
       // Only include the entry point and its transitive type graph.
-      include: ['src/lib.ts', 'src/types/**/*.ts', 'src/components/**/*.tsx', 'src/filter/**/*.ts', 'src/graph/**/*.ts', 'src/theme/**/*.ts'],
+      include: ['src/lib.ts', 'src/types/**/*.ts', 'src/components/**/*.tsx', 'src/components/**/*.ts', 'src/filter/**/*.ts', 'src/graph/**/*.ts', 'src/theme/**/*.ts'],
       exclude: ['src/App.tsx', 'src/main.tsx', '**/*.test.*'],
       // The DTS plugin defaults to the same outDir as the JS build (dist-lib);
       // we ship the resulting `lib.d.ts` alongside `lib.js`.

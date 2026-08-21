@@ -1,107 +1,92 @@
 import React from 'react'
 import './App.css'
-import { WorkflowCanvas } from './components/WorkflowCanvas'
-import { StyleGuide } from './components/StyleGuide'
-import type { TWFFile } from './types/ast'
-import type { ParserGraph } from './types/parser-graph'
-import type { Decomposition } from './types/decomposition'
-import { normalizePayload } from './types/payload'
+import { VisualizerHost } from './components/VisualizerHost'
+import type { PayloadSource } from './components/VisualizerHost'
+import type { HostMessage } from './components/protocol'
 import { mountNodeTypeStyles } from './graph/node-type-styles'
 
 // Mount registry-generated node-type CSS variables once at module load.
 mountNodeTypeStyles()
 
-// Standalone app - for development/testing
-// Load AST from URL query param: ?ast=/path/to/file.json
+// Standalone app - for development/testing.
 //
-// Payload shapes are normalized by normalizePayload (see types/payload.ts):
-// a wrapped `{ ast, parserGraph }` envelope, the raw `twf graph --json`
-// envelope (`{ graph }` → empty AST + graph, history mode), or a bare AST.
+// This is the toolchain's own *consumer* of the shared `<VisualizerHost>`
+// shell (issue #150): it owns only the transport adapter and the empty-state
+// content, not the shell's render logic. Load AST from URL query param
+// (?ast=/path/to/file.json), a window postMessage, or a manual file upload;
+// all three feed a single composite `PayloadSource`.
 //
-// `ast.diagnostics` (structured validator/resolver findings from
-// `twf parse`'s JSON envelope) and `ast.errors` (catastrophic
-// parser-process failures) both ride through unchanged; the headers in
-// TreeView / GraphView see both fields naturally.
+// Payload shapes are normalized by the shell via normalizePayload (see
+// types/payload.ts): a wrapped `{ ast, parserGraph }` envelope, the raw
+// `twf graph --json` envelope (`{ graph }` → empty AST + graph, history mode),
+// or a bare AST. `ast.diagnostics` and `ast.errors` ride through unchanged.
+//
+// Transport-level failures (fetch reject, JSON.parse throw) are mapped to
+// `error` messages here; normalize failures ("Unrecognized payload shape") are
+// the shell's concern.
+
+interface StandaloneSource extends PayloadSource {
+  /** Push a message from a transport that isn't a passive subscription
+   * (the manual file upload). */
+  emit(msg: HostMessage): void
+}
+
+// Composite standalone PayloadSource over the three transports the dev app
+// supports: window postMessage (passive), the `?ast=` query-param fetch
+// (kicked on subscribe), and manual file upload (pushed via `emit`).
+function createStandaloneSource(setLoading: (loading: boolean) => void): StandaloneSource {
+  let sink: ((msg: HostMessage) => void) | null = null
+
+  return {
+    subscribe(onMessage) {
+      sink = onMessage
+
+      // See webview.tsx: postMessage carries `{ type: 'ast' | 'error', … }`
+      // envelopes straight through to the shell.
+      const handleMessage = (event: MessageEvent) => onMessage(event.data as HostMessage)
+      window.addEventListener('message', handleMessage)
+
+      // Check for ?ast= query param.
+      const params = new URLSearchParams(window.location.search)
+      const astPath = params.get('ast')
+      if (astPath) {
+        setLoading(true)
+        fetch(astPath)
+          .then(res => res.json())
+          .then(data => {
+            onMessage({ type: 'ast', data })
+            setLoading(false)
+          })
+          .catch(err => {
+            onMessage({ type: 'error', message: err.message })
+            setLoading(false)
+          })
+      }
+
+      return () => {
+        window.removeEventListener('message', handleMessage)
+        sink = null
+      }
+    },
+    emit(msg) {
+      sink?.(msg)
+    },
+  }
+}
 
 function App() {
-  const [ast, setAst] = React.useState<TWFFile | null>(null)
-  const [parserGraph, setParserGraph] = React.useState<ParserGraph | undefined>(undefined)
-  const [decomposition, setDecomposition] = React.useState<Decomposition | undefined>(undefined)
-  const [error, setError] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
-  const [showStyleGuide, setShowStyleGuide] = React.useState(false)
-  // See webview.tsx: skip AST messages that are structurally identical to the
-  // previous one so the graph simulation doesn't reset on every focus refresh.
-  const lastAstHashRef = React.useRef<string | null>(null)
+  // The source is created once and kept stable so the shell subscribes exactly
+  // once (its effect keys on the source identity).
+  const sourceRef = React.useRef<StandaloneSource | null>(null)
+  if (sourceRef.current === null) {
+    sourceRef.current = createStandaloneSource(setLoading)
+  }
+  const source = sourceRef.current
 
-  // Ctrl+Shift+G toggles style guide
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'G') {
-        e.preventDefault()
-        setShowStyleGuide(prev => !prev)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  // Load AST from query param or postMessage
-  React.useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data
-      if (message.type === 'ast') {
-        const hash = JSON.stringify(message.data)
-        if (hash === lastAstHashRef.current) return
-        lastAstHashRef.current = hash
-        const norm = normalizePayload(message.data)
-        if (norm) {
-          setAst(norm.ast)
-          setParserGraph(norm.parserGraph)
-          setDecomposition(norm.decomposition)
-          setError(null)
-        } else {
-          setError('Unrecognized payload shape')
-        }
-      } else if (message.type === 'error') {
-        lastAstHashRef.current = null
-        setError(message.message)
-        setAst(null)
-        setParserGraph(undefined)
-        setDecomposition(undefined)
-      }
-    }
-
-    window.addEventListener('message', handleMessage)
-
-    // Check for ?ast= query param
-    const params = new URLSearchParams(window.location.search)
-    const astPath = params.get('ast')
-    if (astPath) {
-      setLoading(true)
-      fetch(astPath)
-        .then(res => res.json())
-        .then(data => {
-          const norm = normalizePayload(data)
-          if (norm) {
-            setAst(norm.ast)
-            setParserGraph(norm.parserGraph)
-            setDecomposition(norm.decomposition)
-          } else {
-            setError('Unrecognized payload shape')
-          }
-          setLoading(false)
-        })
-        .catch(err => {
-          setError(err.message)
-          setLoading(false)
-        })
-    }
-
-    return () => window.removeEventListener('message', handleMessage)
-  }, [])
-
-  // File input handler for manual loading
+  // File input handler for manual loading. Transport-level parse failures map
+  // to `error`; the shell handles normalization (incl. "Unrecognized payload
+  // shape").
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -110,62 +95,38 @@ function App() {
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string)
-        const norm = normalizePayload(json)
-        if (norm) {
-          setAst(norm.ast)
-          setParserGraph(norm.parserGraph)
-          setDecomposition(norm.decomposition)
-          setError(null)
-        } else {
-          setError('Unrecognized payload shape')
-        }
+        source.emit({ type: 'ast', data: json })
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to parse JSON')
+        source.emit({
+          type: 'error',
+          message: err instanceof Error ? err.message : 'Failed to parse JSON',
+        })
       }
     }
     reader.readAsText(file)
   }
 
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <p>Loading workflow...</p>
-      </div>
-    )
-  }
+  // Standalone empty-state content: a transient loading message while `?ast=`
+  // is in flight, otherwise the file picker. The shell frames this in
+  // `.empty-container`.
+  const emptyState = loading ? (
+    <p className="loading">Loading workflow...</p>
+  ) : (
+    <div className="empty-content">
+      <h2>TWF Workflow Visualizer</h2>
+      <p>Load an AST JSON file to visualize:</p>
+      <label className="file-upload-btn">
+        Choose File
+        <input type="file" accept=".json" onChange={handleFileUpload} />
+      </label>
+      <p className="hint">
+        Generate AST with: <code>parse --json file.twf &gt; ast.json</code>
+      </p>
+    </div>
+  )
 
-  if (error) {
-    return (
-      <div className="error-container">
-        <h2>Error parsing workflow</h2>
-        <pre>{error}</pre>
-      </div>
-    )
-  }
-
-  if (!ast) {
-    return (
-      <div className="empty-container">
-        <div className="empty-content">
-          <h2>TWF Workflow Visualizer</h2>
-          <p>Load an AST JSON file to visualize:</p>
-          <label className="file-upload-btn">
-            Choose File
-            <input type="file" accept=".json" onChange={handleFileUpload} />
-          </label>
-          <p className="hint">
-            Generate AST with: <code>parse --json file.twf &gt; ast.json</code>
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  if (showStyleGuide) {
-    return <StyleGuide onClose={() => setShowStyleGuide(false)} />
-  }
-
-  return <WorkflowCanvas ast={ast} parserGraph={parserGraph} decomposition={decomposition} />
+  // Standalone has no editor, so no HostActions are wired.
+  return <VisualizerHost source={source} emptyState={emptyState} />
 }
 
 export default App

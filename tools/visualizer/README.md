@@ -84,6 +84,14 @@ const ast: TWFFile = {
 Beyond `<Visualizer>`, the package exports the host-agnostic pieces an embedder
 needs to mount the visualizer inside an arbitrary shell:
 
+- `<VisualizerHost>` — the host shell that wraps `<Visualizer>` with the payload
+  de-dupe, normalization, `Ctrl+Shift+G` style-guide toggle, and the
+  error/empty/canvas render branches every host would otherwise copy. You supply
+  two seams — a `PayloadSource` (`subscribe(onMessage) => unsubscribe`, how
+  inbound `HostMessage`s arrive) and optional `HostActions` (`openFile` /
+  `refocus`, where outbound user intent goes) — plus an `emptyState` slot for
+  your own no-payload content. The library never *implements* a transport; the
+  concrete adapter (postMessage / SSE / fetch) is the host's concern.
 - `normalizePayload(data)` → `NormalizedPayload | null` — coerces the three
   parser wire shapes (`{ ast, parserGraph }`, `twf graph --json`'s `{ graph }`,
   or a bare `TWFFile`) into `{ ast, parserGraph? }`.
@@ -107,6 +115,11 @@ their own walkers, badges, or side panels without re-declaring the shapes:
 - `Diagnostic`, `DiagnosticSeverity`, `DiagnosticKind` — the structured
   diagnostic shape carried alongside the AST in `twf parse`'s envelope
 - `Position`, `ResolvedRef`, `OptionsBlock`, `OptionEntry`
+- `VisualizerHostProps`, `PayloadSource`, `HostActions` — the `<VisualizerHost>`
+  seam types (see the Host-embedding kit above)
+- `HostMessage`, `OutboundMessage`, `OutboundMessageType` — the host ⇄
+  visualizer message protocol (`OutboundMessageType` is a runtime constant, not
+  just a type)
 
 These types are generated from `twf`'s Go DTO layer (the single source of
 truth) into [`@temporal-architect/wire-types`](https://github.com/jmbarzee/temporal-architect/tree/main/tools/wire-types)
