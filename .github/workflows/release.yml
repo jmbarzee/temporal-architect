@@ -8,7 +8,7 @@ name: Release
 # those assets and publishes every registry package.
 #
 # All real work is in per-phase reusable workflows:
-#   _check-versions.yml          — assert the visualizer + wire-types manifests match the tag
+#   _release-guard.yml           — assert the tag is valid and its commit is on main
 #   _build-binaries.yml          — matrix builds the twf binary archives
 #   _build-skills-tarball.yml    — package skills/ as a release asset
 #   _build-artifacts.yml         — visualizer lib + wire-types tarballs
@@ -30,27 +30,27 @@ permissions:
 jobs:
   # ── Pre-flight ───────────────────────────────────────────────────────────
 
-  check-versions:
-    uses: ./.github/workflows/_check-versions.yml
+  release-guard:
+    uses: ./.github/workflows/_release-guard.yml
     with:
       version: ${{ github.ref_name }}
 
   # ── Build (artifacts the Release ships) ──────────────────────────────────
 
   build-binaries:
-    needs: check-versions
+    needs: release-guard
     uses: ./.github/workflows/_build-binaries.yml
     with:
       version: ${{ github.ref_name }}
 
   build-skills-tarball:
-    needs: check-versions
+    needs: release-guard
     uses: ./.github/workflows/_build-skills-tarball.yml
     with:
       version: ${{ github.ref_name }}
 
   build-artifacts:
-    needs: check-versions
+    needs: release-guard
     uses: ./.github/workflows/_build-artifacts.yml
     with:
       version: ${{ github.ref_name }}
@@ -60,7 +60,7 @@ jobs:
   tag-modules:
     # Fan vX.Y.Z out into path-prefixed module tags for go get/install.
     # Additive — nothing depends on it, so a failure can't break publishing.
-    needs: check-versions
+    needs: release-guard
     uses: ./.github/workflows/_tag-modules.yml
     with:
       version: ${{ github.ref_name }}

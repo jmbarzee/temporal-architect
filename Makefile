@@ -102,6 +102,10 @@ build-visualizer-lib:
 .PHONY: pack-visualizer-lib pack-wire-types publish-npm-libs
 
 ## Pack the visualizer npm library into a release tarball (dist/).
+## The published version is stamped from VERSION at pack time (never committed —
+## the manifest holds a 0.0.0-dev placeholder); with no VERSION the tarball packs
+## as 0.0.0-dev for local testing. The stamp is reverted after packing so a local
+## run never leaves the manifest dirty.
 pack-visualizer-lib: build-visualizer-lib
 	@mkdir -p dist
 	@# Drop any stale tarballs first so dist/ holds only the freshly-packed
@@ -109,15 +113,33 @@ pack-visualizer-lib: build-visualizer-lib
 	@# local builds across versions otherwise accumulate (the dist repo's
 	@# file: copy then matches more than one and breaks).
 	@rm -f dist/temporal-architect-visualizer-*.tgz
-	cd tools/visualizer && npm pack --pack-destination ../../dist
-	@echo "Packed visualizer lib tarball into dist/"
+	@$(call npm-pack-stamped,tools/visualizer,visualizer lib)
 
 ## Pack the wire-types type-only package into a release tarball (dist/).
+## Version handling matches pack-visualizer-lib (stamped from VERSION at pack).
 pack-wire-types:
 	@mkdir -p dist
 	@rm -f dist/temporal-architect-wire-types-*.tgz
-	cd tools/wire-types && npm pack --pack-destination ../../dist
-	@echo "Packed wire-types tarball into dist/"
+	@$(call npm-pack-stamped,tools/wire-types,wire-types)
+
+# npm-pack-stamped <module-dir> <label>: stamp the release version from VERSION
+# (leading "v" stripped) into the module's manifest, npm pack into dist/, then
+# restore the manifest to its pre-stamp contents. VERSION empty -> pack the
+# 0.0.0-dev placeholder. `npm version` rewrites package.json AND package-lock.json,
+# so both are backed up by content (not `git checkout`, which would clobber any
+# uncommitted manifest edits) and restored regardless of pack success.
+define npm-pack-stamped
+VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
+cd $(1) && \
+cp package.json .pack-bak.package.json; \
+[ -f package-lock.json ] && cp package-lock.json .pack-bak.package-lock.json; \
+if [ -n "$$VER" ]; then npm version "$$VER" --no-git-tag-version --allow-same-version >/dev/null; fi; \
+npm pack --pack-destination ../../dist; status=$$?; \
+mv .pack-bak.package.json package.json; \
+[ -f .pack-bak.package-lock.json ] && mv .pack-bak.package-lock.json package-lock.json; \
+[ $$status -eq 0 ] && echo "Packed $(2) tarball into dist/"; \
+exit $$status
+endef
 
 ## Publish the toolchain's two libraries to npm from their packed tarballs.
 ## CI-only: relies on OIDC trusted publishing (no NPM_TOKEN). --provenance
@@ -187,13 +209,17 @@ check-types: gen-types
 		|| { echo "Generated wire types are stale — run 'make gen-types' and commit the result."; exit 1; }
 
 # ── Release targets ──────────────────────────────────────────────────────────
-# Bump the version of the toolchain's own published packages (visualizer lib +
-# wire-types), commit, tag, and push — the `v*` tag triggers release.yml, which
-# cuts the GitHub Release and dispatches to the distribution repo.
+# Cut a release by pushing the version tag — nothing else. The `v*` tag triggers
+# release.yml, which stamps the version into every artifact at build time (npm
+# libs, twf binary, skills tarball) and dispatches to the distribution repo. No
+# version is committed; the tag is the single source of truth.
 #   make release TYPE=patch        (auto-bump from latest tag)
 #   make release TYPE=minor
 #   make release TYPE=major
 #   make release VERSION=1.2.3     (explicit version)
+#
+# The tag is cut on the current commit, which MUST be on origin/main (the release
+# workflow's release-guard job re-checks this and refuses to publish otherwise).
 
 .PHONY: release release-patch release-minor release-major
 
@@ -209,16 +235,15 @@ release-major:
 release:
 	$(eval NEW_VERSION := $(shell bash internal/version.sh "$(VERSION)" "$(TYPE)"))
 	@if [ -z "$(NEW_VERSION)" ]; then exit 1; fi
-	@echo "Releasing v$(NEW_VERSION)"
-	@# The toolchain publishes two npm packages from its release assets; their
-	@# manifest versions must match the tag (enforced by _check-versions.yml).
-	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' tools/visualizer/package.json && rm -f tools/visualizer/package.json.bak
-	@sed -i.bak 's/"version": *"[^"]*"/"version": "$(NEW_VERSION)"/' tools/wire-types/package.json && rm -f tools/wire-types/package.json.bak
-	git add tools/visualizer/package.json tools/wire-types/package.json
-	git commit -m "release: v$(NEW_VERSION)"
+	@# Refuse to tag anything that isn't already on origin/main. Fast local
+	@# mirror of the release-guard CI job; the CI check is authoritative.
+	@git fetch --quiet origin main
+	@git merge-base --is-ancestor HEAD origin/main \
+		|| { echo "Refusing to release: HEAD is not on origin/main. Release from main."; exit 1; }
+	@echo "Releasing v$(NEW_VERSION) at $$(git rev-parse --short HEAD) (on main)"
 	git tag "v$(NEW_VERSION)"
-	git push origin HEAD "v$(NEW_VERSION)"
-	@echo "Pushed v$(NEW_VERSION) — release workflow will cut the release and dispatch to dist"
+	git push origin "v$(NEW_VERSION)"
+	@echo "Pushed v$(NEW_VERSION) — release workflow will stamp, publish, and dispatch to dist"
 
 # ── Clean ────────────────────────────────────────────────────────────────────
 
