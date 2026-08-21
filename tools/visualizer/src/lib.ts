@@ -41,7 +41,11 @@ export type {
   PayloadSource,
   HostActions,
 } from './components/VisualizerHost'
-export type { HostMessage, OutboundMessage } from './components/protocol'
+export type {
+  HostMessage,
+  OutboundMessage,
+  DecompositionParams,
+} from './components/protocol'
 export { OutboundMessageType } from './components/protocol'
 
 // Re-export the AST types so consumers can type their `ast` prop and walk

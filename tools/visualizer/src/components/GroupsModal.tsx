@@ -7,6 +7,7 @@
 import React from 'react'
 import './GroupsModal.css'
 import type { Decomposition, Chunk, Division, Section } from '../types/decomposition'
+import type { DecompositionParams } from './protocol'
 import {
   defaultStrategyForChunk,
   initializedSelection,
@@ -17,6 +18,10 @@ import {
 
 type GroupsTab = 'groups' | 'params'
 
+// Decomposition strategies the `by` multi-select offers, mirroring the Go
+// `decompose` strategy names a host translates into `twf graph chunks --by`.
+const STRATEGY_OPTIONS = ['tree', 'nexus', 'worker', 'namespace', 'service', 'subtree'] as const
+
 interface GroupsModalProps {
   decomposition?: Decomposition
   selection: GroupSelection
@@ -26,6 +31,12 @@ interface GroupsModalProps {
   // The currently-glowing groups, used to color the section swatches so the
   // modal reads as the legend for what's on the canvas.
   activeGroups: ActiveGroup[]
+  // Outbound recompute request. When wired, the Params tab becomes an editable
+  // control set that builds a `DecompositionParams` and calls this; the panel
+  // also renders (to host the controls) even before any decomposition exists, so
+  // the first request can be made. When absent, the Params tab is a read-only
+  // readout and the panel returns null with no decomposition — today's behaviour.
+  onRequestDecomposition?: (params: DecompositionParams) => void
 }
 
 // Last path segment of a section id (e.g. ".../service:workflow:AgenticTask"
@@ -42,10 +53,8 @@ export function GroupsModal({
   hover,
   onHover,
   activeGroups,
+  onRequestDecomposition,
 }: GroupsModalProps) {
-  const [open, setOpen] = React.useState(false)
-  const [tab, setTab] = React.useState<GroupsTab>('groups')
-
   const colorById = React.useMemo(() => {
     const m = new Map<string, string>()
     for (const g of activeGroups) m.set(g.id, g.color)
@@ -61,14 +70,27 @@ export function GroupsModal({
     [decomposition],
   )
 
-  // Nothing to overlay → don't render the modal at all (no decomposition, or a
-  // host that sent an empty partition).
-  if (!decomposition || sortedChunks.length === 0) return null
+  // Capability vs. data: chunks to overlay, and whether a host can service a
+  // recompute request. The panel renders when either holds; it stays absent
+  // (today's behaviour) only when there is neither a decomposition nor an action.
+  const hasChunks = !!decomposition && sortedChunks.length > 0
+  const canRecompute = !!onRequestDecomposition
+
+  const [open, setOpen] = React.useState(false)
+  // Default to the Params tab when there's nothing to browse yet but a recompute
+  // can be requested — that's where the first request is made.
+  const [tab, setTab] = React.useState<GroupsTab>(hasChunks ? 'groups' : 'params')
+
+  if (!hasChunks && !canRecompute) return null
 
   // First engagement bootstraps the overlay (glow on, every chunk enabled); see
   // initializedSelection. Opening the panel and flipping the master switch on are
-  // both "engage" actions.
-  const engage = () => onSelectionChange(initializedSelection(selection, decomposition))
+  // both "engage" actions. No-op when there's no decomposition to engage with
+  // (the bootstrap-only panel).
+  const engage = () => {
+    if (!decomposition) return
+    onSelectionChange(initializedSelection(selection, decomposition))
+  }
 
   const handleToggleOpen = () => {
     const next = !open
@@ -129,18 +151,23 @@ export function GroupsModal({
         >
           {open ? '\u25BC Groups' : '\u25B6 Groups'}
         </button>
-        <label
-          className={`switch${selection.glowEnabled ? ' on' : ''}`}
-          title="Show group glow on the canvas"
-        >
-          <input
-            type="checkbox"
-            checked={selection.glowEnabled}
-            onChange={e => handleGlowToggle(e.target.checked)}
-            aria-label="Show group glow"
-          />
-          <span className="switch-track"><span className="switch-knob" /></span>
-        </label>
+        {/* The master glow switch only makes sense with a decomposition to glow;
+            in the bootstrap-only panel (action wired, no chunks yet) it is
+            omitted so no dead control is offered. */}
+        {hasChunks && (
+          <label
+            className={`switch${selection.glowEnabled ? ' on' : ''}`}
+            title="Show group glow on the canvas"
+          >
+            <input
+              type="checkbox"
+              checked={selection.glowEnabled}
+              onChange={e => handleGlowToggle(e.target.checked)}
+              aria-label="Show group glow"
+            />
+            <span className="switch-track"><span className="switch-knob" /></span>
+          </label>
+        )}
       </div>
 
       {open && (
@@ -164,7 +191,13 @@ export function GroupsModal({
             </button>
           </div>
 
-          {tab === 'groups' && (
+          {tab === 'groups' && !hasChunks && (
+            <div className="groups-tree groups-tree-empty">
+              No decomposition yet. Set parameters on the Params tab and Recompute.
+            </div>
+          )}
+
+          {tab === 'groups' && hasChunks && (
             <div className="groups-tree" onMouseLeave={() => onHover(null)}>
               {sortedChunks.map(chunk => {
                 const divisions = chunk.divisions ?? []
@@ -263,18 +296,30 @@ export function GroupsModal({
             </div>
           )}
 
+          {/* Editable when a host can service a recompute; the read-only readout
+              otherwise (today's behaviour). The editor is keyed on the echoed
+              params so a fresh decomposition re-seeds the controls. */}
           {tab === 'params' && (
-            <div className="groups-params">
-              <p className="groups-params-note">Parameters used to compute these groups.</p>
-              {/* maxDepth / strategies were added to the wire contract after
-                  ceiling / floor; guard against a host bundling an older twf
-                  whose JSON omits them so the readout degrades instead of
-                  crashing on `undefined.join`. */}
-              <ParamRow label="ceiling" value={String(decomposition.ceiling)} />
-              <ParamRow label="floor" value={String(decomposition.floor)} />
-              <ParamRow label="max depth" value={decomposition.maxDepth != null ? String(decomposition.maxDepth) : '\u2014'} />
-              <ParamRow label="strategies" value={(decomposition.strategies ?? []).join(', ')} />
-            </div>
+            canRecompute ? (
+              <ParamsEditor
+                key={paramsSeedKey(decomposition)}
+                decomposition={decomposition}
+                onRequestDecomposition={onRequestDecomposition!}
+              />
+            ) : (
+              <div className="groups-params">
+                <p className="groups-params-note">Parameters used to compute these groups.</p>
+                {/* maxDepth / strategies were added to the wire contract after
+                    ceiling / floor; guard against a host bundling an older twf
+                    whose JSON omits them so the readout degrades instead of
+                    crashing on `undefined.join`. Only reached with a
+                    decomposition present (canRecompute false + hasChunks true). */}
+                <ParamRow label="ceiling" value={String(decomposition!.ceiling)} />
+                <ParamRow label="floor" value={String(decomposition!.floor)} />
+                <ParamRow label="max depth" value={decomposition!.maxDepth != null ? String(decomposition!.maxDepth) : '\u2014'} />
+                <ParamRow label="strategies" value={(decomposition!.strategies ?? []).join(', ')} />
+              </div>
+            )
           )}
         </div>
       )}
@@ -354,6 +399,103 @@ function ParamRow({ label, value }: { label: string; value: string }) {
     <div className="groups-param-row">
       <span className="groups-param-label">{label}</span>
       <span className="groups-param-value">{value}</span>
+    </div>
+  )
+}
+
+// Identity of a decomposition's echoed-back params. Used as ParamsEditor's React
+// key so a fresh decomposition (new resolved params) re-seeds the controls,
+// while typing between recomputes never remounts the editor mid-edit.
+function paramsSeedKey(decomposition?: Decomposition): string {
+  if (!decomposition) return 'bootstrap'
+  return [
+    decomposition.ceiling,
+    decomposition.floor,
+    decomposition.maxDepth,
+    (decomposition.strategies ?? []).join('+'),
+  ].join('|')
+}
+
+interface ParamsEditorProps {
+  decomposition?: Decomposition
+  onRequestDecomposition: (params: DecompositionParams) => void
+}
+
+// Editable Params tab: seeds ceiling/floor/maxDepth/strategies from the current
+// decomposition (or blank when bootstrapping the first request), and emits a
+// `DecompositionParams` on Recompute. Numeric fields are held as strings so a
+// field can be cleared to mean "let the host apply its default"; empty/invalid
+// fields are omitted from the request rather than sent as 0.
+function ParamsEditor({ decomposition, onRequestDecomposition }: ParamsEditorProps) {
+  const numToInput = (n: number | undefined) => (n != null ? String(n) : '')
+  const [ceiling, setCeiling] = React.useState(() => numToInput(decomposition?.ceiling))
+  const [floor, setFloor] = React.useState(() => numToInput(decomposition?.floor))
+  const [maxDepth, setMaxDepth] = React.useState(() => numToInput(decomposition?.maxDepth))
+  const [by, setBy] = React.useState<Set<string>>(() => new Set(decomposition?.strategies ?? []))
+
+  const toggleStrategy = (s: string) => {
+    setBy(prev => {
+      const next = new Set(prev)
+      if (next.has(s)) next.delete(s)
+      else next.add(s)
+      return next
+    })
+  }
+
+  const recompute = () => {
+    const params: DecompositionParams = {}
+    const addNum = (raw: string, set: (v: number) => void) => {
+      if (raw.trim() === '') return
+      const n = Number(raw)
+      if (Number.isFinite(n)) set(n)
+    }
+    addNum(ceiling, v => { params.ceiling = v })
+    addNum(floor, v => { params.floor = v })
+    addNum(maxDepth, v => { params.maxDepth = v })
+    if (by.size > 0) params.by = STRATEGY_OPTIONS.filter(s => by.has(s))
+    onRequestDecomposition(params)
+  }
+
+  return (
+    <div className="groups-params">
+      <p className="groups-params-note">Adjust decomposition parameters and recompute.</p>
+      <NumberField label="ceiling" value={ceiling} onChange={setCeiling} />
+      <NumberField label="floor" value={floor} onChange={setFloor} />
+      <NumberField label="max depth" value={maxDepth} onChange={setMaxDepth} />
+      <div className="groups-param-strategies">
+        <span className="groups-param-label">strategies</span>
+        <div className="groups-strategy-options">
+          {STRATEGY_OPTIONS.map(s => (
+            <label key={s} className={`groups-strategy${by.has(s) ? ' on' : ''}`} title={s}>
+              <input
+                type="checkbox"
+                checked={by.has(s)}
+                onChange={() => toggleStrategy(s)}
+                aria-label={s}
+              />
+              <span>{s}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <button className="groups-recompute" onClick={recompute}>Recompute</button>
+    </div>
+  )
+}
+
+function NumberField({
+  label, value, onChange,
+}: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="groups-param-row">
+      <span className="groups-param-label">{label}</span>
+      <input
+        className="groups-param-input"
+        type="number"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        aria-label={label}
+      />
     </div>
   )
 }

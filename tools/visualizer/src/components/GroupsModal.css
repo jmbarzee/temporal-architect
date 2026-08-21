@@ -213,3 +213,78 @@
   text-align: right;
   word-break: break-word;
 }
+
+/* Empty state for the Groups tree when a recompute action is wired but no
+   decomposition exists yet (the bootstrap-only panel). */
+.groups-tree-empty {
+  color: var(--color-text-muted);
+  padding: 8px 2px;
+  line-height: 1.4;
+}
+
+/* Editable Params tab (issue #156). The numeric fields reuse .groups-param-row's
+   label/value layout; the value slot becomes a compact number input. */
+.groups-param-input {
+  width: 72px;
+  text-align: right;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-bg, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.groups-param-input:focus {
+  outline: none;
+  border-color: var(--color-workflow);
+}
+
+.groups-param-strategies {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.groups-strategy-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+}
+
+.groups-strategy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.groups-strategy.on {
+  color: var(--color-text);
+}
+
+.groups-strategy input[type="checkbox"] {
+  accent-color: var(--color-workflow);
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.groups-recompute {
+  margin-top: 10px;
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: rgba(139, 126, 200, 0.16);
+  border: 1px solid var(--color-workflow);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.groups-recompute:hover {
+  background: rgba(139, 126, 200, 0.28);
+}

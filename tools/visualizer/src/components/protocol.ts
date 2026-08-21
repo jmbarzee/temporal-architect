@@ -30,21 +30,48 @@ export type HostMessage =
  * Outbound message-type constants — the wire `type` values a transport uses to
  * carry user intent from the shell's environment back to its host.
  *
- *  - `ready`    — the visualizer has mounted and is ready to receive payloads.
- *  - `openFile` — the user asked to focus a file (carries the file path).
- *  - `refocus`  — the user interacted in a way that implies "return focus to the editor".
+ *  - `ready`                — the visualizer has mounted and is ready to receive payloads.
+ *  - `openFile`             — the user asked to focus a file (carries the file path).
+ *  - `refocus`              — the user interacted in a way that implies "return focus to the editor".
+ *  - `requestDecomposition` — the user adjusted decomposition parameters and asked the
+ *    host to recompute (carries the requested `DecompositionParams`).
  */
 export const OutboundMessageType = {
   Ready: 'ready',
   OpenFile: 'openFile',
   Refocus: 'refocus',
+  RequestDecomposition: 'requestDecomposition',
 } as const
 
 export type OutboundMessageType =
   (typeof OutboundMessageType)[keyof typeof OutboundMessageType]
+
+/**
+ * Parameters for an outbound decomposition-recompute request (shell → host).
+ *
+ * Framework-free by construction (no React / DOM): this is request vocabulary a
+ * transport carries, not a serialized-from-Go response shape. It mirrors the Go
+ * `decompose.Options` (ceiling/floor/by/maxDepth) field-for-field so a host can
+ * translate it 1:1 into a `twf graph chunks` invocation. The correspondence is
+ * documented here, not code-generated (wire-types/tygo is intentionally out of
+ * scope): all fields are optional, and the host applies its own defaults for any
+ * the user left unset.
+ *
+ *  - `ceiling`  — upper bound on chunk size.
+ *  - `floor`    — lower bound on chunk size.
+ *  - `by`       — decomposition strategies to apply (e.g. tree/nexus/worker/…).
+ *  - `maxDepth` — maximum decomposition depth.
+ */
+export type DecompositionParams = {
+  ceiling?: number
+  floor?: number
+  by?: string[]
+  maxDepth?: number
+}
 
 /** A message a transport carries from the shell's environment back to its host. */
 export type OutboundMessage =
   | { type: typeof OutboundMessageType.Ready }
   | { type: typeof OutboundMessageType.OpenFile; file: string }
   | { type: typeof OutboundMessageType.Refocus }
+  | { type: typeof OutboundMessageType.RequestDecomposition; params: DecompositionParams }
