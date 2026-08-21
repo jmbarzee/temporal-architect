@@ -356,8 +356,8 @@ func TestBuildWrapsAstGraphDiagnostics(t *testing.T) {
 
 // TestDecomposeOverlayParity is the issue #156 anti-drift guard. The
 // decomposition overlay must be identical no matter which canonical path
-// produces it: the in-process pipeline.Decompose(pipeline.Build(...)) feed the
-// served visualizer consumes, and the decompose.Decompose(file, graph, opts)
+// produces it: the in-process pipeline.BuildDecompose(...) feed the served
+// visualizer consumes, and the decompose.Decompose(file, graph, opts)
 // value `twf graph chunks --json` wraps verbatim into its `chunks` envelope
 // field. Both paths key off the same extracted graph, so the same Options on the
 // same input must yield the same *decompose.Result — checked structurally
@@ -378,13 +378,12 @@ func TestDecomposeOverlayParity(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Pipeline path: the wrapped Payload feed hosts consume.
-			p, err := pipeline.Build(paths)
+			got, err := pipeline.BuildDecompose(paths, tc.opts)
 			if err != nil {
-				t.Fatalf("Build: %v", err)
+				t.Fatalf("BuildDecompose: %v", err)
 			}
-			got := pipeline.Decompose(p, tc.opts)
 			if got.Decomposition == nil {
-				t.Fatalf("Decompose left Decomposition nil for a clean file")
+				t.Fatalf("BuildDecompose left Decomposition nil for a clean file")
 			}
 
 			// Oracle path: recompute the decompose.Result directly from the
@@ -401,7 +400,7 @@ func TestDecomposeOverlayParity(t *testing.T) {
 
 			// Structural parity.
 			if !reflect.DeepEqual(got.Decomposition, want) {
-				t.Errorf("pipeline.Decompose overlay differs structurally from decompose.Decompose")
+				t.Errorf("pipeline.BuildDecompose overlay differs structurally from decompose.Decompose")
 			}
 
 			// Byte-identity: marshaling got.Decomposition must equal marshaling

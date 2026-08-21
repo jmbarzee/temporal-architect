@@ -14,16 +14,17 @@ import (
 // The visualizer consumes the wrapped shape by hand (normalizePayload in
 // tools/visualizer/src/types/payload.ts), so no generated type is needed.
 //
-// Decomposition is the optional decomposition overlay (issue #156). Build
-// leaves it nil; the Decompose free function fills it as a separate graph→chunks
-// step. When present it marshals to the `decomposition` key that
-// normalizePayload already reads as an optional field, so the wrapped payload is
-// additive on both sides.
+// Decomposition is the optional decomposition overlay (issue #156). Build leaves
+// it nil; BuildDecompose produces it together with the graph in one call, so a
+// Payload obtained from the pipeline API never carries a decomposition that
+// disagrees with its Graph. When present it marshals to the `decomposition` key
+// that normalizePayload already reads as an optional field, so the wrapped
+// payload is additive on both sides.
 //
-// Nothing on this type enforces that Decomposition was computed from this Graph:
-// keeping Build and Decompose separable makes that a caller responsibility today.
-// That is a deliberately deferred choice — see pipeline.Decompose for the
-// build-vs-decompose consistency decision and when to revisit it.
+// The field is exported and thus settable directly, but the sanctioned producer
+// is BuildDecompose — see it for why decomposition is unified with the graph and
+// for the deferred paths-coupled-vs-graph-keyed decision the history/sampler work
+// will settle.
 type Payload struct {
 	AST           *ast.File         `json:"ast"`
 	Graph         *graph.Graph      `json:"parserGraph,omitempty"`
