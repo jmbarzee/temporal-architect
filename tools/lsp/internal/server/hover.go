@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
-	"github.com/tliron/glsp"
-	protocol "github.com/tliron/glsp/protocol_3_16"
+	"github.com/jmbarzee/glsp"
+	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 )
 
 func hoverHandler(store *DocumentStore) protocol.TextDocumentHoverFunc {

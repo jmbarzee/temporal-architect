@@ -11,7 +11,7 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 
-	protocol "github.com/tliron/glsp/protocol_3_17"
+	protocol "github.com/jmbarzee/glsp/protocol_3_17"
 )
 
 // workspaceRootFromParams resolves a workspace root filesystem path from the

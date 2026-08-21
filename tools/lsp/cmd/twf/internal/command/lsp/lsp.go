@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tliron/commonlog"
 	_ "github.com/tliron/commonlog/simple"
-	glspServer "github.com/tliron/glsp/server"
+	glspServer "github.com/jmbarzee/glsp/server"
 )
 
 // New builds the `lsp` command. Its RunE calls serve, which blocks on RunStdio

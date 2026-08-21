@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/tliron/glsp"
-	protocol316 "github.com/tliron/glsp/protocol_3_16"
-	protocol "github.com/tliron/glsp/protocol_3_17"
+	"github.com/jmbarzee/glsp"
+	protocol316 "github.com/jmbarzee/glsp/protocol_3_16"
+	protocol "github.com/jmbarzee/glsp/protocol_3_17"
 )
 
 // tokenTypeLegend defines the semantic token type names advertised to the client.

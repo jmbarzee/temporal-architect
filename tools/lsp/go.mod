@@ -5,11 +5,16 @@ go 1.25.4
 toolchain go1.25.11
 
 require (
+	// github.com/jmbarzee/glsp is a fork of the upstream tliron glsp library,
+	// carrying LSP 3.17 features not yet merged upstream. The fork's module path
+	// was renamed (fork branch jmbarzee/3.17-was-published-2022) so it is
+	// requirable directly rather than only via a replace, keeping tools/lsp
+	// consumable as a standalone module.
+	github.com/jmbarzee/glsp v0.0.0-20260820233936-145c48a808ca
 	github.com/jmbarzee/temporal-architect/tools/spec v0.0.0-20260820203644-60afa992aaf9
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/spf13/cobra v1.10.2
 	github.com/tliron/commonlog v0.2.18
-	github.com/tliron/glsp v0.2.3-0.20250617204849-59d6e3155c81
 )
 
 require (
@@ -41,13 +46,6 @@ require (
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 )
-
-// Fork of github.com/tliron/glsp carrying LSP 3.17 features not yet merged
-// upstream. The fork's go.mod still declares module github.com/tliron/glsp, so
-// it can only be consumed as a replace target; requiring it by its fork path is
-// not possible until the fork's module path is renamed. Until then this replace
-// must remain, and external in-process consumers of tools/lsp must mirror it.
-replace github.com/tliron/glsp => github.com/jmbarzee/glsp v0.0.0-20260211184817-15faee801506
 
 // The sibling module github.com/jmbarzee/temporal-architect/tools/spec is
 // resolved locally via the repo-root go.work; its require above pins a real

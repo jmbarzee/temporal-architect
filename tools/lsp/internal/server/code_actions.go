@@ -6,8 +6,8 @@ import (
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
-	"github.com/tliron/glsp"
-	protocol "github.com/tliron/glsp/protocol_3_16"
+	"github.com/jmbarzee/glsp"
+	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 )
 
 func codeActionHandler(store *DocumentStore) protocol.TextDocumentCodeActionFunc {
