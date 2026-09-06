@@ -179,41 +179,38 @@ explicit pass criteria and a committed screenshot — use them.
 
 ## In-flight work
 
-**Unit 3 is code-complete; the review is running.** Branch
-`visualizer/dimensions-unit-3`, 8 commits, gates green at each. `REVIEW_3.md` and
-the PR body land when the fan-out returns.
+**Unit 3 is closed.** Branch `visualizer/dimensions-unit-3`,
+[PR #161](https://github.com/jmbarzee/temporal-architect/pull/161) (base:
+`visualizer/dimensions-unit-2`, per D36). `REVIEW_3.md` records 42 findings with
+all 3 blockers and all 9 majors resolved-with-sha.
 
-Landed: the efficiency adoption (§3.5.6-7, `MAP.md`, `STANDING_CHECKS.md`), then
-3a-3e. `FilterState`/`PinState` are **Maps keyed by dimension id**; per-axis
-policy (empty/absent, focus, reheat) lives in descriptors and is read by the
-predicate, the reconciler and the loop; the bar is an editable chain.
+**Read `REVIEW_3.md` before Unit 4.** Two things in it change how the next unit
+should be read:
 
-**The lesson of this unit, for whoever reads it next.** The migration changed
-`FilterState`'s representation twice, and **six places kept reading the old field
-names** — three production, three harness. Every one typechecked, returned
-`undefined`, and passed all six gates and 7/7 goldens. One of the six was the
-identity *probe*, so a golden asserted a fix while measuring nothing. The app
-crashed on load and only the browser said so.
+1. **The cost rules worked** — 20 agents/2.00M/29 clusters became 15 agents/
+   1.86M/**20** clusters, and the verify stage **refuted** something for the
+   first time. Clustering on mechanism rather than file path is what did it.
+2. **Rule 8 failed on the run that introduced it** (F17): I wrote "isolation
+   applies to every stage that mutates" and then did not set it on the verifiers.
+   A rule in a document is not a rule until something executes it.
 
-That is why `FilterState` is a `Map` and not a `Record`: a string-keyed record
-permits `filter.selectedFiles`, and the domain has no axis by that name. It is
-PLAN §6.6's test applied to the thing §6.6 is about, and it converts the entire
-class into compile errors.
+**Exact next action: begin Unit 4** (`PLAN.md` §6.2). Ceilings ratcheted to the
+Unit 3 close: leak **204**, total **1266**, boundary **7**.
 
-**Exact next action: begin Unit 4** (`PLAN.md` §6.2, push/pull on a chosen
-dimension). Ceilings are ratcheted to the Unit 3 close: leak **204**, total
-**1266**, boundary **7**.
+Three things Unit 4 should settle first, all recorded and none of them mine to
+decide alone:
 
-Two things to settle at the Unit 4 boundary, both recorded and neither mine:
-
-- **The params shape** (PLAN §6.6/§6.7). Unit 4 adds a dimension *dropdown*,
-  which puts the axis on the same edit channel as `pushMultiplier` and turns the
-  axis/table disagreement from taxonomy-swap-only into one click away. Cheapest
-  to build as axis + mapping + table = one constructed value *before* Unit 4
-  exists; the instance count grows from one to roughly five across 4 / 5a / 5b.
-- **Unit 4's ceiling is likely optimistic**, the same way Unit 3's was (D45).
-  §6.5 says 160; from 203 that needs 43, against `model.ts`'s 12. Re-derive it
-  from the baseline table at the boundary rather than treating 160 as reachable.
+- **The params shape** (§6.6/§6.7). Unit 4 adds the dimension *dropdown*, which
+  puts the axis on the same edit channel as `pushMultiplier` — one click from the
+  axis/table disagreement rather than a taxonomy swap away. One instance to
+  convert now; roughly five by 5b.
+- **`ontology.valueOn`'s `defType` special case.** I argued it is library-declared
+  shared vocabulary; the review argues it is the domain leaking back under a
+  neutral name. Unit 4 makes the axis a user choice, so Unit 4 is where it stops
+  being arguable.
+- **Unit 4's §6.5 ceiling of 160 is likely optimistic**, the same way Unit 3's 195
+  was (D45). From 203 that needs 43, against `model.ts`'s 12. Re-derive from the
+  baseline table rather than treating 160 as reachable.
 
 ## Discovered facts
 
@@ -373,6 +370,23 @@ agents also need `node_modules` and a build — the durable pattern is the one
 those two agents invented: export a pristine tree, symlink `node_modules`, run
 the gates there. Every gate script here resolves against its package root, so it
 works unmodified.
+
+**F17 — I wrote the isolation rule and then did not apply it, on the same run.**
+§3.5.6 rule 8 says "isolation applies to every stage that mutates, not the
+obvious one", written from Unit 2's contamination. The Unit 3 fan-out then set
+`isolation: 'worktree'` on the six finders and **not** on the verifiers —
+identically to Unit 2 — and a verifier duly reported working in the live
+worktree, seeing this session's dev server and in-flight edits.
+
+No damage: the tree was clean afterwards and every gate green. But the rule
+failed on the run that introduced it, which says something worth keeping. A rule
+written into a document is not a rule until something *executes* it — the same
+lesson as F15 (a golden row keeps dead code alive) and D46 (declared policy no
+gate reads), one level up. The durable fix is not "remember rule 8"; it is a
+workflow template where isolation is not a per-stage option.
+
+**Also recorded: `git stash` stayed untouched throughout** (C6), and the review's
+own worktrees were removed afterwards.
 
 ---
 
