@@ -139,7 +139,7 @@ explicit pass criteria and a committed screenshot — use them.
 
 | unit | commits | requirements | blast radius | leak count | review |
 |---|---|---|---|---|---|
-| **0 — Verification net** | 11 (`ad06e58`…`c2023db`) | means of R41 | none migrated | 583 (ceiling 583) | [REVIEW_0.md](reviews/REVIEW_0.md) — 34 findings, all 5 blockers and 23 majors resolved |
+| **0 — Verification net** | 11 (`ad06e58`…`149634c`) | means of R41 | none migrated | 583 (ceiling 583) | [REVIEW_0.md](reviews/REVIEW_0.md) — 34 findings, all 5 blockers and 23 majors resolved |
 
 ---
 

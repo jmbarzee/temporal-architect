@@ -29,7 +29,7 @@ with the commit sha that resolved it (§3.2; `PLAN.md` §6.1 gate 7). All 28 are
 | 9 | **major** | All three ratchet gates can be escaped by file extension: a .tsx under src/components/graph-view/ or a .ts under src/components/controls/ is in no manifest | `6f563ae` | Extension set widened (D27). |
 | 10 | **major** | T7's absent-value policy — 'a node with no sourceFile is always visible' — is exercised by no golden row, because no fixture node lacks sourceFile | `83dfc19` | syntheticVisible adds a node with no source file, plus the file-filter states that exercise it. |
 | 12 | **major** | `ticksToStable`, the substituted settle assertion, is mathematically independent of the graph and the forces — it carries no information | `83dfc19` | Superseded as the settle signal by the short-run position rows; retained as a cheap structural check only. |
-| 14 | **major** | KICKOFF §2.3's quality floor "the simulation still settles below threshold on the 53-node stress fixture" is not met, is now unprotected, and the substitution was recorded in DECISIONS but not in PROGRESS § Open Questions as §8.4 requires | `c2023db` | Recorded in PROGRESS.md F7 and F10: the §2.3 floor is not met as written, with the measured numbers and why. |
+| 14 | **major** | KICKOFF §2.3's quality floor "the simulation still settles below threshold on the 53-node stress fixture" is not met, is now unprotected, and the substitution was recorded in DECISIONS but not in PROGRESS § Open Questions as §8.4 requires | `149634c` | Recorded in PROGRESS.md F7 and F10: the §2.3 floor is not met as written, with the measured numbers and why. |
 | 15 | **major** | Tier B goldens nothing that depends on the layout: a wholesale physics retune passes all seven goldens byte-identical | `83dfc19` | DEFAULT_PARAMS goldened; a retune is now a visible diff. |
 | 16 | **major** | `--write` ships with no executable guard, only a printed warning | `6f563ae` | --write refuses without a DECISIONS.md entry that exists and is about goldens. |
 | 17 | **major** | The `--write` log-entry friction was documented in a console message instead of built, leaving the golden gate trivially defeatable | `6f563ae` | Same mechanism. |
@@ -45,11 +45,11 @@ with the commit sha that resolved it (§3.2; `PLAN.md` §6.1 gate 7). All 28 are
 | 33 | **major** | The goldens are blind to the entire global force-parameter table (DEFAULT_PARAMS scalars) | `83dfc19` | DEFAULT_PARAMS goldened. |
 | 34 | **major** | T7's absent-sourceFile policy is unreachable from every fixture and has no synthetic coverage | `83dfc19` | syntheticVisible covers it. |
 | 6 | **minor** | The forbidden-pattern check is defeated by a type alias, a wrapped Record, a bound `Math.random`, and a double-quoted fallback | `6f563ae` | Bound Math.random and double-quoted fallbacks closed (D28). Type-alias and wrapped-Record evasion remain open — recorded as a known limit below. |
-| 7 | **minor** | §8.4's Unit-0 exception was half-applied for D21 and D24: neither contradiction was raised as an Open Question | `c2023db` | Raised as OQ3 and OQ4 in PROGRESS.md, as §8.4 requires alongside the DECISIONS entry. |
+| 7 | **minor** | §8.4's Unit-0 exception was half-applied for D21 and D24: neither contradiction was raised as an Open Question | `149634c` | Raised as OQ3 and OQ4 in PROGRESS.md, as §8.4 requires alongside the DECISIONS entry. |
 | 13 | **minor** | Three of the five force kernels, plus `seedAt`, are executed by no golden at all — including 4 of the 9 RNG sites Unit 0c was commissioned to inject | `83dfc19` | All five kernels are probed directly, including the radial branch and both seedAt draws. |
 | 21 | **minor** | Gate 6 misses a barrel import of the shim (`from '../adapter'`) — the exact import shape Unit 2 creates | `6f563ae` | Segment matching catches the barrel import. |
 | 27 | **minor** | Three of the five force kernels never execute under any gate, including the radial path T1 singles out as the subtle one | `83dfc19` | Force probes execute every kernel. |
-| 32 | **minor** | PROGRESS.md's Budget and Gate-state tables still describe the pre-Unit-0 tree and contradict HEAD | `c2023db` | PROGRESS.md Budget, Status, Counters and Gate-state tables updated at the unit boundary. |
+| 32 | **minor** | PROGRESS.md's Budget and Gate-state tables still describe the pre-Unit-0 tree and contradict HEAD | `149634c` | PROGRESS.md Budget, Status, Counters and Gate-state tables updated at the unit boundary. |
 
 ## The one defect behind five of the blockers
 
