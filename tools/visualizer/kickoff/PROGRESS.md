@@ -175,7 +175,14 @@ Landed, all green, all gates passing at each commit:
   - `73871cf` 2c — **`GraphNode.nodeType` deleted**, denormalized edge endpoints
     removed (B14), forces keyed by a named axis, all reads through the container
 
-**Exact next action:** commit 2d — invert the registries. The library keeps
+  - `02fefb4` + `6fa5468` 2d part 1 — the four control surfaces read the taxonomy
+    through the container instead of importing the registries; `PULL_EDGES`
+    becomes `pullEdgesFor(ontology)`; the whole control chain speaks
+    `DimensionValue`. The three `as NodeType` casts (B26) are **deleted** — the
+    pattern gate's STALE check caught them being *renamed* to
+    `as DimensionValue`, which is §5.1's cheat in cast form.
+
+**Exact next action:** finish 2d — invert the registries. The library keeps
 `NodeTypeDefinition` and `EdgeTypeDefinition`'s *shapes*; the entries
 (`NODE_TYPE_REGISTRY`, `ALL_EDGE_TYPES`, `edgeTypeFor`, `EdgeTypeId`,
 `NodeType`) become shim data, and `DEFAULT_PARAMS` becomes a function of the
