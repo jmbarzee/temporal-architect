@@ -16,7 +16,7 @@
 
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
-import { SOURCE_FILE_DIMENSION } from '../../graph/build'
+import { SOURCE_FILE_DIMENSION } from '../../graph/dimension'
 import type { Ontology } from '../../graph/ontology'
 
 export interface VisibleGraph {

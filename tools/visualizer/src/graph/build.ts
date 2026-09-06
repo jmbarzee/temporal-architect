@@ -24,8 +24,9 @@ import type { DimensionMap } from './dimension'
 
 // The two axes this domain projects a node onto. Names, not concepts, belong to
 // the host: the library never mentions either id.
+import { SOURCE_FILE_DIMENSION } from './dimension'
+
 export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
-export const SOURCE_FILE_DIMENSION = 'sourceFile'
 
 /**
  * Project a parser node onto its axes. Absent values are OMITTED rather than

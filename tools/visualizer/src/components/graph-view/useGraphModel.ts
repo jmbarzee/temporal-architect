@@ -11,7 +11,9 @@ import type { TWFFile, FileError, Diagnostic } from '../../types/ast'
 import type { ParserGraph } from '../../types/parser-graph'
 import type { FilterState } from '../../filter/types'
 import { filterStatesEqual } from '../../filter/types'
-import { buildGraph, SOURCE_FILE_DIMENSION } from '../../graph/build'
+import { buildGraph } from '../../graph/build'
+import type { Graph } from '../../graph/model'
+import { SOURCE_FILE_DIMENSION } from '../../graph/dimension'
 
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing
@@ -50,7 +52,7 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
 }
 
 export interface GraphModel {
-  graph: ReturnType<typeof buildGraph>
+  graph: Graph
   allFiles: string[]
   recentlyChanged: Set<string>
   // Raw findings — partitioned by the file filter inside the shared FilterBar.

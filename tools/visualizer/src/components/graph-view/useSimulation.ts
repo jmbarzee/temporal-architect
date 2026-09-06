@@ -12,7 +12,7 @@ import { Simulation, defaultParamsFor } from '../../graph/simulation'
 import { defaultRng } from '../../graph/rng'
 import { useOntology } from './useOntology'
 import type { ForceParams, SimNode } from '../../graph/simulation'
-import type { buildGraph } from '../../graph/build'
+import type { Graph } from '../../graph/model'
 
 export interface SimulationController {
   simRef: React.MutableRefObject<Simulation | null>
@@ -32,7 +32,7 @@ export interface SimulationController {
 }
 
 export function useSimulation(
-  graph: ReturnType<typeof buildGraph>,
+  graph: Graph,
   // Called after each (re)creation so the camera/loop can reset their own
   // coordination refs (initial-fit guard, fps tracker). Held in a ref so its
   // changing identity never re-triggers the rebuild — only `graph` does.
