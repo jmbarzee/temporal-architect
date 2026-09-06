@@ -7,7 +7,9 @@ import type { ForceParams, SimNode } from '../graph/simulation'
 import { ALL_NODE_TYPES, bandForType, chargeForType, coreRadiusForType, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
-import { definitionFor, nodeSizeMul, type NodeScaleParams } from '../graph/node-types'
+import { nodeSizeMul, type NodeScaleParams } from '../graph/node-types'
+import type { Ontology } from '../graph/ontology'
+import { useOntology } from './graph-view/useOntology'
 import { edgeStyleFor } from '../graph/edge-styles'
 import type { ForceSection } from './GraphControlPanel'
 
@@ -176,6 +178,9 @@ interface GraphCanvasProps {
 
 // All data the draw function needs, stored in a ref to avoid effect teardown
 interface DrawData {
+  // Read by the loop rather than closed over: drawData.current is rewritten
+  // every render, a closure is not.
+  ontology: Ontology
   nodes: SimNode[]
   edges: GraphEdge[]
   nodeMap: Map<string, SimNode>
@@ -254,14 +259,18 @@ export function GraphCanvas({
     return activeNode.definitionKey
   }, [hoveredNodeId, selectedNodeId, nodeMap, dupNodeIds])
 
+  const ontology = useOntology()
+
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
+    ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
     forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
+    ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
     forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
@@ -290,12 +299,12 @@ export function GraphCanvas({
       // convert to world units by dividing by scale, plus a small slop. A
       // cardinality badge (parameterized family) sits above the body, so grow
       // the target by its extent to keep the badge part of the clickable node.
-      const screenR = definitionFor(n.nodeType).size.r * mul + badgeExtent(n, mul)
+      const screenR = ontology.resolveNodeStyle(n).size.r * mul + badgeExtent(n, mul)
       const r = screenR / viewport.scale + 4
       if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
-  }, [nodes, viewport, nodeScale])
+  }, [nodes, viewport, nodeScale, ontology])
 
   // Mouse handlers
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
@@ -481,7 +490,7 @@ export function GraphCanvas({
           const node = d.nodeMap.get(id)
           if (!node) continue
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
-          const gr = definitionFor(node.nodeType).size.r * mul + GROUP_GLOW_PAD * glowSwell(g.strength)
+          const gr = d.ontology.resolveNodeStyle(node).size.r * mul + GROUP_GLOW_PAD * glowSwell(g.strength)
           if (sx + gr < 0 || sx - gr > w || sy + gr < 0 || sy - gr > h) continue
           const a = Math.min(0.92, GROUP_GLOW_CENTER_ALPHA * g.strength)
           const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, gr)
@@ -538,7 +547,7 @@ export function GraphCanvas({
           const angle = Math.atan2(ty - sy, tx - sx)
           // Stop the arrowhead at the target's on-screen edge (screen radius =
           // def.r × nodeSizeMul(scale)) so it tracks the zoom-scaled node body.
-          const tgtR = definitionFor(tgt.nodeType).size.r * nodeSizeMul(vp.scale, d.nodeScale)
+          const tgtR = d.ontology.resolveNodeStyle(tgt).size.r * nodeSizeMul(vp.scale, d.nodeScale)
           const offset = tgtR + 2
           const ax = tx - Math.cos(angle) * offset
           const ay = ty - Math.sin(angle) * offset
@@ -599,7 +608,7 @@ export function GraphCanvas({
           const baseAlpha = highlighted ? 0.28 : 0.05
           const stepAlpha = highlighted ? 0.06 : 0.015
 
-          const color = definitionFor(node.nodeType).color.fill
+          const color = d.ontology.resolveNodeStyle(node).color.fill
           ctx.strokeStyle = color
 
           const effectiveCharge = Math.abs(chargeForType(d.forceParams, node.nodeType)) * pushMul
@@ -776,7 +785,7 @@ export function GraphCanvas({
             const targetR = RADIAL_R_MIN + ((centerOf(t) - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)
             const isActive = d.activeGravityType === t
             const isDimmed = d.activeGravityType !== null && !isActive
-            ctx.strokeStyle = definitionFor(t).color.fill
+            ctx.strokeStyle = d.ontology.styleForKey(t).color.fill
             ctx.globalAlpha = isActive ? 0.6 : isDimmed ? 0.1 : 0.28
             ctx.lineWidth = isActive ? 1.5 : 1
             ctx.setLineDash([])
@@ -799,7 +808,7 @@ export function GraphCanvas({
             const isActive = d.activeGravityType === t
             const isDimmed = d.activeGravityType !== null && !isActive
 
-            const nodeColor = definitionFor(t).color.fill
+            const nodeColor = d.ontology.styleForKey(t).color.fill
             ctx.fillStyle = nodeColor
             ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
             ctx.fillRect(0, sy1, w, sy2 - sy1)
@@ -849,12 +858,12 @@ export function GraphCanvas({
       // label may collide with a node drawn later in the same loop.
       const nodeCircles = d.nodes.map(n => {
         const [nx, ny] = worldToScreen(vp, n.x, n.y)
-        return { x: nx, y: ny, r: definitionFor(n.nodeType).size.r * mul }
+        return { x: nx, y: ny, r: d.ontology.resolveNodeStyle(n).size.r * mul }
       })
 
       for (const node of d.nodes) {
         const [sx, sy] = worldToScreen(vp, node.x, node.y)
-        const def = definitionFor(node.nodeType)
+        const def = d.ontology.resolveNodeStyle(node)
         const r = def.size.r * mul
         const hw = r  // nodes are circles: half-width = half-height = r
 

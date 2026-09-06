@@ -20,7 +20,7 @@ import type { SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import { edgeTypeFor } from '../graph/edge-types'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../graph/node-types'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 
@@ -95,7 +95,7 @@ function edgeLine(e: GraphEdge): string {
 }
 
 function state(types: string[], files: string[]): Json {
-  const vg = computeVisibleGraph(SOURCE, new Set(types), new Set(files))
+  const vg = computeVisibleGraph(SOURCE, new Set(types), new Set(files), DEFAULT_ONTOLOGY)
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     graduatedEdges: sorted(vg.visibleEdges.map(edgeLine)),

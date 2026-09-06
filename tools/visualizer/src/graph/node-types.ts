@@ -321,11 +321,6 @@ export const MAIN_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REGI
 /** Nexus ladder (endpoint → service → operation), tier-ordered. */
 export const NEXUS_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REGISTRY[t].ladder === 'nexus').sort(byTier)
 
-/** Look up the registry entry for a node type. */
-export function definitionFor(t: NodeType): NodeTypeDefinition {
-  return NODE_TYPE_REGISTRY[t]
-}
-
 // The style a node gets when its key is not in the registry. Impossible today —
 // the key space is closed — but the seam exists to open it, and the alternative
 // to a declared fallback is a TypeError inside the draw loop, where nothing

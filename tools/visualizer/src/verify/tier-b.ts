@@ -25,7 +25,7 @@ import type { Graph, NodeType } from '../graph/model'
 import { DEFAULT_PARAMS, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../graph/node-types'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 import { mulberry32 } from './rng'
@@ -103,7 +103,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
 
   // Downstream scores, needed by the topological scenario.
   const scoreSim = seededSimulation(graph)
-  const vg = computeVisibleGraph(scoreSim, ALL_DEF_TYPES, new Set<string>())
+  const vg = computeVisibleGraph(scoreSim, ALL_DEF_TYPES, new Set<string>(), DEFAULT_ONTOLOGY)
 
   // ── Short runs, one per force configuration. Positions goldened exactly.
   const shortRuns: [string, Json][] = scenarios().map(([name, params]) => {

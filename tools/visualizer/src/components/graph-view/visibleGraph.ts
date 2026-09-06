@@ -6,13 +6,12 @@
 // downstream-depth scores.
 //
 // Lifted out of the hook so it is callable without React: the golden harness
-// snapshots it directly, and later units widen it rather than reaching inside a
-// `useMemo` body. Behaviour is identical to the previous inline implementation;
-// this is a structural extraction.
+// snapshots it directly, and the taxonomy arrives as a parameter rather than an
+// imported singleton, so this derivation is not tied to one set of node types.
 
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
-import { definitionFor } from '../../graph/node-types'
+import type { Ontology } from '../../graph/ontology'
 import { nodeTypeToDefType } from './nodeDefType'
 
 export interface VisibleGraph {
@@ -172,8 +171,9 @@ function computeGraphNodeSummary(
   node: SimNode,
   visibleEdges: GraphEdge[],
   nodeMap: Map<string, SimNode>,
+  ontology: Ontology,
 ): string {
-  const { summaryKind } = definitionFor(node.nodeType)
+  const { summaryKind } = ontology.resolveNodeStyle(node)
 
   if (summaryKind === 'containerCount') {
     let workers = 0, endpoints = 0
@@ -230,6 +230,7 @@ export function computeVisibleGraph(
   sim: VisibleGraphSource,
   visibleTypes: Set<string>,
   selectedFiles: Set<string>,
+  ontology: Ontology,
 ): VisibleGraph {
   const hasFileFilter = selectedFiles.size > 0
   const ids = new Set<string>()
@@ -297,7 +298,7 @@ export function computeVisibleGraph(
   for (const n of vNodes) vNodeMap.set(n.id, n)
   const nodeSummaries = new Map<string, string>()
   for (const node of vNodes) {
-    const s = computeGraphNodeSummary(node, vEdges, vNodeMap)
+    const s = computeGraphNodeSummary(node, vEdges, vNodeMap, ontology)
     if (s) nodeSummaries.set(node.id, s)
   }
 
