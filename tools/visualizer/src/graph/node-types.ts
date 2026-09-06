@@ -11,6 +11,9 @@
 //   Group 5 — CSS (index.css replaced by runtime-emitted style block)
 
 import type { NodeType } from './model'
+import { createOntology } from './ontology'
+import type { Ontology } from './ontology'
+import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
 
 export interface NodeTypeDefinition {
   // --- Identity ---
@@ -318,10 +321,46 @@ export const MAIN_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REGI
 /** Nexus ladder (endpoint → service → operation), tier-ordered. */
 export const NEXUS_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REGISTRY[t].ladder === 'nexus').sort(byTier)
 
-/** Look up the registry entry for a node type. */
-export function definitionFor(t: NodeType): NodeTypeDefinition {
-  return NODE_TYPE_REGISTRY[t]
+// The style a node gets when its key is not in the registry. Impossible today —
+// the key space is closed — but the seam exists to open it, and the alternative
+// to a declared fallback is a TypeError inside the draw loop, where nothing
+// catches it and the canvas simply stops repainting. Deliberately neutral: grey,
+// small, no glyph, so an unstyled node reads as "unrecognized" rather than
+// impersonating a real type.
+const FALLBACK_NODE_STYLE: NodeTypeDefinition = {
+  label: 'Unknown',
+  icon: '?',
+  defType: 'unknownDef',
+  ladder: 'main',
+  tier: 'leaf',
+  defaultVisible: false,
+  color: {
+    fill: '#CBD5E1',
+    border: '#94A3B8',
+    cssVarSuffix: 'unknown',
+  },
+  size: { r: 10, iconSize: 11 },
+  physics: {
+    charge: -300,
+    coreRadius: 30,
+    yBand: { min: 100, max: 460 },
+  },
+  summaryKind: 'none',
 }
+
+/**
+ * The taxonomy this build ships with. Everything domain-specific about the graph
+ * is reachable from here, which is what makes it the thing a later unit moves
+ * out wholesale — consumers already resolve through the container rather than
+ * importing the registry.
+ */
+export const DEFAULT_ONTOLOGY: Ontology = createOntology({
+  nodeTypeKeys: ALL_NODE_TYPES,
+  nodeStyles: NODE_TYPE_REGISTRY,
+  edgeTypes: ALL_EDGE_TYPES,
+  resolveEdgeType: edgeTypeFor,
+  fallbackStyle: FALLBACK_NODE_STYLE,
+})
 
 // --- Node scaling (render-time) ---
 //

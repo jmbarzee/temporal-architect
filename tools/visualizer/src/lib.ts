@@ -40,6 +40,7 @@ export type {
   VisualizerHostProps,
   PayloadSource,
   HostActions,
+  RenderCoreProps,
 } from './components/VisualizerHost'
 export type {
   HostMessage,

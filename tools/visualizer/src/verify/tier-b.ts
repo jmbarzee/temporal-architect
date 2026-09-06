@@ -20,12 +20,12 @@
 // speed at rest. Both are chaotic float-derived aggregates over the full run, and
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
-import { bandCenters, bandForType } from '../graph/forces'
+import { bandCenters, bandFor } from '../graph/forces'
 import type { Graph, NodeType } from '../graph/model'
 import { DEFAULT_PARAMS, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../graph/node-types'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 import { mulberry32 } from './rng'
@@ -51,7 +51,7 @@ export const TIER_B_PARAMS = {
 
 /** A fresh, seeded simulation over a fixture's graph. */
 export function seededSimulation(graph: Graph, params: ForceParams = DEFAULT_PARAMS): Simulation {
-  return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed))
+  return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed), DEFAULT_ONTOLOGY)
 }
 
 function positions(nodes: SimNode[]): Json {
@@ -103,7 +103,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
 
   // Downstream scores, needed by the topological scenario.
   const scoreSim = seededSimulation(graph)
-  const vg = computeVisibleGraph(scoreSim, ALL_DEF_TYPES, new Set<string>())
+  const vg = computeVisibleGraph(scoreSim, ALL_DEF_TYPES, new Set<string>(), DEFAULT_ONTOLOGY)
 
   // ── Short runs, one per force configuration. Positions goldened exactly.
   const shortRuns: [string, Json][] = scenarios().map(([name, params]) => {
@@ -151,7 +151,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   const shift = median(centers)
   let outsideBand = 0
   for (const n of active) {
-    const band = bandForType(params, n.nodeType)
+    const band = bandFor(params, n)
     const slack = Math.abs(band.yMax - band.yMin) * TIER_B_PARAMS.bandTolerance
     if (!(n.y >= band.yMin - shift - slack && n.y <= band.yMax - shift + slack)) outsideBand++
   }

@@ -6,14 +6,17 @@
 // downstream-depth scores.
 //
 // Lifted out of the hook so it is callable without React: the golden harness
-// snapshots it directly, and later units widen it rather than reaching inside a
-// `useMemo` body. Behaviour is identical to the previous inline implementation;
-// this is a structural extraction.
+// snapshots it directly, and the taxonomy arrives as a parameter, so both the
+// visibility predicate and the summary dispatch resolve through the container.
+//
+// What is NOT yet injected, so nobody reads more into this than it says: the
+// operation-splice branch in `resolveDepEndpoint` and the per-child counting
+// inside the summary strategies still test hardcoded node-type values. Those are
+// separate blast-radius rows owned by later units.
 
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
-import { definitionFor } from '../../graph/node-types'
-import { nodeTypeToDefType } from './nodeDefType'
+import type { Ontology } from '../../graph/ontology'
 
 export interface VisibleGraph {
   visibleNodes: SimNode[]
@@ -172,8 +175,9 @@ function computeGraphNodeSummary(
   node: SimNode,
   visibleEdges: GraphEdge[],
   nodeMap: Map<string, SimNode>,
+  ontology: Ontology,
 ): string {
-  const { summaryKind } = definitionFor(node.nodeType)
+  const { summaryKind } = ontology.resolveNodeStyle(node)
 
   if (summaryKind === 'containerCount') {
     let workers = 0, endpoints = 0
@@ -230,13 +234,14 @@ export function computeVisibleGraph(
   sim: VisibleGraphSource,
   visibleTypes: Set<string>,
   selectedFiles: Set<string>,
+  ontology: Ontology,
 ): VisibleGraph {
   const hasFileFilter = selectedFiles.size > 0
   const ids = new Set<string>()
   const vNodes: SimNode[] = []
 
   for (const node of sim.nodes) {
-    if (!visibleTypes.has(nodeTypeToDefType(node.nodeType))) continue
+    if (!visibleTypes.has(ontology.resolveNodeStyle(node).defType)) continue
     if (hasFileFilter && node.sourceFile && !selectedFiles.has(node.sourceFile)) continue
     ids.add(node.id)
     vNodes.push(node)
@@ -297,7 +302,7 @@ export function computeVisibleGraph(
   for (const n of vNodes) vNodeMap.set(n.id, n)
   const nodeSummaries = new Map<string, string>()
   for (const node of vNodes) {
-    const s = computeGraphNodeSummary(node, vEdges, vNodeMap)
+    const s = computeGraphNodeSummary(node, vEdges, vNodeMap, ontology)
     if (s) nodeSummaries.set(node.id, s)
   }
 

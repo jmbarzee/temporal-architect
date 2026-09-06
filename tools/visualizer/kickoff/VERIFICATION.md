@@ -489,3 +489,54 @@ you are using for §3.2's reviews and which of §3.5.2's fan-outs you will run.
 Otherwise the run's throughput is set by an invisible launch condition and no
 later session can tell what happened — the same legibility problem §7.4 exists
 to prevent.
+
+### 3.5.5 Cost discipline — [added mid-run, Unit 0 boundary]
+
+§3.5.2 says which *shape* is worth reaching for. It does not say how big, and
+Unit 0's fan-out was measured: **51 agents, 6.24M subagent tokens, 34 confirmed
+findings — which collapse to 4 distinct defects.** A ~7× redundancy factor, and
+nine of the eleven lenses independently found the same central one.
+
+That review was worth its cost: it caught a harness that goldened nothing
+dependent on the layout, which would have survived until Unit 5a or 6 with four
+units of physics work layered on top of it. The lesson is not "fan out less" —
+it is that almost all of the spend went somewhere other than the finding.
+
+Five rules, derived from that measurement:
+
+1. **Five or six finders, not eleven.** Give each a genuinely orthogonal mandate.
+   Redundant reviewers converge; that convergence is not extra coverage, it is
+   the same finding paid for repeatedly.
+2. **Instruct every finder to break the code and show the gate output.** This was
+   the single highest-leverage line in Unit 0's prompt. Reviewers who broke
+   something and watched a gate stay green produced findings; reviewers who
+   reasoned analytically produced restatements of the description.
+3. **Cluster findings yourself before verifying.** Free, and it is what turns 34
+   into 4.
+4. **Verify clusters, not findings, and verify them cheaply.** A verifier needs
+   the claim and the file it anchors to — not the criteria set. Unit 0 handed all
+   ~40 verifiers the full "read these five documents" preamble, which is where
+   most of the 6.24M went. Use a tight prompt and a cheaper model (`opts.model`,
+   `opts.effort`); neither was used at all in Unit 0.
+5. **Commit-scope review only where behavior changes.** A plumbing, doc, or
+   pure-move commit already has a reviewer: the goldens. Unit 0 spent 144k tokens
+   reviewing a 13-line Makefile change and got three minors back.
+
+And one about authoring: §3.2's cadence table has a PR's first commit authored by
+a fresh sub-agent. For a commit under ~50 lines that is net-negative — Unit 0's
+delegated 0a cost 80k tokens for a diff writable in one tool call, left a stray
+build artifact behind, and had to be reviewed anyway. Delegate authoring when the
+commit is large enough that a fresh context is actually worth building.
+
+**Where to keep spending.** The first review of any unit that touches the force
+model or the gates themselves — Units 4, 5a, 5b and 6. That is where a blind spot
+is most expensive, and Unit 0 is the proof: the defect was in the verifier, and
+the author could not see it because the author had written the rationale for it.
+
+Expected shape after this: roughly 700k–900k per unit rather than 6.6M.
+
+At the start of the run, append a `DECISIONS.md` entry naming which mechanism
+you are using for §3.2's reviews and which of §3.5.2's fan-outs you will run.
+Otherwise the run's throughput is set by an invisible launch condition and no
+later session can tell what happened — the same legibility problem §7.4 exists
+to prevent.

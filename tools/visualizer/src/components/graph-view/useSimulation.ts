@@ -9,6 +9,8 @@
 
 import React from 'react'
 import { Simulation, DEFAULT_PARAMS } from '../../graph/simulation'
+import { defaultRng } from '../../graph/rng'
+import { useOntology } from './useOntology'
 import type { ForceParams, SimNode } from '../../graph/simulation'
 import type { buildGraph } from '../../graph/build'
 
@@ -41,17 +43,21 @@ export function useSimulation(
   const [running, setRunning] = React.useState(true)
   const [forceParams, setForceParams] = React.useState<ForceParams>({ ...DEFAULT_PARAMS })
   const [simVersion, setSimVersion] = React.useState(0)
+  const ontology = useOntology()
 
   const onRebuildRef = React.useRef(onRebuild)
   onRebuildRef.current = onRebuild
 
   // Create or update the simulation when the graph changes.
   React.useEffect(() => {
-    simRef.current = new Simulation(graph, forceParams)
+    simRef.current = new Simulation(graph, forceParams, defaultRng, ontology)
     onRebuildRef.current?.()
     setRunning(true)
     setSimVersion(v => v + 1)
-  }, [graph]) // eslint-disable-line react-hooks/exhaustive-deps
+    // `ontology` is a dependency, not decoration: the engine resolves spring
+    // categories through it, so a taxonomy swap has to rebuild the simulation
+    // or the layout keeps using the old one while the canvas draws the new.
+  }, [graph, ontology]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getNode = React.useCallback((id: string) => simRef.current?.getNode(id), [])
 

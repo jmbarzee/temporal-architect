@@ -12,7 +12,7 @@
 //      `Simulation.tick` resets any non-finite velocity to 0 and clamps
 //      positions, so a NaN produced inside a force is invisible downstream —
 //      which makes a post-tick "no NaN" assertion a tautology. The missing-key
-//      path is exactly this: `coreRadiusForType` returns NaN for an unmapped
+//      path is exactly this: `coreRadiusFor` returns NaN for an unmapped
 //      key and its Math.max floor swallows the miss. These probes are the only
 //      detector for it.
 //   2. **It reaches every draw site deterministically.** The degenerate frames
@@ -30,7 +30,9 @@ import {
   applyLinkForce,
   applyTopologicalGravity,
 } from '../graph/forces'
+import type { EdgeTypeDefinition } from '../graph/edge-types'
 import type { GraphEdge, NodeType } from '../graph/model'
+import { DEFAULT_ONTOLOGY } from '../graph/node-types'
 import { DEFAULT_PARAMS } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { mulberry32 } from './rng'
@@ -109,13 +111,75 @@ const PROBE_EDGES: GraphEdge[] = [
   { id: 'p5', edgeType: 'dependency', sourceId: 'dupA', targetId: 'dupB', sourceNodeType: 'activity', targetNodeType: 'workflow' },
 ]
 
+/**
+ * The same probes, with one node carrying a key the param maps do not declare.
+ *
+ * This is the permanent check for the defaulting accessors. Before them, this
+ * input failed three different silent ways in three different kernels: charge
+ * read `undefined`, core radius produced a NaN that its `Math.max` floor hid
+ * and that reached velocity two lines later, and the band dereferenced
+ * `undefined` and threw. Every velocity below must be finite, and the unknown
+ * node must sit inert rather than pushing anything around.
+ */
+function absentValueProbes(): Json {
+  const withUnknown = () => {
+    const nodes = probeNodes()
+    nodes.push(node('unknown', 'notADeclaredType' as NodeType, 300, -400))
+    return nodes
+  }
+  const run = (apply: (nodes: SimNode[], params: ForceParams, rng: () => number) => void): Json => {
+    const nodes = withUnknown()
+    apply(nodes, { ...DEFAULT_PARAMS }, mulberry32(PROBE_SEED))
+    return {
+      allFinite: allFinite(nodes),
+      nonFiniteNodeIds: nonFinite(nodes),
+      // EVERY node's velocity, not just the unknown one's. The fallback physics
+      // is not inert — a zero charge still couples through the pair average, and
+      // an origin band still moves the median the stack re-centres on — so the
+      // rows that matter are the DECLARED nodes': they are what a change to the
+      // fallback policy would silently move.
+      velocities: velocities(nodes),
+    }
+  }
+  // An edge category the param maps do not declare, which is what a supplied
+  // taxonomy produces: its ids are its own, and `params.link` is keyed by the
+  // shipped ones.
+  const undeclaredEdgeCategory = () => {
+    const nodes = withUnknown()
+    const map = new Map(nodes.map(n => [n.id, n]))
+    applyLinkForce(
+      PROBE_EDGES, map, { ...DEFAULT_PARAMS }, 1, mulberry32(PROBE_SEED),
+      () => ({
+        id: 'linkNotDeclaredAnywhere' as EdgeTypeDefinition['id'],
+        label: '??', sourceType: 'workflow', targetType: 'workflow',
+        category: 'dependency', directional: false,
+        physics: { strength: 1, distance: 1 }, tooltip: '',
+      }),
+    )
+    return {
+      allFinite: allFinite(nodes),
+      nonFiniteNodeIds: nonFinite(nodes),
+      velocities: velocities(nodes),
+    }
+  }
+  return {
+    charge: run((nodes, params, rng) => applyChargeForce(nodes, params, 1, rng)),
+    bandCartesian: run((nodes, params, rng) =>
+      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, 1, rng)),
+    bandRadial: run((nodes, params, rng) =>
+      applyBandGravity(nodes, { ...params, gravityMode: 'radial' }, 1, rng)),
+    undeclaredEdgeCategory: undeclaredEdgeCategory(),
+  }
+}
+
 export function forceProbes(): Json {
   return {
     seed: PROBE_SEED,
+    absentValue: absentValueProbes(),
     charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, 1, rng)),
     link: probe((nodes, params, rng) => {
       const map = new Map(nodes.map(n => [n.id, n]))
-      applyLinkForce(PROBE_EDGES, map, params, 1, rng)
+      applyLinkForce(PROBE_EDGES, map, params, 1, rng, DEFAULT_ONTOLOGY.resolveEdgeType)
     }),
     bandCartesian: probe((nodes, params, rng) =>
       applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, 1, rng)),

@@ -15,7 +15,22 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 > These outrank §5.2 principles and §5.3 suggestions; they yield to §4
 > constraints.
 
-*(none yet)*
+**SI-1 — Review fan-outs are cost-disciplined from Unit 1 on.** Unit 0's PR
+review cost 51 agents and 6.24M subagent tokens to find 4 distinct defects. Keep
+the adversarial framing, which is what worked; drop the redundancy, which is what
+cost. The rules are in `VERIFICATION.md` §3.5.5 and the reasoning is in D29:
+
+  - 5-6 finders with orthogonal mandates, not 11
+  - every finder must break the code and show the gate output
+  - cluster findings yourself, then verify **clusters** — cheap model, tight
+    prompt, no criteria preamble
+  - commit-scope review only where behavior changes
+  - no delegated authoring under ~50 lines
+
+Spend heavily anyway on the first review of Units 4, 5a, 5b and 6 — the units
+that touch the force model and the gates, where Unit 0 proved a blind spot is
+most expensive. Target ~700k-900k per unit instead of 6.6M.
+— human, 2026-09-06
 
 ---
 
@@ -30,7 +45,7 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 | field | value |
 |---|---|
 | Runaway ceiling | **300 commits** on `main..HEAD` (enforced; KICKOFF §2.4) |
-| Commits so far | 14 |
+| Commits so far | 24 |
 | Token / wall-clock budget | unset (advisory only) |
 
 ---
@@ -39,18 +54,18 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 
 | field | value |
 |---|---|
-| Current unit | **Unit 1 — Inject the taxonomy** (not started) |
-| Last completed unit | **Unit 0 — Verification net** |
+| Current unit | **Unit 2 — Dimension primitive + shim folder** (not started) |
+| Last completed unit | **Unit 1 — Inject the taxonomy** |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-0` (PR open, targets the feature branch) |
+| Unit branch | `visualizer/dimensions-unit-1` (PR open; Unit 0's PR #158 is green but unmerged, so this branch stacks on it) |
 | Run state | running |
 
 ## Counters
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | 0 | 42 |
-| B — blast-radius sites migrated | 0 | 38 |
+| A — requirements covered | 0 (R1 partial) | 42 |
+| B — blast-radius sites migrated | 4 | 38 |
 | C — leaks in the manifest | 583 | 0 |
 | Gate 6 — import-boundary violations | 11 | 0 |
 
@@ -58,22 +73,24 @@ Unit 0 moves none of the three counters by design: it builds the means of
 measuring them. Counter A's R41 ("does everything it did before") closes at
 Unit 8, not here; Unit 0 only makes it checkable.
 
-Counter C ceiling for the next unit (Unit 1): **583** — unchanged, since Unit 1
-changes no behavior and moves no vocabulary.
-Gate 6 ceiling for the next unit: **11**. Both live in `kickoff/gates.json`,
-which is where the gates read them.
+Counter C ceiling for the next unit (Unit 2): **210** per `PLAN.md` §6.5's table
+— see OQ2, which is now live: §6.2's Unit 2 line says 150 instead. Taking §6.5's
+table as the gate ceiling and §6.2's number as the target.
+Gate 6 ceiling for Unit 2: **11**, and Unit 2 is where it should start falling —
+creating `src/adapter/` is what lets `build.ts` and `groups.ts` stop importing
+the wire types. Both ceilings live in `kickoff/gates.json`.
 
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 0 close | pass |
-| 2 `npm run build:lib` | Unit 0 close | pass |
-| 3 `npm run verify` | Unit 0 close | pass — 7/7 goldens match |
-| 4 `npm run leak-gate` | Unit 0 close | pass — 583 / ceiling 583 |
-| 5 browser pass | Unit 0 close | pass — five fixtures, six criteria, screenshots committed |
-| 6 `npm run boundary-gate` | Unit 0 close | pass — 11 / ceiling 11 |
-| + `npm run pattern-gate` | Unit 0 close | pass — 18 allowlisted, 0 new |
+| 1 `tsc --noEmit` | Unit 1 close | pass |
+| 2 `npm run build:lib` | Unit 1 close | pass |
+| 3 `npm run verify` | Unit 1 close | pass — 7/7 goldens match |
+| 4 `npm run leak-gate` | Unit 1 close | pass — 583 / ceiling 583 |
+| 5 browser pass | Unit 1 close | pass — five fixtures, node/edge counts identical to Unit 0 |
+| 6 `npm run boundary-gate` | Unit 1 close | pass — 11 / ceiling 11 |
+| + `npm run pattern-gate` | Unit 1 close | pass — 18 allowlisted, 0 new |
 
 All of it runs as one command: `make check-visualizer` from the repo root, which
 is also what `ci.yml` runs (in three steps, so a failure names itself).
@@ -86,7 +103,7 @@ Status: blank = not started · `wip` · `done`.
 
 | R | requirement | unit | proving gate |
 |---|---|---|---|
-| R1 | Ontology: dimensions, keys, values | 1, 2 | 1 + 3 |
+| R1 | Ontology: dimensions, keys, values | 1, 2 | 1 + 3 | `wip` — the container and its four seams land in Unit 1; dimensions themselves are Unit 2 |
 | R2 | Nodes carry a dimension map | 2 | 3 |
 | R3 | Host-owned node payload field | 2 | 1 |
 | R4 | Edge type from node-dimension combinations | 4 | 3 (Tier C) |
@@ -140,12 +157,13 @@ explicit pass criteria and a committed screenshot — use them.
 | unit | commits | requirements | blast radius | leak count | review |
 |---|---|---|---|---|---|
 | **0 — Verification net** | 11 (`ad06e58`…`149634c`) | means of R41 | none migrated | 583 (ceiling 583) | [REVIEW_0.md](reviews/REVIEW_0.md) — 34 findings, all 5 blockers and 23 majors resolved |
+| **1 — Inject the taxonomy** | 8 (`df09457`…`2f51558`) | R1 (partial) | B3, B4, B5, B33 | 583 (ceiling 583) | [REVIEW_1.md](reviews/REVIEW_1.md) — 26 findings, all 3 blockers and 11 majors resolved |
 
 ---
 
 ## In-flight work
 
-*Nothing in flight. Unit 0 is complete; Unit 1 is next and has not started.*
+*Nothing in flight. Units 0 and 1 are complete; Unit 2 is next and has not started.*
 
 <!-- When a session is interrupted mid-unit, record:
      - the unit, and which of its commits landed
@@ -244,6 +262,21 @@ bet against: three ticks of `Math.pow`/`Math.hypot` do not move a position by
 CI also ran the three ratchets from a clean `npm ci` with no `dist-verify/`
 present, so the harness bootstraps from nothing.
 
+**F12 — Two halves that are each individually correct is this run's dangerous
+shape.** Both of the worst findings so far have it: Unit 0's harness goldened
+everything except the layout, and Unit 1's taxonomy was resolved through a
+container by the renderer and through a module singleton by the engine. Neither
+half is wrong on its own, which is exactly why no gate saw either. When a unit
+introduces a seam, the question worth asking is not "is this correct" but "what
+else resolves the same thing, and does it go through here too".
+
+**F13 — The leaner review shape works.** Unit 1's PR review: 5 agents, 827k
+subagent tokens, 26 findings, 24 with reproductions, 3 blockers. Unit 0's: 51
+agents, 6.24M tokens, 34 findings, 4 distinct defects. Roughly 7.5x cheaper for
+comparable yield. The schema field requiring each finder to report *what it broke
+and what the gate said* is doing the work — the two sharpest Unit 1 findings came
+from reviewers who sabotaged a value and watched the gates stay green.
+
 ---
 
 ## Open questions
@@ -310,3 +343,8 @@ that is a change to an [immutable] document and therefore not mine to make.
 | §5.1's "`--write` requires a log entry" was documented, not built | PR review | `verify/run.mjs` refuses `--write` without a `DECISIONS.md` entry that exists and mentions goldens | 0 |
 | `signalSend`, the highest-precedence edge rule, is unreachable from the whole corpus | Unit 0 (T32) | Tier C's 294 synthetic rows | 0 |
 | The band collection deduplicates by value, and keying it by identity is silent | Unit 0 (T1) | Tier B `bandCentersMatchDistinctTypes`, self-tested red | 0 |
+| The three physics accessors fail three different silent ways on an undeclared key: `undefined`, a NaN its `Math.max` floor hides, and a hard throw | Unit 1 (T3, B5) | `static.forceProbes.absentValue` — verified red when the defaults are removed | 1 |
+| `edgeCategory` had no such guard, so a supplied taxonomy's category ids write NaN into both endpoint velocities on the first tick | Unit 1 review | `static.forceProbes.absentValue.undeclaredEdgeCategory` | 1 |
+| `computeVisibleGraph` took an ontology and still resolved its visibility predicate through the module singleton, so a supplied taxonomy emptied the graph | Unit 1 review | `static.ontologyProbes.injection` — verified red when the predicate is reverted | 1 |
+| The taxonomy had two unwired suppliers: components read context, `Simulation` read the singleton | Unit 1 review | `Simulation`'s ontology parameter is required, so a call site cannot silently fall back; the compiler is the check | 1 |
+| `ABSENT_VALUE_PHYSICS` was documented as inert and is not — a zero charge still couples at half strength and an origin band moves the median | Unit 1 review | `static.forceProbes.absentValue.*.velocities` records **every** node, not just the unknown one | 1 |

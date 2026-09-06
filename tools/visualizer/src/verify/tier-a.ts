@@ -12,6 +12,7 @@ import { Simulation } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
+import { DEFAULT_ONTOLOGY } from '../graph/node-types'
 import type { Json } from './snapshot'
 import { histogram, sorted, sortedRecord } from './snapshot'
 
@@ -67,7 +68,7 @@ function visibleState(
   visibleTypes: Set<string>,
   selectedFiles: Set<string>,
 ): Json {
-  const vg = computeVisibleGraph(sim, visibleTypes, selectedFiles)
+  const vg = computeVisibleGraph(sim, visibleTypes, selectedFiles, DEFAULT_ONTOLOGY)
   const nodeOf = (id: string) => sim.getNode(id)
   return {
     visibleNodeCount: vg.visibleNodes.length,

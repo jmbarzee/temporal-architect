@@ -7,6 +7,7 @@
 import React from 'react'
 import type { Simulation } from '../../graph/simulation'
 import { computeVisibleGraph, EMPTY_VISIBLE_GRAPH } from './visibleGraph'
+import { useOntology } from './useOntology'
 import type { VisibleGraph } from './visibleGraph'
 
 export type { VisibleGraph } from './visibleGraph'
@@ -17,11 +18,14 @@ export function useVisibleGraph(
   visibleTypes: Set<string>,
   selectedFiles: Set<string>,
 ): VisibleGraph {
+  const ontology = useOntology()
   return React.useMemo<VisibleGraph>(() => {
     const sim = simRef.current
     if (!sim) return EMPTY_VISIBLE_GRAPH
-    return computeVisibleGraph(sim, visibleTypes, selectedFiles)
+    return computeVisibleGraph(sim, visibleTypes, selectedFiles, ontology)
     // simVersion is the data link to useSimulation — it bumps on (re)creation so
-    // this memo recomputes when the sim instance changes.
-  }, [visibleTypes, selectedFiles, simVersion]) // eslint-disable-line react-hooks/exhaustive-deps
+    // this memo recomputes when the sim instance changes. `ontology` is listed
+    // because the derivation reads it; it is a stable module constant today, so
+    // adding it changes no memoization behaviour.
+  }, [visibleTypes, selectedFiles, simVersion, ontology]) // eslint-disable-line react-hooks/exhaustive-deps
 }

@@ -12,7 +12,8 @@ import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import type { GraphEdge } from '../graph/model'
 import { nodeTypeToDefType, defTypeToNodeType } from './graph-view/nodeDefType'
-import { definitionFor, DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-types'
+import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-types'
+import { useOntology } from './graph-view/useOntology'
 import { worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
@@ -651,6 +652,9 @@ function stripKindPrefix(s: string | undefined): string | undefined {
 }
 
 function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries, onShowInTree, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
+  // Before the early returns: this is a hook, and the component bails out four
+  // different ways below.
+  const ontology = useOntology()
   if (!hoveredNodeId) return null
   const sim = simRef.current
   if (!sim) return null
@@ -689,7 +693,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   // These used to render as a badge under the node; they now live in the box.
   // Degree nodes (workflow/activity/operation) are covered by the connection
   // counts row below, so we don't duplicate them here.
-  const summaryKind = definitionFor(node.nodeType).summaryKind
+  const summaryKind = ontology.resolveNodeStyle(node).summaryKind
   const compositionLine =
     summaryKind === 'containerCount' || summaryKind === 'hostRegistrations'
       ? nodeSummaries.get(hoveredNodeId) || undefined

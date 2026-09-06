@@ -12,6 +12,7 @@ import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_NODE_SCALE 
 import { DEFAULT_PARAMS } from '../graph/simulation'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
+import { ontologyProbes } from './ontology-probes'
 import { ALL_EDGE_TYPES } from '../graph/edge-types'
 import { buildNodeTypeCSS } from '../graph/node-type-styles'
 import { nodeTypeToDefType, defTypeToNodeType } from '../components/graph-view/nodeDefType'
@@ -202,6 +203,7 @@ export function staticGolden(): Json {
     defaultForceParams: { ...DEFAULT_PARAMS } as unknown as Json,
     defaultNodeScale: { ...DEFAULT_NODE_SCALE },
     forceProbes: forceProbes(),
+    ontologyProbes: ontologyProbes(),
     syntheticVisible: syntheticVisible(),
     defTypeBridge: defTypeBridge(),
     reconcileMatrix: reconcileMatrix(),
