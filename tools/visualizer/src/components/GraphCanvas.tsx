@@ -8,6 +8,7 @@ import { bandForKey, chargeFor, coreRadiusFor, edgeCategory, RADIAL_R_MIN, RADIA
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-types'
+import type { DimensionValue } from '../graph/dimension'
 import type { Ontology } from '../graph/ontology'
 import { useOntology } from './graph-view/useOntology'
 import { edgeStyleFor } from '../graph/edge-styles'
@@ -519,7 +520,7 @@ export function GraphCanvas({
           Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
         const edgeHighlighted = d.highlightedEdges?.has(edge.id) ?? false
-        const style = edgeStyleFor(edge, src, tgt)
+        const style = edgeStyleFor(edge, d.ontology.valueFor(src), d.ontology.valueFor(tgt))
         const baseAlpha = style.alpha
         // An edge is search-dimmed if a search is active and either
         // endpoint isn't a match — keeps the visible chain readable
@@ -604,7 +605,7 @@ export function GraphCanvas({
           if (sx + maxRing < 0 || sx - maxRing > w ||
             sy + maxRing < 0 || sy - maxRing > h) continue
 
-          const highlighted = typeFilter === null || node.nodeType === typeFilter
+          const highlighted = typeFilter === null || d.ontology.valueFor(node) === typeFilter
           const baseAlpha = highlighted ? 0.28 : 0.05
           const stepAlpha = highlighted ? 0.06 : 0.015
 
@@ -671,7 +672,7 @@ export function GraphCanvas({
           const tgt = d.nodeMap.get(edge.targetId)
           if (!src || !tgt) continue
 
-          const cat = edgeCategory(d.forceParams, edge, d.ontology.resolveEdgeType)
+          const cat = edgeCategory(d.forceParams, edge, src, tgt, d.ontology.resolveEdgeType)
           if (activePullKey && cat.key !== activePullKey) continue
 
           const [sx, sy] = worldToScreen(vp, src.x, src.y)
@@ -697,7 +698,7 @@ export function GraphCanvas({
           if (activePullKey) {
             // Border: a tension-coloured casing wider than the edge, then the
             // edge's own colour redrawn on top at full opacity.
-            const style = edgeStyleFor(edge, src, tgt)
+            const style = edgeStyleFor(edge, d.ontology.valueFor(src), d.ontology.valueFor(tgt))
             ctx.beginPath()
             ctx.moveTo(sx, sy)
             ctx.lineTo(tx, ty)
@@ -764,14 +765,15 @@ export function GraphCanvas({
       if (gravityActive && d.forceParams.bandEnabled) {
         // Node types present in the visible set (their band centres drive both
         // the cartesian median and the radial ring mapping).
-        const present: NodeType[] = []
-        const seenTypes = new Set<NodeType>()
+        const present: DimensionValue[] = []
+        const seenTypes = new Set<DimensionValue>()
         for (const n of d.nodes) {
-          if (seenTypes.has(n.nodeType)) continue
-          seenTypes.add(n.nodeType)
-          present.push(n.nodeType)
+          const value = d.ontology.valueFor(n)
+          if (value === undefined || seenTypes.has(value)) continue
+          seenTypes.add(value)
+          present.push(value)
         }
-        const centerOf = (t: NodeType) => {
+        const centerOf = (t: DimensionValue) => {
           const b = bandForKey(d.forceParams, t)
           return (b.yMin + b.yMax) / 2
         }

@@ -11,6 +11,10 @@ import React from 'react'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge, NodeType } from '../../graph/model'
 import { getTransitiveDeps, getHighlightedEdgeIds } from '../../graph/highlight'
+import { useOntology } from './useOntology'
+
+/** A node that sits nowhere on any axis — used when an id does not resolve. */
+const EMPTY_SUBJECT = { dimensions: {} }
 import type { ForceSection } from '../GraphControlPanel'
 
 export interface HighlightController {
@@ -43,6 +47,7 @@ export function useHighlight(
   // stale id never lingers across graphs (was inline in the sim-rebuild effect).
   resetKey: unknown,
 ): HighlightController {
+  const ontology = useOntology()
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null)
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
@@ -87,7 +92,7 @@ export function useHighlight(
 
     const activeNode = getNode(activeId)
 
-    if (activeNode?.nodeType === 'nexusEndpoint') {
+    if (activeNode && ontology.valueFor(activeNode) === 'nexusEndpoint') {
       const nodes = new Set<string>([activeId])
       const edges = new Set<string>()
       if (activeNode.parentId && visibleIds.has(activeNode.parentId)) {
@@ -106,7 +111,7 @@ export function useHighlight(
     const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
     const nodes = getTransitiveDeps(activeId, visibleEdges, visibleIds, direction)
 
-    if (activeNode?.nodeType === 'nexusService') {
+    if (activeNode && ontology.valueFor(activeNode) === 'nexusService') {
       // Co-highlight the endpoints that front this service's operations.
       // The endpoint↔operation relationship is the parser's nexusRoute
       // edge (operation → endpoint, rendered as a containment-style edge);
@@ -114,12 +119,15 @@ export function useHighlight(
       // re-deriving it from (namespace, queue).
       const operationIds = new Set<string>()
       for (const n of visibleNodes) {
-        if (n.nodeType === 'nexusOperation' && n.parentId === activeId) {
+        if (ontology.valueFor(n) === 'nexusOperation' && n.parentId === activeId) {
           operationIds.add(n.id)
         }
       }
       for (const edge of visibleEdges) {
-        if (edge.targetNodeType !== 'nexusEndpoint') continue
+        // Resolved from the target node, not from a copy cached on the edge:
+        // graduation re-points edges, and a cached endpoint type survives the
+        // re-pointing while being wrong about it.
+        if (ontology.valueFor(getNode(edge.targetId) ?? EMPTY_SUBJECT) !== 'nexusEndpoint') continue
         if (!operationIds.has(edge.sourceId)) continue
         if (visibleIds.has(edge.targetId)) {
           nodes.add(edge.targetId)

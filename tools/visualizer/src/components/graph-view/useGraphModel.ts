@@ -11,7 +11,7 @@ import type { TWFFile, FileError, Diagnostic } from '../../types/ast'
 import type { ParserGraph } from '../../types/parser-graph'
 import type { FilterState } from '../../filter/types'
 import { filterStatesEqual } from '../../filter/types'
-import { buildGraph } from '../../graph/build'
+import { buildGraph, SOURCE_FILE_DIMENSION } from '../../graph/build'
 
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing
@@ -70,7 +70,8 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph, filter: Fi
   const allFiles = React.useMemo(() => {
     const files = new Set<string>()
     for (const node of graph.nodes.values()) {
-      if (node.sourceFile) files.add(node.sourceFile)
+      const file = node.dimensions[SOURCE_FILE_DIMENSION]
+      if (file) files.add(file)
     }
     return Array.from(files).sort()
   }, [graph])

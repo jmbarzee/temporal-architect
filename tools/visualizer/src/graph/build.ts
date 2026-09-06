@@ -167,8 +167,6 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
         namespace: pn.namespace,
         queue: pn.queue,
       },
-      nodeType,
-      sourceFile: ast?.sourceFile,
       parentId: parentByChild.get(pn.id),
       orphan: pn.orphan ?? false,
       definitionKey: pn.definition,
@@ -228,8 +226,6 @@ function parserEdgeToViewEdge(
     edgeType,
     sourceId: pe.from,
     targetId: pe.to,
-    sourceNodeType: src.nodeType,
-    targetNodeType: tgt.nodeType,
   }
   // Carried through because the endpoint node types cannot distinguish a
   // fire-and-forget send from a child-workflow call — both are workflow →
@@ -253,7 +249,5 @@ function coarsenedEdgeToViewEdge(
     edgeType: 'dependency',
     sourceId: ce.from,
     targetId: ce.to,
-    sourceNodeType: src.nodeType,
-    targetNodeType: tgt.nodeType,
   }
 }

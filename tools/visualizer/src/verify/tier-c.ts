@@ -30,18 +30,12 @@ export function tierC(): Json {
             edgeType,
             sourceId: 'src',
             targetId: 'tgt',
-            sourceNodeType: src,
-            targetNodeType: tgt,
             ...(dispatchKind ? { dispatchKind } : {}),
           }
           const key = `${edgeType}|${src}|${tgt}|${dispatchKind ?? '-'}`
           // Both classifiers, side by side. They are independent and already
           // disagree; the table is where that disagreement is enumerated.
-          rows[key] = `${edgeTypeFor(edge).id}|${edgeStyleKeyFor(
-            edge,
-            { nodeType: src },
-            { nodeType: tgt },
-          )}`
+          rows[key] = `${edgeTypeFor(edge, src, tgt).id}|${edgeStyleKeyFor(edge, src, tgt)}`
         }
       }
     }
@@ -58,12 +52,10 @@ export function tierC(): Json {
         edgeType: 'dependency',
         sourceId: 'src',
         targetId: 'tgt',
-        sourceNodeType: src,
-        targetNodeType: tgt,
         nexusEndpoint: 'SomeEndpoint',
       }
       withEndpoint[`dependency|${src}|${tgt}|ep`] =
-        `${edgeTypeFor(edge).id}|${edgeStyleKeyFor(edge, { nodeType: src }, { nodeType: tgt })}`
+        `${edgeTypeFor(edge, src, tgt).id}|${edgeStyleKeyFor(edge, src, tgt)}`
     }
   }
 

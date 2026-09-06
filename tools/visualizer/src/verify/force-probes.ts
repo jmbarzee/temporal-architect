@@ -46,7 +46,6 @@ function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
   return {
     id,
     dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
-    nodeType,
     name: id,
     orphan: false,
     definitionKey: `${nodeType}:${id}`,
@@ -104,13 +103,13 @@ function probe(run: (nodes: SimNode[], params: ForceParams, rng: () => number) =
 }
 
 const PROBE_EDGES: GraphEdge[] = [
-  { id: 'p0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk', sourceNodeType: 'workflow', targetNodeType: 'worker' },
-  { id: 'p1', edgeType: 'containment', sourceId: 'op', targetId: 'nx', sourceNodeType: 'nexusOperation', targetNodeType: 'nexusService' },
-  { id: 'p2', edgeType: 'dependency', sourceId: 'wf', targetId: 'act', sourceNodeType: 'workflow', targetNodeType: 'activity' },
-  { id: 'p3', edgeType: 'dependency', sourceId: 'ns', targetId: 'ep', sourceNodeType: 'namespace', targetNodeType: 'nexusEndpoint' },
-  { id: 'p4', edgeType: 'dependency', sourceId: 'wf', targetId: 'op', sourceNodeType: 'workflow', targetNodeType: 'nexusOperation' },
+  { id: 'p0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk' },
+  { id: 'p1', edgeType: 'containment', sourceId: 'op', targetId: 'nx' },
+  { id: 'p2', edgeType: 'dependency', sourceId: 'wf', targetId: 'act' },
+  { id: 'p3', edgeType: 'dependency', sourceId: 'ns', targetId: 'ep' },
+  { id: 'p4', edgeType: 'dependency', sourceId: 'wf', targetId: 'op' },
   // The coincident pair, so the link force takes its degenerate branch too.
-  { id: 'p5', edgeType: 'dependency', sourceId: 'dupA', targetId: 'dupB', sourceNodeType: 'activity', targetNodeType: 'workflow' },
+  { id: 'p5', edgeType: 'dependency', sourceId: 'dupA', targetId: 'dupB' },
 ]
 
 /**

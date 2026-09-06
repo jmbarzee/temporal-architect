@@ -21,7 +21,7 @@
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
 import { bandCenters, bandFor } from '../graph/forces'
-import type { Graph, NodeType } from '../graph/model'
+import type { Graph } from '../graph/model'
 import { DEFAULT_PARAMS, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
@@ -136,7 +136,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // on distinct centre *values* — several types deliberately share a band, so
   // with all 7 present there are only 4 distinct values.
   const centers = bandCenters(active, params)
-  const distinctTypesPresent = new Set<NodeType>(active.map(n => n.nodeType)).size
+  const distinctTypesPresent = new Set(active.map(n => DEFAULT_ONTOLOGY.valueFor(n))).size
 
   let maxAbs = 0
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity

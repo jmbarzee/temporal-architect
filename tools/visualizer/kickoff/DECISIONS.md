@@ -410,3 +410,31 @@ therefore:
 
 Anything outside that list moving is a defect, not a shape change. Each `--write`
 in this unit cites this entry. — 2026-09-06 — agent
+
+**D35 — Supersedes D34's node-row clause, and records what removing the
+denormalized endpoint types found.** Two corrections to D34's prediction:
+
+1. **`sourceFile` leaves the node row too, and belongs inside the map.** D34 said
+   it would stay byte-identical beside a new `dimensions` field. It should not:
+   the source file *is* one of the two axes this domain projects onto, so keeping
+   it as a sibling field would have been the dual-read C5 forbids. The node row's
+   change is therefore `nodeType` + `sourceFile` → `dimensions`, and the values
+   inside the map are the two strings the two fields held. Measured across all
+   five fixtures: **exactly** those three per-node differences and nothing else.
+
+2. **The synthetic visible-graph golden changed value, and the change is a fix.**
+   Three graduated-edge rows in `static.syntheticVisible` reclassify — `act -> wk`
+   moves from `linkWorkerToWorkflow` to `linkWorkerToActivity`. The cause is the
+   thing B14 exists to remove: that hand-written edge declared
+   `sourceId: 'act'` alongside `sourceNodeType: 'workflow'`, so the denormalized
+   copy disagreed with the node it described. Nothing could see the disagreement
+   while the classifier trusted the copy. Now that endpoints resolve from the
+   nodes, the classifier gets it right.
+
+   Worth stating plainly: **the drift was in the harness, not in production.**
+   `buildGraph` always wrote the denormalized types from the endpoint nodes, so
+   the four fixture goldens show no value change at all — only the row shape
+   moves. The one place the two sources of truth had actually diverged was a
+   fixture I hand-wrote in Unit 0, and it sat there undetected until the second
+   source was deleted. That is the argument for B14 in one example.
+— 2026-09-06 — agent

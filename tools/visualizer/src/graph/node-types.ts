@@ -14,6 +14,7 @@ import type { NodeType } from './model'
 import { createOntology } from './ontology'
 import type { Ontology } from './ontology'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
+import { TEMPORAL_TYPE_DIMENSION } from './build'
 
 export interface NodeTypeDefinition {
   // --- Identity ---
@@ -355,10 +356,12 @@ const FALLBACK_NODE_STYLE: NodeTypeDefinition = {
  * importing the registry.
  */
 export const DEFAULT_ONTOLOGY: Ontology = createOntology({
+  styleDimension: TEMPORAL_TYPE_DIMENSION,
   nodeTypeKeys: ALL_NODE_TYPES,
   nodeStyles: NODE_TYPE_REGISTRY,
   edgeTypes: ALL_EDGE_TYPES,
-  resolveEdgeType: edgeTypeFor,
+  resolveEdgeType: (edge, src, tgt) =>
+    edgeTypeFor(edge, src.dimensions[TEMPORAL_TYPE_DIMENSION], tgt.dimensions[TEMPORAL_TYPE_DIMENSION]),
   fallbackStyle: FALLBACK_NODE_STYLE,
 })
 

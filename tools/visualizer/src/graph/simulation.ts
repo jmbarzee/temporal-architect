@@ -15,7 +15,9 @@ import {
   bandFor,
 } from './forces'
 import type { Rng } from './rng'
+import type { DimensionId, DimensionValue } from './dimension'
 import type { Ontology } from './ontology'
+import { DEFAULT_ONTOLOGY } from './node-types'
 
 // Re-export so callers that already import ALL_NODE_TYPES from simulation continue to work.
 export { ALL_NODE_TYPES } from './node-types'
@@ -53,14 +55,16 @@ export interface SimNode extends GraphNode {
 // PUSH — repulsion. Per-type charge strength and core radius, the masters that
 // scale them, and the charge falloff exponent.
 export interface ChargeParams {
-  // Charge strength (repulsion, negative values), keyed by node type.
-  charge: Record<NodeType, number>
+  /** The axis charge and core radius key on. One axis, named once. */
+  chargeDimension: DimensionId
+  // Charge strength (repulsion, negative values), keyed by dimension value.
+  charge: Record<DimensionValue, number>
   // Core radius (charge softening, expressed as a length), keyed by node type.
   // Per pair, the softening added to dist² is the squared average of the two
   // endpoints' effective core radii (rEff = coreRadiusMultiplier × coreRadius).
   // A larger core radius spreads a type's repulsion over a wider, gentler
   // plateau near the centre instead of a sharp spike.
-  coreRadius: Record<NodeType, number>
+  coreRadius: Record<DimensionValue, number>
 
   pushMultiplier: number       // scales all charge (repulsion) forces
   coreRadiusMultiplier: number // scales all per-type core radii (charge softening)
@@ -87,6 +91,8 @@ export interface LinkParams {
 // centre drift, removing the need for canvas-side COM compensation. Plus the
 // optional downstream-reach vertical pull.
 export interface GravityParams {
+  /** The axis the per-value rest bands key on. */
+  bandDimension: DimensionId
   gravityX: number
   gravityY: number
   // Band falloff exponent applied to the displacement outside the rest band
@@ -115,8 +121,8 @@ export interface GravityParams {
   topologicalEnabled: boolean
   bandXMin: number
   bandXMax: number
-  // Per-type Y rest band [min, max], keyed by node type.
-  band: Record<NodeType, { min: number; max: number }>
+  // Per-value Y rest band [min, max].
+  band: Record<DimensionValue, { min: number; max: number }>
 }
 
 // DYNAMICS — how the simulation cools and damps over time.
@@ -155,6 +161,10 @@ export type ForceParams = ChargeParams & LinkParams & GravityParams & DynamicsPa
 // user can drag from. Ranges in GraphControlPanel.tsx are wide enough that
 // every default sits in a comfortable middle of its slider.
 export const DEFAULT_PARAMS: ForceParams = {
+  // Both default to the axis the shipped taxonomy resolves style on, so the
+  // layout keys on the same thing it is coloured by. Unit 4 makes this a choice.
+  chargeDimension: DEFAULT_ONTOLOGY.styleDimension,
+  bandDimension: DEFAULT_ONTOLOGY.styleDimension,
   // Charges (all negative = repulsion). Per-type defaults captured from an
   // interactive tuning session on the PUSH charge map: the container/host
   // tiers (endpoint, namespace, worker, service) carry the heaviest repulsion

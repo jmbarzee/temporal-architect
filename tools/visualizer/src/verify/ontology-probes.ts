@@ -34,7 +34,7 @@ const UNDECLARED = 'notADeclaredKey' as NodeType
 function node(id: string, nodeType: NodeType, parentId?: string): SimNode {
   return {
     id, dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
-    nodeType, name: id, orphan: parentId === undefined,
+    name: id, orphan: parentId === undefined,
     definitionKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
     x: 0, y: 0, vx: 0, vy: 0, pinned: false,
@@ -47,8 +47,8 @@ const NODES: SimNode[] = [
   node('act', 'activity', 'wk'),
 ]
 const EDGES: GraphEdge[] = [
-  { id: 'c0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk', sourceNodeType: 'workflow', targetNodeType: 'worker' },
-  { id: 'd0', edgeType: 'dependency', sourceId: 'wf', targetId: 'act', sourceNodeType: 'workflow', targetNodeType: 'activity' },
+  { id: 'c0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk' },
+  { id: 'd0', edgeType: 'dependency', sourceId: 'wf', targetId: 'act' },
 ]
 const BY_ID = new Map(NODES.map(n => [n.id, n]))
 const SOURCE = { nodes: NODES, edges: EDGES, getNode: (id: string) => BY_ID.get(id) }
@@ -60,6 +60,7 @@ const SOURCE = { nodes: NODES, edges: EDGES, getNode: (id: string) => BY_ID.get(
  * by its container, filtering on `tier-2` selects the worker.
  */
 const ALTERNATE = createOntology({
+  styleDimension: TEMPORAL_TYPE_DIMENSION,
   nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
   nodeStyles: {
     worker: { ...NODE_TYPE_REGISTRY.worker, defType: 'tier-2', summaryKind: 'degree' },
@@ -138,7 +139,7 @@ function mappingProbes(): Json {
 }
 
 export function ontologyProbes(): Json {
-  const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: UNDECLARED })
+  const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
     mappings: mappingProbes(),
     // What a miss resolves to, field by field. The `defType` matters most: it is
@@ -160,11 +161,15 @@ export function ontologyProbes(): Json {
     // A miss must be stable, not a fresh object each time: the draw loop resolves
     // per node per frame and callers compare styles by reference.
     fallbackIsStable:
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: UNDECLARED }) ===
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: UNDECLARED }),
+      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }) ===
+      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }),
+    // A node with no value on the style axis at all — the other half of the
+    // guard, and the one a dimension model makes reachable for the first time.
+    absentValueResolvesToFallback:
+      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }) === fallback,
     // A declared key must NOT reach the fallback.
     declaredKeyUnaffected:
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: 'worker' }) === NODE_TYPE_REGISTRY.worker,
+      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }) === NODE_TYPE_REGISTRY.worker,
 
     // The seam, exercised. Same graph, same filter vocabulary, two taxonomies —
     // the answers must differ, or nothing is actually being injected.

@@ -57,13 +57,6 @@ export interface GraphNode {
    * is part of the library's vocabulary again.
    */
   payload?: Readonly<Record<string, unknown>>
-  /**
-   * DEPRECATED WITHIN THIS UNIT — both fields are deleted in 2c, once every
-   * read has moved to `dimensions`. They are written from the same source as
-   * the map, so the two cannot disagree while both exist.
-   */
-  nodeType: NodeType
-  sourceFile?: string
   /** Containment parent (worker for L3, namespace for L2 and L1.5, nexusService for nexusOperation). */
   parentId?: string
   /** True when no parent in the hierarchy (uninstantiated definition). */
@@ -115,8 +108,6 @@ export interface GraphEdge {
   edgeType: EdgeType
   sourceId: string
   targetId: string
-  sourceNodeType: NodeType
-  targetNodeType: NodeType
   // Endpoint metadata for dependency edges that originate from a nexus call.
   // The operation and service identities are encoded in the target node, but
   // the endpoint is per-call-site (the same operation can be reached via two

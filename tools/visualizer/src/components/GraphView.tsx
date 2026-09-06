@@ -12,7 +12,7 @@ import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import type { GraphEdge } from '../graph/model'
 import { payloadString } from '../graph/model'
-import { nodeTypeToDefType, defTypeToNodeType } from './graph-view/nodeDefType'
+import { SOURCE_FILE_DIMENSION } from '../graph/build'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-types'
 import { useOntology } from './graph-view/useOntology'
 import { worldToScreen } from '../graph/viewport'
@@ -89,6 +89,7 @@ export function GraphView({
   overriddenPins,
   onOverriddenPinsConsumed,
 }: GraphViewProps) {
+  const ontology = useOntology()
   // Filter state is now driven by props from WorkflowCanvas (spec § Filter
   // State Model). Read the two structural dimensions through `filter`.
   const visibleTypes = filter.visibleTypes
@@ -345,10 +346,13 @@ export function GraphView({
   React.useEffect(() => {
     if (!pendingFocus) return
     const { name, defType } = pendingFocus
-    const targetNodeType = defTypeToNodeType(defType)
     const sim = simRef.current
     if (sim) {
-      const targetNode = sim.nodes.find(n => n.name === name && n.nodeType === targetNodeType)
+      // Compared on the filter key both sides already speak, rather than
+      // round-tripping through the reverse bridge to compare type strings.
+      const targetNode = sim.nodes.find(
+        n => n.name === name && ontology.resolveNodeStyle(n).defType === defType,
+      )
       if (targetNode) {
         pendingCenterRef.current = { nodeId: targetNode.id }
         if (!running) {
@@ -542,7 +546,7 @@ export function GraphView({
                 className="graph-search-result"
                 onClick={() => handleSelectSearchResult(n.id)}
               >
-                <span className="graph-search-result-type">{n.nodeType}</span>
+                <span className="graph-search-result-type">{ontology.valueFor(n)}</span>
                 <span className="graph-search-result-name">{n.name}</span>
               </button>
             ))}
@@ -673,7 +677,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   const queue = payloadString(node, 'queue')
   const hostWorker = payloadString(node, 'worker')
   let contextLine: string | undefined
-  switch (node.nodeType) {
+  switch (ontology.valueFor(node)) {
     case 'nexusEndpoint':
       // Namespace is the endpoint's containment parent (parentName), not a
       // node field; queue is intrinsic display metadata.
@@ -692,8 +696,8 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   // per-type icon (★ for service, ☆ for operation, ⌖ for endpoint) is
   // more informative than the group chip icon. DEF_TYPE_CONFIGS still has
   // all 7 entries even though 3 are collapsed into one chip in the filter bar.
-  const cfg = DEF_TYPE_CONFIGS.find(c => c.type === nodeTypeToDefType(node.nodeType))
-  const fileName = node.sourceFile?.split('/').pop()
+  const cfg = DEF_TYPE_CONFIGS.find(c => c.type === ontology.resolveNodeStyle(node).defType)
+  const fileName = node.dimensions[SOURCE_FILE_DIMENSION]?.split('/').pop()
 
   // Composition counts for container/host nodes (e.g. "3 workers · 1 endpoint"
   // on a namespace, "3wf · 1act" on a worker, "2 ops" on a nexus service).
@@ -769,7 +773,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       {onShowInTree && (
         <button
           className="tooltip-show-in-tree"
-          onClick={() => onShowInTree(node.name, nodeTypeToDefType(node.nodeType))}
+          onClick={() => onShowInTree(node.name, ontology.resolveNodeStyle(node).defType)}
           title="Show in Tree view"
         >
           Show in Tree

@@ -95,6 +95,7 @@
         "min": 100
       }
     },
+    "bandDimension": "temporalType",
     "bandEnabled": true,
     "bandXMax": 380,
     "bandXMin": 0,
@@ -107,6 +108,7 @@
       "worker": -770,
       "workflow": -360
     },
+    "chargeDimension": "temporalType",
     "chargeExponent": 0.7,
     "coreRadius": {
       "activity": 20,
@@ -1183,6 +1185,7 @@
     }
   },
   "ontologyProbes": {
+    "absentValueResolvesToFallback": true,
     "declaredKeyUnaffected": true,
     "fallbackIsStable": true,
     "fallbackStyle": {
@@ -1831,9 +1834,9 @@
           "linkNsToWorker|containment|containment|wkB -> ns",
           "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
           "linkSignalSend|workflowDep|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|containment|act -> wk",
           "linkWorkerToActivity|containment|containment|actCopy -> wkB",
           "linkWorkerToNexus|containment|containment|svc -> wk",
-          "linkWorkerToWorkflow|containment|containment|act -> wk",
           "linkWorkerToWorkflow|containment|containment|backing -> wkB",
           "linkWorkerToWorkflow|containment|containment|caller -> wk",
           "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
@@ -1881,8 +1884,8 @@
           "linkNsToNs|nexusCall|dependency|op -> ns",
           "linkNsToWorker|containment|containment|wk -> ns",
           "linkSignalSend|dependencyNsToNs|dependency|caller -> ns",
+          "linkWorkerToActivity|containment|containment|act -> wk",
           "linkWorkerToNexus|containment|containment|svc -> wk",
-          "linkWorkerToWorkflow|containment|containment|act -> wk",
           "linkWorkerToWorkflow|containment|containment|caller -> wk",
           "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
           "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
@@ -1944,9 +1947,9 @@
           "linkNsToWorker|containment|containment|wkB -> ns",
           "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
           "linkSignalSend|workflowDep|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|containment|act -> wk",
           "linkWorkerToActivity|containment|containment|actCopy -> wkB",
           "linkWorkerToNexus|containment|containment|svc -> wk",
-          "linkWorkerToWorkflow|containment|containment|act -> wk",
           "linkWorkerToWorkflow|containment|containment|backing -> wkB",
           "linkWorkerToWorkflow|containment|containment|caller -> wk",
           "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
@@ -2008,9 +2011,9 @@
           "linkEndpointToNamespace|containment|containment|ep -> ns",
           "linkNsToWorker|containment|containment|wk -> ns",
           "linkNsToWorker|containment|containment|wkB -> ns",
+          "linkWorkerToActivity|containment|containment|act -> wk",
           "linkWorkerToActivity|containment|containment|actCopy -> wkB",
           "linkWorkerToNexus|containment|containment|svc -> wk",
-          "linkWorkerToWorkflow|containment|containment|act -> wk",
           "linkWorkerToWorkflow|containment|containment|backing -> wkB",
           "linkWorkerToWorkflow|containment|containment|caller -> wk",
           "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
@@ -2056,8 +2059,8 @@
           "linkNsToWorker|containment|containment|op -> ns",
           "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
           "linkSignalSend|workflowDep|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|containment|act -> ns",
           "linkWorkerToActivity|containment|containment|actCopy -> ns",
-          "linkWorkerToWorkflow|containment|containment|act -> ns",
           "linkWorkerToWorkflow|containment|containment|backing -> ns",
           "linkWorkerToWorkflow|containment|containment|caller -> ns",
           "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
@@ -2085,80 +2088,101 @@
     "nodes": [
       {
         "definitionKey": "namespace:ns",
+        "dimensions": {
+          "sourceFile": "a.twf",
+          "temporalType": "namespace"
+        },
         "id": "ns",
-        "nodeType": "namespace",
-        "parentId": null,
-        "sourceFile": "a.twf"
+        "parentId": null
       },
       {
         "definitionKey": "namespace:nsOrphan",
+        "dimensions": {
+          "temporalType": "namespace"
+        },
         "id": "nsOrphan",
-        "nodeType": "namespace",
-        "parentId": null,
-        "sourceFile": null
+        "parentId": null
       },
       {
         "definitionKey": "worker:wk",
+        "dimensions": {
+          "sourceFile": "a.twf",
+          "temporalType": "worker"
+        },
         "id": "wk",
-        "nodeType": "worker",
-        "parentId": "ns",
-        "sourceFile": "a.twf"
+        "parentId": "ns"
       },
       {
         "definitionKey": "worker:wkB",
+        "dimensions": {
+          "sourceFile": "b.twf",
+          "temporalType": "worker"
+        },
         "id": "wkB",
-        "nodeType": "worker",
-        "parentId": "ns",
-        "sourceFile": "b.twf"
+        "parentId": "ns"
       },
       {
         "definitionKey": "nexusService:svc",
+        "dimensions": {
+          "sourceFile": "a.twf",
+          "temporalType": "nexusService"
+        },
         "id": "svc",
-        "nodeType": "nexusService",
-        "parentId": "wk",
-        "sourceFile": "a.twf"
+        "parentId": "wk"
       },
       {
         "definitionKey": "nexusEndpoint:ep",
+        "dimensions": {
+          "sourceFile": "a.twf",
+          "temporalType": "nexusEndpoint"
+        },
         "id": "ep",
-        "nodeType": "nexusEndpoint",
-        "parentId": "ns",
-        "sourceFile": "a.twf"
+        "parentId": "ns"
       },
       {
         "definitionKey": "workflow:caller",
+        "dimensions": {
+          "sourceFile": "a.twf",
+          "temporalType": "workflow"
+        },
         "id": "caller",
-        "nodeType": "workflow",
-        "parentId": "wk",
-        "sourceFile": "a.twf"
+        "parentId": "wk"
       },
       {
         "definitionKey": "nexusOperation:op",
+        "dimensions": {
+          "sourceFile": "a.twf",
+          "temporalType": "nexusOperation"
+        },
         "id": "op",
-        "nodeType": "nexusOperation",
-        "parentId": "svc",
-        "sourceFile": "a.twf"
+        "parentId": "svc"
       },
       {
         "definitionKey": "workflow:backing",
+        "dimensions": {
+          "sourceFile": "b.twf",
+          "temporalType": "workflow"
+        },
         "id": "backing",
-        "nodeType": "workflow",
-        "parentId": "wkB",
-        "sourceFile": "b.twf"
+        "parentId": "wkB"
       },
       {
         "definitionKey": "activity:act",
+        "dimensions": {
+          "sourceFile": "a.twf",
+          "temporalType": "activity"
+        },
         "id": "act",
-        "nodeType": "activity",
-        "parentId": "wk",
-        "sourceFile": "a.twf"
+        "parentId": "wk"
       },
       {
         "definitionKey": "activity:act",
+        "dimensions": {
+          "sourceFile": "b.twf",
+          "temporalType": "activity"
+        },
         "id": "actCopy",
-        "nodeType": "activity",
-        "parentId": "wkB",
-        "sourceFile": "b.twf"
+        "parentId": "wkB"
       }
     ]
   }

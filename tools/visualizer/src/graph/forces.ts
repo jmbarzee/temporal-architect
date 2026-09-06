@@ -11,16 +11,44 @@
 // This module imports only *types* from ./simulation, so there is no runtime
 // import cycle: `simulation -> forces` is the only value dependency.
 
-import type { NodeType, GraphEdge } from './model'
+import type { DimensionId, DimensionValue } from './dimension'
+import type { GraphEdge } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
 import type { EdgeTypeDefinition, EdgeTypeId } from './edge-types'
 import type { Rng } from './rng'
 
-/** How an edge is mapped to its spring category. Supplied, not imported. */
-export type EdgeTypeResolver = (edge: GraphEdge) => EdgeTypeDefinition
+/**
+ * How an edge is mapped to its spring category. Supplied, not imported, and
+ * given the endpoints rather than reading a cached copy off the edge — a
+ * denormalized endpoint type is a second source of truth for a node's identity
+ * and goes stale the moment graduation re-points an edge.
+ */
+export type EdgeTypeResolver = (
+  edge: GraphEdge,
+  src: PhysicsSubject,
+  tgt: PhysicsSubject,
+) => EdgeTypeDefinition
 
 /** The minimum a force needs of a node in order to look up its physics. */
-export type PhysicsSubject = { nodeType: NodeType }
+export type PhysicsSubject = { dimensions: Readonly<Record<DimensionId, DimensionValue>> }
+
+/**
+ * Where a node sits on the axis a force keys on, or undefined when it sits
+ * nowhere on that axis. One axis per force, named by the params — features never
+ * compose two.
+ */
+function axisValue(node: PhysicsSubject, dimension: DimensionId): DimensionValue | undefined {
+  return node.dimensions[dimension]
+}
+
+function lookup<T>(
+  table: Readonly<Record<DimensionValue, T>>,
+  node: PhysicsSubject,
+  dimension: DimensionId,
+): T | undefined {
+  const key = axisValue(node, dimension)
+  return key === undefined ? undefined : table[key]
+}
 
 // ── Per-value / per-edge accessors ──────────────────────────────────────────
 // Each force reads its per-value/per-edge numbers from the keyed param maps via
@@ -65,12 +93,12 @@ export const ABSENT_VALUE_PHYSICS = {
 } as const
 
 export function chargeFor(params: ChargeParams, node: PhysicsSubject): number {
-  return params.charge[node.nodeType] ?? ABSENT_VALUE_PHYSICS.charge
+  return lookup(params.charge, node, params.chargeDimension) ?? ABSENT_VALUE_PHYSICS.charge
 }
 
 export function coreRadiusFor(params: ChargeParams, node: PhysicsSubject): number {
   return Math.max(
-    params.coreRadius[node.nodeType] ?? ABSENT_VALUE_PHYSICS.coreRadius,
+    lookup(params.coreRadius, node, params.chargeDimension) ?? ABSENT_VALUE_PHYSICS.coreRadius,
     CORE_RADIUS_MIN,
   )
 }
@@ -80,14 +108,14 @@ export interface YBand {
   yMax: number
 }
 
-/** The rest band for a key. Control surfaces iterate keys; forces take nodes. */
-export function bandForKey(params: GravityParams, key: NodeType): YBand {
-  const b = params.band[key] ?? ABSENT_VALUE_PHYSICS.yBand
+/** The rest band for a value. Control surfaces iterate values; forces take nodes. */
+export function bandForKey(params: GravityParams, key: DimensionValue | undefined): YBand {
+  const b = (key === undefined ? undefined : params.band[key]) ?? ABSENT_VALUE_PHYSICS.yBand
   return { yMin: b.min, yMax: b.max }
 }
 
 export function bandFor(params: GravityParams, node: PhysicsSubject): YBand {
-  return bandForKey(params, node.nodeType)
+  return bandForKey(params, axisValue(node, params.bandDimension))
 }
 
 /**
@@ -119,9 +147,11 @@ interface EdgeCategory {
 export function edgeCategory(
   params: LinkParams,
   edge: GraphEdge,
+  src: PhysicsSubject,
+  tgt: PhysicsSubject,
   resolveEdgeType: EdgeTypeResolver,
 ): EdgeCategory {
-  const def = resolveEdgeType(edge)
+  const def = resolveEdgeType(edge, src, tgt)
   return {
     strength: params.link[def.id] ?? ABSENT_EDGE_PHYSICS.strength,
     distance: params.dist[def.id] ?? ABSENT_EDGE_PHYSICS.distance,
@@ -238,7 +268,7 @@ export function applyLinkForce(
       dist = 1
     }
 
-    const cat = edgeCategory(params, edge, resolveEdgeType)
+    const cat = edgeCategory(params, edge, source, target, resolveEdgeType)
     const restDist = cat.distance * distMul
     const disp = dist - restDist
     const absDisp = Math.abs(disp)
@@ -270,12 +300,17 @@ export const RADIAL_R_MAX = 540
 // the entry count and the distinct-value count differ (7 types, 4 distinct
 // centres).
 export function bandCenters(active: SimNode[], params: GravityParams): number[] {
-  const seen = new Set<NodeType>()
+  // Deduplicated by VALUE, which is why values are interned strings. A `Set`
+  // deduplicates a string by value and an object by identity, so a composite
+  // key here would collect one entry per node and move the median the whole
+  // stack is re-centred on — with no type error and no crash.
+  const seen = new Set<DimensionValue | undefined>()
   const centers: number[] = []
   for (const n of active) {
-    if (seen.has(n.nodeType)) continue
-    seen.add(n.nodeType)
-    const b = bandFor(params, n)
+    const key = axisValue(n, params.bandDimension)
+    if (seen.has(key)) continue
+    seen.add(key)
+    const b = bandForKey(params, key)
     centers.push((b.yMin + b.yMax) / 2)
   }
   return centers
@@ -355,11 +390,11 @@ function applyBandGravityRadial(
   rng: Rng,
 ): void {
   const gy = params.gravityY
-  const center = new Map<NodeType, number>()
+  const center = new Map<DimensionValue | undefined, number>()
   for (const n of active) {
-    if (center.has(n.nodeType)) continue
-    const b = bandFor(params, n)
-    center.set(n.nodeType, (b.yMin + b.yMax) / 2)
+    const key = axisValue(n, params.bandDimension)
+    if (center.has(key)) continue
+    center.set(key, (b => (b.yMin + b.yMax) / 2)(bandForKey(params, key)))
   }
   if (center.size === 0) return
   const centers = [...center.values()]
@@ -367,7 +402,7 @@ function applyBandGravityRadial(
   const span = Math.max(...centers) - lo || 1
   for (const node of active) {
     if (node.pinned) continue
-    const c = center.get(node.nodeType)
+    const c = center.get(axisValue(node, params.bandDimension))
     if (c === undefined) continue
     const targetR = RADIAL_R_MIN + ((c - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)
     const r = Math.hypot(node.x, node.y)

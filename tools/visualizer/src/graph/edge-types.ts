@@ -12,6 +12,7 @@
 // Imports only *types* from ./simulation, so there is no runtime import cycle
 // (simulation -> edge-types is the value dependency, mirroring simulation -> forces).
 
+import type { DimensionValue } from './dimension'
 import type { NodeType, GraphEdge } from './model'
 
 export type EdgeCategoryKind = 'containment' | 'dependency'
@@ -106,11 +107,11 @@ export const EDGE_TYPE_REGISTRY = Object.fromEntries(
 // operation pair, by direction. Unmatched cases fall through to the broadest
 // category in each branch (Worker↔Namespace containment; Workflow↔Activity dep).
 export function edgeTypeFor(
-  edge: Pick<GraphEdge, 'edgeType' | 'sourceNodeType' | 'targetNodeType' | 'dispatchKind'>,
+  edge: Pick<GraphEdge, 'edgeType' | 'dispatchKind'>,
+  src: DimensionValue | undefined,
+  tgt: DimensionValue | undefined,
 ): EdgeTypeDefinition {
-  const src = edge.sourceNodeType
-  const tgt = edge.targetNodeType
-  const has = (a: NodeType, b: NodeType) =>
+  const has = (a: DimensionValue, b: DimensionValue) =>
     (src === a && tgt === b) || (src === b && tgt === a)
 
   let id: EdgeTypeId

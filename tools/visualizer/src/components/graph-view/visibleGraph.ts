@@ -16,6 +16,7 @@
 
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
+import { SOURCE_FILE_DIMENSION } from '../../graph/build'
 import type { Ontology } from '../../graph/ontology'
 
 export interface VisibleGraph {
@@ -72,10 +73,13 @@ function resolveDepEndpoint(
   sim: { edges: GraphEdge[] },
   visibleIds: Set<string>,
   getNode: (id: string) => SimNode | undefined,
+  ontology: Ontology,
 ): string[] {
   if (visible) return [nodeId]
   const node = getNode(nodeId)
-  if (node?.nodeType === 'nexusOperation') {
+  // Still a domain literal: WHICH value splices is a host policy, and injecting
+  // it is a later unit's job (B16). What changed is where the value comes from.
+  if (node && ontology.valueFor(node) === 'nexusOperation') {
     const out: string[] = []
     for (const e of sim.edges) {
       if (e.edgeType !== 'dependency') continue
@@ -83,7 +87,7 @@ function resolveDepEndpoint(
         ? (e.sourceId === nodeId ? e.targetId : null)  // outgoing — operation is source
         : (e.targetId === nodeId ? e.sourceId : null)  // incoming — operation is target
       if (!adjId) continue
-      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode)) {
+      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode, ontology)) {
         out.push(r)
       }
     }
@@ -185,8 +189,8 @@ function computeGraphNodeSummary(
       if (e.edgeType !== 'containment' || e.targetId !== node.id) continue
       const child = nodeMap.get(e.sourceId)
       if (!child) continue
-      if (child.nodeType === 'worker') workers++
-      else if (child.nodeType === 'nexusEndpoint') endpoints++
+      if (ontology.valueFor(child) === 'worker') workers++
+      else if (ontology.valueFor(child) === 'nexusEndpoint') endpoints++
     }
     const parts: string[] = []
     if (workers > 0) parts.push(`${workers} worker${workers !== 1 ? 's' : ''}`)
@@ -202,12 +206,12 @@ function computeGraphNodeSummary(
       if (e.edgeType !== 'containment' || e.targetId !== node.id) continue
       const child = nodeMap.get(e.sourceId)
       if (!child) continue
-      if (child.nodeType === 'workflow') wf++
-      else if (child.nodeType === 'activity') act++
-      else if (child.nodeType === 'nexusService') nxs++
-      else if (child.nodeType === 'nexusOperation') ops++
+      if (ontology.valueFor(child) === 'workflow') wf++
+      else if (ontology.valueFor(child) === 'activity') act++
+      else if (ontology.valueFor(child) === 'nexusService') nxs++
+      else if (ontology.valueFor(child) === 'nexusOperation') ops++
     }
-    if (node.nodeType === 'nexusService') {
+    if (ontology.valueFor(node) === 'nexusService') {
       return ops > 0 ? `${ops} op${ops !== 1 ? 's' : ''}` : ''
     }
     const parts: string[] = []
@@ -242,7 +246,8 @@ export function computeVisibleGraph(
 
   for (const node of sim.nodes) {
     if (!visibleTypes.has(ontology.resolveNodeStyle(node).defType)) continue
-    if (hasFileFilter && node.sourceFile && !selectedFiles.has(node.sourceFile)) continue
+    const file = node.dimensions[SOURCE_FILE_DIMENSION]
+    if (hasFileFilter && file && !selectedFiles.has(file)) continue
     ids.add(node.id)
     vNodes.push(node)
   }
@@ -263,32 +268,26 @@ export function computeVisibleGraph(
       } else {
         const ancestor = findNearestVisibleAncestor(edge.targetId, ids, getNode)
         if (ancestor) {
-          const ancestorNode = getNode(ancestor)
           graduatedEdges.push({
             ...edge,
             targetId: ancestor,
-            targetNodeType: ancestorNode?.nodeType ?? edge.targetNodeType,
             id: `grad:${edge.id}`,
           })
         }
       }
     } else {
-      const resolvedSources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode)
-      const resolvedTargets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode)
+      const resolvedSources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode, ontology)
+      const resolvedTargets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode, ontology)
       for (const rs of resolvedSources) {
         for (const rt of resolvedTargets) {
           if (rs === rt) continue
           const key = `${rs}→${rt}`
           const existing = depEdgeKeys.get(key)
           if (existing && existing.nexusEndpoint && !edge.nexusEndpoint) continue
-          const srcNode = getNode(rs)
-          const tgtNode = getNode(rt)
           depEdgeKeys.set(key, {
             ...edge,
             sourceId: rs,
             targetId: rt,
-            sourceNodeType: srcNode?.nodeType ?? edge.sourceNodeType,
-            targetNodeType: tgtNode?.nodeType ?? edge.targetNodeType,
             id: `grad:${key}`,
           })
         }
