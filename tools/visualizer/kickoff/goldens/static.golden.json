@@ -1242,6 +1242,40 @@
         "stringPassesThrough": true
       },
       "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" has intersecting buckets: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
+    },
+    "prototypeNamedValues": {
+      "constructor": {
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      },
+      "hasOwnProperty": {
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      },
+      "toString": {
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      },
+      "valueOf": {
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      }
     }
   },
   "reconcileMatrix": {

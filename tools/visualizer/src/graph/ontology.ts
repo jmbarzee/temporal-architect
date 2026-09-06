@@ -19,6 +19,7 @@
 //     constructed object.
 
 import type { DimensionId, DimensionMap, DimensionValue } from './dimension'
+import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
 import type { EdgeTypeDefinition } from './taxonomy'
@@ -105,7 +106,13 @@ export function createOntology(spec: OntologySpec): Ontology {
   // de-duplication meant for the first.
   const warned = new Set<string>()
   const styleForKey = (key: DimensionValue | undefined): NodeTypeDefinition => {
-    const style = key === undefined ? undefined : nodeStyles[key]
+    // `Object.hasOwn`, not a plain index: keys are host-supplied strings, and
+    // `nodeStyles['constructor']` walks the prototype chain and returns the
+    // `Object` function. That is not `undefined`, so the miss goes undetected
+    // and this returns it as though it were a style — and the first consumer to
+    // read `.size.r` off it throws, inside the draw loop, which is the exact
+    // failure the required-fallback design exists to prevent.
+    const style = key !== undefined && hasOwn(nodeStyles, key) ? nodeStyles[key] : undefined
     if (style !== undefined) return style
     const label = key ?? '<absent>'
     if (!warned.has(label)) {

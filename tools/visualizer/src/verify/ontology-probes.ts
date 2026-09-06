@@ -26,6 +26,8 @@ import {
 } from '../graph/dimension'
 import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
+import { defaultParamsFor } from '../graph/simulation'
+import { bandFor, chargeFor, coreRadiusFor } from '../graph/forces'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
@@ -141,10 +143,50 @@ function mappingProbes(): Json {
   }
 }
 
+
+/**
+ * Dimension values that name `Object.prototype` members.
+ *
+ * Values are host-supplied strings, so nothing stops one being called
+ * `constructor`. A plain `table[key]` read resolves that up the prototype chain
+ * and returns the `Object` function — which is not `undefined`, so every
+ * `?? ABSENT_VALUE_PHYSICS.x` and `!== undefined` guard downstream accepts it
+ * as a declared value. The consequences are not local: the `Object` function
+ * enters the force arithmetic as NaN, and because charge couples a pair by the
+ * *average* of two charges, one such node takes the whole layout non-finite.
+ * `styleForKey` meanwhile returns the constructor as though it were a style,
+ * and the first read of `.size.r` throws inside the draw loop — the exact
+ * failure the required-fallback design exists to prevent.
+ *
+ * Every row below must show the fallback/absent answer, never an inherited one.
+ */
+function prototypeNamedValues(): Json {
+  const NAMES = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']
+  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const rows: Record<string, Json> = {}
+  for (const name of NAMES) {
+    const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
+    const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
+    const node = { ...subject, id: name, name, orphan: true, definitionKey: name,
+                   x: 0, y: 0, vx: 0, vy: 0, pinned: false } as SimNode
+    const band = bandFor(params, node)
+    rows[name] = {
+      styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
+      styleLabel: style.label,
+      charge: chargeFor(params, node),
+      coreRadius: coreRadiusFor(params, node),
+      chargeIsFinite: Number.isFinite(chargeFor(params, node)),
+      band: `${band.yMin}..${band.yMax}`,
+    }
+  }
+  return rows
+}
+
 export function ontologyProbes(): Json {
   const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
     mappings: mappingProbes(),
+    prototypeNamedValues: prototypeNamedValues(),
     // What a miss resolves to, field by field. The `defType` matters most: it is
     // what the visibility predicate tests, so it decides whether an unrecognized
     // node is permanently visible, permanently hidden, or accidentally lumped in

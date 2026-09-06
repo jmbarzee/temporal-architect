@@ -1,6 +1,7 @@
 import React from 'react'
 import { SingleGearIcon, InterlockingGearsIcon } from '../components/icons/GearIcons'
 import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import type { NodeType } from '../adapter/node-types'
 
 // --- Core types ---
 
@@ -116,8 +117,21 @@ export interface ViewFilterEntry {
   types: readonly string[]
 }
 
-/** The icon a chip borrows from the value it fronts. */
-const chipIcon = (key: string): string => DEFAULT_ONTOLOGY.styleForKey(key).icon
+/**
+ * The icon a chip borrows from the value it fronts.
+ *
+ * Typed `NodeType`, not `string`, and that is the whole point of the parameter.
+ * Resolving through the container was the B36 fix; taking a bare `string` while
+ * doing it would have been a regression, because the five call sites below are
+ * literals and `styleForKey` swallows an unknown key into a placeholder plus a
+ * `console.warn`. A typo would then survive typecheck, leak, boundary, pattern
+ * and every golden — its only trace a warning printed next to two intentional
+ * ones from the fixtures, which is indistinguishable from expected noise.
+ *
+ * Narrowing the parameter keeps the compile-time key check the direct property
+ * access used to give, without going back to indexing the registry object.
+ */
+const chipIcon = (key: NodeType): string => DEFAULT_ONTOLOGY.styleForKey(key).icon
 
 // Which chips exist, and how they group, is a domain choice — five chips over
 // seven filter keys, with the three nexus keys folded into one. That grouping

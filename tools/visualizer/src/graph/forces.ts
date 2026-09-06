@@ -12,6 +12,7 @@
 // import cycle: `simulation -> forces` is the only value dependency.
 
 import type { DimensionId, DimensionValue } from './dimension'
+import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
 import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
@@ -41,13 +42,30 @@ function axisValue(node: PhysicsSubject, dimension: DimensionId): DimensionValue
   return node.dimensions[dimension]
 }
 
+/**
+ * Read one entry out of a keyed param map.
+ *
+ * `Object.hasOwn`, not a plain index. Dimension values are host-supplied
+ * strings, and a plain object's index read walks the prototype chain — so a
+ * node whose value happens to be named `constructor` or `toString` resolves to
+ * an inherited member instead of missing. That member is not `undefined`, so
+ * every `?? ABSENT_VALUE_PHYSICS.x` guard downstream is bypassed by the value's
+ * *name alone*, and the `Object` function itself enters the force arithmetic.
+ *
+ * It does not stay one bad node, either: charge couples a pair by the average
+ * of the two endpoints' charges and a band contributes its centre to the median
+ * the stack re-centres on, so a single NaN spreads across the layout.
+ */
+function ownEntry<T>(table: Readonly<Record<DimensionValue, T>>, key: DimensionValue | undefined): T | undefined {
+  return key !== undefined && hasOwn(table, key) ? table[key] : undefined
+}
+
 function lookup<T>(
   table: Readonly<Record<DimensionValue, T>>,
   node: PhysicsSubject,
   dimension: DimensionId,
 ): T | undefined {
-  const key = axisValue(node, dimension)
-  return key === undefined ? undefined : table[key]
+  return ownEntry(table, axisValue(node, dimension))
 }
 
 // ── Per-value / per-edge accessors ──────────────────────────────────────────
@@ -110,7 +128,7 @@ export interface YBand {
 
 /** The rest band for a value. Control surfaces iterate values; forces take nodes. */
 export function bandForKey(params: GravityParams, key: DimensionValue | undefined): YBand {
-  const b = (key === undefined ? undefined : params.band[key]) ?? ABSENT_VALUE_PHYSICS.yBand
+  const b = ownEntry(params.band, key) ?? ABSENT_VALUE_PHYSICS.yBand
   return { yMin: b.min, yMax: b.max }
 }
 

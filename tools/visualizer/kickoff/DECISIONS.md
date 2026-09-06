@@ -531,3 +531,42 @@ agree only at Units 0, 1, 7 and 8; Unit 2 reads **210** in §6.5's table and
 table binds the gate and the tighter number steers the work. This is the
 resolution OQ2 said it would take, decided at the Unit 2 boundary as planned.
 — 2026-09-06 — agent
+
+**D39 — Keyed lookups on a dimension value must use `hasOwn`; the static golden
+gains a `prototypeNamedValues` block.** Dimension values are host-supplied
+strings, and three lookups read them as plain object indexes: `forces.ts`'s
+`lookup` and `bandForKey`, and `ontology.ts`'s `styleForKey`. A value named
+`constructor`, `__proto__`, `toString`, `hasOwnProperty` or `valueOf` therefore
+resolved up the prototype chain to an inherited member — which is not
+`undefined`, so every `?? ABSENT_VALUE_PHYSICS.x` and `!== undefined` guard
+downstream accepted it as a declared value.
+
+Neither consequence stays local, which is why this is not a curiosity:
+
+- The `Object` function enters the force arithmetic as NaN, and because charge
+  couples a pair by the *average* of the two endpoints' charges, and a band
+  contributes its centre to the median the stack re-centres on, one such node
+  takes the whole layout non-finite. Reproduced: all ten probe nodes went
+  non-finite in the charge and radial-band kernels. `bandCartesian` survived,
+  so the corruption is kernel-dependent — harder to spot, not easier.
+- `ontology.ts`'s header promises "resolution never throws". With
+  `key = 'constructor'` the miss went undetected and `styleForKey` returned the
+  `Object` constructor as a `NodeTypeDefinition`; the first consumer to read
+  `.size.r` off it throws, inside the draw loop, which is the exact failure the
+  required-fallback design exists to prevent (T4).
+
+Fixed with one shared `hasOwn` in `dimension.ts`, called on `Object.prototype`
+rather than on the table so a table declaring its own `hasOwnProperty` cannot
+shadow the check, and spelled `Object.prototype.hasOwnProperty.call` rather than
+`Object.hasOwn` so it needs no `lib` bump (target is ES2020).
+
+**Golden change (§8.2):** `static.golden.json` gains one
+`ontologyProbes.prototypeNamedValues` block — five rows, one per prototype
+member name, each recording that the style resolves to the declared fallback and
+that charge / coreRadius / band give the absent-value answers. No existing row
+moves. The block is worth its lines because nothing else in the harness passes a
+value the taxonomy does not declare *and that also names a prototype member*;
+the existing `notADeclaredKey` probe misses it by construction, since an ordinary
+unknown string does resolve to `undefined`.
+
+Found by the Unit 2 review fan-out (lens: physics). — 2026-09-06 — agent
