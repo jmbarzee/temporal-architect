@@ -12,10 +12,10 @@
 // Imports only *types* from ./simulation, so there is no runtime import cycle
 // (simulation -> edge-types is the value dependency, mirroring simulation -> forces).
 
-import type { DimensionValue } from './dimension'
-import type { GraphEdge } from './model'
+import type { DimensionValue } from '../graph/dimension'
+import type { GraphEdge } from '../graph/model'
 import type { NodeType } from './node-types'
-import type { EdgeTypeDefinition } from './taxonomy'
+import type { EdgeTypeDefinition } from '../graph/taxonomy'
 
 // This domain's edge categories. The *shape* is library-owned (`./taxonomy`);
 // what is declared here is the closed set of ids this deployment model has, and

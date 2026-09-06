@@ -19,13 +19,13 @@ import type {
   ParserEdge,
   ParserGraph,
 } from '../types/parser-graph'
-import type { EdgeType, Graph, GraphEdge, GraphNode } from './model'
+import type { EdgeType, Graph, GraphEdge, GraphNode } from '../graph/model'
 import type { NodeType } from './node-types'
-import type { DimensionMap } from './dimension'
+import type { DimensionMap } from '../graph/dimension'
 
 // The two axes this domain projects a node onto. Names, not concepts, belong to
 // the host: the library never mentions either id.
-import { SOURCE_FILE_DIMENSION } from './dimension'
+import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
 

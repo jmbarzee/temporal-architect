@@ -31,7 +31,7 @@ import {
 } from '../graph/groups'
 import { FilterBar } from './FilterBar'
 import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
-import { useGraphModel } from './graph-view/useGraphModel'
+import { useGraphModel } from '../adapter/useGraphModel'
 import { useViewport } from './graph-view/useViewport'
 import { useHighlight } from './graph-view/useHighlight'
 import { useSimulation } from './graph-view/useSimulation'

@@ -1,6 +1,6 @@
 import React from 'react'
 import { OntologyContext } from './graph-view/useOntology'
-import { DEFAULT_ONTOLOGY } from '../graph/node-types'
+import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'

@@ -4,8 +4,8 @@
 // membership. No positions, no floats except the downstream scores (which are
 // exact rationals). Byte-identical is the contract.
 
-import { buildGraph } from '../graph/build'
-import { edgeTypeFor } from '../graph/edge-types'
+import { buildGraph } from '../adapter/build'
+import { edgeTypeFor } from '../adapter/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import { payloadString } from '../graph/model'
@@ -14,7 +14,7 @@ import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
 import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
-import { DEFAULT_ONTOLOGY } from '../graph/node-types'
+import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { histogram, sorted, sortedRecord } from './snapshot'
 

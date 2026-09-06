@@ -35,9 +35,9 @@ export type NodeType =
   | 'nexusOperation'
   | 'activity'
 
-import { createOntology } from './ontology'
-import type { Ontology } from './ontology'
-import type { NodeTypeDefinition } from './taxonomy'
+import { createOntology } from '../graph/ontology'
+import type { Ontology } from '../graph/ontology'
+import type { NodeTypeDefinition } from '../graph/taxonomy'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
 import { TEMPORAL_TYPE_DIMENSION } from './build'
 

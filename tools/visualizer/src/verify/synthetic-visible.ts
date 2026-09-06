@@ -16,13 +16,13 @@
 // Positions are irrelevant to the derivation and are all zero.
 
 import type { GraphEdge } from '../graph/model'
-import type { NodeType } from '../graph/node-types'
+import type { NodeType } from '../adapter/node-types'
 import type { SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
-import { edgeTypeFor } from '../graph/edge-types'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../graph/node-types'
-import { TEMPORAL_TYPE_DIMENSION } from '../graph/build'
+import { edgeTypeFor } from '../adapter/edge-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'

@@ -10,8 +10,8 @@
 // The table fully pins the fall-through order, both catch-all branches, and the
 // operation ↔ operation case that resolves to the workflow → operation spring.
 
-import { ALL_NODE_TYPES } from '../graph/node-types'
-import { edgeTypeFor } from '../graph/edge-types'
+import { ALL_NODE_TYPES } from '../adapter/node-types'
+import { edgeTypeFor } from '../adapter/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { EdgeType, GraphEdge } from '../graph/model'
 import type { Json } from './snapshot'

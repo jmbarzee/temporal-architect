@@ -7,13 +7,13 @@
 // first, most-isolated decomposition step (see graphview_hook_decomposition plan).
 
 import React from 'react'
-import type { TWFFile, FileError, Diagnostic } from '../../types/ast'
-import type { ParserGraph } from '../../types/parser-graph'
-import type { FilterState } from '../../filter/types'
-import { filterStatesEqual } from '../../filter/types'
-import { buildGraph } from '../../graph/build'
-import type { Graph } from '../../graph/model'
-import { SOURCE_FILE_DIMENSION } from '../../graph/dimension'
+import type { TWFFile, FileError, Diagnostic } from '../types/ast'
+import type { ParserGraph } from '../types/parser-graph'
+import type { FilterState } from '../filter/types'
+import { filterStatesEqual } from '../filter/types'
+import { buildGraph } from './build'
+import type { Graph } from '../graph/model'
+import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing

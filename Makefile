@@ -174,8 +174,17 @@ gates-visualizer:
 	cd tools/visualizer && npm run boundary-gate
 	cd tools/visualizer && npm run pattern-gate
 
+## Build the visualizer as a library (Gate 2) — the packaged entry, not the app
+buildlib-visualizer:
+	cd tools/visualizer && npm run build:lib
+
 ## Every visualizer gate, in the order a failure is cheapest to read
-check-visualizer: typecheck-visualizer gates-visualizer verify-visualizer
+#
+# Gate 2 is in here because it was NOT, and the omission was invisible: this
+# aggregate is what runs at every commit boundary, so a library-build break
+# would have sat green locally and surfaced only in CI after a push. CI was
+# always covered (`make build`); the local loop was the half that lied.
+check-visualizer: typecheck-visualizer gates-visualizer verify-visualizer buildlib-visualizer
 
 ## Run Go tests
 # tools/sampler is its own module (resolved against ../lsp via the repo-root

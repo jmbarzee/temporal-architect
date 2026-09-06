@@ -8,14 +8,14 @@
 // the reconciler's transition matrix, and the Set-identity trace that is the
 // only detector for the memoization trap (T5).
 
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_ONTOLOGY } from '../graph/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { DEFAULT_NODE_SCALE } from '../graph/node-scale'
 import { defaultParamsFor } from '../graph/simulation'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
-import { ALL_EDGE_TYPES } from '../graph/edge-types'
-import { buildNodeTypeCSS } from '../graph/node-type-styles'
+import { ALL_EDGE_TYPES } from '../adapter/edge-types'
+import { buildNodeTypeCSS } from '../adapter/node-type-styles'
 import { VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 import { reconcileFilter } from '../filter/reconcile'
 import { toggleFileSelection, toggleTypeGroupSelection } from '../filter/toggle'

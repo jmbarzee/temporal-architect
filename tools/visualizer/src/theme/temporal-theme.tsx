@@ -1,6 +1,6 @@
 import React from 'react'
 import { SingleGearIcon, InterlockingGearsIcon } from '../components/icons/GearIcons'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 
 // --- Core types ---
 

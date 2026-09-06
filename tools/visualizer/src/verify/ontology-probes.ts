@@ -16,8 +16,8 @@
 
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { GraphEdge } from '../graph/model'
-import type { NodeType } from '../graph/node-types'
-import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../graph/node-types'
+import type { NodeType } from '../adapter/node-types'
+import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 import { createOntology } from '../graph/ontology'
 import {
   createDimensionalMapping,
@@ -26,7 +26,7 @@ import {
 } from '../graph/dimension'
 import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
-import { TEMPORAL_TYPE_DIMENSION } from '../graph/build'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
 

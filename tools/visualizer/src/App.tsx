@@ -3,7 +3,7 @@ import './App.css'
 import { VisualizerHost } from './components/VisualizerHost'
 import type { PayloadSource } from './components/VisualizerHost'
 import type { HostMessage } from './components/protocol'
-import { mountNodeTypeStyles } from './graph/node-type-styles'
+import { mountNodeTypeStyles } from './adapter/node-type-styles'
 
 // Mount registry-generated node-type CSS variables once at module load.
 mountNodeTypeStyles()
