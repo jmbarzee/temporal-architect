@@ -1,0 +1,1125 @@
+{
+  "defTypeBridge": {
+    "defTypeToNodeType": {
+      "activityDef": "activity",
+      "namespaceDef": "namespace",
+      "nexusEndpointDef": "nexusEndpoint",
+      "nexusOperationDef": "nexusOperation",
+      "nexusServiceDef": "nexusService",
+      "workerDef": "worker",
+      "workflowDef": "workflow"
+    },
+    "filterChips": [
+      {
+        "id": "namespaceDef",
+        "label": "Namespaces",
+        "types": [
+          "namespaceDef"
+        ]
+      },
+      {
+        "id": "workerDef",
+        "label": "Workers",
+        "types": [
+          "workerDef"
+        ]
+      },
+      {
+        "id": "nexus",
+        "label": "Nexus",
+        "types": [
+          "nexusEndpointDef",
+          "nexusServiceDef",
+          "nexusOperationDef"
+        ]
+      },
+      {
+        "id": "workflowDef",
+        "label": "Workflows",
+        "types": [
+          "workflowDef"
+        ]
+      },
+      {
+        "id": "activityDef",
+        "label": "Activities",
+        "types": [
+          "activityDef"
+        ]
+      }
+    ],
+    "nodeTypeToDefType": {
+      "activity": "activityDef",
+      "namespace": "namespaceDef",
+      "nexusEndpoint": "nexusEndpointDef",
+      "nexusOperation": "nexusOperationDef",
+      "nexusService": "nexusServiceDef",
+      "worker": "workerDef",
+      "workflow": "workflowDef"
+    },
+    "unmappedFallbacks": {
+      "defTypeToNodeType": "workflow",
+      "nodeTypeToDefType": "workflowDef"
+    }
+  },
+  "edgeTypes": {
+    "linkEndpointToNamespace": {
+      "category": "containment",
+      "directional": false,
+      "label": "Ep↔NS",
+      "physics": {
+        "distance": 690,
+        "strength": 1
+      },
+      "sourceType": "nexusEndpoint",
+      "targetType": "namespace"
+    },
+    "linkEndpointToOperation": {
+      "category": "containment",
+      "directional": false,
+      "label": "Ep↔Op",
+      "physics": {
+        "distance": 470,
+        "strength": 1.5
+      },
+      "sourceType": "nexusEndpoint",
+      "targetType": "nexusOperation"
+    },
+    "linkNexusToOperation": {
+      "category": "containment",
+      "directional": false,
+      "label": "Nx↔Op",
+      "physics": {
+        "distance": 600,
+        "strength": 1.4
+      },
+      "sourceType": "nexusService",
+      "targetType": "nexusOperation"
+    },
+    "linkNsToNs": {
+      "category": "dependency",
+      "directional": false,
+      "label": "NS↔NS",
+      "physics": {
+        "distance": 870,
+        "strength": 0.25
+      },
+      "sourceType": "namespace",
+      "targetType": "namespace"
+    },
+    "linkNsToWorker": {
+      "category": "containment",
+      "directional": false,
+      "label": "NS↔Wk",
+      "physics": {
+        "distance": 800,
+        "strength": 0.3
+      },
+      "sourceType": "namespace",
+      "targetType": "worker"
+    },
+    "linkOperationToActivity": {
+      "category": "dependency",
+      "directional": false,
+      "label": "Op↔Act",
+      "physics": {
+        "distance": 300,
+        "strength": 1.4
+      },
+      "sourceType": "nexusOperation",
+      "targetType": "activity"
+    },
+    "linkOperationToWorkflow": {
+      "category": "dependency",
+      "directional": true,
+      "label": "Op→Wf",
+      "physics": {
+        "distance": 360,
+        "strength": 1.55
+      },
+      "sourceType": "nexusOperation",
+      "targetType": "workflow"
+    },
+    "linkSignalSend": {
+      "category": "dependency",
+      "directional": true,
+      "label": "Wf→Sig",
+      "physics": {
+        "distance": 520,
+        "strength": 0.3
+      },
+      "sourceType": "workflow",
+      "targetType": "workflow"
+    },
+    "linkWorkerToActivity": {
+      "category": "containment",
+      "directional": false,
+      "label": "Wk↔Act",
+      "physics": {
+        "distance": 210,
+        "strength": 0.35
+      },
+      "sourceType": "worker",
+      "targetType": "activity"
+    },
+    "linkWorkerToNexus": {
+      "category": "containment",
+      "directional": false,
+      "label": "Wk↔Nx",
+      "physics": {
+        "distance": 430,
+        "strength": 1.25
+      },
+      "sourceType": "worker",
+      "targetType": "nexusService"
+    },
+    "linkWorkerToWorker": {
+      "category": "dependency",
+      "directional": false,
+      "label": "Wk↔Wk",
+      "physics": {
+        "distance": 720,
+        "strength": 0.3
+      },
+      "sourceType": "worker",
+      "targetType": "worker"
+    },
+    "linkWorkerToWorkflow": {
+      "category": "containment",
+      "directional": false,
+      "label": "Wk↔Wf",
+      "physics": {
+        "distance": 190,
+        "strength": 0.55
+      },
+      "sourceType": "worker",
+      "targetType": "workflow"
+    },
+    "linkWorkflowToActivity": {
+      "category": "dependency",
+      "directional": false,
+      "label": "Wf↔Act",
+      "physics": {
+        "distance": 40,
+        "strength": 1.9
+      },
+      "sourceType": "workflow",
+      "targetType": "activity"
+    },
+    "linkWorkflowToOperation": {
+      "category": "dependency",
+      "directional": true,
+      "label": "Wf→Op",
+      "physics": {
+        "distance": 330,
+        "strength": 1.5
+      },
+      "sourceType": "workflow",
+      "targetType": "nexusOperation"
+    },
+    "linkWorkflowToWorkflow": {
+      "category": "dependency",
+      "directional": false,
+      "label": "Wf↔Wf",
+      "physics": {
+        "distance": 420,
+        "strength": 0.5
+      },
+      "sourceType": "workflow",
+      "targetType": "workflow"
+    }
+  },
+  "filterSetIdentity": [
+    {
+      "filesIdentityChanged": true,
+      "op": "toggleFile(topics/a.twf)",
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "typesIdentityChanged": false,
+      "visibleTypes": [
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": true,
+      "op": "toggleFile(topics/b.twf)",
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": false,
+      "visibleTypes": [
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": false,
+      "op": "toggleTypeGroup(namespaceDef)",
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": true,
+      "visibleTypes": [
+        "namespaceDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": false,
+      "op": "toggleTypeGroup(workerDef)",
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": true,
+      "visibleTypes": [
+        "namespaceDef",
+        "workflowDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": false,
+      "op": "toggleTypeGroup(nexus)",
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": true,
+      "visibleTypes": [
+        "namespaceDef",
+        "nexusEndpointDef",
+        "nexusOperationDef",
+        "nexusServiceDef",
+        "workflowDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": false,
+      "op": "toggleTypeGroup(workflowDef)",
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": true,
+      "visibleTypes": [
+        "namespaceDef",
+        "nexusEndpointDef",
+        "nexusOperationDef",
+        "nexusServiceDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": false,
+      "op": "toggleTypeGroup(activityDef)",
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": true,
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef",
+        "nexusEndpointDef",
+        "nexusOperationDef",
+        "nexusServiceDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": true,
+      "op": "toggleFile(topics/a.twf) [off]",
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": false,
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef",
+        "nexusEndpointDef",
+        "nexusOperationDef",
+        "nexusServiceDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": true,
+      "op": "reconcile(manual, unpinned)",
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": true,
+      "visibleTypes": [
+        "activityDef",
+        "nexusServiceDef"
+      ]
+    },
+    {
+      "filesIdentityChanged": false,
+      "op": "reconcile(manual, self)",
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "typesIdentityChanged": false,
+      "visibleTypes": [
+        "activityDef",
+        "nexusServiceDef"
+      ]
+    }
+  ],
+  "generatedCss": [
+    ":root {",
+    "  --color-namespace: #475569;",
+    "  --color-namespace-border: #1E293B;",
+    "  --color-nexus-endpoint: #9F1239;",
+    "  --color-nexus-endpoint-border: #4C0519;",
+    "  --color-worker: #94A3B8;",
+    "  --color-worker-border: #475569;",
+    "  --color-nexus-service: #DB2777;",
+    "  --color-nexus-service-border: #831843;",
+    "  --color-workflow: #8B7EC8;",
+    "  --color-workflow-border: #5D4F95;",
+    "  --color-nexus-operation: #F9A8D4;",
+    "  --color-nexus-operation-border: #BE185D;",
+    "  --color-activity: #7CB9E8;",
+    "  --color-activity-border: #4A8BC2;",
+    "}",
+    ".vscode-dark,",
+    "[data-theme=\"dark\"] {",
+    "  --color-namespace: #94A3B8;",
+    "  --color-namespace-border: #475569;",
+    "  --color-nexus-endpoint: #BE123C;",
+    "  --color-nexus-endpoint-border: #881337;",
+    "  --color-worker: #CBD5E1;",
+    "  --color-worker-border: #64748B;",
+    "  --color-nexus-service: #EC4899;",
+    "  --color-nexus-service-border: #9D174D;",
+    "  --color-workflow: #A89BD8;",
+    "  --color-workflow-border: #6B5BB0;",
+    "  --color-nexus-operation-border: #DB2777;",
+    "  --color-activity-border: #5DA8DD;",
+    "}",
+    ".graph-control-typed-namespace { --type-color: var(--color-namespace); }",
+    ".graph-control-typed-nexusEndpoint { --type-color: var(--color-nexus-endpoint); }",
+    ".graph-control-typed-worker { --type-color: var(--color-worker); }",
+    ".graph-control-typed-nexusService { --type-color: var(--color-nexus-service); }",
+    ".graph-control-typed-workflow { --type-color: var(--color-workflow); }",
+    ".graph-control-typed-nexusOperation { --type-color: var(--color-nexus-operation); }",
+    ".graph-control-typed-activity { --type-color: var(--color-activity); }",
+    ".dual-range-namespace .dual-range-fill { background: #475569; }",
+    ".dual-range-namespace .dual-range-input::-webkit-slider-thumb { border-color: #94A3B8; }",
+    ".dual-range-namespace .dual-range-input::-moz-range-thumb { border-color: #94A3B8; }",
+    ".dual-range-nexusEndpoint .dual-range-fill { background: #9F1239; }",
+    ".dual-range-nexusEndpoint .dual-range-input::-webkit-slider-thumb { border-color: #BE123C; }",
+    ".dual-range-nexusEndpoint .dual-range-input::-moz-range-thumb { border-color: #BE123C; }",
+    ".dual-range-worker .dual-range-fill { background: #94A3B8; }",
+    ".dual-range-worker .dual-range-input::-webkit-slider-thumb { border-color: #CBD5E1; }",
+    ".dual-range-worker .dual-range-input::-moz-range-thumb { border-color: #CBD5E1; }",
+    ".dual-range-nexusService .dual-range-fill { background: #DB2777; }",
+    ".dual-range-nexusService .dual-range-input::-webkit-slider-thumb { border-color: #EC4899; }",
+    ".dual-range-nexusService .dual-range-input::-moz-range-thumb { border-color: #EC4899; }",
+    ".dual-range-workflow .dual-range-fill { background: #8B7EC8; }",
+    ".dual-range-workflow .dual-range-input::-webkit-slider-thumb { border-color: #A89BD8; }",
+    ".dual-range-workflow .dual-range-input::-moz-range-thumb { border-color: #A89BD8; }",
+    ".dual-range-nexusOperation .dual-range-fill { background: #F9A8D4; }",
+    ".dual-range-nexusOperation .dual-range-input::-webkit-slider-thumb { border-color: #F9A8D4; }",
+    ".dual-range-nexusOperation .dual-range-input::-moz-range-thumb { border-color: #F9A8D4; }",
+    ".dual-range-activity .dual-range-fill { background: #7CB9E8; }",
+    ".dual-range-activity .dual-range-input::-webkit-slider-thumb { border-color: #7CB9E8; }",
+    ".dual-range-activity .dual-range-input::-moz-range-thumb { border-color: #7CB9E8; }"
+  ],
+  "nodeTypes": {
+    "activity": {
+      "defType": "activityDef",
+      "defaultVisible": false,
+      "icon": "⚙",
+      "label": "Activity",
+      "ladder": "main",
+      "physics": {
+        "charge": -190,
+        "coreRadius": 20,
+        "yBand": {
+          "max": 500,
+          "min": 170
+        }
+      },
+      "size": {
+        "iconSize": 10,
+        "r": 8
+      },
+      "sliderLabel": "Act",
+      "summaryKind": "degree",
+      "tier": "leaf"
+    },
+    "namespace": {
+      "defType": "namespaceDef",
+      "defaultVisible": false,
+      "icon": "⧉",
+      "label": "Namespace",
+      "ladder": "main",
+      "physics": {
+        "charge": -850,
+        "coreRadius": 85,
+        "yBand": {
+          "max": -120,
+          "min": -340
+        }
+      },
+      "size": {
+        "iconSize": 18,
+        "r": 20
+      },
+      "sliderLabel": "NS",
+      "summaryKind": "containerCount",
+      "tier": "container"
+    },
+    "nexusEndpoint": {
+      "defType": "nexusEndpointDef",
+      "defaultVisible": false,
+      "icon": "⌖",
+      "label": "Nexus Endpoint",
+      "ladder": "nexus",
+      "physics": {
+        "charge": -900,
+        "coreRadius": 64,
+        "yBand": {
+          "max": -120,
+          "min": -340
+        }
+      },
+      "size": {
+        "iconSize": 14,
+        "r": 15
+      },
+      "sliderLabel": "Ep",
+      "summaryKind": "none",
+      "tier": "container"
+    },
+    "nexusOperation": {
+      "defType": "nexusOperationDef",
+      "defaultVisible": false,
+      "icon": "☆",
+      "label": "Nexus Operation",
+      "ladder": "nexus",
+      "physics": {
+        "charge": -560,
+        "coreRadius": 58,
+        "yBand": {
+          "max": 460,
+          "min": 100
+        }
+      },
+      "size": {
+        "iconSize": 12,
+        "r": 11
+      },
+      "sliderLabel": "Op",
+      "summaryKind": "degree",
+      "tier": "orchestrator"
+    },
+    "nexusService": {
+      "defType": "nexusServiceDef",
+      "defaultVisible": false,
+      "icon": "★",
+      "label": "Nexus Service",
+      "ladder": "nexus",
+      "physics": {
+        "charge": -760,
+        "coreRadius": 54,
+        "yBand": {
+          "max": 120,
+          "min": -200
+        }
+      },
+      "size": {
+        "iconSize": 18,
+        "r": 20
+      },
+      "sliderLabel": "Nx",
+      "summaryKind": "hostRegistrations",
+      "tier": "host"
+    },
+    "worker": {
+      "defType": "workerDef",
+      "defaultVisible": true,
+      "icon": "□",
+      "label": "Worker",
+      "ladder": "main",
+      "physics": {
+        "charge": -770,
+        "coreRadius": 72,
+        "yBand": {
+          "max": 120,
+          "min": -200
+        }
+      },
+      "size": {
+        "iconSize": 18,
+        "r": 20
+      },
+      "sliderLabel": "Wk",
+      "summaryKind": "hostRegistrations",
+      "tier": "host"
+    },
+    "workflow": {
+      "defType": "workflowDef",
+      "defaultVisible": true,
+      "icon": "⚙⚙",
+      "label": "Workflow",
+      "ladder": "main",
+      "physics": {
+        "charge": -360,
+        "coreRadius": 38,
+        "yBand": {
+          "max": 460,
+          "min": 100
+        }
+      },
+      "size": {
+        "iconSize": 12,
+        "r": 11
+      },
+      "sliderLabel": "Wf",
+      "summaryKind": "degree",
+      "tier": "orchestrator"
+    }
+  },
+  "reconcileMatrix": {
+    "dest:noFiles · pins:both · focus:existingType": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": true,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:both · focus:newType+newFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:both · focus:noSourceFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:both · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": true,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:files · focus:existingType": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": true,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:files · focus:newType+newFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:files · focus:noSourceFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:files · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "nexusServiceDef"
+      ]
+    },
+    "dest:noFiles · pins:none · focus:existingType": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": true,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:none · focus:newType+newFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:none · focus:noSourceFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:none · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "nexusServiceDef"
+      ]
+    },
+    "dest:noFiles · pins:types · focus:existingType": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": true,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:types · focus:newType+newFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:types · focus:noSourceFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [],
+      "visibleTypes": [
+        "activityDef",
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noFiles · pins:types · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "workerDef",
+        "workflowDef"
+      ]
+    },
+    "dest:noTypes · pins:both · focus:existingType": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "workflowDef"
+      ]
+    },
+    "dest:noTypes · pins:both · focus:newType+newFile": {
+      "overriddenPins": [
+        "files",
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef"
+      ]
+    },
+    "dest:noTypes · pins:both · focus:noSourceFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef"
+      ]
+    },
+    "dest:noTypes · pins:both · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": true,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": []
+    },
+    "dest:noTypes · pins:files · focus:existingType": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "workflowDef"
+      ]
+    },
+    "dest:noTypes · pins:files · focus:newType+newFile": {
+      "overriddenPins": [
+        "files"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef"
+      ]
+    },
+    "dest:noTypes · pins:files · focus:noSourceFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef"
+      ]
+    },
+    "dest:noTypes · pins:files · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "nexusServiceDef"
+      ]
+    },
+    "dest:noTypes · pins:none · focus:existingType": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "workflowDef"
+      ]
+    },
+    "dest:noTypes · pins:none · focus:newType+newFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef"
+      ]
+    },
+    "dest:noTypes · pins:none · focus:noSourceFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef"
+      ]
+    },
+    "dest:noTypes · pins:none · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "nexusServiceDef"
+      ]
+    },
+    "dest:noTypes · pins:types · focus:existingType": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "workflowDef"
+      ]
+    },
+    "dest:noTypes · pins:types · focus:newType+newFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef"
+      ]
+    },
+    "dest:noTypes · pins:types · focus:noSourceFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef"
+      ]
+    },
+    "dest:noTypes · pins:types · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "visibleTypes": []
+    },
+    "dest:oneFile · pins:both · focus:existingType": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "namespaceDef",
+        "workflowDef"
+      ]
+    },
+    "dest:oneFile · pins:both · focus:newType+newFile": {
+      "overriddenPins": [
+        "files",
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:both · focus:noSourceFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:both · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": true,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:files · focus:existingType": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "namespaceDef",
+        "workflowDef"
+      ]
+    },
+    "dest:oneFile · pins:files · focus:newType+newFile": {
+      "overriddenPins": [
+        "files"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:files · focus:noSourceFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:files · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "nexusServiceDef"
+      ]
+    },
+    "dest:oneFile · pins:none · focus:existingType": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "namespaceDef",
+        "workflowDef"
+      ]
+    },
+    "dest:oneFile · pins:none · focus:newType+newFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:none · focus:noSourceFile": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:none · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "nexusServiceDef"
+      ]
+    },
+    "dest:oneFile · pins:types · focus:existingType": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "namespaceDef",
+        "workflowDef"
+      ]
+    },
+    "dest:oneFile · pins:types · focus:newType+newFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf",
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:types · focus:noSourceFile": {
+      "overriddenPins": [
+        "types"
+      ],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/a.twf"
+      ],
+      "visibleTypes": [
+        "activityDef",
+        "namespaceDef"
+      ]
+    },
+    "dest:oneFile · pins:types · manual": {
+      "overriddenPins": [],
+      "returnedDestUnchanged": false,
+      "selectedFiles": [
+        "topics/b.twf"
+      ],
+      "visibleTypes": [
+        "namespaceDef"
+      ]
+    }
+  }
+}

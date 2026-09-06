@@ -195,6 +195,22 @@ a CI-blocking gate; every later gate widens the gap. But `NON_INFERABLE.md` §4.
 menu as the boundaries currently stand — it takes a §8.2 amendment adding
 `README.md` to §4.4, or the menu stays out of date for the duration.
 
+**F7 — The simulation freezes at tick 200 with its last velocities still on the
+nodes.** `alpha` starts at 1.0 and `alphaDecay` is 0.005, so `tick()` starts
+returning early at tick 200 — *before* the velocity-decay step. Nodes stop
+displacing, but `vx`/`vy` keep whatever value the last active tick left, which
+is why a "mean speed at rest" reading (2.8e-3 to 2.9e-2 across the fixtures)
+never approaches `alphaMin × 10`. Anything reasoning about whether the layout
+has settled should read `isStable()` or the tick count, never the stored
+velocity. See D24.
+
+**F8 — Tier C is the only tier that can see the edge classifier's precedence.**
+Demoting the `signalSend` rule below the namespace rule — the one ordering T14
+calls load-bearing — turns `edge-types.golden.json` red and leaves **all five
+fixture goldens green**. That is T32 reproduced as a measurement: no fixture in
+the repository reaches the rule, so without the synthetic table the highest
+-precedence branch of `edgeTypeFor` would be entirely unprotected.
+
 ---
 
 ## Open questions

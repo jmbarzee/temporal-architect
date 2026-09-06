@@ -49,6 +49,7 @@
     "build": "tsc && vite build",
     "build:lib": "vite build --config vite.lib.config.ts",
     "fixtures": "node verify/make-fixtures.mjs",
+    "verify": "vite build --config vite.verify.config.ts && node verify/run.mjs",
     "preview": "vite preview",
     "prepack": "cp ../../LICENSE LICENSE && cp ../../docs/fragments/visualizer.md FRAGMENT.md",
     "postpack": "rm -f LICENSE FRAGMENT.md",
