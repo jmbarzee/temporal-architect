@@ -57,7 +57,7 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
   }))
 
   const handleDrag = (id: string, x: number, y: number) => {
-    const t = id as DimensionValue
+    const t = id
     onParamChange({
       charge: { ...params.charge, [t]: -y },        // store negative (repulsion)
       coreRadius: { ...params.coreRadius, [t]: x },
@@ -71,7 +71,7 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
       yAxis={{ min: CHARGE_MAG_MIN, max: CHARGE_MAG_MAX, step: CHARGE_MAG_STEP, label: 'charge' }}
       onDrag={handleDrag}
       hoveredId={hoveredType}
-      onHover={id => onHoverType(id as DimensionValue | null)}
+      onHover={onHoverType}
       ariaLabel="Charge map: core radius versus charge magnitude"
       xSlider={{
         value: params.coreRadiusMultiplier, min: 0.1, max: 3, step: 0.05,
@@ -142,7 +142,7 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
       curves={curves}
       xMax={dMax}
       hoveredId={hoveredType}
-      onHover={id => onHoverType(id as DimensionValue | null)}
+      onHover={onHoverType}
       xLabel="distance"
       yLabel="force"
       ariaLabel="Charge falloff curves"
