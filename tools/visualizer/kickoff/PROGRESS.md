@@ -30,7 +30,7 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 | field | value |
 |---|---|
 | Runaway ceiling | **300 commits** on `main..HEAD` (enforced; KICKOFF §2.4) |
-| Commits so far | 1 |
+| Commits so far | 14 |
 | Token / wall-clock budget | unset (advisory only) |
 
 ---
@@ -39,10 +39,10 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 
 | field | value |
 |---|---|
-| Current unit | **Unit 0 — Verification net** (in progress) |
-| Last completed unit | — |
+| Current unit | **Unit 1 — Inject the taxonomy** (not started) |
+| Last completed unit | **Unit 0 — Verification net** |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-0` |
+| Unit branch | `visualizer/dimensions-unit-0` (PR open, targets the feature branch) |
 | Run state | running |
 
 ## Counters
@@ -52,21 +52,31 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 | A — requirements covered | 0 | 42 |
 | B — blast-radius sites migrated | 0 | 38 |
 | C — leaks in the manifest | 583 | 0 |
-| Gate 6 — import-boundary violations | 11 (baseline, F2) | 0 |
+| Gate 6 — import-boundary violations | 11 | 0 |
 
-Counter C ceiling for the current unit: **583** (baseline).
-Gate 6 ceiling for the current unit: **11** (baseline, D21).
+Unit 0 moves none of the three counters by design: it builds the means of
+measuring them. Counter A's R41 ("does everything it did before") closes at
+Unit 8, not here; Unit 0 only makes it checkable.
+
+Counter C ceiling for the next unit (Unit 1): **583** — unchanged, since Unit 1
+changes no behavior and moves no vocabulary.
+Gate 6 ceiling for the next unit: **11**. Both live in `kickoff/gates.json`,
+which is where the gates read them.
 
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | kickoff | pass (1.6s) |
-| 2 `npm run build:lib` | kickoff | pass (2.3s) |
-| 3 `npm run verify` | — | not built yet (Unit 0) |
-| 4 `npm run leak-gate` | kickoff | baseline 583 measured by hand |
-| 5 browser pass | kickoff | pass — graph renders, all four Controls tabs functional |
-| 6 `npm run boundary-gate` | — | not built yet (Unit 0) |
+| 1 `tsc --noEmit` | Unit 0 close | pass |
+| 2 `npm run build:lib` | Unit 0 close | pass |
+| 3 `npm run verify` | Unit 0 close | pass — 7/7 goldens match |
+| 4 `npm run leak-gate` | Unit 0 close | pass — 583 / ceiling 583 |
+| 5 browser pass | Unit 0 close | pass — five fixtures, six criteria, screenshots committed |
+| 6 `npm run boundary-gate` | Unit 0 close | pass — 11 / ceiling 11 |
+| + `npm run pattern-gate` | Unit 0 close | pass — 18 allowlisted, 0 new |
+
+All of it runs as one command: `make check-visualizer` from the repo root, which
+is also what `ci.yml` runs (in three steps, so a failure names itself).
 
 ---
 
@@ -129,13 +139,13 @@ explicit pass criteria and a committed screenshot — use them.
 
 | unit | commits | requirements | blast radius | leak count | review |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| **0 — Verification net** | 11 (`ad06e58`…`c2023db`) | means of R41 | none migrated | 583 (ceiling 583) | [REVIEW_0.md](reviews/REVIEW_0.md) — 34 findings, all 5 blockers and 23 majors resolved |
 
 ---
 
 ## In-flight work
 
-*Nothing in flight.*
+*Nothing in flight. Unit 0 is complete; Unit 1 is next and has not started.*
 
 <!-- When a session is interrupted mid-unit, record:
      - the unit, and which of its commits landed
@@ -211,6 +221,21 @@ fixture goldens green**. That is T32 reproduced as a measurement: no fixture in
 the repository reaches the rule, so without the synthetic table the highest
 -precedence branch of `edgeTypeFor` would be entirely unprotected.
 
+**F9 — The forbidden-pattern check cannot see a type alias.** `as Record<` is a
+syntactic rule, so `type R = Record<string, X>` followed by `x as R` — or a
+`Record<>` wrapped in a helper generic — passes it. Closing that needs type
+information, which means a typechecked linter, which means a dependency (C2, so
+§8.3). Treat the check as a ratchet on the *obvious* forms, not a proof.
+
+**F10 — KICKOFF §2.3's settle floor is not met as written, on any fixture.**
+"The simulation still settles below threshold on the 53-node stress fixture"
+reads `alphaMin × 10` = 1e-3 against a mean speed at rest of 2.5e-2 on
+`stress-sample` (and 2.8e-3 to 2.9e-2 across the five). The simulation *is* at
+rest — it displaces nothing after tick 200 — but the quantity the floor names is
+frozen velocity, not motion (F7). The floor is unmeasurable as worded rather
+than failing; what replaced it as the goldened settle signal is `ticksToStable`,
+plus the short-run position rows that actually respond to the forces.
+
 ---
 
 ## Open questions
@@ -241,6 +266,26 @@ target**, so the gate never blocks on a discrepancy between two documents while
 the tighter number still steers the work. Decide at the Unit 2 boundary; it
 cannot affect Unit 0, whose ceiling is 583 either way.
 
+**OQ3 — Gate 6 is worded as an absolute prohibition and also as a ratchet.**
+`VERIFICATION.md` §3.1 says "No file in the manifest may import from …" and then
+"Ratchets like Gate 4: violations may only decrease." At Unit 0 the manifest
+already holds 11 such imports, so the absolute reading would make the gate red
+from the moment it is wired in and Unit 0 could not close. **Taking the ratchet
+reading**, ceiling 11, reaching 0 at Unit 8 where §6.5's manifest becomes the
+move list. Recorded as D21; raised here because §8.4 asks for the question as
+well as the assumption.
+
+**OQ4 — Two of Tier B's four stated invariants do not hold at baseline, and one
+cannot.** Invariant 3 (every node within 5% of its band) is false on all five
+fixtures because band gravity is a soft spring against a charge-dominant layout;
+invariant 4 (mean speed < `alphaMin × 10`) is structurally unreachable (F7).
+**Taking: keep both tolerances untouched, keep both measurements as printed
+diagnostics, and golden the layout through position rows instead** — which is
+what D26 does after the PR review showed D24's first answer had removed all
+layout sensitivity. The open question is whether §2.3's floor and §3.1.1's
+invariant 4 should be *reworded* to name motion rather than stored velocity;
+that is a change to an [immutable] document and therefore not mine to make.
+
 ---
 
 ## Defects and their permanent checks
@@ -249,4 +294,11 @@ cannot affect Unit 0, whose ceiling is 583 either way.
 
 | defect | found by | check added | unit |
 |---|---|---|---|
-| — | — | — | — |
+| No goldened value depended on a position, a force parameter or the seeded RNG — a whole force kernel could be deleted with every gate green | PR review (5 blockers) | `tierB.seededPositions`, `tierB.afterShortRun` (4 force configurations), `static.forceProbes`, `static.defaultForceParams` | 0 |
+| T3's missing-key → NaN path had no detector: `tick()` sanitizes non-finite velocities, so the post-tick assertion was a tautology | PR review | `static.forceProbes.*.allFinite`, read before any clamp | 0 |
+| T7's absent-value rule (a node with no source file stays visible under an active file filter) was unreachable from every fixture | PR review | `static.syntheticVisible` — a hand-built graph carrying such a node | 0 |
+| Gate 6 missed `'../adapter'`, dynamic `import()`, and multi-line imports whose body line ended in `;` or `=` | PR review | segment matching + deferred-import scan + brace-balance continuation, each negative-tested | 0 |
+| The manifest was extension-scoped, so a `.tsx` under `graph-view/` escaped all three ratchets | PR review | globs widened to `.ts`/`.tsx`/`.css` (D27); residual blind spots printed each run | 0 |
+| §5.1's "`--write` requires a log entry" was documented, not built | PR review | `verify/run.mjs` refuses `--write` without a `DECISIONS.md` entry that exists and mentions goldens | 0 |
+| `signalSend`, the highest-precedence edge rule, is unreachable from the whole corpus | Unit 0 (T32) | Tier C's 294 synthetic rows | 0 |
+| The band collection deduplicates by value, and keying it by identity is silent | Unit 0 (T1) | Tier B `bandCentersMatchDistinctTypes`, self-tested red | 0 |
