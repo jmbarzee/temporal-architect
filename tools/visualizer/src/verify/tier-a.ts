@@ -8,6 +8,7 @@ import { buildGraph } from '../graph/build'
 import { edgeTypeFor } from '../graph/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
+import { payloadString } from '../graph/model'
 import { Simulation } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
@@ -35,9 +36,12 @@ function nodeRow(n: GraphNode): Json {
   }
   if (n.sourceFile !== undefined) row.sourceFile = n.sourceFile
   if (n.parentId !== undefined) row.parentId = n.parentId
-  if (n.worker !== undefined) row.worker = n.worker
-  if (n.namespace !== undefined) row.namespace = n.namespace
-  if (n.queue !== undefined) row.queue = n.queue
+  // Host payload, read back by key. Emitted under the same names the fields
+  // used to have so the row stays comparable across the move.
+  for (const key of ['worker', 'namespace', 'queue']) {
+    const v = payloadString(n, key)
+    if (v !== undefined) row[key] = v
+  }
   if (n.templateParams !== undefined) row.templateParams = [...n.templateParams]
   return row
 }

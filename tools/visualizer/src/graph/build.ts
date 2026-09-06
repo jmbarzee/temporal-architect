@@ -20,6 +20,24 @@ import type {
   ParserGraph,
 } from '../types/parser-graph'
 import type { EdgeType, Graph, GraphEdge, GraphNode, NodeType } from './model'
+import type { DimensionMap } from './dimension'
+
+// The two axes this domain projects a node onto. Names, not concepts, belong to
+// the host: the library never mentions either id.
+export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
+export const SOURCE_FILE_DIMENSION = 'sourceFile'
+
+/**
+ * Project a parser node onto its axes. Absent values are OMITTED rather than
+ * set to a placeholder — "this node has no source file" and "this node's source
+ * file is the empty string" are different facts, and the visibility rules key on
+ * the difference.
+ */
+function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): DimensionMap {
+  const dims: Record<string, string> = { [TEMPORAL_TYPE_DIMENSION]: nodeType }
+  if (sourceFile !== undefined) dims[SOURCE_FILE_DIMENSION] = sourceFile
+  return dims
+}
 
 // ---------------------------------------------------------------------------
 // definitionKey → AST definition map
@@ -140,15 +158,20 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
     const ast = astLookup.get(pn.definition)
     nodes.set(pn.id, {
       id: pn.id,
-      nodeType,
+      dimensions: dimensionsFor(nodeType, ast?.sourceFile),
       name: displayNameFor(nodeType, name),
+      // Per-domain display metadata the library must not interpret (R3). The
+      // tooltip reads these back out by name; nothing in the engine does.
+      payload: {
+        worker: pn.worker,
+        namespace: pn.namespace,
+        queue: pn.queue,
+      },
+      nodeType,
       sourceFile: ast?.sourceFile,
       parentId: parentByChild.get(pn.id),
       orphan: pn.orphan ?? false,
       definitionKey: pn.definition,
-      worker: pn.worker,
-      namespace: pn.namespace,
-      queue: pn.queue,
       templateParams: pn.templateParams,
     })
   }

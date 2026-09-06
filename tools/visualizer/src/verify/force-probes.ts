@@ -36,6 +36,7 @@ import { DEFAULT_ONTOLOGY } from '../graph/node-types'
 import { DEFAULT_PARAMS } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { mulberry32 } from './rng'
+import { TEMPORAL_TYPE_DIMENSION } from '../graph/build'
 import type { Json } from './snapshot'
 import { sortedRecord } from './snapshot'
 
@@ -44,6 +45,7 @@ const PROBE_SEED = 0x5eed
 function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
   return {
     id,
+    dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
     nodeType,
     name: id,
     orphan: false,

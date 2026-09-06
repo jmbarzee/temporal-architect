@@ -1,6 +1,8 @@
 // Graph data model for the force-directed graph view.
 // Derived from GRAPH_VIEW.md § Graph Data Model.
 
+import type { DimensionMap } from './dimension'
+
 // Node types in the graph.
 //
 //   namespace      — L1 container. Holds workers and nexus endpoints.
@@ -39,9 +41,28 @@ export interface GraphNode {
    * opaque string and never parses it for routing decisions.
    */
   id: string
-  nodeType: NodeType
+  /**
+   * Where this node sits on every axis the taxonomy declares.
+   *
+   * This replaces the single type string a node used to carry. Features elect
+   * one axis each and read it from here; nothing composes across axes.
+   */
+  dimensions: DimensionMap
   name: string
-  /** AST source file, joined in by buildGraph via the `definitionKey` lookup. */
+  /**
+   * Metadata the host owns and the library does not interpret.
+   *
+   * Deliberately opaque: it is per-domain display detail — the things a tooltip
+   * shows — and the moment the library reads a key out of it by name, that key
+   * is part of the library's vocabulary again.
+   */
+  payload?: Readonly<Record<string, unknown>>
+  /**
+   * DEPRECATED WITHIN THIS UNIT — both fields are deleted in 2c, once every
+   * read has moved to `dimensions`. They are written from the same source as
+   * the map, so the two cannot disagree while both exist.
+   */
+  nodeType: NodeType
   sourceFile?: string
   /** Containment parent (worker for L3, namespace for L2 and L1.5, nexusService for nexusOperation). */
   parentId?: string
@@ -60,17 +81,6 @@ export interface GraphNode {
    */
   definitionKey: string
 
-  // --- View-only deployment metadata, copied from the parser node for
-  //     hover/tooltip rendering. Diagnostic only — never used for graph
-  //     identity, membership, or routing decisions. Structure comes from
-  //     edges: containment for membership, nexusRoute for the
-  //     endpoint↔operation relationship.
-  /** e.g. `worker:paymentWorker`. nexusService / nexusOperation only. */
-  worker?: string
-  /** e.g. `namespace:ecommerce`. nexusService only. */
-  namespace?: string
-  /** Task queue name. Worker and nexus-tier nodes only. */
-  queue?: string
   /**
    * Template holes of a parameterized `namespace`/`nexusEndpoint` family,
    * in first-appearance order (e.g. `fabric-shard-{org}` → `['org']`).
@@ -79,6 +89,23 @@ export interface GraphNode {
    * never identity. Absent/`[]` means a static node (renders unchanged).
    */
   templateParams?: string[]
+}
+
+/**
+ * Read one string out of a node's host-owned payload.
+ *
+ * The library offers the accessor, never the key: a caller that knows the key
+ * is by definition domain-aware, and this keeps that knowledge at the call site
+ * instead of smuggling it into the model. Returns undefined for a missing key
+ * or a non-string value rather than coercing, so a payload shape change surfaces
+ * as an absent field instead of "[object Object]" in a tooltip.
+ */
+export function payloadString(
+  node: Pick<GraphNode, 'payload'>,
+  key: string,
+): string | undefined {
+  const value = node.payload?.[key]
+  return typeof value === 'string' ? value : undefined
 }
 
 export type EdgeType = 'containment' | 'dependency'

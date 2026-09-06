@@ -25,6 +25,7 @@ import {
 } from '../graph/dimension'
 import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
+import { TEMPORAL_TYPE_DIMENSION } from '../graph/build'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
 
@@ -32,7 +33,8 @@ const UNDECLARED = 'notADeclaredKey' as NodeType
 
 function node(id: string, nodeType: NodeType, parentId?: string): SimNode {
   return {
-    id, nodeType, name: id, orphan: parentId === undefined,
+    id, dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
+    nodeType, name: id, orphan: parentId === undefined,
     definitionKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
     x: 0, y: 0, vx: 0, vy: 0, pinned: false,

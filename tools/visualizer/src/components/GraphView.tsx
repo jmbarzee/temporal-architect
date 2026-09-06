@@ -11,6 +11,7 @@ import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import type { GraphEdge } from '../graph/model'
+import { payloadString } from '../graph/model'
 import { nodeTypeToDefType, defTypeToNodeType } from './graph-view/nodeDefType'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-types'
 import { useOntology } from './graph-view/useOntology'
@@ -665,18 +666,24 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   // Context line — format varies by node type to surface the most useful
   // parent context. Nexus types show their addressing metadata in the
   // `<parent context> · <task queue>` format from the spec.
+  //
+  // These three keys are domain vocabulary, and they stay at this call site
+  // deliberately: the library hands back strings from an opaque payload and
+  // never learns what a queue is.
+  const queue = payloadString(node, 'queue')
+  const hostWorker = payloadString(node, 'worker')
   let contextLine: string | undefined
   switch (node.nodeType) {
     case 'nexusEndpoint':
       // Namespace is the endpoint's containment parent (parentName), not a
       // node field; queue is intrinsic display metadata.
-      contextLine = [parentName, node.queue].filter(Boolean).join(' · ') || undefined
+      contextLine = [parentName, queue].filter(Boolean).join(' · ') || undefined
       break
     case 'nexusService':
-      contextLine = [stripKindPrefix(node.worker), node.queue].filter(Boolean).join(' · ') || undefined
+      contextLine = [stripKindPrefix(hostWorker), queue].filter(Boolean).join(' · ') || undefined
       break
     case 'nexusOperation':
-      contextLine = [parentName, stripKindPrefix(node.worker), node.queue].filter(Boolean).join(' · ') || undefined
+      contextLine = [parentName, stripKindPrefix(hostWorker), queue].filter(Boolean).join(' · ') || undefined
       break
     default:
       contextLine = parentName
