@@ -1,5 +1,5 @@
 // reconcileFilter is the single decision point for what the destination view's
-// filter looks like after a view switch. Every switch site in WorkflowCanvas
+// filter looks like after a view switch. Every switch site in the host shell
 // routes through it — see spec § View Transitions.
 //
 // Pure: destination filter, source filter, destination pins, the transition

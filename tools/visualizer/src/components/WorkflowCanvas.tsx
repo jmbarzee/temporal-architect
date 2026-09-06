@@ -14,7 +14,7 @@ import { TreeView } from './TreeView'
 import { GraphView } from './GraphView'
 import type { FilterState, PinState, ViewTransition, FilterDimension } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
-import { loadState, saveState, type PersistedFilter, type PersistedPins } from '../filter/storage'
+import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../filter/storage'
 import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface WorkflowCanvasProps {
@@ -116,6 +116,14 @@ export interface CrossViewTarget {
 
 type ActiveView = 'tree' | 'graph'
 
+// This host's persistence identity. It lives here, outside the §6.5 manifest,
+// because a storage key naming a product and the global a webview caches its API
+// on are host facts — the library owns the shape of what is persisted, not where.
+const STORAGE: StorageConfig = {
+  key: 'temporal-architect-visualizer-state',
+  hostApiGlobal: '__twfVsCodeApi',
+}
+
 const DEFAULT_VISIBLE_TYPES_ARRAY = DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type)
 
 function defaultFilter(ast: TWFFile): FilterState {
@@ -166,7 +174,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const historyMode = ast.definitions.length === 0
   // Load persisted state once on mount. Sets are restored as Set<string>
   // from their array representation.
-  const persisted = React.useMemo(() => loadState(), [])
+  const persisted = React.useMemo(() => loadState(STORAGE), [])
 
   const [activeView, setActiveView] = React.useState<ActiveView>(historyMode ? 'graph' : 'tree')
 
@@ -221,7 +229,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // Persist on every relevant state change. localStorage in standalone;
   // vscode.setState in webview (via the storage shim).
   React.useEffect(() => {
-    saveState({
+    saveState(STORAGE, {
       treeFilter: filterToPersisted(treeFilter),
       graphFilter: filterToPersisted(graphFilter),
       treeChain: [...treeChain],

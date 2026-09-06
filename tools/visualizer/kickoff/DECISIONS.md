@@ -778,3 +778,40 @@ silently reordered the shipped bar, which the browser caught. The order is now
 documented as meaningful where it is declared.
 
 — 2026-09-06 — agent
+
+**D45 — Unit 3 misses §6.5's ceiling of 195, landing at 203. §8.2 flag with the
+arithmetic, not a silent reset.** §6.5 says "a missed ceiling is a §8.2 flag with
+the new number and the reason", so here is the reason, checked against §6.5's own
+baseline table rather than asserted.
+
+Every file the table assigns to Unit 3:
+
+| file | baseline | now | |
+|---|---:|---:|---|
+| `filter/storage.ts` | 5 | **0** | taken this unit |
+| `filter/reconcile.ts` | 1 | **0** | taken this unit |
+| `graph-view/useGraphModel.ts` | 3 | — | left the manifest in Unit 2e |
+| `components/FilterBar.tsx` | 3 | **0** | cleared in 3d, when chips stopped coming from the theme |
+
+So Unit 3's assigned total is 12, of which **6 had already been taken during Unit
+2** — `useGraphModel` moved to the adapter, and `FilterBar`'s three went when the
+chip grouping became descriptor-declared. Those 6 were therefore already inside
+Unit 2's reported 209. The 15-point drop §6.5 projects for Unit 3 double-counts
+them; the reachable drop from 209 was 6, and all 6 were taken. 209 → 203.
+
+The remaining 203 is assigned by the same table to other units: `edge-styles.ts`
+58 and `FilterBar.css` 39 to Unit 6, `GraphView.tsx` 30 + `visibleGraph.ts` 19 +
+`useHighlight.ts` 10 to Unit 7, `model.ts` 12 to Unit 4. **None of it is Unit 3's
+to remove**, and removing any of it here would be doing another unit's work
+inside a unit scoped to filters.
+
+Ceilings ratcheted to the measured values: leak **204**, total **1266**, boundary
+**7**. The boundary drop is real rather than relocation — `FilterBar` stopped
+importing the theme entirely, which is the first genuine edge removal of the run
+(Unit 2's 11 → 8 was 100% relocation).
+
+Unit 4's §6.5 ceiling is 160. From 203 that needs 43, against `model.ts`'s 12 —
+so the same double-count likely repeats. Worth re-deriving Unit 4's number from
+the table at its boundary rather than treating 160 as reachable.
+
+— 2026-09-06 — agent

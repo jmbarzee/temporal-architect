@@ -30,7 +30,7 @@ which is worth noticing rather than assuming.
 | `components/StyleGuide.tsx` | neither | 62 | `components/VisualizerHost.tsx`, `lib.ts` |
 | `components/TreeView.tsx` | neither | 54 | `components/WorkflowCanvas.tsx` |
 | `components/VisualizerHost.tsx` | neither | 8 | `App.tsx`, `lib.ts` |
-| `components/WorkflowCanvas.tsx` | neither | 65 | **9** files |
+| `components/WorkflowCanvas.tsx` | neither | 67 | **9** files |
 | `components/blocks/AwaitBlocks.tsx` | shim | 92 | `components/blocks/StatementBlock.tsx` |
 | `components/blocks/CallBlocks.tsx` | shim | 60 | `components/blocks/StatementBlock.tsx` |
 | `components/blocks/ContextualNav.tsx` | shim | 24 | `components/blocks/CallBlocks.tsx`, `components/blocks/DefinitionBlock.tsx`, `components/blocks/LeafBlocks.tsx` |
@@ -54,8 +54,8 @@ which is worth noticing rather than assuming.
 | `components/graph-view/visibleGraph.ts` | manifest | 19 | **6** files |
 | `components/icons/GearIcons.tsx` | neither | 2 | `components/FilterBar.tsx`, `theme/temporal-theme.tsx` |
 | `components/protocol.ts` | neither | 3 | **6** files |
-| `filter/reconcile.ts` | manifest | 1 | `components/WorkflowCanvas.tsx`, `verify/static-golden.ts` |
-| `filter/storage.ts` | manifest | 5 | `components/WorkflowCanvas.tsx` |
+| `filter/reconcile.ts` | manifest |  | `components/WorkflowCanvas.tsx`, `verify/static-golden.ts` |
+| `filter/storage.ts` | manifest |  | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **15** files |
 | `graph/dimension.ts` | manifest | 1 | **28** files |
