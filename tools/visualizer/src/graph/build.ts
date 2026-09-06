@@ -19,7 +19,8 @@ import type {
   ParserEdge,
   ParserGraph,
 } from '../types/parser-graph'
-import type { EdgeType, Graph, GraphEdge, GraphNode, NodeType } from './model'
+import type { EdgeType, Graph, GraphEdge, GraphNode } from './model'
+import type { NodeType } from './node-types'
 import type { DimensionMap } from './dimension'
 
 // The two axes this domain projects a node onto. Names, not concepts, belong to

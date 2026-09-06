@@ -11,7 +11,30 @@
 // Adding a node type means adding one entry; the record's `Record<NodeType, …>`
 // type still enforces completeness.
 
-import type { NodeType } from './model'
+// Node types in the graph.
+//
+//   namespace      — L1 container. Holds workers and nexus endpoints.
+//   nexusEndpoint  — L1.5 top-level routing alias parented to a namespace.
+//                    No outgoing edges; the nexus call's edge metadata names
+//                    the endpoint that routed it.
+//   worker         — L2 hosting tier. Runs workflows and activities.
+//   nexusService   — L2 nexus hosting tier. Exposes a callable API surface.
+//   workflow       — L3 orchestrator. Runs inside a worker.
+//   nexusOperation — L3 nexus orchestrator. Callable unit of a service;
+//                    sits on the call path between caller and backing workflow.
+//   activity       — L4 leaf. Where work actually happens.
+//
+// Sizing, physics, and summary behaviour for each type live in the
+// central NODE_TYPE_REGISTRY in graph/node-types.ts.
+export type NodeType =
+  | 'namespace'
+  | 'nexusEndpoint'
+  | 'worker'
+  | 'nexusService'
+  | 'workflow'
+  | 'nexusOperation'
+  | 'activity'
+
 import { createOntology } from './ontology'
 import type { Ontology } from './ontology'
 import type { NodeTypeDefinition } from './taxonomy'

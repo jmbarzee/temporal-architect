@@ -31,7 +31,8 @@ import {
   applyTopologicalGravity,
 } from '../graph/forces'
 import type { EdgeTypeDefinition } from '../graph/taxonomy'
-import type { GraphEdge, NodeType } from '../graph/model'
+import type { GraphEdge } from '../graph/model'
+import type { NodeType } from '../graph/node-types'
 import { DEFAULT_ONTOLOGY } from '../graph/node-types'
 import { defaultParamsFor } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'

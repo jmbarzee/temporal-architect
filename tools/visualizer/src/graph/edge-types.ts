@@ -13,7 +13,8 @@
 // (simulation -> edge-types is the value dependency, mirroring simulation -> forces).
 
 import type { DimensionValue } from './dimension'
-import type { NodeType, GraphEdge } from './model'
+import type { GraphEdge } from './model'
+import type { NodeType } from './node-types'
 import type { EdgeTypeDefinition } from './taxonomy'
 
 // This domain's edge categories. The *shape* is library-owned (`./taxonomy`);

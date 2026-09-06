@@ -15,7 +15,8 @@
 //
 // Positions are irrelevant to the derivation and are all zero.
 
-import type { GraphEdge, NodeType } from '../graph/model'
+import type { GraphEdge } from '../graph/model'
+import type { NodeType } from '../graph/node-types'
 import type { SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import { edgeStyleKeyFor } from '../graph/edge-styles'

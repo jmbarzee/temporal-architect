@@ -15,7 +15,8 @@
 //      probe goes red.
 
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
-import type { GraphEdge, NodeType } from '../graph/model'
+import type { GraphEdge } from '../graph/model'
+import type { NodeType } from '../graph/node-types'
 import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../graph/node-types'
 import { createOntology } from '../graph/ontology'
 import {
