@@ -163,48 +163,61 @@ explicit pass criteria and a committed screenshot — use them.
 
 ## In-flight work
 
-**Unit 2 — Dimension primitive + shim folder — IN FLIGHT.**
+**Unit 2, commit 2d is complete; 2e (the move) is blocked on one decision.**
+Branch `visualizer/dimensions-unit-2`, all gates green at every commit, 7/7
+goldens matching (`static.golden.json` moved once, per D37).
 
-Landed, all green, all gates passing at each commit:
+Done in 2d: the registries inverted (`taxonomy.ts` holds the shapes,
+`node-scale.ts` the render scale; the entries stay in `node-types.ts` /
+`edge-types.ts` and *narrow* the shapes rather than re-declaring them); B9
+`defaultParamsFor(ontology)`; B8 the params maps keyed by dimension value; B18
+the lossy bridge **deleted**, not ported (D37, F15); §5.2.4 the taxonomy context
+has no default and `WorkflowCanvas` provides it. Pattern allowlist 7 -> 4
+entries. Leak 581 -> 564.
 
-  - `81c3c63` 2a — dimension primitives (`graph/dimension.ts`): ids, values,
-    interning, descriptors with per-axis `emptyMeans`/`absentMeans`, and
-    `createDimensionalMapping` refusing intersecting buckets (R12)
-  - `e5737e3` 2b — `GraphNode.dimensions` + host-owned `payload` (R3); the shim
-    populates both; `nodeType`/`sourceFile` kept for one commit
-  - `73871cf` 2c — **`GraphNode.nodeType` deleted**, denormalized edge endpoints
-    removed (B14), forces keyed by a named axis, all reads through the container
+**The ceiling arithmetic, measured.** Unit 2's Gate 4 ceiling is 210 (D38);
+current count is 564. The three remaining movers carry `edge-types.ts` 164 +
+`node-types.ts` 79 + `node-type-styles.ts` 1 = 244, and most of `model.ts`'s 61
+leaves with `NodeType` (B1's remainder), call it 46. That reaches about 274 --
+still 64 over. `build.ts`'s 59 is what closes the gap, which is consistent with
+§6.5's stated 377 drop for this unit. So **`build.ts` must move for Unit 2 to
+hit its ceiling.**
 
-  - `02fefb4` + `6fa5468` 2d part 1 — the four control surfaces read the taxonomy
-    through the container instead of importing the registries; `PULL_EDGES`
-    becomes `pullEdgesFor(ontology)`; the whole control chain speaks
-    `DimensionValue`. The three `as NodeType` casts (B26) are **deleted** — the
-    pattern gate's STALE check caught them being *renamed* to
-    `as DimensionValue`, which is §5.1's cheat in cast form.
+**Exact next action -- resolve the `buildGraph` fork, then move.** `build.ts`
+now has exactly one real manifest importer: `useGraphModel.ts:14` (`buildGraph`).
+`node-types.ts:19` imports it too, but that file moves as well, so it resolves
+itself. Already cleared: `SOURCE_FILE_DIMENSION` is a *generic* axis id and now
+lives in `dimension.ts` (only the type axis is domain vocabulary), and both
+`ReturnType<typeof buildGraph>` uses became a named `Graph`.
 
-**Exact next action:** finish 2d — invert the registries. The library keeps
-`NodeTypeDefinition` and `EdgeTypeDefinition`'s *shapes*; the entries
-(`NODE_TYPE_REGISTRY`, `ALL_EDGE_TYPES`, `edgeTypeFor`, `EdgeTypeId`,
-`NodeType`) become shim data, and `DEFAULT_PARAMS` becomes a function of the
-supplied taxonomy rather than a module constant built from the registry (B9).
-Then 2e moves the now-Temporal-only files into `src/adapter/` — the move is last
-per D33, and only once nothing in the §6.5 manifest imports them.
+The fork, with the Gate 6 arithmetic for each:
 
-Not yet done for this unit: B18 (`nodeDefType.ts`'s bijection and its two silent
-fallbacks), B36 (`temporal-theme.tsx`'s direct property access), the Gate 5
-browser pass, `REVIEW_2.md`, and the ceiling ratchet in `gates.json`.
+- **(a) Move `useGraphModel.ts` to the adapter alongside `build.ts`.** It is
+  already adapter code -- its whole job is parser-payload -> model, and its two
+  pre-existing Gate 6 violations (`types/ast`, `types/parser-graph`) are the
+  proof. Those two then *leave* the manifest while `GraphView` ->
+  `adapter/useGraphModel` adds one: 11 - 2 + 1 = **10**, a decrease, which the
+  ratchet allows. Cheap, honest about what the file is, and leaves Unit 7/8 to
+  close the last edge.
+- **(b) `GraphView` takes `graph` / `allFiles` / `errors` / `diagnostics` as
+  props and `WorkflowCanvas` calls `useGraphModel`.** The correct end state, and
+  it clears some of `GraphView`'s own four violations too. But it reworks the
+  props of a 700-line component whose `ast` use spreads well past the graph
+  model, and that is §6.2's Unit 8 ("the move + packaging"), not Unit 2.
+- **(c) Leave `build.ts` in the manifest and flag the missed ceiling.** §6.5
+  explicitly permits this -- "a missed ceiling is a §8.2 flag with the new number
+  and the reason". Lands around 274 against 210.
 
-Counters at this point: leak 581 (ceiling still 583 — it drops to 210 at the
-unit boundary, not before), Gate 6 11/11, goldens 7/7 with the node-row shape
-change recorded in D35.
+**Would take (a)**: it is the only option that both hits the ceiling and stays
+inside Unit 2's scope, and it moves a file to where its own import edges already
+say it belongs. (b) is the right change in the wrong unit.
 
-<!-- When a session is interrupted mid-unit, record:
-     - the unit, and which of its commits landed
-     - the exact next action
-     - the WIP commit sha (message prefix `WIP(<unit>):`) and whether it is red
--->
-
----
+Then: B31/B32 (`build.ts`'s `KIND_TO_NODE_TYPE` projection and
+`splitDefinitionKey`, T20) travel with the file; B1's remainder moves `NodeType`
+out of `model.ts`; B36 (`temporal-theme.tsx` direct property access, T16) sits
+outside the manifest so it moves no counter but is still Unit 2 scope. Close the
+unit with the `gates.json` ratchet (leak 583 -> 210, boundary 11 -> 10), Gate 5's
+five fixture screenshots, and `REVIEW_2.md`.
 
 ## Discovered facts
 
