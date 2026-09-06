@@ -307,7 +307,7 @@ comparable yield. The schema field requiring each finder to report *what it brok
 and what the gate said* is doing the work — the two sharpest Unit 1 findings came
 from reviewers who sabotaged a value and watched the gates stay green.
 
-**F14 — `gh pr edit --base` silently no-ops on this repo; use `gh api -X PATCH`.**
+**F14 — `gh pr edit` silently no-ops on this repo (ALL flags); use `gh api -X PATCH`.**
 Retargeting #159 with `gh pr edit 159 --base visualizer/dimensions-unit-0` printed
 only a Projects-classic GraphQL deprecation warning, **exited 0, and changed
 nothing** — the PR still read `-> visualizer/composable-dimensions` at 68 files
@@ -317,6 +317,14 @@ afterwards. `gh pr edit` resolves the PR through a GraphQL query that selects
 returns the new `changed_files` to verify against. This matters because the
 zero exit code makes the failure invisible to a script: any automation that
 retargets a stack must assert the resulting base, not trust the status. See D36.
+
+*Widened at the Unit 2 close:* it is not just `--base`. `gh pr edit 160 --body`
+no-opped the same way — same warning, exit 0, body unchanged — which I only
+caught because F14 had already taught me to verify instead of trusting the exit
+code. The rule is therefore about the subcommand, not the flag: **use
+`gh api -X PATCH repos/<owner>/<repo>/pulls/<n>` for every PR mutation, and read
+back a field you just wrote.** `gh pr create` is unaffected (it took `--base`
+correctly for #160), as are `gh pr view` / `gh pr checks`.
 
 **F15 — A golden row keeps dead code looking alive; no gate counts readers.**
 `nodeDefType.ts` lost its last caller in Unit 2c and stayed in the tree for three
