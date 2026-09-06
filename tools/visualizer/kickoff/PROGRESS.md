@@ -21,14 +21,17 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 
 ## Budget
 
-> §2.4's first stop condition reads against this. **A human sets it before the
-> run starts.** While it says `unset`, that stop condition is inert and the run
-> ends only on the others.
+> The runaway ceiling is a **last-resort guard**, not a budget: the plan expects
+> ~45 commits and the ceiling is ~7× that. Check it at every unit boundary with
+> `git rev-list --count main..HEAD`. If it ever fires, one of the other stop
+> conditions should have fired first — say which, in the handoff. Do not raise
+> it.
 
 | field | value |
 |---|---|
-| Budget | **unset** |
-| Spent | — |
+| Runaway ceiling | **300 commits** on `main..HEAD` (enforced; KICKOFF §2.4) |
+| Commits so far | 1 |
+| Token / wall-clock budget | unset (advisory only) |
 
 ---
 
@@ -82,7 +85,7 @@ Status: blank = not started · `wip` · `done`.
 | R8 | Global axis backed by a computed scalar | 5b | 3 + 5 |
 | R9 | Computed scalars may traverse the graph | 5b | 3 |
 | R10 | Colour scheme input, light **and** dark | 6 | 5 |
-| R11 | Base node sizes as input; defect fixed | 6 | 5 (+ O1 recorded first) |
+| R11 | Base node sizes carried by the colour-scheme input | 6 | 5 |
 | R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw |
 | R13 | Default force dimension configurable | 4 | 5 |
 | R14 | Default filters/selections configurable | 3 | 5 |
@@ -155,8 +158,7 @@ explicit pass criteria and a committed screenshot — use them.
 > §8.4: when a §8.3 halt goes unanswered, the question lands here with the options
 > considered and the one you would take — then you move on.
 
-- **O1 — the base-node-size defect is uncharacterized.** See `DECISIONS.md` O1.
-  Blocks nothing before Unit 6.
+*(none open)*
 
 ---
 

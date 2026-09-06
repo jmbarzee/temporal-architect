@@ -202,9 +202,9 @@ never has been (T15) — pre-approved under D3. Normalize colour input **before*
 `withAlpha`, which currently throws inside the rAF loop on anything but
 `#RRGGBB` (T6). Per-value CSS moves to inline custom properties. Add the
 graph-pane colour-scheme button (R21). Unify `edgeStyleFor` with the edge-type
-resolution, killing the second classifier (T11). Diagnose the base-node-size
-defect (R11) — **record the finding in `DECISIONS.md` before changing anything**
-(O1).
+resolution, killing the second classifier (T11). **Base node sizes ride the same
+scheme input as colour** (R11, D14) — one injected object carries the palette and
+the per-value radius and icon size, so a consumer swapping schemes gets both.
 
 **Covers:** R10, R11, R15, R16, R21.
 **Blast radius:** B22 (completed), B23, B25, B29, B30.

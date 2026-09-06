@@ -81,19 +81,6 @@ rule — is unreachable from any real file in the repo (T32). — kickoff — hu
 
 ---
 
-## Open at kickoff
-
-**O1 — The base-node-size defect (R11) is not yet characterized.** It is known to
-be wrong but the specific symptom has not been pinned down. Working hypothesis:
-`nodeSizeMul = baseMul × clamp(zoom, 0.4, 1.65)` with `baseMul` 0.6 means a
-zoomed-out large graph clamps every tier to `0.24×`, so the size hierarchy stops
-being readable and everything becomes a dot. A second candidate: sizes do not
-follow tier consistently — `nexusEndpoint` is `r: 15` while its tier-mate
-`namespace` is `r: 20`. **Diagnose before changing** (Unit 6), record the finding
-here as a decision, and only then fix.
-
----
-
 **D10 — The verify harness is split so it never needs node typings.**
 `src/verify/main.ts` is typechecked, pure, and its only output is
 `console.log`; `verify/run.mjs` is plain JS outside `tsconfig.json`'s `include`
@@ -121,6 +108,14 @@ own literalism**: a workspace-local `file:../<sibling>` link (Unit 8 needs it;
 platform builtins. Everything else, including `bundleTypes: true` — which pulls
 in `@microsoft/api-extractor` (T31) — remains §8.3. — Without these, Unit 8 halts
 on a link that is not a dependency in any meaningful sense. — kickoff — human
+
+**D14 — Base node sizes belong to the colour-scheme input; there is no defect to
+diagnose.** The kickoff draft carried an open question (O1) about a base-node-size
+"defect", derived from a truncated line in the source requirements. Clarified at
+kickoff: sizes simply ride the same injected scheme object as the palette, so one
+input carries both and a consumer swapping schemes gets colour and per-value
+radius/icon size together. R11 is an ordinary Unit 6 feature; O1 is retired
+unasked. — kickoff — human
 
 **D3 addendum — the behavior-change budget is extended** to cover two changes
 Unit 5a necessarily makes: (a) the T12 present-vs-all semantics choice for the

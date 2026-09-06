@@ -139,7 +139,7 @@ Counters B and C are not. Do not pretend otherwise; do not let it slide either.
 - R8 Global axis backed by a computed scalar, with node-metadata access
 - R9 Computed scalars may traverse the graph (topological reach)
 - R10 Colour scheme as input — light **and** dark
-- R11 Base node sizes as input, and the current defect diagnosed and fixed
+- R11 Base node sizes carried by the same scheme input as colour
 - R12 Dimensional-mapping primitive with enforced non-intersecting result sets
 - R13 Default force dimension configurable
 - R14 Default filters and selections configurable
@@ -226,11 +226,12 @@ a valid deliverable.**
 
 | condition | detection | exit |
 |---|---|---|
-| Budget exhausted | orchestrator's accounting against the budget in `PROGRESS.md` § Budget — **a human must set it before the run starts**; if it is unset, this stop condition is inert and the run ends only on the others | §2.5 handoff, with the denominator's remaining items ranked by value |
+| **Runaway ceiling** | `git rev-list --count main..HEAD` on the feature branch exceeds **300**, checked at every unit boundary. The plan expects ~45 commits, so this is ~7× headroom — a last-resort guard, not a budget. **If it fires, one of the other stop conditions should have fired first and did not; say which, in the handoff** | §2.5 handoff immediately. Do not raise the ceiling |
+| Budget exhausted | the orchestrator's own token or wall-clock accounting, if it has any. Advisory — the enforced ceiling is the row above | §2.5 handoff, with the denominator's remaining items ranked by value |
 | Oscillation | the same file changed in opposite directions across three consecutive units, or a golden row flipping back and forth | halt (§8.3); write the cycle into `PROGRESS.md` and stop |
 | Irreducible blocker | a unit blocked twice by the same cause after a documented workaround attempt | §2.5 handoff for that unit; continue with independent units |
 | Unbounded control surface | the edge-physics token count cannot be bounded under a chosen dimension (§5.1 tripwire) | halt (§8.3) — this invalidates a design premise |
-| Unexplainable golden diff | a golden changes and the cause cannot be identified | halt (§8.3). Never `--write` past it |
+| Golden regenerated out of contract | `--write` attempted in a unit whose `**Goldens:**` line says byte-identical, or without the prior `DECISIONS.md` entry §5.1 requires | halt (§8.3). Never `--write` past it |
 
 ## 2.5 Handoff package
 
@@ -447,8 +448,6 @@ asynchronous review, reversible by design.
   there is §8.3, so that D3 actually binds
 - Spec edits under `tools/visualizer/spec/` — landed **with** their code, never
   ahead of it (T30)
-- The base-node-size diagnosis and fix (R11) — the specific defect is not yet
-  characterized; record what you find before changing it
 - Fixing T26 / T27 / T28 repository plumbing
 - Any §5.3 override
 
