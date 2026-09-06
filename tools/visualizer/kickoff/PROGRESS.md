@@ -236,6 +236,14 @@ frozen velocity, not motion (F7). The floor is unmeasurable as worded rather
 than failing; what replaced it as the goldened settle signal is `ticksToStable`,
 plus the short-run position rows that actually respond to the forces.
 
+**F11 — The short-tick position goldens are confirmed stable across platforms.**
+They were generated on macOS arm64 and `verify: 7 golden(s) match` on CI's
+ubuntu x64 (run 34015151659). That is the exact risk D24 reasoned about and D26
+bet against: three ticks of `Math.pow`/`Math.hypot` do not move a position by
+1e-6. A 400-tick snapshot would be a different matter and is still not goldened.
+CI also ran the three ratchets from a clean `npm ci` with no `dist-verify/`
+present, so the harness bootstraps from nothing.
+
 ---
 
 ## Open questions
