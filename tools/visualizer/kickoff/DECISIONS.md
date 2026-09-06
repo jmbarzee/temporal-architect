@@ -438,3 +438,52 @@ denormalized endpoint types found.** Two corrections to D34's prediction:
    fixture I hand-wrote in Unit 0, and it sat there undetected until the second
    source was deleted. That is the argument for B14 in one example.
 — 2026-09-06 — agent
+
+**D36 — The unit PRs stack: each targets its predecessor's branch, and the stack
+merges with merge commits, never squashes.** §7.1's "Branches and PRs" had every
+unit PR target `visualizer/composable-dimensions`. That is correct for Unit 0 and
+wrong for everything above it: a PR based on the feature branch shows its own diff
+*plus every predecessor's*. Unit 0 lands ~34k lines of fixtures and goldens, so
+Unit 1's PR page opened with roughly 27k lines of JSON it never touched — the
+eight largest files in its diff were all Unit 0's — and Unit 2's would have been
+worse. Measured on the retarget of #159:
+
+| unit | vs feature branch | vs predecessor |
+|---|---|---|
+| 0 | 52 files, +34,466 | *(same — bottom of the stack)* |
+| 1 | 68 files, +35,482 | **29 files, +1,054/-107** |
+| 2 | 79 files | **35 files** |
+
+Same work, either way. Only the right-hand column is reviewable, and the
+left-hand one degrades linearly with stack depth.
+
+Three things make this safe rather than clever, all verified before the change:
+
+1. **CI still fires.** D22 had already widened `ci.yml`'s `pull_request` trigger
+   to `[main, "visualizer/**"]`, and unit branches match that glob. Had the
+   trigger still been the original `[main]`-plus-feature-branch list, retargeting
+   would have silently disabled all six gates on every PR above Unit 0 — the exact
+   silent-failure shape this document set exists to catch. It was checked first.
+2. **The green checks stay valid.** Each unit branches off its predecessor's tip
+   exactly (`merge-base(u0,u1) == u0` and `merge-base(u1,u2) == u1`, both
+   confirmed), so merging a unit into its predecessor is a fast-forward and the
+   tree CI validated is the tree that lands. Note that a base change fires the
+   `edited` activity type, which is not in the default trigger set — so retargeting
+   does *not* re-run CI, and the pre-existing run is the one that counts.
+3. **Merge commits are available.** `allow_merge_commit=true`.
+
+The squash prohibition is the live trap: `allow_squash_merge` is also `true`, and
+squash-merging Unit *n* rewrites its commits, which resets Unit *n+1*'s merge base
+to the pre-Unit-*n* point and re-inflates its diff to the full cumulative size.
+The content would still merge cleanly — it would just become unreviewable again,
+for a reason nobody would connect to the merge button they pressed weeks earlier.
+
+The consequence worth naming: **nothing has to merge for the run to proceed.**
+The stack can grow to Unit 9 unattended, which is what was actually wanted; merge
+authority stays unassumed and unneeded. The cost is that a defect attributable to
+an early unit is found against a later unit's diff and gets fixed forward there,
+which is already the policy the defect table encodes — so this trades a merge
+gate the run never had for a stack depth the review scope already tolerates.
+
+Taken on direct user instruction, which overrides §7's `[immutable]` marker;
+logged here because §7.4 requires it. — 2026-09-06 — agent

@@ -310,6 +310,17 @@ comparable yield. The schema field requiring each finder to report *what it brok
 and what the gate said* is doing the work — the two sharpest Unit 1 findings came
 from reviewers who sabotaged a value and watched the gates stay green.
 
+**F14 — `gh pr edit --base` silently no-ops on this repo; use `gh api -X PATCH`.**
+Retargeting #159 with `gh pr edit 159 --base visualizer/dimensions-unit-0` printed
+only a Projects-classic GraphQL deprecation warning, **exited 0, and changed
+nothing** — the PR still read `-> visualizer/composable-dimensions` at 68 files
+afterwards. `gh pr edit` resolves the PR through a GraphQL query that selects
+`projectCards`, and the deprecation breaks that path before the mutation runs.
+`gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f base=<branch>` works and
+returns the new `changed_files` to verify against. This matters because the
+zero exit code makes the failure invisible to a script: any automation that
+retargets a stack must assert the resulting base, not trust the status. See D36.
+
 ---
 
 ## Open questions
