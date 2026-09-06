@@ -15,7 +15,22 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 > These outrank §5.2 principles and §5.3 suggestions; they yield to §4
 > constraints.
 
-*(none yet)*
+**SI-1 — Review fan-outs are cost-disciplined from Unit 1 on.** Unit 0's PR
+review cost 51 agents and 6.24M subagent tokens to find 4 distinct defects. Keep
+the adversarial framing, which is what worked; drop the redundancy, which is what
+cost. The rules are in `VERIFICATION.md` §3.5.5 and the reasoning is in D29:
+
+  - 5-6 finders with orthogonal mandates, not 11
+  - every finder must break the code and show the gate output
+  - cluster findings yourself, then verify **clusters** — cheap model, tight
+    prompt, no criteria preamble
+  - commit-scope review only where behavior changes
+  - no delegated authoring under ~50 lines
+
+Spend heavily anyway on the first review of Units 4, 5a, 5b and 6 — the units
+that touch the force model and the gates, where Unit 0 proved a blind spot is
+most expensive. Target ~700k-900k per unit instead of 6.6M.
+— human, 2026-09-06
 
 ---
 

@@ -297,3 +297,32 @@ slip past. Both baselines are allowlisted at their measured counts
 it), which keeps the one legitimate reference visible instead of hidden behind a
 syntax the rule could not see. The `silent-domain-fallback` rule also accepts
 double-quoted literals. — 2026-09-05 — agent
+
+**D29 — Supersedes D16 on fan-out size; the §3.2 contract and the choice of
+mechanism are unchanged.** D16's mechanism selection stands: commit-scope reviews
+are single fresh sub-agents, PR-scope review is an orchestrated (a)+(b) fan-out,
+(c) runs at Units 4/6/8, (d) per unit with B-rows, (e) at Unit 9. What changes is
+the *size* of each, and it changes because Unit 0's was measured rather than
+guessed: 51 agents and 6.24M subagent tokens returned 34 confirmed findings that
+collapse to **4 distinct defects**, with nine of eleven lenses independently
+finding the same central one.
+
+The spend was worth it — the harness goldened nothing dependent on the layout,
+and that would have survived until Unit 5a or 6 with four units of physics work
+already layered on it. But almost none of the cost went to the finding:
+
+  - ~7x redundancy across finders, because convergent lenses re-buy one finding
+  - all ~40 verifiers received the full "read these five documents" preamble,
+    which is where most of the 6.24M went; a verifier needs the claim and the
+    file it anchors to
+  - `opts.model` and `opts.effort` were never used, so bounded confirmation work
+    ran on the strongest tier
+  - 144k tokens reviewed a 13-line Makefile commit and returned three minors
+  - 80k tokens authored a 13-line diff, left a stray build artifact, and was
+    reviewed anyway
+
+The operative rules live in `VERIFICATION.md` §3.5.5 and are restated as
+`PROGRESS.md` SI-1 so they are re-read at every unit boundary. The one thing not
+economised: the first review of Units 4, 5a, 5b and 6. Unit 0 is the argument for
+that carve-out — the defect was *in the verifier*, and the author could not see it
+because the author had written the rationale for it. — 2026-09-06 — human + agent
