@@ -117,6 +117,17 @@ input carries both and a consumer swapping schemes gets colour and per-value
 radius/icon size together. R11 is an ordinary Unit 6 feature; O1 is retired
 unasked. — kickoff — human
 
+**D15 — Verification fans out; authoring never does.** The §3.2 review contract
+is mechanism-agnostic: individual sub-agent calls and orchestrated workflows both
+satisfy it. But code is authored by exactly one agent at a time, and that holds
+even under a standing instruction to orchestrate by default — the unit chain is
+strict and five of the hardest files split mid-file, so parallel authors would
+conflict and per-agent worktrees would not help. `VERIFICATION.md` §3.5.2 names
+the five verification fan-outs that are worth the orchestration over plain
+sub-agent calls, and §3.5.3 names the two shapes that are not. — Without the
+prohibition written down, a run launched with orchestration enabled by default
+would apply it exactly where `PLAN.md` needs it not to be. — kickoff — human
+
 **D3 addendum — the behavior-change budget is extended** to cover two changes
 Unit 5a necessarily makes: (a) the T12 present-vs-all semantics choice for the
 gravity overlay (record which you picked and why), and (b) band-occupancy

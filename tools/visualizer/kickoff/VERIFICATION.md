@@ -352,6 +352,10 @@ The asymmetry is deliberate. PR-level feedback may require re-planning, which is
 the orchestrator's job. Commit-level feedback is local repair, which the author
 does with its context still warm.
 
+**How these agents get spawned** — individual sub-agent calls or an orchestrated
+fan-out — is §3.5. The contract above binds either way; §3.5.1's prohibition on
+fanning out *authoring* is [immutable] and applies regardless of mechanism.
+
 **Skeptical seed for PR reviewers.** Give them, verbatim:
 
 > Assume this change is subtly wrong. The author had every incentive to declare
@@ -393,3 +397,95 @@ permanent check before the fix counts as done:
 
 A fix without a check is not a fix; it is a fix-shaped diff. `PROGRESS.md` records
 the check alongside the defect.
+
+---
+
+## 3.5 Orchestration: how the sub-agents get spawned
+
+**The §3.2 contract is binding. The mechanism is not.** Isolation,
+criteria-and-artifact-only inputs, and blocking findings hold whether each
+reviewer is an individual sub-agent call or an agent inside an orchestrated
+workflow. Nothing below relaxes §3.2; it only says which shape is worth reaching
+for.
+
+Read this section before your first review, and record your choice per §3.5.4.
+
+### 3.5.1 Never fan out authoring — [immutable]
+
+**Code is authored by exactly one agent at a time.** The unit chain in `PLAN.md`
+§6.2 is strict, and five of the hardest files are split *mid-file*
+(`useVisibleGraph`, `useHighlight`, `WorkflowCanvas`, `GraphCanvas`,
+`node-types`). Parallel authors would conflict constantly, and per-agent git
+worktrees do not rescue it — the work has to merge into one tree regardless.
+
+This applies even where an orchestration tool is available and a standing
+instruction encourages using one by default. **That standing instruction does not
+reach authoring in this run.** If a unit looks parallelisable, re-read §6.1: a
+unit that could be split into genuinely independent authored pieces is two units,
+and should be re-cut (§6.3) rather than fanned out.
+
+Verification, by contrast, fans out freely — everything below is read-only.
+
+### 3.5.2 Where an orchestrated workflow beats N individual sub-agent calls
+
+Four places. Each names the specific advantage, because "more agents" is not one.
+
+**(a) PR-scope review — diverse lenses on one artifact, concurrently.**
+A unit's full diff reviewed simultaneously by six blind lenses: correctness,
+each of the four §3.3 cheats, and leak/boundary. *Advantage over N calls:* one
+schema-validated result instead of six free-text returns to reconcile by hand,
+and — the real one — **redundant reviewers converge on the same finding while
+diverse lenses do not**. Six agents asked "review this" produce one finding six
+times; six agents each given a distinct lens produce six.
+
+**(b) Spirit checks (§3.3) — one agent per named cheat.**
+*Advantage:* attention. A single reviewer asked to check four cheats checks the
+first one well. Four reviewers each checking one check all four well. Cheap —
+four agents per unit.
+
+**(c) Milestone Counter A audit — the highest-value fan-out in the run.**
+Twenty of the 42 requirements are provable only by Gate 5, the manual browser
+pass. That is the weakest joint in the whole denominator and the one place
+self-grading is structurally unavoidable (KICKOFF §2.1 says so outright). At
+Units 4, 6 and 8, run one adversarial agent per claimed-done requirement — given
+the requirement text, the committed screenshot, and the diff, and prompted to
+**refute**, not confirm.
+*Advantages over N calls, and there are four:*
+- a **pipeline** needs no barrier — requirement 1's second opinion runs while
+  requirement 20 is still being audited
+- **schema-validated verdicts** update the counter mechanically instead of by
+  reading prose
+- **resume from cache** if the session dies mid-audit — which matters here more
+  than anywhere, because §7.1 declares every session killable and a 20-agent
+  audit is the longest single operation in the run
+- **batching**, since 20 exceeds a default size guideline and a script handles
+  the queueing that a human-driven sequence of calls would not
+
+**(d) Blast-radius sweep at unit close — one read-only verifier per B-row.**
+"Is B23 actually migrated, or merely marked?" *Advantage:* a barrier is correct
+here (you want every verdict before closing the unit), and a per-row schema
+verdict writes straight into §6.4's status column, so Counter B stops being
+self-reported.
+
+**(e) Unit 9 spec sweep — multi-modal search.**
+Agents each searching the four spec documents a *different* way: by section, by
+vocabulary, by cross-reference to the code. *Advantage:* one search angle will
+not find everything. T29's `level` / `tier` / `ladder` contradiction survived in
+the spec precisely because every previous reader approached it the same way.
+
+### 3.5.3 Where a single sub-agent is the right shape
+
+- **Commit-scope review.** Commits within a unit are sequential — each builds on
+  the last, and a blocker found in commit N invalidates work already layered on
+  it. One fresh sub-agent per commit, in order. Pipelining buys nothing and
+  risks reviewing a base that is about to change.
+- **PR authoring.** Always exactly one fresh sub-agent (§3.2, §3.5.1).
+- **Any one-off question** a gate cannot answer.
+
+### 3.5.4 Record the choice
+
+At the start of the run, append a `DECISIONS.md` entry naming which mechanism
+you are using for §3.2's reviews and which of §3.5.2's fan-outs you will run.
+Otherwise the run's throughput is set by an invisible launch condition and no
+later session can tell what happened — the same legibility problem §7.4 exists
+to prevent.
