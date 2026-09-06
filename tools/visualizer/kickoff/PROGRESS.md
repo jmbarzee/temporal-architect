@@ -178,6 +178,23 @@ are called only from `Simulation.tick`, and `new Simulation(...)` appears only a
 `useSimulation.ts:50`. The nine-site RNG injection (0c) therefore has a
 single-caller blast radius and needs no param-object plumbing.
 
+**F5 — The `make typecheck` aggregate spares `ci.yml` only from future
+*typecheck* gates; every other gate still needs its own edit.** Commit 0a's body
+overstated it as meaning `ci.yml` "never has to change again", and that is false
+within Unit 0 itself. `VERIFICATION.md` §3.1 Gate 3 has Unit 0 wiring `npm run
+verify` into `ci.yml`; `PLAN.md` §6.2 commit 0g wires the leak gate, the boundary
+gate and the forbidden-pattern check into it as well; and per T27 a new
+`tools/<name>/` package gets no `npm ci` step at all unless one is added there by
+hand. Budget a `ci.yml` edit per gate, not one for the whole run.
+
+**F6 — `README.md`'s § Development target menu is now stale, and closing that
+drift needs a §4.4 amendment first.** `README.md:245-250` lists `make build /
+test / vet / check-types / check-docs` and omits `make typecheck`, which 0a made
+a CI-blocking gate; every later gate widens the gap. But `NON_INFERABLE.md` §4.4's
+"May write" list does not include `README.md`, so no unit in this run may fix the
+menu as the boundaries currently stand — it takes a §8.2 amendment adding
+`README.md` to §4.4, or the menu stays out of date for the duration.
+
 ---
 
 ## Open questions
