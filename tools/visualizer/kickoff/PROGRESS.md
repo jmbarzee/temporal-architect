@@ -54,10 +54,10 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 2 — Dimension primitive + shim folder** (not started) |
+| Current unit | **Unit 2 — Dimension primitive + shim folder** (code complete; review + Gate 5 + PR remain) |
 | Last completed unit | **Unit 1 — Inject the taxonomy** |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-1` (PR open; Unit 0's PR #158 is green but unmerged, so this branch stacks on it) |
+| Unit branch | `visualizer/dimensions-unit-2`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, Unit 2's -> unit-1. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
@@ -65,35 +65,50 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 | counter | current | target |
 |---|---|---|
 | A — requirements covered | 0 (R1 partial) | 42 |
-| B — blast-radius sites migrated | 4 | 38 |
-| C — leaks in the manifest | 583 | 0 |
-| Gate 6 — import-boundary violations | 11 | 0 |
+| B — blast-radius sites migrated | 13 | 38 |
+| C — leaks in the manifest | **209** | 0 |
+| Gate 6 — import-boundary violations | **8** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
 measuring them. Counter A's R41 ("does everything it did before") closes at
 Unit 8, not here; Unit 0 only makes it checkable.
 
-Counter C ceiling for the next unit (Unit 2): **210** per `PLAN.md` §6.5's table
-— see OQ2, which is now live: §6.2's Unit 2 line says 150 instead. Taking §6.5's
-table as the gate ceiling and §6.2's number as the target.
-Gate 6 ceiling for Unit 2: **11**, and Unit 2 is where it should start falling —
-creating `src/adapter/` is what lets `build.ts` and `groups.ts` stop importing
-the wire types. Both ceilings live in `kickoff/gates.json`.
+Counter B this unit: B1, B2, B8, B9, B14, B18, B31, B32, B36 — Unit 2's whole
+declared blast radius, taking the counter 4 -> 13.
+
+Counter C landed at **209** against Unit 2's ceiling of **210** (OQ2 resolved as
+D38: §6.5's table binds the gate, §6.2's tighter 150 is the target and was not
+reached). Gate 6 landed at **8**, better than the 10 projected, because `build.ts`
+carried two violations of its own out of the manifest when it moved. Both ceilings
+are ratcheted in `kickoff/gates.json` (583 -> 210, 11 -> 8); the ratchet is
+one-way, so these are now the numbers Unit 3 must not exceed.
+
+Where the 374-line drop came from, honestly: most of it is **relocation**, not
+deletion — `edge-types.ts` (164), `node-types.ts` (103) and `build.ts` (59) left
+the manifest for `src/adapter/`, which is the point of the unit rather than a
+dodge, since the vocabulary genuinely belongs to the host. The part that is real
+deletion is `model.ts` 61 -> 12 and the `nodeDefType.ts` removal.
 
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 1 close | pass |
-| 2 `npm run build:lib` | Unit 1 close | pass |
-| 3 `npm run verify` | Unit 1 close | pass — 7/7 goldens match |
-| 4 `npm run leak-gate` | Unit 1 close | pass — 583 / ceiling 583 |
-| 5 browser pass | Unit 1 close | pass — five fixtures, node/edge counts identical to Unit 0 |
-| 6 `npm run boundary-gate` | Unit 1 close | pass — 11 / ceiling 11 |
-| + `npm run pattern-gate` | Unit 1 close | pass — 18 allowlisted, 0 new |
+| 1 `tsc --noEmit` | Unit 2 f773114 | pass |
+| 2 `npm run build:lib` | Unit 2 f773114 | pass — 254 kB lib.js |
+| 3 `npm run verify` | Unit 2 f773114 | pass — 7/7 goldens match |
+| 4 `npm run leak-gate` | Unit 2 f773114 | pass — **209 / ceiling 210** |
+| 5 browser pass | Unit 2, partial | nexus + taskqueues walked, zero console errors; **the five committed screenshots are still owed** — Gate 5 is per-PR |
+| 6 `npm run boundary-gate` | Unit 2 f773114 | pass — **8 / ceiling 8** |
+| + `npm run pattern-gate` | Unit 2 f773114 | pass — 5 allowlisted, 0 new (allowlist 8 -> 3 entries) |
 
-All of it runs as one command: `make check-visualizer` from the repo root, which
-is also what `ci.yml` runs (in three steps, so a failure names itself).
+All of it runs as one command: `make check-visualizer` from the repo root.
+
+**Gate 2 was missing from that aggregate for the whole run until Unit 2e.** CI
+always ran it via `make build`, so nothing was genuinely unverified — but the
+local aggregate is what runs at every commit boundary, and calling it "all gates"
+was wrong. `buildlib-visualizer` is now part of the target. The lesson generalises
+past this instance: an aggregate command is a claim about coverage, and nothing
+was checking that claim against `VERIFICATION.md`'s list.
 
 ---
 
