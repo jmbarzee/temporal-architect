@@ -321,6 +321,18 @@ returns the new `changed_files` to verify against. This matters because the
 zero exit code makes the failure invisible to a script: any automation that
 retargets a stack must assert the resulting base, not trust the status. See D36.
 
+**F15 — A golden row keeps dead code looking alive; no gate counts readers.**
+`nodeDefType.ts` lost its last caller in Unit 2c and stayed in the tree for three
+commits with every gate green, because `static-golden.ts` still imported it and
+still goldened its output. The row passed, so the module read as load-bearing —
+the harness was the only consumer, and a harness-only consumer is
+indistinguishable from a real one at gate level. Gate 4 counts vocabulary and
+Gate 6 counts import *direction*; neither counts whether anything in the
+manifest actually reads a symbol. Generalises past this instance: any symbol the
+harness pins is invisible to the ratchets, so **deleting a call site is not the
+same as deleting a dependency**, and the lift to check is "who imports this that
+is not the harness". See D37.
+
 ---
 
 ## Open questions

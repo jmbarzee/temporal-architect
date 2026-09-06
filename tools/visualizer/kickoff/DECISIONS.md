@@ -487,3 +487,47 @@ gate the run never had for a stack depth the review scope already tolerates.
 
 Taken on direct user instruction, which overrides §7's `[immutable]` marker;
 logged here because §7.4 requires it. — 2026-09-06 — agent
+
+**D37 — B18 is a deletion, and it moves 22 lines of the static golden.**
+`nodeDefType.ts` bridged the two type vocabularies with two module-load maps and
+two silent fallbacks — `?? 'workflowDef'` and `?? 'workflow'` — so an
+unrecognized input resolved to a *real* type and an unknown node was filtered
+and focused as though it were a workflow (T19). The plan has B18 rewrite the
+bijection. It turned out not to need rewriting: **nothing has called it since
+Unit 2c**, which deleted `GraphNode.nodeType` and with it the last two call
+sites. Every consumer now reads `ontology.resolveNodeStyle(node).defType`, which
+answers a miss with the declared neutral style and warns once — the loud path
+Unit 1 built. So the module is deleted rather than ported (C5).
+
+Worth recording how it survived: the module was dead for three commits and no
+gate said so, because `static-golden.ts` still imported it and still goldened
+its output. **The golden was the only thing keeping it alive, and a passing
+golden row reads as evidence that the code under it matters.** A dead-export
+check would have caught this; the leak gate counts vocabulary and the boundary
+gate counts direction, and neither counts *readers*. Logged as F15.
+
+The golden change (§8.2), line by line — `static.golden.json` 2190 → 2168:
+
+- `defTypeBridge.nodeTypeToDefType` — 8 rows, one per node type. Deleted: the
+  function is gone.
+- `defTypeBridge.defTypeToNodeType` — 8 rows. Deleted, same reason.
+- `defTypeBridge.unmappedFallbacks` — 4 lines pinning the two silent defaults.
+  Deleted: this is the behaviour B18 exists to remove, and it is the one row
+  whose disappearance is the point rather than a side effect.
+- `defTypeBridge` → `filterChipLayer` — the key is renamed and, being
+  alphabetically later, moves down within the canonically-sorted object. Its
+  `filterChips` rows are **unchanged in value**; they are kept deliberately,
+  because the chip folding is the half of T19 that is still live: five chips
+  cover seven filter keys and one chip carries three of them.
+
+No other golden moves. The four fixture goldens and the edge-type table are
+byte-identical, which is the check that this touched a harness-only path and not
+the engine. — 2026-09-06 — agent
+
+**D38 — OQ2 resolved: §6.5's ceilings table is the gate, §6.2's per-unit line is
+the target.** `PLAN.md` states two different leak ceilings per unit and they
+agree only at Units 0, 1, 7 and 8; Unit 2 reads **210** in §6.5's table and
+**150** in §6.2's line. §6.1 gate 4 cites "the unit's ceiling (§6.5)", so the
+table binds the gate and the tighter number steers the work. This is the
+resolution OQ2 said it would take, decided at the Unit 2 boundary as planned.
+— 2026-09-06 — agent

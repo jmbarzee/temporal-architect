@@ -13,8 +13,6 @@
   "leakCeiling": 583,
   "boundaryCeiling": 11,
   "forbiddenPatternAllowlist": [
-    { "file": "src/components/graph-view/nodeDefType.ts", "rule": "as-record", "max": 2 },
-    { "file": "src/components/graph-view/nodeDefType.ts", "rule": "silent-domain-fallback", "max": 2 },
     { "file": "src/filter/storage.ts", "rule": "as-record", "max": 2 },
     { "file": "src/filter/storage.ts", "rule": "as-unknown-as", "max": 1 },
     { "file": "src/graph/edge-types.ts", "rule": "as-record", "max": 1 },

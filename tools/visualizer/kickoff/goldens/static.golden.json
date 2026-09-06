@@ -1,67 +1,4 @@
 {
-  "defTypeBridge": {
-    "defTypeToNodeType": {
-      "activityDef": "activity",
-      "namespaceDef": "namespace",
-      "nexusEndpointDef": "nexusEndpoint",
-      "nexusOperationDef": "nexusOperation",
-      "nexusServiceDef": "nexusService",
-      "workerDef": "worker",
-      "workflowDef": "workflow"
-    },
-    "filterChips": [
-      {
-        "id": "namespaceDef",
-        "label": "Namespaces",
-        "types": [
-          "namespaceDef"
-        ]
-      },
-      {
-        "id": "workerDef",
-        "label": "Workers",
-        "types": [
-          "workerDef"
-        ]
-      },
-      {
-        "id": "nexus",
-        "label": "Nexus",
-        "types": [
-          "nexusEndpointDef",
-          "nexusServiceDef",
-          "nexusOperationDef"
-        ]
-      },
-      {
-        "id": "workflowDef",
-        "label": "Workflows",
-        "types": [
-          "workflowDef"
-        ]
-      },
-      {
-        "id": "activityDef",
-        "label": "Activities",
-        "types": [
-          "activityDef"
-        ]
-      }
-    ],
-    "nodeTypeToDefType": {
-      "activity": "activityDef",
-      "namespace": "namespaceDef",
-      "nexusEndpoint": "nexusEndpointDef",
-      "nexusOperation": "nexusOperationDef",
-      "nexusService": "nexusServiceDef",
-      "worker": "workerDef",
-      "workflow": "workflowDef"
-    },
-    "unmappedFallbacks": {
-      "defTypeToNodeType": "workflow",
-      "nodeTypeToDefType": "workflowDef"
-    }
-  },
   "defaultForceParams": {
     "alphaDecay": 0.005,
     "alphaMin": 0.0001,
@@ -339,6 +276,47 @@
       "sourceType": "workflow",
       "targetType": "workflow"
     }
+  },
+  "filterChipLayer": {
+    "filterChips": [
+      {
+        "id": "namespaceDef",
+        "label": "Namespaces",
+        "types": [
+          "namespaceDef"
+        ]
+      },
+      {
+        "id": "workerDef",
+        "label": "Workers",
+        "types": [
+          "workerDef"
+        ]
+      },
+      {
+        "id": "nexus",
+        "label": "Nexus",
+        "types": [
+          "nexusEndpointDef",
+          "nexusServiceDef",
+          "nexusOperationDef"
+        ]
+      },
+      {
+        "id": "workflowDef",
+        "label": "Workflows",
+        "types": [
+          "workflowDef"
+        ]
+      },
+      {
+        "id": "activityDef",
+        "label": "Activities",
+        "types": [
+          "activityDef"
+        ]
+      }
+    ]
   },
   "filterSetIdentity": [
     {
