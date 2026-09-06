@@ -22,7 +22,7 @@
 
 import { bandCenters, bandFor } from '../graph/forces'
 import type { Graph } from '../graph/model'
-import { DEFAULT_PARAMS, Simulation } from '../graph/simulation'
+import { defaultParamsFor, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../graph/node-types'
@@ -50,7 +50,7 @@ export const TIER_B_PARAMS = {
 } as const
 
 /** A fresh, seeded simulation over a fixture's graph. */
-export function seededSimulation(graph: Graph, params: ForceParams = DEFAULT_PARAMS): Simulation {
+export function seededSimulation(graph: Graph, params: ForceParams = defaultParamsFor(DEFAULT_ONTOLOGY)): Simulation {
   return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed), DEFAULT_ONTOLOGY)
 }
 
@@ -74,10 +74,10 @@ function median(values: number[]): number {
  */
 function scenarios(): [string, ForceParams][] {
   return [
-    ['default', { ...DEFAULT_PARAMS }],
-    ['radial', { ...DEFAULT_PARAMS, gravityMode: 'radial' }],
-    ['topological', { ...DEFAULT_PARAMS, topologicalEnabled: true, gravityDownstream: 0.4 }],
-    ['centerOnly', { ...DEFAULT_PARAMS, bandEnabled: false, topologicalEnabled: false }],
+    ['default', defaultParamsFor(DEFAULT_ONTOLOGY)],
+    ['radial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }],
+    ['topological', { ...defaultParamsFor(DEFAULT_ONTOLOGY), topologicalEnabled: true, gravityDownstream: 0.4 }],
+    ['centerOnly', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandEnabled: false, topologicalEnabled: false }],
   ]
 }
 

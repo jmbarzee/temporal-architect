@@ -15,7 +15,7 @@ import { useOntology } from './graph-view/useOntology'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
 
-import type { EdgeTypeId } from '../graph/edge-types'
+import type { EdgeTypeId } from '../graph/taxonomy'
 
 // Shared k / rest ranges. The map plots every edge category on these common
 // axes so their relative stiffness / length is directly comparable.

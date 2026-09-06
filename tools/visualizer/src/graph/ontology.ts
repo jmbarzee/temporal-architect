@@ -20,8 +20,8 @@
 
 import type { DimensionId, DimensionMap, DimensionValue } from './dimension'
 import type { GraphEdge } from './model'
-import type { NodeTypeDefinition } from './node-types'
-import type { EdgeTypeDefinition } from './edge-types'
+import type { NodeTypeDefinition } from './taxonomy'
+import type { EdgeTypeDefinition } from './taxonomy'
 
 /** The minimum a consumer needs of a node in order to resolve its style. */
 export type StyleSubject = { dimensions: DimensionMap }

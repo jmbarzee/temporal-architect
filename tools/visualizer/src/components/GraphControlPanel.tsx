@@ -6,7 +6,7 @@ import './GraphControlPanel.css'
 import type { ForceParams } from '../graph/simulation'
 import type { DimensionValue } from '../graph/dimension'
 
-import type { NodeScaleParams } from '../graph/node-types'
+import type { NodeScaleParams } from '../graph/node-scale'
 import { SpringMap, SpringCurves } from './SpringControls'
 import { ChargeMap, ChargeCurves } from './ChargeControls'
 import { GravityControls } from './GravityControls'

@@ -14,7 +14,7 @@
 import type { DimensionId, DimensionValue } from './dimension'
 import type { GraphEdge } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
-import type { EdgeTypeDefinition, EdgeTypeId } from './edge-types'
+import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
 import type { Rng } from './rng'
 
 /**

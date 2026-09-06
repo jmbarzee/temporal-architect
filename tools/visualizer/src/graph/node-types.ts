@@ -1,119 +1,52 @@
-// Central node-type registry.
+// This deployment model's node-type entries — the host half of the taxonomy.
 //
-// All per-node-type metadata lives here. Adding a new node type means
-// adding one entry to NODE_TYPE_REGISTRY; the type system enforces
-// completeness because the record is typed Record<NodeType, NodeTypeDefinition>.
+// The *shapes* these entries fill in are library-owned and live in
+// `./taxonomy`; what is here is only the values: which node types this domain
+// has, what they are called, how they are drawn and physically weighted. That
+// is the direction the dependency has to run. Nothing in the engine imports
+// this file — everything resolves through the `Ontology` built at the bottom —
+// which is what lets the whole thing move out of the library without the engine
+// noticing.
 //
-// Groups that consume this registry:
-//   Group 2 — physics (simulation.ts, GraphControlPanel.tsx)
-//   Group 3 — visual  (GraphCanvas.tsx, model.ts, GraphView.tsx, build.ts)
-//   Group 4 — theme + filter (temporal-theme.tsx, GraphView.tsx)
-//   Group 5 — CSS (index.css replaced by runtime-emitted style block)
+// Adding a node type means adding one entry; the record's `Record<NodeType, …>`
+// type still enforces completeness.
 
 import type { NodeType } from './model'
 import { createOntology } from './ontology'
 import type { Ontology } from './ontology'
+import type { NodeTypeDefinition } from './taxonomy'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
 import { TEMPORAL_TYPE_DIMENSION } from './build'
 
-export interface NodeTypeDefinition {
-  // --- Identity ---
-  /** Display name, e.g. "Nexus Endpoint". */
-  label: string
-  /** Single glyph shown inside the canvas node and in tree-view chips. */
-  icon: string
-  /**
-   * AST def-type key used by the visibility filter and tree-view sort.
-   * Nexus operations and endpoints use synthetic keys
-   * ('nexusOperationDef', 'nexusEndpointDef') because they live
-   * nested inside their parent's AST node rather than as top-level
-   * definitions.
-   */
-  defType: string
+/**
+ * A node style plus the two fields that are this domain's own.
+ *
+ * `ladder` and `tier` name tiers of one specific deployment model, so they are
+ * not part of the library shape. They stay declarative rather than being folded
+ * into `styleGroups` directly because the grouping below is derived from them,
+ * and deriving it here is what keeps the ordering in one place.
+ */
+export interface TemporalNodeTypeDefinition extends NodeTypeDefinition {
   /**
    * Which conceptual ladder this node type belongs to.
-   * 'main'  — standard Temporal deployment path (namespace → worker → workflow/activity)
+   * 'main'  — standard deployment path (namespace → worker → workflow/activity)
    * 'nexus' — Nexus addressing path (namespace → endpoint; worker → service → operation)
-   *
-   * Docs-only: no layout logic reads it. It is kept on the registry as a
-   * stable field so a consumer can start reading it without a schema change.
    */
   ladder: 'main' | 'nexus'
   /**
    * Structural tier within the deployment hierarchy.
-   * 'container'    — top-level scope holders (namespace, nexusEndpoint)
-   * 'host'         — hosting / registration tier (worker, nexusService)
-   * 'orchestrator' — callable units that orchestrate work (workflow, nexusOperation)
-   * 'leaf'         — leaf execution units (activity)
+   * 'container'    — top-level scope holders
+   * 'host'         — hosting / registration tier
+   * 'orchestrator' — callable units that orchestrate work
+   * 'leaf'         — leaf execution units
    *
-   * Registry-private: consumers derive sizing and summary kind from the
-   * explicit registry fields rather than switching on tier.
+   * Read only by the ladder ordering below; sizing and summary kind come from
+   * the explicit style fields rather than from switching on this.
    */
   tier: 'container' | 'host' | 'orchestrator' | 'leaf'
-  /**
-   * Whether this type is visible by default when the graph first loads.
-   * Mirrors DEF_TYPE_CONFIGS[].defaultOn in temporal-theme.tsx.
-   */
-  defaultVisible: boolean
-
-  // --- Visual ---
-  color: {
-    /** Canvas fill colour (light theme). */
-    fill: string
-    /** Canvas border colour (light theme), ~3 stops darker than fill. */
-    border: string
-    /** Fill override for dark theme. Omitted when same as light fill. */
-    fillDark?: string
-    /** Border override for dark theme. Omitted when same as light border. */
-    borderDark?: string
-    /**
-     * CSS variable name stem.
-     * Generates --color-<cssVarSuffix> and --color-<cssVarSuffix>-border
-     * in the runtime style block (Group 5).
-     */
-    cssVarSuffix: string
-  }
-  size: {
-    /** Circle radius in world units. Hit-test radius = r + 4. */
-    r: number
-    /** Font size for the icon glyph (px). */
-    iconSize: number
-  }
-
-  // --- Physics ---
-  physics: {
-    /**
-     * Default repulsion charge. Negative = repulsion. These are the
-     * DEFAULT_PARAMS values the user tunes at runtime via the control panel.
-     */
-    charge: number
-    /**
-     * Default core radius (charge softening, as a length). A pair of nodes
-     * softens its charge by the squared average of the two endpoints'
-     * effective core radii (`coreRadiusMultiplier × coreRadius`), added to d².
-     * Tuned at runtime on the PUSH charge map. Larger = gentler, wider plateau.
-     */
-    coreRadius: number
-    /**
-     * Default Y band where this node type feels zero gravity.
-     * Negative Y = top of canvas. The simulation places nodes inside their
-     * band on creation so the hierarchy is visible immediately.
-     */
-    yBand: { min: number; max: number }
-  }
-
-  // --- Summary ---
-  /**
-   * Which summary strategy to use in computeGraphNodeSummary.
-   *   'containerCount'    — count contained workers + endpoints (namespace)
-   *   'hostRegistrations' — count contained wf / act / nexus ops (worker, nexusService)
-   *   'degree'            — count incoming + outgoing dependency edges
-   *   'none'              — no summary (nexusEndpoint)
-   */
-  summaryKind: 'containerCount' | 'hostRegistrations' | 'degree' | 'none'
 }
 
-export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDefinition> = {
+export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = {
   namespace: {
     label: 'Namespace',
     icon: '⧉',
@@ -311,7 +244,7 @@ export const ALL_NODE_TYPES: NodeType[] = [
 // Per-ladder, top-to-bottom ordering, derived from each type's tier. Consumers
 // that lay types out by family + hierarchy (e.g. the gravity band plot's columns)
 // read these instead of hardcoding the order, so a registry change reflows them.
-const TIER_RANK: Record<NodeTypeDefinition['tier'], number> = {
+const TIER_RANK: Record<TemporalNodeTypeDefinition['tier'], number> = {
   container: 0, host: 1, orchestrator: 2, leaf: 3,
 }
 const byTier = (a: NodeType, b: NodeType) =>
@@ -328,7 +261,7 @@ export const NEXUS_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REG
 // catches it and the canvas simply stops repainting. Deliberately neutral: grey,
 // small, no glyph, so an unstyled node reads as "unrecognized" rather than
 // impersonating a real type.
-const FALLBACK_NODE_STYLE: NodeTypeDefinition = {
+const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
   label: 'Unknown',
   icon: '?',
   defType: 'unknownDef',
@@ -371,31 +304,3 @@ export const DEFAULT_ONTOLOGY: Ontology = createOntology({
     edgeTypeFor(edge, src.dimensions[TEMPORAL_TYPE_DIMENSION], tgt.dimensions[TEMPORAL_TYPE_DIMENSION]),
   fallbackStyle: FALLBACK_NODE_STYLE,
 })
-
-// --- Node scaling (render-time) ---
-//
-// Nodes are drawn in screen pixels. Without scaling they stay a fixed size at
-// every zoom, so a zoomed-out graph collapses into a chaotic pile of full-size
-// dots. The on-screen size is `baseR × baseMul × clamp(zoom, minZoomMul,
-// maxZoomMul)`:
-//   - baseMul    overall size knob (1 = registry size).
-//   - maxZoomMul ceiling — once the user zooms past this, nodes stop growing.
-//                Lower it to make nodes start shrinking sooner as you zoom out.
-//   - minZoomMul floor — how small nodes may get when zoomed all the way out.
-// These are user-tunable from the Controls panel (Misc → Node scaling).
-export interface NodeScaleParams {
-  baseMul: number
-  minZoomMul: number
-  maxZoomMul: number
-}
-
-export const DEFAULT_NODE_SCALE: NodeScaleParams = {
-  baseMul: 0.6,
-  minZoomMul: 0.4,
-  maxZoomMul: 1.65,
-}
-
-/** On-screen size multiplier for a node body/label at the given zoom. */
-export function nodeSizeMul(scale: number, p: NodeScaleParams): number {
-  return p.baseMul * Math.max(p.minZoomMul, Math.min(p.maxZoomMul, scale))
-}

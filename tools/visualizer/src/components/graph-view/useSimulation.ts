@@ -8,7 +8,7 @@
 // *drives* the sim is a separate hook (useSimulationLoop); this owns the instance.
 
 import React from 'react'
-import { Simulation, DEFAULT_PARAMS } from '../../graph/simulation'
+import { Simulation, defaultParamsFor } from '../../graph/simulation'
 import { defaultRng } from '../../graph/rng'
 import { useOntology } from './useOntology'
 import type { ForceParams, SimNode } from '../../graph/simulation'
@@ -41,9 +41,14 @@ export function useSimulation(
   const simRef = React.useRef<Simulation | null>(null)
   const dragNodeRef = React.useRef<string | null>(null)
   const [running, setRunning] = React.useState(true)
-  const [forceParams, setForceParams] = React.useState<ForceParams>({ ...DEFAULT_PARAMS })
-  const [simVersion, setSimVersion] = React.useState(0)
   const ontology = useOntology()
+  // Lazy initializer, and `ontology` has to be read before it: the starting
+  // parameters are derived from the taxonomy now, so a module-load constant is
+  // no longer available to seed this with. The initializer runs once — a later
+  // taxonomy swap rebuilds the simulation (see the effect below) but keeps the
+  // parameters the user has since tuned, which is the intended behaviour.
+  const [forceParams, setForceParams] = React.useState<ForceParams>(() => defaultParamsFor(ontology))
+  const [simVersion, setSimVersion] = React.useState(0)
 
   const onRebuildRef = React.useRef(onRebuild)
   onRebuildRef.current = onRebuild

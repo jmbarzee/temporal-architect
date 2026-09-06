@@ -18,7 +18,6 @@
     { "file": "src/filter/storage.ts", "rule": "as-record", "max": 2 },
     { "file": "src/filter/storage.ts", "rule": "as-unknown-as", "max": 1 },
     { "file": "src/graph/edge-types.ts", "rule": "as-record", "max": 1 },
-    { "file": "src/graph/rng.ts", "rule": "math-random", "max": 2 },
-    { "file": "src/graph/simulation.ts", "rule": "as-record", "max": 5 }
+    { "file": "src/graph/rng.ts", "rule": "math-random", "max": 2 }
   ]
 }
