@@ -570,3 +570,50 @@ the existing `notADeclaredKey` probe misses it by construction, since an ordinar
 unknown string does resolve to `undefined`.
 
 Found by the Unit 2 review fan-out (lens: physics). — 2026-09-06 — agent
+
+**D40 — `src/adapter/` created a hole in the accounting; a flat `totalCeiling`
+and a transitive Gate 6 close it.** Unit 2's review measured the unit's own
+headline honestly for the first time, and it does not say what the number said.
+
+**The leak drop was 82% relocation, and the relocated vocabulary grew.** Joining
+the per-file gate tables across `ffb2ef8..21c4504`: of the 374-occurrence fall,
+308 is files moving to `src/adapter/`, 65 is genuine in-place removal, 2 is
+outright deletion, +1 new. And counted at the destination with the gate's own
+pattern, those five files hold **330** occurrences where they held 308 before —
+so the run's real total *rose by 22* behind a reported drop of 308. Gate 6's
+`11 -> 8` is 100% relocation: no import edge was removed this unit, and one new
+one (`GraphView -> adapter/useGraphModel`) was added.
+
+None of that makes the unit wrong — moving domain entries to the host half is
+precisely what Unit 2 is for. What is wrong is that **no gate could tell the
+difference between that and parking a file in `src/adapter/` to duck the count.**
+Demonstrated three ways by the review, each reproduced: relocating
+`src/filter/storage.ts` byte-identically and deleting its allowlist entries
+improves all three ratchets with nothing deleted; appending 1000 domain terms to
+`src/adapter/node-types.ts` moves no gate by a single unit; and a two-line
+re-export barrel lets a manifest file import the registry with both gates green.
+
+Three changes:
+
+1. **`shimFiles()`** in `manifest.mjs` — the complement of the manifest, defined
+   as Gate 6's own FORBIDDEN trees so "the shim" means one thing to every gate.
+2. **`totalCeiling` = manifest + shim, ratcheted FLAT** (1276 at Unit 2 close:
+   209 + 1067). Not ratcheted *down*, because the shim is allowed its domain —
+   that is what a shim is for. Flat is enough: relocation keeps the total
+   unchanged and therefore stops reading as progress, while relocation that adds
+   vocabulary now fails. Verified both: the `storage.ts` move takes the leak
+   count 209 -> 204 with the total pinned at 1276, and six words appended to an
+   adapter file take it to 1282 and FAIL.
+3. **Gate 6 resolves re-exports transitively** — following `export … from` but
+   not plain `import`, since only the first hands a dependency to a consumer —
+   and prints the route (`-> ../types/registry-barrel -> ../adapter/node-types`).
+   Verified: the barrel cheat goes from green to `boundary violations: 9
+   (ceiling 8)`, with no false positive on the existing eight.
+
+`PLAN.md` §6.5's claim that the paired gates catch the barrel is corrected in
+place rather than quietly dropped, because it is the sentence that says the two
+gates cover each other, and it was false in both halves. The honest statement is
+that Gate 4 covers vocabulary *spelled out*, and vocabulary laundered behind
+neutral symbol names (`NODE_TYPE_REGISTRY`) is Gate 6's job alone.
+
+Found by the Unit 2 review fan-out (lenses: counters, cheats). — 2026-09-06 — agent

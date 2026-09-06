@@ -92,6 +92,44 @@ export function manifestBlindSpots() {
   return { skipped, siblings }
 }
 
+// ── The shim ────────────────────────────────────────────────────────────────
+//
+// The trees the manifest may not import from — i.e. the host half. Defined here
+// as the complement of the library-to-be, and kept in step with Gate 6's
+// FORBIDDEN list on purpose: "the shim" should mean one thing to every gate.
+//
+// This exists because Unit 2 created `src/adapter/` and, with it, a hole:
+// vocabulary that MOVES from the manifest into the shim leaves the ratchet
+// entirely, so relocation reads exactly like deletion on the only number anyone
+// looks at. It is worse than a tie, because the vocabulary can *grow* on the way
+// across and the manifest count still falls. Measured on Unit 2's own move: 308
+// occurrences left the manifest and 330 arrived, so the run's real total rose by
+// 22 while the headline fell by 308.
+//
+// The shim is allowed its domain vocabulary — that is the entire point of having
+// one — so this is NOT ratcheted down. It is ratcheted *flat*, as part of the
+// total, so that a move has to be honest about being a move.
+const SHIM_GLOBS = [
+  { dir: 'src/adapter', exts: SOURCE_EXTS },
+  { dir: 'src/theme', exts: SOURCE_EXTS },
+  { dir: 'src/components/blocks', exts: SOURCE_EXTS },
+]
+const SHIM_NAMED = [
+  'src/types/ast.ts',
+  'src/types/parser-graph.ts',
+  'src/types/decomposition.ts',
+]
+
+/** Every shim file, repo-relative to the package root, sorted. */
+export function shimFiles() {
+  const files = []
+  for (const g of SHIM_GLOBS) walk(g.dir, g.exts, files, null)
+  for (const f of SHIM_NAMED) {
+    try { statSync(resolve(PKG_ROOT, f)); files.push(f) } catch { /* not present */ }
+  }
+  return [...new Set(files)].sort()
+}
+
 /** Every manifest file, repo-relative to the package root, sorted. */
 export function manifestFiles() {
   const files = []

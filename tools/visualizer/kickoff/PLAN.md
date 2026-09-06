@@ -440,5 +440,33 @@ number and the reason — never a silent reset.
 
 **Gate 4 counts vocabulary; Gate 6 counts import edges. Neither alone is
 sufficient**, and the pairing is deliberate: renaming `'workflow'` to `'kind_a'`
-satisfies Gate 4 and leaves Gate 6 red, while re-exporting the registry through a
-neutral barrel satisfies Gate 6 and leaves Gate 4 red.
+satisfies Gate 4 and leaves Gate 6 red.
+
+**Corrected at the Unit 2 boundary.** This paragraph used to finish "…while
+re-exporting the registry through a neutral barrel satisfies Gate 6 and leaves
+Gate 4 red." That was false in both halves, and it was load-bearing — it is the
+sentence that says the two gates cover each other. A barrel in any unmeasured
+tree (`export { NODE_TYPE_REGISTRY } from '../adapter/node-types'`) let a
+manifest file import the registry while **both** gates stayed green: Gate 6 saw
+an approved specifier, and Gate 4 cannot see it at all, because the laundered
+symbols are named `NODE_TYPE_REGISTRY` and `ALL_NODE_TYPES` and contain no word
+in the vocabulary pattern. Gate 4 reads text; the text was already neutral.
+
+Gate 6 now resolves re-exports transitively — following `export … from` but not
+plain `import`, since only the first hands a dependency to a consumer — and
+reports the route it found (`-> ../types/registry-barrel -> ../adapter/node-types`).
+So the real guarantee is: **Gate 6 covers the dependency in both directions;
+Gate 4 covers vocabulary that is spelled out.** Vocabulary that is laundered
+behind neutral symbol names is Gate 6's job alone.
+
+**Third counter, added with `src/adapter/` (D40).** Unit 2 created the shim tree,
+and with it a hole the ceilings could not see: vocabulary that *moves* from the
+manifest into the shim leaves the ratchet entirely, so relocation reads exactly
+like deletion on the only number anyone quotes. Worse than a tie — it can grow on
+the way across while the headline falls. Unit 2 did that: −308 from the manifest,
++330 into the shim, a real increase of 22 behind a reported drop of 308.
+
+`gates.json` therefore carries `totalCeiling` = manifest + shim, ratcheted
+**flat** rather than down. The shim is allowed its domain vocabulary — that is
+what a shim is for — so this does not forbid relocation. It forbids relocation
+that quietly adds, and it stops a move from reading as progress.
