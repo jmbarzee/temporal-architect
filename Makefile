@@ -170,6 +170,7 @@ verify-visualizer:
 
 ## Run the visualizer's ratchet gates: vocabulary, import direction, forbidden patterns
 gates-visualizer:
+	cd tools/visualizer && npm run map -- --check
 	cd tools/visualizer && npm run leak-gate
 	cd tools/visualizer && npm run boundary-gate
 	cd tools/visualizer && npm run pattern-gate

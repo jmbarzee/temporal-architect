@@ -540,3 +540,64 @@ you are using for §3.2's reviews and which of §3.5.2's fan-outs you will run.
 Otherwise the run's throughput is set by an invisible launch condition and no
 later session can tell what happened — the same legibility problem §7.4 exists
 to prevent.
+
+### 3.5.6 Cost discipline, second pass — [measured at the Unit 2 boundary]
+
+§3.5.5 was written from Unit 0's numbers and produced Unit 1's shape, which was
+the cheapest good review of the run. **Unit 2 then regressed off it**, and the
+measurement says by how much:
+
+| review | agents | tokens | actionable (blocker + major) | per finding |
+|---|---:|---:|---:|---:|
+| Unit 0 | 51 | 6.24M | 4 distinct defects | 1.56M |
+| Unit 1 | 5 | 827k | 14 | **59k** |
+| Unit 2 | 20 | 2.00M | 15 | **133k** |
+
+Unit 2's diff was larger (25 commits vs ~9) and its findings changed the
+measurement system rather than one module, so per-finding cost is a crude
+comparison. It does not explain 2.25×. Five rules, each from a measured cause.
+
+**6. Verify only what is in doubt.** Unit 2's verify stage was 14 agents and
+**31% of the spend (~620k), and it refuted 0 of 14.** The schema field that makes
+each finder report *what it broke and what the gate said* **is** the
+verification; re-running a completed experiment is duplication, not adversarial
+review. Verify only findings that are (a) not reproduced, (b) blocker severity,
+or (c) contradict an existing `DECISIONS.md` entry. On Unit 2 that is ~5 agents,
+not 14.
+
+**7. Cluster on root cause, not on file path.** Unit 2's 31 findings collapsed to
+**29 clusters** — i.e. clustering did nothing — because the key was
+`file|severity` and different lenses land on different files. Meanwhile *seven of
+the fourteen majors shared one root cause* ("`src/adapter/` is outside the
+manifest"), so that finding was verified seven times. Cluster on the mechanism.
+A single cheap-model pass over the titles is ~30k and replaces ~7 verifiers.
+
+**8. Isolation applies to every stage that mutates, not the obvious one.** Unit 2
+set `isolation: 'worktree'` on the six finders and not on the fourteen verifiers
+— a verifier told to "reproduce it" edits code by definition. The cost was not
+only correctness: the two agents that detected the contamination and rebuilt
+pristine trees are the two largest transcripts in the run, **30% of all finder
+spend between them**. Git-level isolation is also not enough when agents need
+`node_modules` and a build; export a tree, symlink `node_modules`, run there.
+
+**9. Compute shared facts once and hand them over.** All six finders ran
+`make check-visualizer` for a baseline — the same fact, six times. Put the
+baseline output in the prompt.
+
+**10. Use the cheap tier where §3.5.5 rule 4 already said to.** Unit 2 set
+`effort` on verifiers and never set `model`. Clustering and any surviving
+verification are cheap-tier work.
+
+### 3.5.7 Two artifacts that replace recurring cost
+
+**`kickoff/MAP.md`** (`npm run map`, checked by `npm run map -- --check`).
+Per-file zone (manifest / shim / neither), leak count, and a **reverse-import
+index**. "Who imports this" and "what breaks if this moves" were being answered
+by grep, repeatedly — and wrongly: one Unit 2 grep excluded the file it was
+searching and hid a symbol's only reader. Not a gate; a lookup.
+
+**`kickoff/reviews/STANDING_CHECKS.md`** — the ten question-shapes that have
+actually found bugs on this run, handed to every finder. Several Unit 2 findings
+had been latent since Unit 1, and shape #1 has produced the worst finding in
+three consecutive units. Cheap recall beats expensive rediscovery, and it frees
+finder budget for genuinely new ground.
