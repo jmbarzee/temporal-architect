@@ -54,8 +54,8 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 3 — N-dimensional filters + chain UI** (not started) |
-| Last completed unit | **Unit 2 — Dimension primitive + shim folder** (PR #160, REVIEW_2 closed) |
+| Current unit | **Unit 4 — Push/pull on a chosen dimension** (not started) |
+| Last completed unit | **Unit 3 — N-dimensional filters + chain UI** |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-2`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, Unit 2's -> unit-1. Nothing needs to merge for the run to continue. |
 | Run state | running |
@@ -64,10 +64,10 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | 0 (R1 partial) | 42 |
-| B — blast-radius sites migrated | 13 | 38 |
-| C — leaks in the manifest | **209** | 0 |
-| Gate 6 — import-boundary violations | **8** | 0 |
+| A — requirements covered | **6** (R6, R14, R17, R18, R19, R20) + R1 partial | 42 |
+| B — blast-radius sites migrated | 18 | 38 |
+| C — leaks in the manifest | **203** | 0 |
+| Gate 6 — import-boundary violations | **7** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
 measuring them. Counter A's R41 ("does everything it did before") closes at
@@ -93,14 +93,14 @@ deletion is `model.ts` 61 -> 12 and the `nodeDefType.ts` removal.
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 2 close | pass |
-| 2 `npm run build:lib` | Unit 2 close | pass |
-| 2b `npm run dts-gate` | Unit 2 close | pass — consumer compile clean, `skipLibCheck` off (**new**) |
-| 3 `npm run verify` | Unit 2 close | pass — 7/7 goldens match |
-| 4 `npm run leak-gate` | Unit 2 close | pass — **209 / 210**; shim 1068; **total 1277 / 1277** (new) |
-| 5 browser pass | Unit 2 close | pass — five fixtures, counts identical to Units 0 and 1, 0 application errors |
-| 6 `npm run boundary-gate` | Unit 2 close | pass — **8 / 8**, now resolving re-exports transitively |
-| + `npm run pattern-gate` | Unit 2 close | pass — 5 allowlisted, 0 new; now scans the shim too |
+| 1 `tsc --noEmit` | Unit 3 close | pass |
+| 2 `npm run build:lib` | Unit 3 close | pass |
+| 2b `npm run dts-gate` | Unit 3 close | pass — consumer compile clean, `skipLibCheck` off |
+| 3 `npm run verify` | Unit 3 close | pass — 7/7 goldens match |
+| 4 `npm run leak-gate` | Unit 3 close | pass — **203 / 204**; shim 1063; **total 1266 / 1266** |
+| 5 browser pass | Unit 3 close | pass — five fixtures, counts identical to Units 0, 1 and 2, 0 application errors |
+| 6 `npm run boundary-gate` | Unit 3 close | pass — **7 / 7**; the 8 -> 7 is a genuine edge removal, not relocation |
+| + `npm run pattern-gate` | Unit 3 close | pass — 5 allowlisted, 0 new |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -124,7 +124,7 @@ Status: blank = not started · `wip` · `done`.
 | R3 | Host-owned node payload field | 2 | 1 |
 | R4 | Edge type from node-dimension combinations | 4 | 3 (Tier C) |
 | R5 | Edges carry `relation` / `dispatch` dimensions | 4 | 3 (Tier C) |
-| R6 | Common filter interface + staple filters | 3 | 3 |
+| R6 | Common filter interface + staple filters | 3 | covered (3) — descriptors + chain |
 | R7 | Global axis backed by a dimension | 5a | 5 |
 | R8 | Global axis backed by a computed scalar | 5b | 3 + 5 |
 | R9 | Computed scalars may traverse the graph | 5b | 3 |
@@ -132,13 +132,13 @@ Status: blank = not started · `wip` · `done`.
 | R11 | Base node sizes carried by the colour-scheme input | 6 | 5 |
 | R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw |
 | R13 | Default force dimension configurable | 4 | 5 |
-| R14 | Default filters/selections configurable | 3 | 5 |
+| R14 | Default filters/selections configurable | 3 | covered (3) — default selections from the taxonomy |
 | R15 | Default colours configurable | 6 | 5 |
 | R16 | Every label and abbreviation configurable | 6 | 4 |
-| R17 | Filter chain: insert before/after, delete | 3 | 5 |
-| R18 | Empty chain renders small bar with `+` | 3 | 5 |
-| R19 | Default displayed filters configurable | 3 | 5 |
-| R20 | Search last, unchanged | 3 | 5 |
+| R17 | Filter chain: insert before/after, delete | 3 | covered (3) — Gate 5 verified |
+| R18 | Empty chain renders small bar with `+` | 3 | covered (3) — Gate 5 verified |
+| R19 | Default displayed filters configurable | 3 | covered (3) — declared `filterDimensions` order |
+| R20 | Search last, unchanged | 3 | covered (3) — Gate 5 verified |
 | R21 | Graph-pane colour-scheme button | 6 | 5 |
 | R22 | Push + Pull combined into one view | 4 | 5 |
 | R23 | Subsections styled like Band/Topological, no switches | 4 | 5 |
@@ -179,49 +179,41 @@ explicit pass criteria and a committed screenshot — use them.
 
 ## In-flight work
 
-**Unit 3 started.** Branch `visualizer/dimensions-unit-3` (off unit-2, PR to
-follow with base `visualizer/dimensions-unit-2`, per D36). Two commits so far,
-gates green at each.
+**Unit 3 is code-complete; the review is running.** Branch
+`visualizer/dimensions-unit-3`, 8 commits, gates green at each. `REVIEW_3.md` and
+the PR body land when the fan-out returns.
 
-Landed: the efficiency adoption (`VERIFICATION.md` §3.5.6-7, `kickoff/MAP.md`
-generator, `STANDING_CHECKS.md`), then **3a part 1** — `DimensionDescriptor`
-becomes policy-carrying.
+Landed: the efficiency adoption (§3.5.6-7, `MAP.md`, `STANDING_CHECKS.md`), then
+3a-3e. `FilterState`/`PinState` are **Maps keyed by dimension id**; per-axis
+policy (empty/absent, focus, reheat) lives in descriptors and is read by the
+predicate, the reconciler and the loop; the bar is an editable chain.
 
-The descriptor deliberately **does not carry `values`**. Values are derived, not
-declared: the style axis's come from the taxonomy, the source-file axis's from
-scanning the graph. Declaring them on the descriptor as well would have been the
-same fact in two places with nothing enforcing agreement — PLAN §6.6's exact
-shape, introduced on the unit that recorded it. `identityMapping` takes values as
-an argument instead.
+**The lesson of this unit, for whoever reads it next.** The migration changed
+`FilterState`'s representation twice, and **six places kept reading the old field
+names** — three production, three harness. Every one typechecked, returned
+`undefined`, and passed all six gates and 7/7 goldens. One of the six was the
+identity *probe*, so a golden asserted a fix while measuring nothing. The app
+crashed on load and only the browser said so.
 
-It gained `focus` (T8: `'always'` vs `'whenActive'`) and `reheat` (T9: four
-independent fields — `alpha`, `seedRevealed`, `refit`, `resume`). Four fields
-rather than one strength because the two axes differ on three of them, and T9
-warns explicitly that a descriptor derived from "types reheat harder" drops
-`resume` and leaves the canvas frozen after every file toggle.
+That is why `FilterState` is a `Map` and not a `Record`: a string-keyed record
+permits `filter.selectedFiles`, and the domain has no axis by that name. It is
+PLAN §6.6's test applied to the thing §6.6 is about, and it converts the entire
+class into compile errors.
 
-**Note honestly:** between 3a and 3b the descriptor's policies have no reader.
-That is PLAN's own sequencing (3b is "`reconcile.ts` + `useSimulationLoop.ts`
-read policies from descriptors"), but it is one commit of exactly the decorative
--declarative state STANDING_CHECKS #4 exists to catch. 3b must land before the
-unit closes; if it slips, the descriptor is a liability, not an asset.
+**Exact next action: begin Unit 4** (`PLAN.md` §6.2, push/pull on a chosen
+dimension). Ceilings are ratcheted to the Unit 3 close: leak **204**, total
+**1266**, boundary **7**.
 
-**Exact next action: 3a part 2 — generalize `FilterState` / `PinState` to
-`Record<DimensionId, …>`.** Measured surface: **116 references to
-`selectedFiles`/`visibleTypes` across 16 files** (see `kickoff/MAP.md` for the
-import graph). The trap to design around first is **T5**: `useVisibleGraph`'s
-deps and `useSimulationLoop`'s comparisons are `Set`-*identity* based, and
-today's `cloneFilter` rebuilds every `Set` — so the generalized state must be
-copy-on-write per dimension, or every unrelated dimension edit re-runs the full
-edge-graduation pass and reheats the simulation. `cloneFilter` should not
-survive the migration in its current form.
+Two things to settle at the Unit 4 boundary, both recorded and neither mine:
 
-Then 3b (policies consumed), 3c (`storage.ts` versioned, D4), 3d (generic
-dimension chips), 3e (the chain UI).
-
-**Still open, and not decided by me:** whether Unit 4 is built with axis +
-mapping + table as one constructed value (PLAN §6.6/§6.7). Cheapest before Unit 4
-exists; the instance count grows from one to roughly five across 4 / 5a / 5b.
+- **The params shape** (PLAN §6.6/§6.7). Unit 4 adds a dimension *dropdown*,
+  which puts the axis on the same edit channel as `pushMultiplier` and turns the
+  axis/table disagreement from taxonomy-swap-only into one click away. Cheapest
+  to build as axis + mapping + table = one constructed value *before* Unit 4
+  exists; the instance count grows from one to roughly five across 4 / 5a / 5b.
+- **Unit 4's ceiling is likely optimistic**, the same way Unit 3's was (D45).
+  §6.5 says 160; from 203 that needs 43, against `model.ts`'s 12. Re-derive it
+  from the baseline table at the boundary rather than treating 160 as reachable.
 
 ## Discovered facts
 
