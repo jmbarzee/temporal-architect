@@ -1232,6 +1232,35 @@
           "wk"
         ]
       }
+    },
+    "mappings": {
+      "grouped": {
+        "absentResolves": true,
+        "buckets": [
+          "ab:a,b",
+          "cd:c,d"
+        ],
+        "resolved": [
+          "a -> ab",
+          "b -> ab",
+          "c -> cd",
+          "d -> cd",
+          "e -> none"
+        ]
+      },
+      "identity": [
+        "a=A:a",
+        "b=B:b",
+        "c=C:c",
+        "d=D:d"
+      ],
+      "interning": {
+        "compositeIsDistinct": true,
+        "compositeIsStable": true,
+        "deduplicatesInASet": 1,
+        "stringPassesThrough": true
+      },
+      "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" has intersecting buckets: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
     }
   },
   "reconcileMatrix": {

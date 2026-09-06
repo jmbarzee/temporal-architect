@@ -18,6 +18,12 @@ import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { GraphEdge, NodeType } from '../graph/model'
 import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../graph/node-types'
 import { createOntology } from '../graph/ontology'
+import {
+  createDimensionalMapping,
+  identityMapping,
+  internValue,
+} from '../graph/dimension'
+import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
@@ -71,9 +77,68 @@ function visible(ontology: typeof DEFAULT_ONTOLOGY, types: string[]): Json {
   }
 }
 
+/**
+ * The mapping primitive, including the case it refuses to build.
+ *
+ * "Result sets must be non-intersecting" is only a guarantee if something proves
+ * the refusal happens. A value in two buckets has no answer for which token
+ * tunes it, and without the throw the answer would silently be "whichever bucket
+ * was declared last" — a layout that depends on list order, found months later
+ * by someone alphabetising a declaration for readability.
+ */
+function mappingProbes(): Json {
+  const descriptor: DimensionDescriptor = {
+    id: 'probe', label: 'Probe',
+    values: ['a', 'b', 'c', 'd'],
+    emptyMeans: 'none', absentMeans: 'visible',
+    labelFor: v => v.toUpperCase(),
+    abbreviationFor: v => v.slice(0, 1).toUpperCase(),
+  }
+  const grouped = createDimensionalMapping({
+    id: 'probe:grouped', label: 'Grouped', dimension: 'probe',
+    buckets: [
+      { id: 'ab', label: 'A+B', values: ['a', 'b'] },
+      { id: 'cd', label: 'C+D', values: ['c', 'd'] },
+    ],
+  })
+  let refusal = 'NOT REFUSED — the guarantee is not enforced'
+  try {
+    createDimensionalMapping({
+      id: 'probe:overlapping', label: 'Overlapping', dimension: 'probe',
+      buckets: [
+        { id: 'ab', label: 'A+B', values: ['a', 'b'] },
+        { id: 'bc', label: 'B+C', values: ['b', 'c'] },
+      ],
+    })
+  } catch (err) {
+    refusal = err instanceof Error ? err.message : String(err)
+  }
+  return {
+    identity: identityMapping(descriptor).buckets.map(b => `${b.id}=${b.label}:${b.values.join(',')}`),
+    grouped: {
+      buckets: grouped.buckets.map(b => `${b.id}:${b.values.join(',')}`),
+      // Every value resolves, and a value the mapping omits resolves to nothing
+      // rather than to an arbitrary bucket.
+      resolved: ['a', 'b', 'c', 'd', 'e'].map(v => `${v} -> ${grouped.bucketFor(v)?.id ?? 'none'}`),
+      absentResolves: grouped.bucketFor(undefined) === undefined,
+    },
+    intersectingBucketsRefused: refusal,
+    // Composite selections must fold to a stable string before they are used as
+    // a Set key, or they deduplicate by identity and degenerate to one entry per
+    // node — no type error, no crash, a silently different layout.
+    interning: {
+      stringPassesThrough: internValue('a') === 'a',
+      compositeIsStable: internValue(['a', 'b']) === internValue(['a', 'b']),
+      compositeIsDistinct: internValue(['a', 'b']) !== internValue(['a', 'c']),
+      deduplicatesInASet: new Set([internValue(['a', 'b']), internValue(['a', 'b'])]).size,
+    },
+  }
+}
+
 export function ontologyProbes(): Json {
   const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: UNDECLARED })
   return {
+    mappings: mappingProbes(),
     // What a miss resolves to, field by field. The `defType` matters most: it is
     // what the visibility predicate tests, so it decides whether an unrecognized
     // node is permanently visible, permanently hidden, or accidentally lumped in

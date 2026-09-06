@@ -374,3 +374,39 @@ to move, and the only ones that did (224 insertions, 12 deletions, one file):
 All six fixture goldens and `edge-types` are byte-identical, verified by running
 `npm run verify` before regenerating: it reported those six `ok` and only
 `static` differing. — 2026-09-06 — agent
+
+**D33 — Unit 2's commit order is reversed: decouple first, move last.**
+`PLAN.md` §6.2 opens Unit 2 with two pure-move commits; they cannot be first
+without a red Gate 6. The four files 2a moves are still imported from inside the
+§6.5 manifest, and `src/adapter/` is a forbidden import target — measured, moving
+them first takes Gate 6 from 11 violations to about 16, so the unit's own first
+commit could not close. §5.2.5 ("move files only once they are already clean")
+points the same way and outranks the commit list, which §6.2 itself calls "the
+starting decomposition, not a contract". Coverage is unchanged and the move is
+still its own commit, so `git` still records renames — it is simply the last
+commit rather than the first. Recorded in `PLAN.md` §6.2 under the Unit 2 entry.
+— 2026-09-06 — agent
+
+**D34 — Unit 2's golden contract, stated up front.** `PLAN.md` Unit 2 says
+`**Goldens:** byte-identical`, and OQ1/D17 already recorded that this cannot hold:
+the unit's whole purpose is replacing `GraphNode.nodeType` with a dimension map,
+and the Tier A node rows record a node's identity. The contract for this unit is
+therefore:
+
+  - **Tier A node rows change shape**, once, from `"nodeType": "<value>"` to a
+    `"dimensions"` map. Every other field on those rows — id, name, orphan,
+    definitionKey, parentId, sourceFile, templateParams — stays byte-identical,
+    and the *values* inside the new map must be the old `nodeType` strings.
+  - **Tier C is byte-identical.** The edge classifier's resolved ids do not move,
+    which is the acceptance test for the registries inverting without changing
+    what they resolve to.
+  - **Every visible-subgraph row is byte-identical.** The resolved sets are what
+    a user sees; if a dimension-keyed predicate resolves a different set than a
+    type-keyed one did, the generalization is wrong.
+  - **Tier B position rows are byte-identical.** The physics keys on a dimension
+    value instead of a type string, and the value is the same string, so no
+    force may move a node differently.
+  - New probe subtrees are additive and named per commit.
+
+Anything outside that list moving is a defect, not a shape change. Each `--write`
+in this unit cites this entry. — 2026-09-06 — agent

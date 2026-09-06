@@ -259,6 +259,36 @@ this unit is the catch-up for what could not.
 
 ---
 
+### Unit 2 — re-cut at the boundary (§6.3)
+
+The commit order below **reverses** §6.2's: the decoupling comes first and the
+file moves come last.
+
+§6.2 opens Unit 2 with two pure-move commits, and they cannot be first. Gate 6
+forbids a manifest file from importing `src/adapter/`, and the four files 2a
+moves are still imported *from inside the manifest* — `build.ts` by
+`useSimulation` and `useGraphModel`, `nodeDefType.ts` by `GraphView`,
+`edge-types.ts` by `SpringControls`, `forces.ts`, `simulation.ts` and
+`node-types.ts`. Measured: moving them first takes Gate 6 from 11 violations to
+roughly 16, so the first commit of the unit would be red and could not close.
+
+§5.2.5 is the governing principle — *move files only once they are already
+clean* — and it points the same way. The revised order:
+
+| commit | content |
+|---|---|
+| 2a | Dimension primitives: `DimensionId`/`DimensionValue`, descriptors, interning, `DimensionalMapping` with the non-intersection throw (R12) |
+| 2b | `GraphNode` carries a dimension map; the shim populates it; `nodeType` becomes a derived read |
+| 2c | Migrate all 61 `.nodeType` reads and the denormalized edge endpoints; **delete the field** |
+| 2d | Registries invert: the library keeps the shapes, the entries become shim data; `DEFAULT_PARAMS` becomes a function of the taxonomy (B9) |
+| 2e | **Pure move** — the now-Temporal-only files into `src/adapter/`, once nothing in the manifest imports them |
+
+Coverage is unchanged (R1, R2, R3, R12, R37; B1, B2, B8, B9, B14, B18, B31, B32,
+B36) and §6.1 still holds at each commit. `git` still records renames, because
+the move is still its own commit — it is now the last one rather than the first.
+
+---
+
 ## 6.3 Revision rules
 
 Re-planning is permitted and **logged, never silent**.
