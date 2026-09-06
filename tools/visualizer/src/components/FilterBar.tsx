@@ -47,6 +47,14 @@ interface FilterBarProps {
   hiddenMatchByFile?: Map<string, number>
   /** The axes shown, in order. R17/R18/R19: editable, and may be empty. */
   chain: readonly string[]
+  /**
+   * Values available per axis, for axes this bar has no built-in source for.
+   *
+   * The two shipped axes are sourced from `allFiles` and the taxonomy. A host
+   * that declares a third supplies its values here; without it the axis renders
+   * an empty, explicitly-disabled section rather than vanishing.
+   */
+  valuesByDimension?: ReadonlyMap<string, readonly string[]>
   /** Omitted by a host that does not want the chain edited in place. */
   onChainChange?: (next: readonly string[]) => void
   /** Raw findings — partitioned by the file filter inside ErrorBars. */
@@ -79,6 +87,7 @@ export function FilterBar({
   refreshFlash,
   chain,
   onChainChange,
+  valuesByDimension,
 }: FilterBarProps) {
   const ontology = useOntology()
   const selectedFiles = selectionFor(filter, SOURCE_FILE_DIMENSION)
@@ -115,6 +124,8 @@ export function FilterBar({
     sectionClass: string
     rowClass: string
     chipClass: string
+    /** Per-chip modifier stem the stylesheet keys on, or '' for none. */
+    modifierPrefix: string
     activeClass: string
     iconClass: string
     labelClass: string
@@ -126,6 +137,8 @@ export function FilterBar({
       sectionClass: 'header-files-section',
       rowClass: 'header-files-row',
       chipClass: 'header-file-tag',
+      // File chips have never had a per-file modifier class.
+      modifierPrefix: '',
       activeClass: 'selected',
       iconClass: 'header-file-icon',
       labelClass: 'header-file-name',
@@ -137,16 +150,42 @@ export function FilterBar({
       sectionClass: 'header-types-section',
       rowClass: 'header-types-row',
       chipClass: 'header-type-tag',
+      // `header-type-<id>`, NOT `header-type-tag-<id>`: FilterBar.css keys the
+      // eight per-kind tints on the former, and deriving the modifier from
+      // chipClass silently killed every one of them.
+      modifierPrefix: 'header-type',
       activeClass: 'active',
       iconClass: 'header-type-icon',
       labelClass: 'header-type-label',
     }],
   ]), [allFiles, fileCounts, typeCounts, hiddenMatchByFile, hiddenMatchByType, ontology])
 
+  /**
+   * Presentation for an axis this bar has no entry for.
+   *
+   * A third declared axis used to be *silently* unrenderable: `PRESENTATION` had
+   * two entries, an axis missing from it returned null, and the section simply
+   * did not appear — while its selection kept filtering the graph. Invisible
+   * filtering is the same failure D44 exists to prevent, so an unknown axis now
+   * renders with neutral styling and whatever values the host supplied.
+   */
+  const lookFor = (dimension: string) => PRESENTATION.get(dimension) ?? {
+    values: [...(valuesByDimension?.get(dimension) ?? [])],
+    counts: new Map<string, number>(),
+    hidden: undefined,
+    sectionClass: 'header-types-section',
+    rowClass: 'header-types-row',
+    chipClass: 'header-type-tag',
+    modifierPrefix: '',
+    activeClass: 'active',
+    iconClass: 'header-type-icon',
+    labelClass: 'header-type-label',
+  }
+
   // Axes the host declares that the chain is not already showing.
   const available = ontology.filterDimensions
     .map(d => d.id)
-    .filter(id => !chain.includes(id) && (PRESENTATION.get(id)?.values.length ?? 0) > 0)
+    .filter(id => !chain.includes(id) && lookFor(id).values.length > 0)
 
   const toggleSearch = () => {
     if (searchActive) {
@@ -161,10 +200,14 @@ export function FilterBar({
     <div className={`canvas-header${refreshFlash ? ' refresh-flash' : ''}`}>
       {chain.map(dimension => {
         const descriptor = ontology.descriptorFor(dimension)
-        const look = PRESENTATION.get(dimension)
-        if (!descriptor || !look) return null
+        if (!descriptor) return null
+        const look = lookFor(dimension)
         const chips = descriptor.chipsFor(look.values)
-        if (chips.length === 0) return null
+        // No values to offer: render the header and its remove control anyway,
+        // so an axis that is filtering is always visible and always removable.
+        // Vanishing is what made a third axis dangerous rather than merely
+        // unsupported.
+        const empty = chips.length === 0
 
         const selection = selectionFor(filter, dimension)
         const pinned = pinnedFor(pins, dimension)
@@ -177,6 +220,11 @@ export function FilterBar({
           <React.Fragment key={dimension}>
             <div className={`${look.sectionClass}${pinned ? ' section-pinned' : ''}`}>
               <div className={look.rowClass}>
+                {empty && (
+                  <span className="header-chain-empty" title={`${descriptor.label} has no values in this view`}>
+                    no {descriptor.label.toLowerCase()} values
+                  </span>
+                )}
                 {chips.map(chip => {
                   const isActive = chip.values.some(v => selection.has(v))
                   const isChanged = chip.values.some(v => recentlyChanged.has(`${dimension}:${v}`))
@@ -185,7 +233,7 @@ export function FilterBar({
                   const cls = [
                     look.chipClass,
                     allIncluded ? 'all-included' : (isActive ? look.activeClass : ''),
-                    `${look.chipClass}-${chip.id}`,
+                    look.modifierPrefix ? `${look.modifierPrefix}-${chip.id}` : '',
                     isChanged ? 'recently-changed' : '',
                   ].filter(Boolean).join(' ')
                   return (
@@ -193,7 +241,7 @@ export function FilterBar({
                       key={chip.id}
                       className={cls}
                       onClick={() => onFilterChange(toggleGroup(filter, dimension, chip.values))}
-                      title={isActive ? `Hide ${chip.label.toLowerCase()}` : `Show ${chip.label.toLowerCase()}`}
+                      title={chip.tooltip ?? (isActive ? `Hide ${chip.label.toLowerCase()}` : `Show ${chip.label.toLowerCase()}`)}
                     >
                       {chip.icon && <span className={look.iconClass}>{chip.icon}</span>}
                       <span className={look.labelClass}>{chip.label}</span>

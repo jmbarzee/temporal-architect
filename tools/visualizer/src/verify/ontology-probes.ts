@@ -28,6 +28,7 @@ import {
 import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
 import { defaultParamsFor } from '../graph/simulation'
+import { foldReheatPolicy } from '../graph/dimension'
 import { bandFor, chargeFor, coreRadiusFor } from '../graph/forces'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import type { Json } from './snapshot'
@@ -167,20 +168,31 @@ function mappingProbes(): Json {
 function prototypeNamedValues(): Json {
   const NAMES = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']
   const params = defaultParamsFor(DEFAULT_ONTOLOGY)
-  const rows: Record<string, Json> = {}
+  // An ARRAY of rows, each carrying its own name, because the row keys are the
+  // very prototype names being probed. As an object this dropped `__proto__`
+  // twice: `rows['__proto__'] = …` invokes the setter, and even built with
+  // `Object.fromEntries` the snapshot canonicaliser rebuilds the object and
+  // loses it again. The probe listed five names and recorded four — silently
+  // missing the row most likely to catch the bug it exists for. A list has no
+  // key space to collide with.
+  const rows: Json[] = []
   for (const name of NAMES) {
     const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
     const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
     const node = subject
     const band = bandFor(params, node)
-    rows[name] = {
+    rows.push({
+      name,
       styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
       styleLabel: style.label,
       charge: chargeFor(params, node),
       coreRadius: coreRadiusFor(params, node),
       chargeIsFinite: Number.isFinite(chargeFor(params, node)),
       band: `${band.yMin}..${band.yMax}`,
-    }
+      // D39 fixed styleForKey and the force lookups and missed this one.
+      abbreviation: DEFAULT_ONTOLOGY.abbreviationFor(name),
+      abbreviationIsString: typeof DEFAULT_ONTOLOGY.abbreviationFor(name) === 'string',
+    })
   }
   return rows
 }
@@ -266,11 +278,56 @@ function physicsInjection(): Json {
   }
 }
 
+
+/**
+ * The per-axis reheat policy, and the fold across axes (T9).
+ *
+ * This block exists because the policy had **no reader any gate could reach**:
+ * every field of a descriptor's `reheat` could be inverted — including
+ * `resume: false`, which is precisely the mistake T9 names and leaves the canvas
+ * frozen after every toggle — and all six gates plus 7/7 goldens stayed green.
+ *
+ * The rows record each axis's declared policy and the fold for every subset of
+ * axes, so a changed policy or a changed combination rule turns the golden red.
+ */
+function reheatPolicy(): Json {
+  const dims = DEFAULT_ONTOLOGY.filterDimensions
+  const declared: Record<string, Json> = {}
+  for (const d of dims) {
+    declared[d.id] = {
+      alpha: d.reheat.alpha,
+      seedRevealed: d.reheat.seedRevealed,
+      refit: d.reheat.refit,
+      resume: d.reheat.resume,
+      emptyMeans: d.emptyMeans,
+      absentMeans: d.absentMeans,
+      focus: d.focus,
+    }
+  }
+  // Every subset, because a view switch moves more than one axis at once and the
+  // combination is where "last one wins" would hide.
+  const folds: Record<string, Json> = {}
+  const n = dims.length
+  for (let mask = 0; mask < (1 << n); mask++) {
+    const subset = dims.filter((_, i) => (mask & (1 << i)) !== 0)
+    const plan = foldReheatPolicy(subset)
+    const label = subset.length === 0 ? '(none)' : subset.map(d => d.id).sort().join('+')
+    folds[label] = {
+      alpha: plan.alpha,
+      seedRevealed: plan.seedRevealed,
+      refit: plan.refit,
+      resume: plan.resume,
+    }
+  }
+  return { declared, folds }
+}
+
 export function ontologyProbes(): Json {
   const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
     mappings: mappingProbes(),
     prototypeNamedValues: prototypeNamedValues(),
+    reheatPolicy: reheatPolicy(),
     physicsInjection: physicsInjection(),
     // What a miss resolves to, field by field. The `defType` matters most: it is
     // what the visibility predicate tests, so it decides whether an unrecognized

@@ -7,6 +7,7 @@
 
 import type { FilterState } from '../../filter/types'
 import { selectionFor } from '../../filter/types'
+import { foldReheatPolicy } from '../../graph/dimension'
 import { passesFilter } from './visibleGraph'
 import React from 'react'
 import type { Simulation, SimNode } from '../../graph/simulation'
@@ -142,20 +143,11 @@ export function useSimulationLoop({
     const sim = simRef.current
     if (!sim) { prevFilter.current = filter; return }
 
-    let alpha = 0
-    let seedRevealed = false
-    let refit = false
-    let resume = false
-    for (const dim of ontology.filterDimensions) {
-      if (selectionFor(prev, dim.id) === selectionFor(filter, dim.id)) continue
-      // Several axes can move at once (a view switch does exactly that), so the
-      // policies combine rather than the last one winning: the strongest reheat,
-      // and any axis that wants seeding, refitting or resuming gets it.
-      alpha = Math.max(alpha, dim.reheat.alpha)
-      seedRevealed = seedRevealed || dim.reheat.seedRevealed
-      refit = refit || dim.reheat.refit
-      resume = resume || dim.reheat.resume
-    }
+    const { alpha, seedRevealed, refit, resume } = foldReheatPolicy(
+      ontology.filterDimensions.filter(
+        dim => selectionFor(prev, dim.id) !== selectionFor(filter, dim.id),
+      ),
+    )
 
     if (alpha > 0) {
       if (seedRevealed) {

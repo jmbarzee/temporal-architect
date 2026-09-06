@@ -58,7 +58,7 @@ which is worth noticing rather than assuming.
 | `filter/storage.ts` | manifest |  | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **15** files |
-| `graph/dimension.ts` | manifest | 1 | **28** files |
+| `graph/dimension.ts` | manifest | 1 | **29** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
 | `graph/forces.ts` | manifest |  | **5** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |

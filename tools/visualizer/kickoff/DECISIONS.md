@@ -791,7 +791,13 @@ Every file the table assigns to Unit 3:
 | `filter/storage.ts` | 5 | **0** | taken this unit |
 | `filter/reconcile.ts` | 1 | **0** | taken this unit |
 | `graph-view/useGraphModel.ts` | 3 | — | left the manifest in Unit 2e |
-| `components/FilterBar.tsx` | 3 | **0** | cleared in 3d, when chips stopped coming from the theme |
+| `components/FilterBar.tsx` | 3 | **2** | 1 cleared in 3d when chips stopped coming from the theme; the 2 that remain are the `TWFFile` AST type it takes as a prop, which Unit 7 removes with the rest of its domain coupling |
+
+*Corrected 2026-09-06:* the FilterBar row above originally read 0. I asserted it
+without measuring — `grep`ing the gate output for the other three filenames and
+inferring the fourth. It is 2. The conclusion below is unchanged (both remaining
+occurrences are `TWFFile`, which is Unit 7's), but "assumed, not measured" is the
+habit this run keeps punishing.
 
 So Unit 3's assigned total is 12, of which **6 had already been taken during Unit
 2** — `useGraphModel` moved to the adapter, and `FilterBar`'s three went when the
@@ -813,5 +819,42 @@ importing the theme entirely, which is the first genuine edge removal of the run
 Unit 4's §6.5 ceiling is 160. From 203 that needs 43, against `model.ts`'s 12 —
 so the same double-count likely repeats. Worth re-deriving Unit 4's number from
 the table at its boundary rather than treating 160 as reachable.
+
+— 2026-09-06 — agent
+
+**D46 — The reheat policy gets a gate, and the prototype probe stops dropping its
+own worst row.** Both from the Unit 3 review, and both are the same failure: a
+check that exists and does not check.
+
+**`DimensionDescriptor.reheat` had no reader any gate could reach.** All four
+fields on either axis could be inverted — including `resume: false`, which is
+precisely the mistake T9 names and which leaves the canvas frozen after every
+toggle — and typecheck, all six gates and 7/7 goldens stayed green. The reviewer
+demonstrated it with a control: flipping the sibling field `focus` on the same
+descriptor *does* turn the golden red, so the suite is not blind to descriptor
+edits in general, only to this one. Declared policy that nothing reads is not
+policy; it is a comment with a type.
+
+Fixed by extracting the fold — "several axes moved, what does the simulation
+do?" — out of the React hook into `foldReheatPolicy`, a pure function, and
+goldening it. The new `ontologyProbes.reheatPolicy` block records each axis's
+declared policy and the fold for **every subset of axes**, because a view switch
+moves more than one at once and "last one wins" would hide precisely there.
+
+**`prototypeNamedValues` listed five names and recorded four.** The row keys are
+the prototype member names being probed, so `rows['__proto__'] = …` on a plain
+object set the prototype and stored nothing. The probe silently dropped the row
+most likely to catch the bug it exists for — a blind spot inside the instrument
+built for blind spots, which is the third time this unit. Now a `Map`.
+
+The same rows gained `abbreviation`, because `Ontology.abbreviationFor` was a
+fourth unguarded prototype-chain lookup that D39 missed when it fixed the other
+three: `abbreviationFor('constructor')` returned a Function where a string was
+expected.
+
+**Golden change (§8.2):** `static.golden.json` gains `ontologyProbes.reheatPolicy`
+(two axes' declared policy plus four folds) and two fields per
+`prototypeNamedValues` row, and gains the `__proto__` row that was being dropped.
+No existing row changes value.
 
 — 2026-09-06 — agent

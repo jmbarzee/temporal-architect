@@ -262,8 +262,13 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // When the editor's focused file changes, narrow the Tree to it — but
   // only when the Tree's files dimension is unpinned, since a pinned
   // user explicitly opted out of tracking.
+  const treeFilePinned = pinnedFor(treePins, SOURCE_FILE_DIMENSION)
+  const treeShowsFiles = treeChain.includes(SOURCE_FILE_DIMENSION)
   React.useEffect(() => {
-    if (pinnedFor(treePins, SOURCE_FILE_DIMENSION)) return
+    if (treeFilePinned) return
+    // Do not repopulate an axis the Tree has removed — same reason as the
+    // reconciler above.
+    if (!treeShowsFiles) return
     if (ast.focusedFile) {
       setTreeFilter(prev => {
         const next = new Set([ast.focusedFile!])
@@ -271,7 +276,11 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
         return withSelection(prev, SOURCE_FILE_DIMENSION, next)
       })
     }
-  }, [ast.focusedFile, treePins])
+    // Depends on the file axis's pin, NOT the whole PinState. Widening it to
+    // the Map when pins became Maps meant pinning the KIND axis produced a new
+    // Map, re-ran this effect, and silently reset the Tree's file selection to
+    // the focused file.
+  }, [ast.focusedFile, treeFilePinned, treeShowsFiles])
 
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -313,8 +322,21 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     const source = target === 'tree' ? graphFilter : treeFilter
     const destPins = target === 'tree' ? treePins : graphPins
 
+    // Reconcile only the axes the DESTINATION displays.
+    //
+    // Passing every declared axis made removal non-durable: the reconciler
+    // re-imported the other view's selection for an axis this view had removed,
+    // so the next switch silently re-filtered the graph with no chip on screen
+    // and no way to reach it — the exact invisible state D44 removes an axis to
+    // prevent. An axis this view does not show is not filtering here, so there
+    // is nothing for a manual adopt or a focus expansion to do.
+    const destChain = target === 'tree' ? treeChain : graphChain
+    const destDimensions = destChain
+      .map(id => DEFAULT_ONTOLOGY.descriptorFor(id))
+      .filter((d): d is NonNullable<typeof d> => d !== undefined)
+
     const { filter: newFilter, overriddenPins } =
-      reconcileFilter(dest, source, destPins, transition, DEFAULT_ONTOLOGY.filterDimensions)
+      reconcileFilter(dest, source, destPins, transition, destDimensions)
 
     if (target === 'tree') {
       if (newFilter !== dest) setTreeFilter(newFilter)

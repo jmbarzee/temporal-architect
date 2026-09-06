@@ -358,6 +358,9 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
     chipsFor: values => values.map(v => ({
       id: v,
       label: v.split('/').pop() ?? v,
+      // The full path: the label is only the basename, and two files with the
+      // same basename in different directories are otherwise identical chips.
+      tooltip: v,
       icon: '\u{1F4C4}',
       values: [v],
     })),

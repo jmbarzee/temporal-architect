@@ -1274,38 +1274,109 @@
       "workerChargeAlternate": -770,
       "workerChargeShipped": -770
     },
-    "prototypeNamedValues": {
-      "constructor": {
+    "prototypeNamedValues": [
+      {
+        "abbreviation": "constructor",
+        "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
         "chargeIsFinite": true,
         "coreRadius": 2,
+        "name": "constructor",
         "styleIsFallback": true,
         "styleLabel": "Unknown"
       },
-      "hasOwnProperty": {
+      {
+        "abbreviation": "__proto__",
+        "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
         "chargeIsFinite": true,
         "coreRadius": 2,
+        "name": "__proto__",
         "styleIsFallback": true,
         "styleLabel": "Unknown"
       },
-      "toString": {
+      {
+        "abbreviation": "toString",
+        "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
         "chargeIsFinite": true,
         "coreRadius": 2,
+        "name": "toString",
         "styleIsFallback": true,
         "styleLabel": "Unknown"
       },
-      "valueOf": {
+      {
+        "abbreviation": "hasOwnProperty",
+        "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
         "chargeIsFinite": true,
         "coreRadius": 2,
+        "name": "hasOwnProperty",
         "styleIsFallback": true,
         "styleLabel": "Unknown"
+      },
+      {
+        "abbreviation": "valueOf",
+        "abbreviationIsString": true,
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "name": "valueOf",
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      }
+    ],
+    "reheatPolicy": {
+      "declared": {
+        "defType": {
+          "absentMeans": "hidden",
+          "alpha": 0.5,
+          "emptyMeans": "none",
+          "focus": "always",
+          "refit": true,
+          "resume": true,
+          "seedRevealed": true
+        },
+        "sourceFile": {
+          "absentMeans": "visible",
+          "alpha": 0.3,
+          "emptyMeans": "all",
+          "focus": "whenActive",
+          "refit": false,
+          "resume": true,
+          "seedRevealed": false
+        }
+      },
+      "folds": {
+        "(none)": {
+          "alpha": 0,
+          "refit": false,
+          "resume": false,
+          "seedRevealed": false
+        },
+        "defType": {
+          "alpha": 0.5,
+          "refit": true,
+          "resume": true,
+          "seedRevealed": true
+        },
+        "defType+sourceFile": {
+          "alpha": 0.5,
+          "refit": true,
+          "resume": true,
+          "seedRevealed": true
+        },
+        "sourceFile": {
+          "alpha": 0.3,
+          "refit": false,
+          "resume": true,
+          "seedRevealed": false
+        }
       }
     }
   },

@@ -80,8 +80,15 @@ export function TreeView({
     const prev = prevFilterRef.current
     if (filterStatesEqual(prev, filter)) return
     const changed = new Set<string>()
-    for (const f of selectionFor(filter, SOURCE_FILE_DIMENSION)) if (!selectionFor(prev, SOURCE_FILE_DIMENSION).has(f)) changed.add(`file:${f}`)
-    for (const t of selectionFor(filter, DEF_TYPE_DIMENSION)) if (!selectionFor(prev, DEF_TYPE_DIMENSION).has(t)) changed.add(`type:${t}`)
+    // Keyed `<dimension>:<value>`, and derived by looping the filter's own axes
+    // rather than naming two. The consumer looks these up as
+    // `${dimension}:${value}`; emitting `file:`/`type:` while it read
+    // `sourceFile:`/`defType:` left the chip-flash animation silently dead in
+    // both views — no error, no gate, just an effect that stopped happening.
+    for (const [dimension, values] of filter) {
+      const before = selectionFor(prev, dimension)
+      for (const v of values) if (!before.has(v)) changed.add(`${dimension}:${v}`)
+    }
     prevFilterRef.current = filter
     if (changed.size > 0) {
       setRecentlyChanged(changed)

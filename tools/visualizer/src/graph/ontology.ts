@@ -174,7 +174,12 @@ export function createOntology(spec: OntologySpec): Ontology {
       dimension === DEF_TYPE_DIMENSION
         ? styleForKey(valueFor(subject)).defType
         : subject.dimensions[dimension],
-    abbreviationFor: value => spec.abbreviations[value] ?? value,
+    // `hasOwn`, for the same reason as `styleForKey` (D39): a value named
+    // `constructor` or `toString` resolves up the prototype chain, the `??`
+    // never fires, and this returns a Function where a string is expected.
+    // D39 fixed the two lookups it found and missed this one.
+    abbreviationFor: value =>
+      hasOwn(spec.abbreviations, value) ? spec.abbreviations[value] : value,
     styleGroups: spec.styleGroups,
     nodeTypeKeys: spec.nodeTypeKeys,
     edgeTypes: spec.edgeTypes,

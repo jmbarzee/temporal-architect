@@ -649,3 +649,13 @@
   color: var(--vscode-foreground, #333);
   border-style: solid;
 }
+
+/* An axis in the chain with nothing to offer. It still renders — an axis that
+   is filtering must always be visible and removable, and vanishing is what made
+   an unrecognised axis dangerous rather than merely unsupported. */
+.header-chain-empty {
+  color: var(--vscode-descriptionForeground, #8b8b8b);
+  font-size: 11px;
+  font-style: italic;
+  padding: 3px 6px;
+}
