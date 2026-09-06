@@ -58,6 +58,8 @@ interface GraphViewProps {
   onFilterChange: (next: FilterState) => void
   pins: PinState
   onPinsChange: (next: PinState) => void
+  chain: readonly string[]
+  onChainChange?: (next: readonly string[]) => void
   searchQuery: string
   searchActive: boolean
   onSearchChange: (query: string, active: boolean) => void
@@ -81,6 +83,8 @@ export function GraphView({
   onFilterChange,
   pins,
   onPinsChange,
+  chain,
+  onChainChange,
   searchQuery,
   searchActive,
   onSearchChange,
@@ -521,6 +525,8 @@ export function GraphView({
             onFilterChange={onFilterChange}
             pins={pins}
             onPinsChange={onPinsChange}
+            chain={chain}
+            onChainChange={onChainChange}
             overriddenPins={overriddenPins}
             recentlyChanged={recentlyChanged}
             searchQuery={searchQuery}

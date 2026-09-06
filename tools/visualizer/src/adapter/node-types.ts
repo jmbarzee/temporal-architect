@@ -38,7 +38,7 @@ export type NodeType =
 import { createOntology } from '../graph/ontology'
 import type { Ontology } from '../graph/ontology'
 import type { NodeTypeDefinition } from '../graph/taxonomy'
-import type { DimensionDescriptor } from '../graph/dimension'
+import type { DimensionDescriptor, FilterChip } from '../graph/dimension'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
 import { TEMPORAL_TYPE_DIMENSION } from './build'
@@ -316,32 +316,27 @@ const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
 /**
  * The two axes this domain filters on, and their policies.
  *
+ * **Order is meaningful**: it is the default filter chain, left to right, so it
+ * has to match the bar the product already shipped — files first, then kinds.
+ *
  * Every field below is a behaviour that used to be a hardcoded branch in
  * `computeVisibleGraph`, `reconcile.ts` or `useSimulationLoop`. They are written
  * out per axis rather than shared, because the two axes disagree on all three
  * policies and a `for (const dim of dims)` loop over a shared rule silently
  * flattens them (T7, T8, T9).
  */
+// The chip grouping for the kind axis, lifted from the theme's
+// VIEW_FILTER_ENTRIES shape so the bar does not need to import the theme.
+const VIEW_FILTER_CHIPS: readonly FilterChip[] = [
+  { id: 'namespaceDef', label: 'Namespaces', icon: NODE_TYPE_REGISTRY.namespace.icon, values: ['namespaceDef'] },
+  { id: 'workerDef', label: 'Workers', icon: NODE_TYPE_REGISTRY.worker.icon, values: ['workerDef'] },
+  { id: 'nexus', label: 'Nexus', icon: NODE_TYPE_REGISTRY.nexusEndpoint.icon,
+    values: ['nexusEndpointDef', 'nexusServiceDef', 'nexusOperationDef'] },
+  { id: 'workflowDef', label: 'Workflows', icon: NODE_TYPE_REGISTRY.workflow.icon, values: ['workflowDef'] },
+  { id: 'activityDef', label: 'Activities', icon: NODE_TYPE_REGISTRY.activity.icon, values: ['activityDef'] },
+]
+
 const FILTER_DIMENSIONS: DimensionDescriptor[] = [
-  {
-    id: DEF_TYPE_DIMENSION,
-    label: 'Kind',
-    // Empty hides everything: the chips are an allow-list.
-    emptyMeans: 'none',
-    // Unreachable in practice — the taxonomy's fallback style gives every node
-    // a defType — but an axis has to answer, and the restrictive answer matches
-    // this axis's empty semantics.
-    absentMeans: 'hidden',
-    // Adding a kind to an allow-list only ever widens what is visible, so
-    // focusing can always expand it.
-    focus: 'always',
-    // Structural: revealing a kind can introduce nodes with no on-screen
-    // history, so they are seeded at their nearest visible ancestor before the
-    // reheat, and the camera refits to the new extent.
-    reheat: { alpha: 0.5, seedRevealed: true, refit: true, resume: true },
-    labelFor: v => v,
-    abbreviationFor: v => v.slice(0, 2),
-  },
   {
     id: SOURCE_FILE_DIMENSION,
     label: 'File',
@@ -359,8 +354,37 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
     // survives. `resume` is still true: dropping it is the specific mistake T9
     // warns about, and it leaves the canvas frozen after every file toggle.
     reheat: { alpha: 0.3, seedRevealed: false, refit: false, resume: true },
+    // One chip per file, in whatever order the graph yielded them.
+    chipsFor: values => values.map(v => ({
+      id: v,
+      label: v.split('/').pop() ?? v,
+      icon: '\u{1F4C4}',
+      values: [v],
+    })),
     labelFor: v => v.split('/').pop() ?? v,
     abbreviationFor: v => (v.split('/').pop() ?? v).slice(0, 2),
+  },
+  {
+    id: DEF_TYPE_DIMENSION,
+    label: 'Kind',
+    // Empty hides everything: the chips are an allow-list.
+    emptyMeans: 'none',
+    // Unreachable in practice — the taxonomy's fallback style gives every node
+    // a defType — but an axis has to answer, and the restrictive answer matches
+    // this axis's empty semantics.
+    absentMeans: 'hidden',
+    // Adding a kind to an allow-list only ever widens what is visible, so
+    // focusing can always expand it.
+    focus: 'always',
+    // Structural: revealing a kind can introduce nodes with no on-screen
+    // history, so they are seeded at their nearest visible ancestor before the
+    // reheat, and the camera refits to the new extent.
+    reheat: { alpha: 0.5, seedRevealed: true, refit: true, resume: true },
+    // Five chips over seven filter keys: the three nexus kinds share one. That
+    // folding is the domain choice this hook exists for.
+    chipsFor: () => VIEW_FILTER_CHIPS,
+    labelFor: v => v,
+    abbreviationFor: v => v.slice(0, 2),
   },
 ]
 

@@ -748,3 +748,33 @@ have been caught by a gate. Comparisons in the probe now go through
 `selectionFor`, so a stale name is a compile error rather than a silent `undefined`.
 
 — 2026-09-06 — agent
+
+**D44 — Removing an axis from the chain unfilters it, and "unfiltered" is
+`emptyMeans`-dependent.** The chain (R17-R19) is which axes a view *displays*.
+Two questions fall out of that, and the first answer was wrong.
+
+**Does removing an axis stop it filtering?** Yes. Leaving the selection in place
+would filter the view by something with no on-screen representation and no way to
+reach it — invisible state that reads as a bug, and R17 calls the affordance
+"delete", which has to mean the filtering stops.
+
+**What is "not filtering" on an axis?** *Not* an empty selection, and this is
+where the first implementation was wrong: I cleared the selection, which is
+correct for the file axis (`emptyMeans: 'all'`, empty matches everything) and
+**blanks the view** on the kind axis (`emptyMeans: 'none'`, empty matches
+nothing). Match-everything is therefore the empty set for one axis and the full
+value set for the other — T7's asymmetry showing up in a third place, after the
+predicate and the focus policy.
+
+Verified in the browser: removing the Kind filter on `nexus-sample` takes the
+graph 13/60 -> **37/60**, i.e. it unfilters rather than blanking, and the `+`
+restores the chips with the selection intact.
+
+**The chain default is the host's declared order** (R19). `filterDimensions`
+order *is* the chain, so "default displayed filters" is configurable by declaring
+a different taxonomy rather than by adding a setting. That also made the
+declaration order load-bearing: the first build put kinds before files and
+silently reordered the shipped bar, which the browser caught. The order is now
+documented as meaningful where it is declared.
+
+— 2026-09-06 — agent

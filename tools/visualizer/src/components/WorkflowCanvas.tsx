@@ -188,6 +188,16 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   // Per-view pin state — when a dimension is pinned, the manual reconciler
   // skips it; focus transitions can still override pins (with a flash).
+  // Which axes each view shows, in order (R17-R19). The default is the host's
+  // declared order, so "default displayed filters" is configurable by declaring
+  // a different taxonomy rather than by a setting.
+  const DEFAULT_CHAIN = React.useMemo(
+    () => DEFAULT_ONTOLOGY.filterDimensions.map(d => d.id), [])
+  const [treeChain, setTreeChain] = React.useState<readonly string[]>(
+    () => persisted.treeChain ?? DEFAULT_CHAIN)
+  const [graphChain, setGraphChain] = React.useState<readonly string[]>(
+    () => persisted.graphChain ?? DEFAULT_CHAIN)
+
   const [treePins, setTreePins] = React.useState<PinState>(() => persistedToPins(persisted.treePins, DEFAULT_PINS))
   const [graphPins, setGraphPins] = React.useState<PinState>(() => persistedToPins(persisted.graphPins, DEFAULT_PINS))
 
@@ -214,11 +224,13 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     saveState({
       treeFilter: filterToPersisted(treeFilter),
       graphFilter: filterToPersisted(graphFilter),
+      treeChain: [...treeChain],
+      graphChain: [...graphChain],
       treePins: pinsToPersisted(treePins),
       graphPins: pinsToPersisted(graphPins),
       searchQuery,
     })
-  }, [treeFilter, graphFilter, treePins, graphPins, searchQuery])
+  }, [treeFilter, graphFilter, treePins, graphPins, treeChain, graphChain, searchQuery])
 
   // Stale file cleanup: when the AST changes, remove any selectedFiles
   // entries that no longer exist in either view. Pins are not touched —
@@ -416,6 +428,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               onFilterChange={setTreeFilter}
               pins={treePins}
               onPinsChange={setTreePins}
+              chain={treeChain}
+              onChainChange={setTreeChain}
               searchQuery={searchQuery}
               searchActive={searchActive}
               onSearchChange={handleSearchChange}
@@ -439,6 +453,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               onFilterChange={setGraphFilter}
               pins={graphPins}
               onPinsChange={setGraphPins}
+              chain={graphChain}
+              onChainChange={setGraphChain}
               searchQuery={searchQuery}
               searchActive={searchActive}
               onSearchChange={handleSearchChange}

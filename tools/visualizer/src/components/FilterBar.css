@@ -594,3 +594,58 @@
   100% { box-shadow: 0 0 0 0 rgba(139, 126, 200, 0); }
 }
 
+
+/* --- Filter chain controls (R17, R18) ------------------------------------
+   The chain is an ordered list of axes; each section can be removed and a new
+   one appended. Deliberately neutral: these are structural affordances, and the
+   per-axis tints above are Unit 6's to rework. */
+
+.header-chain-remove {
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground, #8b8b8b);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+
+/* Revealed on hover so the bar stays quiet until the user reaches for it. */
+.header-files-section:hover .header-chain-remove,
+.header-types-section:hover .header-chain-remove,
+.header-chain-remove:focus-visible {
+  opacity: 1;
+}
+
+.header-chain-remove:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(0, 0, 0, 0.08));
+  color: var(--vscode-foreground, #333);
+}
+
+.header-chain-add {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+}
+
+/* Also the empty-chain state (R18): with every axis removed the bar collapses
+   to this one button, which is the only way back. */
+.header-chain-add-button {
+  border: 1px dashed var(--vscode-input-border, #c8c8c8);
+  background: transparent;
+  color: var(--vscode-descriptionForeground, #8b8b8b);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+
+.header-chain-add-button:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(0, 0, 0, 0.08));
+  color: var(--vscode-foreground, #333);
+  border-style: solid;
+}

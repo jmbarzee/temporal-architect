@@ -14,11 +14,11 @@ which is worth noticing rather than assuming.
 | `adapter/build.ts` | shim | 59 | **6** files |
 | `adapter/edge-types.ts` | shim | 165 | **5** files |
 | `adapter/node-type-styles.ts` | shim | 1 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
-| `adapter/node-types.ts` | shim | 103 | **13** files |
+| `adapter/node-types.ts` | shim | 126 | **13** files |
 | `adapter/useGraphModel.ts` | shim | 3 | `components/GraphView.tsx` |
 | `components/CanvasErrorBoundary.tsx` | manifest |  | `components/GraphView.tsx` |
 | `components/ChargeControls.tsx` | manifest |  | `components/GraphControlPanel.tsx` |
-| `components/FilterBar.tsx` | manifest | 3 | `components/GraphView.tsx`, `components/TreeView.tsx` |
+| `components/FilterBar.tsx` | manifest | 2 | `components/GraphView.tsx`, `components/TreeView.tsx` |
 | `components/ForceMap.tsx` | manifest |  | `components/ChargeControls.tsx`, `components/GravityControls.tsx`, `components/SpringControls.tsx` |
 | `components/GraphCanvas.tsx` | manifest | 3 | `components/GraphView.tsx` |
 | `components/GraphControlPanel.tsx` | manifest |  | `components/GraphCanvas.tsx`, `components/GraphView.tsx`, `components/graph-view/useHighlight.ts` |
@@ -46,7 +46,7 @@ which is worth noticing rather than assuming.
 | `components/controls/PopContext.tsx` | manifest |  | `components/GraphControlPanel.tsx`, `components/GravityControls.tsx`, `components/controls/Slider.tsx` |
 | `components/controls/Slider.tsx` | manifest |  | `components/ForceMap.tsx`, `components/GraphControlPanel.tsx`, `components/GravityControls.tsx` |
 | `components/graph-view/useHighlight.ts` | manifest | 10 | `components/GraphView.tsx` |
-| `components/graph-view/useOntology.ts` | manifest |  | **10** files |
+| `components/graph-view/useOntology.ts` | manifest |  | **11** files |
 | `components/graph-view/useSimulation.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useSimulationLoop.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useViewport.ts` | manifest |  | `components/GraphView.tsx` |
@@ -58,7 +58,7 @@ which is worth noticing rather than assuming.
 | `filter/storage.ts` | manifest | 5 | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **15** files |
-| `graph/dimension.ts` | manifest |  | **27** files |
+| `graph/dimension.ts` | manifest | 1 | **28** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
 | `graph/forces.ts` | manifest |  | **5** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
@@ -72,7 +72,7 @@ which is worth noticing rather than assuming.
 | `graph/viewport.ts` | manifest |  | **4** files |
 | `lib.ts` | neither | 24 | — |
 | `main.tsx` | neither |  | — |
-| `theme/temporal-theme.tsx` | shim | 78 | **9** files |
+| `theme/temporal-theme.tsx` | shim | 50 | **8** files |
 | `types/ast.ts` | shim | 26 | **18** files |
 | `types/decomposition.ts` | shim | 3 | **7** files |
 | `types/parser-graph.ts` | shim | 3 | **8** files |

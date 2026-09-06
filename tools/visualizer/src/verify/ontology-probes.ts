@@ -102,6 +102,7 @@ function mappingProbes(): Json {
     emptyMeans: 'none', absentMeans: 'visible',
     focus: 'always',
     reheat: { alpha: 0.5, seedRevealed: true, refit: true, resume: true },
+    chipsFor: values => values.map(v => ({ id: v, label: v, values: [v] })),
     labelFor: v => v.toUpperCase(),
     abbreviationFor: v => v.slice(0, 1).toUpperCase(),
   }

@@ -36,6 +36,9 @@ export type PersistedState = {
   graphFilter?: PersistedFilter
   treePins?: PersistedPins
   graphPins?: PersistedPins
+  /** Which axes each view shows, in order (R17-R19). */
+  treeChain?: string[]
+  graphChain?: string[]
   searchQuery?: string
 }
 
