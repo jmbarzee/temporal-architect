@@ -103,9 +103,40 @@ export const ALL_EDGE_TYPES: TemporalEdgeTypeDefinition[] = [
     physics: { strength: 1.50, distance: 470 }, tooltip: 'Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)' },
 ]
 
-export const EDGE_TYPE_REGISTRY = Object.fromEntries(
+/**
+ * Definition lookup by id.
+ *
+ * A `Map`, not an object with a keyed-record type assertion. The assertion was
+ * claiming completeness it could not check: `Object.fromEntries` yields a string
+ * index, and asserting it into the closed union told the compiler every member
+ * is present rather than establishing it. A missing entry would then have typed
+ * as present and surfaced as `undefined` at a call site that believed otherwise.
+ *
+ * The Map is also immune to the prototype-key hazard D39 fixed elsewhere: a
+ * category named `constructor` cannot resolve to an inherited member here.
+ */
+const EDGE_TYPE_BY_ID = new Map<EdgeTypeId, TemporalEdgeTypeDefinition>(
   ALL_EDGE_TYPES.map(e => [e.id, e]),
-) as Record<EdgeTypeId, TemporalEdgeTypeDefinition>
+)
+
+/**
+ * Loud on a miss, deliberately — the same choice `nodeTypeFromKind` makes, and
+ * the one T19 contrasts favourably with the two silent fallbacks that used to
+ * sit in this data path. Structurally unreachable while every id the matcher
+ * assigns is a literal of the union and `ALL_EDGE_TYPES` names each one; the
+ * throw exists so that ceasing to be true is loud rather than `undefined`
+ * arriving somewhere that cannot represent it.
+ */
+function definitionFor(id: EdgeTypeId): TemporalEdgeTypeDefinition {
+  const def = EDGE_TYPE_BY_ID.get(id)
+  if (def === undefined) {
+    throw new Error(
+      `edge type ${JSON.stringify(id)} is declared in EdgeTypeId but has no entry ` +
+      'in ALL_EDGE_TYPES; the two must be kept in step.',
+    )
+  }
+  return def
+}
 
 // Resolve an edge to its category. Preserves the original prioritized rule order
 // from forces.edgeCategory exactly: containment edges stratify by their nexus /
@@ -143,5 +174,5 @@ export function edgeTypeFor(
     else if (has('workflow', 'workflow')) id = 'linkWorkflowToWorkflow'
     else id = 'linkWorkflowToActivity'
   }
-  return EDGE_TYPE_REGISTRY[id]
+  return definitionFor(id)
 }

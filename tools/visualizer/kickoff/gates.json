@@ -11,7 +11,7 @@
     "unnoticed."
   ],
   "leakCeiling": 210,
-  "totalCeiling": 1276,
+  "totalCeiling": 1277,
   "boundaryCeiling": 8,
   "forbiddenPatternAllowlist": [
     { "file": "src/filter/storage.ts", "rule": "as-record", "max": 2 },

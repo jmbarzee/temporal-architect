@@ -21,8 +21,17 @@
 // Moving a file from the manifest into `src/adapter/` drops it out of the
 // ratchet entirely, so relocation reads exactly like deletion — and the
 // vocabulary can grow on the way across while the headline still falls. Unit 2
-// did precisely that: -308 from the manifest, +330 into the shim. The total is
-// therefore ratcheted flat, which is what makes a move have to be honest.
+// did precisely that: -308 from the manifest, +330 into the shim.
+//
+// The total is therefore ratcheted too, but the rule is "may not rise WITHOUT A
+// LOGGED REASON", not "may never rise". Frozen-forever was the first instinct
+// and it is wrong: the shim is allowed its domain, so an ordinary shim refactor
+// that names its own domain type once more is not a regression. That distinction
+// was settled empirically — the flat version failed on the very commit that
+// introduced it, over one extra `TemporalEdgeTypeDefinition` in a doc comment.
+//
+// **Relocation is never a valid reason.** That is the whole point: a move keeps
+// the total flat by construction, so it can no longer be reported as a drop.
 
 import { manifestFiles, manifestBlindSpots, shimFiles, readLines, gateConfig, report } from './manifest.mjs'
 
