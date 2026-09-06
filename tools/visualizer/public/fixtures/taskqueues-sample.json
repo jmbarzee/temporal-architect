@@ -1,0 +1,1934 @@
+{
+  "ast": {
+    "summary": {
+      "namespaces": 3,
+      "workers": 10,
+      "workflows": 4,
+      "activities": 7,
+      "nexusServices": 2
+    },
+    "diagnostics": [],
+    "definitions": [
+      {
+        "type": "workflowDef",
+        "line": 6,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "OrderWorkflow",
+        "params": "order: Order",
+        "returnType": "Result",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "activityCall",
+            "line": 8,
+            "column": 5,
+            "name": "ValidateOrder",
+            "args": "order",
+            "result": "validated",
+            "resolved": {
+              "name": "ValidateOrder",
+              "line": 43,
+              "column": 1
+            }
+          },
+          {
+            "type": "comment",
+            "line": 10,
+            "column": 5,
+            "text": " Explicit: route to dedicated payment workers"
+          },
+          {
+            "type": "activityCall",
+            "line": 11,
+            "column": 5,
+            "name": "ChargePayment",
+            "args": "order",
+            "result": "payment",
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "payments",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolved": {
+              "name": "ChargePayment",
+              "line": 46,
+              "column": 1
+            }
+          },
+          {
+            "type": "comment",
+            "line": 15,
+            "column": 5,
+            "text": " Explicit: conditional routing by shipping priority"
+          },
+          {
+            "type": "if",
+            "line": 16,
+            "column": 5,
+            "condition": "order.priority == \"express\"",
+            "body": [
+              {
+                "type": "activityCall",
+                "line": 17,
+                "column": 9,
+                "name": "ShipOrder",
+                "args": "order, payment",
+                "result": "shipment",
+                "options": {
+                  "entries": [
+                    {
+                      "key": "task_queue",
+                      "value": "shipping-express",
+                      "valueType": "string"
+                    }
+                  ]
+                },
+                "resolved": {
+                  "name": "ShipOrder",
+                  "line": 49,
+                  "column": 1
+                }
+              }
+            ],
+            "elseBody": [
+              {
+                "type": "activityCall",
+                "line": 21,
+                "column": 9,
+                "name": "ShipOrder",
+                "args": "order, payment",
+                "result": "shipment",
+                "options": {
+                  "entries": [
+                    {
+                      "key": "task_queue",
+                      "value": "shipping-standard",
+                      "valueType": "string"
+                    }
+                  ]
+                },
+                "resolved": {
+                  "name": "ShipOrder",
+                  "line": 49,
+                  "column": 1
+                }
+              }
+            ]
+          },
+          {
+            "type": "close",
+            "line": 25,
+            "column": 5,
+            "reason": "complete",
+            "args": "Result{shipment}"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 29,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "MediaPipeline",
+        "params": "media: Media",
+        "returnType": "Result",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "activityCall",
+            "line": 31,
+            "column": 5,
+            "name": "TranscodeVideo",
+            "args": "media",
+            "result": "transcoded",
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "gpu-transcode",
+                  "valueType": "string"
+                },
+                {
+                  "key": "start_to_close_timeout",
+                  "value": "10m",
+                  "valueType": "duration"
+                }
+              ]
+            },
+            "resolved": {
+              "name": "TranscodeVideo",
+              "line": 52,
+              "column": 1
+            }
+          },
+          {
+            "type": "comment",
+            "line": 36,
+            "column": 5,
+            "text": " Implicit: inherits MediaPipeline's queue (\"media\")"
+          },
+          {
+            "type": "activityCall",
+            "line": 37,
+            "column": 5,
+            "name": "GenerateThumbnail",
+            "args": "transcoded",
+            "result": "thumb",
+            "resolved": {
+              "name": "GenerateThumbnail",
+              "line": 56,
+              "column": 1
+            }
+          },
+          {
+            "type": "close",
+            "line": 39,
+            "column": 5,
+            "reason": "complete",
+            "args": "Result{thumb}"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 43,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "ValidateOrder",
+        "params": "order: Order",
+        "returnType": "ValidationResult",
+        "body": [
+          {
+            "type": "return",
+            "line": 44,
+            "column": 5,
+            "value": "validateorder"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 46,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "ChargePayment",
+        "params": "order: Order",
+        "returnType": "Payment",
+        "body": [
+          {
+            "type": "return",
+            "line": 47,
+            "column": 5,
+            "value": "chargeorder"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 49,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "ShipOrder",
+        "params": "order: Order, payment: Payment",
+        "returnType": "Shipment",
+        "body": [
+          {
+            "type": "return",
+            "line": 50,
+            "column": 5,
+            "value": "shiporder"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 52,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "TranscodeVideo",
+        "params": "media: Media",
+        "returnType": "TranscodeResult",
+        "body": [
+          {
+            "type": "raw",
+            "line": 53,
+            "column": 5,
+            "text": "heartbeatmedia.progress"
+          },
+          {
+            "type": "return",
+            "line": 54,
+            "column": 5,
+            "value": "transcodemedia"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 56,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "GenerateThumbnail",
+        "params": "video: Video",
+        "returnType": "Thumbnail",
+        "body": [
+          {
+            "type": "return",
+            "line": 57,
+            "column": 5,
+            "value": "thumbnailvideo"
+          }
+        ]
+      },
+      {
+        "type": "nexusServiceDef",
+        "line": 63,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "PaymentService",
+        "operations": [
+          {
+            "opType": "sync",
+            "line": 64,
+            "column": 5,
+            "name": "CheckPaymentStatus",
+            "params": "paymentId: string",
+            "returnType": "PaymentStatus",
+            "body": [
+              {
+                "type": "activityCall",
+                "line": 65,
+                "column": 9,
+                "name": "GetPaymentStatus",
+                "args": "paymentId",
+                "result": "status",
+                "resolved": {
+                  "name": "GetPaymentStatus",
+                  "line": 72,
+                  "column": 1
+                }
+              },
+              {
+                "type": "close",
+                "line": 66,
+                "column": 9,
+                "reason": "complete",
+                "args": "status"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "nexusServiceDef",
+        "line": 69,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "AnalyticsService",
+        "operations": [
+          {
+            "opType": "async",
+            "line": 70,
+            "column": 5,
+            "name": "TrackEvent",
+            "workflowName": "TrackEventWorkflow"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 72,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "GetPaymentStatus",
+        "params": "paymentId: string",
+        "returnType": "PaymentStatus",
+        "body": [
+          {
+            "type": "return",
+            "line": 73,
+            "column": 5,
+            "value": "lookuppaymentId"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 75,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "TrackEventWorkflow",
+        "params": "event: Event",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "activityCall",
+            "line": 76,
+            "column": 5,
+            "name": "RecordEvent",
+            "args": "event",
+            "resolved": {
+              "name": "RecordEvent",
+              "line": 79,
+              "column": 1
+            }
+          },
+          {
+            "type": "close",
+            "line": 77,
+            "column": 5,
+            "reason": "complete"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 79,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "RecordEvent",
+        "params": "event: Event",
+        "body": [
+          {
+            "type": "raw",
+            "line": 80,
+            "column": 5,
+            "text": "recordevent"
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 84,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "orderWorker",
+        "workflows": [
+          {
+            "name": "OrderWorkflow",
+            "line": 85,
+            "column": 5,
+            "resolved": {
+              "name": "OrderWorkflow",
+              "line": 6,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [
+          {
+            "name": "ValidateOrder",
+            "line": 86,
+            "column": 5,
+            "resolved": {
+              "name": "ValidateOrder",
+              "line": 43,
+              "column": 1
+            }
+          }
+        ],
+        "services": []
+      },
+      {
+        "type": "workerDef",
+        "line": 88,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "paymentWorker",
+        "workflows": [],
+        "activities": [
+          {
+            "name": "ChargePayment",
+            "line": 89,
+            "column": 5,
+            "resolved": {
+              "name": "ChargePayment",
+              "line": 46,
+              "column": 1
+            }
+          },
+          {
+            "name": "GetPaymentStatus",
+            "line": 90,
+            "column": 5,
+            "resolved": {
+              "name": "GetPaymentStatus",
+              "line": 72,
+              "column": 1
+            }
+          }
+        ],
+        "services": [
+          {
+            "name": "PaymentService",
+            "line": 91,
+            "column": 5,
+            "resolved": {
+              "name": "PaymentService",
+              "line": 63,
+              "column": 1
+            }
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 93,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "analyticsWorker",
+        "workflows": [
+          {
+            "name": "TrackEventWorkflow",
+            "line": 94,
+            "column": 5,
+            "resolved": {
+              "name": "TrackEventWorkflow",
+              "line": 75,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [
+          {
+            "name": "RecordEvent",
+            "line": 95,
+            "column": 5,
+            "resolved": {
+              "name": "RecordEvent",
+              "line": 79,
+              "column": 1
+            }
+          }
+        ],
+        "services": [
+          {
+            "name": "AnalyticsService",
+            "line": 96,
+            "column": 5,
+            "resolved": {
+              "name": "AnalyticsService",
+              "line": 69,
+              "column": 1
+            }
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 98,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "expressShipWorker",
+        "workflows": [],
+        "activities": [
+          {
+            "name": "ShipOrder",
+            "line": 99,
+            "column": 5,
+            "resolved": {
+              "name": "ShipOrder",
+              "line": 49,
+              "column": 1
+            }
+          }
+        ],
+        "services": []
+      },
+      {
+        "type": "workerDef",
+        "line": 101,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "standardShipWorker",
+        "workflows": [],
+        "activities": [
+          {
+            "name": "ShipOrder",
+            "line": 102,
+            "column": 5,
+            "resolved": {
+              "name": "ShipOrder",
+              "line": 49,
+              "column": 1
+            }
+          }
+        ],
+        "services": []
+      },
+      {
+        "type": "workerDef",
+        "line": 109,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "realtimeAnalyticsWorker",
+        "workflows": [
+          {
+            "name": "TrackEventWorkflow",
+            "line": 110,
+            "column": 5,
+            "resolved": {
+              "name": "TrackEventWorkflow",
+              "line": 75,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [
+          {
+            "name": "RecordEvent",
+            "line": 111,
+            "column": 5,
+            "resolved": {
+              "name": "RecordEvent",
+              "line": 79,
+              "column": 1
+            }
+          }
+        ],
+        "services": []
+      },
+      {
+        "type": "workerDef",
+        "line": 113,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "paymentWorkerSecondary",
+        "workflows": [],
+        "activities": [
+          {
+            "name": "ChargePayment",
+            "line": 114,
+            "column": 5,
+            "resolved": {
+              "name": "ChargePayment",
+              "line": 46,
+              "column": 1
+            }
+          },
+          {
+            "name": "GetPaymentStatus",
+            "line": 115,
+            "column": 5,
+            "resolved": {
+              "name": "GetPaymentStatus",
+              "line": 72,
+              "column": 1
+            }
+          }
+        ],
+        "services": [
+          {
+            "name": "PaymentService",
+            "line": 116,
+            "column": 5,
+            "resolved": {
+              "name": "PaymentService",
+              "line": 63,
+              "column": 1
+            }
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 118,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "mediaWorker",
+        "workflows": [
+          {
+            "name": "MediaPipeline",
+            "line": 119,
+            "column": 5,
+            "resolved": {
+              "name": "MediaPipeline",
+              "line": 29,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [
+          {
+            "name": "GenerateThumbnail",
+            "line": 120,
+            "column": 5,
+            "resolved": {
+              "name": "GenerateThumbnail",
+              "line": 56,
+              "column": 1
+            }
+          }
+        ],
+        "services": []
+      },
+      {
+        "type": "workerDef",
+        "line": 122,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "gpuWorker",
+        "workflows": [],
+        "activities": [
+          {
+            "name": "TranscodeVideo",
+            "line": 123,
+            "column": 5,
+            "resolved": {
+              "name": "TranscodeVideo",
+              "line": 52,
+              "column": 1
+            }
+          }
+        ],
+        "services": []
+      },
+      {
+        "type": "namespaceDef",
+        "line": 127,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "ecommerce",
+        "workers": [
+          {
+            "workerName": "orderWorker",
+            "line": 128,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "orders",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "orderWorker",
+              "line": 84,
+              "column": 1
+            }
+          },
+          {
+            "workerName": "paymentWorker",
+            "line": 131,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "payments",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "paymentWorker",
+              "line": 88,
+              "column": 1
+            }
+          },
+          {
+            "workerName": "paymentWorkerSecondary",
+            "line": 136,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "payments-secondary",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "paymentWorkerSecondary",
+              "line": 113,
+              "column": 1
+            }
+          },
+          {
+            "workerName": "expressShipWorker",
+            "line": 139,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "shipping-express",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "expressShipWorker",
+              "line": 98,
+              "column": 1
+            }
+          },
+          {
+            "workerName": "standardShipWorker",
+            "line": 142,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "shipping-standard",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "standardShipWorker",
+              "line": 101,
+              "column": 1
+            }
+          },
+          {
+            "workerName": "analyticsWorker",
+            "line": 150,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "analytics",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "analyticsWorker",
+              "line": 93,
+              "column": 1
+            }
+          },
+          {
+            "workerName": "realtimeAnalyticsWorker",
+            "line": 155,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "analytics-realtime",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "realtimeAnalyticsWorker",
+              "line": 109,
+              "column": 1
+            }
+          }
+        ],
+        "endpoints": [
+          {
+            "endpointName": "PaymentEndpoint",
+            "line": 147,
+            "column": 5,
+            "taskQueue": "payments",
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "payments",
+                  "valueType": "string"
+                }
+              ]
+            }
+          },
+          {
+            "endpointName": "AnalyticsEndpoint",
+            "line": 158,
+            "column": 5,
+            "taskQueue": "analytics",
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "analytics",
+                  "valueType": "string"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "type": "namespaceDef",
+        "line": 162,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "media",
+        "workers": [
+          {
+            "workerName": "mediaWorker",
+            "line": 163,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "media",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "mediaWorker",
+              "line": 118,
+              "column": 1
+            }
+          },
+          {
+            "workerName": "gpuWorker",
+            "line": 166,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "gpu-transcode",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "gpuWorker",
+              "line": 122,
+              "column": 1
+            }
+          }
+        ],
+        "endpoints": []
+      },
+      {
+        "type": "workflowDef",
+        "line": 173,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "PartnerCheckout",
+        "params": "request: PartnerRequest",
+        "returnType": "PartnerResult",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "nexusCall",
+            "line": 174,
+            "column": 5,
+            "endpoint": "PaymentEndpoint",
+            "service": "PaymentService",
+            "operation": "CheckPaymentStatus",
+            "args": "request.paymentId",
+            "result": "status",
+            "resolvedEndpoint": {
+              "name": "PaymentEndpoint",
+              "line": 147,
+              "column": 5
+            },
+            "resolvedEndpointNamespace": "ecommerce",
+            "resolvedService": {
+              "name": "PaymentService",
+              "line": 63,
+              "column": 1
+            },
+            "resolvedOperation": {
+              "name": "CheckPaymentStatus",
+              "line": 64,
+              "column": 5
+            }
+          },
+          {
+            "type": "nexusCall",
+            "line": 175,
+            "column": 5,
+            "detach": true,
+            "endpoint": "AnalyticsEndpoint",
+            "service": "AnalyticsService",
+            "operation": "TrackEvent",
+            "args": "request.event",
+            "resolvedEndpoint": {
+              "name": "AnalyticsEndpoint",
+              "line": 158,
+              "column": 5
+            },
+            "resolvedEndpointNamespace": "ecommerce",
+            "resolvedService": {
+              "name": "AnalyticsService",
+              "line": 69,
+              "column": 1
+            },
+            "resolvedOperation": {
+              "name": "TrackEvent",
+              "line": 70,
+              "column": 5
+            }
+          },
+          {
+            "type": "close",
+            "line": 176,
+            "column": 5,
+            "reason": "complete",
+            "args": "PartnerResult{status: status}"
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 178,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "partnerWorker",
+        "workflows": [
+          {
+            "name": "PartnerCheckout",
+            "line": 179,
+            "column": 5,
+            "resolved": {
+              "name": "PartnerCheckout",
+              "line": 173,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [],
+        "services": []
+      },
+      {
+        "type": "namespaceDef",
+        "line": 181,
+        "column": 1,
+        "sourceFile": "task-queues.twf",
+        "name": "partner",
+        "workers": [
+          {
+            "workerName": "partnerWorker",
+            "line": 182,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "partner",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "partnerWorker",
+              "line": 178,
+              "column": 1
+            }
+          }
+        ],
+        "endpoints": []
+      }
+    ]
+  },
+  "parserGraph": {
+    "summary": {
+      "nodes": 37,
+      "edges": 49,
+      "coarsenedEdges": 7,
+      "unresolved": 0,
+      "diagnostics": 0
+    },
+    "nodes": [
+      {
+        "id": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
+        "definition": "activity:ChargePayment"
+      },
+      {
+        "id": "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "definition": "activity:ChargePayment"
+      },
+      {
+        "id": "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+        "definition": "activity:GenerateThumbnail"
+      },
+      {
+        "id": "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
+        "definition": "activity:GetPaymentStatus"
+      },
+      {
+        "id": "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "definition": "activity:GetPaymentStatus"
+      },
+      {
+        "id": "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
+        "definition": "activity:RecordEvent"
+      },
+      {
+        "id": "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "definition": "activity:RecordEvent"
+      },
+      {
+        "id": "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
+        "definition": "activity:ShipOrder"
+      },
+      {
+        "id": "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
+        "definition": "activity:ShipOrder"
+      },
+      {
+        "id": "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
+        "definition": "activity:TranscodeVideo"
+      },
+      {
+        "id": "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
+        "definition": "activity:ValidateOrder"
+      },
+      {
+        "id": "namespace:ecommerce",
+        "definition": "namespace:ecommerce"
+      },
+      {
+        "id": "namespace:media",
+        "definition": "namespace:media"
+      },
+      {
+        "id": "namespace:partner",
+        "definition": "namespace:partner"
+      },
+      {
+        "id": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+        "definition": "nexusEndpoint:AnalyticsEndpoint",
+        "queue": "analytics"
+      },
+      {
+        "id": "nexusEndpoint:PaymentEndpoint/namespace:ecommerce",
+        "definition": "nexusEndpoint:PaymentEndpoint",
+        "queue": "payments"
+      },
+      {
+        "id": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+        "definition": "nexusOperation:AnalyticsService.TrackEvent",
+        "worker": "worker:analyticsWorker",
+        "queue": "analytics"
+      },
+      {
+        "id": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce",
+        "definition": "nexusOperation:PaymentService.CheckPaymentStatus",
+        "worker": "worker:paymentWorker",
+        "queue": "payments"
+      },
+      {
+        "id": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "definition": "nexusOperation:PaymentService.CheckPaymentStatus",
+        "worker": "worker:paymentWorkerSecondary",
+        "queue": "payments-secondary"
+      },
+      {
+        "id": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
+        "definition": "nexusService:AnalyticsService",
+        "worker": "worker:analyticsWorker",
+        "namespace": "namespace:ecommerce",
+        "queue": "analytics"
+      },
+      {
+        "id": "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce",
+        "definition": "nexusService:PaymentService",
+        "worker": "worker:paymentWorker",
+        "namespace": "namespace:ecommerce",
+        "queue": "payments"
+      },
+      {
+        "id": "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "definition": "nexusService:PaymentService",
+        "worker": "worker:paymentWorkerSecondary",
+        "namespace": "namespace:ecommerce",
+        "queue": "payments-secondary"
+      },
+      {
+        "id": "worker:analyticsWorker/namespace:ecommerce",
+        "definition": "worker:analyticsWorker",
+        "queue": "analytics"
+      },
+      {
+        "id": "worker:expressShipWorker/namespace:ecommerce",
+        "definition": "worker:expressShipWorker",
+        "queue": "shipping-express"
+      },
+      {
+        "id": "worker:gpuWorker/namespace:media",
+        "definition": "worker:gpuWorker",
+        "queue": "gpu-transcode"
+      },
+      {
+        "id": "worker:mediaWorker/namespace:media",
+        "definition": "worker:mediaWorker",
+        "queue": "media"
+      },
+      {
+        "id": "worker:orderWorker/namespace:ecommerce",
+        "definition": "worker:orderWorker",
+        "queue": "orders"
+      },
+      {
+        "id": "worker:partnerWorker/namespace:partner",
+        "definition": "worker:partnerWorker",
+        "queue": "partner"
+      },
+      {
+        "id": "worker:paymentWorker/namespace:ecommerce",
+        "definition": "worker:paymentWorker",
+        "queue": "payments"
+      },
+      {
+        "id": "worker:paymentWorkerSecondary/namespace:ecommerce",
+        "definition": "worker:paymentWorkerSecondary",
+        "queue": "payments-secondary"
+      },
+      {
+        "id": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "definition": "worker:realtimeAnalyticsWorker",
+        "queue": "analytics-realtime"
+      },
+      {
+        "id": "worker:standardShipWorker/namespace:ecommerce",
+        "definition": "worker:standardShipWorker",
+        "queue": "shipping-standard"
+      },
+      {
+        "id": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+        "definition": "workflow:MediaPipeline"
+      },
+      {
+        "id": "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce",
+        "definition": "workflow:OrderWorkflow"
+      },
+      {
+        "id": "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner",
+        "definition": "workflow:PartnerCheckout"
+      },
+      {
+        "id": "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+        "definition": "workflow:TrackEventWorkflow"
+      },
+      {
+        "id": "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "definition": "workflow:TrackEventWorkflow"
+      }
+    ],
+    "edges": [
+      {
+        "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
+        "to": "worker:paymentWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 89
+      },
+      {
+        "from": "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "to": "worker:paymentWorkerSecondary/namespace:ecommerce",
+        "kind": "containment",
+        "line": 114
+      },
+      {
+        "from": "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+        "to": "worker:mediaWorker/namespace:media",
+        "kind": "containment",
+        "line": 120
+      },
+      {
+        "from": "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
+        "to": "worker:paymentWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 90
+      },
+      {
+        "from": "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "to": "worker:paymentWorkerSecondary/namespace:ecommerce",
+        "kind": "containment",
+        "line": 115
+      },
+      {
+        "from": "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
+        "to": "worker:analyticsWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 95
+      },
+      {
+        "from": "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "to": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 111
+      },
+      {
+        "from": "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
+        "to": "worker:expressShipWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 99
+      },
+      {
+        "from": "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
+        "to": "worker:standardShipWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 102
+      },
+      {
+        "from": "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
+        "to": "worker:gpuWorker/namespace:media",
+        "kind": "containment",
+        "line": 123
+      },
+      {
+        "from": "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
+        "to": "worker:orderWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 86
+      },
+      {
+        "from": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 158
+      },
+      {
+        "from": "nexusEndpoint:PaymentEndpoint/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 147
+      },
+      {
+        "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+        "to": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+        "kind": "nexusRoute",
+        "line": 158
+      },
+      {
+        "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+        "to": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 70
+      },
+      {
+        "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+        "to": "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+        "kind": "asyncBacking",
+        "line": 70,
+        "routing": {}
+      },
+      {
+        "from": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce",
+        "to": "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 65,
+        "routing": {}
+      },
+      {
+        "from": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce",
+        "to": "nexusEndpoint:PaymentEndpoint/namespace:ecommerce",
+        "kind": "nexusRoute",
+        "line": 147
+      },
+      {
+        "from": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce",
+        "to": "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 64
+      },
+      {
+        "from": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "to": "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 65,
+        "routing": {}
+      },
+      {
+        "from": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "to": "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "kind": "containment",
+        "line": 64
+      },
+      {
+        "from": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
+        "to": "worker:analyticsWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 96
+      },
+      {
+        "from": "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce",
+        "to": "worker:paymentWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 91
+      },
+      {
+        "from": "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce",
+        "to": "worker:paymentWorkerSecondary/namespace:ecommerce",
+        "kind": "containment",
+        "line": 116
+      },
+      {
+        "from": "worker:analyticsWorker/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 150
+      },
+      {
+        "from": "worker:expressShipWorker/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 139
+      },
+      {
+        "from": "worker:gpuWorker/namespace:media",
+        "to": "namespace:media",
+        "kind": "containment",
+        "line": 166
+      },
+      {
+        "from": "worker:mediaWorker/namespace:media",
+        "to": "namespace:media",
+        "kind": "containment",
+        "line": 163
+      },
+      {
+        "from": "worker:orderWorker/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 128
+      },
+      {
+        "from": "worker:partnerWorker/namespace:partner",
+        "to": "namespace:partner",
+        "kind": "containment",
+        "line": 182
+      },
+      {
+        "from": "worker:paymentWorker/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 131
+      },
+      {
+        "from": "worker:paymentWorkerSecondary/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 136
+      },
+      {
+        "from": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 155
+      },
+      {
+        "from": "worker:standardShipWorker/namespace:ecommerce",
+        "to": "namespace:ecommerce",
+        "kind": "containment",
+        "line": 142
+      },
+      {
+        "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+        "to": "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+        "kind": "activityCall",
+        "line": 37,
+        "routing": {}
+      },
+      {
+        "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+        "to": "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
+        "kind": "activityCall",
+        "line": 31,
+        "routing": {
+          "explicit": "gpu-transcode"
+        }
+      },
+      {
+        "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+        "to": "worker:mediaWorker/namespace:media",
+        "kind": "containment",
+        "line": 119
+      },
+      {
+        "from": "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce",
+        "to": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 11,
+        "routing": {
+          "explicit": "payments"
+        }
+      },
+      {
+        "from": "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce",
+        "to": "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 17,
+        "routing": {
+          "explicit": "shipping-express"
+        }
+      },
+      {
+        "from": "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce",
+        "to": "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 21,
+        "routing": {
+          "explicit": "shipping-standard"
+        }
+      },
+      {
+        "from": "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce",
+        "to": "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 8,
+        "routing": {}
+      },
+      {
+        "from": "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce",
+        "to": "worker:orderWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 85
+      },
+      {
+        "from": "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner",
+        "to": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+        "kind": "nexusCall",
+        "line": 175,
+        "routing": {
+          "nexusEndpoint": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce"
+        }
+      },
+      {
+        "from": "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner",
+        "to": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce",
+        "kind": "nexusCall",
+        "line": 174,
+        "routing": {
+          "nexusEndpoint": "nexusEndpoint:PaymentEndpoint/namespace:ecommerce"
+        }
+      },
+      {
+        "from": "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner",
+        "to": "worker:partnerWorker/namespace:partner",
+        "kind": "containment",
+        "line": 179
+      },
+      {
+        "from": "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+        "to": "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 76,
+        "routing": {}
+      },
+      {
+        "from": "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+        "to": "worker:analyticsWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 94
+      },
+      {
+        "from": "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "to": "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "kind": "activityCall",
+        "line": 76,
+        "routing": {}
+      },
+      {
+        "from": "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "to": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
+        "kind": "containment",
+        "line": 110
+      }
+    ],
+    "coarsenedEdges": [
+      {
+        "from": "namespace:partner",
+        "to": "namespace:ecommerce",
+        "tier": "namespace",
+        "weight": 2
+      },
+      {
+        "from": "worker:mediaWorker/namespace:media",
+        "to": "worker:gpuWorker/namespace:media",
+        "tier": "worker",
+        "weight": 1
+      },
+      {
+        "from": "worker:orderWorker/namespace:ecommerce",
+        "to": "worker:expressShipWorker/namespace:ecommerce",
+        "tier": "worker",
+        "weight": 1
+      },
+      {
+        "from": "worker:orderWorker/namespace:ecommerce",
+        "to": "worker:paymentWorker/namespace:ecommerce",
+        "tier": "worker",
+        "weight": 1
+      },
+      {
+        "from": "worker:orderWorker/namespace:ecommerce",
+        "to": "worker:standardShipWorker/namespace:ecommerce",
+        "tier": "worker",
+        "weight": 1
+      },
+      {
+        "from": "worker:partnerWorker/namespace:partner",
+        "to": "worker:analyticsWorker/namespace:ecommerce",
+        "tier": "worker",
+        "weight": 1
+      },
+      {
+        "from": "worker:partnerWorker/namespace:partner",
+        "to": "worker:paymentWorker/namespace:ecommerce",
+        "tier": "worker",
+        "weight": 1
+      }
+    ],
+    "unresolved": [],
+    "diagnostics": []
+  },
+  "decomposition": {
+    "nodes": [
+      {
+        "key": "activity:ChargePayment",
+        "kind": "activity",
+        "name": "ChargePayment",
+        "workers": [
+          "worker:paymentWorker",
+          "worker:paymentWorkerSecondary"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:GenerateThumbnail",
+        "kind": "activity",
+        "name": "GenerateThumbnail",
+        "workers": [
+          "worker:mediaWorker"
+        ],
+        "namespaces": [
+          "namespace:media"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:GetPaymentStatus",
+        "kind": "activity",
+        "name": "GetPaymentStatus",
+        "workers": [
+          "worker:paymentWorker",
+          "worker:paymentWorkerSecondary"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:RecordEvent",
+        "kind": "activity",
+        "name": "RecordEvent",
+        "workers": [
+          "worker:analyticsWorker",
+          "worker:realtimeAnalyticsWorker"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:ShipOrder",
+        "kind": "activity",
+        "name": "ShipOrder",
+        "workers": [
+          "worker:expressShipWorker",
+          "worker:standardShipWorker"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:TranscodeVideo",
+        "kind": "activity",
+        "name": "TranscodeVideo",
+        "workers": [
+          "worker:gpuWorker"
+        ],
+        "namespaces": [
+          "namespace:media"
+        ],
+        "complexity": 3
+      },
+      {
+        "key": "activity:ValidateOrder",
+        "kind": "activity",
+        "name": "ValidateOrder",
+        "workers": [
+          "worker:orderWorker"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "nexusOperation:AnalyticsService.TrackEvent",
+        "kind": "nexusOperation",
+        "name": "AnalyticsService.TrackEvent",
+        "workers": [
+          "worker:analyticsWorker"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 1
+      },
+      {
+        "key": "nexusOperation:PaymentService.CheckPaymentStatus",
+        "kind": "nexusOperation",
+        "name": "PaymentService.CheckPaymentStatus",
+        "workers": [
+          "worker:paymentWorker",
+          "worker:paymentWorkerSecondary"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 5
+      },
+      {
+        "key": "workflow:MediaPipeline",
+        "kind": "workflow",
+        "name": "MediaPipeline",
+        "workers": [
+          "worker:mediaWorker"
+        ],
+        "namespaces": [
+          "namespace:media"
+        ],
+        "complexity": 9
+      },
+      {
+        "key": "workflow:OrderWorkflow",
+        "kind": "workflow",
+        "name": "OrderWorkflow",
+        "workers": [
+          "worker:orderWorker"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 17
+      },
+      {
+        "key": "workflow:PartnerCheckout",
+        "kind": "workflow",
+        "name": "PartnerCheckout",
+        "workers": [
+          "worker:partnerWorker"
+        ],
+        "namespaces": [
+          "namespace:partner"
+        ],
+        "complexity": 8
+      },
+      {
+        "key": "workflow:TrackEventWorkflow",
+        "kind": "workflow",
+        "name": "TrackEventWorkflow",
+        "workers": [
+          "worker:analyticsWorker",
+          "worker:realtimeAnalyticsWorker"
+        ],
+        "namespaces": [
+          "namespace:ecommerce"
+        ],
+        "complexity": 5
+      }
+    ],
+    "roots": [
+      {
+        "key": "nexusOperation:AnalyticsService.TrackEvent",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "nexusOperation:PaymentService.CheckPaymentStatus",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:MediaPipeline",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:OrderWorkflow",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:PartnerCheckout",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:TrackEventWorkflow",
+        "source": "heuristic",
+        "reasons": [
+          "asyncBacking target"
+        ]
+      }
+    ],
+    "chunks": [
+      {
+        "id": "chunk:nexusOperation:AnalyticsService.TrackEvent",
+        "roots": [
+          {
+            "key": "nexusOperation:AnalyticsService.TrackEvent",
+            "reaches": [
+              "activity:RecordEvent",
+              "nexusOperation:AnalyticsService.TrackEvent",
+              "workflow:TrackEventWorkflow"
+            ]
+          },
+          {
+            "key": "workflow:TrackEventWorkflow",
+            "reaches": [
+              "activity:RecordEvent",
+              "workflow:TrackEventWorkflow"
+            ]
+          }
+        ],
+        "members": [
+          "activity:RecordEvent",
+          "nexusOperation:AnalyticsService.TrackEvent",
+          "workflow:TrackEventWorkflow"
+        ],
+        "overlap": [
+          "activity:RecordEvent",
+          "workflow:TrackEventWorkflow"
+        ],
+        "complexity": 8
+      },
+      {
+        "id": "chunk:nexusOperation:PaymentService.CheckPaymentStatus",
+        "roots": [
+          {
+            "key": "nexusOperation:PaymentService.CheckPaymentStatus",
+            "reaches": [
+              "activity:GetPaymentStatus",
+              "nexusOperation:PaymentService.CheckPaymentStatus"
+            ]
+          }
+        ],
+        "members": [
+          "activity:GetPaymentStatus",
+          "nexusOperation:PaymentService.CheckPaymentStatus"
+        ],
+        "complexity": 7
+      },
+      {
+        "id": "chunk:workflow:MediaPipeline",
+        "roots": [
+          {
+            "key": "workflow:MediaPipeline",
+            "reaches": [
+              "activity:GenerateThumbnail",
+              "activity:TranscodeVideo",
+              "workflow:MediaPipeline"
+            ]
+          }
+        ],
+        "members": [
+          "activity:GenerateThumbnail",
+          "activity:TranscodeVideo",
+          "workflow:MediaPipeline"
+        ],
+        "complexity": 14
+      },
+      {
+        "id": "chunk:workflow:OrderWorkflow",
+        "roots": [
+          {
+            "key": "workflow:OrderWorkflow",
+            "reaches": [
+              "activity:ChargePayment",
+              "activity:ShipOrder",
+              "activity:ValidateOrder",
+              "workflow:OrderWorkflow"
+            ]
+          }
+        ],
+        "members": [
+          "activity:ChargePayment",
+          "activity:ShipOrder",
+          "activity:ValidateOrder",
+          "workflow:OrderWorkflow"
+        ],
+        "complexity": 23
+      },
+      {
+        "id": "chunk:workflow:PartnerCheckout",
+        "roots": [
+          {
+            "key": "workflow:PartnerCheckout",
+            "reaches": [
+              "workflow:PartnerCheckout"
+            ]
+          }
+        ],
+        "members": [
+          "workflow:PartnerCheckout"
+        ],
+        "complexity": 8
+      }
+    ],
+    "chunkEdges": [
+      {
+        "from": "chunk:workflow:PartnerCheckout",
+        "to": "chunk:nexusOperation:AnalyticsService.TrackEvent",
+        "via": "nexusCall"
+      },
+      {
+        "from": "chunk:workflow:PartnerCheckout",
+        "to": "chunk:nexusOperation:PaymentService.CheckPaymentStatus",
+        "via": "nexusCall"
+      }
+    ],
+    "floor": 4,
+    "ceiling": 0,
+    "maxDepth": 4,
+    "strategies": [
+      "tree",
+      "nexus",
+      "worker",
+      "namespace",
+      "service",
+      "subtree"
+    ]
+  }
+}

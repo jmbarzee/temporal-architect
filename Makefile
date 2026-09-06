@@ -155,7 +155,27 @@ publish-npm-libs:
 
 # ── Test targets ─────────────────────────────────────────────────────────────
 
-.PHONY: test vet
+.PHONY: test vet typecheck typecheck-visualizer verify-visualizer gates-visualizer check-visualizer
+
+## Run every typecheck gate
+typecheck: typecheck-visualizer
+
+## Typecheck the visualizer (strict tsc, no emit)
+typecheck-visualizer:
+	cd tools/visualizer && ./node_modules/.bin/tsc --noEmit
+
+## Compare the visualizer goldens against the committed baseline
+verify-visualizer:
+	cd tools/visualizer && npm run verify
+
+## Run the visualizer's ratchet gates: vocabulary, import direction, forbidden patterns
+gates-visualizer:
+	cd tools/visualizer && npm run leak-gate
+	cd tools/visualizer && npm run boundary-gate
+	cd tools/visualizer && npm run pattern-gate
+
+## Every visualizer gate, in the order a failure is cheapest to read
+check-visualizer: typecheck-visualizer gates-visualizer verify-visualizer
 
 ## Run Go tests
 # tools/sampler is its own module (resolved against ../lsp via the repo-root

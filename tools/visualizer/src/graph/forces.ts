@@ -15,6 +15,7 @@ import type { NodeType, GraphEdge } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
 import { edgeTypeFor } from './edge-types'
 import type { EdgeTypeId } from './edge-types'
+import type { Rng } from './rng'
 
 // ── Per-type / per-edge accessors ───────────────────────────────────────────
 // Each force reads its per-type/per-edge values from the id-keyed param maps via
@@ -87,7 +88,12 @@ export function fromPolar(r: number, theta: number): { x: number; y: number } {
 // squared average of the two endpoints' effective core radii
 // (rEff = coreRadiusMultiplier × coreRadius[type]). The exponent acts on the
 // squared distance directly (no /2) — chargeExponent 1 = inverse-square.
-export function applyChargeForce(active: SimNode[], params: ChargeParams, alpha: number): void {
+export function applyChargeForce(
+  active: SimNode[],
+  params: ChargeParams,
+  alpha: number,
+  rng: Rng,
+): void {
   const crMul = params.coreRadiusMultiplier
   const pushMul = params.pushMultiplier
   const chargeExp = params.chargeExponent
@@ -102,7 +108,7 @@ export function applyChargeForce(active: SimNode[], params: ChargeParams, alpha:
       // consistently, so the unit direction stays unit and we don't pump a
       // huge force into a degenerate frame.
       if (dist2 < 0.01) {
-        const angle = Math.random() * Math.PI * 2
+        const angle = rng() * Math.PI * 2
         dx = Math.cos(angle)
         dy = Math.sin(angle)
         dist2 = 1
@@ -138,6 +144,7 @@ export function applyLinkForce(
   nodeMap: Map<string, SimNode>,
   params: LinkParams,
   alpha: number,
+  rng: Rng,
 ): void {
   const degree = new Map<string, number>()
   for (const edge of activeEdges) {
@@ -159,7 +166,7 @@ export function applyLinkForce(
     // Coincident endpoints: use a true random unit vector and reset dist to 1,
     // so the 1/dist factor and the (dx,dy) direction stay sane.
     if (dist < 0.1) {
-      const angle = Math.random() * Math.PI * 2
+      const angle = rng() * Math.PI * 2
       dx = Math.cos(angle)
       dy = Math.sin(angle)
       dist = 1
@@ -188,11 +195,15 @@ export function applyLinkForce(
 export const RADIAL_R_MIN = 60
 export const RADIAL_R_MAX = 540
 
-// Median of the band centres of the node types present in `active`. Subtracting
-// it keeps the band stack symmetric about the origin, so editing or toggling
-// bands doesn't shift the whole graph vertically (and it shares the origin with
-// center gravity, so swapping forces doesn't lurch the layout).
-function medianBandCenter(active: SimNode[], params: GravityParams): number {
+// One band centre per *distinct type present* in `active`, in first-encounter
+// order. Exported because the collection step — not the median — is where the
+// dedup happens, and a dedup that silently degenerates to one entry per node is
+// invisible in every downstream number except this array's length.
+//
+// Deliberately NOT deduplicated by centre value: several types share a band, so
+// the entry count and the distinct-value count differ (7 types, 4 distinct
+// centres).
+export function bandCenters(active: SimNode[], params: GravityParams): number[] {
   const seen = new Set<NodeType>()
   const centers: number[] = []
   for (const n of active) {
@@ -201,6 +212,15 @@ function medianBandCenter(active: SimNode[], params: GravityParams): number {
     const b = bandForType(params, n.nodeType)
     centers.push((b.yMin + b.yMax) / 2)
   }
+  return centers
+}
+
+// Median of the band centres of the node types present in `active`. Subtracting
+// it keeps the band stack symmetric about the origin, so editing or toggling
+// bands doesn't shift the whole graph vertically (and it shares the origin with
+// center gravity, so swapping forces doesn't lurch the layout).
+function medianBandCenter(active: SimNode[], params: GravityParams): number {
+  const centers = bandCenters(active, params)
   if (centers.length === 0) return 0
   centers.sort((a, b) => a - b)
   const m = centers.length
@@ -214,9 +234,14 @@ function medianBandCenter(active: SimNode[], params: GravityParams): number {
 //               whole stack is re-centred on the origin each tick (median).
 //   radial    — the band maps to a distance-from-origin ring (uppermost tier
 //               innermost); angular spread is left to charge.
-export function applyBandGravity(active: SimNode[], params: GravityParams, alpha: number): void {
+export function applyBandGravity(
+  active: SimNode[],
+  params: GravityParams,
+  alpha: number,
+  rng: Rng,
+): void {
   if (params.gravityMode === 'radial') {
-    applyBandGravityRadial(active, params, alpha)
+    applyBandGravityRadial(active, params, alpha, rng)
     return
   }
 
@@ -257,7 +282,12 @@ function bandForce(d: number, exp: number): number {
 // Radial band gravity: map each present type's band centre to a target radius
 // (smallest centre = innermost ring) and pull each node's distance-from-origin
 // toward its type's ring. Charge handles distributing nodes around the ring.
-function applyBandGravityRadial(active: SimNode[], params: GravityParams, alpha: number): void {
+function applyBandGravityRadial(
+  active: SimNode[],
+  params: GravityParams,
+  alpha: number,
+  rng: Rng,
+): void {
   const gy = params.gravityY
   const center = new Map<NodeType, number>()
   for (const n of active) {
@@ -278,8 +308,8 @@ function applyBandGravityRadial(active: SimNode[], params: GravityParams, alpha:
     if (r < 1e-6) {
       // No defined direction at the origin — give a tiny outward kick so the
       // ring pull has something to act on next tick.
-      node.vx += (Math.random() - 0.5)
-      node.vy += (Math.random() - 0.5)
+      node.vx += (rng() - 0.5)
+      node.vy += (rng() - 0.5)
       continue
     }
     const f = bandForce(r - targetR, params.gravityBandExp)

@@ -1,0 +1,2366 @@
+{
+  "ast": {
+    "summary": {
+      "namespaces": 5,
+      "workers": 5,
+      "workflows": 8,
+      "activities": 9,
+      "nexusServices": 3
+    },
+    "diagnostics": [],
+    "definitions": [
+      {
+        "type": "nexusServiceDef",
+        "line": 6,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "PaymentsService",
+        "operations": [
+          {
+            "opType": "async",
+            "line": 7,
+            "column": 5,
+            "name": "ProcessPayment",
+            "workflowName": "ProcessPaymentWorkflow"
+          },
+          {
+            "opType": "sync",
+            "line": 8,
+            "column": 5,
+            "name": "GetPaymentStatus",
+            "params": "paymentId: string",
+            "returnType": "PaymentStatus",
+            "body": [
+              {
+                "type": "activityCall",
+                "line": 9,
+                "column": 9,
+                "name": "LookupPayment",
+                "args": "paymentId",
+                "result": "status",
+                "resolved": {
+                  "name": "LookupPayment",
+                  "line": 72,
+                  "column": 1
+                }
+              },
+              {
+                "type": "close",
+                "line": 10,
+                "column": 9,
+                "reason": "complete",
+                "args": "status"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "nexusServiceDef",
+        "line": 12,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "NotificationsService",
+        "operations": [
+          {
+            "opType": "async",
+            "line": 13,
+            "column": 5,
+            "name": "SendConfirmation",
+            "workflowName": "SendConfirmationWorkflow"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 17,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "OrderCheckout",
+        "params": "order: Order",
+        "returnType": "OrderResult",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "activityCall",
+            "line": 19,
+            "column": 5,
+            "name": "ValidateCheckout",
+            "args": "order",
+            "resolved": {
+              "name": "ValidateCheckout",
+              "line": 63,
+              "column": 1
+            }
+          },
+          {
+            "type": "comment",
+            "line": 21,
+            "column": 5,
+            "text": " Call into payments via Nexus endpoint (child call)"
+          },
+          {
+            "type": "nexusCall",
+            "line": 22,
+            "column": 5,
+            "endpoint": "PaymentsEndpoint",
+            "service": "PaymentsService",
+            "operation": "ProcessPayment",
+            "args": "order.payment",
+            "result": "paymentResult",
+            "resolvedEndpoint": {
+              "name": "PaymentsEndpoint",
+              "line": 133,
+              "column": 5
+            },
+            "resolvedEndpointNamespace": "payments",
+            "resolvedService": {
+              "name": "PaymentsService",
+              "line": 6,
+              "column": 1
+            },
+            "resolvedOperation": {
+              "name": "ProcessPayment",
+              "line": 7,
+              "column": 5
+            }
+          },
+          {
+            "type": "comment",
+            "line": 24,
+            "column": 5,
+            "text": " Call into notifications (fire-and-forget)"
+          },
+          {
+            "type": "nexusCall",
+            "line": 25,
+            "column": 5,
+            "detach": true,
+            "endpoint": "NotificationsEndpoint",
+            "service": "NotificationsService",
+            "operation": "SendConfirmation",
+            "args": "order.customer, paymentResult",
+            "resolvedEndpoint": {
+              "name": "NotificationsEndpoint",
+              "line": 141,
+              "column": 5
+            },
+            "resolvedEndpointNamespace": "notifications",
+            "resolvedService": {
+              "name": "NotificationsService",
+              "line": 12,
+              "column": 1
+            },
+            "resolvedOperation": {
+              "name": "SendConfirmation",
+              "line": 13,
+              "column": 5
+            }
+          },
+          {
+            "type": "close",
+            "line": 27,
+            "column": 5,
+            "reason": "complete",
+            "args": "OrderResult{paymentId: paymentResult.id}"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 31,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "AsyncNexusCaller",
+        "params": "data: Data",
+        "returnType": "Result",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "promise",
+            "line": 33,
+            "column": 5,
+            "name": "paymentHandle",
+            "target": {
+              "kind": "nexus",
+              "nexus": {
+                "endpoint": "PaymentsEndpoint",
+                "service": "PaymentsService",
+                "operation": "ProcessPayment",
+                "args": "data.payment",
+                "resolvedEndpoint": {
+                  "name": "PaymentsEndpoint",
+                  "line": 133,
+                  "column": 5
+                },
+                "resolvedEndpointNamespace": "payments",
+                "resolvedService": {
+                  "name": "PaymentsService",
+                  "line": 6,
+                  "column": 1
+                },
+                "resolvedOperation": {
+                  "name": "ProcessPayment",
+                  "line": 7,
+                  "column": 5
+                }
+              }
+            }
+          },
+          {
+            "type": "comment",
+            "line": 35,
+            "column": 5,
+            "text": " Do other work in parallel"
+          },
+          {
+            "type": "activityCall",
+            "line": 36,
+            "column": 5,
+            "name": "DoLocalWork",
+            "args": "data",
+            "result": "localResult",
+            "resolved": {
+              "name": "DoLocalWork",
+              "line": 66,
+              "column": 1
+            }
+          },
+          {
+            "type": "comment",
+            "line": 38,
+            "column": 5,
+            "text": " Wait for nexus result when needed"
+          },
+          {
+            "type": "await",
+            "line": 39,
+            "column": 5,
+            "target": {
+              "kind": "ident",
+              "ident": {
+                "name": "paymentHandle",
+                "result": "paymentResult"
+              }
+            }
+          },
+          {
+            "type": "close",
+            "line": 41,
+            "column": 5,
+            "reason": "complete",
+            "args": "Result{localResult, paymentResult}"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 45,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "NexusWithOptions",
+        "params": "payment: Payment",
+        "returnType": "PaymentResult",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "nexusCall",
+            "line": 46,
+            "column": 5,
+            "endpoint": "PaymentsEndpoint",
+            "service": "PaymentsService",
+            "operation": "ProcessPayment",
+            "args": "payment",
+            "result": "result",
+            "options": {
+              "entries": [
+                {
+                  "key": "schedule_to_close_timeout",
+                  "value": "5m",
+                  "valueType": "duration"
+                }
+              ]
+            },
+            "resolvedEndpoint": {
+              "name": "PaymentsEndpoint",
+              "line": 133,
+              "column": 5
+            },
+            "resolvedEndpointNamespace": "payments",
+            "resolvedService": {
+              "name": "PaymentsService",
+              "line": 6,
+              "column": 1
+            },
+            "resolvedOperation": {
+              "name": "ProcessPayment",
+              "line": 7,
+              "column": 5
+            }
+          },
+          {
+            "type": "close",
+            "line": 49,
+            "column": 5,
+            "reason": "complete",
+            "args": "PaymentResult{result}"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 53,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "NexusWithTimeout",
+        "params": "data: Data",
+        "returnType": "Result",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "awaitOne",
+            "line": 54,
+            "column": 11,
+            "cases": [
+              {
+                "line": 55,
+                "column": 9,
+                "target": {
+                  "kind": "nexus",
+                  "nexus": {
+                    "endpoint": "PaymentsEndpoint",
+                    "service": "PaymentsService",
+                    "operation": "ProcessPayment",
+                    "args": "data",
+                    "result": "result",
+                    "resolvedEndpoint": {
+                      "name": "PaymentsEndpoint",
+                      "line": 133,
+                      "column": 5
+                    },
+                    "resolvedEndpointNamespace": "payments",
+                    "resolvedService": {
+                      "name": "PaymentsService",
+                      "line": 6,
+                      "column": 1
+                    },
+                    "resolvedOperation": {
+                      "name": "ProcessPayment",
+                      "line": 7,
+                      "column": 5
+                    }
+                  }
+                },
+                "body": [
+                  {
+                    "type": "close",
+                    "line": 56,
+                    "column": 13,
+                    "reason": "complete",
+                    "args": "Result{success: true, data: result}"
+                  }
+                ]
+              },
+              {
+                "line": 57,
+                "column": 9,
+                "target": {
+                  "kind": "timer",
+                  "timer": {
+                    "duration": "5m"
+                  }
+                },
+                "body": [
+                  {
+                    "type": "activityCall",
+                    "line": 58,
+                    "column": 13,
+                    "name": "AlertTimeout",
+                    "args": "data",
+                    "resolved": {
+                      "name": "AlertTimeout",
+                      "line": 69,
+                      "column": 1
+                    }
+                  },
+                  {
+                    "type": "close",
+                    "line": 59,
+                    "column": 13,
+                    "reason": "fail",
+                    "args": "Result{success: false, error: \"timeout\"}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 63,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "ValidateCheckout",
+        "params": "order: Order",
+        "body": [
+          {
+            "type": "raw",
+            "line": 64,
+            "column": 5,
+            "text": "validateorder"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 66,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "DoLocalWork",
+        "params": "data: Data",
+        "returnType": "LocalResult",
+        "body": [
+          {
+            "type": "return",
+            "line": 67,
+            "column": 5,
+            "value": "processdata"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 69,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "AlertTimeout",
+        "params": "data: Data",
+        "body": [
+          {
+            "type": "raw",
+            "line": 70,
+            "column": 5,
+            "text": "alertdata"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 72,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "LookupPayment",
+        "params": "paymentId: string",
+        "returnType": "PaymentStatus",
+        "body": [
+          {
+            "type": "return",
+            "line": 73,
+            "column": 5,
+            "value": "lookuppaymentId"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 77,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "ProcessPaymentWorkflow",
+        "params": "payment: Payment",
+        "returnType": "PaymentResult",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "activityCall",
+            "line": 78,
+            "column": 5,
+            "name": "ValidatePaymentDetails",
+            "args": "payment",
+            "resolved": {
+              "name": "ValidatePaymentDetails",
+              "line": 89,
+              "column": 1
+            }
+          },
+          {
+            "type": "activityCall",
+            "line": 79,
+            "column": 5,
+            "name": "ChargePaymentMethod",
+            "args": "payment",
+            "result": "result",
+            "resolved": {
+              "name": "ChargePaymentMethod",
+              "line": 92,
+              "column": 1
+            }
+          },
+          {
+            "type": "activityCall",
+            "line": 80,
+            "column": 5,
+            "name": "RecordPaymentTransaction",
+            "args": "result",
+            "resolved": {
+              "name": "RecordPaymentTransaction",
+              "line": 95,
+              "column": 1
+            }
+          },
+          {
+            "type": "close",
+            "line": 81,
+            "column": 5,
+            "reason": "complete",
+            "args": "PaymentResult{id: result.id}"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 83,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "SendConfirmationWorkflow",
+        "params": "customer: Customer, paymentResult: PaymentResult",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "activityCall",
+            "line": 84,
+            "column": 5,
+            "name": "SendPaymentConfirmation",
+            "args": "customer.email, paymentResult",
+            "resolved": {
+              "name": "SendPaymentConfirmation",
+              "line": 98,
+              "column": 1
+            }
+          },
+          {
+            "type": "close",
+            "line": 85,
+            "column": 5,
+            "reason": "complete"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 89,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "ValidatePaymentDetails",
+        "params": "payment: Payment",
+        "body": [
+          {
+            "type": "raw",
+            "line": 90,
+            "column": 5,
+            "text": "validatepayment"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 92,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "ChargePaymentMethod",
+        "params": "payment: Payment",
+        "returnType": "ChargeResult",
+        "body": [
+          {
+            "type": "return",
+            "line": 93,
+            "column": 5,
+            "value": "chargepayment"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 95,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "RecordPaymentTransaction",
+        "params": "result: ChargeResult",
+        "body": [
+          {
+            "type": "raw",
+            "line": 96,
+            "column": 5,
+            "text": "recordresult"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 98,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "SendPaymentConfirmation",
+        "params": "email: string, data: PaymentResult",
+        "body": [
+          {
+            "type": "raw",
+            "line": 99,
+            "column": 5,
+            "text": "sendemail, data"
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 103,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "paymentProcessingWorker",
+        "workflows": [
+          {
+            "name": "ProcessPaymentWorkflow",
+            "line": 104,
+            "column": 5,
+            "resolved": {
+              "name": "ProcessPaymentWorkflow",
+              "line": 77,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [
+          {
+            "name": "ValidatePaymentDetails",
+            "line": 105,
+            "column": 5,
+            "resolved": {
+              "name": "ValidatePaymentDetails",
+              "line": 89,
+              "column": 1
+            }
+          },
+          {
+            "name": "ChargePaymentMethod",
+            "line": 106,
+            "column": 5,
+            "resolved": {
+              "name": "ChargePaymentMethod",
+              "line": 92,
+              "column": 1
+            }
+          },
+          {
+            "name": "RecordPaymentTransaction",
+            "line": 107,
+            "column": 5,
+            "resolved": {
+              "name": "RecordPaymentTransaction",
+              "line": 95,
+              "column": 1
+            }
+          },
+          {
+            "name": "LookupPayment",
+            "line": 108,
+            "column": 5,
+            "resolved": {
+              "name": "LookupPayment",
+              "line": 72,
+              "column": 1
+            }
+          }
+        ],
+        "services": [
+          {
+            "name": "PaymentsService",
+            "line": 109,
+            "column": 5,
+            "resolved": {
+              "name": "PaymentsService",
+              "line": 6,
+              "column": 1
+            }
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 111,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "notificationWorker",
+        "workflows": [
+          {
+            "name": "SendConfirmationWorkflow",
+            "line": 112,
+            "column": 5,
+            "resolved": {
+              "name": "SendConfirmationWorkflow",
+              "line": 83,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [
+          {
+            "name": "SendPaymentConfirmation",
+            "line": 113,
+            "column": 5,
+            "resolved": {
+              "name": "SendPaymentConfirmation",
+              "line": 98,
+              "column": 1
+            }
+          }
+        ],
+        "services": [
+          {
+            "name": "NotificationsService",
+            "line": 114,
+            "column": 5,
+            "resolved": {
+              "name": "NotificationsService",
+              "line": 12,
+              "column": 1
+            }
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 116,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "checkoutWorker",
+        "workflows": [
+          {
+            "name": "OrderCheckout",
+            "line": 117,
+            "column": 5,
+            "resolved": {
+              "name": "OrderCheckout",
+              "line": 17,
+              "column": 1
+            }
+          },
+          {
+            "name": "AsyncNexusCaller",
+            "line": 118,
+            "column": 5,
+            "resolved": {
+              "name": "AsyncNexusCaller",
+              "line": 31,
+              "column": 1
+            }
+          },
+          {
+            "name": "NexusWithOptions",
+            "line": 119,
+            "column": 5,
+            "resolved": {
+              "name": "NexusWithOptions",
+              "line": 45,
+              "column": 1
+            }
+          },
+          {
+            "name": "NexusWithTimeout",
+            "line": 120,
+            "column": 5,
+            "resolved": {
+              "name": "NexusWithTimeout",
+              "line": 53,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [
+          {
+            "name": "ValidateCheckout",
+            "line": 121,
+            "column": 5,
+            "resolved": {
+              "name": "ValidateCheckout",
+              "line": 63,
+              "column": 1
+            }
+          },
+          {
+            "name": "DoLocalWork",
+            "line": 122,
+            "column": 5,
+            "resolved": {
+              "name": "DoLocalWork",
+              "line": 66,
+              "column": 1
+            }
+          },
+          {
+            "name": "AlertTimeout",
+            "line": 123,
+            "column": 5,
+            "resolved": {
+              "name": "AlertTimeout",
+              "line": 69,
+              "column": 1
+            }
+          }
+        ],
+        "services": []
+      },
+      {
+        "type": "namespaceDef",
+        "line": 129,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "payments",
+        "workers": [
+          {
+            "workerName": "paymentProcessingWorker",
+            "line": 130,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "payments",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "paymentProcessingWorker",
+              "line": 103,
+              "column": 1
+            }
+          }
+        ],
+        "endpoints": [
+          {
+            "endpointName": "PaymentsEndpoint",
+            "line": 133,
+            "column": 5,
+            "taskQueue": "payments",
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "payments",
+                  "valueType": "string"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "type": "namespaceDef",
+        "line": 137,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "notifications",
+        "workers": [
+          {
+            "workerName": "notificationWorker",
+            "line": 138,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "notifications",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "notificationWorker",
+              "line": 111,
+              "column": 1
+            }
+          }
+        ],
+        "endpoints": [
+          {
+            "endpointName": "NotificationsEndpoint",
+            "line": 141,
+            "column": 5,
+            "taskQueue": "notifications",
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "notifications",
+                  "valueType": "string"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "type": "namespaceDef",
+        "line": 145,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "orders",
+        "workers": [
+          {
+            "workerName": "checkoutWorker",
+            "line": 146,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "checkout",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "checkoutWorker",
+              "line": 116,
+              "column": 1
+            }
+          }
+        ],
+        "endpoints": []
+      },
+      {
+        "type": "nexusServiceDef",
+        "line": 157,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "BootstrapService",
+        "operations": [
+          {
+            "opType": "async",
+            "line": 158,
+            "column": 5,
+            "name": "BootstrapShard",
+            "workflowName": "BootstrapShardWorkflow"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 160,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "BootstrapShardWorkflow",
+        "params": "shardId: string",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "activityCall",
+            "line": 161,
+            "column": 5,
+            "name": "InitShard",
+            "args": "shardId",
+            "resolved": {
+              "name": "InitShard",
+              "line": 164,
+              "column": 1
+            }
+          },
+          {
+            "type": "close",
+            "line": 162,
+            "column": 5,
+            "reason": "complete"
+          }
+        ]
+      },
+      {
+        "type": "activityDef",
+        "line": 164,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "InitShard",
+        "params": "shardId: string",
+        "body": [
+          {
+            "type": "raw",
+            "line": 165,
+            "column": 5,
+            "text": "initshardId"
+          }
+        ]
+      },
+      {
+        "type": "workflowDef",
+        "line": 167,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "BootstrapCaller",
+        "params": "org: string",
+        "signals": [],
+        "queries": [],
+        "updates": [],
+        "body": [
+          {
+            "type": "nexusCall",
+            "line": 169,
+            "column": 5,
+            "endpoint": "fabric-shard-{org}-BootstrapShard",
+            "service": "BootstrapService",
+            "operation": "BootstrapShard",
+            "args": "org",
+            "resolvedEndpoint": {
+              "name": "fabric-shard-{org}-BootstrapShard",
+              "line": 184,
+              "column": 5
+            },
+            "resolvedEndpointNamespace": "fabric-shard-{org}",
+            "resolvedService": {
+              "name": "BootstrapService",
+              "line": 157,
+              "column": 1
+            },
+            "resolvedOperation": {
+              "name": "BootstrapShard",
+              "line": 158,
+              "column": 5
+            }
+          },
+          {
+            "type": "close",
+            "line": 170,
+            "column": 5,
+            "reason": "complete"
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 172,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "bootstrapWorker",
+        "workflows": [
+          {
+            "name": "BootstrapShardWorkflow",
+            "line": 173,
+            "column": 5,
+            "resolved": {
+              "name": "BootstrapShardWorkflow",
+              "line": 160,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [
+          {
+            "name": "InitShard",
+            "line": 174,
+            "column": 5,
+            "resolved": {
+              "name": "InitShard",
+              "line": 164,
+              "column": 1
+            }
+          }
+        ],
+        "services": [
+          {
+            "name": "BootstrapService",
+            "line": 175,
+            "column": 5,
+            "resolved": {
+              "name": "BootstrapService",
+              "line": 157,
+              "column": 1
+            }
+          }
+        ]
+      },
+      {
+        "type": "workerDef",
+        "line": 177,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "bootstrapCallerWorker",
+        "workflows": [
+          {
+            "name": "BootstrapCaller",
+            "line": 178,
+            "column": 5,
+            "resolved": {
+              "name": "BootstrapCaller",
+              "line": 167,
+              "column": 1
+            }
+          }
+        ],
+        "activities": [],
+        "services": []
+      },
+      {
+        "type": "namespaceDef",
+        "line": 180,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "fabric-shard-{org}",
+        "templateParams": [
+          "org"
+        ],
+        "workers": [
+          {
+            "workerName": "bootstrapWorker",
+            "line": 181,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "q-{org}-bootstrap",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "bootstrapWorker",
+              "line": 172,
+              "column": 1
+            }
+          }
+        ],
+        "endpoints": [
+          {
+            "endpointName": "fabric-shard-{org}-BootstrapShard",
+            "line": 184,
+            "column": 5,
+            "taskQueue": "q-{org}-bootstrap",
+            "templateParams": [
+              "org"
+            ],
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "q-{org}-bootstrap",
+                  "valueType": "string"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "type": "namespaceDef",
+        "line": 188,
+        "column": 1,
+        "sourceFile": "nexus.twf",
+        "name": "bootstrapApp",
+        "workers": [
+          {
+            "workerName": "bootstrapCallerWorker",
+            "line": 189,
+            "column": 5,
+            "options": {
+              "entries": [
+                {
+                  "key": "task_queue",
+                  "value": "bootstrap-app",
+                  "valueType": "string"
+                }
+              ]
+            },
+            "resolvedWorker": {
+              "name": "bootstrapCallerWorker",
+              "line": 177,
+              "column": 1
+            }
+          }
+        ],
+        "endpoints": []
+      }
+    ]
+  },
+  "parserGraph": {
+    "summary": {
+      "nodes": 37,
+      "edges": 54,
+      "coarsenedEdges": 6,
+      "unresolved": 0,
+      "diagnostics": 0
+    },
+    "nodes": [
+      {
+        "id": "activity:AlertTimeout/worker:checkoutWorker/namespace:orders",
+        "definition": "activity:AlertTimeout"
+      },
+      {
+        "id": "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
+        "definition": "activity:ChargePaymentMethod"
+      },
+      {
+        "id": "activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
+        "definition": "activity:DoLocalWork"
+      },
+      {
+        "id": "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "definition": "activity:InitShard"
+      },
+      {
+        "id": "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments",
+        "definition": "activity:LookupPayment"
+      },
+      {
+        "id": "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
+        "definition": "activity:RecordPaymentTransaction"
+      },
+      {
+        "id": "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications",
+        "definition": "activity:SendPaymentConfirmation"
+      },
+      {
+        "id": "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders",
+        "definition": "activity:ValidateCheckout"
+      },
+      {
+        "id": "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments",
+        "definition": "activity:ValidatePaymentDetails"
+      },
+      {
+        "id": "namespace:bootstrapApp",
+        "definition": "namespace:bootstrapApp"
+      },
+      {
+        "id": "namespace:fabric-shard-{org}",
+        "definition": "namespace:fabric-shard-{org}",
+        "templateParams": [
+          "org"
+        ]
+      },
+      {
+        "id": "namespace:notifications",
+        "definition": "namespace:notifications"
+      },
+      {
+        "id": "namespace:orders",
+        "definition": "namespace:orders"
+      },
+      {
+        "id": "namespace:payments",
+        "definition": "namespace:payments"
+      },
+      {
+        "id": "nexusEndpoint:NotificationsEndpoint/namespace:notifications",
+        "definition": "nexusEndpoint:NotificationsEndpoint",
+        "queue": "notifications"
+      },
+      {
+        "id": "nexusEndpoint:PaymentsEndpoint/namespace:payments",
+        "definition": "nexusEndpoint:PaymentsEndpoint",
+        "queue": "payments"
+      },
+      {
+        "id": "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}",
+        "definition": "nexusEndpoint:fabric-shard-{org}-BootstrapShard",
+        "queue": "q-{org}-bootstrap",
+        "templateParams": [
+          "org"
+        ]
+      },
+      {
+        "id": "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "definition": "nexusOperation:BootstrapService.BootstrapShard",
+        "worker": "worker:bootstrapWorker",
+        "queue": "q-{org}-bootstrap"
+      },
+      {
+        "id": "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications",
+        "definition": "nexusOperation:NotificationsService.SendConfirmation",
+        "worker": "worker:notificationWorker",
+        "queue": "notifications"
+      },
+      {
+        "id": "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments",
+        "definition": "nexusOperation:PaymentsService.GetPaymentStatus",
+        "worker": "worker:paymentProcessingWorker",
+        "queue": "payments"
+      },
+      {
+        "id": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
+        "definition": "nexusOperation:PaymentsService.ProcessPayment",
+        "worker": "worker:paymentProcessingWorker",
+        "queue": "payments"
+      },
+      {
+        "id": "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "definition": "nexusService:BootstrapService",
+        "worker": "worker:bootstrapWorker",
+        "namespace": "namespace:fabric-shard-{org}",
+        "queue": "q-{org}-bootstrap"
+      },
+      {
+        "id": "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications",
+        "definition": "nexusService:NotificationsService",
+        "worker": "worker:notificationWorker",
+        "namespace": "namespace:notifications",
+        "queue": "notifications"
+      },
+      {
+        "id": "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments",
+        "definition": "nexusService:PaymentsService",
+        "worker": "worker:paymentProcessingWorker",
+        "namespace": "namespace:payments",
+        "queue": "payments"
+      },
+      {
+        "id": "worker:bootstrapCallerWorker/namespace:bootstrapApp",
+        "definition": "worker:bootstrapCallerWorker",
+        "queue": "bootstrap-app"
+      },
+      {
+        "id": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "definition": "worker:bootstrapWorker",
+        "queue": "q-{org}-bootstrap"
+      },
+      {
+        "id": "worker:checkoutWorker/namespace:orders",
+        "definition": "worker:checkoutWorker",
+        "queue": "checkout"
+      },
+      {
+        "id": "worker:notificationWorker/namespace:notifications",
+        "definition": "worker:notificationWorker",
+        "queue": "notifications"
+      },
+      {
+        "id": "worker:paymentProcessingWorker/namespace:payments",
+        "definition": "worker:paymentProcessingWorker",
+        "queue": "payments"
+      },
+      {
+        "id": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
+        "definition": "workflow:AsyncNexusCaller"
+      },
+      {
+        "id": "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp",
+        "definition": "workflow:BootstrapCaller"
+      },
+      {
+        "id": "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "definition": "workflow:BootstrapShardWorkflow"
+      },
+      {
+        "id": "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders",
+        "definition": "workflow:NexusWithOptions"
+      },
+      {
+        "id": "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders",
+        "definition": "workflow:NexusWithTimeout"
+      },
+      {
+        "id": "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders",
+        "definition": "workflow:OrderCheckout"
+      },
+      {
+        "id": "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
+        "definition": "workflow:ProcessPaymentWorkflow"
+      },
+      {
+        "id": "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications",
+        "definition": "workflow:SendConfirmationWorkflow"
+      }
+    ],
+    "edges": [
+      {
+        "from": "activity:AlertTimeout/worker:checkoutWorker/namespace:orders",
+        "to": "worker:checkoutWorker/namespace:orders",
+        "kind": "containment",
+        "line": 123
+      },
+      {
+        "from": "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
+        "to": "worker:paymentProcessingWorker/namespace:payments",
+        "kind": "containment",
+        "line": 106
+      },
+      {
+        "from": "activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
+        "to": "worker:checkoutWorker/namespace:orders",
+        "kind": "containment",
+        "line": 122
+      },
+      {
+        "from": "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "to": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "kind": "containment",
+        "line": 174
+      },
+      {
+        "from": "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments",
+        "to": "worker:paymentProcessingWorker/namespace:payments",
+        "kind": "containment",
+        "line": 108
+      },
+      {
+        "from": "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
+        "to": "worker:paymentProcessingWorker/namespace:payments",
+        "kind": "containment",
+        "line": 107
+      },
+      {
+        "from": "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications",
+        "to": "worker:notificationWorker/namespace:notifications",
+        "kind": "containment",
+        "line": 113
+      },
+      {
+        "from": "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders",
+        "to": "worker:checkoutWorker/namespace:orders",
+        "kind": "containment",
+        "line": 121
+      },
+      {
+        "from": "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments",
+        "to": "worker:paymentProcessingWorker/namespace:payments",
+        "kind": "containment",
+        "line": 105
+      },
+      {
+        "from": "nexusEndpoint:NotificationsEndpoint/namespace:notifications",
+        "to": "namespace:notifications",
+        "kind": "containment",
+        "line": 141
+      },
+      {
+        "from": "nexusEndpoint:PaymentsEndpoint/namespace:payments",
+        "to": "namespace:payments",
+        "kind": "containment",
+        "line": 133
+      },
+      {
+        "from": "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}",
+        "to": "namespace:fabric-shard-{org}",
+        "kind": "containment",
+        "line": 184
+      },
+      {
+        "from": "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "to": "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}",
+        "kind": "nexusRoute",
+        "line": 184
+      },
+      {
+        "from": "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "to": "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "kind": "containment",
+        "line": 158
+      },
+      {
+        "from": "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "to": "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "kind": "asyncBacking",
+        "line": 158,
+        "routing": {}
+      },
+      {
+        "from": "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications",
+        "to": "nexusEndpoint:NotificationsEndpoint/namespace:notifications",
+        "kind": "nexusRoute",
+        "line": 141
+      },
+      {
+        "from": "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications",
+        "to": "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications",
+        "kind": "containment",
+        "line": 13
+      },
+      {
+        "from": "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications",
+        "to": "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications",
+        "kind": "asyncBacking",
+        "line": 13,
+        "routing": {}
+      },
+      {
+        "from": "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments",
+        "to": "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "activityCall",
+        "line": 9,
+        "routing": {}
+      },
+      {
+        "from": "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments",
+        "to": "nexusEndpoint:PaymentsEndpoint/namespace:payments",
+        "kind": "nexusRoute",
+        "line": 133
+      },
+      {
+        "from": "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments",
+        "to": "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "containment",
+        "line": 8
+      },
+      {
+        "from": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
+        "to": "nexusEndpoint:PaymentsEndpoint/namespace:payments",
+        "kind": "nexusRoute",
+        "line": 133
+      },
+      {
+        "from": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
+        "to": "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "containment",
+        "line": 7
+      },
+      {
+        "from": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
+        "to": "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "asyncBacking",
+        "line": 7,
+        "routing": {}
+      },
+      {
+        "from": "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "to": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "kind": "containment",
+        "line": 175
+      },
+      {
+        "from": "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications",
+        "to": "worker:notificationWorker/namespace:notifications",
+        "kind": "containment",
+        "line": 114
+      },
+      {
+        "from": "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments",
+        "to": "worker:paymentProcessingWorker/namespace:payments",
+        "kind": "containment",
+        "line": 109
+      },
+      {
+        "from": "worker:bootstrapCallerWorker/namespace:bootstrapApp",
+        "to": "namespace:bootstrapApp",
+        "kind": "containment",
+        "line": 189
+      },
+      {
+        "from": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "to": "namespace:fabric-shard-{org}",
+        "kind": "containment",
+        "line": 181
+      },
+      {
+        "from": "worker:checkoutWorker/namespace:orders",
+        "to": "namespace:orders",
+        "kind": "containment",
+        "line": 146
+      },
+      {
+        "from": "worker:notificationWorker/namespace:notifications",
+        "to": "namespace:notifications",
+        "kind": "containment",
+        "line": 138
+      },
+      {
+        "from": "worker:paymentProcessingWorker/namespace:payments",
+        "to": "namespace:payments",
+        "kind": "containment",
+        "line": 130
+      },
+      {
+        "from": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
+        "to": "activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
+        "kind": "activityCall",
+        "line": 36,
+        "routing": {}
+      },
+      {
+        "from": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
+        "to": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "nexusCall",
+        "line": 33,
+        "routing": {
+          "nexusEndpoint": "nexusEndpoint:PaymentsEndpoint/namespace:payments"
+        }
+      },
+      {
+        "from": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
+        "to": "worker:checkoutWorker/namespace:orders",
+        "kind": "containment",
+        "line": 118
+      },
+      {
+        "from": "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp",
+        "to": "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "kind": "nexusCall",
+        "line": 169,
+        "routing": {
+          "nexusEndpoint": "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}"
+        }
+      },
+      {
+        "from": "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp",
+        "to": "worker:bootstrapCallerWorker/namespace:bootstrapApp",
+        "kind": "containment",
+        "line": 178
+      },
+      {
+        "from": "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "to": "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "kind": "activityCall",
+        "line": 161,
+        "routing": {}
+      },
+      {
+        "from": "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "to": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "kind": "containment",
+        "line": 173
+      },
+      {
+        "from": "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders",
+        "to": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "nexusCall",
+        "line": 46,
+        "routing": {
+          "nexusEndpoint": "nexusEndpoint:PaymentsEndpoint/namespace:payments"
+        }
+      },
+      {
+        "from": "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders",
+        "to": "worker:checkoutWorker/namespace:orders",
+        "kind": "containment",
+        "line": 119
+      },
+      {
+        "from": "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders",
+        "to": "activity:AlertTimeout/worker:checkoutWorker/namespace:orders",
+        "kind": "activityCall",
+        "line": 58,
+        "routing": {}
+      },
+      {
+        "from": "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders",
+        "to": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "nexusCall",
+        "line": 55,
+        "routing": {
+          "nexusEndpoint": "nexusEndpoint:PaymentsEndpoint/namespace:payments"
+        }
+      },
+      {
+        "from": "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders",
+        "to": "worker:checkoutWorker/namespace:orders",
+        "kind": "containment",
+        "line": 120
+      },
+      {
+        "from": "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders",
+        "to": "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders",
+        "kind": "activityCall",
+        "line": 19,
+        "routing": {}
+      },
+      {
+        "from": "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders",
+        "to": "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications",
+        "kind": "nexusCall",
+        "line": 25,
+        "routing": {
+          "nexusEndpoint": "nexusEndpoint:NotificationsEndpoint/namespace:notifications"
+        }
+      },
+      {
+        "from": "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders",
+        "to": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "nexusCall",
+        "line": 22,
+        "routing": {
+          "nexusEndpoint": "nexusEndpoint:PaymentsEndpoint/namespace:payments"
+        }
+      },
+      {
+        "from": "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders",
+        "to": "worker:checkoutWorker/namespace:orders",
+        "kind": "containment",
+        "line": 117
+      },
+      {
+        "from": "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
+        "to": "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "activityCall",
+        "line": 79,
+        "routing": {}
+      },
+      {
+        "from": "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
+        "to": "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "activityCall",
+        "line": 80,
+        "routing": {}
+      },
+      {
+        "from": "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
+        "to": "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments",
+        "kind": "activityCall",
+        "line": 78,
+        "routing": {}
+      },
+      {
+        "from": "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
+        "to": "worker:paymentProcessingWorker/namespace:payments",
+        "kind": "containment",
+        "line": 104
+      },
+      {
+        "from": "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications",
+        "to": "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications",
+        "kind": "activityCall",
+        "line": 84,
+        "routing": {}
+      },
+      {
+        "from": "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications",
+        "to": "worker:notificationWorker/namespace:notifications",
+        "kind": "containment",
+        "line": 112
+      }
+    ],
+    "coarsenedEdges": [
+      {
+        "from": "namespace:bootstrapApp",
+        "to": "namespace:fabric-shard-{org}",
+        "tier": "namespace",
+        "weight": 1
+      },
+      {
+        "from": "namespace:orders",
+        "to": "namespace:notifications",
+        "tier": "namespace",
+        "weight": 1
+      },
+      {
+        "from": "namespace:orders",
+        "to": "namespace:payments",
+        "tier": "namespace",
+        "weight": 4
+      },
+      {
+        "from": "worker:bootstrapCallerWorker/namespace:bootstrapApp",
+        "to": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
+        "tier": "worker",
+        "weight": 1
+      },
+      {
+        "from": "worker:checkoutWorker/namespace:orders",
+        "to": "worker:notificationWorker/namespace:notifications",
+        "tier": "worker",
+        "weight": 1
+      },
+      {
+        "from": "worker:checkoutWorker/namespace:orders",
+        "to": "worker:paymentProcessingWorker/namespace:payments",
+        "tier": "worker",
+        "weight": 4
+      }
+    ],
+    "unresolved": [],
+    "diagnostics": []
+  },
+  "decomposition": {
+    "nodes": [
+      {
+        "key": "activity:AlertTimeout",
+        "kind": "activity",
+        "name": "AlertTimeout",
+        "workers": [
+          "worker:checkoutWorker"
+        ],
+        "namespaces": [
+          "namespace:orders"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:ChargePaymentMethod",
+        "kind": "activity",
+        "name": "ChargePaymentMethod",
+        "workers": [
+          "worker:paymentProcessingWorker"
+        ],
+        "namespaces": [
+          "namespace:payments"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:DoLocalWork",
+        "kind": "activity",
+        "name": "DoLocalWork",
+        "workers": [
+          "worker:checkoutWorker"
+        ],
+        "namespaces": [
+          "namespace:orders"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:InitShard",
+        "kind": "activity",
+        "name": "InitShard",
+        "workers": [
+          "worker:bootstrapWorker"
+        ],
+        "namespaces": [
+          "namespace:fabric-shard-{org}"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:LookupPayment",
+        "kind": "activity",
+        "name": "LookupPayment",
+        "workers": [
+          "worker:paymentProcessingWorker"
+        ],
+        "namespaces": [
+          "namespace:payments"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:RecordPaymentTransaction",
+        "kind": "activity",
+        "name": "RecordPaymentTransaction",
+        "workers": [
+          "worker:paymentProcessingWorker"
+        ],
+        "namespaces": [
+          "namespace:payments"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:SendPaymentConfirmation",
+        "kind": "activity",
+        "name": "SendPaymentConfirmation",
+        "workers": [
+          "worker:notificationWorker"
+        ],
+        "namespaces": [
+          "namespace:notifications"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:ValidateCheckout",
+        "kind": "activity",
+        "name": "ValidateCheckout",
+        "workers": [
+          "worker:checkoutWorker"
+        ],
+        "namespaces": [
+          "namespace:orders"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "activity:ValidatePaymentDetails",
+        "kind": "activity",
+        "name": "ValidatePaymentDetails",
+        "workers": [
+          "worker:paymentProcessingWorker"
+        ],
+        "namespaces": [
+          "namespace:payments"
+        ],
+        "complexity": 2
+      },
+      {
+        "key": "nexusOperation:BootstrapService.BootstrapShard",
+        "kind": "nexusOperation",
+        "name": "BootstrapService.BootstrapShard",
+        "workers": [
+          "worker:bootstrapWorker"
+        ],
+        "namespaces": [
+          "namespace:fabric-shard-{org}"
+        ],
+        "complexity": 1
+      },
+      {
+        "key": "nexusOperation:NotificationsService.SendConfirmation",
+        "kind": "nexusOperation",
+        "name": "NotificationsService.SendConfirmation",
+        "workers": [
+          "worker:notificationWorker"
+        ],
+        "namespaces": [
+          "namespace:notifications"
+        ],
+        "complexity": 1
+      },
+      {
+        "key": "nexusOperation:PaymentsService.GetPaymentStatus",
+        "kind": "nexusOperation",
+        "name": "PaymentsService.GetPaymentStatus",
+        "workers": [
+          "worker:paymentProcessingWorker"
+        ],
+        "namespaces": [
+          "namespace:payments"
+        ],
+        "complexity": 5
+      },
+      {
+        "key": "nexusOperation:PaymentsService.ProcessPayment",
+        "kind": "nexusOperation",
+        "name": "PaymentsService.ProcessPayment",
+        "workers": [
+          "worker:paymentProcessingWorker"
+        ],
+        "namespaces": [
+          "namespace:payments"
+        ],
+        "complexity": 1
+      },
+      {
+        "key": "workflow:AsyncNexusCaller",
+        "kind": "workflow",
+        "name": "AsyncNexusCaller",
+        "workers": [
+          "worker:checkoutWorker"
+        ],
+        "namespaces": [
+          "namespace:orders"
+        ],
+        "complexity": 11
+      },
+      {
+        "key": "workflow:BootstrapCaller",
+        "kind": "workflow",
+        "name": "BootstrapCaller",
+        "workers": [
+          "worker:bootstrapCallerWorker"
+        ],
+        "namespaces": [
+          "namespace:bootstrapApp"
+        ],
+        "complexity": 5
+      },
+      {
+        "key": "workflow:BootstrapShardWorkflow",
+        "kind": "workflow",
+        "name": "BootstrapShardWorkflow",
+        "workers": [
+          "worker:bootstrapWorker"
+        ],
+        "namespaces": [
+          "namespace:fabric-shard-{org}"
+        ],
+        "complexity": 5
+      },
+      {
+        "key": "workflow:NexusWithOptions",
+        "kind": "workflow",
+        "name": "NexusWithOptions",
+        "workers": [
+          "worker:checkoutWorker"
+        ],
+        "namespaces": [
+          "namespace:orders"
+        ],
+        "complexity": 5
+      },
+      {
+        "key": "workflow:NexusWithTimeout",
+        "kind": "workflow",
+        "name": "NexusWithTimeout",
+        "workers": [
+          "worker:checkoutWorker"
+        ],
+        "namespaces": [
+          "namespace:orders"
+        ],
+        "complexity": 11
+      },
+      {
+        "key": "workflow:OrderCheckout",
+        "kind": "workflow",
+        "name": "OrderCheckout",
+        "workers": [
+          "worker:checkoutWorker"
+        ],
+        "namespaces": [
+          "namespace:orders"
+        ],
+        "complexity": 13
+      },
+      {
+        "key": "workflow:ProcessPaymentWorkflow",
+        "kind": "workflow",
+        "name": "ProcessPaymentWorkflow",
+        "workers": [
+          "worker:paymentProcessingWorker"
+        ],
+        "namespaces": [
+          "namespace:payments"
+        ],
+        "complexity": 11
+      },
+      {
+        "key": "workflow:SendConfirmationWorkflow",
+        "kind": "workflow",
+        "name": "SendConfirmationWorkflow",
+        "workers": [
+          "worker:notificationWorker"
+        ],
+        "namespaces": [
+          "namespace:notifications"
+        ],
+        "complexity": 5
+      }
+    ],
+    "roots": [
+      {
+        "key": "nexusOperation:BootstrapService.BootstrapShard",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "nexusOperation:NotificationsService.SendConfirmation",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "nexusOperation:PaymentsService.GetPaymentStatus",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "nexusOperation:PaymentsService.ProcessPayment",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:AsyncNexusCaller",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:BootstrapCaller",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:BootstrapShardWorkflow",
+        "source": "heuristic",
+        "reasons": [
+          "asyncBacking target"
+        ]
+      },
+      {
+        "key": "workflow:NexusWithOptions",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:NexusWithTimeout",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:OrderCheckout",
+        "source": "heuristic",
+        "reasons": [
+          "no binding in-edge"
+        ]
+      },
+      {
+        "key": "workflow:ProcessPaymentWorkflow",
+        "source": "heuristic",
+        "reasons": [
+          "asyncBacking target"
+        ]
+      },
+      {
+        "key": "workflow:SendConfirmationWorkflow",
+        "source": "heuristic",
+        "reasons": [
+          "asyncBacking target"
+        ]
+      }
+    ],
+    "chunks": [
+      {
+        "id": "chunk:nexusOperation:BootstrapService.BootstrapShard",
+        "roots": [
+          {
+            "key": "nexusOperation:BootstrapService.BootstrapShard",
+            "reaches": [
+              "activity:InitShard",
+              "nexusOperation:BootstrapService.BootstrapShard",
+              "workflow:BootstrapShardWorkflow"
+            ]
+          },
+          {
+            "key": "workflow:BootstrapShardWorkflow",
+            "reaches": [
+              "activity:InitShard",
+              "workflow:BootstrapShardWorkflow"
+            ]
+          }
+        ],
+        "members": [
+          "activity:InitShard",
+          "nexusOperation:BootstrapService.BootstrapShard",
+          "workflow:BootstrapShardWorkflow"
+        ],
+        "overlap": [
+          "activity:InitShard",
+          "workflow:BootstrapShardWorkflow"
+        ],
+        "complexity": 8
+      },
+      {
+        "id": "chunk:nexusOperation:NotificationsService.SendConfirmation",
+        "roots": [
+          {
+            "key": "nexusOperation:NotificationsService.SendConfirmation",
+            "reaches": [
+              "activity:SendPaymentConfirmation",
+              "nexusOperation:NotificationsService.SendConfirmation",
+              "workflow:SendConfirmationWorkflow"
+            ]
+          },
+          {
+            "key": "workflow:SendConfirmationWorkflow",
+            "reaches": [
+              "activity:SendPaymentConfirmation",
+              "workflow:SendConfirmationWorkflow"
+            ]
+          }
+        ],
+        "members": [
+          "activity:SendPaymentConfirmation",
+          "nexusOperation:NotificationsService.SendConfirmation",
+          "workflow:SendConfirmationWorkflow"
+        ],
+        "overlap": [
+          "activity:SendPaymentConfirmation",
+          "workflow:SendConfirmationWorkflow"
+        ],
+        "complexity": 8
+      },
+      {
+        "id": "chunk:nexusOperation:PaymentsService.GetPaymentStatus",
+        "roots": [
+          {
+            "key": "nexusOperation:PaymentsService.GetPaymentStatus",
+            "reaches": [
+              "activity:LookupPayment",
+              "nexusOperation:PaymentsService.GetPaymentStatus"
+            ]
+          }
+        ],
+        "members": [
+          "activity:LookupPayment",
+          "nexusOperation:PaymentsService.GetPaymentStatus"
+        ],
+        "complexity": 7
+      },
+      {
+        "id": "chunk:nexusOperation:PaymentsService.ProcessPayment",
+        "roots": [
+          {
+            "key": "nexusOperation:PaymentsService.ProcessPayment",
+            "reaches": [
+              "activity:ChargePaymentMethod",
+              "activity:RecordPaymentTransaction",
+              "activity:ValidatePaymentDetails",
+              "nexusOperation:PaymentsService.ProcessPayment",
+              "workflow:ProcessPaymentWorkflow"
+            ]
+          },
+          {
+            "key": "workflow:ProcessPaymentWorkflow",
+            "reaches": [
+              "activity:ChargePaymentMethod",
+              "activity:RecordPaymentTransaction",
+              "activity:ValidatePaymentDetails",
+              "workflow:ProcessPaymentWorkflow"
+            ]
+          }
+        ],
+        "members": [
+          "activity:ChargePaymentMethod",
+          "activity:RecordPaymentTransaction",
+          "activity:ValidatePaymentDetails",
+          "nexusOperation:PaymentsService.ProcessPayment",
+          "workflow:ProcessPaymentWorkflow"
+        ],
+        "overlap": [
+          "activity:ChargePaymentMethod",
+          "activity:RecordPaymentTransaction",
+          "activity:ValidatePaymentDetails",
+          "workflow:ProcessPaymentWorkflow"
+        ],
+        "complexity": 18
+      },
+      {
+        "id": "chunk:workflow:AsyncNexusCaller",
+        "roots": [
+          {
+            "key": "workflow:AsyncNexusCaller",
+            "reaches": [
+              "activity:DoLocalWork",
+              "workflow:AsyncNexusCaller"
+            ]
+          }
+        ],
+        "members": [
+          "activity:DoLocalWork",
+          "workflow:AsyncNexusCaller"
+        ],
+        "complexity": 13
+      },
+      {
+        "id": "chunk:workflow:BootstrapCaller",
+        "roots": [
+          {
+            "key": "workflow:BootstrapCaller",
+            "reaches": [
+              "workflow:BootstrapCaller"
+            ]
+          }
+        ],
+        "members": [
+          "workflow:BootstrapCaller"
+        ],
+        "complexity": 5
+      },
+      {
+        "id": "chunk:workflow:NexusWithOptions",
+        "roots": [
+          {
+            "key": "workflow:NexusWithOptions",
+            "reaches": [
+              "workflow:NexusWithOptions"
+            ]
+          }
+        ],
+        "members": [
+          "workflow:NexusWithOptions"
+        ],
+        "complexity": 5
+      },
+      {
+        "id": "chunk:workflow:NexusWithTimeout",
+        "roots": [
+          {
+            "key": "workflow:NexusWithTimeout",
+            "reaches": [
+              "activity:AlertTimeout",
+              "workflow:NexusWithTimeout"
+            ]
+          }
+        ],
+        "members": [
+          "activity:AlertTimeout",
+          "workflow:NexusWithTimeout"
+        ],
+        "complexity": 13
+      },
+      {
+        "id": "chunk:workflow:OrderCheckout",
+        "roots": [
+          {
+            "key": "workflow:OrderCheckout",
+            "reaches": [
+              "activity:ValidateCheckout",
+              "workflow:OrderCheckout"
+            ]
+          }
+        ],
+        "members": [
+          "activity:ValidateCheckout",
+          "workflow:OrderCheckout"
+        ],
+        "complexity": 15
+      }
+    ],
+    "chunkEdges": [
+      {
+        "from": "chunk:workflow:AsyncNexusCaller",
+        "to": "chunk:nexusOperation:PaymentsService.ProcessPayment",
+        "via": "nexusCall"
+      },
+      {
+        "from": "chunk:workflow:BootstrapCaller",
+        "to": "chunk:nexusOperation:BootstrapService.BootstrapShard",
+        "via": "nexusCall"
+      },
+      {
+        "from": "chunk:workflow:NexusWithOptions",
+        "to": "chunk:nexusOperation:PaymentsService.ProcessPayment",
+        "via": "nexusCall"
+      },
+      {
+        "from": "chunk:workflow:NexusWithTimeout",
+        "to": "chunk:nexusOperation:PaymentsService.ProcessPayment",
+        "via": "nexusCall"
+      },
+      {
+        "from": "chunk:workflow:OrderCheckout",
+        "to": "chunk:nexusOperation:NotificationsService.SendConfirmation",
+        "via": "nexusCall"
+      },
+      {
+        "from": "chunk:workflow:OrderCheckout",
+        "to": "chunk:nexusOperation:PaymentsService.ProcessPayment",
+        "via": "nexusCall"
+      }
+    ],
+    "floor": 4,
+    "ceiling": 0,
+    "maxDepth": 4,
+    "strategies": [
+      "tree",
+      "nexus",
+      "worker",
+      "namespace",
+      "service",
+      "subtree"
+    ]
+  }
+}
