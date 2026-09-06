@@ -62,6 +62,115 @@
       "nodeTypeToDefType": "workflowDef"
     }
   },
+  "defaultForceParams": {
+    "alphaDecay": 0.005,
+    "alphaMin": 0.0001,
+    "band": {
+      "activity": {
+        "max": 500,
+        "min": 170
+      },
+      "namespace": {
+        "max": -120,
+        "min": -340
+      },
+      "nexusEndpoint": {
+        "max": -120,
+        "min": -340
+      },
+      "nexusOperation": {
+        "max": 460,
+        "min": 100
+      },
+      "nexusService": {
+        "max": 120,
+        "min": -200
+      },
+      "worker": {
+        "max": 120,
+        "min": -200
+      },
+      "workflow": {
+        "max": 460,
+        "min": 100
+      }
+    },
+    "bandEnabled": true,
+    "bandXMax": 380,
+    "bandXMin": 0,
+    "charge": {
+      "activity": -190,
+      "namespace": -850,
+      "nexusEndpoint": -900,
+      "nexusOperation": -560,
+      "nexusService": -760,
+      "worker": -770,
+      "workflow": -360
+    },
+    "chargeExponent": 0.7,
+    "coreRadius": {
+      "activity": 20,
+      "namespace": 85,
+      "nexusEndpoint": 64,
+      "nexusOperation": 58,
+      "nexusService": 54,
+      "worker": 72,
+      "workflow": 38
+    },
+    "coreRadiusMultiplier": 1,
+    "dist": {
+      "linkEndpointToNamespace": 690,
+      "linkEndpointToOperation": 470,
+      "linkNexusToOperation": 600,
+      "linkNsToNs": 870,
+      "linkNsToWorker": 800,
+      "linkOperationToActivity": 300,
+      "linkOperationToWorkflow": 360,
+      "linkSignalSend": 520,
+      "linkWorkerToActivity": 210,
+      "linkWorkerToNexus": 430,
+      "linkWorkerToWorker": 720,
+      "linkWorkerToWorkflow": 190,
+      "linkWorkflowToActivity": 40,
+      "linkWorkflowToOperation": 330,
+      "linkWorkflowToWorkflow": 420
+    },
+    "distanceMultiplier": 0.1,
+    "gravityBandExp": 1,
+    "gravityCenter": 0.05,
+    "gravityDownstream": 0,
+    "gravityMode": "cartesian",
+    "gravityTopologicalExp": 3,
+    "gravityX": 0.05,
+    "gravityY": 0.145,
+    "link": {
+      "linkEndpointToNamespace": 1,
+      "linkEndpointToOperation": 1.5,
+      "linkNexusToOperation": 1.4,
+      "linkNsToNs": 0.25,
+      "linkNsToWorker": 0.3,
+      "linkOperationToActivity": 1.4,
+      "linkOperationToWorkflow": 1.55,
+      "linkSignalSend": 0.3,
+      "linkWorkerToActivity": 0.35,
+      "linkWorkerToNexus": 1.25,
+      "linkWorkerToWorker": 0.3,
+      "linkWorkerToWorkflow": 0.55,
+      "linkWorkflowToActivity": 1.9,
+      "linkWorkflowToOperation": 1.5,
+      "linkWorkflowToWorkflow": 0.5
+    },
+    "linkExponent": 1,
+    "pullMultiplier": 0.6,
+    "pushMultiplier": 0.4,
+    "topologicalEnabled": false,
+    "velocityDecay": 0.4
+  },
+  "defaultNodeScale": {
+    "baseMul": 0.6,
+    "maxZoomMul": 1.65,
+    "minZoomMul": 0.4
+  },
   "edgeTypes": {
     "linkEndpointToNamespace": {
       "category": "containment",
@@ -369,6 +478,307 @@
       ]
     }
   ],
+  "forceProbes": {
+    "bandCartesian": {
+      "allFinite": true,
+      "nonFiniteNodeIds": [],
+      "velocities": {
+        "act": [
+          0,
+          0
+        ],
+        "dupA": [
+          0,
+          32.22625
+        ],
+        "dupB": [
+          0,
+          22.07625
+        ],
+        "ep": [
+          0,
+          0
+        ],
+        "ns": [
+          15,
+          0
+        ],
+        "nx": [
+          0,
+          0
+        ],
+        "op": [
+          0,
+          0
+        ],
+        "wf": [
+          3,
+          0
+        ],
+        "wk": [
+          6,
+          0
+        ]
+      }
+    },
+    "bandRadial": {
+      "allFinite": true,
+      "nonFiniteNodeIds": [],
+      "velocities": {
+        "act": [
+          0.359672,
+          8.63212
+        ],
+        "dupA": [
+          68.41218,
+          -15.099986
+        ],
+        "dupB": [
+          61.7962,
+          -13.639702
+        ],
+        "ep": [
+          -28.116475,
+          23.430396
+        ],
+        "ns": [
+          36.925505,
+          32.002104
+        ],
+        "nx": [
+          5.808945,
+          -0.645438
+        ],
+        "op": [
+          12.573043,
+          27.241594
+        ],
+        "origin": [
+          0.210032,
+          -0.213663
+        ],
+        "wf": [
+          -5.327163,
+          26.635816
+        ],
+        "wk": [
+          -13.057771,
+          4.35259
+        ]
+      }
+    },
+    "center": {
+      "allFinite": true,
+      "nonFiniteNodeIds": [],
+      "velocities": {
+        "act": [
+          -6,
+          -144
+        ],
+        "dupA": [
+          -16.65,
+          3.675
+        ],
+        "dupB": [
+          -16.65,
+          3.675
+        ],
+        "ep": [
+          -72,
+          60
+        ],
+        "ns": [
+          90,
+          78
+        ],
+        "nx": [
+          -54,
+          6
+        ],
+        "op": [
+          -36,
+          -78
+        ],
+        "wf": [
+          18,
+          -90
+        ],
+        "wk": [
+          36,
+          -12
+        ]
+      }
+    },
+    "charge": {
+      "allFinite": true,
+      "nonFiniteNodeIds": [],
+      "velocities": {
+        "act": [
+          -0.001308,
+          0.252952
+        ],
+        "dupA": [
+          0.129074,
+          0.921221
+        ],
+        "dupB": [
+          -0.374396,
+          -1.005497
+        ],
+        "ep": [
+          0.339068,
+          -0.456108
+        ],
+        "ns": [
+          -0.250706,
+          -0.22078
+        ],
+        "nx": [
+          0.580412,
+          0.005487
+        ],
+        "op": [
+          0.216763,
+          0.250963
+        ],
+        "wf": [
+          -0.184055,
+          0.217429
+        ],
+        "wk": [
+          -0.454852,
+          0.034332
+        ]
+      }
+    },
+    "link": {
+      "allFinite": true,
+      "nonFiniteNodeIds": [],
+      "velocities": {
+        "act": [
+          -67.011006,
+          -150.774765
+        ],
+        "dupA": [
+          0.424926,
+          1.656363
+        ],
+        "dupB": [
+          -0.424926,
+          -1.656363
+        ],
+        "ep": [
+          -34.014909,
+          -3.779434
+        ],
+        "ns": [
+          34.014909,
+          3.779434
+        ],
+        "nx": [
+          -26.559823,
+          123.945839
+        ],
+        "op": [
+          -66.524435,
+          -44.23862
+        ],
+        "wf": [
+          70.942367,
+          18.512747
+        ],
+        "wk": [
+          13.792598,
+          59.767925
+        ]
+      }
+    },
+    "seed": 24301,
+    "topological": {
+      "allFinite": true,
+      "nonFiniteNodeIds": [],
+      "velocities": {
+        "act": [
+          0,
+          -156.208505
+        ],
+        "dupA": [
+          0,
+          -94.885048
+        ],
+        "dupB": [
+          0,
+          -135.1
+        ],
+        "ep": [
+          0,
+          -0.658436
+        ],
+        "ns": [
+          0,
+          -0.049383
+        ],
+        "nx": [
+          0,
+          -11.588477
+        ],
+        "op": [
+          0,
+          -72.296296
+        ],
+        "wf": [
+          0,
+          -44.581619
+        ],
+        "wk": [
+          0,
+          -5.777778
+        ]
+      }
+    },
+    "topologicalRadial": {
+      "allFinite": true,
+      "nonFiniteNodeIds": [],
+      "velocities": {
+        "act": [
+          -3.76406,
+          -90.337449
+        ],
+        "dupA": [
+          -15.59177,
+          3.441427
+        ],
+        "dupB": [
+          -22.2,
+          4.9
+        ],
+        "ep": [
+          -1.053498,
+          0.877915
+        ],
+        "ns": [
+          0.164609,
+          0.142661
+        ],
+        "nx": [
+          -6.320988,
+          0.702332
+        ],
+        "op": [
+          -14.222222,
+          -30.814815
+        ],
+        "wf": [
+          4.115226,
+          -20.576132
+        ],
+        "wk": [
+          1.777778,
+          -0.592593
+        ]
+      }
+    }
+  },
   "generatedCss": [
     ":root {",
     "  --color-namespace: #475569;",
@@ -1121,5 +1531,368 @@
         "namespaceDef"
       ]
     }
+  },
+  "syntheticVisible": {
+    "cases": {
+      "all types, a file no node has": {
+        "downstreamScores": {},
+        "graduatedEdges": [],
+        "nodeSummaries": {},
+        "visibleNodeIds": [
+          "nsOrphan"
+        ]
+      },
+      "all types, both files": {
+        "downstreamScores": {
+          "act": 0,
+          "actCopy": 0,
+          "backing": 0,
+          "caller": 0.25,
+          "ep": 0,
+          "ns": 1,
+          "nsOrphan": 0,
+          "op": 0.25,
+          "svc": 0.5,
+          "wk": 0.75,
+          "wkB": 0
+        },
+        "graduatedEdges": [
+          "linkEndpointToNamespace|containment|containment|ep -> ns",
+          "linkEndpointToOperation|epComposition|containment|op -> ep",
+          "linkNexusToOperation|opContainment|containment|op -> svc",
+          "linkNsToWorker|containment|containment|wk -> ns",
+          "linkNsToWorker|containment|containment|wkB -> ns",
+          "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
+          "linkSignalSend|workflowDep|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|containment|actCopy -> wkB",
+          "linkWorkerToNexus|containment|containment|svc -> wk",
+          "linkWorkerToWorkflow|containment|containment|act -> wk",
+          "linkWorkerToWorkflow|containment|containment|backing -> wkB",
+          "linkWorkerToWorkflow|containment|containment|caller -> wk",
+          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
+          "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
+        ],
+        "nodeSummaries": {
+          "act": "←1",
+          "backing": "←2",
+          "caller": "→3",
+          "ns": "2 workers · 1 endpoint",
+          "op": "→1 ←1",
+          "svc": "1 op",
+          "wk": "1wf · 1act · 1nxs",
+          "wkB": "1wf · 1act"
+        },
+        "visibleNodeIds": [
+          "act",
+          "actCopy",
+          "backing",
+          "caller",
+          "ep",
+          "ns",
+          "nsOrphan",
+          "op",
+          "svc",
+          "wk",
+          "wkB"
+        ]
+      },
+      "all types, file A only": {
+        "downstreamScores": {
+          "act": 0,
+          "caller": 0.25,
+          "ep": 0,
+          "ns": 1,
+          "nsOrphan": 0,
+          "op": 0.25,
+          "svc": 0.5,
+          "wk": 0.75
+        },
+        "graduatedEdges": [
+          "linkEndpointToNamespace|containment|containment|ep -> ns",
+          "linkEndpointToOperation|epComposition|containment|op -> ep",
+          "linkNexusToOperation|opContainment|containment|op -> svc",
+          "linkNsToNs|nexusCall|dependency|op -> ns",
+          "linkNsToWorker|containment|containment|wk -> ns",
+          "linkSignalSend|dependencyNsToNs|dependency|caller -> ns",
+          "linkWorkerToNexus|containment|containment|svc -> wk",
+          "linkWorkerToWorkflow|containment|containment|act -> wk",
+          "linkWorkerToWorkflow|containment|containment|caller -> wk",
+          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
+          "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
+        ],
+        "nodeSummaries": {
+          "act": "←1",
+          "caller": "→3",
+          "ns": "1 worker · 1 endpoint",
+          "op": "→1 ←1",
+          "svc": "1 op",
+          "wk": "1wf · 1act · 1nxs"
+        },
+        "visibleNodeIds": [
+          "act",
+          "caller",
+          "ep",
+          "ns",
+          "nsOrphan",
+          "op",
+          "svc",
+          "wk"
+        ]
+      },
+      "all types, file B only": {
+        "downstreamScores": {},
+        "graduatedEdges": [
+          "linkWorkerToActivity|containment|containment|actCopy -> wkB",
+          "linkWorkerToWorkflow|containment|containment|backing -> wkB"
+        ],
+        "nodeSummaries": {
+          "wkB": "1wf · 1act"
+        },
+        "visibleNodeIds": [
+          "actCopy",
+          "backing",
+          "nsOrphan",
+          "wkB"
+        ]
+      },
+      "all types, no file filter": {
+        "downstreamScores": {
+          "act": 0,
+          "actCopy": 0,
+          "backing": 0,
+          "caller": 0.25,
+          "ep": 0,
+          "ns": 1,
+          "nsOrphan": 0,
+          "op": 0.25,
+          "svc": 0.5,
+          "wk": 0.75,
+          "wkB": 0
+        },
+        "graduatedEdges": [
+          "linkEndpointToNamespace|containment|containment|ep -> ns",
+          "linkEndpointToOperation|epComposition|containment|op -> ep",
+          "linkNexusToOperation|opContainment|containment|op -> svc",
+          "linkNsToWorker|containment|containment|wk -> ns",
+          "linkNsToWorker|containment|containment|wkB -> ns",
+          "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
+          "linkSignalSend|workflowDep|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|containment|actCopy -> wkB",
+          "linkWorkerToNexus|containment|containment|svc -> wk",
+          "linkWorkerToWorkflow|containment|containment|act -> wk",
+          "linkWorkerToWorkflow|containment|containment|backing -> wkB",
+          "linkWorkerToWorkflow|containment|containment|caller -> wk",
+          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
+          "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
+        ],
+        "nodeSummaries": {
+          "act": "←1",
+          "backing": "←2",
+          "caller": "→3",
+          "ns": "2 workers · 1 endpoint",
+          "op": "→1 ←1",
+          "svc": "1 op",
+          "wk": "1wf · 1act · 1nxs",
+          "wkB": "1wf · 1act"
+        },
+        "visibleNodeIds": [
+          "act",
+          "actCopy",
+          "backing",
+          "caller",
+          "ep",
+          "ns",
+          "nsOrphan",
+          "op",
+          "svc",
+          "wk",
+          "wkB"
+        ]
+      },
+      "empty type set": {
+        "downstreamScores": {},
+        "graduatedEdges": [],
+        "nodeSummaries": {},
+        "visibleNodeIds": []
+      },
+      "namespaces only": {
+        "downstreamScores": {},
+        "graduatedEdges": [],
+        "nodeSummaries": {},
+        "visibleNodeIds": [
+          "ns",
+          "nsOrphan"
+        ]
+      },
+      "operation hidden": {
+        "downstreamScores": {
+          "act": 0,
+          "actCopy": 0,
+          "backing": 0,
+          "caller": 0.333333,
+          "ep": 0,
+          "ns": 1,
+          "nsOrphan": 0,
+          "svc": 0,
+          "wk": 0.666667,
+          "wkB": 0
+        },
+        "graduatedEdges": [
+          "linkEndpointToNamespace|containment|containment|ep -> ns",
+          "linkNsToWorker|containment|containment|wk -> ns",
+          "linkNsToWorker|containment|containment|wkB -> ns",
+          "linkWorkerToActivity|containment|containment|actCopy -> wkB",
+          "linkWorkerToNexus|containment|containment|svc -> wk",
+          "linkWorkerToWorkflow|containment|containment|act -> wk",
+          "linkWorkerToWorkflow|containment|containment|backing -> wkB",
+          "linkWorkerToWorkflow|containment|containment|caller -> wk",
+          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
+          "linkWorkflowToWorkflow|nexusCall|dependency|caller -> backing"
+        ],
+        "nodeSummaries": {
+          "act": "←1",
+          "backing": "←1",
+          "caller": "→2",
+          "ns": "2 workers · 1 endpoint",
+          "wk": "1wf · 1act · 1nxs",
+          "wkB": "1wf · 1act"
+        },
+        "visibleNodeIds": [
+          "act",
+          "actCopy",
+          "backing",
+          "caller",
+          "ep",
+          "ns",
+          "nsOrphan",
+          "svc",
+          "wk",
+          "wkB"
+        ]
+      },
+      "service and worker hidden": {
+        "downstreamScores": {
+          "act": 0,
+          "actCopy": 0,
+          "backing": 0,
+          "caller": 0.5,
+          "ep": 0,
+          "ns": 0,
+          "nsOrphan": 0,
+          "op": 0.5,
+          "svc": 1,
+          "wk": 1
+        },
+        "graduatedEdges": [
+          "linkEndpointToNamespace|containment|containment|ep -> ns",
+          "linkEndpointToOperation|epComposition|containment|op -> ep",
+          "linkNsToWorker|containment|containment|op -> ns",
+          "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
+          "linkSignalSend|workflowDep|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|containment|actCopy -> ns",
+          "linkWorkerToWorkflow|containment|containment|act -> ns",
+          "linkWorkerToWorkflow|containment|containment|backing -> ns",
+          "linkWorkerToWorkflow|containment|containment|caller -> ns",
+          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
+          "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
+        ],
+        "nodeSummaries": {
+          "act": "←1",
+          "backing": "←2",
+          "caller": "→3",
+          "ns": "1 endpoint",
+          "op": "→1 ←1"
+        },
+        "visibleNodeIds": [
+          "act",
+          "actCopy",
+          "backing",
+          "caller",
+          "ep",
+          "ns",
+          "nsOrphan",
+          "op"
+        ]
+      }
+    },
+    "nodes": [
+      {
+        "definitionKey": "namespace:ns",
+        "id": "ns",
+        "nodeType": "namespace",
+        "parentId": null,
+        "sourceFile": "a.twf"
+      },
+      {
+        "definitionKey": "namespace:nsOrphan",
+        "id": "nsOrphan",
+        "nodeType": "namespace",
+        "parentId": null,
+        "sourceFile": null
+      },
+      {
+        "definitionKey": "worker:wk",
+        "id": "wk",
+        "nodeType": "worker",
+        "parentId": "ns",
+        "sourceFile": "a.twf"
+      },
+      {
+        "definitionKey": "worker:wkB",
+        "id": "wkB",
+        "nodeType": "worker",
+        "parentId": "ns",
+        "sourceFile": "b.twf"
+      },
+      {
+        "definitionKey": "nexusService:svc",
+        "id": "svc",
+        "nodeType": "nexusService",
+        "parentId": "wk",
+        "sourceFile": "a.twf"
+      },
+      {
+        "definitionKey": "nexusEndpoint:ep",
+        "id": "ep",
+        "nodeType": "nexusEndpoint",
+        "parentId": "ns",
+        "sourceFile": "a.twf"
+      },
+      {
+        "definitionKey": "workflow:caller",
+        "id": "caller",
+        "nodeType": "workflow",
+        "parentId": "wk",
+        "sourceFile": "a.twf"
+      },
+      {
+        "definitionKey": "nexusOperation:op",
+        "id": "op",
+        "nodeType": "nexusOperation",
+        "parentId": "svc",
+        "sourceFile": "a.twf"
+      },
+      {
+        "definitionKey": "workflow:backing",
+        "id": "backing",
+        "nodeType": "workflow",
+        "parentId": "wkB",
+        "sourceFile": "b.twf"
+      },
+      {
+        "definitionKey": "activity:act",
+        "id": "act",
+        "nodeType": "activity",
+        "parentId": "wk",
+        "sourceFile": "a.twf"
+      },
+      {
+        "definitionKey": "activity:act",
+        "id": "actCopy",
+        "nodeType": "activity",
+        "parentId": "wkB",
+        "sourceFile": "b.twf"
+      }
+    ]
   }
 }

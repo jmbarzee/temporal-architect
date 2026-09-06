@@ -1,48 +1,62 @@
-// Tier B — invariants, not positions.
+// Tier B — the simulation.
 //
-// `Math.pow`, `Math.hypot` and the trig functions are not guaranteed
-// bit-identical across V8 versions or platforms, and 200 active ticks of an
-// O(n²) force loop amplifies a one-ULP difference into a visibly different
-// layout. A position snapshot would therefore be flaky between a dev machine
-// and CI — and a layout differing by 0.3px does not matter. A layout
-// *collapsing* does.
+// Two kinds of row, for two different reasons.
 //
-// So the golden carries only facts that are structural (counts of types, of
-// entries, of ticks — no coordinate reaches them) or that hold with an
-// order-of-magnitude margin (finite, bounded, non-degenerate). The genuinely
-// positional measurements — band occupancy and the speed at rest — are computed
-// on every run and printed as diagnostics, because goldening a chaotic float
-// -derived count would produce a gate that goes red for the wrong reason. See
-// DECISIONS.md D24.
+// **Positions, goldened exactly, at tick 0 and after a handful of ticks.** These
+// are what make the layout observable at all. The seeded start positions are
+// bit-exact everywhere — mulberry32 is integer arithmetic plus one division by
+// 2^32, and the jitter that consumes it is only `+ - * Math.max` — so a
+// reordered, dropped or added draw moves them. A short run keeps that property:
+// the transcendental functions in the kernels may differ by a last place, but
+// with no iteration to amplify it the error stays ~1e-11 against a rounding grid
+// of 1e-6. This is deliberately NOT a 400-tick position snapshot, which would be
+// flaky: chaotic amplification over 200 active ticks is real, and it is what the
+// invariants-not-positions rule was written about.
+//
+// **Structural invariants after the full run**, which no coordinate reaches:
+// entry counts, distinct-value counts, the tick at which cooling completes.
+//
+// What is measured but deliberately NOT goldened: band occupancy and the mean
+// speed at rest. Both are chaotic float-derived aggregates over the full run, and
+// both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
 import { bandCenters, bandForType } from '../graph/forces'
 import type { Graph, NodeType } from '../graph/model'
 import { DEFAULT_PARAMS, Simulation } from '../graph/simulation'
-import type { SimNode } from '../graph/simulation'
+import type { ForceParams, SimNode } from '../graph/simulation'
+import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
 import type { Json } from './snapshot'
-import { sorted } from './snapshot'
+import { sorted, sortedRecord } from './snapshot'
 import { mulberry32 } from './rng'
 
 /** Committed alongside the goldens so a re-run is reproducible. */
 export const TIER_B_PARAMS = {
   rngSeed: 0x5eed,
   tickCount: 400,
+  /**
+   * Ticks for the goldened position rows. Small on purpose: long enough that
+   * every enabled force has visibly moved every node, short enough that a
+   * last-place difference in Math.pow cannot grow to the 1e-6 rounding grid.
+   */
+  shortTicks: 3,
   /** Fraction of a band's height a node may sit outside it by. */
   bandTolerance: 0.05,
   /** Mean speed below `alphaMin × settledFactor` counts as at rest. */
   settledFactor: 10,
-  /**
-   * Collapse detectors, both an order of magnitude clear of anything a healthy
-   * layout produces: positions stay well inside the engine's own 1e6 clamp, and
-   * the whole graph does not converge onto a single point.
-   */
+  /** Collapse detectors, both an order of magnitude clear of a healthy layout. */
   maxAbsPosition: 1e5,
   minExtent: 1,
 } as const
 
 /** A fresh, seeded simulation over a fixture's graph. */
-export function seededSimulation(graph: Graph): Simulation {
-  return new Simulation(graph, DEFAULT_PARAMS, mulberry32(TIER_B_PARAMS.rngSeed))
+export function seededSimulation(graph: Graph, params: ForceParams = DEFAULT_PARAMS): Simulation {
+  return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed))
+}
+
+function positions(nodes: SimNode[]): Json {
+  const entries: [string, Json][] = nodes.map(n => [n.id, [n.x, n.y] as Json])
+  return sortedRecord(entries)
 }
 
 function median(values: number[]): number {
@@ -52,42 +66,78 @@ function median(values: number[]): number {
   return m % 2 ? s[(m - 1) / 2] : (s[m / 2 - 1] + s[m / 2]) / 2
 }
 
-export function tierB(fixtureName: string, sim: Simulation): Json {
-  // Cooling is pure arithmetic on alpha — no coordinate enters it — so the tick
-  // at which the simulation comes to rest is exact on every platform. That
-  // makes "does it settle inside the budget" the settle assertion that can
-  // actually be goldened.
+/**
+ * The four force configurations the control panel can actually produce. The
+ * defaults reach only one of them, so without this the radial branch, the
+ * topological pull and the center-gravity baseline are dead code as far as every
+ * gate is concerned.
+ */
+function scenarios(): [string, ForceParams][] {
+  return [
+    ['default', { ...DEFAULT_PARAMS }],
+    ['radial', { ...DEFAULT_PARAMS, gravityMode: 'radial' }],
+    ['topological', { ...DEFAULT_PARAMS, topologicalEnabled: true, gravityDownstream: 0.4 }],
+    ['centerOnly', { ...DEFAULT_PARAMS, bandEnabled: false, topologicalEnabled: false }],
+  ]
+}
+
+const ALL_DEF_TYPES = new Set(ALL_NODE_TYPES.map(t => NODE_TYPE_REGISTRY[t].defType))
+
+export function tierB(fixtureName: string, graph: Graph): Json {
+  // ── Seeding. Bit-exact, and the only detector for a change to the order or
+  // count of draws — which the units that rewrite seeding and the charge loop
+  // will both make.
+  const seedSim = seededSimulation(graph)
+  const seeded = positions(seedSim.nodes)
+
+  // `seedAt` is the other half of the seeding path and is reached by no fixture
+  // run: it fires only when a filter toggle reveals a node. Two more draws.
+  const seedAtProbe = (() => {
+    const sim = seededSimulation(graph)
+    const first = [...graph.nodes.keys()].sort()[0]
+    if (first === undefined) return null
+    sim.seedAt(first, 111, 222)
+    const n = sim.getNode(first)
+    return n ? { id: first, position: [n.x, n.y] as Json } : null
+  })()
+
+  // Downstream scores, needed by the topological scenario.
+  const scoreSim = seededSimulation(graph)
+  const vg = computeVisibleGraph(scoreSim, ALL_DEF_TYPES, new Set<string>())
+
+  // ── Short runs, one per force configuration. Positions goldened exactly.
+  const shortRuns: [string, Json][] = scenarios().map(([name, params]) => {
+    const sim = seededSimulation(graph, params)
+    for (let i = 0; i < TIER_B_PARAMS.shortTicks; i++) {
+      sim.tick(undefined, vg.downstreamScores)
+    }
+    return [name, positions(sim.nodes)]
+  })
+
+  // ── The full run, for the structural invariants and the diagnostics.
+  const sim = seededSimulation(graph)
   let ticksToStable = -1
   for (let i = 0; i < TIER_B_PARAMS.tickCount; i++) {
-    sim.tick()
+    sim.tick(undefined, vg.downstreamScores)
     if (ticksToStable < 0 && sim.isStable()) ticksToStable = i + 1
   }
 
   const active = sim.nodes
   const params = sim.params
 
-  // ── 1. No NaN anywhere in the state the canvas will read. The only detector
-  // for the missing-key → undefined/NaN path: `coreRadiusForType` returns NaN
-  // for an unmapped key and its Math.max floor swallows the miss.
-  const nonFinite: string[] = []
-  for (const n of active) {
-    if (![n.x, n.y, n.vx, n.vy].every(Number.isFinite)) nonFinite.push(n.id)
-  }
+  const nonFinite = active
+    .filter(n => ![n.x, n.y, n.vx, n.vy].every(Number.isFinite))
+    .map(n => n.id)
 
-  // ── 2. One band centre per distinct type present. THE detector for the
-  // value-vs-identity trap: a dimension selection that keys the collection by
-  // identity rather than by an interned value silently degenerates to one entry
-  // per node, and nothing else in the simulation notices.
-  //
-  // Asserted on the count of ENTRIES COLLECTED, never on distinct centre
-  // *values* — several types deliberately share a band, so with all 7 present
-  // there are only 4 distinct values and a distinct-value assertion would be
-  // permanently red. Both numbers are recorded so that stays visible.
+  // One band centre per distinct type present. The detector for the
+  // value-vs-identity trap: a selection keyed by identity rather than by an
+  // interned value silently degenerates to one entry per node, and nothing else
+  // in the simulation notices. Asserted on the count of ENTRIES COLLECTED, never
+  // on distinct centre *values* — several types deliberately share a band, so
+  // with all 7 present there are only 4 distinct values.
   const centers = bandCenters(active, params)
   const distinctTypesPresent = new Set<NodeType>(active.map(n => n.nodeType)).size
 
-  // ── 3. The layout did not collapse or explode. Order-of-magnitude margins,
-  // so these survive a different platform's floating point.
   let maxAbs = 0
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
   for (const n of active) {
@@ -97,7 +147,7 @@ export function tierB(fixtureName: string, sim: Simulation): Json {
   }
   const extent = active.length === 0 ? 0 : Math.hypot(maxX - minX, maxY - minY)
 
-  // ── Diagnostics: positional, chaotic, deliberately NOT goldened.
+  // ── Diagnostics: chaotic, deliberately not goldened.
   const shift = median(centers)
   let outsideBand = 0
   for (const n of active) {
@@ -118,18 +168,17 @@ export function tierB(fixtureName: string, sim: Simulation): Json {
   return {
     params: { ...TIER_B_PARAMS },
     activeNodeCount: active.length,
-    // 1
+    seededPositions: seeded,
+    seedAt: seedAtProbe,
+    afterShortRun: sortedRecord(shortRuns),
     allFinite: nonFinite.length === 0,
     nonFiniteNodeIds: sorted(nonFinite),
-    // 2
     bandCenterEntries: centers.length,
     distinctTypesPresent,
     bandCentersMatchDistinctTypes: centers.length === distinctTypesPresent,
     distinctCenterValues: new Set(centers).size,
-    // 3
     boundedPositions: maxAbs < TIER_B_PARAMS.maxAbsPosition,
     nonDegenerateExtent: extent > TIER_B_PARAMS.minExtent,
-    // 4
     ticksToStable,
     stableWithinTickBudget: ticksToStable > 0,
   }

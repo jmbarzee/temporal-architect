@@ -31,8 +31,9 @@ function snapshot(): Json {
     // the two tiers describing one object rather than two.
     const sim = seededSimulation(graph)
     const a = tierA(fixture, sim, graph)
-    // tierB ticks the simulation, so it must run second.
-    const b = tierB(fixture.name, sim)
+    // tierB owns its own simulations — one per force configuration — because a
+    // ticked instance cannot be reused for a different parameter set.
+    const b = tierB(fixture.name, graph)
     out[fixture.name] = { tierA: a, tierB: b }
   }
 

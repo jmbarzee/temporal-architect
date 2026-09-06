@@ -8,7 +8,10 @@
 // the reconciler's transition matrix, and the Set-identity trace that is the
 // only detector for the memoization trap (T5).
 
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor } from '../graph/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_NODE_SCALE } from '../graph/node-types'
+import { DEFAULT_PARAMS } from '../graph/simulation'
+import { forceProbes } from './force-probes'
+import { syntheticVisible } from './synthetic-visible'
 import { ALL_EDGE_TYPES } from '../graph/edge-types'
 import { buildNodeTypeCSS } from '../graph/node-type-styles'
 import { nodeTypeToDefType, defTypeToNodeType } from '../components/graph-view/nodeDefType'
@@ -193,6 +196,13 @@ export function staticGolden(): Json {
   return {
     nodeTypes: nodeTypeRows(),
     edgeTypes: edgeTypeRows(),
+    // The whole tuned parameter set. Without it a wholesale retune — every
+    // scalar changed — is a change no gate can see, and the per-value maps are
+    // the thing later units re-key by dimension.
+    defaultForceParams: { ...DEFAULT_PARAMS } as unknown as Json,
+    defaultNodeScale: { ...DEFAULT_NODE_SCALE },
+    forceProbes: forceProbes(),
+    syntheticVisible: syntheticVisible(),
     defTypeBridge: defTypeBridge(),
     reconcileMatrix: reconcileMatrix(),
     filterSetIdentity: filterSetIdentity(),

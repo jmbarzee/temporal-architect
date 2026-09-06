@@ -1448,6 +1448,608 @@
   },
   "tierB": {
     "activeNodeCount": 37,
+    "afterShortRun": {
+      "centerOnly": {
+        "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": [
+          173.942648,
+          264.63666
+        ],
+        "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": [
+          182.737067,
+          237.807687
+        ],
+        "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination": [
+          181.322209,
+          276.424076
+        ],
+        "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination": [
+          168.710882,
+          265.639945
+        ],
+        "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination": [
+          193.753558,
+          240.891468
+        ],
+        "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination": [
+          177.064037,
+          268.574159
+        ],
+        "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination": [
+          199.739443,
+          275.43962
+        ],
+        "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination": [
+          182.073759,
+          272.698208
+        ],
+        "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination": [
+          193.510829,
+          283.056942
+        ],
+        "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination": [
+          175.190172,
+          262.819676
+        ],
+        "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination": [
+          188.279542,
+          297.730817
+        ],
+        "activity:LockRate/worker:loanWorker/namespace:loanOrigination": [
+          171.25026,
+          264.681575
+        ],
+        "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination": [
+          196.082639,
+          248.142773
+        ],
+        "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination": [
+          178.966159,
+          264.513995
+        ],
+        "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination": [
+          182.713161,
+          244.307331
+        ],
+        "activity:PullCredit/worker:loanWorker/namespace:loanOrigination": [
+          170.477068,
+          265.278202
+        ],
+        "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination": [
+          241.776741,
+          347.668995
+        ],
+        "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination": [
+          207.799296,
+          280.098579
+        ],
+        "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination": [
+          196.50857,
+          287.400535
+        ],
+        "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination": [
+          173.74074,
+          278.491302
+        ],
+        "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination": [
+          184.905254,
+          313.922691
+        ],
+        "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination": [
+          203.935465,
+          260.797681
+        ],
+        "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination": [
+          194.722902,
+          252.380518
+        ],
+        "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination": [
+          196.041949,
+          284.554142
+        ],
+        "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination": [
+          176.423264,
+          278.137766
+        ],
+        "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination": [
+          206.051967,
+          286.523982
+        ],
+        "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination": [
+          188.692418,
+          243.93545
+        ],
+        "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": [
+          189.788838,
+          243.416783
+        ],
+        "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": [
+          177.76196,
+          278.657095
+        ],
+        "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": [
+          175.2562,
+          269.790067
+        ],
+        "namespace:loanOrigination": [
+          142.178539,
+          -144.128445
+        ],
+        "worker:loanWorker/namespace:loanOrigination": [
+          171.940481,
+          125.183046
+        ],
+        "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": [
+          205.686715,
+          293.958854
+        ],
+        "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": [
+          199.374988,
+          287.476829
+        ],
+        "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": [
+          193.212618,
+          282.537567
+        ],
+        "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination": [
+          189.926057,
+          308.150091
+        ],
+        "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination": [
+          199.546167,
+          312.21424
+        ]
+      },
+      "default": {
+        "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": [
+          180.664622,
+          275.251486
+        ],
+        "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": [
+          189.940713,
+          247.517121
+        ],
+        "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination": [
+          189.973303,
+          292.977523
+        ],
+        "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination": [
+          175.543785,
+          276.551659
+        ],
+        "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination": [
+          201.998034,
+          251.062288
+        ],
+        "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination": [
+          184.385437,
+          279.988612
+        ],
+        "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination": [
+          201.571026,
+          281.892236
+        ],
+        "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination": [
+          186.847381,
+          282.516024
+        ],
+        "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination": [
+          197.453308,
+          289.544283
+        ],
+        "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination": [
+          182.242518,
+          273.306539
+        ],
+        "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination": [
+          197.590386,
+          312.8434
+        ],
+        "activity:LockRate/worker:loanWorker/namespace:loanOrigination": [
+          177.91247,
+          275.460624
+        ],
+        "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination": [
+          203.946741,
+          259.185373
+        ],
+        "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination": [
+          186.330596,
+          274.856849
+        ],
+        "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination": [
+          190.30828,
+          255.237432
+        ],
+        "activity:PullCredit/worker:loanWorker/namespace:loanOrigination": [
+          177.381527,
+          275.588256
+        ],
+        "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination": [
+          240.250325,
+          350.233454
+        ],
+        "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination": [
+          210.2542,
+          287.005816
+        ],
+        "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination": [
+          200.867125,
+          293.894867
+        ],
+        "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination": [
+          184.424081,
+          294.665874
+        ],
+        "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination": [
+          187.394199,
+          322.076888
+        ],
+        "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination": [
+          207.931271,
+          266.939131
+        ],
+        "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination": [
+          200.391212,
+          259.514736
+        ],
+        "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination": [
+          201.699,
+          290.248176
+        ],
+        "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination": [
+          187.108038,
+          294.294547
+        ],
+        "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination": [
+          211.666276,
+          292.335477
+        ],
+        "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination": [
+          195.748525,
+          254.603231
+        ],
+        "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": [
+          198.112388,
+          253.760046
+        ],
+        "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": [
+          187.342289,
+          295.590219
+        ],
+        "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": [
+          182.081323,
+          280.578904
+        ],
+        "namespace:loanOrigination": [
+          153.759164,
+          -168.976548
+        ],
+        "worker:loanWorker/namespace:loanOrigination": [
+          176.523996,
+          124.443244
+        ],
+        "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": [
+          204.985633,
+          295.162874
+        ],
+        "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": [
+          198.890995,
+          288.027415
+        ],
+        "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": [
+          195.966332,
+          288.923449
+        ],
+        "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination": [
+          189.459751,
+          308.654716
+        ],
+        "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination": [
+          203.997954,
+          318.950307
+        ]
+      },
+      "radial": {
+        "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": [
+          192.524869,
+          293.840669
+        ],
+        "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": [
+          205.974356,
+          267.584522
+        ],
+        "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination": [
+          198.960704,
+          311.716126
+        ],
+        "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination": [
+          187.416025,
+          295.650335
+        ],
+        "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination": [
+          215.382728,
+          268.171949
+        ],
+        "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination": [
+          195.362111,
+          297.432612
+        ],
+        "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination": [
+          209.911909,
+          294.33073
+        ],
+        "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination": [
+          197.760796,
+          299.16326
+        ],
+        "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination": [
+          202.578954,
+          298.047994
+        ],
+        "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination": [
+          194.536721,
+          291.918564
+        ],
+        "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination": [
+          207.774276,
+          330.472044
+        ],
+        "activity:LockRate/worker:loanWorker/namespace:loanOrigination": [
+          189.75728,
+          294.369202
+        ],
+        "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination": [
+          216.26938,
+          277.016025
+        ],
+        "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination": [
+          198.621569,
+          293.013233
+        ],
+        "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination": [
+          211.886506,
+          276.553337
+        ],
+        "activity:PullCredit/worker:loanWorker/namespace:loanOrigination": [
+          190.037017,
+          295.180983
+        ],
+        "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination": [
+          238.535954,
+          352.79543
+        ],
+        "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination": [
+          215.843385,
+          299.101895
+        ],
+        "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination": [
+          206.284828,
+          302.032731
+        ],
+        "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination": [
+          199.038617,
+          316.766134
+        ],
+        "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination": [
+          193.05251,
+          336.04903
+        ],
+        "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination": [
+          218.907352,
+          282.266204
+        ],
+        "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination": [
+          212.524215,
+          275.563685
+        ],
+        "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination": [
+          207.353311,
+          297.465364
+        ],
+        "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination": [
+          202.574567,
+          316.086517
+        ],
+        "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination": [
+          217.071035,
+          299.360411
+        ],
+        "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination": [
+          214.681084,
+          275.376615
+        ],
+        "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": [
+          210.473416,
+          270.286374
+        ],
+        "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": [
+          200.761115,
+          316.497415
+        ],
+        "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": [
+          192.532921,
+          298.297983
+        ],
+        "namespace:loanOrigination": [
+          130.217365,
+          -129.875239
+        ],
+        "worker:loanWorker/namespace:loanOrigination": [
+          179.855043,
+          123.821509
+        ],
+        "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": [
+          204.800017,
+          295.815225
+        ],
+        "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": [
+          204.35712,
+          295.333538
+        ],
+        "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": [
+          198.346583,
+          294.785497
+        ],
+        "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination": [
+          188.808625,
+          309.309162
+        ],
+        "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination": [
+          207.821756,
+          324.729241
+        ]
+      },
+      "topological": {
+        "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": [
+          181.884342,
+          274.257643
+        ],
+        "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": [
+          190.662698,
+          247.101351
+        ],
+        "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination": [
+          190.207395,
+          292.44557
+        ],
+        "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination": [
+          176.761024,
+          275.557269
+        ],
+        "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination": [
+          202.753564,
+          250.663027
+        ],
+        "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination": [
+          185.617671,
+          279.030514
+        ],
+        "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination": [
+          202.359779,
+          281.265037
+        ],
+        "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination": [
+          188.064226,
+          281.568141
+        ],
+        "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination": [
+          198.543652,
+          288.615004
+        ],
+        "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination": [
+          183.465643,
+          272.306236
+        ],
+        "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination": [
+          197.626145,
+          311.986592
+        ],
+        "activity:LockRate/worker:loanWorker/namespace:loanOrigination": [
+          179.130756,
+          274.46673
+        ],
+        "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination": [
+          204.742825,
+          258.670541
+        ],
+        "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination": [
+          187.566017,
+          273.854438
+        ],
+        "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination": [
+          191.062425,
+          254.695165
+        ],
+        "activity:PullCredit/worker:loanWorker/namespace:loanOrigination": [
+          178.592931,
+          274.591687
+        ],
+        "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination": [
+          241.922384,
+          347.466275
+        ],
+        "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination": [
+          211.160823,
+          286.219353
+        ],
+        "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination": [
+          201.928049,
+          292.993844
+        ],
+        "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination": [
+          184.642807,
+          294.077893
+        ],
+        "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination": [
+          188.779081,
+          320.473017
+        ],
+        "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination": [
+          208.694543,
+          266.436714
+        ],
+        "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination": [
+          201.118082,
+          259.147449
+        ],
+        "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination": [
+          202.17437,
+          290.145559
+        ],
+        "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination": [
+          187.322684,
+          293.709882
+        ],
+        "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination": [
+          212.323414,
+          292.110855
+        ],
+        "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination": [
+          196.514444,
+          254.060342
+        ],
+        "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": [
+          198.87475,
+          253.381895
+        ],
+        "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": [
+          187.566751,
+          295.022698
+        ],
+        "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": [
+          183.315141,
+          279.630562
+        ],
+        "namespace:loanOrigination": [
+          154.204666,
+          -246.691151
+        ],
+        "worker:loanWorker/namespace:loanOrigination": [
+          184.705035,
+          122.723645
+        ],
+        "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": [
+          206.159199,
+          293.848865
+        ],
+        "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": [
+          200.246941,
+          286.825858
+        ],
+        "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": [
+          196.555885,
+          286.911188
+        ],
+        "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination": [
+          191.686527,
+          306.406707
+        ],
+        "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination": [
+          204.669609,
+          316.894527
+        ]
+      }
+    },
     "allFinite": true,
     "bandCenterEntries": 4,
     "bandCentersMatchDistinctTypes": true,
@@ -1462,7 +2064,165 @@
       "minExtent": 1,
       "rngSeed": 24301,
       "settledFactor": 10,
+      "shortTicks": 3,
       "tickCount": 400
+    },
+    "seedAt": {
+      "id": "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination",
+      "position": [
+        113.864191,
+        223.805881
+      ]
+    },
+    "seededPositions": {
+      "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": [
+        264.554593,
+        299.745547
+      ],
+      "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": [
+        261.520456,
+        269.290361
+      ],
+      "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination": [
+        267.773959,
+        360.427213
+      ],
+      "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination": [
+        257.495713,
+        303.299269
+      ],
+      "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination": [
+        268.682464,
+        313.155104
+      ],
+      "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination": [
+        262.9877,
+        325.583666
+      ],
+      "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination": [
+        275.733088,
+        320.563872
+      ],
+      "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination": [
+        262.463262,
+        343.081756
+      ],
+      "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination": [
+        269.904394,
+        380.35523
+      ],
+      "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination": [
+        269.306436,
+        291.524321
+      ],
+      "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination": [
+        262.340666,
+        306.572418
+      ],
+      "activity:LockRate/worker:loanWorker/namespace:loanOrigination": [
+        261.472218,
+        300.616116
+      ],
+      "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination": [
+        267.985103,
+        312.917439
+      ],
+      "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination": [
+        274.936135,
+        294.795456
+      ],
+      "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination": [
+        257.35924,
+        254.690083
+      ],
+      "activity:PullCredit/worker:loanWorker/namespace:loanOrigination": [
+        264.897233,
+        268.133114
+      ],
+      "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination": [
+        263.748642,
+        399.525304
+      ],
+      "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination": [
+        261.096347,
+        354.603891
+      ],
+      "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination": [
+        272.22032,
+        392.255653
+      ],
+      "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination": [
+        266.168407,
+        276.39358
+      ],
+      "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination": [
+        276.349171,
+        291.105884
+      ],
+      "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination": [
+        271.100519,
+        355.604195
+      ],
+      "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination": [
+        256.53278,
+        345.469718
+      ],
+      "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination": [
+        260.263198,
+        413.647103
+      ],
+      "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination": [
+        267.905571,
+        276.087766
+      ],
+      "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination": [
+        261.255574,
+        417.16919
+      ],
+      "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination": [
+        267.451568,
+        263.923094
+      ],
+      "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": [
+        259.366105,
+        323.660591
+      ],
+      "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": [
+        270.365438,
+        302.182348
+      ],
+      "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": [
+        258.391781,
+        332.512598
+      ],
+      "namespace:loanOrigination": [
+        153.166331,
+        -188.658705
+      ],
+      "worker:loanWorker/namespace:loanOrigination": [
+        150.475783,
+        -23.272262
+      ],
+      "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": [
+        159.575973,
+        270.593152
+      ],
+      "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": [
+        158.507488,
+        257.251365
+      ],
+      "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": [
+        148.620694,
+        366.738654
+      ],
+      "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination": [
+        146.503375,
+        280.595758
+      ],
+      "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination": [
+        144.856714,
+        243.489944
+      ]
     },
     "stableWithinTickBudget": true,
     "ticksToStable": 200
