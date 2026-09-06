@@ -155,7 +155,14 @@ publish-npm-libs:
 
 # ── Test targets ─────────────────────────────────────────────────────────────
 
-.PHONY: test vet
+.PHONY: test vet typecheck typecheck-visualizer
+
+## Run every typecheck gate
+typecheck: typecheck-visualizer
+
+## Typecheck the visualizer (strict tsc, no emit)
+typecheck-visualizer:
+	cd tools/visualizer && ./node_modules/.bin/tsc --noEmit
 
 ## Run Go tests
 # tools/sampler is its own module (resolved against ../lsp via the repo-root
