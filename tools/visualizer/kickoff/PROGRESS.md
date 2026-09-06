@@ -54,8 +54,8 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 2 — Dimension primitive + shim folder** (code complete; review + Gate 5 + PR remain) |
-| Last completed unit | **Unit 1 — Inject the taxonomy** |
+| Current unit | **Unit 3 — N-dimensional filters + chain UI** (not started) |
+| Last completed unit | **Unit 2 — Dimension primitive + shim folder** (PR #160, REVIEW_2 closed) |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-2`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, Unit 2's -> unit-1. Nothing needs to merge for the run to continue. |
 | Run state | running |
@@ -93,13 +93,14 @@ deletion is `model.ts` 61 -> 12 and the `nodeDefType.ts` removal.
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 2 f773114 | pass |
-| 2 `npm run build:lib` | Unit 2 f773114 | pass — 254 kB lib.js |
-| 3 `npm run verify` | Unit 2 f773114 | pass — 7/7 goldens match |
-| 4 `npm run leak-gate` | Unit 2 f773114 | pass — **209 / ceiling 210** |
-| 5 browser pass | Unit 2, partial | nexus + taskqueues walked, zero console errors; **the five committed screenshots are still owed** — Gate 5 is per-PR |
-| 6 `npm run boundary-gate` | Unit 2 f773114 | pass — **8 / ceiling 8** |
-| + `npm run pattern-gate` | Unit 2 f773114 | pass — 5 allowlisted, 0 new (allowlist 8 -> 3 entries) |
+| 1 `tsc --noEmit` | Unit 2 close | pass |
+| 2 `npm run build:lib` | Unit 2 close | pass |
+| 2b `npm run dts-gate` | Unit 2 close | pass — consumer compile clean, `skipLibCheck` off (**new**) |
+| 3 `npm run verify` | Unit 2 close | pass — 7/7 goldens match |
+| 4 `npm run leak-gate` | Unit 2 close | pass — **209 / 210**; shim 1068; **total 1277 / 1277** (new) |
+| 5 browser pass | Unit 2 close | pass — five fixtures, counts identical to Units 0 and 1, 0 application errors |
+| 6 `npm run boundary-gate` | Unit 2 close | pass — **8 / 8**, now resolving re-exports transitively |
+| + `npm run pattern-gate` | Unit 2 close | pass — 5 allowlisted, 0 new; now scans the shim too |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -178,61 +179,29 @@ explicit pass criteria and a committed screenshot — use them.
 
 ## In-flight work
 
-**Unit 2, commit 2d is complete; 2e (the move) is blocked on one decision.**
-Branch `visualizer/dimensions-unit-2`, all gates green at every commit, 7/7
-goldens matching (`static.golden.json` moved once, per D37).
+**Nothing in flight. Unit 2 is closed.** Branch `visualizer/dimensions-unit-2`,
+[PR #160](https://github.com/jmbarzee/temporal-architect/pull/160) (base:
+`visualizer/dimensions-unit-1`, per D36). `REVIEW_2.md` records 31 findings, with
+the 1 blocker and all 14 majors resolved-with-sha.
 
-Done in 2d: the registries inverted (`taxonomy.ts` holds the shapes,
-`node-scale.ts` the render scale; the entries stay in `node-types.ts` /
-`edge-types.ts` and *narrow* the shapes rather than re-declaring them); B9
-`defaultParamsFor(ontology)`; B8 the params maps keyed by dimension value; B18
-the lossy bridge **deleted**, not ported (D37, F15); §5.2.4 the taxonomy context
-has no default and `WorkflowCanvas` provides it. Pattern allowlist 7 -> 4
-entries. Leak 581 -> 564.
+**Read `REVIEW_2.md` before starting Unit 3, not just this file.** Its headline
+correction is the thing that changes how the next unit should be read: Unit 2's
+`583 -> 209` is **82% relocation, not deletion**, and the relocated vocabulary
+grew by 22 on the way across. The gates now measure that (D40's `totalCeiling`),
+but the lesson generalises — every remaining unit's leak drop should be stated as
+deleted-vs-moved, because the two are not the same accomplishment.
 
-**The ceiling arithmetic, measured.** Unit 2's Gate 4 ceiling is 210 (D38);
-current count is 564. The three remaining movers carry `edge-types.ts` 164 +
-`node-types.ts` 79 + `node-type-styles.ts` 1 = 244, and most of `model.ts`'s 61
-leaves with `NodeType` (B1's remainder), call it 46. That reaches about 274 --
-still 64 over. `build.ts`'s 59 is what closes the gap, which is consistent with
-§6.5's stated 377 drop for this unit. So **`build.ts` must move for Unit 2 to
-hit its ceiling.**
+**Exact next action: begin Unit 3** (`PLAN.md` §6.2, N-dimensional filters +
+chain UI). Its ceilings are already in `kickoff/gates.json` as the Unit 2 close
+values and ratchet again at the Unit 3 boundary: leak 210, total 1277, boundary
+8. Unit 3's §6.5 target is 195.
 
-**Exact next action -- resolve the `buildGraph` fork, then move.** `build.ts`
-now has exactly one real manifest importer: `useGraphModel.ts:14` (`buildGraph`).
-`node-types.ts:19` imports it too, but that file moves as well, so it resolves
-itself. Already cleared: `SOURCE_FILE_DIMENSION` is a *generic* axis id and now
-lives in `dimension.ts` (only the type axis is domain vocabulary), and both
-`ReturnType<typeof buildGraph>` uses became a named `Graph`.
-
-The fork, with the Gate 6 arithmetic for each:
-
-- **(a) Move `useGraphModel.ts` to the adapter alongside `build.ts`.** It is
-  already adapter code -- its whole job is parser-payload -> model, and its two
-  pre-existing Gate 6 violations (`types/ast`, `types/parser-graph`) are the
-  proof. Those two then *leave* the manifest while `GraphView` ->
-  `adapter/useGraphModel` adds one: 11 - 2 + 1 = **10**, a decrease, which the
-  ratchet allows. Cheap, honest about what the file is, and leaves Unit 7/8 to
-  close the last edge.
-- **(b) `GraphView` takes `graph` / `allFiles` / `errors` / `diagnostics` as
-  props and `WorkflowCanvas` calls `useGraphModel`.** The correct end state, and
-  it clears some of `GraphView`'s own four violations too. But it reworks the
-  props of a 700-line component whose `ast` use spreads well past the graph
-  model, and that is §6.2's Unit 8 ("the move + packaging"), not Unit 2.
-- **(c) Leave `build.ts` in the manifest and flag the missed ceiling.** §6.5
-  explicitly permits this -- "a missed ceiling is a §8.2 flag with the new number
-  and the reason". Lands around 274 against 210.
-
-**Would take (a)**: it is the only option that both hits the ceiling and stays
-inside Unit 2's scope, and it moves a file to where its own import edges already
-say it belongs. (b) is the right change in the wrong unit.
-
-Then: B31/B32 (`build.ts`'s `KIND_TO_NODE_TYPE` projection and
-`splitDefinitionKey`, T20) travel with the file; B1's remainder moves `NodeType`
-out of `model.ts`; B36 (`temporal-theme.tsx` direct property access, T16) sits
-outside the manifest so it moves no counter but is still Unit 2 scope. Close the
-unit with the `gates.json` ratchet (leak 583 -> 210, boundary 11 -> 10), Gate 5's
-five fixture screenshots, and `REVIEW_2.md`.
+Two carried items with named owners, so they are debt rather than drift:
+- **Unit 8** closes `GraphView -> adapter/useGraphModel`, the last manifest→shim
+  edge a props change removes (D41 — §6.3's precondition was knowingly unmet for
+  that one file).
+- **Unit 4** takes the absent-value physics policy (D31), the control surfaces'
+  unguarded param indexing, and the band-median/ring-guide disagreement.
 
 ## Discovered facts
 
