@@ -46,19 +46,19 @@ which is worth noticing rather than assuming.
 | `components/controls/PopContext.tsx` | manifest |  | `components/GraphControlPanel.tsx`, `components/GravityControls.tsx`, `components/controls/Slider.tsx` |
 | `components/controls/Slider.tsx` | manifest |  | `components/ForceMap.tsx`, `components/GraphControlPanel.tsx`, `components/GravityControls.tsx` |
 | `components/graph-view/useHighlight.ts` | manifest | 10 | `components/GraphView.tsx` |
-| `components/graph-view/useOntology.ts` | manifest |  | **11** files |
+| `components/graph-view/useOntology.ts` | manifest |  | **12** files |
 | `components/graph-view/useSimulation.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useSimulationLoop.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useViewport.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useVisibleGraph.ts` | manifest |  | `components/GraphView.tsx` |
-| `components/graph-view/visibleGraph.ts` | manifest | 19 | **6** files |
+| `components/graph-view/visibleGraph.ts` | manifest | 19 | **7** files |
 | `components/icons/GearIcons.tsx` | neither | 2 | `components/FilterBar.tsx`, `theme/temporal-theme.tsx` |
 | `components/protocol.ts` | neither | 3 | **6** files |
 | `filter/reconcile.ts` | manifest |  | `components/WorkflowCanvas.tsx`, `verify/static-golden.ts` |
 | `filter/storage.ts` | manifest |  | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **15** files |
-| `graph/dimension.ts` | manifest | 1 | **29** files |
+| `graph/dimension.ts` | manifest | 1 | **30** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
 | `graph/forces.ts` | manifest |  | **5** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |

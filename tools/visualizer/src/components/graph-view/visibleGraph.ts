@@ -17,6 +17,7 @@
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
 import type { Ontology } from '../../graph/ontology'
+import type { DimensionDescriptor } from '../../graph/dimension'
 import type { PhysicsSubject } from '../../graph/forces'
 import type { FilterState } from '../../filter/types'
 import { selectionFor } from '../../filter/types'
@@ -238,32 +239,31 @@ function computeGraphNodeSummary(
 
 
 /**
- * Is this node visible under the current selection?
+ * Does a subject pass the selection, given a way to read its value per axis?
  *
- * One loop over the declared axes, with every branch read from that axis's
- * descriptor rather than assumed. The two live axes disagree on both policies,
- * which is exactly why this cannot be a uniform rule (T7):
+ * The policy — what an empty selection means, what an absent value means — is
+ * here once, read from each axis's descriptor. The *projection* is the caller's,
+ * and deliberately so: a graph node carries a dimension map, while a tree row is
+ * an AST definition with named fields. Those are genuinely different shapes, so
+ * sharing the accessor would mean inventing a fake dimension map for one of
+ * them. Sharing the policy is the part that matters.
  *
- *   - an empty type selection hides everything (`emptyMeans: 'none'`), while an
- *     empty file selection shows everything (`'all'`)
- *   - a node with no value on the file axis stays visible under an active file
- *     filter (`absentMeans: 'visible'`)
- *
- * The previous version was three hardcoded lines naming both axes, so a third
- * axis meant a fourth line here and in every other consumer.
+ * The tree view used to reimplement all of it inline, hardcoding both axes —
+ * so a descriptor change moved the graph and left the tree behind, and the two
+ * halves of the same product disagreed about what the filter meant.
  */
-export function passesFilter(
-  node: PhysicsSubject,
+export function passesSelection(
   filter: FilterState,
-  ontology: Ontology,
+  dimensions: readonly DimensionDescriptor[],
+  valueOn: (dimension: string) => string | undefined,
 ): boolean {
-  for (const dim of ontology.filterDimensions) {
+  for (const dim of dimensions) {
     const selection = selectionFor(filter, dim.id)
     if (selection.size === 0) {
       if (dim.emptyMeans === 'none') return false
       continue
     }
-    const value = ontology.valueOn(node, dim.id)
+    const value = valueOn(dim.id)
     if (value === undefined) {
       if (dim.absentMeans === 'hidden') return false
       continue
@@ -271,6 +271,15 @@ export function passesFilter(
     if (!selection.has(value)) return false
   }
   return true
+}
+
+/** `passesSelection` for a graph node, projected through the taxonomy. */
+export function passesFilter(
+  node: PhysicsSubject,
+  filter: FilterState,
+  ontology: Ontology,
+): boolean {
+  return passesSelection(filter, ontology.filterDimensions, dim => ontology.valueOn(node, dim))
 }
 
 export function computeVisibleGraph(

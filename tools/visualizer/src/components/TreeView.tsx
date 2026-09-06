@@ -1,3 +1,5 @@
+import { useOntology } from './graph-view/useOntology'
+import { passesSelection } from './graph-view/visibleGraph'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 import { selectionFor } from '../filter/types'
 import React from 'react'
@@ -50,6 +52,7 @@ export function TreeView({
   overriddenPins,
   onOverriddenPinsConsumed,
 }: TreeViewProps) {
+  const ontology = useOntology()
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
   const treeItemRefs = React.useRef<(HTMLDivElement | null)[]>([])
@@ -241,13 +244,16 @@ export function TreeView({
   // structural filter — non-matching definitions remain rendered but
   // are visually dimmed (spec § Search Scope: non-destructive search).
   const visibleDefinitions = React.useMemo(() => {
-    const filtered = ast.definitions.filter((def): def is Definition => {
-      if (!selectionFor(filter, DEF_TYPE_DIMENSION).has(def.type)) return false
-      if (selectionFor(filter, SOURCE_FILE_DIMENSION).size > 0 && def.sourceFile) {
-        if (!selectionFor(filter, SOURCE_FILE_DIMENSION).has(def.sourceFile)) return false
-      }
-      return true
-    })
+    // Same policy as the graph, via passesSelection; only the projection is
+    // local, because a definition has named fields where a graph node has a
+    // dimension map. This used to be a second hand-written implementation of
+    // both axes' empty/absent semantics, so a descriptor change moved the graph
+    // and left the tree behind.
+    const filtered = ast.definitions.filter((def): def is Definition =>
+      passesSelection(filter, ontology.filterDimensions, dim =>
+        dim === DEF_TYPE_DIMENSION ? def.type
+        : dim === SOURCE_FILE_DIMENSION ? def.sourceFile
+        : undefined))
 
     filtered.sort((a, b) => {
       const orderA = DEF_TYPE_ORDER.get(a.type) ?? 999
