@@ -188,11 +188,15 @@ export function applyLinkForce(
 export const RADIAL_R_MIN = 60
 export const RADIAL_R_MAX = 540
 
-// Median of the band centres of the node types present in `active`. Subtracting
-// it keeps the band stack symmetric about the origin, so editing or toggling
-// bands doesn't shift the whole graph vertically (and it shares the origin with
-// center gravity, so swapping forces doesn't lurch the layout).
-function medianBandCenter(active: SimNode[], params: GravityParams): number {
+// One band centre per *distinct type present* in `active`, in first-encounter
+// order. Exported because the collection step — not the median — is where the
+// dedup happens, and a dedup that silently degenerates to one entry per node is
+// invisible in every downstream number except this array's length.
+//
+// Deliberately NOT deduplicated by centre value: several types share a band, so
+// the entry count and the distinct-value count differ (7 types, 4 distinct
+// centres).
+export function bandCenters(active: SimNode[], params: GravityParams): number[] {
   const seen = new Set<NodeType>()
   const centers: number[] = []
   for (const n of active) {
@@ -201,6 +205,15 @@ function medianBandCenter(active: SimNode[], params: GravityParams): number {
     const b = bandForType(params, n.nodeType)
     centers.push((b.yMin + b.yMax) / 2)
   }
+  return centers
+}
+
+// Median of the band centres of the node types present in `active`. Subtracting
+// it keeps the band stack symmetric about the origin, so editing or toggling
+// bands doesn't shift the whole graph vertically (and it shares the origin with
+// center gravity, so swapping forces doesn't lurch the layout).
+function medianBandCenter(active: SimNode[], params: GravityParams): number {
+  const centers = bandCenters(active, params)
   if (centers.length === 0) return 0
   centers.sort((a, b) => a - b)
   const m = centers.length

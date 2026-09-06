@@ -8,30 +8,8 @@ import { ALL_NODE_TYPES, bandForType, chargeForType, coreRadiusForType, edgeCate
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { definitionFor, nodeSizeMul, type NodeScaleParams } from '../graph/node-types'
+import { edgeStyleFor } from '../graph/edge-styles'
 import type { ForceSection } from './GraphControlPanel'
-
-// Edge styles indexed by semantic role. The nexus family carries the pink
-// palette through every leg of a call:
-//   - opContainment (operation → service): deep service pink, dashed
-//   - epComposition (operation → endpoint): deep endpoint rose, dashed —
-//     the operation's "second parent" (an endpoint that routes calls to
-//     the (namespace, queue) where this operation is deployed)
-//   - workflowDep   (workflow → workflow): workflow purple
-//   - nexusCall     (workflow ↔ operation, spliced caller → backing): light pink
-//   - dependencyNsToNs / dependencyWkToWk: named greys for the two coarsened cases
-//   - dependencyDefault: fallback grey for all other dependency edges
-//   - containment: subtle slate dotted, default for non-nexus containment edges
-const EDGE_STYLE = {
-  containment:        { color: '#94A3B8', alpha: 0.35, dash: [3, 4], width: 1 },
-  opContainment:      { color: '#DB2777', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → service
-  epComposition:      { color: '#9F1239', alpha: 0.55, dash: [3, 4], width: 1.2 }, // op → endpoint
-  dependencyNsToNs:   { color: '#475569', alpha: 0.85, dash: [], width: 1.8 },     // ns → ns
-  dependencyWkToWk:   { color: '#64748B', alpha: 0.75, dash: [], width: 1.6 },     // worker → worker
-  workflowDep:        { color: '#8B7EC8', alpha: 0.70, dash: [], width: 1.4 },     // workflow → workflow
-  workflowToActivity: { color: '#4A8BC2', alpha: 0.70, dash: [], width: 1.4 },     // workflow → activity
-  dependencyDefault:  { color: '#94A3B8', alpha: 0.50, dash: [], width: 1.3 },     // all other deps
-  nexusCall:          { color: '#F472B6', alpha: 0.85, dash: [], width: 1.5 },     // workflow ↔ operation, or spliced
-} as const
 
 const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#FFFFFF'
@@ -152,59 +130,6 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
-// Pick the right entry from EDGE_STYLE for a given edge.
-//
-// Order matters: the nexus family is checked first so it wins over any
-// generic dependency style. Op → Service containment is the only
-// containment edge that isn't slate; everything else slate-dotted. Workflow
-// → Workflow gets the workflow purple to make the call backbone visible
-// inside a tangle of greys. Spliced caller → backing edges are detected by
-// surviving `nexusEndpoint` metadata, so they keep the nexus colour even
-// once the operation node is filtered out.
-function edgeStyleFor(edge: GraphEdge, src: SimNode, tgt: SimNode): typeof EDGE_STYLE[keyof typeof EDGE_STYLE] {
-  if (edge.edgeType === 'containment') {
-    if (src.nodeType === 'nexusOperation' && tgt.nodeType === 'nexusService') {
-      return EDGE_STYLE.opContainment
-    }
-    // op ↔ endpoint composition: visualized like opContainment (dashed,
-    // nexus-family) but in the endpoint's deeper rose so the eye can tell
-    // the two parents apart at a glance.
-    if (
-      (src.nodeType === 'nexusOperation' && tgt.nodeType === 'nexusEndpoint') ||
-      (src.nodeType === 'nexusEndpoint' && tgt.nodeType === 'nexusOperation')
-    ) {
-      return EDGE_STYLE.epComposition
-    }
-    return EDGE_STYLE.containment
-  }
-  // Both directions of the workflow ↔ operation hop, plus spliced
-  // caller → backing edges that retain the endpoint metadata.
-  if (
-    src.nodeType === 'nexusOperation' || tgt.nodeType === 'nexusOperation' ||
-    edge.nexusEndpoint != null
-  ) {
-    return EDGE_STYLE.nexusCall
-  }
-  if (src.nodeType === 'workflow' && tgt.nodeType === 'workflow') {
-    return EDGE_STYLE.workflowDep
-  }
-  if (
-    (src.nodeType === 'workflow' && tgt.nodeType === 'activity') ||
-    (src.nodeType === 'activity' && tgt.nodeType === 'workflow')
-  ) {
-    return EDGE_STYLE.workflowToActivity
-  }
-  // The two coarsened dependency cases: namespace↔namespace and worker↔worker.
-  // These are the only non-nexus, non-workflow/activity dependency types that
-  // warrant a distinct style; everything else gets the neutral default.
-  if (src.nodeType === 'namespace' || tgt.nodeType === 'namespace') {
-    return EDGE_STYLE.dependencyNsToNs
-  }
-  if (src.nodeType === 'worker' || tgt.nodeType === 'worker') {
-    return EDGE_STYLE.dependencyWkToWk
-  }
-  return EDGE_STYLE.dependencyDefault
-}
 const ARROWHEAD_SIZE = 8
 const CULL_MARGIN = 100
 
