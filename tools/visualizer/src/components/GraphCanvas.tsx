@@ -2,7 +2,7 @@
 // Implements GRAPH_VIEW.md § Visual Encoding, § Viewport Controls, § Interaction States.
 
 import React from 'react'
-import type { GraphEdge, NodeType } from '../graph/model'
+import type { GraphEdge } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { bandForKey, chargeFor, coreRadiusFor, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
@@ -169,8 +169,8 @@ interface GraphCanvasProps {
   running: boolean
   forceParams: ForceParams
   activeSection: ForceSection
-  activeChargeType: NodeType | null
-  activeGravityType: NodeType | null
+  activeChargeType: DimensionValue | null
+  activeGravityType: DimensionValue | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
   // Decomposition group glow layer (drawn behind everything). Empty = no overlay.
@@ -195,8 +195,8 @@ interface DrawData {
   searchMatchIds: Set<string> | null
   forceParams: ForceParams
   activeSection: ForceSection
-  activeChargeType: NodeType | null
-  activeGravityType: NodeType | null
+  activeChargeType: DimensionValue | null
+  activeGravityType: DimensionValue | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
   running: boolean

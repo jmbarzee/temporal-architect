@@ -357,6 +357,13 @@ const FALLBACK_NODE_STYLE: NodeTypeDefinition = {
  */
 export const DEFAULT_ONTOLOGY: Ontology = createOntology({
   styleDimension: TEMPORAL_TYPE_DIMENSION,
+  abbreviations: SLIDER_ABBREV,
+  // The two ladders, as presentation grouping. A control surface lays the main
+  // deployment path out in one run and the nexus addressing path in another.
+  styleGroups: [
+    { id: 'main', values: MAIN_LADDER },
+    { id: 'nexus', values: NEXUS_LADDER },
+  ],
   nodeTypeKeys: ALL_NODE_TYPES,
   nodeStyles: NODE_TYPE_REGISTRY,
   edgeTypes: ALL_EDGE_TYPES,

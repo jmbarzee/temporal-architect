@@ -61,6 +61,8 @@ const SOURCE = { nodes: NODES, edges: EDGES, getNode: (id: string) => BY_ID.get(
  */
 const ALTERNATE = createOntology({
   styleDimension: TEMPORAL_TYPE_DIMENSION,
+  abbreviations: { worker: 'T2', workflow: 'T3', activity: 'T4' },
+  styleGroups: [{ id: 'tiers', values: ['worker', 'workflow', 'activity'] }],
   nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
   nodeStyles: {
     worker: { ...NODE_TYPE_REGISTRY.worker, defType: 'tier-2', summaryKind: 'degree' },

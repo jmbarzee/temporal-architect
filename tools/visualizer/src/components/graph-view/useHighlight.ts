@@ -9,7 +9,8 @@
 
 import React from 'react'
 import type { SimNode } from '../../graph/simulation'
-import type { GraphEdge, NodeType } from '../../graph/model'
+import type { GraphEdge } from '../../graph/model'
+import type { DimensionValue } from '../../graph/dimension'
 import { getTransitiveDeps, getHighlightedEdgeIds } from '../../graph/highlight'
 import { useOntology } from './useOntology'
 
@@ -30,10 +31,10 @@ export interface HighlightController {
   highlightedEdges: Set<string> | null
   activeSection: ForceSection
   setActiveSection: React.Dispatch<React.SetStateAction<ForceSection>>
-  activeChargeType: NodeType | null
-  setActiveChargeType: React.Dispatch<React.SetStateAction<NodeType | null>>
-  activeGravityType: NodeType | null
-  setActiveGravityType: React.Dispatch<React.SetStateAction<NodeType | null>>
+  activeChargeType: DimensionValue | null
+  setActiveChargeType: React.Dispatch<React.SetStateAction<DimensionValue | null>>
+  activeGravityType: DimensionValue | null
+  setActiveGravityType: React.Dispatch<React.SetStateAction<DimensionValue | null>>
   activePullEdge: string | null
   setActivePullEdge: React.Dispatch<React.SetStateAction<string | null>>
 }
@@ -55,8 +56,8 @@ export function useHighlight(
 
   // Force-field preview (hover-driven; no persistent toggle).
   const [activeSection, setActiveSection] = React.useState<ForceSection>(null)
-  const [activeChargeType, setActiveChargeType] = React.useState<NodeType | null>(null)
-  const [activeGravityType, setActiveGravityType] = React.useState<NodeType | null>(null)
+  const [activeChargeType, setActiveChargeType] = React.useState<DimensionValue | null>(null)
+  const [activeGravityType, setActiveGravityType] = React.useState<DimensionValue | null>(null)
   const [activePullEdge, setActivePullEdge] = React.useState<string | null>(null)
 
   // Reset selection/hover/focus when the graph is rebuilt.

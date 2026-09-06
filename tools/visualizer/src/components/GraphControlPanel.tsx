@@ -4,7 +4,8 @@
 import React from 'react'
 import './GraphControlPanel.css'
 import type { ForceParams } from '../graph/simulation'
-import type { NodeType } from '../graph/model'
+import type { DimensionValue } from '../graph/dimension'
+
 import type { NodeScaleParams } from '../graph/node-types'
 import { SpringMap, SpringCurves } from './SpringControls'
 import { ChargeMap, ChargeCurves } from './ChargeControls'
@@ -42,8 +43,8 @@ interface GraphControlPanelProps {
   // GraphView so the simulation params update and the layout reheats.
   onGravityChange: (partial: Partial<ForceParams>) => void
   onActiveSection: (section: ForceSection) => void
-  onActiveChargeType: (nodeType: NodeType | null) => void
-  onActiveGravityType: (nodeType: NodeType | null) => void
+  onActiveChargeType: (nodeType: DimensionValue | null) => void
+  onActiveGravityType: (nodeType: DimensionValue | null) => void
   // The hovered/active pull edge category (its k-field key), forwarded to the
   // canvas so only that edge category is highlighted while tuning it.
   onActivePullEdge: (key: string | null) => void
@@ -149,16 +150,16 @@ export function GraphControlPanel({
   // Links the charge map and the charge-falloff viz: hovering a token in one
   // brightens the matching curve in the other. The node type is also forwarded
   // to the canvas so only that type's charge field rings highlight while tuning.
-  const [hoveredChargeType, setHoveredChargeType] = React.useState<NodeType | null>(null)
-  const handleHoverChargeType = React.useCallback((t: NodeType | null) => {
+  const [hoveredChargeType, setHoveredChargeType] = React.useState<DimensionValue | null>(null)
+  const handleHoverChargeType = React.useCallback((t: DimensionValue | null) => {
     setHoveredChargeType(t)
     onActiveChargeType(t)
   }, [onActiveChargeType])
 
   // Links the band pseudo-plot to the canvas band/ring highlight (and dims the
   // other columns/stripes).
-  const [hoveredGravityType, setHoveredGravityType] = React.useState<NodeType | null>(null)
-  const handleHoverGravityType = React.useCallback((t: NodeType | null) => {
+  const [hoveredGravityType, setHoveredGravityType] = React.useState<DimensionValue | null>(null)
+  const handleHoverGravityType = React.useCallback((t: DimensionValue | null) => {
     setHoveredGravityType(t)
     onActiveGravityType(t)
   }, [onActiveGravityType])
@@ -357,7 +358,7 @@ function SliderRow({ def, value, onChange, nodeType }: {
   def: RangeDef
   value: number
   onChange: (v: number) => void
-  nodeType?: NodeType
+  nodeType?: DimensionValue
 }) {
   const display = def.step < 1 ? String(value) : String(Math.round(value))
   const className = nodeType

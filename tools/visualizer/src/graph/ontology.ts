@@ -48,6 +48,20 @@ export interface Ontology {
   styleForKey(key: DimensionValue | undefined): NodeTypeDefinition
   /** Where a node sits on the style axis, or undefined if it sits nowhere. */
   valueFor(subject: StyleSubject): DimensionValue | undefined
+  /**
+   * Short label for a value — one or two characters. Control surfaces render a
+   * token per value and have no room for a full name.
+   */
+  abbreviationFor(value: DimensionValue): string
+  /**
+   * How the style axis's values group for layout, in display order.
+   *
+   * A control surface that lays values out spatially needs to know which belong
+   * together; without this it can only render one flat row, which is a worse
+   * control surface than the one being generalized. Groups are presentational —
+   * nothing in the physics reads them.
+   */
+  readonly styleGroups: readonly StyleGroup[]
   /** The same, addressed by a node. The hot-path entry point. */
   resolveNodeStyle(subject: StyleSubject): NodeTypeDefinition
   /**
@@ -60,8 +74,16 @@ export interface Ontology {
 }
 
 /** What a host declares in order to build one. */
+/** A named run of values that lay out together on a control surface. */
+export interface StyleGroup {
+  id: string
+  values: readonly DimensionValue[]
+}
+
 export interface OntologySpec {
   styleDimension: DimensionId
+  abbreviations: Readonly<Record<DimensionValue, string>>
+  styleGroups: readonly StyleGroup[]
   nodeTypeKeys: readonly DimensionValue[]
   nodeStyles: Readonly<Record<DimensionValue, NodeTypeDefinition>>
   edgeTypes: readonly EdgeTypeDefinition[]
@@ -100,6 +122,8 @@ export function createOntology(spec: OntologySpec): Ontology {
     subject.dimensions[styleDimension]
   return {
     styleDimension,
+    abbreviationFor: value => spec.abbreviations[value] ?? value,
+    styleGroups: spec.styleGroups,
     nodeTypeKeys: spec.nodeTypeKeys,
     edgeTypes: spec.edgeTypes,
     styleForKey,
