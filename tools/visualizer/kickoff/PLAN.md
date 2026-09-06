@@ -283,9 +283,9 @@ requires a `DECISIONS.md` entry.
 |---|---|---|---|
 | B1 | `model.ts:19-26` `NodeType` union, `:42` `GraphNode.nodeType` | 2 | |
 | B2 | `node-types.ts:112` `NODE_TYPE_REGISTRY` | 2 | |
-| B3 | `node-types.ts:322-324` `definitionFor` — 10 call sites | 1 | |
-| B4 | `forces.ts:23-25,32-34,41-44` the three accessors | 1 | |
-| B5 | `forces.ts:41-44` `bandForType` missing guard (T3) | 1 | |
+| B3 | `node-types.ts:322-324` `definitionFor` — 10 call sites | 1 | migrated |
+| B4 | `forces.ts:23-25,32-34,41-44` the three accessors | 1 | migrated |
+| B5 | `forces.ts:41-44` `bandForType` missing guard (T3) | 1 | migrated |
 | B6 | `forces.ts:195-208`, `:260-276` `Set`/`Map` identity (T1) | 4 | |
 | B7 | `forces.ts:112-118` O(n²) inner loop, 4 lookups per pair (T25) | 4 | |
 | B8 | `simulation.ts:54,:60,:116` keyed records | 2 | |
@@ -313,7 +313,7 @@ requires a `DECISIONS.md` entry.
 | B30 | `FilterBar.css:393-448` — **eight** chip tints (seven per-type plus the `header-type-nexus` group chip) with eight `.vscode-dark` overrides | 6 | |
 | B31 | `build.ts:88-104` `KIND_TO_NODE_TYPE` → dimension projection | 2 | |
 | B32 | `build.ts:78-82` `splitDefinitionKey` + `model.ts:58-61` (T20) | 2 | |
-| B33 | `GraphControlPanel.tsx:59-61` `NumericForceKey` mapped type (T10) | 1 | |
+| B33 | `GraphControlPanel.tsx:59-61` `NumericForceKey` mapped type (T10) | 1 | migrated |
 | B34 | `useSimulationLoop.ts:122-149` asymmetric reheat policies (T9) | 3 | |
 | B35 | `GraphView.tsx:665-679`, `:346-349`, `:543` tooltip switch, focus resolution | 7 | |
 | B36 | `temporal-theme.tsx:72-79,110-116` direct property access (T16) | 2 | |
