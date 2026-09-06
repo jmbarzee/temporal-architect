@@ -97,8 +97,9 @@ function visible(ontology: typeof DEFAULT_ONTOLOGY, types: string[]): Json {
 function mappingProbes(): Json {
   const descriptor: DimensionDescriptor = {
     id: 'probe', label: 'Probe',
-    values: ['a', 'b', 'c', 'd'],
     emptyMeans: 'none', absentMeans: 'visible',
+    focus: 'always',
+    reheat: { alpha: 0.5, seedRevealed: true, refit: true, resume: true },
     labelFor: v => v.toUpperCase(),
     abbreviationFor: v => v.slice(0, 1).toUpperCase(),
   }
@@ -122,7 +123,7 @@ function mappingProbes(): Json {
     refusal = err instanceof Error ? err.message : String(err)
   }
   return {
-    identity: identityMapping(descriptor).buckets.map(b => `${b.id}=${b.label}:${b.values.join(',')}`),
+    identity: identityMapping(descriptor, ['a', 'b', 'c', 'd']).buckets.map(b => `${b.id}=${b.label}:${b.values.join(',')}`),
     grouped: {
       buckets: grouped.buckets.map(b => `${b.id}:${b.values.join(',')}`),
       // Every value resolves, and a value the mapping omits resolves to nothing

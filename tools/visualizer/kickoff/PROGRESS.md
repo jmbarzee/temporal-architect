@@ -179,44 +179,49 @@ explicit pass criteria and a committed screenshot — use them.
 
 ## In-flight work
 
-**Nothing in flight. Unit 2 is closed.** Branch `visualizer/dimensions-unit-2`,
-[PR #160](https://github.com/jmbarzee/temporal-architect/pull/160) (base:
-`visualizer/dimensions-unit-1`, per D36). `REVIEW_2.md` records 31 findings, with
-the 1 blocker and all 14 majors resolved-with-sha.
+**Unit 3 started.** Branch `visualizer/dimensions-unit-3` (off unit-2, PR to
+follow with base `visualizer/dimensions-unit-2`, per D36). Two commits so far,
+gates green at each.
 
-**Read `REVIEW_2.md` before starting Unit 3, not just this file.** Its headline
-correction is the thing that changes how the next unit should be read: Unit 2's
-`583 -> 209` is **82% relocation, not deletion**, and the relocated vocabulary
-grew by 22 on the way across. The gates now measure that (D40's `totalCeiling`),
-but the lesson generalises — every remaining unit's leak drop should be stated as
-deleted-vs-moved, because the two are not the same accomplishment.
+Landed: the efficiency adoption (`VERIFICATION.md` §3.5.6-7, `kickoff/MAP.md`
+generator, `STANDING_CHECKS.md`), then **3a part 1** — `DimensionDescriptor`
+becomes policy-carrying.
 
-**Two model-design records were added at this boundary** (`PLAN.md` §6.6 and
-§6.7). Read them before Unit 4, not after. §6.6 is a retro aimed at whatever
-writes the next plan of this kind: the three counters answer *does it work*,
-*did you touch it*, and *is the vocabulary gone* — **none of them can see
-shape**, so a model can satisfy all three and still store a fact twice with
-nothing enforcing agreement. §6.7 is the question to ask once Unit 9 closes,
-with one worked candidate.
+The descriptor deliberately **does not carry `values`**. Values are derived, not
+declared: the style axis's come from the taxonomy, the source-file axis's from
+scanning the graph. Declaring them on the descriptor as well would have been the
+same fact in two places with nothing enforcing agreement — PLAN §6.6's exact
+shape, introduced on the unit that recorded it. `identityMapping` takes values as
+an argument instead.
 
-**Still open, and not decided by me:** whether Unit 3 absorbs the shape work its
-descriptor foundation implies, and whether Unit 4 is built with axis + mapping +
-table as one constructed value rather than as separate fields. Unit 4 as written
-adds a dimension *dropdown*, which moves the axis onto the same edit channel as
-`pushMultiplier` — so the choice is cheapest to make before Unit 4 exists, and
-the instance count grows from one to roughly five across 4 / 5a / 5b.
+It gained `focus` (T8: `'always'` vs `'whenActive'`) and `reheat` (T9: four
+independent fields — `alpha`, `seedRevealed`, `refit`, `resume`). Four fields
+rather than one strength because the two axes differ on three of them, and T9
+warns explicitly that a descriptor derived from "types reheat harder" drops
+`resume` and leaves the canvas frozen after every file toggle.
 
-**Exact next action: begin Unit 3** (`PLAN.md` §6.2, N-dimensional filters +
-chain UI). Its ceilings are already in `kickoff/gates.json` as the Unit 2 close
-values and ratchet again at the Unit 3 boundary: leak 210, total 1277, boundary
-8. Unit 3's §6.5 target is 195.
+**Note honestly:** between 3a and 3b the descriptor's policies have no reader.
+That is PLAN's own sequencing (3b is "`reconcile.ts` + `useSimulationLoop.ts`
+read policies from descriptors"), but it is one commit of exactly the decorative
+-declarative state STANDING_CHECKS #4 exists to catch. 3b must land before the
+unit closes; if it slips, the descriptor is a liability, not an asset.
 
-Two carried items with named owners, so they are debt rather than drift:
-- **Unit 8** closes `GraphView -> adapter/useGraphModel`, the last manifest→shim
-  edge a props change removes (D41 — §6.3's precondition was knowingly unmet for
-  that one file).
-- **Unit 4** takes the absent-value physics policy (D31), the control surfaces'
-  unguarded param indexing, and the band-median/ring-guide disagreement.
+**Exact next action: 3a part 2 — generalize `FilterState` / `PinState` to
+`Record<DimensionId, …>`.** Measured surface: **116 references to
+`selectedFiles`/`visibleTypes` across 16 files** (see `kickoff/MAP.md` for the
+import graph). The trap to design around first is **T5**: `useVisibleGraph`'s
+deps and `useSimulationLoop`'s comparisons are `Set`-*identity* based, and
+today's `cloneFilter` rebuilds every `Set` — so the generalized state must be
+copy-on-write per dimension, or every unrelated dimension edit re-runs the full
+edge-graduation pass and reheats the simulation. `cloneFilter` should not
+survive the migration in its current form.
+
+Then 3b (policies consumed), 3c (`storage.ts` versioned, D4), 3d (generic
+dimension chips), 3e (the chain UI).
+
+**Still open, and not decided by me:** whether Unit 4 is built with axis +
+mapping + table as one constructed value (PLAN §6.6/§6.7). Cheapest before Unit 4
+exists; the instance count grows from one to roughly five across 4 / 5a / 5b.
 
 ## Discovered facts
 
