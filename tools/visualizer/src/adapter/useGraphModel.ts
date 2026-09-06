@@ -6,6 +6,8 @@
 // error/diagnostic partition by the file filter. Extracted from GraphView as the
 // first, most-isolated decomposition step (see graphview_hook_decomposition plan).
 
+import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { selectionFor } from '../filter/types'
 import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
@@ -13,7 +15,6 @@ import type { FilterState } from '../filter/types'
 import { filterStatesEqual } from '../filter/types'
 import { buildGraph } from './build'
 import type { Graph } from '../graph/model'
-import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing
@@ -86,8 +87,15 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph, filter: Fi
     const prev = prevFilterRef.current
     if (filterStatesEqual(prev, filter)) return
     const changed = new Set<string>()
-    for (const f of filter.selectedFiles) if (!prev.selectedFiles.has(f)) changed.add(`file:${f}`)
-    for (const t of filter.visibleTypes) if (!prev.visibleTypes.has(t)) changed.add(`type:${t}`)
+    // Keyed `<dimension>:<value>`, and derived by looping the filter's own axes
+    // rather than naming two. The consumer looks these up as
+    // `${dimension}:${value}`; emitting `file:`/`type:` while it read
+    // `sourceFile:`/`defType:` left the chip-flash animation silently dead in
+    // both views — no error, no gate, just an effect that stopped happening.
+    for (const [dimension, values] of filter) {
+      const before = selectionFor(prev, dimension)
+      for (const v of values) if (!before.has(v)) changed.add(`${dimension}:${v}`)
+    }
     prevFilterRef.current = filter
     if (changed.size > 0) {
       setRecentlyChanged(changed)

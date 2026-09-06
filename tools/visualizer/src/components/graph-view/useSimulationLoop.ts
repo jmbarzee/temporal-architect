@@ -5,6 +5,10 @@
 // the sim instance, the visible subgraph, and the camera/selection handles as
 // inputs (the explicit data links) rather than owning any of them.
 
+import type { FilterState } from '../../filter/types'
+import { selectionFor } from '../../filter/types'
+import { foldReheatPolicy } from '../../graph/dimension'
+import { passesFilter } from './visibleGraph'
 import React from 'react'
 import type { Simulation, SimNode } from '../../graph/simulation'
 import type { Viewport } from '../../graph/viewport'
@@ -18,8 +22,7 @@ export interface SimulationLoopParams {
   visibleIds: Set<string>
   visibleNodes: SimNode[]
   downstreamScores: Map<string, number>
-  visibleTypes: Set<string>
-  selectedFiles: Set<string>
+  filter: FilterState
   hoveredNodeId: string | null
   selectedNodeId: string | null
   containerRef: React.RefObject<HTMLDivElement>
@@ -32,7 +35,7 @@ export interface SimulationLoopParams {
 export function useSimulationLoop({
   simRef, running, setRunning,
   visibleIds, visibleNodes, downstreamScores,
-  visibleTypes, selectedFiles,
+  filter,
   hoveredNodeId, selectedNodeId,
   containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
 }: SimulationLoopParams): { fps: number } {
@@ -120,21 +123,42 @@ export function useSimulationLoop({
     return () => window.clearInterval(id)
   }, [running, hoveredNodeId])
 
-  // Seed newly visible nodes at their nearest visible ancestor, then reheat.
-  const prevVisibleTypes = React.useRef(visibleTypes)
+  // React to a filter change, per axis, using that axis's declared reheat policy.
+  //
+  // This was two hand-written effects — one for types, one for files — and their
+  // differences were the trap (T9). They differ on three of four fields, and the
+  // one they AGREE on is the one a careless generalisation drops: both call
+  // `setRunning(true)`, and omitting it leaves the canvas frozen after every
+  // toggle. Writing `resume` out per axis is what keeps that a decision rather
+  // than an omission.
+  //
+  // "Newly revealed" is now asked of the whole filter rather than of one axis:
+  // a node counts as revealed if it passes now and did not before. The old
+  // version tested only the type axis, so a node revealed by a *file* change was
+  // never seeded even when the type axis had also moved in the same commit.
+  const prevFilter = React.useRef(filter)
   React.useEffect(() => {
-    const prev = prevVisibleTypes.current
-    if (prev === visibleTypes) return
+    const prev = prevFilter.current
+    if (prev === filter) return
     const sim = simRef.current
-    if (sim) {
-      for (const node of sim.nodes) {
-        const defType = ontology.resolveNodeStyle(node).defType
-        if (visibleTypes.has(defType) && !prev.has(defType)) {
+    if (!sim) { prevFilter.current = filter; return }
+
+    const { alpha, seedRevealed, refit, resume } = foldReheatPolicy(
+      ontology.filterDimensions.filter(
+        dim => selectionFor(prev, dim.id) !== selectionFor(filter, dim.id),
+      ),
+    )
+
+    if (alpha > 0) {
+      if (seedRevealed) {
+        for (const node of sim.nodes) {
+          if (!passesFilter(node, filter, ontology)) continue
+          if (passesFilter(node, prev, ontology)) continue
           let ancestorId = node.parentId
           while (ancestorId) {
             const ancestor = sim.getNode(ancestorId)
             if (!ancestor) break
-            if (visibleTypes.has(ontology.resolveNodeStyle(ancestor).defType)) {
+            if (passesFilter(ancestor, filter, ontology)) {
               sim.seedAt(node.id, ancestor.x, ancestor.y)
               break
             }
@@ -142,26 +166,12 @@ export function useSimulationLoop({
           }
         }
       }
-      sim.reheat(0.5)
-      setRunning(true)
-      initialFitDone.current = false
+      sim.reheat(alpha)
+      if (resume) setRunning(true)
+      if (refit) initialFitDone.current = false
     }
-    prevVisibleTypes.current = visibleTypes
-  }, [visibleTypes]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reheat when the file filter changes — visible motion confirming the change.
-  // No ancestor-seed (files aren't structural) and no refit (preserve pan/zoom).
-  const prevSelectedFiles = React.useRef(selectedFiles)
-  React.useEffect(() => {
-    const prev = prevSelectedFiles.current
-    if (prev === selectedFiles) return
-    const sim = simRef.current
-    if (sim) {
-      sim.reheat(0.3)
-      setRunning(true)
-    }
-    prevSelectedFiles.current = selectedFiles
-  }, [selectedFiles]) // eslint-disable-line react-hooks/exhaustive-deps
+    prevFilter.current = filter
+  }, [filter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { fps }
 }

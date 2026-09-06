@@ -4,6 +4,7 @@
 // membership. No positions, no floats except the downstream scores (which are
 // exact rationals). Byte-identical is the contract.
 
+import { filterOfSets } from '../filter/types'
 import { buildGraph } from '../adapter/build'
 import { edgeTypeFor } from '../adapter/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
@@ -75,10 +76,10 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
 
 function visibleState(
   sim: Simulation,
-  visibleTypes: Set<string>,
-  selectedFiles: Set<string>,
+  visibleTypes: ReadonlySet<string>,
+  selectedFiles: ReadonlySet<string>,
 ): Json {
-  const vg = computeVisibleGraph(sim, visibleTypes, selectedFiles, DEFAULT_ONTOLOGY)
+  const vg = computeVisibleGraph(sim, filterOfSets(visibleTypes, selectedFiles), DEFAULT_ONTOLOGY)
   const nodeOf = (id: string) => sim.getNode(id)
   return {
     visibleNodeCount: vg.visibleNodes.length,

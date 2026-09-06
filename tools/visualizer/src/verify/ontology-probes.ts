@@ -14,6 +14,7 @@
 //      past the container again, the two rows below stop disagreeing and this
 //      probe goes red.
 
+import { filterOfSets } from '../filter/types'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
@@ -27,6 +28,7 @@ import {
 import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
 import { defaultParamsFor } from '../graph/simulation'
+import { foldReheatPolicy } from '../graph/dimension'
 import { bandFor, chargeFor, coreRadiusFor } from '../graph/forces'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import type { Json } from './snapshot'
@@ -67,6 +69,7 @@ const ALTERNATE = createOntology({
   abbreviations: { worker: 'T2', workflow: 'T3', activity: 'T4' },
   styleGroups: [{ id: 'tiers', values: ['worker', 'workflow', 'activity'] }],
   nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
+  filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
   nodeStyles: {
     worker: { ...NODE_TYPE_REGISTRY.worker, defType: 'tier-2', summaryKind: 'degree' },
     workflow: { ...NODE_TYPE_REGISTRY.workflow, defType: 'tier-3' },
@@ -78,7 +81,7 @@ const ALTERNATE = createOntology({
 })
 
 function visible(ontology: typeof DEFAULT_ONTOLOGY, types: string[]): Json {
-  const vg = computeVisibleGraph(SOURCE, new Set(types), new Set<string>(), ontology)
+  const vg = computeVisibleGraph(SOURCE, filterOfSets(new Set(types), new Set<string>()), ontology)
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     summaries: sorted([...vg.nodeSummaries].map(([id, s]) => `${id}=${s}`)),
@@ -97,8 +100,10 @@ function visible(ontology: typeof DEFAULT_ONTOLOGY, types: string[]): Json {
 function mappingProbes(): Json {
   const descriptor: DimensionDescriptor = {
     id: 'probe', label: 'Probe',
-    values: ['a', 'b', 'c', 'd'],
     emptyMeans: 'none', absentMeans: 'visible',
+    focus: 'always',
+    reheat: { alpha: 0.5, seedRevealed: true, refit: true, resume: true },
+    chipsFor: values => values.map(v => ({ id: v, label: v, values: [v] })),
     labelFor: v => v.toUpperCase(),
     abbreviationFor: v => v.slice(0, 1).toUpperCase(),
   }
@@ -122,7 +127,7 @@ function mappingProbes(): Json {
     refusal = err instanceof Error ? err.message : String(err)
   }
   return {
-    identity: identityMapping(descriptor).buckets.map(b => `${b.id}=${b.label}:${b.values.join(',')}`),
+    identity: identityMapping(descriptor, ['a', 'b', 'c', 'd']).buckets.map(b => `${b.id}=${b.label}:${b.values.join(',')}`),
     grouped: {
       buckets: grouped.buckets.map(b => `${b.id}:${b.values.join(',')}`),
       // Every value resolves, and a value the mapping omits resolves to nothing
@@ -163,20 +168,31 @@ function mappingProbes(): Json {
 function prototypeNamedValues(): Json {
   const NAMES = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']
   const params = defaultParamsFor(DEFAULT_ONTOLOGY)
-  const rows: Record<string, Json> = {}
+  // An ARRAY of rows, each carrying its own name, because the row keys are the
+  // very prototype names being probed. As an object this dropped `__proto__`
+  // twice: `rows['__proto__'] = …` invokes the setter, and even built with
+  // `Object.fromEntries` the snapshot canonicaliser rebuilds the object and
+  // loses it again. The probe listed five names and recorded four — silently
+  // missing the row most likely to catch the bug it exists for. A list has no
+  // key space to collide with.
+  const rows: Json[] = []
   for (const name of NAMES) {
     const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
     const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
     const node = subject
     const band = bandFor(params, node)
-    rows[name] = {
+    rows.push({
+      name,
       styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
       styleLabel: style.label,
       charge: chargeFor(params, node),
       coreRadius: coreRadiusFor(params, node),
       chargeIsFinite: Number.isFinite(chargeFor(params, node)),
       band: `${band.yMin}..${band.yMax}`,
-    }
+      // D39 fixed styleForKey and the force lookups and missed this one.
+      abbreviation: DEFAULT_ONTOLOGY.abbreviationFor(name),
+      abbreviationIsString: typeof DEFAULT_ONTOLOGY.abbreviationFor(name) === 'string',
+    })
   }
   return rows
 }
@@ -210,6 +226,7 @@ function physicsInjection(): Json {
     abbreviations: { north: 'N', south: 'S' },
     styleGroups: [{ id: 'zones', values: ['north', 'south'] }],
     nodeTypeKeys: ['north', 'south'],
+    filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
     nodeStyles: {
       north: { ...NODE_TYPE_REGISTRY.worker, defType: 'northDef' },
       south: { ...NODE_TYPE_REGISTRY.activity, defType: 'southDef' },
@@ -261,11 +278,56 @@ function physicsInjection(): Json {
   }
 }
 
+
+/**
+ * The per-axis reheat policy, and the fold across axes (T9).
+ *
+ * This block exists because the policy had **no reader any gate could reach**:
+ * every field of a descriptor's `reheat` could be inverted — including
+ * `resume: false`, which is precisely the mistake T9 names and leaves the canvas
+ * frozen after every toggle — and all six gates plus 7/7 goldens stayed green.
+ *
+ * The rows record each axis's declared policy and the fold for every subset of
+ * axes, so a changed policy or a changed combination rule turns the golden red.
+ */
+function reheatPolicy(): Json {
+  const dims = DEFAULT_ONTOLOGY.filterDimensions
+  const declared: Record<string, Json> = {}
+  for (const d of dims) {
+    declared[d.id] = {
+      alpha: d.reheat.alpha,
+      seedRevealed: d.reheat.seedRevealed,
+      refit: d.reheat.refit,
+      resume: d.reheat.resume,
+      emptyMeans: d.emptyMeans,
+      absentMeans: d.absentMeans,
+      focus: d.focus,
+    }
+  }
+  // Every subset, because a view switch moves more than one axis at once and the
+  // combination is where "last one wins" would hide.
+  const folds: Record<string, Json> = {}
+  const n = dims.length
+  for (let mask = 0; mask < (1 << n); mask++) {
+    const subset = dims.filter((_, i) => (mask & (1 << i)) !== 0)
+    const plan = foldReheatPolicy(subset)
+    const label = subset.length === 0 ? '(none)' : subset.map(d => d.id).sort().join('+')
+    folds[label] = {
+      alpha: plan.alpha,
+      seedRevealed: plan.seedRevealed,
+      refit: plan.refit,
+      resume: plan.resume,
+    }
+  }
+  return { declared, folds }
+}
+
 export function ontologyProbes(): Json {
   const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
     mappings: mappingProbes(),
     prototypeNamedValues: prototypeNamedValues(),
+    reheatPolicy: reheatPolicy(),
     physicsInjection: physicsInjection(),
     // What a miss resolves to, field by field. The `defType` matters most: it is
     // what the visibility predicate tests, so it decides whether an unrecognized

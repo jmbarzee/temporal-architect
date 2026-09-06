@@ -57,7 +57,8 @@
     "prepack": "cp ../../LICENSE LICENSE && cp ../../docs/fragments/visualizer.md FRAGMENT.md",
     "postpack": "rm -f LICENSE FRAGMENT.md",
     "prepublishOnly": "npm run build:lib",
-    "dts-gate": "node verify/dts-gate.mjs"
+    "dts-gate": "node verify/dts-gate.mjs",
+    "map": "node verify/map.mjs"
   },
   "peerDependencies": {
     "react": "^18 || ^19",

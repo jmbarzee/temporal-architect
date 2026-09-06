@@ -1,7 +1,7 @@
 import React from 'react'
 import { SingleGearIcon, InterlockingGearsIcon } from '../components/icons/GearIcons'
 import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
-import type { NodeType } from '../adapter/node-types'
+import { DEF_TYPE_DIMENSION } from '../graph/dimension'
 
 // --- Core types ---
 
@@ -88,16 +88,6 @@ export const DEF_TYPE_CONFIGS: DefTypeConfig[] = ALL_NODE_TYPES.map(t => {
 
 export const DEF_TYPE_ORDER = new Map(DEF_TYPE_CONFIGS.map((cfg, i) => [cfg.type, i]))
 
-// The three nexus def types are consolidated into a single "Nexus" filter
-// chip in both the graph view and the tree view. This constant names the group
-// so chip-toggle and recentlyChanged tracking can reference them without
-// repeating the literal strings. The individual entries remain in
-// DEF_TYPE_CONFIGS so the tree-view sort order and the shared filter
-// contract (visibleTypes Set) continue to use individual type keys.
-export const NEXUS_GROUP_DEF_TYPES = [
-  'nexusEndpointDef', 'nexusServiceDef', 'nexusOperationDef',
-] as const
-
 /**
  * One entry per filter chip shown in both the Tree and Graph filter bars.
  * The nexus types are consolidated into a single 'nexus' group chip so both
@@ -118,34 +108,21 @@ export interface ViewFilterEntry {
 }
 
 /**
- * The icon a chip borrows from the value it fronts.
+ * The chip layer, derived from the kind axis's descriptor.
  *
- * Typed `NodeType`, not `string`, and that is the whole point of the parameter.
- * Resolving through the container was the B36 fix; taking a bare `string` while
- * doing it would have been a regression, because the five call sites below are
- * literals and `styleForKey` swallows an unknown key into a placeholder plus a
- * `console.warn`. A typo would then survive typecheck, leak, boundary, pattern
- * and every golden — its only trace a warning printed next to two intentional
- * ones from the fixtures, which is indistinguishable from expected noise.
- *
- * Narrowing the parameter keeps the compile-time key check the direct property
- * access used to give, without going back to indexing the registry object.
+ * Declared once, in `adapter/node-types.ts`, and projected here into the shape
+ * the tree view already consumes. It was briefly declared in BOTH places, and
+ * the total-vocabulary ceiling caught that within a minute (+23) — a grouping
+ * stored twice is exactly the shape PLAN §6.6 is about, and having a counter
+ * notice it is the point of D40.
  */
-const chipIcon = (key: NodeType): string => DEFAULT_ONTOLOGY.styleForKey(key).icon
-
-// Which chips exist, and how they group, is a domain choice — five chips over
-// seven filter keys, with the three nexus keys folded into one. That grouping
-// stays declared here. What changed is the *lookup*: these were five direct
-// property accesses (`NODE_TYPE_REGISTRY.namespace.icon`), which is the one
-// shape a dynamic-key generalization cannot follow, because the key is spelled
-// into the expression rather than passed to it (T16).
-export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] = [
-  { id: 'namespaceDef', icon: chipIcon('namespace'),     label: 'Namespaces', types: ['namespaceDef'] },
-  { id: 'workerDef',    icon: chipIcon('worker'),        label: 'Workers',    types: ['workerDef'] },
-  { id: 'nexus',        icon: chipIcon('nexusEndpoint'), label: 'Nexus',      types: NEXUS_GROUP_DEF_TYPES },
-  { id: 'workflowDef',  icon: chipIcon('workflow'),      label: 'Workflows',  types: ['workflowDef'] },
-  { id: 'activityDef',  icon: chipIcon('activity'),      label: 'Activities', types: ['activityDef'] },
-]
+export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] =
+  (DEFAULT_ONTOLOGY.descriptorFor(DEF_TYPE_DIMENSION)?.chipsFor([]) ?? []).map(chip => ({
+    id: chip.id,
+    icon: chip.icon ?? '',
+    label: chip.label,
+    types: chip.values,
+  }))
 
 export const HANDLER_CONFIG = {
   signalDecl: { icon: THEME.signal.icon, keyword: 'signal', cssClass: 'declaration-signal' },

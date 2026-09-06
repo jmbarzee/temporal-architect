@@ -9,14 +9,17 @@
 // hidden-match "+N" badge) are passed in as `searchExtra`; everything else
 // is identical across views.
 
+import { useOntology } from './graph-view/useOntology'
+import { selectionFor } from '../filter/types'
 import React from 'react'
 import './FilterBar.css'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { pinnedFor, withPin, withSelection } from '../filter/types'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
-import { toggleFileSelection, toggleTypeGroupSelection } from '../filter/toggle'
+import { toggleGroup } from '../filter/toggle'
 import { PinToggle } from './PinToggle'
 import { SearchIcon } from './icons/GearIcons'
-import { VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 
 interface FilterBarProps {
   /** AST — used to count top-level definitions for the chip badges. */
@@ -42,6 +45,18 @@ interface FilterBarProps {
   /** Per-chip hidden-match badges (Tree view search). Optional. */
   hiddenMatchByType?: Map<string, number>
   hiddenMatchByFile?: Map<string, number>
+  /** The axes shown, in order. R17/R18/R19: editable, and may be empty. */
+  chain: readonly string[]
+  /**
+   * Values available per axis, for axes this bar has no built-in source for.
+   *
+   * The two shipped axes are sourced from `allFiles` and the taxonomy. A host
+   * that declares a third supplies its values here; without it the axis renders
+   * an empty, explicitly-disabled section rather than vanishing.
+   */
+  valuesByDimension?: ReadonlyMap<string, readonly string[]>
+  /** Omitted by a host that does not want the chain edited in place. */
+  onChainChange?: (next: readonly string[]) => void
   /** Raw findings — partitioned by the file filter inside ErrorBars. */
   errors: FileError[]
   diagnostics: Diagnostic[]
@@ -70,11 +85,12 @@ export function FilterBar({
   errors,
   diagnostics,
   refreshFlash,
+  chain,
+  onChainChange,
+  valuesByDimension,
 }: FilterBarProps) {
-  const selectedFiles = filter.selectedFiles
-  const visibleTypes = filter.visibleTypes
-  const noFilesSelected = selectedFiles.size === 0
-  const hasFiles = allFiles.length > 0
+  const ontology = useOntology()
+  const selectedFiles = selectionFor(filter, SOURCE_FILE_DIMENSION)
 
   // Top-level definition counts for the chips. Type counts respect the file
   // filter (defs from selected files only, or all when none selected); file
@@ -95,13 +111,81 @@ export function FilterBar({
     return { typeCounts, fileCounts }
   }, [ast.definitions, selectedFiles])
 
-  const toggleFile = (file: string) => onFilterChange(toggleFileSelection(filter, file))
+  // **The only place this bar names an axis.** Everything below loops over the
+  // chain and reads the rest from descriptors. What is left here is presentation
+  // and data-sourcing: which values exist, their counts, and the CSS classes the
+  // current stylesheet keys on. Unit 6 owns the class names (B30's hand-written
+  // chip tints) and Unit 7 replaces the value sourcing with the post-filter
+  // visible set, so this table is where both land.
+  const PRESENTATION = React.useMemo(() => new Map<string, {
+    values: string[]
+    counts: Map<string, number>
+    hidden?: Map<string, number>
+    sectionClass: string
+    rowClass: string
+    chipClass: string
+    /** Per-chip modifier stem the stylesheet keys on, or '' for none. */
+    modifierPrefix: string
+    activeClass: string
+    iconClass: string
+    labelClass: string
+  }>([
+    [SOURCE_FILE_DIMENSION, {
+      values: allFiles,
+      counts: fileCounts,
+      hidden: hiddenMatchByFile,
+      sectionClass: 'header-files-section',
+      rowClass: 'header-files-row',
+      chipClass: 'header-file-tag',
+      // File chips have never had a per-file modifier class.
+      modifierPrefix: '',
+      activeClass: 'selected',
+      iconClass: 'header-file-icon',
+      labelClass: 'header-file-name',
+    }],
+    [DEF_TYPE_DIMENSION, {
+      values: [...new Set(ontology.nodeTypeKeys.map(k => ontology.styleForKey(k).defType))],
+      counts: typeCounts,
+      hidden: hiddenMatchByType,
+      sectionClass: 'header-types-section',
+      rowClass: 'header-types-row',
+      chipClass: 'header-type-tag',
+      // `header-type-<id>`, NOT `header-type-tag-<id>`: FilterBar.css keys the
+      // eight per-kind tints on the former, and deriving the modifier from
+      // chipClass silently killed every one of them.
+      modifierPrefix: 'header-type',
+      activeClass: 'active',
+      iconClass: 'header-type-icon',
+      labelClass: 'header-type-label',
+    }],
+  ]), [allFiles, fileCounts, typeCounts, hiddenMatchByFile, hiddenMatchByType, ontology])
 
-  const toggleTypeGroup = (types: readonly string[]) =>
-    onFilterChange(toggleTypeGroupSelection(filter, types))
+  /**
+   * Presentation for an axis this bar has no entry for.
+   *
+   * A third declared axis used to be *silently* unrenderable: `PRESENTATION` had
+   * two entries, an axis missing from it returned null, and the section simply
+   * did not appear — while its selection kept filtering the graph. Invisible
+   * filtering is the same failure D44 exists to prevent, so an unknown axis now
+   * renders with neutral styling and whatever values the host supplied.
+   */
+  const lookFor = (dimension: string) => PRESENTATION.get(dimension) ?? {
+    values: [...(valuesByDimension?.get(dimension) ?? [])],
+    counts: new Map<string, number>(),
+    hidden: undefined,
+    sectionClass: 'header-types-section',
+    rowClass: 'header-types-row',
+    chipClass: 'header-type-tag',
+    modifierPrefix: '',
+    activeClass: 'active',
+    iconClass: 'header-type-icon',
+    labelClass: 'header-type-label',
+  }
 
-  const togglePinFiles = () => onPinsChange({ ...pins, files: !pins.files })
-  const togglePinTypes = () => onPinsChange({ ...pins, types: !pins.types })
+  // Axes the host declares that the chain is not already showing.
+  const available = ontology.filterDimensions
+    .map(d => d.id)
+    .filter(id => !chain.includes(id) && lookFor(id).values.length > 0)
 
   const toggleSearch = () => {
     if (searchActive) {
@@ -114,85 +198,111 @@ export function FilterBar({
 
   return (
     <div className={`canvas-header${refreshFlash ? ' refresh-flash' : ''}`}>
-      {hasFiles && (
-        <>
-          <div className={`header-files-section${pins.files ? ' section-pinned' : ''}`}>
-            <div className="header-files-row">
-              {allFiles.map(file => {
-                const fileName = file.split('/').pop() || file
-                const isSelected = selectedFiles.has(file)
-                const isChanged = recentlyChanged.has(`file:${file}`)
-                const hiddenCount = hiddenMatchByFile?.get(file) ?? 0
-                const count = fileCounts.get(file) ?? 0
-                const chipClass = [
-                  'header-file-tag',
-                  noFilesSelected ? 'all-included' : (isSelected ? 'selected' : ''),
-                  isChanged ? 'recently-changed' : '',
-                ].filter(Boolean).join(' ')
-                return (
-                  <button key={file} className={chipClass} onClick={() => toggleFile(file)} title={file}>
-                    <span className="header-file-icon">📄</span>
-                    <span className="header-file-name">{fileName}</span>
-                    <span className="header-chip-count">{count}</span>
-                    {hiddenCount > 0 && (
-                      <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden in this file`}>
-                        {hiddenCount}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            <PinToggle
-              pinned={pins.files}
-              onClick={togglePinFiles}
-              flashing={overriddenPins.has('files')}
-              label="Files"
-            />
-          </div>
-          <div className="header-divider" />
-        </>
-      )}
+      {chain.map(dimension => {
+        const descriptor = ontology.descriptorFor(dimension)
+        if (!descriptor) return null
+        const look = lookFor(dimension)
+        const chips = descriptor.chipsFor(look.values)
+        // No values to offer: render the header and its remove control anyway,
+        // so an axis that is filtering is always visible and always removable.
+        // Vanishing is what made a third axis dangerous rather than merely
+        // unsupported.
+        const empty = chips.length === 0
 
-      <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
-        <div className="header-types-row">
-          {VIEW_FILTER_ENTRIES.map(entry => {
-            const isActive = entry.types.some(t => visibleTypes.has(t))
-            const isChanged = entry.types.some(t => recentlyChanged.has(`type:${t}`))
-            const hiddenCount = entry.types.reduce((sum, t) => sum + (hiddenMatchByType?.get(t) ?? 0), 0)
-            const count = entry.types.reduce((sum, t) => sum + (typeCounts.get(t) ?? 0), 0)
-            const cls = [
-              'header-type-tag',
-              isActive ? 'active' : '',
-              `header-type-${entry.id}`,
-              isChanged ? 'recently-changed' : '',
-            ].filter(Boolean).join(' ')
-            return (
-              <button
-                key={entry.id}
-                className={cls}
-                onClick={() => toggleTypeGroup(entry.types)}
-                title={isActive ? `Hide ${entry.label.toLowerCase()}` : `Show ${entry.label.toLowerCase()}`}
-              >
-                <span className="header-type-icon">{entry.icon}</span>
-                <span className="header-type-label">{entry.label}</span>
-                <span className="header-chip-count">{count}</span>
-                {hiddenCount > 0 && (
-                  <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden by this filter`}>
-                    {hiddenCount}
+        const selection = selectionFor(filter, dimension)
+        const pinned = pinnedFor(pins, dimension)
+        // An `emptyMeans: 'all'` axis with nothing selected is not "off" — it is
+        // matching everything, and the chips say so rather than reading as a
+        // filter that hides the lot.
+        const allIncluded = selection.size === 0 && descriptor.emptyMeans === 'all'
+
+        return (
+          <React.Fragment key={dimension}>
+            <div className={`${look.sectionClass}${pinned ? ' section-pinned' : ''}`}>
+              <div className={look.rowClass}>
+                {empty && (
+                  <span className="header-chain-empty" title={`${descriptor.label} has no values in this view`}>
+                    no {descriptor.label.toLowerCase()} values
                   </span>
                 )}
-              </button>
-            )
-          })}
+                {chips.map(chip => {
+                  const isActive = chip.values.some(v => selection.has(v))
+                  const isChanged = chip.values.some(v => recentlyChanged.has(`${dimension}:${v}`))
+                  const hiddenCount = chip.values.reduce((sum, v) => sum + (look.hidden?.get(v) ?? 0), 0)
+                  const count = chip.values.reduce((sum, v) => sum + (look.counts.get(v) ?? 0), 0)
+                  const cls = [
+                    look.chipClass,
+                    allIncluded ? 'all-included' : (isActive ? look.activeClass : ''),
+                    look.modifierPrefix ? `${look.modifierPrefix}-${chip.id}` : '',
+                    isChanged ? 'recently-changed' : '',
+                  ].filter(Boolean).join(' ')
+                  return (
+                    <button
+                      key={chip.id}
+                      className={cls}
+                      onClick={() => onFilterChange(toggleGroup(filter, dimension, chip.values))}
+                      title={chip.tooltip ?? (isActive ? `Hide ${chip.label.toLowerCase()}` : `Show ${chip.label.toLowerCase()}`)}
+                    >
+                      {chip.icon && <span className={look.iconClass}>{chip.icon}</span>}
+                      <span className={look.labelClass}>{chip.label}</span>
+                      <span className="header-chip-count">{count}</span>
+                      {hiddenCount > 0 && (
+                        <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden by this filter`}>
+                          {hiddenCount}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              <PinToggle
+                pinned={pinned}
+                onClick={() => onPinsChange(withPin(pins, dimension, !pinned))}
+                flashing={overriddenPins.has(dimension)}
+                label={descriptor.label}
+              />
+              {onChainChange && (
+                <button
+                  className="header-chain-remove"
+                  onClick={() => {
+                    // Removing an axis also stops it filtering. Keeping the
+                    // selection would leave the view filtered by something with
+                    // no on-screen representation and no way to reach it —
+                    // invisible state that reads as a bug.
+                    //
+                    // "Stops filtering" is NOT "empty", and that difference is
+                    // this axis's `emptyMeans` again. On the file axis an empty
+                    // selection matches everything; on the kind axis it matches
+                    // NOTHING, so clearing it would blank the view instead of
+                    // unfiltering it. Match-everything is therefore empty for
+                    // one and the full value set for the other.
+                    onFilterChange(withSelection(
+                      filter,
+                      dimension,
+                      descriptor.emptyMeans === 'all'
+                        ? new Set<string>()
+                        : new Set(chips.flatMap(c => [...c.values])),
+                    ))
+                    onChainChange(chain.filter(d => d !== dimension))
+                  }}
+                  title={`Remove the ${descriptor.label} filter`}
+                >×</button>
+              )}
+            </div>
+            <div className="header-divider" />
+          </React.Fragment>
+        )
+      })}
+
+      {onChainChange && available.length > 0 && (
+        <div className="header-chain-add">
+          <button
+            className="header-chain-add-button"
+            onClick={() => onChainChange([...chain, available[0]!])}
+            title={`Add the ${ontology.descriptorFor(available[0]!)?.label ?? available[0]} filter`}
+          >+</button>
         </div>
-        <PinToggle
-          pinned={pins.types}
-          onClick={togglePinTypes}
-          flashing={overriddenPins.has('types')}
-          label="Types"
-        />
-      </div>
+      )}
 
       <div className="header-divider" />
 
@@ -233,7 +343,7 @@ interface Partitioned {
 // Split findings into "shown files" vs "hidden files" by the file filter.
 // File-less diagnostics surface in the shown group so a missing path can't
 // accidentally hide them.
-function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], selectedFiles: Set<string>): Partitioned {
+function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], selectedFiles: ReadonlySet<string>): Partitioned {
   if (selectedFiles.size === 0) {
     return { shownFileErrors: errors, hiddenFileErrors: [], shownDiagnostics: diagnostics, hiddenDiagnostics: [] }
   }
@@ -262,7 +372,7 @@ function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], selecte
 function ErrorBars({ errors, diagnostics, selectedFiles }: {
   errors: FileError[]
   diagnostics: Diagnostic[]
-  selectedFiles: Set<string>
+  selectedFiles: ReadonlySet<string>
 }) {
   const { shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics } =
     partitionByFile(errors, diagnostics, selectedFiles)

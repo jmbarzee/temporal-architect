@@ -20,6 +20,7 @@
 // speed at rest. Both are chaotic float-derived aggregates over the full run, and
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
+import { filterOfSets } from '../filter/types'
 import { bandCenters, bandFor } from '../graph/forces'
 import type { Graph } from '../graph/model'
 import { defaultParamsFor, Simulation } from '../graph/simulation'
@@ -103,7 +104,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
 
   // Downstream scores, needed by the topological scenario.
   const scoreSim = seededSimulation(graph)
-  const vg = computeVisibleGraph(scoreSim, ALL_DEF_TYPES, new Set<string>(), DEFAULT_ONTOLOGY)
+  const vg = computeVisibleGraph(scoreSim, filterOfSets(ALL_DEF_TYPES, new Set<string>()), DEFAULT_ONTOLOGY)
 
   // ── Short runs, one per force configuration. Positions goldened exactly.
   const shortRuns: [string, Json][] = scenarios().map(([name, params]) => {

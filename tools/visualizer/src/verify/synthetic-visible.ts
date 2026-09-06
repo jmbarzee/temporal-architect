@@ -15,6 +15,7 @@
 //
 // Positions are irrelevant to the derivation and are all zero.
 
+import { filterOfSets } from '../filter/types'
 import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
 import type { SimNode } from '../graph/simulation'
@@ -102,7 +103,7 @@ function edgeLine(e: GraphEdge): string {
 }
 
 function state(types: string[], files: string[]): Json {
-  const vg = computeVisibleGraph(SOURCE, new Set(types), new Set(files), DEFAULT_ONTOLOGY)
+  const vg = computeVisibleGraph(SOURCE, filterOfSets(new Set(types), new Set(files)), DEFAULT_ONTOLOGY)
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     graduatedEdges: sorted(vg.visibleEdges.map(edgeLine)),

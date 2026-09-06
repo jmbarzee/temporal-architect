@@ -54,8 +54,8 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 3 — N-dimensional filters + chain UI** (not started) |
-| Last completed unit | **Unit 2 — Dimension primitive + shim folder** (PR #160, REVIEW_2 closed) |
+| Current unit | **Unit 4 — Push/pull on a chosen dimension** (not started) |
+| Last completed unit | **Unit 3 — N-dimensional filters + chain UI** |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-2`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, Unit 2's -> unit-1. Nothing needs to merge for the run to continue. |
 | Run state | running |
@@ -64,10 +64,10 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | 0 (R1 partial) | 42 |
-| B — blast-radius sites migrated | 13 | 38 |
-| C — leaks in the manifest | **209** | 0 |
-| Gate 6 — import-boundary violations | **8** | 0 |
+| A — requirements covered | **6** (R6, R14, R17, R18, R19, R20) + R1 partial | 42 |
+| B — blast-radius sites migrated | 18 | 38 |
+| C — leaks in the manifest | **203** | 0 |
+| Gate 6 — import-boundary violations | **7** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
 measuring them. Counter A's R41 ("does everything it did before") closes at
@@ -93,14 +93,14 @@ deletion is `model.ts` 61 -> 12 and the `nodeDefType.ts` removal.
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 2 close | pass |
-| 2 `npm run build:lib` | Unit 2 close | pass |
-| 2b `npm run dts-gate` | Unit 2 close | pass — consumer compile clean, `skipLibCheck` off (**new**) |
-| 3 `npm run verify` | Unit 2 close | pass — 7/7 goldens match |
-| 4 `npm run leak-gate` | Unit 2 close | pass — **209 / 210**; shim 1068; **total 1277 / 1277** (new) |
-| 5 browser pass | Unit 2 close | pass — five fixtures, counts identical to Units 0 and 1, 0 application errors |
-| 6 `npm run boundary-gate` | Unit 2 close | pass — **8 / 8**, now resolving re-exports transitively |
-| + `npm run pattern-gate` | Unit 2 close | pass — 5 allowlisted, 0 new; now scans the shim too |
+| 1 `tsc --noEmit` | Unit 3 close | pass |
+| 2 `npm run build:lib` | Unit 3 close | pass |
+| 2b `npm run dts-gate` | Unit 3 close | pass — consumer compile clean, `skipLibCheck` off |
+| 3 `npm run verify` | Unit 3 close | pass — 7/7 goldens match |
+| 4 `npm run leak-gate` | Unit 3 close | pass — **203 / 204**; shim 1063; **total 1266 / 1266** |
+| 5 browser pass | Unit 3 close | pass — five fixtures, counts identical to Units 0, 1 and 2, 0 application errors |
+| 6 `npm run boundary-gate` | Unit 3 close | pass — **7 / 7**; the 8 -> 7 is a genuine edge removal, not relocation |
+| + `npm run pattern-gate` | Unit 3 close | pass — 5 allowlisted, 0 new |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -124,7 +124,7 @@ Status: blank = not started · `wip` · `done`.
 | R3 | Host-owned node payload field | 2 | 1 |
 | R4 | Edge type from node-dimension combinations | 4 | 3 (Tier C) |
 | R5 | Edges carry `relation` / `dispatch` dimensions | 4 | 3 (Tier C) |
-| R6 | Common filter interface + staple filters | 3 | 3 |
+| R6 | Common filter interface + staple filters | 3 | covered (3) — descriptors + chain |
 | R7 | Global axis backed by a dimension | 5a | 5 |
 | R8 | Global axis backed by a computed scalar | 5b | 3 + 5 |
 | R9 | Computed scalars may traverse the graph | 5b | 3 |
@@ -132,13 +132,13 @@ Status: blank = not started · `wip` · `done`.
 | R11 | Base node sizes carried by the colour-scheme input | 6 | 5 |
 | R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw |
 | R13 | Default force dimension configurable | 4 | 5 |
-| R14 | Default filters/selections configurable | 3 | 5 |
+| R14 | Default filters/selections configurable | 3 | covered (3) — default selections from the taxonomy |
 | R15 | Default colours configurable | 6 | 5 |
 | R16 | Every label and abbreviation configurable | 6 | 4 |
-| R17 | Filter chain: insert before/after, delete | 3 | 5 |
-| R18 | Empty chain renders small bar with `+` | 3 | 5 |
-| R19 | Default displayed filters configurable | 3 | 5 |
-| R20 | Search last, unchanged | 3 | 5 |
+| R17 | Filter chain: insert before/after, delete | 3 | covered (3) — Gate 5 verified |
+| R18 | Empty chain renders small bar with `+` | 3 | covered (3) — Gate 5 verified |
+| R19 | Default displayed filters configurable | 3 | covered (3) — declared `filterDimensions` order |
+| R20 | Search last, unchanged | 3 | covered (3) — Gate 5 verified |
 | R21 | Graph-pane colour-scheme button | 6 | 5 |
 | R22 | Push + Pull combined into one view | 4 | 5 |
 | R23 | Subsections styled like Band/Topological, no switches | 4 | 5 |
@@ -179,44 +179,38 @@ explicit pass criteria and a committed screenshot — use them.
 
 ## In-flight work
 
-**Nothing in flight. Unit 2 is closed.** Branch `visualizer/dimensions-unit-2`,
-[PR #160](https://github.com/jmbarzee/temporal-architect/pull/160) (base:
-`visualizer/dimensions-unit-1`, per D36). `REVIEW_2.md` records 31 findings, with
-the 1 blocker and all 14 majors resolved-with-sha.
+**Unit 3 is closed.** Branch `visualizer/dimensions-unit-3`,
+[PR #161](https://github.com/jmbarzee/temporal-architect/pull/161) (base:
+`visualizer/dimensions-unit-2`, per D36). `REVIEW_3.md` records 42 findings with
+all 3 blockers and all 9 majors resolved-with-sha.
 
-**Read `REVIEW_2.md` before starting Unit 3, not just this file.** Its headline
-correction is the thing that changes how the next unit should be read: Unit 2's
-`583 -> 209` is **82% relocation, not deletion**, and the relocated vocabulary
-grew by 22 on the way across. The gates now measure that (D40's `totalCeiling`),
-but the lesson generalises — every remaining unit's leak drop should be stated as
-deleted-vs-moved, because the two are not the same accomplishment.
+**Read `REVIEW_3.md` before Unit 4.** Two things in it change how the next unit
+should be read:
 
-**Two model-design records were added at this boundary** (`PLAN.md` §6.6 and
-§6.7). Read them before Unit 4, not after. §6.6 is a retro aimed at whatever
-writes the next plan of this kind: the three counters answer *does it work*,
-*did you touch it*, and *is the vocabulary gone* — **none of them can see
-shape**, so a model can satisfy all three and still store a fact twice with
-nothing enforcing agreement. §6.7 is the question to ask once Unit 9 closes,
-with one worked candidate.
+1. **The cost rules worked** — 20 agents/2.00M/29 clusters became 15 agents/
+   1.86M/**20** clusters, and the verify stage **refuted** something for the
+   first time. Clustering on mechanism rather than file path is what did it.
+2. **Rule 8 failed on the run that introduced it** (F17): I wrote "isolation
+   applies to every stage that mutates" and then did not set it on the verifiers.
+   A rule in a document is not a rule until something executes it.
 
-**Still open, and not decided by me:** whether Unit 3 absorbs the shape work its
-descriptor foundation implies, and whether Unit 4 is built with axis + mapping +
-table as one constructed value rather than as separate fields. Unit 4 as written
-adds a dimension *dropdown*, which moves the axis onto the same edit channel as
-`pushMultiplier` — so the choice is cheapest to make before Unit 4 exists, and
-the instance count grows from one to roughly five across 4 / 5a / 5b.
+**Exact next action: begin Unit 4** (`PLAN.md` §6.2). Ceilings ratcheted to the
+Unit 3 close: leak **204**, total **1266**, boundary **7**.
 
-**Exact next action: begin Unit 3** (`PLAN.md` §6.2, N-dimensional filters +
-chain UI). Its ceilings are already in `kickoff/gates.json` as the Unit 2 close
-values and ratchet again at the Unit 3 boundary: leak 210, total 1277, boundary
-8. Unit 3's §6.5 target is 195.
+Three things Unit 4 should settle first, all recorded and none of them mine to
+decide alone:
 
-Two carried items with named owners, so they are debt rather than drift:
-- **Unit 8** closes `GraphView -> adapter/useGraphModel`, the last manifest→shim
-  edge a props change removes (D41 — §6.3's precondition was knowingly unmet for
-  that one file).
-- **Unit 4** takes the absent-value physics policy (D31), the control surfaces'
-  unguarded param indexing, and the band-median/ring-guide disagreement.
+- **The params shape** (§6.6/§6.7). Unit 4 adds the dimension *dropdown*, which
+  puts the axis on the same edit channel as `pushMultiplier` — one click from the
+  axis/table disagreement rather than a taxonomy swap away. One instance to
+  convert now; roughly five by 5b.
+- **`ontology.valueOn`'s `defType` special case.** I argued it is library-declared
+  shared vocabulary; the review argues it is the domain leaking back under a
+  neutral name. Unit 4 makes the axis a user choice, so Unit 4 is where it stops
+  being arguable.
+- **Unit 4's §6.5 ceiling of 160 is likely optimistic**, the same way Unit 3's 195
+  was (D45). From 203 that needs 43, against `model.ts`'s 12. Re-derive from the
+  baseline table rather than treating 160 as reachable.
 
 ## Discovered facts
 
@@ -376,6 +370,23 @@ agents also need `node_modules` and a build — the durable pattern is the one
 those two agents invented: export a pristine tree, symlink `node_modules`, run
 the gates there. Every gate script here resolves against its package root, so it
 works unmodified.
+
+**F17 — I wrote the isolation rule and then did not apply it, on the same run.**
+§3.5.6 rule 8 says "isolation applies to every stage that mutates, not the
+obvious one", written from Unit 2's contamination. The Unit 3 fan-out then set
+`isolation: 'worktree'` on the six finders and **not** on the verifiers —
+identically to Unit 2 — and a verifier duly reported working in the live
+worktree, seeing this session's dev server and in-flight edits.
+
+No damage: the tree was clean afterwards and every gate green. But the rule
+failed on the run that introduced it, which says something worth keeping. A rule
+written into a document is not a rule until something *executes* it — the same
+lesson as F15 (a golden row keeps dead code alive) and D46 (declared policy no
+gate reads), one level up. The durable fix is not "remember rule 8"; it is a
+workflow template where isolation is not a per-stage option.
+
+**Also recorded: `git stash` stayed untouched throughout** (C6), and the review's
+own worktrees were removed afterwards.
 
 ---
 

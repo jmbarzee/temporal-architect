@@ -58,6 +58,8 @@ interface GraphViewProps {
   onFilterChange: (next: FilterState) => void
   pins: PinState
   onPinsChange: (next: PinState) => void
+  chain: readonly string[]
+  onChainChange?: (next: readonly string[]) => void
   searchQuery: string
   searchActive: boolean
   onSearchChange: (query: string, active: boolean) => void
@@ -81,6 +83,8 @@ export function GraphView({
   onFilterChange,
   pins,
   onPinsChange,
+  chain,
+  onChainChange,
   searchQuery,
   searchActive,
   onSearchChange,
@@ -92,8 +96,6 @@ export function GraphView({
   const ontology = useOntology()
   // Filter state is now driven by props from WorkflowCanvas (spec § Filter
   // State Model). Read the two structural dimensions through `filter`.
-  const visibleTypes = filter.visibleTypes
-  const selectedFiles = filter.selectedFiles
 
   // --- Core state ---
   // Camera (viewport transform, container ref, fit/center coordination).
@@ -181,7 +183,7 @@ export function GraphView({
   // Visible subgraph derived from the live sim (filter + edge graduation +
   // summaries + downstream-depth scores), recomputed on filter / sim-rebuild.
   const { visibleNodes, visibleEdges, visibleIds, nodeSummaries, downstreamScores } =
-    useVisibleGraph(simRef, simVersion, visibleTypes, selectedFiles)
+    useVisibleGraph(simRef, simVersion, filter)
 
   // --- Decomposition group overlay (GRAPH_VIEW.md § Decomposition Group
   // Overlay). Selection (which division per chunk is active/enabled/expanded)
@@ -261,7 +263,7 @@ export function GraphView({
   const { fps } = useSimulationLoop({
     simRef, running, setRunning,
     visibleIds, visibleNodes, downstreamScores,
-    visibleTypes, selectedFiles,
+    filter,
     hoveredNodeId, selectedNodeId,
     containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
   })
@@ -523,6 +525,8 @@ export function GraphView({
             onFilterChange={onFilterChange}
             pins={pins}
             onPinsChange={onPinsChange}
+            chain={chain}
+            onChainChange={onChainChange}
             overriddenPins={overriddenPins}
             recentlyChanged={recentlyChanged}
             searchQuery={searchQuery}

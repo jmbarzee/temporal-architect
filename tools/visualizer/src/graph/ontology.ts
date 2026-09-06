@@ -18,7 +18,8 @@
 //     the O(n²) charge loop, so it is a record lookup and a branch, never a
 //     constructed object.
 
-import type { DimensionId, DimensionMap, DimensionValue } from './dimension'
+import type { DimensionDescriptor, DimensionId, DimensionMap, DimensionValue } from './dimension'
+import { DEF_TYPE_DIMENSION } from './dimension'
 import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
@@ -52,6 +53,26 @@ export interface Ontology {
    * With one source there is nothing to override out of step.
    */
   styleAxis(): DimensionId
+  /**
+   * The axes the filter chain may operate on, with their per-axis policies.
+   *
+   * Host-declared, like the entries: which axes exist is a domain fact. The
+   * engine reads only the policies (T7/T8/T9) and never enumerates the ids.
+   */
+  readonly filterDimensions: readonly DimensionDescriptor[]
+  /** One axis's policies, or undefined if the host does not declare it. */
+  descriptorFor(dimension: DimensionId): DimensionDescriptor | undefined
+  /**
+   * The value a subject presents on one axis — the single place the filter's
+   * one projection lives.
+   *
+   * Most axes are read straight off the node's dimension map. `defType` is not:
+   * its values are a *projection* of the style axis, which is what lets two
+   * declared kinds share a filter key and one chip cover three of them. Stating
+   * that here means the predicate, the reconciler and the chips all agree by
+   * construction instead of each re-deriving it.
+   */
+  valueOn(subject: StyleSubject, dimension: DimensionId): DimensionValue | undefined
   /** Every node-type key, in declaration order (top of the hierarchy first). */
   readonly nodeTypeKeys: readonly DimensionValue[]
   /** Every edge category, in control-panel order. */
@@ -102,6 +123,7 @@ export interface OntologySpec {
   abbreviations: Readonly<Record<DimensionValue, string>>
   styleGroups: readonly StyleGroup[]
   nodeTypeKeys: readonly DimensionValue[]
+  filterDimensions: readonly DimensionDescriptor[]
   nodeStyles: Readonly<Record<DimensionValue, NodeTypeDefinition>>
   edgeTypes: readonly EdgeTypeDefinition[]
   resolveEdgeType(edge: GraphEdge, src: StyleSubject, tgt: StyleSubject): EdgeTypeDefinition
@@ -115,6 +137,7 @@ export interface OntologySpec {
 
 export function createOntology(spec: OntologySpec): Ontology {
   const { nodeStyles, fallbackStyle } = spec
+  const byDimension = new Map(spec.filterDimensions.map(d => [d.id, d]))
   // Warn once per unrecognized key, and once PER ONTOLOGY: this resolves per
   // node per frame, so a warning on every miss buries the first under sixty a
   // second — but a process-global set would also silence a second taxonomy that
@@ -145,7 +168,18 @@ export function createOntology(spec: OntologySpec): Ontology {
     subject.dimensions[styleDimension]
   return {
     styleAxis: () => styleDimension,
-    abbreviationFor: value => spec.abbreviations[value] ?? value,
+    filterDimensions: spec.filterDimensions,
+    descriptorFor: id => byDimension.get(id),
+    valueOn: (subject, dimension) =>
+      dimension === DEF_TYPE_DIMENSION
+        ? styleForKey(valueFor(subject)).defType
+        : subject.dimensions[dimension],
+    // `hasOwn`, for the same reason as `styleForKey` (D39): a value named
+    // `constructor` or `toString` resolves up the prototype chain, the `??`
+    // never fires, and this returns a Function where a string is expected.
+    // D39 fixed the two lookups it found and missed this one.
+    abbreviationFor: value =>
+      hasOwn(spec.abbreviations, value) ? spec.abbreviations[value] : value,
     styleGroups: spec.styleGroups,
     nodeTypeKeys: spec.nodeTypeKeys,
     edgeTypes: spec.edgeTypes,

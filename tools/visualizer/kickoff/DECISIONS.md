@@ -693,3 +693,168 @@ that a spread-derived container stays self-consistent.
 safe detached.
 
 Found by the Unit 2 review fan-out (lens: seam). — 2026-09-06 — agent
+
+**D43 — The filter model becomes axis-keyed, and the static golden's
+`filterSetIdentity` rows flip because they had pinned a real defect.**
+`FilterState` and `PinState` become `Record<DimensionId, …>`; the reconciler and
+the chip toggles loop over axes reading per-axis policy from descriptors (T7, T8,
+T9) instead of branching on two names.
+
+**The golden change is the interesting part.** `filterSetIdentity` recorded
+`filesIdentityChanged: true` for a manual reconcile — and that was not a
+description of correct behaviour, it was the T5 defect frozen in place. The old
+`reconcileManual` cloned the whole filter and then reassigned the unpinned axes,
+so **every** axis came back with a fresh `Set`, including pinned ones and
+including axes whose content had not changed. `useSimulationLoop` decides "did
+this axis change?" with `prev === next`, so any manual view switch that altered
+one axis also fired the *other* axis's change path. For the type axis that path
+is an ancestor-seed, `reheat(0.5)`, and `initialFitDone = false` — i.e. **the
+user's pan and zoom were silently discarded on a view switch that changed only
+the file selection.**
+
+`withSelection` is copy-on-write and returns the state object itself when the
+content is unchanged, so the rows now read `false`. Nothing about the *resolved
+visible set* moves; this is identity, which is what T5 is about.
+
+Second change in the same section: `overriddenPins` values are dimension ids
+(`defType`, `sourceFile`) rather than the old `types` / `files` labels, because
+pins are now keyed by axis.
+
+Measured, after repairing the probe (below): **exactly one row flips** —
+`reconcile(manual, unpinned)`, `filesIdentityChanged: true -> false`. Every
+toggle row is unchanged, which is the control: a toggle *should* change its own
+axis's identity and must not touch the other's.
+
+**Three harness bugs found while making this change, all the same shape**, and
+the shape is the one this whole unit is about: a string-keyed record accepts any
+key, so the type system cannot tell a real axis id from a stale field name.
+
+- `PIN_STATES` kept building `{files, types}` — pins on axes that do not exist,
+  so every real pin read false and the reconcile matrix collapsed to its unpinned
+  rows.
+- `filterOf` kept building `{selectedFiles, visibleTypes}` — every fixture
+  selection empty.
+- Worst: the identity probe still compared `next.selectedFiles !== current.selectedFiles`.
+  Both sides are now `undefined`, `undefined !== undefined` is `false`, so **every
+  row reported `false`** — and the first golden I wrote for this change therefore
+  asserted the T5 fix while measuring nothing at all. The fix was real *and* the
+  probe was blind: two halves, each individually plausible (F12, STANDING_CHECKS
+  #1), in the one place designed to catch exactly that.
+
+The first two were caught only because the golden shrank by 186 lines. The third
+was caught only because 9 of 10 rows flipping in the same direction was too
+uniform to be a real behaviour change. Neither is a type error, and neither would
+have been caught by a gate. Comparisons in the probe now go through
+`selectionFor`, so a stale name is a compile error rather than a silent `undefined`.
+
+— 2026-09-06 — agent
+
+**D44 — Removing an axis from the chain unfilters it, and "unfiltered" is
+`emptyMeans`-dependent.** The chain (R17-R19) is which axes a view *displays*.
+Two questions fall out of that, and the first answer was wrong.
+
+**Does removing an axis stop it filtering?** Yes. Leaving the selection in place
+would filter the view by something with no on-screen representation and no way to
+reach it — invisible state that reads as a bug, and R17 calls the affordance
+"delete", which has to mean the filtering stops.
+
+**What is "not filtering" on an axis?** *Not* an empty selection, and this is
+where the first implementation was wrong: I cleared the selection, which is
+correct for the file axis (`emptyMeans: 'all'`, empty matches everything) and
+**blanks the view** on the kind axis (`emptyMeans: 'none'`, empty matches
+nothing). Match-everything is therefore the empty set for one axis and the full
+value set for the other — T7's asymmetry showing up in a third place, after the
+predicate and the focus policy.
+
+Verified in the browser: removing the Kind filter on `nexus-sample` takes the
+graph 13/60 -> **37/60**, i.e. it unfilters rather than blanking, and the `+`
+restores the chips with the selection intact.
+
+**The chain default is the host's declared order** (R19). `filterDimensions`
+order *is* the chain, so "default displayed filters" is configurable by declaring
+a different taxonomy rather than by adding a setting. That also made the
+declaration order load-bearing: the first build put kinds before files and
+silently reordered the shipped bar, which the browser caught. The order is now
+documented as meaningful where it is declared.
+
+— 2026-09-06 — agent
+
+**D45 — Unit 3 misses §6.5's ceiling of 195, landing at 203. §8.2 flag with the
+arithmetic, not a silent reset.** §6.5 says "a missed ceiling is a §8.2 flag with
+the new number and the reason", so here is the reason, checked against §6.5's own
+baseline table rather than asserted.
+
+Every file the table assigns to Unit 3:
+
+| file | baseline | now | |
+|---|---:|---:|---|
+| `filter/storage.ts` | 5 | **0** | taken this unit |
+| `filter/reconcile.ts` | 1 | **0** | taken this unit |
+| `graph-view/useGraphModel.ts` | 3 | — | left the manifest in Unit 2e |
+| `components/FilterBar.tsx` | 3 | **2** | 1 cleared in 3d when chips stopped coming from the theme; the 2 that remain are the `TWFFile` AST type it takes as a prop, which Unit 7 removes with the rest of its domain coupling |
+
+*Corrected 2026-09-06:* the FilterBar row above originally read 0. I asserted it
+without measuring — `grep`ing the gate output for the other three filenames and
+inferring the fourth. It is 2. The conclusion below is unchanged (both remaining
+occurrences are `TWFFile`, which is Unit 7's), but "assumed, not measured" is the
+habit this run keeps punishing.
+
+So Unit 3's assigned total is 12, of which **6 had already been taken during Unit
+2** — `useGraphModel` moved to the adapter, and `FilterBar`'s three went when the
+chip grouping became descriptor-declared. Those 6 were therefore already inside
+Unit 2's reported 209. The 15-point drop §6.5 projects for Unit 3 double-counts
+them; the reachable drop from 209 was 6, and all 6 were taken. 209 → 203.
+
+The remaining 203 is assigned by the same table to other units: `edge-styles.ts`
+58 and `FilterBar.css` 39 to Unit 6, `GraphView.tsx` 30 + `visibleGraph.ts` 19 +
+`useHighlight.ts` 10 to Unit 7, `model.ts` 12 to Unit 4. **None of it is Unit 3's
+to remove**, and removing any of it here would be doing another unit's work
+inside a unit scoped to filters.
+
+Ceilings ratcheted to the measured values: leak **204**, total **1266**, boundary
+**7**. The boundary drop is real rather than relocation — `FilterBar` stopped
+importing the theme entirely, which is the first genuine edge removal of the run
+(Unit 2's 11 → 8 was 100% relocation).
+
+Unit 4's §6.5 ceiling is 160. From 203 that needs 43, against `model.ts`'s 12 —
+so the same double-count likely repeats. Worth re-deriving Unit 4's number from
+the table at its boundary rather than treating 160 as reachable.
+
+— 2026-09-06 — agent
+
+**D46 — The reheat policy gets a gate, and the prototype probe stops dropping its
+own worst row.** Both from the Unit 3 review, and both are the same failure: a
+check that exists and does not check.
+
+**`DimensionDescriptor.reheat` had no reader any gate could reach.** All four
+fields on either axis could be inverted — including `resume: false`, which is
+precisely the mistake T9 names and which leaves the canvas frozen after every
+toggle — and typecheck, all six gates and 7/7 goldens stayed green. The reviewer
+demonstrated it with a control: flipping the sibling field `focus` on the same
+descriptor *does* turn the golden red, so the suite is not blind to descriptor
+edits in general, only to this one. Declared policy that nothing reads is not
+policy; it is a comment with a type.
+
+Fixed by extracting the fold — "several axes moved, what does the simulation
+do?" — out of the React hook into `foldReheatPolicy`, a pure function, and
+goldening it. The new `ontologyProbes.reheatPolicy` block records each axis's
+declared policy and the fold for **every subset of axes**, because a view switch
+moves more than one at once and "last one wins" would hide precisely there.
+
+**`prototypeNamedValues` listed five names and recorded four.** The row keys are
+the prototype member names being probed, so `rows['__proto__'] = …` on a plain
+object set the prototype and stored nothing. The probe silently dropped the row
+most likely to catch the bug it exists for — a blind spot inside the instrument
+built for blind spots, which is the third time this unit. Now a `Map`.
+
+The same rows gained `abbreviation`, because `Ontology.abbreviationFor` was a
+fourth unguarded prototype-chain lookup that D39 missed when it fixed the other
+three: `abbreviationFor('constructor')` returned a Function where a string was
+expected.
+
+**Golden change (§8.2):** `static.golden.json` gains `ontologyProbes.reheatPolicy`
+(two axes' declared policy plus four folds) and two fields per
+`prototypeNamedValues` row, and gains the `__proto__` row that was being dropped.
+No existing row changes value.
+
+— 2026-09-06 — agent
