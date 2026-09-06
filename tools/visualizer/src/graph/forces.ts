@@ -40,10 +40,23 @@ export type PhysicsSubject = { nodeType: NodeType }
 export const CORE_RADIUS_MIN = 2
 
 /**
- * Physics for a value the param maps do not declare. Deliberately inert rather
- * than plausible: no repulsion, the smallest legal softening, and a point band
- * on the origin. An unrecognized value should sit still and be noticed, not
- * push the layout around while impersonating a real one.
+ * Physics for a value the param maps do not declare.
+ *
+ * **Read this before assuming it is inert — it is not.** The charge model
+ * couples a pair by the AVERAGE of the two endpoints' charges, so a zero here
+ * still repels every neighbour at half that neighbour's charge; and a band
+ * contributes its centre to `bandCenters`, so a point band on the origin pulls
+ * the median that the whole stack is re-centred on. One node carrying an
+ * undeclared value therefore perturbs the layout of every declared one.
+ *
+ * That is a deliberate trade for now: these numbers keep an undeclared value
+ * *finite and bounded* — which is the guard's actual job, and the thing whose
+ * absence produces a NaN four frames later or a hard throw — without inventing
+ * a "non-participant" concept in the physics. Making absent values true
+ * non-participants is a change to the force model, which belongs with the
+ * push/pull rework rather than in a unit whose contract is "no behavior change".
+ * See DECISIONS.md D31. The effect on neighbours is under golden, so the
+ * trade cannot drift silently.
  */
 export const ABSENT_VALUE_PHYSICS = {
   charge: 0,
@@ -77,6 +90,21 @@ export function bandFor(params: GravityParams, node: PhysicsSubject): YBand {
   return bandForKey(params, node.nodeType)
 }
 
+/**
+ * Spring parameters for an edge category the param maps do not declare — the
+ * edge-side counterpart of ABSENT_VALUE_PHYSICS, and just as necessary: a
+ * supplied taxonomy resolves edges to ITS category ids, and an id with no entry
+ * in `params.link` reads `undefined`, which reaches `force` and writes NaN into
+ * both endpoint velocities on the very first tick.
+ *
+ * Zero stiffness means the edge simply exerts no pull, which is the only honest
+ * answer when nothing declared how strongly it should.
+ */
+export const ABSENT_EDGE_PHYSICS = {
+  strength: 0,
+  distance: 0,
+} as const
+
 interface EdgeCategory {
   strength: number
   distance: number
@@ -95,8 +123,8 @@ export function edgeCategory(
 ): EdgeCategory {
   const def = resolveEdgeType(edge)
   return {
-    strength: params.link[def.id],
-    distance: params.dist[def.id],
+    strength: params.link[def.id] ?? ABSENT_EDGE_PHYSICS.strength,
+    distance: params.dist[def.id] ?? ABSENT_EDGE_PHYSICS.distance,
     key: def.id,
   }
 }

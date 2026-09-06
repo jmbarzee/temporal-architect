@@ -483,26 +483,186 @@
       "bandCartesian": {
         "allFinite": true,
         "nonFiniteNodeIds": [],
-        "unknownVelocity": [
-          0,
-          60.9
-        ]
+        "velocities": {
+          "act": [
+            0,
+            0
+          ],
+          "dupA": [
+            0,
+            29.32625
+          ],
+          "dupB": [
+            0,
+            19.17625
+          ],
+          "ep": [
+            0,
+            0
+          ],
+          "ns": [
+            15,
+            0
+          ],
+          "nx": [
+            0,
+            0
+          ],
+          "op": [
+            0,
+            0
+          ],
+          "unknown": [
+            0,
+            60.9
+          ],
+          "wf": [
+            3,
+            0
+          ],
+          "wk": [
+            6,
+            0
+          ]
+        }
       },
       "bandRadial": {
         "allFinite": true,
         "nonFiniteNodeIds": [],
-        "unknownVelocity": [
-          -21.280354,
-          28.373805
-        ]
+        "velocities": {
+          "act": [
+            0.359672,
+            8.63212
+          ],
+          "dupA": [
+            68.41218,
+            -15.099986
+          ],
+          "dupB": [
+            61.7962,
+            -13.639702
+          ],
+          "ep": [
+            -28.116475,
+            23.430396
+          ],
+          "ns": [
+            36.925505,
+            32.002104
+          ],
+          "nx": [
+            5.808945,
+            -0.645438
+          ],
+          "op": [
+            12.573043,
+            27.241594
+          ],
+          "unknown": [
+            -21.280354,
+            28.373805
+          ],
+          "wf": [
+            -5.327163,
+            26.635816
+          ],
+          "wk": [
+            -13.057771,
+            4.35259
+          ]
+        }
       },
       "charge": {
         "allFinite": true,
         "nonFiniteNodeIds": [],
-        "unknownVelocity": [
-          0.091004,
-          -0.184966
-        ]
+        "velocities": {
+          "act": [
+            -0.00212,
+            0.255506
+          ],
+          "dupA": [
+            0.125264,
+            0.927263
+          ],
+          "dupB": [
+            -0.381608,
+            -0.99406
+          ],
+          "ep": [
+            0.310325,
+            -0.360296
+          ],
+          "ns": [
+            -0.271213,
+            -0.215995
+          ],
+          "nx": [
+            0.569976,
+            0.038532
+          ],
+          "op": [
+            0.213604,
+            0.262547
+          ],
+          "unknown": [
+            0.091004,
+            -0.184966
+          ],
+          "wf": [
+            -0.186958,
+            0.223075
+          ],
+          "wk": [
+            -0.468274,
+            0.048393
+          ]
+        }
+      },
+      "undeclaredEdgeCategory": {
+        "allFinite": true,
+        "nonFiniteNodeIds": [],
+        "velocities": {
+          "act": [
+            0,
+            0
+          ],
+          "dupA": [
+            0,
+            0
+          ],
+          "dupB": [
+            0,
+            0
+          ],
+          "ep": [
+            0,
+            0
+          ],
+          "ns": [
+            0,
+            0
+          ],
+          "nx": [
+            0,
+            0
+          ],
+          "op": [
+            0,
+            0
+          ],
+          "unknown": [
+            0,
+            0
+          ],
+          "wf": [
+            0,
+            0
+          ],
+          "wk": [
+            0,
+            0
+          ]
+        }
       }
     },
     "bandCartesian": {
@@ -1020,6 +1180,58 @@
       "sliderLabel": "Wf",
       "summaryKind": "degree",
       "tier": "orchestrator"
+    }
+  },
+  "ontologyProbes": {
+    "declaredKeyUnaffected": true,
+    "fallbackIsStable": true,
+    "fallbackStyle": {
+      "defType": "unknownDef",
+      "icon": "?",
+      "label": "Unknown",
+      "physics": {
+        "charge": -300,
+        "coreRadius": 30,
+        "yBand": {
+          "max": 460,
+          "min": 100
+        }
+      },
+      "size": {
+        "iconSize": 11,
+        "r": 10
+      },
+      "summaryKind": "none"
+    },
+    "injection": {
+      "alternateTaxonomyOnItsOwnKeys": {
+        "summaries": [
+          "wf=→1",
+          "wk=←1"
+        ],
+        "visibleNodeIds": [
+          "wf",
+          "wk"
+        ]
+      },
+      "alternateTaxonomyOnShippedKeys": {
+        "summaries": [],
+        "visibleNodeIds": []
+      },
+      "shippedTaxonomyOnAlternateKeys": {
+        "summaries": [],
+        "visibleNodeIds": []
+      },
+      "shippedTaxonomyOnItsOwnKeys": {
+        "summaries": [
+          "wf=→1",
+          "wk=1wf"
+        ],
+        "visibleNodeIds": [
+          "wf",
+          "wk"
+        ]
+      }
     }
   },
   "reconcileMatrix": {

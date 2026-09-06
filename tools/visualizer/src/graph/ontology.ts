@@ -53,25 +53,24 @@ export interface OntologySpec {
   fallbackStyle: NodeTypeDefinition
 }
 
-// Warn once per unrecognized key. Once, because this resolves per node per
-// frame — a warning on every miss would bury the first one under sixty a second
-// and make the console useless exactly when it is needed.
-const warned = new Set<string>()
-function warnOnce(key: string): void {
-  if (warned.has(key)) return
-  warned.add(key)
-  console.warn(
-    `[graph] no style declared for node key ${JSON.stringify(key)}; using the fallback. ` +
-    'The graph will render, but this node is drawn with placeholder styling.',
-  )
-}
-
 export function createOntology(spec: OntologySpec): Ontology {
   const { nodeStyles, fallbackStyle } = spec
+  // Warn once per unrecognized key, and once PER ONTOLOGY: this resolves per
+  // node per frame, so a warning on every miss buries the first under sixty a
+  // second — but a process-global set would also silence a second taxonomy that
+  // is missing the same key, which is a different bug being hidden by the
+  // de-duplication meant for the first.
+  const warned = new Set<string>()
   const styleForKey = (key: NodeType): NodeTypeDefinition => {
     const style = nodeStyles[key]
     if (style !== undefined) return style
-    warnOnce(key)
+    if (!warned.has(key)) {
+      warned.add(key)
+      console.warn(
+        `[graph] no style declared for node key ${JSON.stringify(key)}; using the fallback. ` +
+        'The graph will render, but this node is drawn with placeholder styling.',
+      )
+    }
     return fallbackStyle
   }
   return {

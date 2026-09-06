@@ -338,3 +338,39 @@ accessors that B5/T3 assign to it, and §3.4 says a fix without a check is a
 fix-shaped diff. Verified the check works by removing the three defaults: the
 harness throws outright and emits no snapshot, because the band accessor
 dereferences `undefined` — exactly the failure T3 describes. — 2026-09-06 — agent
+
+**D31 — The absent-value fallback physics is NOT inert, and that is now stated
+rather than claimed otherwise.** `ABSENT_VALUE_PHYSICS` was introduced in Unit 1c
+with a comment saying an unrecognized value would "sit still and be noticed, not
+push the layout around". The Unit 1 review demonstrated that false in three
+independent ways: the charge model couples a pair by the *average* of the two
+charges, so a zero still repels every neighbour at half that neighbour's charge
+(9 of 9 probe nodes measurably perturbed); and a point band on the origin
+contributes a centre to `bandCenters`, moving the median the whole stack is
+re-centred on (2 of 9 perturbed, a uniform -2.9 shift).
+
+Taking: **correct the claim, golden the effect, defer the policy.** The guard's
+real job — keeping an undeclared value finite and bounded, instead of the NaN or
+the hard throw that preceded it — is done and is what Unit 1 was assigned (B5,
+T3). Making absent values true *non-participants* is a change to the force model
+itself: it needs the accessors to signal absence, `applyChargeForce` to skip a
+pair, and `bandCenters` to omit a contribution — which would also put Tier B
+invariant 2's "entries equals distinct values present" into question. That is
+push/pull work and belongs with Unit 4 (B7, B26), not in a unit whose contract is
+"changes no behavior at all". The probe now records **every** node's velocity, so
+the trade is pinned and cannot drift silently. — 2026-09-06 — agent
+
+**D32 — Unit 1's review fixes change `static.golden.json` only.** Rows expected
+to move, and the only ones that did (224 insertions, 12 deletions, one file):
+
+  - `static.ontologyProbes` — new.
+  - `static.forceProbes.absentValue.*` — each run's `unknownVelocity` (3 rows,
+    the 12 deleted lines) is **replaced** by `velocities` for every node, and a
+    fourth run `undeclaredEdgeCategory` is added. Not purely additive, and
+    deliberately so: recording only the unknown node's own velocity was the
+    defect the review found — it made the guard's stated property uncheckable —
+    so the narrower field is removed rather than kept beside the wider one.
+
+All six fixture goldens and `edge-types` are byte-identical, verified by running
+`npm run verify` before regenerating: it reported those six `ok` and only
+`static` differing. — 2026-09-06 — agent

@@ -6,13 +6,17 @@
 // downstream-depth scores.
 //
 // Lifted out of the hook so it is callable without React: the golden harness
-// snapshots it directly, and the taxonomy arrives as a parameter rather than an
-// imported singleton, so this derivation is not tied to one set of node types.
+// snapshots it directly, and the taxonomy arrives as a parameter, so both the
+// visibility predicate and the summary dispatch resolve through the container.
+//
+// What is NOT yet injected, so nobody reads more into this than it says: the
+// operation-splice branch in `resolveDepEndpoint` and the per-child counting
+// inside the summary strategies still test hardcoded node-type values. Those are
+// separate blast-radius rows owned by later units.
 
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
 import type { Ontology } from '../../graph/ontology'
-import { nodeTypeToDefType } from './nodeDefType'
 
 export interface VisibleGraph {
   visibleNodes: SimNode[]
@@ -237,7 +241,7 @@ export function computeVisibleGraph(
   const vNodes: SimNode[] = []
 
   for (const node of sim.nodes) {
-    if (!visibleTypes.has(nodeTypeToDefType(node.nodeType))) continue
+    if (!visibleTypes.has(ontology.resolveNodeStyle(node).defType)) continue
     if (hasFileFilter && node.sourceFile && !selectedFiles.has(node.sourceFile)) continue
     ids.add(node.id)
     vNodes.push(node)

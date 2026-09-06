@@ -51,7 +51,7 @@ export const TIER_B_PARAMS = {
 
 /** A fresh, seeded simulation over a fixture's graph. */
 export function seededSimulation(graph: Graph, params: ForceParams = DEFAULT_PARAMS): Simulation {
-  return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed))
+  return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed), DEFAULT_ONTOLOGY)
 }
 
 function positions(nodes: SimNode[]): Json {

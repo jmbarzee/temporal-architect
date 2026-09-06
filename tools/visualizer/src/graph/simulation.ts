@@ -15,9 +15,7 @@ import {
   bandFor,
 } from './forces'
 import type { Rng } from './rng'
-import { defaultRng } from './rng'
 import type { Ontology } from './ontology'
-import { DEFAULT_ONTOLOGY } from './node-types'
 
 // Re-export so callers that already import ALL_NODE_TYPES from simulation continue to work.
 export { ALL_NODE_TYPES } from './node-types'
@@ -267,11 +265,15 @@ export class Simulation {
   // than imported so the engine is not bound to one set of edge categories.
   private ontology: Ontology
 
+  // `ontology` is REQUIRED, deliberately. It was defaulted first, and the single
+  // production construction site then quietly kept the shipped taxonomy while
+  // every component resolved through an injected one — a split-brain that no
+  // gate could see because both halves were individually correct.
   constructor(
     graph: Graph,
-    params?: Partial<ForceParams>,
-    rng: Rng = defaultRng,
-    ontology: Ontology = DEFAULT_ONTOLOGY,
+    params: Partial<ForceParams> | undefined,
+    rng: Rng,
+    ontology: Ontology,
   ) {
     this.params = { ...DEFAULT_PARAMS, ...params }
     this.alpha = 1.0

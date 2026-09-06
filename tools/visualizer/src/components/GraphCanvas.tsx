@@ -4,7 +4,7 @@
 import React from 'react'
 import type { GraphEdge, NodeType } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
-import { ALL_NODE_TYPES, bandForKey, chargeFor, coreRadiusFor, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
+import { bandForKey, chargeFor, coreRadiusFor, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-types'
@@ -799,7 +799,7 @@ export function GraphCanvas({
           const m = sorted.length
           const median = m ? (m % 2 ? sorted[(m - 1) / 2] : (sorted[m / 2 - 1] + sorted[m / 2]) / 2) : 0
 
-          for (const t of ALL_NODE_TYPES) {
+          for (const t of d.ontology.nodeTypeKeys) {
             const band = bandForKey(d.forceParams, t)
             const [, sy1] = worldToScreen(vp, 0, band.yMin - median)
             const [, sy2] = worldToScreen(vp, 0, band.yMax - median)

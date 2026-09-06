@@ -30,8 +30,9 @@ import {
   applyLinkForce,
   applyTopologicalGravity,
 } from '../graph/forces'
-import { edgeTypeFor } from '../graph/edge-types'
+import type { EdgeTypeDefinition } from '../graph/edge-types'
 import type { GraphEdge, NodeType } from '../graph/model'
+import { DEFAULT_ONTOLOGY } from '../graph/node-types'
 import { DEFAULT_PARAMS } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { mulberry32 } from './rng'
@@ -132,10 +133,33 @@ function absentValueProbes(): Json {
     return {
       allFinite: allFinite(nodes),
       nonFiniteNodeIds: nonFinite(nodes),
-      unknownVelocity: (() => {
-        const u = nodes.find(n => n.id === 'unknown')
-        return u ? ([u.vx, u.vy] as Json) : null
-      })(),
+      // EVERY node's velocity, not just the unknown one's. The fallback physics
+      // is not inert — a zero charge still couples through the pair average, and
+      // an origin band still moves the median the stack re-centres on — so the
+      // rows that matter are the DECLARED nodes': they are what a change to the
+      // fallback policy would silently move.
+      velocities: velocities(nodes),
+    }
+  }
+  // An edge category the param maps do not declare, which is what a supplied
+  // taxonomy produces: its ids are its own, and `params.link` is keyed by the
+  // shipped ones.
+  const undeclaredEdgeCategory = () => {
+    const nodes = withUnknown()
+    const map = new Map(nodes.map(n => [n.id, n]))
+    applyLinkForce(
+      PROBE_EDGES, map, { ...DEFAULT_PARAMS }, 1, mulberry32(PROBE_SEED),
+      () => ({
+        id: 'linkNotDeclaredAnywhere' as EdgeTypeDefinition['id'],
+        label: '??', sourceType: 'workflow', targetType: 'workflow',
+        category: 'dependency', directional: false,
+        physics: { strength: 1, distance: 1 }, tooltip: '',
+      }),
+    )
+    return {
+      allFinite: allFinite(nodes),
+      nonFiniteNodeIds: nonFinite(nodes),
+      velocities: velocities(nodes),
     }
   }
   return {
@@ -144,6 +168,7 @@ function absentValueProbes(): Json {
       applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, 1, rng)),
     bandRadial: run((nodes, params, rng) =>
       applyBandGravity(nodes, { ...params, gravityMode: 'radial' }, 1, rng)),
+    undeclaredEdgeCategory: undeclaredEdgeCategory(),
   }
 }
 
@@ -154,7 +179,7 @@ export function forceProbes(): Json {
     charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, 1, rng)),
     link: probe((nodes, params, rng) => {
       const map = new Map(nodes.map(n => [n.id, n]))
-      applyLinkForce(PROBE_EDGES, map, params, 1, rng, edgeTypeFor)
+      applyLinkForce(PROBE_EDGES, map, params, 1, rng, DEFAULT_ONTOLOGY.resolveEdgeType)
     }),
     bandCartesian: probe((nodes, params, rng) =>
       applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, 1, rng)),
