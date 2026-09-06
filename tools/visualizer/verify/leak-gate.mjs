@@ -33,7 +33,7 @@
 // **Relocation is never a valid reason.** That is the whole point: a move keeps
 // the total flat by construction, so it can no longer be reported as a drop.
 
-import { manifestFiles, manifestBlindSpots, shimFiles, readLines, gateConfig, report } from './manifest.mjs'
+import { manifestFiles, manifestBlindSpots, missingNamed, shimFiles, readLines, gateConfig, report } from './manifest.mjs'
 
 const PATTERN =
   /workflow|activity|activities|worker|namespace|nexus|temporal|twf|signalsend|dispatchkind|taskqueue|task_queue/gi
@@ -62,6 +62,19 @@ if (blind.skipped.length > 0) {
   console.log('  unmatched inside a globbed directory:')
   for (const f of blind.skipped) console.log(`      ${f}`)
 }
+// A NAMED entry that has left the tree. Reported rather than crashed on, and
+// reported loudly: this is the shape of "the file moved out of the manifest",
+// which is the very event the count is supposed to make visible.
+const missing = missingNamed()
+if (missing.length > 0) {
+  console.log(`  ${missing.length} NAMED manifest file(s) no longer exist and are not being counted:`)
+  for (const f of missing) console.log(`      ${f}`)
+}
+// The shim, named explicitly. The blind-spot report used to describe only holes
+// INSIDE the manifest, so the directory this run moves domain code into was the
+// one place it never mentioned.
+console.log(`  shim trees measured separately: ${shimFiles().length} file(s)`)
+
 if (blind.siblings.length > 0) {
   console.log(`  ${blind.siblings.length} file(s) beside the named components are NOT in the manifest:`)
   for (const f of blind.siblings) console.log(`      ${f}`)

@@ -494,8 +494,13 @@ two silent fallbacks — `?? 'workflowDef'` and `?? 'workflow'` — so an
 unrecognized input resolved to a *real* type and an unknown node was filtered
 and focused as though it were a workflow (T19). The plan has B18 rewrite the
 bijection. It turned out not to need rewriting: **nothing has called it since
-Unit 2c**, which deleted `GraphNode.nodeType` and with it the last two call
-sites. Every consumer now reads `ontology.resolveNodeStyle(node).defType`, which
+Unit 2c**, which deleted `GraphNode.nodeType` and with it the last call sites.
+
+*Corrected 2026-09-06:* this entry and commit `d02e1e0` both said "the last two
+call sites". It was **five**, across `GraphView.tsx` (three), `useVisibleGraph`
+and one more — counted from the commit rather than from memory. The conclusion is
+unchanged and the correction is small, but the number was stated as a fact and
+was wrong, which is the kind of thing that gets quoted later. Every consumer now reads `ontology.resolveNodeStyle(node).defType`, which
 answers a miss with the declared neutral style and warns once — the loud path
 Unit 1 built. So the module is deleted rather than ported (C5).
 

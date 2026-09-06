@@ -179,7 +179,11 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-  }, [params, pull, dist, exp])
+    // `ontology` belongs here: the body reads it for the split-colour tokens and
+    // derives `pullEdges` from it. Its sibling ChargeCurves already listed it,
+    // and the asymmetry was the bug — a taxonomy swap left these curves drawn in
+    // the previous taxonomy's colours, on its edge set, with no error.
+  }, [params, pull, dist, exp, ontology])
 
   return (
     <ForceCurves

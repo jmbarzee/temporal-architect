@@ -130,12 +130,30 @@ export function shimFiles() {
   return [...new Set(files)].sort()
 }
 
-/** Every manifest file, repo-relative to the package root, sorted. */
+/**
+ * Every manifest file, repo-relative to the package root, sorted.
+ *
+ * A NAMED entry that no longer exists is dropped here and surfaced by
+ * `manifestBlindSpots().missing` instead of reaching `readLines` and dying on an
+ * unhandled ENOENT. The failure mode matters: moving a named file out of the
+ * library-to-be is exactly the event the ratchets exist to notice, and a stack
+ * trace is the one report that makes it look like broken tooling rather than a
+ * measurement the gate is entitled to make.
+ */
 export function manifestFiles() {
   const files = []
   for (const g of GLOBS) walk(g.dir, g.exts, files, null)
-  files.push(...NAMED)
+  for (const f of NAMED) {
+    try { statSync(resolve(PKG_ROOT, f)); files.push(f) } catch { /* reported as missing */ }
+  }
   return [...new Set(files)].sort()
+}
+
+/** NAMED manifest entries that are no longer on disk. */
+export function missingNamed() {
+  return NAMED.filter(f => {
+    try { statSync(resolve(PKG_ROOT, f)); return false } catch { return true }
+  })
 }
 
 export const readLines = file => readFileSync(resolve(PKG_ROOT, file), 'utf8').split('\n')
