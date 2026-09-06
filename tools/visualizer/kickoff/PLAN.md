@@ -470,3 +470,131 @@ the way across while the headline falls. Unit 2 did that: −308 from the manife
 **flat** rather than down. The shim is allowed its domain vocabulary — that is
 what a shim is for — so this does not forbid relocation. It forbids relocation
 that quietly adds, and it stops a move from reading as progress.
+
+---
+
+## 6.6 Retro — what this plan's own structure cannot see
+
+*Feedback aimed at whatever produces the next plan of this kind, not at this
+run. Written at the Unit 2 boundary, from a question asked about the model rather
+than about the work.*
+
+This plan tracks three counters. Ask what each can detect:
+
+| counter | the question it answers |
+|---|---|
+| A — 42 requirements | *does it do the thing?* |
+| B — 38 blast-radius sites | *did you touch the site?* |
+| C — 583 → 0 leaks | *is the domain vocabulary gone?* |
+
+**A model can satisfy all three perfectly and still encode every relationship as
+coincidence. None of the counters can see shape.** That is not a flaw in them —
+it is their scope. But it means this document is a decomposition of
+*capabilities*, and a capability decomposition will never surface "these two
+fields must agree, and nothing makes them."
+
+The worked example, found by asking about the model rather than the work:
+
+`ChargeParams` stores **which axis** in `chargeDimension` and **a table over that
+axis** in `charge`, as two independent fields. Nothing enforces that they agree.
+The Unit 2 review found the exact state this admits — after a taxonomy swap the
+axis was the new one and the table was still keyed by the old, every lookup
+missed, everything fell through to the absent-value physics, and the layout
+collapsed silently. The occurrence was fixed. **The shape still permits the
+state**, and Units 4, 5a and 5b each add another instance of it.
+
+Every counter was green throughout. They were green because they were measuring
+the right things and this is not one of them.
+
+### The two rules worth carrying forward
+
+**1. Storing a fact twice requires a strong, written reason.** Not "it was
+convenient", not "the consumer wanted it flat" — a reason, recorded where the
+duplication is. Two representations of one fact create a *disagreement state*:
+a configuration the types permit that the domain has no meaning for. Absent an
+enforced invariant, that state is not hypothetical, it is scheduled.
+
+Three instances in this codebase at the Unit 2 boundary, all the same disease:
+
+- the axis, in `chargeDimension` and again in the key space of `charge`
+- the per-axis empty/absent semantics, declared in `DimensionDescriptor` and
+  *separately hand-coded* in `computeVisibleGraph`'s predicate (Unit 3 fixes this
+  one — it is the only one the plan names)
+- absence itself, represented as a particular set of numbers
+  (`ABSENT_VALUE_PHYSICS`) rather than as a distinct outcome, so "no value on
+  this axis" participates in the physics instead of abstaining from it
+
+**2. The test for a plan, not just for code.** For each structure the plan
+introduces, ask: *can I name a state the types permit that the domain has no
+meaning for?* Every such state is a coincidence being relied on instead of a
+constraint being expressed. A plan that decomposes only capabilities should carry
+at least one counter, gate or review lens that asks this — otherwise the first
+time anyone asks it is after the code exists, which is where it was asked here.
+
+### The cheap fix a future plan should build in
+
+Shape invariants are checkable, and on this run an invariant without a check is a
+wish. The one above is a golden row: for each force, assert
+`keys(table) ⊆ the mapping's bucket ids`, and that the params' recorded
+provenance matches the live taxonomy. That converts a shape claim into something
+Counter-C-style machinery *can* see — which is the whole trick this run already
+uses everywhere else.
+
+---
+
+## 6.7 After Unit 9 — the elegance pass
+
+**Ask this once the phases are done, before calling the run finished.** It is
+deliberately not scheduled inside a unit: units are scoped to capabilities, and
+this question is about the model.
+
+> We have one worked example of a relationship stored twice. **Where else?** For
+> each structure the library owns, can the fact be stored *once* — and does
+> storing it once also improve something other than tidiness?
+
+The second half of that question is the bar. A change that only reduces
+duplication is a refactor; a change that reduces duplication *and* pays for
+itself elsewhere is a better model. The example below meets it, and is the
+template for what a candidate should look like.
+
+### Worked candidate — params as sparse overrides, not dense tables
+
+Today `charge` / `coreRadius` / `band` are **dense tables**: a complete copy of
+every value's physics, derived once from the taxonomy and owned thereafter. The
+copy is why the axis has to be stored beside it, why it goes stale, and why a
+provenance token is needed to detect the staleness.
+
+Store instead only what the user actually changed — a sparse map of
+`bucket → partial physics` — and resolve as `override ?? taxonomy.physicsFor(bucket)`.
+
+The axis and its value set then live in **exactly one place**: the ontology plus
+its mapping. Params carry no key space at all, so there is nothing to go stale
+and no provenance token to keep in step.
+
+What it pays for beyond elegance — the part that makes it worth doing:
+
+- **Reset becomes free and granular.** Deleting one override restores one value;
+  clearing restores all. Today "reset" means rebuilding the whole table, and
+  per-slider reset needs a pristine copy kept alongside to diff against.
+- **"Is this value tuned?" becomes answerable.** Presence *is* the answer. Today
+  a user setting that coincidentally equals the default is indistinguishable from
+  the default — so the UI cannot mark modified controls, and the goldens cannot
+  either.
+- **Persistence survives taxonomy change.** Unit 3 gives `storage.ts`
+  discard-on-version-mismatch (D4), which is blunt because a dense table pins a
+  key space. Sparse overrides degrade gracefully: buckets that no longer exist
+  simply do not apply.
+- **Absence gets a home.** With resolution flowing through the taxonomy, "no
+  bucket" is a *distinct outcome* from "a bucket whose value is 0" — which is
+  precisely the expressiveness D31 defers to Unit 4 and cannot currently state.
+- **The 60 Hz copy shrinks.** A slider drag currently rebuilds an N-entry table
+  per frame (T25 is the named trap); an override map copies what was touched.
+
+Costs, honestly: resolution becomes two steps on the hot path (mitigated by Unit
+4's planned memoisation, which is already in its commit list), the
+`defaultForceParams` golden changes shape, and `ForceParams` stops being a fully
+dense POJO — though the scalars stay flat, so T10's key-addressed sliders are
+preserved.
+
+`ForceParams` is **not** exported from `src/lib.ts`, so none of this is gated by
+C3.

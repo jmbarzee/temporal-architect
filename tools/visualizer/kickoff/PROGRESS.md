@@ -191,6 +191,21 @@ grew by 22 on the way across. The gates now measure that (D40's `totalCeiling`),
 but the lesson generalises — every remaining unit's leak drop should be stated as
 deleted-vs-moved, because the two are not the same accomplishment.
 
+**Two model-design records were added at this boundary** (`PLAN.md` §6.6 and
+§6.7). Read them before Unit 4, not after. §6.6 is a retro aimed at whatever
+writes the next plan of this kind: the three counters answer *does it work*,
+*did you touch it*, and *is the vocabulary gone* — **none of them can see
+shape**, so a model can satisfy all three and still store a fact twice with
+nothing enforcing agreement. §6.7 is the question to ask once Unit 9 closes,
+with one worked candidate.
+
+**Still open, and not decided by me:** whether Unit 3 absorbs the shape work its
+descriptor foundation implies, and whether Unit 4 is built with axis + mapping +
+table as one constructed value rather than as separate fields. Unit 4 as written
+adds a dimension *dropdown*, which moves the axis onto the same edit channel as
+`pushMultiplier` — so the choice is cheapest to make before Unit 4 exists, and
+the instance count grows from one to roughly five across 4 / 5a / 5b.
+
 **Exact next action: begin Unit 3** (`PLAN.md` §6.2, N-dimensional filters +
 chain UI). Its ceilings are already in `kickoff/gates.json` as the Unit 2 close
 values and ratchet again at the Unit 3 boundary: leak 210, total 1277, boundary
