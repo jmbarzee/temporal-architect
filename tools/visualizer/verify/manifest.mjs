@@ -14,12 +14,21 @@ import { fileURLToPath } from 'node:url'
 
 export const PKG_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-/** Directories whose matching files are all in the manifest. */
+// Directories whose matching files are all in the manifest.
+//
+// PLAN.md §6.5 writes these as `src/graph/**.ts`, `src/components/graph-view/**.ts`,
+// `src/components/controls/**.tsx` and `src/filter/**.ts`. The extension set here
+// is deliberately WIDER than the literal glob: a `.tsx` under `graph-view/`, a
+// `.ts` under `controls/`, or a stylesheet beside either would otherwise sit in
+// the library-to-be while being invisible to all three ratchets AND absent from
+// Unit 8's move list. A stricter reading of an [immutable] floor is never a
+// violation of it; a hole in it is.
+const SOURCE_EXTS = ['.ts', '.tsx', '.css']
 const GLOBS = [
-  { dir: 'src/graph', exts: ['.ts'] },
-  { dir: 'src/components/graph-view', exts: ['.ts'] },
-  { dir: 'src/components/controls', exts: ['.tsx'] },
-  { dir: 'src/filter', exts: ['.ts'] },
+  { dir: 'src/graph', exts: SOURCE_EXTS },
+  { dir: 'src/components/graph-view', exts: SOURCE_EXTS },
+  { dir: 'src/components/controls', exts: SOURCE_EXTS },
+  { dir: 'src/filter', exts: SOURCE_EXTS },
 ]
 
 /** Named components, and the stylesheet beside each one that has one. */
@@ -46,7 +55,7 @@ const NAMED = [
   'src/components/controls/controls.css',
 ]
 
-function walk(dir, exts, out) {
+function walk(dir, exts, out, skipped) {
   let entries
   try {
     entries = readdirSync(resolve(PKG_ROOT, dir))
@@ -55,16 +64,38 @@ function walk(dir, exts, out) {
   }
   for (const name of entries.sort()) {
     const rel = join(dir, name)
-    if (statSync(resolve(PKG_ROOT, rel)).isDirectory()) walk(rel, exts, out)
+    if (statSync(resolve(PKG_ROOT, rel)).isDirectory()) walk(rel, exts, out, skipped)
     else if (exts.some(e => name.endsWith(e))) out.push(rel)
+    else if (skipped) skipped.push(rel)
   }
   return out
+}
+
+/**
+ * Files sitting inside a globbed directory that no extension matches, and
+ * components beside the named ones that the manifest does not list. Neither is
+ * a failure — the manifest is fixed — but both are exactly how the library-to-be
+ * grows a limb no ratchet can see, so they are printed on every run.
+ */
+export function manifestBlindSpots() {
+  const skipped = []
+  for (const g of GLOBS) walk(g.dir, g.exts, [], skipped)
+  const listed = new Set(manifestFiles())
+  const siblings = []
+  try {
+    for (const name of readdirSync(resolve(PKG_ROOT, 'src/components')).sort()) {
+      const rel = join('src/components', name)
+      if (statSync(resolve(PKG_ROOT, rel)).isDirectory()) continue
+      if (!listed.has(rel)) siblings.push(rel)
+    }
+  } catch { /* no components directory */ }
+  return { skipped, siblings }
 }
 
 /** Every manifest file, repo-relative to the package root, sorted. */
 export function manifestFiles() {
   const files = []
-  for (const g of GLOBS) walk(g.dir, g.exts, files)
+  for (const g of GLOBS) walk(g.dir, g.exts, files, null)
   files.push(...NAMED)
   return [...new Set(files)].sort()
 }

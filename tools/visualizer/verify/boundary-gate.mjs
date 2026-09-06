@@ -11,36 +11,45 @@
 
 import { manifestFiles, readLines, gateConfig, report } from './manifest.mjs'
 
+// Matched on PATH SEGMENTS, not as substrings. `'../adapter'` — an index import
+// of the shim folder, with no trailing slash — is the exact shape Unit 2 creates,
+// and a substring test for 'adapter/' misses it entirely.
 const FORBIDDEN = [
-  'adapter/',
-  'theme/',
-  'types/ast',
-  'types/parser-graph',
-  'types/decomposition',
-  'components/blocks/',
+  /(^|\/)adapter(\/|$)/,
+  /(^|\/)theme(\/|$)/,
+  /(^|\/)types\/(ast|parser-graph|decomposition)(\.\w+)?(\/|$)/,
+  /(^|\/)components\/blocks(\/|$)/,
 ]
+const forbids = spec => FORBIDDEN.some(re => re.test(spec))
 const STATEMENT_START = /^\s*(?:import|export)\b/
 // The module specifier, once the statement has been rejoined: either
 // `… from 'x'` or a bare side-effect `import 'x'`.
 const SPECIFIER = /(?:\bfrom\s*|^\s*import\s*)['"]([^'"]+)['"]/
+// A deferred edge is still an edge: `await import('…')` and `require('…')`
+// reach the same module and a static-only scanner never sees them.
+const DEFERRED = /\b(?:import|require)\s*\(\s*['"]([^'"]+)['"]/g
+
+const unbalanced = text =>
+  (text.match(/\{/g) ?? []).length - (text.match(/\}/g) ?? []).length
 
 /**
- * Import specifiers with the line each statement starts on. A named import can
- * span many lines with its `from` clause alone on the last one, so a per-line
- * regex misses it — and missing an import is exactly the failure this gate
- * exists to prevent.
+ * Import specifiers with the line each statement starts on.
+ *
+ * A named import can span many lines with its `from` clause alone on the last
+ * one, so a per-line regex misses it — and missing an import is exactly the
+ * failure this gate exists to prevent. Continuation is decided by brace balance
+ * rather than by guessing where the statement ends: an earlier heuristic stopped
+ * at any line ending in `;` or `=`, which silently truncated real imports.
  */
 function importsOf(lines) {
   const out = []
   for (let i = 0; i < lines.length; i++) {
+    for (const m of lines[i].matchAll(DEFERRED)) out.push({ spec: m[1], line: i + 1 })
     if (!STATEMENT_START.test(lines[i])) continue
     let buffer = lines[i]
     let j = i
-    // A statement is complete once it names a specifier; cap the lookahead so a
-    // stray `export const …` cannot swallow the rest of the file.
-    while (!SPECIFIER.test(buffer) && j + 1 < lines.length && j - i < 40) {
+    while (unbalanced(buffer) > 0 && j + 1 < lines.length && j - i < 200) {
       buffer += ' ' + lines[++j]
-      if (/[;=]\s*$/.test(lines[j])) break
     }
     const m = buffer.match(SPECIFIER)
     if (m) out.push({ spec: m[1], line: i + 1 })
@@ -56,7 +65,7 @@ for (const file of manifestFiles()) {
   if (file.endsWith('.css')) { counts.push([file, 0]); continue }
   let n = 0
   for (const { spec, line } of importsOf(readLines(file))) {
-    if (!FORBIDDEN.some(f => spec.includes(f))) continue
+    if (!forbids(spec)) continue
     n++
     violations.push(`${file}:${line}  -> ${spec}`)
   }

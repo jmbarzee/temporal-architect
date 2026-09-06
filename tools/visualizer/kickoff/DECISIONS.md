@@ -261,3 +261,39 @@ the harness and the goldens separately, but a harness commit with no committed
 goldens fails Gate 3 by construction, and §7.1 requires every non-WIP commit to
 pass Gates 1-5 on its own. Recorded as a §6.3 re-cut; coverage is unchanged.
 — 2026-09-05 — agent
+
+**D26 — The Tier B goldens were regenerated to add layout-sensitive rows.**
+Supersedes the goldening half of D24 (its analysis of invariants 3 and 4 stands;
+its conclusion that no positional value should be goldened does not). Rows
+expected to move, and the only rows that moved: every fixture golden gains
+`tierB.seededPositions`, `tierB.seedAt` and `tierB.afterShortRun` (four force
+configurations), and `static.golden.json` gains `defaultForceParams`,
+`defaultNodeScale`, `forceProbes` and `syntheticVisible`. No pre-existing row
+changed value — Tier A and Tier C are byte-identical, which is the check that
+this was an addition and not a rewrite. — The PR-scope review demonstrated that
+no goldened value depended on a position, a force parameter or the seeded RNG,
+so deleting a whole force kernel passed every gate; Units 4, 5a and 5b rewrite
+exactly that code. — 2026-09-05 — agent
+
+**D27 — The manifest globber matches more extensions than `PLAN.md` §6.5's
+globs literally name.** §6.5 writes `src/graph/**.ts`,
+`src/components/graph-view/**.ts`, `src/components/controls/**.tsx`,
+`src/filter/**.ts`; the globber accepts `.ts`, `.tsx` and `.css` in all four. —
+A `.tsx` under `graph-view/`, a `.ts` under `controls/` or a stylesheet beside
+either would otherwise sit inside the library-to-be while being invisible to all
+three ratchets *and* absent from Unit 8's move list. Reading an [immutable] floor
+more strictly cannot violate it; leaving a hole in it can. The count is unchanged
+today (no such file exists), so this is protective, not a re-baseline. The gates
+additionally print the blind spots they cannot close — unmatched files inside a
+globbed directory, and components beside the named ones — so manifest drift is
+visible rather than silent. — 2026-09-05 — agent
+
+**D28 — Two patterns added to the forbidden-pattern check (§8.2).**
+`as-unknown-as`, because a double assertion is how a cast that stops compiling
+gets forced through once the `as NodeType` casts are deleted; and `math-random`
+now matches the NAME rather than a call, so a bound or aliased reference cannot
+slip past. Both baselines are allowlisted at their measured counts
+(`storage.ts` 1, `rng.ts` 2 — the injected default and the comment explaining
+it), which keeps the one legitimate reference visible instead of hidden behind a
+syntax the rule could not see. The `silent-domain-fallback` rule also accepts
+double-quoted literals. — 2026-09-05 — agent

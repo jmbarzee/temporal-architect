@@ -21,6 +21,10 @@ const bundle = resolve(pkgRoot, 'dist-verify', 'verify.js')
 const goldenDir = resolve(pkgRoot, 'kickoff', 'goldens')
 
 const write = process.argv.includes('--write')
+const decisionArg = (() => {
+  const i = process.argv.indexOf('--decision')
+  return i >= 0 ? process.argv[i + 1] : null
+})()
 
 if (!existsSync(bundle)) {
   console.error(`verify: ${bundle} is missing — run the bundle step first (npm run verify).`)
@@ -64,7 +68,51 @@ const orphans = existsSync(goldenDir)
       .filter(name => !emitted.includes(name))
   : []
 
+// ── The --write friction, built rather than described ───────────────────────
+//
+// KICKOFF §5.1 lists "--write requires a log entry" as an EXECUTABLE mechanism
+// and says outright: build these, do not merely describe them. A printed warning
+// is not friction — the next session regenerates past it in one keystroke. So
+// --write refuses unless it names a DECISIONS.md entry that exists and is about
+// goldens.
+//
+// The one exception is the first creation: with no committed goldens there is
+// nothing to overwrite and nothing to explain.
 if (write) {
+  const existing = orphans.length + emitted.filter(n => existsSync(goldenPath(n))).length
+  if (existing > 0) {
+    const id = (decisionArg ?? '').trim()
+    if (!/^D\d+$/.test(id)) {
+      console.error('verify --write: refused.')
+      console.error('')
+      console.error(`  ${existing} golden(s) are already committed, so this would REPLACE a`)
+      console.error('  recorded baseline. Regenerating is the default wrong answer to a red')
+      console.error('  gate; the default right answer is to understand the difference.')
+      console.error('')
+      console.error('  If the change really is intended, write the DECISIONS.md entry FIRST —')
+      console.error('  naming the rows you expect to move — then re-run:')
+      console.error('      npm run verify -- --write --decision D<n>')
+      console.error('')
+      console.error('  And check the unit you are in: if its **Goldens:** line says')
+      console.error('  byte-identical, --write is a halt condition, not a fix.')
+      process.exit(2)
+    }
+    const decisionsPath = resolve(pkgRoot, 'kickoff', 'DECISIONS.md')
+    const decisions = existsSync(decisionsPath) ? readFileSync(decisionsPath, 'utf8') : ''
+    const entry = decisions.split(/\n(?=\*\*D\d+ )/).find(block => block.startsWith(`**${id} `))
+    if (!entry) {
+      console.error(`verify --write: refused — kickoff/DECISIONS.md has no entry ${id}.`)
+      console.error('  Write the entry before regenerating, not after.')
+      process.exit(2)
+    }
+    if (!/golden/i.test(entry)) {
+      console.error(`verify --write: refused — DECISIONS.md ${id} does not mention goldens.`)
+      console.error('  The entry has to name the rows you expect to move, or it is not a')
+      console.error('  record of this regeneration.')
+      process.exit(2)
+    }
+    console.log(`verify --write: authorized by DECISIONS.md ${id}.`)
+  }
   for (const name of emitted) writeFileSync(goldenPath(name), serialize(snapshot[name]))
   console.log(`verify --write: wrote ${emitted.length} golden(s) to kickoff/goldens/`)
   for (const name of orphans) console.log(`  note: ${name}.golden.json is no longer emitted`)

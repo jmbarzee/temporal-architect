@@ -31,15 +31,25 @@ const DOMAIN = /workflow|activity|activities|worker|namespace|nexus|temporal|twf
 const RULES = [
   { id: 'as-nodetype', re: /\bas\s+NodeType\b/g },
   { id: 'as-record', re: /\bas\s+Record</g },
+  // The double assertion is how a cast that no longer compiles gets forced
+  // through — `x as unknown as NodeType` sheds the checking the single form
+  // still does, so it must not be the escape hatch when the casts above are
+  // deleted.
+  { id: 'as-unknown-as', re: /\bas\s+unknown\s+as\b/g },
   {
     id: 'math-random',
-    re: /\bMath\.random\s*\(/g,
+    // Deliberately matches the NAME, not a call: a bound or aliased reference
+    // (`const r = Math.random`) reaches the same generator, and the one
+    // legitimate reference — the injected default — is allowlisted so it stays
+    // visible rather than hiding behind a syntax the rule cannot see.
+    re: /\bMath\.random\b/g,
     // Scoped exactly as the friction table words it.
     scope: file => file.startsWith('src/graph/'),
   },
   {
     id: 'silent-domain-fallback',
-    re: /\?\?\s*'[^']*'/g,
+    // Both quote styles: a fallback is no less silent for being double-quoted.
+    re: /\?\?\s*(?:'[^']*'|"[^"]*")/g,
     // Only a fallback to a DOMAIN literal counts; `?? ''` and `?? 'none'` are
     // ordinary defaulting, not a mislabel waiting to happen.
     accept: match => DOMAIN.test(match),
