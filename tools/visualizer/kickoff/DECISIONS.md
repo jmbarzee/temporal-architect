@@ -617,3 +617,74 @@ that Gate 4 covers vocabulary *spelled out*, and vocabulary laundered behind
 neutral symbol names (`NODE_TYPE_REGISTRY`) is Gate 6's job alone.
 
 Found by the Unit 2 review fan-out (lenses: counters, cheats). — 2026-09-06 — agent
+
+**D41 — `useGraphModel` moved to the adapter with §6.3's precondition knowingly
+unmet; the closure moves to Unit 8.** §6.2's Unit 2e line reads "the
+now-Temporal-only files into `src/adapter/`, **once nothing in the manifest
+imports them**." For four of the five movers that held. For `useGraphModel.ts` it
+did not, and still does not: `GraphView.tsx:34` imports it across the boundary,
+which is one of Gate 6's eight remaining violations. The review demonstrated the
+coupling is real rather than notional — deleting the file takes `tsc` to exit 2
+with exactly one error, and that error is inside the manifest.
+
+I recorded the three options in `PROGRESS.md` before making the move and took
+(a). What I did not do, and should have, was say plainly that (a) **violates a
+stated precondition** rather than merely trading against a ceiling. Recording it
+now, because a precondition that gets quietly reinterpreted the first time it is
+inconvenient is not a precondition.
+
+The reasoning stands on its merits: `useGraphModel`'s whole job is
+parser-payload → model, and two of Gate 6's original eleven violations were its
+own imports of `types/ast` and `types/parser-graph` — the file was already
+adapter code sitting in the manifest by glob accident. Moving it took the gate
+from 11 to 8, a decrease the ratchet allows. The alternative, `GraphView` taking
+`graph`/`allFiles`/`errors`/`diagnostics` as props, is the correct end state and
+is §6.2's Unit 8 ("the move + packaging").
+
+What changes as a result: the D40 total ceiling means this relocation no longer
+*counts* as vocabulary progress, which removes the incentive that made (a)
+attractive. And Unit 8's checklist gains an explicit item — **close
+`GraphView -> adapter/useGraphModel`, the last manifest→shim edge that a props
+change removes** — so the deviation is carried as debt with a named owner rather
+than absorbed.
+
+Found by the Unit 2 review fan-out (lens: counters). — 2026-09-06 — agent
+
+**D42 — The seam probe grows a physics half, and the style axis stops existing
+twice.** Two findings, one cause: the injection argument was only ever being made
+for one consumer.
+
+`ontology-probes.ts` drove `computeVisibleGraph` through two taxonomies and
+goldened that the answers differ — real coverage, but of styling and filtering
+only. The review pinned `Simulation` to the first ontology it ever saw, and
+separately pinned `resolveEdgeType`, and **every gate stayed green** both times,
+with a control proving the same sabotage inside `computeVisibleGraph` does turn
+the golden red. So `defaultParamsFor`'s axis and key-space derivation and the
+link force's spring resolution were asserted by nothing.
+
+New `ontologyProbes.physicsInjection` rows drive a taxonomy on a *different axis*
+(`zone`, values `north`/`south`) and record: the axis comes from the container;
+the charge map's key space comes from the container; a node on that axis scores
+under its own taxonomy and is absent under the shipped one. The last pair is the
+part that makes it a real test — one row alone would pass for a probe that simply
+consulted the shipped taxonomy twice. It also keeps a *negative* row: the
+existing `ALTERNATE` restyles the shipped axis, so its physics must AGREE with
+the shipped taxonomy's, and a probe that reported a difference for every
+alternate would prove nothing.
+
+`Ontology.styleDimension` became `styleAxis()`. The axis was stored twice — a
+data field and a value closed over by `valueFor`/`resolveNodeStyle` — so a
+container derived by spreading rewrote only the field and left the closures on
+the old axis. Consumers then split on which half they read: `defaultParamsFor`
+took the field, the draw loop took the closure. Reproduced: a derived ontology
+returned the original styles while its physics keyed on an axis with no matching
+entries, every lookup falling through to the absent-value defaults — charge 0
+against a real -770, i.e. a collapsed layout with no error. A method has one
+source, so there is nothing left to override out of step, and a row now goldens
+that a spread-derived container stays self-consistent.
+
+`resolveEdgeType` is passed as a bare function reference in three places, so
+`this`-based methods were not an option; `styleAxis` closes over its value and is
+safe detached.
+
+Found by the Unit 2 review fan-out (lens: seam). — 2026-09-06 — agent

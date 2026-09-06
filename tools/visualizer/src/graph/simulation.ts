@@ -176,8 +176,8 @@ export function defaultParamsFor(ontology: Ontology): ForceParams {
   return {
     // Both default to the axis the taxonomy resolves style on, so the layout
     // keys on the same thing it is coloured by. Unit 4 makes this a choice.
-    chargeDimension: ontology.styleDimension,
-    bandDimension: ontology.styleDimension,
+    chargeDimension: ontology.styleAxis(),
+    bandDimension: ontology.styleAxis(),
 
     // Charges (all negative = repulsion) and core radii (charge softening as a
     // length), read off each value's declared physics. No cast: the maps are

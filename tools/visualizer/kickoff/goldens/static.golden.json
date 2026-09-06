@@ -1243,6 +1243,37 @@
       },
       "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" has intersecting buckets: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
     },
+    "physicsInjection": {
+      "axes": {
+        "differ": true,
+        "otherAxis": "zone",
+        "shipped": "temporalType"
+      },
+      "chargeKeys": {
+        "otherAxis": [
+          "north",
+          "south"
+        ],
+        "shipped": [
+          "activity",
+          "namespace",
+          "nexusEndpoint",
+          "nexusOperation",
+          "nexusService",
+          "worker",
+          "workflow"
+        ]
+      },
+      "derivedBySpreadStaysConsistent": {
+        "axisAfterSpread": "temporalType",
+        "physicsAgreesWithStyling": true,
+        "stillResolvesTheSameStyle": true
+      },
+      "northNodeUnderOwnTaxonomy": -770,
+      "northNodeUnderShippedTaxonomy": 0,
+      "workerChargeAlternate": -770,
+      "workerChargeShipped": -770
+    },
     "prototypeNamedValues": {
       "constructor": {
         "band": "0..0",

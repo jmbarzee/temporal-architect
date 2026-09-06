@@ -361,6 +361,30 @@ harness pins is invisible to the ratchets, so **deleting a call site is not the
 same as deleting a dependency**, and the lift to check is "who imports this that
 is not the harness". See D37.
 
+**F16 — `isolation: 'worktree'` covered only the stage I asked it to, and the
+review contaminated itself.** The Unit 2 fan-out set `isolation: 'worktree'` on
+the six finders and **not** on the fourteen verifiers, which therefore ran in the
+session's own worktree — the live one. Worse, several finders reported sibling
+edits appearing under them mid-run: a probe directory materialising and
+vanishing, one agent's patch reverted by another, a `filter/storage.ts` that one
+lens had moved showing up in another lens's `ls`.
+
+Two of the strongest agents diagnosed this themselves and re-ran everything
+against a `git archive HEAD` export in a scratchpad with `node_modules`
+symlinked, and said so unprompted — their numbers are the trustworthy ones.
+
+No damage reached the tree (`git status` clean, every gate green afterwards), but
+that was luck rather than design, and at least one finder's first run produced a
+spurious FAIL it correctly discarded.
+
+**The rule: a fan-out whose agents MUTATE the tree needs isolation on every
+stage, not only the stage that obviously edits.** A verifier told to "reproduce
+it" edits code by definition. And git-level isolation alone is not enough when
+agents also need `node_modules` and a build — the durable pattern is the one
+those two agents invented: export a pristine tree, symlink `node_modules`, run
+the gates there. Every gate script here resolves against its package root, so it
+works unmodified.
+
 ---
 
 ## Open questions

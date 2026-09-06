@@ -167,8 +167,7 @@ function prototypeNamedValues(): Json {
   for (const name of NAMES) {
     const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
     const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
-    const node = { ...subject, id: name, name, orphan: true, definitionKey: name,
-                   x: 0, y: 0, vx: 0, vy: 0, pinned: false } as SimNode
+    const node = subject
     const band = bandFor(params, node)
     rows[name] = {
       styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
@@ -182,11 +181,92 @@ function prototypeNamedValues(): Json {
   return rows
 }
 
+
+/**
+ * The physics half of the container — the half no gate watched.
+ *
+ * The injection probe below drives `computeVisibleGraph` through two taxonomies
+ * and goldens that the answers differ. That covers styling and filtering and
+ * nothing else, so the review was able to pin `Simulation` to the first ontology
+ * it ever saw, and to pin `resolveEdgeType`, with every gate green: the argument
+ * "supply a different container and the answer must change" was only ever being
+ * made for one consumer.
+ *
+ * These rows make it for the other two. `defaultParamsFor` must derive its axis
+ * and its whole key space from the taxonomy it is handed, and `edgeCategory`
+ * must resolve springs through the supplied resolver rather than a captured one.
+ */
+function physicsInjection(): Json {
+  const fromDefault = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const fromAlternate = defaultParamsFor(ALTERNATE)
+  const worker = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
+
+  // A taxonomy on a DIFFERENT axis entirely. Its charge map is keyed by values
+  // no node in the shipped domain carries, so a consumer that ignored the
+  // supplied container and used the shipped one would score these nodes; one
+  // that honours it finds nothing and returns the absent-value physics.
+  const OTHER_AXIS = createOntology({
+    styleDimension: 'zone',
+    abbreviations: { north: 'N', south: 'S' },
+    styleGroups: [{ id: 'zones', values: ['north', 'south'] }],
+    nodeTypeKeys: ['north', 'south'],
+    nodeStyles: {
+      north: { ...NODE_TYPE_REGISTRY.worker, defType: 'northDef' },
+      south: { ...NODE_TYPE_REGISTRY.activity, defType: 'southDef' },
+    },
+    edgeTypes: DEFAULT_ONTOLOGY.edgeTypes,
+    resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
+    fallbackStyle: NODE_TYPE_REGISTRY.activity,
+  })
+  const zoned = defaultParamsFor(OTHER_AXIS)
+  const northNode = { dimensions: { zone: 'north' } }
+
+  return {
+    // The axis itself must come from the container.
+    axes: {
+      shipped: fromDefault.chargeDimension,
+      otherAxis: zoned.chargeDimension,
+      differ: fromDefault.chargeDimension !== zoned.chargeDimension,
+    },
+    // And so must the key space the maps are built over.
+    chargeKeys: {
+      shipped: sorted(Object.keys(fromDefault.charge)),
+      otherAxis: sorted(Object.keys(zoned.charge)),
+    },
+    // A node on the other axis scores under ITS taxonomy and is absent under the
+    // shipped one. Both rows are needed: the first proves the container is read,
+    // the second proves the shipped one is genuinely not consulted.
+    northNodeUnderOwnTaxonomy: chargeFor(zoned, northNode),
+    northNodeUnderShippedTaxonomy: chargeFor(fromDefault, northNode),
+    // The alternate taxonomy from the injection probe keeps the shipped axis but
+    // restyles it, so the physics MUST agree with the shipped one here — a probe
+    // that reported a difference for every alternate would prove nothing.
+    workerChargeShipped: chargeFor(fromDefault, worker),
+    workerChargeAlternate: chargeFor(fromAlternate, worker),
+
+    // The axis has exactly one source, so a container derived by spreading
+    // cannot end up disagreeing with itself. Before `styleAxis()` this row read
+    // `sourceFile` while `valueFor` still answered on the type axis.
+    derivedBySpreadStaysConsistent: (() => {
+      const derived = { ...DEFAULT_ONTOLOGY } as typeof DEFAULT_ONTOLOGY
+      return {
+        axisAfterSpread: derived.styleAxis(),
+        stillResolvesTheSameStyle:
+          derived.resolveNodeStyle(worker).defType ===
+          DEFAULT_ONTOLOGY.resolveNodeStyle(worker).defType,
+        physicsAgreesWithStyling:
+          defaultParamsFor(derived).chargeDimension === derived.styleAxis(),
+      }
+    })(),
+  }
+}
+
 export function ontologyProbes(): Json {
   const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
     mappings: mappingProbes(),
     prototypeNamedValues: prototypeNamedValues(),
+    physicsInjection: physicsInjection(),
     // What a miss resolves to, field by field. The `defType` matters most: it is
     // what the visibility predicate tests, so it decides whether an unrecognized
     // node is permanently visible, permanently hidden, or accidentally lumped in

@@ -35,7 +35,23 @@ export interface Ontology {
    * its axis off the force params, filters read theirs off the filter — and no
    * feature composes two.
    */
-  readonly styleDimension: DimensionId
+  /**
+   * The axis this taxonomy resolves style on.
+   *
+   * A method, not a field, and that is a correctness property rather than a
+   * style choice. It was a field *and* a value closed over by `valueFor` and
+   * `resolveNodeStyle` — the same axis stored twice — so a container derived by
+   * spreading (`{ ...ontology, styleDimension: 'sourceFile' }`) rewrote only the
+   * field and left the closures answering on the old axis. The result was an
+   * object that disagreed with itself, and consumers split on which half they
+   * read: `defaultParamsFor` took the field, the draw loop took the closure. A
+   * host deriving one to recolour by file would have got the original colours
+   * AND a physics layer keyed on an axis with no matching entries, every lookup
+   * falling through to the absent-value defaults — a collapsed layout, no error.
+   *
+   * With one source there is nothing to override out of step.
+   */
+  styleAxis(): DimensionId
   /** Every node-type key, in declaration order (top of the hierarchy first). */
   readonly nodeTypeKeys: readonly DimensionValue[]
   /** Every edge category, in control-panel order. */
@@ -128,7 +144,7 @@ export function createOntology(spec: OntologySpec): Ontology {
   const valueFor = (subject: StyleSubject): DimensionValue | undefined =>
     subject.dimensions[styleDimension]
   return {
-    styleDimension,
+    styleAxis: () => styleDimension,
     abbreviationFor: value => spec.abbreviations[value] ?? value,
     styleGroups: spec.styleGroups,
     nodeTypeKeys: spec.nodeTypeKeys,
