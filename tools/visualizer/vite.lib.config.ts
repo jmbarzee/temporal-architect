@@ -17,7 +17,22 @@ export default defineConfig({
       // suggest deep imports into our internal file tree.
       rollupTypes: true,
       // Only include the entry point and its transitive type graph.
-      include: ['src/lib.ts', 'src/types/**/*.ts', 'src/components/**/*.tsx', 'src/components/**/*.ts', 'src/filter/**/*.ts', 'src/graph/**/*.ts', 'src/theme/**/*.ts'],
+      // Every tree `src/lib.ts` can reach, transitively. `src/adapter/**` is on
+      // this list because omitting it does NOT fail the build: the JS bundle
+      // still inlines the implementation, so `npm run build:lib` exits 0 and
+      // only the emitted `.d.ts` is wrong — it re-exports a module that was
+      // never written. A consumer then either hard-fails with TS2307 or, with
+      // the far more common `skipLibCheck: true`, silently receives `any`.
+      include: [
+        'src/lib.ts',
+        'src/types/**/*.ts',
+        'src/components/**/*.tsx',
+        'src/components/**/*.ts',
+        'src/filter/**/*.ts',
+        'src/graph/**/*.ts',
+        'src/adapter/**/*.ts',
+        'src/theme/**/*.ts',
+      ],
       exclude: ['src/App.tsx', 'src/main.tsx', '**/*.test.*'],
       // The DTS plugin defaults to the same outDir as the JS build (dist-lib);
       // we ship the resulting `lib.d.ts` alongside `lib.js`.

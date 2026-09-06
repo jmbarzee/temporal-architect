@@ -55,6 +55,9 @@ jobs:
       - name: Build toolchain (binary + visualizer lib)
         run: make build
 
+      - name: Visualizer published types (consumer compile, skipLibCheck off)
+        run: cd tools/visualizer && npm run dts-gate
+
       - name: Verify release artifacts pack
         run: |
           make pack-visualizer-lib

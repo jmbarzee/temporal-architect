@@ -175,8 +175,14 @@ gates-visualizer:
 	cd tools/visualizer && npm run pattern-gate
 
 ## Build the visualizer as a library (Gate 2) — the packaged entry, not the app
+#
+# The dts gate runs immediately after, because `build:lib` exiting 0 is a weaker
+# claim than it sounds: declarations are emitted from an allowlist, and a source
+# tree missing from it is silently not written. Unit 2e shipped a `lib.d.ts` that
+# re-exported a module the build never emitted, with every gate green.
 buildlib-visualizer:
 	cd tools/visualizer && npm run build:lib
+	cd tools/visualizer && npm run dts-gate
 
 ## Every visualizer gate, in the order a failure is cheapest to read
 #
