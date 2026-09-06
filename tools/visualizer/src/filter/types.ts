@@ -17,17 +17,30 @@
 // (spec § Search Scope).
 
 import type { DimensionId } from '../graph/dimension'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 /** The chosen values on one axis. Empty means what the axis's descriptor says. */
 export type Selection = ReadonlySet<string>
 
-export type FilterState = Readonly<Record<DimensionId, Selection>>
+/**
+ * A selection per axis.
+ *
+ * A `Map`, not a `Record`, and that is a correctness decision rather than taste.
+ * A string-keyed record permits `filter.selectedFiles` — it typechecks, returns
+ * `undefined`, and every downstream `.has` throws or silently reports nothing.
+ * That exact mistake survived the migration in **six** separate places (three
+ * production, three in the harness), passing typecheck, all six gates and 7/7
+ * goldens, and was caught only by loading the app. The domain has no axis called
+ * `selectedFiles`; a Map makes saying so unrepresentable instead of merely
+ * wrong (PLAN §6.6's test).
+ */
+export type FilterState = ReadonlyMap<DimensionId, Selection>
 
 /**
  * Per-axis freeze state. A pinned axis is not adopted from the source view by
  * the `manual` reconciler.
  */
-export type PinState = Readonly<Record<DimensionId, boolean>>
+export type PinState = ReadonlyMap<DimensionId, boolean>
 
 /** Retained as a name for readability; an axis is identified by its dimension. */
 export type FilterDimension = DimensionId
@@ -42,12 +55,12 @@ const EMPTY: Selection = new Set<string>()
  * memoisation this module exists to protect.
  */
 export function selectionFor(state: FilterState, dim: DimensionId): Selection {
-  return state[dim] ?? EMPTY
+  return state.get(dim) ?? EMPTY
 }
 
 /** Every axis the state carries a selection for. */
 export function dimensionsOf(state: FilterState): DimensionId[] {
-  return Object.keys(state).sort()
+  return [...state.keys()].sort()
 }
 
 export function selectionsEqual(a: Selection, b: Selection): boolean {
@@ -70,21 +83,42 @@ export function withSelection(
   next: Selection,
 ): FilterState {
   if (selectionsEqual(selectionFor(state, dim), next)) return state
-  return { ...state, [dim]: next }
+  const out = new Map(state)
+  out.set(dim, next)
+  return out
 }
 
 /** Structural equality across every axis either state mentions. */
 export function filterStatesEqual(a: FilterState, b: FilterState): boolean {
   if (a === b) return true
-  const dims = new Set([...Object.keys(a), ...Object.keys(b)])
+  const dims = new Set([...a.keys(), ...b.keys()])
   for (const d of dims) {
     if (!selectionsEqual(selectionFor(a, d), selectionFor(b, d))) return false
   }
   return true
 }
 
+/**
+ * Build a filter from the two well-known axes' selections.
+ *
+ * A convenience for call sites that still hold two named Sets — chiefly the
+ * harness, whose fixtures are written per axis. Deliberately the ONLY place the
+ * two ids are paired positionally, so a third axis does not need a third
+ * positional argument threaded through every caller.
+ */
+export function filterOfSets(types: Selection, files: Selection): FilterState {
+  return new Map([[DEF_TYPE_DIMENSION, types], [SOURCE_FILE_DIMENSION, files]])
+}
+
+/** Flip one axis's pin, copy-on-write. */
+export function withPin(pins: PinState, dim: DimensionId, value: boolean): PinState {
+  const out = new Map(pins)
+  out.set(dim, value)
+  return out
+}
+
 export function pinnedFor(pins: PinState, dim: DimensionId): boolean {
-  return pins[dim] ?? false
+  return pins.get(dim) ?? false
 }
 
 /**

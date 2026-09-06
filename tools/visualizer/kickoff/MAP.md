@@ -51,16 +51,16 @@ which is worth noticing rather than assuming.
 | `components/graph-view/useSimulationLoop.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useViewport.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useVisibleGraph.ts` | manifest |  | `components/GraphView.tsx` |
-| `components/graph-view/visibleGraph.ts` | manifest | 19 | **5** files |
+| `components/graph-view/visibleGraph.ts` | manifest | 19 | **6** files |
 | `components/icons/GearIcons.tsx` | neither | 2 | `components/FilterBar.tsx`, `theme/temporal-theme.tsx` |
 | `components/protocol.ts` | neither | 3 | **6** files |
 | `filter/reconcile.ts` | manifest | 1 | `components/WorkflowCanvas.tsx`, `verify/static-golden.ts` |
 | `filter/storage.ts` | manifest | 5 | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
-| `filter/types.ts` | manifest |  | **8** files |
+| `filter/types.ts` | manifest |  | **15** files |
 | `graph/dimension.ts` | manifest |  | **27** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
-| `graph/forces.ts` | manifest |  | **4** files |
+| `graph/forces.ts` | manifest |  | **5** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
 | `graph/highlight.ts` | manifest |  | `components/graph-view/useHighlight.ts` |
 | `graph/model.ts` | manifest | 12 | **19** files |

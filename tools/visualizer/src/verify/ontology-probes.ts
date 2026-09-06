@@ -14,6 +14,7 @@
 //      past the container again, the two rows below stop disagreeing and this
 //      probe goes red.
 
+import { filterOfSets } from '../filter/types'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
@@ -79,7 +80,7 @@ const ALTERNATE = createOntology({
 })
 
 function visible(ontology: typeof DEFAULT_ONTOLOGY, types: string[]): Json {
-  const vg = computeVisibleGraph(SOURCE, new Set(types), new Set<string>(), ontology)
+  const vg = computeVisibleGraph(SOURCE, filterOfSets(new Set(types), new Set<string>()), ontology)
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     summaries: sorted([...vg.nodeSummaries].map(([id, s]) => `${id}=${s}`)),

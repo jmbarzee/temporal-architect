@@ -1,3 +1,5 @@
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { selectionFor } from '../filter/types'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
@@ -74,8 +76,8 @@ export function TreeView({
     const prev = prevFilterRef.current
     if (filterStatesEqual(prev, filter)) return
     const changed = new Set<string>()
-    for (const f of filter.selectedFiles) if (!prev.selectedFiles.has(f)) changed.add(`file:${f}`)
-    for (const t of filter.visibleTypes) if (!prev.visibleTypes.has(t)) changed.add(`type:${t}`)
+    for (const f of selectionFor(filter, SOURCE_FILE_DIMENSION)) if (!selectionFor(prev, SOURCE_FILE_DIMENSION).has(f)) changed.add(`file:${f}`)
+    for (const t of selectionFor(filter, DEF_TYPE_DIMENSION)) if (!selectionFor(prev, DEF_TYPE_DIMENSION).has(t)) changed.add(`type:${t}`)
     prevFilterRef.current = filter
     if (changed.size > 0) {
       setRecentlyChanged(changed)
@@ -229,9 +231,9 @@ export function TreeView({
   // are visually dimmed (spec § Search Scope: non-destructive search).
   const visibleDefinitions = React.useMemo(() => {
     const filtered = ast.definitions.filter((def): def is Definition => {
-      if (!filter.visibleTypes.has(def.type)) return false
-      if (filter.selectedFiles.size > 0 && def.sourceFile) {
-        if (!filter.selectedFiles.has(def.sourceFile)) return false
+      if (!selectionFor(filter, DEF_TYPE_DIMENSION).has(def.type)) return false
+      if (selectionFor(filter, SOURCE_FILE_DIMENSION).size > 0 && def.sourceFile) {
+        if (!selectionFor(filter, SOURCE_FILE_DIMENSION).has(def.sourceFile)) return false
       }
       return true
     })
@@ -271,8 +273,8 @@ export function TreeView({
     const byFile = new Map<string, number>()
     for (const def of ast.definitions) {
       if (!def.name.toLowerCase().includes(lq)) continue
-      const inType = filter.visibleTypes.has(def.type)
-      const inFile = filter.selectedFiles.size === 0 || (def.sourceFile ? filter.selectedFiles.has(def.sourceFile) : true)
+      const inType = selectionFor(filter, DEF_TYPE_DIMENSION).has(def.type)
+      const inFile = selectionFor(filter, SOURCE_FILE_DIMENSION).size === 0 || (def.sourceFile ? selectionFor(filter, SOURCE_FILE_DIMENSION).has(def.sourceFile) : true)
       if (!inType) byType.set(def.type, (byType.get(def.type) ?? 0) + 1)
       else if (!inFile && def.sourceFile) byFile.set(def.sourceFile, (byFile.get(def.sourceFile) ?? 0) + 1)
     }

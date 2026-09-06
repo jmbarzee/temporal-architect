@@ -97,10 +97,8 @@ function filterChipLayer(): Json {
 const FILE_A = 'topics/a.twf'
 const FILE_B = 'topics/b.twf'
 
-const filterOf = (files: string[], types: string[]): FilterState => ({
-  [SOURCE_FILE_DIMENSION]: new Set(files),
-  [DEF_TYPE_DIMENSION]: new Set(types),
-})
+const filterOf = (files: string[], types: string[]): FilterState =>
+  new Map([[SOURCE_FILE_DIMENSION, new Set(files)], [DEF_TYPE_DIMENSION, new Set(types)]])
 
 const DEST_STATES: [string, FilterState][] = [
   ['dest:noFiles', filterOf([], ['workerDef', 'workflowDef'])],
@@ -114,14 +112,17 @@ const SOURCE_STATE = filterOf([FILE_B], ['activityDef', 'nexusServiceDef'])
 // `Record<DimensionId, boolean>` — it just pins two axes that do not exist, so
 // every real pin reads false and the whole matrix collapses to its unpinned
 // rows. The golden shrinking by 186 lines is what caught it.
+const pinsOf = (files: boolean, types: boolean): PinState =>
+  new Map([[SOURCE_FILE_DIMENSION, files], [DEF_TYPE_DIMENSION, types]])
+
 const PIN_STATES: [string, PinState][] = [
-  ['pins:none', { [SOURCE_FILE_DIMENSION]: false, [DEF_TYPE_DIMENSION]: false }],
-  ['pins:files', { [SOURCE_FILE_DIMENSION]: true, [DEF_TYPE_DIMENSION]: false }],
-  ['pins:types', { [SOURCE_FILE_DIMENSION]: false, [DEF_TYPE_DIMENSION]: true }],
-  ['pins:both', { [SOURCE_FILE_DIMENSION]: true, [DEF_TYPE_DIMENSION]: true }],
+  ['pins:none', pinsOf(false, false)],
+  ['pins:files', pinsOf(true, false)],
+  ['pins:types', pinsOf(false, true)],
+  ['pins:both', pinsOf(true, true)],
 ]
 
-const NO_PINS: PinState = {}
+const NO_PINS: PinState = new Map()
 
 const INTENTS: [string, ViewTransition][] = [
   ['manual', { kind: 'manual' }],

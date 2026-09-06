@@ -1,6 +1,8 @@
+import { selectionFor } from '../filter/types'
 import React from 'react'
 import { OntologyContext } from './graph-view/useOntology'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { pinnedFor, withSelection } from '../filter/types'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
@@ -12,7 +14,7 @@ import { TreeView } from './TreeView'
 import { GraphView } from './GraphView'
 import type { FilterState, PinState, ViewTransition, FilterDimension } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
-import { loadState, saveState, type PersistedFilter } from '../filter/storage'
+import { loadState, saveState, type PersistedFilter, type PersistedPins } from '../filter/storage'
 import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface WorkflowCanvasProps {
@@ -117,18 +119,16 @@ type ActiveView = 'tree' | 'graph'
 const DEFAULT_VISIBLE_TYPES_ARRAY = DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type)
 
 function defaultFilter(ast: TWFFile): FilterState {
-  return {
-    [SOURCE_FILE_DIMENSION]: ast.focusedFile
-      ? new Set([ast.focusedFile])
-      : new Set<string>(),
-    [DEF_TYPE_DIMENSION]: new Set(DEFAULT_VISIBLE_TYPES_ARRAY),
-  }
+  return new Map([
+    [SOURCE_FILE_DIMENSION, ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>()],
+    [DEF_TYPE_DIMENSION, new Set(DEFAULT_VISIBLE_TYPES_ARRAY)],
+  ])
 }
 
-const DEFAULT_PINS: PinState = {
-  [SOURCE_FILE_DIMENSION]: false,
-  [DEF_TYPE_DIMENSION]: false,
-}
+const DEFAULT_PINS: PinState = new Map([
+  [SOURCE_FILE_DIMENSION, false],
+  [DEF_TYPE_DIMENSION, false],
+])
 
 // Both directions iterate whatever axes the value carries, rather than naming
 // two. Naming them would still have *typechecked* against the axis-keyed
@@ -138,14 +138,23 @@ const DEFAULT_PINS: PinState = {
 // backstop; being generic here is the fix.
 function persistedToFilter(p: PersistedFilter | undefined, fallback: FilterState): FilterState {
   if (!p) return fallback
-  const out: Record<string, Set<string>> = {}
-  for (const [dimension, values] of Object.entries(p)) out[dimension] = new Set(values)
-  return out
+  return new Map(Object.entries(p).map(([dimension, values]) => [dimension, new Set(values)]))
 }
 
 function filterToPersisted(f: FilterState): PersistedFilter {
   const out: PersistedFilter = {}
-  for (const [dimension, values] of Object.entries(f)) out[dimension] = Array.from(values)
+  for (const [dimension, values] of f) out[dimension] = Array.from(values)
+  return out
+}
+
+function persistedToPins(p: PersistedPins | undefined, fallback: PinState): PinState {
+  if (!p) return fallback
+  return new Map(Object.entries(p))
+}
+
+function pinsToPersisted(pins: PinState): PersistedPins {
+  const out: PersistedPins = {}
+  for (const [dimension, pinned] of pins) out[dimension] = pinned
   return out
 }
 
@@ -179,8 +188,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   // Per-view pin state — when a dimension is pinned, the manual reconciler
   // skips it; focus transitions can still override pins (with a flash).
-  const [treePins, setTreePins] = React.useState<PinState>(() => persisted.treePins ?? DEFAULT_PINS)
-  const [graphPins, setGraphPins] = React.useState<PinState>(() => persisted.graphPins ?? DEFAULT_PINS)
+  const [treePins, setTreePins] = React.useState<PinState>(() => persistedToPins(persisted.treePins, DEFAULT_PINS))
+  const [graphPins, setGraphPins] = React.useState<PinState>(() => persistedToPins(persisted.graphPins, DEFAULT_PINS))
 
   // Globally-shared search state — one query applied identically to both
   // views (spec § Search Scope). Search is non-destructive (dim, not hide)
@@ -205,8 +214,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     saveState({
       treeFilter: filterToPersisted(treeFilter),
       graphFilter: filterToPersisted(graphFilter),
-      treePins,
-      graphPins,
+      treePins: pinsToPersisted(treePins),
+      graphPins: pinsToPersisted(graphPins),
       searchQuery,
     })
   }, [treeFilter, graphFilter, treePins, graphPins, searchQuery])
@@ -221,9 +230,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
       if (def.sourceFile) allFiles.add(def.sourceFile)
     }
     const prune = (prev: FilterState): FilterState => {
-      const pruned = new Set([...prev.selectedFiles].filter(f => allFiles.has(f)))
-      if (pruned.size === prev.selectedFiles.size) return prev
-      return { ...prev, selectedFiles: pruned }
+      const pruned = new Set([...selectionFor(prev, SOURCE_FILE_DIMENSION)].filter(f => allFiles.has(f)))
+      if (pruned.size === selectionFor(prev, SOURCE_FILE_DIMENSION).size) return prev
+      return withSelection(prev, SOURCE_FILE_DIMENSION, pruned)
     }
     setTreeFilter(prune)
     setGraphFilter(prune)
@@ -234,15 +243,15 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // only when the Tree's files dimension is unpinned, since a pinned
   // user explicitly opted out of tracking.
   React.useEffect(() => {
-    if (treePins.files) return
+    if (pinnedFor(treePins, SOURCE_FILE_DIMENSION)) return
     if (ast.focusedFile) {
       setTreeFilter(prev => {
         const next = new Set([ast.focusedFile!])
-        if (prev.selectedFiles.size === 1 && prev.selectedFiles.has(ast.focusedFile!)) return prev
-        return { ...prev, selectedFiles: next }
+        if (selectionFor(prev, SOURCE_FILE_DIMENSION).size === 1 && selectionFor(prev, SOURCE_FILE_DIMENSION).has(ast.focusedFile!)) return prev
+        return withSelection(prev, SOURCE_FILE_DIMENSION, next)
       })
     }
-  }, [ast.focusedFile, treePins.files])
+  }, [ast.focusedFile, treePins])
 
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -349,10 +358,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // When the Tree's file filter narrows to exactly one file, open it in
   // the editor (VS Code webview behavior).
   React.useEffect(() => {
-    if (treeFilter.selectedFiles.size === 1 && onOpenFile) {
-      onOpenFile(treeFilter.selectedFiles.values().next().value!)
+    if (selectionFor(treeFilter, SOURCE_FILE_DIMENSION).size === 1 && onOpenFile) {
+      onOpenFile(selectionFor(treeFilter, SOURCE_FILE_DIMENSION).values().next().value!)
     }
-  }, [treeFilter.selectedFiles, onOpenFile])
+  }, [selectionFor(treeFilter, SOURCE_FILE_DIMENSION), onOpenFile])
 
   // Compose outer container className/style so consumers can layer overrides
   // without losing the built-in layout class.

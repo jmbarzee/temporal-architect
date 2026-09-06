@@ -9,11 +9,12 @@
 // hidden-match "+N" badge) are passed in as `searchExtra`; everything else
 // is identical across views.
 
+import { selectionFor } from '../filter/types'
 import React from 'react'
 import './FilterBar.css'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
-import { pinnedFor } from '../filter/types'
+import { pinnedFor, withPin } from '../filter/types'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { toggleValue, toggleGroup } from '../filter/toggle'
 import { PinToggle } from './PinToggle'
@@ -73,8 +74,8 @@ export function FilterBar({
   diagnostics,
   refreshFlash,
 }: FilterBarProps) {
-  const selectedFiles = filter.selectedFiles
-  const visibleTypes = filter.visibleTypes
+  const selectedFiles = selectionFor(filter, SOURCE_FILE_DIMENSION)
+  const visibleTypes = selectionFor(filter, DEF_TYPE_DIMENSION)
   const noFilesSelected = selectedFiles.size === 0
   const hasFiles = allFiles.length > 0
 
@@ -104,9 +105,9 @@ export function FilterBar({
     onFilterChange(toggleGroup(filter, DEF_TYPE_DIMENSION, types))
 
   const togglePinFiles = () =>
-    onPinsChange({ ...pins, [SOURCE_FILE_DIMENSION]: !pinnedFor(pins, SOURCE_FILE_DIMENSION) })
+    onPinsChange(withPin(pins, SOURCE_FILE_DIMENSION, !pinnedFor(pins, SOURCE_FILE_DIMENSION)))
   const togglePinTypes = () =>
-    onPinsChange({ ...pins, [DEF_TYPE_DIMENSION]: !pinnedFor(pins, DEF_TYPE_DIMENSION) })
+    onPinsChange(withPin(pins, DEF_TYPE_DIMENSION, !pinnedFor(pins, DEF_TYPE_DIMENSION)))
 
   const toggleSearch = () => {
     if (searchActive) {
@@ -121,7 +122,7 @@ export function FilterBar({
     <div className={`canvas-header${refreshFlash ? ' refresh-flash' : ''}`}>
       {hasFiles && (
         <>
-          <div className={`header-files-section${pins.files ? ' section-pinned' : ''}`}>
+          <div className={`header-files-section${pinnedFor(pins, SOURCE_FILE_DIMENSION) ? ' section-pinned' : ''}`}>
             <div className="header-files-row">
               {allFiles.map(file => {
                 const fileName = file.split('/').pop() || file
@@ -149,7 +150,7 @@ export function FilterBar({
               })}
             </div>
             <PinToggle
-              pinned={pins.files}
+              pinned={pinnedFor(pins, SOURCE_FILE_DIMENSION)}
               onClick={togglePinFiles}
               flashing={overriddenPins.has('files')}
               label="Files"
@@ -159,7 +160,7 @@ export function FilterBar({
         </>
       )}
 
-      <div className={`header-types-section${pins.types ? ' section-pinned' : ''}`}>
+      <div className={`header-types-section${pinnedFor(pins, DEF_TYPE_DIMENSION) ? ' section-pinned' : ''}`}>
         <div className="header-types-row">
           {VIEW_FILTER_ENTRIES.map(entry => {
             const isActive = entry.types.some(t => visibleTypes.has(t))
@@ -192,7 +193,7 @@ export function FilterBar({
           })}
         </div>
         <PinToggle
-          pinned={pins.types}
+          pinned={pinnedFor(pins, DEF_TYPE_DIMENSION)}
           onClick={togglePinTypes}
           flashing={overriddenPins.has('types')}
           label="Types"

@@ -16,8 +16,10 @@
 
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
-import { SOURCE_FILE_DIMENSION } from '../../graph/dimension'
 import type { Ontology } from '../../graph/ontology'
+import type { PhysicsSubject } from '../../graph/forces'
+import type { FilterState } from '../../filter/types'
+import { selectionFor } from '../../filter/types'
 
 export interface VisibleGraph {
   visibleNodes: SimNode[]
@@ -234,22 +236,56 @@ function computeGraphNodeSummary(
   return parts.join(' ')
 }
 
+
+/**
+ * Is this node visible under the current selection?
+ *
+ * One loop over the declared axes, with every branch read from that axis's
+ * descriptor rather than assumed. The two live axes disagree on both policies,
+ * which is exactly why this cannot be a uniform rule (T7):
+ *
+ *   - an empty type selection hides everything (`emptyMeans: 'none'`), while an
+ *     empty file selection shows everything (`'all'`)
+ *   - a node with no value on the file axis stays visible under an active file
+ *     filter (`absentMeans: 'visible'`)
+ *
+ * The previous version was three hardcoded lines naming both axes, so a third
+ * axis meant a fourth line here and in every other consumer.
+ */
+export function passesFilter(
+  node: PhysicsSubject,
+  filter: FilterState,
+  ontology: Ontology,
+): boolean {
+  for (const dim of ontology.filterDimensions) {
+    const selection = selectionFor(filter, dim.id)
+    if (selection.size === 0) {
+      if (dim.emptyMeans === 'none') return false
+      continue
+    }
+    const value = ontology.valueOn(node, dim.id)
+    if (value === undefined) {
+      if (dim.absentMeans === 'hidden') return false
+      continue
+    }
+    if (!selection.has(value)) return false
+  }
+  return true
+}
+
 export function computeVisibleGraph(
   sim: VisibleGraphSource,
-  visibleTypes: ReadonlySet<string>,
-  selectedFiles: ReadonlySet<string>,
+  filter: FilterState,
   ontology: Ontology,
 ): VisibleGraph {
-  const hasFileFilter = selectedFiles.size > 0
   const ids = new Set<string>()
   const vNodes: SimNode[] = []
 
   for (const node of sim.nodes) {
-    if (!visibleTypes.has(ontology.resolveNodeStyle(node).defType)) continue
-    const file = node.dimensions[SOURCE_FILE_DIMENSION]
-    if (hasFileFilter && file && !selectedFiles.has(file)) continue
-    ids.add(node.id)
-    vNodes.push(node)
+    if (passesFilter(node, filter, ontology)) {
+      ids.add(node.id)
+      vNodes.push(node)
+    }
   }
 
   // Graduate edges across hidden types.

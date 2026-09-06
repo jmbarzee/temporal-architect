@@ -19,6 +19,7 @@
 //     constructed object.
 
 import type { DimensionDescriptor, DimensionId, DimensionMap, DimensionValue } from './dimension'
+import { DEF_TYPE_DIMENSION } from './dimension'
 import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
@@ -61,6 +62,17 @@ export interface Ontology {
   readonly filterDimensions: readonly DimensionDescriptor[]
   /** One axis's policies, or undefined if the host does not declare it. */
   descriptorFor(dimension: DimensionId): DimensionDescriptor | undefined
+  /**
+   * The value a subject presents on one axis — the single place the filter's
+   * one projection lives.
+   *
+   * Most axes are read straight off the node's dimension map. `defType` is not:
+   * its values are a *projection* of the style axis, which is what lets two
+   * declared kinds share a filter key and one chip cover three of them. Stating
+   * that here means the predicate, the reconciler and the chips all agree by
+   * construction instead of each re-deriving it.
+   */
+  valueOn(subject: StyleSubject, dimension: DimensionId): DimensionValue | undefined
   /** Every node-type key, in declaration order (top of the hierarchy first). */
   readonly nodeTypeKeys: readonly DimensionValue[]
   /** Every edge category, in control-panel order. */
@@ -158,6 +170,10 @@ export function createOntology(spec: OntologySpec): Ontology {
     styleAxis: () => styleDimension,
     filterDimensions: spec.filterDimensions,
     descriptorFor: id => byDimension.get(id),
+    valueOn: (subject, dimension) =>
+      dimension === DEF_TYPE_DIMENSION
+        ? styleForKey(valueFor(subject)).defType
+        : subject.dimensions[dimension],
     abbreviationFor: value => spec.abbreviations[value] ?? value,
     styleGroups: spec.styleGroups,
     nodeTypeKeys: spec.nodeTypeKeys,

@@ -6,6 +6,8 @@
 // error/diagnostic partition by the file filter. Extracted from GraphView as the
 // first, most-isolated decomposition step (see graphview_hook_decomposition plan).
 
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { selectionFor } from '../filter/types'
 import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
@@ -13,7 +15,6 @@ import type { FilterState } from '../filter/types'
 import { filterStatesEqual } from '../filter/types'
 import { buildGraph } from './build'
 import type { Graph } from '../graph/model'
-import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing
@@ -86,8 +87,8 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph, filter: Fi
     const prev = prevFilterRef.current
     if (filterStatesEqual(prev, filter)) return
     const changed = new Set<string>()
-    for (const f of filter.selectedFiles) if (!prev.selectedFiles.has(f)) changed.add(`file:${f}`)
-    for (const t of filter.visibleTypes) if (!prev.visibleTypes.has(t)) changed.add(`type:${t}`)
+    for (const f of selectionFor(filter, SOURCE_FILE_DIMENSION)) if (!selectionFor(prev, SOURCE_FILE_DIMENSION).has(f)) changed.add(`file:${f}`)
+    for (const t of selectionFor(filter, DEF_TYPE_DIMENSION)) if (!selectionFor(prev, DEF_TYPE_DIMENSION).has(t)) changed.add(`type:${t}`)
     prevFilterRef.current = filter
     if (changed.size > 0) {
       setRecentlyChanged(changed)
