@@ -479,6 +479,32 @@
     }
   ],
   "forceProbes": {
+    "absentValue": {
+      "bandCartesian": {
+        "allFinite": true,
+        "nonFiniteNodeIds": [],
+        "unknownVelocity": [
+          0,
+          60.9
+        ]
+      },
+      "bandRadial": {
+        "allFinite": true,
+        "nonFiniteNodeIds": [],
+        "unknownVelocity": [
+          -21.280354,
+          28.373805
+        ]
+      },
+      "charge": {
+        "allFinite": true,
+        "nonFiniteNodeIds": [],
+        "unknownVelocity": [
+          0.091004,
+          -0.184966
+        ]
+      }
+    },
     "bandCartesian": {
       "allFinite": true,
       "nonFiniteNodeIds": [],

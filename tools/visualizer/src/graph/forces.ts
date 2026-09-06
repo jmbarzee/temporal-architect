@@ -13,25 +13,53 @@
 
 import type { NodeType, GraphEdge } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
-import { edgeTypeFor } from './edge-types'
-import type { EdgeTypeId } from './edge-types'
+import type { EdgeTypeDefinition, EdgeTypeId } from './edge-types'
 import type { Rng } from './rng'
 
-// ── Per-type / per-edge accessors ───────────────────────────────────────────
-// Each force reads its per-type/per-edge values from the id-keyed param maps via
+/** How an edge is mapped to its spring category. Supplied, not imported. */
+export type EdgeTypeResolver = (edge: GraphEdge) => EdgeTypeDefinition
+
+/** The minimum a force needs of a node in order to look up its physics. */
+export type PhysicsSubject = { nodeType: NodeType }
+
+// ── Per-value / per-edge accessors ──────────────────────────────────────────
+// Each force reads its per-value/per-edge numbers from the keyed param maps via
 // these thin helpers, taking only its own category slice.
+//
+// **Every one of them defaults.** Today the key space is closed and a miss is
+// impossible; the whole point of the surrounding work is to open it, and the
+// three accessors fail three *different* silent ways when it does: charge
+// returns `undefined`, core radius returns `NaN` (its `Math.max` floor swallows
+// the miss, and the NaN reaches velocity two lines later), and the band
+// dereferences `undefined` and throws outright. Guarding them is cheap; finding
+// a NaN that entered the layout four frames ago is not.
 
-export function chargeForType(params: ChargeParams, nodeType: NodeType): number {
-  return params.charge[nodeType]
-}
-
-// Minimum effective core radius. A type dragged to 0 would otherwise drop the
+// Minimum effective core radius. A value dragged to 0 would otherwise drop the
 // pair softening toward zero and reintroduce the close-range force singularity
 // the softening exists to prevent, so we floor every read at this value.
 export const CORE_RADIUS_MIN = 2
 
-export function coreRadiusForType(params: ChargeParams, nodeType: NodeType): number {
-  return Math.max(params.coreRadius[nodeType], CORE_RADIUS_MIN)
+/**
+ * Physics for a value the param maps do not declare. Deliberately inert rather
+ * than plausible: no repulsion, the smallest legal softening, and a point band
+ * on the origin. An unrecognized value should sit still and be noticed, not
+ * push the layout around while impersonating a real one.
+ */
+export const ABSENT_VALUE_PHYSICS = {
+  charge: 0,
+  coreRadius: CORE_RADIUS_MIN,
+  yBand: { min: 0, max: 0 },
+} as const
+
+export function chargeFor(params: ChargeParams, node: PhysicsSubject): number {
+  return params.charge[node.nodeType] ?? ABSENT_VALUE_PHYSICS.charge
+}
+
+export function coreRadiusFor(params: ChargeParams, node: PhysicsSubject): number {
+  return Math.max(
+    params.coreRadius[node.nodeType] ?? ABSENT_VALUE_PHYSICS.coreRadius,
+    CORE_RADIUS_MIN,
+  )
 }
 
 export interface YBand {
@@ -39,9 +67,14 @@ export interface YBand {
   yMax: number
 }
 
-export function bandForType(params: GravityParams, nodeType: NodeType): YBand {
-  const b = params.band[nodeType]
+/** The rest band for a key. Control surfaces iterate keys; forces take nodes. */
+export function bandForKey(params: GravityParams, key: NodeType): YBand {
+  const b = params.band[key] ?? ABSENT_VALUE_PHYSICS.yBand
   return { yMin: b.min, yMax: b.max }
+}
+
+export function bandFor(params: GravityParams, node: PhysicsSubject): YBand {
+  return bandForKey(params, node.nodeType)
 }
 
 interface EdgeCategory {
@@ -52,11 +85,15 @@ interface EdgeCategory {
   key: EdgeTypeId
 }
 
-// Categorize an edge into its spring parameters. The taxonomy + prioritized
-// matching rules live in the edge-type registry (edge-types.ts, edgeTypeFor);
-// here we just read the live param values for the resolved category.
-export function edgeCategory(params: LinkParams, edge: GraphEdge): EdgeCategory {
-  const def = edgeTypeFor(edge)
+// Categorize an edge into its spring parameters. The taxonomy and its
+// prioritized matching rules are supplied by the caller, so this module reads
+// live param values and knows nothing about which categories exist.
+export function edgeCategory(
+  params: LinkParams,
+  edge: GraphEdge,
+  resolveEdgeType: EdgeTypeResolver,
+): EdgeCategory {
+  const def = resolveEdgeType(edge)
   return {
     strength: params.link[def.id],
     distance: params.dist[def.id],
@@ -115,12 +152,12 @@ export function applyChargeForce(
       }
       const rawDist = Math.sqrt(dist2)
       // Per-pair softening from the endpoints' core radii.
-      const rEffA = crMul * coreRadiusForType(params, a.nodeType)
-      const rEffB = crMul * coreRadiusForType(params, b.nodeType)
+      const rEffA = crMul * coreRadiusFor(params, a)
+      const rEffB = crMul * coreRadiusFor(params, b)
       const rAvg = (rEffA + rEffB) / 2
       const softening = rAvg * rAvg
-      const chargeA = chargeForType(params, a.nodeType)
-      const chargeB = chargeForType(params, b.nodeType)
+      const chargeA = chargeFor(params, a)
+      const chargeB = chargeFor(params, b)
       const strength = (chargeA + chargeB) / 2
       // Negate: strength is negative (convention), but force must be positive
       // for repulsion. The exponent acts on (dist² + softening) directly.
@@ -145,6 +182,7 @@ export function applyLinkForce(
   params: LinkParams,
   alpha: number,
   rng: Rng,
+  resolveEdgeType: EdgeTypeResolver,
 ): void {
   const degree = new Map<string, number>()
   for (const edge of activeEdges) {
@@ -172,7 +210,7 @@ export function applyLinkForce(
       dist = 1
     }
 
-    const cat = edgeCategory(params, edge)
+    const cat = edgeCategory(params, edge, resolveEdgeType)
     const restDist = cat.distance * distMul
     const disp = dist - restDist
     const absDisp = Math.abs(disp)
@@ -209,7 +247,7 @@ export function bandCenters(active: SimNode[], params: GravityParams): number[] 
   for (const n of active) {
     if (seen.has(n.nodeType)) continue
     seen.add(n.nodeType)
-    const b = bandForType(params, n.nodeType)
+    const b = bandFor(params, n)
     centers.push((b.yMin + b.yMax) / 2)
   }
   return centers
@@ -260,7 +298,7 @@ export function applyBandGravity(
       node.vx -= bandForce(node.x - xTarget, exp) * alpha * gx
     }
     // Band shifted so the stack is centred on the origin.
-    const band = bandForType(params, node.nodeType)
+    const band = bandFor(params, node)
     const yMin = band.yMin - center
     const yMax = band.yMax - center
     let yTarget: number | null = null
@@ -292,7 +330,7 @@ function applyBandGravityRadial(
   const center = new Map<NodeType, number>()
   for (const n of active) {
     if (center.has(n.nodeType)) continue
-    const b = bandForType(params, n.nodeType)
+    const b = bandFor(params, n)
     center.set(n.nodeType, (b.yMin + b.yMax) / 2)
   }
   if (center.size === 0) return

@@ -12,10 +12,12 @@ import {
   applyBandGravity,
   applyTopologicalGravity,
   applyCenterGravity,
-  bandForType,
+  bandFor,
 } from './forces'
 import type { Rng } from './rng'
 import { defaultRng } from './rng'
+import type { Ontology } from './ontology'
+import { DEFAULT_ONTOLOGY } from './node-types'
 
 // Re-export so callers that already import ALL_NODE_TYPES from simulation continue to work.
 export { ALL_NODE_TYPES } from './node-types'
@@ -24,9 +26,10 @@ export { ALL_NODE_TYPES } from './node-types'
 // (GraphCanvas, GraphControlPanel, ChargeControls) keep importing them here.
 export {
   CORE_RADIUS_MIN,
-  chargeForType,
-  coreRadiusForType,
-  bandForType,
+  chargeFor,
+  coreRadiusFor,
+  bandFor,
+  bandForKey,
   edgeCategory,
   RADIAL_R_MIN,
   RADIAL_R_MAX,
@@ -260,10 +263,20 @@ export class Simulation {
   // the verification harness passes a seeded one to make a run reproducible.
   private rng: Rng
 
-  constructor(graph: Graph, params?: Partial<ForceParams>, rng: Rng = defaultRng) {
+  // The taxonomy the link force resolves spring categories through. Held rather
+  // than imported so the engine is not bound to one set of edge categories.
+  private ontology: Ontology
+
+  constructor(
+    graph: Graph,
+    params?: Partial<ForceParams>,
+    rng: Rng = defaultRng,
+    ontology: Ontology = DEFAULT_ONTOLOGY,
+  ) {
     this.params = { ...DEFAULT_PARAMS, ...params }
     this.alpha = 1.0
     this.rng = rng
+    this.ontology = ontology
 
     // Initialize SimNodes inside their Y bands so the first tick doesn't have
     // to violently relocate them to the hierarchy. X is jittered around 0
@@ -273,7 +286,7 @@ export class Simulation {
     const xCenter = (this.params.bandXMin + this.params.bandXMax) / 2
     const xJitter = Math.max(40, (this.params.bandXMax - this.params.bandXMin) * 0.7)
     for (const node of graph.nodes.values()) {
-      const band = bandForType(this.params, node.nodeType)
+      const band = bandFor(this.params, node)
       const yCenter = (band.yMin + band.yMax) / 2
       const yJitter = Math.max(20, (band.yMax - band.yMin) / 2)
       const sim: SimNode = {
@@ -323,7 +336,7 @@ export class Simulation {
     // gravity as the baseline when neither is active. The Cartesian/Radial mode
     // is read inside the band/topological forces.
     applyChargeForce(active, this.params, this.alpha, this.rng)
-    applyLinkForce(activeEdges, this.nodeMap, this.params, this.alpha, this.rng)
+    applyLinkForce(activeEdges, this.nodeMap, this.params, this.alpha, this.rng, this.ontology.resolveEdgeType)
     if (this.params.bandEnabled) applyBandGravity(active, this.params, this.alpha, this.rng)
     if (this.params.topologicalEnabled) applyTopologicalGravity(active, this.params, this.alpha, downstreamScores)
     if (!this.params.bandEnabled && !this.params.topologicalEnabled) {
@@ -431,7 +444,7 @@ export class Simulation {
   seedAt(id: string, x: number, y: number): void {
     const node = this.nodeMap.get(id)
     if (!node) return
-    const band = bandForType(this.params, node.nodeType)
+    const band = bandFor(this.params, node)
     const yClamped = Math.min(Math.max(y, band.yMin), band.yMax)
     node.x = x + (this.rng() - 0.5) * 10
     node.y = yClamped + (this.rng() - 0.5) * 10

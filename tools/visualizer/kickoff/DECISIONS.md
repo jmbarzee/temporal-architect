@@ -326,3 +326,15 @@ The operative rules live in `VERIFICATION.md` §3.5.5 and are restated as
 economised: the first review of Units 4, 5a, 5b and 6. Unit 0 is the argument for
 that carve-out — the defect was *in the verifier*, and the author could not see it
 because the author had written the rationale for it. — 2026-09-06 — human + agent
+
+**D30 — Unit 1 adds golden rows without changing any.** `PLAN.md` Unit 1 says
+`**Goldens:** byte-identical. This unit changes no behavior at all.` — which
+holds for every row that existed. What is added: `static.forceProbes.absentValue`,
+three probes that drive a key the param maps do not declare through the charge
+and band kernels. Rows expected to move: that one subtree, and nothing else. Tier
+A, Tier C and every fixture's Tier B are byte-identical, which is the check that
+this is an addition rather than a rewrite. — The unit's own job is the defaulting
+accessors that B5/T3 assign to it, and §3.4 says a fix without a check is a
+fix-shaped diff. Verified the check works by removing the three defaults: the
+harness throws outright and emits no snapshot, because the band accessor
+dereferences `undefined` — exactly the failure T3 describes. — 2026-09-06 — agent

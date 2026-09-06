@@ -4,7 +4,7 @@
 import React from 'react'
 import type { GraphEdge, NodeType } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
-import { ALL_NODE_TYPES, bandForType, chargeForType, coreRadiusForType, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
+import { ALL_NODE_TYPES, bandForKey, chargeFor, coreRadiusFor, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-types'
@@ -611,10 +611,10 @@ export function GraphCanvas({
           const color = d.ontology.resolveNodeStyle(node).color.fill
           ctx.strokeStyle = color
 
-          const effectiveCharge = Math.abs(chargeForType(d.forceParams, node.nodeType)) * pushMul
+          const effectiveCharge = Math.abs(chargeFor(d.forceParams, node)) * pushMul
           if (effectiveCharge <= 0) continue
 
-          const rEff = crMul * coreRadiusForType(d.forceParams, node.nodeType)
+          const rEff = crMul * coreRadiusFor(d.forceParams, node)
           const soft = rEff * rEff
 
           // Collect every reachable ring radius. Outer rings (lower threshold
@@ -671,7 +671,7 @@ export function GraphCanvas({
           const tgt = d.nodeMap.get(edge.targetId)
           if (!src || !tgt) continue
 
-          const cat = edgeCategory(d.forceParams, edge)
+          const cat = edgeCategory(d.forceParams, edge, d.ontology.resolveEdgeType)
           if (activePullKey && cat.key !== activePullKey) continue
 
           const [sx, sy] = worldToScreen(vp, src.x, src.y)
@@ -772,7 +772,7 @@ export function GraphCanvas({
           present.push(n.nodeType)
         }
         const centerOf = (t: NodeType) => {
-          const b = bandForType(d.forceParams, t)
+          const b = bandForKey(d.forceParams, t)
           return (b.yMin + b.yMax) / 2
         }
 
@@ -800,7 +800,7 @@ export function GraphCanvas({
           const median = m ? (m % 2 ? sorted[(m - 1) / 2] : (sorted[m / 2 - 1] + sorted[m / 2]) / 2) : 0
 
           for (const t of ALL_NODE_TYPES) {
-            const band = bandForType(d.forceParams, t)
+            const band = bandForKey(d.forceParams, t)
             const [, sy1] = worldToScreen(vp, 0, band.yMin - median)
             const [, sy2] = worldToScreen(vp, 0, band.yMax - median)
             if (sy2 < 0 || sy1 > h) continue

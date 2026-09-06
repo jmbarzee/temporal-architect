@@ -20,7 +20,7 @@
 // speed at rest. Both are chaotic float-derived aggregates over the full run, and
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
-import { bandCenters, bandForType } from '../graph/forces'
+import { bandCenters, bandFor } from '../graph/forces'
 import type { Graph, NodeType } from '../graph/model'
 import { DEFAULT_PARAMS, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
@@ -151,7 +151,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   const shift = median(centers)
   let outsideBand = 0
   for (const n of active) {
-    const band = bandForType(params, n.nodeType)
+    const band = bandFor(params, n)
     const slack = Math.abs(band.yMax - band.yMin) * TIER_B_PARAMS.bandTolerance
     if (!(n.y >= band.yMin - shift - slack && n.y <= band.yMax - shift + slack)) outsideBand++
   }
