@@ -39,11 +39,11 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 
 | field | value |
 |---|---|
-| Current unit | **Unit 0 — Verification net** (not started) |
+| Current unit | **Unit 0 — Verification net** (in progress) |
 | Last completed unit | — |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | — |
-| Run state | not started |
+| Unit branch | `visualizer/dimensions-unit-0` |
+| Run state | running |
 
 ## Counters
 
@@ -52,9 +52,10 @@ If a fresh session cannot tell what to do next from this file plus `PLAN.md`,
 | A — requirements covered | 0 | 42 |
 | B — blast-radius sites migrated | 0 | 38 |
 | C — leaks in the manifest | 583 | 0 |
-| Gate 6 — import-boundary violations | not measured | 0 |
+| Gate 6 — import-boundary violations | 11 (baseline, F2) | 0 |
 
 Counter C ceiling for the current unit: **583** (baseline).
+Gate 6 ceiling for the current unit: **11** (baseline, D21).
 
 ## Gate state
 
@@ -149,7 +150,33 @@ explicit pass criteria and a committed screenshot — use them.
 > Facts learned during the run that a future session would otherwise rediscover.
 > If one contradicts `NON_INFERABLE.md`, say so explicitly and cite both.
 
-*(none yet)*
+**F1 — The §6.5 leak baseline reproduces exactly, per file.** Running the
+[immutable] pattern over the 41-file manifest with
+`grep -v -E 'https?://' | grep -o -i -E '<pattern>' | wc -l` gives **583**, and
+every non-zero per-file count matches `PLAN.md` §6.5's table row for row. The
+pattern, the manifest and the counting method are therefore all confirmed
+mutually consistent; the Unit 0g script only has to reproduce this command.
+
+**F2 — Gate 6 starts at 11 violations, not 0.** Measured import edges from the
+manifest into the forbidden trees: `graph/build.ts` -> `types/ast`,
+`types/parser-graph`; `graph/groups.ts` -> `types/decomposition`;
+`graph-view/useGraphModel.ts` -> `types/ast`, `types/parser-graph`;
+`GraphView.tsx` -> `types/ast`, `types/parser-graph`, `types/decomposition`,
+`theme/temporal-theme`; `FilterBar.tsx` -> `types/ast`, `theme/temporal-theme`.
+`src/adapter/` does not exist yet and `src/components/blocks/` is imported by
+nobody in the manifest — T17's coupling to `blocks.css` is a *stylesheet*
+dependency with no import edge, so Gate 6 structurally cannot see it. See D21.
+
+**F3 — CI never runs on a unit PR.** `.github/workflows/ci.yml` triggers on
+`pull_request: branches: [main]` and `push: branches: [main]` only. Every unit
+PR targets `visualizer/composable-dimensions` (§7.1), so without a trigger change
+the six gates would be wired into a workflow that never fires for this run. See
+D22.
+
+**F4 — The forces are called from exactly one place.** All five `apply*` forces
+are called only from `Simulation.tick`, and `new Simulation(...)` appears only at
+`useSimulation.ts:50`. The nine-site RNG injection (0c) therefore has a
+single-caller blast radius and needs no param-object plumbing.
 
 ---
 
@@ -158,7 +185,28 @@ explicit pass criteria and a committed screenshot — use them.
 > §8.4: when a §8.3 halt goes unanswered, the question lands here with the options
 > considered and the one you would take — then you move on.
 
-*(none open)*
+**OQ1 — `PLAN.md` Unit 2 says `**Goldens:** byte-identical`, but Unit 2 deletes
+`GraphNode.nodeType` (R2, B1).** The Tier A node rows record a node's identity;
+when that identity becomes a dimension map the rows necessarily change shape.
+Options: (a) enumerate a permitted golden change limited to the node-identity
+rows, exactly as Unit 3's line already does for the filter matrix; (b) have the
+Unit 0 harness emit a forward-compatible `dimensions` map now, which means
+authoring the dimension model inside Unit 0. **Taking (a)** — (b) violates §5.1
+attractor 8 and puts Unit 2's design in the unit that is supposed to only observe
+it. Recorded as D17; raised now rather than at Unit 2 so the §8.4 Unit 0
+exception covers it.
+
+**OQ2 — `PLAN.md` states two different leak ceilings per unit.** §6.2's per-unit
+`**Leak ceiling:**` lines read 583 / 583 / **150** / **138** / **102** / **90** /
+**80** / **58** / 0 / 0; §6.5's ceilings table reads 583 / 583 / **210** /
+**195** / **160** / **135** / **135** / **60** / 0 / 0. They agree only at Units
+0, 1, 7 and 8, so nothing binds until Unit 2. §6.1 gate 4 cites "the unit's
+ceiling (**§6.5**)", which argues for the table; §6.2's numbers are tighter, and
+a stricter ratchet is never wrong but can force a §8.2 re-flag it did not need.
+**Would take: §6.5's table as the gate ceiling, §6.2's line as the unit's
+target**, so the gate never blocks on a discrepancy between two documents while
+the tighter number still steers the work. Decide at the Unit 2 boundary; it
+cannot affect Unit 0, whose ceiling is 583 either way.
 
 ---
 
