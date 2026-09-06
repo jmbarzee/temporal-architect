@@ -9,7 +9,9 @@
 // dependency with no import edge. Moving that stylesheet breaks the shared bar
 // with no build error and no gate failure.
 
-import { manifestFiles, readLines, gateConfig, report } from './manifest.mjs'
+import { existsSync, statSync } from 'node:fs'
+import { dirname, relative, resolve } from 'node:path'
+import { manifestFiles, readLines, gateConfig, report, PKG_ROOT } from './manifest.mjs'
 
 // Matched on PATH SEGMENTS, not as substrings. `'../adapter'` — an index import
 // of the shim folder, with no trailing slash — is the exact shape Unit 2 creates,
@@ -44,7 +46,7 @@ const unbalanced = text =>
 function importsOf(lines) {
   const out = []
   for (let i = 0; i < lines.length; i++) {
-    for (const m of lines[i].matchAll(DEFERRED)) out.push({ spec: m[1], line: i + 1 })
+    for (const m of lines[i].matchAll(DEFERRED)) out.push({ spec: m[1], line: i + 1, isReExport: false })
     if (!STATEMENT_START.test(lines[i])) continue
     let buffer = lines[i]
     let j = i
@@ -52,10 +54,64 @@ function importsOf(lines) {
       buffer += ' ' + lines[++j]
     }
     const m = buffer.match(SPECIFIER)
-    if (m) out.push({ spec: m[1], line: i + 1 })
+    // `export … from 'x'` hands x's surface to this module's consumers; a plain
+    // `import` keeps it internal. Only the first kind launders a dependency.
+    if (m) out.push({ spec: m[1], line: i + 1, isReExport: /^\s*export\b/.test(lines[i]) })
     i = j
   }
   return out
+}
+
+// ── Following the edge, not just reading it ─────────────────────────────────
+//
+// Testing the specifier alone is defeated by two lines. A barrel in any
+// unmeasured tree —
+//
+//     // src/types/registry-barrel.ts
+//     export { NODE_TYPE_REGISTRY } from '../adapter/node-types'
+//
+// — lets a manifest file import the registry through a specifier this gate
+// approves of. Verified: the direct import counts as a violation and the
+// barrelled one does not, with identical semantics.
+//
+// PLAN.md §6.5 and this gate's own header both claimed the paired gates caught
+// that ("re-exporting the registry through a neutral barrel satisfies Gate 6 and
+// leaves Gate 4 red"). They do not, and Gate 4 cannot: the laundered symbols are
+// named `NODE_TYPE_REGISTRY` and `ALL_NODE_TYPES`, which contain no word in the
+// vocabulary pattern. The dependency is real and the text is neutral, so the
+// only gate that can see it is this one — by resolving where the edge goes.
+const EXTS = ['.ts', '.tsx', '', '/index.ts', '/index.tsx']
+
+function resolveLocal(fromFile, spec) {
+  if (!spec.startsWith('.')) return null            // a package, not our tree
+  const base = resolve(PKG_ROOT, dirname(fromFile), spec)
+  for (const ext of EXTS) {
+    const cand = base + ext
+    if (existsSync(cand) && statSync(cand).isFile()) return relative(PKG_ROOT, cand)
+  }
+  return null
+}
+
+/**
+ * The forbidden module this edge actually reaches, or null.
+ *
+ * Depth-limited and cycle-guarded. Only *re-exports* are followed, not plain
+ * imports: a module that imports a forbidden tree for its own internal use has
+ * not handed that dependency to its consumer, while `export … from` has. That
+ * distinction is what keeps this from flagging the whole graph.
+ */
+function reachesForbidden(fromFile, spec, seen = new Set(), depth = 0) {
+  if (forbids(spec)) return spec
+  if (depth >= 6) return null
+  const target = resolveLocal(fromFile, spec)
+  if (target === null || seen.has(target)) return null
+  seen.add(target)
+  for (const { spec: next, isReExport } of importsOf(readLines(target))) {
+    if (!isReExport) continue
+    const hit = reachesForbidden(target, next, seen, depth + 1)
+    if (hit) return `${spec} -> ${hit}`
+  }
+  return null
 }
 
 const counts = []
@@ -65,9 +121,10 @@ for (const file of manifestFiles()) {
   if (file.endsWith('.css')) { counts.push([file, 0]); continue }
   let n = 0
   for (const { spec, line } of importsOf(readLines(file))) {
-    if (!forbids(spec)) continue
+    const hit = reachesForbidden(file, spec)
+    if (!hit) continue
     n++
-    violations.push(`${file}:${line}  -> ${spec}`)
+    violations.push(`${file}:${line}  -> ${hit}`)
   }
   counts.push([file, n])
   total += n

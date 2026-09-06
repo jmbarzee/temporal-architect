@@ -4,40 +4,48 @@
 // membership. No positions, no floats except the downstream scores (which are
 // exact rationals). Byte-identical is the contract.
 
-import { buildGraph } from '../graph/build'
-import { edgeTypeFor } from '../graph/edge-types'
+import { buildGraph } from '../adapter/build'
+import { edgeTypeFor } from '../adapter/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
+import { payloadString } from '../graph/model'
 import { Simulation } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
-import { DEFAULT_ONTOLOGY } from '../graph/node-types'
+import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { histogram, sorted, sortedRecord } from './snapshot'
 
 /** Every source file the graph's nodes carry, sorted — the file chips' domain. */
 export function allFilesOf(graph: Graph): string[] {
   const files = new Set<string>()
-  for (const node of graph.nodes.values()) if (node.sourceFile) files.add(node.sourceFile)
+  for (const node of graph.nodes.values()) {
+    const file = node.dimensions[SOURCE_FILE_DIMENSION]
+    if (file) files.add(file)
+  }
   return sorted(files)
 }
 
 function nodeRow(n: GraphNode): Json {
   const row: { [k: string]: Json } = {
     id: n.id,
-    // Unit 2 replaces this single field with a dimension map; that row change is
-    // enumerated there (D17), and every other row here stays byte-identical.
-    nodeType: n.nodeType,
+    // The one row shape change Unit 2 makes, enumerated in D17/D34: a node's
+    // identity was one string and is now a map of axis to value. The values
+    // inside it are the strings the field used to hold.
+    dimensions: { ...n.dimensions },
     name: n.name,
     orphan: n.orphan,
     definitionKey: n.definitionKey,
   }
-  if (n.sourceFile !== undefined) row.sourceFile = n.sourceFile
   if (n.parentId !== undefined) row.parentId = n.parentId
-  if (n.worker !== undefined) row.worker = n.worker
-  if (n.namespace !== undefined) row.namespace = n.namespace
-  if (n.queue !== undefined) row.queue = n.queue
+  // Host payload, read back by key. Emitted under the same names the fields
+  // used to have so the row stays comparable across the move.
+  for (const key of ['worker', 'namespace', 'queue']) {
+    const v = payloadString(n, key)
+    if (v !== undefined) row[key] = v
+  }
   if (n.templateParams !== undefined) row.templateParams = [...n.templateParams]
   return row
 }
@@ -51,9 +59,11 @@ function nodeRow(n: GraphNode): Json {
 function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): string {
   const src = nodeOf(e.sourceId)
   const tgt = nodeOf(e.targetId)
-  const styleKey = src && tgt ? edgeStyleKeyFor(e, src, tgt) : 'UNRESOLVED-ENDPOINT'
+  const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
+  const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
+  const styleKey = src && tgt ? edgeStyleKeyFor(e, srcValue, tgtValue) : 'UNRESOLVED-ENDPOINT'
   const parts = [
-    edgeTypeFor(e).id,
+    edgeTypeFor(e, srcValue, tgtValue).id,
     styleKey,
     e.edgeType,
     `${e.sourceId} -> ${e.targetId}`,
@@ -124,12 +134,18 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       ),
     },
     edgeClassification: {
-      byEdgeType: histogram(graph.edges.map(e => edgeTypeFor(e).id)),
+      byEdgeType: histogram(graph.edges.map(e => {
+        const src = nodeOf(e.sourceId)
+        const tgt = nodeOf(e.targetId)
+        return edgeTypeFor(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt)).id
+      })),
       byStyleKey: histogram(
         graph.edges.map(e => {
           const src = nodeOf(e.sourceId)
           const tgt = nodeOf(e.targetId)
-          return src && tgt ? edgeStyleKeyFor(e, src, tgt) : 'UNRESOLVED-ENDPOINT'
+          return src && tgt
+            ? edgeStyleKeyFor(e, DEFAULT_ONTOLOGY.valueFor(src), DEFAULT_ONTOLOGY.valueFor(tgt))
+            : 'UNRESOLVED-ENDPOINT'
         }),
       ),
     },

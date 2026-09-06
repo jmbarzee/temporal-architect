@@ -385,11 +385,31 @@ loss, from files alone.** Everything below serves that test.
 ### Branches and PRs
 
 - Feature branch (the integration target for the whole run):
-  **`visualizer/composable-dimensions`**. Every unit PR targets it, not `main`.
+  **`visualizer/composable-dimensions`**. No unit PR targets `main`.
 - Unit branches: `visualizer/dimensions-unit-<n>` (e.g.
-  `visualizer/dimensions-unit-0`, `visualizer/dimensions-unit-5a`).
-- Open a real PR per unit with `gh pr create --base visualizer/composable-dimensions`.
-  The PR body links `kickoff/reviews/REVIEW_<unit>.md`.
+  `visualizer/dimensions-unit-0`, `visualizer/dimensions-unit-5a`), each branched
+  off its predecessor's tip.
+- **The PRs stack: a unit PR targets its predecessor's branch, not the feature
+  branch.** Only Unit 0, at the bottom, targets `visualizer/composable-dimensions`.
+  Open with `gh pr create --base visualizer/dimensions-unit-<n-1>`. The PR body
+  links `kickoff/reviews/REVIEW_<unit>.md`.
+
+  This is not cosmetic. A PR based on the feature branch shows its own diff *plus
+  every predecessor's*, and Unit 0 lands ~34k lines of fixtures and goldens — so
+  by Unit 1 the PR page opens with 27k lines of JSON that unit never touched, and
+  it only gets worse with depth. Measured: Unit 1 against the feature branch is 68
+  files / +35,482; against Unit 0 it is 29 files / +1,054. Both describe the same
+  work. Only one is reviewable. See D36.
+- **Nothing has to merge for the run to proceed**, and merge authority is not
+  assumed. The stack grows to Unit 9 unattended; a reviewer reads each PR
+  incrementally at any time. Merge the stack bottom-up at the end.
+- **Merge commits only — never squash.** Squashing Unit *n* rewrites its commits,
+  which resets Unit *n+1*'s merge base to the pre-Unit-*n* point and re-inflates
+  its diff to the full cumulative size. `allow_squash_merge` is on for this repo,
+  so the trap is live. Retarget each PR to the feature branch as its predecessor
+  merges (`gh api -X PATCH`, per F14) rather than relying on GitHub's
+  auto-retarget, which is tied to head-branch deletion and
+  `delete_branch_on_merge` is `false` here.
 - Commit subjects follow the repo convention: `visualizer: <summary>` (or
   `visualizer+<component>:` when a unit touches the harness or CI).
 

@@ -374,3 +374,322 @@ to move, and the only ones that did (224 insertions, 12 deletions, one file):
 All six fixture goldens and `edge-types` are byte-identical, verified by running
 `npm run verify` before regenerating: it reported those six `ok` and only
 `static` differing. — 2026-09-06 — agent
+
+**D33 — Unit 2's commit order is reversed: decouple first, move last.**
+`PLAN.md` §6.2 opens Unit 2 with two pure-move commits; they cannot be first
+without a red Gate 6. The four files 2a moves are still imported from inside the
+§6.5 manifest, and `src/adapter/` is a forbidden import target — measured, moving
+them first takes Gate 6 from 11 violations to about 16, so the unit's own first
+commit could not close. §5.2.5 ("move files only once they are already clean")
+points the same way and outranks the commit list, which §6.2 itself calls "the
+starting decomposition, not a contract". Coverage is unchanged and the move is
+still its own commit, so `git` still records renames — it is simply the last
+commit rather than the first. Recorded in `PLAN.md` §6.2 under the Unit 2 entry.
+— 2026-09-06 — agent
+
+**D34 — Unit 2's golden contract, stated up front.** `PLAN.md` Unit 2 says
+`**Goldens:** byte-identical`, and OQ1/D17 already recorded that this cannot hold:
+the unit's whole purpose is replacing `GraphNode.nodeType` with a dimension map,
+and the Tier A node rows record a node's identity. The contract for this unit is
+therefore:
+
+  - **Tier A node rows change shape**, once, from `"nodeType": "<value>"` to a
+    `"dimensions"` map. Every other field on those rows — id, name, orphan,
+    definitionKey, parentId, sourceFile, templateParams — stays byte-identical,
+    and the *values* inside the new map must be the old `nodeType` strings.
+  - **Tier C is byte-identical.** The edge classifier's resolved ids do not move,
+    which is the acceptance test for the registries inverting without changing
+    what they resolve to.
+  - **Every visible-subgraph row is byte-identical.** The resolved sets are what
+    a user sees; if a dimension-keyed predicate resolves a different set than a
+    type-keyed one did, the generalization is wrong.
+  - **Tier B position rows are byte-identical.** The physics keys on a dimension
+    value instead of a type string, and the value is the same string, so no
+    force may move a node differently.
+  - New probe subtrees are additive and named per commit.
+
+Anything outside that list moving is a defect, not a shape change. Each `--write`
+in this unit cites this entry. — 2026-09-06 — agent
+
+**D35 — Supersedes D34's node-row clause, and records what removing the
+denormalized endpoint types found.** Two corrections to D34's prediction:
+
+1. **`sourceFile` leaves the node row too, and belongs inside the map.** D34 said
+   it would stay byte-identical beside a new `dimensions` field. It should not:
+   the source file *is* one of the two axes this domain projects onto, so keeping
+   it as a sibling field would have been the dual-read C5 forbids. The node row's
+   change is therefore `nodeType` + `sourceFile` → `dimensions`, and the values
+   inside the map are the two strings the two fields held. Measured across all
+   five fixtures: **exactly** those three per-node differences and nothing else.
+
+2. **The synthetic visible-graph golden changed value, and the change is a fix.**
+   Three graduated-edge rows in `static.syntheticVisible` reclassify — `act -> wk`
+   moves from `linkWorkerToWorkflow` to `linkWorkerToActivity`. The cause is the
+   thing B14 exists to remove: that hand-written edge declared
+   `sourceId: 'act'` alongside `sourceNodeType: 'workflow'`, so the denormalized
+   copy disagreed with the node it described. Nothing could see the disagreement
+   while the classifier trusted the copy. Now that endpoints resolve from the
+   nodes, the classifier gets it right.
+
+   Worth stating plainly: **the drift was in the harness, not in production.**
+   `buildGraph` always wrote the denormalized types from the endpoint nodes, so
+   the four fixture goldens show no value change at all — only the row shape
+   moves. The one place the two sources of truth had actually diverged was a
+   fixture I hand-wrote in Unit 0, and it sat there undetected until the second
+   source was deleted. That is the argument for B14 in one example.
+— 2026-09-06 — agent
+
+**D36 — The unit PRs stack: each targets its predecessor's branch, and the stack
+merges with merge commits, never squashes.** §7.1's "Branches and PRs" had every
+unit PR target `visualizer/composable-dimensions`. That is correct for Unit 0 and
+wrong for everything above it: a PR based on the feature branch shows its own diff
+*plus every predecessor's*. Unit 0 lands ~34k lines of fixtures and goldens, so
+Unit 1's PR page opened with roughly 27k lines of JSON it never touched — the
+eight largest files in its diff were all Unit 0's — and Unit 2's would have been
+worse. Measured on the retarget of #159:
+
+| unit | vs feature branch | vs predecessor |
+|---|---|---|
+| 0 | 52 files, +34,466 | *(same — bottom of the stack)* |
+| 1 | 68 files, +35,482 | **29 files, +1,054/-107** |
+| 2 | 79 files | **35 files** |
+
+Same work, either way. Only the right-hand column is reviewable, and the
+left-hand one degrades linearly with stack depth.
+
+Three things make this safe rather than clever, all verified before the change:
+
+1. **CI still fires.** D22 had already widened `ci.yml`'s `pull_request` trigger
+   to `[main, "visualizer/**"]`, and unit branches match that glob. Had the
+   trigger still been the original `[main]`-plus-feature-branch list, retargeting
+   would have silently disabled all six gates on every PR above Unit 0 — the exact
+   silent-failure shape this document set exists to catch. It was checked first.
+2. **The green checks stay valid.** Each unit branches off its predecessor's tip
+   exactly (`merge-base(u0,u1) == u0` and `merge-base(u1,u2) == u1`, both
+   confirmed), so merging a unit into its predecessor is a fast-forward and the
+   tree CI validated is the tree that lands. Note that a base change fires the
+   `edited` activity type, which is not in the default trigger set — so retargeting
+   does *not* re-run CI, and the pre-existing run is the one that counts.
+3. **Merge commits are available.** `allow_merge_commit=true`.
+
+The squash prohibition is the live trap: `allow_squash_merge` is also `true`, and
+squash-merging Unit *n* rewrites its commits, which resets Unit *n+1*'s merge base
+to the pre-Unit-*n* point and re-inflates its diff to the full cumulative size.
+The content would still merge cleanly — it would just become unreviewable again,
+for a reason nobody would connect to the merge button they pressed weeks earlier.
+
+The consequence worth naming: **nothing has to merge for the run to proceed.**
+The stack can grow to Unit 9 unattended, which is what was actually wanted; merge
+authority stays unassumed and unneeded. The cost is that a defect attributable to
+an early unit is found against a later unit's diff and gets fixed forward there,
+which is already the policy the defect table encodes — so this trades a merge
+gate the run never had for a stack depth the review scope already tolerates.
+
+Taken on direct user instruction, which overrides §7's `[immutable]` marker;
+logged here because §7.4 requires it. — 2026-09-06 — agent
+
+**D37 — B18 is a deletion, and it moves 22 lines of the static golden.**
+`nodeDefType.ts` bridged the two type vocabularies with two module-load maps and
+two silent fallbacks — `?? 'workflowDef'` and `?? 'workflow'` — so an
+unrecognized input resolved to a *real* type and an unknown node was filtered
+and focused as though it were a workflow (T19). The plan has B18 rewrite the
+bijection. It turned out not to need rewriting: **nothing has called it since
+Unit 2c**, which deleted `GraphNode.nodeType` and with it the last call sites.
+
+*Corrected 2026-09-06:* this entry and commit `d02e1e0` both said "the last two
+call sites". It was **five**, across `GraphView.tsx` (three), `useVisibleGraph`
+and one more — counted from the commit rather than from memory. The conclusion is
+unchanged and the correction is small, but the number was stated as a fact and
+was wrong, which is the kind of thing that gets quoted later. Every consumer now reads `ontology.resolveNodeStyle(node).defType`, which
+answers a miss with the declared neutral style and warns once — the loud path
+Unit 1 built. So the module is deleted rather than ported (C5).
+
+Worth recording how it survived: the module was dead for three commits and no
+gate said so, because `static-golden.ts` still imported it and still goldened
+its output. **The golden was the only thing keeping it alive, and a passing
+golden row reads as evidence that the code under it matters.** A dead-export
+check would have caught this; the leak gate counts vocabulary and the boundary
+gate counts direction, and neither counts *readers*. Logged as F15.
+
+The golden change (§8.2), line by line — `static.golden.json` 2190 → 2168:
+
+- `defTypeBridge.nodeTypeToDefType` — 8 rows, one per node type. Deleted: the
+  function is gone.
+- `defTypeBridge.defTypeToNodeType` — 8 rows. Deleted, same reason.
+- `defTypeBridge.unmappedFallbacks` — 4 lines pinning the two silent defaults.
+  Deleted: this is the behaviour B18 exists to remove, and it is the one row
+  whose disappearance is the point rather than a side effect.
+- `defTypeBridge` → `filterChipLayer` — the key is renamed and, being
+  alphabetically later, moves down within the canonically-sorted object. Its
+  `filterChips` rows are **unchanged in value**; they are kept deliberately,
+  because the chip folding is the half of T19 that is still live: five chips
+  cover seven filter keys and one chip carries three of them.
+
+No other golden moves. The four fixture goldens and the edge-type table are
+byte-identical, which is the check that this touched a harness-only path and not
+the engine. — 2026-09-06 — agent
+
+**D38 — OQ2 resolved: §6.5's ceilings table is the gate, §6.2's per-unit line is
+the target.** `PLAN.md` states two different leak ceilings per unit and they
+agree only at Units 0, 1, 7 and 8; Unit 2 reads **210** in §6.5's table and
+**150** in §6.2's line. §6.1 gate 4 cites "the unit's ceiling (§6.5)", so the
+table binds the gate and the tighter number steers the work. This is the
+resolution OQ2 said it would take, decided at the Unit 2 boundary as planned.
+— 2026-09-06 — agent
+
+**D39 — Keyed lookups on a dimension value must use `hasOwn`; the static golden
+gains a `prototypeNamedValues` block.** Dimension values are host-supplied
+strings, and three lookups read them as plain object indexes: `forces.ts`'s
+`lookup` and `bandForKey`, and `ontology.ts`'s `styleForKey`. A value named
+`constructor`, `__proto__`, `toString`, `hasOwnProperty` or `valueOf` therefore
+resolved up the prototype chain to an inherited member — which is not
+`undefined`, so every `?? ABSENT_VALUE_PHYSICS.x` and `!== undefined` guard
+downstream accepted it as a declared value.
+
+Neither consequence stays local, which is why this is not a curiosity:
+
+- The `Object` function enters the force arithmetic as NaN, and because charge
+  couples a pair by the *average* of the two endpoints' charges, and a band
+  contributes its centre to the median the stack re-centres on, one such node
+  takes the whole layout non-finite. Reproduced: all ten probe nodes went
+  non-finite in the charge and radial-band kernels. `bandCartesian` survived,
+  so the corruption is kernel-dependent — harder to spot, not easier.
+- `ontology.ts`'s header promises "resolution never throws". With
+  `key = 'constructor'` the miss went undetected and `styleForKey` returned the
+  `Object` constructor as a `NodeTypeDefinition`; the first consumer to read
+  `.size.r` off it throws, inside the draw loop, which is the exact failure the
+  required-fallback design exists to prevent (T4).
+
+Fixed with one shared `hasOwn` in `dimension.ts`, called on `Object.prototype`
+rather than on the table so a table declaring its own `hasOwnProperty` cannot
+shadow the check, and spelled `Object.prototype.hasOwnProperty.call` rather than
+`Object.hasOwn` so it needs no `lib` bump (target is ES2020).
+
+**Golden change (§8.2):** `static.golden.json` gains one
+`ontologyProbes.prototypeNamedValues` block — five rows, one per prototype
+member name, each recording that the style resolves to the declared fallback and
+that charge / coreRadius / band give the absent-value answers. No existing row
+moves. The block is worth its lines because nothing else in the harness passes a
+value the taxonomy does not declare *and that also names a prototype member*;
+the existing `notADeclaredKey` probe misses it by construction, since an ordinary
+unknown string does resolve to `undefined`.
+
+Found by the Unit 2 review fan-out (lens: physics). — 2026-09-06 — agent
+
+**D40 — `src/adapter/` created a hole in the accounting; a flat `totalCeiling`
+and a transitive Gate 6 close it.** Unit 2's review measured the unit's own
+headline honestly for the first time, and it does not say what the number said.
+
+**The leak drop was 82% relocation, and the relocated vocabulary grew.** Joining
+the per-file gate tables across `ffb2ef8..21c4504`: of the 374-occurrence fall,
+308 is files moving to `src/adapter/`, 65 is genuine in-place removal, 2 is
+outright deletion, +1 new. And counted at the destination with the gate's own
+pattern, those five files hold **330** occurrences where they held 308 before —
+so the run's real total *rose by 22* behind a reported drop of 308. Gate 6's
+`11 -> 8` is 100% relocation: no import edge was removed this unit, and one new
+one (`GraphView -> adapter/useGraphModel`) was added.
+
+None of that makes the unit wrong — moving domain entries to the host half is
+precisely what Unit 2 is for. What is wrong is that **no gate could tell the
+difference between that and parking a file in `src/adapter/` to duck the count.**
+Demonstrated three ways by the review, each reproduced: relocating
+`src/filter/storage.ts` byte-identically and deleting its allowlist entries
+improves all three ratchets with nothing deleted; appending 1000 domain terms to
+`src/adapter/node-types.ts` moves no gate by a single unit; and a two-line
+re-export barrel lets a manifest file import the registry with both gates green.
+
+Three changes:
+
+1. **`shimFiles()`** in `manifest.mjs` — the complement of the manifest, defined
+   as Gate 6's own FORBIDDEN trees so "the shim" means one thing to every gate.
+2. **`totalCeiling` = manifest + shim, ratcheted FLAT** (1276 at Unit 2 close:
+   209 + 1067). Not ratcheted *down*, because the shim is allowed its domain —
+   that is what a shim is for. Flat is enough: relocation keeps the total
+   unchanged and therefore stops reading as progress, while relocation that adds
+   vocabulary now fails. Verified both: the `storage.ts` move takes the leak
+   count 209 -> 204 with the total pinned at 1276, and six words appended to an
+   adapter file take it to 1282 and FAIL.
+3. **Gate 6 resolves re-exports transitively** — following `export … from` but
+   not plain `import`, since only the first hands a dependency to a consumer —
+   and prints the route (`-> ../types/registry-barrel -> ../adapter/node-types`).
+   Verified: the barrel cheat goes from green to `boundary violations: 9
+   (ceiling 8)`, with no false positive on the existing eight.
+
+`PLAN.md` §6.5's claim that the paired gates catch the barrel is corrected in
+place rather than quietly dropped, because it is the sentence that says the two
+gates cover each other, and it was false in both halves. The honest statement is
+that Gate 4 covers vocabulary *spelled out*, and vocabulary laundered behind
+neutral symbol names (`NODE_TYPE_REGISTRY`) is Gate 6's job alone.
+
+Found by the Unit 2 review fan-out (lenses: counters, cheats). — 2026-09-06 — agent
+
+**D41 — `useGraphModel` moved to the adapter with §6.3's precondition knowingly
+unmet; the closure moves to Unit 8.** §6.2's Unit 2e line reads "the
+now-Temporal-only files into `src/adapter/`, **once nothing in the manifest
+imports them**." For four of the five movers that held. For `useGraphModel.ts` it
+did not, and still does not: `GraphView.tsx:34` imports it across the boundary,
+which is one of Gate 6's eight remaining violations. The review demonstrated the
+coupling is real rather than notional — deleting the file takes `tsc` to exit 2
+with exactly one error, and that error is inside the manifest.
+
+I recorded the three options in `PROGRESS.md` before making the move and took
+(a). What I did not do, and should have, was say plainly that (a) **violates a
+stated precondition** rather than merely trading against a ceiling. Recording it
+now, because a precondition that gets quietly reinterpreted the first time it is
+inconvenient is not a precondition.
+
+The reasoning stands on its merits: `useGraphModel`'s whole job is
+parser-payload → model, and two of Gate 6's original eleven violations were its
+own imports of `types/ast` and `types/parser-graph` — the file was already
+adapter code sitting in the manifest by glob accident. Moving it took the gate
+from 11 to 8, a decrease the ratchet allows. The alternative, `GraphView` taking
+`graph`/`allFiles`/`errors`/`diagnostics` as props, is the correct end state and
+is §6.2's Unit 8 ("the move + packaging").
+
+What changes as a result: the D40 total ceiling means this relocation no longer
+*counts* as vocabulary progress, which removes the incentive that made (a)
+attractive. And Unit 8's checklist gains an explicit item — **close
+`GraphView -> adapter/useGraphModel`, the last manifest→shim edge that a props
+change removes** — so the deviation is carried as debt with a named owner rather
+than absorbed.
+
+Found by the Unit 2 review fan-out (lens: counters). — 2026-09-06 — agent
+
+**D42 — The seam probe grows a physics half, and the style axis stops existing
+twice.** Two findings, one cause: the injection argument was only ever being made
+for one consumer.
+
+`ontology-probes.ts` drove `computeVisibleGraph` through two taxonomies and
+goldened that the answers differ — real coverage, but of styling and filtering
+only. The review pinned `Simulation` to the first ontology it ever saw, and
+separately pinned `resolveEdgeType`, and **every gate stayed green** both times,
+with a control proving the same sabotage inside `computeVisibleGraph` does turn
+the golden red. So `defaultParamsFor`'s axis and key-space derivation and the
+link force's spring resolution were asserted by nothing.
+
+New `ontologyProbes.physicsInjection` rows drive a taxonomy on a *different axis*
+(`zone`, values `north`/`south`) and record: the axis comes from the container;
+the charge map's key space comes from the container; a node on that axis scores
+under its own taxonomy and is absent under the shipped one. The last pair is the
+part that makes it a real test — one row alone would pass for a probe that simply
+consulted the shipped taxonomy twice. It also keeps a *negative* row: the
+existing `ALTERNATE` restyles the shipped axis, so its physics must AGREE with
+the shipped taxonomy's, and a probe that reported a difference for every
+alternate would prove nothing.
+
+`Ontology.styleDimension` became `styleAxis()`. The axis was stored twice — a
+data field and a value closed over by `valueFor`/`resolveNodeStyle` — so a
+container derived by spreading rewrote only the field and left the closures on
+the old axis. Consumers then split on which half they read: `defaultParamsFor`
+took the field, the draw loop took the closure. Reproduced: a derived ontology
+returned the original styles while its physics keyed on an axis with no matching
+entries, every lookup falling through to the absent-value defaults — charge 0
+against a real -770, i.e. a collapsed layout with no error. A method has one
+source, so there is nothing left to override out of step, and a row now goldens
+that a spread-derived container stays self-consistent.
+
+`resolveEdgeType` is passed as a bare function reference in three places, so
+`this`-based methods were not an option; `styleAxis` closes over its value and is
+safe detached.
+
+Found by the Unit 2 review fan-out (lens: seam). — 2026-09-06 — agent

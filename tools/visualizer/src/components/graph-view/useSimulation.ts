@@ -8,11 +8,11 @@
 // *drives* the sim is a separate hook (useSimulationLoop); this owns the instance.
 
 import React from 'react'
-import { Simulation, DEFAULT_PARAMS } from '../../graph/simulation'
+import { Simulation, defaultParamsFor } from '../../graph/simulation'
 import { defaultRng } from '../../graph/rng'
 import { useOntology } from './useOntology'
 import type { ForceParams, SimNode } from '../../graph/simulation'
-import type { buildGraph } from '../../graph/build'
+import type { Graph } from '../../graph/model'
 
 export interface SimulationController {
   simRef: React.MutableRefObject<Simulation | null>
@@ -32,7 +32,7 @@ export interface SimulationController {
 }
 
 export function useSimulation(
-  graph: ReturnType<typeof buildGraph>,
+  graph: Graph,
   // Called after each (re)creation so the camera/loop can reset their own
   // coordination refs (initial-fit guard, fps tracker). Held in a ref so its
   // changing identity never re-triggers the rebuild — only `graph` does.
@@ -41,22 +41,45 @@ export function useSimulation(
   const simRef = React.useRef<Simulation | null>(null)
   const dragNodeRef = React.useRef<string | null>(null)
   const [running, setRunning] = React.useState(true)
-  const [forceParams, setForceParams] = React.useState<ForceParams>({ ...DEFAULT_PARAMS })
-  const [simVersion, setSimVersion] = React.useState(0)
   const ontology = useOntology()
+  // Lazy initializer, and `ontology` has to be read before it: the starting
+  // parameters are derived from the taxonomy now, so a module-load constant is
+  // no longer available to seed this with.
+  const [forceParams, setForceParams] = React.useState<ForceParams>(() => defaultParamsFor(ontology))
+  const [simVersion, setSimVersion] = React.useState(0)
+
+  // Which taxonomy the current `forceParams` were derived from. Needed because
+  // the parameters are not taxonomy-neutral — see the rebuild effect.
+  const paramsFrom = React.useRef(ontology)
 
   const onRebuildRef = React.useRef(onRebuild)
   onRebuildRef.current = onRebuild
 
-  // Create or update the simulation when the graph changes.
+  // Create or update the simulation when the graph or the taxonomy changes.
   React.useEffect(() => {
-    simRef.current = new Simulation(graph, forceParams, defaultRng, ontology)
+    // A taxonomy swap invalidates the parameters, and this is the subtle part.
+    // `Simulation`'s constructor is `{ ...defaultParamsFor(ontology), ...params }`
+    // — the supplied params spread LAST, so passing the previous ones does not
+    // merely preserve the user's tuning, it overrides the fresh taxonomy's
+    // `chargeDimension` and `bandDimension` too. The engine would then key the
+    // NEW taxonomy's nodes on the OLD axis, miss every lookup, and fall through
+    // to ABSENT_VALUE_PHYSICS: every node loses its charge and collapses into a
+    // zero-height band, with no error anywhere.
+    //
+    // So the parameters are re-derived on a swap rather than carried over. That
+    // does discard the user's tuning, which is the right trade: the tuned values
+    // are a map keyed by the old taxonomy's values, and there is no meaningful
+    // way to reinterpret them against a different key space.
+    const swapped = paramsFrom.current !== ontology
+    const params = swapped ? defaultParamsFor(ontology) : forceParams
+    if (swapped) {
+      paramsFrom.current = ontology
+      setForceParams(params)
+    }
+    simRef.current = new Simulation(graph, params, defaultRng, ontology)
     onRebuildRef.current?.()
     setRunning(true)
     setSimVersion(v => v + 1)
-    // `ontology` is a dependency, not decoration: the engine resolves spring
-    // categories through it, so a taxonomy swap has to rebuild the simulation
-    // or the layout keeps using the old one while the canvas draws the new.
   }, [graph, ontology]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getNode = React.useCallback((id: string) => simRef.current?.getNode(id), [])

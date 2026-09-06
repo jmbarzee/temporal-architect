@@ -15,12 +15,15 @@
 //
 // Positions are irrelevant to the derivation and are all zero.
 
-import type { GraphEdge, NodeType } from '../graph/model'
+import type { GraphEdge } from '../graph/model'
+import type { NodeType } from '../adapter/node-types'
 import type { SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
-import { edgeTypeFor } from '../graph/edge-types'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../graph/node-types'
+import { edgeTypeFor } from '../adapter/edge-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
+import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 
@@ -32,12 +35,14 @@ function n(
 ): SimNode {
   return {
     id,
-    nodeType,
+    dimensions: {
+      [TEMPORAL_TYPE_DIMENSION]: nodeType,
+      ...(sourceFile !== undefined ? { [SOURCE_FILE_DIMENSION]: sourceFile } : {}),
+    },
     name: id,
     orphan: parentId === undefined,
     definitionKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
-    ...(sourceFile !== undefined ? { sourceFile } : {}),
     x: 0, y: 0, vx: 0, vy: 0, pinned: false,
   }
 }
@@ -59,22 +64,22 @@ const NODES: SimNode[] = [
 ]
 
 const EDGES: GraphEdge[] = [
-  { id: 'c0', edgeType: 'containment', sourceId: 'wk', targetId: 'ns', sourceNodeType: 'worker', targetNodeType: 'namespace' },
-  { id: 'c1', edgeType: 'containment', sourceId: 'wkB', targetId: 'ns', sourceNodeType: 'worker', targetNodeType: 'namespace' },
-  { id: 'c2', edgeType: 'containment', sourceId: 'svc', targetId: 'wk', sourceNodeType: 'nexusService', targetNodeType: 'worker' },
-  { id: 'c3', edgeType: 'containment', sourceId: 'ep', targetId: 'ns', sourceNodeType: 'nexusEndpoint', targetNodeType: 'namespace' },
-  { id: 'c4', edgeType: 'containment', sourceId: 'caller', targetId: 'wk', sourceNodeType: 'workflow', targetNodeType: 'worker' },
+  { id: 'c0', edgeType: 'containment', sourceId: 'wk', targetId: 'ns' },
+  { id: 'c1', edgeType: 'containment', sourceId: 'wkB', targetId: 'ns' },
+  { id: 'c2', edgeType: 'containment', sourceId: 'svc', targetId: 'wk' },
+  { id: 'c3', edgeType: 'containment', sourceId: 'ep', targetId: 'ns' },
+  { id: 'c4', edgeType: 'containment', sourceId: 'caller', targetId: 'wk' },
   // Two tiers deep: operation -> service -> worker -> namespace.
-  { id: 'c5', edgeType: 'containment', sourceId: 'op', targetId: 'svc', sourceNodeType: 'nexusOperation', targetNodeType: 'nexusService' },
-  { id: 'c6', edgeType: 'containment', sourceId: 'backing', targetId: 'wkB', sourceNodeType: 'workflow', targetNodeType: 'worker' },
-  { id: 'c7', edgeType: 'containment', sourceId: 'act', targetId: 'wk', sourceNodeType: 'workflow', targetNodeType: 'worker' },
-  { id: 'c8', edgeType: 'containment', sourceId: 'actCopy', targetId: 'wkB', sourceNodeType: 'activity', targetNodeType: 'worker' },
-  { id: 'c9', edgeType: 'containment', sourceId: 'op', targetId: 'ep', sourceNodeType: 'nexusOperation', targetNodeType: 'nexusEndpoint' },
+  { id: 'c5', edgeType: 'containment', sourceId: 'op', targetId: 'svc' },
+  { id: 'c6', edgeType: 'containment', sourceId: 'backing', targetId: 'wkB' },
+  { id: 'c7', edgeType: 'containment', sourceId: 'act', targetId: 'wk' },
+  { id: 'c8', edgeType: 'containment', sourceId: 'actCopy', targetId: 'wkB' },
+  { id: 'c9', edgeType: 'containment', sourceId: 'op', targetId: 'ep' },
   // The call path the splice rule rewrites: caller -> op -> backing.
-  { id: 'd0', edgeType: 'dependency', sourceId: 'caller', targetId: 'op', sourceNodeType: 'workflow', targetNodeType: 'nexusOperation', nexusEndpoint: 'ep' },
-  { id: 'd1', edgeType: 'dependency', sourceId: 'op', targetId: 'backing', sourceNodeType: 'nexusOperation', targetNodeType: 'workflow' },
-  { id: 'd2', edgeType: 'dependency', sourceId: 'caller', targetId: 'act', sourceNodeType: 'workflow', targetNodeType: 'activity' },
-  { id: 'd3', edgeType: 'dependency', sourceId: 'caller', targetId: 'backing', sourceNodeType: 'workflow', targetNodeType: 'workflow', dispatchKind: 'signalSend' },
+  { id: 'd0', edgeType: 'dependency', sourceId: 'caller', targetId: 'op', nexusEndpoint: 'ep' },
+  { id: 'd1', edgeType: 'dependency', sourceId: 'op', targetId: 'backing' },
+  { id: 'd2', edgeType: 'dependency', sourceId: 'caller', targetId: 'act' },
+  { id: 'd3', edgeType: 'dependency', sourceId: 'caller', targetId: 'backing', dispatchKind: 'signalSend' },
 ]
 
 const BY_ID = new Map(NODES.map(node => [node.id, node]))
@@ -90,8 +95,10 @@ const ALL_DEF_TYPES = ALL_NODE_TYPES.map(defTypeOf)
 function edgeLine(e: GraphEdge): string {
   const src = BY_ID.get(e.sourceId)
   const tgt = BY_ID.get(e.targetId)
-  const style = src && tgt ? edgeStyleKeyFor(e, src, tgt) : 'UNRESOLVED-ENDPOINT'
-  return `${edgeTypeFor(e).id}|${style}|${e.edgeType}|${e.sourceId} -> ${e.targetId}`
+  const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
+  const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
+  const style = src && tgt ? edgeStyleKeyFor(e, srcValue, tgtValue) : 'UNRESOLVED-ENDPOINT'
+  return `${edgeTypeFor(e, srcValue, tgtValue).id}|${style}|${e.edgeType}|${e.sourceId} -> ${e.targetId}`
 }
 
 function state(types: string[], files: string[]): Json {
@@ -123,9 +130,9 @@ export function syntheticVisible(): Json {
   return {
     nodes: NODES.map(node => ({
       id: node.id,
-      nodeType: node.nodeType,
+      dimensions: { ...node.dimensions },
       parentId: node.parentId ?? null,
-      sourceFile: node.sourceFile ?? null,
+
       definitionKey: node.definitionKey,
     })),
     cases: sortedRecord(cases),

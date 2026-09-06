@@ -343,481 +343,587 @@
       "nodes": [
         {
           "definitionKey": "activity:AggregateDeprovisionResults",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
           "name": "AggregateDeprovisionResults",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:AggregateProvisioningResults",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
           "name": "AggregateProvisioningResults",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:AlertSecurityTeam",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
           "name": "AlertSecurityTeam",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:AlertSecurityTeamBreakGlass",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl",
           "name": "AlertSecurityTeamBreakGlass",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:AlertSecurityTeamIncompleteOffboard",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl",
           "name": "AlertSecurityTeamIncompleteOffboard",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ArchiveIdentity",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl",
           "name": "ArchiveIdentity",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:AutoRevokeUndecidedItems",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl",
           "name": "AutoRevokeUndecidedItems",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:CalculateRoleDelta",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl",
           "name": "CalculateRoleDelta",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:CreateManualDeprovisioningTicket",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
           "name": "CreateManualDeprovisioningTicket",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:CreateManualProvisioningTicket",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
           "name": "CreateManualProvisioningTicket",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:DisableAuthentication",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl",
           "name": "DisableAuthentication",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:EmitAuditEvent",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
           "name": "EmitAuditEvent",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:EscalateManualDeprovisioning",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
           "name": "EscalateManualDeprovisioning",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:EscalateManualProvisioning",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
           "name": "EscalateManualProvisioning",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:EscalatePostIncidentReview",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl",
           "name": "EscalatePostIncidentReview",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:EvaluatePolicy",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
           "name": "EvaluatePolicy",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:EvaluateRenewalPolicy",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
           "name": "EvaluateRenewalPolicy",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ExecuteDeprovisioning",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
           "name": "ExecuteDeprovisioning",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ExecuteProvisioning",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
           "name": "ExecuteProvisioning",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:GenerateCampaignReport",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl",
           "name": "GenerateCampaignReport",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:GenerateReviewItems",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl",
           "name": "GenerateReviewItems",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:IdentifySharedResources",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl",
           "name": "IdentifySharedResources",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:NotifyApprover",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
           "name": "NotifyApprover",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:NotifyBreakGlassApprover",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl",
           "name": "NotifyBreakGlassApprover",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:NotifyManagerForMicroCert",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl",
           "name": "NotifyManagerForMicroCert",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:NotifyPostIncidentReviewers",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl",
           "name": "NotifyPostIncidentReviewers",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:NotifyRequester",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
           "name": "NotifyRequester",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ReassignApprovalTask",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl",
           "name": "ReassignApprovalTask",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ResolveEscalationTarget",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
           "name": "ResolveEscalationTarget",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ResolveFallbackApprover",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
           "name": "ResolveFallbackApprover",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:SendCampaignReminders",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl",
           "name": "SendCampaignReminders",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:SignalAccessRequestRevoke",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl",
           "name": "SignalAccessRequestRevoke",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:TransferResourceOwnership",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl",
           "name": "TransferResourceOwnership",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ValidateApprover",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
           "name": "ValidateApprover",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ValidateBreakGlassApprover",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl",
           "name": "ValidateBreakGlassApprover",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ValidateCertificationReviewer",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl",
           "name": "ValidateCertificationReviewer",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ValidateDelegation",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
           "name": "ValidateDelegation",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:ValidatePostIncidentReview",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl",
           "name": "ValidatePostIncidentReview",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:VerifyDeprovisioning",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
           "name": "VerifyDeprovisioning",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "activity:VerifyProvisioning",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
           "name": "VerifyProvisioning",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:connectorWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:connectorWorker/namespace:accessControl"
         },
         {
           "definitionKey": "namespace:accessControl",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "namespace"
+          },
           "id": "namespace:accessControl",
           "name": "accessControl",
-          "nodeType": "namespace",
-          "orphan": false,
-          "sourceFile": "access-control.twf"
+          "orphan": false
         },
         {
           "definitionKey": "worker:connectorWorker",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:connectorWorker/namespace:accessControl",
           "name": "connectorWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:accessControl",
-          "queue": "access-control-connectors",
-          "sourceFile": "access-control.twf"
+          "queue": "access-control-connectors"
         },
         {
           "definitionKey": "worker:coreWorker",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:coreWorker/namespace:accessControl",
           "name": "coreWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:accessControl",
-          "queue": "access-control-core",
-          "sourceFile": "access-control.twf"
+          "queue": "access-control-core"
         },
         {
           "definitionKey": "workflow:AccessRequest",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
           "name": "AccessRequest",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:ApprovalChain",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
           "name": "ApprovalChain",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:BreakGlassRequest",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl",
           "name": "BreakGlassRequest",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:CertificationCampaign",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl",
           "name": "CertificationCampaign",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:DeprovisionAll",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
           "name": "DeprovisionAll",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:DeprovisionEntitlement",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
           "name": "DeprovisionEntitlement",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:OffboardIdentity",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl",
           "name": "OffboardIdentity",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:ProvisionAll",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
           "name": "ProvisionAll",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:ProvisionEntitlement",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
           "name": "ProvisionEntitlement",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         },
         {
           "definitionKey": "workflow:TransferIdentity",
+          "dimensions": {
+            "sourceFile": "access-control.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:TransferIdentity/worker:coreWorker/namespace:accessControl",
           "name": "TransferIdentity",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:coreWorker/namespace:accessControl",
-          "sourceFile": "access-control.twf"
+          "parentId": "worker:coreWorker/namespace:accessControl"
         }
       ],
       "sourceFiles": [

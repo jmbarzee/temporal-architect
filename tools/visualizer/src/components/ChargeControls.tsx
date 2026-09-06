@@ -1,14 +1,16 @@
 // Push-section controls: a 2D "charge map" (the control) and a read-only
 // charge-falloff visualization (the read-out), linked by a shared hovered-type
-// state (the NodeType). Thin wrappers over the shared ForceMap2D / ForceCurves
+// state (the DimensionValue). Thin wrappers over the shared ForceMap2D / ForceCurves
 // primitives — this file owns only the charge-specific math (one solid token
 // per node type, inverse-power falloff curves). See GRAPH_VIEW.md § Control
 // Panel → PUSH.
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
-import type { NodeType } from '../graph/model'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor } from '../graph/node-types'
+
+import type { DimensionValue } from '../graph/dimension'
+import type { Ontology } from '../graph/ontology'
+import { useOntology } from './graph-view/useOntology'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
 
@@ -22,8 +24,10 @@ export const CORE_RADIUS_MIN_AXIS = 0
 export const CORE_RADIUS_MAX_AXIS = 100
 export const CORE_RADIUS_STEP = 1
 
-function typeColor(t: NodeType): string {
-  return `var(--color-${NODE_TYPE_REGISTRY[t].color.cssVarSuffix})`
+// Colour for one value on the style axis, resolved through the taxonomy rather
+// than looked up in a registry this component imports.
+function typeColor(ontology: Ontology, t: DimensionValue): string {
+  return `var(--color-${ontology.styleForKey(t).color.cssVarSuffix})`
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
@@ -32,8 +36,8 @@ interface ChargeControlProps {
   params: ForceParams
   onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active node type — links the map, the curves, and the canvas.
-  hoveredType: NodeType | null
-  onHoverType: (t: NodeType | null) => void
+  hoveredType: DimensionValue | null
+  onHoverType: (t: DimensionValue | null) => void
 }
 
 // ── 2D Charge Map ─────────────────────────────────────────────────────────────
@@ -41,18 +45,19 @@ interface ChargeControlProps {
 // y = charge magnitude, x = core radius. One solid token per node type, coloured
 // by type. Dragging sets both the (negative) charge and the core radius at once.
 export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: ChargeControlProps) {
-  const tokens: MapToken[] = ALL_NODE_TYPES.map(t => ({
+  const ontology = useOntology()
+  const tokens: MapToken[] = ontology.nodeTypeKeys.map(t => ({
     id: t,
     x: params.coreRadius[t],
     y: Math.abs(params.charge[t]),
-    colorA: typeColor(t),
+    colorA: typeColor(ontology, t),
     outline: 'solid',
-    label: sliderLabelFor(t),
-    tooltip: `${NODE_TYPE_REGISTRY[t].label} repulsion charge & core radius`,
+    label: ontology.abbreviationFor(t),
+    tooltip: `${ontology.styleForKey(t).label} repulsion charge & core radius`,
   }))
 
   const handleDrag = (id: string, x: number, y: number) => {
-    const t = id as NodeType
+    const t = id
     onParamChange({
       charge: { ...params.charge, [t]: -y },        // store negative (repulsion)
       coreRadius: { ...params.coreRadius, [t]: x },
@@ -66,7 +71,7 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
       yAxis={{ min: CHARGE_MAG_MIN, max: CHARGE_MAG_MAX, step: CHARGE_MAG_STEP, label: 'charge' }}
       onDrag={handleDrag}
       hoveredId={hoveredType}
-      onHover={id => onHoverType(id as NodeType | null)}
+      onHover={onHoverType}
       ariaLabel="Charge map: core radius versus charge magnitude"
       xSlider={{
         value: params.coreRadiusMultiplier, min: 0.1, max: 3, step: 0.05,
@@ -91,19 +96,20 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
 // radius marked on the distance axis. The global `exp` (chargeExponent) is the
 // slider beneath.
 export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }: ChargeControlProps) {
+  const ontology = useOntology()
   const push = params.pushMultiplier
   const crMul = params.coreRadiusMultiplier
   const exp = params.chargeExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const rEffs = ALL_NODE_TYPES.map(t => crMul * params.coreRadius[t])
+    const rEffs = ontology.nodeTypeKeys.map(t => crMul * params.coreRadius[t])
     const maxREff = Math.max(0, ...rEffs)
     // Show the falloff out to a few core radii so the plateau-then-drop shape
     // is legible even when the radii are small.
     const dMax = Math.max(150, maxREff * 4)
 
     let maxMag = 0
-    const sampled = ALL_NODE_TYPES.map(t => {
+    const sampled = ontology.nodeTypeKeys.map(t => {
       const q = Math.abs(params.charge[t]) * push
       const rEff = crMul * params.coreRadius[t]
       const soft = rEff * rEff
@@ -124,19 +130,19 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
 
     const built = sampled.map(({ type, rEff, pts }) => ({
       id: type,
-      color: typeColor(type),
+      color: typeColor(ontology, type),
       markerX: xFor(rEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-  }, [params, push, crMul, exp])
+  }, [params, push, crMul, exp, ontology])
 
   return (
     <ForceCurves
       curves={curves}
       xMax={dMax}
       hoveredId={hoveredType}
-      onHover={id => onHoverType(id as NodeType | null)}
+      onHover={onHoverType}
       xLabel="distance"
       yLabel="force"
       ariaLabel="Charge falloff curves"

@@ -190,360 +190,434 @@
       "nodes": [
         {
           "definitionKey": "activity:ChargePayment",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
           "name": "ChargePayment",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:paymentWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:paymentWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "activity:ChargePayment",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "ChargePayment",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:paymentWorkerSecondary/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:paymentWorkerSecondary/namespace:ecommerce"
         },
         {
           "definitionKey": "activity:GenerateThumbnail",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
           "name": "GenerateThumbnail",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:mediaWorker/namespace:media",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:mediaWorker/namespace:media"
         },
         {
           "definitionKey": "activity:GetPaymentStatus",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
           "name": "GetPaymentStatus",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:paymentWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:paymentWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "activity:GetPaymentStatus",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "GetPaymentStatus",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:paymentWorkerSecondary/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:paymentWorkerSecondary/namespace:ecommerce"
         },
         {
           "definitionKey": "activity:RecordEvent",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
           "name": "RecordEvent",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:analyticsWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:analyticsWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "activity:RecordEvent",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
           "name": "RecordEvent",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:realtimeAnalyticsWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "activity:ShipOrder",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
           "name": "ShipOrder",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:expressShipWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:expressShipWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "activity:ShipOrder",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
           "name": "ShipOrder",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:standardShipWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:standardShipWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "activity:TranscodeVideo",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
           "name": "TranscodeVideo",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:gpuWorker/namespace:media",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:gpuWorker/namespace:media"
         },
         {
           "definitionKey": "activity:ValidateOrder",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
           "name": "ValidateOrder",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:orderWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:orderWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "namespace:ecommerce",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "namespace"
+          },
           "id": "namespace:ecommerce",
           "name": "ecommerce",
-          "nodeType": "namespace",
-          "orphan": false,
-          "sourceFile": "task-queues.twf"
+          "orphan": false
         },
         {
           "definitionKey": "namespace:media",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "namespace"
+          },
           "id": "namespace:media",
           "name": "media",
-          "nodeType": "namespace",
-          "orphan": false,
-          "sourceFile": "task-queues.twf"
+          "orphan": false
         },
         {
           "definitionKey": "namespace:partner",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "namespace"
+          },
           "id": "namespace:partner",
           "name": "partner",
-          "nodeType": "namespace",
-          "orphan": false,
-          "sourceFile": "task-queues.twf"
+          "orphan": false
         },
         {
           "definitionKey": "nexusEndpoint:AnalyticsEndpoint",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusEndpoint"
+          },
           "id": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
           "name": "AnalyticsEndpoint",
-          "nodeType": "nexusEndpoint",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "analytics",
-          "sourceFile": "task-queues.twf"
+          "queue": "analytics"
         },
         {
           "definitionKey": "nexusEndpoint:PaymentEndpoint",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusEndpoint"
+          },
           "id": "nexusEndpoint:PaymentEndpoint/namespace:ecommerce",
           "name": "PaymentEndpoint",
-          "nodeType": "nexusEndpoint",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "payments",
-          "sourceFile": "task-queues.twf"
+          "queue": "payments"
         },
         {
           "definitionKey": "nexusOperation:AnalyticsService.TrackEvent",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusOperation"
+          },
           "id": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
           "name": "TrackEvent",
-          "nodeType": "nexusOperation",
           "orphan": false,
           "parentId": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
           "queue": "analytics",
-          "sourceFile": "task-queues.twf",
           "worker": "worker:analyticsWorker"
         },
         {
           "definitionKey": "nexusOperation:PaymentService.CheckPaymentStatus",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusOperation"
+          },
           "id": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce",
           "name": "CheckPaymentStatus",
-          "nodeType": "nexusOperation",
           "orphan": false,
           "parentId": "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce",
           "queue": "payments",
-          "sourceFile": "task-queues.twf",
           "worker": "worker:paymentWorker"
         },
         {
           "definitionKey": "nexusOperation:PaymentService.CheckPaymentStatus",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusOperation"
+          },
           "id": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "CheckPaymentStatus",
-          "nodeType": "nexusOperation",
           "orphan": false,
           "parentId": "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce",
           "queue": "payments-secondary",
-          "sourceFile": "task-queues.twf",
           "worker": "worker:paymentWorkerSecondary"
         },
         {
           "definitionKey": "nexusService:AnalyticsService",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusService"
+          },
           "id": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
           "name": "AnalyticsService",
           "namespace": "namespace:ecommerce",
-          "nodeType": "nexusService",
           "orphan": false,
           "parentId": "worker:analyticsWorker/namespace:ecommerce",
           "queue": "analytics",
-          "sourceFile": "task-queues.twf",
           "worker": "worker:analyticsWorker"
         },
         {
           "definitionKey": "nexusService:PaymentService",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusService"
+          },
           "id": "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce",
           "name": "PaymentService",
           "namespace": "namespace:ecommerce",
-          "nodeType": "nexusService",
           "orphan": false,
           "parentId": "worker:paymentWorker/namespace:ecommerce",
           "queue": "payments",
-          "sourceFile": "task-queues.twf",
           "worker": "worker:paymentWorker"
         },
         {
           "definitionKey": "nexusService:PaymentService",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusService"
+          },
           "id": "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "PaymentService",
           "namespace": "namespace:ecommerce",
-          "nodeType": "nexusService",
           "orphan": false,
           "parentId": "worker:paymentWorkerSecondary/namespace:ecommerce",
           "queue": "payments-secondary",
-          "sourceFile": "task-queues.twf",
           "worker": "worker:paymentWorkerSecondary"
         },
         {
           "definitionKey": "worker:analyticsWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:analyticsWorker/namespace:ecommerce",
           "name": "analyticsWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "analytics",
-          "sourceFile": "task-queues.twf"
+          "queue": "analytics"
         },
         {
           "definitionKey": "worker:expressShipWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:expressShipWorker/namespace:ecommerce",
           "name": "expressShipWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "shipping-express",
-          "sourceFile": "task-queues.twf"
+          "queue": "shipping-express"
         },
         {
           "definitionKey": "worker:gpuWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:gpuWorker/namespace:media",
           "name": "gpuWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:media",
-          "queue": "gpu-transcode",
-          "sourceFile": "task-queues.twf"
+          "queue": "gpu-transcode"
         },
         {
           "definitionKey": "worker:mediaWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:mediaWorker/namespace:media",
           "name": "mediaWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:media",
-          "queue": "media",
-          "sourceFile": "task-queues.twf"
+          "queue": "media"
         },
         {
           "definitionKey": "worker:orderWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:orderWorker/namespace:ecommerce",
           "name": "orderWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "orders",
-          "sourceFile": "task-queues.twf"
+          "queue": "orders"
         },
         {
           "definitionKey": "worker:partnerWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:partnerWorker/namespace:partner",
           "name": "partnerWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:partner",
-          "queue": "partner",
-          "sourceFile": "task-queues.twf"
+          "queue": "partner"
         },
         {
           "definitionKey": "worker:paymentWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:paymentWorker/namespace:ecommerce",
           "name": "paymentWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "payments",
-          "sourceFile": "task-queues.twf"
+          "queue": "payments"
         },
         {
           "definitionKey": "worker:paymentWorkerSecondary",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "paymentWorkerSecondary",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "payments-secondary",
-          "sourceFile": "task-queues.twf"
+          "queue": "payments-secondary"
         },
         {
           "definitionKey": "worker:realtimeAnalyticsWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
           "name": "realtimeAnalyticsWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "analytics-realtime",
-          "sourceFile": "task-queues.twf"
+          "queue": "analytics-realtime"
         },
         {
           "definitionKey": "worker:standardShipWorker",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:standardShipWorker/namespace:ecommerce",
           "name": "standardShipWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:ecommerce",
-          "queue": "shipping-standard",
-          "sourceFile": "task-queues.twf"
+          "queue": "shipping-standard"
         },
         {
           "definitionKey": "workflow:MediaPipeline",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
           "name": "MediaPipeline",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:mediaWorker/namespace:media",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:mediaWorker/namespace:media"
         },
         {
           "definitionKey": "workflow:OrderWorkflow",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce",
           "name": "OrderWorkflow",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:orderWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:orderWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "workflow:PartnerCheckout",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner",
           "name": "PartnerCheckout",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:partnerWorker/namespace:partner",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:partnerWorker/namespace:partner"
         },
         {
           "definitionKey": "workflow:TrackEventWorkflow",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
           "name": "TrackEventWorkflow",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:analyticsWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:analyticsWorker/namespace:ecommerce"
         },
         {
           "definitionKey": "workflow:TrackEventWorkflow",
+          "dimensions": {
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce",
           "name": "TrackEventWorkflow",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "sourceFile": "task-queues.twf"
+          "parentId": "worker:realtimeAnalyticsWorker/namespace:ecommerce"
         }
       ],
       "sourceFiles": [

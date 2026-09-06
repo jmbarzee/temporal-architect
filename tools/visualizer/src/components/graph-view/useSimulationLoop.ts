@@ -9,7 +9,7 @@ import React from 'react'
 import type { Simulation, SimNode } from '../../graph/simulation'
 import type { Viewport } from '../../graph/viewport'
 import { fitToView } from '../../graph/viewport'
-import { nodeTypeToDefType } from './nodeDefType'
+import { useOntology } from './useOntology'
 
 export interface SimulationLoopParams {
   simRef: React.MutableRefObject<Simulation | null>
@@ -36,6 +36,7 @@ export function useSimulationLoop({
   hoveredNodeId, selectedNodeId,
   containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
 }: SimulationLoopParams): { fps: number } {
+  const ontology = useOntology()
   // Frame-rate indicator. Updated ~2×/sec from the loop.
   const [fps, setFps] = React.useState(0)
   const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
@@ -127,13 +128,13 @@ export function useSimulationLoop({
     const sim = simRef.current
     if (sim) {
       for (const node of sim.nodes) {
-        const defType = nodeTypeToDefType(node.nodeType)
+        const defType = ontology.resolveNodeStyle(node).defType
         if (visibleTypes.has(defType) && !prev.has(defType)) {
           let ancestorId = node.parentId
           while (ancestorId) {
             const ancestor = sim.getNode(ancestorId)
             if (!ancestor) break
-            if (visibleTypes.has(nodeTypeToDefType(ancestor.nodeType))) {
+            if (visibleTypes.has(ontology.resolveNodeStyle(ancestor).defType)) {
               sim.seedAt(node.id, ancestor.x, ancestor.y)
               break
             }

@@ -18,33 +18,93 @@
 //     the O(n²) charge loop, so it is a record lookup and a branch, never a
 //     constructed object.
 
-import type { GraphEdge, NodeType } from './model'
-import type { NodeTypeDefinition } from './node-types'
-import type { EdgeTypeDefinition } from './edge-types'
+import type { DimensionId, DimensionMap, DimensionValue } from './dimension'
+import { hasOwn } from './dimension'
+import type { GraphEdge } from './model'
+import type { NodeTypeDefinition } from './taxonomy'
+import type { EdgeTypeDefinition } from './taxonomy'
 
 /** The minimum a consumer needs of a node in order to resolve its style. */
-export type StyleSubject = { nodeType: NodeType }
+export type StyleSubject = { dimensions: DimensionMap }
 
 export interface Ontology {
+  /**
+   * The axis style resolution keys on.
+   *
+   * One axis, named once. Every other feature elects its own — the physics reads
+   * its axis off the force params, filters read theirs off the filter — and no
+   * feature composes two.
+   */
+  /**
+   * The axis this taxonomy resolves style on.
+   *
+   * A method, not a field, and that is a correctness property rather than a
+   * style choice. It was a field *and* a value closed over by `valueFor` and
+   * `resolveNodeStyle` — the same axis stored twice — so a container derived by
+   * spreading (`{ ...ontology, styleDimension: 'sourceFile' }`) rewrote only the
+   * field and left the closures answering on the old axis. The result was an
+   * object that disagreed with itself, and consumers split on which half they
+   * read: `defaultParamsFor` took the field, the draw loop took the closure. A
+   * host deriving one to recolour by file would have got the original colours
+   * AND a physics layer keyed on an axis with no matching entries, every lookup
+   * falling through to the absent-value defaults — a collapsed layout, no error.
+   *
+   * With one source there is nothing to override out of step.
+   */
+  styleAxis(): DimensionId
   /** Every node-type key, in declaration order (top of the hierarchy first). */
-  readonly nodeTypeKeys: readonly NodeType[]
+  readonly nodeTypeKeys: readonly DimensionValue[]
   /** Every edge category, in control-panel order. */
   readonly edgeTypes: readonly EdgeTypeDefinition[]
 
-  /** Style, size, physics and summary metadata for a key. Never throws. */
-  styleForKey(key: NodeType): NodeTypeDefinition
+  /**
+   * Style, size, physics and summary metadata for a value. Never throws — a
+   * value the taxonomy does not declare, and an ABSENT value, both resolve to
+   * the declared fallback.
+   */
+  styleForKey(key: DimensionValue | undefined): NodeTypeDefinition
+  /** Where a node sits on the style axis, or undefined if it sits nowhere. */
+  valueFor(subject: StyleSubject): DimensionValue | undefined
+  /**
+   * Short label for a value — one or two characters. Control surfaces render a
+   * token per value and have no room for a full name.
+   */
+  abbreviationFor(value: DimensionValue): string
+  /**
+   * How the style axis's values group for layout, in display order.
+   *
+   * A control surface that lays values out spatially needs to know which belong
+   * together; without this it can only render one flat row, which is a worse
+   * control surface than the one being generalized. Groups are presentational —
+   * nothing in the physics reads them.
+   */
+  readonly styleGroups: readonly StyleGroup[]
   /** The same, addressed by a node. The hot-path entry point. */
   resolveNodeStyle(subject: StyleSubject): NodeTypeDefinition
-  /** The spring category an edge belongs to. */
-  resolveEdgeType(edge: GraphEdge): EdgeTypeDefinition
+  /**
+   * The spring category an edge belongs to, resolved from the edge and its two
+   * endpoints. The endpoints are passed rather than cached on the edge: a
+   * denormalized copy is a second source of truth for a node's identity, and it
+   * goes stale the moment an edge is re-pointed during graduation.
+   */
+  resolveEdgeType(edge: GraphEdge, src: StyleSubject, tgt: StyleSubject): EdgeTypeDefinition
 }
 
 /** What a host declares in order to build one. */
+/** A named run of values that lay out together on a control surface. */
+export interface StyleGroup {
+  id: string
+  values: readonly DimensionValue[]
+}
+
 export interface OntologySpec {
-  nodeTypeKeys: readonly NodeType[]
-  nodeStyles: Readonly<Record<NodeType, NodeTypeDefinition>>
+  styleDimension: DimensionId
+  abbreviations: Readonly<Record<DimensionValue, string>>
+  styleGroups: readonly StyleGroup[]
+  nodeTypeKeys: readonly DimensionValue[]
+  nodeStyles: Readonly<Record<DimensionValue, NodeTypeDefinition>>
   edgeTypes: readonly EdgeTypeDefinition[]
-  resolveEdgeType(edge: GraphEdge): EdgeTypeDefinition
+  resolveEdgeType(edge: GraphEdge, src: StyleSubject, tgt: StyleSubject): EdgeTypeDefinition
   /**
    * Returned for a key the host did not declare. Required, not optional: a
    * taxonomy that cannot say what an unknown value looks like has no answer for
@@ -61,23 +121,39 @@ export function createOntology(spec: OntologySpec): Ontology {
   // is missing the same key, which is a different bug being hidden by the
   // de-duplication meant for the first.
   const warned = new Set<string>()
-  const styleForKey = (key: NodeType): NodeTypeDefinition => {
-    const style = nodeStyles[key]
+  const styleForKey = (key: DimensionValue | undefined): NodeTypeDefinition => {
+    // `Object.hasOwn`, not a plain index: keys are host-supplied strings, and
+    // `nodeStyles['constructor']` walks the prototype chain and returns the
+    // `Object` function. That is not `undefined`, so the miss goes undetected
+    // and this returns it as though it were a style — and the first consumer to
+    // read `.size.r` off it throws, inside the draw loop, which is the exact
+    // failure the required-fallback design exists to prevent.
+    const style = key !== undefined && hasOwn(nodeStyles, key) ? nodeStyles[key] : undefined
     if (style !== undefined) return style
-    if (!warned.has(key)) {
-      warned.add(key)
+    const label = key ?? '<absent>'
+    if (!warned.has(label)) {
+      warned.add(label)
       console.warn(
-        `[graph] no style declared for node key ${JSON.stringify(key)}; using the fallback. ` +
+        `[graph] no style declared for node key ${JSON.stringify(label)}; using the fallback. ` +
         'The graph will render, but this node is drawn with placeholder styling.',
       )
     }
     return fallbackStyle
   }
+  const { styleDimension } = spec
+  const valueFor = (subject: StyleSubject): DimensionValue | undefined =>
+    subject.dimensions[styleDimension]
   return {
+    styleAxis: () => styleDimension,
+    abbreviationFor: value => spec.abbreviations[value] ?? value,
+    styleGroups: spec.styleGroups,
     nodeTypeKeys: spec.nodeTypeKeys,
     edgeTypes: spec.edgeTypes,
     styleForKey,
-    resolveNodeStyle: subject => styleForKey(subject.nodeType),
+    valueFor,
+    // Hot path: one property read, one record lookup, one branch. No allocation
+    // — this runs per node per frame in the draw loop.
+    resolveNodeStyle: subject => styleForKey(valueFor(subject)),
     resolveEdgeType: spec.resolveEdgeType,
   }
 }

@@ -23,7 +23,7 @@ export { WorkflowCanvas as Visualizer } from './components/WorkflowCanvas'
 export { StyleGuide } from './components/StyleGuide'
 export { normalizePayload } from './types/payload'
 export type { NormalizedPayload } from './types/payload'
-export { mountNodeTypeStyles } from './graph/node-type-styles'
+export { mountNodeTypeStyles } from './adapter/node-type-styles'
 
 // The host shell itself. `<VisualizerHost>` wraps the render core with the
 // payload de-dupe, normalization, StyleGuide toggle, and error/empty/canvas

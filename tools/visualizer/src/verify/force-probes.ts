@@ -30,12 +30,14 @@ import {
   applyLinkForce,
   applyTopologicalGravity,
 } from '../graph/forces'
-import type { EdgeTypeDefinition } from '../graph/edge-types'
-import type { GraphEdge, NodeType } from '../graph/model'
-import { DEFAULT_ONTOLOGY } from '../graph/node-types'
-import { DEFAULT_PARAMS } from '../graph/simulation'
+import type { EdgeTypeDefinition } from '../graph/taxonomy'
+import type { GraphEdge } from '../graph/model'
+import type { NodeType } from '../adapter/node-types'
+import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { defaultParamsFor } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { mulberry32 } from './rng'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import type { Json } from './snapshot'
 import { sortedRecord } from './snapshot'
 
@@ -44,7 +46,7 @@ const PROBE_SEED = 0x5eed
 function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
   return {
     id,
-    nodeType,
+    dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
     name: id,
     orphan: false,
     definitionKey: `${nodeType}:${id}`,
@@ -93,7 +95,7 @@ function nonFinite(nodes: SimNode[]): string[] {
 
 function probe(run: (nodes: SimNode[], params: ForceParams, rng: () => number) => void): Json {
   const nodes = probeNodes()
-  run(nodes, { ...DEFAULT_PARAMS }, mulberry32(PROBE_SEED))
+  run(nodes, defaultParamsFor(DEFAULT_ONTOLOGY), mulberry32(PROBE_SEED))
   return {
     allFinite: allFinite(nodes),
     nonFiniteNodeIds: nonFinite(nodes),
@@ -102,13 +104,13 @@ function probe(run: (nodes: SimNode[], params: ForceParams, rng: () => number) =
 }
 
 const PROBE_EDGES: GraphEdge[] = [
-  { id: 'p0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk', sourceNodeType: 'workflow', targetNodeType: 'worker' },
-  { id: 'p1', edgeType: 'containment', sourceId: 'op', targetId: 'nx', sourceNodeType: 'nexusOperation', targetNodeType: 'nexusService' },
-  { id: 'p2', edgeType: 'dependency', sourceId: 'wf', targetId: 'act', sourceNodeType: 'workflow', targetNodeType: 'activity' },
-  { id: 'p3', edgeType: 'dependency', sourceId: 'ns', targetId: 'ep', sourceNodeType: 'namespace', targetNodeType: 'nexusEndpoint' },
-  { id: 'p4', edgeType: 'dependency', sourceId: 'wf', targetId: 'op', sourceNodeType: 'workflow', targetNodeType: 'nexusOperation' },
+  { id: 'p0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk' },
+  { id: 'p1', edgeType: 'containment', sourceId: 'op', targetId: 'nx' },
+  { id: 'p2', edgeType: 'dependency', sourceId: 'wf', targetId: 'act' },
+  { id: 'p3', edgeType: 'dependency', sourceId: 'ns', targetId: 'ep' },
+  { id: 'p4', edgeType: 'dependency', sourceId: 'wf', targetId: 'op' },
   // The coincident pair, so the link force takes its degenerate branch too.
-  { id: 'p5', edgeType: 'dependency', sourceId: 'dupA', targetId: 'dupB', sourceNodeType: 'activity', targetNodeType: 'workflow' },
+  { id: 'p5', edgeType: 'dependency', sourceId: 'dupA', targetId: 'dupB' },
 ]
 
 /**
@@ -129,7 +131,7 @@ function absentValueProbes(): Json {
   }
   const run = (apply: (nodes: SimNode[], params: ForceParams, rng: () => number) => void): Json => {
     const nodes = withUnknown()
-    apply(nodes, { ...DEFAULT_PARAMS }, mulberry32(PROBE_SEED))
+    apply(nodes, defaultParamsFor(DEFAULT_ONTOLOGY), mulberry32(PROBE_SEED))
     return {
       allFinite: allFinite(nodes),
       nonFiniteNodeIds: nonFinite(nodes),
@@ -148,7 +150,7 @@ function absentValueProbes(): Json {
     const nodes = withUnknown()
     const map = new Map(nodes.map(n => [n.id, n]))
     applyLinkForce(
-      PROBE_EDGES, map, { ...DEFAULT_PARAMS }, 1, mulberry32(PROBE_SEED),
+      PROBE_EDGES, map, defaultParamsFor(DEFAULT_ONTOLOGY), 1, mulberry32(PROBE_SEED),
       () => ({
         id: 'linkNotDeclaredAnywhere' as EdgeTypeDefinition['id'],
         label: '??', sourceType: 'workflow', targetType: 'workflow',
@@ -188,7 +190,7 @@ export function forceProbes(): Json {
     bandRadial: (() => {
       const nodes = probeNodes()
       nodes.push(node('origin', 'workflow', 0, 0))
-      applyBandGravity(nodes, { ...DEFAULT_PARAMS, gravityMode: 'radial' }, 1, mulberry32(PROBE_SEED))
+      applyBandGravity(nodes, { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }, 1, mulberry32(PROBE_SEED))
       return {
         allFinite: allFinite(nodes),
         nonFiniteNodeIds: nonFinite(nodes),
