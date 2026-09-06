@@ -75,8 +75,8 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
 
 function visibleState(
   sim: Simulation,
-  visibleTypes: Set<string>,
-  selectedFiles: Set<string>,
+  visibleTypes: ReadonlySet<string>,
+  selectedFiles: ReadonlySet<string>,
 ): Json {
   const vg = computeVisibleGraph(sim, visibleTypes, selectedFiles, DEFAULT_ONTOLOGY)
   const nodeOf = (id: string) => sim.getNode(id)

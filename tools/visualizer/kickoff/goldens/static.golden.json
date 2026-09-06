@@ -434,7 +434,7 @@
       ]
     },
     {
-      "filesIdentityChanged": true,
+      "filesIdentityChanged": false,
       "op": "reconcile(manual, unpinned)",
       "selectedFiles": [
         "topics/b.twf"
@@ -1321,7 +1321,7 @@
     },
     "dest:noFiles · pins:both · focus:newType+newFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
@@ -1333,7 +1333,7 @@
     },
     "dest:noFiles · pins:both · focus:noSourceFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
@@ -1441,7 +1441,7 @@
     },
     "dest:noFiles · pins:types · focus:newType+newFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
@@ -1453,7 +1453,7 @@
     },
     "dest:noFiles · pins:types · focus:noSourceFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
@@ -1476,7 +1476,7 @@
     },
     "dest:noTypes · pins:both · focus:existingType": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1488,8 +1488,8 @@
     },
     "dest:noTypes · pins:both · focus:newType+newFile": {
       "overriddenPins": [
-        "files",
-        "types"
+        "defType",
+        "sourceFile"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1502,7 +1502,7 @@
     },
     "dest:noTypes · pins:both · focus:noSourceFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1532,7 +1532,7 @@
     },
     "dest:noTypes · pins:files · focus:newType+newFile": {
       "overriddenPins": [
-        "files"
+        "sourceFile"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1608,7 +1608,7 @@
     },
     "dest:noTypes · pins:types · focus:existingType": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1620,7 +1620,7 @@
     },
     "dest:noTypes · pins:types · focus:newType+newFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1633,7 +1633,7 @@
     },
     "dest:noTypes · pins:types · focus:noSourceFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1653,7 +1653,7 @@
     },
     "dest:oneFile · pins:both · focus:existingType": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1666,8 +1666,8 @@
     },
     "dest:oneFile · pins:both · focus:newType+newFile": {
       "overriddenPins": [
-        "files",
-        "types"
+        "defType",
+        "sourceFile"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1681,7 +1681,7 @@
     },
     "dest:oneFile · pins:both · focus:noSourceFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1715,7 +1715,7 @@
     },
     "dest:oneFile · pins:files · focus:newType+newFile": {
       "overriddenPins": [
-        "files"
+        "sourceFile"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1796,7 +1796,7 @@
     },
     "dest:oneFile · pins:types · focus:existingType": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1809,7 +1809,7 @@
     },
     "dest:oneFile · pins:types · focus:newType+newFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [
@@ -1823,7 +1823,7 @@
     },
     "dest:oneFile · pins:types · focus:noSourceFile": {
       "overriddenPins": [
-        "types"
+        "defType"
       ],
       "returnedDestUnchanged": false,
       "selectedFiles": [

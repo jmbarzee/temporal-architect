@@ -693,3 +693,58 @@ that a spread-derived container stays self-consistent.
 safe detached.
 
 Found by the Unit 2 review fan-out (lens: seam). — 2026-09-06 — agent
+
+**D43 — The filter model becomes axis-keyed, and the static golden's
+`filterSetIdentity` rows flip because they had pinned a real defect.**
+`FilterState` and `PinState` become `Record<DimensionId, …>`; the reconciler and
+the chip toggles loop over axes reading per-axis policy from descriptors (T7, T8,
+T9) instead of branching on two names.
+
+**The golden change is the interesting part.** `filterSetIdentity` recorded
+`filesIdentityChanged: true` for a manual reconcile — and that was not a
+description of correct behaviour, it was the T5 defect frozen in place. The old
+`reconcileManual` cloned the whole filter and then reassigned the unpinned axes,
+so **every** axis came back with a fresh `Set`, including pinned ones and
+including axes whose content had not changed. `useSimulationLoop` decides "did
+this axis change?" with `prev === next`, so any manual view switch that altered
+one axis also fired the *other* axis's change path. For the type axis that path
+is an ancestor-seed, `reheat(0.5)`, and `initialFitDone = false` — i.e. **the
+user's pan and zoom were silently discarded on a view switch that changed only
+the file selection.**
+
+`withSelection` is copy-on-write and returns the state object itself when the
+content is unchanged, so the rows now read `false`. Nothing about the *resolved
+visible set* moves; this is identity, which is what T5 is about.
+
+Second change in the same section: `overriddenPins` values are dimension ids
+(`defType`, `sourceFile`) rather than the old `types` / `files` labels, because
+pins are now keyed by axis.
+
+Measured, after repairing the probe (below): **exactly one row flips** —
+`reconcile(manual, unpinned)`, `filesIdentityChanged: true -> false`. Every
+toggle row is unchanged, which is the control: a toggle *should* change its own
+axis's identity and must not touch the other's.
+
+**Three harness bugs found while making this change, all the same shape**, and
+the shape is the one this whole unit is about: a string-keyed record accepts any
+key, so the type system cannot tell a real axis id from a stale field name.
+
+- `PIN_STATES` kept building `{files, types}` — pins on axes that do not exist,
+  so every real pin read false and the reconcile matrix collapsed to its unpinned
+  rows.
+- `filterOf` kept building `{selectedFiles, visibleTypes}` — every fixture
+  selection empty.
+- Worst: the identity probe still compared `next.selectedFiles !== current.selectedFiles`.
+  Both sides are now `undefined`, `undefined !== undefined` is `false`, so **every
+  row reported `false`** — and the first golden I wrote for this change therefore
+  asserted the T5 fix while measuring nothing at all. The fix was real *and* the
+  probe was blind: two halves, each individually plausible (F12, STANDING_CHECKS
+  #1), in the one place designed to catch exactly that.
+
+The first two were caught only because the golden shrank by 186 lines. The third
+was caught only because 9 of 10 rows flipping in the same direction was too
+uniform to be a real behaviour change. Neither is a type error, and neither would
+have been caught by a gate. Comparisons in the probe now go through
+`selectionFor`, so a stale name is a compile error rather than a silent `undefined`.
+
+— 2026-09-06 — agent

@@ -67,6 +67,7 @@ const ALTERNATE = createOntology({
   abbreviations: { worker: 'T2', workflow: 'T3', activity: 'T4' },
   styleGroups: [{ id: 'tiers', values: ['worker', 'workflow', 'activity'] }],
   nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
+  filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
   nodeStyles: {
     worker: { ...NODE_TYPE_REGISTRY.worker, defType: 'tier-2', summaryKind: 'degree' },
     workflow: { ...NODE_TYPE_REGISTRY.workflow, defType: 'tier-3' },
@@ -211,6 +212,7 @@ function physicsInjection(): Json {
     abbreviations: { north: 'N', south: 'S' },
     styleGroups: [{ id: 'zones', values: ['north', 'south'] }],
     nodeTypeKeys: ['north', 'south'],
+    filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
     nodeStyles: {
       north: { ...NODE_TYPE_REGISTRY.worker, defType: 'northDef' },
       south: { ...NODE_TYPE_REGISTRY.activity, defType: 'southDef' },

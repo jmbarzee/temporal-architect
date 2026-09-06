@@ -38,6 +38,8 @@ export type NodeType =
 import { createOntology } from '../graph/ontology'
 import type { Ontology } from '../graph/ontology'
 import type { NodeTypeDefinition } from '../graph/taxonomy'
+import type { DimensionDescriptor } from '../graph/dimension'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
 import { TEMPORAL_TYPE_DIMENSION } from './build'
 
@@ -311,6 +313,57 @@ const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
  * out wholesale — consumers already resolve through the container rather than
  * importing the registry.
  */
+/**
+ * The two axes this domain filters on, and their policies.
+ *
+ * Every field below is a behaviour that used to be a hardcoded branch in
+ * `computeVisibleGraph`, `reconcile.ts` or `useSimulationLoop`. They are written
+ * out per axis rather than shared, because the two axes disagree on all three
+ * policies and a `for (const dim of dims)` loop over a shared rule silently
+ * flattens them (T7, T8, T9).
+ */
+const FILTER_DIMENSIONS: DimensionDescriptor[] = [
+  {
+    id: DEF_TYPE_DIMENSION,
+    label: 'Kind',
+    // Empty hides everything: the chips are an allow-list.
+    emptyMeans: 'none',
+    // Unreachable in practice — the taxonomy's fallback style gives every node
+    // a defType — but an axis has to answer, and the restrictive answer matches
+    // this axis's empty semantics.
+    absentMeans: 'hidden',
+    // Adding a kind to an allow-list only ever widens what is visible, so
+    // focusing can always expand it.
+    focus: 'always',
+    // Structural: revealing a kind can introduce nodes with no on-screen
+    // history, so they are seeded at their nearest visible ancestor before the
+    // reheat, and the camera refits to the new extent.
+    reheat: { alpha: 0.5, seedRevealed: true, refit: true, resume: true },
+    labelFor: v => v,
+    abbreviationFor: v => v.slice(0, 2),
+  },
+  {
+    id: SOURCE_FILE_DIMENSION,
+    label: 'File',
+    // Empty shows everything — the opposite of the axis above, and deliberate:
+    // adding the first file chip while the filter is off would otherwise
+    // activate the filter and hide every other file (T7).
+    emptyMeans: 'all',
+    // A node with no source file stays visible under any file filter.
+    absentMeans: 'visible',
+    // The consequence of `emptyMeans: 'all'`: adding the first value NARROWS
+    // from everything to one thing, so expanding to reveal a focus target would
+    // hide everything else. Only expand an already-active selection (T8).
+    focus: 'whenActive',
+    // Not structural — no ancestor seed, and no refit so the user's pan/zoom
+    // survives. `resume` is still true: dropping it is the specific mistake T9
+    // warns about, and it leaves the canvas frozen after every file toggle.
+    reheat: { alpha: 0.3, seedRevealed: false, refit: false, resume: true },
+    labelFor: v => v.split('/').pop() ?? v,
+    abbreviationFor: v => (v.split('/').pop() ?? v).slice(0, 2),
+  },
+]
+
 export const DEFAULT_ONTOLOGY: Ontology = createOntology({
   styleDimension: TEMPORAL_TYPE_DIMENSION,
   abbreviations: SLIDER_ABBREV,
@@ -321,6 +374,7 @@ export const DEFAULT_ONTOLOGY: Ontology = createOntology({
     { id: 'nexus', values: NEXUS_LADDER },
   ],
   nodeTypeKeys: ALL_NODE_TYPES,
+  filterDimensions: FILTER_DIMENSIONS,
   nodeStyles: NODE_TYPE_REGISTRY,
   edgeTypes: ALL_EDGE_TYPES,
   resolveEdgeType: (edge, src, tgt) =>

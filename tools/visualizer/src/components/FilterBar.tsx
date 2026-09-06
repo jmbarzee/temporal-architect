@@ -12,8 +12,10 @@
 import React from 'react'
 import './FilterBar.css'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { pinnedFor } from '../filter/types'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
-import { toggleFileSelection, toggleTypeGroupSelection } from '../filter/toggle'
+import { toggleValue, toggleGroup } from '../filter/toggle'
 import { PinToggle } from './PinToggle'
 import { SearchIcon } from './icons/GearIcons'
 import { VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
@@ -95,13 +97,16 @@ export function FilterBar({
     return { typeCounts, fileCounts }
   }, [ast.definitions, selectedFiles])
 
-  const toggleFile = (file: string) => onFilterChange(toggleFileSelection(filter, file))
+  const toggleFile = (file: string) =>
+    onFilterChange(toggleValue(filter, SOURCE_FILE_DIMENSION, file))
 
   const toggleTypeGroup = (types: readonly string[]) =>
-    onFilterChange(toggleTypeGroupSelection(filter, types))
+    onFilterChange(toggleGroup(filter, DEF_TYPE_DIMENSION, types))
 
-  const togglePinFiles = () => onPinsChange({ ...pins, files: !pins.files })
-  const togglePinTypes = () => onPinsChange({ ...pins, types: !pins.types })
+  const togglePinFiles = () =>
+    onPinsChange({ ...pins, [SOURCE_FILE_DIMENSION]: !pinnedFor(pins, SOURCE_FILE_DIMENSION) })
+  const togglePinTypes = () =>
+    onPinsChange({ ...pins, [DEF_TYPE_DIMENSION]: !pinnedFor(pins, DEF_TYPE_DIMENSION) })
 
   const toggleSearch = () => {
     if (searchActive) {
@@ -233,7 +238,7 @@ interface Partitioned {
 // Split findings into "shown files" vs "hidden files" by the file filter.
 // File-less diagnostics surface in the shown group so a missing path can't
 // accidentally hide them.
-function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], selectedFiles: Set<string>): Partitioned {
+function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], selectedFiles: ReadonlySet<string>): Partitioned {
   if (selectedFiles.size === 0) {
     return { shownFileErrors: errors, hiddenFileErrors: [], shownDiagnostics: diagnostics, hiddenDiagnostics: [] }
   }
@@ -262,7 +267,7 @@ function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], selecte
 function ErrorBars({ errors, diagnostics, selectedFiles }: {
   errors: FileError[]
   diagnostics: Diagnostic[]
-  selectedFiles: Set<string>
+  selectedFiles: ReadonlySet<string>
 }) {
   const { shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics } =
     partitionByFile(errors, diagnostics, selectedFiles)

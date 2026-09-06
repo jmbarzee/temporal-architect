@@ -1,5 +1,6 @@
 import React from 'react'
 import { OntologyContext } from './graph-view/useOntology'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
@@ -117,26 +118,35 @@ const DEFAULT_VISIBLE_TYPES_ARRAY = DEF_TYPE_CONFIGS.filter(c => c.defaultOn).ma
 
 function defaultFilter(ast: TWFFile): FilterState {
   return {
-    selectedFiles: ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
-    visibleTypes: new Set(DEFAULT_VISIBLE_TYPES_ARRAY),
+    [SOURCE_FILE_DIMENSION]: ast.focusedFile
+      ? new Set([ast.focusedFile])
+      : new Set<string>(),
+    [DEF_TYPE_DIMENSION]: new Set(DEFAULT_VISIBLE_TYPES_ARRAY),
   }
 }
 
-const DEFAULT_PINS: PinState = { files: false, types: false }
+const DEFAULT_PINS: PinState = {
+  [SOURCE_FILE_DIMENSION]: false,
+  [DEF_TYPE_DIMENSION]: false,
+}
 
+// Both directions iterate whatever axes the value carries, rather than naming
+// two. Naming them would still have *typechecked* against the axis-keyed
+// `Record<string, …>` — it would simply have persisted two axes called
+// `selectedFiles` and `visibleTypes`, which on reload is an empty allow-list on
+// the real type axis, i.e. a blank graph. The version guard in storage.ts is the
+// backstop; being generic here is the fix.
 function persistedToFilter(p: PersistedFilter | undefined, fallback: FilterState): FilterState {
   if (!p) return fallback
-  return {
-    selectedFiles: new Set(p.selectedFiles),
-    visibleTypes: new Set(p.visibleTypes),
-  }
+  const out: Record<string, Set<string>> = {}
+  for (const [dimension, values] of Object.entries(p)) out[dimension] = new Set(values)
+  return out
 }
 
 function filterToPersisted(f: FilterState): PersistedFilter {
-  return {
-    selectedFiles: Array.from(f.selectedFiles),
-    visibleTypes: Array.from(f.visibleTypes),
-  }
+  const out: PersistedFilter = {}
+  for (const [dimension, values] of Object.entries(f)) out[dimension] = Array.from(values)
+  return out
 }
 
 export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
@@ -274,7 +284,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     const source = target === 'tree' ? graphFilter : treeFilter
     const destPins = target === 'tree' ? treePins : graphPins
 
-    const { filter: newFilter, overriddenPins } = reconcileFilter(dest, source, destPins, transition)
+    const { filter: newFilter, overriddenPins } =
+      reconcileFilter(dest, source, destPins, transition, DEFAULT_ONTOLOGY.filterDimensions)
 
     if (target === 'tree') {
       if (newFilter !== dest) setTreeFilter(newFilter)
@@ -285,7 +296,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     }
 
     if (transition.kind === 'focus') {
-      setPendingFocus({ name: transition.target.name, defType: transition.target.defType })
+      setPendingFocus({
+        name: transition.target.name,
+        defType: transition.target.values[DEF_TYPE_DIMENSION] ?? '',
+      })
     }
 
     if (target === 'graph') setGraphEverShown(true)
@@ -300,7 +314,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     const def = ast.definitions.find(d => d.name === name && d.type === defType)
     switchView('graph', {
       kind: 'focus',
-      target: { name, defType, sourceFile: def?.sourceFile },
+      target: {
+        name,
+        values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
+      },
     })
   }, [ast.definitions, switchView])
 
@@ -308,7 +325,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     const def = ast.definitions.find(d => d.name === name && d.type === defType)
     switchView('tree', {
       kind: 'focus',
-      target: { name, defType, sourceFile: def?.sourceFile },
+      target: {
+        name,
+        values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
+      },
     })
   }, [ast.definitions, switchView])
 

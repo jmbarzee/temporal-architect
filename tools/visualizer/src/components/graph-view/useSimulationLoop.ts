@@ -18,8 +18,8 @@ export interface SimulationLoopParams {
   visibleIds: Set<string>
   visibleNodes: SimNode[]
   downstreamScores: Map<string, number>
-  visibleTypes: Set<string>
-  selectedFiles: Set<string>
+  visibleTypes: ReadonlySet<string>
+  selectedFiles: ReadonlySet<string>
   hoveredNodeId: string | null
   selectedNodeId: string | null
   containerRef: React.RefObject<HTMLDivElement>

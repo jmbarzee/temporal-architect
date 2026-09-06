@@ -236,8 +236,8 @@ function computeGraphNodeSummary(
 
 export function computeVisibleGraph(
   sim: VisibleGraphSource,
-  visibleTypes: Set<string>,
-  selectedFiles: Set<string>,
+  visibleTypes: ReadonlySet<string>,
+  selectedFiles: ReadonlySet<string>,
   ontology: Ontology,
 ): VisibleGraph {
   const hasFileFilter = selectedFiles.size > 0

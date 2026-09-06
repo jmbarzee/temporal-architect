@@ -1,13 +1,17 @@
-// reconcileFilter is the single decision point for what the destination
-// view's filter looks like after a view switch. All switch sites in
-// WorkflowCanvas route through this function — see spec § View
-// Transitions for the rules.
+// reconcileFilter is the single decision point for what the destination view's
+// filter looks like after a view switch. Every switch site in WorkflowCanvas
+// routes through it — see spec § View Transitions.
 //
-// The function is pure: it takes only the destination's current filter,
-// the source view's current filter, the destination's pin state, and a
-// transition intent, and returns a new filter (plus metadata about which
-// pinned dimensions were overridden, used to drive the pin-flash
-// animation on focus transitions).
+// Pure: destination filter, source filter, destination pins, the transition
+// intent, and the axes' descriptors in. A new filter out, plus which pinned axes
+// had to be overridden (drives the pin-flash animation).
+//
+// It now loops over axes instead of branching on two names, which is only safe
+// because the per-axis differences are carried as descriptor policy rather than
+// assumed uniform (T8). The one that bites is `focus`: types expand
+// unconditionally, files expand only when the file selection is already active.
+// A loop over a shared rule would flatten that, and the flattened version hides
+// the whole graph on a focus transition.
 
 import type {
   FilterState,
@@ -15,75 +19,94 @@ import type {
   ViewTransition,
   ReconcileResult,
   FilterDimension,
+  FocusTarget,
 } from './types'
-import { cloneFilter, filterStatesEqual } from './types'
+import {
+  filterStatesEqual,
+  pinnedFor,
+  selectionFor,
+  withSelection,
+} from './types'
+import type { DimensionDescriptor } from '../graph/dimension'
 
 export function reconcileFilter(
   destFilter: FilterState,
   sourceFilter: FilterState,
   destPins: PinState,
   intent: ViewTransition,
+  dimensions: readonly DimensionDescriptor[],
 ): ReconcileResult {
   switch (intent.kind) {
     case 'manual':
-      return reconcileManual(destFilter, sourceFilter, destPins)
+      return reconcileManual(destFilter, sourceFilter, destPins, dimensions)
     case 'focus':
-      return reconcileFocus(destFilter, destPins, intent.target)
+      return reconcileFocus(destFilter, destPins, intent.target, dimensions)
   }
 }
 
-// manual: per dimension, if pinned keep dest, otherwise adopt source.
-// Pins are never overridden by a manual transition — no flash metadata.
+/**
+ * manual: per axis, keep the destination's selection if pinned, otherwise adopt
+ * the source's. Pins are never overridden here, so there is no flash metadata.
+ *
+ * Built with `withSelection`, which is what makes this correct rather than
+ * merely shorter. The previous version cloned the whole filter and then
+ * reassigned the unpinned axes, so **every axis came back with a fresh `Set`** —
+ * including pinned ones, and including axes whose content had not changed. Since
+ * `useSimulationLoop` decides "did this axis change?" by `prev === next`, any
+ * manual switch that altered one axis also fired the *other* axis's change path:
+ * for the type axis that meant an ancestor-seed, a reheat to 0.5, and
+ * `initialFitDone = false`, i.e. the user's pan and zoom silently discarded on a
+ * view switch that changed only the file selection.
+ */
 function reconcileManual(
   destFilter: FilterState,
   sourceFilter: FilterState,
   destPins: PinState,
+  dimensions: readonly DimensionDescriptor[],
 ): ReconcileResult {
-  const next: FilterState = cloneFilter(destFilter)
-
-  if (!destPins.files) {
-    next.selectedFiles = new Set(sourceFilter.selectedFiles)
+  let next = destFilter
+  for (const dim of dimensions) {
+    if (pinnedFor(destPins, dim.id)) continue
+    next = withSelection(next, dim.id, selectionFor(sourceFilter, dim.id))
   }
-  if (!destPins.types) {
-    next.visibleTypes = new Set(sourceFilter.visibleTypes)
-  }
-
-  return {
-    filter: filterStatesEqual(next, destFilter) ? destFilter : next,
-    overriddenPins: new Set<FilterDimension>(),
-  }
+  return { filter: next, overriddenPins: new Set<FilterDimension>() }
 }
 
-// focus: expand dest minimally to make the target visible.
-// - Always: ensure target.defType is in visibleTypes.
-// - Conditional: add target.sourceFile to selectedFiles only if the file
-//   filter is currently active (size > 0). If file filtering is off, all
-//   files are already implicitly visible — adding the chip would
-//   inadvertently activate the filter and HIDE everything else.
-//
-// Pins may need to be overridden to expose the target. The pin state
-// itself is not modified, but each overridden dimension is recorded so
-// the destination view can flash its pin icon.
+/**
+ * focus: expand the destination minimally so the target is visible.
+ *
+ * The expansion rule is per axis and comes from the descriptor:
+ *
+ *   'always'     — add the target's value unconditionally. Safe on an
+ *                  `emptyMeans: 'none'` axis, where the selection is an
+ *                  allow-list and adding to it only ever widens.
+ *   'whenActive' — add it only if a selection already exists. On an
+ *                  `emptyMeans: 'all'` axis an empty selection means everything
+ *                  is already visible, so adding the first value would *narrow*
+ *                  to that one value and hide the rest — the opposite of focus.
+ *
+ * Pins are not modified, but each axis whose pin had to be overridden is
+ * recorded so the destination view can flash it.
+ */
 function reconcileFocus(
   destFilter: FilterState,
   destPins: PinState,
-  target: { name: string; defType: string; sourceFile?: string },
+  target: FocusTarget,
+  dimensions: readonly DimensionDescriptor[],
 ): ReconcileResult {
-  const next: FilterState = cloneFilter(destFilter)
+  let next = destFilter
   const overridden = new Set<FilterDimension>()
 
-  if (!next.visibleTypes.has(target.defType)) {
-    next.visibleTypes.add(target.defType)
-    if (destPins.types) overridden.add('types')
-  }
+  for (const dim of dimensions) {
+    const value = target.values[dim.id]
+    if (value === undefined) continue
 
-  if (
-    target.sourceFile &&
-    destFilter.selectedFiles.size > 0 &&
-    !destFilter.selectedFiles.has(target.sourceFile)
-  ) {
-    next.selectedFiles.add(target.sourceFile)
-    if (destPins.files) overridden.add('files')
+    const current = selectionFor(destFilter, dim.id)
+    if (current.has(value)) continue
+    if (dim.focus === 'whenActive' && current.size === 0) continue
+
+    next = withSelection(next, dim.id, new Set([...current, value]))
+    if (pinnedFor(destPins, dim.id)) overridden.add(dim.id)
   }
 
   return {

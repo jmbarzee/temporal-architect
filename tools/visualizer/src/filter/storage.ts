@@ -10,17 +10,28 @@
 
 const STORAGE_KEY = 'temporal-architect-visualizer-state'
 
-export type PersistedFilter = {
-  selectedFiles: string[]
-  visibleTypes: string[]
-}
+/**
+ * Bumped whenever the persisted SHAPE changes. A mismatch discards rather than
+ * migrates (D4).
+ *
+ * Discarding is the right default because the payload is a UI preference, not
+ * user data: the cost of losing it is one re-toggle, and the cost of
+ * mis-migrating it is a filter state that silently does not mean what it says.
+ * Version 2 is the axis-keyed shape — v1's `{selectedFiles, visibleTypes}` would
+ * have read as a filter with two axes named `selectedFiles` and `visibleTypes`,
+ * each selecting nothing, i.e. an empty type allow-list, i.e. a blank graph.
+ * That is exactly the failure a version guard exists to prevent.
+ */
+const STATE_VERSION = 2
 
-export type PersistedPins = {
-  files: boolean
-  types: boolean
-}
+/** A selection per axis, Sets flattened to arrays for JSON. */
+export type PersistedFilter = Record<string, string[]>
+
+/** A pin per axis. */
+export type PersistedPins = Record<string, boolean>
 
 export type PersistedState = {
+  version?: number
   treeFilter?: PersistedFilter
   graphFilter?: PersistedFilter
   treePins?: PersistedPins
@@ -63,6 +74,12 @@ function getVsCodeApi(): VsCodeApi | null {
   return null
 }
 
+/** Discard anything not written by this exact shape version (D4). */
+function accept(state: PersistedState | undefined): PersistedState {
+  if (!state || state.version !== STATE_VERSION) return {}
+  return state
+}
+
 export function loadState(): PersistedState {
   const vs = getVsCodeApi()
   if (vs) {
@@ -71,7 +88,7 @@ export function loadState(): PersistedState {
       const obj = raw as Record<string, unknown>
       const inner = obj[STORAGE_KEY]
       if (inner && typeof inner === 'object') {
-        return inner as PersistedState
+        return accept(inner as PersistedState)
       }
     }
     return {}
@@ -79,13 +96,14 @@ export function loadState(): PersistedState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return {}
-    return JSON.parse(raw) as PersistedState
+    return accept(JSON.parse(raw) as PersistedState)
   } catch {
     return {}
   }
 }
 
 export function saveState(state: PersistedState): void {
+  state = { ...state, version: STATE_VERSION }
   const vs = getVsCodeApi()
   if (vs) {
     // Preserve any sibling keys other consumers may have stored on the

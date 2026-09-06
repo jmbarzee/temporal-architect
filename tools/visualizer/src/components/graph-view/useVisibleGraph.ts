@@ -15,8 +15,8 @@ export type { VisibleGraph } from './visibleGraph'
 export function useVisibleGraph(
   simRef: React.MutableRefObject<Simulation | null>,
   simVersion: number,
-  visibleTypes: Set<string>,
-  selectedFiles: Set<string>,
+  visibleTypes: ReadonlySet<string>,
+  selectedFiles: ReadonlySet<string>,
 ): VisibleGraph {
   const ontology = useOntology()
   return React.useMemo<VisibleGraph>(() => {
