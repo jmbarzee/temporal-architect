@@ -163,7 +163,33 @@ explicit pass criteria and a committed screenshot — use them.
 
 ## In-flight work
 
-*Nothing in flight. Units 0 and 1 are complete; Unit 2 is next and has not started.*
+**Unit 2 — Dimension primitive + shim folder — IN FLIGHT.**
+
+Landed, all green, all gates passing at each commit:
+
+  - `81c3c63` 2a — dimension primitives (`graph/dimension.ts`): ids, values,
+    interning, descriptors with per-axis `emptyMeans`/`absentMeans`, and
+    `createDimensionalMapping` refusing intersecting buckets (R12)
+  - `e5737e3` 2b — `GraphNode.dimensions` + host-owned `payload` (R3); the shim
+    populates both; `nodeType`/`sourceFile` kept for one commit
+  - `73871cf` 2c — **`GraphNode.nodeType` deleted**, denormalized edge endpoints
+    removed (B14), forces keyed by a named axis, all reads through the container
+
+**Exact next action:** commit 2d — invert the registries. The library keeps
+`NodeTypeDefinition` and `EdgeTypeDefinition`'s *shapes*; the entries
+(`NODE_TYPE_REGISTRY`, `ALL_EDGE_TYPES`, `edgeTypeFor`, `EdgeTypeId`,
+`NodeType`) become shim data, and `DEFAULT_PARAMS` becomes a function of the
+supplied taxonomy rather than a module constant built from the registry (B9).
+Then 2e moves the now-Temporal-only files into `src/adapter/` — the move is last
+per D33, and only once nothing in the §6.5 manifest imports them.
+
+Not yet done for this unit: B18 (`nodeDefType.ts`'s bijection and its two silent
+fallbacks), B36 (`temporal-theme.tsx`'s direct property access), the Gate 5
+browser pass, `REVIEW_2.md`, and the ceiling ratchet in `gates.json`.
+
+Counters at this point: leak 581 (ceiling still 583 — it drops to 210 at the
+unit boundary, not before), Gate 6 11/11, goldens 7/7 with the node-row shape
+change recorded in D35.
 
 <!-- When a session is interrupted mid-unit, record:
      - the unit, and which of its commits landed
