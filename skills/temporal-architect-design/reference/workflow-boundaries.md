@@ -2,24 +2,17 @@
 
 ## Use Activities When
 
-**Default granularity: one activity per network call / external interaction.** This is the right default because it makes Temporal's retry, timeout, and backoff land at exactly the unit that can fail independently — one activity per fallible boundary gives clean, granular retry semantics. Start here, then deviate only as an optimization (batching, local activities — see [core-principles.md](./core-principles.md#activities-are-for-io--not-in-memory-work)).
+**Default: one activity per network call / external interaction**, so Temporal's retry, timeout, and backoff land on exactly the unit that fails independently. Deviate only as an optimization ([core-principles.md](./core-principles.md#activities-are-for-io--not-in-memory-work)).
 
-- Single atomic operation
-- External system interaction (API, DB, file)
-- Short, predictable completion time (single timeout period)
+- Single atomic operation against an external system (API, DB, file)
+- Short, predictable completion time (one timeout period)
 - No orchestration logic
-
-Conversely, do **not** create an activity for work that touches no external system — reads of already-held data, in-memory derivation, or accumulation are workflow code, not activities.
 
 ## Use Child Workflows When
 
-- Multiple steps with independent retry/timeout policies
-- Reusable across parent workflows
-- Separate failure boundary needed
-- Very long operations (separate history)
-- Complex enough to warrant own tests
+Multiple steps with their own retry/timeout policy, failure boundary, or history, or reuse across parents — criteria in [child-workflows.md](../topics/child-workflows.md#when-to-use-child-workflows). A child's separate history matters because each history is capped ([long-running.md](../topics/long-running.md)). Don't use a child just for code organization. When in doubt between a child workflow and an activity, use an activity.
 
-**Rule of thumb:** Loops or conditionals inside an activity → should be a workflow.
+**Rules of thumb:** [orchestration in activities](./anti-patterns.md#orchestration-in-activities) means a workflow; [monolith](./anti-patterns.md#monolithic-workflow) or [wrapper](./anti-patterns.md#wrapper-workflow) means re-cut.
 
 ## Use Nexus When
 
@@ -28,16 +21,4 @@ Conversely, do **not** create an activity for work that touches no external syst
 - Target needs independent scaling, versioning, or failure isolation at the organizational level
 - You want a typed API contract between services
 
-**Child workflow vs nexus:** Child workflows share a namespace and are tightly coupled to the parent's lifecycle. Nexus calls are loosely coupled — the target is an independent service that may be owned by another team, deployed on a different schedule, or running in a different namespace.
-
-## Common Mistakes
-
-**Wrapper workflow:** A child workflow containing a single activity call adds orchestration overhead with no benefit. If there's only one step, use an activity directly.
-
-**Monolithic workflow:** All logic in one workflow with hundreds of history events. If a workflow has more than ~10 sequential activity calls, consider decomposing into child workflows.
-
-**Activity with orchestration:** If an activity contains retry logic, conditional branching, or calls to other services, it should be a workflow — these are orchestration concerns that benefit from Temporal's durability.
-
-See [child-workflows.md](../topics/child-workflows.md) for detailed child workflow patterns and the full decision table.
-
-For deployment topology and task queue routing, see [task-queues.md](../topics/task-queues.md).
+**Child workflow vs Nexus:** a child shares the namespace and the parent's lifecycle; any condition above means Nexus. Topology and routing: [task-queues.md](../topics/task-queues.md).

@@ -2,366 +2,109 @@
 
 > **Example:** [`signals-queries-updates.twf`](./signals-queries-updates.twf)
 
-External communication with running workflows. These three primitives let code outside the workflow interact with it during execution — as a **read**, a **write**, or a **read-write**.
+How code outside a running workflow reads it, writes to it, or does both.
 
-## Overview
+| Primitive | I/O | Execution | Use when | Naming |
+|-----------|-----|-----------|----------|--------|
+| **Query** | Read | Sync request-response | Reading current state — UI, dashboards, monitoring, another system needing workflow data | Getter: `GetStatus`, `GetProgress` |
+| **Signal** | Write | Async, fire-and-forget | Notifying the workflow of an event, injecting data, triggering a state transition, human approve/reject — no response needed | Event (past tense) or imperative: `PaymentReceived`, `Cancel`, `AddItem` |
+| **Update** | Read-write | Sync request-response | Changing state and learning whether it worked — confirmation, validation before accepting, a computed result | Verb phrase: `ChangePlan`, `AddCredits` |
 
-| Primitive | I/O | Direction | Execution | Use Case |
-|-----------|-----|-----------|-----------|----------|
-| **Query** | Read | External → Workflow → External | Sync (request-response) | Read current state |
-| **Signal** | Write | External → Workflow | Async (fire-and-forget) | Events, notifications, data injection |
-| **Update** | Read-write | External → Workflow → External | Sync (request-response) | Mutate state with confirmation |
+### Signal vs Update
 
----
+| Aspect | Signal | Update |
+|--------|--------|--------|
+| **Response** | None | Result returned to caller |
+| **Validation** | In handler; caller never learns the outcome | Caller receives validation errors |
+| **Handler blocks** | Caller doesn't wait | Caller blocks until the handler returns |
 
 ## Signals
 
-Asynchronous messages sent to a running workflow. The sender doesn't wait for processing.
+A signal handler body may use the full workflow statement set, but should only update state. When a signal is awaited (`await signal X` or an `await one` / `await all` case), execution is two-phase: the **handler body runs first**, then the **case body** runs and sees the updated state. In `ApprovalWorkflow`, the `Approved` handler sets `approver_name`; the case body reads it.
 
-### When to Use
-
-- External events that workflow should react to
-- Injecting data into a running workflow
-- Triggering state transitions
-- Human approval/rejection flows
-
-### Signal Handler Bodies
-
-Signals are declared with handler body blocks that execute when the signal arrives. Handler bodies have access to the full workflow statement set (activities, child workflows, timers, etc.).
-
-```twf
-signal PaymentReceived(transactionId: string, amount: decimal):
-    paymentStatus = "received"
-    lastTransactionId = transactionId
-```
-
-The handler body executes when the signal arrives, whether via `await signal` or as a case in `await one`/`await all`. Handler bodies should primarily update workflow state. Heavy side effects (activity calls, child workflows) belong in the main workflow body after the signal is awaited, since handlers fire even when not being actively awaited and can execute between any two deterministic steps.
-
-### Handler Execution Semantics
-
-When a signal is awaited (via `await signal` or as an `await one` case), the execution order is:
-
-1. **Signal arrives** → handler body runs first (updates state)
-2. **Await resolves** → case body runs (reacts to updated state, calls activities, etc.)
-
-This two-phase execution means:
-
-```twf
-workflow OrderTrackingWorkflow(orderId: string):
-    signal PaymentReceived(transactionId: string, amount: decimal):
-        # Phase 1: Handler runs immediately on signal arrival
-        paymentStatus = "received"
-        lastTransactionId = transactionId
-
-    # Phase 2: Case body runs after handler
-    await one:
-        signal PaymentReceived:
-            # paymentStatus is already "received" here
-            activity FulfillOrder(orderId, lastTransactionId)
-            close complete(OrderResult{status: "completed"})
-        timer(24h):
-            close fail(OrderResult{status: "timeout"})
-```
-
-**Key implications:**
-- Handler bodies run on every signal arrival, even if the workflow isn't actively awaiting that signal
-- Keep handler bodies lightweight (state updates only, no activities)
-- Place activity calls and side effects in the `await one` case body, not the handler body
-
-### Signal Considerations
+The handler also runs on every arrival whether or not the workflow is awaiting that signal — between any two deterministic steps. So activities, child workflows, and other side effects belong in the case body or main body after the await, never in the handler.
 
 | Consideration | Guidance |
 |---------------|----------|
-| **Ordering** | Signals are processed in order received, but arrival order isn't guaranteed |
-| **Buffering** | Signals queue if workflow is busy; consider signal coalescing for high-volume |
-| **Idempotency** | Signal handlers should be idempotent (same signal twice = same result) |
-| **Validation** | Validate signal payload; invalid signals can corrupt workflow state |
-| **Ambient arrival** | Signals can arrive between any two deterministic steps and are buffered until handled by `await signal` or `await one`/`await all` |
+| **Ordering** | Processed in the order received; arrival order isn't guaranteed |
+| **Buffering** | Signals queue while the workflow is busy and wait until handled by `await signal` or an `await one` / `await all` case; coalesce high-volume signals |
+| **Idempotency** | The same signal twice should give the same result |
+| **Validation** | Validate the payload; an invalid signal can corrupt workflow state |
 
----
+### Sending a signal to a child workflow
 
-## Sending Signals to a Child Workflow
-
-Everything above is the *receive* side — declaring handlers and awaiting arrivals. A workflow can also *send* a signal to a child it started and still holds a handle to. The handle is a workflow-bound promise (`promise handle <- workflow X(args)`); the dot-qualified name selects a signal the target workflow declares.
+A workflow can signal a child it started and still holds a handle to. The handle is a workflow-bound promise; the dot-qualified name selects a signal the target declares.
 
 ```twf
 workflow OrderSaga(order: Order) -> (SagaResult):
     promise pay <- workflow ProcessPayment(order)
     promise ship <- workflow ShipOrder(order)
 
-    # Notify the payment workflow that the order has shipped
     signal pay.OrderShipped(shipmentId)
 
-    # The handle is still awaitable later — sending does not consume it
+    # Sending does not consume the handle; it is still awaitable
     await all:
         await pay -> payment
         await ship -> shipment
     close complete(SagaResult{payment, shipment})
 ```
 
-The send is **statement-only and fire-and-forget**. There is no `await` or `promise` form and it is not an `await one` case: a signal carries no return value, so there is nothing to bind. The only thing a sender could wait on is *send acceptance* (the server accepting the send), never the receiver's handler running — modeling that would invite the misreading "the target processed my signal."
+- **Statement-only, fire-and-forget.** No `await` or `promise` form and not an `await one` case: a signal returns nothing to bind. The only thing a sender could wait on is the server accepting the send, never the receiver's handler — modeling it would invite the misreading "the target processed my signal."
+- The handle must be **workflow-bound** (`promise h <- workflow X(args)`); a handle bound to a timer, signal, activity, etc. is an error.
+- The target workflow must **declare** the named signal, or it is an error.
 
-### Rules
-
-- The handle must be **workflow-bound** (`promise h <- workflow X(args)`). Sending on a handle bound to a timer, signal, activity, etc. is an error.
-- The target workflow must **declare** the named signal (`signal OrderShipped(...)` on `X`), or it is an error.
-- A workflow-bound promise serves **two roles** on the same handle — an awaitable (`await pay -> payment`) and a signal target (`signal pay.OrderShipped(...)`). Sending a signal does not consume or affect a later `await` on it.
-
-### When to Use
-
-- Coordinating sibling/child workflows in a saga — telling one child about an event another produced.
-- Pushing an event into a child you started, without waiting for it to react.
-
-This is the only cross-workflow send the DSL provides: handle-bound only. Addressing a workflow you did not start (external/ID-based sends), and cross-workflow queries or updates, are not modeled.
-
----
+Use it to tell one saga child about an event another produced, or to push an event into a child without waiting for it to react. It is the only cross-workflow send the DSL models: workflows you did not start (ID-based sends), and cross-workflow queries and updates, are not modeled.
 
 ## Queries
 
-Synchronous, read-only access to workflow state. The caller blocks until the query returns.
-
-### When to Use
-
-- UI needs to display current workflow state
-- Monitoring/debugging workflow progress
-- External system needs workflow data
-- Building workflow dashboards
-
-### Query Handler Bodies
-
-Queries are declared with handler body blocks that execute when queried. Query handlers are restricted to activity-style statements (no temporal primitives like timers, signals, or child workflows).
-
-```twf
-query GetStatus() -> (string):
-    return status
-
-query GetProgress() -> (Progress):
-    return Progress{status: status, processed: itemCount}
-```
-
-### Query Considerations
-
 | Consideration | Guidance |
 |---------------|----------|
-| **Read-only** | Queries MUST NOT modify workflow state |
-| **Determinism** | Query handlers run during replay; must be deterministic |
-| **Performance** | Queries replay workflow history; expensive for long histories |
-| **Consistency** | Returns point-in-time state; may be stale by the time caller uses it |
-| **Restrictions** | Query handlers use activity-restricted statement set (no timers, signals, workflows) |
-
-### Anti-Patterns
-
-```twf
-# BAD: Query modifies state
-query GetAndIncrementCounter() -> (int):
-    counter = counter + 1  # NOT ALLOWED
-    return counter
-
-# GOOD: Pure read
-query GetStatus() -> (string):
-    return status
-```
-
----
+| **Read-only** | Must not modify workflow state |
+| **Restricted statements** | Activity-style statements only — no timers, signals, or child workflows |
+| **Determinism** | Handlers run during replay; must be deterministic |
+| **Performance** | A query replays history; expensive for long histories |
+| **Consistency** | Point-in-time state; may be stale by the time the caller uses it |
 
 ## Updates
 
-Synchronous read-write operations. The caller sends data, the workflow processes it, and the caller blocks until it receives a result (or error) back.
+An update handler may use the full workflow statement set (activities, child workflows, timers) and **must return a value**. The caller blocks until it returns — including time spent waiting on activities, timers, or state inside the handler. It **cannot `close`**: only the main body ends the workflow. `SubscriptionWorkflow` shows both an immediate mutation (`AddCredits`) and validation by activity before mutating (`ChangePlan`).
 
-### When to Use
+Handlers run as coroutines alongside the main body under cooperative scheduling: one piece of workflow code runs at a time. On wake-up the workflow processes pending signals and updates in order, then advances the main body. While a handler blocks, the main body can progress; all of them read and write the same workflow state.
 
-- Need confirmation that change was applied
-- Validating input before accepting
-- Returning computed result from mutation
-- Request-response pattern with workflow
+Updates can be awaited like signals — `await update ChangeAddress`, or as an `await one` case racing a timer (`ShippingWorkflow`). When the update wins, its handler runs and returns to the caller, then the case body runs.
 
-### Update Handler Bodies
-
-Updates are declared with handler body blocks that execute when the update is received. Handler bodies have access to the full workflow statement set (activities, child workflows, timers, etc.) and **must return a value** to the caller.
-
-Simple state mutation with immediate return:
-
-```twf
-update ChangePlan(newPlan: string) -> (ChangeResult):
-    plan = newPlan
-    return ChangeResult{success: true, plan: plan}
-```
-
-Validation via activity before accepting mutation:
-
-```twf
-update ChangePlan(newPlan: string) -> (ChangeResult):
-    activity ValidatePlan(newPlan) -> validation
-    if (validation.valid):
-        plan = newPlan
-        return ChangeResult{success: true, plan: plan}
-    else:
-        return ChangeResult{success: false, error: validation.reason}
-```
-
-The caller blocks until the handler returns — including any time spent waiting on activities, child workflows, or timers within the handler.
-
-### Handler Execution Semantics
-
-Signal and update handlers run as coroutines alongside the main workflow body, but **only one piece of workflow code runs at a time** (cooperative scheduling). When a workflow wakes up, it processes pending messages (signals/updates) in order, then makes progress in the main workflow body.
-
-This means:
-1. The update handler runs as part of the workflow execution loop
-2. If the handler blocks (on an activity, timer, etc.), the main workflow body can make progress while it waits
-3. The handler reads from and writes to the same shared workflow state as the main body and signal handlers
-4. The caller only receives a response after the handler has completed and returned
-
-**Update handlers cannot call `close`** — they can mutate state and return values, but only the main workflow body can terminate the workflow.
-
-### Awaiting Updates
-
-Updates can be awaited in the workflow body, similar to signals. This is useful when the main workflow body needs to wait for an external mutation before continuing:
-
-```twf
-await update ChangeAddress
-```
-
-Updates can also race against other operations in `await one`:
-
-```twf
-await one:
-    update ChangeAddress -> (newAddress):
-        activity NotifyShipping(orderId, newAddress)
-    timer(1h):
-        activity FinalizeShipping(orderId)
-```
-
-When the update wins the race, its handler body runs and returns a value to the caller, then the case body executes.
-
-### Update Handlers with Conditions
-
-A common pattern has an update handler wait on workflow state using `condition`. The caller blocks until the condition becomes true, then receives a result reflecting the current state:
-
-```twf
-workflow JobCoordinator(config: JobConfig):
-    state:
-        condition jobReady
-
-    signal Shutdown():
-        shutdownRequested = true
-
-    update WaitUntilReady() -> (JobState):
-        await jobReady
-        return JobState{ready: true}
-
-    # Main body provisions and starts the job runner
-    activity ProvisionJobRunner(config)
-    activity StartJobRunner(config)
-    set jobReady
-
-    await signal Shutdown
-    close complete
-```
-
-In this pattern:
-1. The client calls the update and blocks waiting for a result
-2. The update handler starts running but yields on `await jobReady`
-3. The main workflow body mutates the condition via `set jobReady`
-4. The update handler resumes and returns a value
-5. The client receives the result
-
-See [promises-conditions.md](./promises-conditions.md) for more on conditions and the `state:` block.
-
-### Updates vs Signals
-
-| Aspect | Signal (write) | Update (read-write) |
-|--------|--------|--------|
-| **Response** | None (fire-and-forget) | Returns result to caller |
-| **Validation** | In handler, but caller doesn't know | Caller receives validation errors |
-| **Confirmation** | No guarantee processing happened | Caller knows when complete |
-| **Handler can block** | Yes, but caller doesn't wait | Yes, and caller blocks until done |
-| **Use when** | "Notify workflow of X" | "Change X and tell me if it worked" |
-
-### Update Considerations
+An update handler can **wait on a condition** the main body sets: the caller blocks, the handler yields on `await jobReady`, the main body runs `set jobReady`, and the handler resumes and returns (`JobCoordinator`; see [promises-conditions.md](./promises-conditions.md) for conditions and the `state:` block).
 
 | Consideration | Guidance |
 |---------------|----------|
-| **Atomicity** | Update handlers should be atomic; don't leave partial state |
+| **Atomicity** | Don't leave partial state |
 | **Validation** | Validate before mutating; return errors, don't throw |
 | **Idempotency** | Consider idempotency keys for critical updates |
-| **Timeouts** | Caller should set appropriate timeout; handler may block on activities or state |
-| **Shared state** | Handler reads/writes the same state as the main workflow body and signal handlers |
-| **Ambient arrival** | Like signals, updates can arrive between any two deterministic steps and are buffered until handled by `await update` or `await one`/`await all` |
-
----
+| **Timeouts** | The caller sets a timeout fit for a handler that may block on activities or state |
+| **Ambient arrival** | Like signals: arrive between any two deterministic steps; buffered until handled by `await update` or an `await one` / `await all` case |
 
 ## Handler Options
 
-Any signal, query, or update declaration may carry an optional `options:` block at the head of its handler body — before any statements, the same placement a `state:` block gets at the top of a workflow.
+Any signal, query, or update declaration may open its handler body with an `options:` block, before any statements. `SubscriptionWorkflow` uses each.
 
 | Key | Signal | Query | Update | Values |
 |-----|--------|-------|--------|--------|
-| `unfinished_policy` | yes | — | yes | `abandon`, `warn_and_abandon` (default `warn_and_abandon`) |
+| `unfinished_policy` | yes | — | yes | `abandon`, `warn_and_abandon` (default) |
 | `description` | yes | yes | yes | string |
-
-```twf
-workflow SubscriptionWorkflow(userId: string):
-    signal Cancel():
-        options:
-            unfinished_policy: abandon
-            description: "Cancels the subscription at the end of the billing period"
-        cancelled = true
-
-    update AddCredits(amount: int) -> (CreditResult):
-        options:
-            description: "Adds prepaid credits and returns the new balance"
-        credits = credits + amount
-        return CreditResult{total: credits}
-
-    query GetPlan() -> (string):
-        options:
-            description: "Current plan tier"
-        return plan
-```
 
 ### `unfinished_policy`
 
-`unfinished_policy` declares what should happen to a handler invocation that is **still running when the workflow exits** (completes, fails, or continues-as-new). Both values drop the in-flight handler; they differ only in whether the drop is announced:
+What happens to a handler **still running when the workflow exits** (completes, fails, or continues-as-new). Both values drop it; they differ in whether the drop is announced.
 
-- **`warn_and_abandon`** (default) — the handler is dropped and a warning is logged. Use it whenever an unfinished handler represents work that *should* have finished. The warning is how you find out that the workflow is racing its own handlers.
-- **`abandon`** — the handler is dropped silently. Reserve it for handlers where being cut off at workflow exit is the expected, designed outcome, so the warning would be pure noise. A `Cancel` signal handler whose whole purpose is to end the workflow is the archetype.
+- **`warn_and_abandon`** (default) — dropped with a logged warning. Use it whenever the handler's work *should* have finished; the warning is how you learn the workflow is racing its own handlers.
+- **`abandon`** — dropped silently. Only where being cut off at exit is the designed outcome, e.g. a `Cancel` signal whose purpose is to end the workflow.
 
-Note that `unfinished_policy` is not a way to *wait* for handlers. It only chooses how loudly they are abandoned. If the handler's work matters, the design must keep the workflow alive until handlers drain — do not reach for `abandon` to quiet a warning you should be fixing.
+Neither value *waits* for handlers. If a handler's work matters, the design keeps the workflow alive until handlers drain; `abandon` is not a way to quiet a warning you should be fixing.
 
-**For updates, abandonment is caller-visible.** An update caller is blocked waiting for a result; if the workflow exits with the handler unfinished, that caller gets `NotFound` rather than a result or a meaningful error. `abandon` on an update handler therefore hides a real failure mode from the only party positioned to notice it — it is rarely the right choice. Prefer `warn_and_abandon` on updates, and design the main body so updates finish before it closes.
+**For updates, abandonment is caller-visible**: the blocked caller gets `NotFound` instead of a result or a meaningful error. `abandon` on an update hides a real failure from the only party positioned to notice it — prefer `warn_and_abandon`, and design the main body so updates finish before it closes.
 
-Queries do not admit `unfinished_policy`: they are synchronous and read-only, so there is no in-flight handler to abandon.
+Queries don't admit `unfinished_policy`: synchronous and read-only, they leave nothing in flight.
 
 ### `description`
 
-`description` is a short, human-facing string, available on all three handler kinds. It documents the handler for operators reading the workflow in the UI and CLI — it has no runtime behavior and does not affect determinism. Write it for the person debugging a stuck workflow at 3am: what the handler is for, not how it is implemented.
-
----
-
-## Choosing Between Primitives
-
-**Use QUERY (read) when:**
-- Need to read current state
-- Building UI/dashboard
-- Debugging/monitoring
-
-**Use SIGNAL (write) when:**
-- Fire-and-forget is acceptable
-- External event notification
-- No response needed
-
-**Use UPDATE (read-write) when:**
-- Need confirmation that a change was applied
-- Validating input before accepting
-- Returning a computed result from a mutation
-
----
-
-## Signal/Query/Update Naming Conventions
-
-| Type | Convention | Examples |
-|------|------------|----------|
-| Signals | Event-style, past tense or imperative | `PaymentReceived`, `Cancel`, `AddItem` |
-| Queries | Getter-style, "Get" prefix | `GetStatus`, `GetProgress`, `GetItems` |
-| Updates | Action-style, verb phrase | `ChangePlan`, `AddCredits`, `UpdateAddress` |
-
+A short human-facing string for operators reading the workflow in the UI and CLI; no runtime effect, no effect on determinism. Write it for whoever debugs a stuck workflow at 3am: what the handler is for, not how it works.

@@ -2,11 +2,11 @@
 
 > **Example:** [`nexus.twf`](./nexus.twf)
 
-Nexus enables workflows in one Temporal namespace to call operations in another namespace, with proper authorization and abstraction.
+Nexus lets a workflow in one namespace call an operation in another, behind a typed service contract.
 
 ## When to Use Nexus
 
-| Use Nexus | Use Child Workflow Instead |
+| Use Nexus | Use a Child Workflow Instead |
 |-----------|---------------------------|
 | Cross-namespace calls | Same namespace |
 | Cross-team boundaries | Same team |
@@ -14,250 +14,35 @@ Nexus enables workflows in one Temporal namespace to call operations in another 
 | Service abstraction needed | Direct coupling acceptable |
 | Multi-tenant architectures | Single-tenant |
 
-> **Deciding how many namespaces?** See [namespaces.md](../reference/namespaces.md) — the default is **one**. Nexus is the mechanism for the *one* case that legitimately spans namespaces (a cross-team / different-security-context service contract); it is not a reason to multiply namespaces. Same-namespace calls should be child workflows, not Nexus.
+Nexus adds routing and authorization overhead that only a namespace boundary justifies; a same-namespace call is a child workflow. Nexus is also not a reason to add namespaces — the default count is one ([namespaces.md](../reference/namespaces.md)).
 
----
+## Constructs
 
-## Nexus Concepts
+| Component | TWF Construct | Notes |
+|-----------|--------------|-------|
+| **Nexus Service** | `nexus service Name:` | Top-level; holds operations |
+| **Async Operation** | `async OpName workflow WorkflowName` | One-liner; delegates to a named workflow |
+| **Sync Operation** | `sync OpName(params) -> (Type):` | Inline body, workflow statement set |
+| **Service Registration** | `nexus service Name` (in `worker`) | The worker that serves it |
+| **Nexus Endpoint** | `nexus endpoint Name` (in `namespace`) | Requires `task_queue`; a worker on that queue must register the service |
+| **Nexus Call** | `nexus Endpoint Service.Op(args)` | Endpoint, then `Service.Op` |
 
-### Architecture
-
-```text
-orders Namespace (Caller)
-  OrderCheckout Workflow
-    nexus PaymentsEndpoint PaymentsService.ProcessPayment(args) -> result
-      |
-      v  (cross-namespace)
-payments Namespace (Target)
-  PaymentsEndpoint (task_queue: "payments")
-    PaymentsService
-      async ProcessPayment -> starts ProcessPaymentWorkflow
-
-orders Namespace (Caller)
-  OrderCheckout Workflow
-    detach nexus NotificationsEndpoint NotificationsService.SendConfirmation(args)
-      |
-      v  (cross-namespace)
-notifications Namespace (Target)
-  NotificationsEndpoint (task_queue: "notifications")
-    NotificationsService
-      async SendConfirmation -> starts SendConfirmationWorkflow
-```
-
-### Components
-
-| Component | TWF Construct | Description |
-|-----------|--------------|-------------|
-| **Nexus Service** | `nexus service Name:` | Top-level definition with operations |
-| **Async Operation** | `async OpName workflow WorkflowName` | Delegates to a named workflow |
-| **Sync Operation** | `sync OpName(params) -> (Type):` | Runs inline with a body |
-| **Nexus Endpoint** | `nexus endpoint Name` (in namespace) | Deployment routing with `task_queue` |
-| **Service Reference** | `nexus service Name` (in worker) | Links service to worker |
-| **Nexus Call** | `nexus Endpoint Service.Op(args)` | Invokes an operation |
-
----
-
-## Nexus Service Definition
-
-Define a nexus service with typed operations:
-
-```twf
-nexus service PaymentsService:
-    async ProcessPayment workflow ProcessPaymentWorkflow
-    sync GetPaymentStatus(paymentId: string) -> (PaymentStatus):
-        activity LookupPayment(paymentId) -> status
-        close complete(status)
-```
-
-- **Async operations** delegate to a named workflow (one-liner, no body)
-- **Sync operations** have a body using the workflow statement set
-
-### Deployment
-
-Each Nexus service lives in its own namespace. The endpoint is defined alongside the worker that serves it, in the target namespace. The caller namespace only hosts the workflows that invoke the endpoints.
-
-```twf
-worker paymentProcessingWorker:
-    workflow ProcessPaymentWorkflow
-    activity LookupPayment
-    nexus service PaymentsService
-
-# Target namespace: owns the service and exposes the endpoint
-namespace payments:
-    worker paymentProcessingWorker
-        options:
-            task_queue: "payments"
-    nexus endpoint PaymentsEndpoint
-        options:
-            task_queue: "payments"
-
-# Caller namespace: only has the workflows that call into payments
-namespace orders:
-    worker checkoutWorker
-        options:
-            task_queue: "checkout"
-```
-
----
-
-## Nexus Call Syntax
-
-### Basic Call
-
-```twf
-nexus PaymentsEndpoint PaymentsService.ProcessPayment(order.payment) -> result
-```
-
-Three identifiers: `Endpoint Service.Operation(args)` — endpoint name, then service and operation separated by a dot.
-
-### With Options
-
-```twf
-nexus PaymentsEndpoint PaymentsService.ProcessPayment(payment) -> result
-    options:
-        schedule_to_close_timeout: 5m
-```
-
-Options: `schedule_to_close_timeout`, `retry_policy`, `priority`.
-
----
+**Deployment:** the endpoint lives in the **target** namespace, next to the worker that serves the service; the caller namespace hosts only the calling workflows and references the endpoint by name.
 
 ## Execution Modes
 
-Nexus calls support the same three execution modes as child workflows:
+The same modes as child workflows:
 
 | Mode | Syntax | Behavior |
 |------|--------|----------|
-| **Synchronous** | `nexus Ep Svc.Op(args) -> result` | Caller blocks until operation completes |
-| **Async (promise)** | `promise p <- nexus Ep Svc.Op(args)` | Caller continues, awaits promise later |
-| **Fire-and-forget** | `detach nexus Ep Svc.Op(args)` | Caller continues, never waits |
+| **Synchronous** | `nexus Ep Svc.Op(args) -> result` | Blocks until the operation completes (also `await nexus …`) |
+| **Async (promise)** | `promise p <- nexus Ep Svc.Op(args)` | Continues; `await p -> result` later |
+| **Fire-and-forget** | `detach nexus Ep Svc.Op(args)` | Never waits; a `-> result` is a parse error |
 
-### Synchronous (Default)
+**Give every nexus call a deadline** — `schedule_to_close_timeout`, or an `await one` race against a `timer` (`NexusWithTimeout` in the example).
 
-```twf
-workflow Caller(order: Order) -> (Result):
-    nexus PaymentsEndpoint PaymentsService.ProcessPayment(order.payment) -> result
-    close complete(Result{paymentId: result.id})
-```
-
-### Asynchronous (Promise)
-
-```twf
-workflow Caller(data: Data) -> (Result):
-    promise handle <- nexus PaymentsEndpoint PaymentsService.ProcessPayment(data.payment)
-    activity DoOtherWork(data) -> localResult
-    await handle -> paymentResult
-    close complete(Result{localResult, paymentResult})
-```
-
-### Fire-and-Forget (Detach)
-
-```twf
-workflow Caller(order: Order) -> (Result):
-    detach nexus NotificationsEndpoint NotificationsService.SendConfirmation(order.customer)
-    close complete(Result{status: "initiated"})
-```
-
----
-
-## Await Patterns
-
-### Await Nexus
-
-```twf
-await nexus PaymentsEndpoint PaymentsService.GetStatus(id) -> status
-```
-
-### Await One with Nexus
-
-Race a nexus call against a timeout:
-
-```twf
-workflow Caller(data: Data) -> (Result):
-    await one:
-        nexus PaymentsEndpoint PaymentsService.ProcessPayment(data) -> result:
-            close complete(Result{success: true, data: result})
-        timer(5m):
-            activity AlertTimeout(data)
-            close fail(Result{success: false, error: "timeout"})
-```
-
-> **The nexus operation continues if the timer wins.** Losing an `await one` race does **not** cancel the nexus call — the operation (and the workflow it runs in the *target* namespace) keeps running until this workflow run ends. Since the target is an independent service, you usually can't cancel it implicitly; if the payment must be voided on timeout, model that explicitly (a compensating nexus op or activity), not by relying on the race.
-
----
+> If the timer wins, the operation keeps running in the target namespace. To void it on timeout, model a compensating nexus op or activity.
 
 ## Resolution
 
-The resolver validates all nexus references:
-
-### Errors
-
-| Condition | Error |
-|-----------|-------|
-| Duplicate `nexus service` name | `duplicate nexus service definition: X` |
-| Duplicate endpoint name across namespaces | `duplicate nexus endpoint name "X"` |
-| Endpoint not found | `undefined nexus endpoint: X` |
-| Service not found (in its package) | `undefined nexus service: X` |
-| Operation not found on service | `nexus service X has no operation Y` |
-| `detach nexus ... -> result` | `detach nexus call cannot have a result` |
-| Async op references missing workflow | `async operation Y references undefined workflow: Z` |
-| Worker refs missing service | `worker W references undefined nexus service: X` |
-| Endpoint missing `task_queue` | `nexus endpoint X missing required task_queue option` |
-| Endpoint task queue has no worker with service | `no worker on that queue has service S` |
-| Endpoint under-parameterized for its family | `nexus endpoint "X" must be parameterized by all of namespace N's template params; missing <param>` (`ENDPOINT_PARAM_NOT_SUPERSET`) |
-| Unbound `{param}` in an endpoint/worker option value | `unbound template param {P} in endpoint E options: ...` / `... in worker options in namespace N: ...` (`UNBOUND_TEMPLATE_PARAM`) |
-
-### Warnings
-
-| Condition | Warning |
-|-----------|---------|
-| Service not on any worker (namespaces exist) | `nexus service X is not referenced by any worker` |
-
-> **Reaching a service in another package** — an undefined endpoint or service is now always a hard
-> error (the old per-category "may be external" warning is gone). A genuinely external service is
-> reached by qualifying the reference (`nexus Ep pkg.Service.Op`) and `import`ing that package; if
-> the package isn't in the tree the import is treated as external. Endpoints are flat-global and
-> never qualified. See [common-errors.md](../reference/common-errors.md#packages-imports-and-external-references).
-
-> **Templated endpoint references bind by full-string identity.** A `{param}` hole in an endpoint
-> name (`nexus fabric-shard-{org}-BootstrapShard Svc.Op(...)`) is part of a *parameterized family* —
-> the reference binds its definition **iff the assembled name strings are identical** (holes matched
-> by spelling). A spelling mismatch, or a **static** reference to a templated endpoint, falls through
-> to `NEXUS_UNDEFINED_ENDPOINT` — it is not a new error. Endpoints remain flat-global and are never
-> package-qualified; parameterization does not change that. See
-> [namespaces.md](../reference/namespaces.md#parameterized-namespaces-and-endpoints) for the family
-> model and worked example.
-
----
-
-## Anti-Patterns
-
-### Nexus for Same-Namespace Calls
-
-Nexus adds routing and authorization overhead that is only justified across namespace boundaries. Calling a service in the same namespace should use a child workflow instead.
-
-```twf
-# BAD: Nexus overhead for a call that stays inside the orders namespace
-workflow OrderCheckout(order: Order) -> (OrderResult):
-    nexus LocalEndpoint LocalService.Validate(order) -> result
-
-# GOOD: Child workflow — same namespace, same team, no boundary to cross
-workflow OrderCheckout(order: Order) -> (OrderResult):
-    workflow ValidateOrder(order) -> result
-```
-
-### Missing Timeout
-
-```twf
-# BAD: No deadline
-workflow A():
-    nexus Endpoint Svc.SlowOperation(data) -> result
-
-# GOOD: Explicit deadline via await one
-workflow A():
-    await one:
-        nexus Endpoint Svc.SlowOperation(data) -> result:
-            close complete(Result{result})
-        timer(5m):
-            close fail(Result{error: "timeout"})
-```
+Diagnostics: [common-errors.md](../reference/common-errors.md). Cross-package services: [packages.md](./packages.md#nexus-across-packages). Templated endpoints: [namespaces.md](../reference/namespaces.md#parameterized-namespaces-and-endpoints).

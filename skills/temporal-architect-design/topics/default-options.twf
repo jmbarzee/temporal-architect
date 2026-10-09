@@ -1,4 +1,4 @@
-# Source: default-options.md
+# Source: ../reference/notation-reference.md#definition-level-default_options
 # Patterns: definition-level default_options, per-key call-site override, atomic-replace of nested blocks
 
 # --- Activity default_options: keep operational config with the definition ---
@@ -22,7 +22,7 @@ workflow FulfillOrder(order: Order) -> (OrderResult):
     state:
         condition paid
 
-    # Uses the definition's default_options (30s timeout, 5 attempts).
+    # Uses the definition's default_options.
     activity ChargeCard(order.card, order.total) -> receipt
 
     # Per-key override: this call keeps the default start_to_close_timeout,

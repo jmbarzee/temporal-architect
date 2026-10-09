@@ -20,15 +20,18 @@ Scan CHEAPLY and STRUCTURALLY only — never read per-slice semantics:
 - cross-package / cross-slice call sites (Nexus ops, cross-package ExecuteChildWorkflow,
   boundary-crossing imports) → the edges between slices
 
-Do NOT read handler bodies, activity implementations, or the DSL↔SDK mapping — that is
-project-discovery's job.
+Do NOT read handler bodies, activity implementations, timeout/retry tuning, or the
+DSL↔SDK mapping. If you are reading an activity body, you have left your scope.
 
 Return a COMPACT ADVISORY MAP — conclusions only, never raw file/tree dumps:
-- Slice map: for each candidate domain, { id, paths/packages, entry points }
+- Slice map: for each candidate domain, { id, paths/packages, entry points } — entry
+  points are the client-started, schedule-started, Nexus-op-backing, and
+  handler-bearing workflows that root it
 - Cross-slice edge list: from → to, via = the contract artifact (proto package /
-  Nexus op / shared worker)
+  Nexus op / shared worker/task queue)
 - Suggested recovery order: contract producers before consumers, derived from the edges
-- Open questions the caller must resolve
+- Open questions the caller must resolve (ambiguous boundaries, a package that could
+  belong to two slices)
 
 The map INFORMS; it does not impose. The orchestrator confirms and narrows it with the
 user before any per-slice fan-out.

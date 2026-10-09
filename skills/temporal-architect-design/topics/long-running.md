@@ -2,229 +2,53 @@
 
 > **Example:** [`long-running.twf`](./long-running.twf)
 
-Patterns for workflows that run for extended periods: continue-as-new, history management, and entity workflows.
-
 ## The History Problem
 
-Temporal replays the full event history to reconstruct workflow state after any restart. This is the **primary constraint** on long-running workflows — history size directly determines replay cost, and Temporal enforces a hard limit (~50MB / ~50K events).
+Temporal replays the full event history to rebuild workflow state on every recovery. History size is the **primary constraint** on long-running workflows:
 
 | Issue | Impact |
 |-------|--------|
-| Replay cost | **Entire history replayed on every recovery** — this is the main bottleneck |
-| Hard limit | ~50MB event history / ~50K events — workflow terminates if exceeded |
+| Replay cost | **Entire history replayed on every recovery** — the main bottleneck |
+| Hard limit | 50 MB / 51,200 events — the workflow is terminated if exceeded |
 | Memory | Full history loaded into worker memory during replay |
-| Latency | Longer history = slower recovery after worker restart |
+| Latency | Longer history = slower recovery after a worker restart |
 
-**Solution:** Reset history periodically with `continue_as_new`.
-
-> **A bound is not a free pass.** "Only infinite loops need `continue_as_new`" is wrong. A *bounded* loop still grows history linearly with its bound, and if per-iteration history is chunky (a large activity result plus several tool calls each iteration) it can hit the limit well before the bound. The rule is: **loops whose accumulated history is large need `continue_as_new` — the bound alone is not sufficient.**
->
-> **State the strategy explicitly.** Even though *where* to continue-as-new is partly an implementation concern, the design should **say** what it is — "bounded at N, per-iteration history small, no `continue_as_new`," "resets every K iterations," or "defer to author-go" — rather than leaving it silent. A silent design is one nobody decided.
-
----
+**Solution:** reset history periodically with `close continue_as_new`. A bounded loop is not exempt — see [Unbounded History](../reference/anti-patterns.md#unbounded-history).
 
 ## Continue-As-New
 
-Atomically complete current workflow and start a new execution with fresh history, preserving logical continuity.
-
-### Basic Pattern
-
-```twf
-workflow LongRunningProcessor(processor: Processor):
-    eventCount = 0
-    
-    for:
-        await signal NewEvent -> (event)
-        activity ProcessEvent(event)
-        processor.processed += 1
-        eventCount += 1
-        
-        # Reset history before it gets too large
-        if eventCount >= 1000:
-            close continue_as_new(processor)  # Fresh history, same logical workflow
-```
-
-### Continue-As-New Semantics
+Atomically completes the current run and starts a new one with fresh history.
 
 | Aspect | Behavior |
 |--------|----------|
 | Workflow ID | Same (logical continuity) |
-| Run ID | New (fresh execution) |
+| Run ID | New |
 | History | Reset to zero |
 | Pending signals | Carried over (configurable) |
-| State | Passed as input to new execution |
+| State | Passed as the new run's input — must be serializable |
 
-### When to Continue-As-New
+**When:** after N events, every T hours, as history size nears the limit, or at a business boundary (end of a billing cycle). Two deterministic SDK intrinsics, callable from workflow code (not activities) and written in TWF as raw expressions:
 
-| Trigger | Example |
-|---------|---------|
-| Event count | After processing N events |
-| Time-based | Every 24 hours |
-| History size | Approaching limit |
-| Periodic reset | End of billing cycle |
+| Function | Returns | Compare against |
+|----------|---------|-----------------|
+| `history_length()` | Event **count** | An event threshold (`>= 1000`) |
+| `history_size()` | **Bytes** | A byte limit (`> 40_000_000`) |
 
-### SDK Intrinsics for History Tracking
-
-These deterministic SDK functions are available in workflow code (not activities) for deciding when to continue-as-new:
-
-| Function | Returns | Use |
-|----------|---------|-----|
-| `workflow.history_length()` | Event count | Compare against threshold (e.g., `>= 1000`) |
-| `workflow.history_size()` | Bytes | Compare against limit (e.g., `> 40_000_000`) |
-
-These appear in TWF as raw expressions since they're SDK-level calls, not TWF keywords.
-
-### Data Serialization
-
-```twf
-workflow EntityWorkflow(entity: Entity, data: EntityData):
-    for:
-        await signal Command -> (command)
-        data = applyCommand(data, command)
-        
-        # Periodic continuation with current data
-        if should_continue():
-            close continue_as_new(entity, data)
-```
-
-> Note: Data structs are defined at the SDK level, not in TWF notation.
-
-```pseudo
-# Data must be serializable!
-struct EntityData:
-    balance: decimal
-    lastUpdated: timestamp
-    pendingOperations: []Operation
-```
-
----
+**Mistakes:**
+- **Losing state** — pass every piece of mutated state to `continue_as_new(...)`; anything not passed is gone.
+- **Wrong place** — continue only at a natural boundary, never between steps that belong together (the later steps never run).
+- **Too often** — continuing after every event is pure overhead; batch (e.g. every 1000 events).
 
 ## Entity Workflow Pattern
 
-Long-lived workflow representing a business entity (user, order, account, subscription).
+A long-lived workflow that *is* a business entity (user, account, subscription). Structure (`UserEntity`): `signal`/`query`/`update` handlers first — the parser rejects a handler declared after a body statement — then load the entity if the input was null, then `for: await one:` over signals and a periodic `timer`, persisting after changes and calling `continue_as_new(id, state)` past a threshold.
 
-### Structure
+Clients start it with a deterministic ID (`"user-{userId}"`, input state `null`) and interact by that ID through signals, queries, and updates; it runs until a signal (`Deactivate`) closes it.
 
-```twf
-workflow UserEntity(userId: string, user: User):
-    # Initialize user if new
-    if user == null:
-        activity LoadUser(userId) -> (user)
-
-    query GetUser() -> (User):
-        return user
-
-    update UpdateSettings(settings: Settings) -> (Result):
-        user.settings = settings
-        return Result{success: true}
-
-    for:
-        # Wait for commands or periodic triggers
-        await one:
-            signal UpdateProfile:
-                user.profile = signal.data
-
-            signal AddCredits:
-                user.credits += signal.amount
-
-            signal Deactivate:
-                user.active = false
-                close complete  # End entity lifecycle
-
-            timer(24h):
-                # Periodic maintenance
-
-        # Persist after any change
-        activity PersistUser(user)
-
-        # Continue-as-new periodically
-        if eventCount > 500:
-            close continue_as_new(userId, user)
-```
-
-### Entity Lifecycle
-
-> Note: Entity lifecycle management uses SDK-level API calls, not TWF notation.
-
-```pseudo
-# Create entity (start workflow)
-temporal.start_workflow(
-    workflow: UserEntity,
-    id: "user-{userId}",
-    input: {userId: userId, user: null}
-)
-
-# Interact with entity (signals, queries, updates)
-temporal.signal("user-{userId}", UpdateProfile, {name: "Alice"})
-user = temporal.query("user-{userId}", GetUser)
-result = temporal.update("user-{userId}", AddCredits, {amount: 100})
-
-# Entity continues until explicit termination
-temporal.signal("user-{userId}", Deactivate, {})
-```
-
-### Entity vs Process Workflows
-
-| Entity Workflow | Process Workflow |
+| Entity workflow | Process workflow |
 |-----------------|------------------|
 | Long-lived (days, months, years) | Short-lived (minutes, hours) |
 | Represents a thing | Represents a process |
 | Reacts to external events | Drives toward completion |
-| No natural end state | Has completion state |
-| Examples: User, Account, Subscription | Examples: Order, Deployment, Migration |
-
----
-
-## Continue-As-New Anti-Patterns
-
-### Losing Data on Continue
-
-```twf
-# BAD: Data not passed to continuation
-workflow Processor(data: ProcessorData):
-    modifiedData = transform(data)
-    close continue_as_new()  # Lost modifiedData!
-
-# GOOD: Pass current data
-workflow Processor(data: ProcessorData):
-    modifiedData = transform(data)
-    close continue_as_new(modifiedData)
-```
-
-### Continue-As-New in Wrong Place
-
-```twf
-# BAD: Continue in middle of operation
-workflow Processor(data: ProcessorData):
-    activity Step1()
-    if shouldContinue:
-        close continue_as_new(data)  # Step2 never runs!
-    activity Step2()
-
-# GOOD: Continue at natural boundary
-workflow Processor(data: ProcessorData):
-    activity Step1()
-    activity Step2()
-    if shouldContinue:
-        close continue_as_new(data)
-```
-
-### Too Frequent Continuation
-
-```twf
-# BAD: Continue every event
-workflow Processor(data: ProcessorData):
-    event = await signal Event
-    process(event)
-    close continue_as_new(data)  # Unnecessary overhead!
-
-# GOOD: Batch before continuing
-workflow Processor(data: ProcessorData):
-    count = 0
-    for:
-        event = await signal Event
-        process(event)
-        count += 1
-        if count >= 1000:
-            close continue_as_new(data)
-```
+| No natural end state | Has a completion state |
+| User, Account, Subscription | Order, Deployment, Migration |

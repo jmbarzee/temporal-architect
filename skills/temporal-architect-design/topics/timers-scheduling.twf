@@ -4,7 +4,6 @@
 # --- Basic timer: delayed notification ---
 
 workflow DelayedNotification(userId: string, delay: duration):
-    # Durable sleep - workflow pauses but state is preserved
     await timer(delay)
     activity SendNotification(userId)
 
@@ -33,6 +32,7 @@ workflow HealthMonitor(resourceId: string):
 # --- Polling with backoff ---
 
 workflow WaitForResource(resourceId: string) -> (Resource):
+    promise deadline <- timer(30m)
     backoff = 1s
     maxBackoff = 60s
 
@@ -44,7 +44,7 @@ workflow WaitForResource(resourceId: string) -> (Resource):
         await one:
             timer(backoff):
                 backoff = min(backoff * 2, maxBackoff)
-            timer(30m):
+            deadline:
                 close fail(Resource{error: "timeout"})
 
 # --- Deadline with periodic check ---

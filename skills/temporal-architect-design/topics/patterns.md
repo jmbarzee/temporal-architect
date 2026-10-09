@@ -2,468 +2,56 @@
 
 > **Example:** [`patterns.twf`](./patterns.twf)
 
-Common patterns for structuring Temporal workflows. Choose based on your use case characteristics.
+Ask the questions in order; the first "yes" picks the pattern.
 
-## Pattern Overview
+| Question | Pattern | Example in `patterns.twf` | Typical domains |
+|----------|---------|---------------------------|-----------------|
+| Is it a long-lived thing that reacts to events? | **Entity** ([long-running.md](./long-running.md#entity-workflow-pattern)) | `AccountEntity` | Accounts, subscriptions, carts, IoT devices, game sessions |
+| Must several services all succeed or all roll back? | **Saga** | `BookingWorkflow` | Travel/event booking, financial ops, provisioning |
+| Can items be processed in parallel, then aggregated? | **Fan-Out/Fan-In** | `BatchProcessor` | Batch jobs, parallel API calls, report aggregation |
+| Is it a series of transformations of one datum? | **Pipeline** | `DataPipeline` | ETL, document processing, transcoding, migrations |
+| Are there explicit states and event-driven transitions? | **State Machine** | `DocumentApproval` | Approvals, tickets, claims, order status |
+| Must it wait for an external system that doesn't push? | **Polling** | `AwaitResourceReady` | Provisioning, external jobs, CI/CD |
+| Otherwise: discrete steps toward a result (minutes–hours) | **Process** | `OrderFulfillment` | Orders, registration, deployments, reports |
 
-| Pattern | Use When | Example |
-|---------|----------|---------|
-| **Process** | Discrete operation with start and end | Order fulfillment |
-| **Entity** | Long-lived, represents a thing | User account |
-| **Saga** | Distributed transaction with compensation | Multi-service booking |
-| **Fan-Out/Fan-In** | Parallel processing with aggregation | Batch processing |
-| **Pipeline** | Sequential stages of transformation | Data processing |
-| **State Machine** | Explicit state transitions | Document approval |
-| **Polling** | Wait for external condition | Resource provisioning |
+## Saga
 
----
+Each forward step has a compensation; on failure, compensations run in **reverse order** for the steps already done, giving eventual consistency.
 
-## Process Workflow
+| Forward action | Compensation |
+|----------------|--------------|
+| Create pending reservation | Cancel reservation |
+| Process payment | Refund payment |
+| Create shipment | Cancel shipment |
+| Create resource | Delete resource |
 
-A discrete operation that drives toward completion.
+TWF has no try/catch or compensation stack. Model a failed step as a checked result (`if (hotel.failed):`) followed by the compensations, or hand them to a compensation child workflow (`CompensateBooking`); the SDK's error handling drives the real logic.
 
-### Characteristics
-- Has a clear start and end
-- Progresses through defined steps
-- Returns a result when complete
-- Relatively short-lived (minutes to hours)
+## Fan-Out/Fan-In
 
-### Pattern
+`await all:` around a `for` fans out; a following step aggregates. The result variable inside `await all: for` is re-bound each iteration, so collecting results is SDK-level — the aggregation activity stands in for it. Partial failures must be handled at aggregation.
 
-```twf
-workflow OrderFulfillment(order: Order) -> (OrderResult):
-    # Step 1: Validate
-    activity ValidateRetailOrder(order) -> validated
-    if not validated.success:
-        close fail(OrderResult{status: "invalid", error: validated.error})
-    
-    # Step 2: Reserve
-    activity ReserveInventory(order.items) -> reservation
-    
-    # Step 3: Charge
-    activity ProcessPayment(order.payment) -> payment
-    
-    # Step 4: Fulfill
-    activity ShipRetailOrder(order, reservation)
-    
-    # Step 5: Notify
-    activity SendConfirmation(order.customer)
-    
-    close complete(OrderResult{status: "completed", trackingId: reservation.trackingId})
-```
+Cap concurrency by fanning out per chunk:
 
-### When to Use
-- Order processing
-- User registration
-- Deployment pipelines
-- Report generation
-
----
-
-## Entity Workflow
-
-A long-running workflow representing a business entity.
-
-### Characteristics
-- Long-lived (days, months, indefinitely)
-- Reacts to external events (signals)
-- Maintains state over time
-- Uses continue-as-new to manage history
-
-### Pattern
-
-Handlers (`signal`/`query`/`update`) are declared **before** the workflow body, not after it. `history_length()` returns an event *count* (use it against an event-count threshold); `history_size()` returns *bytes* (use it against a byte limit) — don't confuse the two.
-
-```twf
-workflow AccountEntity(accountId: string, account: Account):
-    query GetBalance() -> (decimal):
-        return account.balance
-
-    update Transfer(amount: decimal, toAccount: string) -> (TransferResult):
-        if account.balance < amount:
-            return TransferResult{success: false, error: "insufficient funds"}
-        account.balance -= amount
-        activity InitiateTransfer(toAccount, amount)
-        return TransferResult{success: true}
-
-    if account == null:
-        activity LoadAccount(accountId) -> account
-
-    for:
-        await one:
-            signal Deposit:
-                account.balance += signal.amount
-                activity RecordAccountTransaction(accountId, "deposit", signal.amount)
-
-            signal Withdraw:
-                if account.balance >= signal.amount:
-                    account.balance -= signal.amount
-                    activity RecordAccountTransaction(accountId, "withdraw", signal.amount)
-
-            signal Close:
-                activity CloseAccount(accountId)
-                close complete
-
-            timer(24h):
-                activity DailyReconciliation(accountId, account)
-
-        # history_length() = event count; reset before it grows large
-        if history_length() > 1000:
-            close continue_as_new(accountId, account)
-```
-
-### When to Use
-- User accounts
-- Subscriptions
-- Shopping carts
-- IoT device state
-- Game sessions
-
----
-
-## Saga Pattern
-
-Distributed transaction with compensation for failures.
-
-### Characteristics
-- Multiple services/steps that must all succeed or all roll back
-- Each step has a compensating action
-- Compensation runs in reverse order on failure
-- Provides eventual consistency
-
-### Pattern
-
-> Note: The saga pattern requires error-handling constructs (try/catch, compensation stacks) that are expressed here as conceptual pseudo-code. See [`patterns.twf`](./patterns.twf) for the TWF syntax version.
-
-```pseudo
-workflow BookingWorkflow(booking: Booking) -> BookingResult:
-    # Step 1: Reserve flight
-    activity ReserveFlight(booking.flight) -> flight
-    
-    # Step 2: Reserve hotel (compensate flight on failure)
-    activity ReserveHotel(booking.hotel) -> hotel
-    # on failure: activity CancelFlight(flight.id)
-    
-    # Step 3: Reserve car (compensate hotel + flight on failure)
-    activity ReserveCar(booking.car) -> car
-    # on failure: activity CancelHotel(hotel.id), activity CancelFlight(flight.id)
-    
-    # Step 4: Charge payment (compensate all on failure)
-    activity ChargeBookingPayment(booking.payment) -> payment
-    # on failure: activity CancelCar(car.id), CancelHotel(...), CancelFlight(...)
-    
-    # All succeeded
-    close complete(BookingResult{status: "confirmed", flight, hotel, car, payment})
-    
-    # On any step failure, compensations run in reverse order
-    # SDK-level error handling drives the compensation logic
-```
-
-### Compensation Design
-
-| Step | Forward Action | Compensation |
-|------|---------------|--------------|
-| Reserve | Create pending reservation | Cancel reservation |
-| Charge | Process payment | Refund payment |
-| Ship | Create shipment | Cancel shipment |
-| Provision | Create resource | Delete resource |
-
-### When to Use
-- Multi-service transactions
-- Booking systems (travel, events)
-- Financial operations
-- Resource provisioning
-
----
-
-## Fan-Out/Fan-In Pattern
-
-Process items in parallel, aggregate results.
-
-### Characteristics
-- Split work into parallel tasks
-- Each task executes independently
-- Aggregate results when all complete
-- Handle partial failures
-
-### Pattern
-
-> Note: The TWF DSL currently re-binds the result variable on each iteration of `await all: for`. The aggregation step below is expressed as conceptual pseudo-code. See [`patterns.twf`](./patterns.twf) for the TWF syntax version.
-
-```twf
-workflow BatchProcessor(items: []Item) -> (BatchResult):
-    # Fan-out: start all processing in parallel
-    await all:
-        for (item in items):
-            activity ProcessItem(item) -> result
-    
-    # Fan-in: aggregate results (conceptual -- SDK collects results)
-    activity AggregateResults(items) -> aggregated
-    
-    close complete(BatchResult{results: aggregated})
-```
-
-### Variations
-
-**With Concurrency Limit:**
 ```twf
 workflow RateLimitedBatch(items: []Item) -> (BatchResult):
-    # Process in batches of 10
     for (batch in chunk(items, 10)):
         await all:
             for (item in batch):
-                activity ProcessItem(item) -> result
-    
+                activity ProcessItem(item)
     close complete(BatchResult{})
 ```
 
-**With Result Selection:**
-```twf
-workflow FirstSuccessful(sources: []Source) -> (Data):
-    await all:
-        for (source in sources):
-            activity TryFetch(source) -> result
-    
-    # SDK-level: find first successful result
-    activity FindFirstSuccess(sources) -> data
-    close complete(data)
-```
+"First successful result" is the same fan-out with an SDK-level selection step after it.
 
-### When to Use
-- Batch processing
-- Parallel API calls
-- Distributed computation
-- Report aggregation
+## Pipeline
 
----
+Ordered stages, each transforming the previous stage's output; a validation stage may `close fail` early. A conditional stage is an `if` around an activity that re-binds its input: `activity Enrich(processed) -> processed`.
 
-## Pipeline Pattern
+## State Machine
 
-Sequential transformation stages.
+Signal handlers set a `phase` variable; the main loop is `for: switch (phase):`, where each waiting state is an `await one:` over its allowed signals plus a `timer` that moves to `expired`, and each terminal state runs its action and closes. The `switch` cases are the transition table.
 
-### Characteristics
-- Data flows through ordered stages
-- Each stage transforms and passes to next
-- Clear separation of concerns
-- Easy to add/remove stages
+## Polling
 
-### Pattern
-
-```twf
-workflow DataPipeline(rawData: RawData) -> (ProcessedData):
-    # Stage 1: Ingest
-    activity Ingest(rawData) -> ingested
-    
-    # Stage 2: Validate
-    activity Validate(ingested) -> validated
-    if not validated.valid:
-        close fail(ProcessedData{status: "invalid", errors: validated.errors})
-    
-    # Stage 3: Transform
-    activity Transform(validated.data) -> transformed
-    
-    # Stage 4: Enrich
-    activity Enrich(transformed) -> enriched
-    
-    # Stage 5: Load
-    activity Load(enriched)
-    
-    close complete(ProcessedData{status: "complete", recordCount: enriched.count})
-```
-
-### With Conditional Stages
-
-```twf
-workflow AdaptivePipeline(data: Data) -> (Result):
-    activity Parse(data) -> processed
-    
-    if processed.needsEnrichment:
-        activity Enrich(processed) -> processed
-    
-    if processed.format == "legacy":
-        activity ConvertLegacy(processed) -> processed
-    
-    activity Finalize(processed) -> result
-    close complete(result)
-```
-
-### When to Use
-- ETL processes
-- Document processing
-- Media transcoding
-- Data migrations
-
----
-
-## State Machine Pattern
-
-Explicit states and transitions.
-
-### Characteristics
-- Well-defined states
-- Explicit transition rules
-- Events trigger transitions
-- Clear audit trail
-
-### Pattern
-
-```twf
-workflow DocumentApproval(doc: Document) -> (ApprovalResult):
-    signal Submit():
-        phase = "pending_review"
-        activity NotifyReviewers(doc)
-
-    signal Approve():
-        phase = "approved"
-
-    signal Reject():
-        phase = "rejected"
-
-    signal RequestChanges():
-        phase = "changes_requested"
-
-    signal Withdraw():
-        phase = "withdrawn"
-
-    query GetPhase() -> (string):
-        return phase
-
-    phase = "draft"
-
-    for:
-        switch (phase):
-            case "draft":
-                await one:
-                    signal Submit:
-                    timer(90d):
-                        phase = "expired"
-            case "pending_review":
-                await one:
-                    signal Approve:
-                    signal Reject:
-                    signal RequestChanges:
-                    timer(30d):
-                        phase = "expired"
-            case "changes_requested":
-                await one:
-                    signal Submit:
-                    signal Withdraw:
-                    timer(30d):
-                        phase = "expired"
-            case "approved":
-                activity PublishDocument(doc)
-                close complete(ApprovalResult{status: "approved"})
-            case "rejected":
-                activity ArchiveDocument(doc)
-                close complete(ApprovalResult{status: "rejected"})
-            case "withdrawn":
-                close complete(ApprovalResult{status: "withdrawn"})
-            case "expired":
-                close complete(ApprovalResult{status: "expired"})
-```
-
-### State Transition Table
-
-| From State | Event | To State | Action |
-|------------|-------|----------|--------|
-| draft | Submit | pending_review | Notify reviewers |
-| pending_review | Approve | approved | None |
-| pending_review | Reject | rejected | None |
-| pending_review | RequestChanges | changes_requested | None |
-| changes_requested | Submit | pending_review | None |
-| changes_requested | Withdraw | withdrawn | None |
-| draft | Timer(90d) | expired | Auto-expire |
-| pending_review | Timer(30d) | expired | Auto-expire |
-| changes_requested | Timer(30d) | expired | Auto-expire |
-
-### When to Use
-- Approval workflows
-- Order status tracking
-- Support tickets
-- Insurance claims
-
----
-
-## Polling Pattern
-
-Wait for external condition to be met.
-
-### Characteristics
-- External system doesn't push updates
-- Must poll periodically
-- Need backoff strategy
-- Has timeout/deadline
-
-### Pattern
-
-```twf
-workflow AwaitResourceReady(resourceId: string) -> (Resource):
-    backoff = 5s
-    maxBackoff = 60s
-
-    for:
-        activity CheckResourceStatus(resourceId) -> status
-
-        if status.ready:
-            activity GetResource(resourceId) -> resource
-            close complete(resource)
-
-        if status.failed:
-            activity CancelProvisioning(resourceId)
-            close fail(ProvisioningError{error: status.error})
-
-        # Wait with backoff, deadline via await one + timer
-        await one:
-            timer(backoff):
-                backoff = min(backoff * 2, maxBackoff)
-            timer(30m):
-                activity CancelProvisioning(resourceId)
-                close fail(ProvisioningTimeout{})
-```
-
-### With Progress Updates
-
-> Note: `upsert_search_attributes` is an SDK-level call, not TWF notation.
-
-```twf
-workflow MonitorJob(jobId: string) -> (JobResult):
-    for:
-        activity GetJobStatus(jobId) -> status
-
-        # Update search attributes for visibility (SDK call)
-        # upsert_search_attributes({JobProgress: status.percentComplete, JobStage: status.currentStage})
-
-        if status.complete:
-            activity GetJobResult(jobId) -> result
-            close complete(result)
-
-        await timer(30s)
-```
-
-### When to Use
-- Resource provisioning
-- External job monitoring
-- Third-party integrations
-- CI/CD pipelines
-
----
-
-## Pattern Selection Guide
-
-```text
-Start
-  │
-  ├─ Is it a long-lived entity? ──────────────► Entity Pattern
-  │
-  ├─ Does it need distributed rollback? ──────► Saga Pattern
-  │
-  ├─ Can items be processed in parallel? ─────► Fan-Out/Fan-In
-  │
-  ├─ Is it a series of transformations? ──────► Pipeline Pattern
-  │
-  ├─ Are there explicit states/transitions? ──► State Machine
-  │
-  ├─ Need to wait for external condition? ────► Polling Pattern
-  │
-  └─ Simple start-to-finish process? ─────────► Process Workflow
-```
+Loop: check status, close on ready or failed, otherwise wait with exponential backoff (`backoff = min(backoff * 2, maxBackoff)`) against an overall deadline — a `promise deadline <- timer(...)` started once before the loop; a `timer(...)` case inside the loop restarts every pass and never fires. To surface progress, upsert search attributes from the loop (SDK-level, not TWF). Long polls need `continue_as_new` — see `LongPoller` in [timers-scheduling.twf](./timers-scheduling.twf).

@@ -1,16 +1,6 @@
 # Skill: Temporal Architect — System Design
 
-**Goal:** Guide an AI to design well-structured Temporal systems using `.twf` — making sound architectural decisions about workflow boundaries, activity decomposition, and primitive selection.
+Teaches judgment, not syntax: *when* to use each Temporal primitive, *where* to draw workflow and activity boundaries, and *how* to model async behavior in `.twf`.
 
-**Primary focus:** Judgment. The hard part is not syntax — it's knowing *when* to use each primitive, *where* to draw boundaries, and *how* to model async behavior clearly. This skill teaches those decisions.
-
-**Scope:**
-- Produces: a validated `.twf` design file
-- Consumes: a user's description of the system or process to model
-- Does not: generate Go code (that's `author-go`), implement the parser, or modify the DSL
-
-**Authoritative references:**
-- `tools/spec/sections/` — DSL ground truth; consult for any syntax or construct question (also `twf spec` / `twf spec <slug>`)
-- Temporal docs MCP server — consult for Temporal primitive semantics before making design decisions
-
-**Entry point:** `SKILL.md` → `reference/` on demand → `topics/` for worked examples
+- **Produces** a validated `.twf` design from a description of the system; does not write SDK code (the author skills do), change the parser, or change the DSL.
+- **Ground truth:** `twf spec` for syntax; the Temporal docs MCP server for primitive semantics, consulted before a design decision.
