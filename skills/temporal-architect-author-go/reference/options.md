@@ -1,28 +1,8 @@
 # options
 
+Option keys map to Go fields by name (`start_to_close_timeout` → `StartToCloseTimeout`); `retry_policy:` → `&temporal.RetryPolicy{...}` (a pointer). When a call has no `options:` block, set a default `ActivityOptions` with `StartToCloseTimeout` on `ctx` near the top of the workflow function.
+
 ## Activity options
-
-### DSL
-
-```twf
-activity QuickLookup(data.id) -> result
-    options:
-        start_to_close_timeout: 30s
-```
-
-### Go
-
-```go
-actCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-    StartToCloseTimeout: 30 * time.Second,
-})
-var result LookupResult
-err := workflow.ExecuteActivity(actCtx, QuickLookup, data.Id).Get(ctx, &result)
-```
-
-## Activity options with retry policy
-
-### DSL
 
 ```twf
 activity UnreliableService(data) -> result
@@ -34,8 +14,6 @@ activity UnreliableService(data) -> result
             backoff_coefficient: 2.0
             maximum_interval: 60s
 ```
-
-### Go
 
 ```go
 actCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
@@ -53,21 +31,19 @@ err := workflow.ExecuteActivity(actCtx, UnreliableService, data).Get(ctx, &resul
 
 ## Child workflow options
 
-### DSL
-
 ```twf
 workflow ChildWorkflow(input.data) -> childResult
     options:
         workflow_execution_timeout: 1h
+        parent_close_policy: REQUEST_CANCEL
         retry_policy:
             maximum_attempts: 3
 ```
 
-### Go
-
 ```go
 childCtx := workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
     WorkflowExecutionTimeout: 1 * time.Hour,
+    ParentClosePolicy:        enumspb.PARENT_CLOSE_POLICY_REQUEST_CANCEL,
     RetryPolicy: &temporal.RetryPolicy{
         MaximumAttempts: 3,
     },
@@ -76,28 +52,11 @@ var childResult ChildResult
 err := workflow.ExecuteChildWorkflow(childCtx, ChildWorkflow, input.Data).Get(ctx, &childResult)
 ```
 
-## Child workflow `parent_close_policy`
-
-### DSL
-
-```twf
-workflow NotifyCustomer(order.customer)
-    options:
-        parent_close_policy: REQUEST_CANCEL
-```
-
-### Go
-
-```go
-childCtx := workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-    ParentClosePolicy: enumspb.PARENT_CLOSE_POLICY_REQUEST_CANCEL,
-})
-err := workflow.ExecuteChildWorkflow(childCtx, NotifyCustomer, order.Customer).Get(ctx, nil)
-```
+`ParentClosePolicy` is an `enumspb.ParentClosePolicy`: `PARENT_CLOSE_POLICY_TERMINATE` (default), `PARENT_CLOSE_POLICY_REQUEST_CANCEL`, `PARENT_CLOSE_POLICY_ABANDON`.
 
 ## Nexus operation options
 
-### DSL
+Passed inline to `ExecuteOperation` — no context wrapping. Fields: `ScheduleToCloseTimeout` (primary) and `CancellationType` (experimental).
 
 ```twf
 nexus BillingEndpoint BillingService.ChargePayment(payment) -> paymentResult
@@ -105,12 +64,10 @@ nexus BillingEndpoint BillingService.ChargePayment(payment) -> paymentResult
         schedule_to_close_timeout: 1h
 ```
 
-### Go
-
 ```go
 c := workflow.NewNexusClient("BillingEndpoint", "BillingService")
 var paymentResult PaymentResult
-fut := c.ExecuteOperation(ctx, "ChargePayment", payment, workflow.NexusOperationOptions{
+fut := c.ExecuteOperation(ctx, ChargePaymentOp, payment, workflow.NexusOperationOptions{
     ScheduleToCloseTimeout: 1 * time.Hour,
 })
 err := fut.Get(ctx, &paymentResult)
@@ -118,9 +75,7 @@ err := fut.Get(ctx, &paymentResult)
 
 ## Definition-level `default_options:`
 
-A `default_options:` block on an `activity` or `workflow` **definition** supplies default option values for every call of that definition. It uses the same key/value grammar as a call-site `options:` block, but leads the definition body.
-
-### DSL
+A `default_options:` block on an `activity` or `workflow` definition supplies defaults for every call of it, in the call-site `options:` grammar.
 
 ```twf
 activity ChargeCard(card, amount) -> receipt
@@ -145,51 +100,36 @@ workflow FulfillOrder(order) -> (OrderResult):
                 maximum_attempts: 1
 ```
 
-### Go
+- **Placement**: activity — head of the body; workflow — first body element, before `state:`.
+- **Keys**: activity `default_options:` takes every activity call-option key; workflow `default_options:` every workflow call-option key **except** `parent_close_policy` (call-site only — it describes one parent↔child bond, not the type). `cron_schedule` is not an option key.
+- **Precedence**: call-site `options:` overrides per key; nested blocks (`retry_policy`, `priority`) **atomic-replace** — no deep merge.
 
-The DSL `default_options:` has no single Go construct — it is the design-time convention that a definition's defaults apply to every call. In Go, realize it by building a base options value (`ActivityOptions` / `ChildWorkflowOptions`) once and reusing it, applying it with `workflow.WithActivityOptions` / `workflow.WithChildOptions` near each call. A call-site `options:` override becomes a per-call copy of that base value with the overridden fields replaced:
+Go has no single construct for it: build the base options value once and apply it near each call; an override is a struct copy with fields replaced, which is exactly the per-key, atomic-replace rule.
 
 ```go
-// Base defaults for ChargeCard (mirrors default_options:).
 chargeDefaults := workflow.ActivityOptions{
     StartToCloseTimeout: 30 * time.Second,
     RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 5},
 }
 
-// Default call.
 ctxDefault := workflow.WithActivityOptions(ctx, chargeDefaults)
 err := workflow.ExecuteActivity(ctxDefault, ChargeCard, order.Card, order.Total).Get(ctx, &receipt)
 
-// Per-key override: copy the base, atomic-replace RetryPolicy (no field merge).
 tipOpts := chargeDefaults
 tipOpts.RetryPolicy = &temporal.RetryPolicy{MaximumAttempts: 1}
 ctxTip := workflow.WithActivityOptions(ctx, tipOpts)
 err = workflow.ExecuteActivity(ctxTip, ChargeCard, order.Card, order.Tip).Get(ctx, &tipReceipt)
 ```
 
-### Rules
+## Timeouts
 
-- **Placement**: activity — head of the body (before statements); workflow — first body element, before the optional `state:` block.
-- **Key partition**: activity `default_options:` accepts every activity call-option key; workflow `default_options:` accepts every workflow call-option key **except** `parent_close_policy` (call-site-only — it describes one parent↔child bond, not the workflow type). `cron_schedule` is no longer an option key at all.
-- **Precedence**: a call-site `options:` block overrides `default_options:` **per key**; nested blocks (`retry_policy`, `priority`) **atomic-replace** — the whole nested block is replaced, there is no deep merge. In Go this is exactly a struct-field copy-then-replace, as shown above.
+- **`StartToCloseTimeout`** — one activity attempt; resets on each retry. The primary way a worker crash is detected; Temporal recommends always setting it.
+- **`ScheduleToCloseTimeout`** — total wall-clock from scheduling, across all retries; does not reset. Caps total time under exponential backoff.
+- An activity needs at least one of the two — omitting both is a runtime error.
+- **`WorkflowExecutionTimeout`** — the whole execution, including retries and Continue-As-New chains. Set in `client.StartWorkflowOptions` or `workflow.ChildWorkflowOptions`, not in `ActivityOptions`.
 
-## Notes
+## Retry pitfalls
 
-- When no `options:` block is specified, set a default `ActivityOptions` with `StartToCloseTimeout` on `ctx` near the top of the workflow function
-- Option keys map: `start_to_close_timeout` → `StartToCloseTimeout`, `schedule_to_close_timeout` → `ScheduleToCloseTimeout`, `heartbeat_timeout` → `HeartbeatTimeout`, `parent_close_policy` → `ParentClosePolicy` (type: `enumspb.ParentClosePolicy`; values: `PARENT_CLOSE_POLICY_TERMINATE` (default), `PARENT_CLOSE_POLICY_REQUEST_CANCEL`, `PARENT_CLOSE_POLICY_ABANDON`)
-- `retry_policy:` → `&temporal.RetryPolicy{...}` (pointer)
-- `NexusOperationOptions` fields: `ScheduleToCloseTimeout` (primary) and `CancellationType` (experimental). Options are passed inline — no context wrapping like activities
-
-## When to use each timeout
-
-- **`StartToCloseTimeout`** — maximum time for a single activity attempt. Resets on each retry. Primary mechanism for detecting worker crashes. Temporal recommends always setting this
-- **`ScheduleToCloseTimeout`** — total wall-clock time from when the activity is scheduled, including all retries. Does not reset. Use to cap total time when retries have exponential backoff
-- **`WorkflowExecutionTimeout`** — end-to-end timeout for the entire workflow execution including retries and Continue-As-New chains. Set on the client when starting the workflow, not in `ActivityOptions`
-- At least one of `StartToCloseTimeout` or `ScheduleToCloseTimeout` is required for activities — omitting both is a runtime error
-
-## Pitfalls
-
-- **`MaximumAttempts: 1`** means one attempt total — this disables retries. `MaximumAttempts: 0` (the default) means unlimited retries
-- **`BackoffCoefficient: 1.0`** produces fixed-interval retries (no exponential growth). The formula is `InitialInterval * BackoffCoefficient^(attempt-1)`
-- Activities retry by default (server default: initial interval 1s, backoff 2.0, max interval 100s, unlimited attempts). Workflows do not retry by default
-- If no `RetryPolicy` is specified on an activity, the server default applies — this is a common source of surprise
+- Activities retry by default, server defaults: initial interval 1s, backoff 2.0, max interval 100s, unlimited attempts. With no `RetryPolicy`, these apply — a common surprise. Workflows do not retry by default.
+- `MaximumAttempts: 1` is one attempt total (no retries); `0` (the default) is unlimited.
+- `BackoffCoefficient: 1.0` gives fixed intervals; the interval is `InitialInterval * BackoffCoefficient^(attempt-1)`.

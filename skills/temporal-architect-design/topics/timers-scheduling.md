@@ -2,53 +2,23 @@
 
 > **Example:** [`timers-scheduling.twf`](./timers-scheduling.twf)
 
-Durable timing primitives for delays, deadlines, and recurring execution.
-
 ## Timers
 
-Durable sleep that survives worker restarts, deployments, and failures.
-
-### Basic Timer
-
-```twf
-workflow DelayedNotification(userId: string, delay: duration):
-    # Durable sleep - workflow pauses but state is preserved
-    await timer(delay)
-
-    activity SendNotification(userId)
-```
-
-### Timer Considerations
+`await timer(d)` is a durable sleep: the workflow's state survives worker restarts, deployments, and failures, and it resumes when the timer fires.
 
 | Aspect | Guidance |
 |--------|----------|
-| **Durability** | Timer survives worker restarts; workflow resumes when timer fires |
-| **Precision** | Not precise to the millisecond; expect seconds of variance |
-| **History** | Each timer adds to workflow history; avoid very frequent short timers |
-| **Cancellation** | Timers can be cancelled if workflow is cancelled |
+| **Precision** | Not millisecond-precise; expect seconds of variance |
+| **History** | Each timer adds history events; avoid very frequent short timers, and give periodic loops `continue_as_new` (`HealthMonitor`, `LongPoller`) |
 
----
+## Deadlines
 
-## Deadlines and Timeouts
-
-### Workflow-Level Deadline
-
-```twf
-workflow OrderFulfillment(order: Order) -> (OrderResult):
-    # Entire workflow must complete within deadline (SDK-level config)
-    # workflow_timeout: 7d
-
-    activity ValidateRetailOrder(order)
-    await signal PaymentReceived
-    activity ShipRetailOrder(order)
-    close complete(OrderResult{status: "completed"})
-```
-
-### Operation Deadline Pattern
+- **Whole workflow:** `workflow_execution_timeout` — a call option on a child, a start option for a top-level workflow.
+- **One activity:** its `options:` timeouts — see [activities-advanced.md](./activities-advanced.md#timeouts).
+- **Any step, with a fallback path:** race it against a timer.
 
 ```twf
 workflow ProcessWithDeadline(data: Data) -> (Result):
-    # Race between operation and deadline
     await one:
         activity LongOperation(data) -> result:
             close complete(Result{success: true, data: result})
@@ -57,75 +27,12 @@ workflow ProcessWithDeadline(data: Data) -> (Result):
             close fail(Result{success: false, error: "deadline exceeded"})
 ```
 
-> **`await one` does not cancel the loser.** If the timer wins, `LongOperation` is **not** cancelled — it keeps running in the background until the workflow run ends. `await one` is "first to complete wins," not "winner cancels the rest." If the losing operation must actually stop (release a lock, stop billing), you need an explicit cancellation/cleanup activity — the race alone won't do it.
+> **`await one` does not cancel the loser.** If the timer wins, `LongOperation` keeps running until the workflow run ends — `await one` is "first to complete wins," not "winner cancels the rest." If the loser must actually stop (release a lock, stop billing), add an explicit cancellation/cleanup activity.
 
-### Timeout on Signal Wait
-
-```twf
-workflow ApprovalWorkflow(request: Request) -> (Decision):
-    activity NotifyApprovers(request)
-
-    await one:
-        signal Approved:
-            close complete(Decision{status: "approved"})
-        signal Rejected:
-            close complete(Decision{status: "rejected"})
-        timer(7d):
-            activity NotifyExpired(request)
-            close complete(Decision{status: "expired"})
-```
-
----
-
-## Scheduling Patterns
-
-### Periodic Execution Within Workflow
-
-```twf
-workflow Heartbeat(resourceId: string):
-    for:
-        activity CheckHealth(resourceId)
-        await timer(5m)
-```
-
-### Polling with Backoff
-
-```twf
-workflow WaitForResource(resourceId: string) -> (Resource):
-    backoff = 1s
-    max_backoff = 5m
-
-    for:
-        activity CheckResource(resourceId) -> resource
-        if resource.ready:
-            close complete(resource)
-
-        await timer(backoff)
-        backoff = min(backoff * 2, max_backoff)
-```
-
-### Deadline with Periodic Check
-
-```twf
-workflow WaitForCompletion(jobId: string) -> (JobResult):
-    for:
-        activity GetJobStatus(jobId) -> status
-        if status.complete:
-            close complete(JobResult{status: "complete", data: status.data})
-
-        await one:
-            timer(30s):
-                # Continue polling
-            timer(2h):
-                close fail(JobResult{status: "timeout"})
-```
-
----
+The same race bounds a signal wait: `await one:` over the expected signals plus `timer(7d):` for the expiry path. For recurring work inside a workflow, loop over an activity and `await timer(...)`; for polling with backoff, see [patterns.md](./patterns.md#polling).
 
 ## Schedules (Cron Workflows)
 
-Temporal Schedules execute workflows on a recurring basis (cron expressions, intervals, calendars). Schedules are **platform configuration**, not workflow design — they define *when* to start a workflow, not *how* it runs.
+Temporal Schedules start workflows on a recurring basis (cron expressions, intervals, calendars). They are **platform configuration**, not workflow design — they define *when* a workflow starts, not *how* it runs — and are managed through the Temporal CLI or SDK (specs, overlap policies, catchup windows, timezones), not TWF. See [Temporal Schedules documentation](https://docs.temporal.io/workflows#schedule).
 
-Schedule configuration (specs, overlap policies, catchup windows, timezones) is managed through the Temporal CLI or SDK, not TWF notation. See [Temporal Schedules documentation](https://docs.temporal.io/workflows#schedule) for details.
-
-**Design implication:** A scheduled workflow should be designed like any other workflow — idempotent, with continue-as-new if long-running. The schedule itself is an external trigger, not part of the workflow's logic.
+**Design implication:** design a scheduled workflow like any other — idempotent, with `continue_as_new` if long-running. The schedule is an external trigger, not part of the workflow's logic.

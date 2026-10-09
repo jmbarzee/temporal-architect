@@ -1,6 +1,6 @@
 # three-layer-testing
 
-Temporal Go code divides into three testable layers. **Each layer mocks only its direct dependency** — never anything deeper. This is good practice for any clean Go Temporal project, not just proto-driven ones.
+Temporal Go code has three testable layers, each catching bugs the others structurally cannot. **Each layer mocks only its direct dependency** — a workflow test must not know about HTTP.
 
 | Layer | File | Mocks | Build tag | Speed |
 |---|---|---|---|---|
@@ -8,13 +8,11 @@ Temporal Go code divides into three testable layers. **Each layer mocks only its
 | Activities | `activities_test.go` | client interface | *(none)* | fast, no Docker |
 | Clients | `client_test.go` | nothing (real system) | `integration` | slow, needs Docker |
 
-**Why three layers:** workflow tests check orchestration (right activities, right order, failures propagate) but can't see bugs inside activities; activity tests check validation and error handling but can't see bugs in the real client; client tests check the real protocol/error codes that mocks would hide. Each layer catches bugs the others cannot.
-
----
+Workflow tests check orchestration (right activities, right order, failures propagate); activity tests check validation and error handling; client tests check the real protocol and error codes that mocks hide. In every table-driven test, build fresh `env` and mocks per case, and name cases as documentation (`"error - empty role name"`, not `"test1"`).
 
 ## Layer 1: Workflow tests
 
-Use `testsuite.WorkflowTestSuite`; mock the activities interface so the workflow can be driven to any outcome without real systems. A fresh environment per table case:
+Use `testsuite.WorkflowTestSuite`; mock the activities interface to drive the workflow to any outcome:
 
 ```go
 func TestProcessOrderWorkflow(t *testing.T) {
@@ -32,7 +30,6 @@ func TestProcessOrderWorkflow(t *testing.T) {
             mockActivities := mocks.NewMockActivities(t)
             env.RegisterActivity(mockActivities)
 
-            // Conditional mock: only set expectations on the path the case reaches.
             mockActivities.EXPECT().
                 ChargePayment(mock.Anything, mock.Anything).
                 Return(&pb.ChargeOutput{Id: "ch-1"}, tt.createErr)
@@ -60,8 +57,6 @@ func TestNewProcessOrder(t *testing.T) {
 ```
 
 Workflow tests also guard **replay safety**: Temporal replays from event history, so if changed code executes activities in a different order, replay breaks. These tests pin the activity-call sequence for given inputs.
-
----
 
 ## Layer 2: Activity tests
 
@@ -103,9 +98,7 @@ func TestCreateThingActivity(t *testing.T) {
 }
 ```
 
-**Conditional mocks** are the key pattern: when input is invalid, set no expectations — mockery fails the test if the client is called anyway, which proves the validation layer works.
-
----
+**Conditional mocks mirror code flow:** set no expectation for input validation rejects — mockery then fails the test if the client is called anyway, proving the validation layer works.
 
 ## Layer 3: Client tests (integration)
 
@@ -144,11 +137,9 @@ func TestMyServiceClient(t *testing.T) {
 - Start a fresh container per test function; always `defer container.Terminate(ctx)`.
 - Assert against the client's **real error types** (`ErrNotFound`), not test sentinels — this verifies the client translates system error codes correctly.
 
----
-
 ## Mock generation (the proto seam)
 
-Hand-written interfaces can be mocked by hand or with a generator. When the project is **proto-driven**, the activities interface is generated (`XxxActivities` — see [proto-driven.md](./proto-driven.md)), so its mock must be generated too. [mockery](https://vektra.github.io/mockery/) generates both kinds from a `.mockery.yaml`:
+Hand-written interfaces can be mocked by hand or generated. In a [proto-driven](./proto-driven.md) project the activities interface (`XxxActivities`) is itself generated, so its mock must be too; [mockery](https://vektra.github.io/mockery/) generates both kinds from `.mockery.yaml`:
 
 ```yaml
 with-expecter: true
@@ -160,14 +151,3 @@ packages:
     interfaces:
       MyServiceClient:
 ```
-
-Generated mocks are an **option within** testing — the one proto seam — not a requirement of the three-layer approach.
-
----
-
-## Key principles
-
-- **Only mock your direct dependency.** Workflow → activities; activity → client. Never reach two layers deep (a workflow must not know about HTTP).
-- **Conditional mocks mirror code flow.** No expectation set for inputs that validation rejects.
-- **Fresh setup per case.** Never share `env` or mock state across table-driven cases.
-- **Test names are documentation.** `"error - empty role name"`, not `"test1"`.

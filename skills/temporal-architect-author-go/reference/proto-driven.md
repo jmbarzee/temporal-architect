@@ -1,16 +1,10 @@
 # proto-driven
 
-Codegen variant where **protobuf is the single source of truth** for workflow and activity interfaces. Generators produce the Temporal framework — typed interfaces, registration helpers, activity futures, Nexus stubs — leaving only business logic hand-written. Route here when the [Orient](../SKILL.md#orient) signals fire (`buf.gen.yaml` → `protoc-gen-go_temporal`, generated `*_temporal.pb.go`, `(temporal.v1.activity|workflow)` annotations).
-
-Sometimes called **PFI** (proto-first interfaces). Detect it from those repo signals, never from the name.
-
-In an existing proto-first repo, the layout, tooling, and naming are **requirements to match** — conform to what discovery found; do not impose this skeleton over a different one.
-
----
+Codegen variant where **protobuf is the single source of truth** for workflow and activity interfaces (alias "PFI"). Generators emit the Temporal framework — typed interfaces, registration helpers, futures, Nexus stubs — and only business logic is hand-written. Routed here by the [Orient](../SKILL.md#orient) signals. In an existing repo, its layout, tooling, and naming win over the skeleton below.
 
 ## Contract + layout
 
-Three directories, one direction of flow: `proto/` (source of truth) → `gen/` (generated, never edit) → `lib/` (hand-written).
+One direction of flow: `proto/` → `gen/` (generated — never hand-edit) → `lib/` (hand-written).
 
 ```
 <project>/
@@ -25,13 +19,9 @@ Three directories, one direction of flow: `proto/` (source of truth) → `gen/` 
     └── fx.go                                    # hand-written: dependency injection wiring
 ```
 
-Everything under `gen/` is generated — never hand-edit it.
-
----
-
 ## Tools
 
-[buf](https://buf.build) drives generation; plugins are installed from `go.mod` so versions are pinned to the module:
+[buf](https://buf.build/docs) drives generation (`buf generate`) with [protoc-gen-go-temporal](https://github.com/cludden/protoc-gen-go-temporal) and [protopatch](https://github.com/alta/protopatch) (struct tags). Install the plugins from `go.mod`, so versions are pinned to the module, and put them on `$PATH`:
 
 ```bash
 go install google.golang.org/protobuf/cmd/protoc-gen-go
@@ -41,8 +31,6 @@ go install github.com/cludden/protoc-gen-go-temporal/cmd/protoc-gen-go_temporal
 go install github.com/bergundy/protoc-gen-go-nexus/cmd/protoc-gen-go-nexus
 go install github.com/bergundy/protoc-gen-go-nexus-temporal/cmd/protoc-gen-go-nexus-temporal
 ```
-
-These must be on `$PATH` when `buf generate` runs.
 
 ### `buf.yaml` skeleton
 
@@ -84,10 +72,6 @@ inputs:
   - directory: proto/<service>
 ```
 
-Run generation with `buf generate`.
-
----
-
 ## Proto annotations
 
 ```proto
@@ -126,13 +110,11 @@ message CreateThingInput {
 - `(temporal.v1.activity)` / `(temporal.v1.workflow)` mark an RPC; set a unique `name` and timeouts. Workflows and activities coexist in one service.
 - `(go.field).tags` injects struct tags on the generated Go type (requires `protopatch`).
 - Use `XxxInput` / `XxxOutput` naming — the Temporal ecosystem expects these, not `Request`/`Response`.
-- `(.nexus.v1.operation)` controls Nexus exposure — **default-on, opt-out**. With the Nexus plugins enabled (Tools § above), every `(temporal.v1.workflow)` RPC is exposed as a Nexus operation by default; tag an RPC `(.nexus.v1.operation).tags = "activity"` (as on `TeardownCluster`) to exclude it. This annotation is from the `nexus.v1` package — **outside** the `(temporal.v1.*)` namespace — so a scan of only `temporal.v1.*` annotations misses it and reports the wrong Nexus surface.
-
----
+- `(.nexus.v1.operation)` controls Nexus exposure, **default-on, opt-out**: with the Nexus plugins enabled, every `(temporal.v1.workflow)` RPC is a Nexus operation unless tagged `(.nexus.v1.operation).tags = "activity"` (as `TeardownCluster` is). It lives in `nexus.v1`, outside `temporal.v1.*`, so a scan of only `temporal.v1.*` annotations reports the wrong Nexus surface — recover the true surface from the generated Nexus stubs (below).
 
 ## Generated-symbol table
 
-For each annotated service, `protoc-gen-go_temporal` emits these in `*_temporal.pb.go`. This is the Rosetta Stone — the same table is read **backward** during [reverse engineering](../../temporal-architect-design/reference/reverse-engineering.md) to recover intent from generated code.
+`protoc-gen-go_temporal` emits these per annotated service in `*_temporal.pb.go`; you write only the implementations. [Reverse engineering](../../temporal-architect-design/reference/reverse-engineering.md) reads this table backward to recover intent from generated code.
 
 | Generated symbol | Purpose |
 |---|---|
@@ -143,13 +125,7 @@ For each annotated service, `protoc-gen-go_temporal` emits these in `*_temporal.
 | `XxxWorkflows` interface | implement for workflows (if RPCs are annotated as workflows) |
 | `RegisterXxxWorkflows(worker, impl)` | register all workflows |
 | `XxxClient` struct | call activities/workflows from outside Temporal |
-| Nexus operation stub (present per exposed workflow RPC) | RPC is exposed via Nexus — its **absence** despite a `(temporal.v1.workflow)` annotation means the RPC was opted out with `(.nexus.v1.operation).tags = "activity"` |
-
-You never write these — only the implementations.
-
-**Reading the table backward for Nexus:** exposure is default-on, then opt-out. A `(temporal.v1.workflow)` RPC is Nexus-exposed unless tagged `(.nexus.v1.operation).tags = "activity"`, so recover the true surface from the generated Nexus stubs, not the `temporal.v1.*` annotations alone — a stub present ⇒ exposed; a stub missing for an annotated workflow RPC ⇒ opted out. (Only applies when the Nexus plugins are enabled in `buf.gen.yaml`.)
-
----
+| Nexus operation stub (Nexus plugins only) | present ⇒ the workflow RPC is Nexus-exposed; missing for an annotated workflow RPC ⇒ opted out |
 
 ## Implement, register, client
 
@@ -173,7 +149,7 @@ func (a *Activities) CreateThing(ctx context.Context, req *pb.CreateThingInput) 
 }
 ```
 
-**Register** the generated helper at worker startup (commonly via `fx`):
+**Register** with the generated helper, commonly via `fx`:
 
 ```go
 // fx.go
@@ -187,7 +163,7 @@ func RegisterActivities(w worker.Worker, a pb.MyServiceActivities) {
 }
 ```
 
-**Client interface** — define a hand-written interface for the external system in the implementation package so activities depend on the interface, not the concrete type (and it can be mocked in tests):
+**Client interface** — hand-written, in the implementation package, so activities depend on it rather than the concrete client and tests can mock it ([three-layer-testing.md](./three-layer-testing.md)):
 
 ```go
 // client.go
@@ -196,14 +172,3 @@ type MyServiceClient interface {
     Delete(ctx context.Context, id string) error
 }
 ```
-
-For the testing seam on these generated and hand-written interfaces, see [three-layer-testing.md](./three-layer-testing.md).
-
----
-
-## References
-
-- [protoc-gen-go-temporal](https://github.com/cludden/protoc-gen-go-temporal) — the core Temporal code generator
-- [protopatch](https://github.com/alta/protopatch) — struct tag injection for Go proto types
-- [buf](https://buf.build/docs) — proto dependency management and generation pipeline
-- [three-layer-testing.md](./three-layer-testing.md) — testing strategy; the generated activities interface is the proto seam for mocks

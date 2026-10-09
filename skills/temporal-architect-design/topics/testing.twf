@@ -90,7 +90,6 @@ workflow SubscriptionManager(userId: string, sub: Subscription):
         return sub
 
     for:
-        # Wait for renewal or expiration
         await one:
             renewed:
                 activity ExtendSubscription(userId, sub) -> sub
@@ -105,7 +104,6 @@ workflow SubscriptionManager(userId: string, sub: Subscription):
                         activity CancelSubscription(userId)
                         close complete
 
-        # Periodic state snapshot for continue-as-new
         close continue_as_new(userId, sub)
 
 # --- Supporting activities ---

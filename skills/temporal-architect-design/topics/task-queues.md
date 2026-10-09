@@ -2,96 +2,31 @@
 
 > **Example:** [`task-queues.twf`](./task-queues.twf)
 
-Workers group type registrations. Task queues route work to workers. Namespaces instantiate workers with deployment options. Together they answer: **what runs together, how work reaches it, and where it's deployed.**
+Workers group type registrations, task queues route work to them, and namespaces instantiate workers with deployment options: **what runs together, how work reaches it, and where it's deployed.**
 
----
+## Workers and Namespaces
 
-## Worker Type Sets
+- A `worker` is a **type set** — only `workflow`, `activity`, and `nexus service` entries, no deployment config. Worker names are `lowerCamelCase`; workflow/activity names stay `UpperCamelCase`.
+- A `namespace` instantiates workers, each with an `options:` block that requires `task_queue`, and exposes `nexus endpoint`s whose `task_queue` must match a worker registering the service ([nexus.md](./nexus.md)).
+- The same worker can be instantiated in several namespaces (e.g. `prod` and `staging` on different queues).
+- Several workers may share a queue only if they register the **same** type set; the same type set on different queues is a tier the caller picks by queue.
+- A call without an explicit `task_queue` goes to the caller's own queue; some worker there must register the target.
+- Names are plain identifiers except the namespace name, nexus endpoint name, and endpoint reference, which take the `deploy_name` form (hyphens, `{param}` holes; `twf spec tokens-and-keywords`).
 
-Workers are reusable type sets that list which workflows, activities, and nexus services belong together:
-
-```twf
-worker orderTypes:
-    workflow ProcessOrder
-    workflow CancelOrder
-    activity ChargePayment
-    activity SendNotification
-
-worker paymentTypes:
-    activity ChargePayment
-    activity GetPaymentStatus
-    nexus service PaymentService
-```
-
-Workers contain only type references — no deployment config. Naming: `lowerCamelCase`.
-
----
-
-## Namespace Instantiation
-
-Namespaces instantiate workers with deployment options (task queue, versioning strategy, and more — see [Worker Options](#worker-options) below) and expose nexus endpoints for external callers:
-
-```twf
-namespace ecommerce:
-    worker orderTypes
-        options:
-            task_queue: "orderProcessing"
-            max_concurrent_activity_executions: 50
-    worker paymentTypes
-        options:
-            task_queue: "payments"
-    # Nexus endpoint lives in the target namespace alongside the worker that serves it.
-    # External callers in other namespaces reach PaymentService via this endpoint.
-    nexus endpoint PaymentEndpoint
-        options:
-            task_queue: "payments"
-```
-
-The same worker type set can be reused across namespaces:
-
-```twf
-namespace staging:
-    worker orderTypes
-        options:
-            task_queue: "staging-orders"
-```
+`twf check` enforces these — diagnostics in [common-errors.md](../reference/common-errors.md).
 
 ### Worker Options
 
-The worker `options:` block is the **union of SDK worker options**, accepted *permissively* — the parser does no per-language validation, so an option a given SDK lacks is still allowed. Use it to express **strategy and intent at design altitude**, not exhaustive numeric ops tuning (exact poller counts and cache TTLs belong in implementation):
+The worker `options:` block is the **union of SDK worker options**, accepted permissively — the parser does no per-language validation. Use it for **strategy and intent**, not numeric ops tuning (exact poller counts and cache TTLs belong in implementation):
 
 - **`task_queue`** (required) — routing; pins the worker pool.
-- **`versioning: none | build_id | deployment`** — the worker-versioning *strategy* a pool follows (see [versioning.md](./versioning.md#declaring-the-strategy-in-twf)). A reliability/availability decision the design should make; concrete Build IDs / deployment names are deploy-time inputs, not `.twf` content.
-- **`enable_sessions`** — a genuine design call: sessions pin a sequence of activities to one worker (host-affinity for stateful or resource-bound work), distinct from numeric tuning.
-- **Concurrency caps and rate limiters** (`max_concurrent_*`, `*_rate_limit`, sticky cache) are part of the union but are ops tuning — include them only when a workload demands it; the design agent generally should not hand-set them.
+- **`versioning: none | build_id | deployment`** — the pool's worker-versioning strategy, a reliability decision the design should make ([versioning.md](./versioning.md#declaring-the-strategy-in-twf)). Concrete Build IDs / deployment names are deploy-time inputs, not `.twf` content.
+- **`enable_sessions`** — pins a sequence of activities to one worker (host affinity for stateful or resource-bound work); a design call, not tuning.
+- **Concurrency caps and rate limiters** (`max_concurrent_*`, `*_rate_limit`, sticky cache) — ops tuning; set them only when a workload demands it.
 
-The full key list lives in the spec — run `twf spec` or see [`tools/spec/sections/03-workers-and-namespaces.md`](../../../tools/spec/sections/03-workers-and-namespaces.md) — rather than being duplicated here (avoids drift, keeps the design at altitude).
+Full key list: `twf spec workers-and-namespaces`.
 
-### Nexus Endpoints in Namespaces
-
-A `nexus endpoint` in a namespace declaration exposes a nexus service to callers in other namespaces. The endpoint's `task_queue` must match the queue where a worker with that nexus service is running. See [nexus.md](./nexus.md) for the full cross-namespace pattern.
-
-### What the Resolver Validates
-
-- **Undefined references** — Catch typos (e.g., referencing a workflow or worker that doesn't exist)
-- **Coverage gaps** — Warn when a defined workflow/activity isn't registered on any instantiated worker
-- **Task queue coherence** — Error when different workers on the same queue register different type sets
-- **Missing configuration** — Error when a worker instantiation is missing the required `task_queue` option
-
-### Rules
-
-- Workers contain only `workflow`, `activity`, and `nexus service` entries (type set only, no deployment config)
-- Each worker instantiation in a namespace requires a `task_queue` option
-- Worker names use lowerCamelCase; workflow/activity names keep UpperCamelCase
-- Multiple workers can be instantiated on the same task queue (but must register the same type sets)
-- Workers not instantiated in any namespace produce warnings
-- **Naming is identifiers-only, with one exception:** worker/workflow/activity/service names are plain identifiers, but the three *deployment-name* positions — namespace name, nexus endpoint name, and nexus endpoint reference — take the `deploy_name` form (hyphens and `{param}` template holes). See [namespaces.md](../reference/namespaces.md#naming-the-deploy_name-form).
-
----
-
-## Task Queue Design Decisions
-
-### Single vs Multiple Task Queues
+## Task Queue Design
 
 | Single Queue | Multiple Queues |
 |--------------|-----------------|
@@ -100,118 +35,26 @@ A `nexus endpoint` in a namespace declaration exposes a nexus service to callers
 | Scaling affects everything | Scale queues independently |
 | One failure domain | Isolated failure domains |
 
-### When to Use Separate Task Queues
-
-> **Different runtimes do not require different namespaces — use task queues.** GPU workers, licensed-software workers, region-specific workers, and bursty-vs-steady workloads are all *task queue* concerns within a single namespace. Reaching for a namespace per runtime is the misconception that produces namespace-per-worker. See [namespaces.md](../reference/namespaces.md) — the default namespace count is one.
+Share a queue unless one of these calls for a separate one — never one queue per workflow type, and never a namespace per runtime ([namespaces.md](../reference/namespaces.md)):
 
 | Use Case | Rationale |
 |----------|-----------|
-| **Different resource requirements** | CPU-heavy vs I/O-heavy work |
-| **Different scaling characteristics** | Bursty vs steady workloads |
-| **Isolation requirements** | Tenant isolation, security boundaries |
-| **Priority handling** | High-priority vs batch processing |
-| **Geographic distribution** | Region-specific workers |
+| **Different resource requirements** | CPU-heavy vs I/O-heavy |
 | **Specialized capabilities** | GPU workers, licensed software |
+| **Different scaling characteristics** | Bursty vs steady |
+| **Priority handling** | High-priority vs batch |
+| **Isolation requirements** | Tenant isolation, security boundaries |
+| **Geographic distribution** | Region-specific workers |
 
----
-
-## Task Queue Patterns
-
-### Priority Queues
-
-Separate queues for different priorities:
-
-```twf
-workflow OrderWorkflow(order: Order) -> (Result):
-    if (order.priority == "express"):
-        activity ProcessOrder(order)
-            options:
-                task_queue: "high-priority"
-    else:
-        activity ProcessOrder(order)
-            options:
-                task_queue: "standard"
-```
-
-### Tenant Isolation
-
-Separate queues per tenant:
-
-```twf
-workflow TenantWorkflow(tenantId: string, data: Data) -> (Result):
-    # Route to tenant-specific queue
-    activity ProcessData(data)
-        options:
-            task_queue: "tenant-{tenantId}"
-```
+**Keep the queue set bounded.** A queue name built from a per-request value (`"request-{requestId}"`) creates queues that are never cleaned up; select from a fixed set instead (`"high"`, `"medium"`, `"low"`).
 
 ### Template holes vs. runtime interpolation
 
-`{x}` in an option value means **two different things depending on position** — do not conflate them:
+`{x}` in an option value means two different things by position:
 
-| `{x}` position | Meaning | Bound / resolved by | Template check |
-|----------------|---------|---------------------|----------------|
-| **Workflow-body** activity/child-call option value — `task_queue: "tenant-{tenantId}"`, `"workers-{request.region}"`, `"request-{requestId}"` (the examples on this page) | **Runtime interpolation** — references a workflow parameter, resolved per-execution at runtime | The workflow's own parameters, at runtime | **Not** subject to `UNBOUND_TEMPLATE_PARAM` — these examples stay valid |
-| **Namespace name**, **endpoint name**, or a **namespace-level worker/endpoint** option value — `task_queue: "q-{org}-bootstrap"` under `namespace fabric-shard-{org}` | **Deploy-time template hole** — a family template parameter, fixed per family member at deploy time | The enclosing namespace/endpoint template | **Must** be bound by the enclosing template, else `UNBOUND_TEMPLATE_PARAM` |
+| `{x}` position | Meaning | Bound by | Template check |
+|----------------|---------|----------|----------------|
+| **Workflow-body** activity/child-call option value — `"tenant-{tenantId}"`, `"workers-{request.region}"` | **Runtime interpolation** of a workflow parameter, per execution | The workflow's parameters, at runtime | **Not** subject to `UNBOUND_TEMPLATE_PARAM` |
+| **Namespace name**, **endpoint name**, or a **namespace-level worker/endpoint** option value — `task_queue: "q-{org}-bootstrap"` under `namespace fabric-shard-{org}` | **Deploy-time template hole**, fixed per family member | The enclosing namespace/endpoint template | **Must** be bound, else `UNBOUND_TEMPLATE_PARAM` |
 
-So the routing examples on this page (`"tenant-{tenantId}"` etc.) are runtime interpolation and are **unaffected** by the parameterized-family template checks — they raise no template error. The deploy-time holes live only in the three deployment-name positions and in namespace-level options. See [namespaces.md](../reference/namespaces.md#parameterized-namespaces-and-endpoints) for the family model and [common-errors.md](../reference/common-errors.md#resolve-errors-kind-resolve) for `UNBOUND_TEMPLATE_PARAM`.
-
-### Capability-Based Routing
-
-Route based on required capabilities:
-
-```twf
-workflow MediaWorkflow(media: Media) -> (Result):
-    if (media.type == "video"):
-        # Needs GPU workers
-        activity TranscodeVideo(media)
-            options:
-                task_queue: "gpu-workers"
-    else:
-        activity ProcessImage(media)
-            options:
-                task_queue: "standard-workers"
-```
-
-### Geographic Routing
-
-Route to region-specific workers:
-
-```twf
-workflow GlobalWorkflow(request: Request) -> (Result):
-    # Route to nearest region
-    activity ProcessLocally(request)
-        options:
-            task_queue: "workers-{request.region}"
-```
-
----
-
-## Anti-Patterns
-
-### One Queue Per Workflow Type
-
-```twf
-# BAD: Unnecessary complexity — one queue per type
-# Results in many queues, complex deployment
-
-# GOOD: Shared queue unless isolation needed
-# Put related workflows on the same worker and task queue
-```
-
-### Dynamic Queue Names Without Cleanup
-
-```twf
-# BAD: Creates queue per request (never cleaned up)
-workflow Process(requestId: string):
-    activity DoWork()
-        options:
-            task_queue: "request-{requestId}"  # Unbounded queues!
-
-# GOOD: Bounded set of queues
-workflow Process(request: Request):
-    queue = selectQueue(request.priority)  # "high", "medium", "low"
-    activity DoWork()
-        options:
-            task_queue: queue
-```
+See [namespaces.md](../reference/namespaces.md#parameterized-namespaces-and-endpoints) for the family model.

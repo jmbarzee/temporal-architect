@@ -2,24 +2,9 @@
 
 > **Example:** [`promises-conditions.twf`](./promises-conditions.twf)
 
-Deferred async operations and named boolean awaitables for workflow state.
-
-## Overview
-
-| Primitive | Purpose | Syntax |
-|-----------|---------|--------|
-| **Promise** | Start async operation, await later | `promise p <- activity Foo(x)` |
-| **Condition** | Named boolean awaitable | `condition myCondition` (in `state:` block) |
-| **Set / Unset** | Mutate a condition | `set myCondition` / `unset myCondition` |
-| **State block** | Declare workflow state | `state:` (before handlers) |
-
----
-
 ## Promises
 
-A `promise` wraps any async operation (activity, workflow, timer, signal, update) for non-blocking execution. The `<-` operator visually distinguishes async declaration from sync result binding (`->`).
-
-### Declaration
+Every async operation has two forms: **blocking** (`activity Process(item) -> result` starts and waits) and **non-blocking** (`promise p <- activity Process(item)` starts, continues, waits later). `<-` marks the async declaration; `->` binds a result.
 
 ```twf
 promise p <- activity ProcessItem(input)
@@ -28,121 +13,18 @@ promise timeout <- timer(5m)
 promise approved <- signal Approved
 promise addr <- update ChangeAddress
 promise pay <- nexus BillingEndpoint BillingService.ChargePayment(card)
-```
 
-### Awaiting a Promise
-
-Block until the promise resolves and bind the result:
-
-```twf
 await p -> result
 await timeout
 ```
 
-### Promises in `await one` (race)
+The main use is start-now, wait-later: start operations, do other work, then collect results (`ParallelProcessing`). A promise can also be an `await one` case (`p -> result:`), racing a timer or signal (`TimedOperation`, `ResilientProcess`).
 
-```twf
-await one:
-    p -> result:
-        close complete(Result{data: result})
-    timeout:
-        close fail("timed out")
-```
+A workflow-bound promise is also a signal target — see [signals-queries-updates.md](./signals-queries-updates.md#sending-a-signal-to-a-child-workflow).
 
-> **The promise's operation is not cancelled when it loses.** If `timeout` wins, the operation backing `p` (the activity/workflow/nexus call started by `promise p <- ...`) keeps running until the workflow run ends — racing a promise against a timeout does **not** cancel the promise. If the losing operation must actually stop, add explicit cleanup; the race alone won't release it.
+## Conditions and the state block
 
-### Start-Now, Wait-Later Pattern
-
-The primary use case for promises is starting operations without blocking, doing other work, then collecting results:
-
-```twf
-workflow ParallelProcessing(items: Items) -> (Result):
-    promise handleA <- activity ProcessA(items.a)
-    promise handleB <- activity ProcessB(items.b)
-
-    activity QuickSetup(items)
-
-    await handleA -> resultA
-    await handleB -> resultB
-
-    close complete(Result{a: resultA, b: resultB})
-```
-
-### Async Duality
-
-Every async operation has two forms:
-
-| Form | Syntax | Behavior |
-|------|--------|----------|
-| **Blocking** | `activity Process(item) -> result` | Start and wait immediately |
-| **Non-blocking** | `promise p <- activity Process(item)` | Start, continue, wait later |
-
-This applies uniformly to: `activity`, `workflow`, `timer`, `signal`, `update`.
-
----
-
-## Conditions
-
-A `condition` is a named boolean temporal primitive declared in the workflow `state:` block. It can be set, unset, and awaited.
-
-### Declaration (in `state:` block only)
-
-```twf
-workflow Example():
-    state:
-        condition clusterStarted
-        condition thresholdReached
-```
-
-### Mutation
-
-```twf
-set clusterStarted
-unset clusterStarted
-```
-
-### Awaiting a Condition
-
-```twf
-await clusterStarted
-```
-
-### Conditions in `await one` (race)
-
-```twf
-await one:
-    clusterStarted:
-        close complete(ClusterState{started: true})
-    timer(30d):
-        close fail("timeout")
-```
-
-### Update Handler + Condition Pattern
-
-The primary motivator for conditions: update handlers that wait on workflow state. The client blocks until the handler returns, and the handler waits for a condition that the main workflow body sets:
-
-```twf
-workflow ClusterManager(config: Config):
-    state:
-        condition clusterStarted
-
-    update WaitUntilStarted() -> (ClusterState):
-        await clusterStarted
-        return ClusterState{started: true}
-
-    activity ProvisionCluster(config)
-    activity StartCluster(config)
-    set clusterStarted
-
-    await signal Shutdown
-    close complete
-```
-
----
-
-## State Block
-
-The `state:` block declares workflow state including conditions and variable initializations. It must appear first in a workflow definition, before signal/query/update handlers.
+A `condition` is a named boolean — not a predicate expression — declared in the `state:` block, which also holds variable initializations. Conditions are typically set or unset in signal and update handlers; `await` on one unblocks when it becomes true, and it can be an `await one` case.
 
 ```twf
 workflow Example():
@@ -160,20 +42,7 @@ workflow Example():
     close complete
 ```
 
-### Restrictions
+- `state:` comes first in the workflow, before signal/query/update handlers, and is purely declarative — no temporal primitives.
+- `condition` may be declared only in `state:`; `set` / `unset` must name a declared condition.
 
-- No temporal primitives inside `state:` block (it is purely declarative)
-- `condition` declarations can only appear inside `state:` blocks
-- `set`/`unset` targets must refer to conditions declared in the `state:` block
-
----
-
-## Condition Considerations
-
-| Consideration | Guidance |
-|---------------|----------|
-| **Boolean only** | Conditions are simple true/false values |
-| **Declarative** | Must be declared in `state:` block before use |
-| **Signal-driven** | Typically set/unset in signal or update handlers |
-| **Reactive** | `await condition` unblocks when condition becomes true |
-| **No expressions** | Conditions are named booleans, not arbitrary predicates |
+The motivating use is an update handler that waits on workflow state (`ClusterManager`) — see [signals-queries-updates.md](./signals-queries-updates.md#updates).

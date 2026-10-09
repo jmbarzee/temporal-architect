@@ -14,12 +14,11 @@ activity ProcessLargeFile(fileId: string) -> (ProcessResult):
 # --- Resumable activity using heartbeat details ---
 
 activity ResumableProcess(batchId: string) -> (BatchResult):
-    lastProgress = get_heartbeat_details()
-    startIndex = lastProgress.index
+    startIndex = get_heartbeat_details().index or 0
     items = getItems(batchId)
-    for (i in items):
-        process(i)
-        heartbeat(index: i)
+    for (i in range(startIndex, len(items))):
+        process(items[i])
+        heartbeat(index: i + 1)
     return BatchResult{processed: len(items)}
 
 # --- Async completion activity (human approval) ---
@@ -44,7 +43,6 @@ activity ExecuteApprovedAction(request: Request):
 workflow PublishApprovalWorkflow(request: Request) -> (Decision):
     activity NotifyRequestCreated(request)
 
-    # This blocks until external completion
     activity RequestHumanApproval(request) -> result
         options:
             start_to_close_timeout: 7d
@@ -57,18 +55,15 @@ workflow PublishApprovalWorkflow(request: Request) -> (Decision):
 # --- Workflow with various timeout configurations ---
 
 workflow LargeFileIngestion(data: Data) -> (Result):
-    # Short operation, tight timeout
     activity QuickLookup(data.id) -> result1
         options:
             start_to_close_timeout: 30s
 
-    # Long operation with heartbeat
     activity ProcessLargeFile(data.fileId) -> result2
         options:
             start_to_close_timeout: 2h
             heartbeat_timeout: 30s
 
-    # Operation with retry policy
     activity UnreliableService(data) -> result3
         options:
             start_to_close_timeout: 2m

@@ -1,13 +1,11 @@
 # Source: child-workflows.md
-# Patterns: sequential/parallel/conditional children, detached, workflow ID
+# Patterns: child options, sequential/parallel/conditional children, detached
 
 # --- Basic parent-child ---
 
 workflow ParentWorkflow(input: Input) -> (Result):
-    # Simple child workflow call
     workflow ChildWorkflow(input.data) -> childResult
 
-    # Child with options
     workflow ChildWorkflow(input.data) -> childResult2
         options:
             workflow_execution_timeout: 1h
@@ -24,7 +22,6 @@ workflow ChildWorkflow(data: Data) -> (ChildResult):
 # --- Sequential decomposition ---
 
 workflow DeployApplication(app: App) -> (DeployResult):
-    # Each child has own failure boundary
     workflow DeployInfrastructure(app) -> infraResult
     workflow DeployServices(app) -> servicesResult
 
@@ -86,7 +83,6 @@ workflow SendWelcomeEmail(user: User) -> (EmailResult):
 
 workflow ParentWithDetach(order: Order) -> (OrderResult):
     activity ProcessOrder(order) -> result
-    # Fire-and-forget notification
     detach workflow NotifyCustomer(order.customer)
     close complete(OrderResult{status: "done"})
 

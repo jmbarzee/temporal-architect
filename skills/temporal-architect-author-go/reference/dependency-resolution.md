@@ -1,29 +1,21 @@
 # dependency resolution
 
-Scan all activities in the `.twf` and identify external integration points. Most activities are thin wrappers around calls to external systems — the activity itself is simple, but the dependency behind it is not.
+Most activities are thin wrappers; the dependency behind them is the hard part. For each activity in the `.twf`:
 
-## For each activity
+- **Categorize:** external API, storage, protocol client, or pure logic.
+- **Look for an existing client** in the project code and `go.mod`.
+- **If none:** offer the user specific options with tradeoffs.
+- **Trace the chosen API** from the method the activity calls down to concrete types, per [types.md § Dependency types](./types.md#dependency-types).
 
-- **Categorize:** external API call, storage operation, protocol client, or pure logic
-- **Check existing code:** does the project already have a client/library for this?
-- **Check `go.mod`:** is a relevant SDK already imported?
-- **If unresolved:** suggest specific options with tradeoffs to the user
-- **Read the chosen dependency's API:** identify the method the activity will call, then trace its signature to concrete types. See [types.md](./types.md) for the full resolution strategy
+Resolve early to avoid rework; defer a choice that is unclear or blocked and keep going.
 
-Resolve as many as possible early — it prevents expensive rework later. If a dependency choice is unclear or blocked on another decision, defer it and continue.
-
-## Deliverable
-
-A dependency map, presented to the user for confirmation before generation begins.
-
-A dependency is resolved when you can write the call expression with verified types. The map should include the method, every parameter type, and the return type — all confirmed from `go doc` or source, not inferred from names.
+**Deliverable:** a dependency map the user confirms before generation — per activity, the method, every parameter type, and the return type, confirmed from `go doc` or source, not inferred from names.
 
 ```
-Example dependency map:
-  ChargePayment → stripe-go
-    paymentintent.New(params *stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)
-  SendPaymentConfirmation → sendgrid-go
-    client.SendWithContext(ctx, mail *sgmail.SGMailV3) (*rest.Response, error)
-  LoadOrderRecord → database/sql (no external dependency)
-  CalculateTotal → pure logic (no dependency)
+ChargePayment → stripe-go
+  paymentintent.New(params *stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)
+SendPaymentConfirmation → sendgrid-go
+  client.SendWithContext(ctx, mail *sgmail.SGMailV3) (*rest.Response, error)
+LoadOrderRecord → database/sql (no external dependency)
+CalculateTotal → pure logic (no dependency)
 ```

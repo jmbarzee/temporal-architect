@@ -2,433 +2,61 @@
 
 > **Example:** [`versioning.twf`](./versioning.twf)
 
-Safe strategies for evolving workflows without breaking running executions.
+A running workflow can outlive the code that started it. When a worker replays an execution's history against changed code — a step added, removed, reordered, or given new arguments — the commands no longer match the history and replay fails with a non-determinism error. Every change to a workflow's command sequence needs a strategy for executions already in flight.
 
-## The Versioning Challenge
+## Choosing a strategy
 
-Running workflows may execute for hours, days, or months. When you deploy new code:
+| Change | Strategy | In `.twf` |
+|--------|----------|-----------|
+| Add, remove, change, or reorder a step; change an activity's arguments | **Patching** — branch on whether the execution predates the change | `if (flag):` on a boolean version gate |
+| Changes you'd rather not patch | **Worker versioning** — route each execution to workers running compatible code | `versioning:` option on the worker instantiation |
+| Input/output schema break, complete rewrite, different business logic | **New workflow type** — run old and new side by side | a new workflow name (`PolicyV1`, `PolicyV2`) |
 
-```text
-Problem:
-1. Workflow V1 starts, runs step A, B
-2. You deploy V2 (changes step B to B')
-3. Worker restarts, replays V1 workflow
-4. Replay expects B but code has B'
-5. Non-determinism error!
-```
+Complexity rises down the table. Patches accumulate: when nested or numerous active patches make a workflow hard to read, consolidate them once safe, or move the change to worker versioning.
 
-**Solution:** Version-aware code that handles both old and new execution paths.
+## Patching
 
----
+`.twf` has no `patched()` construct. A version gate is a boolean — a workflow parameter or a config field — and the branch shows both paths, as every workflow in [`versioning.twf`](./versioning.twf) does. In code it becomes the SDK's patch API (Go: `workflow.GetVersion()` / `workflow.Patched()`; Python: `patched()`): a new execution records a patch marker in history and takes the new path; replay of an execution without the marker takes the old path.
 
-## Temporal's Versioning Approaches
+Removal inverts the gate: the old step runs only for executions that predate the change (`BatchJobRemoveLegacyStep`). Removing a step without a gate is the common unguarded change.
 
-| Approach | Use Case | Complexity |
-|----------|----------|------------|
-| **Patching API** | Incremental changes to existing workflows | Low |
-| **Worker Versioning** | Major workflow changes, complete rewrites | Medium |
-| **Workflow Type Versioning** | Breaking changes, parallel versions | Higher |
+**Patch lifecycle.** A patch is temporary; one left in place forever is dead code.
 
----
+1. **Add** the patch with both paths. Name it for the change and date (`2024-01-add-fraud-check`) and keep a record of which patches are active.
+2. **Deploy** with both paths live; write replay tests against histories recorded on the old code (see [testing.md](./testing.md#replay-testing)) and watch for non-determinism errors.
+3. **Deprecate** once no running execution needs the old path — find stragglers with a visibility query such as `StartTime < '<patch date>' AND ExecutionStatus = 'Running'`. The SDK's deprecate-patch step fails loudly if an old execution is still running.
+4. **Remove** the patch code entirely.
 
-## Patching API
-
-Add conditional logic to handle old vs new code paths during replay.
-
-> **TWF vs SDK:** The `.twf` file ([`versioning.twf`](./versioning.twf)) uses boolean flag parameters for version gating — this is the DSL-level representation. The examples below use `patched("...")` which is the SDK-level API (Go: `workflow.GetVersion()`, Python: `patched()`). Both represent the same concept: branching on whether a workflow execution predates a code change.
-
-### Basic Pattern
-
-```pseudo
-workflow UnderwritingAddFraudCheck(policy: Policy) -> (PolicyResult):
-    activity ValidatePolicy(policy)
-
-    # Version gate: new code only runs for new executions
-    if patched("add-fraud-check"):
-        activity FraudCheck(policy)  # New step, only for new workflows
-    
-    activity BindPolicy(policy)
-    close complete(PolicyResult{status: "complete"})
-```
-
-### How Patching Works
-
-```text
-New Execution:
-1. patched("add-fraud-check") → true (marks in history)
-2. FraudCheck runs
-3. History: [Validate, Patch:add-fraud-check, FraudCheck, Payment]
-
-Replay of Old Execution (started before patch):
-1. History has no patch marker
-2. patched("add-fraud-check") → false
-3. FraudCheck skipped
-4. Replay matches original history
-
-Replay of New Execution (started after patch):
-1. History has patch marker
-2. patched("add-fraud-check") → true
-3. FraudCheck runs
-4. Replay matches history
-```
-
-### Patching Examples
-
-**Adding a Step:**
-```pseudo
-workflow Process(data: Data) -> (Result):
-    activity Step1(data)
-
-    if patched("v2-add-validation"):
-        activity NewValidation(data)  # Added in V2
-    
-    activity Step2(data)
-    close complete(Result{})
-```
-
-**Removing a Step:**
-```pseudo
-workflow Process(data: Data) -> (Result):
-    activity Step1(data)
-
-    if not patched("v3-remove-legacy"):
-        activity LegacyStep(data)  # Removed in V3, but runs for old workflows
-
-    activity Step2(data)
-    close complete(Result{})
-```
-
-**Changing a Step:**
-```pseudo
-workflow Process(data: Data) -> (Result):
-    activity Step1(data)
-
-    if patched("v4-improved-processing"):
-        activity ImprovedProcessing(data)
-    else:
-        activity OldProcessing(data)
-
-    activity Step3(data)
-    close complete(Result{})
-```
-
-### Deprecating Patches
-
-After all old workflows complete, remove patch:
-
-> Note: Patch lifecycle management uses SDK-specific APIs. The concept is shown as pseudo-code.
-
-```pseudo
-# Phase 1: Add patch (both paths exist)
-if patched("add-feature"):
-    activity NewFeature()
-
-# Phase 2: After all old workflows done, simplify
-# (Run deprecate_patch to verify no old workflows)
-if deprecated_patch("add-feature"):
-    pass  # Old path, will error if any old workflows still running
-activity NewFeature()
-
-# Phase 3: Remove patch code entirely
-activity NewFeature()
-```
-
----
-
-## Worker Versioning (Build IDs)
-
-Route workflows to workers running compatible code versions.
+## Worker versioning
 
 ### Declaring the strategy in `.twf`
 
-> **TWF vs SDK:** A worker instantiation declares *which* versioning strategy a worker pool uses via the `versioning` option — the design-altitude decision. The build-id registration, ramping, and routing mechanics below stay SDK/CLI-level (code-scale).
+A worker instantiation declares the versioning strategy its pool follows. This is the design-altitude decision; Build IDs, deployment names, registration, and ramping are deploy-time inputs and never `.twf` content.
 
 ```twf
 namespace orders:
     worker orderTypes
         options:
             task_queue: "orderProcessing"
-            versioning: build_id      # none | build_id | deployment
+            versioning: deployment
 ```
-
-`versioning` expresses *intent* — the strategy a worker pool follows — not concrete Build IDs or deployment names (those are deploy-time inputs, never `.twf` content):
 
 | Value | Meaning |
 |-------|---------|
 | `none` | Unversioned workers (default) |
-| `build_id` | Build ID–based worker versioning |
-| `deployment` | Worker Deployment–based versioning |
+| `deployment` | Worker Deployments — the current model |
+| `build_id` | Legacy Build ID version sets (deprecated, not on Temporal Cloud) |
 
-Enum values are bare idents — `build_id`, not `build-id` or `"build_id"`.
+Several worker versions serve one task queue at once. Each workflow type is **Pinned** (finishes on the version it started on) or **Auto-Upgrade** (moves to the current version, so it still needs patching); TWF cannot express that choice yet ([#167](https://github.com/jmbarzee/temporal-architect/issues/167)), so state it in the handoff notes.
 
-### Concept
+## New workflow type
 
-```text
-┌─────────────────────────────────────────────────────┐
-│                   Task Queue                         │
-├─────────────────────────────────────────────────────┤
-│  Build ID: 1.0  │  Build ID: 2.0  │  Build ID: 3.0 │
-│    (default)    │   (compatible)  │    (latest)    │
-└────────┬────────┴────────┬────────┴────────┬───────┘
-         │                 │                  │
-     ┌───▼───┐        ┌────▼────┐       ┌────▼────┐
-     │Worker │        │ Worker  │       │ Worker  │
-     │  1.0  │        │   2.0   │       │   3.0   │
-     └───────┘        └─────────┘       └─────────┘
-```
-
-### Configuration
-
-```bash
-# Register build ID with task queue
-temporal task-queue update-build-ids add-new-default \
-    --task-queue main-queue \
-    --build-id "v2.0"
-```
-
-> Note: Worker configuration is SDK-level code.
-
-```pseudo
-# Worker identifies its build ID
-worker = Worker(
-    task_queue: "main-queue",
-    build_id: "v2.0",
-    workflows: [UnderwritingAddFraudCheck],
-    activities: [ValidatePolicy, FraudCheck, BindPolicy]
-)
-```
-
-### Version Sets
-
-```bash
-# Create version set: v1.0 and v1.1 are compatible
-temporal task-queue update-build-ids add-new-compatible \
-    --task-queue main-queue \
-    --build-id "v1.1" \
-    --existing-compatible-build-id "v1.0"
-
-# New version set: v2.0 is NOT compatible with v1.x
-temporal task-queue update-build-ids add-new-default \
-    --task-queue main-queue \
-    --build-id "v2.0"
-```
-
-### Routing Behavior
-
-| Workflow State | Routed To |
-|----------------|-----------|
-| New workflow | Latest default build ID |
-| Running workflow | Same build ID (or compatible) |
-| Workflow started on v1.0 | v1.0 or v1.1 worker |
-
----
-
-## Workflow Type Versioning
-
-Create a new workflow type for breaking changes.
-
-### Pattern
+Declare the new version as its own workflow with its own types; the caller (application code, outside `.twf`) chooses which type to start.
 
 ```twf
-# Version 1
 workflow PolicyV1(policy: PolicyV1Input) -> (PolicyV1Result):
-    # Original implementation
     ...
 
-# Version 2 (breaking changes)
 workflow PolicyV2(policy: PolicyV2Input) -> (PolicyV2Result):
-    # New implementation with different structure
     ...
 ```
-
-### Migration Strategy
-
-> Note: API routing logic is application-level code, not TWF notation.
-
-```pseudo
-# API layer routes to appropriate version
-function startPolicyWorkflow(policy):
-    if policy.version == 1:
-        return client.start(PolicyV1, convertToV1(policy))
-    else:
-        return client.start(PolicyV2, convertToV2(policy))
-```
-
-### When to Use Workflow Type Versioning
-
-| Scenario | Approach |
-|----------|----------|
-| Adding optional step | Patching |
-| Changing activity order | Patching |
-| Complete workflow rewrite | New workflow type |
-| Input/output schema breaking change | New workflow type |
-| Different business logic | New workflow type |
-
----
-
-## Versioning Best Practices
-
-### 1. Plan for Evolution
-
-```pseudo
-# Good: Named constants for versions (SDK-level code)
-PATCH_ADD_FRAUD_CHECK = "2024-01-add-fraud-check"
-PATCH_IMPROVE_VALIDATION = "2024-02-improve-validation"
-
-workflow Process(data: Data):
-    if patched(PATCH_ADD_FRAUD_CHECK):
-        ...
-```
-
-### 2. Test Both Paths
-
-```pseudo
-test "workflow handles both old and new path":
-    # Test new execution path
-    env = TestEnvironment()
-    result = env.execute(Workflow, input)
-    assert result.includesFraudCheck
-    
-    # Test replay of old execution
-    old_history = load("workflow_v1.history")
-    replay_result = env.replay(Workflow, old_history)
-    assert replay_result.success  # No non-determinism
-```
-
-### 3. Document Versions
-
-```text
-# Workflow: UnderwritingAddFraudCheck
-# 
-# Version History:
-# - 2024-01: Added fraud check (patch: add-fraud-check)
-# - 2024-02: Improved validation (patch: improve-validation)
-# - 2024-03: Deprecated old validation (patch: remove-legacy-validation)
-#
-# Active patches: add-fraud-check, improve-validation
-# Deprecated patches: remove-legacy-validation (safe to remove after 2024-04)
-```
-
-### 4. Monitor Old Workflows
-
-```bash
-# Query for workflows started before patch
-temporal workflow list \
-    --query "StartTime < '2024-01-15' AND ExecutionStatus = 'Running'"
-```
-
----
-
-## Common Versioning Scenarios
-
-### Adding Activity
-
-```pseudo
-workflow Process(data: Data):
-    activity Existing1(data)
-
-    if patched("add-new-activity"):
-        activity NewActivity(data)  # Safe to add
-    
-    activity Existing2(data)
-```
-
-### Removing Activity
-
-```pseudo
-workflow Process(data: Data):
-    activity Existing1(data)
-
-    if not patched("remove-deprecated"):
-        activity DeprecatedActivity(data)  # Removed for new, kept for old
-    
-    activity Existing2(data)
-```
-
-### Reordering Activities
-
-```pseudo
-# Original order: A, B, C
-# New order: A, C, B
-
-workflow Process(data: Data):
-    activity A(data)
-
-    if patched("reorder-bc"):
-        activity C(data)
-        activity B(data)
-    else:
-        activity B(data)
-        activity C(data)
-```
-
-### Changing Activity Parameters
-
-```pseudo
-workflow Process(data: Data):
-    if patched("new-activity-params"):
-        activity Enhanced(data, extraParam: true)
-    else:
-        activity Enhanced(data)  # Old signature
-```
-
----
-
-## Anti-Patterns
-
-### Unguarded Changes
-
-```pseudo
-# BAD: Breaking change without version guard
-workflow Process(data: Data):
-    activity Step1(data)
-    # Removed Step2 without patch - breaks replay!
-    activity Step3(data)
-
-# GOOD: Version-guarded removal
-workflow Process(data: Data):
-    activity Step1(data)
-    if not patched("remove-step2"):
-        activity Step2(data)
-    activity Step3(data)
-```
-
-### Too Many Active Patches
-
-```pseudo
-# BAD: Accumulated complexity
-workflow Process(data: Data):
-    if patched("v1"):
-        if patched("v2"):
-            if patched("v3"):
-                ...
-
-# GOOD: Consolidate when safe, or use worker versioning
-```
-
-### Forgetting to Deprecate
-
-```pseudo
-# BAD: Old patch code lives forever
-if patched("feature-from-2020"):  # All workflows with this are done!
-    ...
-
-# GOOD: Clean up after old workflows complete
-# 1. Verify no running workflows need old path
-# 2. Replace with deprecated_patch
-# 3. Remove patch code after verification
-```
-
----
-
-## Version Migration Checklist
-
-- [ ] Identify all changes from current version
-- [ ] Classify each change (additive, removal, modification)
-- [ ] Add appropriate patches for each change
-- [ ] Write replay tests against old histories
-- [ ] Deploy with both code paths active
-- [ ] Monitor for non-determinism errors
-- [ ] Wait for old workflows to complete
-- [ ] Remove deprecated patch code
-- [ ] Update documentation

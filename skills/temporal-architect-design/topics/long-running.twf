@@ -18,7 +18,6 @@ workflow LongRunningProcessor(processor: Processor):
             timer(24h):
                 activity PeriodicCheck(processor)
 
-        # Reset history before it gets too large
         if (eventCount >= 1000):
             close continue_as_new(processor)
 
@@ -42,7 +41,6 @@ workflow UserEntity(userId: string, user: User):
         activity PersistUser(user)
         return Result{success: true}
 
-    # Initialize user if new
     if (user == null):
         activity LoadUser(userId) -> user
 
@@ -62,7 +60,6 @@ workflow UserEntity(userId: string, user: User):
 
         eventCount = eventCount + 1
 
-        # Continue-as-new periodically
         if (eventCount > 500):
             close continue_as_new(userId, user)
 

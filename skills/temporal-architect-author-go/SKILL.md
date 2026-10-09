@@ -5,188 +5,79 @@ description: Generate Go code from .twf workflow designs using the Temporal Go S
 
 # Temporal Architect: Go Authoring
 
-Generate functioning Go code from `.twf` (Temporal Workflow Format) files using the Temporal Go SDK. The primary goal is producing code that compiles, runs, and correctly implements the workflow design. Always produce `.go` files as deliverables.
+Turn `.twf` files into Go that compiles, runs, and implements the design with the Temporal Go SDK. The deliverable is always `.go` files.
 
----
+## Principles
 
-## Core Principles
+**Root-down.** Roots (workflows no other workflow calls as a child) → children → activities → types. Each layer is constrained by the one above; defer unknowns and revisit.
 
-**Root-down generation.** Start from root workflows (no parent), work down to children, then activities, then types. Each layer is constrained by what the layer above needs. Defer unknowns, revisit later.
+**Write only what is needed.** No speculative fields, types, or files — the minimum bridge from DSL intent to working Go.
 
-**Write only what is needed.** No speculative fields, no extra types, no over-generation. The minimum bridge between DSL intent and working Go.
+**Prefer imports over generation.** Check `go.mod` and existing code first; use well-known libraries when types match; generate only application-specific types. Resolve types from certainty outward — [types.md](./reference/types.md).
 
-**Prefer imports over generation.** Check `go.mod` and existing project code first. Use well-known libraries when types match. Only generate stubs for application-specific types.
-
-**Iterative type resolution.** Work from certainty outward. Explicit signatures first, then derive from constructors/field access, then defer the rest. Revisit deferred types as surrounding code solidifies. See [types.md](./reference/types.md).
-
-**User as decision-maker.** The skill owns execution; the user owns consequential choices. Handle mechanical mappings, SDK boilerplate, and compilation fixes autonomously. Surface dependency choices, ambiguous domain logic, and architectural direction to the user — present specific options with tradeoffs, not open-ended questions. Revising a previously confirmed decision always requires user approval.
-> Example: "For ChargePayment, should I use stripe-go (official SDK, matches your existing stripe dependency) or a generic HTTP client (more flexible, but more boilerplate)?"
-
----
+**The user decides what is consequential.** Do mechanical mappings, SDK boilerplate, and compile fixes yourself. Surface dependency choices, ambiguous domain logic, and architectural direction as specific options with tradeoffs, never open questions — e.g. "ChargePayment: stripe-go (official, matches your existing dependency) or a plain HTTP client (flexible, more boilerplate)?" Revising a confirmed decision always needs the user's approval.
 
 ## Process
 
 ### Orient
 
-Before generating, resolve **where the code lands** along two independent axes. Greenfield is the easy case; adoption into an existing repo is the common one, and an existing repo's conventions are **requirements to match**, not defaults to pick.
+Settle where the code lands. In an existing repo its conventions are **requirements to match**: detect the codegen variant from the signals below and conform; in greenfield, ask (default hand-written).
 
-| Axis | Existing repo | Greenfield |
-|------|---------------|------------|
-| **1. Greenfield vs. existing** | *Detect* — cheap signals below; if any fire, you are in an existing repo | *Ask* the user |
-| **2. Codegen variant** (proto-first vs. hand-written) | *Detect from the repo* and conform to it | *Ask*; default = hand-written |
+**Proto-first** if any of: `buf.gen.yaml` with a `protoc-gen-go_temporal` plugin; generated `*_temporal.pb.go`; `(temporal.v1.activity)` / `(temporal.v1.workflow)` annotations in `.proto`. Then load [proto-driven.md](./reference/proto-driven.md) on top of the construct references. Otherwise (hand-written `workflow.ExecuteActivity` call sites) **hand-written**. Route on these signals, never on a name or acronym ("PFI").
 
-**Cheap detection signals** (check these first — no subagent needed):
+For an existing repo, dispatch the design skill's [project-discovery subagent](../temporal-architect-design/subagents/project-discovery.md) on the bounded slice in scope and work from its summary; don't re-scan in the main context. A target spanning several slices goes through the design skill's [reverse decompose](../temporal-architect-design/reference/reverse-engineering.md#decompose-a-large-repo-into-slices) first.
 
-- `buf.gen.yaml` with a `protoc-gen-go_temporal` plugin → **proto-first**
-- generated `*_temporal.pb.go` files → **proto-first**
-- `(temporal.v1.activity)` / `(temporal.v1.workflow)` annotations in `.proto` files → **proto-first**
-- none of the above, hand-written `workflow.ExecuteActivity` call sites → **hand-written**
+### 1. Gather and plan
 
-**Variant → reference routing:**
+- Read the `.twf` files in scope, `go.mod`, and existing code (or the discovery summary); ask brief, targeted questions about domain and key dependencies.
+- **Resolve dependencies** per [dependency-resolution.md](./reference/dependency-resolution.md). The user confirms the dependency map before generation.
+- Plan the root-down order, check the map against the planned signatures, and name what is deferred or ambiguous.
 
-| Variant | Load |
-|---------|------|
-| proto-first | [proto-driven.md](./reference/proto-driven.md) (alias: "PFI") — read in addition to the construct references below |
-| hand-written | the construct references below (default) |
+### 2. Generate and verify by layer
 
-Route on concrete repo signals, never on a name or acronym. Adding a new variant later = one reference file + one routing row.
+| Layer | What | Check | Reference |
+|-------|------|-------|-----------|
+| 1a. Types + signatures | Structs, interfaces, signatures with empty bodies; interfaces shaped by the dependency map | `go build` | [types.md](./reference/types.md) |
+| 1b. Activity stubs | Every activity with its real signature and a zero-value body, so workflows can reference it by nil-pointer method value ([activity-call.md](./reference/activity-call.md)) | `go build` | [activity-def.md](./reference/activity-def.md) |
+| 2. Workflow bodies | Activity and child calls, signals, timers, selectors | `go build` | [workflow-def.md](./reference/workflow-def.md), [composite-patterns.md](./reference/composite-patterns.md) |
+| 3. Activity impl | Thin methods + concrete implementations behind interfaces | `go build` | [activity-def.md](./reference/activity-def.md#activity-implementation-pattern) |
+| 4. Worker wiring | `cmd/` entry: build dependencies, register types, run | `go build` | [worker.md](./reference/worker.md) |
+| 5. Tests | Floor: one happy-path `testsuite.WorkflowTestSuite` test per workflow. Non-trivial designs: three layers | `go test` | [three-layer-testing.md](./reference/three-layer-testing.md) |
+| 6. Final | | `go vet` | — |
 
-**For an existing repo, dispatch the shared `project-discovery` subagent** to scan a **bounded slice** (the domain or directory in scope — never the whole repo) and return a compact summary of tooling, layout, Temporal SDK usage, registration style, and existing `.twf`. Trigger it deliberately, not reflexively; if the slice is unclear, narrow it with the user first. Its contract lives in [project-discovery-subagent.md](../temporal-architect-design/reference/project-discovery-subagent.md) (owned by the design skill, shared across skills). Project-convention discovery is the subagent's job, not the orchestrator's — consume its summary, don't re-scan in the main context. When the adoption target spans **multiple slices**, don't reinvent whole-repo scanning here: the design skill owns a reverse decompose step that maps the repo before per-slice `project-discovery` fan-out — see [reverse-engineering.md § Decompose a large repo into slices](../temporal-architect-design/reference/reverse-engineering.md#decompose-a-large-repo-into-slices) (that protocol stays owned by the design skill).
+Then present the code for review.
 
-### 1. Context Gathering
+**Implementation depth.** `.twf` activity bodies are pseudocode and may describe more than you implement. Where you simplify, leave a `// TODO:` naming the elided logic (e.g. `// TODO: cross-field consistency checks (see TWF)`). Shallow bodies suit examples and prototypes; for production, ask which activities need full implementations.
 
-- Read `.twf` files in scope
-- Examine `go.mod`, existing project code, and conventions (for an existing repo, this is the discovery subagent's summary from Orient)
-- Ask the user about project context, domain, key dependencies — brief, targeted questions
+## Output conventions
 
-### 2. Dependency Resolution
+- One Go package per `.twf`, named from its filename (snake_case), beside the `.twf` unless the user says otherwise.
+- One file per workflow, a shared types file if needed, activities grouped logically, at least one `_test.go` per workflow, worker entry in `cmd/`.
 
-Identify external integration points for each activity and resolve to concrete types. See [dependency-resolution.md](./reference/dependency-resolution.md) for the full process. Deliverable: a dependency map confirmed by the user before generation begins.
+## Reference index
 
-### 3. Planning
+Load only what the current layer needs.
 
-- Identify root workflows (not called as children by other workflows in the `.twf` file)
-- Outline the generation order: roots → children → activities → types
-- Review the dependency map against planned type signatures — flag any conflicts
-- If the dependency map is incomplete, note which decisions are deferred
-- Surface ambiguities to the user
-
-### 4. Generate + Verify Incrementally
-
-Root-down, with build checks between layers. Consult [reference files](#reference-index) for DSL→Go mapping at each layer.
-
-| Layer | What | Check | Key references |
-|-------|------|-------|----------------|
-| 1a. Types + signatures | Structs, interfaces, function signatures (empty bodies, zero-value returns). Dependency map informs interface shapes | `go build` | [types.md](./reference/types.md) |
-| 1b. Activity stubs | Forward-declare all activity functions/methods with correct signatures, empty bodies, zero-value returns. This makes activity functions available as references for Layer 2 and enables the nil-pointer method pattern (`var a *Activities; workflow.ExecuteActivity(ctx, a.Foo, ...)`) | `go build` | [activity-def.md](./reference/activity-def.md) |
-| 2. Workflow bodies | Orchestration logic: activity calls, child workflows, signals, timers, selectors | `go build` | [workflow-def.md](./reference/workflow-def.md), [activity-call.md](./reference/activity-call.md) |
-| 3. Activity impl | Thin activity methods + concrete implementations behind interfaces | `go build` | [activity-def.md](./reference/activity-def.md) |
-| 4. Worker wiring | `cmd/` entry point: construct dependencies, wire activity struct, register types, start worker | `go build` | [worker.md](./reference/worker.md), [nexus-service-def.md](./reference/nexus-service-def.md) |
-| 5. Tests | At minimum, one happy-path test per workflow using `testsuite.WorkflowTestSuite`. Recommended: the three-layer approach below. Catches: activity name resolution failures, serialization round-trip issues, update handler races, missing activity options | `go test` | [three-layer-testing.md](./reference/three-layer-testing.md) |
-| 6. Final | Full correctness check | `go vet` | — |
-
-**Recommended: three-layer testing.** A happy-path workflow test is the floor, not the ceiling. For any non-trivial design, test in three layers — workflows (mock the activities interface), activities (mock the client interface), and clients (real system, behind a build tag) — because each layer catches bugs the others structurally cannot: workflow tests can't see inside activities, activity tests can't see the real client, and they also guard replay safety by pinning the activity-call sequence. Mechanics and patterns are in [three-layer-testing.md](./reference/three-layer-testing.md).
-
-After generation: present the code to the user for review.
-
----
-
-## Activity Implementation Pattern
-
-See [activity-def.md](./reference/activity-def.md#activity-implementation-pattern) for the full pattern (struct, methods, interfaces, concrete implementations).
-
-### Implementation Depth
-
-Activity bodies in `.twf` are pseudocode that may describe richer logic than the generated code implements. When simplifying an activity relative to its TWF description, emit a `// TODO:` comment referencing the elided logic so the gap is visible:
-
-```go
-func (a *Activities) ValidateExtraction(ctx context.Context, doc Document) (ValidationResult, error) {
-    // TODO: format conformance checks, cross-field consistency, external reference lookups (see TWF)
-    if doc.Text == "" {
-        return ValidationResult{Valid: false, Reason: "empty text"}, nil
-    }
-    return ValidationResult{Valid: true}, nil
-}
-```
-
-For **examples and prototypes**, shallow implementations with `// TODO:` markers are appropriate — the goal is demonstrating workflow orchestration, not domain logic. For **production code**, ask the user which activities need full implementations and which are stubs.
-
----
-
-## Output Conventions
-
-- Each `.twf` maps to a Go package; Go files live alongside `.twf` sources or where the user specifies
-- One file per workflow, shared types file if needed, activity files grouped logically
-- One `_test.go` file per workflow (at minimum) with happy-path workflow tests
-- Package names derived from `.twf` filename (snake_case)
-- Worker entry point in `cmd/`
-
----
-
-## Reference Index
-
-Read only what the current generation step requires.
-
-### Definitions
-
-| DSL Construct | Go Mapping | File |
-|---------------|------------|------|
-| `workflow Name(...)` | Workflow function | [workflow-def.md](./reference/workflow-def.md) |
-| `activity Name(...)` | Activity function | [activity-def.md](./reference/activity-def.md) |
-| `worker Name:` | Worker entry point | [worker.md](./reference/worker.md) |
+| DSL | Go | File |
+|-----|----|------|
+| `workflow Name(...)` | workflow function | [workflow-def.md](./reference/workflow-def.md) |
+| `activity Name(...)` | activity function / method | [activity-def.md](./reference/activity-def.md) |
+| `worker`, namespace worker `options:` | `worker.New`, `worker.Options` | [worker.md](./reference/worker.md) |
 | `nexus service Name:` | Nexus service + handlers | [nexus-service-def.md](./reference/nexus-service-def.md) |
-
-### Calls
-
-| DSL Construct | Go Mapping | File |
-|---------------|------------|------|
-| `activity Name(args) -> result` | `workflow.ExecuteActivity` | [activity-call.md](./reference/activity-call.md) |
-| `workflow Name(args) -> result` | `workflow.ExecuteChildWorkflow` | [workflow-call.md](./reference/workflow-call.md) |
-| `signal handle.Name(args)` | `ChildWorkflowFuture.SignalChildWorkflow` | [signal-send.md](./reference/signal-send.md) |
-| `nexus Endpoint Service.Op(args) -> result` | `NexusClient.ExecuteOperation` | [nexus.md](./reference/nexus.md) |
-
-### Handlers
-
-| DSL Construct | Go Mapping | File |
-|---------------|------------|------|
-| `signal Name(params):` | Signal channel + selector | [signal-handler.md](./reference/signal-handler.md) |
-| `query Name(params) -> (Type):` | `workflow.SetQueryHandler` | [query-handler.md](./reference/query-handler.md) |
-| `update Name(params) -> (Type):` | `workflow.SetUpdateHandler` | [update-handler.md](./reference/update-handler.md) |
-
-### Async Primitives
-
-| DSL Construct | Go Mapping | File |
-|---------------|------------|------|
-| `await timer(duration)` | `workflow.Sleep` | [await-timer.md](./reference/await-timer.md) |
-| `promise p <- ...` | Future (deferred `.Get`) | [promise.md](./reference/promise.md) |
+| `activity Name(args) -> r` | `workflow.ExecuteActivity` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `workflow.ExecuteChildWorkflow` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` | child: confirm start, skip result | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | `NexusClient.ExecuteOperation` | [nexus.md](./reference/nexus.md) |
+| `signal handle.Name(args)` | `SignalChildWorkflow` | [signal-send.md](./reference/signal-send.md) |
+| `signal Name(params):` | signal channel + selector | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `workflow.SetQueryHandler` | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `workflow.SetUpdateHandler` | [update-handler.md](./reference/update-handler.md) |
+| `await timer(d)` | `workflow.Sleep` | [await-timer.md](./reference/await-timer.md) |
+| `promise p <- ...` | future, deferred `.Get` | [promise.md](./reference/promise.md) |
 | `state:` / `condition` / `set` / `unset` | `bool` + `workflow.Await` | [condition.md](./reference/condition.md) |
-
-### Compound Async
-
-| DSL Construct | Go Mapping | File |
-|---------------|------------|------|
 | `await all:` | `workflow.Go` + futures | [await-all.md](./reference/await-all.md) |
 | `await one:` | `workflow.NewSelector` | [await-one.md](./reference/await-one.md) |
-
-### Modifiers & Control Flow
-
-| DSL Construct | Go Mapping | File |
-|---------------|------------|------|
-| `options: ...` | `ActivityOptions` / `ChildWorkflowOptions` | [options.md](./reference/options.md) |
-| `detach workflow ...` | Fire-and-forget child (confirm start, skip result) | [detach.md](./reference/detach.md) |
-| `if`/`for`/`switch`/`break`/`continue` | Go equivalents | [control-flow.md](./reference/control-flow.md) |
-| `close complete`/`fail`/`continue_as_new` | `return` / `workflow.NewContinueAsNewError` | [close.md](./reference/close.md) |
-| `x = expr` | Variable declaration/assignment | [assignment.md](./reference/assignment.md) |
+| `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `NexusOperationOptions` | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Go equivalents | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `return` / `workflow.NewContinueAsNewError` | [close.md](./reference/close.md) |
 | `heartbeat(details)` | `activity.RecordHeartbeat` | [heartbeat.md](./reference/heartbeat.md) |
-
-### Composite Patterns
-
-| Topic | File |
-|-------|------|
-| Update + condition + selector, signal + sleep + await | [composite-patterns.md](./reference/composite-patterns.md) |
-
-### Types
-
-| Topic | File |
-|-------|------|
-| Type resolution strategy | [types.md](./reference/types.md) |

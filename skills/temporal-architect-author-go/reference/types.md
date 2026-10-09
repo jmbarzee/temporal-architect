@@ -1,32 +1,36 @@
 # types
 
-## Strategy
+Types come from two sources: **defined types**, whose shape the `.twf` gives you, and **dependency types**, whose shape is fixed by an external package and discovered at the call site.
 
-Types in generated code come from two sources. Each has a different resolution method.
+## Defined types
 
-**Types you define** — derived from the `.twf` file. You control the shape; the TWF tells you what fields exist.
+Collect every constructor site and field access across the `.twf` before defining a type — each use may reveal different fields. Resolve in priority order:
 
-**Dependency types** — from external packages. The shape is fixed; you discover it at the call site.
+1. **Explicit signatures** — workflow/activity params and returns name the type.
+2. **Constructors** — `Result{status: "completed", trackingId: r.trackingId}` gives fields, typed from the assigned values.
+3. **Field access** — `order.items` implies `Order.Items`, typed from its usage context.
+4. **Generate** — only application-specific types with no existing match.
 
-### Defined types
+A field whose type stays ambiguous gets a `// TODO` and a question to the user. Export every field (uppercase): they cross workflow/activity boundaries via serialization.
 
-Resolve in priority order:
+| TWF | Go |
+|-----|----|
+| `string` / `int` / `bool` | same |
+| `decimal` | `float64` |
+| `duration` | `time.Duration` (`5m` → `5*time.Minute`) |
+| `time` | `time.Time` |
+| `[]T` / `Map[K]V` | `[]T` / `map[K]V` |
 
-1. **Explicit signatures** — workflow/activity params and return types name the type directly
-2. **Constructor usage** — `Result{field: value}` reveals struct fields and their types (inferred from the values assigned)
-3. **Field access** — `order.items` implies `Order` has an `items` field; the accessed type propagates from usage context
-4. **Generate** — only for application-specific types with no existing match
+## Dependency types
 
-### Dependency types
+The ground truth is the method the activity body will call — verified against the version in `go.mod`, never trained knowledge.
 
-The ground truth is the call site — the method you will call in the activity body.
+1. `go doc <package>.Method` for its exact parameter and return types. Without `go doc` (not yet in `go.mod`, sparse docs, offline): pkg.go.dev, the dependency's source, or the user.
+2. `go doc <package>.ParamType` for each parameter's fields. Verify every field type — a name misleads (a `Tools` field may take a union wrapper, not the type the name suggests).
+3. Follow the chain until every type in the call is a primitive or one you recognize.
 
-1. **Identify the method** — which function or method on the dependency will the activity call?
-2. **Read the method signature** — `go doc <package>.Method` gives you the exact parameter and return types. If `go doc` is unavailable (dependency not yet in `go.mod`, docs sparse, or offline), fall back to: read source on pkg.go.dev, inspect the dependency source directly, or ask the user
-3. **Read each parameter type** — `go doc <package>.ParamType` gives you the fields you need to populate. Verify every field type the same way — the field name alone can be misleading (e.g., a `Tools` field may accept a union wrapper type, not the type you'd guess from the name)
-4. **Follow the chain until you reach primitives or types you recognize** — stop when every type in the call is verified
+Resolved means you can write the full call with concrete types:
 
-Dependency APIs are version-specific — verify types against the version in `go.mod`, not trained knowledge. A dependency is resolved when you can write the full call expression with concrete types:
 ```
 client.Messages.New(ctx, anthropic.MessageNewParams{
     Model:    anthropic.Model(model),     // verified: Model is a string typedef
@@ -35,38 +39,6 @@ client.Messages.New(ctx, anthropic.MessageNewParams{
 })
 ```
 
-### Serialization boundaries
+## Serialization boundary
 
-Workflow and activity parameters pass through Temporal's data converter (JSON by default). Types you define are safe — you control their fields and they round-trip cleanly. Dependency types may have custom marshaling, unexported fields, or non-JSON-safe constructs.
-
-**Keep dependency types inside activity bodies.** Expose your own types in workflow/activity signatures and convert to dependency types within the activity implementation. This keeps the serialization boundary clean and decouples your workflow logic from any single dependency.
-
-## Go
-
-```go
-// From explicit signature: activity ValidateOrder(order: Order) -> (ValidateResult)
-type Order struct { /* fields derived from usage */ }
-type ValidateResult struct { /* fields derived from constructor */ }
-
-// From constructor: Result{status: "completed", trackingId: reservation.trackingId}
-type Result struct {
-    Status     string
-    TrackingId string
-}
-
-// Primitive mapping
-// string   → string
-// int      → int
-// decimal  → float64
-// bool     → bool
-// []Type   → []Type
-// duration → time.Duration (e.g., 5m → 5*time.Minute)
-// time     → time.Time
-```
-
-## Notes
-
-- Collect all constructor sites and field accesses across the `.twf` file before defining a type — a type used in multiple places may reveal different fields in each
-- When a field's type is ambiguous (e.g., assigned from an untyped expression), leave a `// TODO` comment and ask the user
-- Generic containers: `Map[K]V` → `map[K]V`, `[]Item` → `[]Item`
-- Export all struct fields (uppercase) — these cross workflow/activity boundaries via serialization
+Workflow and activity parameters pass through the data converter (JSON by default). Defined types round-trip cleanly; dependency types may carry custom marshaling, unexported fields, or non-JSON-safe constructs. **Keep dependency types inside activity bodies**: signatures use your own types, and the activity converts — which also decouples workflow logic from any one dependency.

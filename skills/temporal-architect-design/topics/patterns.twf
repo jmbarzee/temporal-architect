@@ -4,21 +4,16 @@
 # --- Process Workflow ---
 
 workflow OrderFulfillment(order: Order) -> (OrderResult):
-    # Step 1: Validate
     activity ValidateRetailOrder(order) -> validated
     if (validated.success == false):
         close fail(OrderResult{status: "invalid", error: validated.error})
 
-    # Step 2: Reserve
     activity ReserveInventory(order.items) -> reservation
 
-    # Step 3: Charge
     activity ProcessPayment(order.payment) -> payment
 
-    # Step 4: Fulfill
     activity ShipRetailOrder(order, reservation)
 
-    # Step 5: Notify
     activity SendConfirmation(order.customer)
 
     close complete(OrderResult{status: "completed", trackingId: reservation.trackingId})
@@ -71,35 +66,29 @@ workflow AccountEntity(accountId: string, account: Account):
 # --- Saga Pattern (adapted without try/catch) ---
 
 workflow BookingWorkflow(booking: Booking) -> (BookingResult):
-    # Step 1: Reserve flight
     activity ReserveFlight(booking.flight) -> flight
 
-    # Step 2: Reserve hotel (compensate flight if this fails)
     activity ReserveHotel(booking.hotel) -> hotel
     if (hotel.failed):
         activity CancelFlight(flight.id)
         close fail(BookingResult{status: "hotel_failed"})
 
-    # Step 3: Reserve car (compensate flight + hotel if this fails)
     activity ReserveCar(booking.car) -> car
     if (car.failed):
         activity CancelFlight(flight.id)
         activity CancelHotel(hotel.id)
         close fail(BookingResult{status: "car_failed"})
 
-    # Step 4: Charge payment (compensate all if this fails)
     activity ChargeBookingPayment(booking.payment) -> payment
     if (payment.failed):
         workflow CompensateBooking(flight.id, hotel.id, car.id)
         close fail(BookingResult{status: "payment_failed"})
 
-    # All succeeded
     close complete(BookingResult{status: "confirmed"})
 
 # --- Saga compensation workflow (called on failure) ---
 
 workflow CompensateBooking(flight: string, hotel: string, car: string):
-    # Run compensations
     activity CancelFlight(flight)
     activity CancelHotel(hotel)
     activity CancelCar(car)
@@ -108,33 +97,26 @@ workflow CompensateBooking(flight: string, hotel: string, car: string):
 # --- Fan-Out/Fan-In ---
 
 workflow BatchProcessor(items: []Item) -> (BatchResult):
-    # Fan-out: start all processing in parallel
     await all:
         for (item in items):
             activity ProcessBatchItem(item)
 
-    # Fan-in: aggregate results (SDK collects results from await all)
     activity AggregateResults(items) -> aggregated
     close complete(BatchResult{processed: aggregated.count})
 
 # --- Pipeline ---
 
 workflow DataPipeline(rawData: RawData) -> (ProcessedData):
-    # Stage 1: Ingest
     activity Ingest(rawData) -> ingested
 
-    # Stage 2: Validate
     activity Validate(ingested) -> validated
     if (validated.valid == false):
         close fail(ProcessedData{status: "invalid", errors: validated.errors})
 
-    # Stage 3: Transform
     activity Transform(validated.data) -> transformed
 
-    # Stage 4: Enrich
     activity Enrich(transformed) -> enriched
 
-    # Stage 5: Load
     activity Load(enriched)
 
     close complete(ProcessedData{status: "complete", recordCount: enriched.count})
@@ -144,7 +126,6 @@ workflow DataPipeline(rawData: RawData) -> (ProcessedData):
 workflow DocumentApproval(doc: Document) -> (ApprovalResult):
     signal Submit():
         phase = "pending_review"
-        activity NotifyReviewers(doc)
 
     signal Approve():
         phase = "approved"
@@ -165,6 +146,7 @@ workflow DocumentApproval(doc: Document) -> (ApprovalResult):
             case "draft":
                 await one:
                     signal Submit:
+                        activity NotifyReviewers(doc)
                     timer(90d):
                         phase = "expired"
             case "pending_review":
@@ -177,6 +159,7 @@ workflow DocumentApproval(doc: Document) -> (ApprovalResult):
             case "changes_requested":
                 await one:
                     signal Submit:
+                        activity NotifyReviewers(doc)
                     signal Withdraw:
                     timer(30d):
                         phase = "expired"
@@ -194,6 +177,7 @@ workflow DocumentApproval(doc: Document) -> (ApprovalResult):
 # --- Polling ---
 
 workflow AwaitResourceReady(resourceId: string) -> (Resource):
+    promise deadline <- timer(30m)
     backoff = 5s
     maxBackoff = 60s
 
@@ -207,11 +191,10 @@ workflow AwaitResourceReady(resourceId: string) -> (Resource):
         if (status.failed):
             close fail(Resource{error: status.error})
 
-        # Wait with backoff, timeout via await one + timer
         await one:
             timer(backoff):
                 backoff = min(backoff * 2, maxBackoff)
-            timer(30m):
+            deadline:
                 close fail(Resource{error: "timeout"})
 
 # --- Supporting activities ---

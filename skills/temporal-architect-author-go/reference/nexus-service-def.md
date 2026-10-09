@@ -1,24 +1,23 @@
 # nexus service definition
 
-## DSL
-
 ```twf
 nexus service BillingService:
     operation ChargePayment(PaymentRequest) -> (PaymentResult)
     operation RefundPayment(RefundRequest) -> (RefundResult)
 ```
 
-## Go — Service contract (shared types)
-
 ```go
+import (
+    "github.com/nexus-rpc/sdk-go/nexus"     // NewService, NewSyncOperation
+    "go.temporal.io/sdk/temporalnexus"      // NewWorkflowRunOperation, GetClient
+)
+
+// Service contract — shared by caller and handler
 const BillingServiceName = "BillingService"
 const ChargePaymentOp = "ChargePayment"
 const RefundPaymentOp = "RefundPayment"
-```
 
-## Go — Async operation handler (workflow-backed)
-
-```go
+// Async: workflow-backed; resolves when the workflow completes
 var ChargePaymentOperation = temporalnexus.NewWorkflowRunOperation(
     ChargePaymentOp,
     BillingChargeWorkflow,
@@ -28,18 +27,14 @@ var ChargePaymentOperation = temporalnexus.NewWorkflowRunOperation(
         }, nil
     },
 )
-```
 
-## Go — Sync operation handler
-
-```go
+// Sync: direct implementation, or temporalnexus.GetClient(ctx) for Temporal client calls
 var RefundPaymentOperation = nexus.NewSyncOperation(RefundPaymentOp, func(ctx context.Context, input RefundRequest, options nexus.StartOperationOptions) (RefundResult, error) {
-    // Direct implementation or use temporalnexus.GetClient(ctx) for Temporal client calls
     return RefundResult{}, nil
 })
 ```
 
-## Go — Registration on worker
+Registration on the **handler** worker (the target namespace's), not the caller:
 
 ```go
 service := nexus.NewService(BillingServiceName)
@@ -51,23 +46,13 @@ w.RegisterNexusService(service)
 w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be registered
 ```
 
-## Notes
+## Sync vs async
 
-- Imports: `"github.com/nexus-rpc/sdk-go/nexus"` for `nexus.NewService`, `nexus.NewSyncOperation`; `"go.temporal.io/sdk/temporalnexus"` for `NewWorkflowRunOperation`, `GetClient`
-- Async operations (backed by workflows) use `temporalnexus.NewWorkflowRunOperation` — the workflow is started and the nexus operation resolves when the workflow completes
-- Sync operations use `nexus.NewSyncOperation` — for direct computation or queries/signals via `temporalnexus.GetClient(ctx)`
-- The service is registered on the handler worker (the target namespace's worker), not the caller
-- Handler workflows must also be registered with `RegisterWorkflow` on the same worker
+The choice is static — the builder function, not runtime conditions.
 
-## When to use: sync vs async operations
-
-- **Sync** (`nexus.NewSyncOperation`): must complete within 10 seconds. Use for short computations, querying a workflow, signaling a workflow, sending an update, calling external services/databases directly. If the handler times out, the caller's Nexus machinery auto-retries until ScheduleToCloseTimeout
-- **Async / workflow-backed** (`temporalnexus.NewWorkflowRunOperation`): arbitrary duration. Use when the operation is a Temporal workflow. The caller receives a completion callback when the handler workflow finishes. Supports cancellation propagation and re-attachment via operation token
-- The choice is static — it depends on which SDK builder function you use, not on runtime conditions
+- **Sync** (`nexus.NewSyncOperation`) — must finish within 10 seconds: short computations, querying/signaling/updating a workflow, direct calls to external services or databases. On handler timeout the caller's Nexus machinery retries until `ScheduleToCloseTimeout`.
+- **Async** (`temporalnexus.NewWorkflowRunOperation`) — any duration, when the operation is a Temporal workflow. The caller gets a completion callback; supports cancellation propagation and re-attachment via operation token.
 
 ## Naming contract
 
-- Operation names must match exactly at the wire level between caller and handler — no automatic transformation
-- The string passed to `NewWorkflowRunOperation` or `NewSyncOperation` is the canonical operation name
-- Define operation names as Go constants (as shown in the service contract section) and reference them from both caller and handler code
-- In polyglot environments, both sides must agree on service name, operation names, and input/output types. Use Protobuf or JSON as the Data Converter format
+Operation names match byte-for-byte at the wire between caller and handler — no transformation. The string passed to the builder is canonical; define it once as a constant (above) and reference it from both sides. Polyglot callers must also agree on service name and input/output types — use Protobuf or JSON as the Data Converter format.

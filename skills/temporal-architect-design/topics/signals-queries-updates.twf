@@ -1,5 +1,5 @@
 # Source: signals-queries-updates.md
-# Patterns: signal/query/update declarations, handler options, watch blocks, approval flows
+# Patterns: signal/query/update declarations, handler options, approval flows, updates racing and waiting on conditions
 
 # --- Signal-driven order workflow ---
 
@@ -21,7 +21,6 @@ workflow OrderTrackingWorkflow(orderId: string) -> (OrderResult):
 
     status = "awaiting_payment"
 
-    # Wait for payment signal with timeout
     await one:
         signal PaymentReceived:
             status = "completed"
@@ -48,7 +47,6 @@ workflow ApprovalWorkflow(request: Request) -> (Decision):
 
     activity NotifyApprovers(request)
 
-    # Wait for either Approved or Rejected signal, or timeout
     await one:
         signal Approved:
             close complete(Decision{status: "approved", approver: approver_name})
@@ -84,22 +82,18 @@ workflow BatchCollector(batchId: string) -> (BatchResult):
 # Updates are read-write: caller sends data and blocks for a result.
 
 workflow SubscriptionWorkflow(userId: string):
-    # Handler options: abandoning this handler at workflow exit is the design
-    # intent, so the default warning would be noise.
     signal Cancel():
         options:
             unfinished_policy: abandon
             description: "Cancels the subscription"
         cancelled = true
 
-    # Simple update: immediate state mutation + return
     update AddCredits(amount: int) -> (CreditResult):
         options:
             description: "Adds prepaid credits and returns the new balance"
         credits = credits + amount
         return CreditResult{total: credits}
 
-    # Update with activity: validates before mutating, caller blocks for the full round-trip
     update ChangePlan(newPlan: string) -> (ChangeResult):
         activity ValidatePlan(newPlan) -> validation
         if (validation.valid):
@@ -140,7 +134,6 @@ workflow ShippingWorkflow(orderId: string) -> (ShipResult):
     activity LoadOrderRecord(orderId) -> order
     address = order.shippingAddress
 
-    # Race: accept address changes until the cutoff window closes
     await one:
         update ChangeAddress:
             activity NotifyShippingUpdate(orderId, address)

@@ -4,14 +4,11 @@
 # --- Start-now, wait-later (promises with activities) ---
 
 workflow ParallelProcessing(items: Items) -> (Result):
-    # Start two activities without blocking
     promise handleA <- activity ProcessA(items.a)
     promise handleB <- activity ProcessB(items.b)
 
-    # Do other work while they run
     activity QuickSetup(items)
 
-    # Collect results
     await handleA -> resultA
     await handleB -> resultB
 
@@ -20,13 +17,10 @@ workflow ParallelProcessing(items: Items) -> (Result):
 # --- Promise with child workflow ---
 
 workflow WorkflowWithAsyncChild(input: Input) -> (Result):
-    # Start child workflow without blocking
     promise childHandle <- workflow SlowChild(input.data)
 
-    # Do other work
     activity QuickTask(input)
 
-    # Wait for child result
     await childHandle -> childResult
 
     close complete(Result{childResult})
@@ -38,7 +32,6 @@ workflow TimedOperation(data: Data) -> (Result):
 
     promise work <- activity LongProcess(data)
 
-    # Race: process finishes or timeout fires
     await one:
         work -> result:
             close complete(Result{data: result})
@@ -108,13 +101,10 @@ workflow ResilientProcess(data: Data) -> (Result):
 # --- Promise with nexus workflow ---
 
 workflow CrossNamespaceAsync(payment: Payment) -> (Result):
-    # Start nexus call without blocking
     promise payHandle <- nexus BillingEndpoint BillingService.ChargePayment(payment)
 
-    # Do local work
     activity PrepareReceipt(payment)
 
-    # Wait for nexus result
     await payHandle -> paymentResult
 
     close complete(Result{paymentId: paymentResult.id})

@@ -11,6 +11,6 @@
 
 **Authoritative references:**
 - Temporal Cloud Terraform provider (`temporalio/temporalcloud`) and `tcld` / `temporal operator` CLI docs — current resource and command surface
-- `tools/spec/sections/` — source of truth for the `.twf` topology constructs being provisioned
+- `twf spec` — source of truth for the `.twf` topology constructs being provisioned
 
 **Entry point:** `SKILL.md` → Orient (detect Cloud+Terraform vs self-hosted CLI) → the matching `reference/` file
