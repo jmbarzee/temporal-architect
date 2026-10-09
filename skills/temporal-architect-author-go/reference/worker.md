@@ -1,7 +1,5 @@
 # worker
 
-## DSL
-
 ```twf
 worker orderTypes:
     workflow ProcessOrder
@@ -13,8 +11,6 @@ namespace default:
         options:
             task_queue: "orders"
 ```
-
-## Go
 
 ```go
 import (
@@ -43,101 +39,31 @@ func main() {
 }
 ```
 
-## Notes
+## Registration
 
-- `worker.New(client, taskQueue, options)` — task queue comes from namespace `options: task_queue`
-- `RegisterWorkflow(func)` — one call per workflow in the worker's type set
-- `RegisterActivity(struct)` — register the activity struct (all exported methods become activities) or individual functions
-- `worker.InterruptCh()` for graceful shutdown on SIGINT/SIGTERM
-- Multiple `worker` blocks in the DSL with different task queues → multiple `worker.New` calls in the same `main()`
-- For nexus services on the same worker, see [nexus-service-def.md](./nexus-service-def.md)
+- `worker.New(client, taskQueue, options)` — the task queue is the namespace worker's `task_queue` option. Several DSL `worker` blocks → several `worker.New` calls in one `main()`.
+- `RegisterWorkflow(fn)` — one call per workflow in the worker's type set.
+- `RegisterActivity(&Activities{...})` — the standard form: every exported method becomes an activity, sharing the dependencies injected on the struct. Register individual functions instead when activities span structs with different dependency sets, or have none.
+- `RegisterActivityWithOptions` with `Name` sets a prefix for struct methods, or the name of a single function.
+- Registration panics on a duplicate type name (`DisableAlreadyRegisteredCheck: true`, tests only) and on an exported struct method that isn't `(context.Context, ...) (..., error)` (`SkipInvalidStructFunctions: true` skips them).
+- Build dependencies at the composition root (`main`, or a per-package `fx.go` in larger apps) — workflows and activity bodies never construct their own.
+- `w.Run(worker.InterruptCh())` drains in-flight tasks on SIGINT/SIGTERM; close the client and injected dependencies after `Run` returns.
 
-## When to use: struct vs function registration
+The nil `*Activities` a workflow uses ([activity-call.md](./activity-call.md)) only names the activity. The worker registers a real, fully built instance of the same type, and that instance is what runs.
 
-- **Struct registration** (`w.RegisterActivity(&Activities{...})`): standard pattern. All exported methods on the struct become activities. Use when activities share dependencies (DB connections, API clients) injected via the struct
-- **Individual function registration** (`w.RegisterActivity(SomeFunc)`): use when activities span multiple structs with different dependency sets, or for standalone functions with no dependencies
-- `RegisterActivityWithOptions` with `Name` sets a prefix for struct methods or overrides the name for individual functions
-- Registration panics if two activities share the same type name. Use `DisableAlreadyRegisteredCheck: true` in tests only
-- If a struct has exported methods that don't match the activity signature `(context.Context, ...) (..., error)`, registration panics. Set `SkipInvalidStructFunctions: true` to skip them
+**Proto-driven.** Register through the generated `RegisterXxxActivities` / `RegisterXxxWorkflows` helpers ([proto-driven.md](./proto-driven.md)). A missing call is an unregistered type: the worker starts, and the task fails at runtime.
 
-### Nil-pointer method binding
+**Nexus.** Register the service and its handler workflows on the handler worker, per [nexus-service-def.md](./nexus-service-def.md). The endpoint that routes to it belongs to `temporal-architect-author-infra`.
 
-Workflow bodies reference an activity by **method value on a nil struct pointer** so the call is type-checked and the name is derived from the method — no string literal:
+## Coverage
 
-```go
-var a *Activities // nil; never dereferenced — only its method value is taken
-workflow.ExecuteActivity(ctx, a.ChargePayment, order).Get(ctx, &receipt)
-```
-
-The worker must still register a **real, fully-constructed** instance (`w.RegisterActivity(&Activities{db: db})`). The nil pointer in the workflow only names the activity; the registered instance is what actually runs. The two must name the same type.
-
-## Dependency injection into activity structs
-
-Activities reach external systems through dependencies held on the struct. Construct the struct with its dependencies at startup and register it:
-
-```go
-acts := &Activities{db: db, payments: paymentsClient}
-w.RegisterActivity(acts)
-```
-
-In larger apps this is wired with `fx` (an `fx.go` per package provides the client and the activities struct, and a registration function calls `w.RegisterActivity` / the generated helper). Keep construction at the composition root — workflows and activity bodies never build their own dependencies.
-
-## Proto-driven registration
-
-When the project is [proto-driven](./proto-driven.md), the generator emits registration helpers — use them instead of hand-registering each type:
-
-```go
-pb.RegisterMyServiceActivities(w, acts)   // registers every activity on the service at once
-pb.RegisterMyServiceWorkflows(w, wfs)     // if the service declares workflows
-```
-
-A missing helper call is the proto-driven form of an unregistered type: the worker starts fine and fails the task at runtime.
-
-## Nexus service registration
-
-Register a Nexus service on the **handler** worker (the target namespace's worker), alongside its handler workflows:
-
-```go
-service := nexus.NewService(BillingServiceName)
-_ = service.Register(ChargePaymentOperation)
-w.RegisterNexusService(service)
-w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be registered
-```
-
-Creating the Nexus **endpoint** that routes to this service is out-of-band infrastructure (`tcld` / Terraform), not worker code — that belongs to the `temporal-architect-author-infra` skill. See [nexus-service-def.md](./nexus-service-def.md) for the handler/operation patterns.
-
-## Graceful shutdown
-
-`worker.InterruptCh()` stops the worker cleanly on SIGINT/SIGTERM, draining in-flight tasks:
-
-```go
-if err := w.Run(worker.InterruptCh()); err != nil {
-    log.Fatalln("worker stopped", err)
-}
-```
-
-Close the Temporal client (`defer c.Close()`) and any injected dependencies (DB pools, external clients) after `Run` returns.
-
-## Registration coverage & the TWF↔Go bridge
-
-**Coverage reality:**
-
-- An **unregistered type fails the task, not the workflow.** The task returns to the queue for another worker; the workflow itself does not fail, but latency and wasted resources accumulate. This silent degradation is why coverage matters.
-- **All workers on the same task queue must register the identical Workflow Type and Activity Type set.** A partial set on one worker means tasks intermittently land on a worker that can't run them.
-- Multiple DSL `worker` blocks with different type sets must use **different task queues**.
-
-**The TWF↔Go bridge:** the design-time topology maps directly onto worker wiring —
-
-| TWF | Go |
-|-----|-----|
-| `worker Name:` (its workflow/activity members) | the registered type set on one `worker.New` |
-| `namespace` + `task_queue` option | `worker.New(client, taskQueue, ...)` |
-
-The resolver previews coverage gaps **at design time**: `UNCOVERED_WORKFLOW` / `UNCOVERED_ACTIVITY` / `UNCOVERED_SERVICE` flag a type no worker covers, and `IMPLICIT_ROUTING_MISMATCH` flags a routing mismatch. Treat a clean resolve as the design-time analog of full registration. These same codes are also a **reverse-reading signal**: when recovering a `.twf` from existing Go, the registered set on each `worker.New` is what populates each `worker` block.
+- An **unregistered type fails the task, not the workflow**: the task goes back to the queue for another worker, and latency and waste accumulate silently.
+- Every worker on a task queue must register the **identical** workflow and activity type set, or tasks intermittently land where they can't run. DSL `worker` blocks with different type sets therefore need different task queues.
+- `twf check` previews this at design time: `UNCOVERED_WORKFLOW` / `UNCOVERED_ACTIVITY` / `UNCOVERED_SERVICE` (no worker covers a type) and `IMPLICIT_ROUTING_MISMATCH`. A clean check is the design-time analog of full registration. In reverse, each `worker.New`'s registered set populates a `worker` block.
 
 ## Worker options → `worker.Options`
 
-Worker tuning now lives in the namespace `options:` block — the SDK-union worker-options set (concurrency caps, rate limiters, sticky cache, versioning). Map each key onto a `worker.Options` field rather than keeping it out of the `.twf`:
+The namespace worker's `options:` block carries the SDK-union worker options; map each key onto `worker.Options`:
 
 | TWF worker option | `worker.Options` field | Go type |
 |-------------------|------------------------|---------|
@@ -162,8 +88,6 @@ Worker tuning now lives in the namespace `options:` block — the SDK-union work
 | `max_cached_workflows` | **not** a `worker.Options` field — process-global via `worker.SetStickyWorkflowCacheSize(n)` | int |
 | `versioning` | not 1:1 — see below | enum |
 
-Example — a namespace worker carrying a couple of options:
-
 ```twf
 namespace orders:
     worker orderTypes
@@ -173,8 +97,6 @@ namespace orders:
             enable_sessions: true
 ```
 
-maps to:
-
 ```go
 w := worker.New(c, "orders", worker.Options{
     MaxConcurrentActivityExecutionSize: 50,
@@ -182,7 +104,7 @@ w := worker.New(c, "orders", worker.Options{
 })
 ```
 
-> **Permissive-union caveat:** the DSL worker-options set is the SDK *union* accepted permissively, so a `.twf` may carry a key the Go SDK has no field for (a per-language one-off). When a key has no `worker.Options` field, **drop it — do not invent an API.** The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred — see [#20](https://github.com/jmbarzee/temporal-architect/issues/20).
+A key with no Go `worker.Options` field (another SDK's one-off, accepted by the permissive union) is **dropped — do not invent an API.** The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred — see [#20](https://github.com/jmbarzee/temporal-architect/issues/20).
 
 ### `versioning` (not 1:1)
 

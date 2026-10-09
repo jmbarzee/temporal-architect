@@ -1,33 +1,23 @@
 # signal handler
 
-## DSL
-
 ```twf
 workflow OrderWorkflow(orderId: string) -> (OrderResult):
     signal PaymentReceived(transactionId: string, amount: decimal):
         status = "payment_received"
         lastTransactionId = transactionId
-
-    # ... body uses await signal PaymentReceived or await one with signal case
 ```
 
-## Go
-
 ```go
+type PaymentReceivedSignal struct {
+    TransactionId string
+    Amount        float64
+}
+
 func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
     var status string
     var lastTransactionId string
 
-    // Signal struct
-    type PaymentReceivedSignal struct {
-        TransactionId string
-        Amount        float64
-    }
-
-    // Signal channel
     paymentReceivedCh := workflow.GetSignalChannel(ctx, "PaymentReceived")
-
-    // Register handler via goroutine that loops on the channel
     workflow.Go(ctx, func(gCtx workflow.Context) {
         for {
             var sig PaymentReceivedSignal
@@ -36,23 +26,18 @@ func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
             lastTransactionId = sig.TransactionId
         }
     })
-
     // ... workflow body
 }
 ```
 
-## Notes
-
-- Signal params become a struct; signal name becomes the channel name string
-- The handler goroutine loops forever — it processes every signal arrival, not just the first
-- Handler body mutates workflow-scoped variables (closures over workflow state)
-- Signals with no params: use `paymentReceivedCh.Receive(gCtx, nil)`
-- When a signal is also used in `await one:`, the selector reads from the same channel — see [await-one.md](./await-one.md)
-- `decimal` type in DSL maps to `float64` by default. For financial values where precision matters, consider `shopspring/decimal` or integer-cents representation instead
+- Params become one struct; the signal name is the channel name. No params → `Receive(gCtx, nil)`.
+- `decimal` → `float64` by default; for money prefer `shopspring/decimal` or integer cents.
+- Delivery pattern:
+  - **Goroutine loop** (above, the common case) — every arrival is handled, independent of the main flow.
+  - **Inline blocking `Receive`** — the workflow pauses for exactly one signal.
+  - **`Selector.AddReceive`** — racing the signal against other events, reading the same channel ([await-one.md](./await-one.md)).
 
 ## Handler options
-
-### DSL
 
 ```twf
 signal Cancel():
@@ -62,35 +47,26 @@ signal Cancel():
     cancelled = true
 ```
 
-### Go
-
 ```go
-// unfinished_policy: abandon — design intent only, no Go equivalent (see below)
+// unfinished_policy: abandon — design intent; the Go SDK cannot express it on signals
 cancelCh := workflow.GetSignalChannelWithOptions(ctx, "Cancel",
     workflow.SignalChannelOptions{Description: "Cancels the subscription"})
 ```
 
-- `description` → `workflow.SignalChannelOptions{Description}`, passed via `GetSignalChannelWithOptions`. Use plain `GetSignalChannel` when the handler has no options (`SignalChannelOptions` is marked Experimental in the SDK)
-- **`unfinished_policy` has no Go equivalent on signal handlers.** `workflow.SignalChannelOptions` carries only `Description`; `UnfinishedPolicy` exists solely on `workflow.UpdateHandlerOptions`. A signal-handler `unfinished_policy` in TWF is design intent the Go SDK cannot currently express — get the channel without it and leave a comment recording the intent. Do **not** invent an API for it: there is no `workflow.SignalHandlerOptions`, no per-channel policy setter, and no signal equivalent of `HandlerUnfinishedPolicy`
+- `description` → `SignalChannelOptions{Description}` via `GetSignalChannelWithOptions`; without options use plain `GetSignalChannel` (`SignalChannelOptions` is Experimental).
+- **`unfinished_policy` has no Go equivalent on signals** — `UnfinishedPolicy` exists only on `workflow.UpdateHandlerOptions`. Record the intent in a comment. Do not invent an API: there is no `workflow.SignalHandlerOptions`, no per-channel policy setter, no signal `HandlerUnfinishedPolicy`.
 
-## When to use each pattern
+## Continue-As-New
 
-- **Goroutine loop** (`workflow.Go` + `Receive` in a loop, as shown above): use when every signal must be processed as it arrives, independent of the main workflow flow. Most common pattern
-- **Blocking `Receive` inline**: use when the workflow must pause and wait for exactly one signal before continuing. Simpler but blocks the main flow
-- **`Selector.AddReceive`**: use when racing a signal against other events (timers, activities, other signals) — see [await-one.md](./await-one.md)
+Signals not drained before `workflow.NewContinueAsNewError` are lost (Go SDK). Trigger CAN from the main workflow thread, never a signal handler, and drain first — with `ReceiveAsync`, or with `selector.HasPending()` + `selector.Select(ctx)` when signals go through a selector:
 
-## Pitfalls
-
-- **Signal drain before Continue-As-New (Go SDK only).** Signals are lost if the channel is not drained before `workflow.NewContinueAsNewError`. Drain with `ReceiveAsync` immediately before CAN:
-  ```go
-  for {
-      var sig SignalType
-      if !signalCh.ReceiveAsync(&sig) {
-          break
-      }
-      // process or forward to next run via workflow input
-  }
-  return workflow.NewContinueAsNewError(ctx, MyWorkflow, state)
-  ```
-- When using a `Selector` for signal handling, drain with `selector.HasPending()` + `selector.Select(ctx)` loop before CAN
-- Do not trigger Continue-As-New from inside a signal handler — call it from the main workflow thread to avoid signal loss
+```go
+for {
+    var sig SignalType
+    if !signalCh.ReceiveAsync(&sig) {
+        break
+    }
+    // process or forward to next run via workflow input
+}
+return workflow.NewContinueAsNewError(ctx, MyWorkflow, state)
+```
