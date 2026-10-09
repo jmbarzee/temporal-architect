@@ -13,7 +13,7 @@ Design entire Temporal systems using `.twf` (Temporal Workflow Format) — captu
 
 Core loop: **orient → write TWF → `twf check` → fix/consult → design review → repeat**. Parser errors are design feedback — validate early and often. But a clean `twf check` is a *grammar gate*, not a finished design: it never routes straight to done (see [Design Review](#design-review)).
 
-**Write before you read the reference docs.** Draft TWF from the workflow description even if you're unsure — use `twf check --lenient` while iterating on incomplete designs — it still reports every error, it just exits 0 instead of failing the gate. Consult `notation-reference.md` and the other references only to fix specific errors, not to prepare. **This does not apply to prior project artifacts** (existing `.twf`, `DESIGN.md`): those are requirements — read them first (see [Orient](#orient)).
+**Write before you read the reference docs.** Draft TWF from the workflow description even if you're unsure — use `twf check --lenient` while iterating on incomplete designs — it still reports every error, it just exits 0 instead of failing the gate. Consult `notation-reference.md` and the other references only to fix specific errors, not to prepare. **This does not apply to prior project artifacts** (existing `.twf`, `DESIGN.md`): those are requirements — read them first (see [Orient](#orient)). **On the reverse path this flips:** recovering a `.twf` from existing code, the semantics are already known and the notation is the only unknown — read the notation first (see [reverse-engineering.md](./reference/reverse-engineering.md#read-the-notation-first)).
 
 ### Orient
 

@@ -10,6 +10,10 @@ This is a **parallel path** to the greenfield loop, kept separate on purpose. Th
 
 Reverse-engineer **deliberately, on a bounded slice** — one domain, one service, one set of entry points at a time. Never scan the whole repo reflexively. A slice keeps both the discovery subagent and the resulting `.twf` reviewable; a whole-repo sweep produces a `.twf` nobody can check.
 
+## Read the notation first
+
+The main skill's "write before you read the reference docs" is greenfield advice, and it inverts here. On recovery the semantics are already in the code; the notation is the only unknown. Read `notation-examples.md` and the `state:` conventions — or `twf spec --list` / `twf spec <slug>`, which print the grammar from the binary itself — before drafting. Drafting blind costs parser round-trips and produces a first draft the design review then flags wholesale.
+
 ## Two cases
 
 ### B1a — Bootstrap (no `.twf` yet)
@@ -34,7 +38,7 @@ A `.twf` exists but the code has moved on. Two halves, with different readiness:
 
 A real monorepo runs a few **shared worker processes**, each hosting many independently-owned domains' types on one task queue. A bounded slice recovers one domain and has no vantage over the whole shared worker — so guessing a `worker`/`namespace` per slice either collides on the shared name or invents a placeholder worker, producing the `UNINSTANTIATED_WORKER` / `UNCOVERED_*` warning wall. The discipline that sidesteps it:
 
-- **Domain slices emit symbols only.** Recover each domain's workflows/activities/nexus services into its own [package](./twf-conventions.md#package-per-domain-directory); do **not** declare a `worker` or `namespace` in a domain slice, and **never** invent a placeholder worker to quiet coverage warnings.
+- **Domain slices emit symbols only.** Recover each domain's workflows/activities/nexus services into its own [package](./twf-conventions.md#package-per-domain-directory); do **not** declare a `worker` or `namespace` in a domain slice, and **never** invent a placeholder worker to quiet coverage warnings. "Symbols only" is about *deployment declarations*, not depth: a domain slice still recovers its workflow bodies — every call, child workflow and signal. It does not mean stub bodies, or one representative workflow per domain. A recovery read that way renders every workflow as a one-level tree and leaves the routing diagnostics nothing to test.
 - **Author the shared topology once, at stitch.** The shared physical workers and their namespaces live in a single topology-owner package (a `deploy` package) that `import`s each domain and registers its types by **package-qualified ref** — exactly one shared `worker` per real worker process. This is the forward `deploy/topology.twf` convention already documented in [twf-conventions.md](./twf-conventions.md#package-per-domain-directory) and the [packages topic](../topics/packages.md); recovery defers to it rather than scattering deployment facts across slices.
 - **Why this is safe — coverage is real, never suppressed.** Coverage and routing diagnostics only run for an analysis that has a `namespace`, so a symbols-only slice stays quiet on its own (the no-namespace guard), and at stitch the qualified registrations resolve to genuine `(package, name)` coverage on the instantiated shared worker. `UNCOVERED_*` / `UNINSTANTIATED_WORKER` then fire only on real gaps — nothing is masked. See the dsl spec's [Shared Workers: Joint Ownership](../../../tools/spec/sections/03-workers-and-namespaces.md#shared-workers-joint-ownership) and its [Validator interplay](../../../tools/spec/sections/03-workers-and-namespaces.md#validator-interplay).
 
@@ -60,12 +64,15 @@ Once every confirmed slice has been recovered into its own [package](./twf-conve
 3. **Author the shared topology** — fold the per-slice deployment facts into the single topology-owner (`deploy`) package from [Deployment topology during recovery](#deployment-topology-during-recovery): one shared `worker`/`namespace` per real worker process, registering each domain's types by package-qualified ref. Domain slices contributed symbols only; this is where they become instantiated and covered.
 4. **Check & iterate** — run `twf check` over the **whole workspace**, not slice by slice, and iterate to clean. A per-slice package that checked alone can still surface cross-package resolution or coverage gaps once every `import` and the shared worker have to resolve for real.
 
+Routing diagnostics are the payoff of recovering wiring faithfully. An `IMPLICIT_ROUTING_MISMATCH` means a call cannot reach any worker that hosts its target: go back to the code — the answer is usually a task-queue override, a default, or a configurator you had not traced — and fix the model to match the code, not the other way round. Know what the result answers, though: `twf graph` shows how the system is **wired**, never how much it **runs**. It is a static dispatch-and-containment view with no timers, continue-as-new frequency, fan-out width or volume. When a recovery serves a cost or optimization question, say so plainly.
+
 ## Reading strategy
 
 Read for **design structure**, not line-by-line behavior:
 
 - **Find entry points first** — client-started workflows, schedule-started workflows, Nexus-operation-backing workflows, handler-bearing workflows. These are the roots of the `.twf`.
 - **Follow call sites** — `workflow.ExecuteActivity`, `workflow.ExecuteChildWorkflow`, Nexus operation calls. Each is an `activity` / `workflow` / `nexus` call in TWF.
+- **Keep every workflow-to-workflow edge.** Child workflows, Nexus operations and signals are the only edges that make a recovered tree deeper than one level — activities are leaves. Never flatten a child workflow into an activity stub because it is easier to model. Where the notation cannot yet express an edge — a signal sent by ID to a workflow the caller did not start; a workflow started, signalled or updated from an activity or client code; an update or cancel sent to another workflow — record it in prose with its `file:line`, so the graph is not read as the complete coupling.
 - **Ignore the plumbing** — error wrapping, `context` threading, logging, options structs, retry/timeout boilerplate. None of it changes the design shape; capture only the options that express a real decision (a tuned timeout, a capped retry).
 - **Detect parallelism** — `workflow.Go`, selectors (`workflow.NewSelector`), futures held and `.Get` later → `await all` / `await one` / `promise` in TWF. Sequential `.Get` right after the call is just a synchronous call.
 
@@ -78,6 +85,7 @@ Do not reconstruct SDK semantics yourself. The author skills already hold the DS
 **Capture what the code does, faithfully — including its anti-patterns.** A wrapper workflow, a monolith, an unbounded loop: extract them *as they are*. The recovered `.twf` must mirror reality before it's worth reviewing; silently "fixing" during extraction produces a `.twf` that describes a system that doesn't exist, and hides the very problems the team needs to see.
 
 - **Do not** refactor, rename, or "improve" during extraction.
+- **Account for every registered activity.** One that nothing in the model calls is either genuinely unused in the code or a call you did not recover. Find out which before trusting a clean check: an uncalled registration is a wiring claim nothing tests.
 - **Intent-fill only genuinely-unimplemented stubs** — a `// TODO` body, a panic-not-implemented, an empty handler. Mark these clearly; everything else is recovered, not invented.
 
 Once the `.twf` faithfully reflects the code, run the standard [Design Review](../SKILL.md#design-review). That pass is where anti-patterns get *named and proposed for change* — separately from extraction, so the record of "what exists" stays honest and the "what should change" is an explicit, reviewable diff.

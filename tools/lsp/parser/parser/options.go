@@ -222,7 +222,9 @@ func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, callSiteOnl
 	var entries []*ast.OptionEntry
 
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
-		if p.current.Type == token.NEWLINE {
+		// Comments may appear anywhere (spec §8): on their own line before, between,
+		// or after entries, or trailing a value on the same line.
+		if p.current.Type == token.NEWLINE || p.current.Type == token.COMMENT {
 			p.advance()
 			continue
 		}
