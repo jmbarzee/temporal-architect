@@ -2527,6 +2527,85 @@ func TestWorkflowDefaultOptions(t *testing.T) {
 	}
 }
 
+// Comments may appear anywhere in the source (spec §8), including inside an
+// options block. Every position below used to fail with "expected option key,
+// got COMMENT"; the entries must survive, not just the parse.
+func TestOptionsBlockAcceptsComments(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string // key=value of each entry, in order
+	}{
+		{"leading", `workflow W():
+    default_options:
+        # provenance note
+        workflow_run_timeout: 30m
+    close complete()
+`, "workflow_run_timeout=30m"},
+		{"between", `workflow W():
+    default_options:
+        workflow_run_timeout: 30m
+        # between keys
+        workflow_task_timeout: 10s
+    close complete()
+`, "workflow_run_timeout=30m workflow_task_timeout=10s"},
+		{"after last entry", `workflow W():
+    default_options:
+        workflow_run_timeout: 30m
+        # trailing
+    close complete()
+`, "workflow_run_timeout=30m"},
+		{"end of value line", `workflow W():
+    default_options:
+        workflow_run_timeout: 30m  # end-of-line note
+    close complete()
+`, "workflow_run_timeout=30m"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := ParseFile(tt.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			wf := file.Definitions[0].(*ast.WorkflowDef)
+			if wf.DefaultOptions == nil {
+				t.Fatal("expected default_options, got nil")
+			}
+			var got []string
+			for _, e := range wf.DefaultOptions.Entries {
+				got = append(got, e.Key+"="+e.Value)
+			}
+			if strings.Join(got, " ") != tt.want {
+				t.Errorf("entries = %q, want %q", strings.Join(got, " "), tt.want)
+			}
+		})
+	}
+}
+
+func TestNestedOptionsBlockAcceptsComments(t *testing.T) {
+	input := `activity A():
+    default_options:
+        start_to_close_timeout: 5s
+        retry_policy:
+            # nested note
+            maximum_attempts: 3
+            # after the last nested key
+    a()
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	act := file.Definitions[0].(*ast.ActivityDef)
+	if act.DefaultOptions == nil || len(act.DefaultOptions.Entries) != 2 {
+		t.Fatalf("expected 2 default-option entries, got %+v", act.DefaultOptions)
+	}
+	rp := act.DefaultOptions.Entries[1]
+	if rp.Key != "retry_policy" || len(rp.Nested) != 1 || rp.Nested[0].Key != "maximum_attempts" || rp.Nested[0].Value != "3" {
+		t.Errorf("expected retry_policy{maximum_attempts=3}, got %q with %+v", rp.Key, rp.Nested)
+	}
+}
+
 func TestWorkflowDefaultOptionsRejectsParentClosePolicy(t *testing.T) {
 	// parent_close_policy is relational (call-site-only): rejected in a workflow
 	// default_options: block with a targeted error, not the generic unknown-key one.
