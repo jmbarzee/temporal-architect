@@ -1,88 +1,65 @@
 # Decomposition + Dispatch Protocol
 
-How to turn a `.twf` design into a dispatch plan for author subagents, using `twf graph chunks`. Read this before breaking out a non-trivial design.
+How to turn a `.twf` design into a dispatch plan for author subagents. Every output of `twf graph chunks` is input to your judgment, not a command. Run `twf graph chunks --help` for the current flags.
 
-The governing rule: **cut at `.twf` contract boundaries, never finer.** `.twf` *is* the contract. The tool **informs; it does not impose** — every output below is input to your judgment, not a command.
+## Thresholds
 
-This is the **forward** decomposition (`.twf` → code). The reverse direction (existing code → `.twf`) now has a **symmetric decompose step** — a `slice-mapper` subagent that proposes a slice map + cross-slice edge list before per-slice recovery — owned by the design skill, not here. The mechanics live in [`temporal-architect-design`'s reverse-engineering.md](../../temporal-architect-design/reference/reverse-engineering.md#decompose-a-large-repo-into-slices); this is only a signpost.
+One deterministic, AST-derived complexity score drives both:
 
-## The command
+- **Floor** (`--floor`, has a default) — a chunk below it is too small for its own subagent; merge it into the chunk that dispatches into it.
+- **Ceiling** (`--ceiling`, off by default) — set it to the largest chunk one subagent should take on; chunks above it get soft divisions.
 
-Run `twf graph chunks --help` for the exact, current flag set — that help is
-generated from the binary, so it never drifts from this prose. What the flags
-*mean* for dispatch:
+`--max-depth` bounds how deep an over-ceiling section is re-divided (level 1 is the chunk's own divisions). `--by` biases the suggested strategy through one of two lenses, because thin-neck composition trees and thick-neck shared services need opposite signals:
 
-- `twf graph chunks` (no flags) — emits the **#1 hard partition** (every definition in exactly one chunk) + a per-chunk complexity score + floor-merge recommendations.
-- the **ceiling** flag — additionally emits **#2 soft divisions** (ranked candidate cuts + a dependency DAG) for any chunk scoring over it.
-- the **floor** flag — chunks below it are flagged "too granular for their own subagent."
-- the **by** flag — biases which soft-division strategy is suggested. Two lenses, because thin-neck composition trees and thick-neck shared services need opposite signals:
-    - *use-case / balance* — `tree` (reachable-subtree), `nexus` (`nexusCall`-boundary), `worker`, `namespace`.
-    - *authorship-parallelism* — `service` (extract the highest-fan-in hub plus its dominated closure, then split the remainder into binding components) and `subtree` (peel the heaviest dominated child-workflow subtrees until the trunk fits, leaving light branches inline).
-- the **max-depth** flag — bounds how deep the explore phase recursively re-divides an over-ceiling section. Level 1 is the chunk's own divisions.
+- *use-case / balance* — `tree` (reachable subtree), `nexus` (`nexusCall` boundary), `worker`, `namespace`.
+- *authorship parallelism* — `service` (extract the highest-fan-in hub and its dominated closure, split the rest into binding components) and `subtree` (peel the heaviest dominated child-workflow subtrees until the trunk fits, leaving light branches inline).
 
-See [Complexity floor + ceiling](#complexity-floor--ceiling) below for how to choose the thresholds. If the subcommand is absent, use the [manual fallback](#manual-fallback).
+## Hard boundaries — MUST dispatch separately
 
-## #1 Hard boundaries — MUST dispatch separately
+Discovered facts, one author subagent per hard chunk:
 
-Hard boundaries are discovered **facts** about the graph, not suggestions. Dispatch a **separate** author subagent per hard chunk:
+- **Isolated components** — disconnected call structure is independent work.
+- **`nexusCall` cuts** — cross-namespace/worker by construction; the Nexus operation signature *is* the contract.
+- **Language boundaries** — a hard split once `@lang` lands ([#23](https://github.com/jmbarzee/temporal-architect/issues/23)).
 
-- **Isolated components** — disconnected pieces of the call structure are independent work.
-- **`nexusCall` cuts** — the cleanest contract boundary (cross-namespace/worker by construction). The Nexus operation signature *is* the contract; pin it.
-- **Language boundaries** — once `@lang` lands ([#23](https://github.com/jmbarzee/temporal-architect/issues/23)), a hard split keyed on per-node language. Until then, infer language from project layout / the user.
+Every definition lands in exactly one hard chunk. A node reachable from two roots is reported as **overlap**: implement it once and let both chunks consume it.
 
-Each definition belongs to exactly one hard chunk. A node reachable from two roots is reported as **overlap** (listed once, referenced by each root) — implement it once and let both chunks consume it; do not duplicate it across subagents.
+## Soft divisions — MAY use
 
-## #2 Soft divisions — MAY use
+- The **ranked candidate cuts** are suggestions: pick one that matches a real domain boundary, or decline to cut.
+- The **dependency DAG is the build order**: author independent sections first, then what they unblock.
+- **Loops are never cut**: a workflow-call cycle is collapsed into one chunk regardless of score.
+- **Sections recurse** down to max-depth, so read the whole tree before dispatching.
 
-Soft divisions appear only when a chunk exceeds the ceiling you set. They are **options** over an oversized chunk:
+A chunk may also carry a `suggestContract` **advisory**: a node so heavily shared that pinning its signature (or promoting it to a Nexus operation) buys more than cutting around it. Treat it as a prompt to pin a contract, not as a cut.
 
-- Treat the **ranked candidate cuts** as suggestions; pick the one that matches a real boundary in the domain, or decline to cut.
-- The **inter-section dependency DAG is the build order.** Author independent sections first, then the sections they unblock. This is the PERT walk — not a blind parallel fan-out.
-- **Loops are never cut.** An SCC-collapsed chunk (workflow-call cycle) is exempt regardless of score — implement it as one unit.
-- **Sections recurse.** An over-ceiling section inside a division is itself re-divided, down to the max-depth bound, so a rank-1 division can carry nested structure. Read the whole tree before dispatching, not just the top level.
+## Roots and edges
 
-## Advisories
+Roots are heuristic (`source: heuristic`): in-degree 0 in the binding subgraph, `asyncBacking` targets (external entries despite an in-edge), handler-bearing workflows (signal/query/update), and in-cycle workflows with no external binding in-edge. Declared roots will later seed at higher priority ([#5](https://github.com/jmbarzee/temporal-architect/issues/5)).
 
-A chunk may carry **`advisories`** alongside its sections. Today there is one kind, `suggestContract`: a node so heavily shared that promoting it to an explicit contract (a Nexus operation, or a pinned signature every dependent agrees to) would buy more than cutting around it. Treat an advisory as a prompt to *pin a contract*, not as a cut — it fires exactly where the graph says "many things depend on this," which is where an unpinned signature costs the most in rework.
+`signalSend` is a soft edge: it keeps two workflows in one blob but as separate roots and chunks — never a binding call.
 
-## Complexity floor + ceiling
+## Selective dispatch
 
-A single deterministic AST-derived score drives both thresholds:
+The decomposition knows the design, not what is already implemented. For each chunk:
 
-- **Floor** — a chunk below the floor is too small to justify its own subagent. Merge it into the chunk that dispatches into it. Don't spin up an author per one-activity fragment.
-- **Ceiling** — caller-instructed; triggers #2. Set it to the largest chunk you want a single subagent to take on.
+1. Resolve its code through the `# impl: <dirs>` header (design skill's `twf-conventions.md`).
+2. No linked code → new → dispatch an author.
+3. Linked code → run the author's fast verify (e.g. `go build` / `go test` on the linked package). Clean against the current `.twf` → skip; a failure, or a `.twf` edit touching the chunk → dispatch.
 
-Defaults ship documented and tunable; adjust per design rather than treating them as fixed.
-
-## Roots
-
-Roots are **heuristic**: in-degree-0 in the binding subgraph, `asyncBacking` targets (external entries despite an in-edge), handler-bearing workflows (signal/query/update), and in-cycle workflows with no external binding in-edge. Each root is tagged `source: heuristic|declared`. Today all are heuristic; that is acceptable. Declared inbound roots will later seed at higher priority without changing this protocol ([#5](https://github.com/jmbarzee/temporal-architect/issues/5)).
-
-Edge semantics worth knowing when reading output: `nexusCall` = contract cut; `asyncBacking` target = a root; `signalSend` = a *soft* edge that keeps two workflows in one blob but as **separate** roots/chunks (never treat it as a binding call edge).
-
-## Selective dispatch against existing work
-
-The decomposition is computed over the **design**. It does not know what is already implemented. Before dispatching any chunk:
-
-1. Resolve the chunk's definitions to code via the `# impl: <dirs>` link header (see `temporal-architect-design`'s `twf-conventions.md`).
-2. If there is **no linked code**, the chunk is new → dispatch an author.
-3. If there **is** linked code, run the author skill's fast verify on it as a cheap changed-vs-unchanged signal — e.g. `author-go`'s `go build` / `go test` on the linked package. Treat a clean build/test against the current `.twf` as "unchanged, skip"; a failure or a `.twf` edit touching that chunk as "changed, dispatch."
-4. **Skip unchanged chunks.** Never re-author a component that doesn't need altering — that is wasted context and risks churning working code.
-
-This is a stopgap: there is no first-class chunk↔impl staleness check (chunk identity + impl link + a quick verify). The build/test signal is coarse but cheap. Tracked as [#40](https://github.com/jmbarzee/temporal-architect/issues/40).
+Never re-author a component that doesn't need it. This build/test signal is a coarse stopgap for a missing chunk↔impl staleness check ([#40](https://github.com/jmbarzee/temporal-architect/issues/40)).
 
 ## Pin contracts only where it pays
 
-Pin types/signatures **rigidly only at the hard-boundary and cross-language cuts** — the interfaces that are expensive to renegotiate and that multiple subagents depend on. Everywhere else, hand the author a **loose API suggestion** and let it refine the shape as it implements, feeding genuine constraints back. Freezing everything up front is waterfall; it caps the authors' autonomy and produces conflicting rework, not less of it.
+Pin types and signatures rigidly only at hard-boundary and cross-language cuts — the interfaces multiple subagents depend on and that are expensive to renegotiate. Elsewhere, hand the author a loose API suggestion and let constraints found while implementing refine it. Freezing everything up front is waterfall: it produces conflicting rework, not less.
 
 ## Manual fallback
 
 When `twf graph chunks` is unavailable:
 
-1. Run `twf symbols` (or read the `.twf`) to list workflows, activities, and Nexus operations.
-2. Seed roots heuristically: handler-bearing workflows, Nexus-op-backing workflows, and any workflow with no inbound call.
-3. Walk call edges from each root to gather its reachable children; each connected component is a chunk.
-4. Treat `nexus` operations as contract cuts (separate chunks either side).
-5. Apply the same selective-dispatch and contract-pinning logic above.
+1. List workflows, activities, and Nexus operations with `twf symbols` (or read the `.twf`).
+2. Seed roots: handler-bearing workflows, Nexus-op-backing workflows, and workflows with no inbound call.
+3. Roots and their reachable children form connected components; each component is a chunk. Treat Nexus operations as cuts.
+4. Apply selective dispatch and contract pinning as above.
 
-This is coarser (no complexity score, no ranked cuts) but follows the identical dispatch discipline, so adopting the tool later changes the *input*, not the protocol.
+Coarser: no scores, no ranked cuts.

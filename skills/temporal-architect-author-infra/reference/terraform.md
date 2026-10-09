@@ -1,7 +1,5 @@
 # Temporal Cloud + Terraform (`temporalio/temporalcloud`)
 
-Provision Temporal Cloud control-plane resources with the official Terraform provider. This is the target when the repo already has `*.tf` referencing `temporalio/temporalcloud`, or when the user chooses Temporal Cloud for greenfield.
-
 ## Provider Setup
 
 ```hcl
@@ -57,7 +55,7 @@ Key attributes:
 
 ## `temporalcloud_namespace_search_attribute`
 
-One resource per custom search attribute. **Not yet modeled in `.twf`** — ask the user for the name and type (see SKILL.md → Not-Yet-Modeled Intent).
+One resource per custom search attribute; name and type come from the user ([not in `.twf`](../SKILL.md#not-yet-modeled-in-twf)).
 
 ```hcl
 resource "temporalcloud_namespace_search_attribute" "order_status" {
@@ -69,7 +67,7 @@ resource "temporalcloud_namespace_search_attribute" "order_status" {
 
 ## `temporalcloud_nexus_endpoint`
 
-Maps from a `.twf` `nexus endpoint` block. The endpoint's `worker_target` is the `.twf` endpoint's target namespace + `task_queue`; `allowed_caller_namespaces` is the access policy (**not yet in `.twf`** — ask the user which caller namespaces to trust; do not default to allow-all).
+`allowed_caller_namespaces` is the runtime access policy — only listed namespaces may invoke the endpoint ([not in `.twf`](../SKILL.md#not-yet-modeled-in-twf)).
 
 ```hcl
 resource "temporalcloud_nexus_endpoint" "payments_endpoint" {
@@ -87,14 +85,9 @@ resource "temporalcloud_nexus_endpoint" "payments_endpoint" {
 }
 ```
 
-Notes:
-- `name` must match `^[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9]$` and is the identifier caller workflow code uses to invoke the endpoint — it must match the endpoint name in the `.twf` / `author-go` output.
-- Only a single `worker_target` is supported per endpoint.
-- `allowed_caller_namespaces` is the runtime access control: only listed namespaces may invoke the endpoint.
+`name` must match `^[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9]$`. An endpoint supports only one `worker_target`.
 
-## Import + Drift Workflow (adopting existing infra)
-
-When the resource already exists in Temporal Cloud, **import it before managing** — otherwise Terraform plans a create and you get a duplicate or an error.
+## Import existing resources
 
 1. Write an empty (or matching) resource block as the import target.
 2. Import using the resource's ID:
@@ -112,14 +105,4 @@ terraform import temporalcloud_nexus_endpoint.payments_endpoint <endpoint-id>
 
 3. `terraform plan` — reconcile the block to match reality until the plan is clean (no changes). A non-empty plan after import means your HCL diverges from the live resource; fix the HCL, don't apply blindly.
 
-**Drift discipline:** once imported/managed, never edit the resource in the console or via `tcld` — the next `terraform plan` will try to revert it. Terraform is the single owner. Run `terraform plan` in CI to detect drift early.
-
-## Verify
-
-```bash
-terraform init
-terraform plan   # review the diff; an unexpected "create" on a resource that should exist means a missing import
-terraform apply
-```
-
-Confirm the provisioned task queue names match what `author-go`'s workers register on — a mismatch means Nexus tasks route nowhere.
+Once imported, console or `tcld` edits are drift the next `plan` reverts; run `terraform plan` in CI to catch it early. An unexpected `create` in any `plan` on a resource that should already exist means a missing import.

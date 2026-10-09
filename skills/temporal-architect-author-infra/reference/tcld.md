@@ -1,17 +1,7 @@
 # CLI Provisioning (`tcld` / `temporal operator`)
 
-The imperative alternative to Terraform. Two distinct CLIs cover two deployment targets:
-
-| CLI | Target | Use when |
-|-----|--------|----------|
-| `tcld` | **Temporal Cloud** | You want imperative Cloud provisioning without committing to Terraform state. |
-| `temporal operator` | **Self-hosted** OSS cluster | There is no Cloud account — you run your own `temporal server`. |
-
-Prefer [Terraform](./terraform.md) for Temporal Cloud when the project keeps IaC in state; reach for `tcld` for one-off or scripted Cloud changes. For self-hosted there is no Terraform provider, so `temporal operator` is the path.
-
-Whichever CLI: **make the runbook idempotent** — guard every `create` with a `list`/`get` so re-running is safe, and commit the runbook rather than leaving provisioning as an untracked transcript.
-
----
+- **`tcld`** — Temporal Cloud, for one-off or scripted changes. Prefer [Terraform](./terraform.md) when the project keeps IaC in state.
+- **`temporal operator`** — a self-hosted cluster. There is no Terraform provider, so this is the path.
 
 ## Namespaces
 
@@ -37,7 +27,7 @@ Self-hosted namespaces have no region/auth-method flags — those are Cloud conc
 
 ## Custom Search Attributes
 
-**Not yet modeled in `.twf`** — ask the user for the name and type (see SKILL.md → Not-Yet-Modeled Intent).
+Name and type come from the user ([not in `.twf`](../SKILL.md#not-yet-modeled-in-twf)).
 
 **Self-hosted (`temporal operator`):**
 
@@ -48,11 +38,11 @@ temporal operator search-attribute create \
   --type Keyword   # Bool | Datetime | Double | Int | Keyword | KeywordList | Text
 ```
 
-**Temporal Cloud:** register via `tcld namespace` configuration or the operator API for the Cloud namespace; the type set is the same.
+**Temporal Cloud:** the same flags and types under `temporal cloud namespace search-attribute create`; guard with `temporal cloud namespace search-attribute list --namespace <ns>`.
 
 ## Nexus Endpoints
 
-Maps from a `.twf` `nexus endpoint` block. `--target-namespace` + `--target-task-queue` are the endpoint's `worker_target`; `--allow-namespace` is the access policy (**not yet in `.twf`** — ask the user which caller namespaces to trust; do not default to allow-all).
+`--target-namespace` + `--target-task-queue` are the `.twf` endpoint's `worker_target`; `--allow-namespace` is the access policy ([not in `.twf`](../SKILL.md#not-yet-modeled-in-twf)).
 
 **Temporal Cloud (`tcld`):**
 
@@ -85,12 +75,6 @@ temporal operator nexus endpoint create \
   --target-task-queue payments
 ```
 
-Notes:
-- The endpoint `--name` is the identifier caller workflow code uses to invoke the endpoint — it must match the endpoint name in the `.twf` / `author-go` output.
-- The target task queue must match the queue `author-go`'s handler worker polls, or Nexus tasks route nowhere.
-
----
-
 ## Verify
 
 ```bash
@@ -102,7 +86,3 @@ tcld nexus endpoint get --name payments-endpoint
 temporal operator namespace describe --namespace orders
 temporal operator nexus endpoint get --name payments-endpoint
 ```
-
-Confirm each resource exists and its target task queue matches what the workers register on.
-
----

@@ -5,95 +5,55 @@ description: Entry point for designing, building, adopting, or evolving Temporal
 
 # Temporal Architect
 
-The front door to the `temporal-architect` skill set. This skill does not design or author directly — it **orients** the work, **decomposes** it at contract boundaries, and **routes** to the specialists:
+This skill does not design or author; it routes to the specialists:
 
 | Skill | Owns |
 |-------|------|
-| `temporal-architect-design` | The `.twf` design (workflows, activities, namespaces, Nexus). Produces/reviews `.twf`; never SDK code. |
+| `temporal-architect-design` | The `.twf` design (workflows, activities, namespaces, Nexus), forward and recovered from code. Never SDK code. |
 | `temporal-architect-author-go` | Go SDK implementation of a `.twf`. |
 | `temporal-architect-author-infra` | Control-plane provisioning (namespaces, Nexus endpoints, search attributes). Orthogonal to language authoring. |
 
----
-
-## North Star
-
-`.twf` exists to **extend the complexity horizon of AI execution** — to let AI work at *system* scale, not code scale. (You don't cross a country on square-mile maps.) The largest gains in AI-assisted development came from wiring AIs into **deterministic tooling** — compilers, linters, testers. `temporal-architect` is that deterministic harness for **Temporal architecture**: it keeps the AI out of the weeds — error handling, library choices, application-code pedantics — so it can focus on the large scale: **workloads, scaling, reliability, availability**.
-
-The product is a **context-protecting harness for the main agent**: fit a bigger problem into the same context window. Decompose at `.twf` contract boundaries, dispatch the heavy authoring to subagents that each see only their chunk, and keep the main context on the architecture. (The "main agent" is not always the *design* agent — sometimes it is authoring or reverse-engineering. Don't assume.)
-
-Everything below serves that: protect context, raise the level of abstraction, and resist being dragged back down into code-scale busywork.
+Its job is to protect the main agent's context: keep it on the architecture (workloads, scaling, reliability, availability) and dispatch code-scale authoring to subagents that each see only their chunk. The main agent is not always the design agent — sometimes it is authoring or reverse-engineering.
 
 ---
 
-## Orient — which direction, which situation
+## Orient
 
-The design↔code edge is traversed in **two directions**. Identify which one the task needs before doing anything else.
+The design↔code edge runs in two directions:
 
-- **Direction A — `.twf` → application code** (forward authoring). The steady-state ideal: once a project has a `.twf`, *changes are made in the `.twf` first, then propagated forward* to the authors. Most work lives here.
-- **Direction B — application code → `.twf`** (recovery / reconciliation). Bootstraps a `.twf` from an existing app, and reconciles drift back into the `.twf`. Recovery now has its own **decompose step** for multi-slice targets — a `slice-mapper` subagent that proposes a slice map, the reverse-path sibling of `twf graph chunks` below. It is owned by the design skill; the mechanics stay there (see [`temporal-architect-design`'s reverse-engineering.md](../temporal-architect-design/reference/reverse-engineering.md#decompose-a-large-repo-into-slices)).
+- **A — `.twf` → code** (forward). The steady state: once a `.twf` exists, change the `.twf` first, then propagate forward to the authors.
+- **B — code → `.twf`** (recovery). Bootstraps a `.twf` from an existing app or reconciles drift. Owned end to end by the design skill, including splitting a large repo into slices.
 
-Detect the **situation** cheaply (no subagent needed) and enter the matching path:
+Detect the situation from the repo (no subagent needed):
 
-| Situation | Cheap signal | Path |
-|-----------|--------------|------|
-| **Greenfield** | No `.twf`, no Temporal SDK usage in the repo | Design (A) → author forward |
-| **Existing app, no `.twf`** (dominant adoption path) | Temporal SDK imports / worker code, but no `.twf` | Recover `.twf` (B, design's reverse path) → then forward |
+| Situation | Signal | Path |
+|-----------|--------|------|
+| **Greenfield** | No `.twf`, no Temporal SDK usage | Design (A) → author forward |
+| **Existing app, no `.twf`** (the common adoption path) | Temporal SDK imports / worker code, no `.twf` | Recover `.twf` (B) → then forward |
 | **`.twf` exists — implement / evolve** | `.twf` present | Edit the `.twf` first → propagate forward (A) |
 | **Drift** | Code and `.twf` disagree | Reconcile into the `.twf` (B) → then forward (A) |
 
-**On drift:** the steady state keeps the `.twf` authoritative, so drift should be rare — but the *hard problem is catching it*. There is no first-class detector yet. Lean on the feedback surfaces that exist: the author skills' build/test verify against the linked implementation, and (for production divergence) the sampler's observed-graph output. When drift is found, route the fix **through the `.twf`** (B), then re-author forward — never patch the code and leave the `.twf` stale.
-
-Always check for prior artifacts first (existing `.twf`, `DESIGN.md`); the design skill's Orient covers this in depth. The detection-signal style here mirrors `temporal-architect-author-infra`'s Orient.
+There is no drift detector yet; the signals are the authors' build/test against the linked implementation and the sampler's observed graph in production. Route every drift fix **through the `.twf`** — never patch code and leave the `.twf` stale.
 
 ---
 
-## Decompose — `twf graph chunks`
+## Decompose and dispatch
 
-Once a `.twf` exists (or has been recovered), decompose it into independently-implementable units before dispatching. The unit of decomposition is a **contract boundary** — `.twf` *is* the contract — **never finer**.
+Once a `.twf` exists, run **`twf graph chunks`** and cut at **contract boundaries, never finer**. The tool informs; you decide:
 
-Use **`twf graph chunks`**, which computes the decomposition from the design. **The tool informs; it does not impose** — you decide how to act on it. Its output has two cleanly-typed parts:
+- **Hard boundaries** (isolated components, `nexusCall` cuts) — MUST go to separate author subagents.
+- **Soft divisions** (only over a ceiling you set) — MAY be used; their dependency DAG is the build order.
 
-- **#1 hard boundaries — you MUST dispatch separate subagents across these.** Discovered facts: isolated components today (a `nexusCall` is the cleanest contract cut, cross-namespace by construction), language boundaries later ([#23](https://github.com/jmbarzee/temporal-architect/issues/23)). Every definition lands in exactly one hard chunk.
-- **#2 soft divisions — you MAY use these.** Only emitted for a chunk that exceeds a complexity **ceiling** you instruct: ranked candidate cuts plus an inter-section **dependency DAG**.
-
-Other knobs: a **floor** flags chunks too granular for their own subagent (merge them up); loops are collapsed into one chunk and never cut; roots are heuristic. Run `twf graph chunks --help` for the exact flags.
-
-**Fallback (pre-tool):** if `twf graph chunks` is unavailable, enumerate chunks by hand from `twf symbols` / the `.twf` — heuristic roots (handler-bearing and Nexus-op-backing workflows, plus any with no inbound call edge) and their reachable children form connected components. Same dispatch logic, coarser input.
-
-The detailed protocol for reading the tool's output — hard/soft handling, floor/ceiling, the dependency DAG, selective dispatch against existing code, and contract pinning — is in [reference/decomposition.md](reference/decomposition.md). Read it before dispatching a non-trivial design.
+Before dispatching a non-trivial design, read [reference/decomposition.md](reference/decomposition.md): thresholds, build order, which chunks to skip, where to pin contracts, and the manual fallback.
 
 ---
 
-## Dispatch — progressive, not a waterfall freeze
+## Route
 
-Dispatch authoring **progressively**, in the dependency-DAG order the decomposition gives you:
+Load the minimum that fits. **Default:** `temporal-architect-design` + the **one** author for the chunk's language, plus `temporal-architect-author-infra` if the topology needs control-plane resources. Load a skill, not its internals.
 
-- **Don't freeze every signature up front.** A global type freeze recreates waterfall's failure modes. Pin contracts rigidly **only** at the hard-boundary / cross-language cuts the decomposition surfaces (these are exactly the expensive-to-renegotiate interfaces). Everywhere else, start from a **loose API suggestion** and let constraints discovered during authoring feed back and refine it.
-- **Don't parallelize everything.** Build independent chunks first, then the now-unblocked dependents — a PERT walk over the dependency DAG, not a blind fan-out.
-- **Only dispatch what needs altering.** The decomposition is over the *design*; the tool doesn't know what's already implemented. For each chunk, resolve its code via the `# impl: <dirs>` link (see the design skill's `twf-conventions.md`) and **skip chunks that are new-free and unchanged** — never spin up an author for a component that doesn't need it. Use the relevant author skill's fast verify (e.g. `author-go`'s `go build`/`go test` on the linked package) as the cheap changed-vs-unchanged signal. A first-class chunk↔impl staleness check does not exist yet ([#40](https://github.com/jmbarzee/temporal-architect/issues/40)).
+- **Skip design** for a pure implementation of a settled `.twf` — load only the author(s).
+- **Design in the main agent** when the work is design-heavy or collaborative: the user usually wants to be in the design loop. Dispatch authoring to subagents.
+- **A language boundary wants both authors.** Pin the boundary contract once, then prefer isolated per-language author subagents that exchange only that contract — two SDK vocabularies in one context are confusable. Co-loading is acceptable when the boundary is small.
 
----
-
-## Route — which skills to load
-
-Routing is **advice with a sensible default, not a rigid rule**. Load the minimum that fits the work.
-
-**Default:** `temporal-architect-design` + the **one** author for the chunk's language, plus `temporal-architect-author-infra` if the topology needs control-plane resources (it is orthogonal to language authoring).
-
-Named exceptions:
-
-- **Skip design** when there is no design change — a pure implementation of a settled `.twf`. Load only the author(s).
-- **Design in the main agent.** Because the whole point is an elevated surface to design *from*, the user often wants to be integrated in the design loop. For design-heavy or collaborative work, load `temporal-architect-design` **into the main agent** rather than dispatching it to a subagent. Dispatch authoring to subagents to protect context.
-- **A language boundary wants both authors.** A workflow in one language calling an activity in another is a genuine (not rare) case. Pin the boundary contract once, then prefer **isolated per-language author subagents that exchange only that contract** — this keeps two SDK-language authors out of a single context, where their overlapping vocabulary is *confusable*. Co-loading both is acceptable when the boundary is small and the isolation overhead isn't worth it; the confusability concern is the reason to default to separating them, not a hard prohibition.
-
-`@lang` annotations (coming to the spec — [#23](https://github.com/jmbarzee/temporal-architect/issues/23)) will become the explicit dispatch key per chunk — don't over-engineer language routing before then; the heuristic + boundary handling above is enough.
-
----
-
-## Reference Index
-
-| Topic | When to consult | File |
-|-------|-----------------|------|
-| Decomposition + dispatch protocol | Reading `twf graph chunks` output; planning subagent breakout | [decomposition.md](reference/decomposition.md) |
-
-The specialist skills carry their own references for design, Go authoring, and infrastructure — load the skill, not its internals, from here.
+`@lang` annotations ([#23](https://github.com/jmbarzee/temporal-architect/issues/23)) will become the per-chunk dispatch key; until then, infer language from project layout or the user.
