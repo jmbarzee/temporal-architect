@@ -2571,15 +2571,23 @@ func TestOptionsBlockAcceptsComments(t *testing.T) {
 			if wf.DefaultOptions == nil {
 				t.Fatal("expected default_options, got nil")
 			}
-			var got []string
-			for _, e := range wf.DefaultOptions.Entries {
-				got = append(got, e.Key+"="+e.Value)
-			}
-			if strings.Join(got, " ") != tt.want {
-				t.Errorf("entries = %q, want %q", strings.Join(got, " "), tt.want)
+			if got := optionEntries(wf.DefaultOptions); got != tt.want {
+				t.Errorf("entries = %q, want %q", got, tt.want)
 			}
 		})
 	}
+}
+
+// optionEntries renders an options block's flat entries as "key=value ...".
+func optionEntries(b *ast.OptionsBlock) string {
+	if b == nil {
+		return ""
+	}
+	var got []string
+	for _, e := range b.Entries {
+		got = append(got, e.Key+"="+e.Value)
+	}
+	return strings.Join(got, " ")
 }
 
 func TestNestedOptionsBlockAcceptsComments(t *testing.T) {
@@ -2603,6 +2611,34 @@ func TestNestedOptionsBlockAcceptsComments(t *testing.T) {
 	rp := act.DefaultOptions.Entries[1]
 	if rp.Key != "retry_policy" || len(rp.Nested) != 1 || rp.Nested[0].Key != "maximum_attempts" || rp.Nested[0].Value != "3" {
 		t.Errorf("expected retry_policy{maximum_attempts=3}, got %q with %+v", rp.Key, rp.Nested)
+	}
+}
+
+func TestCallSiteAndWorkerOptionsAcceptComments(t *testing.T) {
+	input := `workflow W():
+    activity A()
+        options:
+            # call-site note
+            task_queue: "q"
+    close complete()
+
+namespace ns:
+    worker wk
+        options:
+            # worker note
+            task_queue: "q"
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	call := file.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.ActivityCall)
+	if got := optionEntries(call.Options); got != "task_queue=q" {
+		t.Errorf("call-site options = %q, want %q", got, "task_queue=q")
+	}
+	nw := file.Definitions[1].(*ast.NamespaceDef).Workers[0]
+	if got := optionEntries(nw.Options); got != "task_queue=q" {
+		t.Errorf("worker options = %q, want %q", got, "task_queue=q")
 	}
 }
 
