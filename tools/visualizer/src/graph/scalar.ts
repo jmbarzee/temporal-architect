@@ -4,15 +4,8 @@
 // onto a world span. Three are built in and read only structure; a host may
 // declare more through its ontology, with access to its own payload.
 
-import type { GraphEdge, GraphNode } from './model'
+import type { ReadableGraph } from './model'
 import { isContainment } from './model'
-
-/** What a scalar may read: the nodes with their metadata, the edges, and a lookup. */
-export interface ScalarGraph {
-  readonly nodes: Iterable<GraphNode>
-  readonly edges: Iterable<GraphEdge>
-  nodeOf(id: string): GraphNode | undefined
-}
 
 export interface ScalarAxis {
   /** Stable id — the tuning names the scalar by it. */
@@ -24,7 +17,7 @@ export interface ScalarAxis {
    * this axis and rests at the axis's centre — the same answer as a node in no
    * bucket on a mapped axis.
    */
-  compute(graph: ScalarGraph): Map<string, number>
+  compute(graph: ReadableGraph): Map<string, number>
 }
 
 /**
@@ -34,8 +27,8 @@ export interface ScalarAxis {
  * Leaves score 0. Topological gravity reads this over the visible subgraph;
  * as an axis it is read over the whole graph.
  */
-export function computeDownstreamReach(graph: ScalarGraph): Map<string, number> {
-  const nodes = [...graph.nodes]
+export function computeDownstreamReach(graph: ReadableGraph): Map<string, number> {
+  const nodes = graph.nodes
   const adj = new Map<string, string[]>()
   for (const e of graph.edges) {
     if (isContainment(e)) continue
@@ -104,7 +97,7 @@ export function computeDownstreamReach(graph: ScalarGraph): Map<string, number> 
 }
 
 /** Dependency edges in and out, as a fraction of the busiest node's. */
-export function computeDegree(graph: ScalarGraph): Map<string, number> {
+export function computeDegree(graph: ReadableGraph): Map<string, number> {
   const count = new Map<string, number>()
   for (const n of graph.nodes) count.set(n.id, 0)
   for (const e of graph.edges) {
@@ -121,7 +114,7 @@ export function computeDegree(graph: ScalarGraph): Map<string, number> {
 }
 
 /** Containment depth: 0 at the top of the hierarchy, 1 at the deepest node. */
-export function computeContainmentDepth(graph: ScalarGraph): Map<string, number> {
+export function computeContainmentDepth(graph: ReadableGraph): Map<string, number> {
   const depth = new Map<string, number>()
   let max = 0
   for (const n of graph.nodes) {
@@ -131,7 +124,7 @@ export function computeContainmentDepth(graph: ScalarGraph): Map<string, number>
     while (pid && !guard.has(pid)) {
       guard.add(pid)
       d++
-      pid = graph.nodeOf(pid)?.parentId
+      pid = graph.getNode(pid)?.parentId
     }
     depth.set(n.id, d)
     if (d > max) max = d

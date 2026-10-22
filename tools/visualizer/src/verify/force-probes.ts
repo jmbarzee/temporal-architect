@@ -134,7 +134,7 @@ const UNKNOWN_EDGE: GraphEdge = { id: 'pu', sourceId: 'unknown', targetId: 'wf',
 /** The probe nodes and edges as a frame reads them. */
 function probeGraph(nodes: SimNode[]) {
   const map = nodeMapOf(nodes)
-  return { nodes, edges: PROBE_EDGES, nodeOf: (id: string) => map.get(id) }
+  return { nodes, edges: PROBE_EDGES, getNode: (id: string) => map.get(id) }
 }
 
 function nodeMapOf(nodes: SimNode[]): Map<string, SimNode> {

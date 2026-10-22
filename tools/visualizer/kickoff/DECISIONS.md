@@ -1264,8 +1264,10 @@ the bucket removed, not a second force:
 
 1. **The interface** (`graph/scalar.ts`): `ScalarAxis { id, label, tooltip,
    compute(graph) }` answers one value per node in `[0, 1]` from a
-   `ScalarGraph { nodes, edges, nodeOf }` — node metadata (a host's own
-   payload included) and the graph's structure, nothing else. A node absent
+   `ReadableGraph { nodes, edges, getNode }` (model.ts — the one shape the
+   frame, the scalars and the view's visible-graph derivation read; a
+   `Simulation` satisfies it) — node metadata (a host's own payload
+   included) and the graph's structure, nothing else. A node absent
    from the answer has no value on the axis and rests at its centre, as a
    node in no bucket does. Three built-ins read only structure: **reach**
    (the downstream-depth score topological gravity already computed, moved

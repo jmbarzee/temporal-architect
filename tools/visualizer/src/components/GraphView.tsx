@@ -1,7 +1,7 @@
 // Graph View: force-directed visualization of definition relationships.
 // Wires together graph construction, simulation, viewport, rendering, and interaction.
 
-import { isContainment } from '../graph/model'
+import { readableGraph, isContainment } from '../graph/model'
 import React from 'react'
 import './GraphView.css'
 import type { TWFFile } from '../types/ast'
@@ -185,7 +185,7 @@ export function GraphView({
   const layoutAxes = React.useMemo(() => layoutAxisOptions(ontology, graph), [ontology, graph])
   // The frame the band forces act in and the overlay the canvas draws, both
   // over the WHOLE graph — the same frame the simulation seeds and ticks in.
-  const frame = React.useMemo(() => layoutFrame({ nodes: graph.nodes.values(), edges: graph.edges, nodeOf: id => graph.nodes.get(id) }, resolved), [graph, resolved])
+  const frame = React.useMemo(() => layoutFrame(readableGraph(graph), resolved), [graph, resolved])
   const overlay = React.useMemo(() => bandOverlay(graph.nodes.values(), forceParams, resolved, frame,
     (axis, bucket) => axis.mapping.dimension === ontology.styleAxis() && isIdentityMapping(axis.mapping)
       ? ontology.styleForKey(bucket).color.fill

@@ -18,7 +18,7 @@ import { payloadString } from '../../graph/model'
 import { computeDownstreamReach } from '../../graph/scalar'
 import { isContainment } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
-import type { GraphEdge } from '../../graph/model'
+import type { GraphEdge, ReadableGraph } from '../../graph/model'
 import type { Ontology } from '../../graph/ontology'
 import type { DimensionDescriptor } from '../../graph/dimension'
 import type { PhysicsSubject } from '../../graph/forces'
@@ -37,7 +37,7 @@ export interface VisibleGraph {
  * The read-only slice of a Simulation this derivation needs. A `Simulation`
  * satisfies it structurally, so callers pass one directly.
  */
-export interface VisibleGraphSource {
+export interface VisibleGraphSource extends ReadableGraph {
   nodes: SimNode[]
   edges: GraphEdge[]
   getNode: (id: string) => SimNode | undefined
@@ -278,7 +278,7 @@ export function computeVisibleGraph(
 
   // Reach over the VISIBLE subgraph, for topological gravity; the same scalar
   // over the whole graph is a layout axis (graph/scalar.ts).
-  const downstreamScores = computeDownstreamReach({ nodes: vNodes, edges: vEdges, nodeOf: id => vNodeMap.get(id) })
+  const downstreamScores = computeDownstreamReach({ nodes: vNodes, edges: vEdges, getNode: id => vNodeMap.get(id) })
 
   return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, nodeSummaries, downstreamScores }
 }

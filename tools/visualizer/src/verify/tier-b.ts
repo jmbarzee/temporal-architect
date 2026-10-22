@@ -143,14 +143,15 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // on distinct centre *values* — several types deliberately share a band, so
   // with all 7 present there are only 4 distinct values.
   const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
-  const frame = layoutFrame({ nodes: active, edges: graph.edges, nodeOf: id => sim.getNode(id) }, resolved)
+  const frame = layoutFrame(sim, resolved)
   const centers = bandCenters(active, mappedAxis(resolved.bandY))
   // The overlay as the canvas draws it, from the same frame the force used:
   // one stripe per distinct band present on each axis, and in radial the rings.
   // Colours are the view's; here every bucket is uncoloured.
-  const overlayRows = (p: ForceParams, nodes: SimNode[]) => {
+  const overlayRows = (s: Simulation) => {
+    const p = s.params
     const r = resolvePhysics(p, DEFAULT_ONTOLOGY)
-    const o = bandOverlay(nodes, p, r, layoutFrame({ nodes, edges: graph.edges, nodeOf: id => nodes.find(n => n.id === id) }, r), () => '#')
+    const o = bandOverlay(s.nodes, p, r, layoutFrame(s, r), () => '#')
     const stripe = (s: BandStripe) =>
       s.gradient ? `${s.lo}..${s.hi}: gradient 0@${s.gradient.zero} 1@${s.gradient.one}` : `${s.lo}..${s.hi}: ${sorted(s.buckets).join(',')}`
     return {
@@ -204,9 +205,9 @@ export function tierB(fixtureName: string, graph: Graph): Json {
     seedAt: seedAtProbe,
     seedAtRadial: seedAtRadialProbe,
     afterShortRun: sortedRecord(shortRuns),
-    overlay: overlayRows(params, active),
-    overlayRadial: overlayRows(radialSim.params, radialSim.nodes),
-    overlayScalarY: overlayRows(reachSim.params, reachSim.nodes),
+    overlay: overlayRows(sim),
+    overlayRadial: overlayRows(radialSim),
+    overlayScalarY: overlayRows(reachSim),
     allFinite: nonFinite.length === 0,
     nonFiniteNodeIds: sorted(nonFinite),
     bandCenterEntries: centers.length,

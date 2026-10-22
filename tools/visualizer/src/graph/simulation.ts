@@ -2,6 +2,7 @@
 // Implements GRAPH_VIEW.md § Layout: Force-Directed Simulation.
 
 import type { GraphNode, GraphEdge, Graph } from './model'
+import { readableGraph } from './model'
 import type { EdgeTypeId, SpringPhysics } from './taxonomy'
 import {
   applyChargeForce,
@@ -548,7 +549,7 @@ export class Simulation {
     this.nodes = []
     this.nodeMap = new Map()
     const seedNodes = [...graph.nodes.values()]
-    this.frame = layoutFrame({ nodes: seedNodes, edges: graph.edges, nodeOf: id => graph.nodes.get(id) }, this.resolved)
+    this.frame = layoutFrame(readableGraph(graph), this.resolved)
     for (const node of seedNodes) {
       const [x, y] = this.seedPosition(node, rng)
       const sim: SimNode = { ...node, x, y, vx: 0, vy: 0, pinned: false }
@@ -724,7 +725,7 @@ export class Simulation {
     // A patch may replace a whole tuning; the dense tables and the per-edge
     // classification follow it.
     this.resolved = resolvePhysics(this.params, this.ontology)
-    this.frame = layoutFrame({ nodes: this.nodes, edges: this.edges, nodeOf: id => this.nodeMap.get(id) }, this.resolved)
+    this.frame = layoutFrame(this, this.resolved)
     this.springByEdge = null
   }
 

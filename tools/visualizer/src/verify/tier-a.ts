@@ -14,6 +14,7 @@ import { payloadString } from '../graph/model'
 import { Simulation, axisOptions, fitsCeiling, pairTuning } from '../graph/simulation'
 import { presentSpringCategories, resolveSprings } from '../graph/forces'
 import { BUILT_IN_SCALARS } from '../graph/scalar'
+import { readableGraph } from '../graph/model'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
@@ -173,7 +174,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
     // subgraph, so its rows here and `downstreamScores` there must agree
     // wherever the two graphs coincide.
     scalars: sortedRecord(BUILT_IN_SCALARS.map(sc => [sc.id, sortedRecord(
-      [...sc.compute({ nodes: graph.nodes.values(), edges: graph.edges, nodeOf })].map(([id, v]) => [id, v] as const),
+      [...sc.compute(readableGraph(graph))].map(([id, v]) => [id, v] as const),
     )] as const)),
     visibleSubgraph: sortedRecord(states),
   }

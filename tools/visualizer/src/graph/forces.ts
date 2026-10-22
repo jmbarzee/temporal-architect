@@ -17,7 +17,8 @@ import type { GraphEdge } from './model'
 import { relationOf } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange, LayoutTuning, ScalarSpan } from './simulation'
 import { isScalarTuning } from './simulation'
-import type { ScalarAxis, ScalarGraph } from './scalar'
+import type { ScalarAxis } from './scalar'
+import type { ReadableGraph } from './model'
 import type { Ontology } from './ontology'
 import type { DimensionalMapping } from './dimension'
 import type { EdgeCategoryKind, EdgeTypeDefinition, EdgeTypeId, SpringPhysics } from './taxonomy'
@@ -292,7 +293,7 @@ export interface LayoutFrame {
   ringOf(node: LayoutSubject): number | undefined
 }
 
-export function layoutFrame(graph: ScalarGraph, resolved: ResolvedPhysics): LayoutFrame {
+export function layoutFrame(graph: ReadableGraph, resolved: ResolvedPhysics): LayoutFrame {
   const all = [...graph.nodes]
   const centerFor = (a: ResolvedLayoutAxis) => (isScalarAxis(a) ? 0 : medianBandCenter(all, a))
   const scoresFor = (a: ResolvedLayoutAxis) => (isScalarAxis(a) ? a.scalar.compute(graph) : undefined)
