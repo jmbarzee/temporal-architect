@@ -1,6 +1,6 @@
 // Group overlay — the glow groups the Graph view draws. A host hands the view
-// groups over the WHOLE graph (an id, the node ids the group covers, how
-// strongly it glows); the view restricts each to the visible set, drops the
+// groups over the WHOLE graph (an id, the node ids the group covers, whether it
+// is emphasised); the view restricts each to the visible set, drops the
 // empty, and colours what is left in order — the palette cycles over the groups
 // shown, so a group with no visible node takes no colour. Membership is derived
 // on every render, never baked into the static graph, exactly like the hover
@@ -27,10 +27,10 @@ export const GROUP_PALETTE = [
   '#E879F9', // fuchsia
 ] as const
 
-// Glow intensity multiplier for a group the host emphasises (hovered in its
-// legend, vs. the default 1). Drives both brightness and — since the canvas
-// swells focused groups — halo/corridor size.
-export const HOVER_STRENGTH = 2.2
+// Glow intensity multiplier for a group the host emphasises (`NodeGroup
+// .emphasized`: hovered in its legend, vs. the default 1). Drives both
+// brightness and — since the canvas swells focused groups — halo/corridor size.
+const HOVER_STRENGTH = 2.2
 
 // Glow intensity multiplier for the group that contains the node currently
 // hovered/selected on the canvas. This is the antidote to "tons of groups": with
@@ -44,8 +44,8 @@ export const NODE_FOCUS_STRENGTH = 2.2
 export interface NodeGroup {
   id: string
   nodeIds: ReadonlySet<string>
-  /** Glow multiplier: 1 at rest, `HOVER_STRENGTH` when the host emphasises it. */
-  strength: number
+  /** Whether the host emphasises this group (its legend row is hovered); the view glows it stronger. */
+  emphasized?: boolean
 }
 
 /** A group as drawn: the visible node ids it covers and its palette colour. */
@@ -66,7 +66,7 @@ export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: Readonl
     const nodeIds = new Set<string>()
     for (const id of g.nodeIds) if (visibleIds.has(id)) nodeIds.add(id)
     if (nodeIds.size === 0) continue
-    out.push({ id: g.id, strength: g.strength, nodeIds, color: GROUP_PALETTE[out.length % GROUP_PALETTE.length] })
+    out.push({ id: g.id, strength: g.emphasized ? HOVER_STRENGTH : 1, nodeIds, color: GROUP_PALETTE[out.length % GROUP_PALETTE.length] })
   }
   return out
 }

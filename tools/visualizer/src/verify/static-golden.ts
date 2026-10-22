@@ -18,6 +18,8 @@ import type { ResolvedLayoutAxis } from '@temporal-architect/graph-view/graph/fo
 import { scalarProbes } from './scalar-probes'
 import { schemeProbes } from './scheme-probes'
 import { viewProbes } from './view-probes'
+import { seamProbes } from './seam-probes'
+import { hostProbes } from './host-probes'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
@@ -258,6 +260,8 @@ export function staticGolden(): Json {
     scalarProbes: scalarProbes(),
     schemeProbes: schemeProbes(),
     viewProbes: viewProbes(),
+    seamProbes: seamProbes(),
+    hostProbes: hostProbes(),
     syntheticVisible: syntheticVisible(),
     filterChipLayer: filterChipLayer(),
     reconcileMatrix: reconcileMatrix(),

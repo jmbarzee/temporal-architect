@@ -19,7 +19,9 @@ export const PKG_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 export const LIB_DIR = '../graph-view'
 export const LIB_SRC = `${LIB_DIR}/src`
 
-const SOURCE_EXTS = ['.ts', '.tsx', '.css']
+// Every extension a bundler would ship: a `.mjs` beside the `.ts` files carries
+// imports and vocabulary just the same (REVIEW_8 C4).
+const SOURCE_EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.css']
 const GLOBS = [{ dir: LIB_SRC, exts: SOURCE_EXTS }]
 
 function walk(dir, exts, out, skipped) {

@@ -7,21 +7,17 @@ import {
   withSelection,
   GraphView,
   reconcileFilter,
-  loadState,
-  saveState,
   themeChoiceOf,
   useHostTheme,
   schemeVars,
 } from '@temporal-architect/graph-view'
+import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../adapter/storage'
 import type {
   FocusTarget,
   FilterState,
   PinState,
   ViewTransition,
   FilterDimension,
-  PersistedFilter,
-  PersistedPins,
-  StorageConfig,
   ThemeChoice,
 } from '@temporal-architect/graph-view'
 import React from 'react'
@@ -536,7 +532,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
                   onRequestDecomposition={onRequestDecomposition}
                 />
               )}
-              onShowInTree={historyMode ? undefined : showInTree}
+              crossView={historyMode ? undefined : { label: 'Show in Tree', onFocus: showInTree }}
               theme={graphTheme}
               onThemeChange={setGraphTheme}
               filter={graphFilter}

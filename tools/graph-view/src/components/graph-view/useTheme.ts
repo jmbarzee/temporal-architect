@@ -50,6 +50,8 @@ export function hostTheme(el: Element | null): Theme {
     if (theme) return theme
     marker = marker.parentElement?.closest(THEME_MARKER_SELECTOR) ?? null
   }
+  // No window (a server render, the harness): light, the same answer as a host that declares nothing.
+  if (typeof window === 'undefined') return 'light'
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 

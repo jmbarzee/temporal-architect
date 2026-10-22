@@ -21,11 +21,13 @@ export function useRecentlyChanged(filter: FilterState): Set<string> {
       for (const v of values) if (!before.has(v)) changed.add(`${dimension}:${v}`)
     }
     prevFilterRef.current = filter
-    if (changed.size > 0) {
-      setRecentlyChanged(changed)
-      const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)
-      return () => clearTimeout(timer)
-    }
+    // Set on every change, empty included: a removal-only change that arrived
+    // while an earlier flash was pending used to cancel its timer and leave the
+    // old set lit (REVIEW_8 C24).
+    setRecentlyChanged(changed)
+    if (changed.size === 0) return
+    const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)
+    return () => clearTimeout(timer)
   }, [filter])
   return recentlyChanged
 }

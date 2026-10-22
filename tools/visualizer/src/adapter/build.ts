@@ -19,9 +19,10 @@ import type {
   ParserEdge,
   ParserGraph,
 } from '../types/parser-graph'
+// The axes this domain projects a node onto. Names, not concepts, belong to the
+// host: the library never mentions any of these ids.
 import {
   DEF_TYPE_DIMENSION,
-  DISPATCH_DIMENSION,
   RELATION_DIMENSION,
   SOURCE_FILE_DIMENSION,
 } from '@temporal-architect/graph-view'
@@ -34,8 +35,7 @@ import type {
 } from '@temporal-architect/graph-view'
 import type { NodeType } from './node-types'
 import { NODE_TYPE_REGISTRY, TEMPORAL_TYPE_DIMENSION } from './node-types'
-// The axes this domain projects a node onto. Names, not concepts, belong to the
-// host: the library never mentions any of these ids.
+import { DISPATCH_DIMENSION } from './edge-types'
 /**
  * Project a parser node onto its axes. Absent values are OMITTED rather than
  * set to a placeholder — "this node has no source file" and "this node's source

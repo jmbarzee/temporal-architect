@@ -8,7 +8,6 @@
 // view restricts them to what is visible and colours them (`graph/groups.ts`).
 
 import type { Decomposition, Chunk, Division, Section } from '../types/decomposition'
-import { HOVER_STRENGTH } from '@temporal-architect/graph-view'
 import type { NodeGroup } from '@temporal-architect/graph-view'
 // GroupSelection is the persistent, user-driven overlay state owned by the host
 // canvas. The overlay is an **initially-off** feature: on load nothing glows
@@ -119,8 +118,8 @@ function frontierSections(division: Division, expanded: Set<string>): Section[] 
 // groups the view is asked to glow, each over every node its members cover. A
 // chunk contributes when it is enabled or being hovered; for each, its active
 // division's frontier sections become groups, with members mapped through
-// duplicateGroups (definitionKey -> sister node ids). The hovered section glows
-// stronger. The view restricts each group to the visible set and colours what
+// duplicateGroups (definitionKey -> sister node ids). The hovered section is
+// emphasised. The view restricts each group to the visible set and colours what
 // is left, in this order.
 export function nodeGroupsOf(
   decomposition: Decomposition | undefined,
@@ -142,7 +141,7 @@ export function nodeGroupsOf(
     // partition, not just the over-ceiling chunks that carry division options.
     if (!division) {
       const chunkHovered = hover?.chunkId === chunk.id && !hover.sectionId && !hover.strategy
-      groups.push({ id: chunk.id, nodeIds: resolveMembers(chunk.members, duplicateGroups), strength: chunkHovered ? HOVER_STRENGTH : 1 })
+      groups.push({ id: chunk.id, nodeIds: resolveMembers(chunk.members, duplicateGroups), emphasized: chunkHovered })
       continue
     }
 
@@ -150,7 +149,7 @@ export function nodeGroupsOf(
       groups.push({
         id: section.id,
         nodeIds: resolveMembers(section.members, duplicateGroups),
-        strength: hover?.sectionId === section.id ? HOVER_STRENGTH : 1,
+        emphasized: hover?.sectionId === section.id,
       })
     }
   }

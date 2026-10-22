@@ -12,7 +12,7 @@
 // silently. Zero dependencies (C2).
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 import { manifestFiles, shimFiles, readLines, PKG_ROOT, LIB_SRC } from './manifest.mjs'
 
 const PATTERN =
@@ -48,7 +48,7 @@ function resolveSpec(fromFile, spec) {
     : resolve(PKG_ROOT, fromFile, '..', spec)
   for (const ext of ['.ts', '.tsx', '', '/index.ts', '/index.tsx']) {
     const c = base + ext
-    if (existsSync(c) && statSync(c).isFile()) return c.slice(resolve(PKG_ROOT).length + 1)
+    if (existsSync(c) && statSync(c).isFile()) return relative(PKG_ROOT, c)
   }
   return null
 }

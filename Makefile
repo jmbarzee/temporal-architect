@@ -87,14 +87,14 @@ build-skills-archive:
 ## Build the visualizer as a publishable npm library (ESM + types + sibling CSS).
 ## The VS Code webview IIFE bundle is built in the distribution repo from this
 ## published library (packages/webview); the toolchain no longer builds it.
-build-visualizer-lib:
+build-visualizer-lib: tools/graph-view/node_modules/.package-lock.json
 	cd tools/visualizer && npm run build:lib
 	@echo "Built visualizer (npm library)"
 
 ## Build the graph-view library — the visualizer's engine in its own package
 ## (tools/graph-view). The visualizer consumes it from source through its build's
 ## alias, so this is the standalone artifact, not a prerequisite of the above.
-build-graph-view-lib:
+build-graph-view-lib: tools/graph-view/node_modules/.package-lock.json
 	cd tools/graph-view && npm run build:lib
 	@echo "Built graph-view (npm library)"
 
@@ -122,9 +122,11 @@ pack-visualizer-lib: build-visualizer-lib
 	@rm -f dist/temporal-architect-visualizer-*.tgz
 	@$(call npm-pack-stamped,tools/visualizer,visualizer lib)
 
-## Pack the graph-view library into a release tarball (dist/). Attached to the
-## Release beside the visualizer's; not published to npm by publish-npm-libs —
-## publishing a new package under the org's scope is a release decision (D62).
+## Pack the graph-view library into a release tarball (dist/). CI packs it; the
+## release workflow (_build-artifacts.yml) does not yet install the sibling or
+## attach this tarball — that workflow is outside the refactor's write bounds
+## (#187). Not published to npm by publish-npm-libs: publishing a new package
+## under the org's scope is a release decision (D62).
 pack-graph-view-lib: build-graph-view-lib
 	@mkdir -p dist
 	@rm -f dist/temporal-architect-graph-view-*.tgz
@@ -175,13 +177,21 @@ publish-npm-libs:
 ## Run every typecheck gate
 typecheck: typecheck-graph-view typecheck-visualizer
 
+## The visualizer's TypeScript program reaches the library's source, whose files
+## resolve React from the sibling's own node_modules: with the sibling not
+## installed, tsc prints 77 errors and the declarations build swallows them
+## (REVIEW_8 C7). Every target that compiles either package installs the sibling
+## first, so a job that installs only the visualizer still builds correctly.
+tools/graph-view/node_modules/.package-lock.json: tools/graph-view/package-lock.json
+	cd tools/graph-view && npm ci
+
 ## Typecheck the visualizer (strict tsc, no emit). Its path map reaches the
 ## library's source, so this checks the host against the engine as written.
-typecheck-visualizer:
+typecheck-visualizer: tools/graph-view/node_modules/.package-lock.json
 	cd tools/visualizer && ./node_modules/.bin/tsc --noEmit
 
 ## Typecheck the graph-view library on its own (strict tsc, no emit)
-typecheck-graph-view:
+typecheck-graph-view: tools/graph-view/node_modules/.package-lock.json
 	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit
 
 ## Compare the visualizer goldens against the committed baseline

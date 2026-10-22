@@ -34,7 +34,7 @@ import { pinnedFor, withPin, withSelection } from '../filter/types'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { toggleGroup } from '../filter/toggle'
 import { PinToggle } from './PinToggle'
-import { SearchIcon } from './icons/GearIcons'
+import { SearchIcon } from './icons/SearchIcon'
 
 const NO_COUNTS: ReadonlyMap<string, number> = new Map()
 
