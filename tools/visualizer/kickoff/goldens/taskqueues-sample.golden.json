@@ -26,8 +26,8 @@
         "axis": "sourceFile",
         "fits": true,
         "presentSprings": [
-          "containment|task-queues.twf|task-queues.twf",
-          "dependency|task-queues.twf|task-queues.twf"
+          "[\"containment\",\"task-queues.twf\",\"task-queues.twf\"]",
+          "[\"dependency\",\"task-queues.twf\",\"task-queues.twf\"]"
         ],
         "pullTokens": 2,
         "pushTokens": 1
@@ -36,18 +36,18 @@
         "axis": "defType",
         "fits": true,
         "presentSprings": [
-          "containment|activityDef|workerDef",
-          "containment|namespaceDef|nexusEndpointDef",
-          "containment|namespaceDef|workerDef",
-          "containment|nexusEndpointDef|nexusOperationDef",
-          "containment|nexusOperationDef|nexusServiceDef",
-          "containment|nexusServiceDef|workerDef",
-          "containment|workerDef|workflowDef",
-          "dependency|activityDef|nexusOperationDef",
-          "dependency|activityDef|workflowDef",
-          "dependency|namespaceDef|namespaceDef",
-          "dependency|nexusOperationDef|workflowDef",
-          "dependency|workerDef|workerDef"
+          "[\"containment\",\"activityDef\",\"workerDef\"]",
+          "[\"containment\",\"namespaceDef\",\"nexusEndpointDef\"]",
+          "[\"containment\",\"namespaceDef\",\"workerDef\"]",
+          "[\"containment\",\"nexusEndpointDef\",\"nexusOperationDef\"]",
+          "[\"containment\",\"nexusOperationDef\",\"nexusServiceDef\"]",
+          "[\"containment\",\"nexusServiceDef\",\"workerDef\"]",
+          "[\"containment\",\"workerDef\",\"workflowDef\"]",
+          "[\"dependency\",\"activityDef\",\"nexusOperationDef\"]",
+          "[\"dependency\",\"activityDef\",\"workflowDef\"]",
+          "[\"dependency\",\"namespaceDef\",\"namespaceDef\"]",
+          "[\"dependency\",\"nexusOperationDef\",\"workflowDef\"]",
+          "[\"dependency\",\"workerDef\",\"workerDef\"]"
         ],
         "pullTokens": 12,
         "pushTokens": 7

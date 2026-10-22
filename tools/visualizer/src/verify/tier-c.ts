@@ -10,8 +10,9 @@
 // The table fully pins the fall-through order, both catch-all branches, and the
 // operation ↔ operation case that resolves to the workflow → operation spring.
 
-import { ALL_NODE_TYPES } from '../adapter/node-types'
-import { edgeTypeFor } from '../adapter/edge-types'
+import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { resolveSprings } from '../graph/forces'
+import { pairTuning, styleIdentityMapping } from '../graph/simulation'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { GraphEdge } from '../graph/model'
 import type { EdgeCategoryKind } from '../graph/taxonomy'
@@ -22,6 +23,11 @@ const EDGE_TYPES: EdgeCategoryKind[] = ['containment', 'dependency']
 const DISPATCH_KINDS: (string | undefined)[] = [undefined, 'signalSend']
 
 export function tierC(): Json {
+  // Through the ENGINE's classifier, not the shim's function directly: on the
+  // style axis bucketed by identity the engine applies the host's rule, so this
+  // pins the precedence as the simulation sees it, membership check included.
+  const engine = resolveSprings(pairTuning(styleIdentityMapping(DEFAULT_ONTOLOGY)), DEFAULT_ONTOLOGY)
+  const edgeTypeFor = (edge: GraphEdge, src: string, tgt: string) => engine.classify(edge, src, tgt) ?? '(unbucketed)'
   const rows: Record<string, string> = {}
   for (const edgeType of EDGE_TYPES) {
     for (const src of ALL_NODE_TYPES) {

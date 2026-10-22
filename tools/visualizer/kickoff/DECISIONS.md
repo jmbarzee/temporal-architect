@@ -1069,3 +1069,62 @@ categories present under it — the ceiling arithmetic pinned per fixture.
 Nothing else moves.
 
 — 2026-10-21 — agent
+
+**D52 — What REVIEW_4 changed in the model (Unit 4 close).** The six-lens
+review found the pair forces' axis stored twice and physics off the style axis
+resolved through the style table. Both are model defects, and the fixes are
+model changes:
+
+1. **One pair axis.** `ChargeParams.push` and `LinkParams.spring` were two
+   `AxisTuning`s, each naming an axis, held equal by one handler (c2;
+   contradicted D51). They are one `PairTuning { mapping, push, spring }` —
+   the axis once, two sparse override maps — on both param slices. Band keeps
+   its own `AxisTuning`; 5a gives it its own axis by design.
+2. **Typical physics off the style axis.** `declaredPush`/`declaredBand` fold
+   the style table over a bucket's values, which off the style axis are files
+   or kinds, not style keys: every bucket resolved to the fallback style's
+   −300/30 with a false placeholder warning each (c1, a blocker). A bucket on
+   any other axis now starts from the host's *typical* declared physics — the
+   same fold, over every declared value. Springs likewise: `DEFAULT_SPRING`,
+   a constant from no domain, becomes `typicalSpring`, the mean of the host's
+   declared springs.
+3. **The pair rule enumerates nothing.** `pairCategories` built `k(k+1)`
+   categories per axis per graph change — 4M for a 2000-file graph, to
+   produce one disabled option (c9) — and its `'|'`/`'-'` encoding let a bucket
+   id collide with a separator and counted unbucketed endpoints as phantom
+   tokens (c4). `ResolvedSprings` is now three functions — `classify`,
+   `physicsFor`, `describe` — a category exists when an edge falls in it, ids
+   are JSON triples, and an unbucketed endpoint classifies to `undefined`,
+   which is counted nowhere and pulls nothing.
+4. **Per-edge classification is cached** (c7, the link half of T25):
+   `Simulation` classifies its edges once per resolved physics and hands the
+   kernel a lookup. `presentSprings` keys on the mapping, not on `resolved`.
+5. **`retunedFor` covers the taxonomy** (c20): the style axis is rebuilt from
+   the new taxonomy with overrides kept where values survive, so
+   `useSimulation`'s provenance ref is gone and D47's "nothing left to detect"
+   is finally true. `sameBuckets` ignores order (c3).
+6. **Closed and coherent.** `relationOf` throws on a relation the engine does
+   not know (c17); `createOntology` refuses a style value set declared
+   differently in any of its four places; `createDimensionalMapping` refuses a
+   duplicate bucket id or an empty bucket; `identityMapping` numbers duplicate
+   abbreviations (c11, c16). `EdgeTypeDefinition.directional`, read by nothing
+   but the harness, is gone (c18). One `AxisNamer` shape serves descriptors and
+   the style axis, so there is one identity builder (c16).
+7. **Gates for what had none.** `tuning-probes.ts` pins the override channel
+   end to end, `retunedFor`'s contract, the ceiling's failing side, the
+   foreign-axis physics, the membership throw, the visibility policy under two
+   taxonomies, and the refusals above (c3, c15, c6, c13, c14). Tier C
+   classifies through the engine, not the shim function (c6). `surface-gate`
+   holds `src/lib.ts` to `kickoff/lib-surface.txt` (c19). MAP lists files only
+   the harness imports (c24).
+
+**Golden change (§8.2).** Tier B byte-identical; Tier C byte-identical through
+the engine path. Tier A: the pair-rule ids in `axes[].presentSprings` change
+encoding (`"rel|a|b"` → `["rel","a","b"]`), same set, verified by decoding.
+`static`: `edgeTypes` rows lose `directional`; `forceProbes.mappedAxisSprings`
+rows are renamed and gain `mappedPush` (the fold, pinned); `tuningProbes` is
+new; `ontologyProbes.mappings.intersectingBucketsRefused` carries the refusal's
+new wording ("is incoherent"), since one message now covers three refusals.
+Nothing else moves.
+
+— 2026-10-21 — agent

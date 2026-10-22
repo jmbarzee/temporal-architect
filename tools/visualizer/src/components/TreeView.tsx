@@ -230,6 +230,18 @@ export function TreeView({
     return Array.from(files).sort()
   }, [ast])
 
+  // What each filter axis can take, read off the definitions — the one source
+  // the bar builds every axis's chips from. Omitting the kind axis here once
+  // left it un-re-addable in this view while the graph view still offered it.
+  const valuesByDimension = React.useMemo(() => {
+    const kinds = new Set<string>()
+    for (const def of ast.definitions) kinds.add(def.type)
+    return new Map<string, readonly string[]>([
+      [SOURCE_FILE_DIMENSION, allFiles],
+      [DEF_TYPE_DIMENSION, [...kinds]],
+    ])
+  }, [ast, allFiles])
+
   // Toggle search bar
   const toggleSearch = React.useCallback(() => {
     if (searchActive) {
@@ -510,7 +522,7 @@ export function TreeView({
       <div className="workflow-canvas">
         <FilterBar
           ast={ast}
-          allFiles={allFiles}
+          valuesByDimension={valuesByDimension}
           filter={filter}
           onFilterChange={onFilterChange}
           pins={pins}

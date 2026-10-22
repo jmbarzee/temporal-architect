@@ -19,8 +19,8 @@
         "axis": "sourceFile",
         "fits": true,
         "presentSprings": [
-          "containment|access-control.twf|access-control.twf",
-          "dependency|access-control.twf|access-control.twf"
+          "[\"containment\",\"access-control.twf\",\"access-control.twf\"]",
+          "[\"dependency\",\"access-control.twf\",\"access-control.twf\"]"
         ],
         "pullTokens": 2,
         "pushTokens": 1
@@ -29,12 +29,12 @@
         "axis": "defType",
         "fits": true,
         "presentSprings": [
-          "containment|activityDef|workerDef",
-          "containment|namespaceDef|workerDef",
-          "containment|workerDef|workflowDef",
-          "dependency|activityDef|workflowDef",
-          "dependency|workerDef|workerDef",
-          "dependency|workflowDef|workflowDef"
+          "[\"containment\",\"activityDef\",\"workerDef\"]",
+          "[\"containment\",\"namespaceDef\",\"workerDef\"]",
+          "[\"containment\",\"workerDef\",\"workflowDef\"]",
+          "[\"dependency\",\"activityDef\",\"workflowDef\"]",
+          "[\"dependency\",\"workerDef\",\"workerDef\"]",
+          "[\"dependency\",\"workflowDef\",\"workflowDef\"]"
         ],
         "pullTokens": 6,
         "pushTokens": 4

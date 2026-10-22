@@ -40,7 +40,7 @@ import { DEF_TYPE_DIMENSION, DISPATCH_DIMENSION, RELATION_DIMENSION, SOURCE_FILE
  * on every axis the host filters or lays out on, and which of those are
  * projections of which is the host's business.
  */
-function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): DimensionMap {
+export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): DimensionMap {
   const dims: Record<string, string> = {
     [TEMPORAL_TYPE_DIMENSION]: nodeType,
     [DEF_TYPE_DIMENSION]: NODE_TYPE_REGISTRY[nodeType].defType,

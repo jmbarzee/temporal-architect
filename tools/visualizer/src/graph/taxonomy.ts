@@ -124,8 +124,6 @@ export interface EdgeTypeDefinition {
   sourceType: DimensionValue
   targetType: DimensionValue
   category: EdgeCategoryKind
-  /** True = the two directions are distinct categories. */
-  directional: boolean
   /** Declared stiffness / rest length — what the category resolves to until tuned. */
   physics: SpringPhysics
   tooltip: string

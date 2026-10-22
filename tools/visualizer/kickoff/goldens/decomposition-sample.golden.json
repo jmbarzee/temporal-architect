@@ -18,8 +18,8 @@
         "axis": "sourceFile",
         "fits": true,
         "presentSprings": [
-          "containment|resumable-loan-application.twf|resumable-loan-application.twf",
-          "dependency|resumable-loan-application.twf|resumable-loan-application.twf"
+          "[\"containment\",\"resumable-loan-application.twf\",\"resumable-loan-application.twf\"]",
+          "[\"dependency\",\"resumable-loan-application.twf\",\"resumable-loan-application.twf\"]"
         ],
         "pullTokens": 2,
         "pushTokens": 1
@@ -28,11 +28,11 @@
         "axis": "defType",
         "fits": true,
         "presentSprings": [
-          "containment|activityDef|workerDef",
-          "containment|namespaceDef|workerDef",
-          "containment|workerDef|workflowDef",
-          "dependency|activityDef|workflowDef",
-          "dependency|workflowDef|workflowDef"
+          "[\"containment\",\"activityDef\",\"workerDef\"]",
+          "[\"containment\",\"namespaceDef\",\"workerDef\"]",
+          "[\"containment\",\"workerDef\",\"workflowDef\"]",
+          "[\"dependency\",\"activityDef\",\"workflowDef\"]",
+          "[\"dependency\",\"workflowDef\",\"workflowDef\"]"
         ],
         "pullTokens": 5,
         "pushTokens": 4

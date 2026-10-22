@@ -58,6 +58,7 @@
     "postpack": "rm -f LICENSE FRAGMENT.md",
     "prepublishOnly": "npm run build:lib",
     "dts-gate": "node verify/dts-gate.mjs",
+    "surface-gate": "node verify/surface-gate.mjs",
     "map": "node verify/map.mjs"
   },
   "peerDependencies": {

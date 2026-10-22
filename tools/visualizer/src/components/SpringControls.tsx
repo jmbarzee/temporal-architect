@@ -9,9 +9,9 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
-import { withOverride } from '../graph/simulation'
-import { springForKey } from '../graph/forces'
+import { withSpringOverride } from '../graph/simulation'
 import type { ResolvedPhysics } from '../graph/forces'
+import type { EdgeTypeDefinition } from '../graph/taxonomy'
 
 import { useOntology } from './graph-view/useOntology'
 import { bucketColor } from './controls/bucketColor'
@@ -28,6 +28,16 @@ export const EDGE_REST_MAX = 1000
 export const EDGE_REST_STEP = 10
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+
+/** One token per category present in the graph, in first-seen order; ids the table cannot describe are skipped. */
+function describedCategories(spring: ResolvedPhysics['spring'], present: ReadonlySet<string>): EdgeTypeDefinition[] {
+  const out: EdgeTypeDefinition[] = []
+  for (const id of present) {
+    const c = spring.describe(id)
+    if (c) out.push(c)
+  }
+  return out
+}
 
 interface SpringControlProps {
   params: ForceParams
@@ -49,9 +59,9 @@ interface SpringControlProps {
 export function SpringMap({ params, resolved, present, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const ontology = useOntology()
   const { spring } = resolved
-  const shown = spring.categories.filter(c => present.has(c.id))
+  const shown = describedCategories(spring, present)
   const tokens: MapToken[] = shown.map(c => {
-    const ph = springForKey(spring, c.id)
+    const ph = spring.physicsFor(c.id)
     return {
       id: c.id,
       x: ph.distance,
@@ -66,7 +76,7 @@ export function SpringMap({ params, resolved, present, onParamChange, hoveredEdg
 
   // Drag id is the category id; one override carries both stiffness and length.
   const handleDrag = (id: string, x: number, y: number) => {
-    onParamChange({ spring: withOverride(params.spring, id, { strength: y, distance: x }) })
+    onParamChange({ pair: withSpringOverride(params.pair, id, { strength: y, distance: x }) })
   }
 
   return (
@@ -113,18 +123,18 @@ function springResponse(d: number, kEff: number, restEff: number, exp: number): 
 export function SpringCurves({ params, resolved, present, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const ontology = useOntology()
   const { spring } = resolved
-  const shown = React.useMemo(() => spring.categories.filter(c => present.has(c.id)), [spring, present])
+  const shown = React.useMemo(() => describedCategories(spring, present), [spring, present])
   const pull = params.pullMultiplier
   const dist = params.distanceMultiplier
   const exp = params.linkExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const restEffs = shown.map(c => springForKey(spring, c.id).distance * dist)
+    const restEffs = shown.map(c => spring.physicsFor(c.id).distance * dist)
     const dMax = Math.max(60, Math.max(...restEffs) * 2.2)
 
     let maxMag = 0
     const sampled = shown.map(edge => {
-      const ph = springForKey(spring, edge.id)
+      const ph = spring.physicsFor(edge.id)
       const kEff = ph.strength * pull
       const restEff = ph.distance * dist
       const pts: { d: number; v: number }[] = []

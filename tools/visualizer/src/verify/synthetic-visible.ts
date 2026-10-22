@@ -24,8 +24,7 @@ import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import { edgeTypeFor } from '../adapter/edge-types'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
-import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { dimensionsFor } from '../adapter/build'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 
@@ -37,11 +36,7 @@ function n(
 ): SimNode {
   return {
     id,
-    dimensions: {
-      [TEMPORAL_TYPE_DIMENSION]: nodeType,
-      [DEF_TYPE_DIMENSION]: NODE_TYPE_REGISTRY[nodeType].defType,
-      ...(sourceFile !== undefined ? { [SOURCE_FILE_DIMENSION]: sourceFile } : {}),
-    },
+    dimensions: dimensionsFor(nodeType, sourceFile),
     name: id,
     orphan: parentId === undefined,
     definitionKey: `${nodeType}:${id}`,

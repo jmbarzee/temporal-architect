@@ -160,7 +160,6 @@
   "edgeTypes": {
     "linkEndpointToNamespace": {
       "category": "containment",
-      "directional": false,
       "label": "Ep↔NS",
       "physics": {
         "distance": 690,
@@ -171,7 +170,6 @@
     },
     "linkEndpointToOperation": {
       "category": "containment",
-      "directional": false,
       "label": "Ep↔Op",
       "physics": {
         "distance": 470,
@@ -182,7 +180,6 @@
     },
     "linkNexusToOperation": {
       "category": "containment",
-      "directional": false,
       "label": "Nx↔Op",
       "physics": {
         "distance": 600,
@@ -193,7 +190,6 @@
     },
     "linkNsToNs": {
       "category": "dependency",
-      "directional": false,
       "label": "NS↔NS",
       "physics": {
         "distance": 870,
@@ -204,7 +200,6 @@
     },
     "linkNsToWorker": {
       "category": "containment",
-      "directional": false,
       "label": "NS↔Wk",
       "physics": {
         "distance": 800,
@@ -215,7 +210,6 @@
     },
     "linkOperationToActivity": {
       "category": "dependency",
-      "directional": false,
       "label": "Op↔Act",
       "physics": {
         "distance": 300,
@@ -226,7 +220,6 @@
     },
     "linkOperationToWorkflow": {
       "category": "dependency",
-      "directional": true,
       "label": "Op→Wf",
       "physics": {
         "distance": 360,
@@ -237,7 +230,6 @@
     },
     "linkSignalSend": {
       "category": "dependency",
-      "directional": true,
       "label": "Wf→Sig",
       "physics": {
         "distance": 520,
@@ -248,7 +240,6 @@
     },
     "linkWorkerToActivity": {
       "category": "containment",
-      "directional": false,
       "label": "Wk↔Act",
       "physics": {
         "distance": 210,
@@ -259,7 +250,6 @@
     },
     "linkWorkerToNexus": {
       "category": "containment",
-      "directional": false,
       "label": "Wk↔Nx",
       "physics": {
         "distance": 430,
@@ -270,7 +260,6 @@
     },
     "linkWorkerToWorker": {
       "category": "dependency",
-      "directional": false,
       "label": "Wk↔Wk",
       "physics": {
         "distance": 720,
@@ -281,7 +270,6 @@
     },
     "linkWorkerToWorkflow": {
       "category": "containment",
-      "directional": false,
       "label": "Wk↔Wf",
       "physics": {
         "distance": 190,
@@ -292,7 +280,6 @@
     },
     "linkWorkflowToActivity": {
       "category": "dependency",
-      "directional": false,
       "label": "Wf↔Act",
       "physics": {
         "distance": 40,
@@ -303,7 +290,6 @@
     },
     "linkWorkflowToOperation": {
       "category": "dependency",
-      "directional": true,
       "label": "Wf→Op",
       "physics": {
         "distance": 330,
@@ -314,7 +300,6 @@
     },
     "linkWorkflowToWorkflow": {
       "category": "dependency",
-      "directional": false,
       "label": "Wf↔Wf",
       "physics": {
         "distance": 420,
@@ -908,7 +893,16 @@
     },
     "mappedAxisSprings": {
       "allFinite": true,
-      "identityCategories": [
+      "identityClassified": {
+        "p0": "linkWorkerToWorkflow",
+        "p1": "linkNexusToOperation",
+        "p2": "linkWorkflowToActivity",
+        "p3": "linkNsToNs",
+        "p4": "linkWorkflowToOperation",
+        "p5": "linkWorkflowToActivity",
+        "pu": "linkWorkflowToActivity"
+      },
+      "identityDeclared": [
         "linkNsToNs",
         "linkNsToWorker",
         "linkWorkerToWorker",
@@ -925,73 +919,72 @@
         "linkOperationToActivity",
         "linkEndpointToOperation"
       ],
-      "identityClassified": {
-        "p0": "linkWorkerToWorkflow",
-        "p1": "linkNexusToOperation",
-        "p2": "linkWorkflowToActivity",
-        "p3": "linkNsToNs",
-        "p4": "linkWorkflowToOperation",
-        "p5": "linkWorkflowToActivity",
-        "pu": "linkWorkflowToActivity"
-      },
-      "mappedCategories": [
-        "containment|control|control",
-        "containment|control|work",
-        "containment|work|work",
-        "dependency|control|control",
-        "dependency|control|work",
-        "dependency|work|work"
-      ],
       "mappedClassified": {
-        "p0": "containment|control|work",
-        "p1": "containment|work|work",
-        "p2": "dependency|work|work",
-        "p3": "dependency|control|control",
-        "p4": "dependency|work|work",
-        "p5": "dependency|work|work",
-        "pu": "dependency|-|work"
+        "p0": "[\"containment\",\"control\",\"work\"]",
+        "p1": "[\"containment\",\"work\",\"work\"]",
+        "p2": "[\"dependency\",\"work\",\"work\"]",
+        "p3": "[\"dependency\",\"control\",\"control\"]",
+        "p4": "[\"dependency\",\"work\",\"work\"]",
+        "p5": "[\"dependency\",\"work\",\"work\"]",
+        "pu": "(unbucketed)"
+      },
+      "mappedPresent": [
+        "[\"containment\",\"control\",\"work\"]",
+        "[\"containment\",\"work\",\"work\"]",
+        "[\"dependency\",\"control\",\"control\"]",
+        "[\"dependency\",\"work\",\"work\"]"
+      ],
+      "mappedPush": {
+        "control": {
+          "charge": -840,
+          "coreRadius": 73.666667
+        },
+        "work": {
+          "charge": -467.5,
+          "coreRadius": 42.5
+        }
       },
       "nonFiniteNodeIds": [],
       "velocities": {
         "act": [
-          -29.627409,
-          -66.661671
+          -27.50754,
+          -61.891965
         ],
         "dupA": [
-          3.280133,
-          12.785958
+          3.165494,
+          12.339095
         ],
         "dupB": [
-          -3.280133,
-          -12.785958
+          -3.165494,
+          -12.339095
         ],
         "ep": [
-          -148.58257,
-          -16.509174
+          -138.799965,
+          -15.422218
         ],
         "ns": [
-          148.58257,
-          16.509174
+          138.799965,
+          15.422218
         ],
         "nx": [
-          -20.228476,
-          94.399557
+          -18.842668,
+          87.932451
         ],
         "op": [
-          -44.314395,
-          -35.104527
+          -41.072492,
+          -32.745375
         ],
         "unknown": [
           0,
           0
         ],
         "wf": [
-          28.63541,
-          -15.320496
+          26.550837,
+          -14.286934
         ],
         "wk": [
-          23.943035,
-          103.75315
+          22.291847,
+          96.598002
         ]
       }
     },
@@ -1382,7 +1375,7 @@
         "deduplicatesInASet": 1,
         "stringPassesThrough": true
       },
-      "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" has intersecting buckets: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
+      "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" is incoherent: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
     },
     "physicsInjection": {
       "axes": {
@@ -2477,5 +2470,114 @@
         "parentId": "wkB"
       }
     ]
+  },
+  "tuningProbes": {
+    "coherence": {
+      "duplicateAbbreviationsNumbered": [
+        "ne",
+        "ne2",
+        "ot"
+      ],
+      "duplicateBucketId": "dimensional mapping \"m\" is incoherent: bucket id \"a\" is declared twice. A value in two buckets has no defined answer for which one tunes it.",
+      "emptyBucket": "dimensional mapping \"m\" is incoherent: bucket \"e\" has no values. A value in two buckets has no defined answer for which one tunes it.",
+      "ghostKey": "taxonomy is incoherent: nodeTypeKeys lists \"ghost\" but nodeStyles declares no style for it",
+      "groupOutsideKeys": "taxonomy is incoherent: styleGroups.g names \"ghost\", which nodeTypeKeys does not list",
+      "undeclaredStyle": "taxonomy is incoherent: nodeStyles declares \"ghost\", which nodeTypeKeys does not list"
+    },
+    "foreignAxisPhysics": {
+      "buckets": {
+        "nexus.twf": {
+          "charge": -123,
+          "coreRadius": 45
+        },
+        "task-queues.twf": {
+          "charge": -627.142857,
+          "coreRadius": 55.857143
+        }
+      },
+      "springIsTypical": {
+        "key": "[\"dependency\",\"nexus.twf\",\"nexus.twf\"]",
+        "strengthIsDeclaredMean": true
+      },
+      "typicalIsNotTheFallback": true,
+      "typicalIsTheDeclaredMean": true
+    },
+    "membership": {
+      "message": "edge type \"notDeclaredAnywhere\" is resolved by the taxonomy's rule but has no entry in its edgeTypes; the two must be kept in step.",
+      "throws": true
+    },
+    "overrides": {
+      "firstTickBase": [
+        14.073534,
+        5.693411
+      ],
+      "firstTickTuned": [
+        21.607988,
+        -20.232995
+      ],
+      "neighbourEqualsDefault": true,
+      "neighbourSpringStaysDeclared": true,
+      "neighbourStaysDeclared": {
+        "charge": -770,
+        "coreRadius": 72
+      },
+      "overriddenBucket": {
+        "charge": -123,
+        "coreRadius": 45
+      },
+      "overriddenSpring": {
+        "distance": 77,
+        "strength": 0.33
+      },
+      "simulationMovesDifferently": true
+    },
+    "retune": {
+      "axisVanished": {
+        "axis": "temporalType",
+        "overrides": 0
+      },
+      "fileDropped": {
+        "buckets": [
+          "nexus.twf"
+        ],
+        "isNewObject": true,
+        "overrideKept": true
+      },
+      "outgrown": {
+        "ceiling": 24,
+        "fellBackTo": "temporalType",
+        "fileOption": {
+          "fits": false,
+          "pullTokens": 29,
+          "pushTokens": 30
+        }
+      },
+      "reorderedNodesReturnSameObject": true,
+      "taxonomySwapped": {
+        "bandBuckets": [
+          "worker",
+          "workflow",
+          "activity"
+        ],
+        "bandOverrideKept": true,
+        "pairBuckets": [
+          "worker",
+          "workflow",
+          "activity"
+        ],
+        "pushOverrideKept": true,
+        "sameTaxonomyReturnsSameObject": true
+      },
+      "unchangedGraphReturnsSameObject": true
+    },
+    "visibilityPolicy": {
+      "lenient": [
+        "k",
+        "n"
+      ],
+      "shipped": [
+        "k"
+      ]
+    }
   }
 }

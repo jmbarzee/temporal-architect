@@ -48,36 +48,18 @@ export function useSimulation(
   const [forceParams, setForceParams] = React.useState<ForceParams>(() => defaultParamsFor(ontology))
   const [simVersion, setSimVersion] = React.useState(0)
 
-  // Which taxonomy the current `forceParams` were derived from. Needed because
-  // the parameters are not taxonomy-neutral — see the rebuild effect.
-  const paramsFrom = React.useRef(ontology)
-
   const onRebuildRef = React.useRef(onRebuild)
   onRebuildRef.current = onRebuild
 
   // Create or update the simulation when the graph or the taxonomy changes.
   React.useEffect(() => {
-    // A taxonomy swap invalidates the parameters, and this is the subtle part.
-    // `Simulation`'s constructor is `{ ...defaultParamsFor(ontology), ...params }`
-    // — the supplied params spread LAST, so passing the previous ones does not
-    // merely preserve the user's tuning, it overrides the fresh taxonomy's
-    // `chargeDimension` and `bandDimension` too. The engine would then key the
-    // NEW taxonomy's nodes on the OLD axis, miss every lookup, and fall through
-    // to ABSENT_VALUE_PHYSICS: every node loses its charge and collapses into a
-    // zero-height band, with no error anywhere.
-    //
-    // So the parameters are re-derived on a swap rather than carried over. That
-    // does discard the user's tuning, which is the right trade: the tuned values
-    // are a map keyed by the old taxonomy's values, and there is no meaningful
-    // way to reinterpret them against a different key space.
-    //
-    // Short of a swap, the graph itself may have moved the parameters: a
-    // push/pull axis bucketed by the values the graph presents is rebuilt for
-    // the new values, overrides kept (`retunedFor`), and comes back by
-    // reference when nothing changed.
-    const swapped = paramsFrom.current !== ontology
-    const params = swapped ? defaultParamsFor(ontology) : retunedFor(forceParams, ontology, graph)
-    if (swapped) paramsFrom.current = ontology
+    // The parameters follow the graph and the taxonomy: `retunedFor` rebuilds
+    // any tuning whose buckets no longer match — an axis bucketed by observed
+    // values after a file is added, the style axis after a taxonomy swap — with
+    // overrides kept where their values survive, and returns the same object
+    // when nothing moved. A swap used to need a provenance ref here to detect;
+    // a tuning that carries its own mapping has nothing left to detect (D47).
+    const params = retunedFor(forceParams, ontology, graph)
     if (params !== forceParams) setForceParams(params)
     simRef.current = new Simulation(graph, params, defaultRng, ontology)
     onRebuildRef.current?.()

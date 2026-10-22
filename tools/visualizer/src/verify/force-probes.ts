@@ -31,24 +31,29 @@ import {
   applyChargeForce,
   applyLinkForce,
   applyTopologicalGravity,
+  presentSpringCategories,
   springFor,
 } from '../graph/forces'
+import type { EdgeCategory, ResolvedSprings } from '../graph/forces'
 import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
-import { defaultParamsFor } from '../graph/simulation'
+import { dimensionsFor } from '../adapter/build'
+import { defaultParamsFor, pairTuning } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { mulberry32 } from './rng'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'
-import { sortedRecord } from './snapshot'
+import { sorted, sortedRecord } from './snapshot'
 
 const PROBE_SEED = 0x5eed
 
+// Projected by the adapter's own rule, so a probe node carries every axis a
+// built node does and the kernel probes can run on any of them.
 function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
   return {
     id,
-    dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
+    dimensions: dimensionsFor(nodeType, undefined),
     name: id,
     orphan: false,
     definitionKey: `${nodeType}:${id}`,
@@ -58,6 +63,13 @@ function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
     vy: 0,
     pinned: false,
   }
+}
+
+// A node on a style key the taxonomy does not declare. Built by hand: the
+// adapter's projection cannot place a type the registry lacks, and would not
+// be asked to — `nodeTypeFromKind` refuses the kind first.
+function undeclaredNode(id: string, x: number, y: number): SimNode {
+  return { ...node(id, 'workflow', x, y), dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'notADeclaredType' } }
 }
 
 /**
@@ -128,6 +140,11 @@ function nodeAt(map: Map<string, SimNode>, id: string): SimNode {
   return n
 }
 
+/** What the simulation hands the link kernel: each edge's category, classified against the resolved springs. */
+function categoryOf(spring: ResolvedSprings, map: Map<string, SimNode>): (edge: GraphEdge) => EdgeCategory {
+  return edge => springFor(spring, edge, nodeAt(map, edge.sourceId), nodeAt(map, edge.targetId))
+}
+
 /**
  * The same probes, with one node carrying a key the param maps do not declare.
  *
@@ -141,7 +158,7 @@ function nodeAt(map: Map<string, SimNode>, id: string): SimNode {
 function absentValueProbes(): Json {
   const withUnknown = () => {
     const nodes = probeNodes()
-    nodes.push(node('unknown', 'notADeclaredType' as NodeType, 300, -400))
+    nodes.push(undeclaredNode('unknown', 300, -400))
     return nodes
   }
   const run = (apply: (nodes: SimNode[], params: ForceParams, rng: () => number) => void): Json => {
@@ -168,7 +185,7 @@ function absentValueProbes(): Json {
     // and falls to its catch-all, so it still pulls; under a mapping (below) the
     // same edge is unbucketed and inert. Both are pinned.
     link: run((nodes, params, rng) =>
-      applyLinkForce([...PROBE_EDGES, UNKNOWN_EDGE], nodeMapOf(nodes), params, resolvePhysics(params, DEFAULT_ONTOLOGY).spring, 1, rng)),
+      applyLinkForce([...PROBE_EDGES, UNKNOWN_EDGE], nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_ONTOLOGY).spring, nodeMapOf(nodes)), 1, rng)),
   }
 }
 
@@ -188,19 +205,24 @@ function mappedAxisSprings(): Json {
     ],
   })
   const identity = resolvePhysics(params, DEFAULT_ONTOLOGY).spring
-  const mapped = resolvePhysics({ ...params, spring: { mapping, overrides: new Map() } }, DEFAULT_ONTOLOGY).spring
+  const mappedPhysics = resolvePhysics({ ...params, pair: pairTuning(mapping) }, DEFAULT_ONTOLOGY)
+  const mapped = mappedPhysics.spring
   const edges = [...PROBE_EDGES, UNKNOWN_EDGE]
   const nodes = probeNodes()
-  nodes.push(node('unknown', 'notADeclaredType' as NodeType, 300, -400))
+  nodes.push(undeclaredNode('unknown', 300, -400))
   const map = nodeMapOf(nodes)
   const classify = (spring: typeof mapped) =>
-    sortedRecord(edges.map(e => [e.id, springFor(spring, e, nodeAt(map, e.sourceId), nodeAt(map, e.targetId)).key] as const))
-  applyLinkForce(edges, map, params, mapped, 1, mulberry32(PROBE_SEED))
+    sortedRecord(edges.map(e => [e.id, springFor(spring, e, nodeAt(map, e.sourceId), nodeAt(map, e.targetId)).key ?? '(unbucketed)'] as const))
+  applyLinkForce(edges, map, params, categoryOf(mapped, map), 1, mulberry32(PROBE_SEED))
   return {
-    identityCategories: identity.categories.map(c => c.id),
+    identityDeclared: DEFAULT_ONTOLOGY.edgeTypes.map(e => e.id).filter(id => identity.describe(id) !== undefined),
     identityClassified: classify(identity),
-    mappedCategories: mapped.categories.map(c => c.id),
+    // The pair rule enumerates nothing; its categories are the ones present.
+    mappedPresent: sorted(presentSpringCategories(mapped, edges, id => map.get(id))),
     mappedClassified: classify(mapped),
+    // The multi-value fold (D47): a bucket's declared push is the mean of its
+    // values', its band the union — pinned here where a bucket has several.
+    mappedPush: sortedRecord([...mappedPhysics.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)),
     allFinite: allFinite(nodes),
     nonFiniteNodeIds: nonFinite(nodes),
     velocities: velocities(nodes),
@@ -213,7 +235,7 @@ export function forceProbes(): Json {
     absentValue: absentValueProbes(),
     charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     link: probe((nodes, params, rng) =>
-      applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, resolvePhysics(params, DEFAULT_ONTOLOGY).spring, 1, rng)),
+      applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_ONTOLOGY).spring, nodeMapOf(nodes)), 1, rng)),
     mappedAxisSprings: mappedAxisSprings(),
     bandCartesian: probe((nodes, params, rng) =>
       applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),

@@ -7,7 +7,7 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
-import { withOverride } from '../graph/simulation'
+import { withPushOverride } from '../graph/simulation'
 import { pushForKey } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
 
@@ -60,7 +60,7 @@ export function ChargeMap({ params, resolved, onParamChange, hoveredBucket, onHo
     onParamChange({
       // One override per bucket, carrying both numbers the token encodes;
       // charge is stored negative (repulsion).
-      push: withOverride(params.push, t, { charge: -y, coreRadius: x }),
+      pair: withPushOverride(params.pair, t, { charge: -y, coreRadius: x }),
     })
   }
 

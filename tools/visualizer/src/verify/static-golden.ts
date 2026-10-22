@@ -15,6 +15,7 @@ import { resolvePhysics } from '../graph/forces'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
+import { tuningProbes } from './tuning-probes'
 import { ALL_EDGE_TYPES } from '../adapter/edge-types'
 import { buildNodeTypeCSS } from '../adapter/node-type-styles'
 import { VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
@@ -63,7 +64,6 @@ function edgeTypeRows(): Json {
       sourceType: e.sourceType,
       targetType: e.targetType,
       category: e.category,
-      directional: e.directional,
       physics: { strength: e.physics.strength, distance: e.physics.distance },
     }] as const),
   )
@@ -222,21 +222,23 @@ export function staticGolden(): Json {
     defaultForceParams: (() => {
       const p = defaultParamsFor(DEFAULT_ONTOLOGY)
       const r = resolvePhysics(p, DEFAULT_ONTOLOGY)
-      const { push, band, spring, ...scalars } = p
-      // Scalars verbatim; the three axis tunings as the dense tables they
-      // resolve to, which is what the kernels consume and what the old
-      // `charge` / `coreRadius` / `band` / `link` / `dist` records held. Same
-      // numbers, one shape.
+      const { pair, band, ...scalars } = p
+      // Scalars verbatim; the tunings as the dense tables they resolve to,
+      // which is what the kernels consume and what the old `charge` /
+      // `coreRadius` / `band` / `link` / `dist` records held. Same numbers,
+      // one shape. The declared spring table is enumerated from the taxonomy,
+      // through the resolved physics, since the pair rule enumerates nothing.
       return {
         ...scalars,
-        push: { axis: push.mapping.dimension, buckets: sortedRecord([...r.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)) },
+        push: { axis: pair.mapping.dimension, buckets: sortedRecord([...r.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)) },
         band: { axis: band.mapping.dimension, buckets: sortedRecord([...r.band.byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) },
-        spring: { axis: spring.mapping.dimension, categories: sortedRecord([...r.spring.byCategory].map(([k, v]) => [k, { strength: v.strength, distance: v.distance }] as const)) },
+        spring: { axis: pair.mapping.dimension, categories: sortedRecord(DEFAULT_ONTOLOGY.edgeTypes.map(e => { const v = r.spring.physicsFor(e.id); return [e.id, { strength: v.strength, distance: v.distance }] as const })) },
       }
     })() as unknown as Json,
     defaultNodeScale: { ...DEFAULT_NODE_SCALE },
     forceProbes: forceProbes(),
     ontologyProbes: ontologyProbes(),
+    tuningProbes: tuningProbes(),
     syntheticVisible: syntheticVisible(),
     filterChipLayer: filterChipLayer(),
     reconcileMatrix: reconcileMatrix(),

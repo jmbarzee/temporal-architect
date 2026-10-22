@@ -231,7 +231,9 @@ function spreadCoincident(points: { cx: number; cy: number }[]): { cx: number; c
   const out = points.map(p => ({ cx: p.cx, cy: p.cy }))
   for (const g of groups) {
     if (g.members.length === 1) continue
-    const r = TOKEN_R * 1.6
+    // A ring wide enough that neighbours do not overlap: n tokens need a
+    // circumference of about n diameters.
+    const r = Math.max(TOKEN_R * 1.6, (g.members.length * TOKEN_R) / Math.PI)
     g.members.forEach((i, k) => {
       const a = -Math.PI / 2 + (2 * Math.PI * k) / g.members.length
       out[i] = { cx: g.cx + r * Math.cos(a), cy: g.cy + r * Math.sin(a) }

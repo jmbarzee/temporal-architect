@@ -36,7 +36,7 @@ export type NodeType =
   | 'activity'
 
 import { createOntology } from '../graph/ontology'
-import type { Ontology } from '../graph/ontology'
+import type { Ontology, OntologySpec } from '../graph/ontology'
 import type { NodeTypeDefinition } from '../graph/taxonomy'
 import type { DimensionDescriptor, FilterChip } from '../graph/dimension'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
@@ -348,6 +348,10 @@ const VIEW_FILTER_CHIPS: readonly FilterChip[] = [
   { id: 'activityDef', label: 'Activities', icon: NODE_TYPE_REGISTRY.activity.icon, values: ['activityDef'] },
 ]
 
+const KIND_ABBREV: Record<string, string> = Object.fromEntries(
+  ALL_NODE_TYPES.map(t => [NODE_TYPE_REGISTRY[t].defType, SLIDER_ABBREV[t]]),
+)
+
 const FILTER_DIMENSIONS: DimensionDescriptor[] = [
   {
     id: SOURCE_FILE_DIMENSION,
@@ -399,11 +403,20 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
     // folding is the domain choice this hook exists for.
     chipsFor: () => VIEW_FILTER_CHIPS,
     labelFor: v => v,
-    abbreviationFor: v => v.slice(0, 2),
+    // A kind is a type's projection, so it abbreviates as the type does. Two
+    // characters of the kind's own name collided ("wo" for two kinds, "ne" for
+    // three), which left push/pull tokens on this axis indistinguishable. A
+    // kind this registry does not know keeps the two-character fallback.
+    abbreviationFor: v => KIND_ABBREV[v] ?? v.slice(0, 2),
   },
 ]
 
-export const DEFAULT_ONTOLOGY: Ontology = createOntology({
+/**
+ * This domain's taxonomy, as a spec: exported so a variant can be built from it
+ * (`createOntology({ ...DEFAULT_ONTOLOGY_SPEC, … })`) rather than by spreading
+ * the built container, whose closures would still read these fields.
+ */
+export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   styleDimension: TEMPORAL_TYPE_DIMENSION,
   styleLabel: 'Type',
   abbreviations: SLIDER_ABBREV,
@@ -419,4 +432,6 @@ export const DEFAULT_ONTOLOGY: Ontology = createOntology({
   edgeTypes: ALL_EDGE_TYPES,
   resolveEdgeType: edgeTypeFor,
   fallbackStyle: FALLBACK_NODE_STYLE,
-})
+}
+
+export const DEFAULT_ONTOLOGY: Ontology = createOntology(DEFAULT_ONTOLOGY_SPEC)

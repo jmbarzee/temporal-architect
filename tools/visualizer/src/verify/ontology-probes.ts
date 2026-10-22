@@ -30,7 +30,8 @@ import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
 import { defaultParamsFor } from '../graph/simulation'
 import { foldReheatPolicy } from '../graph/dimension'
-import { bandFor, chargeFor, coreRadiusFor, resolvePhysics, springForKey } from '../graph/forces'
+import { bandFor, chargeFor, coreRadiusFor, resolvePhysics } from '../graph/forces'
+import { dimensionsFor } from '../adapter/build'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
@@ -40,9 +41,12 @@ const UNDECLARED = 'notADeclaredKey' as NodeType
 /** The alternate taxonomy's kind projection — its adapter would write these. */
 const ALT_DEF_TYPE: Record<string, string> = { worker: 'tier-2', workflow: 'tier-3', activity: 'tier-4' }
 
-function node(id: string, nodeType: NodeType, parentId?: string, defType = NODE_TYPE_REGISTRY[nodeType].defType): SimNode {
+function node(id: string, nodeType: NodeType, parentId?: string, defType?: string): SimNode {
   return {
-    id, dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType, [DEF_TYPE_DIMENSION]: defType },
+    id,
+    // The adapter's projection, with the kind overridable for the alternate
+    // taxonomy's nodes (its adapter would project differently).
+    dimensions: defType === undefined ? dimensionsFor(nodeType, undefined) : { ...dimensionsFor(nodeType, undefined), [DEF_TYPE_DIMENSION]: defType },
     name: id, orphan: parentId === undefined,
     definitionKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
@@ -255,7 +259,7 @@ function physicsInjection(): Json {
     // right by reading the container.
     edgeTypes: [{
       id: 'zoneLink', label: 'N↔S', sourceType: 'north', targetType: 'south',
-      category: 'dependency', directional: false,
+      category: 'dependency',
       physics: { strength: 0.7, distance: 123 }, tooltip: 'zone link',
     }],
     resolveEdgeType: () => 'zoneLink',
@@ -267,9 +271,9 @@ function physicsInjection(): Json {
   return {
     // The axis itself must come from the container.
     axes: {
-      shipped: fromDefault.push.mapping.dimension,
-      otherAxis: zoned.push.mapping.dimension,
-      differ: fromDefault.push.mapping.dimension !== zoned.push.mapping.dimension,
+      shipped: fromDefault.pair.mapping.dimension,
+      otherAxis: zoned.pair.mapping.dimension,
+      differ: fromDefault.pair.mapping.dimension !== zoned.pair.mapping.dimension,
     },
     // And so must the key space the maps are built over.
     chargeKeys: {
@@ -279,11 +283,11 @@ function physicsInjection(): Json {
     // And the spring table: categories and physics from the container's own
     // edge types, through its own rule.
     springKeys: {
-      shipped: sorted([...resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).spring.byCategory.keys()]),
-      otherAxis: sorted([...resolvePhysics(zoned, OTHER_AXIS).spring.byCategory.keys()]),
+      shipped: sorted(DEFAULT_ONTOLOGY.edgeTypes.map(e => e.id).filter(id => resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).spring.describe(id) !== undefined)),
+      otherAxis: sorted(OTHER_AXIS.edgeTypes.map(e => e.id).filter(id => resolvePhysics(zoned, OTHER_AXIS).spring.describe(id) !== undefined)),
     },
     zoneSpring: (() => {
-      const ph = springForKey(resolvePhysics(zoned, OTHER_AXIS).spring, 'zoneLink')
+      const ph = resolvePhysics(zoned, OTHER_AXIS).spring.physicsFor('zoneLink')
       return { strength: ph.strength, distance: ph.distance }
     })(),
     // A node on the other axis scores under ITS taxonomy and is absent under the
@@ -307,7 +311,7 @@ function physicsInjection(): Json {
         stillResolvesTheSameStyle:
           derived.resolveNodeStyle(worker) === DEFAULT_ONTOLOGY.resolveNodeStyle(worker),
         physicsAgreesWithStyling:
-          defaultParamsFor(derived).push.mapping.dimension === derived.styleAxis(),
+          defaultParamsFor(derived).pair.mapping.dimension === derived.styleAxis(),
       }
     })(),
   }

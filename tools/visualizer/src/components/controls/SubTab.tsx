@@ -22,7 +22,14 @@ export function SubTab({ label, active, onSelect, leading }: {
   leading?: React.ReactNode
 }) {
   return (
-    <div role="tab" aria-selected={active} className={`force-subtab${active ? ' active' : ''}`} onClick={onSelect}>
+    <div
+      role="tab"
+      aria-selected={active}
+      tabIndex={0}
+      className={`force-subtab${active ? ' active' : ''}`}
+      onClick={onSelect}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
+    >
       {leading}
       <span className="force-subtab-label">{label}</span>
     </div>

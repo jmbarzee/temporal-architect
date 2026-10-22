@@ -25,7 +25,6 @@ interface FilterBarProps {
   /** AST — used to count top-level definitions for the chip badges. */
   ast: TWFFile
   /** Unique source files driving the file chips (each view computes its own). */
-  allFiles: string[]
   filter: FilterState
   onFilterChange: (next: FilterState) => void
   pins: PinState
@@ -48,13 +47,13 @@ interface FilterBarProps {
   /** The axes shown, in order. R17/R18/R19: editable, and may be empty. */
   chain: readonly string[]
   /**
-   * Values available per axis, read off the graph by the host.
-   *
-   * The file axis is also sourced from `allFiles` for its counts; every other
-   * axis takes its domain from here. An axis with no entry renders an empty,
+   * Values available per axis, read off the data by the host — the one source
+   * every axis's chips are built from, files and kinds included. Required:
+   * when it was optional, one mount omitted it and the kind axis silently
+   * stopped being re-addable there. An axis with no entry renders an empty,
    * explicitly-disabled section rather than vanishing.
    */
-  valuesByDimension?: ReadonlyMap<string, readonly string[]>
+  valuesByDimension: ReadonlyMap<string, readonly string[]>
   /** Omitted by a host that does not want the chain edited in place. */
   onChainChange?: (next: readonly string[]) => void
   /** Raw findings — partitioned by the file filter inside ErrorBars. */
@@ -66,7 +65,6 @@ interface FilterBarProps {
 
 export function FilterBar({
   ast,
-  allFiles,
   filter,
   onFilterChange,
   pins,
@@ -131,7 +129,7 @@ export function FilterBar({
     labelClass: string
   }>([
     [SOURCE_FILE_DIMENSION, {
-      values: allFiles,
+      values: [...(valuesByDimension.get(SOURCE_FILE_DIMENSION) ?? [])],
       counts: fileCounts,
       hidden: hiddenMatchByFile,
       sectionClass: 'header-files-section',
@@ -144,7 +142,7 @@ export function FilterBar({
       labelClass: 'header-file-name',
     }],
     [DEF_TYPE_DIMENSION, {
-      values: [...(valuesByDimension?.get(DEF_TYPE_DIMENSION) ?? [])],
+      values: [...(valuesByDimension.get(DEF_TYPE_DIMENSION) ?? [])],
       counts: typeCounts,
       hidden: hiddenMatchByType,
       sectionClass: 'header-types-section',
@@ -158,7 +156,7 @@ export function FilterBar({
       iconClass: 'header-type-icon',
       labelClass: 'header-type-label',
     }],
-  ]), [allFiles, fileCounts, typeCounts, hiddenMatchByFile, hiddenMatchByType, valuesByDimension])
+  ]), [fileCounts, typeCounts, hiddenMatchByFile, hiddenMatchByType, valuesByDimension])
 
   /**
    * Presentation for an axis this bar has no entry for.
@@ -170,7 +168,7 @@ export function FilterBar({
    * renders with neutral styling and whatever values the host supplied.
    */
   const lookFor = (dimension: string) => PRESENTATION.get(dimension) ?? {
-    values: [...(valuesByDimension?.get(dimension) ?? [])],
+    values: [...(valuesByDimension.get(dimension) ?? [])],
     counts: new Map<string, number>(),
     hidden: undefined,
     sectionClass: 'header-types-section',

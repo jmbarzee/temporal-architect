@@ -3,6 +3,7 @@
 
 import type { DimensionMap, DimensionValue } from './dimension'
 import { DISPATCH_DIMENSION, RELATION_DIMENSION } from './dimension'
+import type { EdgeCategoryKind } from './taxonomy'
 
 export interface GraphNode {
   /**
@@ -92,8 +93,19 @@ export interface GraphEdge {
 }
 
 /** Does this edge express containment (as opposed to a dependency)? */
+/**
+ * The edge's relation, as one of the two values the engine knows. Closed and
+ * loud: an edge with no relation, or a misspelt one, is a host bug, and letting
+ * it classify as a dependency would give it a real spring with no error.
+ */
+export function relationOf(edge: Pick<GraphEdge, 'dimensions'>): EdgeCategoryKind {
+  const r = edge.dimensions[RELATION_DIMENSION]
+  if (r === 'containment' || r === 'dependency') return r
+  throw new Error(`edge relation ${JSON.stringify(r)} is not one the engine knows; expected "containment" or "dependency"`)
+}
+
 export function isContainment(edge: Pick<GraphEdge, 'dimensions'>): boolean {
-  return edge.dimensions[RELATION_DIMENSION] === 'containment'
+  return relationOf(edge) === 'containment'
 }
 
 /** The producer's dispatch kind for a dependency edge, or undefined. */
@@ -105,10 +117,9 @@ export interface Graph {
   nodes: Map<string, GraphNode>
   edges: GraphEdge[]
   // Definition key → every node id that represents a copy of that
-  // definition. Populated by `buildGraph` once all nodes exist. For
-  // singletons (one worker registration, or an orphan definition) the
-  // set has one entry. For an activity registered on three workers the
-  // set has three. Consumers read this to keep sister copies undimmed
-  // during hover/select interactions in GraphView.
+  // definition. Populated by `buildGraph` once all nodes exist. A singleton
+  // (one registration, or an orphan definition) has one entry; a definition
+  // registered on three hosts has three. Consumers read this to keep sister
+  // copies undimmed during hover/select interactions in GraphView.
   duplicateGroups: Map<string, Set<string>>
 }

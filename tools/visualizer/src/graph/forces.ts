@@ -14,8 +14,8 @@
 import type { DimensionId, DimensionValue } from './dimension'
 import { isIdentityMapping } from './dimension'
 import type { GraphEdge } from './model'
-import { isContainment } from './model'
-import type { ChargeParams, LinkParams, GravityParams, SimNode, AxisTuning, PushPhysics, BandRange } from './simulation'
+import { relationOf } from './model'
+import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange } from './simulation'
 import type { Ontology } from './ontology'
 import type { DimensionalMapping } from './dimension'
 import type { EdgeCategoryKind, EdgeTypeDefinition, EdgeTypeId, SpringPhysics } from './taxonomy'
@@ -118,21 +118,34 @@ function declaredBand(ontology: Ontology, values: readonly DimensionValue[]): Ba
 }
 
 function resolveAxis<T>(
-  tuning: AxisTuning<T>,
+  mapping: DimensionalMapping,
+  overrides: ReadonlyMap<string, T>,
   declared: (values: readonly DimensionValue[]) => T,
 ): ResolvedAxis<T> {
   const byBucket = new Map<string, T>()
-  for (const bucket of tuning.mapping.buckets) {
-    byBucket.set(bucket.id, tuning.overrides.get(bucket.id) ?? declared(bucket.values))
+  for (const bucket of mapping.buckets) {
+    byBucket.set(bucket.id, overrides.get(bucket.id) ?? declared(bucket.values))
   }
-  return { mapping: tuning.mapping, byBucket }
+  return { mapping, byBucket }
 }
 
 export function resolvePhysics(params: ChargeParams & GravityParams & LinkParams, ontology: Ontology): ResolvedPhysics {
+  // Declared physics belong to the style axis's values. A bucket on any other
+  // axis — a file, a kind — is not a style key, so it starts from the host's
+  // TYPICAL declared physics (the same fold, over every declared value) rather
+  // than from a lookup that would miss to the fallback style, once per bucket,
+  // with a warning about placeholder styling that is not even true.
+  const style = ontology.styleAxis()
+  const pushFor = (m: DimensionalMapping) => m.dimension === style
+    ? (values: readonly DimensionValue[]) => declaredPush(ontology, values)
+    : () => declaredPush(ontology, ontology.nodeTypeKeys)
+  const bandFor = (m: DimensionalMapping) => m.dimension === style
+    ? (values: readonly DimensionValue[]) => declaredBand(ontology, values)
+    : () => declaredBand(ontology, ontology.nodeTypeKeys)
   return {
-    push: resolveAxis(params.push, values => declaredPush(ontology, values)),
-    band: resolveAxis(params.band, values => declaredBand(ontology, values)),
-    spring: resolveSprings(params.spring, ontology),
+    push: resolveAxis(params.pair.mapping, params.pair.push, pushFor(params.pair.mapping)),
+    band: resolveAxis(params.band.mapping, params.band.overrides, bandFor(params.band.mapping)),
+    spring: resolveSprings(params.pair, ontology),
   }
 }
 
@@ -179,12 +192,6 @@ export function bandFor(band: ResolvedAxis<BandRange>, node: PhysicsSubject): YB
 // ── Resolved springs ──────────────────────────────────────────────────────────
 
 /**
- * One default spring for a category nothing declared and nobody tuned — the
- * pair rule's starting point, mid-range on the control surface's axes.
- */
-export const DEFAULT_SPRING: SpringPhysics = { strength: 1, distance: 450 }
-
-/**
  * The spring for an edge whose endpoint the mapping does not bucket — the edge
  * counterpart of ABSENT_VALUE_PHYSICS. Zero stiffness: the edge exerts no pull,
  * which is the only honest answer when nothing says how strongly it should, and
@@ -194,106 +201,135 @@ export const DEFAULT_SPRING: SpringPhysics = { strength: 1, distance: 450 }
 export const ABSENT_EDGE_PHYSICS: SpringPhysics = { strength: 0, distance: 0 }
 
 /**
- * The spring table, resolved from one axis's tuning and the taxonomy.
+ * What a category starts from when nothing declared a spring for it: the mean
+ * of the host's declared springs, so a bucket on a foreign axis is tuned from
+ * this domain's scale rather than from a number out of another's. A host that
+ * declares no springs gets the absent spring, which is inert.
+ */
+export function typicalSpring(ontology: Ontology): SpringPhysics {
+  const declared = ontology.edgeTypes
+  if (declared.length === 0) return ABSENT_EDGE_PHYSICS
+  let strength = 0, distance = 0
+  for (const e of declared) { strength += e.physics.strength; distance += e.physics.distance }
+  return { strength: strength / declared.length, distance: distance / declared.length }
+}
+
+/**
+ * The pair rule's category id: the relation and the unordered bucket pair,
+ * encoded so a bucket id containing any separator cannot collide with another
+ * pair. Ids are keys, never labels; `describe` turns one back into something a
+ * token can show.
+ */
+function pairId(relation: EdgeCategoryKind, a: string, b: string): EdgeTypeId {
+  return JSON.stringify(a <= b ? [relation, a, b] : [relation, b, a])
+}
+
+function parsePairId(id: EdgeTypeId): [EdgeCategoryKind, string, string] | undefined {
+  try {
+    const t: unknown = JSON.parse(id)
+    if (Array.isArray(t) && t.length === 3 && (t[0] === 'containment' || t[0] === 'dependency') &&
+      typeof t[1] === 'string' && typeof t[2] === 'string') return [t[0], t[1], t[2]]
+  } catch { /* not a pair id */ }
+  return undefined
+}
+
+/**
+ * The spring table, resolved from the pair tuning and the taxonomy.
  *
  * Two classifiers can fill it, and which one is decided here, once, not per
  * edge. On the style axis bucketed by identity, the host's declared table and
  * its prioritized rule apply verbatim (D2): the hand-tuned springs, and a
  * precedence no pair rule reproduces — two of its categories share endpoint
  * values and differ only on the edge's own dispatch (T14). On any other
- * (axis, mapping) the library's pair rule applies: one
- * category per unordered bucket pair per relation, each `DEFAULT_SPRING` until
- * tuned. `categories.length` is the token count the 24-ceiling bounds.
+ * (axis, mapping) the library's pair rule applies: one category per unordered
+ * bucket pair per relation, each the host's typical spring until tuned. The
+ * pair rule enumerates nothing: a category exists when an edge falls in it,
+ * which is what a control surface shows and what the token ceiling counts.
  */
 export interface ResolvedSprings {
   readonly mapping: DimensionalMapping
-  /** Every category in control-panel order, carrying its DECLARED physics. */
-  readonly categories: readonly EdgeTypeDefinition[]
-  /** Effective physics per category: the override where one exists, else the declared. */
-  readonly byCategory: ReadonlyMap<EdgeTypeId, SpringPhysics>
-  /** The category of an edge, from its endpoints' bucket ids. */
-  readonly classify: (edge: GraphEdge, src: string | undefined, tgt: string | undefined) => EdgeTypeId
+  /**
+   * The category of an edge from its endpoints' bucket ids, or undefined when
+   * an endpoint is unbucketed — only the pair rule answers that way; the host's
+   * rule answers for every value. Throws when the host's rule returns an id its
+   * table does not declare: that is a host bug, and an edge silently without
+   * pull would surface it somewhere far from the cause.
+   */
+  classify(edge: GraphEdge, src: string | undefined, tgt: string | undefined): EdgeTypeId | undefined
+  /** Effective physics: the override where one exists, else the declared or typical spring. */
+  physicsFor(id: EdgeTypeId): SpringPhysics
+  /** What a control surface shows for a category — the declared entry, or one synthesized from a pair id. */
+  describe(id: EdgeTypeId): EdgeTypeDefinition | undefined
 }
 
-function pairId(relation: EdgeCategoryKind, a: string | undefined, b: string | undefined): EdgeTypeId {
-  const [lo, hi] = (a ?? '') <= (b ?? '') ? [a, b] : [b, a]
-  return `${relation}|${lo ?? '-'}|${hi ?? '-'}`
-}
-
-const RELATIONS: readonly EdgeCategoryKind[] = ['containment', 'dependency']
-
-/** The pair rule's categories: relation-major, then bucket declaration order. */
-function pairCategories(mapping: DimensionalMapping): EdgeTypeDefinition[] {
-  const out: EdgeTypeDefinition[] = []
-  const { buckets } = mapping
-  for (const relation of RELATIONS) {
-    for (let i = 0; i < buckets.length; i++) {
-      for (let j = i; j < buckets.length; j++) {
-        const a = buckets[i], b = buckets[j]
-        out.push({
-          id: pairId(relation, a.id, b.id),
-          label: `${a.abbreviation}↔${b.abbreviation}`,
-          sourceType: a.id,
-          targetType: b.id,
-          category: relation,
-          directional: false,
-          physics: DEFAULT_SPRING,
-          tooltip: `${a.label} ↔ ${b.label} ${relation}`,
-        })
-      }
-    }
-  }
-  return out
-}
-
-export function resolveSprings(tuning: AxisTuning<SpringPhysics>, ontology: Ontology): ResolvedSprings {
-  const { mapping, overrides } = tuning
-  const declared = mapping.dimension === ontology.styleAxis() && isIdentityMapping(mapping)
-  const categories = declared ? ontology.edgeTypes : pairCategories(mapping)
-  const byCategory = new Map<EdgeTypeId, SpringPhysics>()
-  for (const c of categories) byCategory.set(c.id, overrides.get(c.id) ?? c.physics)
-  const classify = declared
-    ? (edge: GraphEdge, src: string | undefined, tgt: string | undefined): EdgeTypeId => {
+export function resolveSprings(pair: PairTuning, ontology: Ontology): ResolvedSprings {
+  const { mapping, spring: overrides } = pair
+  if (mapping.dimension === ontology.styleAxis() && isIdentityMapping(mapping)) {
+    const table = new Map(ontology.edgeTypes.map(e => [e.id, e]))
+    return {
+      mapping,
+      classify: (edge, src, tgt) => {
         const id = ontology.resolveEdgeType(edge, src, tgt)
-        // Loud, deliberately: an id the host's rule returns but its table does
-        // not declare is a host bug, and it would otherwise surface as an edge
-        // with no pull somewhere far from the cause.
-        if (!byCategory.has(id)) {
+        if (!table.has(id)) {
           throw new Error(
             `edge type ${JSON.stringify(id)} is resolved by the taxonomy's rule but has no ` +
             'entry in its edgeTypes; the two must be kept in step.',
           )
         }
         return id
+      },
+      physicsFor: id => overrides.get(id) ?? table.get(id)?.physics ?? ABSENT_EDGE_PHYSICS,
+      describe: id => table.get(id),
+    }
+  }
+  const typical = typicalSpring(ontology)
+  const buckets = new Map(mapping.buckets.map(b => [b.id, b]))
+  return {
+    mapping,
+    classify: (edge, src, tgt) =>
+      src === undefined || tgt === undefined ? undefined : pairId(relationOf(edge), src, tgt),
+    physicsFor: id => overrides.get(id) ?? typical,
+    describe: id => {
+      const parsed = parsePairId(id)
+      if (!parsed) return undefined
+      const [relation, a, b] = parsed
+      const A = buckets.get(a)
+      const B = buckets.get(b)
+      if (!A || !B) return undefined
+      return {
+        id,
+        label: `${A.abbreviation}↔${B.abbreviation}`,
+        sourceType: a,
+        targetType: b,
+        category: relation,
+        physics: typical,
+        tooltip: `${A.label} ↔ ${B.label} ${relation}`,
       }
-    : (edge: GraphEdge, src: string | undefined, tgt: string | undefined): EdgeTypeId =>
-        pairId(isContainment(edge) ? 'containment' : 'dependency', src, tgt)
-  return { mapping, categories, byCategory, classify }
+    },
+  }
 }
 
-/** The spring an edge is under: its category, and the effective physics. */
+/** The spring an edge is under: its category, if it has one, and the effective physics. */
 export interface EdgeCategory {
   strength: number
   distance: number
-  /** The category id — what the canvas's active-edge highlight matches to a spring-map token. */
-  key: EdgeTypeId
+  /**
+   * The category id — what the canvas's active-edge highlight matches to a
+   * spring-map token — or undefined for an edge with an unbucketed endpoint.
+   */
+  key: EdgeTypeId | undefined
 }
 
 export function springFor(spring: ResolvedSprings, edge: GraphEdge, src: PhysicsSubject, tgt: PhysicsSubject): EdgeCategory {
   const key = spring.classify(edge, bucketOf(spring, src), bucketOf(spring, tgt))
-  const ph = spring.byCategory.get(key) ?? ABSENT_EDGE_PHYSICS
+  const ph = key === undefined ? ABSENT_EDGE_PHYSICS : spring.physicsFor(key)
   return { strength: ph.strength, distance: ph.distance, key }
 }
 
-/** One category's effective spring, for a control surface that iterates categories. */
-export function springForKey(spring: ResolvedSprings, id: EdgeTypeId): SpringPhysics {
-  return spring.byCategory.get(id) ?? ABSENT_EDGE_PHYSICS
-}
-
 /**
- * The categories some edge of the graph actually falls in. A control surface
- * shows one token per category present, not per category possible: under the
- * pair rule the possible set is every bucket pair, most of which no edge joins.
+ * The categories some edge of the graph falls in — one token each. Under the
+ * pair rule this is the only enumeration there is; under the declared table it
+ * is the subset the graph actually uses. O(edges), no table built.
  */
 export function presentSpringCategories(
   spring: ResolvedSprings,
@@ -304,7 +340,9 @@ export function presentSpringCategories(
   for (const edge of edges) {
     const src = nodeOf(edge.sourceId)
     const tgt = nodeOf(edge.targetId)
-    if (src && tgt) present.add(springFor(spring, edge, src, tgt).key)
+    if (!src || !tgt) continue
+    const key = springFor(spring, edge, src, tgt).key
+    if (key !== undefined) present.add(key)
   }
   return present
 }
@@ -395,7 +433,7 @@ export function applyLinkForce(
   activeEdges: GraphEdge[],
   nodeMap: Map<string, SimNode>,
   params: LinkParams,
-  spring: ResolvedSprings,
+  categoryOf: (edge: GraphEdge) => EdgeCategory,
   alpha: number,
   rng: Rng,
 ): void {
@@ -425,7 +463,7 @@ export function applyLinkForce(
       dist = 1
     }
 
-    const cat = springFor(spring, edge, source, target)
+    const cat = categoryOf(edge)
     const restDist = cat.distance * distMul
     const disp = dist - restDist
     const absDisp = Math.abs(disp)

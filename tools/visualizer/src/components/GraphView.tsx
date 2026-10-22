@@ -11,8 +11,8 @@ import type { DecompositionParams } from './protocol'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
-import { presentSpringCategories, resolvePhysics } from '../graph/forces'
-import { axisOptions } from '../graph/simulation'
+import { presentSpringCategories, resolvePhysics, resolveSprings } from '../graph/forces'
+import { axisOptions, pairTuning } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
 import { payloadString } from '../graph/model'
@@ -136,7 +136,6 @@ export function GraphView({
   // partition) — everything derived straight from props, no sim/DOM.
   const {
     graph,
-    allFiles,
     recentlyChanged,
     errors,
     diagnostics,
@@ -182,16 +181,19 @@ export function GraphView({
   // the current one (the pull tokens). Both read the whole graph, not the
   // visible subset — tuning covers what a filter may reveal next.
   const axes = React.useMemo(() => axisOptions(ontology, graph), [ontology, graph])
+  // Classification does not depend on overrides, so this keys on the mapping
+  // and not on `resolved`, which is a new object after every slider edit.
+  const pairMapping = forceParams.pair.mapping
   const presentSprings = React.useMemo(
-    () => presentSpringCategories(resolved.spring, graph.edges, id => graph.nodes.get(id)),
-    [resolved, graph],
+    () => presentSpringCategories(resolveSprings(pairTuning(pairMapping), ontology), graph.edges, id => graph.nodes.get(id)),
+    [pairMapping, ontology, graph],
   )
   // A new axis starts both pair forces from the taxonomy's declared physics on
   // its buckets (D47: a tuning keyed by one axis has no reading on another).
   const handleAxisChange = React.useCallback((mapping: DimensionalMapping) => {
-    if (mapping.dimension === forceParams.push.mapping.dimension) return
-    handleRelayout({ push: { mapping, overrides: new Map() }, spring: { mapping, overrides: new Map() } })
-  }, [forceParams, handleRelayout])
+    if (mapping.dimension === pairMapping.dimension) return
+    handleRelayout({ pair: pairTuning(mapping) })
+  }, [pairMapping, handleRelayout])
 
   // Render-time node sizing (independent of the simulation). Tunable from the
   // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
@@ -552,7 +554,6 @@ export function GraphView({
         <div className="graph-toolbar" ref={toolbarRef}>
           <FilterBar
             ast={ast}
-            allFiles={allFiles}
             valuesByDimension={valuesByDimension}
             filter={filter}
             onFilterChange={onFilterChange}

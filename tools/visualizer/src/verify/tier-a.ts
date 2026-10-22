@@ -11,7 +11,7 @@ import { edgeTypeFor } from '../adapter/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import { payloadString } from '../graph/model'
-import { Simulation, axisOptions, fitsCeiling } from '../graph/simulation'
+import { Simulation, axisOptions, fitsCeiling, pairTuning } from '../graph/simulation'
 import { presentSpringCategories, resolveSprings } from '../graph/forces'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
@@ -164,7 +164,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       pullTokens: o.pullTokens,
       fits: fitsCeiling(o),
       presentSprings: sorted(presentSpringCategories(
-        resolveSprings({ mapping: o.mapping, overrides: new Map() }, DEFAULT_ONTOLOGY), graph.edges, nodeOf,
+        resolveSprings(pairTuning(o.mapping), DEFAULT_ONTOLOGY), graph.edges, nodeOf,
       )),
     })),
     visibleSubgraph: sortedRecord(states),

@@ -136,8 +136,26 @@ export interface OntologySpec {
   fallbackStyle: NodeTypeDefinition
 }
 
+/**
+ * Build the container, refusing an incoherent spec.
+ *
+ * The style value set is declared in four places — `nodeTypeKeys`, the keys
+ * of `nodeStyles`, the values in `styleGroups`, the keys of `abbreviations` —
+ * and nothing but this check holds them together. A value in one list and not
+ * another used to resolve, silently, to the fallback style or to no bucket at
+ * all. To derive a variant, build one from a spec (`createOntology({ ...spec,
+ * … })`); spreading the built object copies closures that still read the
+ * original's fields.
+ */
 export function createOntology(spec: OntologySpec): Ontology {
   const { nodeStyles, fallbackStyle } = spec
+  const keys = new Set(spec.nodeTypeKeys)
+  const problems: string[] = []
+  for (const k of spec.nodeTypeKeys) if (!hasOwn(nodeStyles, k)) problems.push(`nodeTypeKeys lists ${JSON.stringify(k)} but nodeStyles declares no style for it`)
+  for (const k of Object.keys(nodeStyles)) if (!keys.has(k)) problems.push(`nodeStyles declares ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
+  for (const g of spec.styleGroups) for (const v of g.values) if (!keys.has(v)) problems.push(`styleGroups.${g.id} names ${JSON.stringify(v)}, which nodeTypeKeys does not list`)
+  for (const k of Object.keys(spec.abbreviations)) if (!keys.has(k)) problems.push(`abbreviations names ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
+  if (problems.length > 0) throw new Error(`taxonomy is incoherent: ${problems.join('; ')}`)
   const byDimension = new Map(spec.filterDimensions.map(d => [d.id, d]))
   // Warn once per unrecognized key, and once PER ONTOLOGY: this resolves per
   // node per frame, so a warning on every miss buries the first under sixty a

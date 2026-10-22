@@ -65,7 +65,7 @@ export function PushPullControls({
   hoveredPushBucket, onHoverPushBucket, hoveredEdge, onHoverEdge,
 }: PushPullProps) {
   const [sub, setSub] = React.useState<PairForce>('push')
-  const current = params.push.mapping.dimension
+  const current = params.pair.mapping.dimension
   return (
     <div className="pushpull-controls">
       {/* The axis both forces key on — above the sub-tabs so it stays visible
