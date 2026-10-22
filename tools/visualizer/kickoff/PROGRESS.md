@@ -65,8 +65,8 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 | counter | current | target |
 |---|---|---|
 | A — requirements covered | **14** (R4, R5, R6, R13, R14, R17, R18, R19, R20, R22, R23, R24, R25, R34) + R1 partial | 42 |
-| B — blast-radius sites migrated | **23** | 38 |
-| C — leaks in the manifest | **194** | 0 |
+| B — blast-radius sites migrated | **24** | 38 |
+| C — leaks in the manifest | **191** | 0 |
 | Gate 6 — import-boundary violations | **7** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
@@ -93,23 +93,25 @@ deletion is `model.ts` 61 -> 12 and the `nodeDefType.ts` removal.
 (`edgeTypeFor` takes values and returns an id; `EdgeTypeId` no longer keys any
 param map), B26 (the three `as NodeType` casts are gone — the pattern gate
 reports 0 new identity casts), B28 (one token per category *present*, from the
-resolved table) — 18 -> 23. **Carried:** B6 (`bandCenters`' per-tick `Set`/`Map`
-identity, T1 — not touched) and B22 (`edgeStyleFor`, which §6.5 already routes
-to Unit 6).
+resolved table), B6 (`bandCenters` keys on bucket ids, which are interned
+strings by construction — T1's identity hazard is gone; the review corrected
+my "not touched") — 18 -> 24. **Carried:** B22 (`edgeStyleFor`, which §6.5
+already routes to Unit 6).
 
-Counter C landed at **194** against §6.5's **102**, and the gap is not slippage:
+Counter C landed at **191** against §6.5's **102**, and the gap is not slippage:
 it is the plan's table attributing to Unit 4 drops it elsewhere assigns to other
 units. Every remaining leak, by the unit §6.5 itself names for the file: Unit 5a
 — `simulation.ts` 5, `GravityControls.tsx` 4, `.css` 2 = **11**; Unit 6 —
 `edge-styles.ts` 58 (T11), `FilterBar.css` 39, `GraphView.css` 8, `controls.css`
 3, `GraphControlPanel.css` 3, `PinToggle.css` 2, `GraphCanvas.tsx` 3, `groups.ts`
 1 = **117**; Unit 7 — `GraphView.tsx` 30, `visibleGraph.ts` 19, `useHighlight.ts`
-10, `model.ts` 3 (the nexus splice readers, B16) = **62**; residue — `FilterBar.tsx`
-2, `dimension.ts` 1, `taxonomy.ts` 1 = **4**. Sum 194. Unit 4's own share (the
-`model.ts` residue, `GraphCanvas.tsx`'s part) is at its floor, and the unit
-removed nine (203 -> 194) while adding a tab, a dropdown and four files to the
-manifest at zero. The ratchet is set to **194** / **1246**; the next real drop is
-Unit 5a's 11.
+10 = **59**; residue — `FilterBar.tsx` 2, `dimension.ts` 1, `taxonomy.ts` 1 =
+**4**. Sum 191. `model.ts`, §6.5's one Unit 4 residue, is at **zero**: its last
+three were comment prose, and the review (c25) caught the close-out calling them
+"nexus splice readers" — they were not, and they are reworded. The unit removed
+twelve (203 -> 191) while adding a tab, a dropdown and six files to the manifest
+at zero. The ratchet is set to **191** / **1243**; the next real drop is Unit 5a's
+11.
 
 ## Gate state
 
@@ -119,11 +121,12 @@ Unit 5a's 11.
 | 2 `npm run build:lib` | Unit 4 close | pass |
 | 2b `npm run dts-gate` | Unit 4 close | pass — consumer compile clean, `skipLibCheck` off |
 | 3 `npm run verify` | Unit 4 close | pass — 7/7 goldens match (Tier B and Tier C byte-identical across the whole unit) |
-| 4 `npm run leak-gate` | Unit 4 close | pass — **194 / 194**; shim 1052; **total 1246 / 1246**; `PushPullControls.tsx` joined the manifest at 0 |
-| 5 browser pass | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)` |
+| 4 `npm run leak-gate` | Unit 4 close | pass — **191 / 191**; shim 1052; **total 1243 / 1243**; `PushPullControls.tsx` and `tuning-probes.ts` joined at 0 |
+| 5 browser pass | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)`; a second capture per fixture with the panel open (`unit-4-<fixture>-controls.png`), after the review noted the first set showed it collapsed |
 | 6 `npm run boundary-gate` | Unit 4 close | pass — **7 / 7** |
 | + `npm run pattern-gate` | Unit 4 close | pass — 5 allowlisted, 0 new |
-| + `npm run map -- --check` | Unit 4 close | pass — 83 source files |
+| + `npm run map -- --check` | Unit 4 close | pass — 84 source files, with a "files only the harness imports" section |
+| + `npm run surface-gate` | Unit 4 close | pass — `src/lib.ts` exports 90 names, as committed in `kickoff/lib-surface.txt` (new: C3 had no gate) |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -197,6 +200,7 @@ explicit pass criteria and a committed screenshot — use them.
 |---|---|---|---|---|---|
 | **0 — Verification net** | 11 (`ad06e58`…`149634c`) | means of R41 | none migrated | 583 (ceiling 583) | [REVIEW_0.md](reviews/REVIEW_0.md) — 34 findings, all 5 blockers and 23 majors resolved |
 | **1 — Inject the taxonomy** | 8 (`df09457`…`2f51558`) | R1 (partial) | B3, B4, B5, B33 | 583 (ceiling 583) | [REVIEW_1.md](reviews/REVIEW_1.md) — 26 findings, all 3 blockers and 11 majors resolved |
+| **4 — Push/pull on a chosen dimension** | 14 (`7d81ee0`…`a2d0b1d` + the record) | R4, R5, R13, R22–R25, R34 | B6, B7, B12, B13, B26, B28 | 191 (ceiling 191) | [REVIEW_4.md](reviews/REVIEW_4.md) — 55 findings, 26 clusters, every blocker and major resolved or filed |
 
 ---
 
@@ -217,16 +221,23 @@ should be read:
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
 
-**Unit 4 is closing** on `visualizer/dimensions-unit-4`, branched from unit-3 @
-`aedde37`. Eleven unit commits, `7d81ee0` … `acc36cc` (4-pre D47, 4a D48, 4c D49,
-4d, 4e-i D50, 4e-ii, 4e-iii D51), then the close-out. Review workflow
-`wf_97ef1cb2-737` (six finders, Opus on the physics and gates lenses, Sonnet
-elsewhere — rule 11; isolation on finders AND verifiers — F17) is in flight;
-`REVIEW_4.md` and the PR follow it. **Record the sha, every checkpoint:** on resume after a six-week
+**Unit 4 is closed** on `visualizer/dimensions-unit-4`, branched from unit-3 @
+`aedde37`; [PR #169](https://github.com/jmbarzee/temporal-architect/pull/169)
+(base: `visualizer/dimensions-unit-2`'s successor `visualizer/dimensions-unit-3`,
+per D36). Eleven unit commits (`7d81ee0` … `acc36cc`: 4-pre D47, 4a D48, 4c
+D49, 4d, 4e-i D50, 4e-ii, 4e-iii D51), the close-out `7941464`, the review fixes
+`a2d0b1d` (D52), then the record. `REVIEW_4.md` records 55 findings in 26
+clusters with every blocker and major resolved-with-sha or filed. Last
+checkpoint: the commit that adds this paragraph. **Record the sha, every checkpoint:** on resume after a six-week
 pause the app had re-pointed this worktree to its own session branch at the
 feature base, and the first `checkout -b unit-4` silently branched from there.
 Caught only because pre-Unit-2 symbols showed up in a grep. First action of any
 resumed session: `git log --oneline -1` against the sha here.
+
+**Read `REVIEW_4.md` before Unit 5a.** Two things in it change how the next
+unit should be run: the review's worktrees start at main (F19 — hand the sha),
+and the clusterer must not rate (F20, rule 12 — the verify stage doubled the
+spend refuting nothing).
 
 The three things the Unit 3 close said Unit 4 should settle first, settled:
 
@@ -238,14 +249,13 @@ The three things the Unit 3 close said Unit 4 should settle first, settled:
 - **The §6.5 ceiling** — not reachable, and the arithmetic is under Counters:
   every remaining leak is a file §6.5 assigns to 5a, 6 or 7.
 
-Carried out of Unit 4, for the next unit to pick up or file: B6 (T1, untouched);
-`identityTuning`/`identityMapping` are still two identity builders because the
-style axis has no descriptor (it is not a filter axis); off the style axis every
-token is one neutral colour until Unit 6's palette; the pair rule does not read
-`dispatch` (a host rule can — D51).
+Carried out of Unit 4: B22 (→ Unit 6); off the style axis every token is one
+neutral colour until Unit 6's palette; the pair rule does not read `dispatch`
+(a host rule can — D51); host-declared coarsening mappings and a host-declared
+default pair axis are one filed issue (REVIEW_4 #19–20).
 
 Ceilings at the Unit 3 close: leak **204**, total **1266**, boundary **7**. At the
-Unit 4 close: leak **194**, total **1246**, boundary **7**.
+Unit 4 close: leak **191**, total **1243**, boundary **7**.
 
 ## Discovered facts
 
@@ -434,6 +444,24 @@ now fans coincident tokens out on a ring (drawn position only; a drag still
 writes the token's own value). Found by Gate 5 and by nothing else: no number is
 wrong when two categories share a default, so no golden can see it.
 
+**F19 — A workflow's isolated worktrees start at main, not at the branch under
+review.** All six Unit 4 finders reported a worktree at `712d1b8` (main) where
+the prompt named `acc36cc`. Each detached to the right sha — because the prompt
+named it and the schema asked for `headSha` — and said so. Nothing in the
+Workflow tool carries the session's branch into the worktree it creates. The
+durable fix is in the prompt template: state the sha, instruct the detach as
+step one, require `headSha` back, and discard any review whose `headSha`
+differs without an explicit detach. Recorded in memory as well, since it is
+not specific to this run.
+
+**F20 — The clusterer rated severity, and the verify stage doubled the spend.**
+Rule 6 made verification conditional on severity, and the clusterer — a cheap
+pass meant to group by mechanism — assigned seven clusters "blocker" where the
+finders had filed two. Seventeen verifiers ran (Unit 3: eight), refuted none,
+and downgraded five of the seven. 3.52M tokens against Unit 3's 1.86M, with the
+difference almost entirely in that stage. Rule 12: the clusterer groups; the
+triggers for verification are a finder's own claims.
+
 ---
 
 ## Open questions
@@ -501,7 +529,7 @@ that is a change to an [immutable] document and therefore not mine to make.
 | `signalSend`, the highest-precedence edge rule, is unreachable from the whole corpus | Unit 0 (T32) | Tier C's 294 synthetic rows | 0 |
 | The band collection deduplicates by value, and keying it by identity is silent | Unit 0 (T1) | Tier B `bandCentersMatchDistinctTypes`, self-tested red | 0 |
 | The three physics accessors fail three different silent ways on an undeclared key: `undefined`, a NaN its `Math.max` floor hides, and a hard throw | Unit 1 (T3, B5) | `static.forceProbes.absentValue` — verified red when the defaults are removed | 1 |
-| `edgeCategory` had no such guard, so a supplied taxonomy's category ids write NaN into both endpoint velocities on the first tick | Unit 1 review | `static.forceProbes.absentValue.undeclaredEdgeCategory` | 1 |
+| `edgeCategory` had no such guard, so a supplied taxonomy's category ids write NaN into both endpoint velocities on the first tick (now: a host rule returning an undeclared id throws, loudly, before any tick — `static.tuningProbes.membership`) | Unit 1 review | `static.forceProbes.absentValue.undeclaredEdgeCategory` | 1 |
 | `computeVisibleGraph` took an ontology and still resolved its visibility predicate through the module singleton, so a supplied taxonomy emptied the graph | Unit 1 review | `static.ontologyProbes.injection` — verified red when the predicate is reverted | 1 |
 | The taxonomy had two unwired suppliers: components read context, `Simulation` read the singleton | Unit 1 review | `Simulation`'s ontology parameter is required, so a call site cannot silently fall back; the compiler is the check | 1 |
 | `ABSENT_VALUE_PHYSICS` was documented as inert and is not — a zero charge still couples at half strength and an origin band moves the median | Unit 1 review | `static.forceProbes.absentValue.*.velocities` records **every** node, not just the unknown one | 1 |

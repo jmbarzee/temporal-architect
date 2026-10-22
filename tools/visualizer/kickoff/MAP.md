@@ -83,7 +83,7 @@ which is worth noticing rather than assuming.
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
 | `verify/filter-states.ts` | neither | 13 | `verify/tier-a.ts` |
 | `verify/fixtures.ts` | neither | 10 | `verify/main.ts`, `verify/tier-a.ts`, `verify/tuning-probes.ts` |
-| `verify/force-probes.ts` | neither | 21 | `verify/static-golden.ts` |
+| `verify/force-probes.ts` | neither | 22 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
 | `verify/ontology-probes.ts` | neither | 52 | `verify/static-golden.ts` |
 | `verify/rng.ts` | neither |  | `verify/force-probes.ts`, `verify/tier-b.ts`, `verify/tuning-probes.ts` |

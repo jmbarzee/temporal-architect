@@ -609,3 +609,14 @@ most — on this run that is the force model and the gates themselves, the same
 places §3.5.5 already said to keep spending. Every `agent()` call names its
 `model` explicitly, so the default is a decision rather than an omission; a call
 with no `model` is a review finding.
+
+**12. The clusterer groups; it does not rate.** [added at the Unit 4 boundary,
+measured] Verification is triggered by a finder's own claim — a member that was
+not reproduced, a member the finder filed as blocker, or a member that
+contradicts a DECISIONS entry — never by a severity the clusterer assigned. On
+Unit 4 the clusterer rated seven clusters blocker where finders had filed two,
+seventeen verifiers ran, none refuted, five downgraded, and the review cost
+3.52M against Unit 3's 1.86M. Two more lines for the finder prompt, learned the
+same day: a workflow's isolated worktree starts at **main** (F19), so the prompt
+names the sha under review, instructs `git checkout --detach <sha>` as step one,
+and the schema returns `headSha`.

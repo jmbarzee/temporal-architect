@@ -1122,7 +1122,8 @@ model changes:
 the engine path. Tier A: the pair-rule ids in `axes[].presentSprings` change
 encoding (`"rel|a|b"` → `["rel","a","b"]`), same set, verified by decoding.
 `static`: `edgeTypes` rows lose `directional`; `forceProbes.mappedAxisSprings`
-rows are renamed and gain `mappedPush` (the fold, pinned); `tuningProbes` is
+rows are renamed and gain `mappedPush` (the fold, pinned); `forceProbes.nonIdentityParams`
+(every scalar off its identity, one non-integer override — c8) and `tuningProbes` are
 new; `ontologyProbes.mappings.intersectingBucketsRefused` carries the refusal's
 new wording ("is incoherent"), since one message now covers three refusals.
 Nothing else moves.

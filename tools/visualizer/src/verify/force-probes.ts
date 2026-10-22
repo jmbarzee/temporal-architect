@@ -39,7 +39,7 @@ import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
-import { defaultParamsFor, pairTuning } from '../graph/simulation'
+import { defaultParamsFor, pairTuning, withPushOverride } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { mulberry32 } from './rng'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
@@ -190,6 +190,36 @@ function absentValueProbes(): Json {
 }
 
 /**
+ * The kernels under parameters that are NOT the defaults. Every other probe
+ * runs `defaultParamsFor`, whose multipliers are 1.0 and whose declared values
+ * are small integers, so dropping a multiplier, an exponent or float precision
+ * inside a kernel changed nothing at the rounding grid (the Unit 4 review ran
+ * three such sabotages green). These rows run each kernel with every scalar off
+ * its identity and one non-integer override.
+ */
+function nonIdentityParams(): Json {
+  const base = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const params: ForceParams = {
+    ...base,
+    pushMultiplier: 0.9, coreRadiusMultiplier: 1.7, chargeExponent: 0.85,
+    pullMultiplier: 1.1, distanceMultiplier: 0.35, linkExponent: 1.3,
+    gravityX: 0.07, gravityY: 0.11, gravityBandExp: 1.4,
+    pair: withPushOverride(base.pair, 'workflow', { charge: -333.3, coreRadius: 17.25 }),
+  }
+  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const kernel = (apply: (nodes: SimNode[], rng: () => number) => void): Json => {
+    const nodes = probeNodes()
+    apply(nodes, mulberry32(PROBE_SEED))
+    return { allFinite: allFinite(nodes), velocities: velocities(nodes) }
+  }
+  return {
+    charge: kernel((nodes, rng) => applyChargeForce(nodes, params, resolved, 1, rng)),
+    link: kernel((nodes, rng) => applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolved.spring, nodeMapOf(nodes)), 1, rng)),
+    bandCartesian: kernel((nodes, rng) => applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolved, 1, rng)),
+  }
+}
+
+/**
  * Springs on a MAPPED axis: two buckets over the style axis, so the host's
  * table cannot apply and the pair rule must. The identity row pins the gate
  * from the other side — the declared categories, in the host's order — and the
@@ -237,6 +267,7 @@ export function forceProbes(): Json {
     link: probe((nodes, params, rng) =>
       applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_ONTOLOGY).spring, nodeMapOf(nodes)), 1, rng)),
     mappedAxisSprings: mappedAxisSprings(),
+    nonIdentityParams: nonIdentityParams(),
     bandCartesian: probe((nodes, params, rng) =>
       applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     // Includes a node sitting exactly on the origin, where the ring pull has no

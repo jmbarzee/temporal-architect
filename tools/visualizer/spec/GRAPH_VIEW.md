@@ -49,7 +49,7 @@ The **nexus ladder** is the parallel three-rung Endpoint → Service → Operati
 
 ### Note on the current implementation
 
-A node's identity is a **dimension map** — `dimensions: Record<DimensionId, DimensionValue>` — rather than a single type string, and every feature elects exactly one axis to read. This domain projects onto three: `temporalType`, `sourceFile`, and `defType` — the kind the filter chips test, a function of the type that the adapter writes onto each node at build time so the engine reads every axis the same way. The entries describing each value of the type axis (`ladder`, `tier`, sizing, colour, the default Y band) live with the host in `NODE_TYPE_REGISTRY` (`src/adapter/node-types.ts`), the edge-side entries in `src/adapter/edge-types.ts`; the *shapes* they fill in are library-owned (`src/graph/taxonomy.ts`). Nothing in the graph engine imports either: it reaches its domain through an injected `Ontology` (`src/graph/ontology.ts`), and the physics params are keyed by dimension value and edge-type id. There is no numeric `level`/depth field on `GraphNode`: the earlier encoding that flattened both ladders' tiers into one sortable number has been removed, and consumers read the registry fields directly.
+A node's identity is a **dimension map** — `dimensions: Record<DimensionId, DimensionValue>` — rather than a single type string, and every feature elects exactly one axis to read. This domain projects onto three: `temporalType`, `sourceFile`, and `defType` — the kind the filter chips test, a function of the type that the adapter writes onto each node at build time so the engine reads every axis the same way. The entries describing each value of the type axis (`ladder`, `tier`, sizing, colour, the default Y band) live with the host in `NODE_TYPE_REGISTRY` (`src/adapter/node-types.ts`), the edge-side entries in `src/adapter/edge-types.ts`; the *shapes* they fill in are library-owned (`src/graph/taxonomy.ts`). Nothing in the graph engine imports either: it reaches its domain through an injected `Ontology` (`src/graph/ontology.ts`), and the physics params are keyed by the chosen axis's bucket ids (push) and by spring-category ids (pull) — the host's declared ids on the type axis, pair ids elsewhere. There is no numeric `level`/depth field on `GraphNode`: the earlier encoding that flattened both ladders' tiers into one sortable number has been removed, and consumers read the registry fields directly.
 
 **Per-worker duplication.** L3 nodes (Workflow, Activity, NexusOperation) and L2 NexusService nodes are emitted **per worker deployment** — an activity registered on three workers produces three distinct nodes, each parented to its respective worker. This makes the fact that a definition has multiple homes visible directly in the canvas, instead of collapsing it into a single node whose containment relationship to all-but-one of its workers is silently dropped. Duplication is performed upstream by `twf graph`; the visualizer consumes the already-duplicated nodes.
 
@@ -185,12 +185,12 @@ Because the shaping forces re-centre on (or pull toward) the origin, the layout'
 
 ### Force Parameters
 
-The simulation exposes **one charge strength + one core radius per node type** and **one spring (stiffness + rest length) per edge category**, plus shape controls and dynamics that govern how those forces behave.
+The simulation exposes **one charge strength + one core radius per bucket of the push/pull axis** (per node type on the default axis) and **one spring (stiffness + rest length) per spring category**, plus shape controls and dynamics that govern how those forces behave.
 
-**Charge strengths** (one per node type — negative values, repulsion):
+**Charge strengths** (one per bucket; the declared defaults below are per node type — negative values, repulsion):
 - Namespace, NexusEndpoint, Worker, NexusService, Workflow, NexusOperation, Activity
 
-**Core radii** (one per node type — the charge softening, expressed as a length). A pair of nodes softens its charge by the squared average of the two endpoints' effective core radii (`rEff = coreRadiusMultiplier × coreRadius`), added to `d²`. A larger core radius spreads a type's repulsion over a wider, gentler plateau near the centre instead of a sharp spike. This is the per-type successor to the old single global softening; every type defaults to `√450` so the per-pair softening is `450` (today's layout) until the user tunes it.
+**Core radii** (one per bucket — the charge softening, expressed as a length). A pair of nodes softens its charge by the squared average of the two endpoints' effective core radii (`rEff = coreRadiusMultiplier × coreRadius`), added to `d²`. A larger core radius spreads a type's repulsion over a wider, gentler plateau near the centre instead of a sharp spike. This is the per-type successor to the old single global softening; every type defaults to `√450` so the per-pair softening is `450` (today's layout) until the user tunes it.
 
 These are tuned on the 2D charge map (see § Control Panel → PUSH), not a stack of sliders; the map plots every node type on shared charge × core-radius axes so their relative repulsion strength and reach are directly comparable.
 
@@ -203,7 +203,7 @@ These are tuned on the 2D spring map (see § Control Panel → PULL), not a stac
 **Shape controls** modify the force curves:
 - Master multipliers (all presented as their map's "scale all" axis sliders): `push` and `coreRadiusMultiplier` on the charge map, `pull`/`dist` on the spring map
 - Exponents control falloff shape (charge exponent, link exponent)
-- Core radii (one per node type) soften the charge at close range, preventing the singularity
+- Core radii (one per bucket) soften the charge at close range, preventing the singularity
 - Rest lengths (one per edge category) define the spring equilibrium length
 
 **Dynamics** control the simulation's temporal behavior:
@@ -449,7 +449,7 @@ The panel is collapsed by default (progressive disclosure); the collapsed toggle
 
 The two pair forces share one tab. At its top, above the sub-tabs so it stays visible whichever force is being edited, an **axis** dropdown names the dimension both forces key on: push charges are per bucket of that axis, pull springs per pair of buckets. The default is the type axis (`temporalType`), where the host's hand-tuned spring table applies; any filter axis the graph carries (files, kinds) is offered too, bucketed by the values present. Below it, **Push** and **Pull** are sub-tabs styled like Gravity's Band/Topological — accent-underlined, bodies stacked in one cell so switching never resizes the panel — but without the on/off switches, since neither force has an off. Each body is its equation, its 2D map, and its force-curve read-out.
 
-**The token ceiling.** An axis is offered only while its control surface stays usable: at most **24** push tokens (one per bucket) and 24 pull tokens (one per spring category some edge of the graph falls in). The dropdown shows each axis's cost beside its name — `File (3 · 8)` — and lists one that exceeds the ceiling disabled, with the count that disqualified it. If the graph grows past the ceiling on the chosen axis, the forces fall back to the type axis.
+**The token ceiling.** An axis is offered only while its control surface stays usable: at most **24** push tokens (one per bucket) and 24 pull tokens (one per spring category some edge of the graph falls in). The dropdown shows each axis's cost beside its name — `File (3 · 8)` — and lists one that exceeds the ceiling disabled, with the count that disqualified it. Switching axes starts both forces from the declared (or typical) physics on the new buckets — a tuning keyed by one axis has no reading on another. When the graph changes, an axis bucketed by the values present is rebuilt for the new values with the tuning kept where its values survive; if the graph grows past the ceiling on the chosen axis, or the axis vanishes, the forces fall back to the type axis.
 
 **PUSH** (all node pairs)
 
@@ -457,16 +457,16 @@ The two pair forces share one tab. At its top, above the sub-tabs so it stays vi
 
 The equation is simplified for glanceability: `r` is the (effective) core radius and the global `push` multiplier is folded into the y "scale all" slider rather than shown as a separate term — so the per-type charge control reads as an extension of the global control on the same axis. The exponent acts on the squared distance `(d² + r²)` directly (no `/2`), so `exp = 1` is inverse-square; the default `0.7` is a gentler, longer-range falloff. Its slider is deliberately narrow (`[0.5, 1.0]`) because that band holds the layout's useful range.
 
-Each node type has two values — a repulsion **charge** (negative) and a **core radius** (`r`, the charge softening as a length). Rather than a stack of paired sliders, they are tuned on a **2D charge map**, mirroring the Pull tab's spring map:
+Each bucket of the chosen axis has two values — a repulsion **charge** (negative) and a **core radius** (`r`, the charge softening as a length). On the default axis a bucket is a node type and starts from its declared physics; on any other axis it starts from the host's *typical* declared physics (the mean over every type). Rather than a stack of paired sliders, they are tuned on a **2D charge map**, mirroring the Pull sub-tab's spring map:
 
 - **Axes:** y = charge magnitude `[0, 1000]` (charge is stored negative but plotted as magnitude), x = core radius `[0, 100]`, labelled but unnumbered. One **token** per bucket of the chosen axis — per node type on the default axis — positioned at its `(core radius, charge)`. Ordering is emergent from value.
-- **Token encoding:** a solid dot coloured by the node type (no split, since a charge belongs to a single type), with a solid outline.
-- **Direct manipulation:** dragging a token sets that type's charge and core radius together; the drag routes through the shared live-reheat so the layout responds immediately.
+- **Token encoding:** a solid dot (no split, since a charge belongs to a single bucket) coloured by the node type on the default axis and in one neutral tone on any other, until a palette for arbitrary axes exists; a solid outline.
+- **Direct manipulation:** dragging a token sets that bucket's charge and core radius together; the drag routes through the shared live-reheat so the layout responds immediately. Tokens that coincide — every bucket on a freshly chosen axis starts from one default — are drawn fanned out on a small ring around the shared point; only the drawn position moves, a drag still writes the token's own value.
 - **Globals along the axes:** the two global multipliers sit on the axes they scale — a vertical `push` ("scale all charge") slider up the y-axis, a horizontal `coreRadiusMultiplier` ("scale all core radius") slider along the x-axis.
 
 Below the map, a read-only **charge-falloff visualization** (a boxed plot with `force` and `distance` axis labels) plots each type's repulsion falloff `charge / (d² + r²)^exp` against distance — all-positive, with the baseline at the bottom of the frame and the core radius marked on the distance axis. All curves are drawn faint; hovering a token on the map brightens its curve and dims the rest (and vice versa). The one global shape parameter, `exp` (charge exponent), is controlled by a slider beneath the plot.
 
-The charge field rings (see § Force Field Visualization) are hover-driven, not a persistent toggle: they appear while the PUSH section is hovered, narrowing to a single type while its token is hovered.
+The charge field rings (see § Force Field Visualization) are hover-driven, not a persistent toggle: they appear while the Push body is hovered, narrowing to a single bucket while its token is hovered.
 
 **PULL**
 
@@ -579,7 +579,7 @@ When the user stops hovering, the visualization fades.
 
 ### Per-Type Charge Highlighting
 
-Within the PUSH section, hovering an individual charge-map token (one per node type) highlights only that node type's field rings and dims the others, and brightens that type's curve in the falloff plot. This lets the user see the reach and strength of one type's charge force in isolation — useful for understanding why nodes of different types settle at different distances.
+Within the Push body, hovering an individual charge-map token (one per bucket of the chosen axis) highlights only that bucket's field rings and dims the others, and brightens that bucket's curve in the falloff plot. This lets the user see the reach and strength of one type's charge force in isolation — useful for understanding why nodes of different types settle at different distances.
 
 ### Per-Type Y-Band Highlighting
 
