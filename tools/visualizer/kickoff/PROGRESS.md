@@ -54,7 +54,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 7 — Post-filter-scoped controls** (opened on `visualizer/dimensions-unit-7` from unit-6 @ `3ed12d0`) |
+| Current unit | **Unit 7 — Post-filter-scoped controls** (opened on `visualizer/dimensions-unit-7` from unit-6 @ `3ed12d0`; implementation at `79c4390` under review — D59, gates green, Gate 5 passed in both themes with the Nexus chip off) |
 | Last completed unit | **Unit 6 — Colour scheme + node sizes** ([PR #174](https://github.com/jmbarzee/temporal-architect/pull/174)) |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-7` (from unit-6 @ `3ed12d0`); the stack below it: unit-6 (#174) → unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
