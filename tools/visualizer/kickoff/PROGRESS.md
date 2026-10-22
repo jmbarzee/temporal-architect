@@ -119,16 +119,15 @@ overlay calls the engine's band maths), B27 (the bespoke band plot is gone;
 `AxisControls` is new code on the shared `Plot` shell) — 24 -> 28.
 
 Counter C landed at **184** against §6.5's **90**. Same shape of gap as Unit 4:
-Unit 5a's own files are at their floor — `simulation.ts` 5 -> 2, `GravityControls.tsx`
-4 -> 0 and its `.css` 2 -> 0 — and what remains is Unit 6's **117**
-(`edge-styles.ts` 58, `FilterBar.css` 39, `GraphView.css` 8, `controls.css` 3,
-`GraphControlPanel.css` 3, `PinToggle.css` 2, `GraphCanvas.tsx` 3, `groups.ts` 1),
-Unit 7's **59** (`GraphView.tsx` 30, `visibleGraph.ts` 19, `useHighlight.ts` 10)
-and a residue of **8** (`FilterBar.tsx` 2, `simulation.ts` 2, `dimension.ts` 1,
-`taxonomy.ts` 1, `AxisControls.tsx` 2 — the two are "strength" tooltips naming
-no domain; the gate's pattern matches `band` nowhere, so these are the words
-`X`/`Y` beside a type name in a comment). Sum 184. The ratchet is set to
-**184** / **1236**.
+Unit 5a's own files are near their floor — `simulation.ts` 5 -> 3,
+`GravityControls.tsx` 4 -> 0, its `.css` 2 -> 1, `AxisControls.tsx` new at 0 —
+and what remains is Unit 6's **117** (`edge-styles.ts` 58, `FilterBar.css` 39,
+`GraphView.css` 8, `controls.css` 3, `GraphControlPanel.css` 3, `PinToggle.css`
+2, `GraphCanvas.tsx` 3, `groups.ts` 1), Unit 7's **59** (`GraphView.tsx` 30,
+`visibleGraph.ts` 19, `useHighlight.ts` 10) and a residue of **8**
+(`simulation.ts` 3, `FilterBar.tsx` 2, `GravityControls.css` 1, `dimension.ts`
+1, `taxonomy.ts` 1). Sum 184, per the gate's own per-file list. The ratchet is
+set to **184** / **1236**.
 
 ## Gate state
 
