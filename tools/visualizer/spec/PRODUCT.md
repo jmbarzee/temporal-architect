@@ -39,7 +39,7 @@ The visualizer answers two categories of developer questions:
 
 ### Progressive disclosure
 
-Collapse by default, expand on demand. Tree blocks start collapsed; the user drills into what interests them. The graph's type toggles default to a sparse view (Workers and Workflows only); the user enables additional types to add detail. Information density is always under user control.
+Collapse by default, expand on demand. Tree blocks start collapsed; the user drills into what interests them. The graph's kind chips default to a sparse view (Workers and Workflows only); the user enables additional kinds to add detail. Information density is always under user control.
 
 ### Filter-as-source-of-truth
 
@@ -55,7 +55,7 @@ Highlight what matters; push everything else to the background. Hover a graph no
 
 ### Direct manipulation
 
-Drag nodes, scrub sliders, click to expand — all with immediate visual feedback. The graph's force simulation responds live to slider changes. Tree blocks expand and collapse on click. The control panel's sliders visibly animate during level transitions. The user acts on the visualization directly, not through menus or dialogs.
+Drag nodes, scrub sliders, click to expand — all with immediate visual feedback. The graph's force simulation responds live to slider changes. Tree blocks expand and collapse on click. The control panel's sliders animating during kind transitions is intended, not built ([#186](https://github.com/jmbarzee/temporal-architect/issues/186)). The user acts on the visualization directly, not through menus or dialogs.
 
 ### Glanceable summaries
 
@@ -88,14 +88,16 @@ Each definition type has a dedicated color used consistently across both views. 
 
 Every color palette has a matching dark variant.
 
+**In the graph, the palette is the taxonomy's declaration** (D57): every style value carries its fill and border in both themes (`color.light`, `color.dark`) beside its size, and every edge type its stroke; the pane carries them as `--node-<suffix>` custom properties in its resolved theme, and the filter chips borrow a value's colour as a tint. The tree's `--block-*` tokens are the host's own.
+
 ### Icon system
 
-Icons are defined in a central theme map (`temporal-theme.tsx`). Most are Unicode text characters. Workflows and activities use custom SVG icons (interlocking gears and single gear respectively) for clarity at small sizes. Icons appear in tree block headers and graph node labels.
+Tree-block icons are defined in a central theme map (`temporal-theme.tsx`); graph-node icons are each style value's declared `icon` in the taxonomy. Most are Unicode text characters. In tree block headers, workflows and activities use custom SVG icons (interlocking gears and single gear) for clarity at small sizes; the host's theme owns them. Graph nodes and filter chips draw the taxonomy's text glyph.
 
 ### Theming
 
-- Light theme is the default.
-- Dark theme activates via `.vscode-dark` class (VS Code webview) or `[data-theme="dark"]` attribute.
+- Auto follows the host — an ancestor's `.vscode-dark` or `data-theme`, else the OS colour scheme — and is light when none says otherwise.
+- Dark theme activates via the `.vscode-dark` class (VS Code webview) or a `[data-theme="dark"]` attribute on an ancestor; the graph pane also has its own choice — Auto / Light / Dark, persisted (R21) — carried as `data-theme` on the pane, so it can be dark in a light host and light in a dark one.
 - Hover brightness shifts direction between themes (`0.95` in light, `1.1` in dark).
 
 ### Border conventions
@@ -110,13 +112,7 @@ Icons are defined in a central theme map (`temporal-theme.tsx`). Most are Unicod
 
 ### Node shapes (Graph View)
 
-| Node Type | Shape | Size |
-|-----------|-------|------|
-| Namespace | Rounded rectangle | Large |
-| Worker | Rectangle | Medium |
-| Workflow / Activity / NexusService | Circle or pill | Small |
-
-Level 3 node types share the same size tier but are distinguished by color and icon.
+Every node is drawn as a disc of its value's declared radius (`size.r`, the taxonomy's), with its icon inside and its name beside it: 20 for a namespace, worker or nexus service; 15 for a nexus endpoint; 11 for a workflow or nexus operation; 8 for an activity. The containers and hosts read as the large discs, the orchestrators and leaves as the small ones; within a size, colour and icon tell the values apart.
 
 ### Node badges (Graph View)
 
@@ -124,8 +120,8 @@ Badges are node **adornments** — small markers drawn beside a graph node, dist
 
 | Badge | Applies to | Meaning |
 |-------|-----------|---------|
-| `?` unresolved | any node referencing an unresolved definition | Unresolved reference (mirrors the tree's `?` badge — see § Border conventions) |
-| "unassigned" (orphan) | Worker / L3 nodes | Definition is not contained by any parent (see GRAPH_VIEW.md § Orphan Definitions) |
+| `?` unresolved | — | **Deferred** ([#185](https://github.com/jmbarzee/temporal-architect/issues/185)): unresolved references reach the graph only as warnings in the findings bar; the tree's `?` badge (§ Border conventions) has no graph counterpart yet |
+| Orphan ring | Workers, orchestrators and leaves | A dashed ring around a node not contained by any parent (see GRAPH_VIEW.md § Orphan Definitions) |
 | Cardinality (`× {param}`) | Namespace / NexusEndpoint | The node is a parameterized family; one `× {param}` chip per entry in the node's `templateParams` wire field (chip count = array length, chip label = bare param name). See GRAPH_VIEW.md § Visual Encoding → Node Appearance. |
 
 ### Edge styles (Graph View)
@@ -135,3 +131,5 @@ Badges are node **adornments** — small markers drawn beside a graph node, dist
 | Direct dependency | Solid | Arrowhead |
 | Nexus dependency | Solid, distinct color | Arrowhead |
 | Containment | Dashed | None (undirected) |
+
+Every edge is stroked by its resolved type's declared stroke (colour per theme, alpha, dash, width).

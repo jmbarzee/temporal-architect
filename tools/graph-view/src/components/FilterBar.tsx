@@ -58,9 +58,8 @@ interface FilterBarProps {
   searchPlaceholder: string
   /** View-specific search adornment rendered inside the search control. */
   searchExtra?: React.ReactNode
-  /** Per-chip hidden-match badges (Tree view search). Optional. */
-  hiddenMatchByType?: Map<string, number>
-  hiddenMatchByFile?: Map<string, number>
+  /** Search matches hidden by a chip, per axis and value — the badge the chip hiding them wears. Optional. */
+  hiddenMatches?: ReadonlyMap<string, ReadonlyMap<string, number>>
   /** The axes shown, in order. R17/R18/R19: editable, and may be empty. */
   chain: readonly string[]
   /**
@@ -94,8 +93,7 @@ export function FilterBar({
   searchTitle,
   searchPlaceholder,
   searchExtra,
-  hiddenMatchByType,
-  hiddenMatchByFile,
+  hiddenMatches,
   findings,
   refreshFlash,
   chain,
@@ -113,7 +111,7 @@ export function FilterBar({
   const PRESENTATION = React.useMemo(() => new Map<string, {
     values: string[]
     counts: ReadonlyMap<string, number>
-    hidden?: Map<string, number>
+    hidden?: ReadonlyMap<string, number>
     sectionClass: string
     rowClass: string
     chipClass: string
@@ -126,7 +124,7 @@ export function FilterBar({
     [SOURCE_FILE_DIMENSION, {
       values: [...(valuesByDimension.get(SOURCE_FILE_DIMENSION) ?? [])],
       counts: counts.get(SOURCE_FILE_DIMENSION) ?? NO_COUNTS,
-      hidden: hiddenMatchByFile,
+      hidden: hiddenMatches?.get(SOURCE_FILE_DIMENSION),
       sectionClass: 'header-files-section',
       rowClass: 'header-files-row',
       chipClass: 'header-file-tag',
@@ -139,7 +137,7 @@ export function FilterBar({
     [DEF_TYPE_DIMENSION, {
       values: [...(valuesByDimension.get(DEF_TYPE_DIMENSION) ?? [])],
       counts: counts.get(DEF_TYPE_DIMENSION) ?? NO_COUNTS,
-      hidden: hiddenMatchByType,
+      hidden: hiddenMatches?.get(DEF_TYPE_DIMENSION),
       sectionClass: 'header-types-section',
       rowClass: 'header-types-row',
       chipClass: 'header-type-tag',
@@ -151,7 +149,7 @@ export function FilterBar({
       iconClass: 'header-type-icon',
       labelClass: 'header-type-label',
     }],
-  ]), [counts, hiddenMatchByFile, hiddenMatchByType, valuesByDimension])
+  ]), [counts, hiddenMatches, valuesByDimension])
 
   /**
    * Presentation for an axis this bar has no entry for.
@@ -165,7 +163,7 @@ export function FilterBar({
   const lookFor = (dimension: string) => PRESENTATION.get(dimension) ?? {
     values: [...(valuesByDimension.get(dimension) ?? [])],
     counts: counts.get(dimension) ?? NO_COUNTS,
-    hidden: undefined,
+    hidden: hiddenMatches?.get(dimension),
     sectionClass: 'header-types-section',
     rowClass: 'header-types-row',
     chipClass: 'header-type-tag',

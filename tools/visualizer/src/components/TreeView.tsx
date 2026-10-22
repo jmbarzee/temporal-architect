@@ -289,6 +289,10 @@ export function TreeView({
     }
     return { matchSet: set, matchIndices: indices, hiddenMatchByType: byType, hiddenMatchByFile: byFile }
   }, [searchQuery, visibleDefinitions, ast.definitions, filter])
+  const hiddenMatches = React.useMemo(
+    () => new Map<string, ReadonlyMap<string, number>>([[SOURCE_FILE_DIMENSION, hiddenMatchByFile], [DEF_TYPE_DIMENSION, hiddenMatchByType]]),
+    [hiddenMatchByFile, hiddenMatchByType],
+  )
 
   // The findings and the chip counts, read off the AST for the shared bar.
   const errors = ast.errors || []
@@ -520,8 +524,7 @@ export function TreeView({
           searchTitle="Search definitions"
           searchPlaceholder="Filter by name..."
           searchExtra={searchExtra}
-          hiddenMatchByType={hiddenMatchByType}
-          hiddenMatchByFile={hiddenMatchByFile}
+          hiddenMatches={hiddenMatches}
           findings={<ErrorBars errors={errors} diagnostics={diagnostics} selectedFiles={selectionFor(filter, SOURCE_FILE_DIMENSION)} />}
           refreshFlash={refreshFlash}
         />
@@ -531,7 +534,7 @@ export function TreeView({
           {visibleDefinitions.length === 0 && !hasHeaderContent ? (
             <div className="no-workflows">
               <p>No definitions match the current filters.</p>
-              <p className="no-workflows-hint">Try adjusting the type toggles or file filter above.</p>
+              <p className="no-workflows-hint">Try adjusting the chips above.</p>
             </div>
           ) : visibleDefinitions.length === 0 && hasHeaderContent ? (
             null /* Only diagnostics, no content — errors header is shown above */

@@ -13,19 +13,21 @@
 
 // Node types in the graph.
 //
-//   namespace      — L1 container. Holds workers and nexus endpoints.
-//   nexusEndpoint  — L1.5 top-level routing alias parented to a namespace.
+// Two ladders of four tiers (GRAPH_VIEW.md § Two parallel ladders):
+//
+//   namespace      — container (main). Holds workers and nexus endpoints.
+//   nexusEndpoint  — container (nexus): a routing alias parented to a namespace.
 //                    No outgoing edges; the nexus call's edge metadata names
 //                    the endpoint that routed it.
-//   worker         — L2 hosting tier. Runs workflows and activities.
-//   nexusService   — L2 nexus hosting tier. Exposes a callable API surface.
-//   workflow       — L3 orchestrator. Runs inside a worker.
-//   nexusOperation — L3 nexus orchestrator. Callable unit of a service;
-//                    sits on the call path between caller and backing workflow.
-//   activity       — L4 leaf. Where work actually happens.
+//   worker         — host (main). Runs workflows and activities.
+//   nexusService   — host (nexus). Exposes a callable API surface.
+//   workflow       — orchestrator (main). Runs inside a worker.
+//   nexusOperation — orchestrator (nexus). Callable unit of a service; sits on
+//                    the call path between caller and backing workflow.
+//   activity       — leaf (main). Where work actually happens.
 //
-// Sizing, physics, and summary behaviour for each type live in the
-// central NODE_TYPE_REGISTRY in graph/node-types.ts.
+// Sizing, physics, and summary behaviour for each type live in
+// NODE_TYPE_REGISTRY below.
 export type NodeType =
   | 'namespace'
   | 'nexusEndpoint'

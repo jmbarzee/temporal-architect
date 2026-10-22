@@ -1867,6 +1867,65 @@ Unit 8; R36, R38, R39, R40, R41.
 
 — 2026-10-22 — agent
 
+**D63 — The spec is aligned to the model, not split (Unit 9).** R42; D8
+holds (no split); T29 resolved; T30 honoured where it could be, and this
+unit is the catch-up for the rest.
+
+1. **One hierarchy vocabulary.** `GRAPH_VIEW.md` spoke in three — `level`
+   (L1–L4, "Level 3"), `tier` and `ladder` — and § Graph Construction still
+   emitted a `level` via `nodeLevel()`, which the code lost before Unit 1.
+   The registry's own fields are the words now: **ladder** (main, nexus) and
+   **tier** (container, host, orchestrator, leaf); every "Level N" and "L3"
+   is a named tier or the kinds it holds, and "The model" (replacing "Note
+   on the current implementation") says so and says the number is gone.
+2. **The model section** describes what exists: the dimension map on nodes
+   (`temporalType`, `sourceFile`, `defType`) and on edges (`relation`,
+   `dispatch`); what the registry declares per value (ladder, tier, label,
+   icon, abbreviation, colour per theme, size, physics, `whenHidden`,
+   `defaultVisible`, `summaryKind`); the edge types with springs and
+   strokes; the filter descriptors; the library's shapes (`OntologySpec` and
+   its parts) and `createOntology`'s refusal; the two hooks; and the two
+   halves — the host in `tools/visualizer/src/adapter/`, the library
+   `@temporal-architect/graph-view` in `tools/graph-view/`, which never sees
+   the parser (R38, D62).
+3. **Construction and graduation as the code does them.** § Graph
+   Construction: a node is a dimension map plus `parentId`, `definitionKey`
+   and an opaque payload; an edge carries `relation` and `dispatch`, and its
+   type is the pair rule's; coarsened edges are worker-to-worker and
+   namespace-to-namespace. § Type Filtering: the chips are the Kind
+   descriptor's — five over seven kinds (Namespaces · Workers · Nexus ·
+   Workflows · Activities), the Nexus group is `FilterChip.values`, the
+   filter state is per-axis selections and knows no group, and both views
+   show the same chips (the old "the tree shows individual nexus chips" has
+   been false since Unit 3). § Which Nodes Are Visible: `passesSelection`
+   with each axis's `emptyMeans` and `absentMeans`. § Edge Graduation:
+   `whenHidden` — ascend and splice, the visited set, metadata precedence in
+   either order (D59, D60). § Node Summaries by `summaryKind`. Core radii
+   are per value (20 to 85), not `√450`. Seeding is in the layout frame
+   (D54); a revealed node seeds at its nearest visible ancestor per the
+   axis's `reheat` policy.
+4. **`VIEW_FRAMEWORK.md`.** The bar is rendered from the declared axes in
+   the view's chain (R17–R19: `×` removes, `+` adds, the empty chain is the
+   small bar); pins are per axis; the filter state is a map from axis to
+   selected values with each axis's policy; a focus transition expands by
+   the target's values per the axis's focus policy (`FocusTarget`); the bar
+   is the library's with the host's counts and findings handed in (D61); the
+   error bars are the host's.
+5. **`PRODUCT.md`.** The graph's palette is the taxonomy's declaration,
+   carried as `--node-<suffix>` (D57); the graph's icons are the values'
+   and the SVG gear icons live in the library; the pane has its own theme
+   choice (R21); sizes are the taxonomy's; edges are stroked per type.
+6. **Not changed.** The shape table (rounded rectangle, rectangle, circle)
+   is labelled a suggestion and the canvas draws circles; the animated
+   transition prose (fades, ramps) is design intent the code does not
+   implement. Both predate the model and sit outside R42; left as they were
+   and named here. `TREE_VIEW.md` is not in Unit 9's list and names no
+   retired field.
+
+**Golden change (§8.2).** None — no gate measures the spec.
+
+— 2026-10-22 — agent
+
 **D64 — What REVIEW_8 changed: the boundary resolved in both directions, the
 artifact gated as it ships, the surface made a host's rather than one host's,
 and D62 corrected (Unit 8 close).** The five-lens review (62 findings, 27
@@ -1964,5 +2023,70 @@ and not measured, or in what the move had carried across without asking.
 
 **Golden change (§8.2).** Added: `static.seamProbes`, `static.hostProbes`.
 Nothing else moves — every other row byte-identical, 7/7.
+
+— 2026-10-22 — agent
+
+**D65 — What REVIEW_9 changed: the spec says what the code does, points at
+what it does not, and D63 is corrected (Unit 9 close).** The three-lens
+review (63 findings, 30 clusters, 20 verified, 0 refuted) confirmed two
+filed-blocker clusters at blocker and one at major; every other cluster held
+at least in part. None was refuted: the spec had been read against the code
+once, by me, and the review read it against the code three more times.
+
+1. **Seven behaviours the spec stated and the code lacks** are deferred in
+   the text, each with its issue: the Graph's live-reload continuity
+   (positions, viewport, selection — #180), an empty state when the filter
+   hides every node (#181), the keyboard and accessibility model (focusable
+   labelled nodes, Ctrl+F, Tab out of the canvas, hierarchy-ordered cycling,
+   the tooltip on focus — #182), the focus transition's neighbourhood
+   framing, viewport lock and flash, and its availability on nodes with no
+   tree block (#183), packaged names versus bare AST names (#184), the `?`
+   unresolved badge (#185), and the animated kind transitions (#186). The
+   eighth, C1, was built instead: the Graph had one `+N` on the search
+   control where the spec promised per-chip badges; it now counts each
+   hidden match on the first declared axis the node fails, under its value,
+   and both views hand the bar one `hiddenMatches` map — the two named props
+   (`hiddenMatchByType`, `hiddenMatchByFile`) are gone.
+2. **Mechanisms described wrongly, corrected to the code.** Cross-view
+   identity is `FocusTarget` by name and values, not `definitionKey`;
+   construction carries `name`, `orphan`, `templateParams` and the payload,
+   and performs no package-clause reconciliation; an edge's type on the type
+   axis is the host's ordered rules reading the dispatch, and the library's
+   pair rule reads none (D49); graduation resolves each end on its own, so a
+   call to a hidden activity draws to the activity's worker — the examples
+   table is now measured from the goldens, every edge type with its count;
+   seeding is the band's lower part by `SEED_BIAS`, a revealed node is
+   snapped into its own bands, orphans seed by band like everything else;
+   the overlay is the frame's over the whole graph (D54), at the one place
+   that still said otherwise; sister copies take a halo and are not in the
+   highlight set; the tooltip's items as rendered; composition examples in
+   the taxonomy's order; every node a disc of its value's radius (20 · 15 ·
+   11 · 8) in place of a shape table; arrowheads at a fixed 8 px; the dim at
+   20%; Play/Pause bottom-centre; the reconciler's real signature and its
+   chain scope; the bar's hover-shown `×` and conditional `+`; one versioned
+   persistence key; error rows' fields when a finding has no file; counts 0
+   in history mode; the refresh flash and the open-file hint as the Tree's;
+   Auto's host-then-OS fallback; the gear SVGs as the tree's.
+3. **Vocabulary.** Where "level" meant a tier it is gone; what remains names
+   the retired field as retired, a `file-level` clause, a `sub-level` tab and
+   `aria-level`. The parser's `tier` on a coarsened edge is distinguished
+   from the registry's. `TREE_VIEW.md`'s layout and bar paragraphs, the
+   tree's empty-state hint, the registry's header comment and the injector's
+   `--node-*` comment follow.
+4. **D63 corrected.** PRODUCT.md's shape table was not labelled a suggestion,
+   and "orchestrator- and leaf-tier values share a size" was false (11, 11,
+   8). "The tree shows individual nexus chips" has been false since the
+   toolbar extraction in June, not since Unit 3. `TREE_VIEW.md` did name a
+   retired field ("type toggles"). The animated-transition prose and the
+   orphan seeding were hedged only in the decision; they are hedged in the
+   text now.
+5. **Measured.** Gates unchanged but the total: 0 / **1104** / 0 — one more
+   "nexus" in the registry's header, which names the ladder in words where
+   it used to say `L1.5`. Goldens 7/7, no row moves. In the browser on the
+   nexus fixture at the default filter, searching "Payment": Namespaces 1,
+   Nexus 4, Activities 5 on the chips and `+10` on the search control, 0
+   console errors.
+
+**Golden change (§8.2).** None.
 
 — 2026-10-22 — agent
