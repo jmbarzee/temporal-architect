@@ -45,7 +45,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 | field | value |
 |---|---|
 | Runaway ceiling | **300 commits** on `main..HEAD` (enforced; KICKOFF §2.4) |
-| Commits so far | 111 (`main..HEAD`, the whole stack) |
+| Commits so far | 112 (`main..HEAD`, the whole stack; ceiling 300) |
 | Token / wall-clock budget | unset (advisory only) |
 
 ---
@@ -54,17 +54,17 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **none** — Units 0–9 are closed; the handoff package (KICKOFF §2.5, `kickoff/HANDOFF.md`) and the elegance pass (PLAN §6.7) are the last two steps |
+| Current unit | **none** — Units 0–9 are closed and the handoff is written: `kickoff/HANDOFF.md` (KICKOFF §2.5), with the elegance pass (PLAN §6.7) |
 | Last completed unit | **Unit 9 — Spec alignment** ([PR #178](https://github.com/jmbarzee/temporal-architect/pull/178)) |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-9` (from unit-8 @ `d71fc2e`, [PR #178](https://github.com/jmbarzee/temporal-architect/pull/178), closed — the top of the stack); the stack below it: unit-8 (#177) → unit-7 (#175) → unit-6 (#174) → unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
-| Run state | closing — every unit closed; the handoff is being written |
+| Run state | **complete** — every unit closed, every PR open and stacked, the handoff written; merging is the human's (§7.1) |
 
 ## Counters
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | **37** (R4, R5, R6, R7, R8, R9, R10, R11, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34, R35, R36, R38, R39, R40, R41, R42) + R1 partial | 42 |
+| A — requirements covered | **42** (R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34, R35, R36, R37, R38, R39, R40, R41, R42) | 42 |
 | B — blast-radius sites migrated | **36** | 38 |
 | C — leaks in the manifest | **0** | 0 |
 | Gate 6 — import-boundary violations | **0** | 0 |
@@ -200,7 +200,9 @@ with that reason: nothing moved into the shim and nothing grew. At the close
 vocabulary the move had scrubbed to keep the library at 0, back where the words
 belong. The ratchet is set to **0** / **1103** / **0**.
 
-**Unit 9.** Counter A: R42 — 36 -> 37. Counter B: none assigned, none moved —
+**Unit 9.** Counter A: R42 — 36 -> 37; at the handoff the five rows Units 1–2
+satisfied and never ticked (R1, R2, R3, R12, R37) are closed against the tree
+— **42 of 42**. Counter B: none assigned, none moved —
 36. Counter C unchanged at **0**; the total 1103 -> **1104** (D65: the ladder
 named in words in the registry's header). The ratchet is set to **0** /
 **1104** / **0**.
@@ -242,9 +244,9 @@ Status: blank = not started · `wip` · `done`.
 
 | R | requirement | unit | proving gate |
 |---|---|---|---|
-| R1 | Ontology: dimensions, keys, values | 1, 2 | 1 + 3 | `wip` — the container and its four seams land in Unit 1; dimensions themselves are Unit 2 |
-| R2 | Nodes carry a dimension map | 2 | 3 |
-| R3 | Host-owned node payload field | 2 | 1 |
+| R1 | Ontology: dimensions, keys, values | 1, 2 | 1 + 3 | `done` — `OntologySpec` declares the style axis, its keys and the filter dimensions; `createOntology` is the one container (Units 1–2; the row was never ticked — closed at the handoff) |
+| R2 | Nodes carry a dimension map | 2 | 3 | `done` — `GraphNode.dimensions: DimensionMap`; every Tier A row reads it (Unit 2; ticked at the handoff) |
+| R3 | Host-owned node payload field | 2 | 1 | `done` — `GraphNode.payload`, opaque to the library, read only by the host's hooks (Unit 2; ticked at the handoff) |
 | R4 | Edge type from node-dimension combinations | 4 | covered (4) — Tier C byte-identical through the dimensional path; Tier A `axes` rows pin the pair rule per fixture |
 | R5 | Edges carry `relation` / `dispatch` dimensions | 4 | covered (4) — Tier A edge lines carry both |
 | R6 | Common filter interface + staple filters | 3 | covered (3) — descriptors + chain |
@@ -253,7 +255,7 @@ Status: blank = not started · `wip` · `done`.
 | R9 | Computed scalars may traverse the graph | 5b | 3 | `done` — D55; reach, degree and depth read `ReadableGraph` |
 | R10 | Colour scheme input, light **and** dark | 6 | 5 | `done` — the taxonomy's `color.{light,dark}` per value and a stroke per edge type (D57); the pane's resolved theme (D58); Gate 5 in both themes |
 | R11 | Base node sizes carried by the colour-scheme input | 6 | 5 | `done` — `size` beside `color` on the same object (D14, D57); `schemeProbes.sizes` |
-| R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw |
+| R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw | `done` — `createDimensionalMapping` throws on a value in two buckets (dimension.ts); `tuningProbes.refusals` pins the duplicate-id and empty-bucket refusals, the intersection refusal itself is not pinned by name (a one-line probe, recommended in HANDOFF) |
 | R13 | Default force dimension configurable | 4 | covered (4) — Gate 5 verified (axis dropdown) |
 | R14 | Default filters/selections configurable | 3 | covered (3) — default selections from the taxonomy |
 | R15 | Default colours configurable | 6 | 5 | `done` — through `OntologySpec`, on the library's entry (D64); `schemeProbes.secondScheme` builds a second palette and `static.hostProbes` a second host; npm publication is deferred (D62) |
@@ -278,7 +280,7 @@ Status: blank = not started · `wip` · `done`.
 | R34 | Misc section retained | 4 | covered (4) — Gate 5 verified, untouched |
 | R35 | Post-filter set determines offered controls | 7 | 5 |
 | R36 | Library in a sibling folder, buildable, extractable | 8 | 2 + 6 | `done` — `tools/graph-view/`, its own manifest, lockfile, build and artifact gate (a consumer compiles against a copy outside the repository); consumed from source by the visualizer (D62); a second host declares, builds and mounts through the entry alone (`static.hostProbes`, D64) |
-| R37 | Shim first-class, own folder | 2 | 6 |
+| R37 | Shim first-class, own folder | 2 | 6 | `done` — `src/adapter/` (build, the taxonomy, edge rules, groups, persistence, the graph model hook), the host half Gate 6 names (Unit 2; ticked at the handoff) |
 | R38 | Zero Temporal information or types in the library | 8 | 4 + 6 | `done` — leak 0 and boundary 0 over the library's own tree, across a package boundary (D61, D62) |
 | R39 | No parser changes | all | `git diff --stat tools/lsp tools/wire-types` empty | `done` — empty over the whole stack at the Unit 8 close |
 | R40 | No new dependencies | all | `package.json` / lockfile diff | `done` — the visualizer's manifest unchanged; the sibling's dependencies a subset of it, pinned to the same versions (D62) |
