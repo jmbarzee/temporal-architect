@@ -1,4 +1,5 @@
 import { selectionFor } from '../filter/types'
+import type { FocusTarget } from '../filter/types'
 import React from 'react'
 import { OntologyContext } from './graph-view/useOntology'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
@@ -108,14 +109,6 @@ export const NavigationContext = React.createContext<NavigationContextType>({
   navigateTo: () => {},
 })
 
-// Cross-view focus target — carries the visual-focus subject across a
-// focus transition. The filter expansion has already happened in the
-// reconciler by the time the destination view sees this; the view only
-// uses it to scroll/center/flash.
-export interface CrossViewTarget {
-  name: string
-  defType: string
-}
 
 type ActiveView = 'tree' | 'graph'
 
@@ -229,7 +222,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // Pending-focus target for cross-view nav. Reconciler has already
   // expanded the destination's filter by the time this is set; the
   // destination view consumes it for scroll/center/flash only.
-  const [pendingFocus, setPendingFocus] = React.useState<CrossViewTarget | null>(null)
+  // The visual-focus subject of a focus transition, as the library shapes it:
+  // the filter expansion has already happened in the reconciler; a view only
+  // scrolls, centres and flashes.
+  const [pendingFocus, setPendingFocus] = React.useState<FocusTarget | null>(null)
 
   // Pin-override metadata: which dimensions the most recent focus
   // transition bypassed in each view. The view consumes this on render
@@ -359,10 +355,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     }
 
     if (transition.kind === 'focus') {
-      setPendingFocus({
-        name: transition.target.name,
-        defType: transition.target.values[DEF_TYPE_DIMENSION] ?? '',
-      })
+      setPendingFocus(transition.target)
     }
 
     if (target === 'graph') setGraphEverShown(true)
@@ -384,7 +377,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     })
   }, [ast.definitions, switchView])
 
-  const showInTree = React.useCallback((name: string, defType: string) => {
+  const showInTree = React.useCallback((target: FocusTarget) => {
+    const name = target.name
+    const defType = target.values[DEF_TYPE_DIMENSION] ?? ''
     const def = ast.definitions.find(d => d.name === name && d.type === defType)
     switchView('tree', {
       kind: 'focus',
@@ -396,6 +391,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   }, [ast.definitions, switchView])
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
+
 
   const handleSearchChange = React.useCallback((query: string, active: boolean) => {
     setSearchQuery(query)

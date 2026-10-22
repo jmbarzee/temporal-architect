@@ -212,7 +212,7 @@ interface DrawData {
   nodeScale: NodeScaleParams
   running: boolean
   // Set of node ids where the same underlying definition appears more than
-  // once in the visible set (different workers). Drawn with a colored halo.
+  // once in the visible set (on different hosts). Drawn with a colored halo.
   dupNodeIds: Set<string>
   // The definitionKey of the currently hovered or selected node, when that
   // node belongs to a duplicate group. All visible nodes sharing this key
@@ -673,11 +673,11 @@ export function GraphCanvas({
         const distMul = d.forceParams.distanceMultiplier
         // Tension palette drawn from the app's own colours (theme-aware) so the
         // highlight reads as part of the visualizer, not a generic stoplight:
-        // amber warning = stretched, cool activity-blue = compressed, calm
+        // amber = stretched, cool blue = compressed, calm
         // timer-teal = near rest.
-        const tensionStretch = cssVar(canvas, '--color-warning', '#d97706')
-        const tensionCompress = cssVar(canvas, '--color-activity', '#7CB9E8')
-        const tensionRest = cssVar(canvas, '--color-timer', '#7EC8B8')
+        const tensionStretch = cssVar(canvas, '--tension-stretch', '#d97706')
+        const tensionCompress = cssVar(canvas, '--tension-compress', '#7CB9E8')
+        const tensionRest = cssVar(canvas, '--tension-rest', '#7EC8B8')
         for (const edge of d.edges) {
           const src = d.nodeMap.get(edge.sourceId)
           const tgt = d.nodeMap.get(edge.targetId)

@@ -7,15 +7,12 @@
 // subgraph + a `getNode` accessor as inputs (the explicit data link to the sim);
 // it never touches simRef directly.
 
-import { payloadString } from '../../graph/model'
 import React from 'react'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
-import { getTransitiveDeps, getHighlightedEdgeIds } from '../../graph/highlight'
+import { highlightOf } from '../../graph/highlight'
 import { useOntology } from './useOntology'
 
-/** A node that sits nowhere on any axis — used when an id does not resolve. */
-const EMPTY_SUBJECT = { dimensions: {} }
 import type { ForceSection } from '../GraphControlPanel'
 import type { GravityHover } from '../GravityControls'
 
@@ -81,67 +78,22 @@ export function useHighlight(
     ? visibleNodes[focusedIndex].id
     : null
 
-  // Transitive dependency highlighting. nexusEndpoint follows routing metadata;
-  // nexusService augments the dep chain with the endpoints fronting its
-  // operations (via nexusRoute edges); everything else is a directional
-  // transitive-dep BFS. Sister copies are intentionally NOT added (the canvas
-  // draws their duplicate halo separately).
+  // Transitive dependency highlighting: a directional walk from the active
+  // node, which the host may widen or replace through its taxonomy (D59) —
+  // a value that relates to others by its own metadata says so there, not
+  // here. Sister copies are intentionally NOT added (the canvas draws their
+  // duplicate halo separately).
   const { highlightedNodes, highlightedEdges } = React.useMemo(() => {
     const activeId = hoveredNodeId ?? selectedNodeId
     if (!activeId || !visibleIds.has(activeId)) {
       return { highlightedNodes: null as Set<string> | null, highlightedEdges: null as Set<string> | null }
     }
-
-    const activeNode = getNode(activeId)
-
-    if (activeNode && ontology.valueFor(activeNode) === 'nexusEndpoint') {
-      const nodes = new Set<string>([activeId])
-      const edges = new Set<string>()
-      if (activeNode.parentId && visibleIds.has(activeNode.parentId)) {
-        nodes.add(activeNode.parentId)
-      }
-      for (const edge of visibleEdges) {
-        if (payloadString(edge, 'nexusEndpoint') === activeNode.name) {
-          edges.add(edge.id)
-          if (visibleIds.has(edge.sourceId)) nodes.add(edge.sourceId)
-          if (visibleIds.has(edge.targetId)) nodes.add(edge.targetId)
-        }
-      }
-      return { highlightedNodes: nodes, highlightedEdges: edges }
-    }
-
     const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
-    const nodes = getTransitiveDeps(activeId, visibleEdges, visibleIds, direction)
-
-    if (activeNode && ontology.valueFor(activeNode) === 'nexusService') {
-      // Co-highlight the endpoints that front this service's operations.
-      // The endpoint↔operation relationship is the parser's nexusRoute
-      // edge (operation → endpoint, rendered as a containment-style edge);
-      // we reach it via the service's operation children rather than
-      // re-deriving it from (namespace, queue).
-      const operationIds = new Set<string>()
-      for (const n of visibleNodes) {
-        if (ontology.valueFor(n) === 'nexusOperation' && n.parentId === activeId) {
-          operationIds.add(n.id)
-        }
-      }
-      for (const edge of visibleEdges) {
-        // Resolved from the target node, not from a copy cached on the edge:
-        // graduation re-points edges, and a cached endpoint type survives the
-        // re-pointing while being wrong about it.
-        if (ontology.valueFor(getNode(edge.targetId) ?? EMPTY_SUBJECT) !== 'nexusEndpoint') continue
-        if (!operationIds.has(edge.sourceId)) continue
-        if (visibleIds.has(edge.targetId)) {
-          nodes.add(edge.targetId)
-          const ep = getNode(edge.targetId)
-          if (ep?.parentId && visibleIds.has(ep.parentId)) nodes.add(ep.parentId)
-        }
-      }
-    }
-
-    const edges = getHighlightedEdgeIds(nodes, visibleEdges)
+    const activeNode = getNode(activeId)
+    if (!activeNode) return { highlightedNodes: null as Set<string> | null, highlightedEdges: null as Set<string> | null }
+    const { nodes, edges } = highlightOf(ontology, activeNode, direction, { visibleNodes, visibleEdges, visibleIds, getNode })
     return { highlightedNodes: nodes, highlightedEdges: edges }
-  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, getNode])
+  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, getNode, ontology])
 
   return {
     hoveredNodeId, setHoveredNodeId,

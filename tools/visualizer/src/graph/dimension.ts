@@ -134,7 +134,7 @@ export interface DimensionDescriptor extends AxisNamer {
    * How this axis's available values group into chips.
    *
    * Not one chip per value: a chip may cover several values, which is how one
-   * `Nexus` chip fronts three declared kinds. Host-declared because the grouping
+   * one chip may front several declared kinds. Host-declared because the grouping
    * is a domain choice — but the *shape* is not, so the bar renders any axis
    * without knowing which one it is.
    *

@@ -9,12 +9,11 @@
 // snapshots it directly, and the taxonomy arrives as a parameter, so both the
 // visibility predicate and the summary dispatch resolve through the container.
 //
-// What is NOT yet injected, so nobody reads more into this than it says: the
-// operation-splice branch in `resolveDepEndpoint` and the per-child counting
-// inside the summary strategies still test hardcoded node-type values. Those are
-// separate blast-radius rows owned by later units.
+// Nothing here names a value: the hidden-node policy is the taxonomy's
+// (`whenHidden`, D59), the summaries read its abbreviations (D58), and the
+// precedence between graduated edges that land on one pair reads only
+// whether an edge carries metadata (D60).
 
-import { payloadString } from '../../graph/model'
 import { computeDownstreamReach } from '../../graph/scalar'
 import { isContainment } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
@@ -69,9 +68,12 @@ function findNearestVisibleAncestor(
 }
 
 // Resolve a dependency-edge endpoint to one or more visible node ids. Default:
-// "if visible keep, else walk to nearest visible ancestor". Exception: hidden
-// nexus operations splice *through* (following the call relationship) instead of
-// ascending, so caller → operation → backing becomes caller → backing.
+// "if visible keep, else walk to nearest visible ancestor". A value whose
+// declared policy is `splice` (D59, B16) follows the hidden node's own
+// dependency edges through to the far side instead, so caller → hidden →
+// callee draws as caller → callee. A hidden node is passed through at most
+// once per resolution (`visited`): hidden spliced nodes may call each other,
+// and a cycle among them used to recurse without end (REVIEW_7 C3).
 function resolveDepEndpoint(
   nodeId: string,
   visible: boolean,
@@ -80,20 +82,21 @@ function resolveDepEndpoint(
   visibleIds: Set<string>,
   getNode: (id: string) => SimNode | undefined,
   ontology: Ontology,
+  visited: Set<string> = new Set(),
 ): string[] {
   if (visible) return [nodeId]
+  if (visited.has(nodeId)) return []
+  visited.add(nodeId)
   const node = getNode(nodeId)
-  // Still a domain literal: WHICH value splices is a host policy, and injecting
-  // it is a later unit's job (B16). What changed is where the value comes from.
-  if (node && ontology.valueFor(node) === 'nexusOperation') {
+  if (node && ontology.resolveNodeStyle(node).whenHidden === 'splice') {
     const out: string[] = []
     for (const e of sim.edges) {
       if (isContainment(e)) continue
       const adjId = side === 'tgt'
-        ? (e.sourceId === nodeId ? e.targetId : null)  // outgoing — operation is source
-        : (e.targetId === nodeId ? e.sourceId : null)  // incoming — operation is target
+        ? (e.sourceId === nodeId ? e.targetId : null)  // outgoing — the hidden node is the source
+        : (e.targetId === nodeId ? e.sourceId : null)  // incoming — the hidden node is the target
       if (!adjId) continue
-      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode, ontology)) {
+      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode, ontology, visited)) {
         out.push(r)
       }
     }
@@ -102,6 +105,9 @@ function resolveDepEndpoint(
   const ancestor = findNearestVisibleAncestor(nodeId, visibleIds, getNode)
   return ancestor ? [ancestor] : []
 }
+
+/** Whether an edge carries any host metadata — what a graduated edge keeps of the hop it passed through. */
+const carriesMetadata = (e: GraphEdge): boolean => e.payload !== undefined && Object.keys(e.payload).length > 0
 
 // Glanceable per-node summary string, dispatched on the taxonomy's summaryKind.
 function computeGraphNodeSummary(
@@ -229,14 +235,17 @@ export function computeVisibleGraph(
         }
       }
     } else {
-      const resolvedSources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode, ontology)
-      const resolvedTargets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode, ontology)
-      for (const rs of resolvedSources) {
-        for (const rt of resolvedTargets) {
+      const sources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode, ontology)
+      const targets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode, ontology)
+      for (const rs of sources) {
+        for (const rt of targets) {
           if (rs === rt) continue
           const key = `${rs}→${rt}`
+          // Two graduated edges on one pair: the one carrying metadata keeps
+          // precedence over one carrying none (it still says what the hidden
+          // hop was); otherwise the later one replaces the earlier (D60).
           const existing = depEdgeKeys.get(key)
-          if (existing && payloadString(existing, 'nexusEndpoint') && !payloadString(edge, 'nexusEndpoint')) continue
+          if (existing && carriesMetadata(existing) && !carriesMetadata(edge)) continue
           depEdgeKeys.set(key, {
             ...edge,
             sourceId: rs,

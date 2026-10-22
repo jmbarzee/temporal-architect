@@ -2,7 +2,7 @@
 // active glow groups for the Graph view. Implements GRAPH_VIEW.md
 // § Decomposition Group Overlay.
 //
-// The decomposition (`twf graph chunks`) partitions definitions into chunks ->
+// The decomposition (the host's chunking) partitions definitions into chunks ->
 // ranked division options (one per strategy) -> sections -> recursive
 // sub-divisions. This module turns "what the modal has selected/expanded" into
 // a flat list of ActiveGroups, each resolved to the visible graph node ids it

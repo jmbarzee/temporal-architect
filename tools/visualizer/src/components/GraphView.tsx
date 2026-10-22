@@ -8,20 +8,22 @@ import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
 import type { DecompositionParams } from './protocol'
-import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
-import { bandOverlay, layoutFrame, presentSpringCategories, resolvePhysics, resolveSprings } from '../graph/forces'
+import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
 import { isIdentityMapping } from '../graph/dimension'
+import type { FocusTarget } from '../filter/types'
+import { matchesFocus } from '../filter/types'
+import type { PresentSets } from './graph-view/present'
+import { presentSetsOf } from './graph-view/present'
 import type { EdgeStroke } from '../graph/scheme'
 import { schemeVars } from '../graph/scheme'
 import { useTheme, THEME_CHOICES } from './graph-view/useTheme'
 import type { ThemeChoice } from './graph-view/useTheme'
-import { axisOptions, layoutAxisOptions, pairTuning } from '../graph/simulation'
+import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
-import { payloadString } from '../graph/model'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
+import { SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
 import { useOntology } from './graph-view/useOntology'
 import { worldToScreen } from '../graph/viewport'
@@ -39,7 +41,6 @@ import {
   type GroupHover,
 } from '../graph/groups'
 import { FilterBar } from './FilterBar'
-import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 import { useGraphModel } from '../adapter/useGraphModel'
 import { useViewport } from './graph-view/useViewport'
 import { useHighlight } from './graph-view/useHighlight'
@@ -52,17 +53,17 @@ interface GraphViewProps {
   // so the inactive one must not respond to global keyboard shortcuts.
   active: boolean
   ast: TWFFile
-  // Deployment graph from `twf graph` — primary input. AST is secondary
+  // Deployment graph from the parser — primary input. AST is secondary
   // (sourceFile lookup, hover details).
   parserGraph: ParserGraph
-  // Decomposition from `twf graph chunks` — drives the group overlay. Optional;
+  // Decomposition from the parser's chunking — drives the group overlay. Optional;
   // when absent the Groups modal/overlay is inert.
   decomposition?: Decomposition
   // Outbound recompute request. When wired, the Groups panel's Params tab becomes
   // editable and can request a fresh decomposition (including the first one,
   // before any decomposition exists). Optional; absent for read-only hosts.
   onRequestDecomposition?: (params: DecompositionParams) => void
-  onShowInTree?: (name: string, defType: string) => void
+  onShowInTree?: (target: FocusTarget) => void
   /** The pane's theme choice and where a new one goes (R21). */
   theme: ThemeChoice
   onThemeChange: (next: ThemeChoice) => void
@@ -75,13 +76,13 @@ interface GraphViewProps {
   searchQuery: string
   searchActive: boolean
   onSearchChange: (query: string, active: boolean) => void
-  pendingFocus: CrossViewTarget | null
+  pendingFocus: FocusTarget | null
   onFocusConsumed: () => void
   overriddenPins: Set<FilterDimension>
   onOverriddenPinsConsumed: () => void
 }
 
-// Graph-view filter entries — imported from temporal-theme.tsx so the Tree and
+// Graph-view filter entries — shared with the Tree view so the two bars agree
 // Graph views always show the same chip layout. See VIEW_FILTER_ENTRIES.
 
 export function GraphView({
@@ -106,7 +107,7 @@ export function GraphView({
   onOverriddenPinsConsumed, theme: themeChoice, onThemeChange,
 }: GraphViewProps) {
   const ontology = useOntology()
-  // Filter state is now driven by props from WorkflowCanvas (spec § Filter
+  // Filter state is now driven by props from the host shell (spec § Filter
   // State Model). Read the two structural dimensions through `filter`.
 
   // --- Core state ---
@@ -180,6 +181,7 @@ export function GraphView({
     onToggleRunning: handleToggleRunning,
   } = useSimulation(graph, onSimRebuild)
 
+
   // The dense per-bucket tables the kernels read, resolved once per
   // (params, taxonomy) here and handed to the canvas and every control (T25).
   const resolved = React.useMemo(() => resolvePhysics(forceParams, ontology), [forceParams, ontology])
@@ -203,19 +205,12 @@ export function GraphView({
       ? ontology.styleForKey(bucket).color[theme].fill
       : undefined), [graph, forceParams, resolved, frame, ontology, theme])
 
-  // Classification does not depend on overrides, so this keys on the mapping
-  // and not on `resolved`, which is a new object after every slider edit.
-  const pairMapping = forceParams.pair.mapping
-  const presentSprings = React.useMemo(
-    () => presentSpringCategories(resolveSprings(pairTuning(pairMapping), ontology), graph.edges, id => graph.nodes.get(id)),
-    [pairMapping, ontology, graph],
-  )
   // A new axis starts both pair forces from the taxonomy's declared physics on
   // its buckets (D47: a tuning keyed by one axis has no reading on another).
   const handleAxisChange = React.useCallback((mapping: DimensionalMapping) => {
-    if (mapping.dimension === pairMapping.dimension) return
+    if (mapping.dimension === forceParams.pair.mapping.dimension) return
     handleRelayout({ pair: pairTuning(mapping) })
-  }, [pairMapping, handleRelayout])
+  }, [forceParams.pair.mapping.dimension, handleRelayout])
 
   // Render-time node sizing (independent of the simulation). Tunable from the
   // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
@@ -232,7 +227,7 @@ export function GraphView({
     return () => clearTimeout(timer)
   }, [overriddenPins, onOverriddenPinsConsumed])
 
-  // Stale-file cleanup is now owned by WorkflowCanvas (it touches both views'
+  // Stale-file cleanup is now owned by the host shell (it touches both views'
   // filters consistently when the AST changes).
 
   // Visible subgraph derived from the live sim (filter + edge graduation +
@@ -251,6 +246,16 @@ export function GraphView({
     }
     return strokes
   }, [visibleEdges, ontology, getSimNode])
+
+  // What the controls offer: only what the post-filter visible set holds
+  // (R35, D59) — one function, `presentSetsOf`, that the harness calls too.
+  // The pull half is read over the edges the simulation springs (the graph's
+  // own, both ends visible), not over the graduated edges it draws (D60).
+  const sprung = React.useMemo(() => sprungEdges(graph.edges, visibleIds), [graph, visibleIds])
+  const present = React.useMemo<PresentSets>(
+    () => presentSetsOf(visibleNodes, sprung, resolved, getSimNode),
+    [visibleNodes, sprung, resolved, ontology, getSimNode],
+  )
 
   // --- Decomposition group overlay (GRAPH_VIEW.md § Decomposition Group
   // Overlay). Selection (which division per chunk is active/enabled/expanded)
@@ -408,20 +413,17 @@ export function GraphView({
   }
 
   // Focused node ID (for keyboard nav)
-  // Cross-view focus: the reconciler in WorkflowCanvas has already
+  // Cross-view focus: the host shell's reconciler has already
   // expanded the destination filter so the target is visible. We only
   // arrange the visual focus part — set up the center-on-target ref
   // and reheat the simulation if it had stabilized.
   React.useEffect(() => {
     if (!pendingFocus) return
-    const { name, defType } = pendingFocus
     const sim = simRef.current
     if (sim) {
-      // Compared on the kind axis both sides already speak, rather than
-      // round-tripping through the reverse bridge to compare type strings.
-      const targetNode = sim.nodes.find(
-        n => n.name === name && n.dimensions[DEF_TYPE_DIMENSION] === defType,
-      )
+      // Matched on whatever dimension values the host pinned the name with;
+      // this view never learns which axis that was (D59).
+      const targetNode = sim.nodes.find(n => matchesFocus(n, pendingFocus))
       if (targetNode) {
         pendingCenterRef.current = { nodeId: targetNode.id }
         if (!running) {
@@ -670,7 +672,7 @@ export function GraphView({
         onRelayout={handleRelayout}
         axes={axes}
         layoutAxes={layoutAxes}
-        presentSprings={presentSprings}
+        present={present}
         onAxisChange={handleAxisChange}
         onActiveSection={setActiveSection}
         onActivePushBucket={setActivePushBucket}
@@ -728,21 +730,11 @@ interface GraphHoverTooltipProps {
   duplicateGroups: Map<string, Set<string>>
   nodeSummaries: Map<string, string>
   // Cross-view nav from the tooltip. Absent in history mode (no Tree view).
-  onShowInTree?: (name: string, defType: string) => void
+  onShowInTree?: (target: FocusTarget) => void
   // The tooltip is interactive: these keep it open while the pointer is over
   // it (so the Show in Tree button is clickable).
   onMouseEnter: () => void
   onMouseLeave: () => void
-}
-
-// Strip the kind prefix from a parser metadata field (e.g. 'namespace:ecommerce'
-// → 'ecommerce', 'worker:paymentWorker' → 'paymentWorker'). The parser includes
-// the kind label so consumers can identify the type of the referenced entity;
-// tooltips want the bare name.
-function stripKindPrefix(s: string | undefined): string | undefined {
-  if (!s) return undefined
-  const i = s.indexOf(':')
-  return i >= 0 ? s.slice(i + 1) : s
 }
 
 function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries, onShowInTree, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
@@ -755,38 +747,11 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   const node = sim.getNode(hoveredNodeId)
   if (!node) return null
 
-  const parentName = node.parentId ? sim.getNode(node.parentId)?.name : undefined
-  // Context line — format varies by node type to surface the most useful
-  // parent context. Nexus types show their addressing metadata in the
-  // `<parent context> · <task queue>` format from the spec.
-  //
-  // These three keys are domain vocabulary, and they stay at this call site
-  // deliberately: the library hands back strings from an opaque payload and
-  // never learns what a queue is.
-  const queue = payloadString(node, 'queue')
-  const hostWorker = payloadString(node, 'worker')
-  let contextLine: string | undefined
-  switch (ontology.valueFor(node)) {
-    case 'nexusEndpoint':
-      // Namespace is the endpoint's containment parent (parentName), not a
-      // node field; queue is intrinsic display metadata.
-      contextLine = [parentName, queue].filter(Boolean).join(' · ') || undefined
-      break
-    case 'nexusService':
-      contextLine = [stripKindPrefix(hostWorker), queue].filter(Boolean).join(' · ') || undefined
-      break
-    case 'nexusOperation':
-      contextLine = [parentName, stripKindPrefix(hostWorker), queue].filter(Boolean).join(' · ') || undefined
-      break
-    default:
-      contextLine = parentName
-  }
-  // Use the individual DEF_TYPE_CONFIGS entry for the tooltip icon — the
-  // per-type icon (★ for service, ☆ for operation, ⌖ for endpoint) is
-  // more informative than the group chip icon. DEF_TYPE_CONFIGS still has
-  // all 7 entries even though 3 are collapsed into one chip in the filter bar.
-  const kind = node.dimensions[DEF_TYPE_DIMENSION]
-  const cfg = DEF_TYPE_CONFIGS.find(c => c.type === kind)
+  // The context line is the taxonomy's answer (D59, B35): a host that keys a
+  // value's identity on its own metadata says so there; the library's
+  // default is the parent's name. The icon is the value's own.
+  const contextLine = ontology.contextLine(node, node.parentId ? sim.getNode(node.parentId) : undefined)
+  const icon = ontology.resolveNodeStyle(node).icon
   const fileName = node.dimensions[SOURCE_FILE_DIMENSION]?.split('/').pop()
 
   // The composition line for a node that summarises its children (counted
@@ -836,7 +801,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       onMouseLeave={onMouseLeave}
     >
       <div className="tooltip-identity">
-        {cfg && <span className="tooltip-type-icon">{cfg.icon}</span>}
+        {icon && <span className="tooltip-type-icon">{icon}</span>}
         <span className="tooltip-name">{node.name}</span>
       </div>
       {contextLine && <div className="tooltip-parent">{contextLine}</div>}
@@ -848,7 +813,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       )}
       {fileName && <div className="tooltip-file">{fileName}</div>}
       {copyCount > 1 && (
-        <div className="tooltip-duplicates" title="This definition is registered on multiple workers. Hovering any copy highlights all copies.">
+        <div className="tooltip-duplicates" title="This definition is registered on multiple hosts. Hovering any copy highlights all copies.">
           copy {copyIndex} of {copyCount}
         </div>
       )}
@@ -859,10 +824,10 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         </div>
       )}
       <div className="tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
-      {onShowInTree && kind !== undefined && (
+      {onShowInTree && (
         <button
           className="tooltip-show-in-tree"
-          onClick={() => onShowInTree(node.name, kind)}
+          onClick={() => onShowInTree({ name: node.name, values: node.dimensions })}
           title="Show in Tree view"
         >
           Show in Tree

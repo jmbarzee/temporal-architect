@@ -145,3 +145,12 @@ export type ReconcileResult = {
   filter: FilterState
   overriddenPins: Set<FilterDimension>
 }
+
+/** Whether a node answers to a focus target: the name, and every value the target names. */
+export function matchesFocus(node: { name: string; dimensions: Readonly<Record<string, string>> }, target: FocusTarget): boolean {
+  if (node.name !== target.name) return false
+  for (const [dim, value] of Object.entries(target.values)) {
+    if (value !== undefined && node.dimensions[dim] !== value) return false
+  }
+  return true
+}

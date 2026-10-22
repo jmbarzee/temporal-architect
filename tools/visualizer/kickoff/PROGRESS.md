@@ -45,7 +45,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 | field | value |
 |---|---|
 | Runaway ceiling | **300 commits** on `main..HEAD` (enforced; KICKOFF §2.4) |
-| Commits so far | 24 |
+| Commits so far | 102 (`main..HEAD`, the whole stack) |
 | Token / wall-clock budget | unset (advisory only) |
 
 ---
@@ -54,20 +54,20 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | none — Unit 6 closed at `4f3c543` + the record; Unit 7 is next and opens on its own branch |
-| Last completed unit | **Unit 6 — Colour scheme + node sizes** ([PR #174](https://github.com/jmbarzee/temporal-architect/pull/174)) |
+| Current unit | **Unit 8 — The library move** (next; not yet opened — branch from unit-7 @ the record commit; the boundary gate's 8 edges are the move list) |
+| Last completed unit | **Unit 7 — Post-filter-scoped controls** ([PR #175](https://github.com/jmbarzee/temporal-architect/pull/175)) |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-6` (#174, from unit-5b @ `a638f19`); the stack below it: unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
+| Unit branch | `visualizer/dimensions-unit-7` (from unit-6 @ `3ed12d0`, [PR #175](https://github.com/jmbarzee/temporal-architect/pull/175), closed); the stack below it: unit-6 (#174) → unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | **30** (R4, R5, R6, R7, R8, R9, R10, R11, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34) + R1 partial | 42 |
-| B — blast-radius sites migrated | **33** | 38 |
-| C — leaks in the manifest | **54** | 0 |
-| Gate 6 — import-boundary violations | **7** | 0 |
+| A — requirements covered | **31** (R4, R5, R6, R7, R8, R9, R10, R11, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34, R35) + R1 partial | 42 |
+| B — blast-radius sites migrated | **36** | 38 |
+| C — leaks in the manifest | **4** | 0 |
+| Gate 6 — import-boundary violations | **8** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
 measuring them. Counter A's R41 ("does everything it did before") closes at
@@ -161,23 +161,48 @@ is Unit 7's **38** (`GraphView.tsx` 24, `useHighlight.ts` 10,
 54, per the gate's own per-file list. The ratchet is set to **54** /
 **1118**.
 
+**Unit 7.** Counter A: R35 — 30 -> 31. Counter B: B16 (the hidden-node
+policy is the taxonomy's), B17 (the summary dispatch — Unit 6's, D58 §6,
+counted where the plan assigned it), B35 (the context line and the
+highlight are hooks; focus by values) — 33 -> 36.
+
+Counter C landed at **4** against §6.5's **0** — the four are the host's
+wire types in two props (`ast: TWFFile` on the view and the filter bar,
+with their imports: `GraphView.tsx` 2, `FilterBar.tsx` 2), what Unit 8's
+library move replaces with a `Graph` the host builds. Unit 7's own files:
+`GraphView.tsx` 24 -> 2, `useHighlight.ts` 10 -> 0, `visibleGraph.ts` 4 ->
+0; of the residue of 16 only `FilterBar.tsx`'s 2 remain — the fourteen in
+`scheme.ts`, `GraphView.css`, `GraphCanvas.tsx`, `taxonomy.ts`,
+`simulation.ts`, `groups.ts`, `dimension.ts` and `FilterBar.css` were
+comments and tokens, and are gone. Sum 4, per the gate's own per-file
+list; the total vocabulary 1118 -> 1091. Gate 6 went 7 -> 6 (D59 cut the
+filter-descriptor import) -> **8**: not two new edges — the gate now counts
+an import that resolves to a shim component (REVIEW_7 C6), and
+`GraphView.tsx`'s imports of `GroupsModal` and `protocol` were always
+there, uncounted. The ratchet is set to **4** / **1091** / **8**, and the
+eight edges are Unit 8's move list: `FilterBar.tsx` -> `types/ast`;
+`GraphView.tsx` -> `types/ast`, `types/parser-graph`,
+`types/decomposition`, `protocol`, `GroupsModal`, `adapter/useGraphModel`;
+`groups.ts` -> `types/decomposition`.
+
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 6 close | pass |
-| 2 `npm run build:lib` | Unit 6 close | pass |
-| 2b `npm run dts-gate` | Unit 6 close | pass — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private |
-| 3 `npm run verify` | Unit 6 close | pass — 7/7 goldens match; Tier C byte-identical across the unit (D3); Tier A's edge lines lose the style column, gain `byStroke`, and its summaries read abbreviations (D57, D58); `static` gains `schemeProbes` |
-| 4 `npm run leak-gate` | Unit 6 close | pass — **54 / 54**; **total 1118 / 1118** |
-| 5 browser pass | Unit 6 close | pass — five fixtures in both themes with the theme pinned (`unit-6-*.png`, `unit-6-*-dark.png`; `screenshot.mjs` emulates the preference and fails a wrong-theme capture), 0 console errors; by hand on nexus in a dark host: Auto, Light and Dark, the pane light in every token inside the dark shell, chips tinting from the taxonomy in both panes, the choice persisted |
+| 1 `tsc --noEmit` | Unit 7 close | pass |
+| 2 `npm run build:lib` | Unit 7 close | pass |
+| 2b `npm run dts-gate` | Unit 7 close | pass — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private |
+| 3 `npm run verify` | Unit 7 close | pass — 7/7 goldens match; every graduated-edge row, summary, Tier B and Tier C row byte-identical across the unit (D59, D60); Tier A gains `contextLines` and, per state, `controls` and `hookedHighlights` (each carrying the whole highlight through `highlightOf`); `static` gains `hiddenPolicy`, `viewProbes` and the `badWhenHidden` refusal |
+| 4 `npm run leak-gate` | Unit 7 close | pass — **4 / 4**; **total 1091 / 1091** |
+| 5 browser pass | Unit 7 close | pass — five fixtures in both themes with a chip toggled off and the toggle asserted to change the counts (`unit-7-*.png`, `unit-7-*-dark.png`; the Nexus chip on the three fixtures that carry it, the Workers chip on stress and decomposition via `--only`), 0 console errors; by hand on nexus: the panel opened on Push first, then the Nexus chip off — tokens 20 → 10, curves 22 → 12, the curves following the toggle (REVIEW_7 C1) |
+| 5 browser pass (Unit 6) | Unit 6 close | pass — five fixtures in both themes with the theme pinned (`unit-6-*.png`, `unit-6-*-dark.png`; `screenshot.mjs` emulates the preference and fails a wrong-theme capture), 0 console errors; by hand on nexus in a dark host: Auto, Light and Dark, the pane light in every token inside the dark shell, chips tinting from the taxonomy in both panes, the choice persisted |
 | 5 browser pass (Unit 5b) | Unit 5b close | pass — five fixtures, 0 console errors, panel-open captures on Gravity / Y Axis / Reach (`unit-5b-*`, via `screenshot.mjs --tab/--subtab/--select`); by hand on nexus and stress: Reach on Y, the 1 handle dragged past the 0 handle, radial, Degree on X, both axes back to Type, and exponent 3 on Reach after the cap — no bounce |
 | 5 browser pass (Unit 5a) | Unit 5a close | pass — five fixtures, 0 console errors, panel-open captures (`unit-5a-*`); the Gravity tab exercised by hand on multifile: X Axis and Y Axis bodies, the Radial switch re-lays out, rings draw on hover |
 | 5 browser pass (Unit 4) | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)`; a second capture per fixture with the panel open (`unit-4-<fixture>-controls.png`), after the review noted the first set showed it collapsed |
-| 6 `npm run boundary-gate` | Unit 6 close | pass — **7 / 7** |
-| + `npm run pattern-gate` | Unit 6 close | pass — 5 allowlisted, 0 new; a backslash-quote in a stylesheet is a pattern now (REVIEW_6 C1) |
-| + `npm run map -- --check` | Unit 6 close | pass — up to date |
-| + `npm run surface-gate` | Unit 6 close | pass — 90 names, as committed |
+| 6 `npm run boundary-gate` | Unit 7 close | pass — **8 / 8**; the gate now counts an import that resolves to a shim component, and the two edges it had been blind to are `GraphView` → `GroupsModal`, `protocol` (REVIEW_7 C6) |
+| + `npm run pattern-gate` | Unit 7 close | pass — 5 allowlisted, 0 new |
+| + `npm run map -- --check` | Unit 7 close | pass — up to date |
+| + `npm run surface-gate` | Unit 7 close | pass — 90 names, as committed |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -255,6 +280,7 @@ explicit pass criteria and a committed screenshot — use them.
 | **5a — Two symmetric dimensional axes** | 6 (`5a3481f`…`6ca503d` + the record) | R7, R26, R27, R30, R32, R33; R28, R29 partial | B10, B11, B24, B27 | 182 (ceiling 182) | [REVIEW_5a.md](reviews/REVIEW_5a.md) — 39 findings, 11 clusters, every blocker and major resolved |
 | **5b — Computed scalar axes** | 5 (`c69f974`…`28941dd` + the record) | R8, R9, R31; R28, R29 completed | — | 180 (ceiling 180) | [REVIEW_5b.md](reviews/REVIEW_5b.md) — 39 findings, 16 clusters, every blocker and major resolved; one minor filed (#172) |
 | **6 — Colour scheme + node sizes** | 4 (`ba93f11`…`4f3c543` + the record) | R10, R11, R15, R16, R21 | B22, B23, B25, B29, B30 | 54 (ceiling 54) | [REVIEW_6.md](reviews/REVIEW_6.md) — 42 findings, 17 clusters, both blockers and every major resolved |
+| **7 — Post-filter-scoped controls** | 4 (`13edaea`…`a57ad8b` + the record) | R35 | B16, B17, B35 | 4 (ceiling 4) | [REVIEW_7.md](reviews/REVIEW_7.md) — 33 findings, 9 clusters, every blocker and major resolved; one minor filed (#176) |
 
 ---
 
@@ -274,6 +300,26 @@ should be read:
 2. **Rule 8 failed on the run that introduced it** (F17): I wrote "isolation
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
+
+**Unit 7 is closed** on `visualizer/dimensions-unit-7`, branched from unit-6
+@ `3ed12d0`; [PR #175](https://github.com/jmbarzee/temporal-architect/pull/175) (base
+`visualizer/dimensions-unit-6`, per D36). Commits: `13edaea` (opens),
+`79c4390` (D59), `e6ec9ab` (the checkpoint), the review fixes `a57ad8b`
+(D60), then the record. `REVIEW_7.md`: 33 findings in 9 clusters, every
+blocker and major resolved in `a57ad8b`; one minor filed (#176). Last
+checkpoint: the commit that adds this paragraph.
+
+**Read `REVIEW_7.md` before Unit 8.** Its structural finding is the one Unit
+8 is most exposed to: a harness row that re-derives a behaviour with the
+library's own calls pins the harness, not the product (F25) — Tier A stayed
+green while the view read the whole graph and then the wrong edges. Unit 8
+moves the library out and leaves the view behind; every row the move keeps
+must read through the function the view calls, or the move can drop the
+wiring with every gate green. The eight boundary edges are the move list
+(above), and the gate now counts a shim-component import, so a cut edge
+cannot be re-routed through `GroupsModal` or `protocol` unseen.
+
+Ceilings at the Unit 7 close: leak **4**, total **1091**, boundary **8**.
 
 **Unit 6 is closed** on `visualizer/dimensions-unit-6`, branched from unit-5b
 @ `a638f19`; [PR #174](https://github.com/jmbarzee/temporal-architect/pull/174) (base
@@ -608,6 +654,29 @@ state the sentence describes — and write the sentence after. The same
 shape as F21 (one measurement, generalised): here, no measurement,
 asserted.
 
+**F25 — A harness row that re-derives a behaviour pins the harness, not the
+product; and a golden written from the implementation ratifies whatever the
+implementation does.** Tier A's `controls` rows computed R35's sets with the
+same library calls the view made — and so stayed green when a verifier made
+the view read the whole graph (REVIEW_7 C5), and had stayed green while the
+view read the wrong edges, pull tokens classified over graduated edges the
+simulation never springs (C9). The unit's new `hookedHighlights` rows were
+written from the hook's output and pinned a dead branch as the golden: the
+endpoint highlight compared the routing id to the bare name and never lit
+(C2). One rule fixes both: the harness calls the function the view calls
+(`presentSetsOf`, `highlightOf`, `sprungEdges` stated once), so there is one
+function to be wrong in, and a server render counts what the components
+offer. A golden proves only that the thing it reads has not changed; which
+thing it reads is the whole question.
+
+**F26 — A capture step that applies on only some fixtures passes silently
+on the rest.** The Nexus toggle is a no-op on the two fixtures that carry
+no Nexus nodes, so Unit 7's Gate 5 captures of stress and decomposition
+were of the pre-filter set and read as evidence of R35 until the script
+failed a toggle whose counts did not change. `--only` captures a fixture
+with a chip it carries. Same family as F24: an evidence step has to assert
+that it changed the state it claims to show.
+
 ---
 
 ## Open questions
@@ -679,3 +748,11 @@ that is a change to an [immutable] document and therefore not mine to make.
 | `computeVisibleGraph` took an ontology and still resolved its visibility predicate through the module singleton, so a supplied taxonomy emptied the graph | Unit 1 review | `static.ontologyProbes.injection` — verified red when the predicate is reverted | 1 |
 | The taxonomy had two unwired suppliers: components read context, `Simulation` read the singleton | Unit 1 review | `Simulation`'s ontology parameter is required, so a call site cannot silently fall back; the compiler is the check | 1 |
 | `ABSENT_VALUE_PHYSICS` was documented as inert and is not — a zero charge still couples at half strength and an origin band moves the median | Unit 1 review | `static.forceProbes.absentValue.*.velocities` records **every** node, not just the unknown one | 1 |
+| `ChargeCurves` memoised past the present set: a chip toggle dropped the map's tokens and left every curve | Unit 7 review (C1) | Gate 5: `screenshot.mjs --toggle` fails a capture whose counts do not change; the by-hand pass opens the panel before the toggle | 7 |
+| The endpoint highlight compared the routing id to the node's bare name — dead — and the unit's new golden row pinned the dead answer | Unit 7 review (C2) | every `hookedHighlights` row carries the whole highlight through `highlightOf`, the function the view calls | 7 |
+| Splice resolution recursed without a visited set; two hidden operations calling each other blanked the Graph view at the default filter | Unit 7 review (C3) | `static.ontologyProbes.hiddenPolicy.cycle` | 7 |
+| Collision precedence was last-wins among spliced edges, agreeing with the old payload rule only in the parser's edge order (168 of 640 states under the reverse) | Unit 7 review (C4) | `hiddenPolicy.collisionCallFirst` and `collisionCallLast`, both answering `meta=route` | 7 |
+| Tier A re-derived R35 in the harness, so the view could read the whole graph with every gate green — and did read the wrong edges: pull tokens over graduated edges the simulation never springs | Unit 7 review (C5, C9) | `presentSetsOf` and `sprungEdges` are the one statement the view and Tier A call; `static.viewProbes` counts the rendered tabs against the sets | 7 |
+| The boundary gate was blind to an import of a shim component, through which host vocabulary could ride uncounted | Unit 7 review (C6) | an import resolving to `SHIM_COMPONENTS` counts — 8 measured | 7 |
+| A `whenHidden` outside its two values was read as ascend, silently | Unit 7 review (C8) | `static.schemeProbes.refusals.badWhenHidden` | 7 |
+| A capture step that applies on only some fixtures passed silently on the rest (the Nexus toggle on stress and decomposition) | Unit 7 close (F26) | `--toggle` fails a no-change toggle; `--only` captures a fixture with a chip it carries | 7 |

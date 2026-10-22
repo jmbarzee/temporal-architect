@@ -5,7 +5,8 @@ import { selectionFor } from '../filter/types'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
-import type { CallerRef, NavigationContextType, CrossViewTarget } from './WorkflowCanvas'
+import type { CallerRef, NavigationContextType } from './WorkflowCanvas'
+import type { FocusTarget } from '../filter/types'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { filterStatesEqual } from '../filter/types'
 import { NavigationContext } from './WorkflowCanvas'
@@ -28,7 +29,7 @@ interface TreeViewProps {
   searchQuery: string
   searchActive: boolean
   onSearchChange: (query: string, active: boolean) => void
-  pendingFocus: CrossViewTarget | null
+  pendingFocus: FocusTarget | null
   onFocusConsumed: () => void
   overriddenPins: Set<FilterDimension>
   onOverriddenPinsConsumed: () => void
@@ -399,7 +400,9 @@ export function TreeView({
   // visible. We only need to scroll to it and flash.
   React.useEffect(() => {
     if (!pendingFocus) return
-    const { name, defType } = pendingFocus
+    // This view pins a name with the kind axis it knows.
+    const { name } = pendingFocus
+    const defType = pendingFocus.values[DEF_TYPE_DIMENSION] ?? ''
     // Defer to let visibleDefinitions reflect any filter change that
     // arrived in the same tick.
     const timer = setTimeout(() => {

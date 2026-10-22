@@ -4,6 +4,7 @@
 // map, and its force-curve read-out. See GRAPH_VIEW.md § Control Panel.
 
 import React from 'react'
+import type { PresentSets } from './GraphControlPanel'
 import type { ForceParams, AxisOption } from '../graph/simulation'
 import { fitsCeiling, TOKEN_CEILING } from '../graph/simulation'
 import type { ResolvedPhysics } from '../graph/forces'
@@ -23,7 +24,8 @@ interface PushPullProps {
   /** Every axis the graph admits, with what each would cost to show. */
   axes: readonly AxisOption[]
   /** The spring categories some edge of the graph falls in — the pull tokens. */
-  presentSprings: ReadonlySet<string>
+  /** What the visible set holds: push buckets and spring categories worth a token (R35). */
+  present: Pick<PresentSets, 'push' | 'springs'>
   onParamChange: (patch: Partial<ForceParams>) => void
   onAxisChange: (mapping: DimensionalMapping) => void
   onActiveSection: (section: ForceSection) => void
@@ -61,7 +63,7 @@ function optionLabel(o: AxisOption): string {
 }
 
 export function PushPullControls({
-  params, resolved, axes, presentSprings, onParamChange, onAxisChange, onActiveSection,
+  params, resolved, axes, present, onParamChange, onAxisChange, onActiveSection,
   hoveredPushBucket, onHoverPushBucket, hoveredEdge, onHoverEdge,
 }: PushPullProps) {
   const [sub, setSub] = React.useState<PairForce>('push')
@@ -76,7 +78,7 @@ export function PushPullControls({
           id="pushpull-axis"
           className="axis-select"
           value={current}
-          title="The dimension push and pull key on: one push token per bucket, one pull token per spring category present"
+          title="The dimension push and pull key on. Tokens are the visible set's: a push token per bucket some visible node falls in, a pull token per spring category some sprung edge falls in; the counts measure the whole graph"
           onChange={e => {
             const option = axes.find(o => o.mapping.dimension === e.target.value)
             if (option) onAxisChange(option.mapping)
@@ -98,17 +100,17 @@ export function PushPullControls({
       <SubTabBodies>
         <SubTabBody active={sub === 'push'}>
           <EquationSection subtitle="" equation={PUSH_EQUATION} onHover={h => onActiveSection(h ? 'push' : null)}>
-            <ChargeMap params={params} resolved={resolved} onParamChange={onParamChange}
+            <ChargeMap params={params} resolved={resolved} present={present.push} onParamChange={onParamChange}
               hoveredBucket={hoveredPushBucket} onHoverBucket={onHoverPushBucket} />
-            <ChargeCurves params={params} resolved={resolved} onParamChange={onParamChange}
+            <ChargeCurves params={params} resolved={resolved} present={present.push} onParamChange={onParamChange}
               hoveredBucket={hoveredPushBucket} onHoverBucket={onHoverPushBucket} />
           </EquationSection>
         </SubTabBody>
         <SubTabBody active={sub === 'pull'}>
           <EquationSection subtitle="" equation={PULL_EQUATION} onHover={h => onActiveSection(h ? 'pull' : null)}>
-            <SpringMap params={params} resolved={resolved} present={presentSprings} onParamChange={onParamChange}
+            <SpringMap params={params} resolved={resolved} present={present.springs} onParamChange={onParamChange}
               hoveredEdge={hoveredEdge} onHoverEdge={onHoverEdge} />
-            <SpringCurves params={params} resolved={resolved} present={presentSprings} onParamChange={onParamChange}
+            <SpringCurves params={params} resolved={resolved} present={present.springs} onParamChange={onParamChange}
               hoveredEdge={hoveredEdge} onHoverEdge={onHoverEdge} />
           </EquationSection>
         </SubTabBody>

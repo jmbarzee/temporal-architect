@@ -27,12 +27,19 @@ import type { EdgeStroke, ThemedColor } from './scheme'
  * an exception stops the canvas repainting for good (T4).
  */
 export interface NodeTypeDefinition {
-  /** Display name, e.g. "Nexus Endpoint". */
+  /** Display name, e.g. "Endpoint". */
   label: string
   /** Single glyph shown inside the canvas node and in tree-view chips. */
   icon: string
   /** Whether this value is visible when the graph first loads. */
   defaultVisible: boolean
+  /**
+   * What a dependency edge touching a HIDDEN node of this value does (D59):
+   * `ascend` re-points the endpoint to the node's nearest visible ancestor;
+   * `splice` follows the node's own dependency edges through to the far
+   * side, so caller → hidden → callee draws as caller → callee.
+   */
+  whenHidden: 'ascend' | 'splice'
 
   // --- Visual ---
   /** Fill and border in both themes; the canvas reads `color[theme]`. */

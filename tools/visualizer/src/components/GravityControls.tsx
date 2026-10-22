@@ -10,6 +10,7 @@
 // See GRAPH_VIEW spec § Gravity / Control Panel.
 
 import React from 'react'
+import type { PresentSets } from './GraphControlPanel'
 import './GravityControls.css'
 import type { ForceParams, LayoutAxisOption } from '../graph/simulation'
 import type { ResolvedPhysics } from '../graph/forces'
@@ -28,6 +29,8 @@ interface GravityControlProps {
   resolved: ResolvedPhysics
   /** Every axis X or Y may key on: mappings with their bucket count, and computed scalars. */
   axes: readonly LayoutAxisOption[]
+  /** The band buckets some visible node falls in, per axis — the only columns worth drawing (R35). */
+  present: Pick<PresentSets, 'bandX' | 'bandY'>
   onParamChange: (patch: Partial<ForceParams>) => void
   onRelayout: (partial: Partial<ForceParams>) => void
   hovered: GravityHover | null
@@ -36,7 +39,7 @@ interface GravityControlProps {
 
 type GravitySub = 'x' | 'y' | 'topological'
 
-export function GravityControls({ params, resolved, axes, onParamChange, onRelayout, hovered, onHover }: GravityControlProps) {
+export function GravityControls({ params, resolved, axes, onParamChange, onRelayout, hovered, onHover, present }: GravityControlProps) {
   const [sub, setSub] = React.useState<GravitySub>('y')
   return (
     <div className="gravity-controls">
@@ -50,11 +53,11 @@ export function GravityControls({ params, resolved, axes, onParamChange, onRelay
 
       <SubTabBodies>
         <SubTabBody active={sub === 'x'}>
-          <AxisControls axis="x" params={params} resolved={resolved} axes={axes}
+          <AxisControls axis="x" params={params} resolved={resolved} axes={axes} present={present.bandX}
             onParamChange={onParamChange} onRelayout={onRelayout} hovered={hovered} onHover={onHover} />
         </SubTabBody>
         <SubTabBody active={sub === 'y'}>
-          <AxisControls axis="y" params={params} resolved={resolved} axes={axes}
+          <AxisControls axis="y" params={params} resolved={resolved} axes={axes} present={present.bandY}
             onParamChange={onParamChange} onRelayout={onRelayout} hovered={hovered} onHover={onHover} />
         </SubTabBody>
         <SubTabBody active={sub === 'topological'}>
