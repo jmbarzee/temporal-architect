@@ -9,12 +9,20 @@
 // using node's global WebSocket (node >= 22). No puppeteer, no playwright.
 //
 //   node verify/screenshot.mjs <unit> [--port 5178] [--out kickoff/screenshots]
-//       [--tab Gravity] [--subtab "Y Axis"] [--select gravity-axis-y=scalar:reach]
+//       [--tab Gravity] [--subtab "Y Axis"] [--select gravity-axis-y=scalar:reach] [--dark]
 //
 // The three optional flags steer the control-panel capture: click a panel tab
 // by its label, then a sub-tab by its label (tabs are buttons or `role=tab`), then set a <select> by element id
 // (through React's own setter, so the app sees a change). A unit whose
 // evidence lives behind a tab names it here rather than growing this script.
+//
+// The theme is pinned, never inherited from the machine: the light run
+// emulates `prefers-color-scheme: light`; `--dark` emulates dark AND marks
+// the document the way a dark host does (`.vscode-dark` on <body>), and names
+// the captures `-dark`. Each capture reports the pane's resolved theme
+// (`data-theme` on `.graph-view`) and the run fails if it is not the one
+// asked for — a theme-aware canvas (D57) has two appearances to evidence,
+// and a capture in the wrong one is not evidence (REVIEW_6 C2).
 //
 // Expects a dev server already running (`npm run dev`), because the gate is a
 // pass over the *running app*, not over a build artifact.
@@ -45,6 +53,8 @@ const outDir = flag('--out', 'kickoff/screenshots')
 const panelTab = flag('--tab', null)
 const panelSubtab = flag('--subtab', null)
 const panelSelect = flag('--select', null)
+const dark = args.includes('--dark')
+const suffix = dark ? '-dark' : ''
 const cdpPort = 9222
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -197,8 +207,10 @@ async function main() {
 
   for (const fixture of FIXTURES) {
     const url = `http://localhost:${port}/?ast=/fixtures/${fixture}.json`
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }] }, sessionId)
     await send('Page.navigate', { url }, sessionId)
     await sleep(2500)
+    if (dark) await evalIn(`document.body.classList.add('vscode-dark'), 'dark'`)
     await evalIn(ERRORS_HOOK)
     const tab = await evalIn(CLICK_GRAPH)
     if (tab !== 'ok') throw new Error(`${fixture}: ${tab}`)
@@ -217,7 +229,7 @@ async function main() {
     const errors = await evalIn('JSON.stringify(window.__twfErrors || [])')
 
     const { data } = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
-    const file = join(outDir, `${unit}-${fixture}.png`)
+    const file = join(outDir, `${unit}-${fixture}${suffix}.png`)
     writeFileSync(file, Buffer.from(data, 'base64'))
     // A second capture with the control panel open: the requirements that live
     // in the panel (its tabs, maps and curves) are otherwise invisible to this
@@ -232,10 +244,11 @@ async function main() {
       await sleep(4000)                     // a new axis relays out; let it settle
     }
     const errorsAfterPanel = await evalIn('JSON.stringify(window.__twfErrors || [])')
+    const theme = await evalIn(`(document.querySelector('.graph-view') || {}).dataset?.theme || 'no pane'`)
     const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
-    writeFileSync(join(outDir, `${unit}-${fixture}-controls.png`), Buffer.from(shot.data, 'base64'))
-    results.push({ fixture, counts, chips, errors: errorsAfterPanel, file, panel })
-    console.log(`  ${fixture.padEnd(22)} ${counts.padEnd(20)} chips=${chips}  panel=${panel}  errors=${errorsAfterPanel}`)
+    writeFileSync(join(outDir, `${unit}-${fixture}-controls${suffix}.png`), Buffer.from(shot.data, 'base64'))
+    results.push({ fixture, counts, chips, errors: errorsAfterPanel, file, panel, theme })
+    console.log(`  ${fixture.padEnd(22)} ${counts.padEnd(20)} theme=${theme} chips=${chips}  panel=${panel}  errors=${errorsAfterPanel}`)
   }
 
   console.log(`\nwrote ${results.length} screenshot(s) to ${outDir}/`)
@@ -246,6 +259,11 @@ async function main() {
   }
   // A panel step that did not apply is a capture of the wrong state, not
   // evidence: the exit status says so rather than leaving it to the reader.
+  const wrongTheme = results.filter(r => r.theme !== (dark ? 'dark' : 'light'))
+  if (wrongTheme.length) {
+    console.error('WRONG THEME on: ' + wrongTheme.map(b => `${b.fixture} (${b.theme})`).join(', '))
+    process.exitCode = 1
+  }
   const missed = results.filter(r => /no toggle|no button|no select|refused/.test(r.panel))
   if (missed.length) {
     console.error('PANEL STEP DID NOT APPLY on: ' + missed.map(b => `${b.fixture} (${b.panel})`).join(', '))

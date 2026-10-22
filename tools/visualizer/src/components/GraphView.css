@@ -123,17 +123,13 @@
 
 .graph-toolbar-btn:hover {
   color: var(--color-text);
-  border-color: var(--color-workflow);
+  border-color: var(--accent);
 }
 
 .graph-toolbar-btn.active {
-  color: var(--color-workflow);
-  border-color: var(--color-workflow);
-  background: rgba(139, 126, 200, 0.08);
-}
-
-.vscode-dark .graph-toolbar-btn.active {
-  background: rgba(168, 155, 216, 0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
 }
 
 /* Graph Canvas Area — fills the full viewport. The floating overlay
@@ -178,11 +174,7 @@
   z-index: 20;
   min-width: 140px;
   max-width: 220px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-.vscode-dark .graph-hover-tooltip {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--tooltip-shadow);
 }
 
 /* "Show in Tree" button inside the hover tooltip. */
@@ -202,13 +194,9 @@
 }
 
 .tooltip-show-in-tree:hover {
-  color: var(--color-workflow);
-  border-color: var(--color-workflow);
-  background: rgba(139, 126, 200, 0.08);
-}
-
-.vscode-dark .tooltip-show-in-tree:hover {
-  background: rgba(168, 155, 216, 0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
 }
 
 .tooltip-identity {
@@ -340,7 +328,7 @@
 }
 
 .graph-search-result:hover {
-  background: rgba(139, 126, 200, 0.08);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
 }
 
 .graph-search-result-type {
@@ -404,16 +392,12 @@
 .graph-shortcut-key {
   font-family: var(--font-mono);
   font-size: 10px;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--key-bg);
   border: 1px solid var(--color-border);
   border-radius: 3px;
   padding: 1px 5px;
   min-width: 80px;
   color: var(--color-text);
-}
-
-.vscode-dark .graph-shortcut-key {
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .graph-shortcut-desc {

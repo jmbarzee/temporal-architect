@@ -6,19 +6,36 @@
   padding: 0;
 }
 
-:root {
-  /* Light theme (default) */
+:root,
+[data-theme="light"] {
+  /* Light theme (default), and a pane that chose light inside a dark host */
   --color-workflow: #8B7EC8;
   --color-activity: #7CB9E8;
   --color-signal: #E8A0BF;
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
 
-  /* Graph node-type palette — generated at runtime from NODE_TYPE_REGISTRY
-     via mountNodeTypeStyles() in App.tsx / webview.tsx.
-     The CSS variables --color-<suffix> and --color-<suffix>-border for each
-     node type are injected into :root by that call; they are not hard-coded
-     here so that adding a new node type only requires one registry entry. */
+  /* The chrome's own tokens (D58). The accent is the chrome's, not a node
+     value's fill — they coincide by taste, not by identity. The tint
+     percentages are what color-mix() dilutes an accent or a chip's tint to;
+     the dark block raises them because the surface is darker. Every rule
+     that differs by theme reads one of these; no rule keys on an ancestor
+     class, so the nearest themed root wins (a pane dark in a light host, or
+     light in a dark one). */
+  --accent: #8B7EC8;
+  --accent-tint-weak: 5%;
+  --accent-tint-hover: 8%;
+  --accent-tint-active: 12%;
+  --accent-tint-ring: 32%;
+  --hover-bg: rgba(0, 0, 0, 0.04);
+  --inset-bg: rgba(0, 0, 0, 0.02);
+  --key-bg: rgba(0, 0, 0, 0.05);
+  --tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+
+  /* Graph node-type palette: the graph pane carries --color-<suffix> and
+     --color-<suffix>-border for every style value inline, in its resolved
+     theme (D57). mountNodeTypeStyles() publishes the same variables on :root
+     for a host's own CSS. */
 
   --color-bg: #f8fafc;
   --color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -56,6 +73,15 @@
      generated at runtime by mountNodeTypeStyles() and injected into the
      same .vscode-dark / [data-theme="dark"] selector. Only structural /
      non-node-type overrides remain here. */
+  --accent: #A89BD8;
+  --accent-tint-weak: 6%;
+  --accent-tint-hover: 12%;
+  --accent-tint-active: 18%;
+  --accent-tint-ring: 40%;
+  --hover-bg: rgba(255, 255, 255, 0.04);
+  --inset-bg: rgba(255, 255, 255, 0.04);
+  --key-bg: rgba(255, 255, 255, 0.06);
+  --tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   --color-bg: #1e1e1e;
   --color-bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
   --color-text: #d4d4d4;

@@ -1,55 +1,18 @@
-// Runtime CSS generator for node-type variables and component rules.
+// Runtime CSS for a host's own stylesheets: every style value's colour, in
+// both themes, published on :root as `--color-<suffix>` / `-border`.
 //
-// Called once at app mount to inject a <style> element derived entirely from
-// NODE_TYPE_REGISTRY. Deletes the need for hand-maintained per-type blocks in
-// index.css: adding a new node type to the registry automatically produces
-// its CSS variables and graph-control-typed-* colour assignment.
+// The library's own components no longer read these — the graph pane carries
+// the same variables inline, in its resolved theme (D57) — so this exists for
+// a host whose CSS styles something of its own by node type. Mounted once at
+// app start; idempotent. The text is the scheme's (`schemeStylesheet`); this
+// module only mounts it for the shipped taxonomy.
 
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from './node-types'
+import { DEFAULT_ONTOLOGY } from './node-types'
+import { schemeStylesheet } from '../graph/scheme'
 
-/**
- * Generate the CSS string that should be injected at mount time.
- * Produces:
- *   :root { --color-<suffix>: <fill>; --color-<suffix>-border: <border>; ... }
- *   [data-theme="dark"], .vscode-dark { ... dark overrides ... }
- *   .graph-control-typed-<nodeType> { --type-color: var(--color-<suffix>); }
- */
+/** The CSS string to inject for the shipped taxonomy. */
 export function buildNodeTypeCSS(): string {
-  const lightVars: string[] = []
-  const darkVars: string[] = []
-  const typedClasses: string[] = []
-
-  for (const t of ALL_NODE_TYPES) {
-    const def = NODE_TYPE_REGISTRY[t]
-    const s = def.color.cssVarSuffix
-    const fill       = def.color.fill
-    const border     = def.color.border
-    const fillDark   = def.color.fillDark   ?? fill
-    const borderDark = def.color.borderDark ?? border
-
-    // Light theme CSS variables
-    lightVars.push(`  --color-${s}: ${fill};`)
-    lightVars.push(`  --color-${s}-border: ${border};`)
-
-    // Dark theme overrides (only emit if different from light)
-    if (fillDark !== fill)     darkVars.push(`  --color-${s}: ${fillDark};`)
-    if (borderDark !== border) darkVars.push(`  --color-${s}-border: ${borderDark};`)
-
-    // Control panel typed row: maps nodeType class → CSS var
-    typedClasses.push(`.graph-control-typed-${t} { --type-color: var(--color-${s}); }`)
-
-    // Dual-range fill and thumb colours
-  }
-
-  const parts: string[] = [
-    `:root {\n${lightVars.join('\n')}\n}`,
-  ]
-  if (darkVars.length > 0) {
-    parts.push(`.vscode-dark,\n[data-theme="dark"] {\n${darkVars.join('\n')}\n}`)
-  }
-  parts.push(...typedClasses)
-
-  return parts.join('\n')
+  return schemeStylesheet(DEFAULT_ONTOLOGY)
 }
 
 /** Mount (or refresh) the node-type stylesheet. Idempotent — reuses the same <style> element on re-calls. */

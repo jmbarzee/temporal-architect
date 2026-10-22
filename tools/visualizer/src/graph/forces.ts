@@ -417,13 +417,14 @@ export function bandOverlay(
   params: GravityParams,
   resolved: ResolvedPhysics,
   frame: LayoutFrame,
-  colorOf: (axis: ResolvedAxis<BandRange>, bucket: string) => string,
+  /** A bucket's colour, or undefined for a bucket with none — the canvas then draws its one neutral. */
+  colorOf: (axis: ResolvedAxis<BandRange>, bucket: string) => string | undefined,
 ): BandOverlay {
   const all = [...nodes]
   const acting = bandAxesActing(params)
   const colors = new Map<string, string>()
   const withColors = (axis: ResolvedAxis<BandRange>, stripes: BandStripe[]) => {
-    for (const st of stripes) for (const b of st.buckets) if (!colors.has(b)) colors.set(b, colorOf(axis, b))
+    for (const st of stripes) for (const b of st.buckets) if (!colors.has(b)) { const c = colorOf(axis, b); if (c !== undefined) colors.set(b, c) }
     return stripes
   }
   if (!acting) return { acting, x: [], y: [], rings: [], colors }
@@ -435,7 +436,7 @@ export function bandOverlay(
       const list = byRadius.get(radius)
       if (list) list.push(bucket)
       else byRadius.set(radius, [bucket])
-      if (!colors.has(bucket)) colors.set(bucket, colorOf(resolved.bandY, bucket))
+      if (!colors.has(bucket)) { const c = colorOf(resolved.bandY, bucket); if (c !== undefined) colors.set(bucket, c) }
     }
     return { acting, x: [], y: [], rings: [...byRadius].map(([radius, buckets]) => ({ radius, buckets })), colors }
   }
@@ -474,6 +475,14 @@ export function bandStripes(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<
  * endpoints on the first tick.
  */
 export const ABSENT_EDGE_PHYSICS: SpringPhysics = { strength: 0, distance: 0 }
+
+/**
+ * What a control token needs of a spring category: its identity, its two
+ * endpoint buckets, its kind and its words. A declared edge type satisfies it;
+ * a pair category synthesises it — and neither needs physics or a stroke here
+ * (physics is `physicsFor`, and a pair is a spring, never a stroke).
+ */
+export type EdgeCategoryDescription = Pick<EdgeTypeDefinition, 'id' | 'label' | 'sourceType' | 'targetType' | 'category' | 'tooltip'>
 
 /**
  * What a category starts from when nothing declared a spring for it: the mean
@@ -534,7 +543,7 @@ export interface ResolvedSprings {
   /** Effective physics: the override where one exists, else the declared or typical spring. */
   physicsFor(id: EdgeTypeId): SpringPhysics
   /** What a control surface shows for a category — the declared entry, or one synthesized from a pair id. */
-  describe(id: EdgeTypeId): EdgeTypeDefinition | undefined
+  describe(id: EdgeTypeId): EdgeCategoryDescription | undefined
 }
 
 export function resolveSprings(pair: PairTuning, ontology: Ontology): ResolvedSprings {

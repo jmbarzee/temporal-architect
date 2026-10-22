@@ -8,7 +8,6 @@ import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
 import { filterOfSets } from '../filter/types'
 import { buildGraph } from '../adapter/build'
 import { edgeTypeFor } from '../adapter/edge-types'
-import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import { payloadString } from '../graph/model'
 import { Simulation, axisOptions, fitsCeiling, pairTuning } from '../graph/simulation'
@@ -57,19 +56,16 @@ function nodeRow(n: GraphNode): Json {
 
 /**
  * One edge as a single diffable line:
- *   `<edgeTypeId>|<styleKey>|<edgeType>|<source> -> <target>[|ep=…][|dispatch=…]`
- * Both classifiers ride along, so the T11 divergence between them is visible
- * per edge rather than only in aggregate.
+ *   `<edgeTypeId>|<edgeType>|<source> -> <target>[|ep=…][|dispatch=…]`
+ * One classifier (D57): the stroke is the type's, so the type is the line.
  */
 function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): string {
   const src = nodeOf(e.sourceId)
   const tgt = nodeOf(e.targetId)
   const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
   const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
-  const styleKey = src && tgt ? edgeStyleKeyFor(e, srcValue, tgtValue) : 'UNRESOLVED-ENDPOINT'
   const parts = [
     edgeTypeFor(e, srcValue, tgtValue),
-    styleKey,
     e.dimensions[RELATION_DIMENSION],
     `${e.sourceId} -> ${e.targetId}`,
   ]
@@ -146,15 +142,15 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
         const tgt = nodeOf(e.targetId)
         return edgeTypeFor(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt))
       })),
-      byStyleKey: histogram(
-        graph.edges.map(e => {
-          const src = nodeOf(e.sourceId)
-          const tgt = nodeOf(e.targetId)
-          return src && tgt
-            ? edgeStyleKeyFor(e, DEFAULT_ONTOLOGY.valueFor(src), DEFAULT_ONTOLOGY.valueFor(tgt))
-            : 'UNRESOLVED-ENDPOINT'
-        }),
-      ),
+      // The stroke each edge draws with, read the way the canvas reads it —
+      // the type's stroke through the taxonomy (D57, D58): the composition
+      // the 66 colour changes of Unit 6 are pinned by.
+      byStroke: histogram(graph.edges.map(e => {
+        const src = nodeOf(e.sourceId)
+        const tgt = nodeOf(e.targetId)
+        const st = DEFAULT_ONTOLOGY.edgeStrokeFor(DEFAULT_ONTOLOGY.resolveEdgeType(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt)))
+        return `${st.color.light}/${st.color.dark}|${st.dash.join(',')}|${st.width}`
+      })),
     },
     // Every axis push/pull may key on for this graph, what each would cost on
     // the control surface, and the spring categories some edge falls in under

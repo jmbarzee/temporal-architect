@@ -199,7 +199,7 @@
   position: relative;
   display: inline-block;
 }
-.switch.on .switch-track { background: var(--color-workflow); }
+.switch.on .switch-track { background: var(--accent); }
 .switch-knob {
   position: absolute;
   top: 2px;
@@ -264,9 +264,8 @@
 }
 
 /* ── Type colour theming ───────────────────────────────────────────────────
-   Per-type rows (charges, bands, edge endpoints) read from --type-color.
-   The .graph-control-typed-<nodeType> assignments that set --type-color are
-   generated at runtime by mountNodeTypeStyles() in App.tsx / webview.tsx.
+   Per-type rows (charges, bands, edge endpoints) read from --type-color,
+   which each typed row sets inline from the pane's --color-<suffix> (D57).
 */
 
 /* Rows that carry a single node type get a coloured left-accent and tint
@@ -325,7 +324,7 @@
 }
 
 .graph-control-checkbox input[type="checkbox"] {
-  accent-color: var(--color-workflow);
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
@@ -386,7 +385,7 @@
 
 .force-subtab.active {
   color: var(--color-text);
-  border-bottom-color: var(--color-workflow);
+  border-bottom-color: var(--accent);
 }
 
 .force-subtab-label { font-weight: 600; }

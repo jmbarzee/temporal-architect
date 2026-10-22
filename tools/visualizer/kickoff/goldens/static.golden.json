@@ -1231,43 +1231,36 @@
   },
   "generatedCss": [
     ":root {",
-    "  --color-namespace: #475569;",
-    "  --color-namespace-border: #1E293B;",
-    "  --color-nexus-endpoint: #9F1239;",
-    "  --color-nexus-endpoint-border: #4C0519;",
-    "  --color-worker: #94A3B8;",
-    "  --color-worker-border: #475569;",
-    "  --color-nexus-service: #DB2777;",
-    "  --color-nexus-service-border: #831843;",
-    "  --color-workflow: #8B7EC8;",
-    "  --color-workflow-border: #5D4F95;",
-    "  --color-nexus-operation: #F9A8D4;",
-    "  --color-nexus-operation-border: #BE185D;",
-    "  --color-activity: #7CB9E8;",
-    "  --color-activity-border: #4A8BC2;",
+    "  --node-namespace: #475569;",
+    "  --node-namespace-border: #1E293B;",
+    "  --node-nexus-endpoint: #9F1239;",
+    "  --node-nexus-endpoint-border: #4C0519;",
+    "  --node-worker: #94A3B8;",
+    "  --node-worker-border: #475569;",
+    "  --node-nexus-service: #DB2777;",
+    "  --node-nexus-service-border: #831843;",
+    "  --node-workflow: #8B7EC8;",
+    "  --node-workflow-border: #5D4F95;",
+    "  --node-nexus-operation: #F9A8D4;",
+    "  --node-nexus-operation-border: #BE185D;",
+    "  --node-activity: #7CB9E8;",
+    "  --node-activity-border: #4A8BC2;",
     "}",
     ".vscode-dark,",
     "[data-theme=\"dark\"] {",
-    "  --color-namespace: #94A3B8;",
-    "  --color-namespace-border: #475569;",
-    "  --color-nexus-endpoint: #BE123C;",
-    "  --color-nexus-endpoint-border: #881337;",
-    "  --color-worker: #CBD5E1;",
-    "  --color-worker-border: #64748B;",
-    "  --color-nexus-service: #EC4899;",
-    "  --color-nexus-service-border: #9D174D;",
-    "  --color-workflow: #A89BD8;",
-    "  --color-workflow-border: #6B5BB0;",
-    "  --color-nexus-operation-border: #DB2777;",
-    "  --color-activity-border: #5DA8DD;",
-    "}",
-    ".graph-control-typed-namespace { --type-color: var(--color-namespace); }",
-    ".graph-control-typed-nexusEndpoint { --type-color: var(--color-nexus-endpoint); }",
-    ".graph-control-typed-worker { --type-color: var(--color-worker); }",
-    ".graph-control-typed-nexusService { --type-color: var(--color-nexus-service); }",
-    ".graph-control-typed-workflow { --type-color: var(--color-workflow); }",
-    ".graph-control-typed-nexusOperation { --type-color: var(--color-nexus-operation); }",
-    ".graph-control-typed-activity { --type-color: var(--color-activity); }"
+    "  --node-namespace: #94A3B8;",
+    "  --node-namespace-border: #475569;",
+    "  --node-nexus-endpoint: #BE123C;",
+    "  --node-nexus-endpoint-border: #881337;",
+    "  --node-worker: #CBD5E1;",
+    "  --node-worker-border: #64748B;",
+    "  --node-nexus-service: #EC4899;",
+    "  --node-nexus-service-border: #9D174D;",
+    "  --node-workflow: #A89BD8;",
+    "  --node-workflow-border: #6B5BB0;",
+    "  --node-nexus-operation-border: #DB2777;",
+    "  --node-activity-border: #5DA8DD;",
+    "}"
   ],
   "nodeTypes": {
     "activity": {
@@ -1323,7 +1316,7 @@
         "r": 20
       },
       "sliderLabel": "NS",
-      "summaryKind": "containerCount",
+      "summaryKind": "children",
       "tier": "container"
     },
     "nexusEndpoint": {
@@ -1407,7 +1400,7 @@
         "r": 20
       },
       "sliderLabel": "Nx",
-      "summaryKind": "hostRegistrations",
+      "summaryKind": "children",
       "tier": "host"
     },
     "worker": {
@@ -1435,7 +1428,7 @@
         "r": 20
       },
       "sliderLabel": "Wk",
-      "summaryKind": "hostRegistrations",
+      "summaryKind": "children",
       "tier": "host"
     },
     "workflow": {
@@ -1508,7 +1501,7 @@
       "alternateNodesUnderShippedTaxonomy": {
         "summaries": [
           "wf=→1",
-          "wk=1wf"
+          "wk=1 Wf"
         ],
         "visibleNodeIds": [
           "wf",
@@ -1522,7 +1515,7 @@
       "shippedNodesOnShippedKeys": {
         "summaries": [
           "wf=→1",
-          "wk=1wf"
+          "wk=1 Wf"
         ],
         "visibleNodeIds": [
           "wf",
@@ -2338,6 +2331,290 @@
       "presentRingOutermost": false
     }
   },
+  "schemeProbes": {
+    "choices": {
+      "absent": "system",
+      "bogus": "system",
+      "dark": "dark",
+      "light": "light"
+    },
+    "defaultVars": {
+      "dark": {
+        "--node-activity": "#7CB9E8",
+        "--node-activity-border": "#5DA8DD",
+        "--node-namespace": "#94A3B8",
+        "--node-namespace-border": "#475569",
+        "--node-nexus-endpoint": "#BE123C",
+        "--node-nexus-endpoint-border": "#881337",
+        "--node-nexus-operation": "#F9A8D4",
+        "--node-nexus-operation-border": "#DB2777",
+        "--node-nexus-service": "#EC4899",
+        "--node-nexus-service-border": "#9D174D",
+        "--node-worker": "#CBD5E1",
+        "--node-worker-border": "#64748B",
+        "--node-workflow": "#A89BD8",
+        "--node-workflow-border": "#6B5BB0"
+      },
+      "light": {
+        "--node-activity": "#7CB9E8",
+        "--node-activity-border": "#4A8BC2",
+        "--node-namespace": "#475569",
+        "--node-namespace-border": "#1E293B",
+        "--node-nexus-endpoint": "#9F1239",
+        "--node-nexus-endpoint-border": "#4C0519",
+        "--node-nexus-operation": "#F9A8D4",
+        "--node-nexus-operation-border": "#BE185D",
+        "--node-nexus-service": "#DB2777",
+        "--node-nexus-service-border": "#831843",
+        "--node-worker": "#94A3B8",
+        "--node-worker-border": "#475569",
+        "--node-workflow": "#8B7EC8",
+        "--node-workflow-border": "#5D4F95"
+      }
+    },
+    "markers": {
+      "darkHost": "dark",
+      "dataThemeDark": "dark",
+      "dataThemeOther": null,
+      "highContrastDark": "dark",
+      "highContrastLight": "light",
+      "lightHost": "light",
+      "none": null
+    },
+    "normaliser": {
+      "#AABBCC": {
+        "rgb": [
+          170,
+          187,
+          204
+        ],
+        "withAlpha": "rgba(170, 187, 204, 0.5)"
+      },
+      "#abc": {
+        "rgb": [
+          170,
+          187,
+          204
+        ],
+        "withAlpha": "rgba(170, 187, 204, 0.5)"
+      },
+      "<empty>": {
+        "rgb": null,
+        "withAlpha": "rgba(148, 163, 184, 0.5)"
+      },
+      "not-a-colour": {
+        "rgb": null,
+        "withAlpha": "rgba(148, 163, 184, 0.5)"
+      },
+      "rgb(1, 2, 3)": {
+        "rgb": [
+          1,
+          2,
+          3
+        ],
+        "withAlpha": "rgba(1, 2, 3, 0.5)"
+      },
+      "rgb(7 8 9 / 50%)": {
+        "rgb": [
+          7,
+          8,
+          9
+        ],
+        "withAlpha": "rgba(7, 8, 9, 0.5)"
+      },
+      "rgba(4,5,6,0.5)": {
+        "rgb": [
+          4,
+          5,
+          6
+        ],
+        "withAlpha": "rgba(4, 5, 6, 0.5)"
+      },
+      "var(--x)": {
+        "rgb": null,
+        "withAlpha": "rgba(148, 163, 184, 0.5)"
+      }
+    },
+    "refusals": {
+      "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex or rgb() colour",
+      "emptySuffix": "taxonomy is incoherent: style value \"工作流\" has no custom-property name (its id kebab-cases to nothing)",
+      "namedColour": "taxonomy is incoherent: nodeStyles.worker.color.light.fill is \"slategray\", not a hex or rgb() colour",
+      "sharedSuffix": "taxonomy is incoherent: style values \"nexusEndpoint\" and \"nexus-endpoint\" share the custom-property name --node-nexus-endpoint"
+    },
+    "secondScheme": {
+      "allDiffer": true,
+      "sameNames": true
+    },
+    "sizes": {
+      "activity": {
+        "iconSize": 10,
+        "r": 8
+      },
+      "namespace": {
+        "iconSize": 18,
+        "r": 20
+      },
+      "nexusEndpoint": {
+        "iconSize": 14,
+        "r": 15
+      },
+      "nexusOperation": {
+        "iconSize": 12,
+        "r": 11
+      },
+      "nexusService": {
+        "iconSize": 18,
+        "r": 20
+      },
+      "worker": {
+        "iconSize": 18,
+        "r": 20
+      },
+      "workflow": {
+        "iconSize": 12,
+        "r": 11
+      }
+    },
+    "strokeForUnknown": "edge type \"not-a-type\" has no stroke: the taxonomy does not declare it",
+    "strokes": {
+      "linkEndpointToNamespace": {
+        "alpha": 0.35,
+        "dark": "#64748B",
+        "dash": [
+          3,
+          4
+        ],
+        "light": "#94A3B8",
+        "width": 1
+      },
+      "linkEndpointToOperation": {
+        "alpha": 0.55,
+        "dark": "#BE123C",
+        "dash": [
+          3,
+          4
+        ],
+        "light": "#9F1239",
+        "width": 1.2
+      },
+      "linkNexusToOperation": {
+        "alpha": 0.55,
+        "dark": "#F472B6",
+        "dash": [
+          3,
+          4
+        ],
+        "light": "#DB2777",
+        "width": 1.2
+      },
+      "linkNsToNs": {
+        "alpha": 0.85,
+        "dark": "#94A3B8",
+        "dash": [],
+        "light": "#475569",
+        "width": 1.8
+      },
+      "linkNsToWorker": {
+        "alpha": 0.35,
+        "dark": "#64748B",
+        "dash": [
+          3,
+          4
+        ],
+        "light": "#94A3B8",
+        "width": 1
+      },
+      "linkOperationToActivity": {
+        "alpha": 0.85,
+        "dark": "#F9A8D4",
+        "dash": [],
+        "light": "#F472B6",
+        "width": 1.5
+      },
+      "linkOperationToWorkflow": {
+        "alpha": 0.85,
+        "dark": "#F9A8D4",
+        "dash": [],
+        "light": "#F472B6",
+        "width": 1.5
+      },
+      "linkSignalSend": {
+        "alpha": 0.7,
+        "dark": "#A89BD8",
+        "dash": [],
+        "light": "#8B7EC8",
+        "width": 1.4
+      },
+      "linkWorkerToActivity": {
+        "alpha": 0.35,
+        "dark": "#64748B",
+        "dash": [
+          3,
+          4
+        ],
+        "light": "#94A3B8",
+        "width": 1
+      },
+      "linkWorkerToNexus": {
+        "alpha": 0.35,
+        "dark": "#64748B",
+        "dash": [
+          3,
+          4
+        ],
+        "light": "#94A3B8",
+        "width": 1
+      },
+      "linkWorkerToWorker": {
+        "alpha": 0.75,
+        "dark": "#CBD5E1",
+        "dash": [],
+        "light": "#64748B",
+        "width": 1.6
+      },
+      "linkWorkerToWorkflow": {
+        "alpha": 0.35,
+        "dark": "#64748B",
+        "dash": [
+          3,
+          4
+        ],
+        "light": "#94A3B8",
+        "width": 1
+      },
+      "linkWorkflowToActivity": {
+        "alpha": 0.7,
+        "dark": "#7CB9E8",
+        "dash": [],
+        "light": "#4A8BC2",
+        "width": 1.4
+      },
+      "linkWorkflowToOperation": {
+        "alpha": 0.85,
+        "dark": "#F9A8D4",
+        "dash": [],
+        "light": "#F472B6",
+        "width": 1.5
+      },
+      "linkWorkflowToWorkflow": {
+        "alpha": 0.7,
+        "dark": "#A89BD8",
+        "dash": [],
+        "light": "#8B7EC8",
+        "width": 1.4
+      }
+    },
+    "suffixes": {
+      "ALLCAPS": "allcaps",
+      "a1B2": "a1-b2",
+      "namespace": "namespace",
+      "nexusEndpoint": "nexus-endpoint",
+      "nexusService": "nexus-service",
+      "twoWords": "two-words",
+      "with space": "with-space"
+    },
+    "variableFor": "--node-nexus-endpoint"
+  },
   "syntheticVisible": {
     "cases": {
       "all types, a file no node has": {
@@ -2365,30 +2642,30 @@
           "wkB": 0
         },
         "graduatedEdges": [
-          "linkEndpointToNamespace|containment|containment|ep -> ns",
-          "linkEndpointToOperation|epComposition|containment|op -> ep",
-          "linkNexusToOperation|opContainment|containment|op -> svc",
-          "linkNsToWorker|containment|containment|wk -> ns",
-          "linkNsToWorker|containment|containment|wkB -> ns",
-          "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
-          "linkSignalSend|workflowDep|dependency|caller -> backing",
-          "linkWorkerToActivity|containment|containment|act -> wk",
-          "linkWorkerToActivity|containment|containment|actCopy -> wkB",
-          "linkWorkerToNexus|containment|containment|svc -> wk",
-          "linkWorkerToWorkflow|containment|containment|backing -> wkB",
-          "linkWorkerToWorkflow|containment|containment|caller -> wk",
-          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
-          "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
+          "linkEndpointToNamespace|containment|ep -> ns",
+          "linkEndpointToOperation|containment|op -> ep",
+          "linkNexusToOperation|containment|op -> svc",
+          "linkNsToWorker|containment|wk -> ns",
+          "linkNsToWorker|containment|wkB -> ns",
+          "linkOperationToWorkflow|dependency|op -> backing",
+          "linkSignalSend|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|act -> wk",
+          "linkWorkerToActivity|containment|actCopy -> wkB",
+          "linkWorkerToNexus|containment|svc -> wk",
+          "linkWorkerToWorkflow|containment|backing -> wkB",
+          "linkWorkerToWorkflow|containment|caller -> wk",
+          "linkWorkflowToActivity|dependency|caller -> act",
+          "linkWorkflowToOperation|dependency|caller -> op"
         ],
         "nodeSummaries": {
           "act": "←1",
           "backing": "←2",
           "caller": "→3",
-          "ns": "2 workers · 1 endpoint",
+          "ns": "1 Ep · 2 Wk",
           "op": "→1 ←1",
-          "svc": "1 op",
-          "wk": "1wf · 1act · 1nxs",
-          "wkB": "1wf · 1act"
+          "svc": "1 Op",
+          "wk": "1 Nx · 1 Wf · 1 Act",
+          "wkB": "1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "act",
@@ -2416,25 +2693,25 @@
           "wk": 0.75
         },
         "graduatedEdges": [
-          "linkEndpointToNamespace|containment|containment|ep -> ns",
-          "linkEndpointToOperation|epComposition|containment|op -> ep",
-          "linkNexusToOperation|opContainment|containment|op -> svc",
-          "linkNsToNs|nexusCall|dependency|op -> ns",
-          "linkNsToWorker|containment|containment|wk -> ns",
-          "linkSignalSend|dependencyNsToNs|dependency|caller -> ns",
-          "linkWorkerToActivity|containment|containment|act -> wk",
-          "linkWorkerToNexus|containment|containment|svc -> wk",
-          "linkWorkerToWorkflow|containment|containment|caller -> wk",
-          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
-          "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
+          "linkEndpointToNamespace|containment|ep -> ns",
+          "linkEndpointToOperation|containment|op -> ep",
+          "linkNexusToOperation|containment|op -> svc",
+          "linkNsToNs|dependency|op -> ns",
+          "linkNsToWorker|containment|wk -> ns",
+          "linkSignalSend|dependency|caller -> ns",
+          "linkWorkerToActivity|containment|act -> wk",
+          "linkWorkerToNexus|containment|svc -> wk",
+          "linkWorkerToWorkflow|containment|caller -> wk",
+          "linkWorkflowToActivity|dependency|caller -> act",
+          "linkWorkflowToOperation|dependency|caller -> op"
         ],
         "nodeSummaries": {
           "act": "←1",
           "caller": "→3",
-          "ns": "1 worker · 1 endpoint",
+          "ns": "1 Ep · 1 Wk",
           "op": "→1 ←1",
-          "svc": "1 op",
-          "wk": "1wf · 1act · 1nxs"
+          "svc": "1 Op",
+          "wk": "1 Nx · 1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "act",
@@ -2455,11 +2732,11 @@
           "wkB": 0
         },
         "graduatedEdges": [
-          "linkWorkerToActivity|containment|containment|actCopy -> wkB",
-          "linkWorkerToWorkflow|containment|containment|backing -> wkB"
+          "linkWorkerToActivity|containment|actCopy -> wkB",
+          "linkWorkerToWorkflow|containment|backing -> wkB"
         ],
         "nodeSummaries": {
-          "wkB": "1wf · 1act"
+          "wkB": "1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "actCopy",
@@ -2483,30 +2760,30 @@
           "wkB": 0
         },
         "graduatedEdges": [
-          "linkEndpointToNamespace|containment|containment|ep -> ns",
-          "linkEndpointToOperation|epComposition|containment|op -> ep",
-          "linkNexusToOperation|opContainment|containment|op -> svc",
-          "linkNsToWorker|containment|containment|wk -> ns",
-          "linkNsToWorker|containment|containment|wkB -> ns",
-          "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
-          "linkSignalSend|workflowDep|dependency|caller -> backing",
-          "linkWorkerToActivity|containment|containment|act -> wk",
-          "linkWorkerToActivity|containment|containment|actCopy -> wkB",
-          "linkWorkerToNexus|containment|containment|svc -> wk",
-          "linkWorkerToWorkflow|containment|containment|backing -> wkB",
-          "linkWorkerToWorkflow|containment|containment|caller -> wk",
-          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
-          "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
+          "linkEndpointToNamespace|containment|ep -> ns",
+          "linkEndpointToOperation|containment|op -> ep",
+          "linkNexusToOperation|containment|op -> svc",
+          "linkNsToWorker|containment|wk -> ns",
+          "linkNsToWorker|containment|wkB -> ns",
+          "linkOperationToWorkflow|dependency|op -> backing",
+          "linkSignalSend|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|act -> wk",
+          "linkWorkerToActivity|containment|actCopy -> wkB",
+          "linkWorkerToNexus|containment|svc -> wk",
+          "linkWorkerToWorkflow|containment|backing -> wkB",
+          "linkWorkerToWorkflow|containment|caller -> wk",
+          "linkWorkflowToActivity|dependency|caller -> act",
+          "linkWorkflowToOperation|dependency|caller -> op"
         ],
         "nodeSummaries": {
           "act": "←1",
           "backing": "←2",
           "caller": "→3",
-          "ns": "2 workers · 1 endpoint",
+          "ns": "1 Ep · 2 Wk",
           "op": "→1 ←1",
-          "svc": "1 op",
-          "wk": "1wf · 1act · 1nxs",
-          "wkB": "1wf · 1act"
+          "svc": "1 Op",
+          "wk": "1 Nx · 1 Wf · 1 Act",
+          "wkB": "1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "act",
@@ -2554,24 +2831,24 @@
           "wkB": 0
         },
         "graduatedEdges": [
-          "linkEndpointToNamespace|containment|containment|ep -> ns",
-          "linkNsToWorker|containment|containment|wk -> ns",
-          "linkNsToWorker|containment|containment|wkB -> ns",
-          "linkWorkerToActivity|containment|containment|act -> wk",
-          "linkWorkerToActivity|containment|containment|actCopy -> wkB",
-          "linkWorkerToNexus|containment|containment|svc -> wk",
-          "linkWorkerToWorkflow|containment|containment|backing -> wkB",
-          "linkWorkerToWorkflow|containment|containment|caller -> wk",
-          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
-          "linkWorkflowToWorkflow|nexusCall|dependency|caller -> backing"
+          "linkEndpointToNamespace|containment|ep -> ns",
+          "linkNsToWorker|containment|wk -> ns",
+          "linkNsToWorker|containment|wkB -> ns",
+          "linkWorkerToActivity|containment|act -> wk",
+          "linkWorkerToActivity|containment|actCopy -> wkB",
+          "linkWorkerToNexus|containment|svc -> wk",
+          "linkWorkerToWorkflow|containment|backing -> wkB",
+          "linkWorkerToWorkflow|containment|caller -> wk",
+          "linkWorkflowToActivity|dependency|caller -> act",
+          "linkWorkflowToWorkflow|dependency|caller -> backing"
         ],
         "nodeSummaries": {
           "act": "←1",
           "backing": "←1",
           "caller": "→2",
-          "ns": "2 workers · 1 endpoint",
-          "wk": "1wf · 1act · 1nxs",
-          "wkB": "1wf · 1act"
+          "ns": "1 Ep · 2 Wk",
+          "wk": "1 Nx · 1 Wf · 1 Act",
+          "wkB": "1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "act",
@@ -2598,23 +2875,23 @@
           "op": 1
         },
         "graduatedEdges": [
-          "linkEndpointToNamespace|containment|containment|ep -> ns",
-          "linkEndpointToOperation|epComposition|containment|op -> ep",
-          "linkNsToWorker|containment|containment|op -> ns",
-          "linkOperationToWorkflow|nexusCall|dependency|op -> backing",
-          "linkSignalSend|workflowDep|dependency|caller -> backing",
-          "linkWorkerToActivity|containment|containment|act -> ns",
-          "linkWorkerToActivity|containment|containment|actCopy -> ns",
-          "linkWorkerToWorkflow|containment|containment|backing -> ns",
-          "linkWorkerToWorkflow|containment|containment|caller -> ns",
-          "linkWorkflowToActivity|workflowToActivity|dependency|caller -> act",
-          "linkWorkflowToOperation|nexusCall|dependency|caller -> op"
+          "linkEndpointToNamespace|containment|ep -> ns",
+          "linkEndpointToOperation|containment|op -> ep",
+          "linkNsToWorker|containment|op -> ns",
+          "linkOperationToWorkflow|dependency|op -> backing",
+          "linkSignalSend|dependency|caller -> backing",
+          "linkWorkerToActivity|containment|act -> ns",
+          "linkWorkerToActivity|containment|actCopy -> ns",
+          "linkWorkerToWorkflow|containment|backing -> ns",
+          "linkWorkerToWorkflow|containment|caller -> ns",
+          "linkWorkflowToActivity|dependency|caller -> act",
+          "linkWorkflowToOperation|dependency|caller -> op"
         ],
         "nodeSummaries": {
           "act": "←1",
           "backing": "←2",
           "caller": "→3",
-          "ns": "1 endpoint",
+          "ns": "1 Ep · 2 Wf · 1 Op · 2 Act",
           "op": "→1 ←1"
         },
         "visibleNodeIds": [

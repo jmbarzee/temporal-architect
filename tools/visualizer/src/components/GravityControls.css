@@ -68,7 +68,7 @@
 
 .gravity-topo-curve-line {
   fill: none;
-  stroke: var(--color-workflow);
+  stroke: var(--accent);
   stroke-width: 1.5;
 }
 

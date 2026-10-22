@@ -21,7 +21,6 @@ import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
 import type { SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
-import { edgeStyleKeyFor } from '../graph/edge-styles'
 import { edgeTypeFor } from '../adapter/edge-types'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
@@ -95,8 +94,7 @@ function edgeLine(e: GraphEdge): string {
   const tgt = BY_ID.get(e.targetId)
   const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
   const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
-  const style = src && tgt ? edgeStyleKeyFor(e, srcValue, tgtValue) : 'UNRESOLVED-ENDPOINT'
-  return `${edgeTypeFor(e, srcValue, tgtValue)}|${style}|${e.dimensions[RELATION_DIMENSION]}|${e.sourceId} -> ${e.targetId}`
+  return `${edgeTypeFor(e, srcValue, tgtValue)}|${e.dimensions[RELATION_DIMENSION]}|${e.sourceId} -> ${e.targetId}`
 }
 
 function state(types: string[], files: string[]): Json {

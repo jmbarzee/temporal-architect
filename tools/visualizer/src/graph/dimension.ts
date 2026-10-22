@@ -55,6 +55,8 @@ export interface FilterChip {
   id: string
   label: string
   icon?: string
+  /** A style value whose colour this chip wears, in the pane's theme (D57); none means neutral. */
+  tint?: DimensionValue
   /**
    * Hover text, when the label alone is not enough to identify the chip.
    *

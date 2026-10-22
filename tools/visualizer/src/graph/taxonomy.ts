@@ -14,6 +14,7 @@
 // wants them declares them on its own entry type, which extends these.
 
 import type { DimensionValue } from './dimension'
+import type { EdgeStroke, ThemedColor } from './scheme'
 
 // ── Node styles ─────────────────────────────────────────────────────────────
 
@@ -34,21 +35,8 @@ export interface NodeTypeDefinition {
   defaultVisible: boolean
 
   // --- Visual ---
-  color: {
-    /** Canvas fill colour (light theme). */
-    fill: string
-    /** Canvas border colour (light theme), ~3 stops darker than fill. */
-    border: string
-    /** Fill override for dark theme. Omitted when same as light fill. */
-    fillDark?: string
-    /** Border override for dark theme. Omitted when same as light border. */
-    borderDark?: string
-    /**
-     * CSS variable name stem. Generates `--color-<cssVarSuffix>` and
-     * `--color-<cssVarSuffix>-border` in the runtime style block.
-     */
-    cssVarSuffix: string
-  }
+  /** Fill and border in both themes; the canvas reads `color[theme]`. */
+  color: ThemedColor
   size: {
     /** Circle radius in world units. Hit-test radius = r + 4. */
     r: number
@@ -82,13 +70,11 @@ export interface NodeTypeDefinition {
 
   // --- Summary ---
   /**
-   * Which summary strategy to use for a node carrying this value.
-   *   'containerCount'    — count contained children
-   *   'hostRegistrations' — count contained registrations
-   *   'degree'            — count incoming + outgoing dependency edges
-   *   'none'              — no summary
+   * The glanceable summary for a node of this value: the children it contains,
+   * counted per style value and named by that value's abbreviation
+   * (`2 Wk · 1 Ep`); its dependency degree (`→3 ←2`); or nothing.
    */
-  summaryKind: 'containerCount' | 'hostRegistrations' | 'degree' | 'none'
+  summaryKind: 'children' | 'degree' | 'none'
 }
 
 // ── Edge types ──────────────────────────────────────────────────────────────
@@ -127,5 +113,7 @@ export interface EdgeTypeDefinition {
   category: EdgeCategoryKind
   /** Declared stiffness / rest length — what the category resolves to until tuned. */
   physics: SpringPhysics
+  /** How the canvas strokes an edge of this type, in both themes (D57). */
+  style: EdgeStroke
   tooltip: string
 }

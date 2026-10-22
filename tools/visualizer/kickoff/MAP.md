@@ -12,9 +12,9 @@ which is worth noticing rather than assuming.
 |---|---|---:|---|
 | `App.tsx` | neither | 5 | `main.tsx` |
 | `adapter/build.ts` | shim | 54 | **6** files |
-| `adapter/edge-types.ts` | shim | 160 | **4** files |
+| `adapter/edge-types.ts` | shim | 174 | **4** files |
 | `adapter/node-type-styles.ts` | shim | 1 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
-| `adapter/node-types.ts` | shim | 125 | **15** files |
+| `adapter/node-types.ts` | shim | 123 | **16** files |
 | `adapter/useGraphModel.ts` | shim | 3 | `components/GraphView.tsx` |
 | `components/AxisControls.tsx` | manifest |  | `components/GravityControls.tsx` |
 | `components/CanvasErrorBoundary.tsx` | manifest |  | `components/GraphView.tsx` |
@@ -23,7 +23,7 @@ which is worth noticing rather than assuming.
 | `components/ForceMap.tsx` | manifest |  | `components/AxisControls.tsx`, `components/ChargeControls.tsx`, `components/SpringControls.tsx` |
 | `components/GraphCanvas.tsx` | manifest | 3 | `components/GraphView.tsx` |
 | `components/GraphControlPanel.tsx` | manifest |  | **4** files |
-| `components/GraphView.tsx` | manifest | 30 | `components/WorkflowCanvas.tsx` |
+| `components/GraphView.tsx` | manifest | 24 | `components/WorkflowCanvas.tsx` |
 | `components/GravityControls.tsx` | manifest |  | `components/GraphCanvas.tsx`, `components/GraphControlPanel.tsx`, `components/graph-view/useHighlight.ts` |
 | `components/GroupsModal.tsx` | neither | 7 | `components/GraphView.tsx` |
 | `components/PinToggle.tsx` | manifest |  | `components/FilterBar.tsx` |
@@ -54,9 +54,10 @@ which is worth noticing rather than assuming.
 | `components/graph-view/useOntology.ts` | manifest |  | **12** files |
 | `components/graph-view/useSimulation.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useSimulationLoop.ts` | manifest |  | `components/GraphView.tsx` |
+| `components/graph-view/useTheme.ts` | manifest |  | `components/GraphView.tsx`, `components/WorkflowCanvas.tsx`, `verify/scheme-probes.ts` |
 | `components/graph-view/useViewport.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useVisibleGraph.ts` | manifest |  | `components/GraphView.tsx` |
-| `components/graph-view/visibleGraph.ts` | manifest | 17 | **8** files |
+| `components/graph-view/visibleGraph.ts` | manifest | 4 | **8** files |
 | `components/icons/GearIcons.tsx` | neither | 2 | `components/FilterBar.tsx`, `theme/temporal-theme.tsx` |
 | `components/protocol.ts` | neither | 3 | **6** files |
 | `filter/reconcile.ts` | manifest |  | `components/WorkflowCanvas.tsx`, `verify/static-golden.ts` |
@@ -64,15 +65,15 @@ which is worth noticing rather than assuming.
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **16** files |
 | `graph/dimension.ts` | manifest | 1 | **30** files |
-| `graph/edge-styles.ts` | manifest | 58 | **4** files |
 | `graph/forces.ts` | manifest |  | **18** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
 | `graph/highlight.ts` | manifest |  | `components/graph-view/useHighlight.ts` |
-| `graph/model.ts` | manifest |  | **22** files |
+| `graph/model.ts` | manifest |  | **21** files |
 | `graph/node-scale.ts` | manifest |  | **4** files |
-| `graph/ontology.ts` | manifest |  | **10** files |
+| `graph/ontology.ts` | manifest |  | **13** files |
 | `graph/rng.ts` | manifest |  | **4** files |
 | `graph/scalar.ts` | manifest |  | **9** files |
+| `graph/scheme.ts` | manifest | 3 | **12** files |
 | `graph/simulation.ts` | manifest | 1 | **25** files |
 | `graph/taxonomy.ts` | manifest | 1 | **9** files |
 | `graph/viewport.ts` | manifest |  | **4** files |
@@ -90,7 +91,8 @@ which is worth noticing rather than assuming.
 | `verify/ontology-probes.ts` | neither | 52 | `verify/static-golden.ts` |
 | `verify/rng.ts` | neither |  | `verify/force-probes.ts`, `verify/tier-b.ts`, `verify/tuning-probes.ts` |
 | `verify/scalar-probes.ts` | neither | 4 | `verify/static-golden.ts` |
-| `verify/snapshot.ts` | neither |  | **10** files |
+| `verify/scheme-probes.ts` | neither | 12 | `verify/static-golden.ts` |
+| `verify/snapshot.ts` | neither |  | **11** files |
 | `verify/static-golden.ts` | neither | 14 | `verify/main.ts` |
 | `verify/synthetic-visible.ts` | neither | 28 | `verify/static-golden.ts` |
 | `verify/tier-a.ts` | neither | 3 | `verify/main.ts`, `verify/scalar-probes.ts`, `verify/tuning-probes.ts` |
@@ -118,7 +120,8 @@ product will read in a later unit, or dead code with a pin.
 - `src/verify/ontology-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/rng.ts` (neither) — verify/force-probes.ts, verify/tier-b.ts, verify/tuning-probes.ts
 - `src/verify/scalar-probes.ts` (neither) — verify/static-golden.ts
-- `src/verify/snapshot.ts` (neither) — verify/force-probes.ts, verify/main.ts, verify/ontology-probes.ts, verify/scalar-probes.ts, verify/static-golden.ts, verify/synthetic-visible.ts, verify/tier-a.ts, verify/tier-b.ts, verify/tier-c.ts, verify/tuning-probes.ts
+- `src/verify/scheme-probes.ts` (neither) — verify/static-golden.ts
+- `src/verify/snapshot.ts` (neither) — verify/force-probes.ts, verify/main.ts, verify/ontology-probes.ts, verify/scalar-probes.ts, verify/scheme-probes.ts, verify/static-golden.ts, verify/synthetic-visible.ts, verify/tier-a.ts, verify/tier-b.ts, verify/tier-c.ts, verify/tuning-probes.ts
 - `src/verify/static-golden.ts` (neither) — verify/main.ts
 - `src/verify/synthetic-visible.ts` (neither) — verify/static-golden.ts
 - `src/verify/tier-a.ts` (neither) — verify/main.ts, verify/scalar-probes.ts, verify/tuning-probes.ts

@@ -103,7 +103,7 @@ function resolveDepEndpoint(
   return ancestor ? [ancestor] : []
 }
 
-// Glanceable per-node summary string, dispatched on the registry's summaryKind.
+// Glanceable per-node summary string, dispatched on the taxonomy's summaryKind.
 function computeGraphNodeSummary(
   node: SimNode,
   visibleEdges: GraphEdge[],
@@ -112,42 +112,24 @@ function computeGraphNodeSummary(
 ): string {
   const { summaryKind } = ontology.resolveNodeStyle(node)
 
-  if (summaryKind === 'containerCount') {
-    let workers = 0, endpoints = 0
-    for (const e of visibleEdges) {
-      if (!isContainment(e) || e.targetId !== node.id) continue
-      const child = nodeMap.get(e.sourceId)
-      if (!child) continue
-      if (ontology.valueFor(child) === 'worker') workers++
-      else if (ontology.valueFor(child) === 'nexusEndpoint') endpoints++
-    }
-    const parts: string[] = []
-    if (workers > 0) parts.push(`${workers} worker${workers !== 1 ? 's' : ''}`)
-    if (endpoints > 0) parts.push(`${endpoints} endpoint${endpoints !== 1 ? 's' : ''}`)
-    return parts.join(' · ')
-  }
-
   if (summaryKind === 'none') return ''
 
-  if (summaryKind === 'hostRegistrations') {
-    let wf = 0, act = 0, nxs = 0, ops = 0
+  if (summaryKind === 'children') {
+    // The contained children, counted per style value in the taxonomy's own
+    // order and named by its abbreviation — nothing here knows a value (R16).
+    const counts = new Map<string, number>()
     for (const e of visibleEdges) {
       if (!isContainment(e) || e.targetId !== node.id) continue
       const child = nodeMap.get(e.sourceId)
       if (!child) continue
-      if (ontology.valueFor(child) === 'workflow') wf++
-      else if (ontology.valueFor(child) === 'activity') act++
-      else if (ontology.valueFor(child) === 'nexusService') nxs++
-      else if (ontology.valueFor(child) === 'nexusOperation') ops++
+      const value = ontology.valueFor(child)
+      if (value === undefined) continue
+      counts.set(value, (counts.get(value) ?? 0) + 1)
     }
-    if (ontology.valueFor(node) === 'nexusService') {
-      return ops > 0 ? `${ops} op${ops !== 1 ? 's' : ''}` : ''
-    }
-    const parts: string[] = []
-    if (wf > 0) parts.push(`${wf}wf`)
-    if (act > 0) parts.push(`${act}act`)
-    if (nxs > 0) parts.push(`${nxs}nxs`)
-    return parts.join(' · ')
+    return ontology.nodeTypeKeys
+      .filter(k => counts.has(k))
+      .map(k => `${counts.get(k)} ${ontology.abbreviationFor(k)}`)
+      .join(' · ')
   }
 
   // summaryKind === 'degree'
