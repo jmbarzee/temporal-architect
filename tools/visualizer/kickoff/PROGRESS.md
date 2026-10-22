@@ -54,19 +54,19 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 6 — Colour scheme + node sizes** (opened on `visualizer/dimensions-unit-6` from unit-5b @ `a638f19`; implementation at `f512627` under review — D57, gates green, Gate 5 passed in both themes) |
-| Last completed unit | **Unit 5b — Computed scalar axes** ([PR #173](https://github.com/jmbarzee/temporal-architect/pull/173)) |
+| Current unit | none — Unit 6 closed at `4f3c543` + the record; Unit 7 is next and opens on its own branch |
+| Last completed unit | **Unit 6 — Colour scheme + node sizes** ([PR #174](https://github.com/jmbarzee/temporal-architect/pull/174)) |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-6` (from unit-5b @ `a638f19`); the stack below it: unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
+| Unit branch | `visualizer/dimensions-unit-6` (#174, from unit-5b @ `a638f19`); the stack below it: unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | **25** (R4, R5, R6, R7, R8, R9, R13, R14, R17, R18, R19, R20, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34) + R1 partial | 42 |
-| B — blast-radius sites migrated | **28** | 38 |
-| C — leaks in the manifest | **180** | 0 |
+| A — requirements covered | **30** (R4, R5, R6, R7, R8, R9, R10, R11, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34) + R1 partial | 42 |
+| B — blast-radius sites migrated | **33** | 38 |
+| C — leaks in the manifest | **54** | 0 |
 | Gate 6 — import-boundary violations | **7** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
@@ -144,22 +144,40 @@ Counter C landed at **180** against §6.5's **80**. Same shape of gap as Units
 1). Sum 180, per the gate's own per-file list. The ratchet is set to **180** /
 **1232**.
 
+**Unit 6.** Counter A: R10, R11, R15, R16, R21 — 25 -> 30. Counter B: B22
+(the renderer's edge classifier is gone), B23 (node bodies read
+`color[theme]`), B25 (push rings likewise), B29 (per-value CSS is inline),
+B30 (the chip tints are the taxonomy's) — 28 -> 33.
+
+Counter C landed at **54** against §6.5's **58** — under the plan's ceiling
+for the first time, by the unit the plan assigned most of the vocabulary to.
+Unit 6's own files: `edge-styles.ts` 58 -> gone, `FilterBar.css` 10 -> 1,
+`GraphView.css` 8 -> 3, `PinToggle.css` 2 -> 0, `controls.css` 3 -> 0,
+`GraphControlPanel.css` 3 -> 0, `GravityControls.css` 1 -> 0. What remains
+is Unit 7's **38** (`GraphView.tsx` 24, `useHighlight.ts` 10,
+`visibleGraph.ts` 4) and a residue of **16** (`scheme.ts` 3,
+`GraphView.css` 3, `GraphCanvas.tsx` 3, `FilterBar.tsx` 2, `taxonomy.ts` 1,
+`simulation.ts` 1, `groups.ts` 1, `dimension.ts` 1, `FilterBar.css` 1). Sum
+54, per the gate's own per-file list. The ratchet is set to **54** /
+**1118**.
+
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 5b close | pass |
-| 2 `npm run build:lib` | Unit 5b close | pass |
-| 2b `npm run dts-gate` | Unit 5b close | pass — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private; `graph/ontology.d.ts` and `graph/scalar.d.ts` join the refused list (D56) |
-| 3 `npm run verify` | Unit 5b close | pass — 7/7 goldens match; Tier C byte-identical across the unit; Tier A gains `scalars` and its visible-subgraph `downstreamScores` rows lose hidden ids (D56); Tier B gains the scalar scenarios, the flipped and X spans and `scalarSettlesAtExp3`; `static` gains `scalarProbes` and `tuningProbes.layoutAxisKeys` |
-| 4 `npm run leak-gate` | Unit 5b close | pass — **180 / 180**; **total 1232 / 1232** |
-| 5 browser pass | Unit 5b close | pass — five fixtures, 0 console errors, panel-open captures on Gravity / Y Axis / Reach (`unit-5b-*`, via `screenshot.mjs --tab/--subtab/--select`); by hand on nexus and stress: Reach on Y, the 1 handle dragged past the 0 handle, radial, Degree on X, both axes back to Type, and exponent 3 on Reach after the cap — no bounce |
+| 1 `tsc --noEmit` | Unit 6 close | pass |
+| 2 `npm run build:lib` | Unit 6 close | pass |
+| 2b `npm run dts-gate` | Unit 6 close | pass — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private |
+| 3 `npm run verify` | Unit 6 close | pass — 7/7 goldens match; Tier C byte-identical across the unit (D3); Tier A's edge lines lose the style column, gain `byStroke`, and its summaries read abbreviations (D57, D58); `static` gains `schemeProbes` |
+| 4 `npm run leak-gate` | Unit 6 close | pass — **54 / 54**; **total 1118 / 1118** |
+| 5 browser pass | Unit 6 close | pass — five fixtures in both themes with the theme pinned (`unit-6-*.png`, `unit-6-*-dark.png`; `screenshot.mjs` emulates the preference and fails a wrong-theme capture), 0 console errors; by hand on nexus in a dark host: Auto, Light and Dark, the pane light in every token inside the dark shell, chips tinting from the taxonomy in both panes, the choice persisted |
+| 5 browser pass (Unit 5b) | Unit 5b close | pass — five fixtures, 0 console errors, panel-open captures on Gravity / Y Axis / Reach (`unit-5b-*`, via `screenshot.mjs --tab/--subtab/--select`); by hand on nexus and stress: Reach on Y, the 1 handle dragged past the 0 handle, radial, Degree on X, both axes back to Type, and exponent 3 on Reach after the cap — no bounce |
 | 5 browser pass (Unit 5a) | Unit 5a close | pass — five fixtures, 0 console errors, panel-open captures (`unit-5a-*`); the Gravity tab exercised by hand on multifile: X Axis and Y Axis bodies, the Radial switch re-lays out, rings draw on hover |
 | 5 browser pass (Unit 4) | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)`; a second capture per fixture with the panel open (`unit-4-<fixture>-controls.png`), after the review noted the first set showed it collapsed |
-| 6 `npm run boundary-gate` | Unit 5b close | pass — **7 / 7** |
-| + `npm run pattern-gate` | Unit 5b close | pass — 5 allowlisted, 0 new |
-| + `npm run map -- --check` | Unit 5b close | pass — up to date |
-| + `npm run surface-gate` | Unit 5b close | pass — 90 names, as committed |
+| 6 `npm run boundary-gate` | Unit 6 close | pass — **7 / 7** |
+| + `npm run pattern-gate` | Unit 6 close | pass — 5 allowlisted, 0 new; a backslash-quote in a stylesheet is a pattern now (REVIEW_6 C1) |
+| + `npm run map -- --check` | Unit 6 close | pass — up to date |
+| + `npm run surface-gate` | Unit 6 close | pass — 90 names, as committed |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -187,18 +205,18 @@ Status: blank = not started · `wip` · `done`.
 | R7 | Global axis backed by a dimension | 5a | covered (5a) — both axes key on a mapping; Tier B pins the X bands |
 | R8 | Global axis backed by a computed scalar | 5b | 3 + 5 | `done` — D55; a host scalar reading its own payload is pinned by `scalarProbes.hostScalar` |
 | R9 | Computed scalars may traverse the graph | 5b | 3 | `done` — D55; reach, degree and depth read `ReadableGraph` |
-| R10 | Colour scheme input, light **and** dark | 6 | 5 |
-| R11 | Base node sizes carried by the colour-scheme input | 6 | 5 |
+| R10 | Colour scheme input, light **and** dark | 6 | 5 | `done` — the taxonomy's `color.{light,dark}` per value and a stroke per edge type (D57); the pane's resolved theme (D58); Gate 5 in both themes |
+| R11 | Base node sizes carried by the colour-scheme input | 6 | 5 | `done` — `size` beside `color` on the same object (D14, D57); `schemeProbes.sizes` |
 | R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw |
 | R13 | Default force dimension configurable | 4 | covered (4) — Gate 5 verified (axis dropdown) |
 | R14 | Default filters/selections configurable | 3 | covered (3) — default selections from the taxonomy |
-| R15 | Default colours configurable | 6 | 5 |
-| R16 | Every label and abbreviation configurable | 6 | 4 |
+| R15 | Default colours configurable | 6 | 5 | `done` in-tree — through `OntologySpec`; `schemeProbes.secondScheme` builds a second palette; the public surface for it is Unit 8's (D58 §9) |
+| R16 | Every label and abbreviation configurable | 6 | 4 | `done` in-tree — labels, abbreviations, chip and dimension labels on the spec; summaries read `abbreviationFor` (D58 §6) |
 | R17 | Filter chain: insert before/after, delete | 3 | covered (3) — Gate 5 verified |
 | R18 | Empty chain renders small bar with `+` | 3 | covered (3) — Gate 5 verified |
 | R19 | Default displayed filters configurable | 3 | covered (3) — declared `filterDimensions` order |
 | R20 | Search last, unchanged | 3 | covered (3) — Gate 5 verified |
-| R21 | Graph-pane colour-scheme button | 6 | 5 |
+| R21 | Graph-pane colour-scheme button | 6 | 5 | `done` — Auto / Light / Dark in the bottom cluster, persisted, Gate 5 verified in a dark host (D57, D58) |
 | R22 | Push + Pull combined into one view | 4 | covered (4) — Gate 5 verified |
 | R23 | Subsections styled like Band/Topological, no switches | 4 | covered (4) — Gate 5 verified |
 | R24 | One shared dimension dropdown drives both | 4 | covered (4) — Gate 5 verified |
@@ -236,6 +254,7 @@ explicit pass criteria and a committed screenshot — use them.
 | **4 — Push/pull on a chosen dimension** | 14 (`7d81ee0`…`a2d0b1d` + the record) | R4, R5, R13, R22–R25, R34 | B6, B7, B12, B13, B26, B28 | 191 (ceiling 191) | [REVIEW_4.md](reviews/REVIEW_4.md) — 55 findings, 26 clusters, every blocker and major resolved or filed |
 | **5a — Two symmetric dimensional axes** | 6 (`5a3481f`…`6ca503d` + the record) | R7, R26, R27, R30, R32, R33; R28, R29 partial | B10, B11, B24, B27 | 182 (ceiling 182) | [REVIEW_5a.md](reviews/REVIEW_5a.md) — 39 findings, 11 clusters, every blocker and major resolved |
 | **5b — Computed scalar axes** | 5 (`c69f974`…`28941dd` + the record) | R8, R9, R31; R28, R29 completed | — | 180 (ceiling 180) | [REVIEW_5b.md](reviews/REVIEW_5b.md) — 39 findings, 16 clusters, every blocker and major resolved; one minor filed (#172) |
+| **6 — Colour scheme + node sizes** | 4 (`ba93f11`…`4f3c543` + the record) | R10, R11, R15, R16, R21 | B22, B23, B25, B29, B30 | 54 (ceiling 54) | [REVIEW_6.md](reviews/REVIEW_6.md) — 42 findings, 17 clusters, both blockers and every major resolved |
 
 ---
 
@@ -255,6 +274,23 @@ should be read:
 2. **Rule 8 failed on the run that introduced it** (F17): I wrote "isolation
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
+
+**Unit 6 is closed** on `visualizer/dimensions-unit-6`, branched from unit-5b
+@ `a638f19`; [PR #174](https://github.com/jmbarzee/temporal-architect/pull/174) (base
+`visualizer/dimensions-unit-5b`, per D36). Commits: `ba93f11` (opens),
+`f512627` (D57), `b687b42` (the checkpoint), the review fixes `4f3c543`
+(D58), then the record (`b7a92f2`, and this paragraph's commit). `REVIEW_6.md`:
+42 findings in 17 clusters, both blockers and every major resolved in
+`4f3c543`. Last checkpoint: the commit that adds this paragraph.
+
+**Read `REVIEW_6.md` before Unit 7.** Both blockers were invisible to every
+automated gate and to a browser pass that looked right: a stylesheet has no
+type-checker, and a screenshot does not say which rule produced its pixels
+(F24). Unit 7 is the filter bar and the view — stylesheet-heavy. Grep the
+built CSS for `\\"` after any scripted edit (the pattern gate does now), and
+pin the state every capture is taken in.
+
+Ceilings at the Unit 6 close: leak **54**, total **1118**, boundary **7**.
 
 **Unit 5b is closed** on `visualizer/dimensions-unit-5b`, branched from unit-5a
 @ `f838d85`; [PR #173](https://github.com/jmbarzee/temporal-architect/pull/173) (base
@@ -558,6 +594,19 @@ a well-behaved pull — never past the rest in one tick — and a row that count
 reversals after a nudge. The generalisation: when a model's new case collapses
 a range to a point, every rule that leaned on the range's width is a
 measurement to retake, not prose to re-read.
+
+**F24 — A claim in a decision is a measurement to take before the record is
+written.** D57 said "stored once", "the library no longer depends on the
+injector", "sixteen tints and eight overrides gone", "R16 already the
+spec's", and "light in a dark host" — and the tree supported none of them
+as written (REVIEW_6 C3, C4, C9, C11). Eleven of twelve verifications fired
+on "contradicts a decision", and every one confirmed. The record had been
+written from the design, with the measurements left to the review. The
+reverse order costs nothing: grep for the thing the sentence says is gone,
+build the stylesheet the sentence says matches, open the browser in the
+state the sentence describes — and write the sentence after. The same
+shape as F21 (one measurement, generalised): here, no measurement,
+asserted.
 
 ---
 
