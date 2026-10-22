@@ -150,7 +150,7 @@ function nodeAt(map: Map<string, SimNode>, id: string): SimNode {
 /** The band kernel as the simulation runs it: in the frame over the nodes it is given. */
 function bandGravity(nodes: SimNode[], params: ForceParams, rng: () => number): void {
   const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
-  applyBandGravity(nodes, params, resolved, layoutFrame(probeGraph(nodes), resolved), 1, rng)
+  applyBandGravity(nodes, params, layoutFrame(probeGraph(nodes), resolved), 1, rng)
 }
 
 /** What the simulation hands the link kernel: each edge's category, classified against the resolved springs. */
@@ -226,7 +226,7 @@ function nonIdentityParams(): Json {
   return {
     charge: kernel((nodes, rng) => applyChargeForce(nodes, params, resolved, 1, rng)),
     link: kernel((nodes, rng) => applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolved.spring, nodeMapOf(nodes)), 1, rng)),
-    bandCartesian: kernel((nodes, rng) => applyBandGravity(nodes, { ...params, radial: false }, resolved, layoutFrame(probeGraph(nodes), resolved), 1, rng)),
+    bandCartesian: kernel((nodes, rng) => applyBandGravity(nodes, { ...params, radial: false }, layoutFrame(probeGraph(nodes), resolved), 1, rng)),
   }
 }
 

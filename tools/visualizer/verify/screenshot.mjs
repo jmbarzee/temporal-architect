@@ -244,6 +244,13 @@ async function main() {
     console.error('APPLICATION ERRORS on: ' + bad.map(b => b.fixture).join(', '))
     process.exitCode = 1
   }
+  // A panel step that did not apply is a capture of the wrong state, not
+  // evidence: the exit status says so rather than leaving it to the reader.
+  const missed = results.filter(r => /no toggle|no button|no select|refused/.test(r.panel))
+  if (missed.length) {
+    console.error('PANEL STEP DID NOT APPLY on: ' + missed.map(b => `${b.fixture} (${b.panel})`).join(', '))
+    process.exitCode = 1
+  }
 }
 
 try {

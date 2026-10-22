@@ -1,6 +1,7 @@
 // Gravity-tab controls: three sub-tabs. X Axis and Y Axis are the two layout
 // axes, each the same surface (`AxisControls`): a mapping, one column per
-// bucket with its rest band as two handles, the axis's strength, the force
+// bucket with its rest band as two handles (or, on a scalar axis, a gradient
+// with its two ends), the axis's strength, the force
 // curve beneath. Y carries the Radial switch — the way radial mode is entered
 // (R27): Y's bands become rings about the origin and X is ignored. Topological
 // keeps its own switch: a depth→pull curve plus strength/exp sliders. Center

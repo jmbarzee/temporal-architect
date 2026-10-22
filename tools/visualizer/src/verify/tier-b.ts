@@ -24,7 +24,7 @@ import { filterOfSets } from '../filter/types'
 import { bandCenters, bandOverlay, layoutFrame, mappedAxis, resolvePhysics } from '../graph/forces'
 import type { BandStripe } from '../graph/forces'
 import type { Graph } from '../graph/model'
-import { defaultParamsFor, scalarTuning, Simulation } from '../graph/simulation'
+import { defaultParamsFor, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
@@ -46,6 +46,10 @@ export const TIER_B_PARAMS = {
   bandTolerance: 0.05,
   /** Mean speed below `alphaMin × settledFactor` counts as at rest. */
   settledFactor: 10,
+  /** Mean speed (world units per tick) below which a nudged scalar axis counts as settled. */
+  settledSpeed: 1,
+  /** Fraction of node-ticks reversing direction above which a layout is bouncing, not settling. */
+  settledReversals: 0.5,
   /** Collapse detectors, both an order of magnitude clear of a healthy layout. */
   maxAbsPosition: 1e5,
   minExtent: 1,
@@ -74,8 +78,14 @@ function scenarios(): [string, ForceParams][] {
     ['topological', { ...defaultParamsFor(DEFAULT_ONTOLOGY), topologicalEnabled: true, gravityTopological: 0.4 }],
     ['centerOnly', { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityX: 0, gravityY: 0, topologicalEnabled: false }],
     // Y on a computed scalar (5b): every node rests at its reach along the span.
-    ['yReach', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: scalarTuning(DEFAULT_ONTOLOGY, 'reach', 'y') }],
-    ['yReachRadial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: scalarTuning(DEFAULT_ONTOLOGY, 'reach', 'y'), radial: true }],
+    ['yReach', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' } }],
+    ['yReachRadial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' }, radial: true }],
+    // X on a scalar, and a span the user flipped: the X default ("1 at the
+    // right"), a span read against its orientation, and the ring rule on a
+    // flipped span are read by no other row (REVIEW_5b C2).
+    ['xDegree', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandX: { scalar: 'degree' } }],
+    ['yReachFlipped', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } } }],
+    ['yReachFlippedRadial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } }, radial: true }],
   ]
 }
 
@@ -162,7 +172,36 @@ export function tierB(fixtureName: string, graph: Graph): Json {
     }
   }
   const radialSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true })
-  const reachSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: scalarTuning(DEFAULT_ONTOLOGY, 'reach', 'y') })
+  const reachSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' } })
+  const flippedSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } } })
+
+  // A scalar's rest is a point, so its pull is always on. At exponent 3 an
+  // uncapped |d|^exp carried every node past its point each tick, up to the
+  // velocity ceiling, and the short runs above could not see it (REVIEW_5b
+  // C13). Settled: after the full run and a slider-sized nudge, the mean
+  // speed is below the rest threshold. The speed itself is a diagnostic.
+  const settlesAtExp3 = (name: string, params: ForceParams): boolean => {
+    const s = seededSimulation(graph, { ...params, gravityBandExp: 3 })
+    for (let i = 0; i < TIER_B_PARAMS.tickCount; i++) s.tick(undefined, vg.downstreamScores)
+    s.nudge(0.3)
+    for (let i = 0; i < TIER_B_PARAMS.tickCount / 4; i++) s.tick(undefined, vg.downstreamScores)
+    // The oscillation's signature: a node that reverses on both axes every
+    // tick. Counted over a tail of ticks, as the fraction of node-ticks that
+    // reversed; a bounce is near 1, a settling layout near 0.
+    let reversals = 0, samples = 0
+    for (let i = 0; i < 20; i++) {
+      const before = s.nodes.map(n => [Math.sign(n.vx), Math.sign(n.vy)])
+      s.tick(undefined, vg.downstreamScores)
+      s.nodes.forEach((n, k) => {
+        samples++
+        if ((before[k][0] !== 0 && Math.sign(n.vx) === -before[k][0]) || (before[k][1] !== 0 && Math.sign(n.vy) === -before[k][1])) reversals++
+      })
+    }
+    const flips = samples === 0 ? 0 : reversals / samples
+    const speed = s.nodes.length === 0 ? 0 : s.nodes.reduce((sum, n) => sum + Math.hypot(n.vx, n.vy), 0) / s.nodes.length
+    console.error(`[tier-b] ${fixtureName}: ${name} at exp 3, meanSpeedAfterNudge=${speed.toExponential(3)} reversals=${flips.toFixed(3)}`)
+    return flips < TIER_B_PARAMS.settledReversals && speed < TIER_B_PARAMS.settledSpeed
+  }
   const distinctTypesPresent = new Set(active.map(n => DEFAULT_ONTOLOGY.valueFor(n))).size
 
   let maxAbs = 0
@@ -180,7 +219,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   const outside = (coord: 'x' | 'y'): number => {
     let count = 0
     for (const n of active) {
-      const rest = frame.rest(coord, n) ?? { lo: 0, hi: 0 }
+      const rest = frame.rest(coord, n)
       const slack = Math.abs(rest.hi - rest.lo) * TIER_B_PARAMS.bandTolerance
       if (!(n[coord] >= rest.lo - slack && n[coord] <= rest.hi + slack)) count++
     }
@@ -208,6 +247,13 @@ export function tierB(fixtureName: string, graph: Graph): Json {
     overlay: overlayRows(sim),
     overlayRadial: overlayRows(radialSim),
     overlayScalarY: overlayRows(reachSim),
+    overlayScalarYFlipped: overlayRows(flippedSim),
+    scalarSettlesAtExp3: {
+      yReach: settlesAtExp3('yReach', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' } }),
+      xDegree: settlesAtExp3('xDegree', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandX: { scalar: 'degree' } }),
+      yReachRadial: settlesAtExp3('yReachRadial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' }, radial: true }),
+      mappedY: settlesAtExp3('mappedY', defaultParamsFor(DEFAULT_ONTOLOGY)),
+    },
     allFinite: nonFinite.length === 0,
     nonFiniteNodeIds: sorted(nonFinite),
     bandCenterEntries: centers.length,

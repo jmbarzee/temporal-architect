@@ -182,7 +182,7 @@ export function GraphView({
   // the current one (the pull tokens). Both read the whole graph, not the
   // visible subset — tuning covers what a filter may reveal next.
   const axes = React.useMemo(() => axisOptions(ontology, graph), [ontology, graph])
-  const layoutAxes = React.useMemo(() => layoutAxisOptions(ontology, graph), [ontology, graph])
+  const layoutAxes = React.useMemo(() => layoutAxisOptions(axes, ontology), [axes, ontology])
   // The frame the band forces act in and the overlay the canvas draws, both
   // over the WHOLE graph — the same frame the simulation seeds and ticks in.
   const frame = React.useMemo(() => layoutFrame(readableGraph(graph), resolved), [graph, resolved])

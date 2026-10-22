@@ -74,7 +74,7 @@ writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
 // that leaks through another exported type's field (REVIEW_5a C8), so this walks
 // the declaration graph from lib.d.ts and refuses if a private module becomes
 // reachable.
-const PRIVATE = [/\/graph\/simulation\.d\.ts$/, /\/graph\/forces\.d\.ts$/]
+const PRIVATE = [/\/graph\/simulation\.d\.ts$/, /\/graph\/forces\.d\.ts$/, /\/graph\/ontology\.d\.ts$/, /\/graph\/scalar\.d\.ts$/]
 function reachableDts(entry) {
   const seen = new Set()
   const queue = [entry]

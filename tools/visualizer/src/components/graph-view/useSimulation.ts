@@ -45,27 +45,39 @@ export function useSimulation(
   // Lazy initializer, and `ontology` has to be read before it: the starting
   // parameters are derived from the taxonomy now, so a module-load constant is
   // no longer available to seed this with.
-  const [forceParams, setForceParams] = React.useState<ForceParams>(() => defaultParamsFor(ontology))
+  const [rawParams, setRawParams] = React.useState<ForceParams>(() => defaultParamsFor(ontology))
+  // What the view and the simulation read: the parameters as retuned for the
+  // graph and the taxonomy — `retunedFor` rebuilds any tuning whose buckets no
+  // longer match (an axis bucketed by observed values after a file is added,
+  // the style axis or a scalar axis after a taxonomy swap), keeps overrides
+  // whose values survive, and returns the same object when nothing moved. It
+  // runs in render so nothing downstream ever resolves a stale tuning against
+  // a new taxonomy (REVIEW_5b C5); the state catches up in the effect below.
+  const forceParams = React.useMemo(() => retunedFor(rawParams, ontology, graph), [rawParams, ontology, graph])
+  React.useEffect(() => {
+    if (forceParams !== rawParams) setRawParams(forceParams)
+  }, [forceParams, rawParams])
   const [simVersion, setSimVersion] = React.useState(0)
 
   const onRebuildRef = React.useRef(onRebuild)
   onRebuildRef.current = onRebuild
 
-  // Create or update the simulation when the graph or the taxonomy changes.
+  // Create the simulation when the graph or the taxonomy changes. A swap used
+  // to need a provenance ref here to detect; a tuning that carries its own
+  // mapping has nothing left to detect (D47).
   React.useEffect(() => {
-    // The parameters follow the graph and the taxonomy: `retunedFor` rebuilds
-    // any tuning whose buckets no longer match — an axis bucketed by observed
-    // values after a file is added, the style axis after a taxonomy swap — with
-    // overrides kept where their values survive, and returns the same object
-    // when nothing moved. A swap used to need a provenance ref here to detect;
-    // a tuning that carries its own mapping has nothing left to detect (D47).
-    const params = retunedFor(forceParams, ontology, graph)
-    if (params !== forceParams) setForceParams(params)
-    simRef.current = new Simulation(graph, params, defaultRng, ontology)
+    simRef.current = new Simulation(graph, forceParams, defaultRng, ontology)
     onRebuildRef.current?.()
     setRunning(true)
     setSimVersion(v => v + 1)
   }, [graph, ontology]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Every later change reaches the live simulation here, once, after the
+  // retune above — never a raw patch the taxonomy could refuse.
+  React.useEffect(() => {
+    const sim = simRef.current
+    if (sim && sim.params !== forceParams) sim.setParams(forceParams)
+  }, [forceParams])
 
   const getNode = React.useCallback((id: string) => simRef.current?.getNode(id), [])
 
@@ -73,11 +85,7 @@ export function useSimulation(
   // separate concern of onForceAdjust (so non-committing interactions can warm
   // the sim without writing a param).
   const onParamChange = React.useCallback((patch: Partial<ForceParams>) => {
-    setForceParams(prev => {
-      const next = { ...prev, ...patch }
-      simRef.current?.setParams(next)
-      return next
-    })
+    setRawParams(prev => ({ ...prev, ...patch }))
   }, [])
 
   const onForceAdjust = React.useCallback(() => {
@@ -88,11 +96,7 @@ export function useSimulation(
   // Edits that relocate nodes — gravity's mode and toggles, the push/pull axis
   // — reheat harder than a numeric nudge.
   const onRelayout = React.useCallback((partial: Partial<ForceParams>) => {
-    setForceParams(prev => {
-      const next = { ...prev, ...partial }
-      simRef.current?.setParams(next)
-      return next
-    })
+    setRawParams(prev => ({ ...prev, ...partial }))
     simRef.current?.reheat(0.6)
     setRunning(true)
   }, [])

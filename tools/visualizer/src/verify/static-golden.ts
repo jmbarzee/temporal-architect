@@ -10,10 +10,12 @@
 
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { DEFAULT_NODE_SCALE } from '../graph/node-scale'
-import { defaultParamsFor, isScalarTuning } from '../graph/simulation'
+import { defaultParamsFor, mappedTuning } from '../graph/simulation'
 import type { LayoutTuning } from '../graph/simulation'
-import { mappedAxis, resolvePhysics } from '../graph/forces'
+import { isScalarTuning } from '../graph/scalar'
+import { isScalarAxis, mappedAxis, resolvePhysics } from '../graph/forces'
 import type { ResolvedLayoutAxis } from '../graph/forces'
+import { scalarProbes } from './scalar-probes'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
@@ -214,10 +216,13 @@ function filterSetIdentity(): Json {
 
 // ── Assembly ────────────────────────────────────────────────────────────────
 
-/** A layout axis as a golden row: its buckets' bands, or the scalar and its span. */
+/** A layout axis as a golden row: its buckets' bands, or the scalar, its resolved span and whether the user set it. */
 function layoutRow(tuning: LayoutTuning, resolved: ResolvedLayoutAxis): Json {
-  if (isScalarTuning(tuning)) return { scalar: tuning.scalar, span: { zero: tuning.span.zero, one: tuning.span.one } }
-  return { axis: tuning.mapping.dimension, buckets: sortedRecord([...mappedAxis(resolved).byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) }
+  if (isScalarTuning(tuning) && isScalarAxis(resolved)) {
+    return { scalar: tuning.scalar, span: { zero: resolved.span.zero, one: resolved.span.one }, spanIsUsers: tuning.span !== undefined }
+  }
+  const t = mappedTuning(tuning)
+  return { axis: t.mapping.dimension, buckets: sortedRecord([...mappedAxis(resolved).byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) }
 }
 
 export function staticGolden(): Json {
@@ -248,6 +253,7 @@ export function staticGolden(): Json {
     forceProbes: forceProbes(),
     ontologyProbes: ontologyProbes(),
     tuningProbes: tuningProbes(),
+    scalarProbes: scalarProbes(),
     syntheticVisible: syntheticVisible(),
     filterChipLayer: filterChipLayer(),
     reconcileMatrix: reconcileMatrix(),

@@ -12,9 +12,10 @@ import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
 import {
-  Simulation, axisOptions, defaultParamsFor, fitsCeiling, pairTuning, retunedFor, scalarTuning,
-  withPushOverride, withSpringOverride, withOverride, TOKEN_CEILING, isScalarTuning,
+  Simulation, axisOptions, defaultParamsFor, fitsCeiling, layoutAxisKey, layoutAxisOptions, pairTuning, retunedFor,
+  withPushOverride, withSpringOverride, withOverride, TOKEN_CEILING,
 } from '../graph/simulation'
+import { isScalarTuning } from '../graph/scalar'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { resolvePhysics, springFor } from '../graph/forces'
 import { createOntology } from '../graph/ontology'
@@ -185,7 +186,7 @@ function retune(graph: Graph): Json {
         // A scalar axis has no buckets: a graph change keeps it by reference; a
         // taxonomy that does not know the scalar falls it back to the style identity.
         scalar: (() => {
-          const onReach: ForceParams = { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: scalarTuning(DEFAULT_ONTOLOGY, 'reach', 'y') }
+          const onReach: ForceParams = { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' } }
           const kept = retunedFor(onReach, DEFAULT_ONTOLOGY, without(graph, 'task-queues.twf'))
           const unknown: ForceParams = { ...onReach, bandY: { scalar: 'not-a-scalar', span: { zero: 1, one: -1 } } }
           const fell = retunedFor(unknown, DEFAULT_ONTOLOGY, graph)
@@ -296,5 +297,21 @@ export function tuningProbes(): Json {
     membership: membership(),
     visibilityPolicy: visibilityPolicy(),
     coherence: coherence(),
+    layoutAxisKeys: layoutAxisKeys(graph),
+  }
+}
+
+// The one spelling of a layout-axis choice (REVIEW_5b C7): every option's
+// key is distinct, and the tuning the control builds from an option answers
+// to the option's own key — so the dropdown can never show a value the params
+// do not hold.
+function layoutAxisKeys(graph: Graph): Json {
+  const options = layoutAxisOptions(axisOptions(DEFAULT_ONTOLOGY, graph), DEFAULT_ONTOLOGY)
+  const keys = options.map(layoutAxisKey)
+  const tunings = options.map(o => o.kind === 'scalar' ? { scalar: o.scalar.id } : { mapping: o.option.mapping, overrides: new Map() })
+  return {
+    keys,
+    unique: new Set(keys).size === keys.length,
+    roundTrip: tunings.every((t, i) => layoutAxisKey(t) === keys[i]),
   }
 }

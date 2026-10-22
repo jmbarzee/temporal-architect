@@ -601,8 +601,8 @@
             27.241594
           ],
           "unknown": [
-            0,
-            0
+            -43.5,
+            58
           ],
           "wf": [
             -5.327163,
@@ -2258,10 +2258,92 @@
       ]
     }
   },
+  "scalarProbes": {
+    "contract": {
+      "duplicateId": "taxonomy is incoherent: scalar \"reach\" is declared twice (the built-ins are reach, degree and depth)",
+      "notANumber": "scalar \"nan\" answered NaN for node \"activity:AlertTimeout/worker:checkoutWorker/namespace:orders\"; a scalar answers in [0, 1]",
+      "outOfRange": "scalar \"two\" answered 2 for node \"activity:AlertTimeout/worker:checkoutWorker/namespace:orders\"; a scalar answers in [0, 1]",
+      "unknownScalar": "layout axis names scalar \"not-a-scalar\", which the taxonomy does not declare"
+    },
+    "defaultSpan": {
+      "x": {
+        "one": 190,
+        "zero": -190
+      },
+      "y": {
+        "one": -420,
+        "zero": 420
+      }
+    },
+    "degenerateSpan": {
+      "everyRestAtThePoint": true,
+      "everyRingInnermost": true
+    },
+    "flippedSpan": {
+      "restsMirror": true,
+      "ringsMirror": true
+    },
+    "hostScalar": {
+      "distinctRests": 23,
+      "offered": [
+        "reach",
+        "degree",
+        "depth",
+        "idLength"
+      ],
+      "rests": {
+        "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": -74.117647,
+        "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": -222.352941,
+        "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": -65.882353,
+        "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": -156.470588,
+        "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": -172.941176,
+        "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": -263.529412,
+        "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": -255.294118,
+        "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": -107.058824,
+        "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": -247.058824,
+        "namespace:bootstrapApp": 238.823529,
+        "namespace:fabric-shard-{org}": 189.411765,
+        "namespace:notifications": 230.588235,
+        "namespace:orders": 288.235294,
+        "namespace:payments": 271.764706,
+        "nexusEndpoint:NotificationsEndpoint/namespace:notifications": -65.882353,
+        "nexusEndpoint:PaymentsEndpoint/namespace:payments": 16.470588,
+        "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": -205.882353,
+        "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": -387.058824,
+        "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": -420,
+        "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": -378.823529,
+        "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": -362.352941,
+        "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": -247.058824,
+        "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": -263.529412,
+        "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": -222.352941,
+        "worker:bootstrapCallerWorker/namespace:bootstrapApp": 0,
+        "worker:bootstrapWorker/namespace:fabric-shard-{org}": 0,
+        "worker:checkoutWorker/namespace:orders": 107.058824,
+        "worker:notificationWorker/namespace:notifications": 16.470588,
+        "worker:paymentProcessingWorker/namespace:payments": 16.470588,
+        "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": -107.058824,
+        "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": -205.882353,
+        "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": -263.529412,
+        "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": -107.058824,
+        "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": -107.058824,
+        "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": -82.352941,
+        "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": -247.058824,
+        "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": -263.529412
+      }
+    },
+    "noValue": {
+      "absentRestAtCentre": true,
+      "absentRingAtCentre": true,
+      "presentRestAtOne": true,
+      "presentRingOutermost": false
+    }
+  },
   "syntheticVisible": {
     "cases": {
       "all types, a file no node has": {
-        "downstreamScores": {},
+        "downstreamScores": {
+          "nsOrphan": 0
+        },
         "graduatedEdges": [],
         "nodeSummaries": {},
         "visibleNodeIds": [
@@ -2366,7 +2448,12 @@
         ]
       },
       "all types, file B only": {
-        "downstreamScores": {},
+        "downstreamScores": {
+          "actCopy": 0,
+          "backing": 0,
+          "nsOrphan": 0,
+          "wkB": 0
+        },
         "graduatedEdges": [
           "linkWorkerToActivity|containment|containment|actCopy -> wkB",
           "linkWorkerToWorkflow|containment|containment|backing -> wkB"
@@ -2442,7 +2529,10 @@
         "visibleNodeIds": []
       },
       "namespaces only": {
-        "downstreamScores": {},
+        "downstreamScores": {
+          "ns": 0,
+          "nsOrphan": 0
+        },
         "graduatedEdges": [],
         "nodeSummaries": {},
         "visibleNodeIds": [
@@ -2501,13 +2591,11 @@
           "act": 0,
           "actCopy": 0,
           "backing": 0,
-          "caller": 0.5,
+          "caller": 1,
           "ep": 0,
           "ns": 0,
           "nsOrphan": 0,
-          "op": 0.5,
-          "svc": 1,
-          "wk": 1
+          "op": 1
         },
         "graduatedEdges": [
           "linkEndpointToNamespace|containment|containment|ep -> ns",
@@ -2683,6 +2771,18 @@
       },
       "typicalIsNotTheFallback": true,
       "typicalIsTheDeclaredMean": true
+    },
+    "layoutAxisKeys": {
+      "keys": [
+        "mapping:temporalType",
+        "mapping:sourceFile",
+        "mapping:defType",
+        "scalar:reach",
+        "scalar:degree",
+        "scalar:depth"
+      ],
+      "roundTrip": true,
+      "unique": true
     },
     "membership": {
       "message": "edge type \"notDeclaredAnywhere\" is resolved by the taxonomy's rule but has no entry in its edgeTypes; the two must be kept in step.",
