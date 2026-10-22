@@ -178,7 +178,7 @@
 }
 
 /* "Show in Tree" button inside the hover tooltip. */
-.tooltip-show-in-tree {
+.tooltip-cross-view {
   margin-top: 8px;
   width: 100%;
   padding: 4px 8px;
@@ -193,7 +193,7 @@
   transition: all 0.15s;
 }
 
-.tooltip-show-in-tree:hover {
+.tooltip-cross-view:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);

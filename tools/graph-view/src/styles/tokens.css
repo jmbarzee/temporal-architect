@@ -1,0 +1,69 @@
+/* The library's design tokens — the chrome's colours, the tint percentages
+   color-mix() dilutes to, the fonts, the focus ring — on the themed root (D58):
+   `:root` and a pane that chose light, or a dark host and a pane that chose
+   dark. Every rule in the library that differs by theme reads one of these and
+   keys on no ancestor class, so the nearest themed root wins. A host reads the
+   same tokens from its own stylesheets by depending on this package. */
+
+:root,
+[data-theme="light"] {
+  /* The chrome's own tokens (D58). The accent is the chrome's, not a node
+     value's fill — they coincide by taste, not by identity. The tint
+     percentages are what color-mix() dilutes an accent or a chip's tint to;
+     the dark block raises them because the surface is darker. Every rule
+     that differs by theme reads one of these; no rule keys on an ancestor
+     class, so the nearest themed root wins (a pane dark in a light host, or
+     light in a dark one). */
+  --accent: #8B7EC8;
+  --accent-tint-weak: 5%;
+  --accent-tint-hover: 8%;
+  --accent-tint-active: 12%;
+  --accent-tint-ring: 32%;
+  --inset-bg: rgba(0, 0, 0, 0.02);
+  --key-bg: rgba(0, 0, 0, 0.05);
+  --tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  /* The pull overlay's tension colours: stretched, compressed, at rest. */
+  --tension-stretch: #d97706;
+  --tension-compress: #7CB9E8;
+  --tension-rest: #7EC8B8;
+
+  --color-bg: #f8fafc;
+  --color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  /* Canvas graph node-label colour. Softened (slate-700, not near-black) so
+     labels read clearly on the light background without shouting; drawn at
+     reduced alpha so edges stay visible through them. */
+  --color-graph-label: #334155;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --focus-ring-color: #4A90D9;
+}
+
+.vscode-dark,
+[data-theme="dark"] {
+  --accent: #A89BD8;
+  --accent-tint-weak: 6%;
+  --accent-tint-hover: 12%;
+  --accent-tint-active: 18%;
+  --accent-tint-ring: 40%;
+  --inset-bg: rgba(255, 255, 255, 0.04);
+  --key-bg: rgba(255, 255, 255, 0.06);
+  --tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --tension-stretch: #fbbf24;
+  --tension-compress: #7CB9E8;
+  --tension-rest: #7EC8B8;
+  --color-bg: #1e1e1e;
+  --color-bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
+  --color-text: #d4d4d4;
+  --color-text-muted: #9ca3af;
+  /* Softened label colour on dark themes — slate-300 rather than near-white,
+     so names read without being the only bright text on the canvas. Drawn at
+     reduced alpha so edges stay visible through them. */
+  --color-graph-label: #cbd5e1;
+  --color-surface: #252526;
+  --color-border: #3c3c3c;
+  --focus-ring-color: #6CB0F0;
+}

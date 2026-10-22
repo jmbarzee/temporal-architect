@@ -4,15 +4,15 @@
 // fixture reaches — a scalar declared through the ontology, reading its own
 // payload, driving an axis.
 
-import type { Graph } from '../graph/model'
-import { readableGraph } from '../graph/model'
+import type { Graph } from '@temporal-architect/graph-view/graph/model'
+import { readableGraph } from '@temporal-architect/graph-view/graph/model'
 import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
-import { createOntology } from '../graph/ontology'
-import type { Ontology } from '../graph/ontology'
-import type { ForceParams } from '../graph/simulation'
-import { defaultParamsFor } from '../graph/simulation'
-import type { ScalarAxis } from '../graph/scalar'
-import { RADIAL_R_MAX, RADIAL_R_MIN, defaultSpan, layoutFrame, resolvePhysics } from '../graph/forces'
+import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
+import type { Ontology } from '@temporal-architect/graph-view/graph/ontology'
+import type { ForceParams } from '@temporal-architect/graph-view/graph/simulation'
+import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
+import type { ScalarAxis } from '@temporal-architect/graph-view/graph/scalar'
+import { RADIAL_R_MAX, RADIAL_R_MIN, defaultSpan, layoutFrame, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { FIXTURES } from './fixtures'
 import { buildFixtureGraph } from './tier-a'
 import type { Json } from './snapshot'

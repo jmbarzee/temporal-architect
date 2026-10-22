@@ -23,7 +23,7 @@
 // half itself — an entry whose budget exceeds the measured count fails, so the
 // ratchet cannot silently go slack.
 
-import { manifestFiles, shimFiles, readLines, gateConfig, PKG_ROOT } from './manifest.mjs'
+import { manifestFiles, shimFiles, readLines, gateConfig, PKG_ROOT, LIB_SRC } from './manifest.mjs'
 import { relative, resolve } from 'node:path'
 
 const DOMAIN = /workflow|activity|activities|worker|namespace|nexus|temporal|twf|taskqueue/i
@@ -56,7 +56,7 @@ const RULES = [
     // Scoped as the friction table words it, plus the shim's graph builder:
     // `buildGraph` moved to src/adapter/ in Unit 2e, and it must stay
     // deterministic or every golden becomes a coin flip.
-    scope: file => file.startsWith('src/graph/') || file.startsWith('src/adapter/'),
+    scope: file => file.startsWith(`${LIB_SRC}/graph/`) || file.startsWith('src/adapter/'),
   },
   {
     id: 'silent-domain-fallback',
@@ -122,12 +122,13 @@ for (const [key, allowed] of [...budget].sort()) {
   }
 }
 
-// An allowlist entry naming a file that no longer exists is dead weight that
-// would silently permit the pattern if the file ever came back.
+// An allowlist entry may name a file in this package or in the library beside
+// it (where the engine lives since Unit 8), and nowhere else.
+const libSrc = resolve(PKG_ROOT, LIB_SRC)
 for (const entry of allowlist) {
   const abs = resolve(PKG_ROOT, entry.file)
-  if (relative(PKG_ROOT, abs).startsWith('..')) {
-    console.error(`  BADPATH  ${entry.file} — escapes the package root`)
+  if (relative(PKG_ROOT, abs).startsWith('..') && relative(libSrc, abs).startsWith('..')) {
+    console.error(`  BADPATH  ${entry.file} — outside both packages`)
     failures++
   }
 }

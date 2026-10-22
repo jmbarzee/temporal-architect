@@ -14,23 +14,23 @@
 //      past the container again, the two rows below stop disagreeing and this
 //      probe goes red.
 
-import { DEF_TYPE_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
-import { filterOfSets } from '../filter/types'
-import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
-import type { GraphEdge } from '../graph/model'
+import { DEF_TYPE_DIMENSION, RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
+import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
+import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
+import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
-import { createOntology } from '../graph/ontology'
+import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
 import {
   createDimensionalMapping,
   identityMapping,
   internValue,
-} from '../graph/dimension'
-import type { DimensionDescriptor } from '../graph/dimension'
-import type { SimNode } from '../graph/simulation'
-import { defaultParamsFor } from '../graph/simulation'
-import { foldReheatPolicy } from '../graph/dimension'
-import { bandFor, chargeFor, coreRadiusFor, mappedAxis, resolvePhysics } from '../graph/forces'
+} from '@temporal-architect/graph-view/graph/dimension'
+import type { DimensionDescriptor } from '@temporal-architect/graph-view/graph/dimension'
+import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
+import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
+import { foldReheatPolicy } from '@temporal-architect/graph-view/graph/dimension'
+import { bandFor, chargeFor, coreRadiusFor, mappedAxis, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { dimensionsFor } from '../adapter/build'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'

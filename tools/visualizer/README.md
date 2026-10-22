@@ -3,6 +3,13 @@
 A React component for visualizing Temporal system architecture — namespaces,
 workers, workflows, and Nexus — as an interactive tree and dependency graph.
 
+The Graph view's engine — a force-directed graph view with composable
+dimensions that knows nothing of Temporal — is the sibling library
+[`@temporal-architect/graph-view`](../graph-view/README.md). This package is
+its first host: it reads parser output into the library's `Graph`, declares
+the Temporal taxonomy, and bundles the library into its own artifact, so
+consumers of this package install nothing else.
+
 This is the npm-publishable surface of the visualizer that ships inside the
 [Temporal Architect VS Code extension](https://github.com/jmbarzee/temporal-architect).
 Host applications can embed the same component directly in their own React apps —

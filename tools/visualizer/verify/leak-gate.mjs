@@ -33,7 +33,7 @@
 // **Relocation is never a valid reason.** That is the whole point: a move keeps
 // the total flat by construction, so it can no longer be reported as a drop.
 
-import { manifestFiles, manifestBlindSpots, missingNamed, shimFiles, readLines, gateConfig, report } from './manifest.mjs'
+import { manifestFiles, manifestBlindSpots, shimFiles, readLines, gateConfig, report } from './manifest.mjs'
 
 const PATTERN =
   /workflow|activity|activities|worker|namespace|nexus|temporal|twf|signalsend|dispatchkind|taskqueue|task_queue/gi
@@ -52,7 +52,7 @@ for (const file of files) {
   total += n
 }
 
-console.log(`leak gate — ${files.length} files in the manifest`)
+console.log(`leak gate — ${files.length} files in the library (tools/graph-view/src)`)
 
 // What the manifest structurally cannot cover. Not a failure — the manifest is
 // fixed — but this is exactly how the library-to-be grows a limb no ratchet
@@ -62,23 +62,11 @@ if (blind.skipped.length > 0) {
   console.log('  unmatched inside a globbed directory:')
   for (const f of blind.skipped) console.log(`      ${f}`)
 }
-// A NAMED entry that has left the tree. Reported rather than crashed on, and
-// reported loudly: this is the shape of "the file moved out of the manifest",
-// which is the very event the count is supposed to make visible.
-const missing = missingNamed()
-if (missing.length > 0) {
-  console.log(`  ${missing.length} excluded host component(s) no longer exist (drop the stale exclusion):`)
-  for (const f of missing) console.log(`      ${f}`)
-}
 // The shim, named explicitly. The blind-spot report used to describe only holes
 // INSIDE the manifest, so the directory this run moves domain code into was the
 // one place it never mentioned.
 console.log(`  shim trees measured separately: ${shimFiles().length} file(s)`)
 
-if (blind.siblings.length > 0) {
-  console.log(`  ${blind.siblings.length} host component(s) excluded from the manifest by name:`)
-  for (const f of blind.siblings) console.log(`      ${f}`)
-}
 // The shim's own vocabulary. NOT ratcheted down — the shim is allowed its
 // domain, that is what it is for — but counted, so that a move out of the
 // manifest is visible as a move rather than reading as a deletion.

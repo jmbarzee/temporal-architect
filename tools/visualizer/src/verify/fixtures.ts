@@ -8,6 +8,7 @@
 import { normalizePayload } from '../types/payload'
 import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
+import type { Decomposition } from '../types/decomposition'
 import decompositionSample from '../../public/fixtures/decomposition-sample.json'
 import nexusSample from '../../public/fixtures/nexus-sample.json'
 import taskqueuesSample from '../../public/fixtures/taskqueues-sample.json'
@@ -19,6 +20,8 @@ export interface Fixture {
   name: string
   ast: TWFFile
   parserGraph: ParserGraph
+  /** The chunking the group overlay reads, when the fixture carries one. */
+  decomposition?: Decomposition
 }
 
 function load(name: string, raw: unknown): Fixture {
@@ -31,7 +34,7 @@ function load(name: string, raw: unknown): Fixture {
     // the file dimension without erroring anywhere.
     throw new Error(`fixture ${name}: empty AST half`)
   }
-  return { name, ast: payload.ast, parserGraph: payload.parserGraph }
+  return { name, ast: payload.ast, parserGraph: payload.parserGraph, decomposition: payload.decomposition }
 }
 
 export const FIXTURES: Fixture[] = [

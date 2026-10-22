@@ -1,24 +1,19 @@
-// useGraphModel — the pure data layer for the Graph View.
-//
-// Derives everything that comes straight from props (ast, parserGraph, filter)
-// with no dependency on the simulation or the DOM: the view-side graph, the set
-// of source files, the filter-change "recently changed" flash set, and the
-// error/diagnostic partition by the file filter. Extracted from GraphView as the
-// first, most-isolated decomposition step (see graphview_hook_decomposition plan).
+// useGraphModel — what the host reads off its payload for the Graph view: the
+// view-side graph built from the parser's deployment graph, and the findings
+// (process-level file errors, the AST's diagnostics, and the graph-stage
+// findings lifted into the same shape). Nothing here depends on the
+// simulation or the DOM; the view takes the result as props and never sees
+// the AST or the parser graph (D41, D61).
 
-import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
-import { selectionFor } from '../filter/types'
 import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
-import type { FilterState } from '../filter/types'
-import { filterStatesEqual } from '../filter/types'
 import { buildGraph } from './build'
-import type { Graph } from '../graph/model'
-
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '@temporal-architect/graph-view'
+import type { Graph } from '@temporal-architect/graph-view'
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing
-// GraphErrorsHeader renders them with no new UI. These are the primary way
+// findings bars render them with no new UI. These are the primary way
 // history-derived warnings (e.g. a signal target not present in the sampled
 // histories) become visible — the AST carries no such diagnostics in history mode.
 //
@@ -54,71 +49,41 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
 
 export interface GraphModel {
   graph: Graph
-  allFiles: string[]
-  recentlyChanged: Set<string>
-  // Raw findings — partitioned by the file filter inside the shared FilterBar.
+  // Raw findings — partitioned by the file filter in the host's ErrorBars.
   errors: FileError[]
   diagnostics: Diagnostic[]
 }
 
-export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph, filter: FilterState): GraphModel {
+export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph): GraphModel {
   // Build the view-side graph from the parser's deployment graph. AST is
   // consulted for sourceFile (file-filter chips) and future hover enrichments.
   const graph = React.useMemo(
     () => buildGraph(parserGraph, ast),
     [parserGraph, ast],
   )
-
-  // All unique source files across graph nodes (drives the file-filter chips).
-  const allFiles = React.useMemo(() => {
-    const files = new Set<string>()
-    for (const node of graph.nodes.values()) {
-      const file = node.dimensions[SOURCE_FILE_DIMENSION]
-      if (file) files.add(file)
-    }
-    return Array.from(files).sort()
-  }, [graph])
-
-  // Transient "recently changed" set for the focus-transition flash animation:
-  // the file/type keys that just turned on, cleared ~450ms later.
-  const prevFilterRef = React.useRef<FilterState>(filter)
-  const [recentlyChanged, setRecentlyChanged] = React.useState<Set<string>>(new Set())
-  React.useEffect(() => {
-    const prev = prevFilterRef.current
-    if (filterStatesEqual(prev, filter)) return
-    const changed = new Set<string>()
-    // Keyed `<dimension>:<value>`, and derived by looping the filter's own axes
-    // rather than naming two. The consumer looks these up as
-    // `${dimension}:${value}`; emitting `file:`/`type:` while it read
-    // `sourceFile:`/`defType:` left the chip-flash animation silently dead in
-    // both views — no error, no gate, just an effect that stopped happening.
-    for (const [dimension, values] of filter) {
-      const before = selectionFor(prev, dimension)
-      for (const v of values) if (!before.has(v)) changed.add(`${dimension}:${v}`)
-    }
-    prevFilterRef.current = filter
-    if (changed.size > 0) {
-      setRecentlyChanged(changed)
-      const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)
-      return () => clearTimeout(timer)
-    }
-  }, [filter])
-
   // Process-level FileErrors and structured Diagnostics. Graph-stage findings
   // (parserGraph.diagnostics + unresolved) are folded in alongside the AST
-  // diagnostics so history-derived warnings are visible. The file-filter
-  // partition (shown vs hidden) now happens inside the shared FilterBar.
+  // diagnostics so history-derived warnings are visible.
   const errors = ast.errors || []
   const diagnostics = React.useMemo(
     () => [...(ast.diagnostics || []), ...graphFindingsToDiagnostics(parserGraph)],
     [ast.diagnostics, parserGraph],
   )
+  return { graph, errors, diagnostics }
+}
 
-  return {
-    graph,
-    allFiles,
-    recentlyChanged,
-    errors,
-    diagnostics,
+/**
+ * The chip badges, per axis and value: top-level definitions per file, and per
+ * type among the selected files (or all of them, when none is selected). A
+ * definition with no source file cannot be filtered out by a file selection.
+ */
+export function definitionCounts(ast: TWFFile, selectedFiles: ReadonlySet<string>): ReadonlyMap<string, ReadonlyMap<string, number>> {
+  const typeCounts = new Map<string, number>()
+  const fileCounts = new Map<string, number>()
+  for (const def of ast.definitions) {
+    if (def.sourceFile) fileCounts.set(def.sourceFile, (fileCounts.get(def.sourceFile) ?? 0) + 1)
+    const passesFile = selectedFiles.size === 0 || !def.sourceFile || selectedFiles.has(def.sourceFile)
+    if (passesFile) typeCounts.set(def.type, (typeCounts.get(def.type) ?? 0) + 1)
   }
+  return new Map([[SOURCE_FILE_DIMENSION, fileCounts], [DEF_TYPE_DIMENSION, typeCounts]])
 }

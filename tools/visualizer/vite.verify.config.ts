@@ -4,9 +4,11 @@
 // No test framework and no new dependency: the harness is a program that prints
 // a JSON snapshot, and `verify/run.mjs` is the thing that diffs it.
 import { defineConfig } from 'vite'
+import { libraryResolve } from './vite.shared'
 import { resolve } from 'path'
 
 export default defineConfig({
+  resolve: libraryResolve(__dirname),
   // The fixtures are imported as JSON modules, not served — copying `public/`
   // into the output would only duplicate them.
   publicDir: false,

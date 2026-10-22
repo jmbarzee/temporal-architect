@@ -1,0 +1,57 @@
+DEF_TYPE_DIMENSION
+FilterBar
+GraphView
+OntologyContext
+RELATION_DIMENSION
+SOURCE_FILE_DIMENSION
+createOntology
+isContainment
+passesSelection
+payloadString
+pinnedFor
+reconcileFilter
+relationOf
+schemeStylesheet
+schemeVars
+selectionFor
+themeChoiceOf
+type ActiveGroup
+type ColorPair
+type DimensionDescriptor
+type DimensionId
+type DimensionMap
+type DimensionValue
+type EdgeCategoryKind
+type EdgeStroke
+type EdgeTypeDefinition
+type EdgeTypeId
+type FilterChip
+type FilterDimension
+type FilterState
+type FocusTarget
+type Graph
+type GraphEdge
+type GraphNode
+type Highlight
+type HighlightGraph
+type NodeGroup
+type NodeTypeDefinition
+type Ontology
+type OntologySpec
+type PinState
+type ReadableGraph
+type ReconcileResult
+type ScalarAxis
+type ScalarSpan
+type Selection
+type SpringPhysics
+type StyleGroup
+type StyleSubject
+type Theme
+type ThemeChoice
+type ThemedColor
+type ViewTransition
+useHostTheme
+useOntology
+useRecentlyChanged
+withSelection

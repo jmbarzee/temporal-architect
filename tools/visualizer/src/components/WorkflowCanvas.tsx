@@ -1,9 +1,26 @@
-import { selectionFor } from '../filter/types'
-import type { FocusTarget } from '../filter/types'
+import {
+  selectionFor,
+  OntologyContext,
+  DEF_TYPE_DIMENSION,
+  SOURCE_FILE_DIMENSION,
+  pinnedFor,
+  withSelection,
+  GraphView,
+  reconcileFilter,
+  themeChoiceOf,
+  useHostTheme,
+  schemeVars,
+} from '@temporal-architect/graph-view'
+import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../adapter/storage'
+import type {
+  FocusTarget,
+  FilterState,
+  PinState,
+  ViewTransition,
+  FilterDimension,
+  ThemeChoice,
+} from '@temporal-architect/graph-view'
 import React from 'react'
-import { OntologyContext } from './graph-view/useOntology'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
-import { pinnedFor, withSelection } from '../filter/types'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
@@ -12,20 +29,17 @@ import { EMPTY_PARSER_GRAPH } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
 import type { DecompositionParams } from './protocol'
 import { TreeView } from './TreeView'
-import { GraphView } from './GraphView'
-import type { FilterState, PinState, ViewTransition, FilterDimension } from '../filter/types'
-import { reconcileFilter } from '../filter/reconcile'
-import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../filter/storage'
-import type { ThemeChoice } from './graph-view/useTheme'
-import { themeChoiceOf, useHostTheme } from './graph-view/useTheme'
-import { schemeVars } from '../graph/scheme'
+import { GroupsModal } from './GroupsModal'
+import { ErrorBars } from './ErrorBars'
+import { useGraphModel, definitionCounts } from '../adapter/useGraphModel'
+import { initialGroupSelection, nodeGroupsOf, type GroupSelection, type GroupHover } from '../adapter/groups'
 import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface WorkflowCanvasProps {
   /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
    * payload of the envelope) or constructed by a host application. The
-   * tree view consumes this directly; the graph view consults it as
-   * secondary input (sourceFile / hover details). */
+   * tree view consumes this directly; the graph view's chip counts and
+   * findings are read off it here. */
   ast: TWFFile
   /** Resolved deployment graph from `twf graph`. Primary input for the
    * graph view; the tree view doesn't consume it. Optional — when absent
@@ -204,6 +218,27 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   const [treePins, setTreePins] = React.useState<PinState>(() => persistedToPins(persisted.treePins, DEFAULT_PINS))
   const [graphPins, setGraphPins] = React.useState<PinState>(() => persistedToPins(persisted.graphPins, DEFAULT_PINS))
+
+  // The Graph view's inputs, read here off the payload: the graph built from
+  // the parser's deployment graph, the findings, the chip counts (D61). The
+  // view builds none of them and never sees the AST or the parser graph.
+  const model = useGraphModel(ast, graphInput)
+  const graphCounts = React.useMemo(() => definitionCounts(ast, selectionFor(graphFilter, SOURCE_FILE_DIMENSION)), [ast, graphFilter])
+
+  // The group overlay's selection and hover preview (GRAPH_VIEW.md
+  // § Decomposition Group Overlay) are the host's: what a group is comes from
+  // its decomposition, and the view draws what it is handed. Both reset when
+  // a new decomposition arrives.
+  const [groupSelection, setGroupSelection] = React.useState<GroupSelection>(() => initialGroupSelection(decomposition))
+  const [groupHover, setGroupHover] = React.useState<GroupHover | null>(null)
+  React.useEffect(() => {
+    setGroupSelection(initialGroupSelection(decomposition))
+    setGroupHover(null)
+  }, [decomposition])
+  const nodeGroups = React.useMemo(
+    () => nodeGroupsOf(decomposition, groupSelection, groupHover, model.graph.duplicateGroups),
+    [decomposition, groupSelection, groupHover, model.graph.duplicateGroups],
+  )
 
   // Globally-shared search state — one query applied identically to both
   // views (spec § Search Scope). Search is non-destructive (dim, not hide)
@@ -482,11 +517,22 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
           <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
             <GraphView
               active={activeView === 'graph'}
-              ast={ast}
-              parserGraph={graphInput}
-              decomposition={decomposition}
-              onRequestDecomposition={onRequestDecomposition}
-              onShowInTree={historyMode ? undefined : showInTree}
+              graph={model.graph}
+              counts={graphCounts}
+              findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} />}
+              groups={nodeGroups}
+              groupsControl={active => (
+                <GroupsModal
+                  decomposition={decomposition}
+                  selection={groupSelection}
+                  onSelectionChange={setGroupSelection}
+                  hover={groupHover}
+                  onHover={setGroupHover}
+                  activeGroups={active}
+                  onRequestDecomposition={onRequestDecomposition}
+                />
+              )}
+              crossView={historyMode ? undefined : { label: 'Show in Tree', onFocus: showInTree }}
               theme={graphTheme}
               onThemeChange={setGraphTheme}
               filter={graphFilter}

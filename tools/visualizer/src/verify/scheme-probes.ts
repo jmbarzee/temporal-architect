@@ -6,11 +6,11 @@
 // what the canvas does with them is Gate 5's.
 
 import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
-import { createOntology } from '../graph/ontology'
-import type { NodeTypeDefinition } from '../graph/taxonomy'
-import { THEMES, cssSuffix, colorVar, rgbOf, schemeVars, withAlpha } from '../graph/scheme'
-import { themeChoiceOf, themeOfMarker } from '../components/graph-view/useTheme'
-import type { ThemeMarker } from '../components/graph-view/useTheme'
+import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
+import type { NodeTypeDefinition } from '@temporal-architect/graph-view/graph/taxonomy'
+import { THEMES, cssSuffix, colorVar, rgbOf, schemeVars, withAlpha } from '@temporal-architect/graph-view/graph/scheme'
+import { themeChoiceOf, themeOfMarker } from '@temporal-architect/graph-view/components/graph-view/useTheme'
+import type { ThemeMarker } from '@temporal-architect/graph-view/components/graph-view/useTheme'
 import type { Json } from './snapshot'
 import { sortedRecord } from './snapshot'
 

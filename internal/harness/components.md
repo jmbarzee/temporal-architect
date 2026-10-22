@@ -19,9 +19,20 @@ Review prompts referenced below live at `.claude/skills/dev-cycle/references/<na
 | `dsl` | `tools/spec/sections/` | `internal/changes/dsl/` | `review-quality-dsl-spec` | — | `parser` [Grammar] |
 | `parser` | `tools/lsp/` | `internal/changes/parser/` | `review-quality-parser` | `review-alignment-parser` | `visualizer` [Schema, API], `visualizer-spec` [Schema], `skills` [Grammar, Semantic] |
 | `visualizer-spec` | `tools/visualizer/spec/` | `internal/changes/visualizer-spec/` | `review-quality-visualizer-spec` | — | `visualizer` [Spec] |
+| `graph-view` | `tools/graph-view/` | `internal/changes/graph-view/` | `review-quality-visualizer` (scope to be widened to `tools/graph-view/src/` — #179) | `review-alignment-visualizer` (same) | `visualizer` [API] |
 | `visualizer` | `tools/visualizer/` (excluding `spec/`) | `internal/changes/visualizer/` | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — (leaf) |
 | `sampler` | `tools/sampler/` | `internal/changes/sampler/` | `review-quality-sampler` | — | — (leaf) |
 | `skills` | `skills/` | `internal/changes/skills/` | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — (leaf) |
+
+`graph-view` (`tools/graph-view/`) is the visualizer's engine in its own package: a
+force-directed graph view with composable dimensions that knows nothing of Temporal
+(the visualizer's gates hold its domain vocabulary at zero). The visualizer is its
+**host**: it adapts parser output into the library's `Graph`, declares the Temporal
+taxonomy through the library's `OntologySpec`, and consumes the library from source
+through its build's alias. The library's public entry (`tools/graph-view/src/index.ts`)
+is the contract on that edge; a change to it is an **API** change that reaches the
+visualizer. The library does not consume the parser — that is the point of it — so no
+`parser` edge reaches it.
 
 `sampler` (`tools/sampler/`) is a **leaf consumer of `parser`**, not a schema owner. The
 observed-graph wire shape is `observe.ObservedGraph`, which lives in `tools/lsp/parser/observe` —
@@ -57,7 +68,7 @@ so this table is the starting point and the *files the work touches* are the dec
 | `area:parser` | `parser` | `tools/lsp/`. |
 | `area:cli` | `parser` | The CLI lives at `tools/lsp/cmd/twf/` — inside the parser's scope. |
 | `area:decompose` | `parser` | The engine is `tools/lsp/parser/decompose/`. |
-| `area:visualizer` | `visualizer` or `visualizer-spec` | Split by whether the work lands in `spec/`. |
+| `area:visualizer` | `visualizer`, `visualizer-spec` or `graph-view` | Split by where the work lands: `spec/`, the host package, or the engine package `tools/graph-view/`. |
 | `area:sampler` | `sampler` | `tools/sampler/`. |
 | `area:skills` | `skills` | `skills/`. |
 | `area:orchestrator` | **none** | `internal/orchestrator/` is excluded above. These issues are handled by hand. |
@@ -99,6 +110,7 @@ prompt comes from the Components table above. Both directions of mismatch are re
 | `parser` | API | `visualizer` → `review-quality-visualizer` (TS types); `sampler` → `review-quality-sampler` |
 | `parser` | Semantic | `skills` → `review-alignment-design-skill` |
 | `visualizer-spec` | Spec | `visualizer` → `review-alignment-visualizer` |
+| `graph-view` | API | `visualizer` → `review-quality-visualizer` (the host consumes the library's entry) |
 
 Design → author propagation is now **intra-component** (within `skills`) and no longer a DAG edge: a
 design change still triggers `review-alignment-author-skills`, but as part of the `skills` component's
@@ -123,8 +135,12 @@ upstream change landing later:
 
 ```
 Wave 1: dsl, parser
-Wave 2: visualizer-spec, visualizer, skills, sampler
+Wave 2: visualizer-spec, graph-view, skills, sampler
+Wave 3: visualizer
 ```
+
+`visualizer` moves to Wave 3 because it consumes `graph-view`'s entry: a library change
+landing after the host's review would invalidate it.
 
 `sampler` joins Wave 2 as a leaf: it depends only on `parser`, and nothing depends on it.
 

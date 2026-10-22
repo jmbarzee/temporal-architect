@@ -15,12 +15,13 @@
 //
 // Positions are irrelevant to the derivation and are all zero.
 
-import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
-import { filterOfSets } from '../filter/types'
-import type { GraphEdge } from '../graph/model'
+import { DISPATCH_DIMENSION } from '../adapter/edge-types'
+import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
+import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
+import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
-import type { SimNode } from '../graph/simulation'
-import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
+import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
+import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import { edgeTypeFor } from '../adapter/edge-types'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'

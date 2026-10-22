@@ -4,6 +4,10 @@
 // chunk -> division options -> sections, and a read-only parameter readout.
 // It mirrors GraphControlPanel's collapse/tab structure and reuses its CSS.
 
+// Borrows the library's panel chrome — `.graph-control-panel*`, `.switch*` and
+// the `--toolbar-height` the pane sets on its root — by class name, which no
+// gate can see (REVIEW_8 C9). A rename inside the library's GraphControlPanel.css
+// lands here first.
 import React from 'react'
 import './GroupsModal.css'
 import type { Decomposition, Chunk, Division, Section } from '../types/decomposition'
@@ -13,9 +17,8 @@ import {
   initializedSelection,
   type GroupSelection,
   type GroupHover,
-  type ActiveGroup,
-} from '../graph/groups'
-
+} from '../adapter/groups'
+import type { ActiveGroup } from '@temporal-architect/graph-view'
 type GroupsTab = 'groups' | 'params'
 
 // Decomposition strategies the `by` multi-select offers, mirroring the Go
@@ -30,7 +33,7 @@ interface GroupsModalProps {
   onHover: (h: GroupHover | null) => void
   // The currently-glowing groups, used to color the section swatches so the
   // modal reads as the legend for what's on the canvas.
-  activeGroups: ActiveGroup[]
+  activeGroups: readonly ActiveGroup[]
   // Outbound recompute request. When wired, the Params tab becomes an editable
   // control set that builds a `DecompositionParams` and calls this; the panel
   // also renders (to host the controls) even before any decomposition exists, so

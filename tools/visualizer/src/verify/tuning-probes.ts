@@ -7,24 +7,24 @@
 // green. The Unit 4 review showed each of those sabotages passing; these rows
 // are what now goes red.
 
-import type { Graph, GraphEdge, GraphNode } from '../graph/model'
+import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
 import {
   Simulation, axisOptions, defaultParamsFor, fitsCeiling, layoutAxisKey, layoutAxisOptions, pairTuning, retunedFor,
   withPushOverride, withSpringOverride, withOverride, TOKEN_CEILING,
-} from '../graph/simulation'
-import { isScalarTuning } from '../graph/scalar'
-import type { ForceParams, SimNode } from '../graph/simulation'
-import { resolvePhysics, springFor } from '../graph/forces'
-import { createOntology } from '../graph/ontology'
+} from '@temporal-architect/graph-view/graph/simulation'
+import { isScalarTuning } from '@temporal-architect/graph-view/graph/scalar'
+import type { ForceParams, SimNode } from '@temporal-architect/graph-view/graph/simulation'
+import { resolvePhysics, springFor } from '@temporal-architect/graph-view/graph/forces'
+import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
 import {
   DEF_TYPE_DIMENSION, RELATION_DIMENSION, SOURCE_FILE_DIMENSION,
   createDimensionalMapping, identityMapping,
-} from '../graph/dimension'
-import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
-import { filterOfSets } from '../filter/types'
+} from '@temporal-architect/graph-view/graph/dimension'
+import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
+import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
 import { FIXTURES } from './fixtures'
 import { buildFixtureGraph } from './tier-a'
 import { mulberry32 } from './rng'

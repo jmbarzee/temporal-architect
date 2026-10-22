@@ -9,13 +9,25 @@
 // physics. The control panel's pull tokens and the spring defaults both resolve
 // from these entries (`resolvePhysics`), and nothing copies them.
 
-import type { DimensionValue } from '../graph/dimension'
-import type { GraphEdge } from '../graph/model'
-import { dispatchOf, isContainment } from '../graph/model'
+import { isContainment } from '@temporal-architect/graph-view'
+import type {
+  DimensionValue,
+  GraphEdge,
+  EdgeTypeDefinition,
+  EdgeStroke,
+  DimensionId,
+} from '@temporal-architect/graph-view'
 import type { NodeType } from './node-types'
-import type { EdgeTypeDefinition } from '../graph/taxonomy'
-import type { EdgeStroke } from '../graph/scheme'
 
+/**
+ * This host's second edge axis: the parser's call kind, written by `buildGraph`
+ * and read by the edge rules below — and by nothing in the library (D64). A
+ * containment edge carries none; it dispatches nothing.
+ */
+export const DISPATCH_DIMENSION: DimensionId = 'dispatch'
+export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): DimensionValue | undefined {
+  return edge.dimensions[DISPATCH_DIMENSION]
+}
 // This domain's edge categories. The *shape* is library-owned (`./taxonomy`);
 // what is declared here is the closed set of ids this deployment model has, and
 // the endpoint values each one connects.

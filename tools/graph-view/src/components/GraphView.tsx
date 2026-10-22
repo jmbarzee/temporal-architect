@@ -4,10 +4,6 @@
 import { readableGraph, isContainment } from '../graph/model'
 import React from 'react'
 import './GraphView.css'
-import type { TWFFile } from '../types/ast'
-import type { ParserGraph } from '../types/parser-graph'
-import type { Decomposition } from '../types/decomposition'
-import type { DecompositionParams } from './protocol'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
@@ -22,7 +18,7 @@ import { useTheme, THEME_CHOICES } from './graph-view/useTheme'
 import type { ThemeChoice } from './graph-view/useTheme'
 import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
-import type { GraphEdge } from '../graph/model'
+import type { Graph, GraphEdge } from '../graph/model'
 import { SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
 import { useOntology } from './graph-view/useOntology'
@@ -32,16 +28,9 @@ import { zoomAt } from '../graph/viewport'
 import { GraphCanvas } from './GraphCanvas'
 import { CanvasErrorBoundary } from './CanvasErrorBoundary'
 import { GraphControlPanel } from './GraphControlPanel'
-import { GroupsModal } from './GroupsModal'
-import {
-  computeActiveGroups,
-  boostGroupsForNodes,
-  initialGroupSelection,
-  type GroupSelection,
-  type GroupHover,
-} from '../graph/groups'
+import { activeGroupsOf, boostGroupsForNodes, type ActiveGroup, type NodeGroup } from '../graph/groups'
 import { FilterBar } from './FilterBar'
-import { useGraphModel } from '../adapter/useGraphModel'
+import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
 import { useViewport } from './graph-view/useViewport'
 import { useHighlight } from './graph-view/useHighlight'
 import { useSimulation } from './graph-view/useSimulation'
@@ -52,18 +41,18 @@ interface GraphViewProps {
   // Whether this view is the active tab. Both views stay mounted (keep-alive),
   // so the inactive one must not respond to global keyboard shortcuts.
   active: boolean
-  ast: TWFFile
-  // Deployment graph from the parser — primary input. AST is secondary
-  // (sourceFile lookup, hover details).
-  parserGraph: ParserGraph
-  // Decomposition from the parser's chunking — drives the group overlay. Optional;
-  // when absent the Groups modal/overlay is inert.
-  decomposition?: Decomposition
-  // Outbound recompute request. When wired, the Groups panel's Params tab becomes
-  // editable and can request a fresh decomposition (including the first one,
-  // before any decomposition exists). Optional; absent for read-only hosts.
-  onRequestDecomposition?: (params: DecompositionParams) => void
-  onShowInTree?: (target: FocusTarget) => void
+  /** The graph, built by the host from whatever it reads. */
+  graph: Graph
+  /** Chip badge counts per axis and value — the host's reading of its own data. */
+  counts: ReadonlyMap<string, ReadonlyMap<string, number>>
+  /** The host's findings bars, rendered under the filter chips. */
+  findings?: React.ReactNode
+  /** Groups to glow, over the whole graph; the view restricts them to the visible set and colours them. */
+  groups?: readonly NodeGroup[]
+  /** The host's control for its groups (a legend, a modal), rendered inside the pane — which sets `--toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included. */
+  groupsControl?: (active: readonly ActiveGroup[]) => React.ReactNode
+  /** The host's cross-view action for a node — its label, and what it does with the target — offered in the hover box. */
+  crossView?: { label: string; onFocus: (target: FocusTarget) => void }
   /** The pane's theme choice and where a new one goes (R21). */
   theme: ThemeChoice
   onThemeChange: (next: ThemeChoice) => void
@@ -87,11 +76,12 @@ interface GraphViewProps {
 
 export function GraphView({
   active,
-  ast,
-  parserGraph,
-  decomposition,
-  onRequestDecomposition,
-  onShowInTree,
+  graph,
+  counts,
+  findings,
+  groups,
+  groupsControl,
+  crossView,
   filter,
   onFilterChange,
   pins,
@@ -141,14 +131,7 @@ export function GraphView({
     return () => ro.disconnect()
   }, [])
 
-  // Pure data layer (graph build, file list, filter-change flash, diagnostics
-  // partition) — everything derived straight from props, no sim/DOM.
-  const {
-    graph,
-    recentlyChanged,
-    errors,
-    diagnostics,
-  } = useGraphModel(ast, parserGraph, filter)
+  const recentlyChanged = useRecentlyChanged(filter)
 
   // What each filter axis can take, read off the graph: the engine declares no
   // value vocabulary, so the bar learns an axis's domain from the nodes.
@@ -257,20 +240,6 @@ export function GraphView({
     [visibleNodes, sprung, resolved, ontology, getSimNode],
   )
 
-  // --- Decomposition group overlay (GRAPH_VIEW.md § Decomposition Group
-  // Overlay). Selection (which division per chunk is active/enabled/expanded)
-  // and the transient hover preview are owned here; the active glow groups are
-  // derived from them + the decomposition + the visible set. Selection resets
-  // when a new decomposition arrives. ---
-  const [groupSelection, setGroupSelection] = React.useState<GroupSelection>(
-    () => initialGroupSelection(decomposition),
-  )
-  const [groupHover, setGroupHover] = React.useState<GroupHover | null>(null)
-  React.useEffect(() => {
-    setGroupSelection(initialGroupSelection(decomposition))
-    setGroupHover(null)
-  }, [decomposition])
-
   // Selection / hover / keyboard-focus / shift + control-panel preview state,
   // plus the derived transitive-dependency highlight sets and focusedNodeId.
   const {
@@ -286,14 +255,10 @@ export function GraphView({
     activePullEdge, setActivePullEdge,
   } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph)
 
-  // Active glow groups for the overlay: each frontier section of every
-  // enabled/hovered division, resolved to the visible node ids it covers (via
-  // duplicateGroups, intersected with the visible set). Drives both the canvas
-  // glow and the modal's color swatches.
-  const activeGroups = React.useMemo(
-    () => computeActiveGroups(decomposition, groupSelection, groupHover, graph.duplicateGroups, visibleIds),
-    [decomposition, groupSelection, groupHover, graph.duplicateGroups, visibleIds],
-  )
+  // The groups as drawn (GRAPH_VIEW.md § Decomposition Group Overlay): the
+  // host's, restricted to the visible set and coloured in order. Drives the
+  // canvas glow and the host's control.
+  const activeGroups = React.useMemo(() => activeGroupsOf(groups ?? [], visibleIds), [groups, visibleIds])
 
   // Canvas glow set: the active groups with the group under the hovered/selected
   // node strengthened, so one group surfaces from many faint ones as the pointer
@@ -373,7 +338,7 @@ export function GraphView({
   }
 
   // Hover with a grace period so the pointer can travel from a node onto its
-  // hover tooltip (now interactive — it carries a "Show in Tree" button)
+  // hover tooltip (interactive — it carries the host's cross-view button)
   // without the tooltip vanishing. A null from the canvas schedules a clear;
   // the tooltip's onMouseEnter cancels it, onMouseLeave re-arms it.
   const hoverClearTimer = React.useRef<number | null>(null)
@@ -581,7 +546,7 @@ export function GraphView({
           shiftHeld={shiftHeld}
           duplicateGroups={graph.duplicateGroups}
           nodeSummaries={nodeSummaries}
-          onShowInTree={onShowInTree}
+          crossView={crossView}
           onMouseEnter={cancelHoverClear}
           onMouseLeave={() => handleHoverNode(null)}
         />
@@ -593,7 +558,7 @@ export function GraphView({
             the modal tracks the real toolbar bottom (not a fixed offset). */}
         <div className="graph-toolbar" ref={toolbarRef}>
           <FilterBar
-            ast={ast}
+            counts={counts}
             valuesByDimension={valuesByDimension}
             filter={filter}
             onFilterChange={onFilterChange}
@@ -610,8 +575,7 @@ export function GraphView({
             searchTitle="Search nodes (/)"
             searchPlaceholder="Search nodes..."
             searchExtra={searchExtra}
-            errors={errors}
-            diagnostics={diagnostics}
+            findings={findings}
           />
         </div>
 
@@ -682,18 +646,8 @@ export function GraphView({
         onNodeScaleChange={handleNodeScaleChange}
       />
 
-      {/* Groups modal — decomposition overlay control (top-left). Renders
-          nothing when there is no decomposition AND no recompute action wired;
-          with an action it renders so the first request can be made. */}
-      <GroupsModal
-        decomposition={decomposition}
-        selection={groupSelection}
-        onSelectionChange={setGroupSelection}
-        hover={groupHover}
-        onHover={setGroupHover}
-        activeGroups={activeGroups}
-        onRequestDecomposition={onRequestDecomposition}
-      />
+      {/* The host's control for its groups (top-left), handed the groups as drawn. */}
+      {groupsControl?.(activeGroups)}
 
       {/* Shortcuts panel */}
       {shortcutsOpen && (
@@ -729,15 +683,15 @@ interface GraphHoverTooltipProps {
   shiftHeld: boolean
   duplicateGroups: Map<string, Set<string>>
   nodeSummaries: Map<string, string>
-  // Cross-view nav from the tooltip. Absent in history mode (no Tree view).
-  onShowInTree?: (target: FocusTarget) => void
+  // The host's cross-view action from the tooltip, when it offers one.
+  crossView?: { label: string; onFocus: (target: FocusTarget) => void }
   // The tooltip is interactive: these keep it open while the pointer is over
-  // it (so the Show in Tree button is clickable).
+  // it (so the cross-view button is clickable).
   onMouseEnter: () => void
   onMouseLeave: () => void
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries, onShowInTree, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries, crossView, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
   // Before the early returns: this is a hook, and the component bails out four
   // different ways below.
   const ontology = useOntology()
@@ -813,7 +767,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       )}
       {fileName && <div className="tooltip-file">{fileName}</div>}
       {copyCount > 1 && (
-        <div className="tooltip-duplicates" title="This definition is registered on multiple hosts. Hovering any copy highlights all copies.">
+        <div className="tooltip-duplicates" title="This definition appears in more than one place. Hovering any copy marks all copies.">
           copy {copyIndex} of {copyCount}
         </div>
       )}
@@ -824,13 +778,13 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         </div>
       )}
       <div className="tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
-      {onShowInTree && (
+      {crossView && (
         <button
-          className="tooltip-show-in-tree"
-          onClick={() => onShowInTree({ name: node.name, values: node.dimensions })}
-          title="Show in Tree view"
+          className="tooltip-cross-view"
+          onClick={() => crossView.onFocus({ name: node.name, values: node.dimensions })}
+          title={crossView.label}
         >
-          Show in Tree
+          {crossView.label}
         </button>
       )}
     </div>

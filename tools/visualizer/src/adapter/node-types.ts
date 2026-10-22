@@ -35,14 +35,22 @@ export type NodeType =
   | 'nexusOperation'
   | 'activity'
 
-import { createOntology } from '../graph/ontology'
-import { payloadString } from '../graph/model'
-import type { GraphNode } from '../graph/model'
-import type { Highlight, HighlightGraph } from '../graph/ontology'
-import type { Ontology, OntologySpec } from '../graph/ontology'
-import type { NodeTypeDefinition } from '../graph/taxonomy'
-import type { DimensionDescriptor, FilterChip } from '../graph/dimension'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import {
+  createOntology,
+  payloadString,
+  DEF_TYPE_DIMENSION,
+  SOURCE_FILE_DIMENSION,
+} from '@temporal-architect/graph-view'
+import type {
+  GraphNode,
+  Highlight,
+  HighlightGraph,
+  Ontology,
+  OntologySpec,
+  NodeTypeDefinition,
+  DimensionDescriptor,
+  FilterChip,
+} from '@temporal-architect/graph-view'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
 
 /**

@@ -1,8 +1,7 @@
 import React from 'react'
-import { SingleGearIcon, InterlockingGearsIcon } from '../components/icons/GearIcons'
+import { DEF_TYPE_DIMENSION } from '@temporal-architect/graph-view'
+import { SingleGearIcon, InterlockingGearsIcon } from './GearIcons'
 import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
-import { DEF_TYPE_DIMENSION } from '../graph/dimension'
-
 // --- Core types ---
 
 export interface PrimitiveTheme {

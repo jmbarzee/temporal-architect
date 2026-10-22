@@ -19,16 +19,23 @@ import type {
   ParserEdge,
   ParserGraph,
 } from '../types/parser-graph'
-import type { Graph, GraphEdge, GraphNode } from '../graph/model'
-import type { EdgeCategoryKind } from '../graph/taxonomy'
-import type { NodeType } from './node-types'
-import { NODE_TYPE_REGISTRY, TEMPORAL_TYPE_DIMENSION } from './node-types'
-import type { DimensionMap } from '../graph/dimension'
-
 // The axes this domain projects a node onto. Names, not concepts, belong to the
 // host: the library never mentions any of these ids.
-import { DEF_TYPE_DIMENSION, DISPATCH_DIMENSION, RELATION_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
-
+import {
+  DEF_TYPE_DIMENSION,
+  RELATION_DIMENSION,
+  SOURCE_FILE_DIMENSION,
+} from '@temporal-architect/graph-view'
+import type {
+  Graph,
+  GraphEdge,
+  GraphNode,
+  EdgeCategoryKind,
+  DimensionMap,
+} from '@temporal-architect/graph-view'
+import type { NodeType } from './node-types'
+import { NODE_TYPE_REGISTRY, TEMPORAL_TYPE_DIMENSION } from './node-types'
+import { DISPATCH_DIMENSION } from './edge-types'
 /**
  * Project a parser node onto its axes. Absent values are OMITTED rather than
  * set to a placeholder — "this node has no source file" and "this node's source

@@ -387,15 +387,14 @@ export function foldReheatPolicy(
 }
 
 /**
- * The two axes every edge carries. Library-declared, like the file and kind
- * axes, because the engine ships the code that reads them: edge graduation,
- * highlighting and spring resolution all branch on `relation`, and the spring
- * classifier disambiguates on `dispatch`.
+ * The one axis every edge carries. Library-declared, like the file and kind
+ * axes, because the engine ships the code that reads it: edge graduation,
+ * highlighting and spring resolution all branch on `relation`.
  *
  *   relation — 'containment' | 'dependency'. The structural meaning of the edge.
- *   dispatch — the producer's kind for a dependency edge (how the work is
- *              dispatched), verbatim and open. Absent on containment edges,
- *              which dispatch nothing.
+ *
+ * Anything else an edge carries is the host's. The first host adds `dispatch`,
+ * its call kind, which only its own edge rules read — D48 said the engine read
+ * it, and it no longer does (D64).
  */
 export const RELATION_DIMENSION: DimensionId = 'relation'
-export const DISPATCH_DIMENSION: DimensionId = 'dispatch'

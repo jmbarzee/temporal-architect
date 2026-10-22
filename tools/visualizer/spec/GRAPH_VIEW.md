@@ -736,10 +736,15 @@ and `Graph.duplicateGroups` maps each member to all its sister deployment copies
 
 Group membership is **not** baked into the static graph; it is derived reactively
 from the decomposition plus the modal's current selection, exactly like the
-hover/search highlight sets. The glow only ever covers nodes that pass the current
-type/file filters (the visible set) — filter-as-source-of-truth (§ Search and
-Filtering). A group's hidden members do not pop into view; the glow extends what
-is already on screen.
+hover/search highlight sets. The split is the host's and the view's: the host
+turns its decomposition and the modal's selection into groups over the whole
+graph (an id, the node ids covered, how strongly to glow), and the view restricts
+each to the visible set, drops the empty, and colours what is left in order — so
+the palette cycles over the groups shown, and the host's legend reads the colours
+back from the groups as drawn. The glow only ever covers nodes that pass the
+current type/file filters (the visible set) — filter-as-source-of-truth (§ Search
+and Filtering). A group's hidden members do not pop into view; the glow extends
+what is already on screen.
 
 ### Groups Modal
 

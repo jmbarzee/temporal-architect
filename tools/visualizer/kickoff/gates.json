@@ -10,22 +10,22 @@
     "allows more than is measured fails as STALE, so the ratchet cannot go slack",
     "unnoticed."
   ],
-  "leakCeiling": 4,
-  "totalCeiling": 1091,
-  "boundaryCeiling": 8,
+  "leakCeiling": 0,
+  "totalCeiling": 1103,
+  "boundaryCeiling": 0,
   "forbiddenPatternAllowlist": [
     {
-      "file": "src/filter/storage.ts",
+      "file": "src/adapter/storage.ts",
       "rule": "as-record",
       "max": 2
     },
     {
-      "file": "src/filter/storage.ts",
+      "file": "src/adapter/storage.ts",
       "rule": "as-unknown-as",
       "max": 1
     },
     {
-      "file": "src/graph/rng.ts",
+      "file": "../graph-view/src/graph/rng.ts",
       "rule": "math-random",
       "max": 2
     }

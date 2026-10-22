@@ -43,6 +43,9 @@ jobs:
       - name: Install dependencies
         run: cd tools/visualizer && npm ci
 
+      - name: Install graph-view dependencies
+        run: cd tools/graph-view && npm ci
+
       - name: Typecheck visualizer
         run: make typecheck
 
@@ -52,13 +55,17 @@ jobs:
       - name: Visualizer goldens
         run: make verify-visualizer
 
-      - name: Build toolchain (binary + visualizer lib)
+      - name: Build toolchain (binary + the two npm libraries)
         run: make build
 
       - name: Visualizer published types (consumer compile, skipLibCheck off)
         run: cd tools/visualizer && npm run dts-gate
 
+      - name: graph-view published types (consumer compile, skipLibCheck off)
+        run: cd tools/graph-view && npm run dts-gate
+
       - name: Verify release artifacts pack
         run: |
           make pack-visualizer-lib
+          make pack-graph-view-lib
           make pack-wire-types

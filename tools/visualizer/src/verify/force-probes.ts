@@ -23,7 +23,7 @@
 //      iteration to amplify a last-place difference, rounds identically
 //      everywhere.
 
-import { RELATION_DIMENSION, createDimensionalMapping } from '../graph/dimension'
+import { RELATION_DIMENSION, createDimensionalMapping } from '@temporal-architect/graph-view/graph/dimension'
 import {
   applyBandGravity,
   resolvePhysics,
@@ -34,14 +34,14 @@ import {
   layoutFrame,
   presentSpringCategories,
   springFor,
-} from '../graph/forces'
-import type { EdgeCategory, ResolvedSprings } from '../graph/forces'
-import type { GraphEdge } from '../graph/model'
+} from '@temporal-architect/graph-view/graph/forces'
+import type { EdgeCategory, ResolvedSprings } from '@temporal-architect/graph-view/graph/forces'
+import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
-import { defaultParamsFor, pairTuning, withPushOverride } from '../graph/simulation'
-import type { ForceParams, SimNode } from '../graph/simulation'
+import { defaultParamsFor, pairTuning, withPushOverride } from '@temporal-architect/graph-view/graph/simulation'
+import type { ForceParams, SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { mulberry32 } from './rng'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'

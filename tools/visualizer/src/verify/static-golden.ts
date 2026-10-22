@@ -9,15 +9,17 @@
 // only detector for the memoization trap (T5).
 
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_ONTOLOGY } from '../adapter/node-types'
-import { DEFAULT_NODE_SCALE } from '../graph/node-scale'
-import { defaultParamsFor, mappedTuning } from '../graph/simulation'
-import type { LayoutTuning } from '../graph/simulation'
-import { isScalarTuning } from '../graph/scalar'
-import { isScalarAxis, mappedAxis, resolvePhysics } from '../graph/forces'
-import type { ResolvedLayoutAxis } from '../graph/forces'
+import { DEFAULT_NODE_SCALE } from '@temporal-architect/graph-view/graph/node-scale'
+import { defaultParamsFor, mappedTuning } from '@temporal-architect/graph-view/graph/simulation'
+import type { LayoutTuning } from '@temporal-architect/graph-view/graph/simulation'
+import { isScalarTuning } from '@temporal-architect/graph-view/graph/scalar'
+import { isScalarAxis, mappedAxis, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
+import type { ResolvedLayoutAxis } from '@temporal-architect/graph-view/graph/forces'
 import { scalarProbes } from './scalar-probes'
 import { schemeProbes } from './scheme-probes'
 import { viewProbes } from './view-probes'
+import { seamProbes } from './seam-probes'
+import { hostProbes } from './host-probes'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
@@ -25,12 +27,12 @@ import { tuningProbes } from './tuning-probes'
 import { ALL_EDGE_TYPES } from '../adapter/edge-types'
 import { buildNodeTypeCSS } from '../adapter/node-type-styles'
 import { VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
-import { reconcileFilter } from '../filter/reconcile'
-import { toggleValue, toggleGroup } from '../filter/toggle'
-import type { FilterState, PinState, ViewTransition } from '../filter/types'
-import { selectionFor } from '../filter/types'
+import { reconcileFilter } from '@temporal-architect/graph-view/filter/reconcile'
+import { toggleValue, toggleGroup } from '@temporal-architect/graph-view/filter/toggle'
+import type { FilterState, PinState, ViewTransition } from '@temporal-architect/graph-view/filter/types'
+import { selectionFor } from '@temporal-architect/graph-view/filter/types'
 import type { Json } from './snapshot'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
 import { sorted, sortedRecord } from './snapshot'
 
 // ── Registries ──────────────────────────────────────────────────────────────
@@ -258,6 +260,8 @@ export function staticGolden(): Json {
     scalarProbes: scalarProbes(),
     schemeProbes: schemeProbes(),
     viewProbes: viewProbes(),
+    seamProbes: seamProbes(),
+    hostProbes: hostProbes(),
     syntheticVisible: syntheticVisible(),
     filterChipLayer: filterChipLayer(),
     reconcileMatrix: reconcileMatrix(),

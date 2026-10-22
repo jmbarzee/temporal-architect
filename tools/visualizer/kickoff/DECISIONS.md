@@ -1733,3 +1733,236 @@ Byte-identical: every graduated-edge row, every summary, Tier B, Tier C,
 `edge-types`, and every other static probe.
 
 — 2026-10-22 — agent
+
+**D61 — The view takes what the host reads: the eight import edges are cut
+in place, before the move (Unit 8a).** Gate 6 at 0 and the leak gate at 0 —
+R38 reached inside `tools/visualizer/` so that the move itself can be the
+pure directory move the plan describes. Each edge, and what replaced it:
+
+1. **The graph is a prop** (D41 closed). `GraphView` takes `graph: Graph`;
+   the host calls `useGraphModel(ast, parserGraph)` — now the adapter's one
+   reading of the payload for the view: the graph built from the parser's
+   deployment graph, and the findings. The chip-flash set depends on the
+   filter alone, so it is the view's own hook (`useRecentlyChanged`), read by
+   both views in place of the copy the tree view carried (STANDING_CHECKS
+   #1).
+2. **The chip counts are the host's reading of its own data.** The bar
+   counted top-level definitions per file and per type off the AST; it now
+   takes `counts` per axis and value, and the host computes them
+   (`definitionCounts(ast, selectedFiles)` — one function, both views). The
+   same numbers, read where they always came from, handed across instead of
+   derived inside.
+3. **The findings bars are a slot.** The error and warning bars — file
+   errors and diagnostics, partitioned by the host's file filter — are the
+   parser's shapes end to end. `ErrorBars` moved whole, with its stylesheet,
+   to the host; the bar renders whatever `findings` node it is handed, and
+   both views hand it the same component.
+4. **Groups over the whole graph in, groups as drawn out.** The
+   decomposition — chunks, ranked division strategies, sections, the modal
+   that edits which are shown — is the host's; the view's part is to restrict
+   a group to the visible set, drop the empty, and colour what is left in
+   order. `graph/groups.ts` keeps exactly that (`NodeGroup` in,
+   `ActiveGroup` out, `activeGroupsOf`, the palette, the strengths);
+   `adapter/groups.ts` keeps the selection model and `nodeGroupsOf`. The
+   host owns the selection and hover state, renders the modal through
+   `groupsControl(active)`, and reads the colours back from the groups as
+   drawn — the palette cycles over what is shown, as before, because the
+   empty are dropped before the colours are dealt. The modal, `protocol` and
+   the decomposition types leave the view with it.
+
+**Measured.** Gate 6: 8 → **0**. Leak: 4 → **0**. Total vocabulary 1091 →
+**1089** — the two `TWFFile` mentions, gone rather than moved. Every golden
+byte-identical (7/7). In the browser on the decomposition fixture, the six
+chips carry the same counts in both views (37 · 1 · 1 · 0 · 5 · 30), the
+Groups control is present, 0 console errors. Ceilings ratcheted to 0 / 1089
+/ 0.
+
+**Golden change (§8.2).** None.
+
+— 2026-10-22 — agent
+
+**D62 — The move: the library is its own package,
+`@temporal-architect/graph-view`, consumed from source (Unit 8b).** PLAN §6.2
+Unit 8; R36, R38, R39, R40, R41.
+
+1. **The package.** `tools/graph-view/` — the §6.5 manifest moved whole, 54
+   files (the 53 the manifest held plus `icons/GearIcons.tsx`, which the bar
+   renders and the host's theme borrows), keeping its layout under `src/`;
+   plus the chrome's design tokens, cut out of the host's `index.css` into
+   the library's `styles/tokens.css` — the host keeps its five block tokens
+   and reads the chrome's from the library. The name is the org's scope and
+   what the thing is; `dimensional-graph` and `forcegraph` were the
+   alternatives, neither saying "view". Its own `package.json` (the
+   visualizer's devDependency set, no new dependency — C2), a lockfile seeded
+   from the visualizer's so both pin the same versions (vite 6.4.1,
+   vite-plugin-dts 5.0.0, TypeScript 5.9.3), a `tsconfig`, a lib build, a
+   published-types gate (the visualizer's twin, differing only in what is
+   private: the taxonomy and the scalar axes ARE this surface, the force
+   model is not), a README.
+2. **The entry is what the host imports.** `src/index.ts` is generated from
+   the visualizer's own imports of the moved modules — 53 names from 16
+   modules, `export type` where the module exports a type — and committed as
+   `kickoff/graph-view-surface.txt`, which the surface gate checks beside
+   `lib-surface.txt`. `passesSelection` moved from the view's derivation to
+   `filter/types.ts` on the way: the policy belonged with the filter, and
+   exporting it from `visibleGraph` dragged the simulation's and the force
+   model's declarations onto the published surface (the types gate caught
+   it: two private files reachable, then none).
+3. **Consumed from source, not from a build.** The visualizer's three vite
+   configs alias the bare specifier to `../graph-view/src/index.ts` and the
+   deep form `@temporal-architect/graph-view/<path>` to `../graph-view/src/
+   <path>`, with `dedupe: ['react', 'react-dom']` so the library's files,
+   which sit beside their own `node_modules`, resolve React to the host's one
+   copy; `tsconfig.json` carries the same two path maps. One `npm ci` per
+   package, HMR across the boundary, no build order between them; the
+   visualizer's published artifact bundles the library (its `lib.d.ts`
+   mentions it nowhere), so consumers of `@temporal-architect/visualizer`
+   install nothing new. The `file:../<name>` link the plan named is the
+   wire-types precedent for a type-only package; a runtime library consumed
+   by a bundler is served by the alias, and a link nothing resolves through
+   would be wiring that lies. Deep imports are the harness's (`src/verify/`)
+   alone — they say what the harness is, the thing that pins the library's
+   internals — and the published `exports` map does not offer them.
+4. **The gates follow the move.** The manifest is the library's tree
+   (`../graph-view/src/**`); the shim is unchanged. Gate 6 is a package
+   boundary now, in both directions: a library file imports nothing that
+   resolves outside the library's `src/` and no `@temporal-architect/*`
+   package; a host file outside the harness imports nothing past the
+   library's entry. The pattern gate's scope and allowlist paths follow the
+   engine's directory (the two allowlist entries were renamed, not added —
+   the same casts in the same files). The map covers both trees and resolves
+   the alias. The visualizer's declarations build pins `entryRoot` to `src/`:
+   a program that reaches another package's source has `tools/` as its
+   shortest common directory, and the declarations had landed under
+   `dist-lib/visualizer/src/` with the gate reporting the entry missing.
+5. **Measured.** Leak **0** (ceiling 0) — three library-side hits fixed on
+   the way: a header naming the scoped package, and two icon comments naming
+   the values the icons used to stand for. Total vocabulary **1101**, the
+   ceiling raised 1089 → 1101 with the reason: twelve import lines in the
+   shim name the library by its scoped package name, and the org's scope
+   carries the word; nothing moved into the shim and nothing grew. Boundary
+   **0**. Every golden byte-identical (7/7) through the alias. Surfaces 90
+   and 53, as committed. Published types: 10 files reachable from the
+   visualizer's entry, 17 from the library's, none private. Gate 5: five
+   fixtures in both themes through the library from source, 0 console
+   errors, every count identical to Unit 7's. The parser and the wire types
+   are untouched on the whole stack (R39); the sibling's dependencies are a
+   subset of the visualizer's and the visualizer's manifest is unchanged
+   (R40).
+6. **Packaging and the graph** (T27, T28). Makefile: `build-graph-view-lib`
+   (in `build`), `pack-graph-view-lib` (in CI's pack step; attached to a
+   Release beside the visualizer's), `typecheck-graph-view` (in `typecheck`),
+   `buildlib-graph-view` (build and types gate); `check-visualizer` runs all
+   of it; `clean` covers the sibling. Not added to `publish-npm-libs`:
+   publishing a new package under the org's scope is a release decision, one
+   line when taken. `ci.yml` installs the sibling and runs its types gate and
+   pack. `components.md` gains the `graph-view` row (its quality review is
+   the visualizer's prompt, whose scope covers both packages), the
+   `area:visualizer` routing note, the `graph-view` → `visualizer` [API]
+   propagation edge, and a Wave 3 for the visualizer, which consumes the
+   library's entry. T28: the spec review's missing input is `PRODUCT.md`,
+   which exists.
+
+**Golden change (§8.2).** None.
+
+— 2026-10-22 — agent
+
+**D64 — What REVIEW_8 changed: the boundary resolved in both directions, the
+artifact gated as it ships, the surface made a host's rather than one host's,
+and D62 corrected (Unit 8 close).** The five-lens review (62 findings, 27
+clusters, 22 verified, 0 refuted) downgraded all five filed-blocker clusters
+to major and confirmed four majors; the rest it found in what D62 had claimed
+and not measured, or in what the move had carried across without asking.
+
+1. **Gate 6 resolves** (C1–C4). The host-side check matched one spelling of
+   one specifier; a relative path, the `@/` alias and a barrel in the exempt
+   harness all reached the library's internals at 0. Every edge is resolved
+   now: a host file outside the harness may reach the library's entry and
+   nothing deeper, by any spelling, and may not reach the harness; a library
+   file may reach nothing outside its `src/` — relative paths, stylesheet
+   `@import`/`url()` targets and `import.meta.glob` patterns resolved, no
+   `@temporal-architect/*` package, no bare specifier the library's own
+   `package.json` does not declare — and the library's configs declare no
+   path map or alias. Every ratchet now measures `.js/.mjs/.jsx/.mts/.cts`
+   beside `.ts/.tsx/.css`. Measured 0 before and after; the config check
+   first fired on the word "alias" in a comment and now reads code.
+2. **The surface gate refuses `export *`** (C5), which added names past it
+   with every gate green; **the map's dropped edges** (C6): a host-sized path
+   slice listed every library module as imported by nothing — `model.ts` is
+   imported by 21 files.
+3. **The artifact as it ships** (C8, C10, C17). The visualizer's declarations
+   that named library types were emitted with repo-relative imports into
+   `../graph-view/src`, dangling once installed, and its types gate compiled
+   inside the repository where they resolve. `build:lib` now prunes every
+   declaration the entry does not reach (`verify/prune-dts.mjs`: the
+   library 47 → 15 files, the force model among the pruned; the visualizer
+   29 → 10, the seven escaping files among the pruned); the gate walks what
+   ships, refuses an import that leaves the package and a private module
+   that is present, compiles a consumer against a copy of the artifact
+   OUTSIDE the repository, and reads the published stylesheet for the design
+   tokens — once per theme where themed, once for the fonts — because the
+   token sheet reaches both artifacts through one side-effect import no other
+   gate can see. The `rollupTypes` comments say what the plugin does (T31).
+4. **The release path** (C7). A job that installs only the visualizer
+   compiles the library's source without its `node_modules`: 77 type errors,
+   swallowed. Every Makefile target that compiles either package now
+   installs the sibling first. D62 §6's "attached to a Release beside the
+   visualizer's" was false — `_build-artifacts.yml` neither installs nor
+   packs it, and it is outside this run's bounds — filed as #187 with the
+   repo-level registrations (C12).
+5. **The surface is a host's** (C18, C19). The entry was the first host's
+   import list, so it carried what that host happened to need and lacked
+   what a second host's spec names. Moved to the host: the two gear glyphs
+   (the host's activity and workflow icons, with the comments the leak gate
+   had scrubbed), the two-view app's persistence (`storage.ts`, with its
+   `acquireVsCodeApi`), and the `dispatch` axis with `dispatchOf` — D48 said
+   the engine read it; nothing in the library does, the host's edge rules
+   do. Replaced by shape: `HOVER_STRENGTH` handed to the host to hand back is
+   `NodeGroup.emphasized`, and `onShowInTree` with a hard-coded label is
+   `crossView { label, onFocus }`, the host's words. Added the types a
+   spec names: `ScalarAxis`, `ScalarSpan`, `ThemedColor`, `ColorPair`,
+   `Theme`, `ReadableGraph`, `DimensionId`, `EdgeTypeId`, `SpringPhysics`,
+   `StyleGroup`, `StyleSubject`, `Selection`, `ReconcileResult`, and
+   `relationOf`. The entry is **57** names now (`graph-view-surface.txt`
+   rewritten), and `static.hostProbes` is a second host written against it
+   alone — three values, two edge types, an axis of each policy, a scalar
+   reading the graph — declared, built and mounted on a server render.
+6. **The seams D61 cut, pinned** (C21): `static.seamProbes` — the view's half
+   of the overlay on a case every rule meets (restriction, the empty dropped,
+   colours dealt in order, the emphasised at 2.2), the host's half over the
+   decomposition fixture, `definitionCounts` per fixture, and the bar
+   rendered with the counts in its badges and the findings in its slot.
+7. **Stylesheet ownership** (C9). The findings palette no library rule read
+   lived in the library's tokens; it is the host's now, light and dark, and
+   `--hover-bg`, which nothing read, is gone. The host's groups control
+   borrows the library's panel chrome by class name, a coupling no gate sees;
+   it is said where it happens.
+8. **The flash hook** (C24): a removal-only change arriving within a pending
+   flash cancelled the clear and left the old set lit; the set is written on
+   every change, empty included.
+9. **The record corrected** (C27, record-6, record-10). The entry re-exported
+   from 15 modules, not 16; three allowlist entries in two files were
+   renamed, not two; "every count identical to Unit 7's" was not checkable
+   against Unit 7's captures, which had a chip off — the counts are the
+   fixtures' full totals, every chip on. D58 §9's "Unit 8 publishes the
+   library's surface": the surface exists on the library's entry — a host
+   configures colours, sizes, labels and abbreviations through
+   `OntologySpec` from it — and publication to npm is deferred (D62); R15
+   and R16 say so. T28's other half: the spec review no longer speaks of a
+   missing document's tiers. The total-vocabulary ceiling is 1101 → **1103**:
+   the two gear comments restored in the host's theme, back where the words
+   belong.
+10. **Not changed, named.** The modal's borrowed chrome (§7); VS Code's
+    marker classes in the theme hook (a convenience beside the generic
+    `data-theme`); the harness state name `types:l3`, which is a golden key;
+    the parser's `tier` field beside the registry's; `node16` module
+    resolution of the declarations (C16; the visualizer has the same shape);
+    the `prepack` licence copy from the repo root (C15; the precedent); the
+    review prompts' scope (#179) and the release workflow (#187), both
+    outside the bounds; the bar's two named hidden-match props, which Unit 9
+    generalises.
+
+**Golden change (§8.2).** Added: `static.seamProbes`, `static.hostProbes`.
+Nothing else moves — every other row byte-identical, 7/7.
+
+— 2026-10-22 — agent

@@ -1,17 +1,21 @@
-import { useOntology } from './graph-view/useOntology'
-import { passesSelection } from './graph-view/visibleGraph'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
-import { selectionFor } from '../filter/types'
+import {
+  useOntology,
+  passesSelection,
+  DEF_TYPE_DIMENSION,
+  SOURCE_FILE_DIMENSION,
+  selectionFor,
+  useRecentlyChanged,
+  FilterBar,
+} from '@temporal-architect/graph-view'
+import type { FocusTarget, FilterState, PinState, FilterDimension } from '@temporal-architect/graph-view'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
 import type { CallerRef, NavigationContextType } from './WorkflowCanvas'
-import type { FocusTarget } from '../filter/types'
-import type { FilterState, PinState, FilterDimension } from '../filter/types'
-import { filterStatesEqual } from '../filter/types'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
-import { FilterBar } from './FilterBar'
+import { ErrorBars } from './ErrorBars'
+import { definitionCounts } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
 
 interface TreeViewProps {
@@ -74,32 +78,7 @@ export function TreeView({
     prevAstRef.current = ast
   }, [ast])
 
-  // Track which filter chips/toggles were changed by an external filter
-  // update (i.e., a focus transition's reconciler expansion). These
-  // briefly animate (~400ms) to make the change visible. We diff the new
-  // filter against the previous one to find the changed keys.
-  const prevFilterRef = React.useRef<FilterState>(filter)
-  const [recentlyChanged, setRecentlyChanged] = React.useState<Set<string>>(new Set())
-  React.useEffect(() => {
-    const prev = prevFilterRef.current
-    if (filterStatesEqual(prev, filter)) return
-    const changed = new Set<string>()
-    // Keyed `<dimension>:<value>`, and derived by looping the filter's own axes
-    // rather than naming two. The consumer looks these up as
-    // `${dimension}:${value}`; emitting `file:`/`type:` while it read
-    // `sourceFile:`/`defType:` left the chip-flash animation silently dead in
-    // both views — no error, no gate, just an effect that stopped happening.
-    for (const [dimension, values] of filter) {
-      const before = selectionFor(prev, dimension)
-      for (const v of values) if (!before.has(v)) changed.add(`${dimension}:${v}`)
-    }
-    prevFilterRef.current = filter
-    if (changed.size > 0) {
-      setRecentlyChanged(changed)
-      const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)
-      return () => clearTimeout(timer)
-    }
-  }, [filter])
+  const recentlyChanged = useRecentlyChanged(filter)
 
   // Pin-override flash: clear the overridden-pins set after ~600ms so
   // the visual flash plays once per focus transition.
@@ -311,10 +290,10 @@ export function TreeView({
     return { matchSet: set, matchIndices: indices, hiddenMatchByType: byType, hiddenMatchByFile: byFile }
   }, [searchQuery, visibleDefinitions, ast.definitions, filter])
 
-  // Raw findings handed straight to the shared FilterBar, which partitions
-  // them by the file filter and renders the error/warning bars.
+  // The findings and the chip counts, read off the AST for the shared bar.
   const errors = ast.errors || []
   const diagnostics = ast.diagnostics || []
+  const counts = React.useMemo(() => definitionCounts(ast, selectionFor(filter, SOURCE_FILE_DIMENSION)), [ast, filter])
   // Whether there's anything to surface — used only to decide the empty state.
   const hasHeaderContent = errors.length > 0 || diagnostics.length > 0
 
@@ -524,7 +503,7 @@ export function TreeView({
     <NavigationContext.Provider value={navigationValue}>
       <div className="workflow-canvas">
         <FilterBar
-          ast={ast}
+          counts={counts}
           valuesByDimension={valuesByDimension}
           filter={filter}
           onFilterChange={onFilterChange}
@@ -543,8 +522,7 @@ export function TreeView({
           searchExtra={searchExtra}
           hiddenMatchByType={hiddenMatchByType}
           hiddenMatchByFile={hiddenMatchByFile}
-          errors={errors}
-          diagnostics={diagnostics}
+          findings={<ErrorBars errors={errors} diagnostics={diagnostics} selectedFiles={selectionFor(filter, SOURCE_FILE_DIMENSION)} />}
           refreshFlash={refreshFlash}
         />
 
