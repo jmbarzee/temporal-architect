@@ -54,7 +54,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 5b — Computed scalar axes** (opened on `visualizer/dimensions-unit-5b` from unit-5a @ `f838d85`) |
+| Current unit | **Unit 5b — Computed scalar axes** (opened on `visualizer/dimensions-unit-5b` from unit-5a @ `f838d85`; implementation at `3e7b795` under review — D55, gates green, Gate 5 passed) |
 | Last completed unit | **Unit 5a — Two symmetric dimensional axes** ([PR #171](https://github.com/jmbarzee/temporal-architect/pull/171)) |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-5b` (from unit-5a @ `f838d85`); the stack below it: unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
