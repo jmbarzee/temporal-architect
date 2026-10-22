@@ -195,8 +195,16 @@ should be read:
    A rule in a document is not a rule until something executes it.
 
 **Unit 4 in progress** on `visualizer/dimensions-unit-4`, branched from unit-3 @
-`aedde37`; last checkpoint `00dfe67` (4-pre, D47 — the params shape, done).
-Next: 4a, edge `relation`/`dispatch` dimensions. **Record the sha, every checkpoint:** on resume after a six-week
+`aedde37`; last checkpoint `6b30d61` (4a, D48 — edges carry `relation`/`dispatch`,
+endpoint as payload; leak 203 → 194). Next: **4c**, dimensional springs with the
+shim table as the `temporalType` override (D2).
+
+**Re-sequenced:** 4b's residual — a host-chosen mapping with the 24-token ceiling
+— would have no caller until 4e's dropdown exists, which is the
+decorative-declarative shape STANDING_CHECKS #4 names (F15, D46). It lands inside
+4e, when something reads it. 4-pre already delivered 4b's keyed accessors and 4d's
+hoisted resolution; 4d's residue (per-node bucket precompute, canvas per-frame
+style memo) follows 4c. **Record the sha, every checkpoint:** on resume after a six-week
 pause the app had re-pointed this worktree to its own session branch at the
 feature base, and the first `checkout -b unit-4` silently branched from there.
 Caught only because pre-Unit-2 symbols showed up in a grep. First action of any
