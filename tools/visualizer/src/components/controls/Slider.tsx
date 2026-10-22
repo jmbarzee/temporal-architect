@@ -7,7 +7,7 @@
 //
 // Layout/placement is the caller's job: the slider fills its container
 // (width 100% horizontal, height 100% vertical), so a grid cell or flex row
-// positions it. The two-handle band slider is a separate primitive (DualRange).
+// positions it.
 
 import { usePop } from './PopContext'
 import './controls.css'

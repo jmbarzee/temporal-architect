@@ -54,19 +54,19 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 4 — Push/pull on a chosen dimension** (closing: all commits landed, review running, PR pending) |
-| Last completed unit | **Unit 3 — N-dimensional filters + chain UI** |
+| Current unit | **Unit 5a — Two symmetric dimensional axes** (closed: review addressed in `6ca503d`, [PR #171](https://github.com/jmbarzee/temporal-architect/pull/171) open) |
+| Last completed unit | **Unit 4 — Push/pull on a chosen dimension** ([PR #169](https://github.com/jmbarzee/temporal-architect/pull/169)) |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-4`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
+| Unit branch | `visualizer/dimensions-unit-5a` (from unit-4 @ `34a75a8`); Unit 4's is `visualizer/dimensions-unit-4`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | **14** (R4, R5, R6, R13, R14, R17, R18, R19, R20, R22, R23, R24, R25, R34) + R1 partial | 42 |
-| B — blast-radius sites migrated | **24** | 38 |
-| C — leaks in the manifest | **191** | 0 |
+| A — requirements covered | **20** (R4, R5, R6, R7, R13, R14, R17, R18, R19, R20, R22, R23, R24, R25, R26, R27, R30, R32, R33, R34) + R1, R28, R29 partial | 42 |
+| B — blast-radius sites migrated | **28** | 38 |
+| C — leaks in the manifest | **182** | 0 |
 | Gate 6 — import-boundary violations | **7** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
@@ -113,20 +113,37 @@ twelve (203 -> 191) while adding a tab, a dropdown and six files to the manifest
 at zero. The ratchet is set to **191** / **1243**; the next real drop is Unit 5a's
 11.
 
+**Unit 5a.** Counter B: B10 (seeding, both axes at the re-centred band centre),
+B11 (the X/Y asymmetry — one `AxisTuning` per axis, one pull rule), B24 (the
+overlay calls the engine's band maths), B27 (the bespoke band plot is gone;
+`AxisControls` is new code on the shared `Plot` shell) — 24 -> 28.
+
+Counter C landed at **184** against §6.5's **90**. Same shape of gap as Unit 4:
+Unit 5a's own files are near their floor — `simulation.ts` 5 -> 3,
+`GravityControls.tsx` 4 -> 0, its `.css` 2 -> 1, `AxisControls.tsx` new at 0 —
+and what remains is Unit 6's **117** (`edge-styles.ts` 58, `FilterBar.css` 39,
+`GraphView.css` 8, `controls.css` 3, `GraphControlPanel.css` 3, `PinToggle.css`
+2, `GraphCanvas.tsx` 3, `groups.ts` 1), Unit 7's **59** (`GraphView.tsx` 30,
+`visibleGraph.ts` 19, `useHighlight.ts` 10) and a residue of **8**
+(`simulation.ts` 3, `FilterBar.tsx` 2, `GravityControls.css` 1, `dimension.ts`
+1, `taxonomy.ts` 1). Sum 184, per the gate's own per-file list. The ratchet is
+set to **184** / **1236**.
+
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 4 close | pass |
-| 2 `npm run build:lib` | Unit 4 close | pass |
-| 2b `npm run dts-gate` | Unit 4 close | pass — consumer compile clean, `skipLibCheck` off |
-| 3 `npm run verify` | Unit 4 close | pass — 7/7 goldens match (Tier B and Tier C byte-identical across the whole unit) |
-| 4 `npm run leak-gate` | Unit 4 close | pass — **191 / 191**; shim 1052; **total 1243 / 1243**; `PushPullControls.tsx` and `tuning-probes.ts` joined at 0 |
-| 5 browser pass | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)`; a second capture per fixture with the panel open (`unit-4-<fixture>-controls.png`), after the review noted the first set showed it collapsed |
-| 6 `npm run boundary-gate` | Unit 4 close | pass — **7 / 7** |
-| + `npm run pattern-gate` | Unit 4 close | pass — 5 allowlisted, 0 new |
-| + `npm run map -- --check` | Unit 4 close | pass — 84 source files, with a "files only the harness imports" section |
-| + `npm run surface-gate` | Unit 4 close | pass — `src/lib.ts` exports 90 names, as committed in `kickoff/lib-surface.txt` (new: C3 had no gate) |
+| 1 `tsc --noEmit` | Unit 5a close | pass |
+| 2 `npm run build:lib` | Unit 5a close | pass |
+| 2b `npm run dts-gate` | Unit 5a close | pass — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private (new walk) |
+| 3 `npm run verify` | Unit 5a close | pass — 7/7 goldens match; Tier A and Tier C byte-identical across the unit; Tier B moved twice, each proven node by node (D53 translation, D54 seed bias) |
+| 4 `npm run leak-gate` | Unit 5a close | pass — **182 / 182**; **total 1234 / 1234**; `AxisControls.tsx` is in by the inverted manifest rule |
+| 5 browser pass | Unit 5a close | pass — five fixtures, 0 console errors, panel-open captures (`unit-5a-*`); the Gravity tab exercised by hand on multifile: X Axis and Y Axis bodies, the Radial switch re-lays out, rings draw on hover |
+| 5 browser pass (Unit 4) | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)`; a second capture per fixture with the panel open (`unit-4-<fixture>-controls.png`), after the review noted the first set showed it collapsed |
+| 6 `npm run boundary-gate` | Unit 5a close | pass — **7 / 7** |
+| + `npm run pattern-gate` | Unit 5a close | pass — 5 allowlisted, 0 new |
+| + `npm run map -- --check` | Unit 5a close | pass — 85 source files |
+| + `npm run surface-gate` | Unit 5a close | pass — 90 names, as committed |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -151,7 +168,7 @@ Status: blank = not started · `wip` · `done`.
 | R4 | Edge type from node-dimension combinations | 4 | covered (4) — Tier C byte-identical through the dimensional path; Tier A `axes` rows pin the pair rule per fixture |
 | R5 | Edges carry `relation` / `dispatch` dimensions | 4 | covered (4) — Tier A edge lines carry both |
 | R6 | Common filter interface + staple filters | 3 | covered (3) — descriptors + chain |
-| R7 | Global axis backed by a dimension | 5a | 5 |
+| R7 | Global axis backed by a dimension | 5a | covered (5a) — both axes key on a mapping; Tier B pins the X bands |
 | R8 | Global axis backed by a computed scalar | 5b | 3 + 5 |
 | R9 | Computed scalars may traverse the graph | 5b | 3 |
 | R10 | Colour scheme input, light **and** dark | 6 | 5 |
@@ -170,14 +187,14 @@ Status: blank = not started · `wip` · `done`.
 | R23 | Subsections styled like Band/Topological, no switches | 4 | covered (4) — Gate 5 verified |
 | R24 | One shared dimension dropdown drives both | 4 | covered (4) — Gate 5 verified |
 | R25 | Equation + chart/sliders + force graph per subsection | 4 | covered (4) — Gate 5 verified |
-| R26 | "X Axis" / "Y Axis" subsections | 5a | 5 |
-| R27 | Y-axis enable switch enters radial mode | 5a | 5 |
-| R28 | Per-axis mapping-or-scalar dropdown | 5a, 5b | 5 |
-| R29 | Per-axis equation, varying by kind | 5a, 5b | 5 |
-| R30 | Dimensional mapping renders as columns | 5a | 5 |
+| R26 | "X Axis" / "Y Axis" subsections | 5a | covered (5a) — Gate 5 verified |
+| R27 | Y-axis enable switch enters radial mode | 5a | covered (5a) — Gate 5 verified (the Radial switch on the Y sub-tab) |
+| R28 | Per-axis mapping-or-scalar dropdown | 5a, 5b | `wip` — the mapping half (5a, Gate 5 verified); scalars are 5b |
+| R29 | Per-axis equation, varying by kind | 5a, 5b | `wip` — the mapping equation (5a); the scalar one is 5b |
+| R30 | Dimensional mapping renders as columns | 5a | covered (5a) — Gate 5 verified |
 | R31 | Computed scalar renders as a gradient | 5b | 5 |
-| R32 | Only the active axis's strength slider shown | 5a | 5 |
-| R33 | Force graph always beneath the chart | 5a | 5 |
+| R32 | Only the active axis's strength slider shown | 5a | covered (5a) — Gate 5 verified |
+| R33 | Force graph always beneath the chart | 5a | covered (5a) — Gate 5 verified |
 | R34 | Misc section retained | 4 | covered (4) — Gate 5 verified, untouched |
 | R35 | Post-filter set determines offered controls | 7 | 5 |
 | R36 | Library in a sibling folder, buildable, extractable | 8 | 2 + 6 |
@@ -201,6 +218,7 @@ explicit pass criteria and a committed screenshot — use them.
 | **0 — Verification net** | 11 (`ad06e58`…`149634c`) | means of R41 | none migrated | 583 (ceiling 583) | [REVIEW_0.md](reviews/REVIEW_0.md) — 34 findings, all 5 blockers and 23 majors resolved |
 | **1 — Inject the taxonomy** | 8 (`df09457`…`2f51558`) | R1 (partial) | B3, B4, B5, B33 | 583 (ceiling 583) | [REVIEW_1.md](reviews/REVIEW_1.md) — 26 findings, all 3 blockers and 11 majors resolved |
 | **4 — Push/pull on a chosen dimension** | 14 (`7d81ee0`…`a2d0b1d` + the record) | R4, R5, R13, R22–R25, R34 | B6, B7, B12, B13, B26, B28 | 191 (ceiling 191) | [REVIEW_4.md](reviews/REVIEW_4.md) — 55 findings, 26 clusters, every blocker and major resolved or filed |
+| **5a — Two symmetric dimensional axes** | 6 (`5a3481f`…`6ca503d` + the record) | R7, R26, R27, R30, R32, R33; R28, R29 partial | B10, B11, B24, B27 | 182 (ceiling 182) | [REVIEW_5a.md](reviews/REVIEW_5a.md) — 39 findings, 11 clusters, every blocker and major resolved |
 
 ---
 
@@ -220,6 +238,20 @@ should be read:
 2. **Rule 8 failed on the run that introduced it** (F17): I wrote "isolation
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
+
+**Unit 5a is closed** on `visualizer/dimensions-unit-5a`, branched from unit-4
+@ `34a75a8`; [PR #171](https://github.com/jmbarzee/temporal-architect/pull/171)
+(base `visualizer/dimensions-unit-4`, per D36). Commits: `5a3481f` (5a-i/ii,
+D53), `aee52c3` (5a-iii), the close-out `9a443aa`, the review fixes `6ca503d`
+(D54), then the record. `REVIEW_5a.md`: 39 findings in 11 clusters, every
+blocker and major resolved in `6ca503d`. Last checkpoint: the commit that adds
+this paragraph.
+
+**Read `REVIEW_5a.md` before Unit 5b.** Its three record errors were one
+shape — a measurement on one fixture or one seed, generalised (F21) — and 5b
+adds computed scalars, which are all measurement.
+
+Ceilings at the Unit 5a close: leak **182**, total **1234**, boundary **7**.
 
 **Unit 4 is closed** on `visualizer/dimensions-unit-4`, branched from unit-3 @
 `aedde37`; [PR #169](https://github.com/jmbarzee/temporal-architect/pull/169)
@@ -461,6 +493,24 @@ finders had filed two. Seventeen verifiers ran (Unit 3: eight), refuted none,
 and downgraded five of the seven. 3.52M tokens against Unit 3's 1.86M, with the
 difference almost entirely in that stage. Rule 12: the clusterer groups; the
 triggers for verification are a finder's own claims.
+
+**F21 — One measurement, generalised, is how a record goes wrong.** Twice in
+D53: "the X force never fires on any fixture" came from one probe on one
+fixture (it fires on three), and "a different basin of the same forces" for
+stress's 3/53 → 32/53 came from one RNG seed (over forty, the new seeding was
+bimodal and the old never was). Both read as measurements and were
+extrapolations. The gates lens caught the second by doing what the claim
+implied — forty seeds — and the fix (`SEED_BIAS`) came from the same study,
+now committed under `kickoff/studies/` so the number has a source a reader can
+re-run. Rule for the record: a claim about "every fixture" or "any seed" names
+the fixtures and seeds it was run on, or says it was not.
+
+**F22 — A list of what is in is a list that forgets.** The component manifest
+named the library's components; twice in two units the new one was left off
+and sat outside every ratchet (REVIEW_4 #6, REVIEW_5a C9). The rule is now the
+complement — in unless excluded as the host's — so a new file joins the gates
+by existing. The same shape as F15 and D46: a declaration with no reader is a
+wish, and a list that must be extended by hand is a declaration.
 
 ---
 

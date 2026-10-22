@@ -6,16 +6,17 @@ import React from 'react'
 import type { GraphEdge } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { bucketOf } from '../graph/forces'
+import type { BandOverlay } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
-import { bandForKey, chargeFor, coreRadiusFor, springFor, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
+import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
-import type { DimensionValue } from '../graph/dimension'
 import type { Ontology } from '../graph/ontology'
 import { useOntology } from './graph-view/useOntology'
 import { edgeStyleFor } from '../graph/edge-styles'
 import type { ForceSection } from './GraphControlPanel'
+import type { GravityHover } from './GravityControls'
 
 const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#FFFFFF'
@@ -173,9 +174,11 @@ interface GraphCanvasProps {
   forceParams: ForceParams
   /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw (T25). */
   resolved: ResolvedPhysics
+  /** The band overlay as data — stripes per axis, rings — computed by the view in the forces' frame. */
+  overlay: BandOverlay
   activeSection: ForceSection
   activePushBucket: string | null
-  activeGravityType: DimensionValue | null
+  activeGravityBucket: GravityHover | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
   // Decomposition group glow layer (drawn behind everything). Empty = no overlay.
@@ -200,9 +203,10 @@ interface DrawData {
   searchMatchIds: Set<string> | null
   forceParams: ForceParams
   resolved: ResolvedPhysics
+  overlay: BandOverlay
   activeSection: ForceSection
   activePushBucket: string | null
-  activeGravityType: DimensionValue | null
+  activeGravityBucket: GravityHover | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
   running: boolean
@@ -221,8 +225,8 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, forceParams, resolved, activeSection, activePushBucket,
-  activeGravityType, activePullEdge, nodeScale, groupGlows,
+  running, forceParams, resolved, overlay, activeSection, activePushBucket,
+  activeGravityBucket, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -273,14 +277,14 @@ export function GraphCanvas({
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, activeSection, activePushBucket, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, activeSection, activePushBucket, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -762,94 +766,63 @@ export function GraphCanvas({
         ctx.setLineDash([])
       }
 
-      // GRAVITY: band rest regions. Drawn only when band gravity is active, and
-      // shaped by the mode:
-      //   cartesian — per-type Y stripes (median-centred to match the force) +
-      //               a global X band.
-      //   radial    — concentric rings at each tier's target radius about the
-      //               world origin.
-      if (gravityActive && d.forceParams.bandEnabled) {
-        // Node types present in the visible set (their band centres drive both
-        // the cartesian median and the radial ring mapping).
-        const present: DimensionValue[] = []
-        const seenTypes = new Set<DimensionValue>()
-        for (const n of d.nodes) {
-          const value = d.ontology.valueFor(n)
-          if (value === undefined || seenTypes.has(value)) continue
-          seenTypes.add(value)
-          present.push(value)
+      // GRAVITY: the band overlay, drawn from the data the view computed in the
+      // forces' frame (`bandOverlay`): stripes per axis in cartesian, rings in
+      // radial, only for buckets some node falls in, only while an axis acts.
+      // Hovering a column highlights its bucket's stripe or ring on that axis;
+      // a hovered bucket that is drawn nowhere dims nothing.
+      if (gravityActive && d.overlay.acting) {
+        const hover = d.activeGravityBucket
+        const fillOf = (bucket: string | undefined): string => {
+          const color = bucket !== undefined ? d.overlay.colors.get(bucket) : undefined
+          return color ?? cssVar(canvas, '--color-text-muted', '#94A3B8')
         }
-        const centerOf = (t: DimensionValue) => {
-          const b = bandForKey(d.resolved.band, t)
-          return (b.yMin + b.yMax) / 2
-        }
+        const drawnOn = (axis: 'x' | 'y') => hover !== null && hover.axis === axis &&
+          (axis === 'y' && d.overlay.rings.length > 0
+            ? d.overlay.rings.some(r => r.buckets.includes(hover.bucket))
+            : (axis === 'x' ? d.overlay.x : d.overlay.y).some(st => st.buckets.includes(hover.bucket)))
 
-        if (d.forceParams.gravityMode === 'radial') {
-          const centers = present.map(centerOf)
-          const lo = centers.length ? Math.min(...centers) : 0
-          const span = (centers.length ? Math.max(...centers) : 0) - lo || 1
+        if (d.overlay.rings.length > 0) {
           const [ox, oy] = worldToScreen(vp, 0, 0)
-          for (const t of present) {
-            const targetR = RADIAL_R_MIN + ((centerOf(t) - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)
-            const isActive = d.activeGravityType === t
-            const isDimmed = d.activeGravityType !== null && !isActive
-            ctx.strokeStyle = d.ontology.styleForKey(t).color.fill
+          const highlight = drawnOn('y')
+          for (const ring of d.overlay.rings) {
+            const isActive = highlight && hover !== null && ring.buckets.includes(hover.bucket)
+            const isDimmed = highlight && !isActive
+            ctx.strokeStyle = fillOf(ring.buckets[0])
             ctx.globalAlpha = isActive ? 0.6 : isDimmed ? 0.1 : 0.28
             ctx.lineWidth = isActive ? 1.5 : 1
             ctx.setLineDash([])
             ctx.beginPath()
-            ctx.arc(ox, oy, targetR * vp.scale, 0, Math.PI * 2)
+            ctx.arc(ox, oy, ring.radius * vp.scale, 0, Math.PI * 2)
             ctx.stroke()
           }
-        } else {
-          // Median band centre over the visible types (matches applyBandGravity).
-          const sorted = present.map(centerOf).sort((a, b) => a - b)
-          const m = sorted.length
-          const median = m ? (m % 2 ? sorted[(m - 1) / 2] : (sorted[m / 2 - 1] + sorted[m / 2]) / 2) : 0
-
-          for (const t of d.ontology.nodeTypeKeys) {
-            const band = bandForKey(d.resolved.band, t)
-            const [, sy1] = worldToScreen(vp, 0, band.yMin - median)
-            const [, sy2] = worldToScreen(vp, 0, band.yMax - median)
-            if (sy2 < 0 || sy1 > h) continue
-
-            const isActive = d.activeGravityType === t
-            const isDimmed = d.activeGravityType !== null && !isActive
-
-            const nodeColor = d.ontology.styleForKey(t).color.fill
-            ctx.fillStyle = nodeColor
+        }
+        const stripes = (coord: 'x' | 'y') => {
+          const list = coord === 'x' ? d.overlay.x : d.overlay.y
+          const highlight = drawnOn(coord)
+          for (const { lo, hi, buckets } of list) {
+            const s1 = coord === 'y' ? worldToScreen(vp, 0, lo)[1] : worldToScreen(vp, lo, 0)[0]
+            const s2 = coord === 'y' ? worldToScreen(vp, 0, hi)[1] : worldToScreen(vp, hi, 0)[0]
+            if (s2 < 0 || s1 > (coord === 'y' ? h : w)) continue
+            const isActive = highlight && hover !== null && buckets.includes(hover.bucket)
+            const isDimmed = highlight && !isActive
+            const color = fillOf(buckets[0])
+            ctx.fillStyle = color
             ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
-            ctx.fillRect(0, sy1, w, sy2 - sy1)
-
-            ctx.strokeStyle = nodeColor
+            if (coord === 'y') ctx.fillRect(0, s1, w, s2 - s1)
+            else ctx.fillRect(s1, 0, s2 - s1, h)
+            ctx.strokeStyle = color
             ctx.globalAlpha = isActive ? 0.55 : isDimmed ? 0.08 : 0.22
             ctx.lineWidth = isActive ? 1.5 : 1
             ctx.setLineDash([])
             ctx.beginPath()
-            ctx.moveTo(0, sy1); ctx.lineTo(w, sy1)
-            ctx.moveTo(0, sy2); ctx.lineTo(w, sy2)
+            if (coord === 'y') { ctx.moveTo(0, s1); ctx.lineTo(w, s1); ctx.moveTo(0, s2); ctx.lineTo(w, s2) }
+            else { ctx.moveTo(s1, 0); ctx.lineTo(s1, h); ctx.moveTo(s2, 0); ctx.lineTo(s2, h) }
             ctx.stroke()
-          }
-
-          // X band: dashed verticals at xMin and xMax with a faint fill.
-          const [sxMin] = worldToScreen(vp, d.forceParams.bandXMin, 0)
-          const [sxMax] = worldToScreen(vp, d.forceParams.bandXMax, 0)
-          if (sxMin < w + CULL_MARGIN && sxMax > -CULL_MARGIN) {
-            ctx.strokeStyle = '#8B7EC8'
-            ctx.globalAlpha = 0.5
-            ctx.lineWidth = 1.5
-            ctx.setLineDash([6, 6])
-            ctx.beginPath()
-            ctx.moveTo(sxMin, 0); ctx.lineTo(sxMin, h)
-            ctx.moveTo(sxMax, 0); ctx.lineTo(sxMax, h)
-            ctx.stroke()
-            ctx.fillStyle = '#8B7EC8'
-            ctx.globalAlpha = 0.05
-            ctx.fillRect(sxMin, 0, sxMax - sxMin, h)
-            ctx.setLineDash([])
           }
         }
-
+        stripes('y')
+        stripes('x')
         ctx.globalAlpha = 1
       }
 

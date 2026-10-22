@@ -20,7 +20,7 @@
 // `package.json` advertises, with skipLibCheck OFF.
 
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -68,10 +68,45 @@ writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
   files: ['consumer.ts'],
 }, null, 2))
 
+// The engine's parameter and force modules are private: `ForceParams` is not
+// part of the published surface, which is what made renaming a field inside it
+// free (D53, #90). The surface gate compares export NAMES and cannot see a type
+// that leaks through another exported type's field (REVIEW_5a C8), so this walks
+// the declaration graph from lib.d.ts and refuses if a private module becomes
+// reachable.
+const PRIVATE = [/\/graph\/simulation\.d\.ts$/, /\/graph\/forces\.d\.ts$/]
+function reachableDts(entry) {
+  const seen = new Set()
+  const queue = [entry]
+  while (queue.length) {
+    const file = queue.pop()
+    if (seen.has(file)) continue
+    seen.add(file)
+    let text = ''
+    try { text = readFileSync(file, 'utf8') } catch { continue }
+    for (const m of text.matchAll(/(?:from\s*|import\()\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
+      const base = join(dirname(file), m[1])
+      for (const candidate of [base + '.d.ts', join(base, 'index.d.ts'), base]) {
+        try { if (statSync(candidate).isFile()) { queue.push(candidate); break } } catch { /* try next */ }
+      }
+    }
+  }
+  return [...seen]
+}
+
 try {
   execFileSync(join(PKG_ROOT, 'node_modules', '.bin', 'tsc'),
     ['-p', join(dir, 'tsconfig.json')], { stdio: 'pipe', cwd: PKG_ROOT })
   console.log('published types: consumer compile clean (skipLibCheck off)')
+  const reachable = reachableDts(join(PKG_ROOT, 'dist-lib', 'lib.d.ts'))
+  const leaked = reachable.filter(f => PRIVATE.some(re => re.test(f)))
+  if (leaked.length) {
+    console.error('FAIL published types reach a private engine module:')
+    for (const f of leaked) console.error('  ' + f.replace(PKG_ROOT + '/', ''))
+    console.error('ForceParams and the force kernels are not part of the surface (D53, #90); an exported type now carries one of them.')
+    process.exit(1)
+  }
+  console.log(`published types: ${reachable.length} declaration files reachable from lib.d.ts, none private`)
 } catch (err) {
   const out = (err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? '')
   console.error(out.trim())

@@ -138,7 +138,7 @@ function retune(graph: Graph): Json {
   const styledTuned: ForceParams = {
     ...styled,
     pair: withPushOverride(styled.pair, 'worker', { charge: -1, coreRadius: 2 }),
-    band: withOverride(styled.band, 'worker', { min: -5, max: 5 }),
+    bandY: withOverride(styled.bandY, 'worker', { min: -5, max: 5 }),
   }
   const swapped = retunedFor(styledTuned, three, graph)
   return {
@@ -155,11 +155,34 @@ function retune(graph: Graph): Json {
       ceiling: TOKEN_CEILING,
       fellBackTo: outgrown.pair.mapping.dimension,
     },
+    // The band axes under the same rule as the pair axis (REVIEW_5a C4): an
+    // axis bucketed by observed values follows the graph, keeps its overrides
+    // while the value survives, and falls back to the style axis with nothing
+    // overridden when the axis vanishes or outgrows the ceiling — on X too.
+    bandAxes: (() => {
+      const fileOption = axisOptions(DEFAULT_ONTOLOGY, graph).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)
+      if (!fileOption) return 'no file axis'
+      const tuned: ForceParams = {
+        ...defaultParamsFor(DEFAULT_ONTOLOGY),
+        bandX: withOverride({ mapping: fileOption.mapping, overrides: new Map() }, 'nexus.twf', { min: -1, max: 1 }),
+        bandY: withOverride({ mapping: fileOption.mapping, overrides: new Map() }, 'nexus.twf', { min: -2, max: 2 }),
+      }
+      const same = retunedFor(tuned, DEFAULT_ONTOLOGY, graph)
+      const droppedFile = retunedFor(tuned, DEFAULT_ONTOLOGY, without(graph, 'task-queues.twf'))
+      const gone = retunedFor(tuned, DEFAULT_ONTOLOGY, graphOf([syntheticNode('x', 'workflow', undefined)], []))
+      const grown = retunedFor(tuned, DEFAULT_ONTOLOGY, manyFiles(30))
+      return {
+        sameGraphReturnsSameObject: same === tuned,
+        fileDropped: { xBuckets: droppedFile.bandX.mapping.buckets.map(b => b.id), yBuckets: droppedFile.bandY.mapping.buckets.map(b => b.id), xOverrideKept: droppedFile.bandX.overrides.has('nexus.twf'), yOverrideKept: droppedFile.bandY.overrides.has('nexus.twf') },
+        axisVanished: { x: gone.bandX.mapping.dimension, y: gone.bandY.mapping.dimension, xOverrides: gone.bandX.overrides.size, yOverrides: gone.bandY.overrides.size },
+        outgrown: { x: grown.bandX.mapping.dimension, y: grown.bandY.mapping.dimension, xOverrides: grown.bandX.overrides.size },
+      }
+    })(),
     taxonomySwapped: {
       pairBuckets: swapped.pair.mapping.buckets.map(b => b.id),
-      bandBuckets: swapped.band.mapping.buckets.map(b => b.id),
+      bandBuckets: swapped.bandY.mapping.buckets.map(b => b.id),
       pushOverrideKept: swapped.pair.push.has('worker'),
-      bandOverrideKept: swapped.band.overrides.has('worker'),
+      bandOverrideKept: swapped.bandY.overrides.has('worker'),
       sameTaxonomyReturnsSameObject: retunedFor(styledTuned, DEFAULT_ONTOLOGY, graph) === styledTuned,
     },
   }

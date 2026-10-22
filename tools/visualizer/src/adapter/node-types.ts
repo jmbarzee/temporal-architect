@@ -83,6 +83,11 @@ export interface TemporalNodeTypeDefinition extends NodeTypeDefinition {
   tier: 'container' | 'host' | 'orchestrator' | 'leaf'
 }
 
+// The horizontal rest band every type shares by default: what the one global X
+// window used to be. Per type now, so a host can give a type its own, and so
+// the X axis is the same kind of thing as the Y axis (T22).
+const X_WINDOW = { min: 0, max: 380 }
+
 export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = {
   namespace: {
     label: 'Namespace',
@@ -102,7 +107,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     physics: {
       charge: -850,
       coreRadius: 85,
-      yBand:  { min: -340, max: -120 },  // container band (shared with nexusEndpoint)
+      band: { x: X_WINDOW, y: { min: -340, max: -120 } },  // container band (shared with nexusEndpoint)
     },
     summaryKind: 'containerCount',
   },
@@ -125,7 +130,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     physics: {
       charge: -900,
       coreRadius: 64,
-      yBand:  { min: -340, max: -120 },  // container band aligned with namespace
+      band: { x: X_WINDOW, y: { min: -340, max: -120 } },  // container band aligned with namespace
     },
     summaryKind: 'none',
   },
@@ -148,7 +153,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     physics: {
       charge: -770,
       coreRadius: 72,
-      yBand:  { min: -200, max: 120 },   // host band (shared with nexusService)
+      band: { x: X_WINDOW, y: { min: -200, max: 120 } },   // host band (shared with nexusService)
     },
     summaryKind: 'hostRegistrations',
   },
@@ -171,7 +176,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     physics: {
       charge: -760,
       coreRadius: 54,
-      yBand:  { min: -200, max: 120 },   // host band aligned with worker
+      band: { x: X_WINDOW, y: { min: -200, max: 120 } },   // host band aligned with worker
     },
     summaryKind: 'hostRegistrations',
   },
@@ -194,7 +199,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     physics: {
       charge: -360,
       coreRadius: 38,
-      yBand:  { min: 100, max: 460 },    // orchestrator band (shared with nexusOperation)
+      band: { x: X_WINDOW, y: { min: 100, max: 460 } },    // orchestrator band (shared with nexusOperation)
     },
     summaryKind: 'degree',
   },
@@ -216,7 +221,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     physics: {
       charge: -560,
       coreRadius: 58,
-      yBand:  { min: 100, max: 460 },    // orchestrator band aligned with workflow
+      band: { x: X_WINDOW, y: { min: 100, max: 460 } },    // orchestrator band aligned with workflow
     },
     summaryKind: 'degree',
   },
@@ -238,7 +243,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     physics: {
       charge: -190,
       coreRadius: 20,
-      yBand:  { min: 170, max: 500 },
+      band: { x: X_WINDOW, y: { min: 170, max: 500 } },
     },
     summaryKind: 'degree',
   },
@@ -314,7 +319,7 @@ const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
   physics: {
     charge: -300,
     coreRadius: 30,
-    yBand: { min: 100, max: 460 },
+    band: { x: X_WINDOW, y: { min: 100, max: 460 } },
   },
   summaryKind: 'none',
 }

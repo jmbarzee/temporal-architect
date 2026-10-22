@@ -2,7 +2,40 @@
   "defaultForceParams": {
     "alphaDecay": 0.005,
     "alphaMin": 0.0001,
-    "band": {
+    "bandX": {
+      "axis": "temporalType",
+      "buckets": {
+        "activity": {
+          "max": 380,
+          "min": 0
+        },
+        "namespace": {
+          "max": 380,
+          "min": 0
+        },
+        "nexusEndpoint": {
+          "max": 380,
+          "min": 0
+        },
+        "nexusOperation": {
+          "max": 380,
+          "min": 0
+        },
+        "nexusService": {
+          "max": 380,
+          "min": 0
+        },
+        "worker": {
+          "max": 380,
+          "min": 0
+        },
+        "workflow": {
+          "max": 380,
+          "min": 0
+        }
+      }
+    },
+    "bandY": {
       "axis": "temporalType",
       "buckets": {
         "activity": {
@@ -35,16 +68,12 @@
         }
       }
     },
-    "bandEnabled": true,
-    "bandXMax": 380,
-    "bandXMin": 0,
     "chargeExponent": 0.7,
     "coreRadiusMultiplier": 1,
     "distanceMultiplier": 0.1,
     "gravityBandExp": 1,
     "gravityCenter": 0.05,
-    "gravityDownstream": 0,
-    "gravityMode": "cartesian",
+    "gravityTopological": 0,
     "gravityTopologicalExp": 3,
     "gravityX": 0.05,
     "gravityY": 0.145,
@@ -84,6 +113,7 @@
       }
     },
     "pushMultiplier": 0.4,
+    "radial": false,
     "spring": {
       "axis": "temporalType",
       "categories": {
@@ -502,18 +532,18 @@
           ],
           "dupA": [
             0,
-            29.32625
+            32.22625
           ],
           "dupB": [
             0,
-            19.17625
+            22.07625
           ],
           "ep": [
-            0,
+            -2.5,
             0
           ],
           "ns": [
-            15,
+            5.5,
             0
           ],
           "nx": [
@@ -525,15 +555,15 @@
             0
           ],
           "unknown": [
-            0,
-            60.9
+            -15,
+            58
           ],
           "wf": [
-            3,
+            0,
             0
           ],
           "wk": [
-            6,
+            0,
             0
           ]
         }
@@ -571,8 +601,8 @@
             27.241594
           ],
           "unknown": [
-            -21.280354,
-            28.373805
+            0,
+            0
           ],
           "wf": [
             -5.327163,
@@ -694,11 +724,11 @@
           22.07625
         ],
         "ep": [
-          0,
+          -2.5,
           0
         ],
         "ns": [
-          15,
+          5.5,
           0
         ],
         "nx": [
@@ -710,11 +740,11 @@
           0
         ],
         "wf": [
-          3,
+          0,
           0
         ],
         "wk": [
-          6,
+          0,
           0
         ]
       }
@@ -1005,11 +1035,11 @@
             125.018104
           ],
           "ep": [
-            0,
+            -16.736169,
             0
           ],
           "ns": [
-            205.621156,
+            50.471684,
             0
           ],
           "nx": [
@@ -1021,11 +1051,11 @@
             0
           ],
           "wf": [
-            21.602787,
+            0,
             0
           ],
           "wk": [
-            57.010098,
+            0,
             0
           ]
         }
@@ -1237,28 +1267,7 @@
     ".graph-control-typed-nexusService { --type-color: var(--color-nexus-service); }",
     ".graph-control-typed-workflow { --type-color: var(--color-workflow); }",
     ".graph-control-typed-nexusOperation { --type-color: var(--color-nexus-operation); }",
-    ".graph-control-typed-activity { --type-color: var(--color-activity); }",
-    ".dual-range-namespace .dual-range-fill { background: #475569; }",
-    ".dual-range-namespace .dual-range-input::-webkit-slider-thumb { border-color: #94A3B8; }",
-    ".dual-range-namespace .dual-range-input::-moz-range-thumb { border-color: #94A3B8; }",
-    ".dual-range-nexusEndpoint .dual-range-fill { background: #9F1239; }",
-    ".dual-range-nexusEndpoint .dual-range-input::-webkit-slider-thumb { border-color: #BE123C; }",
-    ".dual-range-nexusEndpoint .dual-range-input::-moz-range-thumb { border-color: #BE123C; }",
-    ".dual-range-worker .dual-range-fill { background: #94A3B8; }",
-    ".dual-range-worker .dual-range-input::-webkit-slider-thumb { border-color: #CBD5E1; }",
-    ".dual-range-worker .dual-range-input::-moz-range-thumb { border-color: #CBD5E1; }",
-    ".dual-range-nexusService .dual-range-fill { background: #DB2777; }",
-    ".dual-range-nexusService .dual-range-input::-webkit-slider-thumb { border-color: #EC4899; }",
-    ".dual-range-nexusService .dual-range-input::-moz-range-thumb { border-color: #EC4899; }",
-    ".dual-range-workflow .dual-range-fill { background: #8B7EC8; }",
-    ".dual-range-workflow .dual-range-input::-webkit-slider-thumb { border-color: #A89BD8; }",
-    ".dual-range-workflow .dual-range-input::-moz-range-thumb { border-color: #A89BD8; }",
-    ".dual-range-nexusOperation .dual-range-fill { background: #F9A8D4; }",
-    ".dual-range-nexusOperation .dual-range-input::-webkit-slider-thumb { border-color: #F9A8D4; }",
-    ".dual-range-nexusOperation .dual-range-input::-moz-range-thumb { border-color: #F9A8D4; }",
-    ".dual-range-activity .dual-range-fill { background: #7CB9E8; }",
-    ".dual-range-activity .dual-range-input::-webkit-slider-thumb { border-color: #7CB9E8; }",
-    ".dual-range-activity .dual-range-input::-moz-range-thumb { border-color: #7CB9E8; }"
+    ".graph-control-typed-activity { --type-color: var(--color-activity); }"
   ],
   "nodeTypes": {
     "activity": {
@@ -1268,12 +1277,18 @@
       "label": "Activity",
       "ladder": "main",
       "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": 500,
+            "min": 170
+          }
+        },
         "charge": -190,
-        "coreRadius": 20,
-        "yBand": {
-          "max": 500,
-          "min": 170
-        }
+        "coreRadius": 20
       },
       "size": {
         "iconSize": 10,
@@ -1290,12 +1305,18 @@
       "label": "Namespace",
       "ladder": "main",
       "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": -120,
+            "min": -340
+          }
+        },
         "charge": -850,
-        "coreRadius": 85,
-        "yBand": {
-          "max": -120,
-          "min": -340
-        }
+        "coreRadius": 85
       },
       "size": {
         "iconSize": 18,
@@ -1312,12 +1333,18 @@
       "label": "Nexus Endpoint",
       "ladder": "nexus",
       "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": -120,
+            "min": -340
+          }
+        },
         "charge": -900,
-        "coreRadius": 64,
-        "yBand": {
-          "max": -120,
-          "min": -340
-        }
+        "coreRadius": 64
       },
       "size": {
         "iconSize": 14,
@@ -1334,12 +1361,18 @@
       "label": "Nexus Operation",
       "ladder": "nexus",
       "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": 460,
+            "min": 100
+          }
+        },
         "charge": -560,
-        "coreRadius": 58,
-        "yBand": {
-          "max": 460,
-          "min": 100
-        }
+        "coreRadius": 58
       },
       "size": {
         "iconSize": 12,
@@ -1356,12 +1389,18 @@
       "label": "Nexus Service",
       "ladder": "nexus",
       "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": 120,
+            "min": -200
+          }
+        },
         "charge": -760,
-        "coreRadius": 54,
-        "yBand": {
-          "max": 120,
-          "min": -200
-        }
+        "coreRadius": 54
       },
       "size": {
         "iconSize": 18,
@@ -1378,12 +1417,18 @@
       "label": "Worker",
       "ladder": "main",
       "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": 120,
+            "min": -200
+          }
+        },
         "charge": -770,
-        "coreRadius": 72,
-        "yBand": {
-          "max": 120,
-          "min": -200
-        }
+        "coreRadius": 72
       },
       "size": {
         "iconSize": 18,
@@ -1400,12 +1445,18 @@
       "label": "Workflow",
       "ladder": "main",
       "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": 460,
+            "min": 100
+          }
+        },
         "charge": -360,
-        "coreRadius": 38,
-        "yBand": {
-          "max": 460,
-          "min": 100
-        }
+        "coreRadius": 38
       },
       "size": {
         "iconSize": 12,
@@ -1424,12 +1475,18 @@
       "icon": "?",
       "label": "Unknown",
       "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": 460,
+            "min": 100
+          }
+        },
         "charge": -300,
-        "coreRadius": 30,
-        "yBand": {
-          "max": 460,
-          "min": 100
-        }
+        "coreRadius": 30
       },
       "size": {
         "iconSize": 11,
@@ -2633,12 +2690,12 @@
     },
     "overrides": {
       "firstTickBase": [
-        14.073534,
-        5.693411
+        14.067774,
+        2.178029
       ],
       "firstTickTuned": [
-        21.607988,
-        -20.232995
+        21.599066,
+        -22.104279
       ],
       "neighbourEqualsDefault": true,
       "neighbourSpringStaysDeclared": true,
@@ -2660,6 +2717,30 @@
       "axisVanished": {
         "axis": "temporalType",
         "overrides": 0
+      },
+      "bandAxes": {
+        "axisVanished": {
+          "x": "temporalType",
+          "xOverrides": 0,
+          "y": "temporalType",
+          "yOverrides": 0
+        },
+        "fileDropped": {
+          "xBuckets": [
+            "nexus.twf"
+          ],
+          "xOverrideKept": true,
+          "yBuckets": [
+            "nexus.twf"
+          ],
+          "yOverrideKept": true
+        },
+        "outgrown": {
+          "x": "temporalType",
+          "xOverrides": 0,
+          "y": "temporalType"
+        },
+        "sameGraphReturnsSameObject": true
       },
       "fileDropped": {
         "buckets": [

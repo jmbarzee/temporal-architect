@@ -11,13 +11,13 @@ import { payloadString } from '../../graph/model'
 import React from 'react'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
-import type { DimensionValue } from '../../graph/dimension'
 import { getTransitiveDeps, getHighlightedEdgeIds } from '../../graph/highlight'
 import { useOntology } from './useOntology'
 
 /** A node that sits nowhere on any axis — used when an id does not resolve. */
 const EMPTY_SUBJECT = { dimensions: {} }
 import type { ForceSection } from '../GraphControlPanel'
+import type { GravityHover } from '../GravityControls'
 
 export interface HighlightController {
   hoveredNodeId: string | null
@@ -34,8 +34,8 @@ export interface HighlightController {
   setActiveSection: React.Dispatch<React.SetStateAction<ForceSection>>
   activePushBucket: string | null
   setActivePushBucket: React.Dispatch<React.SetStateAction<string | null>>
-  activeGravityType: DimensionValue | null
-  setActiveGravityType: React.Dispatch<React.SetStateAction<DimensionValue | null>>
+  activeGravityBucket: GravityHover | null
+  setActiveGravityBucket: React.Dispatch<React.SetStateAction<GravityHover | null>>
   activePullEdge: string | null
   setActivePullEdge: React.Dispatch<React.SetStateAction<string | null>>
 }
@@ -58,7 +58,7 @@ export function useHighlight(
   // Force-field preview (hover-driven; no persistent toggle).
   const [activeSection, setActiveSection] = React.useState<ForceSection>(null)
   const [activePushBucket, setActivePushBucket] = React.useState<string | null>(null)
-  const [activeGravityType, setActiveGravityType] = React.useState<DimensionValue | null>(null)
+  const [activeGravityBucket, setActiveGravityBucket] = React.useState<GravityHover | null>(null)
   const [activePullEdge, setActivePullEdge] = React.useState<string | null>(null)
 
   // Reset selection/hover/focus when the graph is rebuilt.
@@ -152,7 +152,7 @@ export function useHighlight(
     highlightedNodes, highlightedEdges,
     activeSection, setActiveSection,
     activePushBucket, setActivePushBucket,
-    activeGravityType, setActiveGravityType,
+    activeGravityBucket, setActiveGravityBucket,
     activePullEdge, setActivePullEdge,
   }
 }

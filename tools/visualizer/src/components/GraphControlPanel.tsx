@@ -10,6 +10,7 @@ import type { DimensionValue } from '../graph/dimension'
 import type { NodeScaleParams } from '../graph/node-scale'
 import { PushPullControls } from './PushPullControls'
 import { GravityControls } from './GravityControls'
+import type { GravityHover } from './GravityControls'
 import { Slider } from './controls/Slider'
 import { EquationSection } from './controls/EquationSection'
 import { PopProvider } from './controls/PopContext'
@@ -54,7 +55,7 @@ interface GraphControlPanelProps {
   onAxisChange: (mapping: DimensionalMapping) => void
   onActiveSection: (section: ForceSection) => void
   onActivePushBucket: (bucket: string | null) => void
-  onActiveGravityType: (nodeType: DimensionValue | null) => void
+  onActiveGravityBucket: (hover: GravityHover | null) => void
   // The hovered/active pull edge category (its k-field key), forwarded to the
   // canvas so only that edge category is highlighted while tuning it.
   onActivePullEdge: (key: string | null) => void
@@ -98,9 +99,9 @@ interface NodeScaleSliderDef extends RangeDef {
 
 // --- GRAVITY section ---
 //
-// The Gravity tab's controls live in GravityControls: a Cartesian/Radial mode
-// switch, Band/Topological toggles, the band pseudo-plot, and the topological
-// strength + note. Center gravity is the unexplained baseline.
+// The Gravity tab's controls live in GravityControls: X Axis and Y Axis (the
+// same per-axis surface, Y carrying the Radial switch) and Topological. Center
+// gravity is the unexplained baseline.
 
 // --- DYNAMICS section sliders ---
 //
@@ -136,7 +137,7 @@ const NODE_SCALE_SLIDERS: NodeScaleSliderDef[] = [
 export function GraphControlPanel({
   params, resolved, onParamChange, onAdjust, onRelayout, axes, presentSprings, onAxisChange,
   onActiveSection,
-  onActivePushBucket, onActiveGravityType, onActivePullEdge,
+  onActivePushBucket, onActiveGravityBucket, onActivePullEdge,
   nodeScale, onNodeScaleChange,
 }: GraphControlPanelProps) {
   const [open, setOpen] = React.useState(false)
@@ -162,16 +163,16 @@ export function GraphControlPanel({
 
   // Links the band pseudo-plot to the canvas band/ring highlight (and dims the
   // other columns/stripes).
-  const [hoveredGravityType, setHoveredGravityType] = React.useState<DimensionValue | null>(null)
-  const handleHoverGravityType = React.useCallback((t: DimensionValue | null) => {
-    setHoveredGravityType(t)
-    onActiveGravityType(t)
-  }, [onActiveGravityType])
+  const [hoveredGravityBucket, setHoveredGravityBucket] = React.useState<GravityHover | null>(null)
+  const handleHoverGravityBucket = React.useCallback((h: GravityHover | null) => {
+    setHoveredGravityBucket(h)
+    onActiveGravityBucket(h)
+  }, [onActiveGravityBucket])
 
   // Single funnel for every force control's edits. Routing all controls
   // through one wrapper means the "nudge the simulation" behaviour is
   // defined once and inherited by every present and future control
-  // (sliders, dual-range bands, upcoming 2D fields) — no per-control wiring,
+  // (sliders, axis-plot handles, the 2D maps) — no per-control wiring,
   // no chance of a control forgetting to keep the layout warm.
   const emitParamChange = React.useCallback((patch: Partial<ForceParams>) => {
     onParamChange(patch)
@@ -233,15 +234,16 @@ export function GraphControlPanel({
               <EquationSection
                 subtitle=""
                 equation=""
-                onHover={h => { onActiveSection(h ? 'gravity' : null); if (!h) onActiveGravityType(null) }}
+                onHover={h => { onActiveSection(h ? 'gravity' : null); if (!h) onActiveGravityBucket(null) }}
               >
                 <GravityControls
                   params={params}
                   resolved={resolved}
+                  axes={axes}
                   onParamChange={emitParamChange}
-                  onGravitySet={onRelayout}
-                  hoveredType={hoveredGravityType}
-                  onHoverType={handleHoverGravityType}
+                  onRelayout={onRelayout}
+                  hovered={hoveredGravityBucket}
+                  onHover={handleHoverGravityBucket}
                 />
               </EquationSection>
             </SectionSlot>

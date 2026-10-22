@@ -1129,3 +1129,130 @@ new wording ("is incoherent"), since one message now covers three refusals.
 Nothing else moves.
 
 — 2026-10-21 — agent
+
+**D53 — Two symmetric layout axes; bands re-centred and seeded alike; the
+overlay draws what acts (Unit 5a-i/ii; T22, T12, T2; closes #90).**
+
+- `GravityParams` carries `bandX` and `bandY`, each an `AxisTuning<BandRange>`
+  on its own mapping. Gone: `band` (Y only), `bandXMin`/`bandXMax` (one global
+  window), `bandEnabled`, `gravityMode`. A strength of zero is an axis switched
+  off (`gravityX`, `gravityY`); `radial: boolean` replaces the mode string —
+  Y's bands become rings, X is ignored, topological's focal point moves to the
+  centre. `gravityDownstream` is `gravityTopological` (#90): `ForceParams` is
+  not in the published surface, which `surface-gate` now proves.
+- `NodeTypeDefinition.physics.yBand` is `physics.band: { x, y }`. The shim
+  declares every type's `x` as the window it always had (`X_WINDOW`, 0–380),
+  so the default horizontal physics is unchanged — measured: on every fixture
+  no node reaches the window, the X force never fires, and `gravityX` at 0 or
+  ×4 moves nothing.
+- One rule on both axes (`pullToBands`): per-bucket bands, re-centred on the
+  median of the centres present. X was never re-centred; it is now, so the
+  window sits at −190..190 about the origin, which the canvas's fit absorbs.
+- Seeding (T2) places a node at the re-centred band centre on both axes, so
+  the seed and the force agree. Y used to seed at the *unshifted* centre and
+  the first ticks relocated every node by the median — the thing seeding
+  exists to prevent, in mild form. A node with no value on an axis has the
+  absent band: a point at that axis's centre.
+- The band maths lives once (T12): `presentBuckets`, `bandCenters`,
+  `medianBandCenter`, `ringRadii` are the engine's and the overlay calls them.
+  **Present, not all:** the overlay draws only buckets some visible node falls
+  in, on both axes and in both modes — the set the force re-centres on and
+  rings. A stripe for a bucket with no visible node was decoration that misled
+  about the median. Buckets sharing a band draw one stripe.
+- `YBand { yMin, yMax }` is gone; `bandForKey` and `bandFor` return `BandRange`.
+
+**Golden change (§8.2).** Tier A and Tier C byte-identical. `static`:
+`nodeTypes[].physics.yBand` → `band.{x,y}`; `defaultForceParams.band` →
+`bandX` and `bandY`, and its scalars follow the params (`bandEnabled`,
+`bandXMin`, `bandXMax`, `gravityMode`, `gravityDownstream` gone; `radial`,
+`gravityTopological` added); probe rows that read a band follow the shape; the
+`bandCartesian` kernel rows (`forceProbes`, `absentValue`, `nonIdentityParams`)
+move in their x components only — the probe nodes sit at absolute x and the
+window is now about the origin, so different nodes are outside it. Tier B:
+every fixture's `seededPositions` move by exactly (−190, −median of the present
+Y centres) — a pure translation, verified node by node (−190 on every x; −120
+on decomposition and stress, +40 on the three nexus-based fixtures);
+`afterShortRun.default` is the same translation within a pixel, since the
+first ticks no longer relocate nodes by the median; the radial and topological
+scenarios differ by more, from the different start. `seedAt` is unchanged (its
+y lies inside the shifted band on every fixture). Every structural invariant
+is equal. The occupancy diagnostic (not goldened — D24, D26) moved on stress
+from 3/53 to 32/53 and by at most one elsewhere: the new seeding lands stress's
+forty activities in a different basin of the same forces, and the X axis is
+inert on it by the measurement above.
+
+— 2026-10-21 — agent
+
+**D54 — What REVIEW_5a changed: one frame for seed, force and overlay; a
+seed that pre-orders the tiers; the band axes under the pair axis's rules
+(Unit 5a close).** The five-lens review found the seed and the force in
+different frames, the seed in the wrong geometry under radial, and D53's
+headline measurement false. The fixes are model changes:
+
+1. **One layout frame** (`layoutFrame`: median centre per axis, ring radius
+   per Y bucket) computed over the simulation's WHOLE node set, shared by
+   seeding, the kernels and — through the view — the overlay. The force used
+   to re-centre on the visible subset, so at the app's default filter the seed
+   and the force disagreed by the median of the hidden tiers (C1, blocker).
+   A frame over the visible set would also move with every filter toggle. A
+   node in no bucket joins no median and rests at the axis's centre (C5): the
+   absent band used to be a declared point at 0 that was shifted like the
+   rest and skewed the median.
+2. **The seed pre-orders the tiers.** Seeding at the re-centred band centre
+   was consistent and bimodal: on stress, a third of RNG seeds left the
+   bottom tier wedged above the one over it (C6 — a regression D53 had called
+   chaos). `kickoff/studies/seed-bias.md` measures five rules over 24 seeds
+   on three fixtures; a seed biased toward the band's bottom edge by
+   `SEED_BIAS = 0.35` of its height gives the pre-5a occupancy on every seed.
+   The frame is unchanged by the bias: seed and force still agree.
+3. **Radial seeds on the ring** (bucket radius, random angle; children near
+   their parent's angle), and `seedAt` snaps into the frame on both axes in
+   cartesian and onto the ring in radial; children's inherited X is clamped
+   into their own X band (C2).
+4. **Acting is mode-aware** (C3): `bandAxesActing` (in radial only Y counts),
+   `topologicalActing` (switch AND strength), and center gravity when neither
+   — one predicate for the tick and the overlay, which drew rings for a force
+   that did nothing.
+5. **One retune rule** (C4): `retunedFor` re-buckets every tuning the same
+   way; what "fits" means is the one thing passed in. The band axes used to
+   skip the ceiling and keep foreign overrides on fallback; bandX had no
+   reader.
+6. **The overlay is data** (C8): `bandOverlay` in the engine — stripes per
+   axis (buckets sharing a band share a stripe), rings, colours — and the
+   canvas only draws it; a hovered bucket drawn nowhere dims nothing (C10).
+   Tier B goldens the overlay per fixture, cartesian and radial.
+7. **Gates** (C8, C9): `seedAt` is probed out of band on both axes and in
+   radial; `bandAxes` retune probes; `outsideBandX` printed beside the Y
+   diagnostic; `dts-gate` walks the declaration graph from `lib.d.ts` and
+   refuses a reachable private engine module (the surface gate compared
+   names only); the component manifest is inverted — every top-level
+   component is in unless excluded by name as the host's, after the second
+   new component in two units was left outside every ratchet.
+8. **Casts and dead weight** (C11): the three `as Partial<ForceParams>` in
+   `AxisControls` are typed per-axis patches; the dual-range stylesheet and
+   its per-type emitter, kept alive by a golden row, are gone; the spec's
+   pre-5a sentences and the code's are rewritten.
+
+**D53, corrected.** "The X force never fires on any fixture" was measured on
+one fixture after a full run and generalised; it fires on nexus, taskqueues
+and multifile after tick 29–54 (C7). What is true: the default horizontal
+physics is identical by construction — every type's X band is the window the
+global one was — and `outsideBandX` now prints the firing count per fixture.
+`afterShortRun.default` was "within a pixel" of the translation on three
+fixtures and within 12 px on decomposition and 5 px on stress; `centerOnly`
+moved by up to 20 px and was not mentioned. "Chaos" for stress's 3/53 → 32/53
+was wrong: point 2.
+
+**Golden change (§8.2).** Tier A and Tier C byte-identical. Tier B: seeded
+positions move by exactly `0.35 × (band height)` in y per bucket and not in
+x, verified node by node; the radial scenario reseeds on the rings;
+`seedAt` moves (its point is now far outside every band, so the clamp is what
+it pins); new rows `seedAtRadial`, `overlay`, `overlayRadial`; every
+structural invariant equal; the occupancy diagnostic on stress is 3/53
+again. `static`: the band-kernel rows (`absentValue`, `bandCartesian`,
+`bandRadial`, `nonIdentityParams.bandCartesian`) move — the unbucketed probe
+node no longer joins the median and rests at the centre; `generatedCss` loses
+the per-type dual-range rules; `tuningProbes.overrides.firstTick*` follow the
+seed; `tuningProbes.retune.bandAxes` is new. Nothing else moves.
+
+— 2026-10-21 — agent

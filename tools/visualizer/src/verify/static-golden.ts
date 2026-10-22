@@ -49,7 +49,7 @@ function nodeTypeRows(): Json {
         physics: {
           charge: d.physics.charge,
           coreRadius: d.physics.coreRadius,
-          yBand: { min: d.physics.yBand.min, max: d.physics.yBand.max },
+          band: { x: { min: d.physics.band.x.min, max: d.physics.band.x.max }, y: { min: d.physics.band.y.min, max: d.physics.band.y.max } },
         },
         summaryKind: d.summaryKind,
       }] as const
@@ -222,7 +222,7 @@ export function staticGolden(): Json {
     defaultForceParams: (() => {
       const p = defaultParamsFor(DEFAULT_ONTOLOGY)
       const r = resolvePhysics(p, DEFAULT_ONTOLOGY)
-      const { pair, band, ...scalars } = p
+      const { pair, bandX, bandY, ...scalars } = p
       // Scalars verbatim; the tunings as the dense tables they resolve to,
       // which is what the kernels consume and what the old `charge` /
       // `coreRadius` / `band` / `link` / `dist` records held. Same numbers,
@@ -231,7 +231,8 @@ export function staticGolden(): Json {
       return {
         ...scalars,
         push: { axis: pair.mapping.dimension, buckets: sortedRecord([...r.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)) },
-        band: { axis: band.mapping.dimension, buckets: sortedRecord([...r.band.byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) },
+        bandX: { axis: bandX.mapping.dimension, buckets: sortedRecord([...r.bandX.byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) },
+        bandY: { axis: bandY.mapping.dimension, buckets: sortedRecord([...r.bandY.byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) },
         spring: { axis: pair.mapping.dimension, categories: sortedRecord(DEFAULT_ONTOLOGY.edgeTypes.map(e => { const v = r.spring.physicsFor(e.id); return [e.id, { strength: v.strength, distance: v.distance }] as const })) },
       }
     })() as unknown as Json,

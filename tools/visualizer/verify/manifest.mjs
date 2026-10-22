@@ -31,30 +31,44 @@ const GLOBS = [
   { dir: 'src/filter', exts: SOURCE_EXTS },
 ]
 
-/** Named components, and the stylesheet beside each one that has one. */
-const NAMED = [
-  'src/components/GraphCanvas.tsx',
-  'src/components/GraphView.tsx',
-  'src/components/ForceMap.tsx',
-  'src/components/CanvasErrorBoundary.tsx',
-  'src/components/PinToggle.tsx',
-  'src/components/FilterBar.tsx',
-  'src/components/ChargeControls.tsx',
-  'src/components/SpringControls.tsx',
-  'src/components/GravityControls.tsx',
-  'src/components/GraphControlPanel.tsx',
-  'src/components/PushPullControls.tsx',
-  // CSS is in scope because eight hand-written domain chip tints live in
-  // FilterBar.css; a manifest that skipped stylesheets would report zero while
-  // they sat in the shipped bundle.
-  'src/components/FilterBar.css',
-  'src/components/GraphView.css',
-  'src/components/GraphControlPanel.css',
-  'src/components/GravityControls.css',
-  'src/components/ForceMap.css',
-  'src/components/PinToggle.css',
-  'src/components/controls/controls.css',
+/**
+ * Components are in by default. `src/components/` holds the library-to-be's
+ * components AND the host's (the tree view, the workflow canvas, the host
+ * shell), so the rule used to be a list of the library ones — and twice in two
+ * units a new library component was left off it, sitting outside every ratchet
+ * (REVIEW_4 #6, REVIEW_5a C9). The rule is now the complement: every top-level
+ * file in `src/components/` is in the manifest unless it is one of the host's,
+ * named here. A new component joins the gates by existing; a new host file has
+ * to be excluded on purpose.
+ */
+const SHIM_COMPONENTS = [
+  'src/components/GroupsModal.css',
+  'src/components/GroupsModal.tsx',
+  'src/components/StyleGuide.tsx',
+  'src/components/TreeView.css',
+  'src/components/TreeView.tsx',
+  'src/components/VisualizerHost.css',
+  'src/components/VisualizerHost.tsx',
+  'src/components/WorkflowCanvas.css',
+  'src/components/WorkflowCanvas.tsx',
+  'src/components/protocol.ts',
+  'src/components/style-guide.css',
 ]
+
+/** Top-level files of `src/components/` that are the library's: everything not excluded by name. */
+function componentFiles() {
+  const excluded = new Set(SHIM_COMPONENTS)
+  const out = []
+  try {
+    for (const name of readdirSync(resolve(PKG_ROOT, 'src/components')).sort()) {
+      const rel = join('src/components', name)
+      if (statSync(resolve(PKG_ROOT, rel)).isDirectory()) continue
+      if (!SOURCE_EXTS.some(e => name.endsWith(e))) continue
+      if (!excluded.has(rel)) out.push(rel)
+    }
+  } catch { /* no components directory */ }
+  return out
+}
 
 function walk(dir, exts, out, skipped) {
   let entries
@@ -73,23 +87,18 @@ function walk(dir, exts, out, skipped) {
 }
 
 /**
- * Files sitting inside a globbed directory that no extension matches, and
- * components beside the named ones that the manifest does not list. Neither is
- * a failure — the manifest is fixed — but both are exactly how the library-to-be
- * grows a limb no ratchet can see, so they are printed on every run.
+ * Files sitting inside a globbed directory that no extension matches, and the
+ * host's components excluded from the manifest by name. Neither is a failure,
+ * but both are printed on every run: the first is how the library-to-be grows a
+ * limb no ratchet can see, the second is the list a reader should expect to be
+ * short and unchanging.
  */
 export function manifestBlindSpots() {
   const skipped = []
   for (const g of GLOBS) walk(g.dir, g.exts, [], skipped)
-  const listed = new Set(manifestFiles())
-  const siblings = []
-  try {
-    for (const name of readdirSync(resolve(PKG_ROOT, 'src/components')).sort()) {
-      const rel = join('src/components', name)
-      if (statSync(resolve(PKG_ROOT, rel)).isDirectory()) continue
-      if (!listed.has(rel)) siblings.push(rel)
-    }
-  } catch { /* no components directory */ }
+  const siblings = SHIM_COMPONENTS.filter(f => {
+    try { statSync(resolve(PKG_ROOT, f)); return true } catch { return false }
+  })
   return { skipped, siblings }
 }
 
@@ -131,28 +140,20 @@ export function shimFiles() {
   return [...new Set(files)].sort()
 }
 
-/**
- * Every manifest file, repo-relative to the package root, sorted.
- *
- * A NAMED entry that no longer exists is dropped here and surfaced by
- * `manifestBlindSpots().missing` instead of reaching `readLines` and dying on an
- * unhandled ENOENT. The failure mode matters: moving a named file out of the
- * library-to-be is exactly the event the ratchets exist to notice, and a stack
- * trace is the one report that makes it look like broken tooling rather than a
- * measurement the gate is entitled to make.
- */
+/** Every manifest file, repo-relative to the package root, sorted. */
 export function manifestFiles() {
   const files = []
   for (const g of GLOBS) walk(g.dir, g.exts, files, null)
-  for (const f of NAMED) {
-    try { statSync(resolve(PKG_ROOT, f)); files.push(f) } catch { /* reported as missing */ }
-  }
+  files.push(...componentFiles())
   return [...new Set(files)].sort()
 }
 
-/** NAMED manifest entries that are no longer on disk. */
+/**
+ * Excluded host components that are no longer on disk: a stale exclusion is
+ * harmless today and a hole tomorrow, when a library file takes the name.
+ */
 export function missingNamed() {
-  return NAMED.filter(f => {
+  return SHIM_COMPONENTS.filter(f => {
     try { statSync(resolve(PKG_ROOT, f)); return false } catch { return true }
   })
 }

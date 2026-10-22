@@ -31,6 +31,7 @@ import {
   applyChargeForce,
   applyLinkForce,
   applyTopologicalGravity,
+  layoutFrame,
   presentSpringCategories,
   springFor,
 } from '../graph/forces'
@@ -140,6 +141,12 @@ function nodeAt(map: Map<string, SimNode>, id: string): SimNode {
   return n
 }
 
+/** The band kernel as the simulation runs it: in the frame over the nodes it is given. */
+function bandGravity(nodes: SimNode[], params: ForceParams, rng: () => number): void {
+  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  applyBandGravity(nodes, params, resolved, layoutFrame(nodes, resolved), 1, rng)
+}
+
 /** What the simulation hands the link kernel: each edge's category, classified against the resolved springs. */
 function categoryOf(spring: ResolvedSprings, map: Map<string, SimNode>): (edge: GraphEdge) => EdgeCategory {
   return edge => springFor(spring, edge, nodeAt(map, edge.sourceId), nodeAt(map, edge.targetId))
@@ -177,10 +184,8 @@ function absentValueProbes(): Json {
   }
   return {
     charge: run((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
-    bandCartesian: run((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
-    bandRadial: run((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'radial' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
+    bandCartesian: run((nodes, params, rng) => bandGravity(nodes, { ...params, radial: false }, rng)),
+    bandRadial: run((nodes, params, rng) => bandGravity(nodes, { ...params, radial: true }, rng)),
     // The unknown node's edge reaches the host's rule with an undefined bucket
     // and falls to its catch-all, so it still pulls; under a mapping (below) the
     // same edge is unbucketed and inert. Both are pinned.
@@ -215,7 +220,7 @@ function nonIdentityParams(): Json {
   return {
     charge: kernel((nodes, rng) => applyChargeForce(nodes, params, resolved, 1, rng)),
     link: kernel((nodes, rng) => applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolved.spring, nodeMapOf(nodes)), 1, rng)),
-    bandCartesian: kernel((nodes, rng) => applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolved, 1, rng)),
+    bandCartesian: kernel((nodes, rng) => applyBandGravity(nodes, { ...params, radial: false }, resolved, layoutFrame(nodes, resolved), 1, rng)),
   }
 }
 
@@ -268,14 +273,13 @@ export function forceProbes(): Json {
       applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_ONTOLOGY).spring, nodeMapOf(nodes)), 1, rng)),
     mappedAxisSprings: mappedAxisSprings(),
     nonIdentityParams: nonIdentityParams(),
-    bandCartesian: probe((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
+    bandCartesian: probe((nodes, params, rng) => bandGravity(nodes, { ...params, radial: false }, rng)),
     // Includes a node sitting exactly on the origin, where the ring pull has no
     // defined direction and the kernel must kick it somewhere.
     bandRadial: (() => {
       const nodes = probeNodes()
       nodes.push(node('origin', 'workflow', 0, 0))
-      applyBandGravity(nodes, { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }, resolvePhysics(defaultParamsFor(DEFAULT_ONTOLOGY), DEFAULT_ONTOLOGY), 1, mulberry32(PROBE_SEED))
+      bandGravity(nodes, { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true }, mulberry32(PROBE_SEED))
       return {
         allFinite: allFinite(nodes),
         nonFiniteNodeIds: nonFinite(nodes),
@@ -284,12 +288,12 @@ export function forceProbes(): Json {
     })(),
     topological: probe((nodes, params) => {
       const scores = new Map(nodes.map((n, i) => [n.id, (i + 1) / nodes.length]))
-      applyTopologicalGravity(nodes, { ...params, gravityDownstream: 0.4 }, 1, scores)
+      applyTopologicalGravity(nodes, { ...params, gravityTopological: 0.4 }, 1, scores)
     }),
     topologicalRadial: probe((nodes, params) => {
       const scores = new Map(nodes.map((n, i) => [n.id, (i + 1) / nodes.length]))
       applyTopologicalGravity(
-        nodes, { ...params, gravityDownstream: 0.4, gravityMode: 'radial' }, 1, scores,
+        nodes, { ...params, gravityTopological: 0.4, radial: true }, 1, scores,
       )
     }),
     center: probe((nodes, params) => {

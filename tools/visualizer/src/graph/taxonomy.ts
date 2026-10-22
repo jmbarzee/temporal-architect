@@ -71,12 +71,13 @@ export interface NodeTypeDefinition {
      */
     coreRadius: number
     /**
-     * Default Y band where this value feels zero gravity. Negative Y = top of
-     * canvas. The simulation seeds nodes inside their band on creation, so the
-     * hierarchy is visible before the first tick — which also makes this the
-     * seeding function, not only the gravity target (T2).
+     * Default rest bands, one per layout axis, inside which this value feels
+     * no gravity. `y` is the hierarchy (negative = top of canvas); `x` bounds
+     * the horizontal spread. The simulation seeds nodes inside their bands on
+     * creation, so the structure is visible before the first tick — which also
+     * makes this the seeding function, not only the gravity target (T2).
      */
-    yBand: { min: number; max: number }
+    band: { x: { min: number; max: number }; y: { min: number; max: number } }
   }
 
   // --- Summary ---
