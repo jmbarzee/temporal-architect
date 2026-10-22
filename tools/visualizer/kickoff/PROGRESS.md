@@ -195,9 +195,13 @@ should be read:
    A rule in a document is not a rule until something executes it.
 
 **Unit 4 in progress** on `visualizer/dimensions-unit-4`, branched from unit-3 @
-`aedde37`; last checkpoint `6b30d61` (4a, D48 — edges carry `relation`/`dispatch`,
-endpoint as payload; leak 203 → 194). Next: **4c**, dimensional springs with the
-shim table as the `temporalType` override (D2).
+`aedde37`; last checkpoint `54edcb6` (4c, D49 — springs resolve dimensionally, the
+shim table as the style axis's declared physics; `AxisTuning.axis` dropped; leak
+194, total 1246). Next: **4d**'s residue (per-node bucket precompute; the canvas's
+per-frame style memo), then **4e** (Push + Pull merged under one dropdown; the
+host-chosen mapping behind the 24-token ceiling — now `k(k+1) ≤ 24` for springs;
+`temporalType` needs a descriptor, and `identityTuning` / `identityMapping` are
+two identity builders to fold into one once it has one).
 
 **Re-sequenced:** 4b's residual — a host-chosen mapping with the 24-token ceiling
 — would have no caller until 4e's dropdown exists, which is the
