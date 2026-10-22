@@ -243,7 +243,7 @@ export function GraphView({
     highlightedNodes, highlightedEdges,
     activeSection, setActiveSection,
     activePushBucket, setActivePushBucket,
-    activeGravityType, setActiveGravityType,
+    activeGravityBucket, setActiveGravityBucket,
     activePullEdge, setActivePullEdge,
   } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph)
 
@@ -526,7 +526,7 @@ export function GraphView({
             resolved={resolved}
             activeSection={activeSection}
             activePushBucket={activePushBucket}
-            activeGravityType={activeGravityType}
+            activeGravityBucket={activeGravityBucket}
             activePullEdge={activePullEdge}
             nodeScale={nodeScale}
             groupGlows={glowGroups}
@@ -627,7 +627,7 @@ export function GraphView({
         onAxisChange={handleAxisChange}
         onActiveSection={setActiveSection}
         onActivePushBucket={setActivePushBucket}
-        onActiveGravityType={setActiveGravityType}
+        onActiveGravityBucket={setActiveGravityBucket}
         onActivePullEdge={setActivePullEdge}
         nodeScale={nodeScale}
         onNodeScaleChange={handleNodeScaleChange}

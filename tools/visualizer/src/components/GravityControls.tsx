@@ -1,247 +1,62 @@
-// Gravity-tab controls: a centered Cartesian/Radial mode switch, then one
-// section per shaping force. Each section carries its own enable checkbox (in
-// the header, next to its controls — not pooled at the top) and an approximate
-// governing equation: Band is a "mini world view" pseudo-plot; Topological is a
-// depth→pull curve plus strength/exp sliders. Center gravity is the unexplained
-// baseline (active only when both toggles are off), so it has no control here.
+// Gravity-tab controls: three sub-tabs. X Axis and Y Axis are the two layout
+// axes, each the same surface (`AxisControls`): a mapping, one column per
+// bucket with its rest band as two handles, the axis's strength, the force
+// curve beneath. Y carries the Radial switch — the way radial mode is entered
+// (R27): Y's bands become rings about the origin and X is ignored. Topological
+// keeps its own switch: a depth→pull curve plus strength/exp sliders. Center
+// gravity is the unexplained baseline (active when both axes are at zero
+// strength and Topological is off), so it has no control here.
 // See GRAPH_VIEW spec § Gravity / Control Panel.
 
-import { withOverride } from '../graph/simulation'
-import { bandRangeFor } from '../graph/forces'
-import type { ResolvedPhysics } from '../graph/forces'
 import React from 'react'
 import './GravityControls.css'
-import type { ForceParams } from '../graph/simulation'
-
-import { useOntology } from './graph-view/useOntology'
-import type { Ontology } from '../graph/ontology'
-import type { DimensionValue } from '../graph/dimension'
-import { ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES, type CurveItem } from './ForceMap'
-import { Plot } from './controls/Plot'
+import type { ForceParams, AxisOption } from '../graph/simulation'
+import type { ResolvedPhysics } from '../graph/forces'
 import { Slider } from './controls/Slider'
 import { Equation } from './controls/Equation'
 import { FormulaValue } from './controls/PopContext'
-import { bucketColor } from './controls/bucketColor'
 import { SubTabs, SubTab, SubTabBodies, SubTabBody } from './controls/SubTab'
+import { AxisControls } from './AxisControls'
+import type { GravityHover } from './AxisControls'
 
-// Column order: main ladder first, then the nexus ladder (after a gap). Both
-// derived from the node-type registry (family + tier) so a registry change
-// reflows the columns. Labels come from the taxonomy, which also decides how
-// the values group — the two runs used to be two imported ladder constants.
-function columnsFor(ontology: Ontology): { order: DimensionValue[]; firstGroupCount: number } {
-  const groups = ontology.styleGroups
-  return {
-    order: groups.flatMap(g => [...g.values]),
-    firstGroupCount: groups.length > 0 ? groups[0].values.length : 0,
-  }
-}
-
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
-const snap = (v: number, step: number) => Math.round(v / step) * step
+export type { GravityHover, LayoutAxis } from './AxisControls'
 
 interface GravityControlProps {
   params: ForceParams
   /** The dense tables the kernels read, resolved once by the view (T25). */
   resolved: ResolvedPhysics
+  /** Every mapping the graph admits, with its bucket count. */
+  axes: readonly AxisOption[]
   onParamChange: (patch: Partial<ForceParams>) => void
-  onGravitySet: (partial: Partial<ForceParams>) => void
-  hoveredType: DimensionValue | null
-  onHoverType: (t: DimensionValue | null) => void
+  onRelayout: (partial: Partial<ForceParams>) => void
+  hovered: GravityHover | null
+  onHover: (h: GravityHover | null) => void
 }
 
-// ── Band "mini world view" geometry ──────────────────────────────────────────
-// The plot is a small world view: vertical = world Y, horizontal = world X. The
-// rest regions render as translucent stripes behind everything (full-width
-// horizontal per type for the Y bands; full-height vertical for the X band).
-// The interactive controls — a vertical two-handle slider per type, placed at an
-// evenly-spaced column — sit on top.
-const GB_W = 300
-const GB_H = 210
-const GB_PAD = { top: 16, right: 8, bottom: 2, left: 8 }
-const PL = GB_PAD.left
-const PR = GB_W - GB_PAD.right
-const PT = GB_PAD.top
-const PB = GB_H - GB_PAD.bottom
-const W_MIN = -600
-const W_MAX = 600
-const W_STEP = 10
-const DOT_R = 5
+type GravitySub = 'x' | 'y' | 'topological'
 
-const yForWorld = (v: number) => PT + ((v - W_MIN) / (W_MAX - W_MIN)) * (PB - PT)
-const valForY = (y: number) => W_MIN + ((y - PT) / (PB - PT)) * (W_MAX - W_MIN)
-// One empty slot between the two groups, so the ladders read as two runs.
-const colSlot = (i: number, firstGroupCount: number) => (i < firstGroupCount ? i : i + 1)
-const colX = (i: number, cols: { order: DimensionValue[]; firstGroupCount: number }) =>
-  PL + ((colSlot(i, cols.firstGroupCount) + 0.5) / (cols.order.length + 1)) * (PR - PL)
-
-function GravityBandPlot({ params, resolved, onParamChange, hoveredType, onHoverType }: GravityControlProps) {
-  const ontology = useOntology()
-  const band = resolved.bandY
-  const cols = columnsFor(ontology)
-  const svgRef = React.useRef<SVGSVGElement>(null)
-  const dragRef = React.useRef<{ type: DimensionValue; edge: 'min' | 'max' } | null>(null)
-
-  const userY = (e: React.PointerEvent): number => {
-    const svg = svgRef.current
-    if (!svg) return 0
-    const pt = svg.createSVGPoint()
-    pt.x = e.clientX
-    pt.y = e.clientY
-    const ctm = svg.getScreenCTM()
-    if (!ctm) return 0
-    return pt.matrixTransform(ctm.inverse()).y
-  }
-
-  const handleDown = (e: React.PointerEvent, type: DimensionValue, edge: 'min' | 'max') => {
-    e.preventDefault()
-    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
-    dragRef.current = { type, edge }
-  }
-  const handleMove = (e: React.PointerEvent) => {
-    const drag = dragRef.current
-    if (!drag) return
-    const cur = bandRangeFor(band, drag.type)
-    const v = clamp(snap(valForY(userY(e)), W_STEP), W_MIN, W_MAX)
-    const next = drag.edge === 'min'
-      ? { min: Math.min(v, cur.max - W_STEP), max: cur.max }
-      : { min: cur.min, max: Math.max(v, cur.min + W_STEP) }
-    onParamChange({ bandY: withOverride(params.bandY, drag.type, next) })
-  }
-  const handleUp = (e: React.PointerEvent) => {
-    dragRef.current = null
-    ;(e.currentTarget as Element).releasePointerCapture?.(e.pointerId)
-  }
-
-  return (
-    <Plot
-      yLabel="Y strength"
-      ySlider={
-        <Slider
-          orientation="vertical"
-          min={0} max={0.25} step={0.005}
-          value={params.gravityY}
-          onChange={v => onParamChange({ gravityY: v })}
-          title="Vertical band-pull strength (scale all)"
-          ariaLabel="Vertical band strength"
-          popId="bandStrength"
-        />
-      }
-      bottom={
-        <>
-          <Slider
-            min={0} max={0.25} step={0.005}
-          value={params.gravityX}
-          onChange={v => onParamChange({ gravityX: v })}
-          title="Horizontal band-pull strength (scale all)"
-            ariaLabel="Horizontal band strength"
-            popId="bandStrength"
-          />
-          <div className="ctl-plot-xlabel">X strength</div>
-        </>
-      }
-    >
-      <svg
-        ref={svgRef}
-        className="gravity-band-svg"
-        viewBox={`0 0 ${GB_W} ${GB_H}`}
-        role="group"
-        aria-label="Band gravity: a mini world view of the per-type rest bands"
-      >
-        <rect x={PL} y={PT} width={PR - PL} height={PB - PT} className="gravity-band-bg" />
-
-        {/* Rest-region stripes — the mini world view, behind and inert. */}
-        <g className="gravity-band-stripes">
-          {cols.order.map(t => {
-            const yTop = yForWorld(bandRangeFor(band, t).min)
-            const yBot = yForWorld(bandRangeFor(band, t).max)
-            const dim = hoveredType !== null && hoveredType !== t
-            const active = hoveredType === t
-            return (
-              <rect
-                key={t}
-                x={PL} y={yTop} width={PR - PL} height={Math.max(0, yBot - yTop)}
-                fill={bucketColor(ontology, band.mapping, t)}
-                className={`gravity-band-stripe${dim ? ' dim' : ''}${active ? ' active' : ''}`}
-              />
-            )
-          })}
-        </g>
-
-        {/* Per-type vertical sliders (track + two handles), on top. */}
-        {cols.order.map((t, i) => {
-          const x = colX(i, cols)
-          const yTop = yForWorld(bandRangeFor(band, t).min)
-          const yBot = yForWorld(bandRangeFor(band, t).max)
-          const dim = hoveredType !== null && hoveredType !== t
-          const active = hoveredType === t
-          const color = bucketColor(ontology, band.mapping, t)
-          return (
-            <g
-              key={t}
-              className={`gravity-band-col${dim ? ' dim' : ''}${active ? ' active' : ''}`}
-              onPointerEnter={() => onHoverType(t)}
-              onPointerLeave={() => { if (!dragRef.current) onHoverType(null) }}
-            >
-              <text x={x} y={PT - 6} textAnchor="middle" className="gravity-band-label" style={{ fill: color }}>{ontology.abbreviationFor(t)}</text>
-              <line x1={x} y1={PT} x2={x} y2={PB} className="gravity-band-track" />
-              <line x1={x} y1={yTop} x2={x} y2={yBot} stroke={color} className="gravity-band-stem" />
-              <circle
-                cx={x} cy={yTop} r={DOT_R} fill={color} className="gravity-band-dot"
-                onPointerDown={e => handleDown(e, t, 'min')} onPointerMove={handleMove} onPointerUp={handleUp}
-              />
-              <circle
-                cx={x} cy={yBot} r={DOT_R} fill={color} className="gravity-band-dot"
-                onPointerDown={e => handleDown(e, t, 'max')} onPointerMove={handleMove} onPointerUp={handleUp}
-              />
-            </g>
-          )
-        })}
-      </svg>
-    </Plot>
-  )
-}
-
-type GravitySub = 'band' | 'topological'
-
-export function GravityControls({ params, resolved, onParamChange, onGravitySet, hoveredType, onHoverType }: GravityControlProps) {
-  const mode = params.radial ? 'radial' : 'cartesian'
-  const [sub, setSub] = React.useState<GravitySub>('band')
+export function GravityControls({ params, resolved, axes, onParamChange, onRelayout, hovered, onHover }: GravityControlProps) {
+  const [sub, setSub] = React.useState<GravitySub>('y')
   return (
     <div className="gravity-controls">
-      {/* Cartesian / Radial — shared above the sub-tabs so it stays visible on both. */}
-      <div className="gravity-modes-row">
-        <div className="gravity-modes" role="tablist" aria-label="Gravity layout mode">
-          {(['cartesian', 'radial'] as const).map(m => (
-            <button
-              key={m}
-              role="tab"
-              aria-selected={mode === m}
-              className={`gravity-mode-btn${mode === m ? ' active' : ''}`}
-              onClick={() => onGravitySet({ radial: m === 'radial' })}
-            >
-              {m === 'cartesian' ? 'Cartesian' : 'Radial'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Sub-tabs — each carries its own enable switch, so both forces' on/off
-          state is visible at all times even though only one body shows. */}
-      <SubTabs label="Gravity force">
-        <SubTab label="Band" active={sub === 'band'} onSelect={() => setSub('band')} />
+      <SubTabs label="Gravity">
+        <SubTab label="X Axis" active={sub === 'x'} onSelect={() => setSub('x')} />
+        <SubTab label="Y Axis" active={sub === 'y'} onSelect={() => setSub('y')}
+          leading={<ForceSwitch label="Radial layout: Y as distance from the centre" enabled={params.radial} onToggle={v => onRelayout({ radial: v })} />} />
         <SubTab label="Topological" active={sub === 'topological'} onSelect={() => setSub('topological')}
-          leading={<ForceSwitch label="Topological" enabled={params.topologicalEnabled} onToggle={v => onGravitySet({ topologicalEnabled: v })} />} />
+          leading={<ForceSwitch label="Topological gravity enabled" enabled={params.topologicalEnabled} onToggle={v => onRelayout({ topologicalEnabled: v })} />} />
       </SubTabs>
 
       <SubTabBodies>
-        <SubTabBody active={sub === 'band'}>
-          <div className={`gravity-section-tools${params.gravityX > 0 || params.gravityY > 0 ? '' : ' inactive'}`}>
-            <Equation>{<>F = <FormulaValue id="bandStrength">strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
-            <GravityBandPlot params={params} resolved={resolved} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
-            <BandCurves params={params} onParamChange={onParamChange} />
-          </div>
+        <SubTabBody active={sub === 'x'}>
+          <AxisControls axis="x" params={params} resolved={resolved} axes={axes}
+            onParamChange={onParamChange} onRelayout={onRelayout} hovered={hovered} onHover={onHover} />
         </SubTabBody>
-
+        <SubTabBody active={sub === 'y'}>
+          {params.radial && <div className="axis-note axis-note-row">radial: Y buckets are rings about the centre, innermost first</div>}
+          <AxisControls axis="y" params={params} resolved={resolved} axes={axes}
+            onParamChange={onParamChange} onRelayout={onRelayout} hovered={hovered} onHover={onHover} />
+        </SubTabBody>
         <SubTabBody active={sub === 'topological'}>
           <div className={`gravity-section-tools gravity-topo${params.topologicalEnabled ? '' : ' inactive'}`}>
             <Equation>{<>F = <FormulaValue id="topoStrength">strength</FormulaValue> × depth<sup><FormulaValue id="topoExp">exp</FormulaValue></sup> × d</>}</Equation>
@@ -271,64 +86,14 @@ export function GravityControls({ params, resolved, onParamChange, onGravitySet,
   )
 }
 
-// A force's sliding on/off switch, led into its sub-tab. Toggling does not
-// select the tab (the click stops here), so both forces' state stays legible
-// while you tune one.
+// A sliding switch led into its sub-tab. Toggling does not select the tab (the
+// click stops here), so the state stays legible while another body is shown.
 function ForceSwitch({ label, enabled, onToggle }: { label: string; enabled: boolean; onToggle: (v: boolean) => void }) {
   return (
-    <label className={`switch${enabled ? ' on' : ''}`} onClick={e => e.stopPropagation()}>
-      <input type="checkbox" checked={enabled} onChange={e => onToggle(e.target.checked)} aria-label={`${label} gravity enabled`} />
+    <label className={`switch${enabled ? ' on' : ''}`} onClick={e => e.stopPropagation()} title={label}>
+      <input type="checkbox" checked={enabled} onChange={e => onToggle(e.target.checked)} aria-label={label} />
       <span className="switch-track"><span className="switch-knob" /></span>
     </label>
-  )
-}
-
-// Band force-response curves: how the band pull grows with distance outside the
-// rest band, for the X and Y axes. Both share the falloff `exp`; they differ in
-// height by their per-axis strength (so the taller curve is the stiffer axis).
-// Heights are normalized to the stronger axis so the relative shape is legible
-// even when both strengths are small. Reuses the shared ForceCurves read-out so
-// it matches the Pull/Push tabs, with the band `exp` slider beneath.
-const BC_TOP_PAD = 4
-function BandCurves({
-  params, onParamChange,
-}: {
-  params: ForceParams
-  onParamChange: (patch: Partial<ForceParams>) => void
-}) {
-  const [hovered, setHovered] = React.useState<string | null>(null)
-  const exp = params.gravityBandExp
-  const scale = Math.max(params.gravityX, params.gravityY, 1e-6)
-  const mk = (strength: number): string =>
-    Array.from({ length: CURVE_SAMPLES + 1 }, (_, i) => {
-      const d = i / CURVE_SAMPLES
-      const f = (strength / scale) * Math.pow(d, exp) // 0..1, normalized to the stronger axis
-      const px = d * CURVE_W
-      const py = CURVE_H - BC_TOP_PAD - f * (CURVE_H - 2 * BC_TOP_PAD)
-      return `${px.toFixed(1)},${py.toFixed(1)}`
-    }).join(' ')
-
-  const curves: CurveItem[] = [
-    { id: 'y', points: mk(params.gravityY), color: 'var(--color-workflow)', label: 'Y' },
-    { id: 'x', points: mk(params.gravityX), color: 'var(--color-activity)', label: 'X' },
-  ]
-
-  return (
-    <ForceCurves
-      curves={curves}
-      xMax={1}
-      hoveredId={hovered}
-      onHover={setHovered}
-      xLabel="distance"
-      yLabel="force"
-      ariaLabel="Band force-response curves (X and Y)"
-      exp={{
-        value: exp, min: 0.5, max: 3, step: 0.1,
-        onChange: v => onParamChange({ gravityBandExp: v }),
-        title: 'Band falloff exponent. 1 = linear (Hooke); higher = softer just outside the band, stiffer far out.',
-        popId: 'bandExp',
-      }}
-    />
   )
 }
 

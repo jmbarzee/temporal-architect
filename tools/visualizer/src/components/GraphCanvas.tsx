@@ -13,11 +13,11 @@ import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
-import type { DimensionValue } from '../graph/dimension'
 import type { Ontology } from '../graph/ontology'
 import { useOntology } from './graph-view/useOntology'
 import { edgeStyleFor } from '../graph/edge-styles'
 import type { ForceSection } from './GraphControlPanel'
+import type { GravityHover } from './GravityControls'
 
 const FOCUS_RING_COLOR = '#4A90D9'
 const SELECTION_RING_COLOR = '#FFFFFF'
@@ -177,7 +177,7 @@ interface GraphCanvasProps {
   resolved: ResolvedPhysics
   activeSection: ForceSection
   activePushBucket: string | null
-  activeGravityType: DimensionValue | null
+  activeGravityBucket: GravityHover | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
   // Decomposition group glow layer (drawn behind everything). Empty = no overlay.
@@ -204,7 +204,7 @@ interface DrawData {
   resolved: ResolvedPhysics
   activeSection: ForceSection
   activePushBucket: string | null
-  activeGravityType: DimensionValue | null
+  activeGravityBucket: GravityHover | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
   running: boolean
@@ -224,7 +224,7 @@ export function GraphCanvas({
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, forceParams, resolved, activeSection, activePushBucket,
-  activeGravityType, activePullEdge, nodeScale, groupGlows,
+  activeGravityBucket, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -275,14 +275,14 @@ export function GraphCanvas({
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, activeSection, activePushBucket, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, activeSection, activePushBucket, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -780,13 +780,13 @@ export function GraphCanvas({
           bucket !== undefined && axis.mapping.dimension === d.ontology.styleAxis() && isIdentityMapping(axis.mapping)
             ? d.ontology.styleForKey(bucket).color.fill
             : cssVar(canvas, '--color-text-muted', '#94A3B8')
-        const hover = d.activeGravityType
+        const hover = d.activeGravityBucket
 
         if (d.forceParams.radial) {
           const [ox, oy] = worldToScreen(vp, 0, 0)
           for (const [bucket, targetR] of ringRadii(d.nodes, d.resolved.bandY)) {
-            const isActive = hover !== null && hover === bucket
-            const isDimmed = hover !== null && !isActive
+            const isActive = hover !== null && hover.axis === 'y' && hover.bucket === bucket
+            const isDimmed = hover !== null && hover.axis === 'y' && !isActive
             ctx.strokeStyle = fillOf(d.resolved.bandY, bucket)
             ctx.globalAlpha = isActive ? 0.6 : isDimmed ? 0.1 : 0.28
             ctx.lineWidth = isActive ? 1.5 : 1
@@ -799,13 +799,14 @@ export function GraphCanvas({
           // One stripe per distinct band on the axis: buckets that share a band
           // (the default X window, two tiers on one Y band) draw once, so the
           // overlay's density reads as bands rather than as bucket counts.
-          const stripes = (axis: ResolvedAxis<BandRange>, coord: 'x' | 'y', highlight: boolean) => {
+          const stripes = (axis: ResolvedAxis<BandRange>, coord: 'x' | 'y') => {
+            const highlight = hover !== null && hover.axis === coord
             const center = medianBandCenter(d.nodes, axis)
             const drawn = new Map<string, { lo: number; hi: number; color: string; active: boolean }>()
             for (const bucket of presentBuckets(d.nodes, axis)) {
               const b = bandForKey(axis, bucket)
               const key = `${b.min}:${b.max}`
-              const active = highlight && hover !== null && hover === bucket
+              const active = highlight && hover !== null && hover.bucket === bucket
               const prev = drawn.get(key)
               if (prev) { prev.active = prev.active || active; continue }
               drawn.set(key, { lo: b.min - center, hi: b.max - center, color: fillOf(axis, bucket), active })
@@ -814,7 +815,7 @@ export function GraphCanvas({
               const s1 = coord === 'y' ? worldToScreen(vp, 0, lo)[1] : worldToScreen(vp, lo, 0)[0]
               const s2 = coord === 'y' ? worldToScreen(vp, 0, hi)[1] : worldToScreen(vp, hi, 0)[0]
               if (s2 < 0 || s1 > (coord === 'y' ? h : w)) continue
-              const isDimmed = highlight && hover !== null && !active
+              const isDimmed = highlight && !active
               ctx.fillStyle = color
               ctx.globalAlpha = active ? 0.20 : isDimmed ? 0.04 : 0.10
               if (coord === 'y') ctx.fillRect(0, s1, w, s2 - s1)
@@ -829,8 +830,8 @@ export function GraphCanvas({
               ctx.stroke()
             }
           }
-          if (gy > 0) stripes(d.resolved.bandY, 'y', true)
-          if (gx > 0) stripes(d.resolved.bandX, 'x', false)
+          if (gy > 0) stripes(d.resolved.bandY, 'y')
+          if (gx > 0) stripes(d.resolved.bandX, 'x')
         }
 
         ctx.globalAlpha = 1
