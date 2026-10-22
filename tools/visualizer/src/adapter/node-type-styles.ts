@@ -1,5 +1,5 @@
 // Runtime CSS for a host's own stylesheets: every style value's colour, in
-// both themes, published on :root as `--color-<suffix>` / `-border`.
+// both themes, published on :root as `--node-<suffix>` / `-border`.
 //
 // The library's own components no longer read these — the graph pane carries
 // the same variables inline, in its resolved theme (D57) — so this exists for

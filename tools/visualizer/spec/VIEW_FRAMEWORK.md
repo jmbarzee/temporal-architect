@@ -29,7 +29,7 @@ This vocabulary unifies what would otherwise be separate features ("Show in Grap
 
 | Intent | Trigger | Reconciliation |
 |---|---|---|
-| `manual` | User clicks the destination tab in the tab bar. | For each filter axis: if destination's axis is **pinned** (§ Per-Dimension Pinning), leave it alone; otherwise adopt the source view's current value. |
+| `manual` | User clicks the destination tab in the tab bar. | For each filter axis the destination shows (its chain): if **pinned** (§ Per-Dimension Pinning), leave it alone; otherwise adopt the source view's current selection. An axis the destination does not show is not reconciled. |
 | `focus(target)` | User invokes "Show in [view]" on a definition or node. | Take destination's current filter and **expand** it only as needed to make the target visible — the target names its values per axis (`FocusTarget`), and each axis's focus policy says how: a kind is always added; a file only widens an already-active selection, since adding the first file would narrow from everything to one. Pins do not block expansion — a `focus` transition can override a pin, with a visible cue. The pin state itself is not changed. |
 
 A `mirror` intent (force one view's filters onto the other, ignoring pins) is deliberately **not** exposed: it would let one view silently discard the other's filter state. The name is reserved should an explicit power-user gesture ever justify it.
@@ -38,7 +38,7 @@ A `mirror` intent (force one view's filters onto the other, ignoring pins) is de
 
 The reconciler is the single function responsible for producing the destination view's filter state on every switch. Its signature, conceptually:
 
-    reconcileFilter(destView, destFilter, sourceFilter, pinState, intent) → newDestFilter
+    reconcileFilter(destFilter, sourceFilter, destPins, intent, axes) → { filter, overriddenPins }
 
 It is the only consumer of `ViewTransition`. Switch-trigger code at the call sites is responsible for naming the intent; the reconciler owns the rules. This collapses the previously-duplicated filter-expansion logic in `TreeView` and `GraphView` into one shared module.
 
@@ -53,22 +53,22 @@ It is the only consumer of `ViewTransition`. Switch-trigger code at the call sit
 The "Show in [view]" action is a contextual action available on any identifiable item: a definition block in the tree (workflow, activity, worker, namespace, nexus service) or a node in the graph.
 
 **Trigger points:**
-- **Tree View:** Right-click context menu on definition block headers, or the "Show in Graph" contextual navigation button.
+- **Tree View:** the "Show in Graph" contextual navigation button on a definition block.
 - **Graph View:** A **"Show in Tree" button in the node's hover tooltip** (the tooltip is interactive — it stays open while the pointer is over it so the button is clickable). (Double-click is reserved for graph-native "center and zoom to fit" — see GRAPH_VIEW.md § Viewport Controls.)
 
 **Sequence when invoked:**
 
 1. **Switch tab** — The target view becomes active (instant, no animation).
 2. **Reconcile** — Apply the `focus(target)` rule: minimum filter expansion to make the target visible. If a pin would block the expansion, the pin is overridden for this transition only.
-3. **Animate filter bar** — The filter controls animate to reflect the changes (toggles flip, chips activate, overridden pins briefly flash). This gives the user a visual explanation of what changed and which pins were bypassed.
+3. **Animate filter bar** — The filter controls animate to reflect the changes (chips that turned on flash, overridden pins flash). This gives the user a visual explanation of what changed and which pins were bypassed.
 4. **Animate view to target:**
    - **Tree View:** Smooth scroll to the target definition. Expand the target block's ancestry (any collapsed parents that contain it). Expand the target block itself.
-   - **Graph View:** Pan and zoom to center the target node **and its immediate neighbors** — a local-first orientation. Lock viewport focus on the target node until the simulation stabilizes. The user can break the lock by manually panning or zooming out.
-5. **Flash target** — After the view has settled, briefly highlight the target item (a pulse or glow effect) to draw the eye.
+   - **Graph View:** Centre the viewport on the target node and reheat so the layout settles around it. Framing the immediate neighbours, locking the viewport until the simulation stabilises, and the flash of step 5 are deferred — [#183](https://github.com/jmbarzee/temporal-architect/issues/183).
+5. **Flash target** (deferred, #183) — After the view has settled, briefly highlight the target item (a pulse or glow effect) to draw the eye.
 
 ### Orientation
 
-The transition should go **local → context**, not context → find-the-needle. When navigating to the graph, the user first sees the target node and its neighborhood (close zoom), then optionally zooms out to see the broader graph. When navigating to the tree, the user first sees the target block expanded and centered, then optionally scrolls to see siblings.
+The transition should go **local → context**, not context → find-the-needle. When navigating to the graph, the user first sees the target node, centred, then optionally zooms out to see the broader graph. When navigating to the tree, the user first sees the target block expanded and centered, then optionally scrolls to see siblings.
 
 This local-first approach means the user lands oriented — they see the thing they asked about immediately, in its immediate relationships, before the full complexity of the target view is revealed.
 
@@ -79,13 +79,15 @@ Filters remain authoritative. `focus(target)` never bypasses filters silently �
 
 ## Unified Filter Bar
 
-Both views display the same filter bar, rendered from the host's declared filter axes (R6, R14, R19) in the view's **chain** — the axes shown, in order, editable per view (R17): each axis is a section of chips with its pin and a `×` that removes it (and stops it filtering), and a `+` adds a declared axis not yet shown; an empty chain is the small bar with just `+` and the search (R18). The default chain is the host's declared order: File, then Kind.
+Both views display the same filter bar, rendered from the host's declared filter axes (R6, R14, R19) in the view's **chain** — the axes shown, in order, editable per view (R17): each axis is a row of chips with its pin and a `×`, shown on hover, that removes it (and stops it filtering); a `+` appears when a declared axis is not shown and adds the first such axis at the end; an empty chain is the small bar with just `+` and the search (R18). The default chain is the host's declared order, File then Kind, so the `+` is absent by default.
 
 ```
-[file chips...] 🔒 × | [Namespaces] [Workers] [Nexus] [Workflows] [Activities] 🔒 × | + | [🔍 search]
+[file chips...]                                          🔒 (×)
+[Namespaces] [Workers] [Nexus] [Workflows] [Activities]  🔒 (×)
+[🔍 search]
 ```
 
-**Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the filter narrows to a single file, the extension opens that file in the editor. For **packaged** designs, a node's [`package`](../../../skills/temporal-architect-design/topics/packages.md) is recoverable from its qualified node-ID (see GRAPH_VIEW.md § Packages and Qualified Identity), so package is available as a **derived grouping lens** parallel to the source-file dimension — no new wire data. Today "package" ≈ the source-file chip; an unpackaged design has a single implicit package, so the lens is inert for it.
+**Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the Tree's file filter narrows to a single file, the host is asked to open that file (`onOpenFile`). For **packaged** designs, a node's [`package`](../../../skills/temporal-architect-design/topics/packages.md) is recoverable from its qualified node-ID (see GRAPH_VIEW.md § Packages and Qualified Identity), so package is available as a **derived grouping lens** parallel to the source-file dimension — no new wire data. Today "package" ≈ the source-file chip; an unpackaged design has a single implicit package, so the lens is inert for it.
 
 **Kind chips** — the Kind axis's chips as its descriptor declares them: five chips over seven kinds (Nexus groups the endpoint, service and operation kinds), each tinted with a style value's colour from the taxonomy (`FilterChip.tint`) and carrying its icon. Each chip shows/hides every item of its kinds. Both views render the same chips from the same descriptor — the graph has no separate tier selector.
 
@@ -114,7 +116,7 @@ Each axis section in a view's filter bar carries a **pin icon**. A pin freezes i
 
 `focus(target)` transitions may override a pin to expose the target (per § View Transitions). The pin state itself is not changed by the override; only that one transition bypasses it. The filter bar animation in step 3 of the `focus` sequence visibly flashes the overridden pin so the user sees what was bypassed.
 
-**Pin persistence:** pin state is preserved in `localStorage` per workspace, alongside other user preferences. Pins also survive AST live-reload (see § Live Reload).
+**Pin persistence:** pins are persisted with the rest of the pane's state — both views' filters, chains and pins, the search query, the graph's theme choice — under one versioned key (`localStorage` in the standalone app, the webview's `setState` in VS Code); a state of another version is discarded whole (D4). Pins also survive AST live-reload (see § Live Reload).
 
 ### Search Scope
 
@@ -124,11 +126,11 @@ Search is safe to share because it is **non-destructive in both views**: it dims
 
 Each view renders search matches in its own native style:
 - **Tree View:** non-matching definitions dim to reduced opacity; matching definitions stay at full opacity. An `N of M` match count appears in the filter bar. Press `n` / `N` to jump between matches (see TREE_VIEW.md § Keyboard Navigation).
-- **Graph View:** non-matching nodes dim to ~30% opacity; matching nodes stay at full opacity. See GRAPH_VIEW.md § Search and Hidden Matches.
+- **Graph View:** non-matching nodes dim to 20% opacity; matching nodes stay at full opacity. See GRAPH_VIEW.md § Search and Hidden Matches.
 
 ### Hidden Match Badges
 
-When a search is active, filter controls that are hiding matches show **badge overlays** with the count of hidden matches. For example: if the Wf toggle is off and 3 workflows match the search, the Wf button shows a "3" badge. This lets users discover hidden matches and decide whether to adjust filters.
+When a search is active, filter chips that are hiding matches show **badge overlays** with the count of hidden matches, in both views. For example: if the Workflows chip is off and 3 workflows match the search, that chip shows a "3" badge. This lets users discover hidden matches and decide whether to adjust filters.
 
 Because search is non-destructive, badges apply only to matches hidden by *structural* filters (the file and kind chips); search itself never hides anything. See GRAPH_VIEW.md § Search and Hidden Matches for full behavior.
 
@@ -143,9 +145,9 @@ The layout stack is:
 
 The filter bar is always first, so users always know where to find it regardless of which view they're in.
 
-**Definition counts on chips.** Each file and type chip carries a muted count of the top-level definitions it represents. Type-chip counts respect the file filter (definitions from the selected files only, or all when none selected); file-chip counts are the per-file definition totals. The counts come from the AST so they read identically in both views (not the graph's deployment-expanded node count).
+**Definition counts on chips.** Each file and kind chip carries a muted count of the top-level definitions it represents. Kind-chip counts respect the file filter (definitions from the selected files only, or all when none selected); file-chip counts are the per-file definition totals. The counts come from the AST, handed to the bar by the host, so they read alike in both views (not the graph's deployment-expanded node count); in history mode — a graph-only payload with no definitions — they read 0.
 
-**Graph view specifics:** in the Graph view the shared filter bar is rendered as a **floating overlay** above the canvas (the canvas fills the full viewport behind it). Zoomed-in graph content extends visibly under the edges of the overlay — an affordance signaling "there's more out here." See GRAPH_VIEW.md § Overlay Layout. The graph's simulation state and controls do not live in a top toolbar row; they float at the bottom of the canvas: node/edge counts at the bottom-left, and a centred Fit / Play-Pause / fps cluster at the bottom-center. See GRAPH_VIEW.md § Bottom Controls. The Tree view has no simulation state to surface and uses normal vertical stack flow because its content scrolls within a fixed-width column where bleed-under provides no value.
+**Graph view specifics:** in the Graph view the shared filter bar is rendered as a **floating overlay** above the canvas (the canvas fills the full viewport behind it). Zoomed-in graph content extends visibly under the edges of the overlay — an affordance signaling "there's more out here." See GRAPH_VIEW.md § Overlay Layout. The graph's simulation state and controls do not live in a top toolbar row; they float at the bottom of the canvas: node/edge counts at the bottom-left, and a centred Fit / Scheme / Play-Pause / fps cluster at the bottom-center. See GRAPH_VIEW.md § Bottom Controls. The Tree view has no simulation state to surface and uses normal vertical stack flow because its content scrolls within a fixed-width column where bleed-under provides no value.
 
 ### Graph-Specific: Edge Graduation
 
@@ -192,11 +194,11 @@ Each view shows a centered, non-interactive message when there's nothing to disp
 
 | Condition | Message |
 |-----------|---------|
-| No AST loaded | "Open a `.twf` file or connect to the extension to get started." |
-| AST loaded, no definitions match current filters | "No definitions match the current filters." with a hint to adjust filters. |
+| No payload | The host shell's `emptyState` slot (`VisualizerHost`); the standalone app's text is "Open a `.twf` file or connect to the extension to get started." |
+| AST loaded, nothing matches the current filters | Tree: "No definitions match the current filters." with a hint to adjust the chips. Graph: an empty canvas and `0 nodes, 0 edges` — a message is deferred ([#181](https://github.com/jmbarzee/temporal-architect/issues/181)). |
 | AST loaded, only parse errors | Show the error/warning bars (see § Error Handling below) with no content below. |
 
-Empty states apply identically to both views. The message is centered in the content area below the header/filter controls.
+The message is centred in the content area below the filter bar.
 
 
 ## Error Handling
@@ -216,7 +218,7 @@ Each bar:
 - Shows the count for its severity (`N errors`, `M warnings`).
 - Is **collapsed by default** — it is a notification, expanded on demand. Each bar collapses/expands independently.
 - Has its own **scrollable body** so a long list never pushes the rest of the toolbar off-screen.
-- Splits its body into **Shown files** / **Hidden files** sub-groups (by the current file filter) when the filter is hiding findings, so the user sees which findings the filter is keeping out of view. Each detail row shows the file name, code, position, and message.
+- Splits its body into **Shown files** / **Hidden files** sub-groups (by the current file filter) when the filter is hiding findings, so the user sees which findings the filter is keeping out of view. Each detail row shows the code and message, and the file name and position when the finding carries a file (graph-stage findings do not).
 
 ### Errors Are Informational
 
@@ -238,7 +240,7 @@ Definitions and nodes are matched across AST versions **by name**. A definition 
 | Filter selections (per view) | Preserved. If a filtered file no longer exists, remove it from the selection. |
 | Pin states (per view, per dimension) | Preserved. Pins are a user preference and survive reloads. |
 | Shared search query | Preserved. Results recomputed against new data. |
-| Selection | Preserved if the selected item still exists. Cleared if removed. |
+| Selection | Tree: preserved if the item still exists. Graph: cleared on every rebuild ([#180](https://github.com/jmbarzee/temporal-architect/issues/180)). |
 
 **Tree-view-specific:**
 
@@ -252,8 +254,8 @@ Definitions and nodes are matched across AST versions **by name**. A definition 
 
 | State | Behavior |
 |-------|----------|
-| Node positions | Preserved for nodes that still exist. Simulation does not restart for surviving nodes. |
-| Viewport (zoom/pan) | Preserved. |
+| Node positions | **Not yet** ([#180](https://github.com/jmbarzee/temporal-architect/issues/180)): every changed payload builds a new simulation, which reseeds every node from its band. |
+| Viewport (zoom/pan) | Refit after the rebuild (#180). |
 | Kind selections | Preserved. |
 | Force parameters | Preserved (slider values unchanged). |
 
@@ -264,12 +266,12 @@ Definitions and nodes are matched across AST versions **by name**. A definition 
 - Removed definitions disappear immediately. If expanded, children vanish with them.
 
 **Graph View:**
-- New nodes are seeded at the position of their parent node (same as level transition seeding). The simulation reheats locally — new nodes spread out from their parent while existing nodes remain stable.
-- Removed nodes fade out over a short duration (~200 ms). Their edges disappear with them. The simulation reheats locally to let surviving neighbors adjust.
+- New and surviving nodes alike are reseeded by the rebuild (#180); seeding new nodes at their parent while the rest stay put is the intended behaviour.
+- Removed nodes disappear with their edges; the fade (~200 ms) is intended, not built ([#186](https://github.com/jmbarzee/temporal-architect/issues/186)).
 
 ### Transition Indicator
 
-A brief, non-blocking indicator (e.g., a subtle flash on the header bar, or a small "updated" badge that fades) signals that the AST has been refreshed. This should not interrupt the user's current interaction. The indicator is the same in both views.
+A brief, non-blocking indicator (e.g., a subtle flash on the header bar, or a small "updated" badge that fades) signals that the AST has been refreshed. This should not interrupt the user's current interaction. Today the Tree flashes its header on refresh; the Graph shows no indicator.
 
 
 ## Accessibility
@@ -278,7 +280,7 @@ A brief, non-blocking indicator (e.g., a subtle flash on the header bar, or a sm
 
 Both views follow WAI-ARIA guidance for their respective interaction models:
 - **Tree View:** `role="tree"`, `role="treeitem"`, `aria-expanded`, `aria-level` — following the WAI-ARIA Treeview pattern.
-- **Graph View:** Nodes are focusable elements with labels announcing node type and name — following WAI-ARIA guidance for interactive graphics.
+- **Graph View:** the canvas keeps a virtual keyboard focus over its nodes; focusable, labelled node elements are deferred ([#182](https://github.com/jmbarzee/temporal-architect/issues/182)).
 
 The key requirement is that screen readers can announce identity (type and name), state (expanded/collapsed, selected/unselected), and relationships (nesting depth, dependency connections). Specific ARIA attributes beyond these requirements are implementation concerns.
 
@@ -292,9 +294,9 @@ Each view defines its own key bindings (see TREE_VIEW.md § Keyboard Navigation 
 
 | Key | Behavior (both views) |
 |-----|----------------------|
-| **/** or **Ctrl+F** | Open search bar and focus the search input |
+| **/** (and **Ctrl+F** in the Tree) | Open search bar and focus the search input |
 | **Escape** | Close search bar, clear selection, or close any open popover (in priority order) |
-| **Tab** | Move focus between header controls and the content area |
+| **Tab** | Tree: move focus between header controls and the content area. Graph: cycle the focused node (the pane captures Tab — #182) |
 
 
 ## Keyboard Modifier Vocabulary

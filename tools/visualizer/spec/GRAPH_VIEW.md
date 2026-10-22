@@ -21,7 +21,7 @@ The visualizer's two views consume different parser outputs:
 
 The graph view is a **renderer over the parser-emitted deployment graph**. The parser owns deployment expansion (one node per definition × deployment context), dispatch routing (which deployment a call lands on), and tier coarsening (worker-tier and namespace-tier projections of dispatch edges). The visualizer does not re-walk the AST for any of this. Its **host half** — the adapter in `tools/visualizer/src/adapter/` — translates the parser's nodes and edges into the library's `Graph` and declares the Temporal taxonomy; its **library half** — `@temporal-architect/graph-view`, in `tools/graph-view/` — lays that graph out, filters, highlights and draws it, and never sees the parser or the AST (R38, D62).
 
-Cross-view identity threads through `node.definitionKey` (the parser's `definition` field — `${kind}:${name}`). Selecting `OrderWorkflow` in the tree view highlights every graph node whose `definitionKey === "workflow:OrderWorkflow"`, regardless of how many deployments that definition has.
+Two identities thread through the graph. `node.definitionKey` (the parser's `definition` field — `${kind}:${name}`) groups a definition's deployment copies: the graph indexes it as `duplicateGroups`, and hovering one copy halos every sister (§ Duplicate Highlighting). A **cross-view focus** is the library's `FocusTarget { name, values }` (D59): the host names the definition and the axis values it knows (its kind, its file), the graph centres on the first node matching all of them, and the sisters show through the duplicate halo. A packaged definition's qualified node name (`billing.Charge`) does not match the AST's bare name, so a focus on it misses — [#184](https://github.com/jmbarzee/temporal-architect/issues/184).
 
 For **packaged** designs the `name` element carries a package qualifier (`workflow:billing.Charge`, `nexusOperation:billing.Svc.Op`) — see § Packages and Qualified Identity. The contract is unchanged: the kind is still everything before the **first** `:`, and the package `.` is part of the name, never a new key segment.
 
@@ -51,9 +51,9 @@ The **nexus ladder** is the parallel three-rung Endpoint → Service → Operati
 
 A node's identity is a **dimension map** — `dimensions: Record<DimensionId, DimensionValue>` — rather than a single type string, and every feature elects exactly one axis to read. This domain projects onto three: `temporalType` (the style axis, which the taxonomy describes value by value), `sourceFile`, and `defType` — the kind the filter chips test, a projection of the type that the adapter writes onto each node at build time so the engine reads every axis the same way. Edges carry two (R5): `relation` (containment or dependency) and `dispatch` (the parser's call kind).
 
-What each value of the type axis **is** — its `ladder` and `tier`, label, icon and abbreviation, fill and border per theme, size, physics (charge, core radius, the rest band on each layout axis), what its dependency edges do when it is hidden (`whenHidden`), whether it is visible by default, and how it summarises (`summaryKind`) — lives with the host in `NODE_TYPE_REGISTRY` (`tools/visualizer/src/adapter/node-types.ts`); the edge types with their springs and strokes in `src/adapter/edge-types.ts`; the filter axes with their chips and policies beside them. The *shapes* they fill in are the library's (`OntologySpec`, `NodeTypeDefinition`, `EdgeTypeDefinition`, `DimensionDescriptor`), and `createOntology(spec)` refuses an incoherent one at construction. The library imports none of this: it reaches its domain through the injected `Ontology`, and the physics params are keyed by the chosen axis's bucket ids (push) and by spring-category ids (pull) — the host's declared ids on the type axis, pair ids elsewhere. Two hooks let the host refine what the library computes without the library naming a value: the hover box's context line and the highlight (§ Nexus Routing Association).
+What each value of the type axis **is** — its `ladder` and `tier`, label, icon, fill and border per theme, size, physics (charge, core radius, the rest band on each layout axis), what its dependency edges do when it is hidden (`whenHidden`), whether it is visible by default, and how it summarises (`summaryKind`) — lives with the host in `NODE_TYPE_REGISTRY` (`tools/visualizer/src/adapter/node-types.ts`), with the abbreviations beside it (handed to the library as `OntologySpec.abbreviations`); the edge types with their springs and strokes in `src/adapter/edge-types.ts`; the filter axes with their chips and policies beside them. The *shapes* they fill in are the library's (`OntologySpec`, `NodeTypeDefinition`, `EdgeTypeDefinition`, `DimensionDescriptor`), and `createOntology(spec)` refuses an incoherent one at construction. The library imports none of this: it reaches its domain through the injected `Ontology`, and the physics params are keyed by the chosen axis's bucket ids (push) and by spring-category ids (pull) — the host's declared ids on the type axis, pair ids elsewhere. Two hooks let the host refine what the library computes without the library naming a value: the hover box's context line and the highlight (§ Nexus Routing Association).
 
-The two words for the hierarchy are **ladder** (main or nexus) and **tier** (container, host, orchestrator, leaf) — the registry's own fields. There is no numeric `level`/depth field on a node: the earlier encoding that flattened both ladders' tiers into one sortable number is gone, and this document no longer speaks of levels. Where a tier is meant, it is named.
+The two words for the hierarchy are **ladder** (main or nexus) and **tier** (container, host, orchestrator, leaf) — the registry's own fields. There is no numeric `level`/depth field on a node: the earlier encoding that flattened both ladders' tiers into one sortable number is gone, and where this document means a tier it names one. (The parser's own `tier` field on a coarsened edge — `worker` or `namespace`, the target of its coarsening — is a different word that happens to be spelled the same.)
 
 **Per-worker duplication.** Orchestrator- and leaf-tier nodes (Workflow, Activity, NexusOperation) and the nexus host (NexusService) are emitted **per worker deployment** — an activity registered on three workers produces three distinct nodes, each parented to its respective worker. This makes the fact that a definition has multiple homes visible directly in the canvas, instead of collapsing it into a single node whose containment relationship to all-but-one of its workers is silently dropped. Duplication is performed upstream by `twf graph`; the visualizer consumes the already-duplicated nodes.
 
@@ -134,9 +134,9 @@ Dependency edges between hosts and between containers are **derived** by project
 
 The deployment graph is constructed **upstream** by `twf graph` (see `tools/lsp/parser/graph/`). The host consumes the resulting JSON and translates each piece into the library's `Graph` (`buildGraph`, in the adapter). Construction is a single pass over the parser payload:
 
-1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a node with `id` (parser's composite deployment ID), a **dimension map** — `temporalType` from the parser's `definition` kind, `defType` (the kind the filter chips test, a projection of the type), `sourceFile` from the AST — `parentId` (looked up from the parser's containment edges), `definitionKey` (= `parserGraph.nodes[i].definition`), and a `payload` of hover metadata (queue, hosting worker) the library carries opaquely. The AST is consulted only for `sourceFile`; everything structural comes from the parser. For packaged designs the `definitionKey` name is package-qualified (§ Packages and Qualified Identity); a node's package is read from that name, and the AST lookup for `sourceFile` — keyed on bare definition names — is reconciled against the qualified IDs via the file's `package` clause.
-2. **Translate edges.** For each `parserGraph.edges[i]`, emit an edge carrying two dimensions (R5): `relation` — `containment` for `kind: "containment"` and for `kind: "nexusRoute"` (the endpoint↔operation composition), `dependency` for the dispatch kinds — and `dispatch`, the parser's kind itself (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`, `signalSend`), which is what lets a signal send spring differently from a workflow call. An edge's **type** — its spring and its stroke — is resolved by the taxonomy's pair rule from the values at its two ends and these two dimensions. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so an endpoint's transitive highlight can follow its routes; the stroke of a spliced caller-to-backing edge is its resolved type's (a workflow dependency), not the nexus palette's (D57). `nexusRoute` edges are not in the parser's containment set, so they never reassign an operation's `parentId` (which stays its owning service).
-3. **Translate coarsened edges.** For each `parserGraph.coarsenedEdges[i]`, emit a worker-to-worker (`tier === "worker"`) or namespace-to-namespace (`tier === "namespace"`) dependency edge. No projection logic runs in the visualizer — the parser has already aggregated dispatch edges by `(from, to, tier)` and discarded self-loops.
+1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a node with `id` (the parser's composite deployment ID), `name`, a **dimension map** — `temporalType` from the parser's `definition` kind, `defType` (the kind the filter chips test, a projection of the type), `sourceFile` from the AST — `parentId` (looked up from the parser's containment edges; the same fact as the containment edge, written once by the host), `definitionKey` (= `parserGraph.nodes[i].definition`), `orphan` and `templateParams` as the parser emitted them, and a `payload` of hover metadata (queue, hosting worker) the library carries opaquely. The AST is consulted only for `sourceFile`; everything structural comes from the parser. For packaged designs the `definitionKey` name is package-qualified (§ Packages and Qualified Identity); the AST lookup for `sourceFile` is keyed on kind and bare name, so a qualified node currently gets no `sourceFile` — the reconciliation through the file's `package` clause is unbuilt ([#184](https://github.com/jmbarzee/temporal-architect/issues/184)).
+2. **Translate edges.** For each `parserGraph.edges[i]`, emit an edge carrying two dimensions (R5): `relation` — `containment` for `kind: "containment"` and for `kind: "nexusRoute"` (the endpoint↔operation composition), `dependency` for the dispatch kinds — and `dispatch`, the parser's kind itself (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`, `signalSend`), which is what lets a signal send spring differently from a workflow call. An edge's **type** — its spring and its stroke — is resolved on the type axis by the host's ordered edge rules (`edgeTypeFor`: the values at its two ends and the `dispatch`, so a signal send and a workflow call resolve apart). On any other push/pull axis the library's **pair rule** classifies springs instead — one category per unordered bucket pair per relation — and reads no dispatch (D49). `nexusCall` edges carry `routing.nexusEndpoint` in their `payload` — host metadata the library never reads — so the host's highlight hook can follow an endpoint's routes; the stroke of a spliced caller-to-backing edge is its resolved type's (a workflow dependency), not the nexus palette's (D57). `nexusRoute` edges are not in the parser's containment set, so they never reassign an operation's `parentId` (which stays its owning service).
+3. **Translate coarsened edges.** For each `parserGraph.coarsenedEdges[i]`, emit a worker-to-worker or namespace-to-namespace dependency edge (the parser's `tier` field names the target of its coarsening, `worker` or `namespace` — not the registry's tier). No projection logic runs in the visualizer — the parser has already aggregated dispatch edges by `(from, to, tier)` and discarded self-loops.
 4. **Build `duplicateGroups`.** Index every view node by its `definitionKey`; the resulting `Map<definitionKey, Set<nodeId>>` powers the duplicate-highlight interaction (see § Interaction States: Duplicate Highlighting).
 
 Per-worker duplication, dispatch routing, cross-namespace coarsening, and orphan detection are all properties of the parser graph. The host never re-derives them, and the library never sees them: it reads nodes by their dimensions and edges by their relation.
@@ -145,16 +145,16 @@ Per-worker duplication, dispatch routing, cross-namespace coarsening, and orphan
 
 The containment hierarchy assumes every orchestrator- and leaf-tier node belongs to a Worker and every Worker belongs to a Namespace. But the DSL allows definitions without assignments — a workflow not registered on any worker, a worker not placed in any namespace.
 
-**Treatment:** Orphan definitions appear in the graph as uncontained nodes, visually distinct from contained ones (e.g., positioned outside any grouping, with a subtle "unassigned" indicator such as a dashed outline or muted badge). They participate in dependency edges normally.
+**Treatment:** Orphan definitions appear in the graph as uncontained nodes, marked by a dashed ring around the node body (drawn at detail zoom levels). They participate in dependency edges normally.
 
 **Type filtering behavior:**
 - Orphan workers (no namespace) are visible when the Workers chip is on.
 - Orphan orchestrators and leaves (no worker) are visible when their kind's chip is on. NexusOperation nodes inherit orphan status from their parent service: if the service is orphan, the operations are too.
 - Orphans follow the same toggle rules as any other node — they're shown or hidden by their type, not by containment.
 
-**Seeding:** Orphan nodes have no parent to seed from. On initial appearance or live reload addition, seed them at the center of the viewport. The simulation's charge repulsion will push them to a natural position.
+**Seeding:** Orphan nodes have no parent to seed from, so a reveal leaves them where the initial seeding put them — in their own tier's band, like every other node (§ Simulation Lifecycle).
 
-**Data:** Orphan status is derivable from the AST — a definition is orphan if no worker or namespace references it. No parser changes needed.
+**Data:** Orphan status is the parser's (`orphan` on the node); the host copies it onto the graph node and the canvas reads it.
 
 ---
 
@@ -219,7 +219,7 @@ The full parameter set is exposed through the Control Panel (see below), organiz
 
 ### Simulation Lifecycle
 
-1. **Initialize** — Seed nodes in the layout frame: on each axis inside the band their bucket rests in, biased toward its bottom edge so the tiers start pre-ordered (D54); a node revealed later by a filter is seeded at its nearest visible ancestor (§ Type Transitions).
+1. **Initialize** — Seed nodes in the layout frame (D54): on the X axis around the centre of their bucket's rest band; on the Y axis in the band's lower part — the centre shifted toward the bottom edge by `SEED_BIAS` (0.35 of the band's height) plus a jitter that can carry a node just past the edge — so the tiers start pre-ordered and the band force lifts rather than sorts; in radial, on the bucket's ring at a random angle. A node revealed later by a filter is seeded at its nearest visible ancestor's position, snapped into its own rest bands (§ Type Transitions).
 2. **Tick** — On each animation frame, compute forces, update velocities, apply velocity damping (friction), update positions.
 3. **Cool** — Over time, reduce the simulation's *alpha* (energy). As alpha approaches zero, the layout stabilizes and ticking can pause.
 4. **Reheat** — When the graph structure changes (nodes added/removed, a kind revealed or hidden), reset alpha to restart the simulation.
@@ -253,26 +253,26 @@ A node is visible if it passes every declared filter axis; search never hides (�
 
 Edges adapt to the visible set by **graduating** across hidden nodes. The rules are the taxonomy's per-value hidden-node policy (`whenHidden`, D59), applied by the library:
 
-**Dependency edges** between two visible nodes render directly. A hidden endpoint resolves per its value's policy: `ascend` (every value but the operation) re-points the edge to the endpoint's nearest visible ancestor — the same coarsening the parser applies, so Worker→Worker reads the orchestrators' calls and Namespace→Namespace the workers' — and `splice` (the operation's) follows the hidden node's own dependency edges through, so caller → operation → backing draws as caller → backing; a hidden node is passed through once per resolution, so a cycle among hidden operations terminates. Self-loops from projection are discarded, and when two graduated edges land on one pair the one carrying metadata (the route) keeps precedence over one carrying none, in either edge order (D60).
+**Dependency edges** between two visible nodes render directly. A hidden endpoint resolves per its value's policy, **each end on its own**: `ascend` (every value but the operation) re-points that end to its nearest visible ancestor — so a visible workflow's call to a hidden activity becomes an edge from the workflow to the activity's worker (its own host, as often as not), a mixed-tier edge the parser's coarsening never emits, which the default view carries; `splice` (the operation's) follows the hidden node's own dependency edges through, so caller → operation → backing draws as caller → backing, and falls back to the ancestor walk when nothing on the far side is visible. A hidden node is passed through once per resolution, so a cycle among hidden operations terminates. Self-loops from projection are discarded, and when two graduated edges land on one pair the one carrying metadata (the route) keeps precedence over one carrying none, in either edge order (D60).
 
 **Containment edges** skip hidden intermediate tiers: a visible child attaches to its nearest visible ancestor. When Worker is hidden but Namespace and the orchestrator or leaf kinds are visible, those nodes attach directly to their grandparent Namespace via a graduated containment edge; the visual effect is that they cluster around their Namespace, as if the Worker container were transparent. A hidden child's containment edge is dropped.
 
-This means every combination of kinds produces a coherent graph — there are no "invalid" filter states. Examples:
+This means every combination of kinds produces a coherent graph — there are no "invalid" filter states. Examples, measured on the nexus fixture (the goldens' `visibleSubgraph` rows, every edge type present with its count):
 
 | Visible kinds | Nodes | Edges |
 |---------------|-------|-------|
-| NS only | Namespaces | NS→NS dependencies |
-| NS + Worker | Namespaces, Workers | NS→NS deps, NS↔Worker containment, Worker→Worker deps |
-| NS + Wf + Act | Namespaces, Workflows, Activities | NS→NS deps, NS↔Wf and NS↔Act graduated containment, Wf→Wf and Wf→Act deps |
-| Worker + Wf | Workers, Workflows | Worker→Worker deps, Worker↔Wf containment, Wf→Wf deps |
-| Wf + Act + Nexus | Workflows, Activities, Endpoints, Services, Operations | Dependency edges among them, Ep↔Op and Nx↔Op containment; no worker or namespace containment (none visible) |
-| All | Everything | All edges |
+| NS only | Namespaces | 5 nodes, 3 edges: NS→NS deps (3) |
+| NS + Workers | Namespaces, Workers | 10 nodes, 11 edges: NS→NS deps (3), Wk→Wk deps (3), Wk↔NS containment (5) |
+| NS + Wf + Act | Namespaces, Workflows, Activities | 22 nodes, 35 edges: NS→NS deps (4), Wf→Act deps (8), Wf→Wf deps (6), Act↔Wk containment (9), Wf↔Wk containment (8) |
+| Workers + Wf (the default) | Workers, Workflows | 13 nodes, 23 edges: Wf→Wf deps (6), Wk→Wk deps (9), Wf↔Wk containment (8) |
+| Wf + Act + Op | Workflows, Activities, Operations | 21 nodes, 18 edges: Op→Act deps (1), Op→Wf deps (3), Wf→Act deps (8), Wf→Op deps (6) |
+| All | Everything | 37 nodes, 60 edges: NS→NS deps (3), Op→Act deps (1), Op→Wf deps (3), Wf→Act deps (8), Wf→Op deps (6), Wk→Wk deps (3), Act↔Wk containment (9), Ep↔NS containment (3), Ep↔Op containment (4), Nx↔Wk containment (3), Op↔Nx containment (4), Wf↔Wk containment (8), Wk↔NS containment (5) |
 
 ---
 
 ## Type Transitions (Animated)
 
-Toggling a type on or off should feel spatial and continuous, not like a hard cut. The design below supports eventual seamless animation even if the first implementation is simpler.
+Toggling a kind on or off should feel spatial and continuous, not like a hard cut. The design below is intent: today a reveal seeds, reheats and settles (§ Revealing a Type, step 1, and the reheat policy); the fades and ramps of steps 2–4 and of § Hiding are not built — [#186](https://github.com/jmbarzee/temporal-architect/issues/186).
 
 ### The Spatial Metaphor
 
@@ -289,21 +289,21 @@ The user's mental model is: "I zoomed into this thing and saw what's inside." Th
 
 ### Revealing a Type (e.g., enabling Worker while Namespace is visible)
 
-1. **Seed positions** — Place incoming nodes at the position of their nearest visible ancestor (parent if visible, grandparent if parent is hidden). This keeps the spatial context intact. Whether an axis seeds and refits this way is its descriptor's reheat policy (`reheat`): the Kind axis does; the File axis reheats in place and keeps the user's pan and zoom.
+1. **Seed positions** — Place incoming nodes at their nearest visible ancestor's position (parent if visible, grandparent if the parent is hidden), **snapped into the node's own rest bands** — a child in a lower tier band starts at that band's edge below its container, not on top of it; in radial, on its own ring at the ancestor's angle (D54). This keeps the spatial context intact. Whether an axis seeds and refits this way is its descriptor's reheat policy (`reheat`): the Kind axis does; the File axis reheats in place and keeps the user's pan and zoom.
 2. **Set initial forces** —
    - Containment link strength: **maximum** (children cling to ancestor).
-   - Intra-level dependency link strength: **zero** (children ignore peer edges initially).
+   - Peer dependency link strength: **zero** (children ignore peer edges initially).
    - Child charge strength: **zero** (children don't repel yet).
 3. **Animate in** — Over a transition duration (~400–600 ms, eased):
    - Fade child nodes and edges from fully transparent to fully opaque.
    - Ramp child charge strength up to its target value (children begin to spread out).
-   - Ramp intra-level link strength up to its target value (dependency edges start pulling).
+   - Ramp peer link strength up to its target value (dependency edges start pulling).
    - Ramp containment link strength down toward its resting target (ancestor grip loosens).
 4. **Result** — Children fan out from their ancestor, finding their own equilibrium, with dependency edges guiding the final arrangement.
 
 ### Hiding a Type (e.g., disabling Worker)
 
-Reverse the process: fade out, collapse charge and link strengths, then remove nodes when they've converged back to their nearest visible ancestor position. If hiding a middle layer while both parent and child types remain visible, the graduated containment edges animate in as the hidden nodes fade out — the graph smoothly transitions from a three-tier to a two-tier layout.
+Reverse the process: fade out, collapse charge and link strengths, then remove nodes when they've converged back to their nearest visible ancestor position. If hiding a middle tier while both parent and child types remain visible, the graduated containment edges animate in as the hidden nodes fade out — the graph smoothly transitions from a three-tier to a two-tier layout.
 
 ### Force Strength Interpolation
 
@@ -315,23 +315,22 @@ All strength transitions should be **interpolated over time** (not snapped). Use
 
 ### Node Appearance
 
-Each node type should be visually distinct using redundant encoding (don't rely on color alone):
+Every node is drawn as a disc of its value's declared radius (`size.r`, the taxonomy's), with its icon inside and its name beside it — the redundant encoding is colour, icon and size together:
 
-| Node Type      | Shape Suggestion      | Size      |
-|----------------|-----------------------|-----------|
-| Namespace      | Rounded rectangle     | Large     |
-| Worker         | Rectangle             | Medium    |
-| Workflow       | Circle or pill        | Small     |
-| Activity       | Circle or pill        | Small     |
-| NexusService   | Circle or pill        | Small     |
+| Value | Radius | Icon size |
+|---|---:|---:|
+| Namespace, Worker, Nexus Service | 20 | 18 |
+| Nexus Endpoint | 15 | 14 |
+| Workflow, Nexus Operation | 11 | 12 |
+| Activity | 8 | 10 |
 
-Orchestrator- and leaf-tier values share a size — each value's `size` is the taxonomy's — and are distinguished by colour and icon (matching the tree view's existing color system: purple for workflows, blue for activities, pink for nexus services). Fill and border are the value's declared colour in the pane's resolved theme (§ Color); the canvas is theme-aware, so a dark pane draws the dark palette.
+The small discs — workflow and operation at 11, activity at 8 — are told apart by colour and icon (matching the tree view's colour system: purple for workflows, blue for activities, pink for nexus services). Fill and border are the value's declared colour in the pane's resolved theme (§ Color); the canvas is theme-aware, so a dark pane draws the dark palette.
 
 Each node displays **only its name** as a label — all other detail (composition counts, file, connection degree, duplicate copies) lives in the hover box, not under the node. Labels use a dedicated `--color-graph-label` colour (softened — slate-700 in light themes, slate-300 in dark — rather than maximum contrast, so names aren't the only bright text on the canvas) at a semibold weight and slight translucency (so edges stay visible through them). Names up to 15 characters are shown in full; longer names are truncated to 12 characters plus an ellipsis. Overlap is handled by collision-based elision — see § Visual Density.
 
 **Zoom-responsive sizing.** Node bodies, icons, and labels are drawn in screen pixels but scale with zoom: on-screen size is `baseR × size × clamp(zoom, floor, cap)`. They shrink when zoomed out — so a zoomed-out graph reads as a clean constellation rather than a chaotic pile of full-size dots and overlapping labels — and are capped when zoomed in so they never dominate the canvas. The three knobs (`size`, `grow cap`, `shrink floor`) are **user-tunable** from the Controls panel (Misc → Node scaling, see § Control Panel) — e.g. lowering the grow cap makes nodes start shrinking at a lower zoom.
 
-**Parameterized-family nodes (cardinality badge).** A `namespace` or `nexusEndpoint` node whose wire carries a non-empty `templateParams: string[]` — a parameterized family such as `fabric-shard-{org}` — renders as a **single collapsed representative node**: the same shape, size, and colour as its static counterpart (rounded rectangle / large for a namespace; the endpoint container treatment for a `nexusEndpoint`), adorned with a **cardinality badge**. The badge is derived **only** from `templateParams`: one `× {param}` chip per entry — `× org` for `["org"]`; `× org` and `× region` for `["org","region"]` — so the chip count equals the array length and each chip label is the bare param name. A family with two holes shows two chips. The badge is a node **adornment**, sitting alongside the existing badge vocabulary (the `?` unresolved badge and the orphan / "unassigned" badge — see [PRODUCT.md](./PRODUCT.md) § Node badges and § Orphan Definitions), **not** the node's name label: the label continues to show the full name string with holes included, subject to the same 15/12-character elision (§ Node Appearance). The hover tooltip's context line for these node types (§ Interaction States → Context line format) is unchanged in structure — the parameterized nature is already legible from the badge and the templated name.
+**Parameterized-family nodes (cardinality badge).** A `namespace` or `nexusEndpoint` node whose wire carries a non-empty `templateParams: string[]` — a parameterized family such as `fabric-shard-{org}` — renders as a **single collapsed representative node**: the same shape, size, and colour as its static counterpart (rounded rectangle / large for a namespace; the endpoint container treatment for a `nexusEndpoint`), adorned with a **cardinality badge**. The badge is derived **only** from `templateParams`: one `× {param}` chip per entry — `× org` for `["org"]`; `× org` and `× region` for `["org","region"]` — so the chip count equals the array length and each chip label is the bare param name. A family with two holes shows two chips. The badge is a node **adornment**, sitting alongside the orphan ring (see [PRODUCT.md](./PRODUCT.md) § Node badges, and § Orphan Definitions here), **not** the node's name label: the label continues to show the full name string with holes included, subject to the same 15/12-character elision (§ Node Appearance). The hover tooltip's context line for these node types (§ Interaction States → Context line format) is unchanged in structure — the parameterized nature is already legible from the badge and the templated name.
 
 *Static fallback.* When `templateParams` is absent (the field is omitted when empty), a `namespace`/`nexusEndpoint` node gets **no badge and no collapse treatment** — byte-identical wire, identical rendering to today. The feature is purely additive.
 
@@ -341,13 +340,13 @@ Each node displays **only its name** as a label — all other detail (compositio
 
 | Edge Type                        | Line Style   | Direction Indicator |
 |----------------------------------|--------------|---------------------|
-| Direct dependency (→ same level) | Solid        | Arrowhead           |
+| Dependency between peers (→)     | Solid        | Arrowhead           |
 | Nexus dependency (→ via nexus)   | Solid, distinct color | Arrowhead    |
-| Containment (↔ adjacent levels)  | Dashed       | None (undirected)   |
+| Containment (child ↔ container)  | Dashed       | None (undirected)   |
 
 Every edge is stroked by its **resolved edge type** — the same classification that picks its spring — through the stroke the taxonomy declares for that type (`EdgeTypeDefinition.style`: colour per theme, alpha, dash, width). There is one classifier (D57): a spliced caller-to-backing edge, whose operation is filtered out, draws as the workflow dependency its type says it is.
 
-**Arrowheads are visible at rest.** Direction encoding is essential for answering "what depends on what?" (Q7) without hovering. Arrowheads point from the dependent node toward the dependency (A → B means "A depends on B"). They must be legible at typical zoom levels — scale arrowhead size with zoom so they remain visible but don't dominate at close zoom. Containment edges have no arrowhead (the relationship is symmetric membership).
+**Arrowheads are visible at rest.** Direction encoding is essential for answering "what depends on what?" (Q7) without hovering. Arrowheads point from the dependent node toward the dependency (A → B means "A depends on B"). They are drawn at a fixed screen size (8 px), so they stay legible at any zoom without dominating close up. Containment edges have no arrowhead (the relationship is symmetric membership).
 
 Edge opacity and thickness can be secondary signals — thicker or more opaque for higher-traffic connections if multiplicity data is available in the future.
 
@@ -363,12 +362,12 @@ Structural summaries communicate a node's role at a glance, but to keep the canv
 
 | Value (`summaryKind`) | Summary | Example | Where shown |
 |---|---|---|---|
-| Namespace, Worker, Nexus Service (`children`) | Contained children, counted per style value and named by its abbreviation | `5 Wk · 1 Ep`, `3 Wf · 1 Act`, `2 Op` | Hover box (composition line) |
+| Namespace, Worker, Nexus Service (`children`) | Contained children, counted per style value in the taxonomy's order and named by its abbreviation | `1 Ep · 5 Wk`, `3 Wf · 1 Act`, `2 Op` | Hover box (composition line) |
 | Workflow, Activity, Nexus Operation (`degree`) | Dependency degree (in/out) | `→3 ←2` | Hover box (connections row) |
 | Nexus Endpoint (`none`) | — | — | — |
 
 **Presentation:**
-- Composition counts (`children`) appear as a dedicated line in the hover tooltip; dependency degree (`degree`) is already represented by the tooltip's connections row, so it is not duplicated. The dispatch is the taxonomy's (D58).
+- Composition counts (`children`) appear as a dedicated line in the hover tooltip, the values counted in the taxonomy's order and named by its abbreviations; dependency degree (`degree`) is already represented by the tooltip's connections row, so it is not duplicated. The dispatch is the taxonomy's (D58).
 - Counts reflect only the currently visible children/edges — with no orchestrator or leaf kind visible, a Worker shows no registration count — consistent with filter-as-source-of-truth.
 
 ---
@@ -528,7 +527,7 @@ The equation-oriented grouping means each section is self-contained: the formula
 
 ### Simulation Controls
 
-Simulation controls live in the bottom-right corner (see § Bottom Controls), not the control panel: **Play / Pause** toggles ticking. There is no manual Reheat control and no Reset button — reheating happens automatically on structural and parameter changes (§ Live Reheat). The control panel itself holds only the force-shaping controls.
+Simulation controls live in the bottom-centre cluster (see § Bottom Controls), not the control panel: **Play / Pause** toggles ticking. There is no manual Reheat control and no Reset button — reheating happens automatically on structural and parameter changes (§ Design Decisions). The control panel itself holds only the force-shaping controls.
 
 ### Design Decisions
 
@@ -558,7 +557,7 @@ While a section is hovered, the canvas renders the matching overlay layer (drawn
 
 **Spring tension coloring** — Edges colored by their current tension state, drawn from the app palette so the highlight reads as part of the visualizer: teal (`--color-timer`) near rest length, amber (`--color-warning`) when stretched, blue (`--color-activity`) when compressed. When a specific spring is being tuned on the map (a token hovered or dragged), only that edge category is highlighted, drawn as a coloured **border** that preserves the edge's own identity colour rather than recolouring it; otherwise (hovering the PULL section as a whole) all edges are coloured by tension.
 
-**Gravity band overlay** — Shown while the Gravity section is hovered and an axis has strength. Only buckets some visible node falls in are drawn — the set the force re-centres on and rings (D53) — and buckets sharing a band draw one stripe. In **cartesian**, a horizontal stripe in each Y bucket's colour marks its rest band and a vertical stripe each X bucket's, both median-centred to match the force. In **radial**, a concentric ring in each Y bucket's colour marks its target radius about the origin. Hovering a column in an axis plot highlights that bucket's stripe or ring on that axis and dims the rest.
+**Gravity band overlay** — Shown while the Gravity section is hovered and an axis has strength. The overlay is the frame's, over the **whole** graph (D54): a stripe or ring for every bucket some node of the graph falls in — the set the force re-centres on — while the panel's columns are the visible set's (R35); buckets sharing a band draw one stripe. In **cartesian**, a horizontal stripe in each Y bucket's colour marks its rest band and a vertical stripe each X bucket's, both median-centred to match the force. In **radial**, a concentric ring in each Y bucket's colour marks its target radius about the origin. Hovering a column in an axis plot highlights that bucket's stripe or ring on that axis and dims the rest.
 
 ### When It's On
 
@@ -614,7 +613,7 @@ The graph adds one graph-specific behavior: **edge graduation** (see § Type Fil
 Search is **non-destructive**: it never removes nodes from the visible set. Instead, when a query is active:
 
 - **Matching nodes** (visible AND name contains the query) render at full opacity.
-- **Non-matching visible nodes** dim to ~30% opacity. Their edges dim correspondingly.
+- **Non-matching visible nodes** dim to 20% opacity. Their edges dim correspondingly.
 
 No ring, halo, or other decorative highlight is used to mark matches — full-vs-dim opacity is the entire visual treatment. (Ring decoration is reserved for other uses.)
 
@@ -623,13 +622,13 @@ No ring, halo, or other decorative highlight is used to mark matches — full-vs
 Search matches against **all** nodes, including those excluded by structural filters. The results split:
 
 - **Visible matches** — nodes that match the search AND pass the current type and file filters. Rendered at full opacity in the graph.
-- **Hidden matches** — nodes that match the search but are excluded by structural filters (toggled-off type, filtered file). Not rendered in the graph.
+- **Hidden matches** — nodes that match the search but are excluded by structural filters (a kind whose chip is off, a file not selected). Not rendered in the graph.
 
 Hidden match counts appear as **badge overlays** on the filter controls that are hiding them:
 - If 3 matching workflows are hidden because the Workflows chip is off, that chip shows a badge: "3".
 - If 2 matching nodes are hidden because their source file is filtered out, the corresponding file chip shows a badge: "2".
 
-This lets the user discover that matches exist, understand *why* they're hidden, and decide whether to adjust filters to reveal them. Search informs but never overrides filters.
+In the graph a hidden match is counted on the first declared axis it fails — its kind's chip if the kind is off, else its file's — and the search control also carries the total (`+N`). This lets the user discover that matches exist, understand *why* they're hidden, and decide whether to adjust filters to reveal them. Search informs but never overrides filters.
 
 ### Selecting a Search Result
 
@@ -650,14 +649,14 @@ Hovering a node highlights its **transitive dependency chain**, not just immedia
 In both modes:
 - The hovered node and all highlighted nodes are shown at full opacity.
 - All edges along the traversal path are highlighted (arrowheads reinforced at full opacity).
-- All other nodes and edges dim (reduce opacity to ~20–30%).
+- All other nodes and edges dim (opacity 20%; 50% while the group glow is on).
 - Show a **hover info tooltip** anchored near the hovered node containing:
-  1. Node name, type icon + label, context line (format varies by type — see below), source file.
-  2. **Composition counts** (container/host nodes only — namespace, worker, nexus service): contained worker/endpoint counts or registration breakdown (e.g. `5 workers · 1 endpoint`, `3wf · 1act`, `2 ops`). This is the structural summary that used to render as an under-node badge (§ Node Summaries).
+  1. Node name with its value's icon, the context line (the host's hook — format varies by type, see below), and the source file.
+  2. **Composition counts** (values whose `summaryKind` is `children` — namespace, worker, nexus service): the contained values counted in the taxonomy's order and abbreviated (e.g. `1 Ep · 5 Wk`, `3 Wf · 1 Act`, `2 Op`). This is the structural summary that used to render as an under-node badge (§ Node Summaries). A parameterized family carries its cardinality line here too (§ Node Appearance).
   3. **Duplicate-copies line** (only when the definition has more than one visible copy): `copy N of M`, where M is the number of sister copies currently visible. Makes the per-worker duplication explicit and tells the user the cross-canvas highlight on the other copies is intentional.
   4. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
   5. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
-  6. **Show in Tree** button — invokes the `focus(target)` view transition to the Tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions). This is the graph's sole "Show in Tree" affordance.
+  6. The host's **cross-view button** — in this host "Show in Tree", which invokes the `focus(target)` view transition to the Tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions); the label and the action are the host's (`crossView`). This is the graph's sole "Show in Tree" affordance. It is offered on every node, an endpoint or operation included, though those have no tree block of their own ([#183](https://github.com/jmbarzee/temporal-architect/issues/183)).
 
 The tooltip is **interactive**: it stays open while the pointer is over it (a short grace period bridges the gap as the pointer travels from the node onto the tooltip) so the Show in Tree button is clickable. Moving the pointer off both the node and the tooltip dismisses it.
 
@@ -683,13 +682,13 @@ The nexus family has transient hover behaviors that reveal routing relationships
 
 **Hover on a `nexusService` deployment:** The standard transitive-dep chain applies as usual. Additionally, the endpoints fronting this service's operations are added to the highlighted set (plus their namespace parent). These are reached by walking the service's operation children and following their `nexusRoute` edges to the endpoint nodes — the parser materialises the endpoint↔operation composition as a `nexusRoute` edge (matched upstream on namespace + queue), so the visualizer never re-derives the relationship from node `(namespace, queue)` fields. This surfaces "which endpoints front calls to this service?" at hover time.
 
-Both behaviors operate over edges the parser already emits — the endpoint hover reads `edge.nexusEndpoint` routing metadata on `nexusCall` edges; the service hover reads `nexusRoute` edges. Neither consults node `(namespace, queue)` fields, which exist only as hover-tooltip display metadata.
+Both behaviors operate over edges the parser already emits — the endpoint hover reads the `nexusEndpoint` routing metadata in a `nexusCall` edge's `payload`; the service hover reads `nexusRoute` edges. Neither consults node `(namespace, queue)` fields, which exist only as hover-tooltip display metadata.
 
 ### Duplicate Highlighting
 
-When the hovered or selected node belongs to a **duplicate group** (a definition that's been duplicated across multiple workers — see § Per-worker duplication), every sister copy is added to the highlighted set alongside the transitive dependency chain. The visual result: hovering any one copy of an activity registered on three workers keeps all three copies at full opacity while the rest of the graph dims. This is what links the duplicates visually — they don't have edges between each other (they're not "connected" in the dependency sense), but they share opacity with each other under hover, which is what tells the user "these are the same thing in different homes".
+When the hovered or selected node belongs to a **duplicate group** (a definition that's been duplicated across multiple workers — see § The model, *Per-worker duplication*), every visible sister copy is drawn with a coloured **duplicate halo**. The sisters are not added to the highlighted set: one not on the dependency chain dims with the rest, and the halo is what marks it. Hovering any one copy of an activity registered on three workers halos all three. This is what links the duplicates visually — they have no edges between each other, and the halo says "these are the same thing in different homes".
 
-Sister copies are added to the highlight set only when they pass the current type and file filters. A copy that's been hidden by the user's filters does not pop back into visibility on hover; the hover interaction extends what's already on screen, it doesn't override the filter.
+Sister copies are haloed only when they pass the current filters. A copy that's been hidden by the user's filters does not pop back into visibility on hover; the hover interaction extends what's already on screen, it doesn't override the filter.
 
 The transitive chain follows only **visible edges** — including graduated edges when intermediate types are hidden. If only Namespace is enabled, the chain follows Namespace → Namespace derived edges. If Namespace and Workflow are enabled (Workers hidden), the chain follows graduated containment and the workflows' dependency edges. This is consistent with filter-as-source-of-truth: the user sees relationships between what's visible, not inferred relationships from hidden data.
 
@@ -862,7 +861,7 @@ At high node counts, the graph risks becoming a hairball. Strategies to manage t
 - **Label elision** — Two complementary mechanisms keep labels readable: (1) below a low zoom threshold, name labels are hidden entirely (only the colour-coded shapes remain), reappearing on hover or when zoomed in; (2) at all other zooms, each label is placed only if its box overlaps neither an already-drawn label **nor any node body** this frame, so dense clusters thin out their labels instead of overprinting nodes or each other. The hovered/selected node always wins, and the choice is greedy in (stable) node order so it doesn't flicker once the layout settles. Because labels hide rather than shrink, zooming in (up to 40×) spreads nodes apart and progressively reveals more labels. (There is no longer a secondary summary badge under the node — composition counts moved to the hover box, § Node Summaries.)
 - **Zoom-responsive node sizing** — Node bodies and labels scale down (clamped) as the user zooms out, so a zoomed-out graph reads as a clean constellation instead of a chaotic field of overlapping full-size dots. See § Visual Encoding → Node Appearance.
 - **Edge bundling** — When many edges connect the same pair of workers or namespaces at coarser zoom levels, the derived edge already compresses them to one. With the orchestrator and leaf kinds visible and many edges between the same two worker groups, consider visual bundling (routing edges through shared paths) or opacity reduction for parallel edges.
-- **Type toggles as density control** — The type filter is the primary density management tool. The default view (Workers and Workflows only) shows a moderate-density graph. Users opt into density by enabling additional types. This is density management through progressive disclosure rather than algorithmic simplification.
+- **Kind chips as density control** — The kind filter is the primary density management tool. The default view (Workers and Workflows only) shows a moderate-density graph. Users opt into density by enabling additional kinds. This is density management through progressive disclosure rather than algorithmic simplification.
 - **Zoom-dependent detail** — Node rendering can reduce detail at distant zoom: drop icons, simplify shapes to dots, reduce border thickness. The node remains clickable and hoverable at all zoom levels.
 
 ---
@@ -881,20 +880,20 @@ The graph view supports keyboard navigation for node selection, viewport control
 
 | Key | Action |
 |-----|--------|
-| **Tab** | Cycle focus to the next node (order: by containment hierarchy, then alphabetical within peers) |
+| **Tab** | Cycle focus to the next visible node, in the visible set's order (hierarchy-then-alphabetical ordering, and Tab out of the canvas, are [#182](https://github.com/jmbarzee/temporal-architect/issues/182)) |
 | **Shift+Tab** | Cycle focus to the previous node |
 | **Enter** | Select the focused node (same as click — triggers dependency highlight) |
 | **Escape** | Deselect all. Close any open panel or popover. |
 | **Arrow keys** | Pan the viewport |
 | **+** / **-** | Zoom in / out |
 | **F** | Fit-to-view (frame all visible nodes) |
-| **/** or **Ctrl+F** | Open search bar and focus the search input |
+| **/** | Open the search bar and focus its input (Ctrl+F opens search in the Tree only — #182) |
 | **Space** | Toggle simulation play/pause |
 | **?** | Toggle keyboard shortcut reference panel |
 
 ### Focus Indicator
 
-The currently focused node has a visible focus ring (distinct from hover highlight and selection highlight). When a node is focused via keyboard, the tooltip appears as it would on mouse hover.
+The currently focused node has a visible focus ring (distinct from hover highlight and selection highlight). The tooltip does not yet follow keyboard focus (#182).
 
 ### Modifier Keys
 
@@ -902,7 +901,7 @@ See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Keyboard Modifier Vocabulary for
 
 ### Accessibility
 
-See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Accessibility for the shared accessibility approach (ARIA roles, focus indicators). Graph nodes are focusable elements with labels announcing node type and name.
+See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Accessibility for the shared accessibility approach (ARIA roles, focus indicators). Graph nodes are not DOM elements: the pane keeps a virtual focus index over the canvas, and an accessible-name layer announcing a node's kind and name is deferred (#182).
 
 
 ## Cross-View Navigation
