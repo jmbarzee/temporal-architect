@@ -43,6 +43,7 @@ const NAMED = [
   'src/components/SpringControls.tsx',
   'src/components/GravityControls.tsx',
   'src/components/GraphControlPanel.tsx',
+  'src/components/PushPullControls.tsx',
   // CSS is in scope because eight hand-written domain chip tints live in
   // FilterBar.css; a manifest that skipped stylesheets would report zero while
   // they sat in the shipped bundle.

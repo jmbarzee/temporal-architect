@@ -26,7 +26,7 @@ which is worth noticing rather than assuming.
 | `components/GravityControls.tsx` | manifest | 4 | `components/GraphControlPanel.tsx` |
 | `components/GroupsModal.tsx` | neither | 7 | `components/GraphView.tsx` |
 | `components/PinToggle.tsx` | manifest |  | `components/FilterBar.tsx` |
-| `components/PushPullControls.tsx` | neither |  | `components/GraphControlPanel.tsx` |
+| `components/PushPullControls.tsx` | manifest |  | `components/GraphControlPanel.tsx` |
 | `components/SpringControls.tsx` | manifest |  | `components/PushPullControls.tsx` |
 | `components/StyleGuide.tsx` | neither | 62 | `components/VisualizerHost.tsx`, `lib.ts` |
 | `components/TreeView.tsx` | neither | 54 | `components/WorkflowCanvas.tsx` |

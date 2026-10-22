@@ -54,19 +54,19 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 4 — Push/pull on a chosen dimension** (not started) |
+| Current unit | **Unit 4 — Push/pull on a chosen dimension** (closing: all commits landed, review running, PR pending) |
 | Last completed unit | **Unit 3 — N-dimensional filters + chain UI** |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-2`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, Unit 2's -> unit-1. Nothing needs to merge for the run to continue. |
+| Unit branch | `visualizer/dimensions-unit-4`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | **6** (R6, R14, R17, R18, R19, R20) + R1 partial | 42 |
-| B — blast-radius sites migrated | 18 | 38 |
-| C — leaks in the manifest | **203** | 0 |
+| A — requirements covered | **14** (R4, R5, R6, R13, R14, R17, R18, R19, R20, R22, R23, R24, R25, R34) + R1 partial | 42 |
+| B — blast-radius sites migrated | **23** | 38 |
+| C — leaks in the manifest | **194** | 0 |
 | Gate 6 — import-boundary violations | **7** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
@@ -89,18 +89,41 @@ the manifest for `src/adapter/`, which is the point of the unit rather than a
 dodge, since the vocabulary genuinely belongs to the host. The part that is real
 deletion is `model.ts` 61 -> 12 and the `nodeDefType.ts` removal.
 
+**Unit 4.** Counter B: B7 (the O(n²) loop reads each node once), B12 and B13
+(`edgeTypeFor` takes values and returns an id; `EdgeTypeId` no longer keys any
+param map), B26 (the three `as NodeType` casts are gone — the pattern gate
+reports 0 new identity casts), B28 (one token per category *present*, from the
+resolved table) — 18 -> 23. **Carried:** B6 (`bandCenters`' per-tick `Set`/`Map`
+identity, T1 — not touched) and B22 (`edgeStyleFor`, which §6.5 already routes
+to Unit 6).
+
+Counter C landed at **194** against §6.5's **102**, and the gap is not slippage:
+it is the plan's table attributing to Unit 4 drops it elsewhere assigns to other
+units. Every remaining leak, by the unit §6.5 itself names for the file: Unit 5a
+— `simulation.ts` 5, `GravityControls.tsx` 4, `.css` 2 = **11**; Unit 6 —
+`edge-styles.ts` 58 (T11), `FilterBar.css` 39, `GraphView.css` 8, `controls.css`
+3, `GraphControlPanel.css` 3, `PinToggle.css` 2, `GraphCanvas.tsx` 3, `groups.ts`
+1 = **117**; Unit 7 — `GraphView.tsx` 30, `visibleGraph.ts` 19, `useHighlight.ts`
+10, `model.ts` 3 (the nexus splice readers, B16) = **62**; residue — `FilterBar.tsx`
+2, `dimension.ts` 1, `taxonomy.ts` 1 = **4**. Sum 194. Unit 4's own share (the
+`model.ts` residue, `GraphCanvas.tsx`'s part) is at its floor, and the unit
+removed nine (203 -> 194) while adding a tab, a dropdown and four files to the
+manifest at zero. The ratchet is set to **194** / **1246**; the next real drop is
+Unit 5a's 11.
+
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 3 close | pass |
-| 2 `npm run build:lib` | Unit 3 close | pass |
-| 2b `npm run dts-gate` | Unit 3 close | pass — consumer compile clean, `skipLibCheck` off |
-| 3 `npm run verify` | Unit 3 close | pass — 7/7 goldens match |
-| 4 `npm run leak-gate` | Unit 3 close | pass — **203 / 204**; shim 1063; **total 1266 / 1266** |
-| 5 browser pass | Unit 3 close | pass — five fixtures, counts identical to Units 0, 1 and 2, 0 application errors |
-| 6 `npm run boundary-gate` | Unit 3 close | pass — **7 / 7**; the 8 -> 7 is a genuine edge removal, not relocation |
-| + `npm run pattern-gate` | Unit 3 close | pass — 5 allowlisted, 0 new |
+| 1 `tsc --noEmit` | Unit 4 close | pass |
+| 2 `npm run build:lib` | Unit 4 close | pass |
+| 2b `npm run dts-gate` | Unit 4 close | pass — consumer compile clean, `skipLibCheck` off |
+| 3 `npm run verify` | Unit 4 close | pass — 7/7 goldens match (Tier B and Tier C byte-identical across the whole unit) |
+| 4 `npm run leak-gate` | Unit 4 close | pass — **194 / 194**; shim 1052; **total 1246 / 1246**; `PushPullControls.tsx` joined the manifest at 0 |
+| 5 browser pass | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)` |
+| 6 `npm run boundary-gate` | Unit 4 close | pass — **7 / 7** |
+| + `npm run pattern-gate` | Unit 4 close | pass — 5 allowlisted, 0 new |
+| + `npm run map -- --check` | Unit 4 close | pass — 83 source files |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -122,8 +145,8 @@ Status: blank = not started · `wip` · `done`.
 | R1 | Ontology: dimensions, keys, values | 1, 2 | 1 + 3 | `wip` — the container and its four seams land in Unit 1; dimensions themselves are Unit 2 |
 | R2 | Nodes carry a dimension map | 2 | 3 |
 | R3 | Host-owned node payload field | 2 | 1 |
-| R4 | Edge type from node-dimension combinations | 4 | 3 (Tier C) |
-| R5 | Edges carry `relation` / `dispatch` dimensions | 4 | 3 (Tier C) |
+| R4 | Edge type from node-dimension combinations | 4 | covered (4) — Tier C byte-identical through the dimensional path; Tier A `axes` rows pin the pair rule per fixture |
+| R5 | Edges carry `relation` / `dispatch` dimensions | 4 | covered (4) — Tier A edge lines carry both |
 | R6 | Common filter interface + staple filters | 3 | covered (3) — descriptors + chain |
 | R7 | Global axis backed by a dimension | 5a | 5 |
 | R8 | Global axis backed by a computed scalar | 5b | 3 + 5 |
@@ -131,7 +154,7 @@ Status: blank = not started · `wip` · `done`.
 | R10 | Colour scheme input, light **and** dark | 6 | 5 |
 | R11 | Base node sizes carried by the colour-scheme input | 6 | 5 |
 | R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw |
-| R13 | Default force dimension configurable | 4 | 5 |
+| R13 | Default force dimension configurable | 4 | covered (4) — Gate 5 verified (axis dropdown) |
 | R14 | Default filters/selections configurable | 3 | covered (3) — default selections from the taxonomy |
 | R15 | Default colours configurable | 6 | 5 |
 | R16 | Every label and abbreviation configurable | 6 | 4 |
@@ -140,10 +163,10 @@ Status: blank = not started · `wip` · `done`.
 | R19 | Default displayed filters configurable | 3 | covered (3) — declared `filterDimensions` order |
 | R20 | Search last, unchanged | 3 | covered (3) — Gate 5 verified |
 | R21 | Graph-pane colour-scheme button | 6 | 5 |
-| R22 | Push + Pull combined into one view | 4 | 5 |
-| R23 | Subsections styled like Band/Topological, no switches | 4 | 5 |
-| R24 | One shared dimension dropdown drives both | 4 | 5 |
-| R25 | Equation + chart/sliders + force graph per subsection | 4 | 5 |
+| R22 | Push + Pull combined into one view | 4 | covered (4) — Gate 5 verified |
+| R23 | Subsections styled like Band/Topological, no switches | 4 | covered (4) — Gate 5 verified |
+| R24 | One shared dimension dropdown drives both | 4 | covered (4) — Gate 5 verified |
+| R25 | Equation + chart/sliders + force graph per subsection | 4 | covered (4) — Gate 5 verified |
 | R26 | "X Axis" / "Y Axis" subsections | 5a | 5 |
 | R27 | Y-axis enable switch enters radial mode | 5a | 5 |
 | R28 | Per-axis mapping-or-scalar dropdown | 5a, 5b | 5 |
@@ -152,7 +175,7 @@ Status: blank = not started · `wip` · `done`.
 | R31 | Computed scalar renders as a gradient | 5b | 5 |
 | R32 | Only the active axis's strength slider shown | 5a | 5 |
 | R33 | Force graph always beneath the chart | 5a | 5 |
-| R34 | Misc section retained | 4 | 5 |
+| R34 | Misc section retained | 4 | covered (4) — Gate 5 verified, untouched |
 | R35 | Post-filter set determines offered controls | 7 | 5 |
 | R36 | Library in a sibling folder, buildable, extractable | 8 | 2 + 6 |
 | R37 | Shim first-class, own folder | 2 | 6 |
@@ -194,42 +217,35 @@ should be read:
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
 
-**Unit 4 in progress** on `visualizer/dimensions-unit-4`, branched from unit-3 @
-`aedde37`; last checkpoint `54edcb6` (4c, D49 — springs resolve dimensionally, the
-shim table as the style axis's declared physics; `AxisTuning.axis` dropped; leak
-194, total 1246). Next: **4d**'s residue (per-node bucket precompute; the canvas's
-per-frame style memo), then **4e** (Push + Pull merged under one dropdown; the
-host-chosen mapping behind the 24-token ceiling — now `k(k+1) ≤ 24` for springs;
-`temporalType` needs a descriptor, and `identityTuning` / `identityMapping` are
-two identity builders to fold into one once it has one).
-
-**Re-sequenced:** 4b's residual — a host-chosen mapping with the 24-token ceiling
-— would have no caller until 4e's dropdown exists, which is the
-decorative-declarative shape STANDING_CHECKS #4 names (F15, D46). It lands inside
-4e, when something reads it. 4-pre already delivered 4b's keyed accessors and 4d's
-hoisted resolution; 4d's residue (per-node bucket precompute, canvas per-frame
-style memo) follows 4c. **Record the sha, every checkpoint:** on resume after a six-week
+**Unit 4 is closing** on `visualizer/dimensions-unit-4`, branched from unit-3 @
+`aedde37`. Eleven unit commits, `7d81ee0` … `acc36cc` (4-pre D47, 4a D48, 4c D49,
+4d, 4e-i D50, 4e-ii, 4e-iii D51), then the close-out. Review workflow
+`wf_97ef1cb2-737` (six finders, Opus on the physics and gates lenses, Sonnet
+elsewhere — rule 11; isolation on finders AND verifiers — F17) is in flight;
+`REVIEW_4.md` and the PR follow it. **Record the sha, every checkpoint:** on resume after a six-week
 pause the app had re-pointed this worktree to its own session branch at the
 feature base, and the first `checkout -b unit-4` silently branched from there.
 Caught only because pre-Unit-2 symbols showed up in a grep. First action of any
 resumed session: `git log --oneline -1` against the sha here.
 
-Ceilings at the Unit 3 close: leak **204**, total **1266**, boundary **7**.
+The three things the Unit 3 close said Unit 4 should settle first, settled:
 
-Three things Unit 4 should settle first, all recorded and none of them mine to
-decide alone:
+- **The params shape** — D47: `AxisTuning` is one sparse value (mapping +
+  overrides), resolved once; D49 extends it to springs and drops the duplicated
+  `axis` field. Nothing is stored twice.
+- **`ontology.valueOn`'s `defType` special case** — D50: the adapter writes the
+  kind onto the node; `valueOn` is one indexer for every axis.
+- **The §6.5 ceiling** — not reachable, and the arithmetic is under Counters:
+  every remaining leak is a file §6.5 assigns to 5a, 6 or 7.
 
-- **The params shape** (§6.6/§6.7). Unit 4 adds the dimension *dropdown*, which
-  puts the axis on the same edit channel as `pushMultiplier` — one click from the
-  axis/table disagreement rather than a taxonomy swap away. One instance to
-  convert now; roughly five by 5b.
-- **`ontology.valueOn`'s `defType` special case.** I argued it is library-declared
-  shared vocabulary; the review argues it is the domain leaking back under a
-  neutral name. Unit 4 makes the axis a user choice, so Unit 4 is where it stops
-  being arguable.
-- **Unit 4's §6.5 ceiling of 160 is likely optimistic**, the same way Unit 3's 195
-  was (D45). From 203 that needs 43, against `model.ts`'s 12. Re-derive from the
-  baseline table rather than treating 160 as reachable.
+Carried out of Unit 4, for the next unit to pick up or file: B6 (T1, untouched);
+`identityTuning`/`identityMapping` are still two identity builders because the
+style axis has no descriptor (it is not a filter axis); off the style axis every
+token is one neutral colour until Unit 6's palette; the pair rule does not read
+`dispatch` (a host rule can — D51).
+
+Ceilings at the Unit 3 close: leak **204**, total **1266**, boundary **7**. At the
+Unit 4 close: leak **194**, total **1246**, boundary **7**.
 
 ## Discovered facts
 
@@ -406,6 +422,17 @@ workflow template where isolation is not a per-stage option.
 
 **Also recorded: `git stash` stayed untouched throughout** (C6), and the review's
 own worktrees were removed afterwards.
+
+---
+
+**F18 — Every pair on a fresh axis starts from one default, so the tokens stack.**
+Switching push/pull to the File axis put all four spring tokens at exactly
+`DEFAULT_SPRING` and both push tokens on the same declared mean; the control
+surface showed one dot. A bounded token count is *necessary* for a usable surface
+and not sufficient — coincident tokens are not separately draggable. `ForceMap2D`
+now fans coincident tokens out on a ring (drawn position only; a drag still
+writes the token's own value). Found by Gate 5 and by nothing else: no number is
+wrong when two categories share a default, so no golden can see it.
 
 ---
 
