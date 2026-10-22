@@ -1,7 +1,9 @@
 // Graph data model for the force-directed graph view.
 // Derived from GRAPH_VIEW.md § Graph Data Model.
 
-import type { DimensionMap } from './dimension'
+import type { DimensionMap, DimensionValue } from './dimension'
+import { DISPATCH_DIMENSION, RELATION_DIMENSION } from './dimension'
+import type { EdgeCategoryKind } from './taxonomy'
 
 export interface GraphNode {
   /**
@@ -66,40 +68,58 @@ export interface GraphNode {
  * as an absent field instead of "[object Object]" in a tooltip.
  */
 export function payloadString(
-  node: Pick<GraphNode, 'payload'>,
+  node: { payload?: Readonly<Record<string, unknown>> },
   key: string,
 ): string | undefined {
   const value = node.payload?.[key]
   return typeof value === 'string' ? value : undefined
 }
 
-export type EdgeType = 'containment' | 'dependency'
-
 export interface GraphEdge {
   id: string
-  edgeType: EdgeType
   sourceId: string
   targetId: string
-  // Endpoint metadata for dependency edges that originate from a nexus call.
-  // The operation and service identities are encoded in the target node, but
-  // the endpoint is per-call-site (the same operation can be reached via two
-  // endpoints in different namespaces) so it stays on the edge.
-  nexusEndpoint?: string
-  // The parser's dispatch kind, carried only where it disambiguates two edge
-  // types that share the same endpoint node types. `workflowCall` and
-  // `signalSend` are both workflow → workflow; nothing but the kind separates
-  // a binding call from a fire-and-forget send, so `edgeTypeFor` reads this.
-  dispatchKind?: 'signalSend'
+  /**
+   * Where this edge sits on every axis it has a value for. The library declares
+   * two (`RELATION_DIMENSION`, `DISPATCH_DIMENSION`); a host may add more.
+   */
+  dimensions: DimensionMap
+  /**
+   * Metadata the host owns and the library does not interpret — the same
+   * contract as `GraphNode.payload`. Per-call-site detail that is not identity
+   * and not an axis lives here.
+   */
+  payload?: Readonly<Record<string, unknown>>
+}
+
+/** Does this edge express containment (as opposed to a dependency)? */
+/**
+ * The edge's relation, as one of the two values the engine knows. Closed and
+ * loud: an edge with no relation, or a misspelt one, is a host bug, and letting
+ * it classify as a dependency would give it a real spring with no error.
+ */
+export function relationOf(edge: Pick<GraphEdge, 'dimensions'>): EdgeCategoryKind {
+  const r = edge.dimensions[RELATION_DIMENSION]
+  if (r === 'containment' || r === 'dependency') return r
+  throw new Error(`edge relation ${JSON.stringify(r)} is not one the engine knows; expected "containment" or "dependency"`)
+}
+
+export function isContainment(edge: Pick<GraphEdge, 'dimensions'>): boolean {
+  return relationOf(edge) === 'containment'
+}
+
+/** The producer's dispatch kind for a dependency edge, or undefined. */
+export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): DimensionValue | undefined {
+  return edge.dimensions[DISPATCH_DIMENSION]
 }
 
 export interface Graph {
   nodes: Map<string, GraphNode>
   edges: GraphEdge[]
   // Definition key → every node id that represents a copy of that
-  // definition. Populated by `buildGraph` once all nodes exist. For
-  // singletons (one worker registration, or an orphan definition) the
-  // set has one entry. For an activity registered on three workers the
-  // set has three. Consumers read this to keep sister copies undimmed
-  // during hover/select interactions in GraphView.
+  // definition. Populated by `buildGraph` once all nodes exist. A singleton
+  // (one registration, or an orphan definition) has one entry; a definition
+  // registered on three hosts has three. Consumers read this to keep sister
+  // copies undimmed during hover/select interactions in GraphView.
   duplicateGroups: Map<string, Set<string>>
 }

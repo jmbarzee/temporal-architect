@@ -133,6 +133,12 @@ export function ForceMap2D({
   const vGrid = [0, MAP_W / 2, MAP_W]
   const hGrid = [0, MAP_H / 2, MAP_H]
 
+  // Coincident tokens fan out on a small ring around their shared point, so a
+  // set of categories that start from one default — every pair on a freshly
+  // chosen axis — is still a set of tokens a pointer can tell apart. Only the
+  // drawn position moves; a drag still writes the token's own value.
+  const placed = spreadCoincident(tokens.map(t => ({ cx: xForVal(t.x), cy: yForVal(t.y) })))
+
   return (
     <Plot
       yLabel={yAxis.label}
@@ -176,9 +182,8 @@ export function ForceMap2D({
           <line key={`gy${y}`} x1={0} y1={y} x2={MAP_W} y2={y} className="spring-grid" />
         ))}
 
-        {tokens.map(token => {
-          const cx = xForVal(token.x)
-          const cy = yForVal(token.y)
+        {tokens.map((token, i) => {
+          const { cx, cy } = placed[i]
           const dim = hoveredId !== null && hoveredId !== token.id
           const active = hoveredId === token.id
           return (
@@ -214,6 +219,27 @@ export function ForceMap2D({
       </svg>
     </Plot>
   )
+}
+
+function spreadCoincident(points: { cx: number; cy: number }[]): { cx: number; cy: number }[] {
+  const groups: { cx: number; cy: number; members: number[] }[] = []
+  points.forEach((p, i) => {
+    const g = groups.find(g => Math.hypot(g.cx - p.cx, g.cy - p.cy) < TOKEN_R)
+    if (g) g.members.push(i)
+    else groups.push({ cx: p.cx, cy: p.cy, members: [i] })
+  })
+  const out = points.map(p => ({ cx: p.cx, cy: p.cy }))
+  for (const g of groups) {
+    if (g.members.length === 1) continue
+    // A ring wide enough that neighbours do not overlap: n tokens need a
+    // circumference of about n diameters.
+    const r = Math.max(TOKEN_R * 1.6, (g.members.length * TOKEN_R) / Math.PI)
+    g.members.forEach((i, k) => {
+      const a = -Math.PI / 2 + (2 * Math.PI * k) / g.members.length
+      out[i] = { cx: g.cx + r * Math.cos(a), cy: g.cy + r * Math.sin(a) }
+    })
+  }
+  return out
 }
 
 // ── Force-curve read-out (viewBox units) ─────────────────────────────────────

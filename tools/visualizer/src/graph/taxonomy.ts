@@ -30,15 +30,6 @@ export interface NodeTypeDefinition {
   label: string
   /** Single glyph shown inside the canvas node and in tree-view chips. */
   icon: string
-  /**
-   * The key the visibility filter tests against.
-   *
-   * A plain string on purpose. The engine compares it and groups by it; it never
-   * parses it or enumerates the legal values, so a host is free to use its own
-   * vocabulary — including synthetic keys for values that have no first-class
-   * declaration of their own.
-   */
-  defType: string
   /** Whether this value is visible when the graph first loads. */
   defaultVisible: boolean
 
@@ -107,14 +98,20 @@ export type EdgeCategoryKind = 'containment' | 'dependency'
  * Stable id for one edge category.
  *
  * A string, not a union, and that is the library's whole position on edge
- * vocabulary: it doubles as the key into the `link` / `dist` param maps and as
- * the hover-link key across the spring map, curves, and canvas, so it has to be
- * something a host can extend. A host narrows it to its own union.
+ * vocabulary: it is the override key in the spring tuning and the hover-link
+ * key across the spring map, curves, and canvas, so it has to be something a
+ * host can extend. A host narrows it to its own union.
  */
 export type EdgeTypeId = string
 
+/** One spring: stiffness (k) and rest length. */
+export interface SpringPhysics {
+  strength: number
+  distance: number
+}
+
 export interface EdgeTypeDefinition {
-  /** Stable id — also the key into the `link` / `dist` param maps. */
+  /** Stable id — also the override key in the spring tuning. */
   id: EdgeTypeId
   /** Short control-panel label. */
   label: string
@@ -127,9 +124,7 @@ export interface EdgeTypeDefinition {
   sourceType: DimensionValue
   targetType: DimensionValue
   category: EdgeCategoryKind
-  /** True = the two directions are distinct categories. */
-  directional: boolean
-  /** Default stiffness / rest length. */
-  physics: { strength: number; distance: number }
+  /** Declared stiffness / rest length — what the category resolves to until tuned. */
+  physics: SpringPhysics
   tooltip: string
 }

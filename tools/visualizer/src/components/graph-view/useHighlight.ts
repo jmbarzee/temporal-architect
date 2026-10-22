@@ -7,6 +7,7 @@
 // subgraph + a `getNode` accessor as inputs (the explicit data link to the sim);
 // it never touches simRef directly.
 
+import { payloadString } from '../../graph/model'
 import React from 'react'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
@@ -31,8 +32,8 @@ export interface HighlightController {
   highlightedEdges: Set<string> | null
   activeSection: ForceSection
   setActiveSection: React.Dispatch<React.SetStateAction<ForceSection>>
-  activeChargeType: DimensionValue | null
-  setActiveChargeType: React.Dispatch<React.SetStateAction<DimensionValue | null>>
+  activePushBucket: string | null
+  setActivePushBucket: React.Dispatch<React.SetStateAction<string | null>>
   activeGravityType: DimensionValue | null
   setActiveGravityType: React.Dispatch<React.SetStateAction<DimensionValue | null>>
   activePullEdge: string | null
@@ -56,7 +57,7 @@ export function useHighlight(
 
   // Force-field preview (hover-driven; no persistent toggle).
   const [activeSection, setActiveSection] = React.useState<ForceSection>(null)
-  const [activeChargeType, setActiveChargeType] = React.useState<DimensionValue | null>(null)
+  const [activePushBucket, setActivePushBucket] = React.useState<string | null>(null)
   const [activeGravityType, setActiveGravityType] = React.useState<DimensionValue | null>(null)
   const [activePullEdge, setActivePullEdge] = React.useState<string | null>(null)
 
@@ -100,7 +101,7 @@ export function useHighlight(
         nodes.add(activeNode.parentId)
       }
       for (const edge of visibleEdges) {
-        if (edge.nexusEndpoint === activeNode.name) {
+        if (payloadString(edge, 'nexusEndpoint') === activeNode.name) {
           edges.add(edge.id)
           if (visibleIds.has(edge.sourceId)) nodes.add(edge.sourceId)
           if (visibleIds.has(edge.targetId)) nodes.add(edge.targetId)
@@ -150,7 +151,7 @@ export function useHighlight(
     focusedNodeId,
     highlightedNodes, highlightedEdges,
     activeSection, setActiveSection,
-    activeChargeType, setActiveChargeType,
+    activePushBucket, setActivePushBucket,
     activeGravityType, setActiveGravityType,
     activePullEdge, setActivePullEdge,
   }

@@ -1,5 +1,45 @@
 {
   "tierA": {
+    "axes": [
+      {
+        "axis": "temporalType",
+        "fits": true,
+        "presentSprings": [
+          "linkNsToWorker",
+          "linkWorkerToActivity",
+          "linkWorkerToWorker",
+          "linkWorkerToWorkflow",
+          "linkWorkflowToActivity",
+          "linkWorkflowToWorkflow"
+        ],
+        "pullTokens": 6,
+        "pushTokens": 7
+      },
+      {
+        "axis": "sourceFile",
+        "fits": true,
+        "presentSprings": [
+          "[\"containment\",\"access-control.twf\",\"access-control.twf\"]",
+          "[\"dependency\",\"access-control.twf\",\"access-control.twf\"]"
+        ],
+        "pullTokens": 2,
+        "pushTokens": 1
+      },
+      {
+        "axis": "defType",
+        "fits": true,
+        "presentSprings": [
+          "[\"containment\",\"activityDef\",\"workerDef\"]",
+          "[\"containment\",\"namespaceDef\",\"workerDef\"]",
+          "[\"containment\",\"workerDef\",\"workflowDef\"]",
+          "[\"dependency\",\"activityDef\",\"workflowDef\"]",
+          "[\"dependency\",\"workerDef\",\"workerDef\"]",
+          "[\"dependency\",\"workflowDef\",\"workflowDef\"]"
+        ],
+        "pullTokens": 6,
+        "pushTokens": 4
+      }
+    ],
     "edgeClassification": {
       "byEdgeType": {
         "linkNsToWorker": 2,
@@ -234,116 +274,117 @@
         "linkWorkerToWorkflow|containment|containment|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
         "linkWorkerToWorkflow|containment|containment|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
         "linkWorkerToWorkflow|containment|containment|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
-        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl"
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+        "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
       ],
       "nodeCount": 53,
       "nodes": [
         {
           "definitionKey": "activity:AggregateDeprovisionResults",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -355,6 +396,7 @@
         {
           "definitionKey": "activity:AggregateProvisioningResults",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -366,6 +408,7 @@
         {
           "definitionKey": "activity:AlertSecurityTeam",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -377,6 +420,7 @@
         {
           "definitionKey": "activity:AlertSecurityTeamBreakGlass",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -388,6 +432,7 @@
         {
           "definitionKey": "activity:AlertSecurityTeamIncompleteOffboard",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -399,6 +444,7 @@
         {
           "definitionKey": "activity:ArchiveIdentity",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -410,6 +456,7 @@
         {
           "definitionKey": "activity:AutoRevokeUndecidedItems",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -421,6 +468,7 @@
         {
           "definitionKey": "activity:CalculateRoleDelta",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -432,6 +480,7 @@
         {
           "definitionKey": "activity:CreateManualDeprovisioningTicket",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -443,6 +492,7 @@
         {
           "definitionKey": "activity:CreateManualProvisioningTicket",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -454,6 +504,7 @@
         {
           "definitionKey": "activity:DisableAuthentication",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -465,6 +516,7 @@
         {
           "definitionKey": "activity:EmitAuditEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -476,6 +528,7 @@
         {
           "definitionKey": "activity:EscalateManualDeprovisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -487,6 +540,7 @@
         {
           "definitionKey": "activity:EscalateManualProvisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -498,6 +552,7 @@
         {
           "definitionKey": "activity:EscalatePostIncidentReview",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -509,6 +564,7 @@
         {
           "definitionKey": "activity:EvaluatePolicy",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -520,6 +576,7 @@
         {
           "definitionKey": "activity:EvaluateRenewalPolicy",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -531,6 +588,7 @@
         {
           "definitionKey": "activity:ExecuteDeprovisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -542,6 +600,7 @@
         {
           "definitionKey": "activity:ExecuteProvisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -553,6 +612,7 @@
         {
           "definitionKey": "activity:GenerateCampaignReport",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -564,6 +624,7 @@
         {
           "definitionKey": "activity:GenerateReviewItems",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -575,6 +636,7 @@
         {
           "definitionKey": "activity:IdentifySharedResources",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -586,6 +648,7 @@
         {
           "definitionKey": "activity:NotifyApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -597,6 +660,7 @@
         {
           "definitionKey": "activity:NotifyBreakGlassApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -608,6 +672,7 @@
         {
           "definitionKey": "activity:NotifyManagerForMicroCert",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -619,6 +684,7 @@
         {
           "definitionKey": "activity:NotifyPostIncidentReviewers",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -630,6 +696,7 @@
         {
           "definitionKey": "activity:NotifyRequester",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -641,6 +708,7 @@
         {
           "definitionKey": "activity:ReassignApprovalTask",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -652,6 +720,7 @@
         {
           "definitionKey": "activity:ResolveEscalationTarget",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -663,6 +732,7 @@
         {
           "definitionKey": "activity:ResolveFallbackApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -674,6 +744,7 @@
         {
           "definitionKey": "activity:SendCampaignReminders",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -685,6 +756,7 @@
         {
           "definitionKey": "activity:SignalAccessRequestRevoke",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -696,6 +768,7 @@
         {
           "definitionKey": "activity:TransferResourceOwnership",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -707,6 +780,7 @@
         {
           "definitionKey": "activity:ValidateApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -718,6 +792,7 @@
         {
           "definitionKey": "activity:ValidateBreakGlassApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -729,6 +804,7 @@
         {
           "definitionKey": "activity:ValidateCertificationReviewer",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -740,6 +816,7 @@
         {
           "definitionKey": "activity:ValidateDelegation",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -751,6 +828,7 @@
         {
           "definitionKey": "activity:ValidatePostIncidentReview",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -762,6 +840,7 @@
         {
           "definitionKey": "activity:VerifyDeprovisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -773,6 +852,7 @@
         {
           "definitionKey": "activity:VerifyProvisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -784,6 +864,7 @@
         {
           "definitionKey": "namespace:accessControl",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "access-control.twf",
             "temporalType": "namespace"
           },
@@ -794,6 +875,7 @@
         {
           "definitionKey": "worker:connectorWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "access-control.twf",
             "temporalType": "worker"
           },
@@ -806,6 +888,7 @@
         {
           "definitionKey": "worker:coreWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "access-control.twf",
             "temporalType": "worker"
           },
@@ -818,6 +901,7 @@
         {
           "definitionKey": "workflow:AccessRequest",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -829,6 +913,7 @@
         {
           "definitionKey": "workflow:ApprovalChain",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -840,6 +925,7 @@
         {
           "definitionKey": "workflow:BreakGlassRequest",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -851,6 +937,7 @@
         {
           "definitionKey": "workflow:CertificationCampaign",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -862,6 +949,7 @@
         {
           "definitionKey": "workflow:DeprovisionAll",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -873,6 +961,7 @@
         {
           "definitionKey": "workflow:DeprovisionEntitlement",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -884,6 +973,7 @@
         {
           "definitionKey": "workflow:OffboardIdentity",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -895,6 +985,7 @@
         {
           "definitionKey": "workflow:ProvisionAll",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -906,6 +997,7 @@
         {
           "definitionKey": "workflow:ProvisionEntitlement",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -917,6 +1009,7 @@
         {
           "definitionKey": "workflow:TransferIdentity",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -1041,63 +1134,63 @@
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl"
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
         ],
         "nodeSummaries": {
           "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": "←1",
@@ -1322,63 +1415,63 @@
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl"
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
         ],
         "nodeSummaries": {
           "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": "←1",
@@ -1511,19 +1604,19 @@
         },
         "graduatedEdges": [
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
           "linkWorkerToWorkflow|containment|containment|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
@@ -1534,16 +1627,16 @@
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl"
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
         ],
         "nodeSummaries": {
           "worker:coreWorker/namespace:accessControl": "10wf",
@@ -1630,63 +1723,63 @@
           "workflow:TransferIdentity/worker:coreWorker/namespace:accessControl": 0.8
         },
         "graduatedEdges": [
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl"
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
         ],
         "nodeSummaries": {
           "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": "←1",
@@ -1919,63 +2012,63 @@
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl"
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:NotifyRequester/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> activity:ValidateDelegation/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
         ],
         "nodeSummaries": {
           "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": "←1",
@@ -2125,19 +2218,19 @@
         },
         "graduatedEdges": [
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl|dispatch=activityCall",
           "linkWorkerToWorkflow|containment|containment|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:ApprovalChain/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
@@ -2148,16 +2241,16 @@
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
           "linkWorkerToWorkflow|containment|containment|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
-          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl"
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ApprovalChain/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:AccessRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:ProvisionAll/worker:coreWorker/namespace:accessControl -> workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:AccessRequest/worker:coreWorker/namespace:accessControl|dispatch=workflowCall",
+          "linkWorkflowToWorkflow|workflowDep|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
         ],
         "nodeSummaries": {
           "worker:coreWorker/namespace:accessControl": "10wf",

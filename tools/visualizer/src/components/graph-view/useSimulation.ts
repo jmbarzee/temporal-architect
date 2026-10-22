@@ -8,7 +8,7 @@
 // *drives* the sim is a separate hook (useSimulationLoop); this owns the instance.
 
 import React from 'react'
-import { Simulation, defaultParamsFor } from '../../graph/simulation'
+import { Simulation, defaultParamsFor, retunedFor } from '../../graph/simulation'
 import { defaultRng } from '../../graph/rng'
 import { useOntology } from './useOntology'
 import type { ForceParams, SimNode } from '../../graph/simulation'
@@ -24,7 +24,7 @@ export interface SimulationController {
   getNode: (id: string) => SimNode | undefined
   onParamChange: (patch: Partial<ForceParams>) => void
   onForceAdjust: () => void
-  onGravityChange: (partial: Partial<ForceParams>) => void
+  onRelayout: (partial: Partial<ForceParams>) => void
   onNodeDragStart: (id: string, wx: number, wy: number) => void
   onNodeDragMove: (wx: number, wy: number) => void
   onNodeDragEnd: () => void
@@ -48,34 +48,19 @@ export function useSimulation(
   const [forceParams, setForceParams] = React.useState<ForceParams>(() => defaultParamsFor(ontology))
   const [simVersion, setSimVersion] = React.useState(0)
 
-  // Which taxonomy the current `forceParams` were derived from. Needed because
-  // the parameters are not taxonomy-neutral — see the rebuild effect.
-  const paramsFrom = React.useRef(ontology)
-
   const onRebuildRef = React.useRef(onRebuild)
   onRebuildRef.current = onRebuild
 
   // Create or update the simulation when the graph or the taxonomy changes.
   React.useEffect(() => {
-    // A taxonomy swap invalidates the parameters, and this is the subtle part.
-    // `Simulation`'s constructor is `{ ...defaultParamsFor(ontology), ...params }`
-    // — the supplied params spread LAST, so passing the previous ones does not
-    // merely preserve the user's tuning, it overrides the fresh taxonomy's
-    // `chargeDimension` and `bandDimension` too. The engine would then key the
-    // NEW taxonomy's nodes on the OLD axis, miss every lookup, and fall through
-    // to ABSENT_VALUE_PHYSICS: every node loses its charge and collapses into a
-    // zero-height band, with no error anywhere.
-    //
-    // So the parameters are re-derived on a swap rather than carried over. That
-    // does discard the user's tuning, which is the right trade: the tuned values
-    // are a map keyed by the old taxonomy's values, and there is no meaningful
-    // way to reinterpret them against a different key space.
-    const swapped = paramsFrom.current !== ontology
-    const params = swapped ? defaultParamsFor(ontology) : forceParams
-    if (swapped) {
-      paramsFrom.current = ontology
-      setForceParams(params)
-    }
+    // The parameters follow the graph and the taxonomy: `retunedFor` rebuilds
+    // any tuning whose buckets no longer match — an axis bucketed by observed
+    // values after a file is added, the style axis after a taxonomy swap — with
+    // overrides kept where their values survive, and returns the same object
+    // when nothing moved. A swap used to need a provenance ref here to detect;
+    // a tuning that carries its own mapping has nothing left to detect (D47).
+    const params = retunedFor(forceParams, ontology, graph)
+    if (params !== forceParams) setForceParams(params)
     simRef.current = new Simulation(graph, params, defaultRng, ontology)
     onRebuildRef.current?.()
     setRunning(true)
@@ -100,8 +85,9 @@ export function useSimulation(
     setRunning(true)
   }, [])
 
-  // Non-numeric gravity edits (mode, toggles) relocate nodes, so reheat harder.
-  const onGravityChange = React.useCallback((partial: Partial<ForceParams>) => {
+  // Edits that relocate nodes — gravity's mode and toggles, the push/pull axis
+  // — reheat harder than a numeric nudge.
+  const onRelayout = React.useCallback((partial: Partial<ForceParams>) => {
     setForceParams(prev => {
       const next = { ...prev, ...partial }
       simRef.current?.setParams(next)
@@ -140,7 +126,7 @@ export function useSimulation(
 
   return {
     simRef, simVersion, running, setRunning, forceParams, getNode,
-    onParamChange, onForceAdjust, onGravityChange,
+    onParamChange, onForceAdjust, onRelayout,
     onNodeDragStart, onNodeDragMove, onNodeDragEnd,
     onToggleRunning,
   }

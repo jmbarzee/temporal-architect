@@ -10,6 +10,8 @@
 // minimal `{ nodeType }` shape the rules actually read, so callers may pass a
 // GraphNode, a SimNode, or a bare projection.
 
+import { payloadString } from './model'
+import { isContainment } from './model'
 import type { DimensionValue } from './dimension'
 import type { GraphEdge } from './model'
 
@@ -67,7 +69,7 @@ export function edgeStyleKeyFor(
   src: StyleEndpoint,
   tgt: StyleEndpoint,
 ): EdgeStyleKey {
-  if (edge.edgeType === 'containment') {
+  if (isContainment(edge)) {
     if (src === 'nexusOperation' && tgt === 'nexusService') {
       return 'opContainment'
     }
@@ -86,7 +88,7 @@ export function edgeStyleKeyFor(
   // caller → backing edges that retain the endpoint metadata.
   if (
     src === 'nexusOperation' || tgt === 'nexusOperation' ||
-    edge.nexusEndpoint != null
+    payloadString(edge, 'nexusEndpoint') !== undefined
   ) {
     return 'nexusCall'
   }

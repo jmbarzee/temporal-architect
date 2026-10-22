@@ -2,7 +2,7 @@
 // Implements GRAPH_VIEW.md § Layout: Force-Directed Simulation.
 
 import type { GraphNode, GraphEdge, Graph } from './model'
-import type { EdgeTypeId } from './taxonomy'
+import type { EdgeTypeId, SpringPhysics } from './taxonomy'
 import {
   applyChargeForce,
   applyLinkForce,
@@ -10,9 +10,15 @@ import {
   applyTopologicalGravity,
   applyCenterGravity,
   bandFor,
+  presentSpringCategories,
+  resolvePhysics,
+  resolveSprings,
+  springFor,
 } from './forces'
 import type { Rng } from './rng'
-import type { DimensionId, DimensionValue } from './dimension'
+import type { EdgeCategory, ResolvedPhysics } from './forces'
+import type { DimensionalMapping } from './dimension'
+import { identityMapping, valuesOn } from './dimension'
 import type { Ontology } from './ontology'
 
 // The force helpers now live in ./forces; re-export them so existing consumers
@@ -23,7 +29,7 @@ export {
   coreRadiusFor,
   bandFor,
   bandForKey,
-  edgeCategory,
+  springFor,
   RADIAL_R_MIN,
   RADIAL_R_MAX,
 } from './forces'
@@ -45,19 +51,183 @@ export interface SimNode extends GraphNode {
 // split is purely at the type level: each force in ./forces takes only its
 // category's slice, so it cannot read params outside its own force.
 
+/** What the push force needs per bucket. */
+export interface PushPhysics { charge: number; coreRadius: number }
+/** A rest band, as declared and as tuned. Converted to `YBand` at read time. */
+export interface BandRange { min: number; max: number }
+
+/**
+ * Per-bucket tuning of one force along one axis.
+ *
+ * Three facts that must agree — which axis, how its values bucket, and the
+ * per-bucket numbers — as ONE constructed value, so there is no second field for
+ * them to disagree with. The axis and its table used to be two independent
+ * fields (`chargeDimension` and `charge`), and the Unit 2 review found the exact
+ * state that admits: after a taxonomy swap the axis was the new one and the
+ * table was still keyed by the old, every lookup missed, and the layout silently
+ * collapsed (PLAN §6.6).
+ *
+ * `overrides` holds **only what the user changed**, keyed by bucket id. Every
+ * other bucket resolves to the taxonomy's declared physics at read time
+ * (`resolvePhysics`). That is what makes the shape a projection rather than a
+ * copy: there is no dense table to go stale, and no provenance token to keep in
+ * step, because nothing here duplicates the taxonomy. It also makes "is this
+ * value tuned?" answerable — presence is the answer — and reset granular.
+ *
+ * T10 holds: the scalars beside this stay flat, so `keyof ForceParams` and the
+ * key-addressed sliders are unchanged. Only the table fields changed shape.
+ */
+export interface AxisTuning<T> {
+  /** Which axis, and how its values bucket. The mapping names its own dimension. */
+  readonly mapping: DimensionalMapping
+  readonly overrides: ReadonlyMap<string, T>
+}
+
+/** Set one bucket's override, copy-on-write. */
+export function withOverride<T>(tuning: AxisTuning<T>, bucketId: string, value: T): AxisTuning<T> {
+  const overrides = new Map(tuning.overrides)
+  overrides.set(bucketId, value)
+  return { ...tuning, overrides }
+}
+
+/**
+ * The two pair forces' tuning: ONE axis for both, and only what the user has
+ * changed on each. Push and pull keying on different axes is a state the
+ * domain has no meaning for (D51: one dropdown drives both), so the type does
+ * not admit it — the mapping is stored once, here.
+ */
+export interface PairTuning {
+  readonly mapping: DimensionalMapping
+  /** Per-bucket charge and core radius, only where the user changed it. */
+  readonly push: ReadonlyMap<string, PushPhysics>
+  /** Per-category stiffness and rest length, only where the user changed it. */
+  readonly spring: ReadonlyMap<EdgeTypeId, SpringPhysics>
+}
+
+/** Both forces on an axis, nothing overridden. */
+export function pairTuning(mapping: DimensionalMapping): PairTuning {
+  return { mapping, push: new Map(), spring: new Map() }
+}
+
+export function withPushOverride(pair: PairTuning, bucketId: string, value: PushPhysics): PairTuning {
+  const push = new Map(pair.push)
+  push.set(bucketId, value)
+  return { ...pair, push }
+}
+
+export function withSpringOverride(pair: PairTuning, id: EdgeTypeId, value: SpringPhysics): PairTuning {
+  const spring = new Map(pair.spring)
+  spring.set(id, value)
+  return { ...pair, spring }
+}
+
+/**
+ * The identity bucketing of the taxonomy's style axis — one bucket per declared
+ * value. The style axis has no descriptor (it is not a filter), so its labels
+ * come from the taxonomy rather than through `identityMapping`.
+ */
+export function styleIdentityMapping(ontology: Ontology): DimensionalMapping {
+  return identityMapping({
+    id: ontology.styleAxis(),
+    label: ontology.styleLabel(),
+    labelFor: value => ontology.styleForKey(value).label,
+    abbreviationFor: value => ontology.abbreviationFor(value),
+  }, ontology.nodeTypeKeys)
+}
+
+/** A single-axis tuning on the style axis, bucketed by identity, nothing overridden. */
+export function identityTuning<T>(ontology: Ontology): AxisTuning<T> {
+  return { mapping: styleIdentityMapping(ontology), overrides: new Map() }
+}
+
+/**
+ * The bounded-token rule. A dimension is usable for push/pull only through a
+ * mapping small enough that one token per bucket (push) and one per spring
+ * category present (pull) is still a control surface a person can use. Above
+ * this the surface is unbounded, which PLAN §5.1 names as a tripwire.
+ */
+export const TOKEN_CEILING = 24
+
+/** One axis the push/pull forces could key on, and what it would cost to show. */
+export interface AxisOption {
+  readonly mapping: DimensionalMapping
+  /** Push tokens — one per bucket. */
+  readonly pushTokens: number
+  /** Pull tokens — one per spring category some edge of the graph falls in. */
+  readonly pullTokens: number
+}
+
+export function fitsCeiling(option: AxisOption): boolean {
+  return option.pushTokens <= TOKEN_CEILING && option.pullTokens <= TOKEN_CEILING
+}
+
+/**
+ * Every axis push/pull can key on for this graph: the style axis bucketed by
+ * identity, then each filter axis bucketed by the values the graph presents on
+ * it. The token counts are measured, not estimated, so the ceiling is a number
+ * the dropdown can show beside an axis it has to decline.
+ */
+export function axisOptions(ontology: Ontology, graph: Graph): AxisOption[] {
+  const style = ontology.styleAxis()
+  const mappings: DimensionalMapping[] = [styleIdentityMapping(ontology)]
+  for (const d of ontology.filterDimensions) {
+    if (d.id === style) continue
+    const values = valuesOn(graph.nodes.values(), d.id)
+    if (values.length > 0) mappings.push(identityMapping(d, values))
+  }
+  const nodeOf = (id: string) => graph.nodes.get(id)
+  return mappings.map(mapping => ({
+    mapping,
+    pushTokens: mapping.buckets.length,
+    pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), ontology), graph.edges, nodeOf).size,
+  }))
+}
+
+/** Same axis, same buckets, same values — order-insensitive, since node order is not a fact about the graph. */
+function sameBuckets(a: DimensionalMapping, b: DimensionalMapping): boolean {
+  const key = (m: DimensionalMapping) =>
+    m.buckets.map(x => `${x.id}=${[...x.values].sort().join(',')}`).sort().join(';')
+  return a.dimension === b.dimension && key(a) === key(b)
+}
+
+/**
+ * The same parameters, re-bucketed for the graph and taxonomy they now face.
+ * An identity mapping over observed values goes stale when a file is added or
+ * removed; the style axis's goes stale when the taxonomy is swapped. Overrides
+ * are keyed by value, so they survive where the value does. A tuning whose
+ * buckets did not change comes back by reference, so a caller can tell nothing
+ * moved. An axis the graph no longer carries, or one that has grown past the
+ * token ceiling, falls back to the style axis with nothing overridden.
+ */
+export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph): ForceParams {
+  const style = ontology.styleAxis()
+  const nodeOf = (id: string) => graph.nodes.get(id)
+  const refreshed = (m: DimensionalMapping): DimensionalMapping | undefined => {
+    if (m.dimension === style) return styleIdentityMapping(ontology)
+    const descriptor = ontology.descriptorFor(m.dimension)
+    if (!descriptor) return undefined
+    const values = valuesOn(graph.nodes.values(), m.dimension)
+    return values.length === 0 ? undefined : identityMapping(descriptor, values)
+  }
+  const fits = (mapping: DimensionalMapping) => fitsCeiling({
+    mapping,
+    pushTokens: mapping.buckets.length,
+    pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), ontology), graph.edges, nodeOf).size,
+  })
+  const nextPair = refreshed(params.pair.mapping)
+  const pair = nextPair === undefined || (nextPair.dimension !== style && !fits(nextPair))
+    ? pairTuning(styleIdentityMapping(ontology))
+    : sameBuckets(nextPair, params.pair.mapping) ? params.pair : { ...params.pair, mapping: nextPair }
+  const nextBand = refreshed(params.band.mapping) ?? styleIdentityMapping(ontology)
+  const band = sameBuckets(nextBand, params.band.mapping) ? params.band : { ...params.band, mapping: nextBand }
+  return pair === params.pair && band === params.band ? params : { ...params, pair, band }
+}
+
 // PUSH — repulsion. Per-type charge strength and core radius, the masters that
 // scale them, and the charge falloff exponent.
 export interface ChargeParams {
-  /** The axis charge and core radius key on. One axis, named once. */
-  chargeDimension: DimensionId
-  // Charge strength (repulsion, negative values), keyed by dimension value.
-  charge: Record<DimensionValue, number>
-  // Core radius (charge softening, expressed as a length), keyed by node type.
-  // Per pair, the softening added to dist² is the squared average of the two
-  // endpoints' effective core radii (rEff = coreRadiusMultiplier × coreRadius).
-  // A larger core radius spreads a type's repulsion over a wider, gentler
-  // plateau near the centre instead of a sharp spike.
-  coreRadius: Record<DimensionValue, number>
+  /** The pair forces' shared axis and per-bucket overrides — see `PairTuning`. */
+  pair: PairTuning
 
   pushMultiplier: number       // scales all charge (repulsion) forces
   coreRadiusMultiplier: number // scales all per-type core radii (charge softening)
@@ -67,9 +237,8 @@ export interface ChargeParams {
 // PULL — spring attraction. Per-edge-category stiffness (k) and rest length,
 // the masters that scale them, and the displacement exponent.
 export interface LinkParams {
-  // Spring stiffness (k) and rest length per edge category, keyed by edge-type id.
-  link: Record<EdgeTypeId, number>
-  dist: Record<EdgeTypeId, number>
+  /** The same value `ChargeParams` names: one axis for both pair forces. */
+  pair: PairTuning
 
   pullMultiplier: number     // scales all link (attraction) forces
   distanceMultiplier: number // scales all rest distances
@@ -84,8 +253,6 @@ export interface LinkParams {
 // centre drift, removing the need for canvas-side COM compensation. Plus the
 // optional downstream-reach vertical pull.
 export interface GravityParams {
-  /** The axis the per-value rest bands key on. */
-  bandDimension: DimensionId
   gravityX: number
   gravityY: number
   // Band falloff exponent applied to the displacement outside the rest band
@@ -114,8 +281,8 @@ export interface GravityParams {
   topologicalEnabled: boolean
   bandXMin: number
   bandXMax: number
-  // Per-value Y rest band [min, max].
-  band: Record<DimensionValue, { min: number; max: number }>
+  /** Per-bucket Y rest band. One constructed value — see `AxisTuning`. */
+  band: AxisTuning<BandRange>
 }
 
 // DYNAMICS — how the simulation cools and damps over time.
@@ -171,23 +338,11 @@ export type ForceParams = ChargeParams & LinkParams & GravityParams & DynamicsPa
  * why it would have been a bad bug to acquire later rather than one to find.
  */
 export function defaultParamsFor(ontology: Ontology): ForceParams {
-  const keys = ontology.nodeTypeKeys
-  const physicsOf = (key: DimensionValue) => ontology.styleForKey(key).physics
   return {
     // Both default to the axis the taxonomy resolves style on, so the layout
     // keys on the same thing it is coloured by. Unit 4 makes this a choice.
-    chargeDimension: ontology.styleAxis(),
-    bandDimension: ontology.styleAxis(),
-
-    // Charges (all negative = repulsion) and core radii (charge softening as a
-    // length), read off each value's declared physics. No cast: the maps are
-    // keyed by dimension value, which is what `nodeTypeKeys` already yields.
-    charge: Object.fromEntries(keys.map(k => [k, physicsOf(k).charge])),
-    coreRadius: Object.fromEntries(keys.map(k => [k, physicsOf(k).coreRadius])),
-
-    // Spring stiffness + rest length per edge category.
-    link: Object.fromEntries(ontology.edgeTypes.map(e => [e.id, e.physics.strength])),
-    dist: Object.fromEntries(ontology.edgeTypes.map(e => [e.id, e.physics.distance])),
+    pair: pairTuning(styleIdentityMapping(ontology)),
+    band: identityTuning<BandRange>(ontology),
 
     // Hierarchical gravity. Y bands carry the vertical structure of the
     // layout — strong (gravityY = 0.145) and overlapping at the edges so
@@ -210,9 +365,6 @@ export function defaultParamsFor(ontology: Ontology): ForceParams {
     topologicalEnabled: false,
     bandXMin:    0,
     bandXMax:  380,
-    // Per-value Y rest bands. Copied rather than referenced — the band objects
-    // belong to the taxonomy, and the params are the user's to tune.
-    band: Object.fromEntries(keys.map(k => [k, { ...physicsOf(k).yBand }])),
 
     // Dynamics. alphaMin is well below the d3 default (0.001) so the
     // simulation continues into its slow-cooling tail — layouts read as
@@ -276,6 +428,16 @@ export class Simulation {
   // than imported so the engine is not bound to one set of edge categories.
   private ontology: Ontology
 
+  // The per-bucket tables, resolved once from (params, taxonomy) and read by the
+  // kernels per pair / per node. Recomputed only when either input changes —
+  // never per tick, and never inside a loop (T25).
+  private resolved: ResolvedPhysics
+  // Each edge's spring category, classified once per (edges, resolved) rather
+  // than per tick: an edge's category depends on the edge, its endpoints'
+  // buckets and the pair mapping, none of which change between ticks. Built on
+  // first use and dropped whenever the tables are re-resolved.
+  private springByEdge: Map<string, EdgeCategory> | null = null
+
   // `ontology` is REQUIRED, deliberately. It was defaulted first, and the single
   // production construction site then quietly kept the shipped taxonomy while
   // every component resolved through an injected one — a split-brain that no
@@ -290,6 +452,7 @@ export class Simulation {
     this.alpha = 1.0
     this.rng = rng
     this.ontology = ontology
+    this.resolved = resolvePhysics(this.params, ontology)
 
     // Initialize SimNodes inside their Y bands so the first tick doesn't have
     // to violently relocate them to the hierarchy. X is jittered around 0
@@ -299,7 +462,7 @@ export class Simulation {
     const xCenter = (this.params.bandXMin + this.params.bandXMax) / 2
     const xJitter = Math.max(40, (this.params.bandXMax - this.params.bandXMin) * 0.7)
     for (const node of graph.nodes.values()) {
-      const band = bandFor(this.params, node)
+      const band = bandFor(this.resolved.band, node)
       const yCenter = (band.yMin + band.yMax) / 2
       const yJitter = Math.max(20, (band.yMax - band.yMin) / 2)
       const sim: SimNode = {
@@ -348,9 +511,9 @@ export class Simulation {
     // shaping forces (Band, Topological) gated by their toggles, with Center
     // gravity as the baseline when neither is active. The Cartesian/Radial mode
     // is read inside the band/topological forces.
-    applyChargeForce(active, this.params, this.alpha, this.rng)
-    applyLinkForce(activeEdges, this.nodeMap, this.params, this.alpha, this.rng, this.ontology.resolveEdgeType)
-    if (this.params.bandEnabled) applyBandGravity(active, this.params, this.alpha, this.rng)
+    applyChargeForce(active, this.params, this.resolved, this.alpha, this.rng)
+    applyLinkForce(activeEdges, this.nodeMap, this.params, this.edgeCategory, this.alpha, this.rng)
+    if (this.params.bandEnabled) applyBandGravity(active, this.params, this.resolved, this.alpha, this.rng)
     if (this.params.topologicalEnabled) applyTopologicalGravity(active, this.params, this.alpha, downstreamScores)
     if (!this.params.bandEnabled && !this.params.topologicalEnabled) {
       applyCenterGravity(active, this.params, this.alpha)
@@ -449,6 +612,29 @@ export class Simulation {
 
   setParams(params: Partial<ForceParams>): void {
     Object.assign(this.params, params)
+    // A patch may replace a whole tuning; the dense tables and the per-edge
+    // classification follow it.
+    this.resolved = resolvePhysics(this.params, this.ontology)
+    this.springByEdge = null
+  }
+
+  private classifyEdges(): Map<string, EdgeCategory> {
+    const byEdge = new Map<string, EdgeCategory>()
+    for (const edge of this.edges) {
+      const src = this.nodeMap.get(edge.sourceId)
+      const tgt = this.nodeMap.get(edge.targetId)
+      if (src && tgt) byEdge.set(edge.id, springFor(this.resolved.spring, edge, src, tgt))
+    }
+    return byEdge
+  }
+
+  // Loud on a miss: every edge the simulation owns is classified above, so an
+  // absent entry means the cache and the edge list have come apart.
+  private edgeCategory = (edge: GraphEdge): EdgeCategory => {
+    const cats = this.springByEdge ?? (this.springByEdge = this.classifyEdges())
+    const cat = cats.get(edge.id)
+    if (cat === undefined) throw new Error(`edge ${JSON.stringify(edge.id)} has no spring classification; the cache and the edge list have come apart`)
+    return cat
   }
 
   // Seed a node at a given position (used when new nodes appear during a
@@ -457,7 +643,7 @@ export class Simulation {
   seedAt(id: string, x: number, y: number): void {
     const node = this.nodeMap.get(id)
     if (!node) return
-    const band = bandFor(this.params, node)
+    const band = bandFor(this.resolved.band, node)
     const yClamped = Math.min(Math.max(y, band.yMin), band.yMax)
     node.x = x + (this.rng() - 0.5) * 10
     node.y = yClamped + (this.rng() - 0.5) * 10

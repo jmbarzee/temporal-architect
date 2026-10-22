@@ -2,20 +2,21 @@
 // force-curve visualization (the read-out), linked by a shared hovered-edge
 // state (keyed by the edge category's k-field). Both are thin wrappers over
 // the shared ForceMap2D / ForceCurves primitives — this file owns only the
-// spring-specific math (split-colour tokens from PULL_EDGES, signed-response
-// curves) and feeds presentational data into the primitives.
+// spring-specific math (split-colour tokens from the resolved spring
+// categories, signed-response curves) and feeds presentational data into the
+// primitives.
 // See GRAPH_VIEW.md § Control Panel.
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
+import { withSpringOverride } from '../graph/simulation'
+import type { ResolvedPhysics } from '../graph/forces'
+import type { EdgeTypeDefinition } from '../graph/taxonomy'
 
-import type { DimensionValue } from '../graph/dimension'
-import type { Ontology } from '../graph/ontology'
 import { useOntology } from './graph-view/useOntology'
+import { bucketColor } from './controls/bucketColor'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
-
-import type { EdgeTypeId } from '../graph/taxonomy'
 
 // Shared k / rest ranges. The map plots every edge category on these common
 // axes so their relative stiffness / length is directly comparable.
@@ -26,44 +27,24 @@ export const EDGE_REST_MIN = 0
 export const EDGE_REST_MAX = 1000
 export const EDGE_REST_STEP = 10
 
-export interface PullEdgeDef {
-  label: string
-  // Edge-type id — the key into the link/dist param maps and the stable hover id.
-  id: EdgeTypeId
-  // Endpoint node types — drive the split-colour token (source | target).
-  sourceType: DimensionValue
-  targetType: DimensionValue
-  // Containment edges get a dashed token outline, dependency edges a solid
-  // one — mirroring the dashed/solid edge styling on the canvas.
-  edgeType: 'containment' | 'dependency'
-  tooltip: string
-}
-
-// One entry per edge category, taken from the taxonomy in scope rather than
-// from an imported registry. `id` links hover across the map, the curves, and
-// the canvas active-edge highlight, and keys the link/dist maps. Order is
-// irrelevant — the map positions tokens by value.
-function pullEdgesFor(ontology: Ontology): PullEdgeDef[] {
-  return ontology.edgeTypes.map(e => ({
-    label: e.label,
-    id: e.id,
-    sourceType: e.sourceType,
-    targetType: e.targetType,
-    edgeType: e.category,
-    tooltip: e.tooltip,
-  }))
-}
-
-// Theme-aware fill for a value on the style axis. mountNodeTypeStyles() emits
-// --color-<suffix> with a dark-theme override, so this stays correct across themes.
-function typeColor(ontology: Ontology, t: DimensionValue): string {
-  return `var(--color-${ontology.styleForKey(t).color.cssVarSuffix})`
-}
-
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+
+/** One token per category present in the graph, in first-seen order; ids the table cannot describe are skipped. */
+function describedCategories(spring: ResolvedPhysics['spring'], present: ReadonlySet<string>): EdgeTypeDefinition[] {
+  const out: EdgeTypeDefinition[] = []
+  for (const id of present) {
+    const c = spring.describe(id)
+    if (c) out.push(c)
+  }
+  return out
+}
 
 interface SpringControlProps {
   params: ForceParams
+  /** The dense tables the kernels read, resolved once by the view (T25). */
+  resolved: ResolvedPhysics
+  /** The categories some edge of the graph falls in — the only ones worth a token. */
+  present: ReadonlySet<string>
   // Routes through the panel's emitParamChange → live reheat.
   onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active edge category, identified by its k-field key.
@@ -75,28 +56,27 @@ interface SpringControlProps {
 //
 // x = rest length, y = stiffness (k). Each edge category is a draggable
 // split-colour token; dragging sets both rest and k at once.
-export function SpringMap({ params, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
+export function SpringMap({ params, resolved, present, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const ontology = useOntology()
-  const pullEdges = pullEdgesFor(ontology)
-  const tokens: MapToken[] = pullEdges.map(edge => ({
-    id: edge.id,
-    x: params.dist[edge.id],
-    y: params.link[edge.id],
-    colorA: typeColor(ontology, edge.sourceType),
-    colorB: typeColor(ontology, edge.targetType),
-    outline: edge.edgeType === 'containment' ? 'dashed' : 'solid',
-    label: edge.label,
-    tooltip: edge.tooltip,
-  }))
+  const { spring } = resolved
+  const shown = describedCategories(spring, present)
+  const tokens: MapToken[] = shown.map(c => {
+    const ph = spring.physicsFor(c.id)
+    return {
+      id: c.id,
+      x: ph.distance,
+      y: ph.strength,
+      colorA: bucketColor(ontology, spring.mapping, c.sourceType),
+      colorB: bucketColor(ontology, spring.mapping, c.targetType),
+      outline: c.category === 'containment' ? 'dashed' : 'solid',
+      label: c.label,
+      tooltip: c.tooltip,
+    }
+  })
 
-  // Drag id is the edge-type id; write both the stiffness and length maps.
+  // Drag id is the category id; one override carries both stiffness and length.
   const handleDrag = (id: string, x: number, y: number) => {
-    const edge = pullEdges.find(e => e.id === id)
-    if (!edge) return
-    onParamChange({
-      dist: { ...params.dist, [edge.id]: x },
-      link: { ...params.link, [edge.id]: y },
-    })
+    onParamChange({ pair: withSpringOverride(params.pair, id, { strength: y, distance: x }) })
   }
 
   return (
@@ -140,21 +120,23 @@ function springResponse(d: number, kEff: number, restEff: number, exp: number): 
   return kEff * Math.sign(disp) * Math.pow(Math.abs(disp), exp)
 }
 
-export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
+export function SpringCurves({ params, resolved, present, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const ontology = useOntology()
-  const pullEdges = pullEdgesFor(ontology)
+  const { spring } = resolved
+  const shown = React.useMemo(() => describedCategories(spring, present), [spring, present])
   const pull = params.pullMultiplier
   const dist = params.distanceMultiplier
   const exp = params.linkExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const restEffs = pullEdges.map(e => params.dist[e.id] * dist)
+    const restEffs = shown.map(c => spring.physicsFor(c.id).distance * dist)
     const dMax = Math.max(60, Math.max(...restEffs) * 2.2)
 
     let maxMag = 0
-    const sampled = pullEdges.map(edge => {
-      const kEff = params.link[edge.id] * pull
-      const restEff = params.dist[edge.id] * dist
+    const sampled = shown.map(edge => {
+      const ph = spring.physicsFor(edge.id)
+      const kEff = ph.strength * pull
+      const restEff = ph.distance * dist
       const pts: { d: number; v: number }[] = []
       for (let i = 0; i <= CURVE_SAMPLES; i++) {
         const d = (i / CURVE_SAMPLES) * dMax
@@ -174,16 +156,16 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
 
     const built = sampled.map(({ edge, restEff, pts }) => ({
       id: edge.id,
-      color: typeColor(ontology, edge.sourceType),
+      color: bucketColor(ontology, spring.mapping, edge.sourceType),
       markerX: xFor(restEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-    // `ontology` belongs here: the body reads it for the split-colour tokens and
-    // derives `pullEdges` from it. Its sibling ChargeCurves already listed it,
-    // and the asymmetry was the bug — a taxonomy swap left these curves drawn in
-    // the previous taxonomy's colours, on its edge set, with no error.
-  }, [params, pull, dist, exp, ontology])
+    // `ontology` belongs here: the body reads it for the split-colour tokens.
+    // Its sibling ChargeCurves already listed it, and the asymmetry was the bug
+    // — a taxonomy swap left these curves drawn in the previous taxonomy's
+    // colours, on its edge set, with no error.
+  }, [spring, shown, pull, dist, exp, ontology])
 
   return (
     <ForceCurves

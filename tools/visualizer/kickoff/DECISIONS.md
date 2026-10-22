@@ -858,3 +858,274 @@ expected.
 No existing row changes value.
 
 — 2026-09-06 — agent
+
+**D47 — Per-bucket force tuning is one constructed value, and it is sparse.**
+The shape fix PLAN §6.6 named and §6.7 sketched, landed as Unit 4's first commit
+— before 4e's dimension dropdown exists, because the dropdown moves the axis onto
+the same edit channel as `pushMultiplier`, and that is when "axis and table must
+agree" stops being a taxonomy-swap-only hazard and becomes one click away.
+
+`ChargeParams.chargeDimension` + `charge` + `coreRadius` become `push:
+AxisTuning<PushPhysics>`; `GravityParams.bandDimension` + `band` become `band:
+AxisTuning<BandRange>`. An `AxisTuning` is `{ axis, mapping, overrides }`: which
+axis, how its values bucket, and **only what the user changed**, keyed by bucket.
+Every other bucket resolves to the taxonomy's declared physics at read time.
+
+Four things fall out, and they are why this is the elegant answer rather than a
+tidier one:
+
+1. **Nothing is stored twice.** The axis is in one place. The key space is the
+   mapping's. The defaults are the taxonomy's. There is no dense copy to go
+   stale, so the provenance token `useSimulation` carried in a React ref to detect
+   staleness has nothing left to detect — a swap simply yields empty overrides on
+   the new axis.
+2. **T25 for free.** The kernels are hot (four reads per pair, O(n²)) and the
+   tuning is sparse, so `resolvePhysics(params, taxonomy)` produces dense
+   per-bucket tables ONCE — in `Simulation`'s constructor and `setParams`, and in
+   a `useMemo` on each control surface and the canvas — and the loops read those.
+   Resolution is the only place the forces consult the taxonomy, and it never
+   runs inside a loop.
+3. **"Is this tuned?" is answerable.** Presence in `overrides` is the answer.
+   Today a user setting equal to the default is indistinguishable from the
+   default; now the UI can mark modified tokens and reset one or all.
+4. **T10 holds.** The scalars beside the tuning stay flat, so `keyof ForceParams`,
+   `NumericForceKey` and every `SliderDef` are untouched. Only the table fields
+   changed shape.
+
+A bucket covering several values (4b's mapped buckets) resolves to the **mean**
+of their declared charge and core radius and the **union** of their bands — both
+order-independent, so a host reordering a bucket's values for readability moves
+nothing. Under the identity mapping every bucket has one value and the fold is
+the value, which is why the goldens are value-identical.
+
+`link`/`dist` keep their `EdgeTypeId` keying: they are per edge *category*, not
+per axis value, and 4c makes categories dimensional. Changing their shape here
+would be doing 4c's work in 4-pre.
+
+**Golden change (§8.2):** `static.defaultForceParams` changes *shape* only —
+`charge`/`coreRadius`/`band` records become `push.buckets`/`band.buckets` on the
+resolved tables, with `axis` recorded beside each. Every scalar and every
+per-bucket number is identical; verified by joining old and new on bucket id.
+All four fixture goldens and Tier C byte-identical.
+
+— 2026-10-21 — agent
+
+**D48 — Edges carry `relation` and `dispatch` as dimensions; the endpoint rides
+as payload (Unit 4a, R5).** `GraphEdge` was `{ id, edgeType, sourceId, targetId,
+nexusEndpoint?, dispatchKind? }` — two of those fields domain-shaped, and the
+last one a flag in disguise: `dispatchKind` was carried only when it was
+`signalSend`, the one value the spring classifier needed. It is now
+`{ id, sourceId, targetId, dimensions, payload? }`, mirroring `GraphNode`.
+
+`relation` ('containment' | 'dependency') and `dispatch` are library-declared
+axes, for the same reason the file and kind axes are: the engine ships the code
+that reads them. `dispatch` carries the producer's kind **verbatim on every
+dependency edge** — open, not an enum — which is what lets 4c resolve springs
+from dispatch rather than from endpoint types alone, T14's sixteenth case.
+Containment edges dispatch nothing and are absent on that axis; a coarsened edge
+is a projection of several dispatches and has no single one.
+
+`nexusEndpoint` is per call site, not identity and not an axis, so it is
+host-owned payload. Three library readers (highlight, graduation dedup, edge
+style) still read it by key — those are the nexus splice (B16, Unit 7) and the
+`edgeStyleFor` unification (T11, Unit 6), and this unit does not pretend to do
+their work. The leak count for those three files is unchanged; `model.ts`'s is
+what drops, which is Unit 4's one assigned residue.
+
+**Golden change (§8.2).** Tier C is byte-identical — the hard requirement, since
+its row keys are the same strings as before. `static` is byte-identical. The
+five fixture goldens change in exactly one way: every dependency edge line gains
+a `|dispatch=<kind>` suffix it previously had only when the kind was
+`signalSend`. Verified shape-agnostically below: stripping that suffix from
+every new line reproduces the old golden exactly, so no classification id, style
+key, relation, endpoint or count moved.
+
+— 2026-10-21 — agent
+
+**D49 — Springs resolve dimensionally; the shim's table is the style axis's
+declared physics (Unit 4c, D2).** `LinkParams.link` / `dist` — two dense
+`Record<EdgeTypeId, number>` copied off the taxonomy in `defaultParamsFor` —
+become `spring: AxisTuning<SpringPhysics>`, the sparse shape push and band took
+in D47. The categories are not stored: `resolvePhysics` derives them from the
+mapping. On the style axis bucketed by identity they are the host's `edgeTypes`,
+classified by its `resolveEdgeType` rule, verbatim (D2) — the fifteen hand-tuned
+springs and the precedence T14 names. On any other (axis, mapping) they are the
+library's pair rule: one category per unordered bucket pair per relation
+(`relation|a|b`), each `DEFAULT_SPRING` until tuned, so the token count is
+`k(k+1)` for `k` buckets and the 24-ceiling is arithmetic (k ≤ 4) rather than a
+judgement.
+
+Three things follow:
+
+1. **The host's rule takes values and returns an id.** The library reads the
+   axis off the mapping and hands the two endpoint values over, so the shim's
+   lambda that read `TEMPORAL_TYPE_DIMENSION` from each node is gone and the
+   axis is read in exactly one place. Returning the id rather than the
+   definition makes the declared table the single source of physics and
+   metadata; `definitionFor`'s loud throw moves into `resolveSprings`, beside the
+   table, as a membership check on every classification.
+2. **`AxisTuning.axis` is gone.** `DimensionalMapping.dimension` already named
+   the axis, so `axis` was one fact stored twice (STANDING_CHECKS #2) with
+   `identityTuning` the only thing keeping them equal. Every reader now says
+   `mapping.dimension`.
+3. **`ABSENT_EDGE_PHYSICS` changes meaning.** It was "an id the param maps do
+   not declare", which cannot happen now that the table is derived rather than
+   copied. It is "an endpoint the mapping does not bucket", reachable only under
+   the pair rule; the host path cannot miss, because its rule's ids are checked
+   against its table.
+
+What the pair rule does not do: read `dispatch`. Dispatch is a host-rule input
+(the signal-send precedence), and keying generic categories by it would multiply
+the token count by the number of dispatch kinds. A mapped axis that wants
+dispatch-sensitive springs declares a rule — 4e's host-side surface, if it is
+wanted.
+
+**Golden change (§8.2).** Tier A, Tier B and Tier C byte-identical — Tier B is
+the acceptance test: every edge resolves to the stiffness and rest length it did,
+through the new path. `static` changes in three places. `defaultForceParams.link`
+/ `dist` become `spring: { axis, categories }` carrying the same fifteen numbers,
+verified by joining old and new on id. `forceProbes.absentValue.undeclaredEdgeCategory`
+— whose premise, a resolver id missing from the param maps, no longer exists — is
+replaced by `absentValue.link` (the unknown node's edge through the host rule's
+catch-all) and `forceProbes.mappedAxisSprings` (the pair rule, the identity gate
+from both sides, and an unbucketed endpoint resolving inert).
+`ontologyProbes.physicsInjection` gains `springKeys` and `zoneSpring`, pinning
+that the table comes from the supplied container. Nothing else in `static` moves.
+
+— 2026-10-21 — agent
+
+**D50 — The kind axis is written by the adapter, not projected by the engine
+(Unit 4e-i; settles REVIEW_3's carried item).** `ontology.valueOn` special-cased
+`defType`: every other axis was read off the node's dimension map, that one was
+computed from the style axis through the taxonomy. The reviewer called it the
+domain leaking back under a neutral name; the defence was shared vocabulary.
+Unit 4 makes the axis a user choice for layout, and `bucketOf` reads the
+dimension map — so a projected axis would have needed the projection a second
+time, in the physics. That settles it: a node carries its position on every
+axis the host filters or lays out on, and which of those are functions of which
+is the host's business. `build.ts` writes `defType` beside `temporalType` and
+`sourceFile`; `valueOn` is one indexer for every axis; `NodeTypeDefinition`
+loses `defType` (it moves to the shim's `TemporalNodeTypeDefinition`, where its
+only readers are); `TEMPORAL_TYPE_DIMENSION` moves to `node-types.ts`, which is
+the host half of the taxonomy and now needs no import from the adapter.
+
+The filter bar's kind values come from the graph like the file values do
+(`valuesOn`, a library helper the Unit 4e dropdown also needs), through the
+`valuesByDimension` prop it already declared for a third axis and nothing
+supplied.
+
+What this changes about injection: swapping the taxonomy no longer changes
+which nodes a kind filter shows, because the kind is on the node. The
+container still decides what the visible set *means* — styling and summaries —
+and the probe now says exactly that, with nodes built as the alternate
+taxonomy's adapter would build them.
+
+**Golden change (§8.2).** Tier B and Tier C byte-identical. Tier A: every node's
+`dimensions` gains `defType` — annotation-only, verified by stripping it and
+comparing; `static.syntheticVisible.nodes` gain it the same way. `static`:
+`ontologyProbes.fallbackStyle` loses `defType` (an
+unrecognized style key no longer decides visibility); `ontologyProbes.injection`
+is reworked as above; `derivedBySpreadStaysConsistent.stillResolvesTheSameStyle`
+compares by reference, same value. Nothing else moves.
+
+— 2026-10-21 — agent
+
+**D51 — Push and Pull share one tab and one axis; the ceiling is measured, not
+estimated (Unit 4e-iii; R13, R22–R25, R34).** The PUSH and PULL tabs become one
+PUSH/PULL tab: an axis dropdown at the top, then Push and Pull as sub-tabs in the
+Band/Topological style without switches. The sub-tab primitives (`SubTabs`,
+`SubTab`, `SubTabBodies`, `SubTabBody`) are shared with Gravity, which used to
+own them under `gravity-*` class names; `EquationSection` moves out of the
+panel for the same reason. MISC survives untouched (R34).
+
+**The dropdown offers what the graph admits.** `axisOptions(ontology, graph)`
+is the style axis bucketed by identity plus every filter axis bucketed by the
+values the graph presents on it, each with its measured cost: push tokens are
+buckets, pull tokens are the spring categories some edge actually falls in
+(`presentSpringCategories`). The 24-token rule (`TOKEN_CEILING`, `fitsCeiling`)
+is applied to those numbers — an axis over the ceiling is listed disabled with
+the count that disqualified it — rather than to `k(k+1)`, because the pair
+rule's *possible* categories are every bucket pair and most are never joined.
+The same measurement decides what the spring map shows: **one token per
+category present**, on every axis, the declared table included. A declared
+category no edge uses (`Wf→Sig` in every fixture) is tunable but not shown;
+one rule for both classifiers beat two.
+
+**Switching axes resets the two tunings** to empty overrides on the new mapping
+(D47: nothing to reinterpret). **Graph changes retune** (`retunedFor`): an
+identity mapping over observed values is rebuilt when the values change, with
+the overrides kept — they are keyed by value — and the tuning returned by
+reference when nothing moved, so the view can tell. An axis the graph no longer
+carries, or that grew past the ceiling, falls back to the style axis.
+
+The relocating-edit channel is renamed `onRelayout`: it carried gravity's mode
+and toggles and now carries the axis switch too, and "gravity" was the wrong
+name for a channel the push/pull tab uses.
+
+**Golden change (§8.2).** Tier B and Tier C byte-identical; `static`
+byte-identical. Tier A gains one row per fixture, `axes`: each axis the fixture
+admits with its push/pull token counts, whether it fits, and the spring
+categories present under it — the ceiling arithmetic pinned per fixture.
+Nothing else moves.
+
+— 2026-10-21 — agent
+
+**D52 — What REVIEW_4 changed in the model (Unit 4 close).** The six-lens
+review found the pair forces' axis stored twice and physics off the style axis
+resolved through the style table. Both are model defects, and the fixes are
+model changes:
+
+1. **One pair axis.** `ChargeParams.push` and `LinkParams.spring` were two
+   `AxisTuning`s, each naming an axis, held equal by one handler (c2;
+   contradicted D51). They are one `PairTuning { mapping, push, spring }` —
+   the axis once, two sparse override maps — on both param slices. Band keeps
+   its own `AxisTuning`; 5a gives it its own axis by design.
+2. **Typical physics off the style axis.** `declaredPush`/`declaredBand` fold
+   the style table over a bucket's values, which off the style axis are files
+   or kinds, not style keys: every bucket resolved to the fallback style's
+   −300/30 with a false placeholder warning each (c1, a blocker). A bucket on
+   any other axis now starts from the host's *typical* declared physics — the
+   same fold, over every declared value. Springs likewise: `DEFAULT_SPRING`,
+   a constant from no domain, becomes `typicalSpring`, the mean of the host's
+   declared springs.
+3. **The pair rule enumerates nothing.** `pairCategories` built `k(k+1)`
+   categories per axis per graph change — 4M for a 2000-file graph, to
+   produce one disabled option (c9) — and its `'|'`/`'-'` encoding let a bucket
+   id collide with a separator and counted unbucketed endpoints as phantom
+   tokens (c4). `ResolvedSprings` is now three functions — `classify`,
+   `physicsFor`, `describe` — a category exists when an edge falls in it, ids
+   are JSON triples, and an unbucketed endpoint classifies to `undefined`,
+   which is counted nowhere and pulls nothing.
+4. **Per-edge classification is cached** (c7, the link half of T25):
+   `Simulation` classifies its edges once per resolved physics and hands the
+   kernel a lookup. `presentSprings` keys on the mapping, not on `resolved`.
+5. **`retunedFor` covers the taxonomy** (c20): the style axis is rebuilt from
+   the new taxonomy with overrides kept where values survive, so
+   `useSimulation`'s provenance ref is gone and D47's "nothing left to detect"
+   is finally true. `sameBuckets` ignores order (c3).
+6. **Closed and coherent.** `relationOf` throws on a relation the engine does
+   not know (c17); `createOntology` refuses a style value set declared
+   differently in any of its four places; `createDimensionalMapping` refuses a
+   duplicate bucket id or an empty bucket; `identityMapping` numbers duplicate
+   abbreviations (c11, c16). `EdgeTypeDefinition.directional`, read by nothing
+   but the harness, is gone (c18). One `AxisNamer` shape serves descriptors and
+   the style axis, so there is one identity builder (c16).
+7. **Gates for what had none.** `tuning-probes.ts` pins the override channel
+   end to end, `retunedFor`'s contract, the ceiling's failing side, the
+   foreign-axis physics, the membership throw, the visibility policy under two
+   taxonomies, and the refusals above (c3, c15, c6, c13, c14). Tier C
+   classifies through the engine, not the shim function (c6). `surface-gate`
+   holds `src/lib.ts` to `kickoff/lib-surface.txt` (c19). MAP lists files only
+   the harness imports (c24).
+
+**Golden change (§8.2).** Tier B byte-identical; Tier C byte-identical through
+the engine path. Tier A: the pair-rule ids in `axes[].presentSprings` change
+encoding (`"rel|a|b"` → `["rel","a","b"]`), same set, verified by decoding.
+`static`: `edgeTypes` rows lose `directional`; `forceProbes.mappedAxisSprings`
+rows are renamed and gain `mappedPush` (the fold, pinned); `forceProbes.nonIdentityParams`
+(every scalar off its identity, one non-integer override — c8) and `tuningProbes` are
+new; `ontologyProbes.mappings.intersectingBucketsRefused` carries the refusal's
+new wording ("is incoherent"), since one message now covers three refusals.
+Nothing else moves.
+
+— 2026-10-21 — agent

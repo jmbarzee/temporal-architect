@@ -96,6 +96,16 @@ lines.push('the third is F15, and no gate counts readers.')
 lines.push('')
 for (const f of sources) if (importers.get(f).length === 0) lines.push(`- \`${f}\` (${zoneOf(f)})`)
 lines.push('')
+lines.push('## Files only the harness imports')
+lines.push('')
+lines.push('A golden row keeps these looking alive (F15). Each one is either a symbol the')
+lines.push('product will read in a later unit, or dead code with a pin.')
+lines.push('')
+for (const f of sources) {
+  const who = importers.get(f)
+  if (who.length > 0 && who.every(w => w.startsWith('src/verify/'))) lines.push(`- \`${f}\` (${zoneOf(f)}) — ${who.map(w => w.replace('src/', '')).join(', ')}`)
+}
+lines.push('')
 
 const body = lines.join('\n')
 const path = resolve(PKG_ROOT, OUT)

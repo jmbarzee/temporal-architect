@@ -1,6 +1,6 @@
 import React from 'react'
 import { SingleGearIcon, InterlockingGearsIcon } from '../components/icons/GearIcons'
-import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 import { DEF_TYPE_DIMENSION } from '../graph/dimension'
 
 // --- Core types ---
@@ -77,7 +77,7 @@ function pluralize(label: string): string {
 }
 
 export const DEF_TYPE_CONFIGS: DefTypeConfig[] = ALL_NODE_TYPES.map(t => {
-  const style = DEFAULT_ONTOLOGY.styleForKey(t)
+  const style = NODE_TYPE_REGISTRY[t]
   return {
     type:      style.defType,
     icon:      style.icon,

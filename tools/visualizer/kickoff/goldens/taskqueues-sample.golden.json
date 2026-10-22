@@ -1,5 +1,58 @@
 {
   "tierA": {
+    "axes": [
+      {
+        "axis": "temporalType",
+        "fits": true,
+        "presentSprings": [
+          "linkEndpointToNamespace",
+          "linkEndpointToOperation",
+          "linkNexusToOperation",
+          "linkNsToNs",
+          "linkNsToWorker",
+          "linkOperationToActivity",
+          "linkOperationToWorkflow",
+          "linkWorkerToActivity",
+          "linkWorkerToNexus",
+          "linkWorkerToWorker",
+          "linkWorkerToWorkflow",
+          "linkWorkflowToActivity",
+          "linkWorkflowToOperation"
+        ],
+        "pullTokens": 13,
+        "pushTokens": 7
+      },
+      {
+        "axis": "sourceFile",
+        "fits": true,
+        "presentSprings": [
+          "[\"containment\",\"task-queues.twf\",\"task-queues.twf\"]",
+          "[\"dependency\",\"task-queues.twf\",\"task-queues.twf\"]"
+        ],
+        "pullTokens": 2,
+        "pushTokens": 1
+      },
+      {
+        "axis": "defType",
+        "fits": true,
+        "presentSprings": [
+          "[\"containment\",\"activityDef\",\"workerDef\"]",
+          "[\"containment\",\"namespaceDef\",\"nexusEndpointDef\"]",
+          "[\"containment\",\"namespaceDef\",\"workerDef\"]",
+          "[\"containment\",\"nexusEndpointDef\",\"nexusOperationDef\"]",
+          "[\"containment\",\"nexusOperationDef\",\"nexusServiceDef\"]",
+          "[\"containment\",\"nexusServiceDef\",\"workerDef\"]",
+          "[\"containment\",\"workerDef\",\"workflowDef\"]",
+          "[\"dependency\",\"activityDef\",\"nexusOperationDef\"]",
+          "[\"dependency\",\"activityDef\",\"workflowDef\"]",
+          "[\"dependency\",\"namespaceDef\",\"namespaceDef\"]",
+          "[\"dependency\",\"nexusOperationDef\",\"workflowDef\"]",
+          "[\"dependency\",\"workerDef\",\"workerDef\"]"
+        ],
+        "pullTokens": 12,
+        "pushTokens": 7
+      }
+    ],
     "edgeClassification": {
       "byEdgeType": {
         "linkEndpointToNamespace": 2,
@@ -147,9 +200,9 @@
         "linkNsToWorker|containment|containment|worker:paymentWorkerSecondary/namespace:ecommerce -> namespace:ecommerce",
         "linkNsToWorker|containment|containment|worker:realtimeAnalyticsWorker/namespace:ecommerce -> namespace:ecommerce",
         "linkNsToWorker|containment|containment|worker:standardShipWorker/namespace:ecommerce -> namespace:ecommerce",
-        "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
-        "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
-        "linkOperationToWorkflow|nexusCall|dependency|nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+        "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+        "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce|dispatch=activityCall",
+        "linkOperationToWorkflow|nexusCall|dependency|nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|dispatch=asyncBacking",
         "linkWorkerToActivity|containment|containment|activity:ChargePayment/worker:paymentWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce",
         "linkWorkerToActivity|containment|containment|activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce -> worker:paymentWorkerSecondary/namespace:ecommerce",
         "linkWorkerToActivity|containment|containment|activity:GenerateThumbnail/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media",
@@ -175,22 +228,23 @@
         "linkWorkerToWorkflow|containment|containment|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:partnerWorker/namespace:partner",
         "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce",
         "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
-        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
-        "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
-        "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce"
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce|dispatch=activityCall",
+        "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce|dispatch=activityCall",
+        "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
+        "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
       ],
       "nodeCount": 37,
       "nodes": [
         {
           "definitionKey": "activity:ChargePayment",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -202,6 +256,7 @@
         {
           "definitionKey": "activity:ChargePayment",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -213,6 +268,7 @@
         {
           "definitionKey": "activity:GenerateThumbnail",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -224,6 +280,7 @@
         {
           "definitionKey": "activity:GetPaymentStatus",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -235,6 +292,7 @@
         {
           "definitionKey": "activity:GetPaymentStatus",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -246,6 +304,7 @@
         {
           "definitionKey": "activity:RecordEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -257,6 +316,7 @@
         {
           "definitionKey": "activity:RecordEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -268,6 +328,7 @@
         {
           "definitionKey": "activity:ShipOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -279,6 +340,7 @@
         {
           "definitionKey": "activity:ShipOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -290,6 +352,7 @@
         {
           "definitionKey": "activity:TranscodeVideo",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -301,6 +364,7 @@
         {
           "definitionKey": "activity:ValidateOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -312,6 +376,7 @@
         {
           "definitionKey": "namespace:ecommerce",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -322,6 +387,7 @@
         {
           "definitionKey": "namespace:media",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -332,6 +398,7 @@
         {
           "definitionKey": "namespace:partner",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -342,6 +409,7 @@
         {
           "definitionKey": "nexusEndpoint:AnalyticsEndpoint",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -354,6 +422,7 @@
         {
           "definitionKey": "nexusEndpoint:PaymentEndpoint",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -366,6 +435,7 @@
         {
           "definitionKey": "nexusOperation:AnalyticsService.TrackEvent",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -379,6 +449,7 @@
         {
           "definitionKey": "nexusOperation:PaymentService.CheckPaymentStatus",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -392,6 +463,7 @@
         {
           "definitionKey": "nexusOperation:PaymentService.CheckPaymentStatus",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -405,6 +477,7 @@
         {
           "definitionKey": "nexusService:AnalyticsService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -419,6 +492,7 @@
         {
           "definitionKey": "nexusService:PaymentService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -433,6 +507,7 @@
         {
           "definitionKey": "nexusService:PaymentService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -447,6 +522,7 @@
         {
           "definitionKey": "worker:analyticsWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -459,6 +535,7 @@
         {
           "definitionKey": "worker:expressShipWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -471,6 +548,7 @@
         {
           "definitionKey": "worker:gpuWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -483,6 +561,7 @@
         {
           "definitionKey": "worker:mediaWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -495,6 +574,7 @@
         {
           "definitionKey": "worker:orderWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -507,6 +587,7 @@
         {
           "definitionKey": "worker:partnerWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -519,6 +600,7 @@
         {
           "definitionKey": "worker:paymentWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -531,6 +613,7 @@
         {
           "definitionKey": "worker:paymentWorkerSecondary",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -543,6 +626,7 @@
         {
           "definitionKey": "worker:realtimeAnalyticsWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -555,6 +639,7 @@
         {
           "definitionKey": "worker:standardShipWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -567,6 +652,7 @@
         {
           "definitionKey": "workflow:MediaPipeline",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -578,6 +664,7 @@
         {
           "definitionKey": "workflow:OrderWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -589,6 +676,7 @@
         {
           "definitionKey": "workflow:PartnerCheckout",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -600,6 +688,7 @@
         {
           "definitionKey": "workflow:TrackEventWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -611,6 +700,7 @@
         {
           "definitionKey": "workflow:TrackEventWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -684,9 +774,9 @@
           "linkNsToWorker|containment|containment|worker:paymentWorkerSecondary/namespace:ecommerce -> namespace:ecommerce",
           "linkNsToWorker|containment|containment|worker:realtimeAnalyticsWorker/namespace:ecommerce -> namespace:ecommerce",
           "linkNsToWorker|containment|containment|worker:standardShipWorker/namespace:ecommerce -> namespace:ecommerce",
-          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
-          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
-          "linkOperationToWorkflow|nexusCall|dependency|nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce|dispatch=activityCall",
+          "linkOperationToWorkflow|nexusCall|dependency|nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|dispatch=asyncBacking",
           "linkWorkerToActivity|containment|containment|activity:ChargePayment/worker:paymentWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce",
           "linkWorkerToActivity|containment|containment|activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce -> worker:paymentWorkerSecondary/namespace:ecommerce",
           "linkWorkerToActivity|containment|containment|activity:GenerateThumbnail/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media",
@@ -712,16 +802,16 @@
           "linkWorkerToWorkflow|containment|containment|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:partnerWorker/namespace:partner",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
-          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce"
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
+          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
         "nodeSummaries": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "←1",
@@ -860,9 +950,9 @@
           "linkNsToWorker|containment|containment|worker:paymentWorkerSecondary/namespace:ecommerce -> namespace:ecommerce",
           "linkNsToWorker|containment|containment|worker:realtimeAnalyticsWorker/namespace:ecommerce -> namespace:ecommerce",
           "linkNsToWorker|containment|containment|worker:standardShipWorker/namespace:ecommerce -> namespace:ecommerce",
-          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
-          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
-          "linkOperationToWorkflow|nexusCall|dependency|nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce|dispatch=activityCall",
+          "linkOperationToWorkflow|nexusCall|dependency|nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|dispatch=asyncBacking",
           "linkWorkerToActivity|containment|containment|activity:ChargePayment/worker:paymentWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce",
           "linkWorkerToActivity|containment|containment|activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce -> worker:paymentWorkerSecondary/namespace:ecommerce",
           "linkWorkerToActivity|containment|containment|activity:GenerateThumbnail/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media",
@@ -888,16 +978,16 @@
           "linkWorkerToWorkflow|containment|containment|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:partnerWorker/namespace:partner",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
-          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce"
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
+          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
         "nodeSummaries": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "←1",
@@ -1005,21 +1095,21 @@
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:orderWorker/namespace:ecommerce -> worker:standardShipWorker/namespace:ecommerce",
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:partnerWorker/namespace:partner -> worker:analyticsWorker/namespace:ecommerce",
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:gpuWorker/namespace:media",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:expressShipWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:orderWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:standardShipWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkerToWorker|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:gpuWorker/namespace:media|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:expressShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:orderWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:standardShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall",
           "linkWorkerToWorkflow|containment|containment|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media",
           "linkWorkerToWorkflow|containment|containment|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:orderWorker/namespace:ecommerce",
           "linkWorkerToWorkflow|containment|containment|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:partnerWorker/namespace:partner",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkflowToWorkflow|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce"
+          "linkWorkflowToWorkflow|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
         "nodeSummaries": {
           "worker:analyticsWorker/namespace:ecommerce": "1wf",
@@ -1084,19 +1174,19 @@
           "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce": 0.25
         },
         "graduatedEdges": [
-          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
-          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
-          "linkOperationToWorkflow|nexusCall|dependency|nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
-          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce"
+          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkOperationToActivity|nexusCall|dependency|nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce|dispatch=activityCall",
+          "linkOperationToWorkflow|nexusCall|dependency|nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|dispatch=asyncBacking",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
+          "linkWorkflowToOperation|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
         "nodeSummaries": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "←1",
@@ -1157,7 +1247,7 @@
           "namespace:partner": 1
         },
         "graduatedEdges": [
-          "linkNsToNs|nexusCall|dependency|namespace:partner -> namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce"
+          "linkNsToNs|nexusCall|dependency|namespace:partner -> namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
         "nodeSummaries": {},
         "visibleEdgeCount": 1,
@@ -1196,7 +1286,7 @@
           "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce": 0.333333
         },
         "graduatedEdges": [
-          "linkNsToNs|dependencyNsToNs|dependency|namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
+          "linkNsToNs|dependencyNsToNs|dependency|namespace:ecommerce -> activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce|dispatch=activityCall",
           "linkNsToNs|dependencyNsToNs|dependency|namespace:partner -> namespace:ecommerce",
           "linkWorkerToActivity|containment|containment|activity:ChargePayment/worker:paymentWorker/namespace:ecommerce -> namespace:ecommerce",
           "linkWorkerToActivity|containment|containment|activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce -> namespace:ecommerce",
@@ -1214,16 +1304,16 @@
           "linkWorkerToWorkflow|containment|containment|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> namespace:partner",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> namespace:ecommerce",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> namespace:ecommerce",
-          "linkWorkflowToActivity|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
-          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkflowToWorkflow|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce"
+          "linkWorkflowToActivity|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:GenerateThumbnail/worker:mediaWorker/namespace:media|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> activity:TranscodeVideo/worker:gpuWorker/namespace:media|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ChargePayment/worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> activity:ValidateOrder/worker:orderWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToActivity|workflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkflowToWorkflow|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
         "nodeSummaries": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "←1",
@@ -1298,8 +1388,8 @@
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:orderWorker/namespace:ecommerce -> worker:expressShipWorker/namespace:ecommerce",
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:orderWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce",
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:orderWorker/namespace:ecommerce -> worker:standardShipWorker/namespace:ecommerce",
-          "linkWorkerToWorker|nexusCall|dependency|worker:partnerWorker/namespace:partner -> worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
-          "linkWorkerToWorker|nexusCall|dependency|worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce"
+          "linkWorkerToWorker|nexusCall|dependency|worker:partnerWorker/namespace:partner -> worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
+          "linkWorkerToWorker|nexusCall|dependency|worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
         "nodeSummaries": {
           "namespace:ecommerce": "7 workers",
@@ -1352,21 +1442,21 @@
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:orderWorker/namespace:ecommerce -> worker:standardShipWorker/namespace:ecommerce",
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:partnerWorker/namespace:partner -> worker:analyticsWorker/namespace:ecommerce",
           "linkWorkerToWorker|dependencyWkToWk|dependency|worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:gpuWorker/namespace:media",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:expressShipWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:orderWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:standardShipWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkerToWorker|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:gpuWorker/namespace:media|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:expressShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:orderWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:standardShipWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|dependencyWkToWk|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce|dispatch=activityCall",
+          "linkWorkerToWorker|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall",
           "linkWorkerToWorkflow|containment|containment|workflow:MediaPipeline/worker:mediaWorker/namespace:media -> worker:mediaWorker/namespace:media",
           "linkWorkerToWorkflow|containment|containment|workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce -> worker:orderWorker/namespace:ecommerce",
           "linkWorkerToWorkflow|containment|containment|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> worker:partnerWorker/namespace:partner",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce -> worker:analyticsWorker/namespace:ecommerce",
           "linkWorkerToWorkflow|containment|containment|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "linkWorkflowToWorkflow|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce"
+          "linkWorkflowToWorkflow|nexusCall|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
         "nodeSummaries": {
           "worker:analyticsWorker/namespace:ecommerce": "1wf",

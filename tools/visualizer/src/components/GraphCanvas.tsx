@@ -1,10 +1,13 @@
 // Canvas-based graph renderer with mouse interaction.
 // Implements GRAPH_VIEW.md § Visual Encoding, § Viewport Controls, § Interaction States.
 
+import { isContainment } from '../graph/model'
 import React from 'react'
 import type { GraphEdge } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
-import { bandForKey, chargeFor, coreRadiusFor, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
+import { bucketOf } from '../graph/forces'
+import type { ResolvedPhysics } from '../graph/forces'
+import { bandForKey, chargeFor, coreRadiusFor, springFor, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
@@ -168,8 +171,10 @@ interface GraphCanvasProps {
   searchMatchIds: Set<string> | null
   running: boolean
   forceParams: ForceParams
+  /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw (T25). */
+  resolved: ResolvedPhysics
   activeSection: ForceSection
-  activeChargeType: DimensionValue | null
+  activePushBucket: string | null
   activeGravityType: DimensionValue | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
@@ -194,8 +199,9 @@ interface DrawData {
   focusedNodeId: string | null
   searchMatchIds: Set<string> | null
   forceParams: ForceParams
+  resolved: ResolvedPhysics
   activeSection: ForceSection
-  activeChargeType: DimensionValue | null
+  activePushBucket: string | null
   activeGravityType: DimensionValue | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
@@ -215,7 +221,7 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, forceParams, activeSection, activeChargeType,
+  running, forceParams, resolved, activeSection, activePushBucket,
   activeGravityType, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
@@ -267,14 +273,14 @@ export function GraphCanvas({
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, activeSection, activePushBucket, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, activeSection, activePushBucket, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -544,7 +550,7 @@ export function GraphCanvas({
 
         // Arrowhead for dependency edges (containment is hierarchical, no
         // direction is interesting to show).
-        if (edge.edgeType !== 'containment') {
+        if (!isContainment(edge)) {
           const angle = Math.atan2(ty - sy, tx - sx)
           // Stop the arrowhead at the target's on-screen edge (screen radius =
           // def.r × nodeSizeMul(scale)) so it tracks the zoom-scaled node body.
@@ -597,7 +603,7 @@ export function GraphCanvas({
         const exp = d.forceParams.chargeExponent
         const pushMul = d.forceParams.pushMultiplier
         const crMul = d.forceParams.coreRadiusMultiplier
-        const typeFilter = d.activeChargeType
+        const bucketFilter = d.activePushBucket
 
         for (const node of d.nodes) {
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
@@ -605,17 +611,17 @@ export function GraphCanvas({
           if (sx + maxRing < 0 || sx - maxRing > w ||
             sy + maxRing < 0 || sy - maxRing > h) continue
 
-          const highlighted = typeFilter === null || d.ontology.valueFor(node) === typeFilter
+          const highlighted = bucketFilter === null || bucketOf(d.resolved.push, node) === bucketFilter
           const baseAlpha = highlighted ? 0.28 : 0.05
           const stepAlpha = highlighted ? 0.06 : 0.015
 
           const color = d.ontology.resolveNodeStyle(node).color.fill
           ctx.strokeStyle = color
 
-          const effectiveCharge = Math.abs(chargeFor(d.forceParams, node)) * pushMul
+          const effectiveCharge = Math.abs(chargeFor(d.resolved.push, node)) * pushMul
           if (effectiveCharge <= 0) continue
 
-          const rEff = crMul * coreRadiusFor(d.forceParams, node)
+          const rEff = crMul * coreRadiusFor(d.resolved.push, node)
           const soft = rEff * rEff
 
           // Collect every reachable ring radius. Outer rings (lower threshold
@@ -672,7 +678,7 @@ export function GraphCanvas({
           const tgt = d.nodeMap.get(edge.targetId)
           if (!src || !tgt) continue
 
-          const cat = edgeCategory(d.forceParams, edge, src, tgt, d.ontology.resolveEdgeType)
+          const cat = springFor(d.resolved.spring, edge, src, tgt)
           if (activePullKey && cat.key !== activePullKey) continue
 
           const [sx, sy] = worldToScreen(vp, src.x, src.y)
@@ -774,7 +780,7 @@ export function GraphCanvas({
           present.push(value)
         }
         const centerOf = (t: DimensionValue) => {
-          const b = bandForKey(d.forceParams, t)
+          const b = bandForKey(d.resolved.band, t)
           return (b.yMin + b.yMax) / 2
         }
 
@@ -802,7 +808,7 @@ export function GraphCanvas({
           const median = m ? (m % 2 ? sorted[(m - 1) / 2] : (sorted[m / 2 - 1] + sorted[m / 2]) / 2) : 0
 
           for (const t of d.ontology.nodeTypeKeys) {
-            const band = bandForKey(d.forceParams, t)
+            const band = bandForKey(d.resolved.band, t)
             const [, sy1] = worldToScreen(vp, 0, band.yMin - median)
             const [, sy2] = worldToScreen(vp, 0, band.yMax - median)
             if (sy2 < 0 || sy1 > h) continue

@@ -19,24 +19,32 @@ import type {
   ParserEdge,
   ParserGraph,
 } from '../types/parser-graph'
-import type { EdgeType, Graph, GraphEdge, GraphNode } from '../graph/model'
+import type { Graph, GraphEdge, GraphNode } from '../graph/model'
+import type { EdgeCategoryKind } from '../graph/taxonomy'
 import type { NodeType } from './node-types'
+import { NODE_TYPE_REGISTRY, TEMPORAL_TYPE_DIMENSION } from './node-types'
 import type { DimensionMap } from '../graph/dimension'
 
-// The two axes this domain projects a node onto. Names, not concepts, belong to
-// the host: the library never mentions either id.
-import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
-
-export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
+// The axes this domain projects a node onto. Names, not concepts, belong to the
+// host: the library never mentions any of these ids.
+import { DEF_TYPE_DIMENSION, DISPATCH_DIMENSION, RELATION_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 /**
  * Project a parser node onto its axes. Absent values are OMITTED rather than
  * set to a placeholder — "this node has no source file" and "this node's source
  * file is the empty string" are different facts, and the visibility rules key on
  * the difference.
+ *
+ * The kind axis is a function of the type axis, and it is written here, once,
+ * rather than derived by the engine on every read: a node carries its position
+ * on every axis the host filters or lays out on, and which of those are
+ * projections of which is the host's business.
  */
-function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): DimensionMap {
-  const dims: Record<string, string> = { [TEMPORAL_TYPE_DIMENSION]: nodeType }
+export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): DimensionMap {
+  const dims: Record<string, string> = {
+    [TEMPORAL_TYPE_DIMENSION]: nodeType,
+    [DEF_TYPE_DIMENSION]: NODE_TYPE_REGISTRY[nodeType].defType,
+  }
   if (sourceFile !== undefined) dims[SOURCE_FILE_DIMENSION] = sourceFile
   return dims
 }
@@ -221,20 +229,26 @@ function parserEdgeToViewEdge(
   // containment-style edge, matching the prior locally-derived edge. It
   // does NOT feed the parentByChild map, so the operation's parentId
   // stays its owning service.
-  const edgeType: EdgeType =
+  const relation: EdgeCategoryKind =
     pe.kind === 'containment' || pe.kind === 'nexusRoute' ? 'containment' : 'dependency'
+  const dimensions: Record<string, string> = { [RELATION_DIMENSION]: relation }
+  // The producer's kind, verbatim, on every dependency edge. It used to be
+  // carried only when it was `signalSend` — the one value the spring classifier
+  // needed — which made the field a flag in disguise. As an open axis it is
+  // what lets 4c resolve springs from dispatch rather than from endpoint types
+  // alone (T14's sixteenth case).
+  if (relation === 'dependency') dimensions[DISPATCH_DIMENSION] = pe.kind
   const out: GraphEdge = {
     id: `e${seq}`,
-    edgeType,
     sourceId: pe.from,
     targetId: pe.to,
+    dimensions,
   }
-  // Carried through because the endpoint node types cannot distinguish a
-  // fire-and-forget send from a child-workflow call — both are workflow →
-  // workflow. `edgeTypeFor` reads this to pick the softer spring.
-  if (pe.kind === 'signalSend') out.dispatchKind = 'signalSend'
+  // Which endpoint routed the call is per call site, not identity and not an
+  // axis — the same operation is reachable through two endpoints in different
+  // namespaces — so it rides as host-owned payload.
   if (pe.routing?.nexusEndpoint) {
-    out.nexusEndpoint = pe.routing.nexusEndpoint
+    out.payload = { nexusEndpoint: pe.routing.nexusEndpoint }
   }
   return out
 }
@@ -246,10 +260,12 @@ function coarsenedEdgeToViewEdge(
   const tgt = nodes.get(ce.to)
   if (!src || !tgt) return null
 
+  // A projection of several dispatches, so it has a relation and no single
+  // dispatch kind.
   return {
     id: `e${seq}`,
-    edgeType: 'dependency',
     sourceId: ce.from,
     targetId: ce.to,
+    dimensions: { [RELATION_DIMENSION]: 'dependency' },
   }
 }

@@ -1,6 +1,7 @@
 // Transitive dependency highlighting for graph hover/selection.
 // Implements GRAPH_VIEW.md § Interaction States: Dependency Highlighting.
 
+import { isContainment } from './model'
 import type { GraphEdge } from './model'
 
 export type HighlightDirection = 'downstream' | 'upstream'
@@ -19,7 +20,7 @@ export function getTransitiveDeps(
   while (queue.length > 0) {
     const current = queue.shift()!
     for (const edge of edges) {
-      if (edge.edgeType === 'containment') continue
+      if (isContainment(edge)) continue
 
       let next: string | undefined
       if (direction === 'downstream' && edge.sourceId === current) {
@@ -46,7 +47,7 @@ export function getHighlightedEdgeIds(
 ): Set<string> {
   const result = new Set<string>()
   for (const edge of edges) {
-    if (edge.edgeType === 'containment') continue
+    if (isContainment(edge)) continue
     if (highlightedNodes.has(edge.sourceId) && highlightedNodes.has(edge.targetId)) {
       result.add(edge.id)
     }

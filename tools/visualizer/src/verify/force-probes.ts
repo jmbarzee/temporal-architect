@@ -23,30 +23,37 @@
 //      iteration to amplify a last-place difference, rounds identically
 //      everywhere.
 
+import { RELATION_DIMENSION, createDimensionalMapping } from '../graph/dimension'
 import {
   applyBandGravity,
+  resolvePhysics,
   applyCenterGravity,
   applyChargeForce,
   applyLinkForce,
   applyTopologicalGravity,
+  presentSpringCategories,
+  springFor,
 } from '../graph/forces'
-import type { EdgeTypeDefinition } from '../graph/taxonomy'
+import type { EdgeCategory, ResolvedSprings } from '../graph/forces'
 import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
-import { defaultParamsFor } from '../graph/simulation'
+import { dimensionsFor } from '../adapter/build'
+import { defaultParamsFor, pairTuning, withPushOverride } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { mulberry32 } from './rng'
-import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'
-import { sortedRecord } from './snapshot'
+import { sorted, sortedRecord } from './snapshot'
 
 const PROBE_SEED = 0x5eed
 
+// Projected by the adapter's own rule, so a probe node carries every axis a
+// built node does and the kernel probes can run on any of them.
 function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
   return {
     id,
-    dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
+    dimensions: dimensionsFor(nodeType, undefined),
     name: id,
     orphan: false,
     definitionKey: `${nodeType}:${id}`,
@@ -56,6 +63,13 @@ function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
     vy: 0,
     pinned: false,
   }
+}
+
+// A node on a style key the taxonomy does not declare. Built by hand: the
+// adapter's projection cannot place a type the registry lacks, and would not
+// be asked to — `nodeTypeFromKind` refuses the kind first.
+function undeclaredNode(id: string, x: number, y: number): SimNode {
+  return { ...node(id, 'workflow', x, y), dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'notADeclaredType' } }
 }
 
 /**
@@ -104,14 +118,32 @@ function probe(run: (nodes: SimNode[], params: ForceParams, rng: () => number) =
 }
 
 const PROBE_EDGES: GraphEdge[] = [
-  { id: 'p0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk' },
-  { id: 'p1', edgeType: 'containment', sourceId: 'op', targetId: 'nx' },
-  { id: 'p2', edgeType: 'dependency', sourceId: 'wf', targetId: 'act' },
-  { id: 'p3', edgeType: 'dependency', sourceId: 'ns', targetId: 'ep' },
-  { id: 'p4', edgeType: 'dependency', sourceId: 'wf', targetId: 'op' },
+  { id: 'p0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'p1', sourceId: 'op', targetId: 'nx', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'p2', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'p3', sourceId: 'ns', targetId: 'ep', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'p4', sourceId: 'wf', targetId: 'op', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
   // The coincident pair, so the link force takes its degenerate branch too.
-  { id: 'p5', edgeType: 'dependency', sourceId: 'dupA', targetId: 'dupB' },
+  { id: 'p5', sourceId: 'dupA', targetId: 'dupB', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
 ]
+
+/** An edge from the undeclared node, for the probes that add one. */
+const UNKNOWN_EDGE: GraphEdge = { id: 'pu', sourceId: 'unknown', targetId: 'wf', dimensions: { [RELATION_DIMENSION]: 'dependency' } }
+
+function nodeMapOf(nodes: SimNode[]): Map<string, SimNode> {
+  return new Map(nodes.map(n => [n.id, n]))
+}
+
+function nodeAt(map: Map<string, SimNode>, id: string): SimNode {
+  const n = map.get(id)
+  if (!n) throw new Error(`probe edge references no node ${JSON.stringify(id)}`)
+  return n
+}
+
+/** What the simulation hands the link kernel: each edge's category, classified against the resolved springs. */
+function categoryOf(spring: ResolvedSprings, map: Map<string, SimNode>): (edge: GraphEdge) => EdgeCategory {
+  return edge => springFor(spring, edge, nodeAt(map, edge.sourceId), nodeAt(map, edge.targetId))
+}
 
 /**
  * The same probes, with one node carrying a key the param maps do not declare.
@@ -126,7 +158,7 @@ const PROBE_EDGES: GraphEdge[] = [
 function absentValueProbes(): Json {
   const withUnknown = () => {
     const nodes = probeNodes()
-    nodes.push(node('unknown', 'notADeclaredType' as NodeType, 300, -400))
+    nodes.push(undeclaredNode('unknown', 300, -400))
     return nodes
   }
   const run = (apply: (nodes: SimNode[], params: ForceParams, rng: () => number) => void): Json => {
@@ -143,34 +175,87 @@ function absentValueProbes(): Json {
       velocities: velocities(nodes),
     }
   }
-  // An edge category the param maps do not declare, which is what a supplied
-  // taxonomy produces: its ids are its own, and `params.link` is keyed by the
-  // shipped ones.
-  const undeclaredEdgeCategory = () => {
-    const nodes = withUnknown()
-    const map = new Map(nodes.map(n => [n.id, n]))
-    applyLinkForce(
-      PROBE_EDGES, map, defaultParamsFor(DEFAULT_ONTOLOGY), 1, mulberry32(PROBE_SEED),
-      () => ({
-        id: 'linkNotDeclaredAnywhere' as EdgeTypeDefinition['id'],
-        label: '??', sourceType: 'workflow', targetType: 'workflow',
-        category: 'dependency', directional: false,
-        physics: { strength: 1, distance: 1 }, tooltip: '',
-      }),
-    )
-    return {
-      allFinite: allFinite(nodes),
-      nonFiniteNodeIds: nonFinite(nodes),
-      velocities: velocities(nodes),
-    }
+  return {
+    charge: run((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
+    bandCartesian: run((nodes, params, rng) =>
+      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
+    bandRadial: run((nodes, params, rng) =>
+      applyBandGravity(nodes, { ...params, gravityMode: 'radial' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
+    // The unknown node's edge reaches the host's rule with an undefined bucket
+    // and falls to its catch-all, so it still pulls; under a mapping (below) the
+    // same edge is unbucketed and inert. Both are pinned.
+    link: run((nodes, params, rng) =>
+      applyLinkForce([...PROBE_EDGES, UNKNOWN_EDGE], nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_ONTOLOGY).spring, nodeMapOf(nodes)), 1, rng)),
+  }
+}
+
+/**
+ * The kernels under parameters that are NOT the defaults. Every other probe
+ * runs `defaultParamsFor`, whose multipliers are 1.0 and whose declared values
+ * are small integers, so dropping a multiplier, an exponent or float precision
+ * inside a kernel changed nothing at the rounding grid (the Unit 4 review ran
+ * three such sabotages green). These rows run each kernel with every scalar off
+ * its identity and one non-integer override.
+ */
+function nonIdentityParams(): Json {
+  const base = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const params: ForceParams = {
+    ...base,
+    pushMultiplier: 0.9, coreRadiusMultiplier: 1.7, chargeExponent: 0.85,
+    pullMultiplier: 1.1, distanceMultiplier: 0.35, linkExponent: 1.3,
+    gravityX: 0.07, gravityY: 0.11, gravityBandExp: 1.4,
+    pair: withPushOverride(base.pair, 'workflow', { charge: -333.3, coreRadius: 17.25 }),
+  }
+  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const kernel = (apply: (nodes: SimNode[], rng: () => number) => void): Json => {
+    const nodes = probeNodes()
+    apply(nodes, mulberry32(PROBE_SEED))
+    return { allFinite: allFinite(nodes), velocities: velocities(nodes) }
   }
   return {
-    charge: run((nodes, params, rng) => applyChargeForce(nodes, params, 1, rng)),
-    bandCartesian: run((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, 1, rng)),
-    bandRadial: run((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'radial' }, 1, rng)),
-    undeclaredEdgeCategory: undeclaredEdgeCategory(),
+    charge: kernel((nodes, rng) => applyChargeForce(nodes, params, resolved, 1, rng)),
+    link: kernel((nodes, rng) => applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolved.spring, nodeMapOf(nodes)), 1, rng)),
+    bandCartesian: kernel((nodes, rng) => applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolved, 1, rng)),
+  }
+}
+
+/**
+ * Springs on a MAPPED axis: two buckets over the style axis, so the host's
+ * table cannot apply and the pair rule must. The identity row pins the gate
+ * from the other side — the declared categories, in the host's order — and the
+ * classified keys are the hover and override ids a control surface will show.
+ */
+function mappedAxisSprings(): Json {
+  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const mapping = createDimensionalMapping({
+    id: 'probe:two', label: 'two', dimension: TEMPORAL_TYPE_DIMENSION,
+    buckets: [
+      { id: 'control', label: 'control', abbreviation: 'C', values: ['namespace', 'worker', 'nexusEndpoint'] },
+      { id: 'work', label: 'work', abbreviation: 'W', values: ['workflow', 'activity', 'nexusService', 'nexusOperation'] },
+    ],
+  })
+  const identity = resolvePhysics(params, DEFAULT_ONTOLOGY).spring
+  const mappedPhysics = resolvePhysics({ ...params, pair: pairTuning(mapping) }, DEFAULT_ONTOLOGY)
+  const mapped = mappedPhysics.spring
+  const edges = [...PROBE_EDGES, UNKNOWN_EDGE]
+  const nodes = probeNodes()
+  nodes.push(undeclaredNode('unknown', 300, -400))
+  const map = nodeMapOf(nodes)
+  const classify = (spring: typeof mapped) =>
+    sortedRecord(edges.map(e => [e.id, springFor(spring, e, nodeAt(map, e.sourceId), nodeAt(map, e.targetId)).key ?? '(unbucketed)'] as const))
+  applyLinkForce(edges, map, params, categoryOf(mapped, map), 1, mulberry32(PROBE_SEED))
+  return {
+    identityDeclared: DEFAULT_ONTOLOGY.edgeTypes.map(e => e.id).filter(id => identity.describe(id) !== undefined),
+    identityClassified: classify(identity),
+    // The pair rule enumerates nothing; its categories are the ones present.
+    mappedPresent: sorted(presentSpringCategories(mapped, edges, id => map.get(id))),
+    mappedClassified: classify(mapped),
+    // The multi-value fold (D47): a bucket's declared push is the mean of its
+    // values', its band the union — pinned here where a bucket has several.
+    mappedPush: sortedRecord([...mappedPhysics.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)),
+    allFinite: allFinite(nodes),
+    nonFiniteNodeIds: nonFinite(nodes),
+    velocities: velocities(nodes),
   }
 }
 
@@ -178,19 +263,19 @@ export function forceProbes(): Json {
   return {
     seed: PROBE_SEED,
     absentValue: absentValueProbes(),
-    charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, 1, rng)),
-    link: probe((nodes, params, rng) => {
-      const map = new Map(nodes.map(n => [n.id, n]))
-      applyLinkForce(PROBE_EDGES, map, params, 1, rng, DEFAULT_ONTOLOGY.resolveEdgeType)
-    }),
+    charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
+    link: probe((nodes, params, rng) =>
+      applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_ONTOLOGY).spring, nodeMapOf(nodes)), 1, rng)),
+    mappedAxisSprings: mappedAxisSprings(),
+    nonIdentityParams: nonIdentityParams(),
     bandCartesian: probe((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, 1, rng)),
+      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     // Includes a node sitting exactly on the origin, where the ring pull has no
     // defined direction and the kernel must kick it somewhere.
     bandRadial: (() => {
       const nodes = probeNodes()
       nodes.push(node('origin', 'workflow', 0, 0))
-      applyBandGravity(nodes, { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }, 1, mulberry32(PROBE_SEED))
+      applyBandGravity(nodes, { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }, resolvePhysics(defaultParamsFor(DEFAULT_ONTOLOGY), DEFAULT_ONTOLOGY), 1, mulberry32(PROBE_SEED))
       return {
         allFinite: allFinite(nodes),
         nonFiniteNodeIds: nonFinite(nodes),

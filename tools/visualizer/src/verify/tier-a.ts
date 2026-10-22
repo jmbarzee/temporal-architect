@@ -4,13 +4,15 @@
 // membership. No positions, no floats except the downstream scores (which are
 // exact rationals). Byte-identical is the contract.
 
+import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
 import { filterOfSets } from '../filter/types'
 import { buildGraph } from '../adapter/build'
 import { edgeTypeFor } from '../adapter/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import { payloadString } from '../graph/model'
-import { Simulation } from '../graph/simulation'
+import { Simulation, axisOptions, fitsCeiling, pairTuning } from '../graph/simulation'
+import { presentSpringCategories, resolveSprings } from '../graph/forces'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
@@ -64,13 +66,15 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
   const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
   const styleKey = src && tgt ? edgeStyleKeyFor(e, srcValue, tgtValue) : 'UNRESOLVED-ENDPOINT'
   const parts = [
-    edgeTypeFor(e, srcValue, tgtValue).id,
+    edgeTypeFor(e, srcValue, tgtValue),
     styleKey,
-    e.edgeType,
+    e.dimensions[RELATION_DIMENSION],
     `${e.sourceId} -> ${e.targetId}`,
   ]
-  if (e.nexusEndpoint !== undefined) parts.push(`ep=${e.nexusEndpoint}`)
-  if (e.dispatchKind !== undefined) parts.push(`dispatch=${e.dispatchKind}`)
+  const ep = payloadString(e, 'nexusEndpoint')
+  if (ep !== undefined) parts.push(`ep=${ep}`)
+  const dispatch = e.dimensions[DISPATCH_DIMENSION]
+  if (dispatch !== undefined) parts.push(`dispatch=${dispatch}`)
   return parts.join('|')
 }
 
@@ -138,7 +142,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       byEdgeType: histogram(graph.edges.map(e => {
         const src = nodeOf(e.sourceId)
         const tgt = nodeOf(e.targetId)
-        return edgeTypeFor(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt)).id
+        return edgeTypeFor(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt))
       })),
       byStyleKey: histogram(
         graph.edges.map(e => {
@@ -150,6 +154,19 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
         }),
       ),
     },
+    // Every axis push/pull may key on for this graph, what each would cost on
+    // the control surface, and the spring categories some edge falls in under
+    // it — the declared table's on the style axis, the pair rule's elsewhere.
+    // The ceiling arithmetic, pinned per fixture (Unit 4e).
+    axes: axisOptions(DEFAULT_ONTOLOGY, graph).map(o => ({
+      axis: o.mapping.dimension,
+      pushTokens: o.pushTokens,
+      pullTokens: o.pullTokens,
+      fits: fitsCeiling(o),
+      presentSprings: sorted(presentSpringCategories(
+        resolveSprings(pairTuning(o.mapping), DEFAULT_ONTOLOGY), graph.edges, nodeOf,
+      )),
+    })),
     visibleSubgraph: sortedRecord(states),
   }
 }
