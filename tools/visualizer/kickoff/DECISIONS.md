@@ -1866,3 +1866,62 @@ Unit 8; R36, R38, R39, R40, R41.
 **Golden change (§8.2).** None.
 
 — 2026-10-22 — agent
+
+**D63 — The spec is aligned to the model, not split (Unit 9).** R42; D8
+holds (no split); T29 resolved; T30 honoured where it could be, and this
+unit is the catch-up for the rest.
+
+1. **One hierarchy vocabulary.** `GRAPH_VIEW.md` spoke in three — `level`
+   (L1–L4, "Level 3"), `tier` and `ladder` — and § Graph Construction still
+   emitted a `level` via `nodeLevel()`, which the code lost before Unit 1.
+   The registry's own fields are the words now: **ladder** (main, nexus) and
+   **tier** (container, host, orchestrator, leaf); every "Level N" and "L3"
+   is a named tier or the kinds it holds, and "The model" (replacing "Note
+   on the current implementation") says so and says the number is gone.
+2. **The model section** describes what exists: the dimension map on nodes
+   (`temporalType`, `sourceFile`, `defType`) and on edges (`relation`,
+   `dispatch`); what the registry declares per value (ladder, tier, label,
+   icon, abbreviation, colour per theme, size, physics, `whenHidden`,
+   `defaultVisible`, `summaryKind`); the edge types with springs and
+   strokes; the filter descriptors; the library's shapes (`OntologySpec` and
+   its parts) and `createOntology`'s refusal; the two hooks; and the two
+   halves — the host in `tools/visualizer/src/adapter/`, the library
+   `@temporal-architect/graph-view` in `tools/graph-view/`, which never sees
+   the parser (R38, D62).
+3. **Construction and graduation as the code does them.** § Graph
+   Construction: a node is a dimension map plus `parentId`, `definitionKey`
+   and an opaque payload; an edge carries `relation` and `dispatch`, and its
+   type is the pair rule's; coarsened edges are worker-to-worker and
+   namespace-to-namespace. § Type Filtering: the chips are the Kind
+   descriptor's — five over seven kinds (Namespaces · Workers · Nexus ·
+   Workflows · Activities), the Nexus group is `FilterChip.values`, the
+   filter state is per-axis selections and knows no group, and both views
+   show the same chips (the old "the tree shows individual nexus chips" has
+   been false since Unit 3). § Which Nodes Are Visible: `passesSelection`
+   with each axis's `emptyMeans` and `absentMeans`. § Edge Graduation:
+   `whenHidden` — ascend and splice, the visited set, metadata precedence in
+   either order (D59, D60). § Node Summaries by `summaryKind`. Core radii
+   are per value (20 to 85), not `√450`. Seeding is in the layout frame
+   (D54); a revealed node seeds at its nearest visible ancestor per the
+   axis's `reheat` policy.
+4. **`VIEW_FRAMEWORK.md`.** The bar is rendered from the declared axes in
+   the view's chain (R17–R19: `×` removes, `+` adds, the empty chain is the
+   small bar); pins are per axis; the filter state is a map from axis to
+   selected values with each axis's policy; a focus transition expands by
+   the target's values per the axis's focus policy (`FocusTarget`); the bar
+   is the library's with the host's counts and findings handed in (D61); the
+   error bars are the host's.
+5. **`PRODUCT.md`.** The graph's palette is the taxonomy's declaration,
+   carried as `--node-<suffix>` (D57); the graph's icons are the values'
+   and the SVG gear icons live in the library; the pane has its own theme
+   choice (R21); sizes are the taxonomy's; edges are stroked per type.
+6. **Not changed.** The shape table (rounded rectangle, rectangle, circle)
+   is labelled a suggestion and the canvas draws circles; the animated
+   transition prose (fades, ramps) is design intent the code does not
+   implement. Both predate the model and sit outside R42; left as they were
+   and named here. `TREE_VIEW.md` is not in Unit 9's list and names no
+   retired field.
+
+**Golden change (§8.2).** None — no gate measures the spec.
+
+— 2026-10-22 — agent

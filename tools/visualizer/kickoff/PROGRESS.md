@@ -54,7 +54,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 8 — The move + packaging** (opened on `visualizer/dimensions-unit-8` from unit-7 @ `88dc801`; the eight edges cut at `2e065a5` (D61), the move in the commit that adds this row (D62) — under review) |
+| Current unit | **Unit 9 — Spec alignment** (opened on `visualizer/dimensions-unit-9` from unit-8 @ `d71fc2e`, the plan's [independent] unit; the spec aligned in the commit that adds this row (D63) — under review. **Unit 8** is under review in parallel on `visualizer/dimensions-unit-8` ([PR #177](https://github.com/jmbarzee/temporal-architect/pull/177)); its fixes merge into unit-9 at its close) |
 | Last completed unit | **Unit 7 — Post-filter-scoped controls** ([PR #175](https://github.com/jmbarzee/temporal-architect/pull/175)) |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-7` (from unit-6 @ `3ed12d0`, [PR #175](https://github.com/jmbarzee/temporal-architect/pull/175), closed); the stack below it: unit-6 (#174) → unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
@@ -276,7 +276,7 @@ Status: blank = not started · `wip` · `done`.
 | R39 | No parser changes | all | `git diff --stat tools/lsp tools/wire-types` empty | `done` — empty over the whole stack at the Unit 8 close |
 | R40 | No new dependencies | all | `package.json` / lockfile diff | `done` — the visualizer's manifest unchanged; the sibling's dependencies a subset of it, pinned to the same versions (D62) |
 | R41 | Does everything it did before | 8 | every golden green + Gate 5 | `done` — 7/7 goldens byte-identical and Gate 5 on every fixture in both themes through the library (D62) |
-| R42 | Spec aligned to the new model | 9 | review |
+| R42 | Spec aligned to the new model | 9 | review | `wip` — D63; the three specs rewritten in the model's words; the review is the proof |
 
 **Twenty of these are provable only by Gate 5**, the manual browser pass. That is
 the honest cost of a UI requirement set; see KICKOFF §2.1's caveat. Gate 5 has
@@ -314,6 +314,15 @@ should be read:
 2. **Rule 8 failed on the run that introduced it** (F17): I wrote "isolation
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
+
+**Unit 9 is open** on `visualizer/dimensions-unit-9`, branched from unit-8
+@ `d71fc2e` while Unit 8's review runs — PLAN §6.2 marks it [independent],
+depending only on the code it documents. One commit (D63): `GRAPH_VIEW.md`,
+`VIEW_FRAMEWORK.md` and `PRODUCT.md` aligned to the model — tier and ladder
+for level, dimensions and the taxonomy for type strings, the library split
+named — not split (D8). The review is next; at the close, unit-8's review
+fixes merge in (a merge commit, never a rebase) and the spec is re-read
+against them.
 
 **Unit 8 is open** on `visualizer/dimensions-unit-8`, branched from unit-7
 @ `88dc801`. Commits: `2e065a5` (8a — the eight edges cut in place, D61),

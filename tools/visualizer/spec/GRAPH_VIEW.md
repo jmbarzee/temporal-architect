@@ -17,9 +17,9 @@ The visualizer's two views consume different parser outputs:
 | View | Primary input | Secondary input |
 |---|---|---|
 | **Tree view** | `twf parse` (AST + diagnostics) | — |
-| **Graph view** | `twf graph` (resolved deployment graph) | AST for hover detail (sourceFile, params, body source) |
+| **Graph view** | `twf graph` (resolved deployment graph) | AST for the source-file axis, the chip counts and the findings bars |
 
-The graph view is a **renderer over the parser-emitted deployment graph**. The parser owns deployment expansion (one node per definition × deployment context), dispatch routing (which deployment a call lands on), and tier coarsening (worker-tier and namespace-tier projections of dispatch edges). The visualizer does not re-walk the AST for any of this — it translates the parser's nodes and edges into view-side shapes and hands them to the simulation.
+The graph view is a **renderer over the parser-emitted deployment graph**. The parser owns deployment expansion (one node per definition × deployment context), dispatch routing (which deployment a call lands on), and tier coarsening (worker-tier and namespace-tier projections of dispatch edges). The visualizer does not re-walk the AST for any of this. Its **host half** — the adapter in `tools/visualizer/src/adapter/` — translates the parser's nodes and edges into the library's `Graph` and declares the Temporal taxonomy; its **library half** — `@temporal-architect/graph-view`, in `tools/graph-view/` — lays that graph out, filters, highlights and draws it, and never sees the parser or the AST (R38, D62).
 
 Cross-view identity threads through `node.definitionKey` (the parser's `definition` field — `${kind}:${name}`). Selecting `OrderWorkflow` in the tree view highlights every graph node whose `definitionKey === "workflow:OrderWorkflow"`, regardless of how many deployments that definition has.
 
@@ -47,11 +47,15 @@ The **nexus ladder** is the parallel three-rung Endpoint → Service → Operati
 - **Cross-ladder containment** binds each nexus rung to its main-ladder host. `Endpoint → Namespace` (an endpoint is declared inside a namespace). `Service → Worker` (a service is hosted on a worker). The third nexus rung `Operation → Service` is intra-nexus containment; operations don't bind cross-ladder, they bind to their declaring service.
 - **Cross-ladder dispatch** connects orchestrators across the ladders. `Workflow → Operation` (a workflow makes a nexus call). `Operation → Workflow` (async operations have a backing workflow; sync operations call workflows from their body). These edges are the reason both ladders matter visually — they tell the story of how work crosses the routing surface.
 
-### Note on the current implementation
+### The model
 
-A node's identity is a **dimension map** — `dimensions: Record<DimensionId, DimensionValue>` — rather than a single type string, and every feature elects exactly one axis to read. This domain projects onto three: `temporalType`, `sourceFile`, and `defType` — the kind the filter chips test, a function of the type that the adapter writes onto each node at build time so the engine reads every axis the same way. The entries describing each value of the type axis (`ladder`, `tier`, sizing, colour, the default Y band) live with the host in `NODE_TYPE_REGISTRY` (`src/adapter/node-types.ts`), the edge-side entries in `src/adapter/edge-types.ts`; the *shapes* they fill in are library-owned (`src/graph/taxonomy.ts`). Nothing in the graph engine imports either: it reaches its domain through an injected `Ontology` (`src/graph/ontology.ts`), and the physics params are keyed by the chosen axis's bucket ids (push) and by spring-category ids (pull) — the host's declared ids on the type axis, pair ids elsewhere. There is no numeric `level`/depth field on `GraphNode`: the earlier encoding that flattened both ladders' tiers into one sortable number has been removed, and consumers read the registry fields directly.
+A node's identity is a **dimension map** — `dimensions: Record<DimensionId, DimensionValue>` — rather than a single type string, and every feature elects exactly one axis to read. This domain projects onto three: `temporalType` (the style axis, which the taxonomy describes value by value), `sourceFile`, and `defType` — the kind the filter chips test, a projection of the type that the adapter writes onto each node at build time so the engine reads every axis the same way. Edges carry two (R5): `relation` (containment or dependency) and `dispatch` (the parser's call kind).
 
-**Per-worker duplication.** L3 nodes (Workflow, Activity, NexusOperation) and L2 NexusService nodes are emitted **per worker deployment** — an activity registered on three workers produces three distinct nodes, each parented to its respective worker. This makes the fact that a definition has multiple homes visible directly in the canvas, instead of collapsing it into a single node whose containment relationship to all-but-one of its workers is silently dropped. Duplication is performed upstream by `twf graph`; the visualizer consumes the already-duplicated nodes.
+What each value of the type axis **is** — its `ladder` and `tier`, label, icon and abbreviation, fill and border per theme, size, physics (charge, core radius, the rest band on each layout axis), what its dependency edges do when it is hidden (`whenHidden`), whether it is visible by default, and how it summarises (`summaryKind`) — lives with the host in `NODE_TYPE_REGISTRY` (`tools/visualizer/src/adapter/node-types.ts`); the edge types with their springs and strokes in `src/adapter/edge-types.ts`; the filter axes with their chips and policies beside them. The *shapes* they fill in are the library's (`OntologySpec`, `NodeTypeDefinition`, `EdgeTypeDefinition`, `DimensionDescriptor`), and `createOntology(spec)` refuses an incoherent one at construction. The library imports none of this: it reaches its domain through the injected `Ontology`, and the physics params are keyed by the chosen axis's bucket ids (push) and by spring-category ids (pull) — the host's declared ids on the type axis, pair ids elsewhere. Two hooks let the host refine what the library computes without the library naming a value: the hover box's context line and the highlight (§ Nexus Routing Association).
+
+The two words for the hierarchy are **ladder** (main or nexus) and **tier** (container, host, orchestrator, leaf) — the registry's own fields. There is no numeric `level`/depth field on a node: the earlier encoding that flattened both ladders' tiers into one sortable number is gone, and this document no longer speaks of levels. Where a tier is meant, it is named.
+
+**Per-worker duplication.** Orchestrator- and leaf-tier nodes (Workflow, Activity, NexusOperation) and the nexus host (NexusService) are emitted **per worker deployment** — an activity registered on three workers produces three distinct nodes, each parented to its respective worker. This makes the fact that a definition has multiple homes visible directly in the canvas, instead of collapsing it into a single node whose containment relationship to all-but-one of its workers is silently dropped. Duplication is performed upstream by `twf graph`; the visualizer consumes the already-duplicated nodes.
 
 Each duplicate shares a stable `definitionKey` — opaque to the engine, derived by whoever produced the graph (here the parser's `definition` field, with the parent service name folded in for operations as `Service.Op`). The graph carries a `duplicateGroups: Map<definitionKey, Set<nodeId>>` index that the view uses during hover/select to keep sister copies visually grouped (see § Interaction States: Duplicate Highlighting). Definitions that are not registered on any worker remain orphan singletons (one node, no parent, `orphan: true`).
 
@@ -98,12 +102,12 @@ Walking parents from any node terminates at a Namespace. From a workflow the wal
 **Containment edges** come from registration / nesting:
 
 1. **Workflow / Activity → Worker** ("registered on") — A workflow or activity is registered on a specific worker.
-2. **NexusService → Worker** ("hosted on") — An L2-to-L2 peer containment edge. The service is hosted on the worker but isn't "below" it in the level hierarchy.
-3. **NexusOperation → NexusService** ("member of") — An operation belongs to its declaring service (L3 child of an L2 parent).
+2. **NexusService → Worker** ("hosted on") — A host-tier peer containment edge. The service is hosted on the worker, not below it: both are hosts.
+3. **NexusOperation → NexusService** ("member of") — An operation belongs to its declaring service (an orchestrator-tier child of its host-tier service).
 4. **Worker → Namespace** ("member of") — A worker is instantiated within a specific namespace.
 5. **NexusEndpoint → Namespace** ("declared in") — An endpoint is declared inside a specific namespace.
 
-**Dependency edges** come from call sites in workflow and sync-operation bodies, plus the implicit "operation delegates to backing workflow" relationship of an async operation. They are first-class semantic relationships and are drawn at Level 3 regardless of whether caller and callee share a Worker — co-location on a worker says nothing about whether one calls the other, so containment cannot stand in for a call edge.
+**Dependency edges** come from call sites in workflow and sync-operation bodies, plus the implicit "operation delegates to backing workflow" relationship of an async operation. They are first-class semantic relationships and are drawn between the orchestrators and leaves themselves, regardless of whether caller and callee share a Worker — co-location on a worker says nothing about whether one calls the other, so containment cannot stand in for a call edge.
 
 Activities are **leaves of the call graph** — they do not emit dependency edges. Activities cannot call other activities or workflows; these are not Temporal primitives. Dependency edges only originate from workflows and nexus sync operations.
 
@@ -121,31 +125,31 @@ Separately, the parser emits a **NexusOperation → NexusEndpoint** composition 
 
 ### Derived Edges (Graph Coarsening)
 
-Higher-level dependency edges are **derived** by projecting Level 3 dependency edges upward through the containment hierarchy:
+Dependency edges between hosts and between containers are **derived** by projecting the orchestrator- and leaf-tier dependency edges upward through containment:
 
-1. **Worker → Worker** ("depends on") — Exists when any Level 3 node in Worker A depends on any Level 3 node in Worker B. Discard self-loops.
+1. **Worker → Worker** ("depends on") — Exists when anything hosted on Worker A depends on anything hosted on Worker B. Discard self-loops.
 2. **Namespace → Namespace** ("depends on") — Exists when any Worker in Namespace A depends on any Worker in Namespace B. Discard self-loops.
 
 ### Graph Construction
 
-The deployment graph is constructed **upstream** by `twf graph` (see `tools/lsp/parser/graph/`). The visualizer consumes the resulting JSON and translates each piece into its view counterpart. Construction inside the visualizer is a single pass over the parser payload:
+The deployment graph is constructed **upstream** by `twf graph` (see `tools/lsp/parser/graph/`). The host consumes the resulting JSON and translates each piece into the library's `Graph` (`buildGraph`, in the adapter). Construction is a single pass over the parser payload:
 
-1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a view node with `id` (parser's composite deployment ID), `level` (derived from the parser's `definition` kind via `nodeLevel()`), `parentId` (looked up from the parser's containment edges), and `definitionKey` (= `parserGraph.nodes[i].definition`). The AST is consulted only to fill `sourceFile` so the per-file filter chip works; everything structural comes from the parser. For packaged designs the `definitionKey` name is package-qualified (§ Packages and Qualified Identity); a node's package is read from that name, and the AST lookup for `sourceFile` — keyed on bare definition names — is reconciled against the qualified IDs via the file's `package` clause.
-2. **Translate edges.** For each `parserGraph.edges[i]`, emit a view edge. `kind: "containment"` and `kind: "nexusRoute"` (the endpoint↔operation composition) both become `edgeType: "containment"`; the dispatch kinds (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`) all become `edgeType: "dependency"`. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so an endpoint's transitive highlight can follow its routes; the stroke of a spliced caller-to-backing edge is its resolved type's (a workflow dependency), not the nexus palette's (D57). `nexusRoute` edges are not in the parser's containment set, so they never reassign an operation's `parentId` (which stays its owning service).
-3. **Translate coarsened edges.** For each `parserGraph.coarsenedEdges[i]`, emit an L2 (`tier === "worker"`) or L1 (`tier === "namespace"`) view dependency edge. No projection logic runs in the visualizer — the parser has already aggregated dispatch edges by `(from, to, tier)` and discarded self-loops.
+1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a node with `id` (parser's composite deployment ID), a **dimension map** — `temporalType` from the parser's `definition` kind, `defType` (the kind the filter chips test, a projection of the type), `sourceFile` from the AST — `parentId` (looked up from the parser's containment edges), `definitionKey` (= `parserGraph.nodes[i].definition`), and a `payload` of hover metadata (queue, hosting worker) the library carries opaquely. The AST is consulted only for `sourceFile`; everything structural comes from the parser. For packaged designs the `definitionKey` name is package-qualified (§ Packages and Qualified Identity); a node's package is read from that name, and the AST lookup for `sourceFile` — keyed on bare definition names — is reconciled against the qualified IDs via the file's `package` clause.
+2. **Translate edges.** For each `parserGraph.edges[i]`, emit an edge carrying two dimensions (R5): `relation` — `containment` for `kind: "containment"` and for `kind: "nexusRoute"` (the endpoint↔operation composition), `dependency` for the dispatch kinds — and `dispatch`, the parser's kind itself (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`, `signalSend`), which is what lets a signal send spring differently from a workflow call. An edge's **type** — its spring and its stroke — is resolved by the taxonomy's pair rule from the values at its two ends and these two dimensions. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so an endpoint's transitive highlight can follow its routes; the stroke of a spliced caller-to-backing edge is its resolved type's (a workflow dependency), not the nexus palette's (D57). `nexusRoute` edges are not in the parser's containment set, so they never reassign an operation's `parentId` (which stays its owning service).
+3. **Translate coarsened edges.** For each `parserGraph.coarsenedEdges[i]`, emit a worker-to-worker (`tier === "worker"`) or namespace-to-namespace (`tier === "namespace"`) dependency edge. No projection logic runs in the visualizer — the parser has already aggregated dispatch edges by `(from, to, tier)` and discarded self-loops.
 4. **Build `duplicateGroups`.** Index every view node by its `definitionKey`; the resulting `Map<definitionKey, Set<nodeId>>` powers the duplicate-highlight interaction (see § Interaction States: Duplicate Highlighting).
 
-Per-worker duplication, dispatch routing, cross-namespace coarsening, and orphan detection are all properties of the parser graph. The visualizer never re-derives them.
+Per-worker duplication, dispatch routing, cross-namespace coarsening, and orphan detection are all properties of the parser graph. The host never re-derives them, and the library never sees them: it reads nodes by their dimensions and edges by their relation.
 
 ### Orphan Definitions
 
-The containment hierarchy assumes every Level 3 node belongs to a Worker and every Worker belongs to a Namespace. But the DSL allows definitions without assignments — a workflow not registered on any worker, a worker not placed in any namespace.
+The containment hierarchy assumes every orchestrator- and leaf-tier node belongs to a Worker and every Worker belongs to a Namespace. But the DSL allows definitions without assignments — a workflow not registered on any worker, a worker not placed in any namespace.
 
 **Treatment:** Orphan definitions appear in the graph as uncontained nodes, visually distinct from contained ones (e.g., positioned outside any grouping, with a subtle "unassigned" indicator such as a dashed outline or muted badge). They participate in dependency edges normally.
 
 **Type filtering behavior:**
-- Orphan workers (no namespace) are visible when the Worker type toggle is on.
-- Orphan L3/L4 nodes (no worker) are visible when their specific type toggle (Wf, Act, Nxs, or Op) is on. NexusOperation nodes inherit orphan status from their parent service: if the service is orphan, the operations are too.
+- Orphan workers (no namespace) are visible when the Workers chip is on.
+- Orphan orchestrators and leaves (no worker) are visible when their kind's chip is on. NexusOperation nodes inherit orphan status from their parent service: if the service is orphan, the operations are too.
 - Orphans follow the same toggle rules as any other node — they're shown or hidden by their type, not by containment.
 
 **Seeding:** Orphan nodes have no parent to seed from. On initial appearance or live reload addition, seed them at the center of the viewport. The simulation's charge repulsion will push them to a natural position.
@@ -190,7 +194,7 @@ The simulation exposes **one charge strength + one core radius per bucket of the
 **Charge strengths** (one per bucket; the declared defaults below are per node type — negative values, repulsion):
 - Namespace, NexusEndpoint, Worker, NexusService, Workflow, NexusOperation, Activity
 
-**Core radii** (one per bucket — the charge softening, expressed as a length). A pair of nodes softens its charge by the squared average of the two endpoints' effective core radii (`rEff = coreRadiusMultiplier × coreRadius`), added to `d²`. A larger core radius spreads a type's repulsion over a wider, gentler plateau near the centre instead of a sharp spike. This is the per-type successor to the old single global softening; every type defaults to `√450` so the per-pair softening is `450` (today's layout) until the user tunes it.
+**Core radii** (one per bucket — the charge softening, expressed as a length). A pair of nodes softens its charge by the squared average of the two endpoints' effective core radii (`rEff = coreRadiusMultiplier × coreRadius`), added to `d²`. A larger core radius spreads a type's repulsion over a wider, gentler plateau near the centre instead of a sharp spike. This is the per-type successor to the old single global softening; each value declares its own (`physics.coreRadius`, from 20 for an activity to 85 for a namespace) until the user tunes it.
 
 These are tuned on the 2D charge map (see § Control Panel → PUSH), not a stack of sliders; the map plots every node type on shared charge × core-radius axes so their relative repulsion strength and reach are directly comparable.
 
@@ -215,10 +219,10 @@ The full parameter set is exposed through the Control Panel (see below), organiz
 
 ### Simulation Lifecycle
 
-1. **Initialize** — Place nodes at initial positions (see *Level Transitions* below).
+1. **Initialize** — Seed nodes in the layout frame: on each axis inside the band their bucket rests in, biased toward its bottom edge so the tiers start pre-ordered (D54); a node revealed later by a filter is seeded at its nearest visible ancestor (§ Type Transitions).
 2. **Tick** — On each animation frame, compute forces, update velocities, apply velocity damping (friction), update positions.
 3. **Cool** — Over time, reduce the simulation's *alpha* (energy). As alpha approaches zero, the layout stabilizes and ticking can pause.
-4. **Reheat** — When the graph structure changes (nodes added/removed, level transition), reset alpha to restart the simulation.
+4. **Reheat** — When the graph structure changes (nodes added/removed, a kind revealed or hidden), reset alpha to restart the simulation.
 
 The simulation should use **requestAnimationFrame** for rendering, decoupled from the physics tick rate if needed for performance.
 
@@ -226,47 +230,43 @@ The simulation should use **requestAnimationFrame** for rendering, decoupled fro
 
 ## Type Filtering
 
-The graph uses **type toggles** to control which nodes are visible. Any combination is valid; there is no contiguity constraint.
+The graph uses the **kind chips** of the shared filter bar to control which nodes are visible. Any combination is valid; there is no contiguity constraint.
 
 ### Type Toggle Control
 
-Five toggle chips in the graph view filter bar:
+The Kind axis's chips, as the host's descriptor declares them (`chipsFor`): **Namespaces** · **Workers** · **Nexus** · **Workflows** · **Activities** — five chips over seven kinds. The **Nexus** chip is a **group** (`FilterChip.values`) that controls three kinds together:
+- **NexusEndpoint** — the routing alias (container tier, parented to their namespace)
+- **NexusService** — the callable API surface (host tier, hosted on a worker)
+- **NexusOperation** — the per-operation callable handle (orchestrator tier, child of its service)
 
-**NS** · **Workers** · **Nexus** · **Wf** · **Act**
+Toggling the Nexus chip on turns all three on simultaneously; toggling it off hides all three and any nexus call edges that touch them. This keeps the filter bar compact. The filter state knows nothing of the grouping: it is the set of selected values on the Kind axis (`nexusEndpointDef`, `nexusServiceDef`, `nexusOperationDef`, individually), so the contract and persistence are unchanged — the chip is the descriptor's.
 
-The **Nexus** chip is a **group** that controls three underlying node kinds together:
-- **NexusEndpoint** — the routing alias (L1.5 nodes, parented to their namespace)
-- **NexusService** — the callable API surface (L2, hosted on a worker)
-- **NexusOperation** — the per-operation callable handle (L3, child of its service)
+Default state: the values the taxonomy declares default-visible — Workers and Workflows ON; everything else OFF.
 
-Toggling the Nexus chip on turns all three on simultaneously; toggling it off hides all three and any nexus call edges that touch them. This keeps the filter bar compact. Internally, `visibleTypes` still tracks the three individual def-type keys (`nexusEndpointDef`, `nexusServiceDef`, `nexusOperationDef`) so the filter contract and persistence are unchanged — the group is a UI-only concept.
-
-Default state: Workers and Workflows ON; everything else OFF.
-
-The tree view's filter bar is separate and continues to show individual chips for the three nexus kinds; the consolidation is graph-view only.
+Both views render the same bar from the same descriptors, so the tree view shows the same five chips.
 
 ### Which Nodes Are Visible
 
-A node is visible if its type toggle is on AND it passes the file filter AND it passes the search filter (if active).
+A node is visible if it passes every declared filter axis; search never hides (§ Search Behavior). The policy per axis is its descriptor's, read once for both views (`passesSelection`): on the Kind axis the selection is an allow-list — the node's kind must be selected, and an empty selection hides everything (`emptyMeans: 'none'`); on the File axis an empty selection means everything, and a node with no source file is never hidden by it (`emptyMeans: 'all'`, `absentMeans: 'visible'`).
 
 ### Edge Graduation
 
-Edges adapt to the visible types by **graduating** across hidden layers. The rules:
+Edges adapt to the visible set by **graduating** across hidden nodes. The rules are the taxonomy's per-value hidden-node policy (`whenHidden`, D59), applied by the library:
 
-**Dependency edges** between visible nodes at the same level render directly. When a level is hidden, its dependency edges are projected to the nearest visible ancestor level (same coarsening rule as before — Worker→Worker deps derive from L3→L3, Namespace→Namespace deps derive from Worker→Worker). Self-loops from projection are discarded.
+**Dependency edges** between two visible nodes render directly. A hidden endpoint resolves per its value's policy: `ascend` (every value but the operation) re-points the edge to the endpoint's nearest visible ancestor — the same coarsening the parser applies, so Worker→Worker reads the orchestrators' calls and Namespace→Namespace the workers' — and `splice` (the operation's) follows the hidden node's own dependency edges through, so caller → operation → backing draws as caller → backing; a hidden node is passed through once per resolution, so a cycle among hidden operations terminates. Self-loops from projection are discarded, and when two graduated edges land on one pair the one carrying metadata (the route) keeps precedence over one carrying none, in either edge order (D60).
 
-**Containment edges** skip hidden intermediate levels. When Worker is hidden but Namespace and any L3 types are visible, L3 nodes attach directly to their grandparent Namespace via a graduated containment edge. The visual effect: L3 nodes cluster around their Namespace, as if the Worker container were transparent.
+**Containment edges** skip hidden intermediate tiers: a visible child attaches to its nearest visible ancestor. When Worker is hidden but Namespace and the orchestrator or leaf kinds are visible, those nodes attach directly to their grandparent Namespace via a graduated containment edge; the visual effect is that they cluster around their Namespace, as if the Worker container were transparent. A hidden child's containment edge is dropped.
 
-This means every combination of types produces a coherent graph — there are no "invalid" filter states. Examples:
+This means every combination of kinds produces a coherent graph — there are no "invalid" filter states. Examples:
 
-| Visible Types | Nodes | Edges |
+| Visible kinds | Nodes | Edges |
 |---------------|-------|-------|
 | NS only | Namespaces | NS→NS dependencies |
 | NS + Worker | Namespaces, Workers | NS→NS deps, NS↔Worker containment, Worker→Worker deps |
-| NS + Wf + Act | Namespaces, Workflows, Activities | NS→NS deps, NS↔L3 graduated containment, L3→L3 deps |
+| NS + Wf + Act | Namespaces, Workflows, Activities | NS→NS deps, NS↔Wf and NS↔Act graduated containment, Wf→Wf and Wf→Act deps |
 | Worker + Wf | Workers, Workflows | Worker→Worker deps, Worker↔Wf containment, Wf→Wf deps |
-| Wf + Act + Nxs | All L3 types | L3→L3 deps only (no containment — no parent types visible) |
-| All | Everything | All edges at all levels |
+| Wf + Act + Nexus | Workflows, Activities, Endpoints, Services, Operations | Dependency edges among them, Ep↔Op and Nx↔Op containment; no worker or namespace containment (none visible) |
+| All | Everything | All edges |
 
 ---
 
@@ -276,9 +276,9 @@ Toggling a type on or off should feel spatial and continuous, not like a hard cu
 
 ### The Spatial Metaphor
 
-Type transitions are **opening and closing containers**. When you enable Worker while Namespace is visible, each namespace visually "opens" — workers emerge from the namespace node and spread into their spatial arrangement while the namespace recedes to a background anchor. When you disable Worker, workers converge back into their namespace and disappear. The same applies one level deeper: enabling L3 types opens workers to reveal their registered definitions.
+Type transitions are **opening and closing containers**. When you enable Worker while Namespace is visible, each namespace visually "opens" — workers emerge from the namespace node and spread into their spatial arrangement while the namespace recedes to a background anchor. When you disable Worker, workers converge back into their namespace and disappear. The same applies one tier deeper: enabling the orchestrator and leaf kinds opens workers to reveal their registered definitions.
 
-When a middle layer is hidden (e.g., enabling L3 types while Worker is off), the container metaphor skips the hidden level — L3 nodes emerge from their grandparent Namespace via graduated containment.
+When a middle tier is hidden (e.g., enabling workflows while Worker is off), the container metaphor skips it — the revealed nodes emerge from their grandparent Namespace via graduated containment.
 
 This metaphor constrains the animation design:
 - Children must emerge *from* their nearest visible ancestor, not appear at arbitrary positions — the spatial origin preserves the containment relationship.
@@ -289,7 +289,7 @@ The user's mental model is: "I zoomed into this thing and saw what's inside." Th
 
 ### Revealing a Type (e.g., enabling Worker while Namespace is visible)
 
-1. **Seed positions** — Place incoming nodes at the position of their nearest visible ancestor (parent if visible, grandparent if parent is hidden). This keeps the spatial context intact.
+1. **Seed positions** — Place incoming nodes at the position of their nearest visible ancestor (parent if visible, grandparent if parent is hidden). This keeps the spatial context intact. Whether an axis seeds and refits this way is its descriptor's reheat policy (`reheat`): the Kind axis does; the File axis reheats in place and keeps the user's pan and zoom.
 2. **Set initial forces** —
    - Containment link strength: **maximum** (children cling to ancestor).
    - Intra-level dependency link strength: **zero** (children ignore peer edges initially).
@@ -303,7 +303,7 @@ The user's mental model is: "I zoomed into this thing and saw what's inside." Th
 
 ### Hiding a Type (e.g., disabling Worker)
 
-Reverse the process: fade out, collapse charge and link strengths, then remove nodes when they've converged back to their nearest visible ancestor position. If hiding a middle layer while both parent and child types remain visible, the graduated containment edges animate in as the hidden nodes fade out — the graph smoothly transitions from a 3-level to a 2-level layout.
+Reverse the process: fade out, collapse charge and link strengths, then remove nodes when they've converged back to their nearest visible ancestor position. If hiding a middle layer while both parent and child types remain visible, the graduated containment edges animate in as the hidden nodes fade out — the graph smoothly transitions from a three-tier to a two-tier layout.
 
 ### Force Strength Interpolation
 
@@ -325,7 +325,7 @@ Each node type should be visually distinct using redundant encoding (don't rely 
 | Activity       | Circle or pill        | Small     |
 | NexusService   | Circle or pill        | Small     |
 
-Level 3 node types share the same size tier but are distinguished by color and icon (matching the tree view's existing color system: purple for workflows, blue for activities, pink for nexus services). Fill and border are the value's declared colour in the pane's resolved theme (§ Color); the canvas is theme-aware, so a dark pane draws the dark palette.
+Orchestrator- and leaf-tier values share a size — each value's `size` is the taxonomy's — and are distinguished by colour and icon (matching the tree view's existing color system: purple for workflows, blue for activities, pink for nexus services). Fill and border are the value's declared colour in the pane's resolved theme (§ Color); the canvas is theme-aware, so a dark pane draws the dark palette.
 
 Each node displays **only its name** as a label — all other detail (composition counts, file, connection degree, duplicate copies) lives in the hover box, not under the node. Labels use a dedicated `--color-graph-label` colour (softened — slate-700 in light themes, slate-300 in dark — rather than maximum contrast, so names aren't the only bright text on the canvas) at a semibold weight and slight translucency (so edges stay visible through them). Names up to 15 characters are shown in full; longer names are truncated to 12 characters plus an ellipsis. Overlap is handled by collision-based elision — see § Visual Density.
 
@@ -351,7 +351,7 @@ Every edge is stroked by its **resolved edge type** — the same classification 
 
 Edge opacity and thickness can be secondary signals — thicker or more opaque for higher-traffic connections if multiplicity data is available in the future.
 
-Nexus edges carry metadata (endpoint, service, operation) shown on hover. Hovering a nexus edge can highlight all edges sharing the same nexus scope (endpoint, service, or operation) to reveal shared routing. What a hidden node does to the dependency edges touching it is the taxonomy's per-value policy (`whenHidden`, D59): `ascend` re-points the edge to the nearest visible ancestor; `splice` — the operation's — follows the hidden node's own dependency edges through, so caller → operation → backing draws as caller → backing, and a spliced edge keeps precedence over an ascended one that lands on the same pair.
+Nexus edges carry metadata (endpoint, service, operation) shown on hover. Hovering a nexus edge can highlight all edges sharing the same nexus scope (endpoint, service, or operation) to reveal shared routing. What a hidden node does to the dependency edges touching it is the taxonomy's per-value policy (`whenHidden`, D59): `ascend` re-points the edge to the nearest visible ancestor; `splice` — the operation's — follows the hidden node's own dependency edges through, so caller → operation → backing draws as caller → backing, and when two graduated edges land on one pair the one carrying metadata keeps precedence, in either order (D60).
 
 ### Color
 
@@ -361,15 +361,15 @@ See [PRODUCT.md](./PRODUCT.md) § Visual Identity for the shared color palette. 
 
 Structural summaries communicate a node's role at a glance, but to keep the canvas uncluttered they live in the **hover box**, not as a second label under the node. See [PRODUCT.md](./PRODUCT.md) § Glanceable summaries for the design principle.
 
-| Node Level | Summary | Example | Where shown |
-|------------|---------|---------|-------------|
-| Level 1 (Namespace) | Contained children, counted per style value and named by its abbreviation | `5 Wk · 1 Ep` | Hover box (composition line) |
-| Level 2 (Worker / Nexus Service) | The same rule — the values it hosts | `3 Wf · 1 Act`, `2 Op` | Hover box (composition line) |
-| Level 3 (Definition) | Dependency degree (in/out) | `→3 ←2` | Hover box (connections row) |
+| Value (`summaryKind`) | Summary | Example | Where shown |
+|---|---|---|---|
+| Namespace, Worker, Nexus Service (`children`) | Contained children, counted per style value and named by its abbreviation | `5 Wk · 1 Ep`, `3 Wf · 1 Act`, `2 Op` | Hover box (composition line) |
+| Workflow, Activity, Nexus Operation (`degree`) | Dependency degree (in/out) | `→3 ←2` | Hover box (connections row) |
+| Nexus Endpoint (`none`) | — | — | — |
 
 **Presentation:**
-- Composition counts (L1, L2) appear as a dedicated line in the hover tooltip; dependency degree (L3) is already represented by the tooltip's connections row, so it is not duplicated.
-- Counts reflect only the currently visible children/edges — if Level 3 is not in the selected range, a Worker node does not show a registration count — consistent with filter-as-source-of-truth.
+- Composition counts (`children`) appear as a dedicated line in the hover tooltip; dependency degree (`degree`) is already represented by the tooltip's connections row, so it is not duplicated. The dispatch is the taxonomy's (D58).
+- Counts reflect only the currently visible children/edges — with no orchestrator or leaf kind visible, a Worker shows no registration count — consistent with filter-as-source-of-truth.
 
 ---
 
@@ -605,7 +605,7 @@ The graph view surfaces parse errors and warnings using the shared error handlin
 
 ## Search and Filtering
 
-The graph view uses the unified filter bar shared with the tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar). The two structural filter dimensions (files, types) are per-view and reconciled on every view switch; the search query is globally shared.
+The graph view uses the unified filter bar shared with the tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar). Each declared filter axis (File, Kind) is per-view and reconciled on every view switch; the search query is globally shared.
 
 The graph adds one graph-specific behavior: **edge graduation** (see § Type Filtering above). When a type is toggled off, edges graduate across hidden layers rather than simply disappearing. This means the graph always shows a coherent structure regardless of which types are visible.
 
@@ -626,7 +626,7 @@ Search matches against **all** nodes, including those excluded by structural fil
 - **Hidden matches** — nodes that match the search but are excluded by structural filters (toggled-off type, filtered file). Not rendered in the graph.
 
 Hidden match counts appear as **badge overlays** on the filter controls that are hiding them:
-- If 3 matching workflows are hidden because the Workflow type toggle is off, the Wf toggle shows a badge: "3".
+- If 3 matching workflows are hidden because the Workflows chip is off, that chip shows a badge: "3".
 - If 2 matching nodes are hidden because their source file is filtered out, the corresponding file chip shows a badge: "2".
 
 This lets the user discover that matches exist, understand *why* they're hidden, and decide whether to adjust filters to reveal them. Search informs but never overrides filters.
@@ -691,7 +691,7 @@ When the hovered or selected node belongs to a **duplicate group** (a definition
 
 Sister copies are added to the highlight set only when they pass the current type and file filters. A copy that's been hidden by the user's filters does not pop back into visibility on hover; the hover interaction extends what's already on screen, it doesn't override the filter.
 
-The transitive chain follows only **visible edges** — including graduated edges when intermediate types are hidden. If only Namespace is enabled, the chain follows Namespace → Namespace derived edges. If Namespace and Workflow are enabled (Workers hidden), the chain follows graduated containment and L3 dependency edges. This is consistent with filter-as-source-of-truth: the user sees relationships between what's visible, not inferred relationships from hidden data.
+The transitive chain follows only **visible edges** — including graduated edges when intermediate types are hidden. If only Namespace is enabled, the chain follows Namespace → Namespace derived edges. If Namespace and Workflow are enabled (Workers hidden), the chain follows graduated containment and the workflows' dependency edges. This is consistent with filter-as-source-of-truth: the user sees relationships between what's visible, not inferred relationships from hidden data.
 
 ### Selection
 
@@ -861,7 +861,7 @@ At high node counts, the graph risks becoming a hairball. Strategies to manage t
 
 - **Label elision** — Two complementary mechanisms keep labels readable: (1) below a low zoom threshold, name labels are hidden entirely (only the colour-coded shapes remain), reappearing on hover or when zoomed in; (2) at all other zooms, each label is placed only if its box overlaps neither an already-drawn label **nor any node body** this frame, so dense clusters thin out their labels instead of overprinting nodes or each other. The hovered/selected node always wins, and the choice is greedy in (stable) node order so it doesn't flicker once the layout settles. Because labels hide rather than shrink, zooming in (up to 40×) spreads nodes apart and progressively reveals more labels. (There is no longer a secondary summary badge under the node — composition counts moved to the hover box, § Node Summaries.)
 - **Zoom-responsive node sizing** — Node bodies and labels scale down (clamped) as the user zooms out, so a zoomed-out graph reads as a clean constellation instead of a chaotic field of overlapping full-size dots. See § Visual Encoding → Node Appearance.
-- **Edge bundling** — When many edges connect the same pair of workers or namespaces at coarser zoom levels, the derived edge already compresses them to one. At Level 3 with many visible edges between the same two worker groups, consider visual bundling (routing edges through shared paths) or opacity reduction for parallel edges.
+- **Edge bundling** — When many edges connect the same pair of workers or namespaces at coarser zoom levels, the derived edge already compresses them to one. With the orchestrator and leaf kinds visible and many edges between the same two worker groups, consider visual bundling (routing edges through shared paths) or opacity reduction for parallel edges.
 - **Type toggles as density control** — The type filter is the primary density management tool. The default view (Workers and Workflows only) shows a moderate-density graph. Users opt into density by enabling additional types. This is density management through progressive disclosure rather than algorithmic simplification.
 - **Zoom-dependent detail** — Node rendering can reduce detail at distant zoom: drop icons, simplify shapes to dots, reduce border thickness. The node remains clickable and hoverable at all zoom levels.
 

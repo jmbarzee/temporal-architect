@@ -7,7 +7,7 @@ For the product vision, user goals, UX principles, and visual identity, see [PRO
 
 ## View Model
 
-The views use a **tab switching** model. One view is active at a time. Each view maintains its own scroll/zoom and expand/collapse state independently. The two structural filter dimensions (files, types) are per-view and reconciled on every switch (§ View Transitions); the search query is globally shared (§ Unified Filter Bar).
+The views use a **tab switching** model. One view is active at a time. Each view maintains its own scroll/zoom and expand/collapse state independently. Each declared filter axis — the host declares two, File and Kind — is per-view and reconciled on every switch (§ View Transitions); the search query is globally shared (§ Unified Filter Bar).
 
 **Default view:** Tree View is the default on first load. It's the more familiar interaction model (collapsible list) and works immediately with any AST. Graph View is a "power view" the user discovers via the tab bar.
 
@@ -29,8 +29,8 @@ This vocabulary unifies what would otherwise be separate features ("Show in Grap
 
 | Intent | Trigger | Reconciliation |
 |---|---|---|
-| `manual` | User clicks the destination tab in the tab bar. | For each filter dimension (files, types): if destination's dimension is **pinned** (§ Per-Dimension Pinning), leave it alone; otherwise adopt the source view's current value. |
-| `focus(target)` | User invokes "Show in [view]" on a definition or node. | Take destination's current filter and **expand** it only as needed to make the target visible (add the target's type if toggled off; add the target's source file if file filtering is active). Pins do not block expansion — a `focus` transition can override a pin, with a visible cue. The pin state itself is not changed. |
+| `manual` | User clicks the destination tab in the tab bar. | For each filter axis: if destination's axis is **pinned** (§ Per-Dimension Pinning), leave it alone; otherwise adopt the source view's current value. |
+| `focus(target)` | User invokes "Show in [view]" on a definition or node. | Take destination's current filter and **expand** it only as needed to make the target visible — the target names its values per axis (`FocusTarget`), and each axis's focus policy says how: a kind is always added; a file only widens an already-active selection, since adding the first file would narrow from everything to one. Pins do not block expansion — a `focus` transition can override a pin, with a visible cue. The pin state itself is not changed. |
 
 A `mirror` intent (force one view's filters onto the other, ignoring pins) is deliberately **not** exposed: it would let one view silently discard the other's filter state. The name is reserved should an explicit power-user gesture ever justify it.
 
@@ -79,23 +79,23 @@ Filters remain authoritative. `focus(target)` never bypasses filters silently �
 
 ## Unified Filter Bar
 
-Both views display the same visual filter bar with the same three filter dimensions:
+Both views display the same filter bar, rendered from the host's declared filter axes (R6, R14, R19) in the view's **chain** — the axes shown, in order, editable per view (R17): each axis is a section of chips with its pin and a `×` that removes it (and stops it filtering), and a `+` adds a declared axis not yet shown; an empty chain is the small bar with just `+` and the search (R18). The default chain is the host's declared order: File, then Kind.
 
 ```
-[file chips...] 🔒 | [NS] [Worker] [Wf] [Act] [Nxs] 🔒 | [🔍 search]
+[file chips...] 🔒 × | [Namespaces] [Workers] [Nexus] [Workflows] [Activities] 🔒 × | + | [🔍 search]
 ```
 
 **Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the filter narrows to a single file, the extension opens that file in the editor. For **packaged** designs, a node's [`package`](../../../skills/temporal-architect-design/topics/packages.md) is recoverable from its qualified node-ID (see GRAPH_VIEW.md § Packages and Qualified Identity), so package is available as a **derived grouping lens** parallel to the source-file dimension — no new wire data. Today "package" ≈ the source-file chip; an unpackaged design has a single implicit package, so the lens is inert for it.
 
-**Type toggles** — Five toggle buttons, one per definition type, using the type's color: NS (dark grey), Worker (medium grey), Wf (purple), Act (blue), Nxs (pink). Each toggle shows/hides all items of that type. Both views use the same five toggles — the graph has no separate level selector.
+**Kind chips** — the Kind axis's chips as its descriptor declares them: five chips over seven kinds (Nexus groups the endpoint, service and operation kinds), each tinted with a style value's colour from the taxonomy (`FilterChip.tint`) and carrying its icon. Each chip shows/hides every item of its kinds. Both views render the same chips from the same descriptor — the graph has no separate tier selector.
 
-**Per-dimension pin icons** — A small lock icon sits at the trailing edge of the Files section and the Types section in each view's filter bar. See § Per-Dimension Pinning below.
+**Per-axis pin icons** — A small lock icon sits at the trailing edge of each axis's section in each view's filter bar. See § Per-Dimension Pinning below.
 
 **Name search** — Text input (toggled by `/` or `Ctrl+F`). Case-insensitive substring match against definition/node names. Search is **non-destructive in both views**: it dims non-matching items rather than hiding them. See § Search Scope below.
 
 ### Filter State Model
 
-The two structural filter dimensions (files, types) live as **per-view state** at the `WorkflowCanvas` level — one copy for the Tree view's filter, one copy for the Graph view's filter. While a view is active, the user freely edits its filter without affecting the other view.
+The filter state is a map from axis to its selected values (`FilterState`), held as **per-view state** at the `WorkflowCanvas` level — one copy for the Tree view's filter, one copy for the Graph view's. What an empty selection means (File: everything; Kind: nothing) and what a node with no value on an axis does (File: stays visible) are each axis's declared policy, read in one place for both views. While a view is active, the user freely edits its filter without affecting the other view.
 
 On every view switch, the reconciler (§ View Transitions) decides how the destination view's filter responds to the source view's current state. The default behavior is **propagation**: edits in one view flow to the other so the views stay in sync. The user can opt out of propagation per dimension by **pinning** that dimension on the view they want to hold steady.
 
@@ -106,7 +106,7 @@ This design satisfies two competing intuitions:
 
 ### Per-Dimension Pinning
 
-Each view's filter bar exposes two **pin icons** — one on the Files chip row, one on the Types toggle row. Each pin freezes its dimension at its current value:
+Each axis section in a view's filter bar carries a **pin icon**. A pin freezes its axis at its current value:
 
 - **Unpinned (default, 🔓):** `manual` transitions adopt the source view's current value for this dimension. Edits propagate automatically.
 - **Pinned (🔒):** `manual` transitions skip this dimension. The view holds its current value regardless of what the other view does.
@@ -130,15 +130,15 @@ Each view renders search matches in its own native style:
 
 When a search is active, filter controls that are hiding matches show **badge overlays** with the count of hidden matches. For example: if the Wf toggle is off and 3 workflows match the search, the Wf button shows a "3" badge. This lets users discover hidden matches and decide whether to adjust filters.
 
-Because search is non-destructive, badges apply only to matches hidden by *structural* filters (file/type toggles); search itself never hides anything. See GRAPH_VIEW.md § Search and Hidden Matches for full behavior.
+Because search is non-destructive, badges apply only to matches hidden by *structural* filters (the file and kind chips); search itself never hides anything. See GRAPH_VIEW.md § Search and Hidden Matches for full behavior.
 
 ### Layout Stack
 
-The filter bar is a **single shared component** (`FilterBar`) rendered by both views — file chips with pin and per-chip definition counts, type toggles with pin and counts, search, and the **error/warning bars** at its bottom. Defining it once is what keeps the two views' toolbars in lockstep.
+The filter bar is a **single shared component** (`FilterBar`, the library's) rendered by both views — one chip section per axis in the chain, each with its pin and per-chip counts, the search, and a slot at its bottom that the host fills with its **error/warning bars**. The counts and the findings are the host's, handed in: the bar knows the taxonomy's axes and chips, not the AST. Defining it once is what keeps the two views' toolbars in lockstep.
 
 The layout stack is:
 
-1. **Filter bar** (`canvas-header`) — shared; visually identical across views. File chips, type toggles, search, and the error/warning bars (§ Error Handling).
+1. **Filter bar** (`canvas-header`) — shared; visually identical across views. File chips, kind chips, search, and the error/warning bars (§ Error Handling).
 2. **Content** — tree block list or graph canvas, filling remaining space.
 
 The filter bar is always first, so users always know where to find it regardless of which view they're in.
@@ -172,14 +172,14 @@ signal across the whole visualizer.
 
 ### Tree View
 - File filter: focused file (if the AST identifies one), otherwise no files selected (= all included).
-- Definition type toggles: Workers and Workflows **ON**; Namespaces, Nexus Services, and Activities **OFF**.
-- Pins: Files and Types both **unpinned** (propagation enabled).
+- Kind: the values the taxonomy declares default-visible — Workers and Workflows **ON**; Namespaces, the Nexus kinds and Activities **OFF**.
+- Pins: every axis **unpinned** (propagation enabled).
 - All definitions collapsed.
 
 ### Graph View
 - File filter: same defaults as Tree (sync from Tree on first switch since pins are unset).
-- Type toggles: same defaults as Tree View.
-- Pins: Files and Types both **unpinned**.
+- Kind: same defaults as Tree View.
+- Pins: every axis **unpinned**.
 - Force simulation running with default strength parameters.
 
 ### Shared
@@ -201,7 +201,7 @@ Empty states apply identically to both views. The message is centered in the con
 
 ## Error Handling
 
-When the AST contains parse errors or warnings, both views surface them in the same way — through the shared filter bar, which owns the error/warning UI.
+When the AST contains parse errors or warnings, both views surface them in the same way — the host's error/warning bars, rendered into the shared filter bar's findings slot. The shapes are the parser's; the bar's library knows nothing of them.
 
 ### Error and Warning Bars
 
@@ -254,7 +254,7 @@ Definitions and nodes are matched across AST versions **by name**. A definition 
 |-------|----------|
 | Node positions | Preserved for nodes that still exist. Simulation does not restart for surviving nodes. |
 | Viewport (zoom/pan) | Preserved. |
-| Type toggle selections | Preserved. |
+| Kind selections | Preserved. |
 | Force parameters | Preserved (slider values unchanged). |
 
 ### Additions and Removals
