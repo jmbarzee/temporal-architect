@@ -1,8 +1,8 @@
 // Graph data model for the force-directed graph view.
 // Derived from GRAPH_VIEW.md § Graph Data Model.
 
-import type { DimensionMap, DimensionValue } from './dimension'
-import { DISPATCH_DIMENSION, RELATION_DIMENSION } from './dimension'
+import type { DimensionMap } from './dimension'
+import { RELATION_DIMENSION } from './dimension'
 import type { EdgeCategoryKind } from './taxonomy'
 
 export interface GraphNode {
@@ -32,7 +32,14 @@ export interface GraphNode {
    * is part of the library's vocabulary again.
    */
   payload?: Readonly<Record<string, unknown>>
-  /** Containment parent, when this node has one. */
+  /**
+   * The container this node sits in, when it has one. The same fact as the
+   * containment edge from this node to its container — the host writes both
+   * from one lookup, and the view reads this one where it needs a parent at
+   * O(1) (the ancestor walk, reach, seeding) and the edges where it needs the
+   * children (summaries, graduation, drawing). Two readings of one fact, kept
+   * in step by the host that writes them (D64).
+   */
   parentId?: string
   /** True when no parent in the hierarchy (uninstantiated definition). */
   orphan: boolean
@@ -81,7 +88,11 @@ export interface GraphEdge {
   targetId: string
   /**
    * Where this edge sits on every axis it has a value for. The library declares
-   * two (`RELATION_DIMENSION`, `DISPATCH_DIMENSION`); a host may add more.
+   * one, `RELATION_DIMENSION`, whose value must be `containment` or `dependency`
+   * (`relationOf` throws on anything else, at the first read); a host adds its
+   * own — the first host's `dispatch`, its call kind. A containment edge runs
+   * from the child (`sourceId`) to its container (`targetId`), and the child's
+   * `parentId` names that container.
    */
   dimensions: DimensionMap
   /**
@@ -108,10 +119,6 @@ export function isContainment(edge: Pick<GraphEdge, 'dimensions'>): boolean {
   return relationOf(edge) === 'containment'
 }
 
-/** The producer's dispatch kind for a dependency edge, or undefined. */
-export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): DimensionValue | undefined {
-  return edge.dimensions[DISPATCH_DIMENSION]
-}
 
 /**
  * A graph as a reader sees it — its nodes, its edges, and a lookup by id —
@@ -132,10 +139,12 @@ export function readableGraph(graph: Graph): ReadableGraph {
 export interface Graph {
   nodes: Map<string, GraphNode>
   edges: GraphEdge[]
-  // Definition key → every node id that represents a copy of that
-  // definition. Populated by `buildGraph` once all nodes exist. A singleton
-  // (one registration, or an orphan definition) has one entry; a definition
-  // registered on three hosts has three. Consumers read this to keep sister
-  // copies undimmed during hover/select interactions in GraphView.
+  /**
+   * `definitionKey` → every node id that carries it: the index of the key the
+   * nodes already hold, built by the host once all nodes exist. A singleton
+   * has one entry; a definition deployed in three places has three. The view
+   * reads it for the duplicate halo and the hover box's "copy N of M", and the
+   * first host for its group overlay.
+   */
   duplicateGroups: Map<string, Set<string>>
 }

@@ -47,7 +47,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:lib": "vite build --config vite.lib.config.ts",
+    "build:lib": "vite build --config vite.lib.config.ts && node verify/prune-dts.mjs",
     "fixtures": "node verify/make-fixtures.mjs",
     "verify": "vite build --config vite.verify.config.ts && node verify/run.mjs",
     "leak-gate": "node verify/leak-gate.mjs",

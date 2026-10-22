@@ -4,6 +4,10 @@
 // chunk -> division options -> sections, and a read-only parameter readout.
 // It mirrors GraphControlPanel's collapse/tab structure and reuses its CSS.
 
+// Borrows the library's panel chrome — `.graph-control-panel*`, `.switch*` and
+// the `--toolbar-height` the pane sets on its root — by class name, which no
+// gate can see (REVIEW_8 C9). A rename inside the library's GraphControlPanel.css
+// lands here first.
 import React from 'react'
 import './GroupsModal.css'
 import type { Decomposition, Chunk, Division, Section } from '../types/decomposition'

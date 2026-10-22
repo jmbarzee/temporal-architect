@@ -1925,3 +1925,103 @@ unit is the catch-up for the rest.
 **Golden change (§8.2).** None — no gate measures the spec.
 
 — 2026-10-22 — agent
+
+**D64 — What REVIEW_8 changed: the boundary resolved in both directions, the
+artifact gated as it ships, the surface made a host's rather than one host's,
+and D62 corrected (Unit 8 close).** The five-lens review (62 findings, 27
+clusters, 22 verified, 0 refuted) downgraded all five filed-blocker clusters
+to major and confirmed four majors; the rest it found in what D62 had claimed
+and not measured, or in what the move had carried across without asking.
+
+1. **Gate 6 resolves** (C1–C4). The host-side check matched one spelling of
+   one specifier; a relative path, the `@/` alias and a barrel in the exempt
+   harness all reached the library's internals at 0. Every edge is resolved
+   now: a host file outside the harness may reach the library's entry and
+   nothing deeper, by any spelling, and may not reach the harness; a library
+   file may reach nothing outside its `src/` — relative paths, stylesheet
+   `@import`/`url()` targets and `import.meta.glob` patterns resolved, no
+   `@temporal-architect/*` package, no bare specifier the library's own
+   `package.json` does not declare — and the library's configs declare no
+   path map or alias. Every ratchet now measures `.js/.mjs/.jsx/.mts/.cts`
+   beside `.ts/.tsx/.css`. Measured 0 before and after; the config check
+   first fired on the word "alias" in a comment and now reads code.
+2. **The surface gate refuses `export *`** (C5), which added names past it
+   with every gate green; **the map's dropped edges** (C6): a host-sized path
+   slice listed every library module as imported by nothing — `model.ts` is
+   imported by 21 files.
+3. **The artifact as it ships** (C8, C10, C17). The visualizer's declarations
+   that named library types were emitted with repo-relative imports into
+   `../graph-view/src`, dangling once installed, and its types gate compiled
+   inside the repository where they resolve. `build:lib` now prunes every
+   declaration the entry does not reach (`verify/prune-dts.mjs`: the
+   library 47 → 15 files, the force model among the pruned; the visualizer
+   29 → 10, the seven escaping files among the pruned); the gate walks what
+   ships, refuses an import that leaves the package and a private module
+   that is present, compiles a consumer against a copy of the artifact
+   OUTSIDE the repository, and reads the published stylesheet for the design
+   tokens — once per theme where themed, once for the fonts — because the
+   token sheet reaches both artifacts through one side-effect import no other
+   gate can see. The `rollupTypes` comments say what the plugin does (T31).
+4. **The release path** (C7). A job that installs only the visualizer
+   compiles the library's source without its `node_modules`: 77 type errors,
+   swallowed. Every Makefile target that compiles either package now
+   installs the sibling first. D62 §6's "attached to a Release beside the
+   visualizer's" was false — `_build-artifacts.yml` neither installs nor
+   packs it, and it is outside this run's bounds — filed as #187 with the
+   repo-level registrations (C12).
+5. **The surface is a host's** (C18, C19). The entry was the first host's
+   import list, so it carried what that host happened to need and lacked
+   what a second host's spec names. Moved to the host: the two gear glyphs
+   (the host's activity and workflow icons, with the comments the leak gate
+   had scrubbed), the two-view app's persistence (`storage.ts`, with its
+   `acquireVsCodeApi`), and the `dispatch` axis with `dispatchOf` — D48 said
+   the engine read it; nothing in the library does, the host's edge rules
+   do. Replaced by shape: `HOVER_STRENGTH` handed to the host to hand back is
+   `NodeGroup.emphasized`, and `onShowInTree` with a hard-coded label is
+   `crossView { label, onFocus }`, the host's words. Added the types a
+   spec names: `ScalarAxis`, `ScalarSpan`, `ThemedColor`, `ColorPair`,
+   `Theme`, `ReadableGraph`, `DimensionId`, `EdgeTypeId`, `SpringPhysics`,
+   `StyleGroup`, `StyleSubject`, `Selection`, `ReconcileResult`, and
+   `relationOf`. The entry is **57** names now (`graph-view-surface.txt`
+   rewritten), and `static.hostProbes` is a second host written against it
+   alone — three values, two edge types, an axis of each policy, a scalar
+   reading the graph — declared, built and mounted on a server render.
+6. **The seams D61 cut, pinned** (C21): `static.seamProbes` — the view's half
+   of the overlay on a case every rule meets (restriction, the empty dropped,
+   colours dealt in order, the emphasised at 2.2), the host's half over the
+   decomposition fixture, `definitionCounts` per fixture, and the bar
+   rendered with the counts in its badges and the findings in its slot.
+7. **Stylesheet ownership** (C9). The findings palette no library rule read
+   lived in the library's tokens; it is the host's now, light and dark, and
+   `--hover-bg`, which nothing read, is gone. The host's groups control
+   borrows the library's panel chrome by class name, a coupling no gate sees;
+   it is said where it happens.
+8. **The flash hook** (C24): a removal-only change arriving within a pending
+   flash cancelled the clear and left the old set lit; the set is written on
+   every change, empty included.
+9. **The record corrected** (C27, record-6, record-10). The entry re-exported
+   from 15 modules, not 16; three allowlist entries in two files were
+   renamed, not two; "every count identical to Unit 7's" was not checkable
+   against Unit 7's captures, which had a chip off — the counts are the
+   fixtures' full totals, every chip on. D58 §9's "Unit 8 publishes the
+   library's surface": the surface exists on the library's entry — a host
+   configures colours, sizes, labels and abbreviations through
+   `OntologySpec` from it — and publication to npm is deferred (D62); R15
+   and R16 say so. T28's other half: the spec review no longer speaks of a
+   missing document's tiers. The total-vocabulary ceiling is 1101 → **1103**:
+   the two gear comments restored in the host's theme, back where the words
+   belong.
+10. **Not changed, named.** The modal's borrowed chrome (§7); VS Code's
+    marker classes in the theme hook (a convenience beside the generic
+    `data-theme`); the harness state name `types:l3`, which is a golden key;
+    the parser's `tier` field beside the registry's; `node16` module
+    resolution of the declarations (C16; the visualizer has the same shape);
+    the `prepack` licence copy from the repo root (C15; the precedent); the
+    review prompts' scope (#179) and the release workflow (#187), both
+    outside the bounds; the bar's two named hidden-match props, which Unit 9
+    generalises.
+
+**Golden change (§8.2).** Added: `static.seamProbes`, `static.hostProbes`.
+Nothing else moves — every other row byte-identical, 7/7.
+
+— 2026-10-22 — agent

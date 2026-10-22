@@ -4,22 +4,11 @@
 // No test framework and no new dependency: the harness is a program that prints
 // a JSON snapshot, and `verify/run.mjs` is the thing that diffs it.
 import { defineConfig } from 'vite'
+import { libraryResolve } from './vite.shared'
 import { resolve } from 'path'
 
 export default defineConfig({
-  resolve: {
-    // The graph-view library, from source: one install, HMR, and no build order
-    // between the two packages (D62). The bare specifier is the public entry;
-    // the deep form is the harness's road to internals.
-    alias: [
-      { find: /^@temporal-architect\/graph-view$/, replacement: resolve(__dirname, '../graph-view/src/index.ts') },
-      { find: /^@temporal-architect\/graph-view\/(.+)$/, replacement: resolve(__dirname, '../graph-view/src/$1') },
-      { find: '@', replacement: resolve(__dirname, 'src') },
-    ],
-    // The library's files sit beside their own node_modules; React must still
-    // resolve to this package's one copy, or hooks meet two Reacts at runtime.
-    dedupe: ['react', 'react-dom'],
-  },
+  resolve: libraryResolve(__dirname),
   // The fixtures are imported as JSON modules, not served — copying `public/`
   // into the output would only duplicate them.
   publicDir: false,

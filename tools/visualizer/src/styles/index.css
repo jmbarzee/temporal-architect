@@ -8,12 +8,41 @@
 
 :root,
 [data-theme="light"] {
-  /* The host's own block tokens; the chrome's are the library's (tokens.css). */
+  /* The host's own block tokens; the chrome's are the library's (tokens.css).
+     The scheme's --node-<suffix> variables for the host's own CSS are published
+     on :root by mountNodeTypeStyles(); the graph pane carries them inline in its
+     resolved theme (D57, D58). */
   --color-workflow: #8B7EC8;
   --color-activity: #7CB9E8;
   --color-signal: #E8A0BF;
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
+  /* The findings palette: the error and warning bars are the host's (D61), so
+     their colours are too. The warning hue sits apart from the error hue so a
+     validator warning reads apart from a parse failure at a glance. */
+  --color-error: #dc2626;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+  --color-error-text: #991b1b;
+  --color-warning: #d97706;
+  --warning-fg: #92400e;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-accent: #d97706;
+}
+
+.vscode-dark,
+[data-theme="dark"] {
+  /* Readable amber and red on dark surfaces; the same hue families. */
+  --color-error: #f87171;
+  --color-error-bg: #450a0a;
+  --color-error-border: #7f1d1d;
+  --color-error-text: #fca5a5;
+  --color-warning: #fbbf24;
+  --warning-fg: #fcd34d;
+  --warning-bg: #422006;
+  --warning-border: #78350f;
+  --warning-accent: #fbbf24;
 }
 
 

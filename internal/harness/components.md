@@ -19,7 +19,7 @@ Review prompts referenced below live at `.claude/skills/dev-cycle/references/<na
 | `dsl` | `tools/spec/sections/` | `internal/changes/dsl/` | `review-quality-dsl-spec` | — | `parser` [Grammar] |
 | `parser` | `tools/lsp/` | `internal/changes/parser/` | `review-quality-parser` | `review-alignment-parser` | `visualizer` [Schema, API], `visualizer-spec` [Schema], `skills` [Grammar, Semantic] |
 | `visualizer-spec` | `tools/visualizer/spec/` | `internal/changes/visualizer-spec/` | `review-quality-visualizer-spec` | — | `visualizer` [Spec] |
-| `graph-view` | `tools/graph-view/` | `internal/changes/graph-view/` | `review-quality-visualizer` (its scope covers both packages) | `review-alignment-visualizer` | `visualizer` [API] |
+| `graph-view` | `tools/graph-view/` | `internal/changes/graph-view/` | `review-quality-visualizer` (scope to be widened to `tools/graph-view/src/` — #179) | `review-alignment-visualizer` (same) | `visualizer` [API] |
 | `visualizer` | `tools/visualizer/` (excluding `spec/`) | `internal/changes/visualizer/` | `review-quality-visualizer` | `review-alignment-visualizer`, `review-alignment-parser-visualizer` | — (leaf) |
 | `sampler` | `tools/sampler/` | `internal/changes/sampler/` | `review-quality-sampler` | — | — (leaf) |
 | `skills` | `skills/` | `internal/changes/skills/` | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — (leaf) |

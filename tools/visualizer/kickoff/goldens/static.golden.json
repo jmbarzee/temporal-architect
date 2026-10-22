@@ -1262,6 +1262,34 @@
     "  --node-activity-border: #5DA8DD;",
     "}"
   ],
+  "hostProbes": {
+    "callsStroke": [],
+    "keys": [
+      "cluster",
+      "service",
+      "pod"
+    ],
+    "podFill": "#336699",
+    "rendered": {
+      "canvas": true,
+      "chips": [
+        "cluster",
+        "east",
+        "pod",
+        "service",
+        "west"
+      ],
+      "files": []
+    },
+    "scalar": {
+      "c1": 0,
+      "p1": 1,
+      "p2": 0,
+      "p3": 0,
+      "s1": 0.5,
+      "s2": 0
+    }
+  },
   "nodeTypes": {
     "activity": {
       "defType": "activityDef",
@@ -2664,6 +2692,340 @@
       "with space": "with-space"
     },
     "variableFor": "--node-nexus-endpoint"
+  },
+  "seamProbes": {
+    "barRendered": {
+      "badges": {
+        "Activities": "9",
+        "Namespaces": "5",
+        "Nexus": "3",
+        "Workers": "5",
+        "Workflows": "8",
+        "nexus.twf": "30"
+      },
+      "findingsSlot": true
+    },
+    "counts": {
+      "decomposition-sample": {
+        "firstFile": {
+          "defType": {
+            "activityDef": 30,
+            "namespaceDef": 1,
+            "workerDef": 1,
+            "workflowDef": 5
+          },
+          "sourceFile": {
+            "resumable-loan-application.twf": 37
+          }
+        },
+        "noFile": {
+          "defType": {
+            "activityDef": 30,
+            "namespaceDef": 1,
+            "workerDef": 1,
+            "workflowDef": 5
+          },
+          "sourceFile": {
+            "resumable-loan-application.twf": 37
+          }
+        }
+      },
+      "multifile-sample": {
+        "firstFile": {
+          "defType": {
+            "activityDef": 9,
+            "namespaceDef": 5,
+            "nexusServiceDef": 3,
+            "workerDef": 5,
+            "workflowDef": 8
+          },
+          "sourceFile": {
+            "nexus.twf": 30,
+            "task-queues.twf": 26
+          }
+        },
+        "noFile": {
+          "defType": {
+            "activityDef": 16,
+            "namespaceDef": 8,
+            "nexusServiceDef": 5,
+            "workerDef": 15,
+            "workflowDef": 12
+          },
+          "sourceFile": {
+            "nexus.twf": 30,
+            "task-queues.twf": 26
+          }
+        }
+      },
+      "nexus-sample": {
+        "firstFile": {
+          "defType": {
+            "activityDef": 9,
+            "namespaceDef": 5,
+            "nexusServiceDef": 3,
+            "workerDef": 5,
+            "workflowDef": 8
+          },
+          "sourceFile": {
+            "nexus.twf": 30
+          }
+        },
+        "noFile": {
+          "defType": {
+            "activityDef": 9,
+            "namespaceDef": 5,
+            "nexusServiceDef": 3,
+            "workerDef": 5,
+            "workflowDef": 8
+          },
+          "sourceFile": {
+            "nexus.twf": 30
+          }
+        }
+      },
+      "stress-sample": {
+        "firstFile": {
+          "defType": {
+            "activityDef": 40,
+            "namespaceDef": 1,
+            "workerDef": 2,
+            "workflowDef": 10
+          },
+          "sourceFile": {
+            "access-control.twf": 53
+          }
+        },
+        "noFile": {
+          "defType": {
+            "activityDef": 40,
+            "namespaceDef": 1,
+            "workerDef": 2,
+            "workflowDef": 10
+          },
+          "sourceFile": {
+            "access-control.twf": 53
+          }
+        }
+      },
+      "taskqueues-sample": {
+        "firstFile": {
+          "defType": {
+            "activityDef": 7,
+            "namespaceDef": 3,
+            "nexusServiceDef": 2,
+            "workerDef": 10,
+            "workflowDef": 4
+          },
+          "sourceFile": {
+            "task-queues.twf": 26
+          }
+        },
+        "noFile": {
+          "defType": {
+            "activityDef": 7,
+            "namespaceDef": 3,
+            "nexusServiceDef": 2,
+            "workerDef": 10,
+            "workflowDef": 4
+          },
+          "sourceFile": {
+            "task-queues.twf": 26
+          }
+        }
+      }
+    },
+    "hostHalf": {
+      "decomposition-sample": {
+        "emphasizedUnderHover": [],
+        "groups": [
+          {
+            "id": "chunk:workflow:ConditionLoop/component:activity:AlertComplianceViolation",
+            "size": 34
+          },
+          {
+            "id": "chunk:workflow:ConditionLoop/service:activity:RecordAuditEvent",
+            "size": 1
+          }
+        ],
+        "off": 0
+      },
+      "multifile-sample": {
+        "emphasizedUnderHover": [
+          "chunk:nexusOperation:AnalyticsService.TrackEvent"
+        ],
+        "groups": [
+          {
+            "id": "chunk:nexusOperation:AnalyticsService.TrackEvent",
+            "size": 5
+          },
+          {
+            "id": "chunk:nexusOperation:BootstrapService.BootstrapShard",
+            "size": 3
+          },
+          {
+            "id": "chunk:nexusOperation:NotificationsService.SendConfirmation",
+            "size": 3
+          },
+          {
+            "id": "chunk:nexusOperation:PaymentService.CheckPaymentStatus",
+            "size": 4
+          },
+          {
+            "id": "chunk:nexusOperation:PaymentsService.GetPaymentStatus",
+            "size": 2
+          },
+          {
+            "id": "chunk:nexusOperation:PaymentsService.ProcessPayment",
+            "size": 5
+          },
+          {
+            "id": "chunk:workflow:AsyncNexusCaller",
+            "size": 2
+          },
+          {
+            "id": "chunk:workflow:BootstrapCaller",
+            "size": 1
+          },
+          {
+            "id": "chunk:workflow:MediaPipeline",
+            "size": 3
+          },
+          {
+            "id": "chunk:workflow:NexusWithOptions",
+            "size": 1
+          },
+          {
+            "id": "chunk:workflow:NexusWithTimeout",
+            "size": 2
+          },
+          {
+            "id": "chunk:workflow:OrderCheckout",
+            "size": 2
+          },
+          {
+            "id": "chunk:workflow:OrderWorkflow",
+            "size": 6
+          },
+          {
+            "id": "chunk:workflow:PartnerCheckout",
+            "size": 1
+          }
+        ],
+        "off": 0
+      },
+      "nexus-sample": {
+        "emphasizedUnderHover": [
+          "chunk:nexusOperation:BootstrapService.BootstrapShard"
+        ],
+        "groups": [
+          {
+            "id": "chunk:nexusOperation:BootstrapService.BootstrapShard",
+            "size": 3
+          },
+          {
+            "id": "chunk:nexusOperation:NotificationsService.SendConfirmation",
+            "size": 3
+          },
+          {
+            "id": "chunk:nexusOperation:PaymentsService.GetPaymentStatus",
+            "size": 2
+          },
+          {
+            "id": "chunk:nexusOperation:PaymentsService.ProcessPayment",
+            "size": 5
+          },
+          {
+            "id": "chunk:workflow:AsyncNexusCaller",
+            "size": 2
+          },
+          {
+            "id": "chunk:workflow:BootstrapCaller",
+            "size": 1
+          },
+          {
+            "id": "chunk:workflow:NexusWithOptions",
+            "size": 1
+          },
+          {
+            "id": "chunk:workflow:NexusWithTimeout",
+            "size": 2
+          },
+          {
+            "id": "chunk:workflow:OrderCheckout",
+            "size": 2
+          }
+        ],
+        "off": 0
+      },
+      "stress-sample": {
+        "emphasizedUnderHover": [
+          "chunk:workflow:AccessRequest"
+        ],
+        "groups": [
+          {
+            "id": "chunk:workflow:AccessRequest",
+            "size": 50
+          }
+        ],
+        "off": 0
+      },
+      "taskqueues-sample": {
+        "emphasizedUnderHover": [
+          "chunk:nexusOperation:AnalyticsService.TrackEvent"
+        ],
+        "groups": [
+          {
+            "id": "chunk:nexusOperation:AnalyticsService.TrackEvent",
+            "size": 5
+          },
+          {
+            "id": "chunk:nexusOperation:PaymentService.CheckPaymentStatus",
+            "size": 4
+          },
+          {
+            "id": "chunk:workflow:MediaPipeline",
+            "size": 3
+          },
+          {
+            "id": "chunk:workflow:OrderWorkflow",
+            "size": 6
+          },
+          {
+            "id": "chunk:workflow:PartnerCheckout",
+            "size": 1
+          }
+        ],
+        "off": 0
+      }
+    },
+    "viewHalf": [
+      {
+        "color": "#2DD4BF",
+        "id": "a",
+        "nodeIds": [
+          "n1",
+          "n2"
+        ],
+        "strength": 1
+      },
+      {
+        "color": "#F59E0B",
+        "id": "c",
+        "nodeIds": [
+          "n3"
+        ],
+        "strength": 2.2
+      },
+      {
+        "color": "#A78BFA",
+        "id": "e",
+        "nodeIds": [
+          "n1"
+        ],
+        "strength": 1
+      }
+    ]
   },
   "syntheticVisible": {
     "cases": {

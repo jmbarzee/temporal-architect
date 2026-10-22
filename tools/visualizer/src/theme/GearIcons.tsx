@@ -1,24 +1,7 @@
-// Magnifying glass icon for search
-export function SearchIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ display: 'block' }}
-    >
-      <circle cx="11" cy="11" r="7" />
-      <line x1="16.65" y1="16.65" x2="21" y2="21" />
-    </svg>
-  )
-}
+// The tree's two SVG glyphs: a single gear for activities, interlocking gears
+// for workflows — clearer than a text glyph at small sizes. The host's, not the
+// library's: they stand for two of this taxonomy's values.
 
-// One gear.
 export function SingleGearIcon({ size = 14 }: { size?: number }) {
   return (
     <svg
@@ -33,7 +16,7 @@ export function SingleGearIcon({ size = 14 }: { size?: number }) {
   )
 }
 
-// Two gears meshed together, offset.
+// Interlocking gears icon for workflows (two gears meshed together, offset)
 export function InterlockingGearsIcon({ size = 16 }: { size?: number }) {
   return (
     <svg

@@ -1,2 +1,4 @@
 node_modules
 dist-lib
+# copied in by prepack, removed by postpack
+LICENSE

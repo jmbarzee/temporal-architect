@@ -1,124 +1,116 @@
-// Gate 2b — the published types must typecheck from a consumer's seat.
+// Gate 2b — the published artifact must work from a consumer's seat.
 //
-// The twin of tools/visualizer/verify/dts-gate.mjs: each package gates its own
-// published surface, and the two differ only in which modules count as private.
+// `build:lib` exiting 0 is a weaker claim than it looks: declarations are
+// emitted from an allowlist, a declaration whose import points outside the
+// package resolves fine while it sits in this repository (REVIEW_8 C8), and a
+// stylesheet has no type-checker (REVIEW_6 C1, REVIEW_8 C10). So this gate:
 //
-// Gate 2 ran `build:lib` and checked the exit code. That is a weaker claim than
-// it looks: vite-plugin-dts emits declarations from an `include` allowlist, and a
-// file outside that list is simply not written — no warning, exit 0. The JS
-// bundle still inlines the implementation, so everything *runs*. Only the `.d.ts`
-// is wrong, and it is wrong in the specific way that `lib.d.ts` re-exports a
-// module that does not exist beside it.
+//   1. walks every shipped `.d.ts` and refuses an import that resolves outside
+//      the published directory — the repo-relative path a declaration gets when
+//      it names a type from a sibling package's source;
+//   2. refuses any shipped declaration of a PRIVATE module (`build:lib` prunes
+//      the unreachable ones, so a private module present here is reachable);
+//   3. compiles a throwaway consumer against a COPY of the artifact placed
+//      outside the repository, with skipLibCheck OFF, so nothing resolves by
+//      accident of where the build ran;
+//   4. reads the published stylesheet for the design tokens the components
+//      read, once per theme — the token sheet reaches the artifact through one
+//      side-effect import that no other gate can see.
 //
-// Unit 2e did exactly that: moving `node-type-styles.ts` into `src/adapter/`
-// left it off the include list, and the shipped `dist-lib/lib.d.ts` re-exported
-// `./adapter/node-type-styles`, which was never emitted. Every gate stayed green.
-//
-// What a consumer sees depends on their config, and both outcomes are bad:
-//   skipLibCheck: false -> hard failure, TS2307
-//   skipLibCheck: true  -> compiles, and every export from that module is `any`
-// The second is worse, because it is silent.
-//
-// So this compiles a throwaway consumer against the exact entry point
-// `package.json` advertises, with skipLibCheck OFF.
+// The twin of the other package's verify/dts-gate.mjs; the two differ in what
+// counts as private.
 
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, statSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const PKG_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const pkg = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf8'))
-
-// Typecheck what is actually published, not a path we happen to know.
-const typesEntry = pkg.exports?.['.']?.types ?? pkg.types
-if (!typesEntry) {
-  console.error('dts gate: package.json declares no types entry point.')
-  process.exit(1)
-}
-const typesPath = resolve(PKG_ROOT, typesEntry)
-console.log(`published types gate — ${typesEntry}`)
-
-if (!existsSync(typesPath)) {
-  console.error(`dts gate: ${typesEntry} does not exist. Run \`npm run build:lib\` first.`)
-  process.exit(1)
-}
-
-const dir = join(PKG_ROOT, 'node_modules', '.cache', 'dts-gate')
-rmSync(dir, { recursive: true, force: true })
-mkdirSync(dir, { recursive: true })
-
-// Import the namespace rather than named exports: this gate is about whether the
-// declaration graph resolves, not about which names exist. A dangling re-export
-// inside lib.d.ts fails the compile no matter what the consumer imports.
-writeFileSync(join(dir, 'consumer.ts'),
-  `import * as lib from ${JSON.stringify(typesPath.replace(/\.d\.ts$/, ''))}\n` +
-  `export const _keep: keyof typeof lib | undefined = undefined\n`)
-
-writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
-  compilerOptions: {
-    strict: true,
-    // The whole point. With this on, a missing declaration is invisible.
-    skipLibCheck: false,
-    noEmit: true,
-    module: 'esnext',
-    target: 'es2020',
-    moduleResolution: 'bundler',
-    jsx: 'react-jsx',
-    types: [],
-    baseUrl: PKG_ROOT,
-  },
-  files: ['consumer.ts'],
-}, null, 2))
-
-// The engine's parameter and force modules are private: `ForceParams` is not
-// part of the published surface, which is what made renaming a field inside it
-// free (D53, #90). The surface gate compares export NAMES and cannot see a type
-// that leaks through another exported type's field (REVIEW_5a C8), so this walks
-// the declaration graph from lib.d.ts and refuses if a private module becomes
-// reachable.
 // The taxonomy (`createOntology`, the scalar axes) IS this package's surface; the
 // force model behind it is not (D53, #90, D62).
 const PRIVATE = [/\/graph\/simulation\.d\.ts$/, /\/graph\/forces\.d\.ts$/]
-function reachableDts(entry) {
-  const seen = new Set()
-  const queue = [entry]
-  while (queue.length) {
-    const file = queue.pop()
-    if (seen.has(file)) continue
-    seen.add(file)
-    let text = ''
-    try { text = readFileSync(file, 'utf8') } catch { continue }
-    for (const m of text.matchAll(/(?:from\s*|import\()\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
-      const base = join(dirname(file), m[1])
-      for (const candidate of [base + '.d.ts', join(base, 'index.d.ts'), base]) {
-        try { if (statSync(candidate).isFile()) { queue.push(candidate); break } } catch { /* try next */ }
-      }
-    }
+
+const typesEntry = pkg.exports?.['.']?.types ?? pkg.types
+if (!typesEntry) { console.error('dts gate: package.json declares no types entry point.'); process.exit(1) }
+const typesPath = resolve(PKG_ROOT, typesEntry)
+const dist = dirname(typesPath)
+console.log(`published artifact gate — ${typesEntry}`)
+if (!existsSync(typesPath)) { console.error(`dts gate: ${typesEntry} does not exist. Run \`npm run build:lib\` first.`); process.exit(1) }
+
+const inside = (root, abs) => { const r = relative(root, abs); return r === '' || (!r.startsWith('..') && !isAbsolute(r)) }
+function all(dir, out = []) {
+  for (const name of readdirSync(dir)) {
+    const abs = join(dir, name)
+    if (statSync(abs).isDirectory()) all(abs, out)
+    else if (name.endsWith('.d.ts')) out.push(abs)
   }
-  return [...seen]
+  return out
+}
+const shipped = all(dist)
+let failed = false
+
+// 1. No declaration imports outside the package.
+const escaping = []
+for (const file of shipped) {
+  const text = readFileSync(file, 'utf8')
+  for (const m of text.matchAll(/(?:from\s*|import\()\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
+    if (!inside(dist, resolve(dirname(file), m[1]))) escaping.push(`${relative(PKG_ROOT, file)} -> ${m[1]}`)
+  }
+}
+if (escaping.length) {
+  console.error('FAIL published declarations import outside the package (they dangle once installed):')
+  for (const e of escaping) console.error('  ' + e)
+  failed = true
 }
 
-try {
-  execFileSync(join(PKG_ROOT, 'node_modules', '.bin', 'tsc'),
-    ['-p', join(dir, 'tsconfig.json')], { stdio: 'pipe', cwd: PKG_ROOT })
-  console.log('published types: consumer compile clean (skipLibCheck off)')
-  const reachable = reachableDts(typesPath)
-  const leaked = reachable.filter(f => PRIVATE.some(re => re.test(f)))
-  if (leaked.length) {
-    console.error('FAIL published types reach a private engine module:')
-    for (const f of leaked) console.error('  ' + f.replace(PKG_ROOT + '/', ''))
-    console.error('ForceParams and the force kernels are not part of the surface (D53, #90); an exported type now carries one of them.')
-    process.exit(1)
-  }
-  console.log(`published types: ${reachable.length} declaration files reachable from the entry, none private`)
-} catch (err) {
-  const out = (err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? '')
-  console.error(out.trim())
-  console.error('\nFAIL published types gate.')
-  console.error('A dangling re-export usually means a source tree is missing from')
-  console.error("vite.lib.config.ts's dts `include` list. The build does not warn.")
-  process.exit(1)
-} finally {
-  rmSync(dir, { recursive: true, force: true })
+// 2. No private module ships.
+const leaked = shipped.filter(f => PRIVATE.some(re => re.test(f)))
+if (leaked.length) {
+  console.error('FAIL the published types carry a private engine module:')
+  for (const f of leaked) console.error('  ' + relative(PKG_ROOT, f))
+  console.error('ForceParams and the force kernels are not part of any surface (D53, #90, D62); an exported type now reaches one of them.')
+  failed = true
 }
+
+// 3. A consumer compiles against a copy of the artifact outside the repository.
+const tmp = join(tmpdir(), `dts-gate-${pkg.name.replace(/[^a-z0-9]+/gi, '-')}-${process.pid}`)
+rmSync(tmp, { recursive: true, force: true })
+mkdirSync(join(tmp, 'pkg'), { recursive: true })
+cpSync(dist, join(tmp, 'pkg', relative(PKG_ROOT, dist)), { recursive: true, filter: src => statSync(src).isDirectory() || src.endsWith('.d.ts') })
+writeFileSync(join(tmp, 'pkg', 'package.json'), JSON.stringify({ name: pkg.name, type: 'module', types: typesEntry, exports: pkg.exports }))
+// React's types resolve from the consumer's own node_modules, as they would for a real consumer.
+symlinkSync(join(PKG_ROOT, 'node_modules'), join(tmp, 'node_modules'), 'dir')
+writeFileSync(join(tmp, 'consumer.ts'),
+  `import * as lib from ${JSON.stringify('./pkg/' + typesEntry.replace(/^\.\//, '').replace(/\.d\.ts$/, ''))}\n` +
+  `export const _keep: keyof typeof lib | undefined = undefined\n`)
+writeFileSync(join(tmp, 'tsconfig.json'), JSON.stringify({
+  compilerOptions: { strict: true, skipLibCheck: false, noEmit: true, module: 'esnext', target: 'es2020', moduleResolution: 'bundler', jsx: 'react-jsx', types: [] },
+  files: ['consumer.ts'],
+}, null, 2))
+try {
+  execFileSync(join(PKG_ROOT, 'node_modules', '.bin', 'tsc'), ['-p', join(tmp, 'tsconfig.json')], { stdio: 'pipe', cwd: tmp })
+  console.log(`published types: consumer compile clean outside the repository (skipLibCheck off); ${shipped.length} declaration file(s) shipped, none private`)
+} catch (err) {
+  console.error(((err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? '')).trim())
+  console.error('\nFAIL published types: a consumer outside this repository cannot compile against the artifact.')
+  failed = true
+} finally {
+  rmSync(tmp, { recursive: true, force: true })
+}
+
+// 4. The published stylesheet carries the design tokens, once per theme.
+const cssPath = join(dist, 'styles.css')
+if (!existsSync(cssPath)) { console.error(`FAIL ${relative(PKG_ROOT, cssPath)} is missing from the artifact.`); failed = true }
+else {
+  const css = readFileSync(cssPath, 'utf8')
+  // The themed tokens once per theme block; the fonts, which no theme changes, once.
+  for (const [token, expected] of [['--accent:', 2], ['--color-bg:', 2], ['--font-sans:', 1]]) {
+    const n = (css.match(new RegExp(token.replace(/[-:]/g, '\\$&'), 'g')) ?? []).length
+    if (n !== expected) { console.error(`FAIL published stylesheet: ${token} declared ${n} time(s), expected ${expected} — the token sheet is missing or doubled.`); failed = true }
+  }
+  if (!failed) console.log('published stylesheet: the design tokens are declared, once per theme where themed')
+}
+
+process.exit(failed ? 1 : 0)

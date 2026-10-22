@@ -49,9 +49,10 @@ interface GraphViewProps {
   findings?: React.ReactNode
   /** Groups to glow, over the whole graph; the view restricts them to the visible set and colours them. */
   groups?: readonly NodeGroup[]
-  /** The host's control for its groups (a legend, a modal), rendered top-left and handed the groups as drawn, colours included. */
+  /** The host's control for its groups (a legend, a modal), rendered inside the pane — which sets `--toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included. */
   groupsControl?: (active: readonly ActiveGroup[]) => React.ReactNode
-  onShowInTree?: (target: FocusTarget) => void
+  /** The host's cross-view action for a node — its label, and what it does with the target — offered in the hover box. */
+  crossView?: { label: string; onFocus: (target: FocusTarget) => void }
   /** The pane's theme choice and where a new one goes (R21). */
   theme: ThemeChoice
   onThemeChange: (next: ThemeChoice) => void
@@ -80,7 +81,7 @@ export function GraphView({
   findings,
   groups,
   groupsControl,
-  onShowInTree,
+  crossView,
   filter,
   onFilterChange,
   pins,
@@ -337,7 +338,7 @@ export function GraphView({
   }
 
   // Hover with a grace period so the pointer can travel from a node onto its
-  // hover tooltip (now interactive — it carries a "Show in Tree" button)
+  // hover tooltip (interactive — it carries the host's cross-view button)
   // without the tooltip vanishing. A null from the canvas schedules a clear;
   // the tooltip's onMouseEnter cancels it, onMouseLeave re-arms it.
   const hoverClearTimer = React.useRef<number | null>(null)
@@ -545,7 +546,7 @@ export function GraphView({
           shiftHeld={shiftHeld}
           duplicateGroups={graph.duplicateGroups}
           nodeSummaries={nodeSummaries}
-          onShowInTree={onShowInTree}
+          crossView={crossView}
           onMouseEnter={cancelHoverClear}
           onMouseLeave={() => handleHoverNode(null)}
         />
@@ -682,15 +683,15 @@ interface GraphHoverTooltipProps {
   shiftHeld: boolean
   duplicateGroups: Map<string, Set<string>>
   nodeSummaries: Map<string, string>
-  // Cross-view nav from the tooltip. Absent in history mode (no Tree view).
-  onShowInTree?: (target: FocusTarget) => void
+  // The host's cross-view action from the tooltip, when it offers one.
+  crossView?: { label: string; onFocus: (target: FocusTarget) => void }
   // The tooltip is interactive: these keep it open while the pointer is over
-  // it (so the Show in Tree button is clickable).
+  // it (so the cross-view button is clickable).
   onMouseEnter: () => void
   onMouseLeave: () => void
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries, onShowInTree, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries, crossView, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
   // Before the early returns: this is a hook, and the component bails out four
   // different ways below.
   const ontology = useOntology()
@@ -766,7 +767,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       )}
       {fileName && <div className="tooltip-file">{fileName}</div>}
       {copyCount > 1 && (
-        <div className="tooltip-duplicates" title="This definition is registered on multiple hosts. Hovering any copy highlights all copies.">
+        <div className="tooltip-duplicates" title="This definition appears in more than one place. Hovering any copy marks all copies.">
           copy {copyIndex} of {copyCount}
         </div>
       )}
@@ -777,13 +778,13 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         </div>
       )}
       <div className="tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
-      {onShowInTree && (
+      {crossView && (
         <button
-          className="tooltip-show-in-tree"
-          onClick={() => onShowInTree({ name: node.name, values: node.dimensions })}
-          title="Show in Tree view"
+          className="tooltip-cross-view"
+          onClick={() => crossView.onFocus({ name: node.name, values: node.dimensions })}
+          title={crossView.label}
         >
-          Show in Tree
+          {crossView.label}
         </button>
       )}
     </div>

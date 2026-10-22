@@ -23,6 +23,13 @@ const ENTRIES = [
 let exitCode = 0
 for (const { label, entry, list, listName } of ENTRIES) {
 const src = readFileSync(entry, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+// `export * from` puts every name of a module on the surface without naming one
+// here, which is exactly what this gate cannot see (REVIEW_8 C5). Named only.
+if (/^\s*export\s+\*\s+(?:as\s+\w+\s+)?from\b/m.test(src)) {
+  console.error(`FAIL ${label}: an \`export *\` widens the surface past this gate; name the exports.`)
+  exitCode = 1
+  continue
+}
 const names = new Set()
 for (const m of src.matchAll(/export\s+(type\s+)?\{([^}]*)\}/g)) {
   const typeOnly = Boolean(m[1])
