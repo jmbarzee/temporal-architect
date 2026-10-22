@@ -54,10 +54,10 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 4 — Push/pull on a chosen dimension** (closing: all commits landed, review running, PR pending) |
-| Last completed unit | **Unit 3 — N-dimensional filters + chain UI** |
+| Current unit | **Unit 5a — Two symmetric dimensional axes** (opened on `visualizer/dimensions-unit-5a` from unit-4 @ `34a75a8`) |
+| Last completed unit | **Unit 4 — Push/pull on a chosen dimension** ([PR #169](https://github.com/jmbarzee/temporal-architect/pull/169)) |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-4`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
+| Unit branch | `visualizer/dimensions-unit-5a` (from unit-4 @ `34a75a8`); Unit 4's is `visualizer/dimensions-unit-4`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
