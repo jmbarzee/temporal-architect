@@ -23,6 +23,7 @@
 //      iteration to amplify a last-place difference, rounds identically
 //      everywhere.
 
+import { RELATION_DIMENSION } from '../graph/dimension'
 import {
   applyBandGravity,
   resolvePhysics,
@@ -105,13 +106,13 @@ function probe(run: (nodes: SimNode[], params: ForceParams, rng: () => number) =
 }
 
 const PROBE_EDGES: GraphEdge[] = [
-  { id: 'p0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk' },
-  { id: 'p1', edgeType: 'containment', sourceId: 'op', targetId: 'nx' },
-  { id: 'p2', edgeType: 'dependency', sourceId: 'wf', targetId: 'act' },
-  { id: 'p3', edgeType: 'dependency', sourceId: 'ns', targetId: 'ep' },
-  { id: 'p4', edgeType: 'dependency', sourceId: 'wf', targetId: 'op' },
+  { id: 'p0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'p1', sourceId: 'op', targetId: 'nx', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'p2', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'p3', sourceId: 'ns', targetId: 'ep', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'p4', sourceId: 'wf', targetId: 'op', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
   // The coincident pair, so the link force takes its degenerate branch too.
-  { id: 'p5', edgeType: 'dependency', sourceId: 'dupA', targetId: 'dupB' },
+  { id: 'p5', sourceId: 'dupA', targetId: 'dupB', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
 ]
 
 /**

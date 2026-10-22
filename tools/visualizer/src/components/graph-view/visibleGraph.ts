@@ -14,6 +14,8 @@
 // inside the summary strategies still test hardcoded node-type values. Those are
 // separate blast-radius rows owned by later units.
 
+import { payloadString } from '../../graph/model'
+import { isContainment } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
 import type { Ontology } from '../../graph/ontology'
@@ -85,7 +87,7 @@ function resolveDepEndpoint(
   if (node && ontology.valueFor(node) === 'nexusOperation') {
     const out: string[] = []
     for (const e of sim.edges) {
-      if (e.edgeType !== 'dependency') continue
+      if (isContainment(e)) continue
       const adjId = side === 'tgt'
         ? (e.sourceId === nodeId ? e.targetId : null)  // outgoing — operation is source
         : (e.targetId === nodeId ? e.sourceId : null)  // incoming — operation is target
@@ -110,7 +112,7 @@ function computeDownstreamScores(
 ): Map<string, number> {
   const adj = new Map<string, string[]>()
   for (const e of visibleEdges) {
-    if (e.edgeType !== 'dependency') continue
+    if (isContainment(e)) continue
     const list = adj.get(e.sourceId)
     if (list) list.push(e.targetId)
     else adj.set(e.sourceId, [e.targetId])
@@ -189,7 +191,7 @@ function computeGraphNodeSummary(
   if (summaryKind === 'containerCount') {
     let workers = 0, endpoints = 0
     for (const e of visibleEdges) {
-      if (e.edgeType !== 'containment' || e.targetId !== node.id) continue
+      if (!isContainment(e) || e.targetId !== node.id) continue
       const child = nodeMap.get(e.sourceId)
       if (!child) continue
       if (ontology.valueFor(child) === 'worker') workers++
@@ -206,7 +208,7 @@ function computeGraphNodeSummary(
   if (summaryKind === 'hostRegistrations') {
     let wf = 0, act = 0, nxs = 0, ops = 0
     for (const e of visibleEdges) {
-      if (e.edgeType !== 'containment' || e.targetId !== node.id) continue
+      if (!isContainment(e) || e.targetId !== node.id) continue
       const child = nodeMap.get(e.sourceId)
       if (!child) continue
       if (ontology.valueFor(child) === 'workflow') wf++
@@ -227,7 +229,7 @@ function computeGraphNodeSummary(
   // summaryKind === 'degree'
   let out = 0, inc = 0
   for (const e of visibleEdges) {
-    if (e.edgeType === 'containment') continue
+    if (isContainment(e)) continue
     if (e.sourceId === node.id) out++
     if (e.targetId === node.id) inc++
   }
@@ -306,7 +308,7 @@ export function computeVisibleGraph(
     const srcVisible = ids.has(edge.sourceId)
     const tgtVisible = ids.has(edge.targetId)
 
-    if (edge.edgeType === 'containment') {
+    if (isContainment(edge)) {
       if (!srcVisible) continue  // hidden child — drop
       if (tgtVisible) {
         graduatedEdges.push(edge)
@@ -328,7 +330,7 @@ export function computeVisibleGraph(
           if (rs === rt) continue
           const key = `${rs}→${rt}`
           const existing = depEdgeKeys.get(key)
-          if (existing && existing.nexusEndpoint && !edge.nexusEndpoint) continue
+          if (existing && payloadString(existing, 'nexusEndpoint') && !payloadString(edge, 'nexusEndpoint')) continue
           depEdgeKeys.set(key, {
             ...edge,
             sourceId: rs,

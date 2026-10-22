@@ -4,6 +4,7 @@
 // membership. No positions, no floats except the downstream scores (which are
 // exact rationals). Byte-identical is the contract.
 
+import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
 import { filterOfSets } from '../filter/types'
 import { buildGraph } from '../adapter/build'
 import { edgeTypeFor } from '../adapter/edge-types'
@@ -66,11 +67,13 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
   const parts = [
     edgeTypeFor(e, srcValue, tgtValue).id,
     styleKey,
-    e.edgeType,
+    e.dimensions[RELATION_DIMENSION],
     `${e.sourceId} -> ${e.targetId}`,
   ]
-  if (e.nexusEndpoint !== undefined) parts.push(`ep=${e.nexusEndpoint}`)
-  if (e.dispatchKind !== undefined) parts.push(`dispatch=${e.dispatchKind}`)
+  const ep = payloadString(e, 'nexusEndpoint')
+  if (ep !== undefined) parts.push(`ep=${ep}`)
+  const dispatch = e.dimensions[DISPATCH_DIMENSION]
+  if (dispatch !== undefined) parts.push(`dispatch=${dispatch}`)
   return parts.join('|')
 }
 

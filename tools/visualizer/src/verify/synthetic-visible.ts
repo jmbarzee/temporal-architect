@@ -15,6 +15,7 @@
 //
 // Positions are irrelevant to the derivation and are all zero.
 
+import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
 import { filterOfSets } from '../filter/types'
 import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
@@ -65,22 +66,22 @@ const NODES: SimNode[] = [
 ]
 
 const EDGES: GraphEdge[] = [
-  { id: 'c0', edgeType: 'containment', sourceId: 'wk', targetId: 'ns' },
-  { id: 'c1', edgeType: 'containment', sourceId: 'wkB', targetId: 'ns' },
-  { id: 'c2', edgeType: 'containment', sourceId: 'svc', targetId: 'wk' },
-  { id: 'c3', edgeType: 'containment', sourceId: 'ep', targetId: 'ns' },
-  { id: 'c4', edgeType: 'containment', sourceId: 'caller', targetId: 'wk' },
+  { id: 'c0', sourceId: 'wk', targetId: 'ns', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c1', sourceId: 'wkB', targetId: 'ns', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c2', sourceId: 'svc', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c3', sourceId: 'ep', targetId: 'ns', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c4', sourceId: 'caller', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
   // Two tiers deep: operation -> service -> worker -> namespace.
-  { id: 'c5', edgeType: 'containment', sourceId: 'op', targetId: 'svc' },
-  { id: 'c6', edgeType: 'containment', sourceId: 'backing', targetId: 'wkB' },
-  { id: 'c7', edgeType: 'containment', sourceId: 'act', targetId: 'wk' },
-  { id: 'c8', edgeType: 'containment', sourceId: 'actCopy', targetId: 'wkB' },
-  { id: 'c9', edgeType: 'containment', sourceId: 'op', targetId: 'ep' },
+  { id: 'c5', sourceId: 'op', targetId: 'svc', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c6', sourceId: 'backing', targetId: 'wkB', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c7', sourceId: 'act', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c8', sourceId: 'actCopy', targetId: 'wkB', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c9', sourceId: 'op', targetId: 'ep', dimensions: { [RELATION_DIMENSION]: 'containment' } },
   // The call path the splice rule rewrites: caller -> op -> backing.
-  { id: 'd0', edgeType: 'dependency', sourceId: 'caller', targetId: 'op', nexusEndpoint: 'ep' },
-  { id: 'd1', edgeType: 'dependency', sourceId: 'op', targetId: 'backing' },
-  { id: 'd2', edgeType: 'dependency', sourceId: 'caller', targetId: 'act' },
-  { id: 'd3', edgeType: 'dependency', sourceId: 'caller', targetId: 'backing', dispatchKind: 'signalSend' },
+  { id: 'd0', sourceId: 'caller', targetId: 'op', dimensions: { [RELATION_DIMENSION]: 'dependency' }, payload: { nexusEndpoint: 'ep' } },
+  { id: 'd1', sourceId: 'op', targetId: 'backing', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'd2', sourceId: 'caller', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'd3', sourceId: 'caller', targetId: 'backing', dimensions: { [RELATION_DIMENSION]: 'dependency', [DISPATCH_DIMENSION]: 'signalSend' } },
 ]
 
 const BY_ID = new Map(NODES.map(node => [node.id, node]))
@@ -99,7 +100,7 @@ function edgeLine(e: GraphEdge): string {
   const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
   const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
   const style = src && tgt ? edgeStyleKeyFor(e, srcValue, tgtValue) : 'UNRESOLVED-ENDPOINT'
-  return `${edgeTypeFor(e, srcValue, tgtValue).id}|${style}|${e.edgeType}|${e.sourceId} -> ${e.targetId}`
+  return `${edgeTypeFor(e, srcValue, tgtValue).id}|${style}|${e.dimensions[RELATION_DIMENSION]}|${e.sourceId} -> ${e.targetId}`
 }
 
 function state(types: string[], files: string[]): Json {

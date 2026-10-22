@@ -1,6 +1,7 @@
 // Canvas-based graph renderer with mouse interaction.
 // Implements GRAPH_VIEW.md § Visual Encoding, § Viewport Controls, § Interaction States.
 
+import { isContainment } from '../graph/model'
 import React from 'react'
 import type { GraphEdge } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
@@ -549,7 +550,7 @@ export function GraphCanvas({
 
         // Arrowhead for dependency edges (containment is hierarchical, no
         // direction is interesting to show).
-        if (edge.edgeType !== 'containment') {
+        if (!isContainment(edge)) {
           const angle = Math.atan2(ty - sy, tx - sx)
           // Stop the arrowhead at the target's on-screen edge (screen radius =
           // def.r × nodeSizeMul(scale)) so it tracks the zoom-scaled node body.

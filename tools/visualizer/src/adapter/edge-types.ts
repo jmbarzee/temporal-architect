@@ -14,6 +14,7 @@
 
 import type { DimensionValue } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
+import { dispatchOf, isContainment } from '../graph/model'
 import type { NodeType } from './node-types'
 import type { EdgeTypeDefinition } from '../graph/taxonomy'
 
@@ -144,7 +145,7 @@ function definitionFor(id: EdgeTypeId): TemporalEdgeTypeDefinition {
 // operation pair, by direction. Unmatched cases fall through to the broadest
 // category in each branch (Worker↔Namespace containment; Workflow↔Activity dep).
 export function edgeTypeFor(
-  edge: Pick<GraphEdge, 'edgeType' | 'dispatchKind'>,
+  edge: Pick<GraphEdge, 'dimensions'>,
   src: DimensionValue | undefined,
   tgt: DimensionValue | undefined,
 ): TemporalEdgeTypeDefinition {
@@ -152,7 +153,7 @@ export function edgeTypeFor(
     (src === a && tgt === b) || (src === b && tgt === a)
 
   let id: EdgeTypeId
-  if (edge.edgeType === 'containment') {
+  if (isContainment(edge)) {
     if (has('nexusOperation', 'nexusEndpoint')) id = 'linkEndpointToOperation'
     else if (has('nexusOperation', 'nexusService')) id = 'linkNexusToOperation'
     else if (has('worker', 'nexusService')) id = 'linkWorkerToNexus'
@@ -164,7 +165,7 @@ export function edgeTypeFor(
     // Checked before the node-type rules: a signal send is workflow → workflow
     // like a child-workflow call, so the endpoint types alone cannot tell them
     // apart. Only the parser's dispatch kind can.
-    if (edge.dispatchKind === 'signalSend') id = 'linkSignalSend'
+    if (dispatchOf(edge) === 'signalSend') id = 'linkSignalSend'
     else if (src === 'namespace' || tgt === 'namespace') id = 'linkNsToNs'
     else if (src === 'worker' || tgt === 'worker') id = 'linkWorkerToWorker'
     else if (src === 'workflow' && tgt === 'nexusOperation') id = 'linkWorkflowToOperation'

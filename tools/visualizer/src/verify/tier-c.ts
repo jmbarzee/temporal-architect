@@ -13,11 +13,13 @@
 import { ALL_NODE_TYPES } from '../adapter/node-types'
 import { edgeTypeFor } from '../adapter/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
-import type { EdgeType, GraphEdge } from '../graph/model'
+import type { GraphEdge } from '../graph/model'
+import type { EdgeCategoryKind } from '../graph/taxonomy'
+import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
 import type { Json } from './snapshot'
 
-const EDGE_TYPES: EdgeType[] = ['containment', 'dependency']
-const DISPATCH_KINDS: (GraphEdge['dispatchKind'] | undefined)[] = [undefined, 'signalSend']
+const EDGE_TYPES: EdgeCategoryKind[] = ['containment', 'dependency']
+const DISPATCH_KINDS: (string | undefined)[] = [undefined, 'signalSend']
 
 export function tierC(): Json {
   const rows: Record<string, string> = {}
@@ -27,10 +29,12 @@ export function tierC(): Json {
         for (const dispatchKind of DISPATCH_KINDS) {
           const edge: GraphEdge = {
             id: 'synthetic',
-            edgeType,
             sourceId: 'src',
             targetId: 'tgt',
-            ...(dispatchKind ? { dispatchKind } : {}),
+            dimensions: {
+              [RELATION_DIMENSION]: edgeType,
+              ...(dispatchKind ? { [DISPATCH_DIMENSION]: dispatchKind } : {}),
+            },
           }
           const key = `${edgeType}|${src}|${tgt}|${dispatchKind ?? '-'}`
           // Both classifiers, side by side. They are independent and already
@@ -49,10 +53,10 @@ export function tierC(): Json {
     for (const tgt of ALL_NODE_TYPES) {
       const edge: GraphEdge = {
         id: 'synthetic',
-        edgeType: 'dependency',
         sourceId: 'src',
         targetId: 'tgt',
-        nexusEndpoint: 'SomeEndpoint',
+        dimensions: { [RELATION_DIMENSION]: 'dependency' },
+        payload: { nexusEndpoint: 'SomeEndpoint' },
       }
       withEndpoint[`dependency|${src}|${tgt}|ep`] =
         `${edgeTypeFor(edge, src, tgt).id}|${edgeStyleKeyFor(edge, src, tgt)}`

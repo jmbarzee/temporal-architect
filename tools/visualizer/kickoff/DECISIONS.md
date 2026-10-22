@@ -909,3 +909,35 @@ per-bucket number is identical; verified by joining old and new on bucket id.
 All four fixture goldens and Tier C byte-identical.
 
 — 2026-10-21 — agent
+
+**D48 — Edges carry `relation` and `dispatch` as dimensions; the endpoint rides
+as payload (Unit 4a, R5).** `GraphEdge` was `{ id, edgeType, sourceId, targetId,
+nexusEndpoint?, dispatchKind? }` — two of those fields domain-shaped, and the
+last one a flag in disguise: `dispatchKind` was carried only when it was
+`signalSend`, the one value the spring classifier needed. It is now
+`{ id, sourceId, targetId, dimensions, payload? }`, mirroring `GraphNode`.
+
+`relation` ('containment' | 'dependency') and `dispatch` are library-declared
+axes, for the same reason the file and kind axes are: the engine ships the code
+that reads them. `dispatch` carries the producer's kind **verbatim on every
+dependency edge** — open, not an enum — which is what lets 4c resolve springs
+from dispatch rather than from endpoint types alone, T14's sixteenth case.
+Containment edges dispatch nothing and are absent on that axis; a coarsened edge
+is a projection of several dispatches and has no single one.
+
+`nexusEndpoint` is per call site, not identity and not an axis, so it is
+host-owned payload. Three library readers (highlight, graduation dedup, edge
+style) still read it by key — those are the nexus splice (B16, Unit 7) and the
+`edgeStyleFor` unification (T11, Unit 6), and this unit does not pretend to do
+their work. The leak count for those three files is unchanged; `model.ts`'s is
+what drops, which is Unit 4's one assigned residue.
+
+**Golden change (§8.2).** Tier C is byte-identical — the hard requirement, since
+its row keys are the same strings as before. `static` is byte-identical. The
+five fixture goldens change in exactly one way: every dependency edge line gains
+a `|dispatch=<kind>` suffix it previously had only when the kind was
+`signalSend`. Verified shape-agnostically below: stripping that suffix from
+every new line reproduces the old golden exactly, so no classification id, style
+key, relation, endpoint or count moved.
+
+— 2026-10-21 — agent

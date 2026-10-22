@@ -14,6 +14,7 @@
 //      past the container again, the two rows below stop disagreeing and this
 //      probe goes red.
 
+import { RELATION_DIMENSION } from '../graph/dimension'
 import { filterOfSets } from '../filter/types'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { GraphEdge } from '../graph/model'
@@ -52,8 +53,8 @@ const NODES: SimNode[] = [
   node('act', 'activity', 'wk'),
 ]
 const EDGES: GraphEdge[] = [
-  { id: 'c0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk' },
-  { id: 'd0', edgeType: 'dependency', sourceId: 'wf', targetId: 'act' },
+  { id: 'c0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'd0', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
 ]
 const BY_ID = new Map(NODES.map(n => [n.id, n]))
 const SOURCE = { nodes: NODES, edges: EDGES, getNode: (id: string) => BY_ID.get(id) }

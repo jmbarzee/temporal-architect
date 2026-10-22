@@ -1,7 +1,8 @@
 // Graph data model for the force-directed graph view.
 // Derived from GRAPH_VIEW.md § Graph Data Model.
 
-import type { DimensionMap } from './dimension'
+import type { DimensionMap, DimensionValue } from './dimension'
+import { DISPATCH_DIMENSION, RELATION_DIMENSION } from './dimension'
 
 export interface GraphNode {
   /**
@@ -66,30 +67,38 @@ export interface GraphNode {
  * as an absent field instead of "[object Object]" in a tooltip.
  */
 export function payloadString(
-  node: Pick<GraphNode, 'payload'>,
+  node: { payload?: Readonly<Record<string, unknown>> },
   key: string,
 ): string | undefined {
   const value = node.payload?.[key]
   return typeof value === 'string' ? value : undefined
 }
 
-export type EdgeType = 'containment' | 'dependency'
-
 export interface GraphEdge {
   id: string
-  edgeType: EdgeType
   sourceId: string
   targetId: string
-  // Endpoint metadata for dependency edges that originate from a nexus call.
-  // The operation and service identities are encoded in the target node, but
-  // the endpoint is per-call-site (the same operation can be reached via two
-  // endpoints in different namespaces) so it stays on the edge.
-  nexusEndpoint?: string
-  // The parser's dispatch kind, carried only where it disambiguates two edge
-  // types that share the same endpoint node types. `workflowCall` and
-  // `signalSend` are both workflow → workflow; nothing but the kind separates
-  // a binding call from a fire-and-forget send, so `edgeTypeFor` reads this.
-  dispatchKind?: 'signalSend'
+  /**
+   * Where this edge sits on every axis it has a value for. The library declares
+   * two (`RELATION_DIMENSION`, `DISPATCH_DIMENSION`); a host may add more.
+   */
+  dimensions: DimensionMap
+  /**
+   * Metadata the host owns and the library does not interpret — the same
+   * contract as `GraphNode.payload`. Per-call-site detail that is not identity
+   * and not an axis lives here.
+   */
+  payload?: Readonly<Record<string, unknown>>
+}
+
+/** Does this edge express containment (as opposed to a dependency)? */
+export function isContainment(edge: Pick<GraphEdge, 'dimensions'>): boolean {
+  return edge.dimensions[RELATION_DIMENSION] === 'containment'
+}
+
+/** The producer's dispatch kind for a dependency edge, or undefined. */
+export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): DimensionValue | undefined {
+  return edge.dimensions[DISPATCH_DIMENSION]
 }
 
 export interface Graph {

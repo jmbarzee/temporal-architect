@@ -1,6 +1,7 @@
 // Graph View: force-directed visualization of definition relationships.
 // Wires together graph construction, simulation, viewport, rendering, and interaction.
 
+import { isContainment } from '../graph/model'
 import React from 'react'
 import './GraphView.css'
 import type { TWFFile } from '../types/ast'
@@ -724,7 +725,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
 
   let outgoing = 0, incoming = 0
   for (const e of visibleEdges) {
-    if (e.edgeType === 'containment') continue
+    if (isContainment(e)) continue
     if (e.sourceId === hoveredNodeId) outgoing++
     if (e.targetId === hoveredNodeId) incoming++
   }

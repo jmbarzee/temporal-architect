@@ -19,13 +19,14 @@ import type {
   ParserEdge,
   ParserGraph,
 } from '../types/parser-graph'
-import type { EdgeType, Graph, GraphEdge, GraphNode } from '../graph/model'
+import type { Graph, GraphEdge, GraphNode } from '../graph/model'
+import type { EdgeCategoryKind } from '../graph/taxonomy'
 import type { NodeType } from './node-types'
 import type { DimensionMap } from '../graph/dimension'
 
 // The two axes this domain projects a node onto. Names, not concepts, belong to
 // the host: the library never mentions either id.
-import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { DISPATCH_DIMENSION, RELATION_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
 
@@ -221,20 +222,26 @@ function parserEdgeToViewEdge(
   // containment-style edge, matching the prior locally-derived edge. It
   // does NOT feed the parentByChild map, so the operation's parentId
   // stays its owning service.
-  const edgeType: EdgeType =
+  const relation: EdgeCategoryKind =
     pe.kind === 'containment' || pe.kind === 'nexusRoute' ? 'containment' : 'dependency'
+  const dimensions: Record<string, string> = { [RELATION_DIMENSION]: relation }
+  // The producer's kind, verbatim, on every dependency edge. It used to be
+  // carried only when it was `signalSend` — the one value the spring classifier
+  // needed — which made the field a flag in disguise. As an open axis it is
+  // what lets 4c resolve springs from dispatch rather than from endpoint types
+  // alone (T14's sixteenth case).
+  if (relation === 'dependency') dimensions[DISPATCH_DIMENSION] = pe.kind
   const out: GraphEdge = {
     id: `e${seq}`,
-    edgeType,
     sourceId: pe.from,
     targetId: pe.to,
+    dimensions,
   }
-  // Carried through because the endpoint node types cannot distinguish a
-  // fire-and-forget send from a child-workflow call — both are workflow →
-  // workflow. `edgeTypeFor` reads this to pick the softer spring.
-  if (pe.kind === 'signalSend') out.dispatchKind = 'signalSend'
+  // Which endpoint routed the call is per call site, not identity and not an
+  // axis — the same operation is reachable through two endpoints in different
+  // namespaces — so it rides as host-owned payload.
   if (pe.routing?.nexusEndpoint) {
-    out.nexusEndpoint = pe.routing.nexusEndpoint
+    out.payload = { nexusEndpoint: pe.routing.nexusEndpoint }
   }
   return out
 }
@@ -246,10 +253,12 @@ function coarsenedEdgeToViewEdge(
   const tgt = nodes.get(ce.to)
   if (!src || !tgt) return null
 
+  // A projection of several dispatches, so it has a relation and no single
+  // dispatch kind.
   return {
     id: `e${seq}`,
-    edgeType: 'dependency',
     sourceId: ce.from,
     targetId: ce.to,
+    dimensions: { [RELATION_DIMENSION]: 'dependency' },
   }
 }

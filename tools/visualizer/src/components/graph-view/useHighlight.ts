@@ -7,6 +7,7 @@
 // subgraph + a `getNode` accessor as inputs (the explicit data link to the sim);
 // it never touches simRef directly.
 
+import { payloadString } from '../../graph/model'
 import React from 'react'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
@@ -100,7 +101,7 @@ export function useHighlight(
         nodes.add(activeNode.parentId)
       }
       for (const edge of visibleEdges) {
-        if (edge.nexusEndpoint === activeNode.name) {
+        if (payloadString(edge, 'nexusEndpoint') === activeNode.name) {
           edges.add(edge.id)
           if (visibleIds.has(edge.sourceId)) nodes.add(edge.sourceId)
           if (visibleIds.has(edge.targetId)) nodes.add(edge.targetId)

@@ -11,8 +11,8 @@ which is worth noticing rather than assuming.
 | file | zone | leak | imported by |
 |---|---|---:|---|
 | `App.tsx` | neither | 5 | `main.tsx` |
-| `adapter/build.ts` | shim | 59 | **6** files |
-| `adapter/edge-types.ts` | shim | 165 | **5** files |
+| `adapter/build.ts` | shim | 55 | **6** files |
+| `adapter/edge-types.ts` | shim | 163 | **5** files |
 | `adapter/node-type-styles.ts` | shim | 1 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
 | `adapter/node-types.ts` | shim | 126 | **13** files |
 | `adapter/useGraphModel.ts` | shim | 3 | `components/GraphView.tsx` |
@@ -58,17 +58,17 @@ which is worth noticing rather than assuming.
 | `filter/storage.ts` | manifest |  | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **15** files |
-| `graph/dimension.ts` | manifest | 1 | **30** files |
+| `graph/dimension.ts` | manifest | 1 | **32** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
 | `graph/forces.ts` | manifest |  | **9** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
 | `graph/highlight.ts` | manifest |  | `components/graph-view/useHighlight.ts` |
-| `graph/model.ts` | manifest | 12 | **19** files |
+| `graph/model.ts` | manifest | 3 | **19** files |
 | `graph/node-scale.ts` | manifest |  | **4** files |
 | `graph/ontology.ts` | manifest |  | **10** files |
 | `graph/rng.ts` | manifest |  | **4** files |
 | `graph/simulation.ts` | manifest | 5 | **20** files |
-| `graph/taxonomy.ts` | manifest | 1 | **7** files |
+| `graph/taxonomy.ts` | manifest | 1 | **9** files |
 | `graph/viewport.ts` | manifest |  | **4** files |
 | `lib.ts` | neither | 24 | — |
 | `main.tsx` | neither |  | — |
@@ -85,10 +85,10 @@ which is worth noticing rather than assuming.
 | `verify/rng.ts` | neither |  | `verify/force-probes.ts`, `verify/tier-b.ts` |
 | `verify/snapshot.ts` | neither |  | **8** files |
 | `verify/static-golden.ts` | neither | 14 | `verify/main.ts` |
-| `verify/synthetic-visible.ts` | neither | 31 | `verify/static-golden.ts` |
-| `verify/tier-a.ts` | neither | 6 | `verify/main.ts` |
+| `verify/synthetic-visible.ts` | neither | 30 | `verify/static-golden.ts` |
+| `verify/tier-a.ts` | neither | 3 | `verify/main.ts` |
 | `verify/tier-b.ts` | neither |  | `verify/main.ts` |
-| `verify/tier-c.ts` | neither | 13 | `verify/main.ts` |
+| `verify/tier-c.ts` | neither | 12 | `verify/main.ts` |
 
 ## Files nothing imports
 
