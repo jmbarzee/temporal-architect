@@ -7,6 +7,8 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
+import { withOverride } from '../graph/simulation'
+import { pushForKey, resolvePhysics } from '../graph/forces'
 
 import type { DimensionValue } from '../graph/dimension'
 import type { Ontology } from '../graph/ontology'
@@ -46,10 +48,13 @@ interface ChargeControlProps {
 // by type. Dragging sets both the (negative) charge and the core radius at once.
 export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: ChargeControlProps) {
   const ontology = useOntology()
-  const tokens: MapToken[] = ontology.nodeTypeKeys.map(t => ({
+  // The dense per-bucket table the kernels also read — resolved here once per
+  // (params, taxonomy), never per token or per sample.
+  const push = React.useMemo(() => resolvePhysics(params, ontology).push, [params, ontology])
+  const tokens: MapToken[] = push.mapping.buckets.map(({ id: t }) => ({
     id: t,
-    x: params.coreRadius[t],
-    y: Math.abs(params.charge[t]),
+    x: pushForKey(push, t).coreRadius,
+    y: Math.abs(pushForKey(push, t).charge),
     colorA: typeColor(ontology, t),
     outline: 'solid',
     label: ontology.abbreviationFor(t),
@@ -59,8 +64,9 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
   const handleDrag = (id: string, x: number, y: number) => {
     const t = id
     onParamChange({
-      charge: { ...params.charge, [t]: -y },        // store negative (repulsion)
-      coreRadius: { ...params.coreRadius, [t]: x },
+      // One override per bucket, carrying both numbers the token encodes;
+      // charge is stored negative (repulsion).
+      push: withOverride(params.push, t, { charge: -y, coreRadius: x }),
     })
   }
 
@@ -97,21 +103,24 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
 // slider beneath.
 export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }: ChargeControlProps) {
   const ontology = useOntology()
-  const push = params.pushMultiplier
+  // The dense per-bucket table the kernels also read — resolved here once per
+  // (params, taxonomy), never per token or per sample.
+  const push = React.useMemo(() => resolvePhysics(params, ontology).push, [params, ontology])
+  const pushMul = params.pushMultiplier
   const crMul = params.coreRadiusMultiplier
   const exp = params.chargeExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const rEffs = ontology.nodeTypeKeys.map(t => crMul * params.coreRadius[t])
+    const rEffs = push.mapping.buckets.map(b => crMul * pushForKey(push, b.id).coreRadius)
     const maxREff = Math.max(0, ...rEffs)
     // Show the falloff out to a few core radii so the plateau-then-drop shape
     // is legible even when the radii are small.
     const dMax = Math.max(150, maxREff * 4)
 
     let maxMag = 0
-    const sampled = ontology.nodeTypeKeys.map(t => {
-      const q = Math.abs(params.charge[t]) * push
-      const rEff = crMul * params.coreRadius[t]
+    const sampled = push.mapping.buckets.map(({ id: t }) => {
+      const q = Math.abs(pushForKey(push, t).charge) * pushMul
+      const rEff = crMul * pushForKey(push, t).coreRadius
       const soft = rEff * rEff
       const pts: { d: number; v: number }[] = []
       for (let i = 0; i <= CURVE_SAMPLES; i++) {
@@ -135,7 +144,7 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-  }, [params, push, crMul, exp, ontology])
+  }, [params, pushMul, push, crMul, exp, ontology])
 
   return (
     <ForceCurves

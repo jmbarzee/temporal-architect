@@ -29,7 +29,7 @@ import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
 import { defaultParamsFor } from '../graph/simulation'
 import { foldReheatPolicy } from '../graph/dimension'
-import { bandFor, chargeFor, coreRadiusFor } from '../graph/forces'
+import { bandFor, chargeFor, coreRadiusFor, resolvePhysics } from '../graph/forces'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
@@ -168,6 +168,7 @@ function mappingProbes(): Json {
 function prototypeNamedValues(): Json {
   const NAMES = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']
   const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
   // An ARRAY of rows, each carrying its own name, because the row keys are the
   // very prototype names being probed. As an object this dropped `__proto__`
   // twice: `rows['__proto__'] = …` invokes the setter, and even built with
@@ -180,14 +181,14 @@ function prototypeNamedValues(): Json {
     const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
     const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
     const node = subject
-    const band = bandFor(params, node)
+    const band = bandFor(resolved.band, node)
     rows.push({
       name,
       styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
       styleLabel: style.label,
-      charge: chargeFor(params, node),
-      coreRadius: coreRadiusFor(params, node),
-      chargeIsFinite: Number.isFinite(chargeFor(params, node)),
+      charge: chargeFor(resolved.push, node),
+      coreRadius: coreRadiusFor(resolved.push, node),
+      chargeIsFinite: Number.isFinite(chargeFor(resolved.push, node)),
       band: `${band.yMin}..${band.yMax}`,
       // D39 fixed styleForKey and the force lookups and missed this one.
       abbreviation: DEFAULT_ONTOLOGY.abbreviationFor(name),
@@ -241,25 +242,25 @@ function physicsInjection(): Json {
   return {
     // The axis itself must come from the container.
     axes: {
-      shipped: fromDefault.chargeDimension,
-      otherAxis: zoned.chargeDimension,
-      differ: fromDefault.chargeDimension !== zoned.chargeDimension,
+      shipped: fromDefault.push.axis,
+      otherAxis: zoned.push.axis,
+      differ: fromDefault.push.axis !== zoned.push.axis,
     },
     // And so must the key space the maps are built over.
     chargeKeys: {
-      shipped: sorted(Object.keys(fromDefault.charge)),
-      otherAxis: sorted(Object.keys(zoned.charge)),
+      shipped: sorted([...resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push.byBucket.keys()]),
+      otherAxis: sorted([...resolvePhysics(zoned, OTHER_AXIS).push.byBucket.keys()]),
     },
     // A node on the other axis scores under ITS taxonomy and is absent under the
     // shipped one. Both rows are needed: the first proves the container is read,
     // the second proves the shipped one is genuinely not consulted.
-    northNodeUnderOwnTaxonomy: chargeFor(zoned, northNode),
-    northNodeUnderShippedTaxonomy: chargeFor(fromDefault, northNode),
+    northNodeUnderOwnTaxonomy: chargeFor(resolvePhysics(zoned, OTHER_AXIS).push, northNode),
+    northNodeUnderShippedTaxonomy: chargeFor(resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push, northNode),
     // The alternate taxonomy from the injection probe keeps the shipped axis but
     // restyles it, so the physics MUST agree with the shipped one here — a probe
     // that reported a difference for every alternate would prove nothing.
-    workerChargeShipped: chargeFor(fromDefault, worker),
-    workerChargeAlternate: chargeFor(fromAlternate, worker),
+    workerChargeShipped: chargeFor(resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push, worker),
+    workerChargeAlternate: chargeFor(resolvePhysics(fromAlternate, ALTERNATE).push, worker),
 
     // The axis has exactly one source, so a container derived by spreading
     // cannot end up disagreeing with itself. Before `styleAxis()` this row read
@@ -272,7 +273,7 @@ function physicsInjection(): Json {
           derived.resolveNodeStyle(worker).defType ===
           DEFAULT_ONTOLOGY.resolveNodeStyle(worker).defType,
         physicsAgreesWithStyling:
-          defaultParamsFor(derived).chargeDimension === derived.styleAxis(),
+          defaultParamsFor(derived).push.axis === derived.styleAxis(),
       }
     })(),
   }

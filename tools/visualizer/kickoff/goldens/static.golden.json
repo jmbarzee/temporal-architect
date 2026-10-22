@@ -3,59 +3,42 @@
     "alphaDecay": 0.005,
     "alphaMin": 0.0001,
     "band": {
-      "activity": {
-        "max": 500,
-        "min": 170
-      },
-      "namespace": {
-        "max": -120,
-        "min": -340
-      },
-      "nexusEndpoint": {
-        "max": -120,
-        "min": -340
-      },
-      "nexusOperation": {
-        "max": 460,
-        "min": 100
-      },
-      "nexusService": {
-        "max": 120,
-        "min": -200
-      },
-      "worker": {
-        "max": 120,
-        "min": -200
-      },
-      "workflow": {
-        "max": 460,
-        "min": 100
+      "axis": "temporalType",
+      "buckets": {
+        "activity": {
+          "max": 500,
+          "min": 170
+        },
+        "namespace": {
+          "max": -120,
+          "min": -340
+        },
+        "nexusEndpoint": {
+          "max": -120,
+          "min": -340
+        },
+        "nexusOperation": {
+          "max": 460,
+          "min": 100
+        },
+        "nexusService": {
+          "max": 120,
+          "min": -200
+        },
+        "worker": {
+          "max": 120,
+          "min": -200
+        },
+        "workflow": {
+          "max": 460,
+          "min": 100
+        }
       }
     },
-    "bandDimension": "temporalType",
     "bandEnabled": true,
     "bandXMax": 380,
     "bandXMin": 0,
-    "charge": {
-      "activity": -190,
-      "namespace": -850,
-      "nexusEndpoint": -900,
-      "nexusOperation": -560,
-      "nexusService": -760,
-      "worker": -770,
-      "workflow": -360
-    },
-    "chargeDimension": "temporalType",
     "chargeExponent": 0.7,
-    "coreRadius": {
-      "activity": 20,
-      "namespace": 85,
-      "nexusEndpoint": 64,
-      "nexusOperation": 58,
-      "nexusService": 54,
-      "worker": 72,
-      "workflow": 38
-    },
     "coreRadiusMultiplier": 1,
     "dist": {
       "linkEndpointToNamespace": 690,
@@ -101,6 +84,39 @@
     },
     "linkExponent": 1,
     "pullMultiplier": 0.6,
+    "push": {
+      "axis": "temporalType",
+      "buckets": {
+        "activity": {
+          "charge": -190,
+          "coreRadius": 20
+        },
+        "namespace": {
+          "charge": -850,
+          "coreRadius": 85
+        },
+        "nexusEndpoint": {
+          "charge": -900,
+          "coreRadius": 64
+        },
+        "nexusOperation": {
+          "charge": -560,
+          "coreRadius": 58
+        },
+        "nexusService": {
+          "charge": -760,
+          "coreRadius": 54
+        },
+        "worker": {
+          "charge": -770,
+          "coreRadius": 72
+        },
+        "workflow": {
+          "charge": -360,
+          "coreRadius": 38
+        }
+      }
+    },
     "pushMultiplier": 0.4,
     "topologicalEnabled": false,
     "velocityDecay": 0.4

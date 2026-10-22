@@ -4,6 +4,8 @@
 import React from 'react'
 import type { GraphEdge } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
+import { resolvePhysics } from '../graph/forces'
+import type { ResolvedPhysics } from '../graph/forces'
 import { bandForKey, chargeFor, coreRadiusFor, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
@@ -194,6 +196,8 @@ interface DrawData {
   focusedNodeId: string | null
   searchMatchIds: Set<string> | null
   forceParams: ForceParams
+  /** Dense per-bucket tables for the overlays — resolved once per render, not per draw (T25). */
+  resolved: ResolvedPhysics
   activeSection: ForceSection
   activeChargeType: DimensionValue | null
   activeGravityType: DimensionValue | null
@@ -261,20 +265,21 @@ export function GraphCanvas({
   }, [hoveredNodeId, selectedNodeId, nodeMap, dupNodeIds])
 
   const ontology = useOntology()
+  const resolved = React.useMemo(() => resolvePhysics(forceParams, ontology), [forceParams, ontology])
 
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -612,10 +617,10 @@ export function GraphCanvas({
           const color = d.ontology.resolveNodeStyle(node).color.fill
           ctx.strokeStyle = color
 
-          const effectiveCharge = Math.abs(chargeFor(d.forceParams, node)) * pushMul
+          const effectiveCharge = Math.abs(chargeFor(d.resolved.push, node)) * pushMul
           if (effectiveCharge <= 0) continue
 
-          const rEff = crMul * coreRadiusFor(d.forceParams, node)
+          const rEff = crMul * coreRadiusFor(d.resolved.push, node)
           const soft = rEff * rEff
 
           // Collect every reachable ring radius. Outer rings (lower threshold
@@ -774,7 +779,7 @@ export function GraphCanvas({
           present.push(value)
         }
         const centerOf = (t: DimensionValue) => {
-          const b = bandForKey(d.forceParams, t)
+          const b = bandForKey(d.resolved.band, t)
           return (b.yMin + b.yMax) / 2
         }
 
@@ -802,7 +807,7 @@ export function GraphCanvas({
           const median = m ? (m % 2 ? sorted[(m - 1) / 2] : (sorted[m / 2 - 1] + sorted[m / 2]) / 2) : 0
 
           for (const t of d.ontology.nodeTypeKeys) {
-            const band = bandForKey(d.forceParams, t)
+            const band = bandForKey(d.resolved.band, t)
             const [, sy1] = worldToScreen(vp, 0, band.yMin - median)
             const [, sy2] = worldToScreen(vp, 0, band.yMax - median)
             if (sy2 < 0 || sy1 > h) continue

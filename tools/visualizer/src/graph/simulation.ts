@@ -10,9 +10,12 @@ import {
   applyTopologicalGravity,
   applyCenterGravity,
   bandFor,
+  resolvePhysics,
 } from './forces'
 import type { Rng } from './rng'
-import type { DimensionId, DimensionValue } from './dimension'
+import type { ResolvedPhysics } from './forces'
+import type { DimensionId, DimensionalMapping } from './dimension'
+import { createDimensionalMapping } from './dimension'
 import type { Ontology } from './ontology'
 
 // The force helpers now live in ./forces; re-export them so existing consumers
@@ -45,19 +48,72 @@ export interface SimNode extends GraphNode {
 // split is purely at the type level: each force in ./forces takes only its
 // category's slice, so it cannot read params outside its own force.
 
+/** What the push force needs per bucket. */
+export interface PushPhysics { charge: number; coreRadius: number }
+/** A rest band, as declared and as tuned. Converted to `YBand` at read time. */
+export interface BandRange { min: number; max: number }
+
+/**
+ * Per-bucket tuning of one force along one axis.
+ *
+ * Three facts that must agree — which axis, how its values bucket, and the
+ * per-bucket numbers — as ONE constructed value, so there is no second field for
+ * them to disagree with. The axis and its table used to be two independent
+ * fields (`chargeDimension` and `charge`), and the Unit 2 review found the exact
+ * state that admits: after a taxonomy swap the axis was the new one and the
+ * table was still keyed by the old, every lookup missed, and the layout silently
+ * collapsed (PLAN §6.6).
+ *
+ * `overrides` holds **only what the user changed**, keyed by bucket id. Every
+ * other bucket resolves to the taxonomy's declared physics at read time
+ * (`resolvePhysics`). That is what makes the shape a projection rather than a
+ * copy: there is no dense table to go stale, and no provenance token to keep in
+ * step, because nothing here duplicates the taxonomy. It also makes "is this
+ * value tuned?" answerable — presence is the answer — and reset granular.
+ *
+ * T10 holds: the scalars beside this stay flat, so `keyof ForceParams` and the
+ * key-addressed sliders are unchanged. Only the table fields changed shape.
+ */
+export interface AxisTuning<T> {
+  readonly axis: DimensionId
+  readonly mapping: DimensionalMapping
+  readonly overrides: ReadonlyMap<string, T>
+}
+
+/** Set one bucket's override, copy-on-write. */
+export function withOverride<T>(tuning: AxisTuning<T>, bucketId: string, value: T): AxisTuning<T> {
+  const overrides = new Map(tuning.overrides)
+  overrides.set(bucketId, value)
+  return { ...tuning, overrides }
+}
+
+/**
+ * The identity bucketing of the taxonomy's style axis — one bucket per value.
+ * Unit 4b widens this to any mapping the host declares, bounded by the token
+ * ceiling; the shape is already right for it.
+ */
+export function identityTuning<T>(ontology: Ontology): AxisTuning<T> {
+  const axis = ontology.styleAxis()
+  return {
+    axis,
+    mapping: createDimensionalMapping({
+      id: `${axis}:identity`,
+      label: axis,
+      dimension: axis,
+      buckets: ontology.nodeTypeKeys.map(value => ({ id: value, label: value, values: [value] })),
+    }),
+    overrides: new Map(),
+  }
+}
+
 // PUSH — repulsion. Per-type charge strength and core radius, the masters that
 // scale them, and the charge falloff exponent.
 export interface ChargeParams {
-  /** The axis charge and core radius key on. One axis, named once. */
-  chargeDimension: DimensionId
-  // Charge strength (repulsion, negative values), keyed by dimension value.
-  charge: Record<DimensionValue, number>
-  // Core radius (charge softening, expressed as a length), keyed by node type.
-  // Per pair, the softening added to dist² is the squared average of the two
-  // endpoints' effective core radii (rEff = coreRadiusMultiplier × coreRadius).
-  // A larger core radius spreads a type's repulsion over a wider, gentler
-  // plateau near the centre instead of a sharp spike.
-  coreRadius: Record<DimensionValue, number>
+  /**
+   * Per-bucket charge and core radius: which axis, how its values bucket, and
+   * only what the user has changed. One constructed value — see `AxisTuning`.
+   */
+  push: AxisTuning<PushPhysics>
 
   pushMultiplier: number       // scales all charge (repulsion) forces
   coreRadiusMultiplier: number // scales all per-type core radii (charge softening)
@@ -84,8 +140,6 @@ export interface LinkParams {
 // centre drift, removing the need for canvas-side COM compensation. Plus the
 // optional downstream-reach vertical pull.
 export interface GravityParams {
-  /** The axis the per-value rest bands key on. */
-  bandDimension: DimensionId
   gravityX: number
   gravityY: number
   // Band falloff exponent applied to the displacement outside the rest band
@@ -114,8 +168,8 @@ export interface GravityParams {
   topologicalEnabled: boolean
   bandXMin: number
   bandXMax: number
-  // Per-value Y rest band [min, max].
-  band: Record<DimensionValue, { min: number; max: number }>
+  /** Per-bucket Y rest band. One constructed value — see `AxisTuning`. */
+  band: AxisTuning<BandRange>
 }
 
 // DYNAMICS — how the simulation cools and damps over time.
@@ -171,19 +225,12 @@ export type ForceParams = ChargeParams & LinkParams & GravityParams & DynamicsPa
  * why it would have been a bad bug to acquire later rather than one to find.
  */
 export function defaultParamsFor(ontology: Ontology): ForceParams {
-  const keys = ontology.nodeTypeKeys
-  const physicsOf = (key: DimensionValue) => ontology.styleForKey(key).physics
   return {
     // Both default to the axis the taxonomy resolves style on, so the layout
     // keys on the same thing it is coloured by. Unit 4 makes this a choice.
-    chargeDimension: ontology.styleAxis(),
-    bandDimension: ontology.styleAxis(),
+    push: identityTuning<PushPhysics>(ontology),
+    band: identityTuning<BandRange>(ontology),
 
-    // Charges (all negative = repulsion) and core radii (charge softening as a
-    // length), read off each value's declared physics. No cast: the maps are
-    // keyed by dimension value, which is what `nodeTypeKeys` already yields.
-    charge: Object.fromEntries(keys.map(k => [k, physicsOf(k).charge])),
-    coreRadius: Object.fromEntries(keys.map(k => [k, physicsOf(k).coreRadius])),
 
     // Spring stiffness + rest length per edge category.
     link: Object.fromEntries(ontology.edgeTypes.map(e => [e.id, e.physics.strength])),
@@ -210,9 +257,6 @@ export function defaultParamsFor(ontology: Ontology): ForceParams {
     topologicalEnabled: false,
     bandXMin:    0,
     bandXMax:  380,
-    // Per-value Y rest bands. Copied rather than referenced — the band objects
-    // belong to the taxonomy, and the params are the user's to tune.
-    band: Object.fromEntries(keys.map(k => [k, { ...physicsOf(k).yBand }])),
 
     // Dynamics. alphaMin is well below the d3 default (0.001) so the
     // simulation continues into its slow-cooling tail — layouts read as
@@ -276,6 +320,11 @@ export class Simulation {
   // than imported so the engine is not bound to one set of edge categories.
   private ontology: Ontology
 
+  // The per-bucket tables, resolved once from (params, taxonomy) and read by the
+  // kernels per pair / per node. Recomputed only when either input changes —
+  // never per tick, and never inside a loop (T25).
+  private resolved: ResolvedPhysics
+
   // `ontology` is REQUIRED, deliberately. It was defaulted first, and the single
   // production construction site then quietly kept the shipped taxonomy while
   // every component resolved through an injected one — a split-brain that no
@@ -290,6 +339,7 @@ export class Simulation {
     this.alpha = 1.0
     this.rng = rng
     this.ontology = ontology
+    this.resolved = resolvePhysics(this.params, ontology)
 
     // Initialize SimNodes inside their Y bands so the first tick doesn't have
     // to violently relocate them to the hierarchy. X is jittered around 0
@@ -299,7 +349,7 @@ export class Simulation {
     const xCenter = (this.params.bandXMin + this.params.bandXMax) / 2
     const xJitter = Math.max(40, (this.params.bandXMax - this.params.bandXMin) * 0.7)
     for (const node of graph.nodes.values()) {
-      const band = bandFor(this.params, node)
+      const band = bandFor(this.resolved.band, node)
       const yCenter = (band.yMin + band.yMax) / 2
       const yJitter = Math.max(20, (band.yMax - band.yMin) / 2)
       const sim: SimNode = {
@@ -348,9 +398,9 @@ export class Simulation {
     // shaping forces (Band, Topological) gated by their toggles, with Center
     // gravity as the baseline when neither is active. The Cartesian/Radial mode
     // is read inside the band/topological forces.
-    applyChargeForce(active, this.params, this.alpha, this.rng)
+    applyChargeForce(active, this.params, this.resolved, this.alpha, this.rng)
     applyLinkForce(activeEdges, this.nodeMap, this.params, this.alpha, this.rng, this.ontology.resolveEdgeType)
-    if (this.params.bandEnabled) applyBandGravity(active, this.params, this.alpha, this.rng)
+    if (this.params.bandEnabled) applyBandGravity(active, this.params, this.resolved, this.alpha, this.rng)
     if (this.params.topologicalEnabled) applyTopologicalGravity(active, this.params, this.alpha, downstreamScores)
     if (!this.params.bandEnabled && !this.params.topologicalEnabled) {
       applyCenterGravity(active, this.params, this.alpha)
@@ -449,6 +499,8 @@ export class Simulation {
 
   setParams(params: Partial<ForceParams>): void {
     Object.assign(this.params, params)
+    // A patch may replace a whole AxisTuning; the dense tables follow it.
+    this.resolved = resolvePhysics(this.params, this.ontology)
   }
 
   // Seed a node at a given position (used when new nodes appear during a
@@ -457,7 +509,7 @@ export class Simulation {
   seedAt(id: string, x: number, y: number): void {
     const node = this.nodeMap.get(id)
     if (!node) return
-    const band = bandFor(this.params, node)
+    const band = bandFor(this.resolved.band, node)
     const yClamped = Math.min(Math.max(y, band.yMin), band.yMax)
     node.x = x + (this.rng() - 0.5) * 10
     node.y = yClamped + (this.rng() - 0.5) * 10

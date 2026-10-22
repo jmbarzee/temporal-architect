@@ -25,6 +25,7 @@
 
 import {
   applyBandGravity,
+  resolvePhysics,
   applyCenterGravity,
   applyChargeForce,
   applyLinkForce,
@@ -165,11 +166,11 @@ function absentValueProbes(): Json {
     }
   }
   return {
-    charge: run((nodes, params, rng) => applyChargeForce(nodes, params, 1, rng)),
+    charge: run((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     bandCartesian: run((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, 1, rng)),
+      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     bandRadial: run((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'radial' }, 1, rng)),
+      applyBandGravity(nodes, { ...params, gravityMode: 'radial' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     undeclaredEdgeCategory: undeclaredEdgeCategory(),
   }
 }
@@ -178,19 +179,19 @@ export function forceProbes(): Json {
   return {
     seed: PROBE_SEED,
     absentValue: absentValueProbes(),
-    charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, 1, rng)),
+    charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     link: probe((nodes, params, rng) => {
       const map = new Map(nodes.map(n => [n.id, n]))
       applyLinkForce(PROBE_EDGES, map, params, 1, rng, DEFAULT_ONTOLOGY.resolveEdgeType)
     }),
     bandCartesian: probe((nodes, params, rng) =>
-      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, 1, rng)),
+      applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     // Includes a node sitting exactly on the origin, where the ring pull has no
     // defined direction and the kernel must kick it somewhere.
     bandRadial: (() => {
       const nodes = probeNodes()
       nodes.push(node('origin', 'workflow', 0, 0))
-      applyBandGravity(nodes, { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }, 1, mulberry32(PROBE_SEED))
+      applyBandGravity(nodes, { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }, resolvePhysics(defaultParamsFor(DEFAULT_ONTOLOGY), DEFAULT_ONTOLOGY), 1, mulberry32(PROBE_SEED))
       return {
         allFinite: allFinite(nodes),
         nonFiniteNodeIds: nonFinite(nodes),

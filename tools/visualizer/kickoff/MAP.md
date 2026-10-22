@@ -60,12 +60,12 @@ which is worth noticing rather than assuming.
 | `filter/types.ts` | manifest |  | **15** files |
 | `graph/dimension.ts` | manifest | 1 | **30** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
-| `graph/forces.ts` | manifest |  | **5** files |
+| `graph/forces.ts` | manifest |  | **9** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
 | `graph/highlight.ts` | manifest |  | `components/graph-view/useHighlight.ts` |
 | `graph/model.ts` | manifest | 12 | **19** files |
 | `graph/node-scale.ts` | manifest |  | **4** files |
-| `graph/ontology.ts` | manifest |  | **9** files |
+| `graph/ontology.ts` | manifest |  | **10** files |
 | `graph/rng.ts` | manifest |  | **4** files |
 | `graph/simulation.ts` | manifest | 5 | **20** files |
 | `graph/taxonomy.ts` | manifest | 1 | **7** files |

@@ -12,9 +12,10 @@
 // import cycle: `simulation -> forces` is the only value dependency.
 
 import type { DimensionId, DimensionValue } from './dimension'
-import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
-import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
+import type { ChargeParams, LinkParams, GravityParams, SimNode, AxisTuning, PushPhysics, BandRange } from './simulation'
+import type { Ontology } from './ontology'
+import type { DimensionalMapping } from './dimension'
 import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
 import type { Rng } from './rng'
 
@@ -33,40 +34,7 @@ export type EdgeTypeResolver = (
 /** The minimum a force needs of a node in order to look up its physics. */
 export type PhysicsSubject = { dimensions: Readonly<Record<DimensionId, DimensionValue>> }
 
-/**
- * Where a node sits on the axis a force keys on, or undefined when it sits
- * nowhere on that axis. One axis per force, named by the params — features never
- * compose two.
- */
-function axisValue(node: PhysicsSubject, dimension: DimensionId): DimensionValue | undefined {
-  return node.dimensions[dimension]
-}
 
-/**
- * Read one entry out of a keyed param map.
- *
- * `Object.hasOwn`, not a plain index. Dimension values are host-supplied
- * strings, and a plain object's index read walks the prototype chain — so a
- * node whose value happens to be named `constructor` or `toString` resolves to
- * an inherited member instead of missing. That member is not `undefined`, so
- * every `?? ABSENT_VALUE_PHYSICS.x` guard downstream is bypassed by the value's
- * *name alone*, and the `Object` function itself enters the force arithmetic.
- *
- * It does not stay one bad node, either: charge couples a pair by the average
- * of the two endpoints' charges and a band contributes its centre to the median
- * the stack re-centres on, so a single NaN spreads across the layout.
- */
-function ownEntry<T>(table: Readonly<Record<DimensionValue, T>>, key: DimensionValue | undefined): T | undefined {
-  return key !== undefined && hasOwn(table, key) ? table[key] : undefined
-}
-
-function lookup<T>(
-  table: Readonly<Record<DimensionValue, T>>,
-  node: PhysicsSubject,
-  dimension: DimensionId,
-): T | undefined {
-  return ownEntry(table, axisValue(node, dimension))
-}
 
 // ── Per-value / per-edge accessors ──────────────────────────────────────────
 // Each force reads its per-value/per-edge numbers from the keyed param maps via
@@ -110,15 +78,98 @@ export const ABSENT_VALUE_PHYSICS = {
   yBand: { min: 0, max: 0 },
 } as const
 
-export function chargeFor(params: ChargeParams, node: PhysicsSubject): number {
-  return lookup(params.charge, node, params.chargeDimension) ?? ABSENT_VALUE_PHYSICS.charge
+// ── Resolved physics ──────────────────────────────────────────────────────────
+//
+// `AxisTuning` is sparse (only what the user changed) and the kernels are hot
+// (four reads per pair, O(n²)). So the tables are resolved ONCE per
+// (params, taxonomy) into dense per-bucket maps here, and the kernels read
+// those. Resolution is the only place the taxonomy's declared physics is
+// consulted for the forces, and it never runs inside a loop (T25).
+
+/** A per-bucket table, resolved from one axis's tuning and the taxonomy. */
+export interface ResolvedAxis<T> {
+  readonly axis: DimensionId
+  readonly mapping: DimensionalMapping
+  readonly byBucket: ReadonlyMap<string, T>
 }
 
-export function coreRadiusFor(params: ChargeParams, node: PhysicsSubject): number {
+export interface ResolvedPhysics {
+  push: ResolvedAxis<PushPhysics>
+  band: ResolvedAxis<BandRange>
+}
+
+/** The bucket a node falls in on an axis, or undefined when it carries no value there. */
+export function bucketOf(axis: ResolvedAxis<unknown>, node: PhysicsSubject): string | undefined {
+  return axis.mapping.bucketFor(node.dimensions[axis.axis])?.id
+}
+
+/**
+ * A bucket's declared physics is the fold of its values' declared physics.
+ *
+ * Mean for charge and core radius, union for the band — both order-independent,
+ * so a host reordering a bucket's values for readability moves nothing. With the
+ * identity mapping every bucket has one value and the fold is the value.
+ */
+function declaredPush(ontology: Ontology, values: readonly DimensionValue[]): PushPhysics {
+  let charge = 0, coreRadius = 0
+  for (const v of values) {
+    const ph = ontology.styleForKey(v).physics
+    charge += ph.charge; coreRadius += ph.coreRadius
+  }
+  const n = Math.max(values.length, 1)
+  return { charge: charge / n, coreRadius: coreRadius / n }
+}
+
+function declaredBand(ontology: Ontology, values: readonly DimensionValue[]): BandRange {
+  let min = Infinity, max = -Infinity
+  for (const v of values) {
+    const b = ontology.styleForKey(v).physics.yBand
+    min = Math.min(min, b.min); max = Math.max(max, b.max)
+  }
+  return values.length === 0 ? { ...ABSENT_VALUE_PHYSICS.yBand } : { min, max }
+}
+
+function resolveAxis<T>(
+  tuning: AxisTuning<T>,
+  declared: (values: readonly DimensionValue[]) => T,
+): ResolvedAxis<T> {
+  const byBucket = new Map<string, T>()
+  for (const bucket of tuning.mapping.buckets) {
+    byBucket.set(bucket.id, tuning.overrides.get(bucket.id) ?? declared(bucket.values))
+  }
+  return { axis: tuning.axis, mapping: tuning.mapping, byBucket }
+}
+
+export function resolvePhysics(params: ChargeParams & GravityParams, ontology: Ontology): ResolvedPhysics {
+  return {
+    push: resolveAxis(params.push, values => declaredPush(ontology, values)),
+    band: resolveAxis(params.band, values => declaredBand(ontology, values)),
+  }
+}
+
+// ── Per-node accessors over the resolved tables ───────────────────────────────
+
+export function chargeFor(push: ResolvedAxis<PushPhysics>, node: PhysicsSubject): number {
+  const b = bucketOf(push, node)
+  return (b === undefined ? undefined : push.byBucket.get(b)?.charge) ?? ABSENT_VALUE_PHYSICS.charge
+}
+
+export function coreRadiusFor(push: ResolvedAxis<PushPhysics>, node: PhysicsSubject): number {
+  const b = bucketOf(push, node)
   return Math.max(
-    lookup(params.coreRadius, node, params.chargeDimension) ?? ABSENT_VALUE_PHYSICS.coreRadius,
+    (b === undefined ? undefined : push.byBucket.get(b)?.coreRadius) ?? ABSENT_VALUE_PHYSICS.coreRadius,
     CORE_RADIUS_MIN,
   )
+}
+
+/** One bucket's push physics, for a control surface that iterates buckets. */
+export function pushForKey(push: ResolvedAxis<PushPhysics>, bucketId: string): PushPhysics {
+  return push.byBucket.get(bucketId) ?? { charge: ABSENT_VALUE_PHYSICS.charge, coreRadius: ABSENT_VALUE_PHYSICS.coreRadius }
+}
+
+/** One bucket's rest band as declared/tuned, for a control surface that edits it. */
+export function bandRangeFor(band: ResolvedAxis<BandRange>, bucketId: string): BandRange {
+  return band.byBucket.get(bucketId) ?? { ...ABSENT_VALUE_PHYSICS.yBand }
 }
 
 export interface YBand {
@@ -126,14 +177,14 @@ export interface YBand {
   yMax: number
 }
 
-/** The rest band for a value. Control surfaces iterate values; forces take nodes. */
-export function bandForKey(params: GravityParams, key: DimensionValue | undefined): YBand {
-  const b = ownEntry(params.band, key) ?? ABSENT_VALUE_PHYSICS.yBand
+/** The rest band for a bucket. Control surfaces iterate buckets; forces take nodes. */
+export function bandForKey(band: ResolvedAxis<BandRange>, bucketId: string | undefined): YBand {
+  const b = (bucketId === undefined ? undefined : band.byBucket.get(bucketId)) ?? ABSENT_VALUE_PHYSICS.yBand
   return { yMin: b.min, yMax: b.max }
 }
 
-export function bandFor(params: GravityParams, node: PhysicsSubject): YBand {
-  return bandForKey(params, axisValue(node, params.bandDimension))
+export function bandFor(band: ResolvedAxis<BandRange>, node: PhysicsSubject): YBand {
+  return bandForKey(band, bucketOf(band, node))
 }
 
 /**
@@ -204,6 +255,7 @@ export function fromPolar(r: number, theta: number): { x: number; y: number } {
 export function applyChargeForce(
   active: SimNode[],
   params: ChargeParams,
+  resolved: ResolvedPhysics,
   alpha: number,
   rng: Rng,
 ): void {
@@ -228,12 +280,12 @@ export function applyChargeForce(
       }
       const rawDist = Math.sqrt(dist2)
       // Per-pair softening from the endpoints' core radii.
-      const rEffA = crMul * coreRadiusFor(params, a)
-      const rEffB = crMul * coreRadiusFor(params, b)
+      const rEffA = crMul * coreRadiusFor(resolved.push, a)
+      const rEffB = crMul * coreRadiusFor(resolved.push, b)
       const rAvg = (rEffA + rEffB) / 2
       const softening = rAvg * rAvg
-      const chargeA = chargeFor(params, a)
-      const chargeB = chargeFor(params, b)
+      const chargeA = chargeFor(resolved.push, a)
+      const chargeB = chargeFor(resolved.push, b)
       const strength = (chargeA + chargeB) / 2
       // Negate: strength is negative (convention), but force must be positive
       // for repulsion. The exponent acts on (dist² + softening) directly.
@@ -317,7 +369,7 @@ export const RADIAL_R_MAX = 540
 // Deliberately NOT deduplicated by centre value: several types share a band, so
 // the entry count and the distinct-value count differ (7 types, 4 distinct
 // centres).
-export function bandCenters(active: SimNode[], params: GravityParams): number[] {
+export function bandCenters(active: SimNode[], resolved: ResolvedPhysics): number[] {
   // Deduplicated by VALUE, which is why values are interned strings. A `Set`
   // deduplicates a string by value and an object by identity, so a composite
   // key here would collect one entry per node and move the median the whole
@@ -325,10 +377,10 @@ export function bandCenters(active: SimNode[], params: GravityParams): number[] 
   const seen = new Set<DimensionValue | undefined>()
   const centers: number[] = []
   for (const n of active) {
-    const key = axisValue(n, params.bandDimension)
+    const key = bucketOf(resolved.band, n)
     if (seen.has(key)) continue
     seen.add(key)
-    const b = bandForKey(params, key)
+    const b = bandForKey(resolved.band, key)
     centers.push((b.yMin + b.yMax) / 2)
   }
   return centers
@@ -338,8 +390,8 @@ export function bandCenters(active: SimNode[], params: GravityParams): number[] 
 // it keeps the band stack symmetric about the origin, so editing or toggling
 // bands doesn't shift the whole graph vertically (and it shares the origin with
 // center gravity, so swapping forces doesn't lurch the layout).
-function medianBandCenter(active: SimNode[], params: GravityParams): number {
-  const centers = bandCenters(active, params)
+function medianBandCenter(active: SimNode[], resolved: ResolvedPhysics): number {
+  const centers = bandCenters(active, resolved)
   if (centers.length === 0) return 0
   centers.sort((a, b) => a - b)
   const m = centers.length
@@ -356,11 +408,12 @@ function medianBandCenter(active: SimNode[], params: GravityParams): number {
 export function applyBandGravity(
   active: SimNode[],
   params: GravityParams,
+  resolved: ResolvedPhysics,
   alpha: number,
   rng: Rng,
 ): void {
   if (params.gravityMode === 'radial') {
-    applyBandGravityRadial(active, params, alpha, rng)
+    applyBandGravityRadial(active, params, resolved, alpha, rng)
     return
   }
 
@@ -369,7 +422,7 @@ export function applyBandGravity(
   const exp = params.gravityBandExp
   const xMin = params.bandXMin
   const xMax = params.bandXMax
-  const center = medianBandCenter(active, params)
+  const center = medianBandCenter(active, resolved)
   for (const node of active) {
     if (node.pinned) continue
     let xTarget: number | null = null
@@ -379,7 +432,7 @@ export function applyBandGravity(
       node.vx -= bandForce(node.x - xTarget, exp) * alpha * gx
     }
     // Band shifted so the stack is centred on the origin.
-    const band = bandFor(params, node)
+    const band = bandFor(resolved.band, node)
     const yMin = band.yMin - center
     const yMax = band.yMax - center
     let yTarget: number | null = null
@@ -404,15 +457,16 @@ function bandForce(d: number, exp: number): number {
 function applyBandGravityRadial(
   active: SimNode[],
   params: GravityParams,
+  resolved: ResolvedPhysics,
   alpha: number,
   rng: Rng,
 ): void {
   const gy = params.gravityY
   const center = new Map<DimensionValue | undefined, number>()
   for (const n of active) {
-    const key = axisValue(n, params.bandDimension)
+    const key = bucketOf(resolved.band, n)
     if (center.has(key)) continue
-    center.set(key, (b => (b.yMin + b.yMax) / 2)(bandForKey(params, key)))
+    center.set(key, (b => (b.yMin + b.yMax) / 2)(bandForKey(resolved.band, key)))
   }
   if (center.size === 0) return
   const centers = [...center.values()]
@@ -420,7 +474,7 @@ function applyBandGravityRadial(
   const span = Math.max(...centers) - lo || 1
   for (const node of active) {
     if (node.pinned) continue
-    const c = center.get(axisValue(node, params.bandDimension))
+    const c = center.get(bucketOf(resolved.band, node))
     if (c === undefined) continue
     const targetR = RADIAL_R_MIN + ((c - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)
     const r = Math.hypot(node.x, node.y)

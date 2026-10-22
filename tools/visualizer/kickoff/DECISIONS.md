@@ -858,3 +858,54 @@ expected.
 No existing row changes value.
 
 — 2026-09-06 — agent
+
+**D47 — Per-bucket force tuning is one constructed value, and it is sparse.**
+The shape fix PLAN §6.6 named and §6.7 sketched, landed as Unit 4's first commit
+— before 4e's dimension dropdown exists, because the dropdown moves the axis onto
+the same edit channel as `pushMultiplier`, and that is when "axis and table must
+agree" stops being a taxonomy-swap-only hazard and becomes one click away.
+
+`ChargeParams.chargeDimension` + `charge` + `coreRadius` become `push:
+AxisTuning<PushPhysics>`; `GravityParams.bandDimension` + `band` become `band:
+AxisTuning<BandRange>`. An `AxisTuning` is `{ axis, mapping, overrides }`: which
+axis, how its values bucket, and **only what the user changed**, keyed by bucket.
+Every other bucket resolves to the taxonomy's declared physics at read time.
+
+Four things fall out, and they are why this is the elegant answer rather than a
+tidier one:
+
+1. **Nothing is stored twice.** The axis is in one place. The key space is the
+   mapping's. The defaults are the taxonomy's. There is no dense copy to go
+   stale, so the provenance token `useSimulation` carried in a React ref to detect
+   staleness has nothing left to detect — a swap simply yields empty overrides on
+   the new axis.
+2. **T25 for free.** The kernels are hot (four reads per pair, O(n²)) and the
+   tuning is sparse, so `resolvePhysics(params, taxonomy)` produces dense
+   per-bucket tables ONCE — in `Simulation`'s constructor and `setParams`, and in
+   a `useMemo` on each control surface and the canvas — and the loops read those.
+   Resolution is the only place the forces consult the taxonomy, and it never
+   runs inside a loop.
+3. **"Is this tuned?" is answerable.** Presence in `overrides` is the answer.
+   Today a user setting equal to the default is indistinguishable from the
+   default; now the UI can mark modified tokens and reset one or all.
+4. **T10 holds.** The scalars beside the tuning stay flat, so `keyof ForceParams`,
+   `NumericForceKey` and every `SliderDef` are untouched. Only the table fields
+   changed shape.
+
+A bucket covering several values (4b's mapped buckets) resolves to the **mean**
+of their declared charge and core radius and the **union** of their bands — both
+order-independent, so a host reordering a bucket's values for readability moves
+nothing. Under the identity mapping every bucket has one value and the fold is
+the value, which is why the goldens are value-identical.
+
+`link`/`dist` keep their `EdgeTypeId` keying: they are per edge *category*, not
+per axis value, and 4c makes categories dimensional. Changing their shape here
+would be doing 4c's work in 4-pre.
+
+**Golden change (§8.2):** `static.defaultForceParams` changes *shape* only —
+`charge`/`coreRadius`/`band` records become `push.buckets`/`band.buckets` on the
+resolved tables, with `axis` recorded beside each. Every scalar and every
+per-bucket number is identical; verified by joining old and new on bucket id.
+All four fixture goldens and Tier C byte-identical.
+
+— 2026-10-21 — agent

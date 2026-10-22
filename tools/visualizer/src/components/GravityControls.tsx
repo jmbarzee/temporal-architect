@@ -6,6 +6,8 @@
 // baseline (active only when both toggles are off), so it has no control here.
 // See GRAPH_VIEW spec § Gravity / Control Panel.
 
+import { withOverride } from '../graph/simulation'
+import { bandRangeFor, resolvePhysics } from '../graph/forces'
 import React from 'react'
 import './GravityControls.css'
 import type { ForceParams } from '../graph/simulation'
@@ -74,6 +76,9 @@ const colX = (i: number, cols: { order: DimensionValue[]; firstGroupCount: numbe
 
 function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: GravityControlProps) {
   const ontology = useOntology()
+  // The dense per-bucket table the kernels also read — resolved here once per
+  // (params, taxonomy), never per draw.
+  const band = React.useMemo(() => resolvePhysics(params, ontology).band, [params, ontology])
   const cols = columnsFor(ontology)
   const svgRef = React.useRef<SVGSVGElement>(null)
   const dragRef = React.useRef<{ type: DimensionValue; edge: 'min' | 'max' } | null>(null)
@@ -98,12 +103,12 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
   const handleMove = (e: React.PointerEvent) => {
     const drag = dragRef.current
     if (!drag) return
-    const cur = params.band[drag.type]
+    const cur = bandRangeFor(band, drag.type)
     const v = clamp(snap(valForY(userY(e)), W_STEP), W_MIN, W_MAX)
     const next = drag.edge === 'min'
       ? { min: Math.min(v, cur.max - W_STEP), max: cur.max }
       : { min: cur.min, max: Math.max(v, cur.min + W_STEP) }
-    onParamChange({ band: { ...params.band, [drag.type]: next } })
+    onParamChange({ band: withOverride(params.band, drag.type, next) })
   }
   const handleUp = (e: React.PointerEvent) => {
     dragRef.current = null
@@ -163,8 +168,8 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
         {/* Rest-region stripes — the mini world view, behind and inert. */}
         <g className="gravity-band-stripes">
           {cols.order.map(t => {
-            const yTop = yForWorld(params.band[t].min)
-            const yBot = yForWorld(params.band[t].max)
+            const yTop = yForWorld(bandRangeFor(band, t).min)
+            const yBot = yForWorld(bandRangeFor(band, t).max)
             const dim = hoveredType !== null && hoveredType !== t
             const active = hoveredType === t
             return (
@@ -187,8 +192,8 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
         {/* Per-type vertical sliders (track + two handles), on top. */}
         {cols.order.map((t, i) => {
           const x = colX(i, cols)
-          const yTop = yForWorld(params.band[t].min)
-          const yBot = yForWorld(params.band[t].max)
+          const yTop = yForWorld(bandRangeFor(band, t).min)
+          const yBot = yForWorld(bandRangeFor(band, t).max)
           const dim = hoveredType !== null && hoveredType !== t
           const active = hoveredType === t
           const color = typeColor(ontology, t)
