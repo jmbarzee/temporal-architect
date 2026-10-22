@@ -5,7 +5,7 @@ import { isContainment } from '../graph/model'
 import React from 'react'
 import type { GraphEdge } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
-import { resolvePhysics } from '../graph/forces'
+import { bucketOf } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
 import { bandForKey, chargeFor, coreRadiusFor, springFor, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
@@ -171,8 +171,10 @@ interface GraphCanvasProps {
   searchMatchIds: Set<string> | null
   running: boolean
   forceParams: ForceParams
+  /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw (T25). */
+  resolved: ResolvedPhysics
   activeSection: ForceSection
-  activeChargeType: DimensionValue | null
+  activePushBucket: string | null
   activeGravityType: DimensionValue | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
@@ -197,10 +199,9 @@ interface DrawData {
   focusedNodeId: string | null
   searchMatchIds: Set<string> | null
   forceParams: ForceParams
-  /** Dense per-bucket tables for the overlays — resolved once per render, not per draw (T25). */
   resolved: ResolvedPhysics
   activeSection: ForceSection
-  activeChargeType: DimensionValue | null
+  activePushBucket: string | null
   activeGravityType: DimensionValue | null
   activePullEdge: string | null
   nodeScale: NodeScaleParams
@@ -220,7 +221,7 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, forceParams, activeSection, activeChargeType,
+  running, forceParams, resolved, activeSection, activePushBucket,
   activeGravityType, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
@@ -266,21 +267,20 @@ export function GraphCanvas({
   }, [hoveredNodeId, selectedNodeId, nodeMap, dupNodeIds])
 
   const ontology = useOntology()
-  const resolved = React.useMemo(() => resolvePhysics(forceParams, ontology), [forceParams, ontology])
 
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, activeSection, activePushBucket, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, activeSection, activeChargeType, activeGravityType, activePullEdge, nodeScale, running,
+    forceParams, resolved, activeSection, activePushBucket, activeGravityType, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -603,7 +603,7 @@ export function GraphCanvas({
         const exp = d.forceParams.chargeExponent
         const pushMul = d.forceParams.pushMultiplier
         const crMul = d.forceParams.coreRadiusMultiplier
-        const typeFilter = d.activeChargeType
+        const bucketFilter = d.activePushBucket
 
         for (const node of d.nodes) {
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
@@ -611,7 +611,7 @@ export function GraphCanvas({
           if (sx + maxRing < 0 || sx - maxRing > w ||
             sy + maxRing < 0 || sy - maxRing > h) continue
 
-          const highlighted = typeFilter === null || d.ontology.valueFor(node) === typeFilter
+          const highlighted = bucketFilter === null || bucketOf(d.resolved.push, node) === bucketFilter
           const baseAlpha = highlighted ? 0.28 : 0.05
           const stepAlpha = highlighted ? 0.06 : 0.015
 

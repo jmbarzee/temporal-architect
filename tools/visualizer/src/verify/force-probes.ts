@@ -183,8 +183,8 @@ function mappedAxisSprings(): Json {
   const mapping = createDimensionalMapping({
     id: 'probe:two', label: 'two', dimension: TEMPORAL_TYPE_DIMENSION,
     buckets: [
-      { id: 'control', label: 'control', values: ['namespace', 'worker', 'nexusEndpoint'] },
-      { id: 'work', label: 'work', values: ['workflow', 'activity', 'nexusService', 'nexusOperation'] },
+      { id: 'control', label: 'control', abbreviation: 'C', values: ['namespace', 'worker', 'nexusEndpoint'] },
+      { id: 'work', label: 'work', abbreviation: 'W', values: ['workflow', 'activity', 'nexusService', 'nexusOperation'] },
     ],
   })
   const identity = resolvePhysics(params, DEFAULT_ONTOLOGY).spring

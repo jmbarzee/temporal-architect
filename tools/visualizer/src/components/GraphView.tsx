@@ -11,6 +11,7 @@ import type { DecompositionParams } from './protocol'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
+import { resolvePhysics } from '../graph/forces'
 import type { GraphEdge } from '../graph/model'
 import { payloadString } from '../graph/model'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
@@ -170,6 +171,10 @@ export function GraphView({
     onToggleRunning: handleToggleRunning,
   } = useSimulation(graph, onSimRebuild)
 
+  // The dense per-bucket tables the kernels read, resolved once per
+  // (params, taxonomy) here and handed to the canvas and every control (T25).
+  const resolved = React.useMemo(() => resolvePhysics(forceParams, ontology), [forceParams, ontology])
+
   // Render-time node sizing (independent of the simulation). Tunable from the
   // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
   // touch ForceParams or reheat the layout.
@@ -217,7 +222,7 @@ export function GraphView({
     focusedNodeId,
     highlightedNodes, highlightedEdges,
     activeSection, setActiveSection,
-    activeChargeType, setActiveChargeType,
+    activePushBucket, setActivePushBucket,
     activeGravityType, setActiveGravityType,
     activePullEdge, setActivePullEdge,
   } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph)
@@ -498,8 +503,9 @@ export function GraphView({
             searchMatchIds={visibleMatchIds}
             running={running}
             forceParams={forceParams}
+            resolved={resolved}
             activeSection={activeSection}
-            activeChargeType={activeChargeType}
+            activePushBucket={activePushBucket}
             activeGravityType={activeGravityType}
             activePullEdge={activePullEdge}
             nodeScale={nodeScale}
@@ -593,11 +599,12 @@ export function GraphView({
       {/* Control panel */}
       <GraphControlPanel
         params={forceParams}
+        resolved={resolved}
         onParamChange={handleParamChange}
         onAdjust={handleForceAdjust}
         onGravityChange={handleGravityChange}
         onActiveSection={setActiveSection}
-        onActiveChargeType={setActiveChargeType}
+        onActivePushBucket={setActivePushBucket}
         onActiveGravityType={setActiveGravityType}
         onActivePullEdge={setActivePullEdge}
         nodeScale={nodeScale}

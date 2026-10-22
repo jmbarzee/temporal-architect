@@ -99,7 +99,12 @@ export function identityTuning<T>(ontology: Ontology): AxisTuning<T> {
       id: `${axis}:identity`,
       label: axis,
       dimension: axis,
-      buckets: ontology.nodeTypeKeys.map(value => ({ id: value, label: value, values: [value] })),
+      buckets: ontology.nodeTypeKeys.map(value => ({
+        id: value,
+        label: ontology.styleForKey(value).label,
+        abbreviation: ontology.abbreviationFor(value),
+        values: [value],
+      })),
     }),
     overrides: new Map(),
   }

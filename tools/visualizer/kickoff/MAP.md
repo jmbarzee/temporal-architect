@@ -45,6 +45,7 @@ which is worth noticing rather than assuming.
 | `components/controls/Plot.tsx` | manifest |  | `components/ForceMap.tsx`, `components/GravityControls.tsx` |
 | `components/controls/PopContext.tsx` | manifest |  | `components/GraphControlPanel.tsx`, `components/GravityControls.tsx`, `components/controls/Slider.tsx` |
 | `components/controls/Slider.tsx` | manifest |  | `components/ForceMap.tsx`, `components/GraphControlPanel.tsx`, `components/GravityControls.tsx` |
+| `components/controls/bucketColor.ts` | manifest |  | `components/ChargeControls.tsx`, `components/GravityControls.tsx`, `components/SpringControls.tsx` |
 | `components/graph-view/useHighlight.ts` | manifest | 10 | `components/GraphView.tsx` |
 | `components/graph-view/useOntology.ts` | manifest |  | **12** files |
 | `components/graph-view/useSimulation.ts` | manifest |  | `components/GraphView.tsx` |
@@ -58,14 +59,14 @@ which is worth noticing rather than assuming.
 | `filter/storage.ts` | manifest |  | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **15** files |
-| `graph/dimension.ts` | manifest | 1 | **32** files |
+| `graph/dimension.ts` | manifest | 1 | **31** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
-| `graph/forces.ts` | manifest |  | **10** files |
+| `graph/forces.ts` | manifest |  | **12** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
 | `graph/highlight.ts` | manifest |  | `components/graph-view/useHighlight.ts` |
 | `graph/model.ts` | manifest | 3 | **19** files |
 | `graph/node-scale.ts` | manifest |  | **4** files |
-| `graph/ontology.ts` | manifest |  | **10** files |
+| `graph/ontology.ts` | manifest |  | **9** files |
 | `graph/rng.ts` | manifest |  | **4** files |
 | `graph/simulation.ts` | manifest | 5 | **20** files |
 | `graph/taxonomy.ts` | manifest | 1 | **7** files |

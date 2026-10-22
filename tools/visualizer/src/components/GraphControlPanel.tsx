@@ -4,6 +4,7 @@
 import React from 'react'
 import './GraphControlPanel.css'
 import type { ForceParams } from '../graph/simulation'
+import type { ResolvedPhysics } from '../graph/forces'
 import type { DimensionValue } from '../graph/dimension'
 
 import type { NodeScaleParams } from '../graph/node-scale'
@@ -32,6 +33,8 @@ const CONTROL_TABS: { id: ControlTab; label: string }[] = [
 
 interface GraphControlPanelProps {
   params: ForceParams
+  /** The dense tables the kernels read, resolved once by the view (T25). */
+  resolved: ResolvedPhysics
   // Patch-based: a control emits the subset of params it changed. (handleGravityChange
   // already used this shape; unifying lets nested map params be written too.)
   onParamChange: (patch: Partial<ForceParams>) => void
@@ -43,7 +46,7 @@ interface GraphControlPanelProps {
   // GraphView so the simulation params update and the layout reheats.
   onGravityChange: (partial: Partial<ForceParams>) => void
   onActiveSection: (section: ForceSection) => void
-  onActiveChargeType: (nodeType: DimensionValue | null) => void
+  onActivePushBucket: (bucket: string | null) => void
   onActiveGravityType: (nodeType: DimensionValue | null) => void
   // The hovered/active pull edge category (its k-field key), forwarded to the
   // canvas so only that edge category is highlighted while tuning it.
@@ -130,9 +133,9 @@ const NODE_SCALE_SLIDERS: NodeScaleSliderDef[] = [
 ]
 
 export function GraphControlPanel({
-  params, onParamChange, onAdjust, onGravityChange,
+  params, resolved, onParamChange, onAdjust, onGravityChange,
   onActiveSection,
-  onActiveChargeType, onActiveGravityType, onActivePullEdge,
+  onActivePushBucket, onActiveGravityType, onActivePullEdge,
   nodeScale, onNodeScaleChange,
 }: GraphControlPanelProps) {
   const [open, setOpen] = React.useState(false)
@@ -148,13 +151,13 @@ export function GraphControlPanel({
   }, [onActivePullEdge])
 
   // Links the charge map and the charge-falloff viz: hovering a token in one
-  // brightens the matching curve in the other. The node type is also forwarded
-  // to the canvas so only that type's charge field rings highlight while tuning.
-  const [hoveredChargeType, setHoveredChargeType] = React.useState<DimensionValue | null>(null)
-  const handleHoverChargeType = React.useCallback((t: DimensionValue | null) => {
-    setHoveredChargeType(t)
-    onActiveChargeType(t)
-  }, [onActiveChargeType])
+  // brightens the matching curve in the other. The bucket is also forwarded to
+  // the canvas so only that bucket's charge field rings highlight while tuning.
+  const [hoveredPushBucket, setHoveredPushBucket] = React.useState<string | null>(null)
+  const handleHoverPushBucket = React.useCallback((b: string | null) => {
+    setHoveredPushBucket(b)
+    onActivePushBucket(b)
+  }, [onActivePushBucket])
 
   // Links the band pseudo-plot to the canvas band/ring highlight (and dims the
   // other columns/stripes).
@@ -224,15 +227,17 @@ export function GraphControlPanel({
               >
                 <ChargeMap
                   params={params}
+                  resolved={resolved}
                   onParamChange={emitParamChange}
-                  hoveredType={hoveredChargeType}
-                  onHoverType={handleHoverChargeType}
+                  hoveredBucket={hoveredPushBucket}
+                  onHoverBucket={handleHoverPushBucket}
                 />
                 <ChargeCurves
                   params={params}
+                  resolved={resolved}
                   onParamChange={emitParamChange}
-                  hoveredType={hoveredChargeType}
-                  onHoverType={handleHoverChargeType}
+                  hoveredBucket={hoveredPushBucket}
+                  onHoverBucket={handleHoverPushBucket}
                 />
               </EquationSection>
             </SectionSlot>
@@ -254,12 +259,14 @@ export function GraphControlPanel({
               >
                 <SpringMap
                   params={params}
+                  resolved={resolved}
                   onParamChange={emitParamChange}
                   hoveredEdge={hoveredPullEdge}
                   onHoverEdge={handleHoverPullEdge}
                 />
                 <SpringCurves
                   params={params}
+                  resolved={resolved}
                   onParamChange={emitParamChange}
                   hoveredEdge={hoveredPullEdge}
                   onHoverEdge={handleHoverPullEdge}
@@ -276,6 +283,7 @@ export function GraphControlPanel({
               >
                 <GravityControls
                   params={params}
+                  resolved={resolved}
                   onParamChange={emitParamChange}
                   onGravitySet={onGravityChange}
                   hoveredType={hoveredGravityType}

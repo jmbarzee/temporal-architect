@@ -10,11 +10,11 @@
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
 import { withOverride } from '../graph/simulation'
-import { resolvePhysics, springForKey } from '../graph/forces'
+import { springForKey } from '../graph/forces'
+import type { ResolvedPhysics } from '../graph/forces'
 
-import type { DimensionValue } from '../graph/dimension'
-import type { Ontology } from '../graph/ontology'
 import { useOntology } from './graph-view/useOntology'
+import { bucketColor } from './controls/bucketColor'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
 
@@ -27,16 +27,12 @@ export const EDGE_REST_MIN = 0
 export const EDGE_REST_MAX = 1000
 export const EDGE_REST_STEP = 10
 
-// Theme-aware fill for a value on the style axis. mountNodeTypeStyles() emits
-// --color-<suffix> with a dark-theme override, so this stays correct across themes.
-function typeColor(ontology: Ontology, t: DimensionValue): string {
-  return `var(--color-${ontology.styleForKey(t).color.cssVarSuffix})`
-}
-
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 interface SpringControlProps {
   params: ForceParams
+  /** The dense tables the kernels read, resolved once by the view (T25). */
+  resolved: ResolvedPhysics
   // Routes through the panel's emitParamChange → live reheat.
   onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active edge category, identified by its k-field key.
@@ -48,17 +44,17 @@ interface SpringControlProps {
 //
 // x = rest length, y = stiffness (k). Each edge category is a draggable
 // split-colour token; dragging sets both rest and k at once.
-export function SpringMap({ params, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
+export function SpringMap({ params, resolved, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const ontology = useOntology()
-  const spring = React.useMemo(() => resolvePhysics(params, ontology).spring, [params, ontology])
+  const { spring } = resolved
   const tokens: MapToken[] = spring.categories.map(c => {
     const ph = springForKey(spring, c.id)
     return {
       id: c.id,
       x: ph.distance,
       y: ph.strength,
-      colorA: typeColor(ontology, c.sourceType),
-      colorB: typeColor(ontology, c.targetType),
+      colorA: bucketColor(ontology, spring.mapping, c.sourceType),
+      colorB: bucketColor(ontology, spring.mapping, c.targetType),
       outline: c.category === 'containment' ? 'dashed' : 'solid',
       label: c.label,
       tooltip: c.tooltip,
@@ -111,9 +107,9 @@ function springResponse(d: number, kEff: number, restEff: number, exp: number): 
   return kEff * Math.sign(disp) * Math.pow(Math.abs(disp), exp)
 }
 
-export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
+export function SpringCurves({ params, resolved, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const ontology = useOntology()
-  const spring = React.useMemo(() => resolvePhysics(params, ontology).spring, [params, ontology])
+  const { spring } = resolved
   const pull = params.pullMultiplier
   const dist = params.distanceMultiplier
   const exp = params.linkExponent
@@ -146,7 +142,7 @@ export function SpringCurves({ params, onParamChange, hoveredEdge, onHoverEdge }
 
     const built = sampled.map(({ edge, restEff, pts }) => ({
       id: edge.id,
-      color: typeColor(ontology, edge.sourceType),
+      color: bucketColor(ontology, spring.mapping, edge.sourceType),
       markerX: xFor(restEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))

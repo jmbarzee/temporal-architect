@@ -232,7 +232,7 @@ function pairCategories(mapping: DimensionalMapping): EdgeTypeDefinition[] {
         const a = buckets[i], b = buckets[j]
         out.push({
           id: pairId(relation, a.id, b.id),
-          label: `${a.label}↔${b.label}`,
+          label: `${a.abbreviation}↔${b.abbreviation}`,
           sourceType: a.id,
           targetType: b.id,
           category: relation,

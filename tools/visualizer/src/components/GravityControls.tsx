@@ -7,7 +7,8 @@
 // See GRAPH_VIEW spec § Gravity / Control Panel.
 
 import { withOverride } from '../graph/simulation'
-import { bandRangeFor, resolvePhysics } from '../graph/forces'
+import { bandRangeFor } from '../graph/forces'
+import type { ResolvedPhysics } from '../graph/forces'
 import React from 'react'
 import './GravityControls.css'
 import type { ForceParams } from '../graph/simulation'
@@ -20,6 +21,7 @@ import { Plot } from './controls/Plot'
 import { Slider } from './controls/Slider'
 import { Equation } from './controls/Equation'
 import { FormulaValue } from './controls/PopContext'
+import { bucketColor } from './controls/bucketColor'
 
 // Column order: main ladder first, then the nexus ladder (after a gap). Both
 // derived from the node-type registry (family + tier) so a registry change
@@ -33,15 +35,13 @@ function columnsFor(ontology: Ontology): { order: DimensionValue[]; firstGroupCo
   }
 }
 
-function typeColor(ontology: Ontology, t: DimensionValue): string {
-  return `var(--color-${ontology.styleForKey(t).color.cssVarSuffix})`
-}
-
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const snap = (v: number, step: number) => Math.round(v / step) * step
 
 interface GravityControlProps {
   params: ForceParams
+  /** The dense tables the kernels read, resolved once by the view (T25). */
+  resolved: ResolvedPhysics
   onParamChange: (patch: Partial<ForceParams>) => void
   onGravitySet: (partial: Partial<ForceParams>) => void
   hoveredType: DimensionValue | null
@@ -74,11 +74,9 @@ const colSlot = (i: number, firstGroupCount: number) => (i < firstGroupCount ? i
 const colX = (i: number, cols: { order: DimensionValue[]; firstGroupCount: number }) =>
   PL + ((colSlot(i, cols.firstGroupCount) + 0.5) / (cols.order.length + 1)) * (PR - PL)
 
-function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: GravityControlProps) {
+function GravityBandPlot({ params, resolved, onParamChange, hoveredType, onHoverType }: GravityControlProps) {
   const ontology = useOntology()
-  // The dense per-bucket table the kernels also read — resolved here once per
-  // (params, taxonomy), never per draw.
-  const band = React.useMemo(() => resolvePhysics(params, ontology).band, [params, ontology])
+  const { band } = resolved
   const cols = columnsFor(ontology)
   const svgRef = React.useRef<SVGSVGElement>(null)
   const dragRef = React.useRef<{ type: DimensionValue; edge: 'min' | 'max' } | null>(null)
@@ -176,7 +174,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
               <rect
                 key={t}
                 x={PL} y={yTop} width={PR - PL} height={Math.max(0, yBot - yTop)}
-                fill={typeColor(ontology, t)}
+                fill={bucketColor(ontology, band.mapping, t)}
                 className={`gravity-band-stripe${dim ? ' dim' : ''}${active ? ' active' : ''}`}
               />
             )
@@ -196,7 +194,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
           const yBot = yForWorld(bandRangeFor(band, t).max)
           const dim = hoveredType !== null && hoveredType !== t
           const active = hoveredType === t
-          const color = typeColor(ontology, t)
+          const color = bucketColor(ontology, band.mapping, t)
           return (
             <g
               key={t}
@@ -225,7 +223,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
 
 type GravitySub = 'band' | 'topological'
 
-export function GravityControls({ params, onParamChange, onGravitySet, hoveredType, onHoverType }: GravityControlProps) {
+export function GravityControls({ params, resolved, onParamChange, onGravitySet, hoveredType, onHoverType }: GravityControlProps) {
   const mode = params.gravityMode
   const [sub, setSub] = React.useState<GravitySub>('band')
   return (
@@ -263,7 +261,7 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
         <div className={`gravity-body${sub === 'band' ? ' active' : ''}`} aria-hidden={sub !== 'band'}>
           <div className={`gravity-section-tools${params.bandEnabled ? '' : ' inactive'}`}>
             <Equation>{<>F = <FormulaValue id="bandStrength">strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
-            <GravityBandPlot params={params} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
+            <GravityBandPlot params={params} resolved={resolved} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
             <BandCurves params={params} onParamChange={onParamChange} />
           </div>
         </div>

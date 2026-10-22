@@ -126,8 +126,8 @@ function mappingProbes(): Json {
   const grouped = createDimensionalMapping({
     id: 'probe:grouped', label: 'Grouped', dimension: 'probe',
     buckets: [
-      { id: 'ab', label: 'A+B', values: ['a', 'b'] },
-      { id: 'cd', label: 'C+D', values: ['c', 'd'] },
+      { id: 'ab', label: 'A+B', abbreviation: 'AB', values: ['a', 'b'] },
+      { id: 'cd', label: 'C+D', abbreviation: 'CD', values: ['c', 'd'] },
     ],
   })
   let refusal = 'NOT REFUSED — the guarantee is not enforced'
@@ -135,8 +135,8 @@ function mappingProbes(): Json {
     createDimensionalMapping({
       id: 'probe:overlapping', label: 'Overlapping', dimension: 'probe',
       buckets: [
-        { id: 'ab', label: 'A+B', values: ['a', 'b'] },
-        { id: 'bc', label: 'B+C', values: ['b', 'c'] },
+        { id: 'ab', label: 'A+B', abbreviation: 'AB', values: ['a', 'b'] },
+        { id: 'bc', label: 'B+C', abbreviation: 'BC', values: ['b', 'c'] },
       ],
     })
   } catch (err) {
