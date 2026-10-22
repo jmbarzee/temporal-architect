@@ -4,10 +4,9 @@
 import { isContainment } from '../graph/model'
 import React from 'react'
 import type { GraphEdge } from '../graph/model'
-import type { BandRange, ForceParams, SimNode } from '../graph/simulation'
-import { bandForKey, bucketOf, medianBandCenter, presentBuckets, ringRadii } from '../graph/forces'
-import type { ResolvedAxis } from '../graph/forces'
-import { isIdentityMapping } from '../graph/dimension'
+import type { ForceParams, SimNode } from '../graph/simulation'
+import { bucketOf } from '../graph/forces'
+import type { BandOverlay } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
 import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
@@ -175,6 +174,8 @@ interface GraphCanvasProps {
   forceParams: ForceParams
   /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw (T25). */
   resolved: ResolvedPhysics
+  /** The band overlay as data — stripes per axis, rings — computed by the view in the forces' frame. */
+  overlay: BandOverlay
   activeSection: ForceSection
   activePushBucket: string | null
   activeGravityBucket: GravityHover | null
@@ -202,6 +203,7 @@ interface DrawData {
   searchMatchIds: Set<string> | null
   forceParams: ForceParams
   resolved: ResolvedPhysics
+  overlay: BandOverlay
   activeSection: ForceSection
   activePushBucket: string | null
   activeGravityBucket: GravityHover | null
@@ -223,7 +225,7 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, forceParams, resolved, activeSection, activePushBucket,
+  running, forceParams, resolved, overlay, activeSection, activePushBucket,
   activeGravityBucket, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
@@ -275,14 +277,14 @@ export function GraphCanvas({
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -764,76 +766,63 @@ export function GraphCanvas({
         ctx.setLineDash([])
       }
 
-      // GRAVITY: band rest regions. Drawn only when band gravity is active, and
-      // shaped by the mode:
-      //   cartesian — per-type Y stripes (median-centred to match the force) +
-      //               a global X band.
-      //   radial    — concentric rings at each tier's target radius about the
-      //               world origin.
-      const gx = d.forceParams.gravityX
-      const gy = d.forceParams.gravityY
-      if (gravityActive && (gx > 0 || gy > 0)) {
-        // Only buckets some visible node falls in — the set the force re-centres
-        // on and maps to rings — so the overlay never shows a band that is acting
-        // on nothing (D53, T12). The band maths is the engine's, not a copy of it.
-        const fillOf = (axis: ResolvedAxis<BandRange>, bucket: string | undefined): string =>
-          bucket !== undefined && axis.mapping.dimension === d.ontology.styleAxis() && isIdentityMapping(axis.mapping)
-            ? d.ontology.styleForKey(bucket).color.fill
-            : cssVar(canvas, '--color-text-muted', '#94A3B8')
+      // GRAVITY: the band overlay, drawn from the data the view computed in the
+      // forces' frame (`bandOverlay`): stripes per axis in cartesian, rings in
+      // radial, only for buckets some node falls in, only while an axis acts.
+      // Hovering a column highlights its bucket's stripe or ring on that axis;
+      // a hovered bucket that is drawn nowhere dims nothing.
+      if (gravityActive && d.overlay.acting) {
         const hover = d.activeGravityBucket
+        const fillOf = (bucket: string | undefined): string => {
+          const color = bucket !== undefined ? d.overlay.colors.get(bucket) : undefined
+          return color ?? cssVar(canvas, '--color-text-muted', '#94A3B8')
+        }
+        const drawnOn = (axis: 'x' | 'y') => hover !== null && hover.axis === axis &&
+          (axis === 'y' && d.overlay.rings.length > 0
+            ? d.overlay.rings.some(r => r.buckets.includes(hover.bucket))
+            : (axis === 'x' ? d.overlay.x : d.overlay.y).some(st => st.buckets.includes(hover.bucket)))
 
-        if (d.forceParams.radial) {
+        if (d.overlay.rings.length > 0) {
           const [ox, oy] = worldToScreen(vp, 0, 0)
-          for (const [bucket, targetR] of ringRadii(d.nodes, d.resolved.bandY)) {
-            const isActive = hover !== null && hover.axis === 'y' && hover.bucket === bucket
-            const isDimmed = hover !== null && hover.axis === 'y' && !isActive
-            ctx.strokeStyle = fillOf(d.resolved.bandY, bucket)
+          const highlight = drawnOn('y')
+          for (const ring of d.overlay.rings) {
+            const isActive = highlight && hover !== null && ring.buckets.includes(hover.bucket)
+            const isDimmed = highlight && !isActive
+            ctx.strokeStyle = fillOf(ring.buckets[0])
             ctx.globalAlpha = isActive ? 0.6 : isDimmed ? 0.1 : 0.28
             ctx.lineWidth = isActive ? 1.5 : 1
             ctx.setLineDash([])
             ctx.beginPath()
-            ctx.arc(ox, oy, targetR * vp.scale, 0, Math.PI * 2)
+            ctx.arc(ox, oy, ring.radius * vp.scale, 0, Math.PI * 2)
             ctx.stroke()
           }
-        } else {
-          // One stripe per distinct band on the axis: buckets that share a band
-          // (the default X window, two tiers on one Y band) draw once, so the
-          // overlay's density reads as bands rather than as bucket counts.
-          const stripes = (axis: ResolvedAxis<BandRange>, coord: 'x' | 'y') => {
-            const highlight = hover !== null && hover.axis === coord
-            const center = medianBandCenter(d.nodes, axis)
-            const drawn = new Map<string, { lo: number; hi: number; color: string; active: boolean }>()
-            for (const bucket of presentBuckets(d.nodes, axis)) {
-              const b = bandForKey(axis, bucket)
-              const key = `${b.min}:${b.max}`
-              const active = highlight && hover !== null && hover.bucket === bucket
-              const prev = drawn.get(key)
-              if (prev) { prev.active = prev.active || active; continue }
-              drawn.set(key, { lo: b.min - center, hi: b.max - center, color: fillOf(axis, bucket), active })
-            }
-            for (const { lo, hi, color, active } of drawn.values()) {
-              const s1 = coord === 'y' ? worldToScreen(vp, 0, lo)[1] : worldToScreen(vp, lo, 0)[0]
-              const s2 = coord === 'y' ? worldToScreen(vp, 0, hi)[1] : worldToScreen(vp, hi, 0)[0]
-              if (s2 < 0 || s1 > (coord === 'y' ? h : w)) continue
-              const isDimmed = highlight && !active
-              ctx.fillStyle = color
-              ctx.globalAlpha = active ? 0.20 : isDimmed ? 0.04 : 0.10
-              if (coord === 'y') ctx.fillRect(0, s1, w, s2 - s1)
-              else ctx.fillRect(s1, 0, s2 - s1, h)
-              ctx.strokeStyle = color
-              ctx.globalAlpha = active ? 0.55 : isDimmed ? 0.08 : 0.22
-              ctx.lineWidth = active ? 1.5 : 1
-              ctx.setLineDash([])
-              ctx.beginPath()
-              if (coord === 'y') { ctx.moveTo(0, s1); ctx.lineTo(w, s1); ctx.moveTo(0, s2); ctx.lineTo(w, s2) }
-              else { ctx.moveTo(s1, 0); ctx.lineTo(s1, h); ctx.moveTo(s2, 0); ctx.lineTo(s2, h) }
-              ctx.stroke()
-            }
-          }
-          if (gy > 0) stripes(d.resolved.bandY, 'y')
-          if (gx > 0) stripes(d.resolved.bandX, 'x')
         }
-
+        const stripes = (coord: 'x' | 'y') => {
+          const list = coord === 'x' ? d.overlay.x : d.overlay.y
+          const highlight = drawnOn(coord)
+          for (const { lo, hi, buckets } of list) {
+            const s1 = coord === 'y' ? worldToScreen(vp, 0, lo)[1] : worldToScreen(vp, lo, 0)[0]
+            const s2 = coord === 'y' ? worldToScreen(vp, 0, hi)[1] : worldToScreen(vp, hi, 0)[0]
+            if (s2 < 0 || s1 > (coord === 'y' ? h : w)) continue
+            const isActive = highlight && hover !== null && buckets.includes(hover.bucket)
+            const isDimmed = highlight && !isActive
+            const color = fillOf(buckets[0])
+            ctx.fillStyle = color
+            ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
+            if (coord === 'y') ctx.fillRect(0, s1, w, s2 - s1)
+            else ctx.fillRect(s1, 0, s2 - s1, h)
+            ctx.strokeStyle = color
+            ctx.globalAlpha = isActive ? 0.55 : isDimmed ? 0.08 : 0.22
+            ctx.lineWidth = isActive ? 1.5 : 1
+            ctx.setLineDash([])
+            ctx.beginPath()
+            if (coord === 'y') { ctx.moveTo(0, s1); ctx.lineTo(w, s1); ctx.moveTo(0, s2); ctx.lineTo(w, s2) }
+            else { ctx.moveTo(s1, 0); ctx.lineTo(s1, h); ctx.moveTo(s2, 0); ctx.lineTo(s2, h) }
+            ctx.stroke()
+          }
+        }
+        stripes('y')
+        stripes('x')
         ctx.globalAlpha = 1
       }
 

@@ -532,11 +532,11 @@
           ],
           "dupA": [
             0,
-            29.32625
+            32.22625
           ],
           "dupB": [
             0,
-            19.17625
+            22.07625
           ],
           "ep": [
             -2.5,
@@ -555,8 +555,8 @@
             0
           ],
           "unknown": [
-            -24.5,
-            60.9
+            -15,
+            58
           ],
           "wf": [
             0,
@@ -601,8 +601,8 @@
             27.241594
           ],
           "unknown": [
-            -21.280354,
-            28.373805
+            0,
+            0
           ],
           "wf": [
             -5.327163,
@@ -1267,28 +1267,7 @@
     ".graph-control-typed-nexusService { --type-color: var(--color-nexus-service); }",
     ".graph-control-typed-workflow { --type-color: var(--color-workflow); }",
     ".graph-control-typed-nexusOperation { --type-color: var(--color-nexus-operation); }",
-    ".graph-control-typed-activity { --type-color: var(--color-activity); }",
-    ".dual-range-namespace .dual-range-fill { background: #475569; }",
-    ".dual-range-namespace .dual-range-input::-webkit-slider-thumb { border-color: #94A3B8; }",
-    ".dual-range-namespace .dual-range-input::-moz-range-thumb { border-color: #94A3B8; }",
-    ".dual-range-nexusEndpoint .dual-range-fill { background: #9F1239; }",
-    ".dual-range-nexusEndpoint .dual-range-input::-webkit-slider-thumb { border-color: #BE123C; }",
-    ".dual-range-nexusEndpoint .dual-range-input::-moz-range-thumb { border-color: #BE123C; }",
-    ".dual-range-worker .dual-range-fill { background: #94A3B8; }",
-    ".dual-range-worker .dual-range-input::-webkit-slider-thumb { border-color: #CBD5E1; }",
-    ".dual-range-worker .dual-range-input::-moz-range-thumb { border-color: #CBD5E1; }",
-    ".dual-range-nexusService .dual-range-fill { background: #DB2777; }",
-    ".dual-range-nexusService .dual-range-input::-webkit-slider-thumb { border-color: #EC4899; }",
-    ".dual-range-nexusService .dual-range-input::-moz-range-thumb { border-color: #EC4899; }",
-    ".dual-range-workflow .dual-range-fill { background: #8B7EC8; }",
-    ".dual-range-workflow .dual-range-input::-webkit-slider-thumb { border-color: #A89BD8; }",
-    ".dual-range-workflow .dual-range-input::-moz-range-thumb { border-color: #A89BD8; }",
-    ".dual-range-nexusOperation .dual-range-fill { background: #F9A8D4; }",
-    ".dual-range-nexusOperation .dual-range-input::-webkit-slider-thumb { border-color: #F9A8D4; }",
-    ".dual-range-nexusOperation .dual-range-input::-moz-range-thumb { border-color: #F9A8D4; }",
-    ".dual-range-activity .dual-range-fill { background: #7CB9E8; }",
-    ".dual-range-activity .dual-range-input::-webkit-slider-thumb { border-color: #7CB9E8; }",
-    ".dual-range-activity .dual-range-input::-moz-range-thumb { border-color: #7CB9E8; }"
+    ".graph-control-typed-activity { --type-color: var(--color-activity); }"
   ],
   "nodeTypes": {
     "activity": {
@@ -2711,12 +2690,12 @@
     },
     "overrides": {
       "firstTickBase": [
-        14.073534,
-        5.693411
+        14.067774,
+        2.178029
       ],
       "firstTickTuned": [
-        21.607988,
-        -20.232995
+        21.599066,
+        -22.104279
       ],
       "neighbourEqualsDefault": true,
       "neighbourSpringStaysDeclared": true,
@@ -2738,6 +2717,30 @@
       "axisVanished": {
         "axis": "temporalType",
         "overrides": 0
+      },
+      "bandAxes": {
+        "axisVanished": {
+          "x": "temporalType",
+          "xOverrides": 0,
+          "y": "temporalType",
+          "yOverrides": 0
+        },
+        "fileDropped": {
+          "xBuckets": [
+            "nexus.twf"
+          ],
+          "xOverrideKept": true,
+          "yBuckets": [
+            "nexus.twf"
+          ],
+          "yOverrideKept": true
+        },
+        "outgrown": {
+          "x": "temporalType",
+          "xOverrides": 0,
+          "y": "temporalType"
+        },
+        "sameGraphReturnsSameObject": true
       },
       "fileDropped": {
         "buckets": [

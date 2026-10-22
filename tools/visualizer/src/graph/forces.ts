@@ -188,21 +188,19 @@ export function bandFor(band: ResolvedAxis<BandRange>, node: PhysicsSubject): Ba
 }
 
 /**
- * The buckets some node of `active` falls in, in first-encounter order — the
+ * The buckets some node of `nodes` falls in, in first-encounter order — the
  * set the band force re-centres on, the radial mapping rings, and the overlay
- * draws (D53: present, never all declared). `undefined` is a member when a
- * node carries no value on the axis; it has the absent band.
+ * draws (D53: present, never all declared). A node with no value on the axis
+ * is in no bucket: it has no band, joins no median, and sits at the axis's
+ * centre.
  */
-export function presentBuckets(active: readonly PhysicsSubject[], axis: ResolvedAxis<BandRange>): (string | undefined)[] {
-  const seen = new Set<string | undefined>()
-  const out: (string | undefined)[] = []
-  for (const n of active) {
+export function presentBuckets(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>): string[] {
+  const seen = new Set<string>()
+  for (const n of nodes) {
     const key = bucketOf(axis, n)
-    if (seen.has(key)) continue
-    seen.add(key)
-    out.push(key)
+    if (key !== undefined) seen.add(key)
   }
-  return out
+  return [...seen]
 }
 
 const centerOf = (b: BandRange) => (b.min + b.max) / 2
@@ -214,17 +212,18 @@ const centerOf = (b: BandRange) => (b.min + b.max) / 2
  * number except this array's length. Deliberately NOT deduplicated by centre
  * value: several buckets may share a band.
  */
-export function bandCenters(active: readonly PhysicsSubject[], axis: ResolvedAxis<BandRange>): number[] {
-  return presentBuckets(active, axis).map(key => centerOf(bandForKey(axis, key)))
+export function bandCenters(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>): number[] {
+  return presentBuckets(nodes, axis).map(key => centerOf(bandForKey(axis, key)))
 }
 
 /**
  * Median of the present band centres. Subtracting it keeps the band stack
- * symmetric about the origin on that axis, so editing or toggling bands does not
- * shift the whole graph, and both axes share the origin with center gravity.
+ * symmetric about the origin on that axis, so both axes share the origin with
+ * center gravity. (Editing one band can move the median and so shift the
+ * rest; the stack stays centred, which is the property worth keeping.)
  */
-export function medianBandCenter(active: readonly PhysicsSubject[], axis: ResolvedAxis<BandRange>): number {
-  const centers = bandCenters(active, axis).sort((a, b) => a - b)
+export function medianBandCenter(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>): number {
+  const centers = bandCenters(nodes, axis).sort((a, b) => a - b)
   const m = centers.length
   if (m === 0) return 0
   return m % 2 ? centers[(m - 1) / 2] : (centers[m / 2 - 1] + centers[m / 2]) / 2
@@ -232,15 +231,127 @@ export function medianBandCenter(active: readonly PhysicsSubject[], axis: Resolv
 
 /**
  * Radial mode: each present bucket's band centre maps to a target radius —
- * smallest centre innermost — over the fixed ring span. One source for the
- * kernel and the overlay.
+ * smallest centre innermost — over the fixed ring span. Buckets with equal
+ * centres share a ring; a node in no bucket has no ring and feels no pull.
  */
-export function ringRadii(active: readonly PhysicsSubject[], axis: ResolvedAxis<BandRange>): Map<string | undefined, number> {
-  const buckets = presentBuckets(active, axis)
+export function ringRadii(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>): Map<string, number> {
+  const buckets = presentBuckets(nodes, axis)
   const centers = buckets.map(key => centerOf(bandForKey(axis, key)))
   const lo = centers.length ? Math.min(...centers) : 0
   const span = (centers.length ? Math.max(...centers) : 0) - lo || 1
   return new Map(buckets.map((key, i) => [key, RADIAL_R_MIN + ((centers[i] - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)]))
+}
+
+/**
+ * The frame the band forces act in, computed over the simulation's WHOLE node
+ * set: the median centre on each axis, and the ring radius per Y bucket. One
+ * frame for seeding, the force and the overlay, so they agree by construction —
+ * a frame over the visible subset would move with every filter toggle and
+ * disagree with the seed (REVIEW_5a C1).
+ */
+export interface LayoutFrame {
+  readonly centerX: number
+  readonly centerY: number
+  readonly rings: ReadonlyMap<string, number>
+}
+
+export function layoutFrame(nodes: Iterable<PhysicsSubject>, resolved: ResolvedPhysics): LayoutFrame {
+  const all = [...nodes]
+  return {
+    centerX: medianBandCenter(all, resolved.bandX),
+    centerY: medianBandCenter(all, resolved.bandY),
+    rings: ringRadii(all, resolved.bandY),
+  }
+}
+
+/** Whether any band axis is pulling, mode-aware: in radial only Y acts. */
+export function bandAxesActing(params: GravityParams): boolean {
+  return params.radial ? params.gravityY > 0 : params.gravityX > 0 || params.gravityY > 0
+}
+
+export function topologicalActing(params: GravityParams): boolean {
+  return params.topologicalEnabled && params.gravityTopological > 0
+}
+
+/** One stripe of the overlay: a band on an axis, and every present bucket that shares it. */
+export interface BandStripe {
+  readonly lo: number
+  readonly hi: number
+  readonly buckets: readonly string[]
+}
+
+/**
+ * The overlay's stripes on one axis, as data: one per distinct band among the
+ * buckets present, re-centred on the frame. Buckets that share a band share a
+ * stripe (the default X window, two tiers on one Y band), so the overlay's
+ * density reads as bands rather than bucket counts. Pure, so a golden can read
+ * it (REVIEW_5a C8).
+ */
+/** One ring of the radial overlay: a radius, and every present Y bucket that maps to it. */
+export interface BandRing {
+  readonly radius: number
+  readonly buckets: readonly string[]
+}
+
+/**
+ * The band overlay as data: what the canvas draws, decided here so a golden can
+ * read it (REVIEW_5a C8). Stripes only while that axis acts in cartesian; rings
+ * only while Y acts in radial — the same predicates the tick uses, so the
+ * overlay never shows a force that does nothing. `colors` is the view's: one
+ * per bucket, keyed by bucket id.
+ */
+export interface BandOverlay {
+  readonly acting: boolean
+  readonly x: readonly BandStripe[]
+  readonly y: readonly BandStripe[]
+  readonly rings: readonly BandRing[]
+  readonly colors: ReadonlyMap<string, string>
+}
+
+export function bandOverlay(
+  nodes: Iterable<PhysicsSubject>,
+  params: GravityParams,
+  resolved: ResolvedPhysics,
+  frame: LayoutFrame,
+  colorOf: (axis: ResolvedAxis<BandRange>, bucket: string) => string,
+): BandOverlay {
+  const all = [...nodes]
+  const acting = bandAxesActing(params)
+  const colors = new Map<string, string>()
+  const withColors = (axis: ResolvedAxis<BandRange>, stripes: BandStripe[]) => {
+    for (const st of stripes) for (const b of st.buckets) if (!colors.has(b)) colors.set(b, colorOf(axis, b))
+    return stripes
+  }
+  if (!acting) return { acting, x: [], y: [], rings: [], colors }
+  if (params.radial) {
+    const byRadius = new Map<number, string[]>()
+    for (const [bucket, radius] of frame.rings) {
+      const list = byRadius.get(radius)
+      if (list) list.push(bucket)
+      else byRadius.set(radius, [bucket])
+      if (!colors.has(bucket)) colors.set(bucket, colorOf(resolved.bandY, bucket))
+    }
+    return { acting, x: [], y: [], rings: [...byRadius].map(([radius, buckets]) => ({ radius, buckets })), colors }
+  }
+  return {
+    acting,
+    x: params.gravityX > 0 ? withColors(resolved.bandX, bandStripes(all, resolved.bandX, frame.centerX)) : [],
+    y: params.gravityY > 0 ? withColors(resolved.bandY, bandStripes(all, resolved.bandY, frame.centerY)) : [],
+    rings: [],
+    colors,
+  }
+}
+
+export function bandStripes(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>, center: number): BandStripe[] {
+  const byBand = new Map<string, { lo: number; hi: number; buckets: string[] }>()
+  for (const bucket of presentBuckets(nodes, axis)) {
+    const b = bandForKey(axis, bucket)
+    const key = `${b.min}:${b.max}`
+    const prev = byBand.get(key)
+    if (prev) prev.buckets.push(bucket)
+    else byBand.set(key, { lo: b.min - center, hi: b.max - center, buckets: [bucket] })
+  }
+  return [...byBand.values()]
 }
 
 // ── Resolved springs ──────────────────────────────────────────────────────────
@@ -544,36 +655,38 @@ export function applyBandGravity(
   active: SimNode[],
   params: GravityParams,
   resolved: ResolvedPhysics,
+  frame: LayoutFrame,
   alpha: number,
   rng: Rng,
 ): void {
   if (params.radial) {
-    applyBandGravityRadial(active, params, resolved, alpha, rng)
+    applyBandGravityRadial(active, params, resolved, frame, alpha, rng)
     return
   }
   // The same rule on both axes: a strength of zero is an axis switched off.
-  if (params.gravityX > 0) pullToBands(active, resolved.bandX, 'x', params.gravityX, params.gravityBandExp, alpha)
-  if (params.gravityY > 0) pullToBands(active, resolved.bandY, 'y', params.gravityY, params.gravityBandExp, alpha)
+  if (params.gravityX > 0) pullToBands(active, resolved.bandX, 'x', frame.centerX, params.gravityX, params.gravityBandExp, alpha)
+  if (params.gravityY > 0) pullToBands(active, resolved.bandY, 'y', frame.centerY, params.gravityY, params.gravityBandExp, alpha)
 }
 
 // Pull every node outside its rest band on one axis back toward the nearest
-// band edge. Bands are re-centred on the median of the present centres, so the
-// stack sits on the origin and editing one band does not shift the rest.
+// band edge. Bands are re-centred on the frame's median, so the stack sits on
+// the origin. A node in no bucket has no band: its rest is the centre itself.
 function pullToBands(
   active: SimNode[],
   axis: ResolvedAxis<BandRange>,
   coord: 'x' | 'y',
+  center: number,
   strength: number,
   exp: number,
   alpha: number,
 ): void {
-  const center = medianBandCenter(active, axis)
   const velocity = coord === 'x' ? 'vx' : 'vy'
   for (const node of active) {
     if (node.pinned) continue
-    const band = bandFor(axis, node)
-    const lo = band.min - center
-    const hi = band.max - center
+    const bucket = bucketOf(axis, node)
+    const band = bucket === undefined ? undefined : axis.byBucket.get(bucket)
+    const lo = band === undefined ? 0 : band.min - center
+    const hi = band === undefined ? 0 : band.max - center
     const p = node[coord]
     let target: number | null = null
     if (p < lo) target = lo
@@ -599,15 +712,16 @@ function applyBandGravityRadial(
   active: SimNode[],
   params: GravityParams,
   resolved: ResolvedPhysics,
+  frame: LayoutFrame,
   alpha: number,
   rng: Rng,
 ): void {
   const gy = params.gravityY
-  const radii = ringRadii(active, resolved.bandY)
-  if (radii.size === 0) return
+  if (frame.rings.size === 0) return
   for (const node of active) {
     if (node.pinned) continue
-    const targetR = radii.get(bucketOf(resolved.bandY, node))
+    const bucket = bucketOf(resolved.bandY, node)
+    const targetR = bucket === undefined ? undefined : frame.rings.get(bucket)
     if (targetR === undefined) continue
     const r = Math.hypot(node.x, node.y)
     if (r < 1e-6) {

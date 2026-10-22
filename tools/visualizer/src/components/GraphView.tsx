@@ -11,7 +11,8 @@ import type { DecompositionParams } from './protocol'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
-import { presentSpringCategories, resolvePhysics, resolveSprings } from '../graph/forces'
+import { bandOverlay, layoutFrame, presentSpringCategories, resolvePhysics, resolveSprings } from '../graph/forces'
+import { isIdentityMapping } from '../graph/dimension'
 import { axisOptions, pairTuning } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
@@ -181,6 +182,14 @@ export function GraphView({
   // the current one (the pull tokens). Both read the whole graph, not the
   // visible subset — tuning covers what a filter may reveal next.
   const axes = React.useMemo(() => axisOptions(ontology, graph), [ontology, graph])
+  // The frame the band forces act in and the overlay the canvas draws, both
+  // over the WHOLE graph — the same frame the simulation seeds and ticks in.
+  const frame = React.useMemo(() => layoutFrame(graph.nodes.values(), resolved), [graph, resolved])
+  const overlay = React.useMemo(() => bandOverlay(graph.nodes.values(), forceParams, resolved, frame,
+    (axis, bucket) => axis.mapping.dimension === ontology.styleAxis() && isIdentityMapping(axis.mapping)
+      ? ontology.styleForKey(bucket).color.fill
+      : '#94A3B8'), [graph, forceParams, resolved, frame, ontology])
+
   // Classification does not depend on overrides, so this keys on the mapping
   // and not on `resolved`, which is a new object after every slider edit.
   const pairMapping = forceParams.pair.mapping
@@ -524,6 +533,7 @@ export function GraphView({
             running={running}
             forceParams={forceParams}
             resolved={resolved}
+            overlay={overlay}
             activeSection={activeSection}
             activePushBucket={activePushBucket}
             activeGravityBucket={activeGravityBucket}

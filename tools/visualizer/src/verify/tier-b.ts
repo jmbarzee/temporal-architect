@@ -21,7 +21,7 @@
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
 import { filterOfSets } from '../filter/types'
-import { bandCenters, bandFor, resolvePhysics } from '../graph/forces'
+import { bandCenters, bandFor, bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
 import type { Graph } from '../graph/model'
 import { defaultParamsFor, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
@@ -92,14 +92,23 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   const seeded = positions(seedSim.nodes)
 
   // `seedAt` is the other half of the seeding path and is reached by no fixture
-  // run: it fires only when a filter toggle reveals a node. Two more draws.
+  // run: it fires only when a filter toggle reveals a node. Two more draws. The
+  // point is far outside every band on both axes, so the clamp into the frame
+  // is what the row pins — an in-band point made it a no-op (REVIEW_5a C8).
+  const first = [...graph.nodes.keys()].sort()[0]
   const seedAtProbe = (() => {
     const sim = seededSimulation(graph)
-    const first = [...graph.nodes.keys()].sort()[0]
     if (first === undefined) return null
-    sim.seedAt(first, 111, 222)
+    sim.seedAt(first, -1e4, 1e4)
     const n = sim.getNode(first)
     return n ? { id: first, position: [n.x, n.y] as Json } : null
+  })()
+  const seedAtRadialProbe = (() => {
+    const sim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true })
+    if (first === undefined) return null
+    sim.seedAt(first, -1e4, 1e4)
+    const n = sim.getNode(first)
+    return n ? { id: first, radius: Math.hypot(n.x, n.y) } : null
   })()
 
   // Downstream scores, needed by the topological scenario.
@@ -137,7 +146,21 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // on distinct centre *values* — several types deliberately share a band, so
   // with all 7 present there are only 4 distinct values.
   const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const frame = layoutFrame(active, resolved)
   const centers = bandCenters(active, resolved.bandY)
+  // The overlay as the canvas draws it, from the same frame the force used:
+  // one stripe per distinct band present on each axis, and in radial the rings.
+  // Colours are the view's; here every bucket is uncoloured.
+  const overlayRows = (p: ForceParams, nodes: SimNode[]) => {
+    const o = bandOverlay(nodes, p, resolvePhysics(p, DEFAULT_ONTOLOGY), layoutFrame(nodes, resolvePhysics(p, DEFAULT_ONTOLOGY)), () => '#')
+    return {
+      acting: o.acting,
+      x: o.x.map(s => `${s.lo}..${s.hi}: ${sorted(s.buckets).join(',')}`),
+      y: o.y.map(s => `${s.lo}..${s.hi}: ${sorted(s.buckets).join(',')}`),
+      rings: o.rings.map(r => `${r.radius}: ${sorted(r.buckets).join(',')}`),
+    }
+  }
+  const radialSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true })
   const distinctTypesPresent = new Set(active.map(n => DEFAULT_ONTOLOGY.valueFor(n))).size
 
   let maxAbs = 0
@@ -152,10 +175,14 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // ── Diagnostics: chaotic, deliberately not goldened.
   const shift = median(centers)
   let outsideBand = 0
+  let outsideBandX = 0
   for (const n of active) {
     const band = bandFor(resolved.bandY, n)
     const slack = Math.abs(band.max - band.min) * TIER_B_PARAMS.bandTolerance
     if (!(n.y >= band.min - shift - slack && n.y <= band.max - shift + slack)) outsideBand++
+    const bx = bandFor(resolved.bandX, n)
+    const slackX = Math.abs(bx.max - bx.min) * TIER_B_PARAMS.bandTolerance
+    if (!(n.x >= bx.min - frame.centerX - slackX && n.x <= bx.max - frame.centerX + slackX)) outsideBandX++
   }
   const meanSpeed = active.length === 0
     ? 0
@@ -164,7 +191,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
     `[tier-b] ${fixtureName}: nodes=${active.length} ticksToStable=${ticksToStable} ` +
     `meanSpeedAtRest=${meanSpeed.toExponential(3)} ` +
     `(threshold ${(params.alphaMin * TIER_B_PARAMS.settledFactor).toExponential(3)}) ` +
-    `outsideBand=${outsideBand}/${active.length} extent=${extent.toFixed(1)}`,
+    `outsideBand=${outsideBand}/${active.length} outsideBandX=${outsideBandX}/${active.length} extent=${extent.toFixed(1)}`,
   )
 
   return {
@@ -172,7 +199,10 @@ export function tierB(fixtureName: string, graph: Graph): Json {
     activeNodeCount: active.length,
     seededPositions: seeded,
     seedAt: seedAtProbe,
+    seedAtRadial: seedAtRadialProbe,
     afterShortRun: sortedRecord(shortRuns),
+    overlay: overlayRows(params, active),
+    overlayRadial: overlayRows(radialSim.params, radialSim.nodes),
     allFinite: nonFinite.length === 0,
     nonFiniteNodeIds: sorted(nonFinite),
     bandCenterEntries: centers.length,

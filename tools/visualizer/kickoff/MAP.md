@@ -16,7 +16,7 @@ which is worth noticing rather than assuming.
 | `adapter/node-type-styles.ts` | shim | 1 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
 | `adapter/node-types.ts` | shim | 125 | **14** files |
 | `adapter/useGraphModel.ts` | shim | 3 | `components/GraphView.tsx` |
-| `components/AxisControls.tsx` | neither |  | `components/GravityControls.tsx` |
+| `components/AxisControls.tsx` | manifest |  | `components/GravityControls.tsx` |
 | `components/CanvasErrorBoundary.tsx` | manifest |  | `components/GraphView.tsx` |
 | `components/ChargeControls.tsx` | manifest |  | `components/PushPullControls.tsx` |
 | `components/FilterBar.tsx` | manifest | 2 | `components/GraphView.tsx`, `components/TreeView.tsx` |
@@ -63,7 +63,7 @@ which is worth noticing rather than assuming.
 | `filter/storage.ts` | manifest |  | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **16** files |
-| `graph/dimension.ts` | manifest | 1 | **32** files |
+| `graph/dimension.ts` | manifest | 1 | **31** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
 | `graph/forces.ts` | manifest |  | **17** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
@@ -72,7 +72,7 @@ which is worth noticing rather than assuming.
 | `graph/node-scale.ts` | manifest |  | **4** files |
 | `graph/ontology.ts` | manifest |  | **9** files |
 | `graph/rng.ts` | manifest |  | **4** files |
-| `graph/simulation.ts` | manifest | 3 | **24** files |
+| `graph/simulation.ts` | manifest | 1 | **24** files |
 | `graph/taxonomy.ts` | manifest | 1 | **9** files |
 | `graph/viewport.ts` | manifest |  | **4** files |
 | `lib.ts` | neither | 24 | — |
@@ -94,7 +94,7 @@ which is worth noticing rather than assuming.
 | `verify/tier-a.ts` | neither | 3 | `verify/main.ts`, `verify/tuning-probes.ts` |
 | `verify/tier-b.ts` | neither |  | `verify/main.ts` |
 | `verify/tier-c.ts` | neither | 12 | `verify/main.ts` |
-| `verify/tuning-probes.ts` | neither | 55 | `verify/static-golden.ts` |
+| `verify/tuning-probes.ts` | neither | 65 | `verify/static-golden.ts` |
 
 ## Files nothing imports
 

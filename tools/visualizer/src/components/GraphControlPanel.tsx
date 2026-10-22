@@ -172,7 +172,7 @@ export function GraphControlPanel({
   // Single funnel for every force control's edits. Routing all controls
   // through one wrapper means the "nudge the simulation" behaviour is
   // defined once and inherited by every present and future control
-  // (sliders, dual-range bands, upcoming 2D fields) — no per-control wiring,
+  // (sliders, axis-plot handles, the 2D maps) — no per-control wiring,
   // no chance of a control forgetting to keep the layout warm.
   const emitParamChange = React.useCallback((patch: Partial<ForceParams>) => {
     onParamChange(patch)

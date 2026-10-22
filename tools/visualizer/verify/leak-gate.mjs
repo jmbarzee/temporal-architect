@@ -67,7 +67,7 @@ if (blind.skipped.length > 0) {
 // which is the very event the count is supposed to make visible.
 const missing = missingNamed()
 if (missing.length > 0) {
-  console.log(`  ${missing.length} NAMED manifest file(s) no longer exist and are not being counted:`)
+  console.log(`  ${missing.length} excluded host component(s) no longer exist (drop the stale exclusion):`)
   for (const f of missing) console.log(`      ${f}`)
 }
 // The shim, named explicitly. The blind-spot report used to describe only holes
@@ -76,7 +76,7 @@ if (missing.length > 0) {
 console.log(`  shim trees measured separately: ${shimFiles().length} file(s)`)
 
 if (blind.siblings.length > 0) {
-  console.log(`  ${blind.siblings.length} file(s) beside the named components are NOT in the manifest:`)
+  console.log(`  ${blind.siblings.length} host component(s) excluded from the manifest by name:`)
   for (const f of blind.siblings) console.log(`      ${f}`)
 }
 // The shim's own vocabulary. NOT ratcheted down — the shim is allowed its

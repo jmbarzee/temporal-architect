@@ -53,7 +53,6 @@ export function GravityControls({ params, resolved, axes, onParamChange, onRelay
             onParamChange={onParamChange} onRelayout={onRelayout} hovered={hovered} onHover={onHover} />
         </SubTabBody>
         <SubTabBody active={sub === 'y'}>
-          {params.radial && <div className="axis-note axis-note-row">radial: Y buckets are rings about the centre, innermost first</div>}
           <AxisControls axis="y" params={params} resolved={resolved} axes={axes}
             onParamChange={onParamChange} onRelayout={onRelayout} hovered={hovered} onHover={onHover} />
         </SubTabBody>

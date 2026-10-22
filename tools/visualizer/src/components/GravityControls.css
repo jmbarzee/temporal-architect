@@ -80,4 +80,3 @@
 
 /* A short note beside a control, e.g. "ignored in radial". */
 .axis-note { font-size: 11px; color: var(--color-text-muted); font-family: var(--font-sans); }
-.axis-note-row { padding: 2px 0 4px; }

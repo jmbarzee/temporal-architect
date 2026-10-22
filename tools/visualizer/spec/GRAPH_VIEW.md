@@ -164,17 +164,17 @@ The graph is rendered using a **force-directed layout** (also called a force sim
 |-------------------|------------------|--------------------------------------------------------------------------|
 | **Charge (repulsion)** | Every node pair | Nodes repel each other, preventing overlap. Follows an inverse-square falloff (like electrostatic charge). |
 | **Link (attraction)**  | Connected node pairs | Edges act as springs pulling connected nodes toward a target distance.    |
-| **Gravity** | All nodes | Cohesion/anchoring, as one of three toggleable forces (see § Gravity below): **Band** (per-type rest bands, the hierarchy), **Topological** (root-ness inward pull), and **Center** (radial pull to the origin, the baseline when neither shaping force is on). Band and Topological are interpreted through a Cartesian or Radial mode. |
+| **Gravity** | All nodes | Cohesion/anchoring, as three forces (see § Gravity below): **Band** (two layout axes, X and Y, each with per-bucket rest bands — the hierarchy on Y, the horizontal window on X), **Topological** (root-ness inward pull), and **Center** (radial pull to the origin, the baseline when neither of the others acts). Band and Topological are interpreted through the Radial switch on the Y axis. |
 
 Each force has a **strength** parameter that controls its magnitude. These strengths are the primary tuning knobs for the layout.
 
-### Gravity: three toggleable forces, two modes
+### Gravity: three forces, two axes, one switch
 
-A force-directed graph is a free-floating cloud by default — held together but not held *anywhere*. Gravity supplies cohesion and structure as **three independent, toggleable forces**:
+A force-directed graph is a free-floating cloud by default — held together but not held *anywhere*. Gravity supplies cohesion and structure as **three independent forces**:
 
 - **Band** — two layout axes, X and Y, the same kind of thing (T22): each keys on a dimensional mapping, and each bucket of that mapping has a rest band on the axis. A node inside its band feels nothing; outside, it is pulled back with force `strength × dᵉˣᵖ` where `d` is the distance past the nearest band edge (`exp = 1` is the linear/Hooke spring, shared by both axes). On the default mapping (the type axis) the Y bands carry the hierarchy and every type's X band is the one horizontal window, so the horizontal spread is bounded without structure. Bands are stored *relatively* and re-centred each tick on the **median** of the band centres **present** in the visible set, on each axis, so editing or toggling them doesn't shift the whole graph; nodes are seeded at those re-centred centres, so the first tick relocates nothing. A strength of zero switches an axis off; a node with no value on an axis sits at that axis's centre.
 - **Topological** — a single-sided inward pull whose strength scales with a node's **downstream depth** (how many call-levels deep its subtree runs, linearly normalized): orchestrators atop deep call chains are drawn toward the focal point, leaves are left to charge. Depth is naturally tiered rather than combinatorially heavy-tailed (unlike raw reach count), so no log compression is needed. Out-degree was considered as a secondary or blended signal and rejected: it is too local and too noisy to stand in for root-ness — a node with many immediate children but shallow subtrees is not an orchestrator. Depth is **propagated up the containment hierarchy** (a worker/service/namespace is scored at least as deep as anything it hosts) so the pull never drags a deep workflow above its own container — keeping it aligned with, rather than fighting, the bands. Origin-relative, so it is independent of the bands.
-- **Center** — a radial pull toward the world origin. It is the unexplained baseline: active only when neither Band nor Topological is on, keeping the graph cohesive and anchored. (Not surfaced as a control.)
+- **Center** — a radial pull toward the world origin. It is the unexplained baseline: active only when nothing else anchors — no band axis acting (in radial only Y counts) and Topological off or at zero strength — keeping the graph cohesive and anchored. (Not surfaced as a control.)
 
 Band and Topological are interpreted through the **Radial** switch on the Y axis (R27):
 
@@ -495,7 +495,7 @@ Three **sub-tabs** — **X Axis**, **Y Axis**, **Topological** — styled like t
 - **X Axis / Y Axis** — the same surface for both (R26): equation `F = strength × dᵉˣᵖ` (`d` = distance outside the rest band; zero inside); an **axis** dropdown naming the dimension the axis keys on (R28 — a mapping whose bucket count fits the 24-token ceiling; a computed scalar arrives in 5b); an **axis plot** with one column per bucket (R30), the bucket's rest band drawn as a stripe with two draggable handles over it, the bucket's abbreviation above and its full name on hover (hovering a column highlights it and dims the rest, and drives the canvas stripe/ring highlight on that axis); the axis's own **strength** slider in the left gutter (R32 — only the shown axis's); and beneath the plot the read-only **force-response curve** for that axis (R33 — distance → force, normalized to the stronger axis so the two tabs' curves are comparable) with the **exp** slider beneath it (the band falloff exponent, shared by both axes: `1` linear/Hooke, higher = softer just outside the band and stiffer far out). Switching an axis's mapping starts its bands from the taxonomy's declared bands on the new buckets; on a non-type axis every bucket starts from the host's typical declared band and draws in one neutral tone until a palette for arbitrary axes exists.
 - **Topological** — equation `F = strength × depthᵉˣᵖ × d` (`d` = distance to the focal point). A read-only **depth→pull curve** with labelled axes (x = depth, y = pull), then two sliders **beneath** the curve: **strength**, and **exp** (the contrast exponent that shapes `depth^exp` — `1` is linear, higher sharpens the tiering; named `exp` to match the Push/Pull exponent sliders). Focal point is the top in Cartesian, the centre in Radial; leaves (depth 0) stay put.
 
-The active body's tools stay shown but dim when its force switch is off. No numbers on the controls (consistent with Push/Pull). The Band X/Y strength sliders are capped tight (the defaults sit mid-range); the Topological strength range is extended for headroom.
+The active body's tools stay shown but dim when its force does nothing: an axis at zero strength, the X axis in radial, Topological with its switch off. No numbers on the controls (consistent with Push/Pull). The axis strength sliders are capped tight (the defaults sit mid-range); the Topological strength range is extended for headroom.
 
 **MISC**
 
@@ -572,7 +572,7 @@ The control panel and canvas are linked: hovering a control section activates th
 |-----------------|-----------------|
 | **PUSH** | Charge field rings appear around all visible nodes |
 | **PULL** | Edges show tension colouring (teal/amber/blue). Hovering or dragging a spring-map token narrows this to just that edge category, drawn as a border. |
-| **GRAVITY** | Band rest regions appear — per-type Y stripes + the X band (Cartesian) or concentric rings (Radial). Hovering a band-plot column narrows the highlight to that type. |
+| **GRAVITY** | Band rest regions appear — a stripe per band present on each acting axis (cartesian) or concentric rings (radial). Hovering an axis-plot column narrows the highlight to that bucket on that axis. |
 | **MISC** | No canvas force-field response — Dynamics is temporal, not spatial, and Node scaling redraws node sizes directly rather than previewing a force field |
 
 When the user stops hovering, the visualization fades.
@@ -581,9 +581,9 @@ When the user stops hovering, the visualization fades.
 
 Within the Push body, hovering an individual charge-map token (one per bucket of the chosen axis) highlights only that bucket's field rings and dims the others, and brightens that bucket's curve in the falloff plot. This lets the user see the reach and strength of one type's charge force in isolation — useful for understanding why nodes of different types settle at different distances.
 
-### Per-Type Y-Band Highlighting
+### Per-Bucket Band Highlighting
 
-Within the GRAVITY section, hovering a node type's column in the band pseudo-plot highlights only that type's stripe (Cartesian) or ring (Radial) on the canvas at full opacity and dims the rest. This makes it easy to see exactly where one type's rest band sits relative to the others while you're dragging its dots.
+Within the GRAVITY section, hovering a bucket's column in an axis plot highlights only that bucket's stripe (cartesian, on that axis) or ring (radial) on the canvas at full opacity and dims the rest; a bucket that is drawn nowhere — no visible node falls in it — dims nothing. This makes it easy to see exactly where one bucket's rest band sits relative to the others while you're dragging its handles.
 
 ### Principle
 

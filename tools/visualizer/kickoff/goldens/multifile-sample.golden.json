@@ -3206,1194 +3206,1194 @@
     "afterShortRun": {
       "centerOnly": {
         "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-          -19.164595,
-          270.278824
+          -20.115292,
+          385.58404
         ],
         "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": [
-          28.239954,
-          221.450019
+          28.32848,
+          330.197254
         ],
         "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -34.144576,
-          303.495662
+          -34.219254,
+          408.073973
         ],
         "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-          67.704601,
-          215.71433
+          67.346728,
+          327.48259
         ],
         "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-          -12.777722,
-          220.652851
+          -12.217042,
+          333.600659
         ],
         "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": [
-          32.319515,
-          261.955896
+          31.362765,
+          372.993188
         ],
         "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
-          55.298602,
-          225.975514
+          56.046084,
+          340.816288
         ],
         "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -64.308749,
-          253.945394
+          -63.711523,
+          362.370651
         ],
         "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -50.526931,
-          292.687097
+          -51.992009,
+          407.381918
         ],
         "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-          43.174261,
-          198.399573
+          43.700743,
+          313.534477
         ],
         "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce": [
-          33.117827,
-          216.339528
+          33.726337,
+          328.506017
         ],
         "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          -15.908842,
-          221.893615
+          -16.808152,
+          333.44552
         ],
         "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-          71.5666,
-          223.348167
+          71.634061,
+          334.675766
         ],
         "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-          -21.080382,
-          294.30698
+          -22.014389,
+          408.64781
         ],
         "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce": [
-          21.704365,
-          220.556892
+          21.174457,
+          328.951792
         ],
         "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce": [
-          28.280977,
-          218.429487
+          28.4286,
+          327.45854
         ],
         "activity:TranscodeVideo/worker:gpuWorker/namespace:media": [
-          45.349174,
-          291.60517
+          45.581314,
+          405.407463
         ],
         "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-          -7.98577,
-          248.923411
+          -7.322832,
+          364.293542
         ],
         "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce": [
-          -4.026623,
-          293.638387
+          -5.475758,
+          408.528554
         ],
         "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-          65.446038,
-          203.101738
+          65.369459,
+          312.974943
         ],
         "namespace:bootstrapApp": [
-          -97.054875,
-          -178.626548
+          -96.522541,
+          -101.59309
         ],
         "namespace:ecommerce": [
-          13.436478,
-          -122.05554
+          13.629183,
+          -33.134446
         ],
         "namespace:fabric-shard-{org}": [
-          31.09557,
-          -164.24922
+          30.78385,
+          -86.481316
         ],
         "namespace:media": [
-          56.597844,
-          -108.377781
+          56.52379,
+          -24.724484
         ],
         "namespace:notifications": [
-          -94.460712,
-          -190.64432
+          -93.874291,
+          -113.396202
         ],
         "namespace:orders": [
-          -34.775736,
-          -123.215147
+          -33.735759,
+          -43.657176
         ],
         "namespace:partner": [
-          45.096466,
-          -200.787612
+          44.816185,
+          -122.275564
         ],
         "namespace:payments": [
-          48.012283,
-          -173.927706
+          48.051964,
+          -95.460045
         ],
         "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce": [
-          55.280476,
-          -65.640922
+          53.399704,
+          11.791097
         ],
         "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-          -83.435783,
-          -42.122336
+          -84.233042,
+          34.9412
         ],
         "nexusEndpoint:PaymentEndpoint/namespace:ecommerce": [
-          24.572447,
-          1.250665
+          23.853615,
+          78.283238
         ],
         "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-          21.857387,
-          -30.285521
+          23.199975,
+          46.937273
         ],
         "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-          32.880616,
-          -45.778776
+          33.228621,
+          31.230086
         ],
         "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce": [
-          81.853877,
-          151.26691
+          85.259803,
+          276.53113
         ],
         "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          9.805671,
-          260.549378
+          12.081052,
+          386.041745
         ],
         "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-          -47.384977,
-          171.427235
+          -49.77141,
+          297.198474
         ],
         "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
-          43.332705,
-          143.52311
+          40.751488,
+          260.324751
         ],
         "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -72.436506,
-          195.321808
+          -72.271566,
+          302.181817
         ],
         "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-          23.747145,
-          103.277269
+          16.122591,
+          225.925387
         ],
         "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-          15.942658,
-          161.041031
+          12.125675,
+          273.726433
         ],
         "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce": [
-          77.931066,
-          99.488656
+          77.684544,
+          211.342404
         ],
         "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -34.800385,
-          130.516033
+          -34.095967,
+          241.907078
         ],
         "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-          1.077415,
-          73.259256
+          0.82142,
+          185.032336
         ],
         "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce": [
-          45.3387,
-          112.318302
+          43.079085,
+          223.70988
         ],
         "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -55.365082,
-          110.926001
+          -55.218056,
+          218.487601
         ],
         "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-          57.952634,
-          91.196588
+          56.843707,
+          202.82424
         ],
         "worker:analyticsWorker/namespace:ecommerce": [
-          20.279053,
-          46.796201
+          20.68703,
+          147.59678
         ],
         "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          -90.917629,
-          65.059733
+          -90.491264,
+          167.283402
         ],
         "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -18.061893,
-          49.917106
+          -18.07665,
+          152.589411
         ],
         "worker:checkoutWorker/namespace:orders": [
-          -21.707616,
-          106.343851
+          -21.535729,
+          216.756922
         ],
         "worker:expressShipWorker/namespace:ecommerce": [
-          8.633853,
-          -31.867177
+          9.235932,
+          65.953705
         ],
         "worker:gpuWorker/namespace:media": [
-          62.711637,
-          -2.274385
+          61.650152,
+          98.153779
         ],
         "worker:mediaWorker/namespace:media": [
-          50.233688,
-          116.500977
+          49.925728,
+          219.615224
         ],
         "worker:notificationWorker/namespace:notifications": [
-          -50.603426,
-          57.232172
+          -50.193154,
+          160.859451
         ],
         "worker:orderWorker/namespace:ecommerce": [
-          21.143771,
-          40.395447
+          20.927856,
+          140.61233
         ],
         "worker:partnerWorker/namespace:partner": [
-          61.617654,
-          55.489146
+          61.053015,
+          158.288003
         ],
         "worker:paymentProcessingWorker/namespace:payments": [
-          63.521412,
-          75.693912
+          63.658005,
+          178.439837
         ],
         "worker:paymentWorker/namespace:ecommerce": [
-          33.050672,
-          42.723142
+          33.423337,
+          142.636876
         ],
         "worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -2.385998,
-          74.229408
+          -2.338271,
+          173.243673
         ],
         "worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          5.072138,
-          83.052544
+          5.029731,
+          183.374667
         ],
         "worker:standardShipWorker/namespace:ecommerce": [
-          35.320161,
-          -40.840341
+          34.412929,
+          57.276353
         ],
         "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-          -6.927864,
-          203.81697
+          -6.940298,
+          316.709718
         ],
         "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          -35.852014,
-          271.01646
+          -34.96231,
+          384.982402
         ],
         "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -39.201211,
-          276.837631
+          -37.888547,
+          387.960686
         ],
         "workflow:MediaPipeline/worker:mediaWorker/namespace:media": [
-          24.559135,
-          299.620326
+          24.325458,
+          406.596837
         ],
         "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-          -26.128381,
-          256.160435
+          -26.767185,
+          382.118487
         ],
         "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-          -15.595899,
-          250.723901
+          -16.5211,
+          376.630473
         ],
         "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-          -11.59212,
-          218.474577
+          -11.598183,
+          332.245439
         ],
         "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce": [
-          25.05893,
-          242.560263
+          24.560503,
+          349.027938
         ],
         "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner": [
-          66.46443,
-          184.679537
+          67.036217,
+          296.341152
         ],
         "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-          67.231074,
-          216.951737
+          66.845755,
+          326.05887
         ],
         "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-          -30.671994,
-          269.905213
+          -34.565133,
+          393.879974
         ],
         "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce": [
-          58.686384,
-          208.669548
+          58.264387,
+          318.759146
         ],
         "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          -28.691295,
-          221.715977
+          -28.908618,
+          329.345759
         ]
       },
       "default": {
         "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-          -18.791048,
-          289.806097
+          -18.780942,
+          411.957662
         ],
         "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": [
-          32.855071,
-          242.198017
+          32.973522,
+          360.159379
         ],
         "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -37.205183,
-          331.326669
+          -37.14813,
+          445.097143
         ],
         "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-          69.05462,
-          224.032601
+          68.073914,
+          341.316377
         ],
         "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-          -13.256391,
-          239.764826
+          -13.102884,
+          359.935312
         ],
         "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": [
-          35.954533,
-          281.217602
+          36.825016,
+          398.816356
         ],
         "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
-          59.346794,
-          239.30058
+          59.554127,
+          359.934684
         ],
         "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -69.050959,
-          279.058048
+          -68.642857,
+          396.228251
         ],
         "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -45.14005,
-          296.293399
+          -44.307753,
+          413.360663
         ],
         "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-          42.926434,
-          204.957354
+          41.471737,
+          323.062259
         ],
         "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce": [
-          34.291195,
-          232.788846
+          34.456838,
+          352.816355
         ],
         "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          -18.477188,
-          242.644197
+          -18.728332,
+          361.853819
         ],
         "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-          73.407923,
-          231.290149
+          72.128359,
+          347.395044
         ],
         "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-          -21.425425,
-          309.865346
+          -22.242442,
+          430.802731
         ],
         "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce": [
-          23.000131,
-          240.420659
+          22.440915,
+          357.89411
         ],
         "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce": [
-          32.594043,
-          239.07296
+          32.77175,
+          357.323163
         ],
         "activity:TranscodeVideo/worker:gpuWorker/namespace:media": [
-          49.8392,
-          301.26738
+          50.217328,
+          416.724441
         ],
         "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-          -11.819142,
-          254.981537
+          -12.792135,
+          371.678286
         ],
         "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce": [
-          1.811404,
-          296.259878
+          2.499717,
+          412.051097
         ],
         "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-          69.197824,
-          217.811586
+          68.995891,
+          336.243048
         ],
         "namespace:bootstrapApp": [
-          -104.77022,
-          -194.028632
+          -104.263454,
+          -110.829292
         ],
         "namespace:ecommerce": [
-          15.472265,
-          -133.344485
+          15.206816,
+          -38.822379
         ],
         "namespace:fabric-shard-{org}": [
-          33.588174,
-          -176.293739
+          33.327433,
+          -92.913555
         ],
         "namespace:media": [
-          60.746646,
-          -117.673225
+          60.729343,
+          -33.474665
         ],
         "namespace:notifications": [
-          -101.714289,
-          -205.481946
+          -101.234791,
+          -122.695256
         ],
         "namespace:orders": [
-          -37.125635,
-          -133.427426
+          -36.071985,
+          -52.649968
         ],
         "namespace:partner": [
-          48.460028,
-          -217.403389
+          48.190421,
+          -132.696787
         ],
         "namespace:payments": [
-          51.225335,
-          -186.658785
+          51.443593,
+          -102.710766
         ],
         "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce": [
-          56.174667,
-          -65.831654
+          54.772492,
+          11.483485
         ],
         "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-          -86.239928,
-          -41.924099
+          -86.680854,
+          35.101355
         ],
         "nexusEndpoint:PaymentEndpoint/namespace:ecommerce": [
-          26.348896,
-          1.162169
+          25.395928,
+          78.222238
         ],
         "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-          22.693594,
-          -30.17869
+          24.044411,
+          47.046632
         ],
         "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-          33.518487,
-          -45.774063
+          33.777204,
+          31.232735
         ],
         "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce": [
-          82.312395,
-          151.119355
+          84.923832,
+          276.550433
         ],
         "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          8.12089,
-          260.943503
+          10.02059,
+          386.485771
         ],
         "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-          -47.345031,
-          171.437068
+          -49.22548,
+          297.245298
         ],
         "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
-          48.037868,
-          150.238689
+          45.914767,
+          267.527255
         ],
         "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -79.200684,
-          213.321384
+          -79.083867,
+          329.168873
         ],
         "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-          26.371053,
-          104.532965
+          19.598146,
+          227.373215
         ],
         "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-          18.438021,
-          169.797314
+          15.919941,
+          285.696206
         ],
         "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce": [
-          82.150245,
-          100.662401
+          82.063645,
+          214.318269
         ],
         "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -37.711113,
-          133.221328
+          -38.360863,
+          245.908644
         ],
         "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-          1.839709,
-          73.90585
+          3.968366,
+          187.681383
         ],
         "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce": [
-          50.53066,
-          117.236841
+          48.440232,
+          228.516619
         ],
         "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -58.836829,
-          116.543962
+          -58.581641,
+          229.567079
         ],
         "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-          61.714149,
-          92.799596
+          62.126683,
+          205.157201
         ],
         "worker:analyticsWorker/namespace:ecommerce": [
-          21.729874,
-          48.402108
+          21.94095,
+          157.440913
         ],
         "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          -98.015547,
-          68.998957
+          -97.573987,
+          179.319899
         ],
         "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -17.127589,
-          49.639653
+          -17.153742,
+          160.303787
         ],
         "worker:checkoutWorker/namespace:orders": [
-          -23.018063,
-          107.807117
+          -22.898254,
+          219.807707
         ],
         "worker:expressShipWorker/namespace:ecommerce": [
-          9.79273,
-          -35.352801
+          10.44041,
+          70.852309
         ],
         "worker:gpuWorker/namespace:media": [
-          67.498505,
-          -5.521834
+          66.380311,
+          102.709803
         ],
         "worker:mediaWorker/namespace:media": [
-          54.699139,
-          123.371496
+          54.539124,
+          227.460571
         ],
         "worker:notificationWorker/namespace:notifications": [
-          -55.331527,
-          58.085153
+          -54.930397,
+          169.576769
         ],
         "worker:orderWorker/namespace:ecommerce": [
-          23.42498,
-          39.852308
+          23.195014,
+          148.410904
         ],
         "worker:partnerWorker/namespace:partner": [
-          65.550291,
-          58.760201
+          64.975452,
+          170.274673
         ],
         "worker:paymentProcessingWorker/namespace:payments": [
-          67.284654,
-          76.150547
+          66.991835,
+          188.158837
         ],
         "worker:paymentWorker/namespace:ecommerce": [
-          35.325781,
-          44.376403
+          35.542543,
+          152.403201
         ],
         "worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -1.792711,
-          79.536859
+          -1.719224,
+          183.220287
         ],
         "worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          6.060636,
-          88.355797
+          5.954588,
+          194.35302
         ],
         "worker:standardShipWorker/namespace:ecommerce": [
-          37.893595,
-          -45.247289
+          36.94841,
+          61.239385
         ],
         "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-          -7.416012,
-          219.255569
+          -7.873361,
+          338.627166
         ],
         "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          -41.007273,
-          292.890143
+          -40.391826,
+          415.372484
         ],
         "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -39.306168,
-          291.797233
+          -37.931537,
+          409.579085
         ],
         "workflow:MediaPipeline/worker:mediaWorker/namespace:media": [
-          28.275257,
-          317.411933
+          28.869316,
+          431.500441
         ],
         "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-          -26.906354,
-          256.156841
+          -27.365382,
+          382.124923
         ],
         "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-          -14.294919,
-          250.848586
+          -15.517258,
+          376.726695
         ],
         "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-          -13.670316,
-          230.093007
+          -14.258092,
+          349.476071
         ],
         "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce": [
-          28.435312,
-          260.946553
+          28.204485,
+          375.665445
         ],
         "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner": [
-          70.455387,
-          200.411608
+          70.282588,
+          321.795903
         ],
         "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-          70.12814,
-          230.41561
+          68.845552,
+          346.633426
         ],
         "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-          -27.264873,
-          272.070432
+          -29.579198,
+          396.509161
         ],
         "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce": [
-          61.10926,
-          224.17041
+          60.974245,
+          343.10147
         ],
         "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          -29.404301,
-          240.68974
+          -29.48228,
+          357.232706
         ]
       },
       "radial": {
         "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-          -19.167782,
-          322.414018
+          202.067988,
+          381.384215
         ],
         "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": [
-          45.701929,
-          289.719222
+          -210.438564,
+          397.336806
         ],
         "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -40.592335,
-          365.110516
+          69.887285,
+          -385.600202
         ],
         "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-          81.112326,
-          264.001013
+          367.987485,
+          241.098664
         ],
         "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-          -13.421173,
-          283.28191
+          175.193592,
+          406.112001
         ],
         "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": [
-          39.696,
-          323.957691
+          -271.958072,
+          -299.127443
         ],
         "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
-          72.538704,
-          274.714362
+          -248.113128,
+          334.326871
         ],
         "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -76.137127,
-          317.975881
+          -39.71231,
+          -430.755516
         ],
         "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -41.668166,
-          314.821746
+          381.704928,
+          252.708383
         ],
         "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-          52.99947,
-          238.519142
+          328.425957,
+          213.431802
         ],
         "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce": [
-          43.848815,
-          278.796514
+          -202.118873,
+          -352.623367
         ],
         "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          -24.218965,
-          291.474005
+          -421.403706,
+          192.818701
         ],
         "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-          84.251957,
-          264.977762
+          327.562419,
+          303.068721
         ],
         "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-          -21.280672,
-          336.987046
+          384.799789,
+          179.6467
         ],
         "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce": [
-          26.639206,
-          289.93709
+          -260.820534,
+          338.00574
         ],
         "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce": [
-          43.36727,
-          286.392622
+          -263.774748,
+          337.609427
         ],
         "activity:TranscodeVideo/worker:gpuWorker/namespace:media": [
-          57.487415,
-          317.927501
+          413.448339,
+          52.383106
         ],
         "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-          -18.958053,
-          279.731927
+          222.430502,
+          365.654754
         ],
         "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce": [
-          10.474038,
-          308.251294
+          -211.135456,
+          -351.582109
         ],
         "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-          85.860673,
-          262.539955
+          335.261427,
+          292.621114
         ],
         "namespace:bootstrapApp": [
-          -89.75636,
-          -161.104127
+          -39.039646,
+          57.253192
         ],
         "namespace:ecommerce": [
-          13.443666,
-          -113.297526
+          -50.236118,
+          82.050501
         ],
         "namespace:fabric-shard-{org}": [
-          29.397825,
-          -155.005171
+          77.518024,
+          13.44901
         ],
         "namespace:media": [
-          54.477038,
-          -101.946681
+          -19.643626,
+          79.347982
         ],
         "namespace:notifications": [
-          -87.588515,
-          -174.294554
+          72.345116,
+          15.532615
         ],
         "namespace:orders": [
-          -34.088241,
-          -116.58946
+          -58.146249,
+          52.632374
         ],
         "namespace:partner": [
-          42.674665,
-          -181.83405
+          -79.233988,
+          -15.694819
         ],
         "namespace:payments": [
-          45.920487,
-          -162.268926
+          -3.991467,
+          77.797491
         ],
         "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce": [
-          54.648513,
-          -65.497579
+          101.385429,
+          109.167597
         ],
         "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-          -81.753588,
-          -42.257249
+          -84.950606,
+          -30.038119
         ],
         "nexusEndpoint:PaymentEndpoint/namespace:ecommerce": [
-          26.647276,
-          1.101333
+          -111.160555,
+          -61.938831
         ],
         "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-          23.611321,
-          -30.093881
+          -125.316054,
+          -17.132183
         ],
         "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-          31.978564,
-          -45.796209
+          57.913577,
+          170.37047
         ],
         "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce": [
-          87.552056,
-          164.494641
+          279.363745,
+          215.13106
         ],
         "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          5.291885,
-          261.610916
+          90.602064,
+          349.339886
         ],
         "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-          -49.25881,
-          185.50796
+          -330.701016,
+          -108.040422
         ],
         "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
-          62.78609,
-          182.605124
+          -299.13248,
+          -220.919356
         ],
         "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -96.872017,
-          249.520386
+          -211.201786,
+          -344.058998
         ],
         "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-          37.654122,
-          125.728119
+          -326.377041,
+          -108.795688
         ],
         "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-          25.613821,
-          200.529576
+          -360.201049,
+          -116.034723
         ],
         "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce": [
-          105.303477,
-          103.316326
+          17.783967,
+          -79.877733
         ],
         "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -41.272987,
-          136.456272
+          132.47063,
+          265.651764
         ],
         "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-          9.348428,
-          79.865684
+          66.72285,
+          26.070777
         ],
         "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce": [
-          67.725173,
-          131.778303
+          -124.289951,
+          84.159776
         ],
         "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -77.720585,
-          124.159895
+          -71.838767,
+          -141.336853
         ],
         "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-          70.299287,
-          96.215325
+          48.524535,
+          63.83026
         ],
         "worker:analyticsWorker/namespace:ecommerce": [
-          59.028503,
-          58.962465
+          -137.220689,
+          56.984957
         ],
         "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          -116.355822,
-          79.153845
+          -89.994188,
+          213.909453
         ],
         "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          8.047743,
-          34.490229
+          215.172474,
+          148.1194
         ],
         "worker:checkoutWorker/namespace:orders": [
-          -39.967426,
-          106.712885
+          -126.312517,
+          240.01495
         ],
         "worker:expressShipWorker/namespace:ecommerce": [
-          19.813616,
-          -63.035799
+          -108.317585,
+          217.307486
         ],
         "worker:gpuWorker/namespace:media": [
-          90.905367,
-          -20.497152
+          -7.482588,
+          177.102905
         ],
         "worker:mediaWorker/namespace:media": [
-          68.033936,
-          143.914071
+          -74.442974,
+          199.942547
         ],
         "worker:notificationWorker/namespace:notifications": [
-          -78.191829,
-          62.715811
+          194.307589,
+          127.626679
         ],
         "worker:orderWorker/namespace:ecommerce": [
-          51.908939,
-          26.315248
+          -163.325436,
+          155.582216
         ],
         "worker:partnerWorker/namespace:partner": [
-          91.223845,
-          80.544894
+          -239.845677,
+          35.417464
         ],
         "worker:paymentProcessingWorker/namespace:payments": [
-          96.245153,
-          74.049743
+          92.123919,
+          231.105177
         ],
         "worker:paymentWorker/namespace:ecommerce": [
-          72.976879,
-          56.48572
+          -114.294122,
+          214.596788
         ],
         "worker:paymentWorkerSecondary/namespace:ecommerce": [
-          1.37048,
-          108.203057
+          -58.866744,
+          55.334724
         ],
         "worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          13.385774,
-          121.257939
+          -175.840241,
+          207.001267
         ],
         "worker:standardShipWorker/namespace:ecommerce": [
-          53.065112,
-          -68.184832
+          -146.529698,
+          198.888434
         ],
         "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-          -9.091887,
-          253.225526
+          -213.36557,
+          271.104619
         ],
         "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          -47.200308,
-          316.719208
+          -129.476003,
+          397.322799
         ],
         "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -35.398288,
-          322.107808
+          338.90305,
+          256.823913
         ],
         "workflow:MediaPipeline/worker:mediaWorker/namespace:media": [
-          34.032844,
-          349.82425
+          -89.396494,
+          331.799514
         ],
         "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-          -28.448726,
-          256.109123
+          -363.101085,
+          167.165467
         ],
         "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-          -14.08025,
-          260.148421
+          -258.989644,
+          225.500616
         ],
         "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-          -18.523075,
-          256.526029
+          -299.843006,
+          190.666673
         ],
         "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce": [
-          35.978134,
-          298.024128
+          -252.490087,
+          255.734308
         ],
         "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner": [
-          82.618998,
-          241.885346
+          -343.280827,
+          14.969887
         ],
         "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-          80.646721,
-          264.106025
+          -13.621115,
+          356.013894
         ],
         "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-          -27.72147,
-          284.863185
+          312.383395,
+          143.39385
         ],
         "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce": [
-          71.060937,
-          262.345177
+          -182.885503,
+          290.782064
         ],
         "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          -29.522983,
-          290.758986
+          -291.366529,
+          324.171992
         ]
       },
       "topological": {
         "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-          -20.160472,
-          285.780206
+          -20.227279,
+          405.976332
         ],
         "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": [
-          32.785029,
-          238.720305
+          32.902338,
+          355.637912
         ],
         "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -37.196529,
-          327.496991
+          -37.167408,
+          440.342945
         ],
         "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-          69.133342,
-          216.79499
+          68.249419,
+          331.720588
         ],
         "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-          -13.006911,
-          219.775415
+          -13.682713,
+          337.455292
         ],
         "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": [
-          35.802524,
-          279.391435
+          36.671774,
+          396.568393
         ],
         "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
-          59.267232,
-          236.612198
+          59.457458,
+          356.398685
         ],
         "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -68.784507,
-          276.03676
+          -68.409483,
+          392.568191
         ],
         "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -47.190664,
-          294.835194
+          -46.656452,
+          410.788469
         ],
         "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-          43.747949,
-          201.455267
+          42.928721,
+          319.004167
         ],
         "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce": [
-          34.152047,
-          225.819501
+          34.317972,
+          343.696838
         ],
         "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          -17.475207,
-          241.17668
+          -17.677552,
+          360.049393
         ],
         "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-          73.551979,
-          226.10853
+          72.405998,
+          340.54065
         ],
         "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-          -21.753992,
-          304.435195
+          -22.673161,
+          423.637509
         ],
         "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce": [
-          22.656201,
-          240.093771
+          22.130325,
+          357.47018
         ],
         "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce": [
-          32.605994,
-          238.326865
+          32.855771,
+          356.444291
         ],
         "activity:TranscodeVideo/worker:gpuWorker/namespace:media": [
-          49.667334,
-          300.658453
+          50.017152,
+          415.993223
         ],
         "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-          -8.596375,
-          249.234094
+          -8.335022,
+          364.809244
         ],
         "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce": [
-          1.230207,
-          295.972042
+          1.794686,
+          411.70398
         ],
         "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-          68.892429,
-          210.519451
+          68.649906,
+          326.615631
         ],
         "namespace:bootstrapApp": [
-          -104.640165,
-          -269.748398
+          -103.992568,
+          -228.363525
         ],
         "namespace:ecommerce": [
-          19.492148,
-          -218.782005
+          20.183422,
+          -161.837775
         ],
         "namespace:fabric-shard-{org}": [
-          33.281767,
-          -257.824273
+          32.872733,
+          -212.313144
         ],
         "namespace:media": [
-          60.311861,
-          -144.982397
+          60.031777,
+          -68.735975
         ],
         "namespace:notifications": [
-          -101.921383,
-          -267.936135
+          -101.073507,
+          -222.955688
         ],
         "namespace:orders": [
-          -35.916468,
-          -243.760898
+          -34.6957,
+          -197.350278
         ],
         "namespace:partner": [
-          49.193461,
-          -283.798121
+          48.777316,
+          -240.999424
         ],
         "namespace:payments": [
-          50.689697,
-          -258.151386
+          50.513069,
+          -211.107839
         ],
         "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce": [
-          50.310613,
-          -64.50817
+          47.62365,
+          12.97758
         ],
         "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-          -86.331894,
-          -41.918648
+          -86.57695,
+          35.093311
         ],
         "nexusEndpoint:PaymentEndpoint/namespace:ecommerce": [
-          27.179467,
-          -6.925578
+          26.699334,
+          73.990758
         ],
         "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-          21.726851,
-          -30.296369
+          22.981162,
+          46.917213
         ],
         "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-          33.757136,
-          -45.769571
+          33.945859,
+          31.23508
         ],
         "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce": [
-          83.36138,
-          150.803072
+          85.590545,
+          276.302298
         ],
         "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          10.827344,
-          260.324563
+          12.619885,
+          385.920898
         ],
         "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-          -50.391986,
-          171.146227
+          -51.08144,
+          297.085199
         ],
         "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
-          47.599016,
-          147.790753
+          46.629869,
+          264.256076
         ],
         "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -79.079627,
-          208.857949
+          -78.929133,
+          323.837534
         ],
         "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-          25.156495,
-          103.957939
+          18.285026,
+          226.8339
         ],
         "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-          14.704049,
-          151.959912
+          8.082103,
+          272.261055
         ],
         "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce": [
-          78.69265,
-          69.641636
+          77.520661,
+          173.891325
         ],
         "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -24.120467,
-          100.022679
+          -21.394123,
+          203.016333
         ],
         "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-          -12.211692,
-          52.630247
+          -14.486534,
+          159.302216
         ],
         "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce": [
-          48.72619,
-          97.373737
+          46.423963,
+          204.141914
         ],
         "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -58.364141,
-          99.715287
+          -57.664665,
+          208.923142
         ],
         "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-          46.263778,
-          74.522486
+          42.953993,
+          182.640368
         ],
         "worker:analyticsWorker/namespace:ecommerce": [
-          23.410465,
-          -47.27494
+          24.252931,
+          31.898923
         ],
         "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          -98.290115,
-          -45.665854
+          -97.998801,
+          33.062248
         ],
         "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -16.993336,
-          -37.294424
+          -16.555106,
+          43.583346
         ],
         "worker:checkoutWorker/namespace:orders": [
-          -23.704132,
-          38.610444
+          -23.563529,
+          124.620233
         ],
         "worker:expressShipWorker/namespace:ecommerce": [
-          9.437225,
-          -41.648464
+          9.702652,
+          63.448601
         ],
         "worker:gpuWorker/namespace:media": [
-          68.353575,
-          -6.860319
+          67.234854,
+          102.214857
         ],
         "worker:mediaWorker/namespace:media": [
-          54.280762,
-          107.076785
+          54.009128,
+          208.084901
         ],
         "worker:notificationWorker/namespace:notifications": [
-          -54.550267,
-          -35.402045
+          -53.949781,
+          46.709773
         ],
         "worker:orderWorker/namespace:ecommerce": [
-          21.725431,
-          29.002854
+          22.821087,
+          133.151202
         ],
         "worker:partnerWorker/namespace:partner": [
-          66.47536,
-          -57.529968
+          65.802667,
+          20.508828
         ],
         "worker:paymentProcessingWorker/namespace:payments": [
-          71.236007,
-          -14.262431
+          71.043866,
+          69.35549
         ],
         "worker:paymentWorker/namespace:ecommerce": [
-          36.494268,
-          -1.479059
+          35.52552,
+          91.604377
         ],
         "worker:paymentWorkerSecondary/namespace:ecommerce": [
-          -1.908814,
-          25.475691
+          -2.234329,
+          116.966885
         ],
         "worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          6.106359,
-          69.316729
+          6.107947,
+          170.088895
         ],
         "worker:standardShipWorker/namespace:ecommerce": [
-          37.868114,
-          -51.829263
+          37.218566,
+          52.285432
         ],
         "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-          -7.06989,
-          168.160027
+          -7.476862,
+          283.454515
         ],
         "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          -46.778551,
-          228.643227
+          -50.681553,
+          350.417104
         ],
         "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          -38.568199,
-          282.916853
+          -37.322007,
+          397.928911
         ],
         "workflow:MediaPipeline/worker:mediaWorker/namespace:media": [
-          28.151188,
-          313.927591
+          28.735311,
+          427.243618
         ],
         "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-          -28.932216,
-          256.034289
+          -29.449434,
+          382.014503
         ],
         "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-          -19.280476,
-          250.391203
+          -20.484931,
+          376.309089
         ],
         "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-          -12.715716,
-          178.414083
+          -11.663402,
+          284.787577
         ],
         "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce": [
-          28.160571,
-          258.239151
+          27.939086,
+          372.309834
         ],
         "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner": [
-          73.083918,
-          123.278666
+          71.252142,
+          238.502176
         ],
         "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-          68.812949,
-          220.732957
+          67.41434,
+          334.110694
         ],
         "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-          -30.221302,
-          270.776568
+          -33.094144,
+          395.051426
         ],
         "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce": [
-          61.257622,
-          213.934713
+          60.995751,
+          329.671028
         ],
         "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
-          -28.43562,
-          237.977464
+          -28.498797,
+          353.776809
         ]
       }
     },
@@ -4405,6 +4405,30 @@
     "distinctTypesPresent": 7,
     "nonDegenerateExtent": true,
     "nonFiniteNodeIds": [],
+    "overlay": {
+      "acting": true,
+      "rings": [],
+      "x": [
+        "-190..190: activity,namespace,nexusEndpoint,nexusOperation,nexusService,worker,workflow"
+      ],
+      "y": [
+        "210..540: activity",
+        "-300..-80: namespace,nexusEndpoint",
+        "140..500: nexusOperation,workflow",
+        "-160..160: nexusService,worker"
+      ]
+    },
+    "overlayRadial": {
+      "acting": true,
+      "rings": [
+        "540: activity",
+        "60: namespace,nexusEndpoint",
+        "493.27433628318585: nexusOperation,workflow",
+        "221.41592920353983: nexusService,worker"
+      ],
+      "x": [],
+      "y": []
+    },
     "params": {
       "bandTolerance": 0.05,
       "maxAbsPosition": 100000,
@@ -4417,306 +4441,310 @@
     "seedAt": {
       "id": "activity:AlertTimeout/worker:checkoutWorker/namespace:orders",
       "position": [
-        113.887072,
-        218.266777
+        -187.112928,
+        536.266777
       ]
+    },
+    "seedAtRadial": {
+      "id": "activity:AlertTimeout/worker:checkoutWorker/namespace:orders",
+      "radius": 538.294588
     },
     "seededPositions": {
       "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
         26.778392,
-        339.745547
+        455.245547
       ],
       "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": [
         104.187579,
-        309.290361
+        424.790361
       ],
       "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": [
         -49.030033,
-        400.427213
+        515.927213
       ],
       "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
         109.773643,
-        343.299269
+        458.799269
       ],
       "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
         27.995841,
-        353.155104
+        468.655104
       ],
       "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": [
         -43.514587,
-        365.583666
+        481.083666
       ],
       "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
         102.406186,
-        360.563872
+        476.063872
       ],
       "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
         -54.997854,
-        383.081756
+        498.581756
       ],
       "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
         -129.01169,
-        420.35523
+        535.85523
       ],
       "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
         110.436304,
-        331.524321
+        447.024321
       ],
       "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce": [
         76.990542,
-        346.572418
+        462.072418
       ],
       "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
         -77.359508,
-        340.616116
+        456.116116
       ],
       "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
         121.141711,
-        352.917439
+        468.417439
       ],
       "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
         116.74694,
-        334.795456
+        450.295456
       ],
       "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce": [
         7.391103,
-        294.690083
+        410.190083
       ],
       "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce": [
         92.621907,
-        308.133114
+        423.633114
       ],
       "activity:TranscodeVideo/worker:gpuWorker/namespace:media": [
         46.186678,
-        439.525304
+        555.025304
       ],
       "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
         27.13819,
-        394.603891
+        510.103891
       ],
       "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce": [
         -61.275594,
-        432.255653
+        547.755653
       ],
       "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
         126.482292,
-        316.39358
+        431.89358
       ],
       "namespace:bootstrapApp": [
         -107.156017,
-        -219.262744
+        -142.262744
       ],
       "namespace:ecommerce": [
         21.693895,
-        -176.26387
+        -99.26387
       ],
       "namespace:fabric-shard-{org}": [
         36.934209,
-        -183.020188
+        -106.020188
       ],
       "namespace:media": [
         53.295455,
-        -137.568598
+        -60.568598
       ],
       "namespace:notifications": [
         -100.631727,
-        -229.274823
+        -152.274823
       ],
       "namespace:orders": [
         -30.599167,
-        -135.22054
+        -58.22054
       ],
       "namespace:partner": [
         43.298035,
-        -237.384604
+        -160.384604
       ],
       "namespace:payments": [
         46.746713,
-        -197.559606
+        -120.559606
       ],
       "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce": [
         22.358732,
-        -211.878434
+        -134.878434
       ],
       "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
         -95.062651,
-        -191.658268
+        -114.658268
       ],
       "nexusEndpoint:PaymentEndpoint/namespace:ecommerce": [
         20.557792,
-        -148.658705
+        -71.658705
       ],
       "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
         44.596402,
-        -178.49968
+        -101.49968
       ],
       "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
         34.895859,
-        -195.74863
+        -118.74863
       ],
       "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce": [
         114.692608,
-        297.251365
+        423.251365
       ],
       "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
         43.08,
-        406.738654
+        532.738654
       ],
       "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
         -63.136066,
-        320.595758
+        446.595758
       ],
       "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce": [
         26.477586,
-        283.489944
+        409.489944
       ],
       "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": [
         -121.824365,
-        274.921648
+        400.921648
       ],
       "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
         -40.610345,
-        238.698956
+        364.698956
       ],
       "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
         -40.584587,
-        288.12684
+        414.12684
       ],
       "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce": [
         79.670755,
-        -32.527198
+        79.472802
       ],
       "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
         -138.43649,
-        22.218193
+        134.218193
       ],
       "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
         98.895026,
-        -40.455555
+        71.544445
       ],
       "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce": [
         90.805558,
-        67.255784
+        179.255784
       ],
       "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce": [
         -44.107003,
-        -13.055431
+        98.944569
       ],
       "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
         123.259819,
-        -43.462519
+        68.537481
       ],
       "worker:analyticsWorker/namespace:ecommerce": [
         12.078556,
-        -2.886042
+        109.113958
       ],
       "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
         -99.846559,
-        36.570859
+        148.570859
       ],
       "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
         34.554175,
-        -50.127711
+        61.872289
       ],
       "worker:checkoutWorker/namespace:orders": [
         -22.659562,
-        -42.188706
+        69.811294
       ],
       "worker:expressShipWorker/namespace:ecommerce": [
         17.746153,
-        -57.304459
+        54.695541
       ],
       "worker:gpuWorker/namespace:media": [
         61.385564,
-        -65.099051
+        46.900949
       ],
       "worker:mediaWorker/namespace:media": [
         58.697376,
-        72.801517
+        184.801517
       ],
       "worker:notificationWorker/namespace:notifications": [
         -95.140792,
-        -14.840717
+        97.159283
       ],
       "worker:orderWorker/namespace:ecommerce": [
         28.890025,
-        -44.952555
+        67.047445
       ],
       "worker:partnerWorker/namespace:partner": [
         52.783464,
-        28.894091
+        140.894091
       ],
       "worker:paymentProcessingWorker/namespace:payments": [
         52.249393,
-        -36.143186
+        75.856814
       ],
       "worker:paymentWorker/namespace:ecommerce": [
         20.825755,
-        0.871487
+        112.871487
       ],
       "worker:paymentWorkerSecondary/namespace:ecommerce": [
         22.995331,
-        66.875994
+        178.875994
       ],
       "worker:realtimeAnalyticsWorker/namespace:ecommerce": [
         17.968447,
-        53.501035
+        165.501035
       ],
       "worker:standardShipWorker/namespace:ecommerce": [
         31.219878,
-        -72.56827
+        39.43173
       ],
       "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
         -25.256352,
-        304.89185
+        430.89185
       ],
       "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
         -109.313798,
-        361.169182
+        487.169182
       ],
       "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
         32.366988,
-        248.344596
+        374.344596
       ],
       "workflow:MediaPipeline/worker:mediaWorker/namespace:media": [
         67.554261,
-        270.122747
+        396.122747
       ],
       "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
         -31.460935,
-        405.974832
+        531.974832
       ],
       "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
         -30.57193,
-        399.948954
+        525.948954
       ],
       "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
         -27.256732,
-        289.478157
+        415.478157
       ],
       "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce": [
         20.292801,
-        281.569081
+        407.569081
       ],
       "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner": [
         48.773849,
-        245.16296
+        371.16296
       ],
       "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
         43.072069,
-        253.449074
+        379.449074
       ],
       "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
         -96.790537,
-        403.127298
+        529.127298
       ],
       "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce": [
         2.618031,
-        263.563427
+        389.563427
       ],
       "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce": [
         23.983287,
-        240.814418
+        366.814418
       ]
     },
     "stableWithinTickBudget": true,

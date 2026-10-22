@@ -42,6 +42,12 @@ interface AxisControlsProps {
 
 const tuningKey = (axis: LayoutAxis): 'bandX' | 'bandY' => (axis === 'x' ? 'bandX' : 'bandY')
 const strengthKey = (axis: LayoutAxis): 'gravityX' | 'gravityY' => (axis === 'x' ? 'gravityX' : 'gravityY')
+// Patches spelled out per axis, so the compiler checks the value against the
+// field — a computed key under a cast would let a tuning land in a strength.
+const tuningPatch = (axis: LayoutAxis, tuning: AxisTuning<BandRange>): Partial<ForceParams> =>
+  axis === 'x' ? { bandX: tuning } : { bandY: tuning }
+const strengthPatch = (axis: LayoutAxis, value: number): Partial<ForceParams> =>
+  axis === 'x' ? { gravityX: value } : { gravityY: value }
 
 // ── Axis plot geometry ─────────────────────────────────────────────────────────
 // One column per bucket; the vertical is the axis's world coordinate. Rest
@@ -75,7 +81,7 @@ export function AxisControls({ axis, params, resolved, axes, onParamChange, onRe
   const onAxisChange = (mapping: DimensionalMapping) => {
     if (mapping.dimension === tuning.mapping.dimension) return
     // A new axis starts from the taxonomy's declared bands on its buckets.
-    onRelayout({ [key]: { mapping, overrides: new Map() } } as Partial<ForceParams>)
+    onRelayout(tuningPatch(axis, { mapping, overrides: new Map() }))
   }
 
   return (
@@ -105,11 +111,12 @@ export function AxisControls({ axis, params, resolved, axes, onParamChange, onRe
 
       <AxisPlot
         axis={axis}
+        radial={params.radial}
         tuning={tuning}
         table={table}
         strength={strength}
-        onStrength={v => onParamChange({ [strengthKey(axis)]: v } as Partial<ForceParams>)}
-        onBand={(bucket, next) => onParamChange({ [key]: withOverride(tuning, bucket, next) } as Partial<ForceParams>)}
+        onStrength={v => onParamChange(strengthPatch(axis, v))}
+        onBand={(bucket, next) => onParamChange(tuningPatch(axis, withOverride(tuning, bucket, next)))}
         hovered={hovered}
         onHover={onHover}
         color={bucket => bucketColor(ontology, tuning.mapping, bucket)}
@@ -120,8 +127,9 @@ export function AxisControls({ axis, params, resolved, axes, onParamChange, onRe
   )
 }
 
-function AxisPlot({ axis, tuning, table, strength, onStrength, onBand, hovered, onHover, color }: {
+function AxisPlot({ axis, radial, tuning, table, strength, onStrength, onBand, hovered, onHover, color }: {
   axis: LayoutAxis
+  radial: boolean
   tuning: AxisTuning<BandRange>
   table: ResolvedAxis<BandRange>
   strength: number
@@ -182,7 +190,12 @@ function AxisPlot({ axis, tuning, table, strength, onStrength, onBand, hovered, 
           popId={`bandStrength${label}`}
         />
       }
-      bottom={<div className="ctl-plot-xlabel">{label} position</div>}
+      bottom={
+        // In radial, Y reads each bucket's band CENTRE as its ring (width is
+        // ignored, equal centres share a ring); the label says so in the same
+        // slot, so the body does not change height when the mode flips.
+        <div className="ctl-plot-xlabel">{radial && axis === 'y' ? 'ring: the band centre, innermost first' : `${label} position`}</div>
+      }
     >
       <svg
         ref={svgRef}

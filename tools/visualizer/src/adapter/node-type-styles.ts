@@ -3,8 +3,7 @@
 // Called once at app mount to inject a <style> element derived entirely from
 // NODE_TYPE_REGISTRY. Deletes the need for hand-maintained per-type blocks in
 // index.css: adding a new node type to the registry automatically produces
-// its CSS variables, dual-range fill, dual-range thumb border, and
-// graph-control-typed-* colour assignment.
+// its CSS variables and graph-control-typed-* colour assignment.
 
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from './node-types'
 
@@ -14,15 +13,11 @@ import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from './node-types'
  *   :root { --color-<suffix>: <fill>; --color-<suffix>-border: <border>; ... }
  *   [data-theme="dark"], .vscode-dark { ... dark overrides ... }
  *   .graph-control-typed-<nodeType> { --type-color: var(--color-<suffix>); }
- *   .dual-range-<nodeType> .dual-range-fill { background: <fill>; }
- *   .dual-range-<nodeType> .dual-range-input::-webkit-slider-thumb { border-color: <fill>; }
- *   .dual-range-<nodeType> .dual-range-input::-moz-range-thumb { border-color: <fill>; }
  */
 export function buildNodeTypeCSS(): string {
   const lightVars: string[] = []
   const darkVars: string[] = []
   const typedClasses: string[] = []
-  const dualRangeRules: string[] = []
 
   for (const t of ALL_NODE_TYPES) {
     const def = NODE_TYPE_REGISTRY[t]
@@ -44,10 +39,6 @@ export function buildNodeTypeCSS(): string {
     typedClasses.push(`.graph-control-typed-${t} { --type-color: var(--color-${s}); }`)
 
     // Dual-range fill and thumb colours
-    const rangeColor = fillDark  // use dark-theme fill as the range accent (more visible on white)
-    dualRangeRules.push(`.dual-range-${t} .dual-range-fill { background: ${fill}; }`)
-    dualRangeRules.push(`.dual-range-${t} .dual-range-input::-webkit-slider-thumb { border-color: ${rangeColor}; }`)
-    dualRangeRules.push(`.dual-range-${t} .dual-range-input::-moz-range-thumb { border-color: ${rangeColor}; }`)
   }
 
   const parts: string[] = [
@@ -57,7 +48,6 @@ export function buildNodeTypeCSS(): string {
     parts.push(`.vscode-dark,\n[data-theme="dark"] {\n${darkVars.join('\n')}\n}`)
   }
   parts.push(...typedClasses)
-  parts.push(...dualRangeRules)
 
   return parts.join('\n')
 }
