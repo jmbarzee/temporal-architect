@@ -194,8 +194,9 @@ should be read:
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
 
-**Unit 4 started** on `visualizer/dimensions-unit-4`, branched from unit-3 @
-`aedde37`. **Record the sha, every checkpoint:** on resume after a six-week
+**Unit 4 in progress** on `visualizer/dimensions-unit-4`, branched from unit-3 @
+`aedde37`; last checkpoint `00dfe67` (4-pre, D47 — the params shape, done).
+Next: 4a, edge `relation`/`dispatch` dimensions. **Record the sha, every checkpoint:** on resume after a six-week
 pause the app had re-pointed this worktree to its own session branch at the
 feature base, and the first `checkout -b unit-4` silently branched from there.
 Caught only because pre-Unit-2 symbols showed up in a grep. First action of any
