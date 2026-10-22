@@ -107,14 +107,20 @@ export type EdgeCategoryKind = 'containment' | 'dependency'
  * Stable id for one edge category.
  *
  * A string, not a union, and that is the library's whole position on edge
- * vocabulary: it doubles as the key into the `link` / `dist` param maps and as
- * the hover-link key across the spring map, curves, and canvas, so it has to be
- * something a host can extend. A host narrows it to its own union.
+ * vocabulary: it is the override key in the spring tuning and the hover-link
+ * key across the spring map, curves, and canvas, so it has to be something a
+ * host can extend. A host narrows it to its own union.
  */
 export type EdgeTypeId = string
 
+/** One spring: stiffness (k) and rest length. */
+export interface SpringPhysics {
+  strength: number
+  distance: number
+}
+
 export interface EdgeTypeDefinition {
-  /** Stable id — also the key into the `link` / `dist` param maps. */
+  /** Stable id — also the override key in the spring tuning. */
   id: EdgeTypeId
   /** Short control-panel label. */
   label: string
@@ -129,7 +135,7 @@ export interface EdgeTypeDefinition {
   category: EdgeCategoryKind
   /** True = the two directions are distinct categories. */
   directional: boolean
-  /** Default stiffness / rest length. */
-  physics: { strength: number; distance: number }
+  /** Declared stiffness / rest length — what the category resolves to until tuned. */
+  physics: SpringPhysics
   tooltip: string
 }

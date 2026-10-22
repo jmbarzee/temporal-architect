@@ -65,7 +65,7 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
   const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
   const styleKey = src && tgt ? edgeStyleKeyFor(e, srcValue, tgtValue) : 'UNRESOLVED-ENDPOINT'
   const parts = [
-    edgeTypeFor(e, srcValue, tgtValue).id,
+    edgeTypeFor(e, srcValue, tgtValue),
     styleKey,
     e.dimensions[RELATION_DIMENSION],
     `${e.sourceId} -> ${e.targetId}`,
@@ -141,7 +141,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       byEdgeType: histogram(graph.edges.map(e => {
         const src = nodeOf(e.sourceId)
         const tgt = nodeOf(e.targetId)
-        return edgeTypeFor(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt)).id
+        return edgeTypeFor(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt))
       })),
       byStyleKey: histogram(
         graph.edges.map(e => {

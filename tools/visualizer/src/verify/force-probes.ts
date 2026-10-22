@@ -23,7 +23,7 @@
 //      iteration to amplify a last-place difference, rounds identically
 //      everywhere.
 
-import { RELATION_DIMENSION } from '../graph/dimension'
+import { RELATION_DIMENSION, createDimensionalMapping } from '../graph/dimension'
 import {
   applyBandGravity,
   resolvePhysics,
@@ -31,8 +31,8 @@ import {
   applyChargeForce,
   applyLinkForce,
   applyTopologicalGravity,
+  springFor,
 } from '../graph/forces'
-import type { EdgeTypeDefinition } from '../graph/taxonomy'
 import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
@@ -115,6 +115,19 @@ const PROBE_EDGES: GraphEdge[] = [
   { id: 'p5', sourceId: 'dupA', targetId: 'dupB', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
 ]
 
+/** An edge from the undeclared node, for the probes that add one. */
+const UNKNOWN_EDGE: GraphEdge = { id: 'pu', sourceId: 'unknown', targetId: 'wf', dimensions: { [RELATION_DIMENSION]: 'dependency' } }
+
+function nodeMapOf(nodes: SimNode[]): Map<string, SimNode> {
+  return new Map(nodes.map(n => [n.id, n]))
+}
+
+function nodeAt(map: Map<string, SimNode>, id: string): SimNode {
+  const n = map.get(id)
+  if (!n) throw new Error(`probe edge references no node ${JSON.stringify(id)}`)
+  return n
+}
+
 /**
  * The same probes, with one node carrying a key the param maps do not declare.
  *
@@ -145,34 +158,52 @@ function absentValueProbes(): Json {
       velocities: velocities(nodes),
     }
   }
-  // An edge category the param maps do not declare, which is what a supplied
-  // taxonomy produces: its ids are its own, and `params.link` is keyed by the
-  // shipped ones.
-  const undeclaredEdgeCategory = () => {
-    const nodes = withUnknown()
-    const map = new Map(nodes.map(n => [n.id, n]))
-    applyLinkForce(
-      PROBE_EDGES, map, defaultParamsFor(DEFAULT_ONTOLOGY), 1, mulberry32(PROBE_SEED),
-      () => ({
-        id: 'linkNotDeclaredAnywhere' as EdgeTypeDefinition['id'],
-        label: '??', sourceType: 'workflow', targetType: 'workflow',
-        category: 'dependency', directional: false,
-        physics: { strength: 1, distance: 1 }, tooltip: '',
-      }),
-    )
-    return {
-      allFinite: allFinite(nodes),
-      nonFiniteNodeIds: nonFinite(nodes),
-      velocities: velocities(nodes),
-    }
-  }
   return {
     charge: run((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     bandCartesian: run((nodes, params, rng) =>
       applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     bandRadial: run((nodes, params, rng) =>
       applyBandGravity(nodes, { ...params, gravityMode: 'radial' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
-    undeclaredEdgeCategory: undeclaredEdgeCategory(),
+    // The unknown node's edge reaches the host's rule with an undefined bucket
+    // and falls to its catch-all, so it still pulls; under a mapping (below) the
+    // same edge is unbucketed and inert. Both are pinned.
+    link: run((nodes, params, rng) =>
+      applyLinkForce([...PROBE_EDGES, UNKNOWN_EDGE], nodeMapOf(nodes), params, resolvePhysics(params, DEFAULT_ONTOLOGY).spring, 1, rng)),
+  }
+}
+
+/**
+ * Springs on a MAPPED axis: two buckets over the style axis, so the host's
+ * table cannot apply and the pair rule must. The identity row pins the gate
+ * from the other side — the declared categories, in the host's order — and the
+ * classified keys are the hover and override ids a control surface will show.
+ */
+function mappedAxisSprings(): Json {
+  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const mapping = createDimensionalMapping({
+    id: 'probe:two', label: 'two', dimension: TEMPORAL_TYPE_DIMENSION,
+    buckets: [
+      { id: 'control', label: 'control', values: ['namespace', 'worker', 'nexusEndpoint'] },
+      { id: 'work', label: 'work', values: ['workflow', 'activity', 'nexusService', 'nexusOperation'] },
+    ],
+  })
+  const identity = resolvePhysics(params, DEFAULT_ONTOLOGY).spring
+  const mapped = resolvePhysics({ ...params, spring: { mapping, overrides: new Map() } }, DEFAULT_ONTOLOGY).spring
+  const edges = [...PROBE_EDGES, UNKNOWN_EDGE]
+  const nodes = probeNodes()
+  nodes.push(node('unknown', 'notADeclaredType' as NodeType, 300, -400))
+  const map = nodeMapOf(nodes)
+  const classify = (spring: typeof mapped) =>
+    sortedRecord(edges.map(e => [e.id, springFor(spring, e, nodeAt(map, e.sourceId), nodeAt(map, e.targetId)).key] as const))
+  applyLinkForce(edges, map, params, mapped, 1, mulberry32(PROBE_SEED))
+  return {
+    identityCategories: identity.categories.map(c => c.id),
+    identityClassified: classify(identity),
+    mappedCategories: mapped.categories.map(c => c.id),
+    mappedClassified: classify(mapped),
+    allFinite: allFinite(nodes),
+    nonFiniteNodeIds: nonFinite(nodes),
+    velocities: velocities(nodes),
   }
 }
 
@@ -181,10 +212,9 @@ export function forceProbes(): Json {
     seed: PROBE_SEED,
     absentValue: absentValueProbes(),
     charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
-    link: probe((nodes, params, rng) => {
-      const map = new Map(nodes.map(n => [n.id, n]))
-      applyLinkForce(PROBE_EDGES, map, params, 1, rng, DEFAULT_ONTOLOGY.resolveEdgeType)
-    }),
+    link: probe((nodes, params, rng) =>
+      applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, resolvePhysics(params, DEFAULT_ONTOLOGY).spring, 1, rng)),
+    mappedAxisSprings: mappedAxisSprings(),
     bandCartesian: probe((nodes, params, rng) =>
       applyBandGravity(nodes, { ...params, gravityMode: 'cartesian' }, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
     // Includes a node sitting exactly on the origin, where the ring pull has no

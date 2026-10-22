@@ -7,7 +7,7 @@ import type { GraphEdge } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { resolvePhysics } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
-import { bandForKey, chargeFor, coreRadiusFor, edgeCategory, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
+import { bandForKey, chargeFor, coreRadiusFor, springFor, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
@@ -678,7 +678,7 @@ export function GraphCanvas({
           const tgt = d.nodeMap.get(edge.targetId)
           if (!src || !tgt) continue
 
-          const cat = edgeCategory(d.forceParams, edge, src, tgt, d.ontology.resolveEdgeType)
+          const cat = springFor(d.resolved.spring, edge, src, tgt)
           if (activePullKey && cat.key !== activePullKey) continue
 
           const [sx, sy] = worldToScreen(vp, src.x, src.y)

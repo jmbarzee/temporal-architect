@@ -30,7 +30,7 @@ import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
 import { defaultParamsFor } from '../graph/simulation'
 import { foldReheatPolicy } from '../graph/dimension'
-import { bandFor, chargeFor, coreRadiusFor, resolvePhysics } from '../graph/forces'
+import { bandFor, chargeFor, coreRadiusFor, resolvePhysics, springForKey } from '../graph/forces'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
@@ -211,8 +211,9 @@ function prototypeNamedValues(): Json {
  * made for one consumer.
  *
  * These rows make it for the other two. `defaultParamsFor` must derive its axis
- * and its whole key space from the taxonomy it is handed, and `edgeCategory`
- * must resolve springs through the supplied resolver rather than a captured one.
+ * and its whole key space from the taxonomy it is handed, and `resolvePhysics`
+ * must build the spring table from the supplied taxonomy's edge types and rule
+ * rather than captured ones.
  */
 function physicsInjection(): Json {
   const fromDefault = defaultParamsFor(DEFAULT_ONTOLOGY)
@@ -233,8 +234,14 @@ function physicsInjection(): Json {
       north: { ...NODE_TYPE_REGISTRY.worker, defType: 'northDef' },
       south: { ...NODE_TYPE_REGISTRY.activity, defType: 'southDef' },
     },
-    edgeTypes: DEFAULT_ONTOLOGY.edgeTypes,
-    resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
+    // Its own edge table and rule, so the spring rows below can only come out
+    // right by reading the container.
+    edgeTypes: [{
+      id: 'zoneLink', label: 'N↔S', sourceType: 'north', targetType: 'south',
+      category: 'dependency', directional: false,
+      physics: { strength: 0.7, distance: 123 }, tooltip: 'zone link',
+    }],
+    resolveEdgeType: () => 'zoneLink',
     fallbackStyle: NODE_TYPE_REGISTRY.activity,
   })
   const zoned = defaultParamsFor(OTHER_AXIS)
@@ -243,15 +250,25 @@ function physicsInjection(): Json {
   return {
     // The axis itself must come from the container.
     axes: {
-      shipped: fromDefault.push.axis,
-      otherAxis: zoned.push.axis,
-      differ: fromDefault.push.axis !== zoned.push.axis,
+      shipped: fromDefault.push.mapping.dimension,
+      otherAxis: zoned.push.mapping.dimension,
+      differ: fromDefault.push.mapping.dimension !== zoned.push.mapping.dimension,
     },
     // And so must the key space the maps are built over.
     chargeKeys: {
       shipped: sorted([...resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push.byBucket.keys()]),
       otherAxis: sorted([...resolvePhysics(zoned, OTHER_AXIS).push.byBucket.keys()]),
     },
+    // And the spring table: categories and physics from the container's own
+    // edge types, through its own rule.
+    springKeys: {
+      shipped: sorted([...resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).spring.byCategory.keys()]),
+      otherAxis: sorted([...resolvePhysics(zoned, OTHER_AXIS).spring.byCategory.keys()]),
+    },
+    zoneSpring: (() => {
+      const ph = springForKey(resolvePhysics(zoned, OTHER_AXIS).spring, 'zoneLink')
+      return { strength: ph.strength, distance: ph.distance }
+    })(),
     // A node on the other axis scores under ITS taxonomy and is absent under the
     // shipped one. Both rows are needed: the first proves the container is read,
     // the second proves the shipped one is genuinely not consulted.
@@ -274,7 +291,7 @@ function physicsInjection(): Json {
           derived.resolveNodeStyle(worker).defType ===
           DEFAULT_ONTOLOGY.resolveNodeStyle(worker).defType,
         physicsAgreesWithStyling:
-          defaultParamsFor(derived).push.axis === derived.styleAxis(),
+          defaultParamsFor(derived).push.mapping.dimension === derived.styleAxis(),
       }
     })(),
   }

@@ -6,11 +6,8 @@
 // per-edge default strengths/distances inlined in the engine's starting
 // parameters. This module is the one source of truth: each entry carries the
 // endpoint values, category, the parameter keys it tunes, and its default
-// physics. The control panel derives its pull tokens from the taxonomy, and
-// `defaultParamsFor` reads the link/dist defaults off the same entries.
-//
-// Imports only *types* from ./simulation, so there is no runtime import cycle
-// (simulation -> edge-types is the value dependency, mirroring simulation -> forces).
+// physics. The control panel's pull tokens and the spring defaults both resolve
+// from these entries (`resolvePhysics`), and nothing copies them.
 
 import type { DimensionValue } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
@@ -22,8 +19,8 @@ import type { EdgeTypeDefinition } from '../graph/taxonomy'
 // what is declared here is the closed set of ids this deployment model has, and
 // the endpoint values each one connects.
 
-// Stable id for each edge category — equal to the parameter stiffness key, so
-// it doubles as the hover-link key across the spring map, curves, and canvas.
+// Stable id for each edge category — the spring tuning's override key, so it
+// doubles as the hover-link key across the spring map, curves, and canvas.
 // A narrowing of the library's open `EdgeTypeId`: the engine accepts any string
 // so a host can bring its own categories; this host's set is closed, and saying
 // so here is what makes the matcher below exhaustively checkable.
@@ -104,51 +101,17 @@ export const ALL_EDGE_TYPES: TemporalEdgeTypeDefinition[] = [
     physics: { strength: 1.50, distance: 470 }, tooltip: 'Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)' },
 ]
 
-/**
- * Definition lookup by id.
- *
- * A `Map`, not an object with a keyed-record type assertion. The assertion was
- * claiming completeness it could not check: `Object.fromEntries` yields a string
- * index, and asserting it into the closed union told the compiler every member
- * is present rather than establishing it. A missing entry would then have typed
- * as present and surfaced as `undefined` at a call site that believed otherwise.
- *
- * The Map is also immune to the prototype-key hazard D39 fixed elsewhere: a
- * category named `constructor` cannot resolve to an inherited member here.
- */
-const EDGE_TYPE_BY_ID = new Map<EdgeTypeId, TemporalEdgeTypeDefinition>(
-  ALL_EDGE_TYPES.map(e => [e.id, e]),
-)
-
-/**
- * Loud on a miss, deliberately — the same choice `nodeTypeFromKind` makes, and
- * the one T19 contrasts favourably with the two silent fallbacks that used to
- * sit in this data path. Structurally unreachable while every id the matcher
- * assigns is a literal of the union and `ALL_EDGE_TYPES` names each one; the
- * throw exists so that ceasing to be true is loud rather than `undefined`
- * arriving somewhere that cannot represent it.
- */
-function definitionFor(id: EdgeTypeId): TemporalEdgeTypeDefinition {
-  const def = EDGE_TYPE_BY_ID.get(id)
-  if (def === undefined) {
-    throw new Error(
-      `edge type ${JSON.stringify(id)} is declared in EdgeTypeId but has no entry ` +
-      'in ALL_EDGE_TYPES; the two must be kept in step.',
-    )
-  }
-  return def
-}
-
-// Resolve an edge to its category. Preserves the original prioritized rule order
-// from forces.edgeCategory exactly: containment edges stratify by their nexus /
-// L3 / L4 endpoints; dependency edges stratify by tier and, for the workflow ↔
-// operation pair, by direction. Unmatched cases fall through to the broadest
-// category in each branch (Worker↔Namespace containment; Workflow↔Activity dep).
+// Resolve an edge to its category. Preserves the prioritized rule order of the
+// engine's former `edgeCategory` chain exactly: containment edges stratify by
+// their nexus / L3 / L4 endpoints; dependency edges stratify by tier and, for
+// the workflow ↔ operation pair, by direction. Unmatched cases fall through to
+// the broadest category in each branch (Worker↔Namespace containment;
+// Workflow↔Activity dep).
 export function edgeTypeFor(
   edge: Pick<GraphEdge, 'dimensions'>,
   src: DimensionValue | undefined,
   tgt: DimensionValue | undefined,
-): TemporalEdgeTypeDefinition {
+): EdgeTypeId {
   const has = (a: DimensionValue, b: DimensionValue) =>
     (src === a && tgt === b) || (src === b && tgt === a)
 
@@ -175,5 +138,5 @@ export function edgeTypeFor(
     else if (has('workflow', 'workflow')) id = 'linkWorkflowToWorkflow'
     else id = 'linkWorkflowToActivity'
   }
-  return definitionFor(id)
+  return id
 }

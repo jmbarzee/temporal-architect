@@ -100,7 +100,7 @@ function edgeLine(e: GraphEdge): string {
   const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
   const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
   const style = src && tgt ? edgeStyleKeyFor(e, srcValue, tgtValue) : 'UNRESOLVED-ENDPOINT'
-  return `${edgeTypeFor(e, srcValue, tgtValue).id}|${style}|${e.dimensions[RELATION_DIMENSION]}|${e.sourceId} -> ${e.targetId}`
+  return `${edgeTypeFor(e, srcValue, tgtValue)}|${style}|${e.dimensions[RELATION_DIMENSION]}|${e.sourceId} -> ${e.targetId}`
 }
 
 function state(types: string[], files: string[]): Json {

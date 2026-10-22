@@ -222,14 +222,16 @@ export function staticGolden(): Json {
     defaultForceParams: (() => {
       const p = defaultParamsFor(DEFAULT_ONTOLOGY)
       const r = resolvePhysics(p, DEFAULT_ONTOLOGY)
-      const { push, band, ...scalars } = p
-      // Scalars verbatim; the two axis tunings as the dense tables they resolve
-      // to, which is what the kernels consume and what the old `charge` /
-      // `coreRadius` / `band` records held. Same numbers, one shape.
+      const { push, band, spring, ...scalars } = p
+      // Scalars verbatim; the three axis tunings as the dense tables they
+      // resolve to, which is what the kernels consume and what the old
+      // `charge` / `coreRadius` / `band` / `link` / `dist` records held. Same
+      // numbers, one shape.
       return {
         ...scalars,
-        push: { axis: push.axis, buckets: sortedRecord([...r.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)) },
-        band: { axis: band.axis, buckets: sortedRecord([...r.band.byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) },
+        push: { axis: push.mapping.dimension, buckets: sortedRecord([...r.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)) },
+        band: { axis: band.mapping.dimension, buckets: sortedRecord([...r.band.byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) },
+        spring: { axis: spring.mapping.dimension, categories: sortedRecord([...r.spring.byCategory].map(([k, v]) => [k, { strength: v.strength, distance: v.distance }] as const)) },
       }
     })() as unknown as Json,
     defaultNodeScale: { ...DEFAULT_NODE_SCALE },

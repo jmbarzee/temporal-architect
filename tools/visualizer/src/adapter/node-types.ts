@@ -404,7 +404,6 @@ export const DEFAULT_ONTOLOGY: Ontology = createOntology({
   filterDimensions: FILTER_DIMENSIONS,
   nodeStyles: NODE_TYPE_REGISTRY,
   edgeTypes: ALL_EDGE_TYPES,
-  resolveEdgeType: (edge, src, tgt) =>
-    edgeTypeFor(edge, src.dimensions[TEMPORAL_TYPE_DIMENSION], tgt.dimensions[TEMPORAL_TYPE_DIMENSION]),
+  resolveEdgeType: edgeTypeFor,
   fallbackStyle: FALLBACK_NODE_STYLE,
 })

@@ -40,23 +40,6 @@
     "bandXMin": 0,
     "chargeExponent": 0.7,
     "coreRadiusMultiplier": 1,
-    "dist": {
-      "linkEndpointToNamespace": 690,
-      "linkEndpointToOperation": 470,
-      "linkNexusToOperation": 600,
-      "linkNsToNs": 870,
-      "linkNsToWorker": 800,
-      "linkOperationToActivity": 300,
-      "linkOperationToWorkflow": 360,
-      "linkSignalSend": 520,
-      "linkWorkerToActivity": 210,
-      "linkWorkerToNexus": 430,
-      "linkWorkerToWorker": 720,
-      "linkWorkerToWorkflow": 190,
-      "linkWorkflowToActivity": 40,
-      "linkWorkflowToOperation": 330,
-      "linkWorkflowToWorkflow": 420
-    },
     "distanceMultiplier": 0.1,
     "gravityBandExp": 1,
     "gravityCenter": 0.05,
@@ -65,23 +48,6 @@
     "gravityTopologicalExp": 3,
     "gravityX": 0.05,
     "gravityY": 0.145,
-    "link": {
-      "linkEndpointToNamespace": 1,
-      "linkEndpointToOperation": 1.5,
-      "linkNexusToOperation": 1.4,
-      "linkNsToNs": 0.25,
-      "linkNsToWorker": 0.3,
-      "linkOperationToActivity": 1.4,
-      "linkOperationToWorkflow": 1.55,
-      "linkSignalSend": 0.3,
-      "linkWorkerToActivity": 0.35,
-      "linkWorkerToNexus": 1.25,
-      "linkWorkerToWorker": 0.3,
-      "linkWorkerToWorkflow": 0.55,
-      "linkWorkflowToActivity": 1.9,
-      "linkWorkflowToOperation": 1.5,
-      "linkWorkflowToWorkflow": 0.5
-    },
     "linkExponent": 1,
     "pullMultiplier": 0.6,
     "push": {
@@ -118,6 +84,71 @@
       }
     },
     "pushMultiplier": 0.4,
+    "spring": {
+      "axis": "temporalType",
+      "categories": {
+        "linkEndpointToNamespace": {
+          "distance": 690,
+          "strength": 1
+        },
+        "linkEndpointToOperation": {
+          "distance": 470,
+          "strength": 1.5
+        },
+        "linkNexusToOperation": {
+          "distance": 600,
+          "strength": 1.4
+        },
+        "linkNsToNs": {
+          "distance": 870,
+          "strength": 0.25
+        },
+        "linkNsToWorker": {
+          "distance": 800,
+          "strength": 0.3
+        },
+        "linkOperationToActivity": {
+          "distance": 300,
+          "strength": 1.4
+        },
+        "linkOperationToWorkflow": {
+          "distance": 360,
+          "strength": 1.55
+        },
+        "linkSignalSend": {
+          "distance": 520,
+          "strength": 0.3
+        },
+        "linkWorkerToActivity": {
+          "distance": 210,
+          "strength": 0.35
+        },
+        "linkWorkerToNexus": {
+          "distance": 430,
+          "strength": 1.25
+        },
+        "linkWorkerToWorker": {
+          "distance": 720,
+          "strength": 0.3
+        },
+        "linkWorkerToWorkflow": {
+          "distance": 190,
+          "strength": 0.55
+        },
+        "linkWorkflowToActivity": {
+          "distance": 40,
+          "strength": 1.9
+        },
+        "linkWorkflowToOperation": {
+          "distance": 330,
+          "strength": 1.5
+        },
+        "linkWorkflowToWorkflow": {
+          "distance": 420,
+          "strength": 0.5
+        }
+      }
+    },
     "topologicalEnabled": false,
     "velocityDecay": 0.4
   },
@@ -614,49 +645,49 @@
           ]
         }
       },
-      "undeclaredEdgeCategory": {
+      "link": {
         "allFinite": true,
         "nonFiniteNodeIds": [],
         "velocities": {
           "act": [
-            0,
-            0
+            -71.478407,
+            -160.826415
           ],
           "dupA": [
-            0,
-            0
+            0.424926,
+            1.656363
           ],
           "dupB": [
-            0,
-            0
+            -0.424926,
+            -1.656363
           ],
           "ep": [
-            0,
-            0
+            -34.014909,
+            -3.779434
           ],
           "ns": [
-            0,
-            0
+            34.014909,
+            3.779434
           ],
           "nx": [
-            0,
-            0
+            -26.559823,
+            123.945839
           ],
           "op": [
-            0,
-            0
+            -75.391585,
+            -42.268143
           ],
           "unknown": [
-            0,
-            0
+            -326.651594,
+            635.155878
           ],
           "wf": [
-            0,
-            0
+            140.190222,
+            -144.372868
           ],
           "wk": [
-            0,
-            0
+            14.712105,
+            63.752454
           ]
         }
       }
@@ -872,6 +903,95 @@
         "wk": [
           13.792598,
           59.767925
+        ]
+      }
+    },
+    "mappedAxisSprings": {
+      "allFinite": true,
+      "identityCategories": [
+        "linkNsToNs",
+        "linkNsToWorker",
+        "linkWorkerToWorker",
+        "linkWorkerToWorkflow",
+        "linkWorkerToActivity",
+        "linkWorkerToNexus",
+        "linkNexusToOperation",
+        "linkEndpointToNamespace",
+        "linkWorkflowToWorkflow",
+        "linkSignalSend",
+        "linkWorkflowToActivity",
+        "linkWorkflowToOperation",
+        "linkOperationToWorkflow",
+        "linkOperationToActivity",
+        "linkEndpointToOperation"
+      ],
+      "identityClassified": {
+        "p0": "linkWorkerToWorkflow",
+        "p1": "linkNexusToOperation",
+        "p2": "linkWorkflowToActivity",
+        "p3": "linkNsToNs",
+        "p4": "linkWorkflowToOperation",
+        "p5": "linkWorkflowToActivity",
+        "pu": "linkWorkflowToActivity"
+      },
+      "mappedCategories": [
+        "containment|control|control",
+        "containment|control|work",
+        "containment|work|work",
+        "dependency|control|control",
+        "dependency|control|work",
+        "dependency|work|work"
+      ],
+      "mappedClassified": {
+        "p0": "containment|control|work",
+        "p1": "containment|work|work",
+        "p2": "dependency|work|work",
+        "p3": "dependency|control|control",
+        "p4": "dependency|work|work",
+        "p5": "dependency|work|work",
+        "pu": "dependency|-|work"
+      },
+      "nonFiniteNodeIds": [],
+      "velocities": {
+        "act": [
+          -29.627409,
+          -66.661671
+        ],
+        "dupA": [
+          3.280133,
+          12.785958
+        ],
+        "dupB": [
+          -3.280133,
+          -12.785958
+        ],
+        "ep": [
+          -148.58257,
+          -16.509174
+        ],
+        "ns": [
+          148.58257,
+          16.509174
+        ],
+        "nx": [
+          -20.228476,
+          94.399557
+        ],
+        "op": [
+          -44.314395,
+          -35.104527
+        ],
+        "unknown": [
+          0,
+          0
+        ],
+        "wf": [
+          28.63541,
+          -15.320496
+        ],
+        "wk": [
+          23.943035,
+          103.75315
         ]
       }
     },
@@ -1287,8 +1407,34 @@
       },
       "northNodeUnderOwnTaxonomy": -770,
       "northNodeUnderShippedTaxonomy": 0,
+      "springKeys": {
+        "otherAxis": [
+          "zoneLink"
+        ],
+        "shipped": [
+          "linkEndpointToNamespace",
+          "linkEndpointToOperation",
+          "linkNexusToOperation",
+          "linkNsToNs",
+          "linkNsToWorker",
+          "linkOperationToActivity",
+          "linkOperationToWorkflow",
+          "linkSignalSend",
+          "linkWorkerToActivity",
+          "linkWorkerToNexus",
+          "linkWorkerToWorker",
+          "linkWorkerToWorkflow",
+          "linkWorkflowToActivity",
+          "linkWorkflowToOperation",
+          "linkWorkflowToWorkflow"
+        ]
+      },
       "workerChargeAlternate": -770,
-      "workerChargeShipped": -770
+      "workerChargeShipped": -770,
+      "zoneSpring": {
+        "distance": 123,
+        "strength": 0.7
+      }
     },
     "prototypeNamedValues": [
       {

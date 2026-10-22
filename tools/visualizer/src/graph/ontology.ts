@@ -23,7 +23,7 @@ import { DEF_TYPE_DIMENSION } from './dimension'
 import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
-import type { EdgeTypeDefinition } from './taxonomy'
+import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
 
 /** The minimum a consumer needs of a node in order to resolve its style. */
 export type StyleSubject = { dimensions: DimensionMap }
@@ -103,12 +103,15 @@ export interface Ontology {
   /** The same, addressed by a node. The hot-path entry point. */
   resolveNodeStyle(subject: StyleSubject): NodeTypeDefinition
   /**
-   * The spring category an edge belongs to, resolved from the edge and its two
-   * endpoints. The endpoints are passed rather than cached on the edge: a
-   * denormalized copy is a second source of truth for a node's identity, and it
-   * goes stale the moment an edge is re-pointed during graduation.
+   * The host's rule for which category an edge on the style axis belongs to,
+   * given its two endpoint values. The engine reads the axis and hands the
+   * values over, so the rule never decides which dimension to look at — and it
+   * applies only while springs key on the style axis unmapped; any other
+   * (axis, mapping) resolves through the library's pair rule (D2). The values
+   * are read live from the endpoint nodes, never cached on the edge: a
+   * denormalized copy goes stale the moment graduation re-points an edge.
    */
-  resolveEdgeType(edge: GraphEdge, src: StyleSubject, tgt: StyleSubject): EdgeTypeDefinition
+  resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
 }
 
 /** What a host declares in order to build one. */
@@ -126,7 +129,7 @@ export interface OntologySpec {
   filterDimensions: readonly DimensionDescriptor[]
   nodeStyles: Readonly<Record<DimensionValue, NodeTypeDefinition>>
   edgeTypes: readonly EdgeTypeDefinition[]
-  resolveEdgeType(edge: GraphEdge, src: StyleSubject, tgt: StyleSubject): EdgeTypeDefinition
+  resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
   /**
    * Returned for a key the host did not declare. Required, not optional: a
    * taxonomy that cannot say what an unknown value looks like has no answer for

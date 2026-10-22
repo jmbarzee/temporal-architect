@@ -12,9 +12,9 @@ which is worth noticing rather than assuming.
 |---|---|---:|---|
 | `App.tsx` | neither | 5 | `main.tsx` |
 | `adapter/build.ts` | shim | 55 | **6** files |
-| `adapter/edge-types.ts` | shim | 163 | **5** files |
+| `adapter/edge-types.ts` | shim | 160 | **5** files |
 | `adapter/node-type-styles.ts` | shim | 1 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
-| `adapter/node-types.ts` | shim | 126 | **13** files |
+| `adapter/node-types.ts` | shim | 124 | **13** files |
 | `adapter/useGraphModel.ts` | shim | 3 | `components/GraphView.tsx` |
 | `components/CanvasErrorBoundary.tsx` | manifest |  | `components/GraphView.tsx` |
 | `components/ChargeControls.tsx` | manifest |  | `components/GraphControlPanel.tsx` |
@@ -60,7 +60,7 @@ which is worth noticing rather than assuming.
 | `filter/types.ts` | manifest |  | **15** files |
 | `graph/dimension.ts` | manifest | 1 | **32** files |
 | `graph/edge-styles.ts` | manifest | 58 | **4** files |
-| `graph/forces.ts` | manifest |  | **9** files |
+| `graph/forces.ts` | manifest |  | **10** files |
 | `graph/groups.ts` | manifest | 1 | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
 | `graph/highlight.ts` | manifest |  | `components/graph-view/useHighlight.ts` |
 | `graph/model.ts` | manifest | 3 | **19** files |
@@ -68,7 +68,7 @@ which is worth noticing rather than assuming.
 | `graph/ontology.ts` | manifest |  | **10** files |
 | `graph/rng.ts` | manifest |  | **4** files |
 | `graph/simulation.ts` | manifest | 5 | **20** files |
-| `graph/taxonomy.ts` | manifest | 1 | **9** files |
+| `graph/taxonomy.ts` | manifest | 1 | **7** files |
 | `graph/viewport.ts` | manifest |  | **4** files |
 | `lib.ts` | neither | 24 | — |
 | `main.tsx` | neither |  | — |
@@ -79,7 +79,7 @@ which is worth noticing rather than assuming.
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
 | `verify/filter-states.ts` | neither | 13 | `verify/tier-a.ts` |
 | `verify/fixtures.ts` | neither | 10 | `verify/main.ts`, `verify/tier-a.ts` |
-| `verify/force-probes.ts` | neither | 14 | `verify/static-golden.ts` |
+| `verify/force-probes.ts` | neither | 20 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
 | `verify/ontology-probes.ts` | neither | 47 | `verify/static-golden.ts` |
 | `verify/rng.ts` | neither |  | `verify/force-probes.ts`, `verify/tier-b.ts` |

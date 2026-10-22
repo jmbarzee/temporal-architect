@@ -2,7 +2,7 @@
 // Implements GRAPH_VIEW.md § Layout: Force-Directed Simulation.
 
 import type { GraphNode, GraphEdge, Graph } from './model'
-import type { EdgeTypeId } from './taxonomy'
+import type { SpringPhysics } from './taxonomy'
 import {
   applyChargeForce,
   applyLinkForce,
@@ -14,7 +14,7 @@ import {
 } from './forces'
 import type { Rng } from './rng'
 import type { ResolvedPhysics } from './forces'
-import type { DimensionId, DimensionalMapping } from './dimension'
+import type { DimensionalMapping } from './dimension'
 import { createDimensionalMapping } from './dimension'
 import type { Ontology } from './ontology'
 
@@ -26,7 +26,7 @@ export {
   coreRadiusFor,
   bandFor,
   bandForKey,
-  edgeCategory,
+  springFor,
   RADIAL_R_MIN,
   RADIAL_R_MAX,
 } from './forces'
@@ -75,7 +75,7 @@ export interface BandRange { min: number; max: number }
  * key-addressed sliders are unchanged. Only the table fields changed shape.
  */
 export interface AxisTuning<T> {
-  readonly axis: DimensionId
+  /** Which axis, and how its values bucket. The mapping names its own dimension. */
   readonly mapping: DimensionalMapping
   readonly overrides: ReadonlyMap<string, T>
 }
@@ -89,13 +89,12 @@ export function withOverride<T>(tuning: AxisTuning<T>, bucketId: string, value: 
 
 /**
  * The identity bucketing of the taxonomy's style axis — one bucket per value.
- * Unit 4b widens this to any mapping the host declares, bounded by the token
- * ceiling; the shape is already right for it.
+ * Every force starts here; Unit 4e lets the host choose any mapping, bounded by
+ * the token ceiling, and the shape is already right for it.
  */
 export function identityTuning<T>(ontology: Ontology): AxisTuning<T> {
   const axis = ontology.styleAxis()
   return {
-    axis,
     mapping: createDimensionalMapping({
       id: `${axis}:identity`,
       label: axis,
@@ -123,9 +122,13 @@ export interface ChargeParams {
 // PULL — spring attraction. Per-edge-category stiffness (k) and rest length,
 // the masters that scale them, and the displacement exponent.
 export interface LinkParams {
-  // Spring stiffness (k) and rest length per edge category, keyed by edge-type id.
-  link: Record<EdgeTypeId, number>
-  dist: Record<EdgeTypeId, number>
+  /**
+   * Per-category stiffness and rest length: which axis the endpoints are read
+   * on, how its values bucket, and only what the user has changed. The same
+   * `AxisTuning` as push and band — the categories themselves are resolved from
+   * the mapping (`resolvePhysics`), so there is no table here to go stale.
+   */
+  spring: AxisTuning<SpringPhysics>
 
   pullMultiplier: number     // scales all link (attraction) forces
   distanceMultiplier: number // scales all rest distances
@@ -230,11 +233,7 @@ export function defaultParamsFor(ontology: Ontology): ForceParams {
     // keys on the same thing it is coloured by. Unit 4 makes this a choice.
     push: identityTuning<PushPhysics>(ontology),
     band: identityTuning<BandRange>(ontology),
-
-
-    // Spring stiffness + rest length per edge category.
-    link: Object.fromEntries(ontology.edgeTypes.map(e => [e.id, e.physics.strength])),
-    dist: Object.fromEntries(ontology.edgeTypes.map(e => [e.id, e.physics.distance])),
+    spring: identityTuning<SpringPhysics>(ontology),
 
     // Hierarchical gravity. Y bands carry the vertical structure of the
     // layout — strong (gravityY = 0.145) and overlapping at the edges so
@@ -399,7 +398,7 @@ export class Simulation {
     // gravity as the baseline when neither is active. The Cartesian/Radial mode
     // is read inside the band/topological forces.
     applyChargeForce(active, this.params, this.resolved, this.alpha, this.rng)
-    applyLinkForce(activeEdges, this.nodeMap, this.params, this.alpha, this.rng, this.ontology.resolveEdgeType)
+    applyLinkForce(activeEdges, this.nodeMap, this.params, this.resolved.spring, this.alpha, this.rng)
     if (this.params.bandEnabled) applyBandGravity(active, this.params, this.resolved, this.alpha, this.rng)
     if (this.params.topologicalEnabled) applyTopologicalGravity(active, this.params, this.alpha, downstreamScores)
     if (!this.params.bandEnabled && !this.params.topologicalEnabled) {

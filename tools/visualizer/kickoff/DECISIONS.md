@@ -941,3 +941,55 @@ every new line reproduces the old golden exactly, so no classification id, style
 key, relation, endpoint or count moved.
 
 — 2026-10-21 — agent
+
+**D49 — Springs resolve dimensionally; the shim's table is the style axis's
+declared physics (Unit 4c, D2).** `LinkParams.link` / `dist` — two dense
+`Record<EdgeTypeId, number>` copied off the taxonomy in `defaultParamsFor` —
+become `spring: AxisTuning<SpringPhysics>`, the sparse shape push and band took
+in D47. The categories are not stored: `resolvePhysics` derives them from the
+mapping. On the style axis bucketed by identity they are the host's `edgeTypes`,
+classified by its `resolveEdgeType` rule, verbatim (D2) — the fifteen hand-tuned
+springs and the precedence T14 names. On any other (axis, mapping) they are the
+library's pair rule: one category per unordered bucket pair per relation
+(`relation|a|b`), each `DEFAULT_SPRING` until tuned, so the token count is
+`k(k+1)` for `k` buckets and the 24-ceiling is arithmetic (k ≤ 4) rather than a
+judgement.
+
+Three things follow:
+
+1. **The host's rule takes values and returns an id.** The library reads the
+   axis off the mapping and hands the two endpoint values over, so the shim's
+   lambda that read `TEMPORAL_TYPE_DIMENSION` from each node is gone and the
+   axis is read in exactly one place. Returning the id rather than the
+   definition makes the declared table the single source of physics and
+   metadata; `definitionFor`'s loud throw moves into `resolveSprings`, beside the
+   table, as a membership check on every classification.
+2. **`AxisTuning.axis` is gone.** `DimensionalMapping.dimension` already named
+   the axis, so `axis` was one fact stored twice (STANDING_CHECKS #2) with
+   `identityTuning` the only thing keeping them equal. Every reader now says
+   `mapping.dimension`.
+3. **`ABSENT_EDGE_PHYSICS` changes meaning.** It was "an id the param maps do
+   not declare", which cannot happen now that the table is derived rather than
+   copied. It is "an endpoint the mapping does not bucket", reachable only under
+   the pair rule; the host path cannot miss, because its rule's ids are checked
+   against its table.
+
+What the pair rule does not do: read `dispatch`. Dispatch is a host-rule input
+(the signal-send precedence), and keying generic categories by it would multiply
+the token count by the number of dispatch kinds. A mapped axis that wants
+dispatch-sensitive springs declares a rule — 4e's host-side surface, if it is
+wanted.
+
+**Golden change (§8.2).** Tier A, Tier B and Tier C byte-identical — Tier B is
+the acceptance test: every edge resolves to the stiffness and rest length it did,
+through the new path. `static` changes in three places. `defaultForceParams.link`
+/ `dist` become `spring: { axis, categories }` carrying the same fifteen numbers,
+verified by joining old and new on id. `forceProbes.absentValue.undeclaredEdgeCategory`
+— whose premise, a resolver id missing from the param maps, no longer exists — is
+replaced by `absentValue.link` (the unknown node's edge through the host rule's
+catch-all) and `forceProbes.mappedAxisSprings` (the pair rule, the identity gate
+from both sides, and an unbucketed endpoint resolving inert).
+`ontologyProbes.physicsInjection` gains `springKeys` and `zoneSpring`, pinning
+that the table comes from the supplied container. Nothing else in `static` moves.
+
+— 2026-10-21 — agent
