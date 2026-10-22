@@ -10,8 +10,8 @@
     "allows more than is measured fails as STALE, so the ratchet cannot go slack",
     "unnoticed."
   ],
-  "leakCeiling": 184,
-  "totalCeiling": 1236,
+  "leakCeiling": 182,
+  "totalCeiling": 1234,
   "boundaryCeiling": 7,
   "forbiddenPatternAllowlist": [
     {

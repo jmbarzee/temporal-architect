@@ -54,7 +54,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 5a — Two symmetric dimensional axes** (closing: all commits landed @ `aee52c3`, review running, PR pending) |
+| Current unit | **Unit 5a — Two symmetric dimensional axes** (closed: review addressed in `6ca503d`, [PR #171](https://github.com/jmbarzee/temporal-architect/pull/171) open) |
 | Last completed unit | **Unit 4 — Push/pull on a chosen dimension** ([PR #169](https://github.com/jmbarzee/temporal-architect/pull/169)) |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-5a` (from unit-4 @ `34a75a8`); Unit 4's is `visualizer/dimensions-unit-4`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
@@ -66,7 +66,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 |---|---|---|
 | A — requirements covered | **20** (R4, R5, R6, R7, R13, R14, R17, R18, R19, R20, R22, R23, R24, R25, R26, R27, R30, R32, R33, R34) + R1, R28, R29 partial | 42 |
 | B — blast-radius sites migrated | **28** | 38 |
-| C — leaks in the manifest | **184** | 0 |
+| C — leaks in the manifest | **182** | 0 |
 | Gate 6 — import-boundary violations | **7** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
@@ -135,9 +135,9 @@ set to **184** / **1236**.
 |---|---|---|
 | 1 `tsc --noEmit` | Unit 5a close | pass |
 | 2 `npm run build:lib` | Unit 5a close | pass |
-| 2b `npm run dts-gate` | Unit 5a close | pass — consumer compile clean, `skipLibCheck` off |
-| 3 `npm run verify` | Unit 5a close | pass — 7/7 goldens match; Tier A and Tier C byte-identical across the unit, Tier B moved once, by a proven translation (D53) |
-| 4 `npm run leak-gate` | Unit 5a close | pass — **184 / 184**; **total 1236 / 1236** |
+| 2b `npm run dts-gate` | Unit 5a close | pass — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private (new walk) |
+| 3 `npm run verify` | Unit 5a close | pass — 7/7 goldens match; Tier A and Tier C byte-identical across the unit; Tier B moved twice, each proven node by node (D53 translation, D54 seed bias) |
+| 4 `npm run leak-gate` | Unit 5a close | pass — **182 / 182**; **total 1234 / 1234**; `AxisControls.tsx` is in by the inverted manifest rule |
 | 5 browser pass | Unit 5a close | pass — five fixtures, 0 console errors, panel-open captures (`unit-5a-*`); the Gravity tab exercised by hand on multifile: X Axis and Y Axis bodies, the Radial switch re-lays out, rings draw on hover |
 | 5 browser pass (Unit 4) | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)`; a second capture per fixture with the panel open (`unit-4-<fixture>-controls.png`), after the review noted the first set showed it collapsed |
 | 6 `npm run boundary-gate` | Unit 5a close | pass — **7 / 7** |
@@ -218,6 +218,7 @@ explicit pass criteria and a committed screenshot — use them.
 | **0 — Verification net** | 11 (`ad06e58`…`149634c`) | means of R41 | none migrated | 583 (ceiling 583) | [REVIEW_0.md](reviews/REVIEW_0.md) — 34 findings, all 5 blockers and 23 majors resolved |
 | **1 — Inject the taxonomy** | 8 (`df09457`…`2f51558`) | R1 (partial) | B3, B4, B5, B33 | 583 (ceiling 583) | [REVIEW_1.md](reviews/REVIEW_1.md) — 26 findings, all 3 blockers and 11 majors resolved |
 | **4 — Push/pull on a chosen dimension** | 14 (`7d81ee0`…`a2d0b1d` + the record) | R4, R5, R13, R22–R25, R34 | B6, B7, B12, B13, B26, B28 | 191 (ceiling 191) | [REVIEW_4.md](reviews/REVIEW_4.md) — 55 findings, 26 clusters, every blocker and major resolved or filed |
+| **5a — Two symmetric dimensional axes** | 6 (`5a3481f`…`6ca503d` + the record) | R7, R26, R27, R30, R32, R33; R28, R29 partial | B10, B11, B24, B27 | 182 (ceiling 182) | [REVIEW_5a.md](reviews/REVIEW_5a.md) — 39 findings, 11 clusters, every blocker and major resolved |
 
 ---
 
@@ -238,15 +239,19 @@ should be read:
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
 
-**Unit 5a is closing** on `visualizer/dimensions-unit-5a`, branched from unit-4
-@ `34a75a8`. Three unit commits — `5a3481f` (5a-i/ii, D53: symmetric axes,
-seeding and re-centring alike, the overlay draws what acts), `aee52c3` (5a-iii:
-the Gravity tab as two axis bodies with the Radial switch on Y) — then this
-close-out. Last checkpoint: `aee52c3`. The review workflow (rule 12: the
-clusterer groups, verification on finders' own claims; worktrees told the sha —
-F19) is in flight; `REVIEW_5a.md` and the PR follow it.
+**Unit 5a is closed** on `visualizer/dimensions-unit-5a`, branched from unit-4
+@ `34a75a8`; [PR #171](https://github.com/jmbarzee/temporal-architect/pull/171)
+(base `visualizer/dimensions-unit-4`, per D36). Commits: `5a3481f` (5a-i/ii,
+D53), `aee52c3` (5a-iii), the close-out `9a443aa`, the review fixes `6ca503d`
+(D54), then the record. `REVIEW_5a.md`: 39 findings in 11 clusters, every
+blocker and major resolved in `6ca503d`. Last checkpoint: the commit that adds
+this paragraph.
 
-Ceilings at the Unit 5a close: leak **184**, total **1236**, boundary **7**.
+**Read `REVIEW_5a.md` before Unit 5b.** Its three record errors were one
+shape — a measurement on one fixture or one seed, generalised (F21) — and 5b
+adds computed scalars, which are all measurement.
+
+Ceilings at the Unit 5a close: leak **182**, total **1234**, boundary **7**.
 
 **Unit 4 is closed** on `visualizer/dimensions-unit-4`, branched from unit-3 @
 `aedde37`; [PR #169](https://github.com/jmbarzee/temporal-architect/pull/169)
@@ -488,6 +493,24 @@ finders had filed two. Seventeen verifiers ran (Unit 3: eight), refuted none,
 and downgraded five of the seven. 3.52M tokens against Unit 3's 1.86M, with the
 difference almost entirely in that stage. Rule 12: the clusterer groups; the
 triggers for verification are a finder's own claims.
+
+**F21 — One measurement, generalised, is how a record goes wrong.** Twice in
+D53: "the X force never fires on any fixture" came from one probe on one
+fixture (it fires on three), and "a different basin of the same forces" for
+stress's 3/53 → 32/53 came from one RNG seed (over forty, the new seeding was
+bimodal and the old never was). Both read as measurements and were
+extrapolations. The gates lens caught the second by doing what the claim
+implied — forty seeds — and the fix (`SEED_BIAS`) came from the same study,
+now committed under `kickoff/studies/` so the number has a source a reader can
+re-run. Rule for the record: a claim about "every fixture" or "any seed" names
+the fixtures and seeds it was run on, or says it was not.
+
+**F22 — A list of what is in is a list that forgets.** The component manifest
+named the library's components; twice in two units the new one was left off
+and sat outside every ratchet (REVIEW_4 #6, REVIEW_5a C9). The rule is now the
+complement — in unless excluded as the host's — so a new file joins the gates
+by existing. The same shape as F15 and D46: a declaration with no reader is a
+wish, and a list that must be extended by hand is a declaration.
 
 ---
 
