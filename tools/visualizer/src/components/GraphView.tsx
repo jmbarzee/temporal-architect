@@ -201,7 +201,7 @@ export function GraphView({
   const overlay = React.useMemo(() => bandOverlay(graph.nodes.values(), forceParams, resolved, frame,
     (axis, bucket) => axis.mapping.dimension === ontology.styleAxis() && isIdentityMapping(axis.mapping)
       ? ontology.styleForKey(bucket).color[theme].fill
-      : '#94A3B8'), [graph, forceParams, resolved, frame, ontology, theme])
+      : undefined), [graph, forceParams, resolved, frame, ontology, theme])
 
   // Classification does not depend on overrides, so this keys on the mapping
   // and not on `resolved`, which is a new object after every slider edit.
@@ -533,7 +533,7 @@ export function GraphView({
     <div
       className="graph-view"
       ref={containerRef}
-      data-theme={themeChoice === 'system' ? undefined : themeChoice}
+      data-theme={theme}
       style={{ ...schemeStyle, ...(toolbarHeight ? { ['--toolbar-height' as string]: `${toolbarHeight}px` } : {}) } as React.CSSProperties}
     >
       {/* Canvas fills the full viewport beneath the floating overlay */}
@@ -789,14 +789,13 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   const cfg = DEF_TYPE_CONFIGS.find(c => c.type === kind)
   const fileName = node.dimensions[SOURCE_FILE_DIMENSION]?.split('/').pop()
 
-  // Composition counts for container/host nodes (e.g. "3 workers · 1 endpoint"
-  // on a namespace, "3wf · 1act" on a worker, "2 ops" on a nexus service).
-  // These used to render as a badge under the node; they now live in the box.
-  // Degree nodes (workflow/activity/operation) are covered by the connection
-  // counts row below, so we don't duplicate them here.
+  // The composition line for a node that summarises its children (counted
+  // per style value, named by its abbreviation). These used to render as a
+  // badge under the node; they now live in the box. Degree nodes are covered
+  // by the connection counts row below, so we don't duplicate them here.
   const summaryKind = ontology.resolveNodeStyle(node).summaryKind
   const compositionLine =
-    summaryKind === 'containerCount' || summaryKind === 'hostRegistrations'
+    summaryKind === 'children'
       ? nodeSummaries.get(hoveredNodeId) || undefined
       : undefined
 

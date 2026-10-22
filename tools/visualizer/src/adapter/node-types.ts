@@ -106,7 +106,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
       coreRadius: 85,
       band: { x: X_WINDOW, y: { min: -340, max: -120 } },  // container band (shared with nexusEndpoint)
     },
-    summaryKind: 'containerCount',
+    summaryKind: 'children',
   },
 
   nexusEndpoint: {
@@ -146,7 +146,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
       coreRadius: 72,
       band: { x: X_WINDOW, y: { min: -200, max: 120 } },   // host band (shared with nexusService)
     },
-    summaryKind: 'hostRegistrations',
+    summaryKind: 'children',
   },
 
   nexusService: {
@@ -166,7 +166,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
       coreRadius: 54,
       band: { x: X_WINDOW, y: { min: -200, max: 120 } },   // host band aligned with worker
     },
-    summaryKind: 'hostRegistrations',
+    summaryKind: 'children',
   },
 
   workflow: {

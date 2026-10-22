@@ -2,7 +2,7 @@
 // once, and the three readers that turn them into pixels: the custom-property
 // name a value's colour is published under, the inline variables a pane
 // carries for the resolved theme, and a colour normaliser for the canvas,
-// which cannot throw (T4) and so cannot trust its input (T6).
+// which cannot throw (T4) and so reads only the forms the taxonomy admits (T6).
 
 import type { DimensionValue } from './dimension'
 import type { Ontology } from './ontology'
@@ -43,8 +43,12 @@ export function cssSuffix(value: DimensionValue): string {
     .toLowerCase()
 }
 
-/** The custom property a value's fill is published under (`--color-<suffix>`); `-border` for its border. */
-export const colorVar = (value: DimensionValue): string => `--color-${cssSuffix(value)}`
+/**
+ * The custom property a value's fill is published under (`--node-<suffix>`;
+ * `-border` for its border). Its own namespace: the chrome's tokens are
+ * `--color-*`, and a value id may be anything a host names (D58).
+ */
+export const colorVar = (value: DimensionValue): string => `--node-${cssSuffix(value)}`
 
 /**
  * The inline custom properties a pane carries for one theme: every style
@@ -67,9 +71,10 @@ const HEX6 = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i
 const RGB = /^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i
 
 /**
- * The red, green and blue of a colour the canvas can use, or undefined. Hex
- * of either length and `rgb()`/`rgba()` are read here; anything else the
- * browser can parse is read through a 2D context once and remembered.
+ * The red, green and blue of a scheme colour, or undefined. A scheme colour
+ * is hex of either length or `rgb()`/`rgba()` — a form every reader can parse
+ * without a browser, so the taxonomy can refuse anything else at
+ * construction (`isSchemeColor`) and no reader meets a colour it cannot read.
  */
 export function rgbOf(color: string): readonly [number, number, number] | undefined {
   const c = color.trim()
@@ -79,38 +84,21 @@ export function rgbOf(color: string): readonly [number, number, number] | undefi
   if (m) return [parseInt(m[1] + m[1], 16), parseInt(m[2] + m[2], 16), parseInt(m[3] + m[3], 16)]
   m = RGB.exec(c)
   if (m) return [Number(m[1]), Number(m[2]), Number(m[3])]
-  return normalisedByBrowser(c)
+  return undefined
 }
 
-const NORMALISED = new Map<string, readonly [number, number, number] | undefined>()
-let normaliser: CanvasRenderingContext2D | null | undefined
-
-function normalisedByBrowser(color: string): readonly [number, number, number] | undefined {
-  if (NORMALISED.has(color)) return NORMALISED.get(color)
-  let rgb: readonly [number, number, number] | undefined
-  if (normaliser === undefined) {
-    normaliser = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d')
-  }
-  if (normaliser) {
-    // A 2D context serialises any colour it accepts as #rrggbb or rgba(); one
-    // it rejects leaves the previous fill in place, so a sentinel tells the two
-    // apart.
-    normaliser.fillStyle = '#010203'
-    normaliser.fillStyle = color
-    const back = String(normaliser.fillStyle)
-    rgb = back === '#010203' && color.toLowerCase() !== '#010203' ? undefined : (HEX6.exec(back) || RGB.exec(back)) ? rgbOf(back) : undefined
-  }
-  NORMALISED.set(color, rgb)
-  return rgb
-}
+export const isSchemeColor = (color: string): boolean => rgbOf(color) !== undefined
 
 const NEUTRAL: readonly [number, number, number] = [148, 163, 184]
 const REFUSED = new Set<string>()
 
 /**
  * A colour at an alpha, as `rgba()`, for a canvas gradient or fill. A colour
- * nothing can parse becomes a neutral grey, said once per colour on the
- * console — never a throw, because this runs inside the draw loop (T4, T6).
+ * outside the scheme's forms becomes a neutral grey, said once per colour on
+ * the console — never a throw, because this runs inside the draw loop (T4,
+ * T6). Unreachable for a taxonomy's colours, which are refused at
+ * construction; it guards the library's own group palette and any caller
+ * that bypasses the taxonomy.
  */
 export function withAlpha(color: string, alpha: number): string {
   let rgb = rgbOf(color)

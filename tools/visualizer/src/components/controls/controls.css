@@ -7,7 +7,7 @@
 .ctl-slider {
   margin: 0;
   cursor: pointer;
-  accent-color: var(--color-workflow);
+  accent-color: var(--accent);
 }
 .ctl-slider-h { width: 100%; height: 4px; }
 .ctl-slider-v {
@@ -21,7 +21,7 @@
    halo makes it stand out without moving layout. */
 .ctl-slider-popped {
   border-radius: 5px;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-workflow) 38%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 38%, transparent);
 }
 
 /* A hoverable value inside a governing equation; hovering pops its slider. */
@@ -33,7 +33,7 @@
 }
 .ctl-formula-value:hover,
 .ctl-formula-value.active {
-  background: color-mix(in srgb, var(--color-workflow) 22%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--color-text);
 }
 

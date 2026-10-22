@@ -82,8 +82,15 @@ const budget = new Map(allowlist.map(e => [`${e.file}:${e.rule}`, e.max]))
 // unmeasured. Extending the scan costs one allowlist entry today.
 const measured = new Map()
 for (const file of [...manifestFiles(), ...shimFiles()]) {
-  if (file.endsWith('.css')) continue
   const text = readLines(file).join('\n')
+  if (file.endsWith('.css')) {
+    // A stylesheet has no escaping of quotes to do; `\\"` inside a selector
+    // makes the attribute value include the quote characters, and the rule
+    // matches nothing while every gate stays green (REVIEW_6 C1).
+    const escaped = (text.match(/\\"/g) ?? []).length
+    if (escaped > 0) measured.set(`${file}:css-escaped-quote`, escaped)
+    continue
+  }
   for (const rule of RULES) {
     if (rule.scope && !rule.scope(file)) continue
     const hits = (text.match(rule.re) ?? []).filter(m => (rule.accept ? rule.accept(m) : true))

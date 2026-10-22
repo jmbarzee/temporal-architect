@@ -1489,3 +1489,90 @@ normaliser's table, the inline variables under the default and an alternate
 palette, the stroke per edge type, the sizes). Nothing else moves.
 
 — 2026-10-22 — agent
+
+**D58 — What REVIEW_6 changed: one resolver for the theme, carried as an
+attribute and as tokens; the scheme in its own namespace, refused where a
+reader could not read it; summaries that read the taxonomy (Unit 6 close).**
+The five-lens review (42 findings, 17 clusters, 12 verified, 0 refuted)
+confirmed two filed blockers at major and found the rest in what D57 had
+claimed and not checked.
+
+1. **The dead selectors** (C1, blocker). The eighteen dark rules Unit 6
+   converted were written `[data-theme=\"dark\"]` — backslash-escaped quotes
+   in CSS, an attribute value that includes the quote characters and matches
+   nothing — and every gate was green. They are gone, not fixed: every
+   theme difference is now a token on the themed root (`--accent`, the tint
+   percentages, `--hover-bg`, `--inset-bg`, `--key-bg`, `--tooltip-shadow`),
+   read by component rules that key on no ancestor class. The pattern gate
+   refuses a backslash-quote in any stylesheet.
+2. **One resolver** (C2, blocker; C3). The hook resolved Auto through
+   `prefers-color-scheme` and the high-contrast class while the stylesheets
+   keyed dark on `.vscode-dark` and `[data-theme="dark"]` alone, so a dark OS
+   in a plain browser drew a dark canvas on light chrome — which is how the
+   first "light" captures came out dark on a dark-OS machine. The pane now
+   ALWAYS carries its resolved theme as `data-theme`, and the canvas root
+   carries the host's; the token blocks (`:root, [data-theme="light"]` and
+   `.vscode-dark, [data-theme="dark"]`) set variables on the element that
+   carries the attribute, and a variable inherits from the nearest ancestor
+   that sets it — so a pane choosing Light inside a dark host is light, and
+   Dark inside a light one dark, in every rule, not only the variables.
+   `hostTheme` reads the marker ABOVE the pane, never the pane's own
+   attribute, and reads VS Code's high-contrast-light class before the plain
+   high-contrast class it is paired with. The screenshot script emulates the
+   colour-scheme preference and fails a capture in the wrong theme.
+3. **The scheme's own namespace** (C5, C4). A value's variables are
+   `--node-<suffix>` / `--node-<suffix>-border`: the chrome's `--color-*`
+   tokens are no longer anything a value id can overwrite, and T13 is closed
+   for real — `index.css`'s `--color-workflow` is the tree's token and the
+   injector no longer emits a second one. `createOntology` refuses two
+   values whose ids kebab-case to one name, a value whose id kebab-cases to
+   nothing, and any colour that is not hex or `rgb()` — the one form every
+   reader parses without a browser; the 2D-context pass is gone with the
+   reader it never had. The chrome's accent is its own token, `--accent`,
+   not the workflow value's fill: the forty literal purple tints are
+   `color-mix` of it at the theme's percentage.
+4. **The tree's chips read the taxonomy** (C11). The canvas root carries
+   the scheme's variables for the host's theme, so a chip outside the pane
+   tints from the taxonomy as one inside does; `mountNodeTypeStyles` is,
+   now truly, for a host's own CSS.
+5. **A persisted choice is sanitised** (C10, major): `themeChoiceOf`
+   answers system for anything outside the three — the field is discarded,
+   not the state (D4).
+6. **Summaries read the taxonomy** (R16; C9). `summaryKind` is `children |
+   degree | none`; a children summary counts contained nodes per style
+   value in the taxonomy's order and names each by its abbreviation
+   (`2 Wk · 1 Ep`). The four value names and three abbreviations the library
+   had hardcoded are gone.
+7. **The reader path has a reader** (C7). Tier A's
+   `edgeClassification.byStroke` histograms the stroke each fixture edge
+   draws with, through `edgeStrokeFor(resolveEdgeType(…))` — the composition
+   the 66 rows are pinned by; `schemeProbes.refusals` pins point 3,
+   `markers` the marker rule, `choices` the sanitiser.
+8. **Shapes** (C-pair-stroke, C-neutral). A spring category's description
+   is `EdgeCategoryDescription` — what a token needs — so no fabricated
+   stroke; an unstyled bucket's overlay colour is `undefined` and the canvas
+   draws its one neutral, the token's.
+9. **The host-supplied scheme** (C8). A host configures colours, sizes,
+   labels and abbreviations through `OntologySpec`, which is in-tree until
+   Unit 8 publishes the library's surface (C3 freezes `lib.ts` until then);
+   R10, R11, R15 and R16 are covered in-tree, and the public surface for
+   them is Unit 8's.
+10. **The record** (C13). D57 enumerated the 66 fixture rows; the 115
+    synthetic pair rows and 3 synthetic-case rows whose colour also changed
+    are the same rule on hypothetical edges, pinned by the same composition.
+    A spliced edge draws as whatever its type says — a workflow, worker or
+    namespace dependency.
+11. **Minor**. `FilterChip.tint` restates a style value by string; it is
+    checked at render and said once on the console, never thrown (T4). The
+    leak ceiling is ratcheted at this close, with the arithmetic in
+    PROGRESS.
+
+**Golden change (§8.2).** Tier C byte-identical. Tier A: `nodeSummaries` in
+every state (point 6); `edgeClassification.byStroke` new. `static`:
+`generatedCss` names its variables `--node-*` (point 3);
+`nodeTypes.{namespace,worker,nexusService}.summaryKind` read `children`;
+`ontologyProbes.injection.*.summaries` (point 6); `schemeProbes.defaultVars`
+renamed likewise, and `refusals`, `markers`, `choices` new. Nothing else
+moves.
+
+— 2026-10-22 — agent

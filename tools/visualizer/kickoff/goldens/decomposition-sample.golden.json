@@ -45,6 +45,11 @@
         "linkWorkerToWorkflow": 5,
         "linkWorkflowToActivity": 65,
         "linkWorkflowToWorkflow": 4
+      },
+      "byStroke": {
+        "#4A8BC2/#7CB9E8||1.4": 65,
+        "#8B7EC8/#A89BD8||1.4": 4,
+        "#94A3B8/#64748B|3,4|1": 36
       }
     },
     "fixture": "decomposition-sample",
@@ -988,8 +993,8 @@
           "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": "←1",
-          "namespace:loanOrigination": "1 worker",
-          "worker:loanWorker/namespace:loanOrigination": "5wf · 30act",
+          "namespace:loanOrigination": "1 Wk",
+          "worker:loanWorker/namespace:loanOrigination": "5 Wf · 30 Act",
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": "→6 ←1",
           "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": "→7 ←1",
           "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": "→6 ←1",
@@ -1185,8 +1190,8 @@
           "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": "←1",
-          "namespace:loanOrigination": "1 worker",
-          "worker:loanWorker/namespace:loanOrigination": "5wf · 30act",
+          "namespace:loanOrigination": "1 Wk",
+          "worker:loanWorker/namespace:loanOrigination": "5 Wf · 30 Act",
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": "→6 ←1",
           "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": "→7 ←1",
           "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": "→6 ←1",
@@ -1261,7 +1266,7 @@
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall"
         ],
         "nodeSummaries": {
-          "worker:loanWorker/namespace:loanOrigination": "5wf",
+          "worker:loanWorker/namespace:loanOrigination": "5 Wf",
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": "→1 ←1",
           "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": "→1 ←1",
           "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": "→1 ←1",
@@ -1599,6 +1604,7 @@
           "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": "←1",
+          "namespace:loanOrigination": "5 Wf · 30 Act",
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": "→6 ←1",
           "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": "→7 ←1",
           "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": "→6 ←1",
@@ -1655,7 +1661,7 @@
           "linkNsToWorker|containment|worker:loanWorker/namespace:loanOrigination -> namespace:loanOrigination"
         ],
         "nodeSummaries": {
-          "namespace:loanOrigination": "1 worker"
+          "namespace:loanOrigination": "1 Wk"
         },
         "visibleEdgeCount": 1,
         "visibleNodeCount": 2,
@@ -1690,7 +1696,7 @@
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall"
         ],
         "nodeSummaries": {
-          "worker:loanWorker/namespace:loanOrigination": "5wf",
+          "worker:loanWorker/namespace:loanOrigination": "5 Wf",
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": "→1 ←1",
           "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": "→1 ←1",
           "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": "→1 ←1",

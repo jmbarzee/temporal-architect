@@ -1231,35 +1231,35 @@
   },
   "generatedCss": [
     ":root {",
-    "  --color-namespace: #475569;",
-    "  --color-namespace-border: #1E293B;",
-    "  --color-nexus-endpoint: #9F1239;",
-    "  --color-nexus-endpoint-border: #4C0519;",
-    "  --color-worker: #94A3B8;",
-    "  --color-worker-border: #475569;",
-    "  --color-nexus-service: #DB2777;",
-    "  --color-nexus-service-border: #831843;",
-    "  --color-workflow: #8B7EC8;",
-    "  --color-workflow-border: #5D4F95;",
-    "  --color-nexus-operation: #F9A8D4;",
-    "  --color-nexus-operation-border: #BE185D;",
-    "  --color-activity: #7CB9E8;",
-    "  --color-activity-border: #4A8BC2;",
+    "  --node-namespace: #475569;",
+    "  --node-namespace-border: #1E293B;",
+    "  --node-nexus-endpoint: #9F1239;",
+    "  --node-nexus-endpoint-border: #4C0519;",
+    "  --node-worker: #94A3B8;",
+    "  --node-worker-border: #475569;",
+    "  --node-nexus-service: #DB2777;",
+    "  --node-nexus-service-border: #831843;",
+    "  --node-workflow: #8B7EC8;",
+    "  --node-workflow-border: #5D4F95;",
+    "  --node-nexus-operation: #F9A8D4;",
+    "  --node-nexus-operation-border: #BE185D;",
+    "  --node-activity: #7CB9E8;",
+    "  --node-activity-border: #4A8BC2;",
     "}",
     ".vscode-dark,",
     "[data-theme=\"dark\"] {",
-    "  --color-namespace: #94A3B8;",
-    "  --color-namespace-border: #475569;",
-    "  --color-nexus-endpoint: #BE123C;",
-    "  --color-nexus-endpoint-border: #881337;",
-    "  --color-worker: #CBD5E1;",
-    "  --color-worker-border: #64748B;",
-    "  --color-nexus-service: #EC4899;",
-    "  --color-nexus-service-border: #9D174D;",
-    "  --color-workflow: #A89BD8;",
-    "  --color-workflow-border: #6B5BB0;",
-    "  --color-nexus-operation-border: #DB2777;",
-    "  --color-activity-border: #5DA8DD;",
+    "  --node-namespace: #94A3B8;",
+    "  --node-namespace-border: #475569;",
+    "  --node-nexus-endpoint: #BE123C;",
+    "  --node-nexus-endpoint-border: #881337;",
+    "  --node-worker: #CBD5E1;",
+    "  --node-worker-border: #64748B;",
+    "  --node-nexus-service: #EC4899;",
+    "  --node-nexus-service-border: #9D174D;",
+    "  --node-workflow: #A89BD8;",
+    "  --node-workflow-border: #6B5BB0;",
+    "  --node-nexus-operation-border: #DB2777;",
+    "  --node-activity-border: #5DA8DD;",
     "}"
   ],
   "nodeTypes": {
@@ -1316,7 +1316,7 @@
         "r": 20
       },
       "sliderLabel": "NS",
-      "summaryKind": "containerCount",
+      "summaryKind": "children",
       "tier": "container"
     },
     "nexusEndpoint": {
@@ -1400,7 +1400,7 @@
         "r": 20
       },
       "sliderLabel": "Nx",
-      "summaryKind": "hostRegistrations",
+      "summaryKind": "children",
       "tier": "host"
     },
     "worker": {
@@ -1428,7 +1428,7 @@
         "r": 20
       },
       "sliderLabel": "Wk",
-      "summaryKind": "hostRegistrations",
+      "summaryKind": "children",
       "tier": "host"
     },
     "workflow": {
@@ -1501,7 +1501,7 @@
       "alternateNodesUnderShippedTaxonomy": {
         "summaries": [
           "wf=→1",
-          "wk=1wf"
+          "wk=1 Wf"
         ],
         "visibleNodeIds": [
           "wf",
@@ -1515,7 +1515,7 @@
       "shippedNodesOnShippedKeys": {
         "summaries": [
           "wf=→1",
-          "wk=1wf"
+          "wk=1 Wf"
         ],
         "visibleNodeIds": [
           "wf",
@@ -2332,39 +2332,54 @@
     }
   },
   "schemeProbes": {
+    "choices": {
+      "absent": "system",
+      "bogus": "system",
+      "dark": "dark",
+      "light": "light"
+    },
     "defaultVars": {
       "dark": {
-        "--color-activity": "#7CB9E8",
-        "--color-activity-border": "#5DA8DD",
-        "--color-namespace": "#94A3B8",
-        "--color-namespace-border": "#475569",
-        "--color-nexus-endpoint": "#BE123C",
-        "--color-nexus-endpoint-border": "#881337",
-        "--color-nexus-operation": "#F9A8D4",
-        "--color-nexus-operation-border": "#DB2777",
-        "--color-nexus-service": "#EC4899",
-        "--color-nexus-service-border": "#9D174D",
-        "--color-worker": "#CBD5E1",
-        "--color-worker-border": "#64748B",
-        "--color-workflow": "#A89BD8",
-        "--color-workflow-border": "#6B5BB0"
+        "--node-activity": "#7CB9E8",
+        "--node-activity-border": "#5DA8DD",
+        "--node-namespace": "#94A3B8",
+        "--node-namespace-border": "#475569",
+        "--node-nexus-endpoint": "#BE123C",
+        "--node-nexus-endpoint-border": "#881337",
+        "--node-nexus-operation": "#F9A8D4",
+        "--node-nexus-operation-border": "#DB2777",
+        "--node-nexus-service": "#EC4899",
+        "--node-nexus-service-border": "#9D174D",
+        "--node-worker": "#CBD5E1",
+        "--node-worker-border": "#64748B",
+        "--node-workflow": "#A89BD8",
+        "--node-workflow-border": "#6B5BB0"
       },
       "light": {
-        "--color-activity": "#7CB9E8",
-        "--color-activity-border": "#4A8BC2",
-        "--color-namespace": "#475569",
-        "--color-namespace-border": "#1E293B",
-        "--color-nexus-endpoint": "#9F1239",
-        "--color-nexus-endpoint-border": "#4C0519",
-        "--color-nexus-operation": "#F9A8D4",
-        "--color-nexus-operation-border": "#BE185D",
-        "--color-nexus-service": "#DB2777",
-        "--color-nexus-service-border": "#831843",
-        "--color-worker": "#94A3B8",
-        "--color-worker-border": "#475569",
-        "--color-workflow": "#8B7EC8",
-        "--color-workflow-border": "#5D4F95"
+        "--node-activity": "#7CB9E8",
+        "--node-activity-border": "#4A8BC2",
+        "--node-namespace": "#475569",
+        "--node-namespace-border": "#1E293B",
+        "--node-nexus-endpoint": "#9F1239",
+        "--node-nexus-endpoint-border": "#4C0519",
+        "--node-nexus-operation": "#F9A8D4",
+        "--node-nexus-operation-border": "#BE185D",
+        "--node-nexus-service": "#DB2777",
+        "--node-nexus-service-border": "#831843",
+        "--node-worker": "#94A3B8",
+        "--node-worker-border": "#475569",
+        "--node-workflow": "#8B7EC8",
+        "--node-workflow-border": "#5D4F95"
       }
+    },
+    "markers": {
+      "darkHost": "dark",
+      "dataThemeDark": "dark",
+      "dataThemeOther": null,
+      "highContrastDark": "dark",
+      "highContrastLight": "light",
+      "lightHost": "light",
+      "none": null
     },
     "normaliser": {
       "#AABBCC": {
@@ -2419,6 +2434,12 @@
         "rgb": null,
         "withAlpha": "rgba(148, 163, 184, 0.5)"
       }
+    },
+    "refusals": {
+      "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex or rgb() colour",
+      "emptySuffix": "taxonomy is incoherent: style value \"工作流\" has no custom-property name (its id kebab-cases to nothing)",
+      "namedColour": "taxonomy is incoherent: nodeStyles.worker.color.light.fill is \"slategray\", not a hex or rgb() colour",
+      "sharedSuffix": "taxonomy is incoherent: style values \"nexusEndpoint\" and \"nexus-endpoint\" share the custom-property name --node-nexus-endpoint"
     },
     "secondScheme": {
       "allDiffer": true,
@@ -2592,7 +2613,7 @@
       "twoWords": "two-words",
       "with space": "with-space"
     },
-    "variableFor": "--color-nexus-endpoint"
+    "variableFor": "--node-nexus-endpoint"
   },
   "syntheticVisible": {
     "cases": {
@@ -2640,11 +2661,11 @@
           "act": "←1",
           "backing": "←2",
           "caller": "→3",
-          "ns": "2 workers · 1 endpoint",
+          "ns": "1 Ep · 2 Wk",
           "op": "→1 ←1",
-          "svc": "1 op",
-          "wk": "1wf · 1act · 1nxs",
-          "wkB": "1wf · 1act"
+          "svc": "1 Op",
+          "wk": "1 Nx · 1 Wf · 1 Act",
+          "wkB": "1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "act",
@@ -2687,10 +2708,10 @@
         "nodeSummaries": {
           "act": "←1",
           "caller": "→3",
-          "ns": "1 worker · 1 endpoint",
+          "ns": "1 Ep · 1 Wk",
           "op": "→1 ←1",
-          "svc": "1 op",
-          "wk": "1wf · 1act · 1nxs"
+          "svc": "1 Op",
+          "wk": "1 Nx · 1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "act",
@@ -2715,7 +2736,7 @@
           "linkWorkerToWorkflow|containment|backing -> wkB"
         ],
         "nodeSummaries": {
-          "wkB": "1wf · 1act"
+          "wkB": "1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "actCopy",
@@ -2758,11 +2779,11 @@
           "act": "←1",
           "backing": "←2",
           "caller": "→3",
-          "ns": "2 workers · 1 endpoint",
+          "ns": "1 Ep · 2 Wk",
           "op": "→1 ←1",
-          "svc": "1 op",
-          "wk": "1wf · 1act · 1nxs",
-          "wkB": "1wf · 1act"
+          "svc": "1 Op",
+          "wk": "1 Nx · 1 Wf · 1 Act",
+          "wkB": "1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "act",
@@ -2825,9 +2846,9 @@
           "act": "←1",
           "backing": "←1",
           "caller": "→2",
-          "ns": "2 workers · 1 endpoint",
-          "wk": "1wf · 1act · 1nxs",
-          "wkB": "1wf · 1act"
+          "ns": "1 Ep · 2 Wk",
+          "wk": "1 Nx · 1 Wf · 1 Act",
+          "wkB": "1 Wf · 1 Act"
         },
         "visibleNodeIds": [
           "act",
@@ -2870,7 +2891,7 @@
           "act": "←1",
           "backing": "←2",
           "caller": "→3",
-          "ns": "1 endpoint",
+          "ns": "1 Ep · 2 Wf · 1 Op · 2 Act",
           "op": "→1 ←1"
         },
         "visibleNodeIds": [

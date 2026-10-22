@@ -11,7 +11,7 @@ import React from 'react'
 import type { ForceParams } from '../graph/simulation'
 import { withSpringOverride } from '../graph/simulation'
 import type { ResolvedPhysics } from '../graph/forces'
-import type { EdgeTypeDefinition } from '../graph/taxonomy'
+import type { EdgeCategoryDescription } from '../graph/forces'
 
 import { useOntology } from './graph-view/useOntology'
 import { bucketColor } from './controls/bucketColor'
@@ -30,8 +30,8 @@ export const EDGE_REST_STEP = 10
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 /** One token per category present in the graph, in first-seen order; ids the table cannot describe are skipped. */
-function describedCategories(spring: ResolvedPhysics['spring'], present: ReadonlySet<string>): EdgeTypeDefinition[] {
-  const out: EdgeTypeDefinition[] = []
+function describedCategories(spring: ResolvedPhysics['spring'], present: ReadonlySet<string>): EdgeCategoryDescription[] {
+  const out: EdgeCategoryDescription[] = []
   for (const id of present) {
     const c = spring.describe(id)
     if (c) out.push(c)

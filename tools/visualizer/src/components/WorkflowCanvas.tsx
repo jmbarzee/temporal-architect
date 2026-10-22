@@ -16,6 +16,8 @@ import type { FilterState, PinState, ViewTransition, FilterDimension } from '../
 import { reconcileFilter } from '../filter/reconcile'
 import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../filter/storage'
 import type { ThemeChoice } from './graph-view/useTheme'
+import { themeChoiceOf, useHostTheme } from './graph-view/useTheme'
+import { schemeVars } from '../graph/scheme'
 import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface WorkflowCanvasProps {
@@ -214,7 +216,14 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // views (spec § Search Scope). Search is non-destructive (dim, not hide)
   // so sharing is safe.
   const [searchQuery, setSearchQuery] = React.useState<string>(persisted.searchQuery ?? '')
-  const [graphTheme, setGraphTheme] = React.useState<ThemeChoice>(persisted.graphTheme ?? 'system')
+  const [graphTheme, setGraphTheme] = React.useState<ThemeChoice>(() => themeChoiceOf(persisted.graphTheme))
+  // The host's theme for the whole canvas, and the scheme in it, carried as
+  // custom properties on the root so every chip and token — the tree's too —
+  // reads the taxonomy's colours, not a mounted stylesheet (D58). The graph
+  // pane overrides both with its own choice.
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  const hostTheme = useHostTheme(rootRef)
+  const schemeStyle = React.useMemo(() => schemeVars(DEFAULT_ONTOLOGY, hostTheme) as React.CSSProperties, [hostTheme])
   const [searchActive, setSearchActive] = React.useState<boolean>(false)
 
   // Pending-focus target for cross-view nav. Reconciler has already
@@ -419,7 +428,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // imports the entries.
     <OntologyContext.Provider value={DEFAULT_ONTOLOGY}>
     <DefinitionContext.Provider value={context}>
-      <div className={shellClassName} style={style} onClick={onRefocus}>
+      <div className={shellClassName} style={{ ...schemeStyle, ...(style) }} onClick={onRefocus} ref={rootRef} data-theme={hostTheme}>
         <div className="tab-bar">
           {/* In history mode there's no AST to render as a tree, so the Tree
               tab is disabled rather than hidden — the wrapping span carries the

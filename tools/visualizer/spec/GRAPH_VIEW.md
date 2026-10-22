@@ -355,7 +355,7 @@ Nexus edges carry metadata (endpoint, service, operation) shown on hover. Hoveri
 
 ### Color
 
-See [PRODUCT.md](./PRODUCT.md) § Visual Identity for the shared color palette. **The colour scheme is the taxonomy's** (D57): every style value declares its fill and border in both themes (`color.light`, `color.dark`) beside its size, and every edge type declares its stroke per theme — one injected object carries palette and sizes, so a host swapping schemes swaps both (R10, R11, R15). The canvas draws in the pane's **resolved theme**: the user's choice from the **colour-scheme button** (bottom-centre: Auto / Light / Dark, persisted with the pane's other state, R21), or for Auto the host's — an ancestor's `.vscode-dark` or `data-theme`, else the OS preference — observed for change. An explicit choice sets `data-theme` on the pane, so the pane can be dark in a light host and light in a dark one. The pane carries `--color-<suffix>` and `--color-<suffix>-border` for every style value inline, in that theme; tokens, typed rows and filter-chip tints read them (a chip borrows a style value's colour as it borrows its icon, `FilterChip.tint`, and mixes its hover and active backgrounds from it at a per-theme percentage). Group-glow colours are the library's own cycling palette, not per value. Edges do not inherit their source node's colour; their stroke is their type's.
+See [PRODUCT.md](./PRODUCT.md) § Visual Identity for the shared color palette. **The colour scheme is the taxonomy's** (D57): every style value declares its fill and border in both themes (`color.light`, `color.dark`) beside its size, and every edge type declares its stroke per theme — one injected object carries palette and sizes, so a host swapping schemes swaps both (R10, R11, R15). The canvas draws in the pane's **resolved theme**: the user's choice from the **colour-scheme button** (bottom-centre: Auto / Light / Dark, persisted with the pane's other state, R21), or for Auto the host's — an ancestor's `.vscode-dark` or `data-theme`, else the OS preference — observed for change. An explicit choice sets `data-theme` on the pane, so the pane can be dark in a light host and light in a dark one. The pane carries `--node-<suffix>` and `--node-<suffix>-border` for every style value inline, in that theme (its own namespace — the chrome's tokens are `--color-*`, and a value id may be anything a host names; two ids that kebab-case to one name, or to none, are refused at construction); tokens, typed rows and filter-chip tints read them (a chip borrows a style value's colour as it borrows its icon, `FilterChip.tint`, and mixes its hover and active backgrounds from it at a per-theme percentage). Group-glow colours are the library's own cycling palette, not per value. Edges do not inherit their source node's colour; their stroke is their type's.
 
 ### Node Summaries
 
@@ -363,8 +363,8 @@ Structural summaries communicate a node's role at a glance, but to keep the canv
 
 | Node Level | Summary | Example | Where shown |
 |------------|---------|---------|-------------|
-| Level 1 (Namespace) | Contained worker / endpoint count | `5 workers · 1 endpoint` | Hover box (composition line) |
-| Level 2 (Worker / Nexus Service) | Registration breakdown | `3wf · 1act`, `2 ops` | Hover box (composition line) |
+| Level 1 (Namespace) | Contained children, counted per style value and named by its abbreviation | `5 Wk · 1 Ep` | Hover box (composition line) |
+| Level 2 (Worker / Nexus Service) | The same rule — the values it hosts | `3 Wf · 1 Act`, `2 Op` | Hover box (composition line) |
 | Level 3 (Definition) | Dependency degree (in/out) | `→3 ←2` | Hover box (connections row) |
 
 **Presentation:**

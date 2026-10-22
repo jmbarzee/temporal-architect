@@ -142,6 +142,15 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
         const tgt = nodeOf(e.targetId)
         return edgeTypeFor(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt))
       })),
+      // The stroke each edge draws with, read the way the canvas reads it —
+      // the type's stroke through the taxonomy (D57, D58): the composition
+      // the 66 colour changes of Unit 6 are pinned by.
+      byStroke: histogram(graph.edges.map(e => {
+        const src = nodeOf(e.sourceId)
+        const tgt = nodeOf(e.targetId)
+        const st = DEFAULT_ONTOLOGY.edgeStrokeFor(DEFAULT_ONTOLOGY.resolveEdgeType(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt)))
+        return `${st.color.light}/${st.color.dark}|${st.dash.join(',')}|${st.width}`
+      })),
     },
     // Every axis push/pull may key on for this graph, what each would cost on
     // the control surface, and the spring categories some edge falls in under

@@ -25,6 +25,7 @@ import type { NodeTypeDefinition } from './taxonomy'
 import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
 import type { ScalarAxis } from './scalar'
 import type { EdgeStroke } from './scheme'
+import { cssSuffix, isSchemeColor } from './scheme'
 import { BUILT_IN_SCALARS } from './scalar'
 
 /** The minimum a consumer needs of a node in order to resolve its style. */
@@ -168,6 +169,32 @@ export function createOntology(spec: OntologySpec): Ontology {
   for (const k of Object.keys(nodeStyles)) if (!keys.has(k)) problems.push(`nodeStyles declares ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
   for (const g of spec.styleGroups) for (const v of g.values) if (!keys.has(v)) problems.push(`styleGroups.${g.id} names ${JSON.stringify(v)}, which nodeTypeKeys does not list`)
   for (const k of Object.keys(spec.abbreviations)) if (!keys.has(k)) problems.push(`abbreviations names ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
+  // The custom-property name is derived from the value id (kebab case), so two
+  // ids may share one — and one may be empty. Refuse both: the canvas and a
+  // token would read the same value differently (D58).
+  const bySuffix = new Map<string, DimensionValue>()
+  for (const k of spec.nodeTypeKeys) {
+    const suffix = cssSuffix(k)
+    if (suffix === '') problems.push(`style value ${JSON.stringify(k)} has no custom-property name (its id kebab-cases to nothing)`)
+    const other = bySuffix.get(suffix)
+    if (other !== undefined) problems.push(`style values ${JSON.stringify(other)} and ${JSON.stringify(k)} share the custom-property name --node-${suffix}`)
+    bySuffix.set(suffix, k)
+  }
+  // Every colour must be a form every reader parses without a browser (hex or
+  // rgb()); the canvas would otherwise ignore it silently (T6).
+  const colour = (where: string, c: string) => { if (!isSchemeColor(c)) problems.push(`${where} is ${JSON.stringify(c)}, not a hex or rgb() colour`) }
+  for (const k of spec.nodeTypeKeys) {
+    const style = hasOwn(spec.nodeStyles, k) ? spec.nodeStyles[k] : undefined
+    if (!style) continue
+    for (const theme of ['light', 'dark'] as const) {
+      colour(`nodeStyles.${k}.color.${theme}.fill`, style.color[theme].fill)
+      colour(`nodeStyles.${k}.color.${theme}.border`, style.color[theme].border)
+    }
+  }
+  for (const e of spec.edgeTypes) {
+    colour(`edgeTypes.${e.id}.style.color.light`, e.style.color.light)
+    colour(`edgeTypes.${e.id}.style.color.dark`, e.style.color.dark)
+  }
   const scalarIds = new Set<string>()
   for (const sc of [...BUILT_IN_SCALARS, ...spec.scalars]) {
     if (scalarIds.has(sc.id)) problems.push(`scalar ${JSON.stringify(sc.id)} is declared twice (the built-ins are reach, degree and depth)`)

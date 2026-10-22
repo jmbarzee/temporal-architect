@@ -9,8 +9,20 @@ import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC, NODE_TYPE_REGISTRY, ALL_NODE_T
 import { createOntology } from '../graph/ontology'
 import type { NodeTypeDefinition } from '../graph/taxonomy'
 import { THEMES, cssSuffix, colorVar, rgbOf, schemeVars, withAlpha } from '../graph/scheme'
+import { themeChoiceOf, themeOfMarker } from '../components/graph-view/useTheme'
+import type { ThemeMarker } from '../components/graph-view/useTheme'
 import type { Json } from './snapshot'
 import { sortedRecord } from './snapshot'
+
+/** What a call threw, as the row records it; 'returned' when it did not. */
+function thrown(run: () => unknown): string {
+  try { run(); return 'returned' } catch (e) { return (e as Error).message }
+}
+
+/** A marker stand-in: what an element with these classes and this attribute would say. */
+function marker(classes: string[], dataTheme?: string): ThemeMarker {
+  return { getAttribute: name => (name === 'data-theme' ? dataTheme ?? null : null), classList: { contains: c => classes.includes(c) } }
+}
 
 /** The shipped palette with every colour replaced: the same keys, a second scheme. */
 function restyled(): Record<string, NodeTypeDefinition> {
@@ -50,6 +62,27 @@ export function schemeProbes(): Json {
       light: e.style.color.light, dark: e.style.color.dark, alpha: e.style.alpha, dash: [...e.style.dash], width: e.style.width,
     }] as const)),
     strokeForUnknown: (() => { try { DEFAULT_ONTOLOGY.edgeStrokeFor('not-a-type'); return 'returned' } catch (e) { return (e as Error).message } })(),
+    // What the taxonomy refuses at construction (D58): two values sharing a
+    // custom-property name, a value with none, a colour no reader can parse.
+    refusals: {
+      sharedSuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeTypeKeys: [...ALL_NODE_TYPES, 'nexus-endpoint'], nodeStyles: { ...NODE_TYPE_REGISTRY, 'nexus-endpoint': NODE_TYPE_REGISTRY.nexusEndpoint } as typeof NODE_TYPE_REGISTRY })),
+      emptySuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeTypeKeys: [...ALL_NODE_TYPES, '工作流'], nodeStyles: { ...NODE_TYPE_REGISTRY, '工作流': NODE_TYPE_REGISTRY.workflow } as typeof NODE_TYPE_REGISTRY })),
+      namedColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeStyles: { ...NODE_TYPE_REGISTRY, worker: { ...NODE_TYPE_REGISTRY.worker, color: { light: { fill: 'slategray', border: '#000' }, dark: NODE_TYPE_REGISTRY.worker.color.dark } } } as typeof NODE_TYPE_REGISTRY })),
+      cssVariableColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, edgeTypes: DEFAULT_ONTOLOGY_SPEC.edgeTypes.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
+    },
+    // The theme a marker declares (D58): VS Code's high-contrast LIGHT webview
+    // carries the plain high-contrast class too, so light is read first.
+    markers: {
+      lightHost: themeOfMarker(marker(['vscode-light'])) ?? null,
+      darkHost: themeOfMarker(marker(['vscode-dark'])) ?? null,
+      highContrastDark: themeOfMarker(marker(['vscode-high-contrast'])) ?? null,
+      highContrastLight: themeOfMarker(marker(['vscode-high-contrast', 'vscode-high-contrast-light'])) ?? null,
+      dataThemeDark: themeOfMarker(marker([], 'dark')) ?? null,
+      dataThemeOther: themeOfMarker(marker([], 'sepia')) ?? null,
+      none: themeOfMarker(null) ?? null,
+    },
+    // A persisted choice outside the three is system, not a throw in render (D4).
+    choices: { dark: themeChoiceOf('dark'), light: themeChoiceOf('light'), bogus: themeChoiceOf('bogus'), absent: themeChoiceOf(undefined) },
     // Sizes ride the same object: the registry's, per value (R11, D14).
     sizes: sortedRecord(ALL_NODE_TYPES.map(t => [t, { r: NODE_TYPE_REGISTRY[t].size.r, iconSize: NODE_TYPE_REGISTRY[t].size.iconSize }] as const)),
   }

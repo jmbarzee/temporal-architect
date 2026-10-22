@@ -11,6 +11,21 @@
 
 import { useOntology } from './graph-view/useOntology'
 import { colorVar } from '../graph/scheme'
+import type { DimensionValue } from '../graph/dimension'
+import type { Ontology } from '../graph/ontology'
+
+// A chip's tint names a style value; one that names nothing declared is a
+// host bug, said once per chip on the console rather than thrown in render
+// (T4), and the chip draws neutral.
+const UNDECLARED_TINTS = new Set<string>()
+function tintOf(chipId: string, tint: DimensionValue, ontology: Ontology): DimensionValue {
+  if (ontology.nodeTypeKeys.includes(tint)) return tint
+  if (!UNDECLARED_TINTS.has(chipId)) {
+    UNDECLARED_TINTS.add(chipId)
+    console.error(`[filter] chip ${JSON.stringify(chipId)} borrows the colour of ${JSON.stringify(tint)}, which the taxonomy does not declare`)
+  }
+  return tint
+}
 import { selectionFor } from '../filter/types'
 import React from 'react'
 import './FilterBar.css'
@@ -239,7 +254,7 @@ export function FilterBar({
                     <button
                       key={chip.id}
                       className={cls}
-                      style={chip.tint ? ({ ['--chip-tint' as string]: `var(${colorVar(chip.tint)})` } as React.CSSProperties) : undefined}
+                      style={chip.tint ? ({ ['--chip-tint' as string]: `var(${colorVar(tintOf(chip.id, chip.tint, ontology))})` } as React.CSSProperties) : undefined}
                       onClick={() => onFilterChange(toggleGroup(filter, dimension, chip.values))}
                       title={chip.tooltip ?? (isActive ? `Hide ${chip.label.toLowerCase()}` : `Show ${chip.label.toLowerCase()}`)}
                     >

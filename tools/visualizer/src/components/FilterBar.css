@@ -40,24 +40,16 @@
   color: var(--color-error);
 }
 .severity-bar-error .severity-bar-head:hover {
-  background: rgba(220, 38, 38, 0.04);
+  background: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
-:is(.vscode-dark, [data-theme=\"dark\"]) .severity-bar-error .severity-bar-head:hover {
-  background: rgba(248, 113, 113, 0.06);
-}
-
 /* Yellow warnings bar */
 .severity-bar-warning .severity-bar-icon,
 .severity-bar-warning .severity-bar-title {
   color: var(--warning-fg);
 }
 .severity-bar-warning .severity-bar-head:hover {
-  background: rgba(217, 119, 6, 0.05);
+  background: color-mix(in srgb, var(--warning-accent) 6%, transparent);
 }
-:is(.vscode-dark, [data-theme=\"dark\"]) .severity-bar-warning .severity-bar-head:hover {
-  background: rgba(251, 191, 36, 0.06);
-}
-
 /* Scrollable body — capped so it never eats the whole view. */
 .severity-bar-body {
   max-height: 28vh;
@@ -112,19 +104,10 @@
 
 @keyframes refreshFlash {
   0% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
-  30% { box-shadow: 0 0 0 2px rgba(139, 126, 200, 0.4), 0 1px 4px rgba(0, 0, 0, 0.06); }
+  30% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) var(--accent-tint-ring), transparent), 0 1px 4px rgba(0, 0, 0, 0.06); }
   100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
 }
 
-:is(.vscode-dark, [data-theme=\"dark\"]) .canvas-header.refresh-flash {
-  animation: refreshFlashDark 0.6s ease;
-}
-
-@keyframes refreshFlashDark {
-  0% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
-  30% { box-shadow: 0 0 0 2px rgba(168, 155, 216, 0.4), 0 1px 4px rgba(0, 0, 0, 0.06); }
-  100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
-}
 
 /* --- Files Section --- */
 .header-files-section {
@@ -137,12 +120,8 @@
 }
 
 .header-files-section.section-pinned {
-  background: rgba(139, 126, 200, 0.04);
-  box-shadow: inset 2px 0 0 var(--color-workflow);
-}
-
-:is(.vscode-dark, [data-theme=\"dark\"]) .header-files-section.section-pinned {
-  background: rgba(168, 155, 216, 0.05);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-weak), transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .header-files-row {
@@ -171,43 +150,29 @@
 }
 
 .header-file-tag:hover {
-  border-color: var(--color-workflow);
-  color: var(--color-workflow);
-  background: rgba(139, 126, 200, 0.06);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
 }
 
 .header-file-tag.selected {
-  border-color: var(--color-workflow);
-  background: rgba(139, 126, 200, 0.12);
-  color: var(--color-workflow);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-active), transparent);
+  color: var(--accent);
   font-weight: 500;
 }
 
 /* Third state: no files selected → all files implicitly included */
 .header-file-tag.all-included {
-  border-color: rgba(139, 126, 200, 0.3);
-  background: rgba(139, 126, 200, 0.05);
+  border-color: color-mix(in srgb, var(--accent) var(--accent-tint-ring), transparent);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-weak), transparent);
   color: var(--color-text-muted);
 }
 
 .header-file-tag.all-included:hover {
-  border-color: var(--color-workflow);
-  background: rgba(139, 126, 200, 0.1);
-  color: var(--color-workflow);
-}
-
-:is(.vscode-dark, [data-theme=\"dark\"]) .header-file-tag:hover,
-:is(.vscode-dark, [data-theme=\"dark\"]) .header-file-tag.selected {
-  background: rgba(168, 155, 216, 0.15);
-}
-
-:is(.vscode-dark, [data-theme=\"dark\"]) .header-file-tag.all-included {
-  border-color: rgba(168, 155, 216, 0.25);
-  background: rgba(168, 155, 216, 0.06);
-}
-
-:is(.vscode-dark, [data-theme=\"dark\"]) .header-file-tag.all-included:hover {
-  background: rgba(168, 155, 216, 0.12);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-active), transparent);
+  color: var(--accent);
 }
 
 .header-file-icon {
@@ -248,11 +213,7 @@
 
 .header-search.active {
   border-color: var(--color-border);
-  background: rgba(0, 0, 0, 0.02);
-}
-
-:is(.vscode-dark, [data-theme=\"dark\"]) .header-search.active {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--inset-bg);
 }
 
 .header-search-toggle {
@@ -276,8 +237,8 @@
 }
 
 .header-search-toggle:hover {
-  color: var(--color-workflow);
-  background: rgba(139, 126, 200, 0.08);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
 }
 
 .header-search-input {
@@ -320,12 +281,8 @@
 }
 
 .header-types-section.section-pinned {
-  background: rgba(139, 126, 200, 0.04);
-  box-shadow: inset 2px 0 0 var(--color-workflow);
-}
-
-:is(.vscode-dark, [data-theme=\"dark\"]) .header-types-section.section-pinned {
-  background: rgba(168, 155, 216, 0.05);
+  background: color-mix(in srgb, var(--accent) var(--accent-tint-weak), transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .header-types-row {
@@ -391,19 +348,12 @@
 }
 
 /* A chip's tint is the style value it borrows (inline `--chip-tint`, set by
-   the bar from the pane's --color-<suffix> in the resolved theme, D57); its
-   hover and active backgrounds are that tint mixed down to a per-theme
-   percentage, so the bar needs no per-kind rule and no literal palette. */
+   the bar from the themed root's --node-<suffix>, D58); its hover and active
+   backgrounds are that tint mixed down to the theme's tint percentages, so
+   the bar needs no per-kind rule, no literal palette and no dark rule. */
 .header-type-tag {
-  --chip-mix-hover: 6%;
-  --chip-mix-active: 12%;
-  --chip-tint-bg-hover: color-mix(in srgb, var(--chip-tint, var(--color-text-muted)) var(--chip-mix-hover), transparent);
-  --chip-tint-bg-active: color-mix(in srgb, var(--chip-tint, var(--color-text-muted)) var(--chip-mix-active), transparent);
-}
-/* Dark mode bumps the backgrounds a bit because the surface they sit on is darker. */
-:is(.vscode-dark, [data-theme="dark"]) .header-type-tag {
-  --chip-mix-hover: 10%;
-  --chip-mix-active: 18%;
+  --chip-tint-bg-hover: color-mix(in srgb, var(--chip-tint, var(--color-text-muted)) var(--accent-tint-hover), transparent);
+  --chip-tint-bg-active: color-mix(in srgb, var(--chip-tint, var(--color-text-muted)) var(--accent-tint-active), transparent);
 }
 
 /* Sub-group label inside an error/warning bar body ("Shown files (N)" /
@@ -548,9 +498,9 @@
 }
 
 @keyframes filterChipFlash {
-  0%   { box-shadow: 0 0 0 0 rgba(139, 126, 200, 0.5); }
-  40%  { box-shadow: 0 0 0 4px rgba(139, 126, 200, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(139, 126, 200, 0); }
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); }
+  40%  { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
 }
 
 

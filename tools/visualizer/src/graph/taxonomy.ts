@@ -70,13 +70,11 @@ export interface NodeTypeDefinition {
 
   // --- Summary ---
   /**
-   * Which summary strategy to use for a node carrying this value.
-   *   'containerCount'    — count contained children
-   *   'hostRegistrations' — count contained registrations
-   *   'degree'            — count incoming + outgoing dependency edges
-   *   'none'              — no summary
+   * The glanceable summary for a node of this value: the children it contains,
+   * counted per style value and named by that value's abbreviation
+   * (`2 Wk · 1 Ep`); its dependency degree (`→3 ←2`); or nothing.
    */
-  summaryKind: 'containerCount' | 'hostRegistrations' | 'degree' | 'none'
+  summaryKind: 'children' | 'degree' | 'none'
 }
 
 // ── Edge types ──────────────────────────────────────────────────────────────

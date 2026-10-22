@@ -48,6 +48,12 @@
         "linkWorkerToWorkflow": 10,
         "linkWorkflowToActivity": 92,
         "linkWorkflowToWorkflow": 12
+      },
+      "byStroke": {
+        "#4A8BC2/#7CB9E8||1.4": 92,
+        "#64748B/#CBD5E1||1.6": 1,
+        "#8B7EC8/#A89BD8||1.4": 12,
+        "#94A3B8/#64748B|3,4|1": 52
       }
     },
     "fixture": "stress-sample",
@@ -1394,9 +1400,9 @@
           "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl": "←1",
           "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl": "←1",
           "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl": "←1",
-          "namespace:accessControl": "2 workers",
-          "worker:connectorWorker/namespace:accessControl": "10act",
-          "worker:coreWorker/namespace:accessControl": "10wf · 30act",
+          "namespace:accessControl": "2 Wk",
+          "worker:connectorWorker/namespace:accessControl": "10 Act",
+          "worker:coreWorker/namespace:accessControl": "10 Wf · 30 Act",
           "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": "→6 ←1",
           "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": "→7 ←1",
           "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": "→9",
@@ -1675,9 +1681,9 @@
           "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl": "←1",
           "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl": "←1",
           "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl": "←1",
-          "namespace:accessControl": "2 workers",
-          "worker:connectorWorker/namespace:accessControl": "10act",
-          "worker:coreWorker/namespace:accessControl": "10wf · 30act",
+          "namespace:accessControl": "2 Wk",
+          "worker:connectorWorker/namespace:accessControl": "10 Act",
+          "worker:coreWorker/namespace:accessControl": "10 Wf · 30 Act",
           "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": "→6 ←1",
           "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": "→7 ←1",
           "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": "→9",
@@ -1799,7 +1805,7 @@
           "linkWorkflowToWorkflow|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
         ],
         "nodeSummaries": {
-          "worker:coreWorker/namespace:accessControl": "10wf",
+          "worker:coreWorker/namespace:accessControl": "10 Wf",
           "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": "→4 ←1",
           "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": "→1 ←1",
           "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": "→3",
@@ -2271,6 +2277,7 @@
           "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl": "←1",
           "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl": "←1",
           "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl": "←1",
+          "namespace:accessControl": "10 Wf · 40 Act",
           "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": "→6 ←1",
           "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": "→7 ←1",
           "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": "→9",
@@ -2350,7 +2357,7 @@
           "linkWorkerToWorker|dependency|worker:coreWorker/namespace:accessControl -> worker:connectorWorker/namespace:accessControl"
         ],
         "nodeSummaries": {
-          "namespace:accessControl": "2 workers"
+          "namespace:accessControl": "2 Wk"
         },
         "visibleEdgeCount": 3,
         "visibleNodeCount": 3,
@@ -2412,7 +2419,7 @@
           "linkWorkflowToWorkflow|dependency|workflow:TransferIdentity/worker:coreWorker/namespace:accessControl -> workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl|dispatch=workflowCall"
         ],
         "nodeSummaries": {
-          "worker:coreWorker/namespace:accessControl": "10wf",
+          "worker:coreWorker/namespace:accessControl": "10 Wf",
           "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": "→4 ←1",
           "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": "→1 ←1",
           "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": "→3",
