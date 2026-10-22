@@ -54,10 +54,10 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | none — Unit 5b closed at `28941dd` + the record; Unit 6 (colour scheme + node sizes) is next and opens on its own branch |
+| Current unit | **Unit 6 — Colour scheme + node sizes** (opened on `visualizer/dimensions-unit-6` from unit-5b @ `a638f19`) |
 | Last completed unit | **Unit 5b — Computed scalar axes** ([PR #173](https://github.com/jmbarzee/temporal-architect/pull/173)) |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-5b` (#173, from unit-5a @ `f838d85`); the stack below it: unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
+| Unit branch | `visualizer/dimensions-unit-6` (from unit-5b @ `a638f19`); the stack below it: unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
