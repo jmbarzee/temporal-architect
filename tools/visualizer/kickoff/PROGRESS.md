@@ -54,10 +54,10 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 5a — Two symmetric dimensional axes** (closed: review addressed in `6ca503d`, [PR #171](https://github.com/jmbarzee/temporal-architect/pull/171) open) |
-| Last completed unit | **Unit 4 — Push/pull on a chosen dimension** ([PR #169](https://github.com/jmbarzee/temporal-architect/pull/169)) |
+| Current unit | **Unit 5b — Computed scalar axes** (opened on `visualizer/dimensions-unit-5b` from unit-5a @ `f838d85`) |
+| Last completed unit | **Unit 5a — Two symmetric dimensional axes** ([PR #171](https://github.com/jmbarzee/temporal-architect/pull/171)) |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-5a` (from unit-4 @ `34a75a8`); Unit 4's is `visualizer/dimensions-unit-4`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
+| Unit branch | `visualizer/dimensions-unit-5b` (from unit-5a @ `f838d85`); the stack below it: unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
