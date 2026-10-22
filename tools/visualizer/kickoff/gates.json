@@ -11,21 +11,21 @@
     "unnoticed."
   ],
   "leakCeiling": 0,
-  "totalCeiling": 1089,
+  "totalCeiling": 1101,
   "boundaryCeiling": 0,
   "forbiddenPatternAllowlist": [
     {
-      "file": "src/filter/storage.ts",
+      "file": "../graph-view/src/filter/storage.ts",
       "rule": "as-record",
       "max": 2
     },
     {
-      "file": "src/filter/storage.ts",
+      "file": "../graph-view/src/filter/storage.ts",
       "rule": "as-unknown-as",
       "max": 1
     },
     {
-      "file": "src/graph/rng.ts",
+      "file": "../graph-view/src/graph/rng.ts",
       "rule": "math-random",
       "max": 2
     }

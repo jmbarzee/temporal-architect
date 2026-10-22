@@ -9,13 +9,14 @@
 // physics. The control panel's pull tokens and the spring defaults both resolve
 // from these entries (`resolvePhysics`), and nothing copies them.
 
-import type { DimensionValue } from '../graph/dimension'
-import type { GraphEdge } from '../graph/model'
-import { dispatchOf, isContainment } from '../graph/model'
+import { dispatchOf, isContainment } from '@temporal-architect/graph-view'
+import type {
+  DimensionValue,
+  GraphEdge,
+  EdgeTypeDefinition,
+  EdgeStroke,
+} from '@temporal-architect/graph-view'
 import type { NodeType } from './node-types'
-import type { EdgeTypeDefinition } from '../graph/taxonomy'
-import type { EdgeStroke } from '../graph/scheme'
-
 // This domain's edge categories. The *shape* is library-owned (`./taxonomy`);
 // what is declared here is the closed set of ids this deployment model has, and
 // the endpoint values each one connects.

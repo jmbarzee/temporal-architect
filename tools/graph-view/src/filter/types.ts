@@ -16,7 +16,7 @@
 // The search query lives outside a FilterState because it is globally shared
 // (spec § Search Scope).
 
-import type { DimensionId } from '../graph/dimension'
+import type { DimensionId, DimensionDescriptor } from '../graph/dimension'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 /** The chosen values on one axis. Empty means what the axis's descriptor says. */
@@ -151,6 +151,41 @@ export function matchesFocus(node: { name: string; dimensions: Readonly<Record<s
   if (node.name !== target.name) return false
   for (const [dim, value] of Object.entries(target.values)) {
     if (value !== undefined && node.dimensions[dim] !== value) return false
+  }
+  return true
+}
+
+/**
+ * Does a subject pass the selection, given a way to read its value per axis?
+ *
+ * The policy — what an empty selection means, what an absent value means — is
+ * here once, read from each axis's descriptor. The *projection* is the caller's,
+ * and deliberately so: a graph node carries a dimension map, while a tree row is
+ * an AST definition with named fields. Those are genuinely different shapes, so
+ * sharing the accessor would mean inventing a fake dimension map for one of
+ * them. Sharing the policy is the part that matters.
+ *
+ * The tree view used to reimplement all of it inline, hardcoding both axes —
+ * so a descriptor change moved the graph and left the tree behind, and the two
+ * halves of the same product disagreed about what the filter meant.
+ */
+export function passesSelection(
+  filter: FilterState,
+  dimensions: readonly DimensionDescriptor[],
+  valueOn: (dimension: string) => string | undefined,
+): boolean {
+  for (const dim of dimensions) {
+    const selection = selectionFor(filter, dim.id)
+    if (selection.size === 0) {
+      if (dim.emptyMeans === 'none') return false
+      continue
+    }
+    const value = valueOn(dim.id)
+    if (value === undefined) {
+      if (dim.absentMeans === 'hidden') return false
+      continue
+    }
+    if (!selection.has(value)) return false
   }
   return true
 }

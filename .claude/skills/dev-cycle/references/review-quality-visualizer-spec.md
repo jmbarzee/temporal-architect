@@ -9,9 +9,9 @@ This review asks "does the visualizer serve its users well?" — not "is the cod
 Before starting, read:
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View requirements and current behavior
 - `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View requirements and planned behavior
-- `tools/visualizer/spec/VIZUALIZER_PRODUCT_REVIEW_PLAN.md` — product evaluation: framing, user question hierarchy, gap analysis, product patterns, priority tiers
+- `tools/visualizer/spec/PRODUCT.md` — the product spec: framing, the user questions the visualizer must answer, the patterns to apply, the priorities
 
-The product eval plan is the primary input. It defines the user questions the visualizer must answer, the UX patterns that should be applied, and the priority tiers. This review evaluates whether the spec and current behavior deliver on those goals.
+The product spec is the primary input. It defines the user questions the visualizer must answer, the UX patterns that should be applied, and the priority tiers. This review evaluates whether the view specs and current behavior deliver on those goals.
 
 ## Review Rubric
 

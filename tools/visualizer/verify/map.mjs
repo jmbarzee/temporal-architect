@@ -13,15 +13,16 @@
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { manifestFiles, shimFiles, readLines, PKG_ROOT } from './manifest.mjs'
+import { manifestFiles, shimFiles, readLines, PKG_ROOT, LIB_SRC } from './manifest.mjs'
 
 const PATTERN =
   /workflow|activity|activities|worker|namespace|nexus|temporal|twf|signalsend|dispatchkind|taskqueue/gi
 const URL_LINE = /https?:\/\//
 const OUT = 'kickoff/MAP.md'
 
-// Every .ts/.tsx under src/, so "neither" files are visible too — a file in no
-// zone is exactly the kind of thing that grows unnoticed.
+// Every .ts/.tsx under this package's src/ and the library's, so "neither"
+// files are visible too — a file in no zone is exactly the kind of thing that
+// grows unnoticed.
 function allSources(dir = 'src', out = []) {
   for (const name of readdirSync(resolve(PKG_ROOT, dir)).sort()) {
     const rel = `${dir}/${name}`
@@ -35,12 +36,16 @@ const IMPORT = /(?:\bfrom\s*|^\s*import\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)['
 function importsOf(file) {
   const text = readLines(file).join('\n')
   const specs = new Set()
-  for (const m of text.matchAll(IMPORT)) if (m[1].startsWith('.')) specs.add(m[1])
+  for (const m of text.matchAll(IMPORT)) if (m[1].startsWith('.') || m[1].startsWith('@temporal-architect/graph-view')) specs.add(m[1])
   return [...specs]
 }
 
+// The library's entry and its deep paths, as the build's alias resolves them.
+const LIB_ALIAS = '@temporal-architect/graph-view'
 function resolveSpec(fromFile, spec) {
-  const base = resolve(PKG_ROOT, fromFile, '..', spec)
+  const base = spec === LIB_ALIAS ? resolve(PKG_ROOT, LIB_SRC, 'index')
+    : spec.startsWith(LIB_ALIAS + '/') ? resolve(PKG_ROOT, LIB_SRC, spec.slice(LIB_ALIAS.length + 1))
+    : resolve(PKG_ROOT, fromFile, '..', spec)
   for (const ext of ['.ts', '.tsx', '', '/index.ts', '/index.tsx']) {
     const c = base + ext
     if (existsSync(c) && statSync(c).isFile()) return c.slice(resolve(PKG_ROOT).length + 1)
@@ -61,7 +66,7 @@ const manifest = new Set(manifestFiles())
 const shim = new Set(shimFiles())
 const zoneOf = f => (manifest.has(f) ? 'manifest' : shim.has(f) ? 'shim' : 'neither')
 
-const sources = allSources()
+const sources = [...allSources(), ...allSources(LIB_SRC)]
 const importers = new Map(sources.map(f => [f, []]))
 for (const f of sources) {
   for (const spec of importsOf(f)) {
@@ -77,8 +82,8 @@ lines.push('`npm run map` regenerates this; `npm run map -- --check` fails if it
 lines.push('It is not a gate. It exists because "who imports this" and "which zone is')
 lines.push('this in" were being answered by grep, repeatedly, and wrongly.')
 lines.push('')
-lines.push('**zone** — `manifest` is the library-to-be (the three ratchets measure it and')
-lines.push("Unit 8 moves it); `shim` is the host half; `neither` is measured by nothing,")
+lines.push('**zone** — `manifest` is the library, `tools/graph-view/src/` (the three ratchets')
+lines.push("measure it); `shim` is the host's domain half; `neither` is measured by nothing,")
 lines.push('which is worth noticing rather than assuming.')
 lines.push('')
 lines.push('| file | zone | leak | imported by |')

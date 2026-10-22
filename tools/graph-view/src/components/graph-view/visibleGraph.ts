@@ -19,10 +19,9 @@ import { isContainment } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge, ReadableGraph } from '../../graph/model'
 import type { Ontology } from '../../graph/ontology'
-import type { DimensionDescriptor } from '../../graph/dimension'
 import type { PhysicsSubject } from '../../graph/forces'
 import type { FilterState } from '../../filter/types'
-import { selectionFor } from '../../filter/types'
+import { passesSelection } from '../../filter/types'
 
 export interface VisibleGraph {
   visibleNodes: SimNode[]
@@ -152,40 +151,6 @@ function computeGraphNodeSummary(
 }
 
 
-/**
- * Does a subject pass the selection, given a way to read its value per axis?
- *
- * The policy — what an empty selection means, what an absent value means — is
- * here once, read from each axis's descriptor. The *projection* is the caller's,
- * and deliberately so: a graph node carries a dimension map, while a tree row is
- * an AST definition with named fields. Those are genuinely different shapes, so
- * sharing the accessor would mean inventing a fake dimension map for one of
- * them. Sharing the policy is the part that matters.
- *
- * The tree view used to reimplement all of it inline, hardcoding both axes —
- * so a descriptor change moved the graph and left the tree behind, and the two
- * halves of the same product disagreed about what the filter meant.
- */
-export function passesSelection(
-  filter: FilterState,
-  dimensions: readonly DimensionDescriptor[],
-  valueOn: (dimension: string) => string | undefined,
-): boolean {
-  for (const dim of dimensions) {
-    const selection = selectionFor(filter, dim.id)
-    if (selection.size === 0) {
-      if (dim.emptyMeans === 'none') return false
-      continue
-    }
-    const value = valueOn(dim.id)
-    if (value === undefined) {
-      if (dim.absentMeans === 'hidden') return false
-      continue
-    }
-    if (!selection.has(value)) return false
-  }
-  return true
-}
 
 /** `passesSelection` for a graph node, projected through the taxonomy. */
 export function passesFilter(

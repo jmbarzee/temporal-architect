@@ -20,13 +20,13 @@
 // speed at rest. Both are chaotic float-derived aggregates over the full run, and
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
-import { filterOfSets } from '../filter/types'
-import { bandCenters, bandOverlay, layoutFrame, mappedAxis, resolvePhysics } from '../graph/forces'
-import type { BandStripe } from '../graph/forces'
-import type { Graph } from '../graph/model'
-import { defaultParamsFor, Simulation } from '../graph/simulation'
-import type { ForceParams, SimNode } from '../graph/simulation'
-import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
+import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
+import { bandCenters, bandOverlay, layoutFrame, mappedAxis, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
+import type { BandStripe } from '@temporal-architect/graph-view/graph/forces'
+import type { Graph } from '@temporal-architect/graph-view/graph/model'
+import { defaultParamsFor, Simulation } from '@temporal-architect/graph-view/graph/simulation'
+import type { ForceParams, SimNode } from '@temporal-architect/graph-view/graph/simulation'
+import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'

@@ -33,15 +33,27 @@ export default defineConfig({
         'src/adapter/**/*.ts',
         'src/theme/**/*.ts',
       ],
-      exclude: ['src/App.tsx', 'src/main.tsx', '**/*.test.*'],
+      exclude: ['src/App.tsx', 'src/main.tsx', '**/*.test.*', '../graph-view/**'],
+      // The program now reaches the library's source through the path map, so
+      // the shortest common directory of its files is `tools/`; pin the entry
+      // root or the declarations land under `dist-lib/visualizer/src/`.
+      entryRoot: resolve(__dirname, 'src'),
       // The DTS plugin defaults to the same outDir as the JS build (dist-lib);
       // we ship the resulting `lib.d.ts` alongside `lib.js`.
     }),
   ],
   resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src'),
-    },
+    // The graph-view library, from source: one install, HMR, and no build order
+    // between the two packages (D62). The bare specifier is the public entry;
+    // the deep form is the harness's road to internals.
+    alias: [
+      { find: /^@temporal-architect\/graph-view$/, replacement: resolve(__dirname, '../graph-view/src/index.ts') },
+      { find: /^@temporal-architect\/graph-view\/(.+)$/, replacement: resolve(__dirname, '../graph-view/src/$1') },
+      { find: '@', replacement: resolve(__dirname, 'src') },
+    ],
+    // The library's files sit beside their own node_modules; React must still
+    // resolve to this package's one copy, or hooks meet two Reacts at runtime.
+    dedupe: ['react', 'react-dom'],
   },
   // Don't copy public/ (dev fixtures, etc.) into the published library — the
   // standalone build (vite.config.ts) still serves them for `?ast=` testing.

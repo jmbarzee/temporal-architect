@@ -1780,3 +1780,89 @@ Groups control is present, 0 console errors. Ceilings ratcheted to 0 / 1089
 **Golden change (§8.2).** None.
 
 — 2026-10-22 — agent
+
+**D62 — The move: the library is its own package,
+`@temporal-architect/graph-view`, consumed from source (Unit 8b).** PLAN §6.2
+Unit 8; R36, R38, R39, R40, R41.
+
+1. **The package.** `tools/graph-view/` — the §6.5 manifest moved whole, 54
+   files (the 53 the manifest held plus `icons/GearIcons.tsx`, which the bar
+   renders and the host's theme borrows), keeping its layout under `src/`;
+   plus the chrome's design tokens, cut out of the host's `index.css` into
+   the library's `styles/tokens.css` — the host keeps its five block tokens
+   and reads the chrome's from the library. The name is the org's scope and
+   what the thing is; `dimensional-graph` and `forcegraph` were the
+   alternatives, neither saying "view". Its own `package.json` (the
+   visualizer's devDependency set, no new dependency — C2), a lockfile seeded
+   from the visualizer's so both pin the same versions (vite 6.4.1,
+   vite-plugin-dts 5.0.0, TypeScript 5.9.3), a `tsconfig`, a lib build, a
+   published-types gate (the visualizer's twin, differing only in what is
+   private: the taxonomy and the scalar axes ARE this surface, the force
+   model is not), a README.
+2. **The entry is what the host imports.** `src/index.ts` is generated from
+   the visualizer's own imports of the moved modules — 53 names from 16
+   modules, `export type` where the module exports a type — and committed as
+   `kickoff/graph-view-surface.txt`, which the surface gate checks beside
+   `lib-surface.txt`. `passesSelection` moved from the view's derivation to
+   `filter/types.ts` on the way: the policy belonged with the filter, and
+   exporting it from `visibleGraph` dragged the simulation's and the force
+   model's declarations onto the published surface (the types gate caught
+   it: two private files reachable, then none).
+3. **Consumed from source, not from a build.** The visualizer's three vite
+   configs alias the bare specifier to `../graph-view/src/index.ts` and the
+   deep form `@temporal-architect/graph-view/<path>` to `../graph-view/src/
+   <path>`, with `dedupe: ['react', 'react-dom']` so the library's files,
+   which sit beside their own `node_modules`, resolve React to the host's one
+   copy; `tsconfig.json` carries the same two path maps. One `npm ci` per
+   package, HMR across the boundary, no build order between them; the
+   visualizer's published artifact bundles the library (its `lib.d.ts`
+   mentions it nowhere), so consumers of `@temporal-architect/visualizer`
+   install nothing new. The `file:../<name>` link the plan named is the
+   wire-types precedent for a type-only package; a runtime library consumed
+   by a bundler is served by the alias, and a link nothing resolves through
+   would be wiring that lies. Deep imports are the harness's (`src/verify/`)
+   alone — they say what the harness is, the thing that pins the library's
+   internals — and the published `exports` map does not offer them.
+4. **The gates follow the move.** The manifest is the library's tree
+   (`../graph-view/src/**`); the shim is unchanged. Gate 6 is a package
+   boundary now, in both directions: a library file imports nothing that
+   resolves outside the library's `src/` and no `@temporal-architect/*`
+   package; a host file outside the harness imports nothing past the
+   library's entry. The pattern gate's scope and allowlist paths follow the
+   engine's directory (the two allowlist entries were renamed, not added —
+   the same casts in the same files). The map covers both trees and resolves
+   the alias. The visualizer's declarations build pins `entryRoot` to `src/`:
+   a program that reaches another package's source has `tools/` as its
+   shortest common directory, and the declarations had landed under
+   `dist-lib/visualizer/src/` with the gate reporting the entry missing.
+5. **Measured.** Leak **0** (ceiling 0) — three library-side hits fixed on
+   the way: a header naming the scoped package, and two icon comments naming
+   the values the icons used to stand for. Total vocabulary **1101**, the
+   ceiling raised 1089 → 1101 with the reason: twelve import lines in the
+   shim name the library by its scoped package name, and the org's scope
+   carries the word; nothing moved into the shim and nothing grew. Boundary
+   **0**. Every golden byte-identical (7/7) through the alias. Surfaces 90
+   and 53, as committed. Published types: 10 files reachable from the
+   visualizer's entry, 17 from the library's, none private. Gate 5: five
+   fixtures in both themes through the library from source, 0 console
+   errors, every count identical to Unit 7's. The parser and the wire types
+   are untouched on the whole stack (R39); the sibling's dependencies are a
+   subset of the visualizer's and the visualizer's manifest is unchanged
+   (R40).
+6. **Packaging and the graph** (T27, T28). Makefile: `build-graph-view-lib`
+   (in `build`), `pack-graph-view-lib` (in CI's pack step; attached to a
+   Release beside the visualizer's), `typecheck-graph-view` (in `typecheck`),
+   `buildlib-graph-view` (build and types gate); `check-visualizer` runs all
+   of it; `clean` covers the sibling. Not added to `publish-npm-libs`:
+   publishing a new package under the org's scope is a release decision, one
+   line when taken. `ci.yml` installs the sibling and runs its types gate and
+   pack. `components.md` gains the `graph-view` row (its quality review is
+   the visualizer's prompt, whose scope covers both packages), the
+   `area:visualizer` routing note, the `graph-view` → `visualizer` [API]
+   propagation edge, and a Wave 3 for the visualizer, which consumes the
+   library's entry. T28: the spec review's missing input is `PRODUCT.md`,
+   which exists.
+
+**Golden change (§8.2).** None.
+
+— 2026-10-22 — agent

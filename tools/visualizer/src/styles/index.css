@@ -1,4 +1,4 @@
-/* Global styles for TWF Visualizer */
+/* Global styles for the TWF Visualizer host: the reset, the host's block tokens, the page. The chrome's tokens are the library's (@temporal-architect/graph-view). */
 
 * {
   box-sizing: border-box;
@@ -8,110 +8,14 @@
 
 :root,
 [data-theme="light"] {
-  /* Light theme (default), and a pane that chose light inside a dark host */
+  /* The host's own block tokens; the chrome's are the library's (tokens.css). */
   --color-workflow: #8B7EC8;
   --color-activity: #7CB9E8;
   --color-signal: #E8A0BF;
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
-
-  /* The chrome's own tokens (D58). The accent is the chrome's, not a node
-     value's fill — they coincide by taste, not by identity. The tint
-     percentages are what color-mix() dilutes an accent or a chip's tint to;
-     the dark block raises them because the surface is darker. Every rule
-     that differs by theme reads one of these; no rule keys on an ancestor
-     class, so the nearest themed root wins (a pane dark in a light host, or
-     light in a dark one). */
-  --accent: #8B7EC8;
-  --accent-tint-weak: 5%;
-  --accent-tint-hover: 8%;
-  --accent-tint-active: 12%;
-  --accent-tint-ring: 32%;
-  --hover-bg: rgba(0, 0, 0, 0.04);
-  --inset-bg: rgba(0, 0, 0, 0.02);
-  --key-bg: rgba(0, 0, 0, 0.05);
-  --tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  /* The pull overlay's tension colours: stretched, compressed, at rest. */
-  --tension-stretch: #d97706;
-  --tension-compress: #7CB9E8;
-  --tension-rest: #7EC8B8;
-
-  /* Graph node-type palette: the graph pane carries --color-<suffix> and
-     --color-<suffix>-border for every style value inline, in its resolved
-     theme (D57). mountNodeTypeStyles() publishes the same variables on :root
-     for a host's own CSS. */
-
-  --color-bg: #f8fafc;
-  --color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  --color-text: #1e293b;
-  --color-text-muted: #64748b;
-  /* Canvas graph node-label colour. Softened (slate-700, not near-black) so
-     labels read clearly on the light background without shouting; drawn at
-     reduced alpha so edges stay visible through them. */
-  --color-graph-label: #334155;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-error: #dc2626;
-  --color-error-bg: #fef2f2;
-  --color-error-border: #fecaca;
-  --color-error-text: #991b1b;
-  --color-warning: #d97706;
-  /* Warning palette — used by the diagnostics header for rows with
-     severity: 'warning'. Distinct from --color-error so the user can
-     tell a validator warning (e.g. UNCOVERED_ACTIVITY) apart from a
-     parse failure at a glance. Hue matches --color-warning so it
-     composes with the existing header-hidden-badge yellow. */
-  --warning-fg: #92400e;
-  --warning-bg: #fffbeb;
-  --warning-border: #fde68a;
-  --warning-accent: #d97706;
-  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --focus-ring-color: #4A90D9;
 }
 
-/* Dark theme - applied when VSCode is in dark mode */
-.vscode-dark,
-[data-theme="dark"] {
-  /* Brighter palette on dark backgrounds — node-type overrides are
-     generated at runtime by mountNodeTypeStyles() and injected into the
-     same .vscode-dark / [data-theme="dark"] selector. Only structural /
-     non-node-type overrides remain here. */
-  --accent: #A89BD8;
-  --accent-tint-weak: 6%;
-  --accent-tint-hover: 12%;
-  --accent-tint-active: 18%;
-  --accent-tint-ring: 40%;
-  --hover-bg: rgba(255, 255, 255, 0.04);
-  --inset-bg: rgba(255, 255, 255, 0.04);
-  --key-bg: rgba(255, 255, 255, 0.06);
-  --tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --tension-stretch: #fbbf24;
-  --tension-compress: #7CB9E8;
-  --tension-rest: #7EC8B8;
-  --color-bg: #1e1e1e;
-  --color-bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
-  --color-text: #d4d4d4;
-  --color-text-muted: #9ca3af;
-  /* Softened label colour on dark themes — slate-300 rather than near-white,
-     so names read without being the only bright text on the canvas. Drawn at
-     reduced alpha so edges stay visible through them. */
-  --color-graph-label: #cbd5e1;
-  --color-surface: #252526;
-  --color-border: #3c3c3c;
-  --color-error: #f87171;
-  --color-error-bg: #450a0a;
-  --color-error-border: #7f1d1d;
-  --color-error-text: #fca5a5;
-  --color-warning: #fbbf24;
-  /* Dark-mode warning palette — bumped to readable amber on dark
-     backgrounds while preserving the warm/yellow hue family. */
-  --warning-fg: #fcd34d;
-  --warning-bg: #422006;
-  --warning-border: #78350f;
-  --warning-accent: #fbbf24;
-  --focus-ring-color: #6CB0F0;
-}
 
 html, body, #root {
   height: 100%;

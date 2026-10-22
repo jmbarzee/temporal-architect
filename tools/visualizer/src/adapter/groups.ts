@@ -8,9 +8,8 @@
 // view restricts them to what is visible and colours them (`graph/groups.ts`).
 
 import type { Decomposition, Chunk, Division, Section } from '../types/decomposition'
-import { HOVER_STRENGTH } from '../graph/groups'
-import type { NodeGroup } from '../graph/groups'
-
+import { HOVER_STRENGTH } from '@temporal-architect/graph-view'
+import type { NodeGroup } from '@temporal-architect/graph-view'
 // GroupSelection is the persistent, user-driven overlay state owned by the host
 // canvas. The overlay is an **initially-off** feature: on load nothing glows
 // (initialized=false, glowEnabled=false, enabledChunks empty), so the canvas is

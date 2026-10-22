@@ -2,7 +2,7 @@
 // library has no business shipping a deterministic RNG: production draws from
 // the platform generator and only this side of the fence ever seeds one (D11).
 
-import type { Rng } from '../graph/rng'
+import type { Rng } from '@temporal-architect/graph-view/graph/rng'
 
 /**
  * mulberry32 — a small, fast, well-distributed 32-bit PRNG. Chosen because it

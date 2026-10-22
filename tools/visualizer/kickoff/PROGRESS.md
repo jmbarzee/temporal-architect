@@ -45,7 +45,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 | field | value |
 |---|---|
 | Runaway ceiling | **300 commits** on `main..HEAD` (enforced; KICKOFF §2.4) |
-| Commits so far | 102 (`main..HEAD`, the whole stack) |
+| Commits so far | 104 (`main..HEAD`, the whole stack) |
 | Token / wall-clock budget | unset (advisory only) |
 
 ---
@@ -54,7 +54,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 8 — The library move** (next; not yet opened — branch from unit-7 @ the record commit; the boundary gate's 8 edges are the move list) |
+| Current unit | **Unit 8 — The move + packaging** (opened on `visualizer/dimensions-unit-8` from unit-7 @ `88dc801`; the eight edges cut at `2e065a5` (D61), the move in the commit that adds this row (D62) — under review) |
 | Last completed unit | **Unit 7 — Post-filter-scoped controls** ([PR #175](https://github.com/jmbarzee/temporal-architect/pull/175)) |
 | Feature branch | `visualizer/composable-dimensions` |
 | Unit branch | `visualizer/dimensions-unit-7` (from unit-6 @ `3ed12d0`, [PR #175](https://github.com/jmbarzee/temporal-architect/pull/175), closed); the stack below it: unit-6 (#174) → unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
@@ -64,10 +64,10 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | **31** (R4, R5, R6, R7, R8, R9, R10, R11, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34, R35) + R1 partial | 42 |
+| A — requirements covered | **36** (R4, R5, R6, R7, R8, R9, R10, R11, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34, R35, R36, R38, R39, R40, R41) + R1 partial | 42 |
 | B — blast-radius sites migrated | **36** | 38 |
-| C — leaks in the manifest | **4** | 0 |
-| Gate 6 — import-boundary violations | **8** | 0 |
+| C — leaks in the manifest | **0** | 0 |
+| Gate 6 — import-boundary violations | **0** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
 measuring them. Counter A's R41 ("does everything it did before") closes at
@@ -185,24 +185,38 @@ eight edges are Unit 8's move list: `FilterBar.tsx` -> `types/ast`;
 `types/decomposition`, `protocol`, `GroupsModal`, `adapter/useGraphModel`;
 `groups.ts` -> `types/decomposition`.
 
+**Unit 8.** Counter A: R36, R38, R39, R40, R41 — 31 -> 36. Counter B: none
+assigned, none moved — 36.
+
+Counter C landed at **0** at the 8a close (the eight edges cut in place,
+D61: Gate 6 8 -> 0, leak 4 -> 0, total 1091 -> 1089 as the two `TWFFile`
+mentions went) and stays **0** across the move (D62), measured over the
+library's own tree. Gate 6 is **0** across a package boundary now, in both
+directions. The total rose 1089 -> **1101**, and the twelve are exactly the
+twelve import lines in the shim that name the library by its scoped package
+name — the org's scope carries the word — so the ceiling is raised to 1101
+with that reason: nothing moved into the shim and nothing grew. The ratchet
+is set to **0** / **1101** / **0**.
+
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 7 close | pass |
-| 2 `npm run build:lib` | Unit 7 close | pass |
-| 2b `npm run dts-gate` | Unit 7 close | pass — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private |
-| 3 `npm run verify` | Unit 7 close | pass — 7/7 goldens match; every graduated-edge row, summary, Tier B and Tier C row byte-identical across the unit (D59, D60); Tier A gains `contextLines` and, per state, `controls` and `hookedHighlights` (each carrying the whole highlight through `highlightOf`); `static` gains `hiddenPolicy`, `viewProbes` and the `badWhenHidden` refusal |
-| 4 `npm run leak-gate` | Unit 7 close | pass — **4 / 4**; **total 1091 / 1091** |
-| 5 browser pass | Unit 7 close | pass — five fixtures in both themes with a chip toggled off and the toggle asserted to change the counts (`unit-7-*.png`, `unit-7-*-dark.png`; the Nexus chip on the three fixtures that carry it, the Workers chip on stress and decomposition via `--only`), 0 console errors; by hand on nexus: the panel opened on Push first, then the Nexus chip off — tokens 20 → 10, curves 22 → 12, the curves following the toggle (REVIEW_7 C1) |
+| 1 `tsc --noEmit` | Unit 8 | pass — both packages; the visualizer's path map reaches the library's source |
+| 2 `npm run build:lib` | Unit 8 | pass — both packages; the visualizer's artifact bundles the library and its `lib.d.ts` names it nowhere |
+| 2b `npm run dts-gate` | Unit 8 | pass — the library's twin gate: 17 declaration files reachable from its entry, the force model not among them; the visualizer's unchanged at 10. Before that — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private |
+| 3 `npm run verify` | Unit 8 | pass — 7/7 goldens match through the alias, every row byte-identical across the move (D62); at the Unit 7 close: every graduated-edge row, summary, Tier B and Tier C row byte-identical across the unit (D59, D60); Tier A gains `contextLines` and, per state, `controls` and `hookedHighlights` (each carrying the whole highlight through `highlightOf`); `static` gains `hiddenPolicy`, `viewProbes` and the `badWhenHidden` refusal |
+| 4 `npm run leak-gate` | Unit 8 | pass — **0 / 0** over `tools/graph-view/src`; **total 1101 / 1101** (the twelve import lines naming the package, D62) |
+| 5 browser pass | Unit 8 | pass — five fixtures in both themes through the library from source (`unit-8-*.png`, `unit-8-*-dark.png`), panel open, 0 console errors, every count identical to Unit 7's; by hand on nexus: the tokens resolve from the library's stylesheet, chips tint, the Groups control present, and the dev server rebuilt across the package boundary on save |
+| 5 browser pass (Unit 7) | Unit 7 close | pass — five fixtures in both themes with a chip toggled off and the toggle asserted to change the counts (`unit-7-*.png`, `unit-7-*-dark.png`; the Nexus chip on the three fixtures that carry it, the Workers chip on stress and decomposition via `--only`), 0 console errors; by hand on nexus: the panel opened on Push first, then the Nexus chip off — tokens 20 → 10, curves 22 → 12, the curves following the toggle (REVIEW_7 C1) |
 | 5 browser pass (Unit 6) | Unit 6 close | pass — five fixtures in both themes with the theme pinned (`unit-6-*.png`, `unit-6-*-dark.png`; `screenshot.mjs` emulates the preference and fails a wrong-theme capture), 0 console errors; by hand on nexus in a dark host: Auto, Light and Dark, the pane light in every token inside the dark shell, chips tinting from the taxonomy in both panes, the choice persisted |
 | 5 browser pass (Unit 5b) | Unit 5b close | pass — five fixtures, 0 console errors, panel-open captures on Gravity / Y Axis / Reach (`unit-5b-*`, via `screenshot.mjs --tab/--subtab/--select`); by hand on nexus and stress: Reach on Y, the 1 handle dragged past the 0 handle, radial, Degree on X, both axes back to Type, and exponent 3 on Reach after the cap — no bounce |
 | 5 browser pass (Unit 5a) | Unit 5a close | pass — five fixtures, 0 console errors, panel-open captures (`unit-5a-*`); the Gravity tab exercised by hand on multifile: X Axis and Y Axis bodies, the Radial switch re-lays out, rings draw on hover |
 | 5 browser pass (Unit 4) | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)`; a second capture per fixture with the panel open (`unit-4-<fixture>-controls.png`), after the review noted the first set showed it collapsed |
-| 6 `npm run boundary-gate` | Unit 7 close | pass — **8 / 8**; the gate now counts an import that resolves to a shim component, and the two edges it had been blind to are `GraphView` → `GroupsModal`, `protocol` (REVIEW_7 C6) |
-| + `npm run pattern-gate` | Unit 7 close | pass — 5 allowlisted, 0 new |
-| + `npm run map -- --check` | Unit 7 close | pass — up to date |
-| + `npm run surface-gate` | Unit 7 close | pass — 90 names, as committed |
+| 6 `npm run boundary-gate` | Unit 8 | pass — **0 / 0** across the package boundary, both directions (D62); at the Unit 7 close **8 / 8**: the gate now counts an import that resolves to a shim component, and the two edges it had been blind to are `GraphView` → `GroupsModal`, `protocol` (REVIEW_7 C6) |
+| + `npm run pattern-gate` | Unit 8 | pass — 5 allowlisted (the two entries renamed to the library's paths), 0 new |
+| + `npm run map -- --check` | Unit 8 | pass — up to date, over both trees |
+| + `npm run surface-gate` | Unit 8 | pass — 90 names on `src/lib.ts` and 53 on the library's entry, as committed |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -256,12 +270,12 @@ Status: blank = not started · `wip` · `done`.
 | R33 | Force graph always beneath the chart | 5a | covered (5a) — Gate 5 verified |
 | R34 | Misc section retained | 4 | covered (4) — Gate 5 verified, untouched |
 | R35 | Post-filter set determines offered controls | 7 | 5 |
-| R36 | Library in a sibling folder, buildable, extractable | 8 | 2 + 6 |
+| R36 | Library in a sibling folder, buildable, extractable | 8 | 2 + 6 | `done` — `tools/graph-view/`, its own manifest, lockfile, build and types gate; consumed from source by the visualizer (D62) |
 | R37 | Shim first-class, own folder | 2 | 6 |
-| R38 | Zero Temporal information or types in the library | 8 | 4 + 6 |
-| R39 | No parser changes | all | `git diff --stat tools/lsp tools/wire-types` empty |
-| R40 | No new dependencies | all | `package.json` / lockfile diff |
-| R41 | Does everything it did before | 8 | every golden green + Gate 5 |
+| R38 | Zero Temporal information or types in the library | 8 | 4 + 6 | `done` — leak 0 and boundary 0 over the library's own tree, across a package boundary (D61, D62) |
+| R39 | No parser changes | all | `git diff --stat tools/lsp tools/wire-types` empty | `done` — empty over the whole stack at the Unit 8 close |
+| R40 | No new dependencies | all | `package.json` / lockfile diff | `done` — the visualizer's manifest unchanged; the sibling's dependencies a subset of it, pinned to the same versions (D62) |
+| R41 | Does everything it did before | 8 | every golden green + Gate 5 | `done` — 7/7 goldens byte-identical and Gate 5 on every fixture in both themes through the library (D62) |
 | R42 | Spec aligned to the new model | 9 | review |
 
 **Twenty of these are provable only by Gate 5**, the manual browser pass. That is
@@ -300,6 +314,11 @@ should be read:
 2. **Rule 8 failed on the run that introduced it** (F17): I wrote "isolation
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
+
+**Unit 8 is open** on `visualizer/dimensions-unit-8`, branched from unit-7
+@ `88dc801`. Commits: `2e065a5` (8a — the eight edges cut in place, D61),
+then the move (8b, D62: the commit that adds this paragraph). The review is
+next; the record, the PR and the close follow it.
 
 **Unit 7 is closed** on `visualizer/dimensions-unit-7`, branched from unit-6
 @ `3ed12d0`; [PR #175](https://github.com/jmbarzee/temporal-architect/pull/175) (base

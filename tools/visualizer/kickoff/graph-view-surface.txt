@@ -1,0 +1,53 @@
+DEF_TYPE_DIMENSION
+DISPATCH_DIMENSION
+FilterBar
+GraphView
+HOVER_STRENGTH
+InterlockingGearsIcon
+OntologyContext
+RELATION_DIMENSION
+SOURCE_FILE_DIMENSION
+SingleGearIcon
+createOntology
+dispatchOf
+isContainment
+loadState
+passesSelection
+payloadString
+pinnedFor
+reconcileFilter
+saveState
+schemeStylesheet
+schemeVars
+selectionFor
+themeChoiceOf
+type ActiveGroup
+type DimensionDescriptor
+type DimensionMap
+type DimensionValue
+type EdgeCategoryKind
+type EdgeStroke
+type EdgeTypeDefinition
+type FilterChip
+type FilterDimension
+type FilterState
+type FocusTarget
+type Graph
+type GraphEdge
+type GraphNode
+type Highlight
+type HighlightGraph
+type NodeGroup
+type NodeTypeDefinition
+type Ontology
+type OntologySpec
+type PersistedFilter
+type PersistedPins
+type PinState
+type StorageConfig
+type ThemeChoice
+type ViewTransition
+useHostTheme
+useOntology
+useRecentlyChanged
+withSelection

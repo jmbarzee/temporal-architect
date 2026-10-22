@@ -1,17 +1,19 @@
-import { useOntology } from './graph-view/useOntology'
-import { passesSelection } from './graph-view/visibleGraph'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
-import { selectionFor } from '../filter/types'
+import {
+  useOntology,
+  passesSelection,
+  DEF_TYPE_DIMENSION,
+  SOURCE_FILE_DIMENSION,
+  selectionFor,
+  useRecentlyChanged,
+  FilterBar,
+} from '@temporal-architect/graph-view'
+import type { FocusTarget, FilterState, PinState, FilterDimension } from '@temporal-architect/graph-view'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
 import type { CallerRef, NavigationContextType } from './WorkflowCanvas'
-import type { FocusTarget } from '../filter/types'
-import type { FilterState, PinState, FilterDimension } from '../filter/types'
-import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
-import { FilterBar } from './FilterBar'
 import { ErrorBars } from './ErrorBars'
 import { definitionCounts } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'

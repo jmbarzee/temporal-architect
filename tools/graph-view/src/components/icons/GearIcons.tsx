@@ -18,7 +18,7 @@ export function SearchIcon({ size = 16 }: { size?: number }) {
   )
 }
 
-// Single gear icon for activities
+// One gear.
 export function SingleGearIcon({ size = 14 }: { size?: number }) {
   return (
     <svg
@@ -33,7 +33,7 @@ export function SingleGearIcon({ size = 14 }: { size?: number }) {
   )
 }
 
-// Interlocking gears icon for workflows (two gears meshed together, offset)
+// Two gears meshed together, offset.
 export function InterlockingGearsIcon({ size = 16 }: { size?: number }) {
   return (
     <svg

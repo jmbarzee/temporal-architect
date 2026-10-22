@@ -8,8 +8,7 @@
 // module only mounts it for the shipped taxonomy.
 
 import { DEFAULT_ONTOLOGY } from './node-types'
-import { schemeStylesheet } from '../graph/scheme'
-
+import { schemeStylesheet } from '@temporal-architect/graph-view'
 /** The CSS string to inject for the shipped taxonomy. */
 export function buildNodeTypeCSS(): string {
   return schemeStylesheet(DEFAULT_ONTOLOGY)

@@ -14,8 +14,7 @@ import {
   type GroupSelection,
   type GroupHover,
 } from '../adapter/groups'
-import type { ActiveGroup } from '../graph/groups'
-
+import type { ActiveGroup } from '@temporal-architect/graph-view'
 type GroupsTab = 'groups' | 'params'
 
 // Decomposition strategies the `by` multi-select offers, mirroring the Go

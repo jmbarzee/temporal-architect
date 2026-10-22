@@ -4,37 +4,25 @@
 It is not a gate. It exists because "who imports this" and "which zone is
 this in" were being answered by grep, repeatedly, and wrongly.
 
-**zone** — `manifest` is the library-to-be (the three ratchets measure it and
-Unit 8 moves it); `shim` is the host half; `neither` is measured by nothing,
+**zone** — `manifest` is the library, `tools/graph-view/src/` (the three ratchets
+measure it); `shim` is the host's domain half; `neither` is measured by nothing,
 which is worth noticing rather than assuming.
 
 | file | zone | leak | imported by |
 |---|---|---:|---|
 | `App.tsx` | neither | 5 | `main.tsx` |
-| `adapter/build.ts` | shim | 54 | **6** files |
-| `adapter/edge-types.ts` | shim | 174 | **4** files |
-| `adapter/groups.ts` | shim | 1 | `components/GroupsModal.tsx`, `components/WorkflowCanvas.tsx` |
-| `adapter/node-type-styles.ts` | shim | 1 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
-| `adapter/node-types.ts` | shim | 146 | **17** files |
-| `adapter/useGraphModel.ts` | shim | 4 | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx` |
-| `components/AxisControls.tsx` | manifest |  | `components/GravityControls.tsx` |
-| `components/CanvasErrorBoundary.tsx` | manifest |  | `components/GraphView.tsx` |
-| `components/ChargeControls.tsx` | manifest |  | `components/PushPullControls.tsx` |
+| `adapter/build.ts` | shim | 56 | **6** files |
+| `adapter/edge-types.ts` | shim | 176 | **4** files |
+| `adapter/groups.ts` | shim | 3 | `components/GroupsModal.tsx`, `components/WorkflowCanvas.tsx` |
+| `adapter/node-type-styles.ts` | shim | 2 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
+| `adapter/node-types.ts` | shim | 148 | **17** files |
+| `adapter/useGraphModel.ts` | shim | 6 | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx` |
 | `components/ErrorBars.tsx` | neither |  | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx` |
-| `components/FilterBar.tsx` | manifest |  | `components/GraphView.tsx`, `components/TreeView.tsx` |
-| `components/ForceMap.tsx` | manifest |  | `components/AxisControls.tsx`, `components/ChargeControls.tsx`, `components/SpringControls.tsx` |
-| `components/GraphCanvas.tsx` | manifest |  | `components/GraphView.tsx` |
-| `components/GraphControlPanel.tsx` | manifest |  | **5** files |
-| `components/GraphView.tsx` | manifest |  | `components/WorkflowCanvas.tsx` |
-| `components/GravityControls.tsx` | manifest |  | **4** files |
-| `components/GroupsModal.tsx` | neither | 7 | `components/WorkflowCanvas.tsx` |
-| `components/PinToggle.tsx` | manifest |  | `components/FilterBar.tsx` |
-| `components/PushPullControls.tsx` | manifest |  | `components/GraphControlPanel.tsx`, `verify/view-probes.ts` |
-| `components/SpringControls.tsx` | manifest |  | `components/PushPullControls.tsx` |
+| `components/GroupsModal.tsx` | neither | 8 | `components/WorkflowCanvas.tsx` |
 | `components/StyleGuide.tsx` | neither | 62 | `components/VisualizerHost.tsx`, `lib.ts` |
-| `components/TreeView.tsx` | neither | 54 | `components/WorkflowCanvas.tsx` |
+| `components/TreeView.tsx` | neither | 56 | `components/WorkflowCanvas.tsx` |
 | `components/VisualizerHost.tsx` | neither | 8 | `App.tsx`, `lib.ts` |
-| `components/WorkflowCanvas.tsx` | neither | 67 | **8** files |
+| `components/WorkflowCanvas.tsx` | neither | 69 | **8** files |
 | `components/blocks/AwaitBlocks.tsx` | shim | 92 | `components/blocks/StatementBlock.tsx` |
 | `components/blocks/CallBlocks.tsx` | shim | 60 | `components/blocks/StatementBlock.tsx` |
 | `components/blocks/ContextualNav.tsx` | shim | 24 | `components/blocks/CallBlocks.tsx`, `components/blocks/DefinitionBlock.tsx`, `components/blocks/LeafBlocks.tsx` |
@@ -45,65 +33,78 @@ which is worth noticing rather than assuming.
 | `components/blocks/StatementBlock.tsx` | shim | 12 | **5** files |
 | `components/blocks/WorkflowContent.tsx` | shim | 19 | `components/blocks/AwaitBlocks.tsx`, `components/blocks/CallBlocks.tsx`, `components/blocks/DefinitionBlock.tsx` |
 | `components/blocks/useToggle.ts` | shim |  | **6** files |
-| `components/controls/Equation.tsx` | manifest |  | `components/AxisControls.tsx`, `components/GravityControls.tsx`, `components/controls/EquationSection.tsx` |
-| `components/controls/EquationSection.tsx` | manifest |  | `components/GraphControlPanel.tsx`, `components/PushPullControls.tsx` |
-| `components/controls/Plot.tsx` | manifest |  | `components/AxisControls.tsx`, `components/ForceMap.tsx` |
-| `components/controls/PopContext.tsx` | manifest |  | **5** files |
-| `components/controls/Slider.tsx` | manifest |  | **4** files |
-| `components/controls/SubTab.tsx` | manifest |  | `components/GravityControls.tsx`, `components/PushPullControls.tsx` |
-| `components/controls/bucketColor.ts` | manifest |  | `components/AxisControls.tsx`, `components/ChargeControls.tsx`, `components/SpringControls.tsx` |
-| `components/graph-view/present.ts` | manifest |  | **4** files |
-| `components/graph-view/useHighlight.ts` | manifest |  | `components/GraphView.tsx` |
-| `components/graph-view/useOntology.ts` | manifest |  | **13** files |
-| `components/graph-view/useRecentlyChanged.ts` | manifest |  | `components/GraphView.tsx`, `components/TreeView.tsx` |
-| `components/graph-view/useSimulation.ts` | manifest |  | `components/GraphView.tsx` |
-| `components/graph-view/useSimulationLoop.ts` | manifest |  | `components/GraphView.tsx` |
-| `components/graph-view/useTheme.ts` | manifest |  | `components/GraphView.tsx`, `components/WorkflowCanvas.tsx`, `verify/scheme-probes.ts` |
-| `components/graph-view/useViewport.ts` | manifest |  | `components/GraphView.tsx` |
-| `components/graph-view/useVisibleGraph.ts` | manifest |  | `components/GraphView.tsx` |
-| `components/graph-view/visibleGraph.ts` | manifest |  | **9** files |
-| `components/icons/GearIcons.tsx` | neither | 2 | `components/FilterBar.tsx`, `theme/temporal-theme.tsx` |
 | `components/protocol.ts` | neither | 3 | **5** files |
-| `filter/reconcile.ts` | manifest |  | `components/WorkflowCanvas.tsx`, `verify/static-golden.ts` |
-| `filter/storage.ts` | manifest |  | `components/WorkflowCanvas.tsx` |
-| `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
-| `filter/types.ts` | manifest |  | **17** files |
-| `graph/dimension.ts` | manifest |  | **30** files |
-| `graph/forces.ts` | manifest |  | **20** files |
-| `graph/groups.ts` | manifest |  | `adapter/groups.ts`, `components/GraphView.tsx`, `components/GroupsModal.tsx` |
-| `graph/highlight.ts` | manifest |  | `components/graph-view/useHighlight.ts`, `verify/tier-a.ts` |
-| `graph/model.ts` | manifest |  | **24** files |
-| `graph/node-scale.ts` | manifest |  | **4** files |
-| `graph/ontology.ts` | manifest |  | **14** files |
-| `graph/rng.ts` | manifest |  | **4** files |
-| `graph/scalar.ts` | manifest |  | **9** files |
-| `graph/scheme.ts` | manifest |  | **12** files |
-| `graph/simulation.ts` | manifest |  | **26** files |
-| `graph/taxonomy.ts` | manifest |  | **9** files |
-| `graph/viewport.ts` | manifest |  | **4** files |
 | `lib.ts` | neither | 24 | — |
 | `main.tsx` | neither |  | — |
-| `theme/temporal-theme.tsx` | shim | 50 | **7** files |
+| `theme/temporal-theme.tsx` | shim | 51 | **7** files |
 | `types/ast.ts` | shim | 26 | **17** files |
 | `types/decomposition.ts` | shim | 3 | **6** files |
 | `types/parser-graph.ts` | shim | 3 | **7** files |
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
 | `verify/filter-states.ts` | neither | 13 | `verify/tier-a.ts` |
 | `verify/fixtures.ts` | neither | 10 | **5** files |
-| `verify/force-probes.ts` | neither | 22 | `verify/static-golden.ts` |
+| `verify/force-probes.ts` | neither | 28 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
-| `verify/ontology-probes.ts` | neither | 77 | `verify/static-golden.ts` |
-| `verify/rng.ts` | neither |  | **4** files |
-| `verify/scalar-probes.ts` | neither | 4 | `verify/static-golden.ts` |
-| `verify/scheme-probes.ts` | neither | 14 | `verify/static-golden.ts` |
+| `verify/ontology-probes.ts` | neither | 88 | `verify/static-golden.ts` |
+| `verify/rng.ts` | neither | 1 | **4** files |
+| `verify/scalar-probes.ts` | neither | 12 | `verify/static-golden.ts` |
+| `verify/scheme-probes.ts` | neither | 19 | `verify/static-golden.ts` |
 | `verify/snapshot.ts` | neither |  | **12** files |
-| `verify/static-golden.ts` | neither | 14 | `verify/main.ts` |
-| `verify/synthetic-visible.ts` | neither | 28 | `verify/static-golden.ts` |
-| `verify/tier-a.ts` | neither | 3 | **4** files |
-| `verify/tier-b.ts` | neither |  | `verify/main.ts` |
-| `verify/tier-c.ts` | neither | 12 | `verify/main.ts` |
-| `verify/tuning-probes.ts` | neither | 67 | `verify/static-golden.ts` |
-| `verify/view-probes.ts` | neither | 4 | `verify/static-golden.ts` |
+| `verify/static-golden.ts` | neither | 25 | `verify/main.ts` |
+| `verify/synthetic-visible.ts` | neither | 33 | `verify/static-golden.ts` |
+| `verify/tier-a.ts` | neither | 15 | **4** files |
+| `verify/tier-b.ts` | neither | 7 | `verify/main.ts` |
+| `verify/tier-c.ts` | neither | 17 | `verify/main.ts` |
+| `verify/tuning-probes.ts` | neither | 76 | `verify/static-golden.ts` |
+| `verify/view-probes.ts` | neither | 13 | `verify/static-golden.ts` |
+| `../graph-view/components/AxisControls.tsx` | manifest |  | — |
+| `../graph-view/components/CanvasErrorBoundary.tsx` | manifest |  | — |
+| `../graph-view/components/ChargeControls.tsx` | manifest |  | — |
+| `../graph-view/components/FilterBar.tsx` | manifest |  | — |
+| `../graph-view/components/ForceMap.tsx` | manifest |  | — |
+| `../graph-view/components/GraphCanvas.tsx` | manifest |  | — |
+| `../graph-view/components/GraphControlPanel.tsx` | manifest |  | — |
+| `../graph-view/components/GraphView.tsx` | manifest |  | — |
+| `../graph-view/components/GravityControls.tsx` | manifest |  | — |
+| `../graph-view/components/PinToggle.tsx` | manifest |  | — |
+| `../graph-view/components/PushPullControls.tsx` | manifest |  | — |
+| `../graph-view/components/SpringControls.tsx` | manifest |  | — |
+| `../graph-view/components/controls/Equation.tsx` | manifest |  | — |
+| `../graph-view/components/controls/EquationSection.tsx` | manifest |  | — |
+| `../graph-view/components/controls/Plot.tsx` | manifest |  | — |
+| `../graph-view/components/controls/PopContext.tsx` | manifest |  | — |
+| `../graph-view/components/controls/Slider.tsx` | manifest |  | — |
+| `../graph-view/components/controls/SubTab.tsx` | manifest |  | — |
+| `../graph-view/components/controls/bucketColor.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/present.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/useHighlight.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/useOntology.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/useSimulation.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/useSimulationLoop.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/useTheme.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/useViewport.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/useVisibleGraph.ts` | manifest |  | — |
+| `../graph-view/components/graph-view/visibleGraph.ts` | manifest |  | — |
+| `../graph-view/components/icons/GearIcons.tsx` | manifest |  | — |
+| `../graph-view/filter/reconcile.ts` | manifest |  | — |
+| `../graph-view/filter/storage.ts` | manifest |  | — |
+| `../graph-view/filter/toggle.ts` | manifest |  | — |
+| `../graph-view/filter/types.ts` | manifest |  | — |
+| `../graph-view/graph/dimension.ts` | manifest |  | — |
+| `../graph-view/graph/forces.ts` | manifest |  | — |
+| `../graph-view/graph/groups.ts` | manifest |  | — |
+| `../graph-view/graph/highlight.ts` | manifest |  | — |
+| `../graph-view/graph/model.ts` | manifest |  | — |
+| `../graph-view/graph/node-scale.ts` | manifest |  | — |
+| `../graph-view/graph/ontology.ts` | manifest |  | — |
+| `../graph-view/graph/rng.ts` | manifest |  | — |
+| `../graph-view/graph/scalar.ts` | manifest |  | — |
+| `../graph-view/graph/scheme.ts` | manifest |  | — |
+| `../graph-view/graph/simulation.ts` | manifest |  | — |
+| `../graph-view/graph/taxonomy.ts` | manifest |  | — |
+| `../graph-view/graph/viewport.ts` | manifest |  | — |
+| `../graph-view/index.ts` | manifest |  | — |
 
 ## Files nothing imports
 
@@ -113,6 +114,54 @@ the third is F15, and no gate counts readers.
 - `src/lib.ts` (neither)
 - `src/main.tsx` (neither)
 - `src/verify/main.ts` (neither)
+- `../graph-view/src/components/AxisControls.tsx` (manifest)
+- `../graph-view/src/components/CanvasErrorBoundary.tsx` (manifest)
+- `../graph-view/src/components/ChargeControls.tsx` (manifest)
+- `../graph-view/src/components/FilterBar.tsx` (manifest)
+- `../graph-view/src/components/ForceMap.tsx` (manifest)
+- `../graph-view/src/components/GraphCanvas.tsx` (manifest)
+- `../graph-view/src/components/GraphControlPanel.tsx` (manifest)
+- `../graph-view/src/components/GraphView.tsx` (manifest)
+- `../graph-view/src/components/GravityControls.tsx` (manifest)
+- `../graph-view/src/components/PinToggle.tsx` (manifest)
+- `../graph-view/src/components/PushPullControls.tsx` (manifest)
+- `../graph-view/src/components/SpringControls.tsx` (manifest)
+- `../graph-view/src/components/controls/Equation.tsx` (manifest)
+- `../graph-view/src/components/controls/EquationSection.tsx` (manifest)
+- `../graph-view/src/components/controls/Plot.tsx` (manifest)
+- `../graph-view/src/components/controls/PopContext.tsx` (manifest)
+- `../graph-view/src/components/controls/Slider.tsx` (manifest)
+- `../graph-view/src/components/controls/SubTab.tsx` (manifest)
+- `../graph-view/src/components/controls/bucketColor.ts` (manifest)
+- `../graph-view/src/components/graph-view/present.ts` (manifest)
+- `../graph-view/src/components/graph-view/useHighlight.ts` (manifest)
+- `../graph-view/src/components/graph-view/useOntology.ts` (manifest)
+- `../graph-view/src/components/graph-view/useRecentlyChanged.ts` (manifest)
+- `../graph-view/src/components/graph-view/useSimulation.ts` (manifest)
+- `../graph-view/src/components/graph-view/useSimulationLoop.ts` (manifest)
+- `../graph-view/src/components/graph-view/useTheme.ts` (manifest)
+- `../graph-view/src/components/graph-view/useViewport.ts` (manifest)
+- `../graph-view/src/components/graph-view/useVisibleGraph.ts` (manifest)
+- `../graph-view/src/components/graph-view/visibleGraph.ts` (manifest)
+- `../graph-view/src/components/icons/GearIcons.tsx` (manifest)
+- `../graph-view/src/filter/reconcile.ts` (manifest)
+- `../graph-view/src/filter/storage.ts` (manifest)
+- `../graph-view/src/filter/toggle.ts` (manifest)
+- `../graph-view/src/filter/types.ts` (manifest)
+- `../graph-view/src/graph/dimension.ts` (manifest)
+- `../graph-view/src/graph/forces.ts` (manifest)
+- `../graph-view/src/graph/groups.ts` (manifest)
+- `../graph-view/src/graph/highlight.ts` (manifest)
+- `../graph-view/src/graph/model.ts` (manifest)
+- `../graph-view/src/graph/node-scale.ts` (manifest)
+- `../graph-view/src/graph/ontology.ts` (manifest)
+- `../graph-view/src/graph/rng.ts` (manifest)
+- `../graph-view/src/graph/scalar.ts` (manifest)
+- `../graph-view/src/graph/scheme.ts` (manifest)
+- `../graph-view/src/graph/simulation.ts` (manifest)
+- `../graph-view/src/graph/taxonomy.ts` (manifest)
+- `../graph-view/src/graph/viewport.ts` (manifest)
+- `../graph-view/src/index.ts` (manifest)
 
 ## Files only the harness imports
 

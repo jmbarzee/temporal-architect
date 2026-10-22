@@ -11,11 +11,11 @@
 // operation ↔ operation case that resolves to the workflow → operation spring.
 
 import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
-import { resolveSprings } from '../graph/forces'
-import { pairTuning, styleIdentityMapping } from '../graph/simulation'
-import type { GraphEdge } from '../graph/model'
-import type { EdgeCategoryKind } from '../graph/taxonomy'
-import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
+import { resolveSprings } from '@temporal-architect/graph-view/graph/forces'
+import { pairTuning, styleIdentityMapping } from '@temporal-architect/graph-view/graph/simulation'
+import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
+import type { EdgeCategoryKind } from '@temporal-architect/graph-view/graph/taxonomy'
+import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
 import type { Json } from './snapshot'
 
 const EDGE_TYPES: EdgeCategoryKind[] = ['containment', 'dependency']
