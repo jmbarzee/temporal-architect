@@ -246,7 +246,7 @@ function pairCategories(mapping: DimensionalMapping): EdgeTypeDefinition[] {
   return out
 }
 
-function resolveSprings(tuning: AxisTuning<SpringPhysics>, ontology: Ontology): ResolvedSprings {
+export function resolveSprings(tuning: AxisTuning<SpringPhysics>, ontology: Ontology): ResolvedSprings {
   const { mapping, overrides } = tuning
   const declared = mapping.dimension === ontology.styleAxis() && isIdentityMapping(mapping)
   const categories = declared ? ontology.edgeTypes : pairCategories(mapping)
@@ -288,6 +288,25 @@ export function springFor(spring: ResolvedSprings, edge: GraphEdge, src: Physics
 /** One category's effective spring, for a control surface that iterates categories. */
 export function springForKey(spring: ResolvedSprings, id: EdgeTypeId): SpringPhysics {
   return spring.byCategory.get(id) ?? ABSENT_EDGE_PHYSICS
+}
+
+/**
+ * The categories some edge of the graph actually falls in. A control surface
+ * shows one token per category present, not per category possible: under the
+ * pair rule the possible set is every bucket pair, most of which no edge joins.
+ */
+export function presentSpringCategories(
+  spring: ResolvedSprings,
+  edges: Iterable<GraphEdge>,
+  nodeOf: (id: string) => PhysicsSubject | undefined,
+): Set<EdgeTypeId> {
+  const present = new Set<EdgeTypeId>()
+  for (const edge of edges) {
+    const src = nodeOf(edge.sourceId)
+    const tgt = nodeOf(edge.targetId)
+    if (src && tgt) present.add(springFor(spring, edge, src, tgt).key)
+  }
+  return present
 }
 
 // ── Coordinate adapter (for the deferred radial gravity mode, issue 51) ──────

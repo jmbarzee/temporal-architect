@@ -8,25 +8,26 @@ import type { ResolvedPhysics } from '../graph/forces'
 import type { DimensionValue } from '../graph/dimension'
 
 import type { NodeScaleParams } from '../graph/node-scale'
-import { SpringMap, SpringCurves } from './SpringControls'
-import { ChargeMap, ChargeCurves } from './ChargeControls'
+import { PushPullControls } from './PushPullControls'
 import { GravityControls } from './GravityControls'
 import { Slider } from './controls/Slider'
-import { Equation } from './controls/Equation'
-import { PopProvider, FormulaValue } from './controls/PopContext'
+import { EquationSection } from './controls/EquationSection'
+import { PopProvider } from './controls/PopContext'
+import type { AxisOption } from '../graph/simulation'
+import type { DimensionalMapping } from '../graph/dimension'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
-// The four control tabs. Unlike ForceSection, a tab is always one of these —
-// there is no "null" tab; exactly one section is shown at a time. The "misc"
-// tab groups non-force controls (simulation dynamics + render-time node
-// scaling); its dynamics sub-section still drives the 'dynamics' ForceSection
-// hover preview.
-type ControlTab = 'push' | 'pull' | 'gravity' | 'misc'
+// The three control tabs. Unlike ForceSection, a tab is always one of these —
+// there is no "null" tab; exactly one section is shown at a time. The "forces"
+// tab holds both pair forces under one axis (push and pull are its sub-tabs,
+// and still drive their own ForceSection previews); the "misc" tab groups
+// non-force controls (simulation dynamics + render-time node scaling), its
+// dynamics sub-section driving the 'dynamics' preview.
+type ControlTab = 'forces' | 'gravity' | 'misc'
 
 const CONTROL_TABS: { id: ControlTab; label: string }[] = [
-  { id: 'push', label: 'Push' },
-  { id: 'pull', label: 'Pull' },
+  { id: 'forces', label: 'Push/Pull' },
   { id: 'gravity', label: 'Gravity' },
   { id: 'misc', label: 'Misc' },
 ]
@@ -42,9 +43,15 @@ interface GraphControlPanelProps {
   // every force-control edit so the layout responds live. See GraphView's
   // handleForceAdjust.
   onAdjust: () => void
-  // Non-numeric gravity edits (mode, Band/Topological toggles). Routed through
-  // GraphView so the simulation params update and the layout reheats.
-  onGravityChange: (partial: Partial<ForceParams>) => void
+  // Edits that relocate nodes — gravity's mode and toggles, the push/pull axis.
+  // Routed through GraphView so the simulation params update and the layout
+  // reheats harder than a numeric nudge.
+  onRelayout: (partial: Partial<ForceParams>) => void
+  /** Every axis push/pull may key on for this graph, with its measured cost. */
+  axes: readonly AxisOption[]
+  /** The spring categories some edge of the graph falls in. */
+  presentSprings: ReadonlySet<string>
+  onAxisChange: (mapping: DimensionalMapping) => void
   onActiveSection: (section: ForceSection) => void
   onActivePushBucket: (bucket: string | null) => void
   onActiveGravityType: (nodeType: DimensionValue | null) => void
@@ -83,17 +90,11 @@ interface NodeScaleSliderDef extends RangeDef {
   key: keyof NodeScaleParams
 }
 
-// --- PUSH section ---
+// --- PUSH/PULL section ---
 //
-// The Push tab's controls live in ChargeControls: a 2D charge map (per-type
-// charge/core-radius tokens + the two global "scale all" multipliers along the
-// axes) and a charge-falloff visualization (which hosts the global `exp`).
-
-// --- PULL section ---
-//
-// The Pull tab's controls live in SpringControls: a 2D spring map (per-edge
-// stiffness/length tokens + the two global "scale all" multipliers along the
-// axes) and a force-curve visualization (which hosts the global `exp`).
+// The pair forces live in PushPullControls: the shared axis dropdown, then Push
+// (ChargeControls: a 2D charge map + a charge-falloff read-out) and Pull
+// (SpringControls: a 2D spring map + a force-curve read-out) as sub-tabs.
 
 // --- GRAVITY section ---
 //
@@ -133,13 +134,13 @@ const NODE_SCALE_SLIDERS: NodeScaleSliderDef[] = [
 ]
 
 export function GraphControlPanel({
-  params, resolved, onParamChange, onAdjust, onGravityChange,
+  params, resolved, onParamChange, onAdjust, onRelayout, axes, presentSprings, onAxisChange,
   onActiveSection,
   onActivePushBucket, onActiveGravityType, onActivePullEdge,
   nodeScale, onNodeScaleChange,
 }: GraphControlPanelProps) {
   const [open, setOpen] = React.useState(false)
-  const [activeTab, setActiveTab] = React.useState<ControlTab>('push')
+  const [activeTab, setActiveTab] = React.useState<ControlTab>('forces')
   // Links the spring map and the force-curve viz: hovering a token in one
   // brightens the matching curve in the other. The key (an edge category's
   // k-field) is also forwarded to the canvas so only that category's edges
@@ -210,68 +211,21 @@ export function GraphControlPanel({
               tallest/widest tab, so the panel never resizes when switching
               tabs — the browser computes the "max required space" for us. */}
           <div className="graph-control-sections">
-            {/* PUSH section */}
-            <SectionSlot active={activeTab === 'push'}>
-              <EquationSection
-                subtitle=""
-                equation={
-                  <span className="eq-line">
-                    F =
-                    <span className="eq-frac">
-                      <span className="eq-num"><FormulaValue id="pushMultiplier">charge</FormulaValue></span>
-                      <span className="eq-den">(d² + <FormulaValue id="coreRadiusMultiplier">r</FormulaValue>²)<sup><FormulaValue id="chargeExponent">exp</FormulaValue></sup></span>
-                    </span>
-                  </span>
-                }
-                onHover={h => onActiveSection(h ? 'push' : null)}
-              >
-                <ChargeMap
-                  params={params}
-                  resolved={resolved}
-                  onParamChange={emitParamChange}
-                  hoveredBucket={hoveredPushBucket}
-                  onHoverBucket={handleHoverPushBucket}
-                />
-                <ChargeCurves
-                  params={params}
-                  resolved={resolved}
-                  onParamChange={emitParamChange}
-                  hoveredBucket={hoveredPushBucket}
-                  onHoverBucket={handleHoverPushBucket}
-                />
-              </EquationSection>
-            </SectionSlot>
-
-            {/* PULL section */}
-            <SectionSlot active={activeTab === 'pull'}>
-              <EquationSection
-                subtitle=""
-                equation={
-                  <span className="eq-line">
-                    F = <FormulaValue id="pullMultiplier">stiffness</FormulaValue> ×
-                    <span className="eq-frac">
-                      <span className="eq-num">(d − <FormulaValue id="distanceMultiplier">length</FormulaValue>)<sup><FormulaValue id="linkExponent">exp</FormulaValue></sup></span>
-                      <span className="eq-den">d</span>
-                    </span>
-                  </span>
-                }
-                onHover={h => onActiveSection(h ? 'pull' : null)}
-              >
-                <SpringMap
-                  params={params}
-                  resolved={resolved}
-                  onParamChange={emitParamChange}
-                  hoveredEdge={hoveredPullEdge}
-                  onHoverEdge={handleHoverPullEdge}
-                />
-                <SpringCurves
-                  params={params}
-                  resolved={resolved}
-                  onParamChange={emitParamChange}
-                  hoveredEdge={hoveredPullEdge}
-                  onHoverEdge={handleHoverPullEdge}
-                />
-              </EquationSection>
+            {/* PUSH/PULL section */}
+            <SectionSlot active={activeTab === 'forces'}>
+              <PushPullControls
+                params={params}
+                resolved={resolved}
+                axes={axes}
+                presentSprings={presentSprings}
+                onParamChange={emitParamChange}
+                onAxisChange={onAxisChange}
+                onActiveSection={onActiveSection}
+                hoveredPushBucket={hoveredPushBucket}
+                onHoverPushBucket={handleHoverPushBucket}
+                hoveredEdge={hoveredPullEdge}
+                onHoverEdge={handleHoverPullEdge}
+              />
             </SectionSlot>
 
             {/* GRAVITY section */}
@@ -285,7 +239,7 @@ export function GraphControlPanel({
                   params={params}
                   resolved={resolved}
                   onParamChange={emitParamChange}
-                  onGravitySet={onGravityChange}
+                  onGravitySet={onRelayout}
                   hoveredType={hoveredGravityType}
                   onHoverType={handleHoverGravityType}
                 />
@@ -329,35 +283,6 @@ function SectionSlot({ active, children }: { active: boolean; children: React.Re
   return (
     <div className={`graph-control-section-slot${active ? ' active' : ''}`} aria-hidden={!active}>
       {children}
-    </div>
-  )
-}
-
-// One force section's content. The tab bar names the section, so this no
-// longer renders its own title — just the optional subtitle, the governing
-// equation (transparency), and the controls. The wrapper is still the hover
-// target that drives the canvas force-field preview via onHover.
-function EquationSection({ subtitle, equation, onHover, children }: {
-  subtitle: string
-  equation: React.ReactNode
-  onHover: (hovered: boolean) => void
-  children: React.ReactNode
-}) {
-  return (
-    <div
-      className="graph-control-equation-section"
-      onMouseEnter={() => onHover(true)}
-      onMouseLeave={() => onHover(false)}
-    >
-      {subtitle && (
-        <div className="graph-control-equation-header">
-          <span className="graph-control-equation-subtitle">({subtitle})</span>
-        </div>
-      )}
-      <Equation>{equation}</Equation>
-      <div className="graph-control-equation-body">
-        {children}
-      </div>
     </div>
   )
 }

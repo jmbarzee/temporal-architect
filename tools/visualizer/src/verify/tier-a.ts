@@ -11,7 +11,8 @@ import { edgeTypeFor } from '../adapter/edge-types'
 import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import { payloadString } from '../graph/model'
-import { Simulation } from '../graph/simulation'
+import { Simulation, axisOptions, fitsCeiling } from '../graph/simulation'
+import { presentSpringCategories, resolveSprings } from '../graph/forces'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
@@ -153,6 +154,19 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
         }),
       ),
     },
+    // Every axis push/pull may key on for this graph, what each would cost on
+    // the control surface, and the spring categories some edge falls in under
+    // it — the declared table's on the style axis, the pair rule's elsewhere.
+    // The ceiling arithmetic, pinned per fixture (Unit 4e).
+    axes: axisOptions(DEFAULT_ONTOLOGY, graph).map(o => ({
+      axis: o.mapping.dimension,
+      pushTokens: o.pushTokens,
+      pullTokens: o.pullTokens,
+      fits: fitsCeiling(o),
+      presentSprings: sorted(presentSpringCategories(
+        resolveSprings({ mapping: o.mapping, overrides: new Map() }, DEFAULT_ONTOLOGY), graph.edges, nodeOf,
+      )),
+    })),
     visibleSubgraph: sortedRecord(states),
   }
 }

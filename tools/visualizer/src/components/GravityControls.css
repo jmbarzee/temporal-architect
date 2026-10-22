@@ -48,57 +48,6 @@
 /* Sub-tab bar — same underline-tab pattern as the main force tabs, but marked
    as a sub-level by an accent-coloured underline (main tabs underline in the
    text colour) and the inline on/off switch each tab carries. */
-.gravity-subtabs {
-  display: flex;
-  gap: 2px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.gravity-subtab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 5px 4px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  user-select: none;
-}
-
-.gravity-subtab:hover { color: var(--color-text); }
-
-.gravity-subtab.active {
-  color: var(--color-text);
-  border-bottom-color: var(--color-workflow);
-}
-
-.gravity-subtab-label { font-weight: 600; }
-
-/* Both sub-tab bodies stack in one grid cell so the panel sizes to the taller
-   body and never resizes when switching sub-tabs (mirrors .graph-control-sections). */
-.gravity-bodies { display: grid; }
-
-/* Stack both bodies; only hide the *inactive* one. Crucially we do NOT force the
-   active body `visibility: visible` — that would override the inherited `hidden`
-   from an inactive parent major-tab slot and paint the gravity body over whatever
-   tab is actually showing. Instead the active body inherits visibility from its
-   major-tab slot (visible only when the Gravity tab is active). */
-.gravity-body {
-  grid-area: 1 / 1;
-  min-width: 0;
-}
-
-.gravity-body:not(.active) {
-  visibility: hidden;
-  pointer-events: none;
-}
 
 /* The active body's tools dim (but stay usable) when its force switch is off. */
 .gravity-section-tools {

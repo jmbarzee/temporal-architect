@@ -8,7 +8,7 @@
 // *drives* the sim is a separate hook (useSimulationLoop); this owns the instance.
 
 import React from 'react'
-import { Simulation, defaultParamsFor } from '../../graph/simulation'
+import { Simulation, defaultParamsFor, retunedFor } from '../../graph/simulation'
 import { defaultRng } from '../../graph/rng'
 import { useOntology } from './useOntology'
 import type { ForceParams, SimNode } from '../../graph/simulation'
@@ -24,7 +24,7 @@ export interface SimulationController {
   getNode: (id: string) => SimNode | undefined
   onParamChange: (patch: Partial<ForceParams>) => void
   onForceAdjust: () => void
-  onGravityChange: (partial: Partial<ForceParams>) => void
+  onRelayout: (partial: Partial<ForceParams>) => void
   onNodeDragStart: (id: string, wx: number, wy: number) => void
   onNodeDragMove: (wx: number, wy: number) => void
   onNodeDragEnd: () => void
@@ -70,12 +70,15 @@ export function useSimulation(
     // does discard the user's tuning, which is the right trade: the tuned values
     // are a map keyed by the old taxonomy's values, and there is no meaningful
     // way to reinterpret them against a different key space.
+    //
+    // Short of a swap, the graph itself may have moved the parameters: a
+    // push/pull axis bucketed by the values the graph presents is rebuilt for
+    // the new values, overrides kept (`retunedFor`), and comes back by
+    // reference when nothing changed.
     const swapped = paramsFrom.current !== ontology
-    const params = swapped ? defaultParamsFor(ontology) : forceParams
-    if (swapped) {
-      paramsFrom.current = ontology
-      setForceParams(params)
-    }
+    const params = swapped ? defaultParamsFor(ontology) : retunedFor(forceParams, ontology, graph)
+    if (swapped) paramsFrom.current = ontology
+    if (params !== forceParams) setForceParams(params)
     simRef.current = new Simulation(graph, params, defaultRng, ontology)
     onRebuildRef.current?.()
     setRunning(true)
@@ -100,8 +103,9 @@ export function useSimulation(
     setRunning(true)
   }, [])
 
-  // Non-numeric gravity edits (mode, toggles) relocate nodes, so reheat harder.
-  const onGravityChange = React.useCallback((partial: Partial<ForceParams>) => {
+  // Edits that relocate nodes — gravity's mode and toggles, the push/pull axis
+  // — reheat harder than a numeric nudge.
+  const onRelayout = React.useCallback((partial: Partial<ForceParams>) => {
     setForceParams(prev => {
       const next = { ...prev, ...partial }
       simRef.current?.setParams(next)
@@ -140,7 +144,7 @@ export function useSimulation(
 
   return {
     simRef, simVersion, running, setRunning, forceParams, getNode,
-    onParamChange, onForceAdjust, onGravityChange,
+    onParamChange, onForceAdjust, onRelayout,
     onNodeDragStart, onNodeDragMove, onNodeDragEnd,
     onToggleRunning,
   }

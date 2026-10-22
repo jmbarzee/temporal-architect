@@ -11,7 +11,9 @@ import type { DecompositionParams } from './protocol'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
-import { resolvePhysics } from '../graph/forces'
+import { presentSpringCategories, resolvePhysics } from '../graph/forces'
+import { axisOptions } from '../graph/simulation'
+import type { DimensionalMapping } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
 import { payloadString } from '../graph/model'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
@@ -164,7 +166,7 @@ export function GraphView({
     getNode: getSimNode,
     onParamChange: handleParamChange,
     onForceAdjust: handleForceAdjust,
-    onGravityChange: handleGravityChange,
+    onRelayout: handleRelayout,
     onNodeDragStart: handleNodeDragStart,
     onNodeDragMove: handleNodeDragMove,
     onNodeDragEnd: handleNodeDragEnd,
@@ -174,6 +176,22 @@ export function GraphView({
   // The dense per-bucket tables the kernels read, resolved once per
   // (params, taxonomy) here and handed to the canvas and every control (T25).
   const resolved = React.useMemo(() => resolvePhysics(forceParams, ontology), [forceParams, ontology])
+
+  // What the push/pull tab offers: every axis this graph admits with its
+  // measured token cost, and the spring categories some edge falls in under
+  // the current one (the pull tokens). Both read the whole graph, not the
+  // visible subset — tuning covers what a filter may reveal next.
+  const axes = React.useMemo(() => axisOptions(ontology, graph), [ontology, graph])
+  const presentSprings = React.useMemo(
+    () => presentSpringCategories(resolved.spring, graph.edges, id => graph.nodes.get(id)),
+    [resolved, graph],
+  )
+  // A new axis starts both pair forces from the taxonomy's declared physics on
+  // its buckets (D47: a tuning keyed by one axis has no reading on another).
+  const handleAxisChange = React.useCallback((mapping: DimensionalMapping) => {
+    if (mapping.dimension === forceParams.push.mapping.dimension) return
+    handleRelayout({ push: { mapping, overrides: new Map() }, spring: { mapping, overrides: new Map() } })
+  }, [forceParams, handleRelayout])
 
   // Render-time node sizing (independent of the simulation). Tunable from the
   // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
@@ -602,7 +620,10 @@ export function GraphView({
         resolved={resolved}
         onParamChange={handleParamChange}
         onAdjust={handleForceAdjust}
-        onGravityChange={handleGravityChange}
+        onRelayout={handleRelayout}
+        axes={axes}
+        presentSprings={presentSprings}
+        onAxisChange={handleAxisChange}
         onActiveSection={setActiveSection}
         onActivePushBucket={setActivePushBucket}
         onActiveGravityType={setActiveGravityType}

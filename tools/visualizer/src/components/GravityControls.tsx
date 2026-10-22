@@ -22,6 +22,7 @@ import { Slider } from './controls/Slider'
 import { Equation } from './controls/Equation'
 import { FormulaValue } from './controls/PopContext'
 import { bucketColor } from './controls/bucketColor'
+import { SubTabs, SubTab, SubTabBodies, SubTabBody } from './controls/SubTab'
 
 // Column order: main ladder first, then the nexus ladder (after a gap). Both
 // derived from the node-type registry (family + tier) so a registry change
@@ -247,26 +248,23 @@ export function GravityControls({ params, resolved, onParamChange, onGravitySet,
 
       {/* Sub-tabs — each carries its own enable switch, so both forces' on/off
           state is visible at all times even though only one body shows. */}
-      <div className="gravity-subtabs" role="tablist" aria-label="Gravity force">
-        <GravitySubTab label="Band" active={sub === 'band'} enabled={params.bandEnabled}
-          onSelect={() => setSub('band')} onToggle={v => onGravitySet({ bandEnabled: v })} />
-        <GravitySubTab label="Topological" active={sub === 'topological'} enabled={params.topologicalEnabled}
-          onSelect={() => setSub('topological')} onToggle={v => onGravitySet({ topologicalEnabled: v })} />
-      </div>
+      <SubTabs label="Gravity force">
+        <SubTab label="Band" active={sub === 'band'} onSelect={() => setSub('band')}
+          leading={<ForceSwitch label="Band" enabled={params.bandEnabled} onToggle={v => onGravitySet({ bandEnabled: v })} />} />
+        <SubTab label="Topological" active={sub === 'topological'} onSelect={() => setSub('topological')}
+          leading={<ForceSwitch label="Topological" enabled={params.topologicalEnabled} onToggle={v => onGravitySet({ topologicalEnabled: v })} />} />
+      </SubTabs>
 
-      {/* Both bodies are mounted and stacked in one grid cell; only the active
-          one is visible. The cell sizes to the taller body, so switching sub-tabs
-          never resizes the panel (same trick as the main force tabs). */}
-      <div className="gravity-bodies">
-        <div className={`gravity-body${sub === 'band' ? ' active' : ''}`} aria-hidden={sub !== 'band'}>
+      <SubTabBodies>
+        <SubTabBody active={sub === 'band'}>
           <div className={`gravity-section-tools${params.bandEnabled ? '' : ' inactive'}`}>
             <Equation>{<>F = <FormulaValue id="bandStrength">strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
             <GravityBandPlot params={params} resolved={resolved} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
             <BandCurves params={params} onParamChange={onParamChange} />
           </div>
-        </div>
+        </SubTabBody>
 
-        <div className={`gravity-body${sub === 'topological' ? ' active' : ''}`} aria-hidden={sub !== 'topological'}>
+        <SubTabBody active={sub === 'topological'}>
           <div className={`gravity-section-tools gravity-topo${params.topologicalEnabled ? '' : ' inactive'}`}>
             <Equation>{<>F = <FormulaValue id="topoStrength">strength</FormulaValue> × depth<sup><FormulaValue id="topoExp">exp</FormulaValue></sup> × d</>}</Equation>
             <TopologicalCurve exp={params.gravityTopologicalExp} />
@@ -289,31 +287,21 @@ export function GravityControls({ params, resolved, onParamChange, onGravitySet,
               />
             </div>
           </div>
-        </div>
-      </div>
+        </SubTabBody>
+      </SubTabBodies>
     </div>
   )
 }
 
-// One gravity sub-tab: a sliding on/off switch plus a selectable label. The
-// switch toggles the force; clicking the label selects which body is shown.
-// They're independent (toggling doesn't switch the view) so both forces' state
-// stays legible while you tune one.
-function GravitySubTab({ label, active, enabled, onSelect, onToggle }: {
-  label: string
-  active: boolean
-  enabled: boolean
-  onSelect: () => void
-  onToggle: (v: boolean) => void
-}) {
+// A force's sliding on/off switch, led into its sub-tab. Toggling does not
+// select the tab (the click stops here), so both forces' state stays legible
+// while you tune one.
+function ForceSwitch({ label, enabled, onToggle }: { label: string; enabled: boolean; onToggle: (v: boolean) => void }) {
   return (
-    <div role="tab" aria-selected={active} className={`gravity-subtab${active ? ' active' : ''}`} onClick={onSelect}>
-      <label className={`switch${enabled ? ' on' : ''}`} onClick={e => e.stopPropagation()}>
-        <input type="checkbox" checked={enabled} onChange={e => onToggle(e.target.checked)} aria-label={`${label} gravity enabled`} />
-        <span className="switch-track"><span className="switch-knob" /></span>
-      </label>
-      <span className="gravity-subtab-label">{label}</span>
-    </div>
+    <label className={`switch${enabled ? ' on' : ''}`} onClick={e => e.stopPropagation()}>
+      <input type="checkbox" checked={enabled} onChange={e => onToggle(e.target.checked)} aria-label={`${label} gravity enabled`} />
+      <span className="switch-track"><span className="switch-knob" /></span>
+    </label>
   )
 }
 

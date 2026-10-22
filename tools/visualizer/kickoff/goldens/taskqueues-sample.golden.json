@@ -1,5 +1,58 @@
 {
   "tierA": {
+    "axes": [
+      {
+        "axis": "temporalType",
+        "fits": true,
+        "presentSprings": [
+          "linkEndpointToNamespace",
+          "linkEndpointToOperation",
+          "linkNexusToOperation",
+          "linkNsToNs",
+          "linkNsToWorker",
+          "linkOperationToActivity",
+          "linkOperationToWorkflow",
+          "linkWorkerToActivity",
+          "linkWorkerToNexus",
+          "linkWorkerToWorker",
+          "linkWorkerToWorkflow",
+          "linkWorkflowToActivity",
+          "linkWorkflowToOperation"
+        ],
+        "pullTokens": 13,
+        "pushTokens": 7
+      },
+      {
+        "axis": "sourceFile",
+        "fits": true,
+        "presentSprings": [
+          "containment|task-queues.twf|task-queues.twf",
+          "dependency|task-queues.twf|task-queues.twf"
+        ],
+        "pullTokens": 2,
+        "pushTokens": 1
+      },
+      {
+        "axis": "defType",
+        "fits": true,
+        "presentSprings": [
+          "containment|activityDef|workerDef",
+          "containment|namespaceDef|nexusEndpointDef",
+          "containment|namespaceDef|workerDef",
+          "containment|nexusEndpointDef|nexusOperationDef",
+          "containment|nexusOperationDef|nexusServiceDef",
+          "containment|nexusServiceDef|workerDef",
+          "containment|workerDef|workflowDef",
+          "dependency|activityDef|nexusOperationDef",
+          "dependency|activityDef|workflowDef",
+          "dependency|namespaceDef|namespaceDef",
+          "dependency|nexusOperationDef|workflowDef",
+          "dependency|workerDef|workerDef"
+        ],
+        "pullTokens": 12,
+        "pushTokens": 7
+      }
+    ],
     "edgeClassification": {
       "byEdgeType": {
         "linkEndpointToNamespace": 2,

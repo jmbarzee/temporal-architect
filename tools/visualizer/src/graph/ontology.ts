@@ -52,6 +52,8 @@ export interface Ontology {
    * With one source there is nothing to override out of step.
    */
   styleAxis(): DimensionId
+  /** The style axis's display name, for a control that names axes. */
+  styleLabel(): string
   /**
    * The axes the filter chain may operate on, with their per-axis policies.
    *
@@ -118,6 +120,7 @@ export interface StyleGroup {
 
 export interface OntologySpec {
   styleDimension: DimensionId
+  styleLabel: string
   abbreviations: Readonly<Record<DimensionValue, string>>
   styleGroups: readonly StyleGroup[]
   nodeTypeKeys: readonly DimensionValue[]
@@ -166,6 +169,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     subject.dimensions[styleDimension]
   return {
     styleAxis: () => styleDimension,
+    styleLabel: () => spec.styleLabel,
     filterDimensions: spec.filterDimensions,
     descriptorFor: id => byDimension.get(id),
     valueOn: (subject, dimension) => subject.dimensions[dimension],

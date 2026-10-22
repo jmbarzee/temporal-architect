@@ -10,12 +10,14 @@ import {
   applyTopologicalGravity,
   applyCenterGravity,
   bandFor,
+  presentSpringCategories,
   resolvePhysics,
+  resolveSprings,
 } from './forces'
 import type { Rng } from './rng'
 import type { ResolvedPhysics } from './forces'
 import type { DimensionalMapping } from './dimension'
-import { createDimensionalMapping } from './dimension'
+import { createDimensionalMapping, identityMapping, valuesOn } from './dimension'
 import type { Ontology } from './ontology'
 
 // The force helpers now live in ./forces; re-export them so existing consumers
@@ -88,26 +90,99 @@ export function withOverride<T>(tuning: AxisTuning<T>, bucketId: string, value: 
 }
 
 /**
- * The identity bucketing of the taxonomy's style axis — one bucket per value.
- * Every force starts here; Unit 4e lets the host choose any mapping, bounded by
- * the token ceiling, and the shape is already right for it.
+ * The identity bucketing of the taxonomy's style axis — one bucket per declared
+ * value. The style axis has no descriptor (it is not a filter), so its labels
+ * come from the taxonomy rather than through `identityMapping`.
  */
-export function identityTuning<T>(ontology: Ontology): AxisTuning<T> {
+export function styleIdentityMapping(ontology: Ontology): DimensionalMapping {
   const axis = ontology.styleAxis()
-  return {
-    mapping: createDimensionalMapping({
-      id: `${axis}:identity`,
-      label: axis,
-      dimension: axis,
-      buckets: ontology.nodeTypeKeys.map(value => ({
-        id: value,
-        label: ontology.styleForKey(value).label,
-        abbreviation: ontology.abbreviationFor(value),
-        values: [value],
-      })),
-    }),
-    overrides: new Map(),
+  return createDimensionalMapping({
+    id: `${axis}:identity`,
+    label: ontology.styleLabel(),
+    dimension: axis,
+    buckets: ontology.nodeTypeKeys.map(value => ({
+      id: value,
+      label: ontology.styleForKey(value).label,
+      abbreviation: ontology.abbreviationFor(value),
+      values: [value],
+    })),
+  })
+}
+
+/** The tuning every force starts on: the style axis, bucketed by identity, nothing overridden. */
+export function identityTuning<T>(ontology: Ontology): AxisTuning<T> {
+  return { mapping: styleIdentityMapping(ontology), overrides: new Map() }
+}
+
+/**
+ * The bounded-token rule. A dimension is usable for push/pull only through a
+ * mapping small enough that one token per bucket (push) and one per spring
+ * category present (pull) is still a control surface a person can use. Above
+ * this the surface is unbounded, which PLAN §5.1 names as a tripwire.
+ */
+export const TOKEN_CEILING = 24
+
+/** One axis the push/pull forces could key on, and what it would cost to show. */
+export interface AxisOption {
+  readonly mapping: DimensionalMapping
+  /** Push tokens — one per bucket. */
+  readonly pushTokens: number
+  /** Pull tokens — one per spring category some edge of the graph falls in. */
+  readonly pullTokens: number
+}
+
+export function fitsCeiling(option: AxisOption): boolean {
+  return option.pushTokens <= TOKEN_CEILING && option.pullTokens <= TOKEN_CEILING
+}
+
+/**
+ * Every axis push/pull can key on for this graph: the style axis bucketed by
+ * identity, then each filter axis bucketed by the values the graph presents on
+ * it. The token counts are measured, not estimated, so the ceiling is a number
+ * the dropdown can show beside an axis it has to decline.
+ */
+export function axisOptions(ontology: Ontology, graph: Graph): AxisOption[] {
+  const style = ontology.styleAxis()
+  const mappings: DimensionalMapping[] = [styleIdentityMapping(ontology)]
+  for (const d of ontology.filterDimensions) {
+    if (d.id === style) continue
+    const values = valuesOn(graph.nodes.values(), d.id)
+    if (values.length > 0) mappings.push(identityMapping(d, values))
   }
+  const nodeOf = (id: string) => graph.nodes.get(id)
+  return mappings.map(mapping => ({
+    mapping,
+    pushTokens: mapping.buckets.length,
+    pullTokens: presentSpringCategories(resolveSprings({ mapping, overrides: new Map() }, ontology), graph.edges, nodeOf).size,
+  }))
+}
+
+function sameBuckets(a: DimensionalMapping, b: DimensionalMapping): boolean {
+  return a.dimension === b.dimension && a.buckets.length === b.buckets.length &&
+    a.buckets.every((x, i) => x.id === b.buckets[i].id && x.values.length === b.buckets[i].values.length &&
+      x.values.every((v, j) => v === b.buckets[i].values[j]))
+}
+
+/**
+ * The same parameters, re-bucketed for a graph that may present different
+ * values. An identity mapping over observed values goes stale when a file is
+ * added or removed; the overrides are keyed by value, so they survive. A tuning
+ * on the style axis is graph-independent and comes back untouched, as does one
+ * whose buckets did not change — by reference, so a caller can tell nothing
+ * moved. An axis the graph no longer carries, or one that has grown past the
+ * token ceiling, falls back to the style axis.
+ */
+export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph): ForceParams {
+  const options = axisOptions(ontology, graph)
+  const refresh = <T,>(tuning: AxisTuning<T>): AxisTuning<T> => {
+    if (tuning.mapping.dimension === ontology.styleAxis()) return tuning
+    const option = options.find(o => o.mapping.dimension === tuning.mapping.dimension)
+    if (!option || !fitsCeiling(option)) return identityTuning(ontology)
+    return sameBuckets(option.mapping, tuning.mapping) ? tuning : { mapping: option.mapping, overrides: tuning.overrides }
+  }
+  const push = refresh(params.push)
+  const spring = refresh(params.spring)
+  return push === params.push && spring === params.spring ? params : { ...params, push, spring }
 }
 
 // PUSH — repulsion. Per-type charge strength and core radius, the masters that

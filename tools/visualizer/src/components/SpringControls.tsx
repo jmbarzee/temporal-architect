@@ -33,6 +33,8 @@ interface SpringControlProps {
   params: ForceParams
   /** The dense tables the kernels read, resolved once by the view (T25). */
   resolved: ResolvedPhysics
+  /** The categories some edge of the graph falls in — the only ones worth a token. */
+  present: ReadonlySet<string>
   // Routes through the panel's emitParamChange → live reheat.
   onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active edge category, identified by its k-field key.
@@ -44,10 +46,11 @@ interface SpringControlProps {
 //
 // x = rest length, y = stiffness (k). Each edge category is a draggable
 // split-colour token; dragging sets both rest and k at once.
-export function SpringMap({ params, resolved, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
+export function SpringMap({ params, resolved, present, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const ontology = useOntology()
   const { spring } = resolved
-  const tokens: MapToken[] = spring.categories.map(c => {
+  const shown = spring.categories.filter(c => present.has(c.id))
+  const tokens: MapToken[] = shown.map(c => {
     const ph = springForKey(spring, c.id)
     return {
       id: c.id,
@@ -107,19 +110,20 @@ function springResponse(d: number, kEff: number, restEff: number, exp: number): 
   return kEff * Math.sign(disp) * Math.pow(Math.abs(disp), exp)
 }
 
-export function SpringCurves({ params, resolved, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
+export function SpringCurves({ params, resolved, present, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
   const ontology = useOntology()
   const { spring } = resolved
+  const shown = React.useMemo(() => spring.categories.filter(c => present.has(c.id)), [spring, present])
   const pull = params.pullMultiplier
   const dist = params.distanceMultiplier
   const exp = params.linkExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const restEffs = spring.categories.map(c => springForKey(spring, c.id).distance * dist)
+    const restEffs = shown.map(c => springForKey(spring, c.id).distance * dist)
     const dMax = Math.max(60, Math.max(...restEffs) * 2.2)
 
     let maxMag = 0
-    const sampled = spring.categories.map(edge => {
+    const sampled = shown.map(edge => {
       const ph = springForKey(spring, edge.id)
       const kEff = ph.strength * pull
       const restEff = ph.distance * dist
@@ -151,7 +155,7 @@ export function SpringCurves({ params, resolved, onParamChange, hoveredEdge, onH
     // Its sibling ChargeCurves already listed it, and the asymmetry was the bug
     // — a taxonomy swap left these curves drawn in the previous taxonomy's
     // colours, on its edge set, with no error.
-  }, [spring, pull, dist, exp, ontology])
+  }, [spring, shown, pull, dist, exp, ontology])
 
   return (
     <ForceCurves

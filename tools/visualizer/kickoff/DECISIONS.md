@@ -1029,3 +1029,43 @@ is reworked as above; `derivedBySpreadStaysConsistent.stillResolvesTheSameStyle`
 compares by reference, same value. Nothing else moves.
 
 — 2026-10-21 — agent
+
+**D51 — Push and Pull share one tab and one axis; the ceiling is measured, not
+estimated (Unit 4e-iii; R13, R22–R25, R34).** The PUSH and PULL tabs become one
+PUSH/PULL tab: an axis dropdown at the top, then Push and Pull as sub-tabs in the
+Band/Topological style without switches. The sub-tab primitives (`SubTabs`,
+`SubTab`, `SubTabBodies`, `SubTabBody`) are shared with Gravity, which used to
+own them under `gravity-*` class names; `EquationSection` moves out of the
+panel for the same reason. MISC survives untouched (R34).
+
+**The dropdown offers what the graph admits.** `axisOptions(ontology, graph)`
+is the style axis bucketed by identity plus every filter axis bucketed by the
+values the graph presents on it, each with its measured cost: push tokens are
+buckets, pull tokens are the spring categories some edge actually falls in
+(`presentSpringCategories`). The 24-token rule (`TOKEN_CEILING`, `fitsCeiling`)
+is applied to those numbers — an axis over the ceiling is listed disabled with
+the count that disqualified it — rather than to `k(k+1)`, because the pair
+rule's *possible* categories are every bucket pair and most are never joined.
+The same measurement decides what the spring map shows: **one token per
+category present**, on every axis, the declared table included. A declared
+category no edge uses (`Wf→Sig` in every fixture) is tunable but not shown;
+one rule for both classifiers beat two.
+
+**Switching axes resets the two tunings** to empty overrides on the new mapping
+(D47: nothing to reinterpret). **Graph changes retune** (`retunedFor`): an
+identity mapping over observed values is rebuilt when the values change, with
+the overrides kept — they are keyed by value — and the tuning returned by
+reference when nothing moved, so the view can tell. An axis the graph no longer
+carries, or that grew past the ceiling, falls back to the style axis.
+
+The relocating-edit channel is renamed `onRelayout`: it carried gravity's mode
+and toggles and now carries the axis switch too, and "gravity" was the wrong
+name for a channel the push/pull tab uses.
+
+**Golden change (§8.2).** Tier B and Tier C byte-identical; `static`
+byte-identical. Tier A gains one row per fixture, `axes`: each axis the fixture
+admits with its push/pull token counts, whether it fits, and the spring
+categories present under it — the ceiling arithmetic pinned per fixture.
+Nothing else moves.
+
+— 2026-10-21 — agent

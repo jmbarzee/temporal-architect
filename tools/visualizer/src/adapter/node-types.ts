@@ -405,6 +405,7 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
 
 export const DEFAULT_ONTOLOGY: Ontology = createOntology({
   styleDimension: TEMPORAL_TYPE_DIMENSION,
+  styleLabel: 'Type',
   abbreviations: SLIDER_ABBREV,
   // The two ladders, as presentation grouping. A control surface lays the main
   // deployment path out in one run and the nexus addressing path in another.

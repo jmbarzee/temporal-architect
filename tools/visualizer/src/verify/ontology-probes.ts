@@ -82,6 +82,7 @@ const ALT_SOURCE = sourceOf(ALT_NODES)
  */
 const ALTERNATE = createOntology({
   styleDimension: TEMPORAL_TYPE_DIMENSION,
+  styleLabel: 'Tier',
   abbreviations: { worker: 'T2', workflow: 'T3', activity: 'T4' },
   styleGroups: [{ id: 'tiers', values: ['worker', 'workflow', 'activity'] }],
   nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
@@ -241,6 +242,7 @@ function physicsInjection(): Json {
   // that honours it finds nothing and returns the absent-value physics.
   const OTHER_AXIS = createOntology({
     styleDimension: 'zone',
+    styleLabel: 'Zone',
     abbreviations: { north: 'N', south: 'S' },
     styleGroups: [{ id: 'zones', values: ['north', 'south'] }],
     nodeTypeKeys: ['north', 'south'],
