@@ -324,8 +324,18 @@ export function applyChargeForce(
   const crMul = params.coreRadiusMultiplier
   const pushMul = params.pushMultiplier
   const chargeExp = params.chargeExponent
-  for (let i = 0; i < active.length; i++) {
-    for (let j = i + 1; j < active.length; j++) {
+  // Per-node physics once, O(n), before the O(n²) pair loop reads it: each
+  // accessor is a dimension read and two map lookups, and the loop below would
+  // otherwise make four of those per pair (T25).
+  const n = active.length
+  const charge = new Float64Array(n)
+  const rEff = new Float64Array(n)
+  for (let i = 0; i < n; i++) {
+    charge[i] = chargeFor(resolved.push, active[i])
+    rEff[i] = crMul * coreRadiusFor(resolved.push, active[i])
+  }
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
       const a = active[i]
       const b = active[j]
       let dx = b.x - a.x
@@ -342,13 +352,9 @@ export function applyChargeForce(
       }
       const rawDist = Math.sqrt(dist2)
       // Per-pair softening from the endpoints' core radii.
-      const rEffA = crMul * coreRadiusFor(resolved.push, a)
-      const rEffB = crMul * coreRadiusFor(resolved.push, b)
-      const rAvg = (rEffA + rEffB) / 2
+      const rAvg = (rEff[i] + rEff[j]) / 2
       const softening = rAvg * rAvg
-      const chargeA = chargeFor(resolved.push, a)
-      const chargeB = chargeFor(resolved.push, b)
-      const strength = (chargeA + chargeB) / 2
+      const strength = (charge[i] + charge[j]) / 2
       // Negate: strength is negative (convention), but force must be positive
       // for repulsion. The exponent acts on (dist² + softening) directly.
       const force = -(alpha * pushMul * strength / Math.pow(dist2 + softening, chargeExp))
