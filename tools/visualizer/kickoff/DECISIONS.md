@@ -993,3 +993,39 @@ from both sides, and an unbucketed endpoint resolving inert).
 that the table comes from the supplied container. Nothing else in `static` moves.
 
 — 2026-10-21 — agent
+
+**D50 — The kind axis is written by the adapter, not projected by the engine
+(Unit 4e-i; settles REVIEW_3's carried item).** `ontology.valueOn` special-cased
+`defType`: every other axis was read off the node's dimension map, that one was
+computed from the style axis through the taxonomy. The reviewer called it the
+domain leaking back under a neutral name; the defence was shared vocabulary.
+Unit 4 makes the axis a user choice for layout, and `bucketOf` reads the
+dimension map — so a projected axis would have needed the projection a second
+time, in the physics. That settles it: a node carries its position on every
+axis the host filters or lays out on, and which of those are functions of which
+is the host's business. `build.ts` writes `defType` beside `temporalType` and
+`sourceFile`; `valueOn` is one indexer for every axis; `NodeTypeDefinition`
+loses `defType` (it moves to the shim's `TemporalNodeTypeDefinition`, where its
+only readers are); `TEMPORAL_TYPE_DIMENSION` moves to `node-types.ts`, which is
+the host half of the taxonomy and now needs no import from the adapter.
+
+The filter bar's kind values come from the graph like the file values do
+(`valuesOn`, a library helper the Unit 4e dropdown also needs), through the
+`valuesByDimension` prop it already declared for a third axis and nothing
+supplied.
+
+What this changes about injection: swapping the taxonomy no longer changes
+which nodes a kind filter shows, because the kind is on the node. The
+container still decides what the visible set *means* — styling and summaries —
+and the probe now says exactly that, with nodes built as the alternate
+taxonomy's adapter would build them.
+
+**Golden change (§8.2).** Tier B and Tier C byte-identical. Tier A: every node's
+`dimensions` gains `defType` — annotation-only, verified by stripping it and
+comparing; `static.syntheticVisible.nodes` gain it the same way. `static`:
+`ontologyProbes.fallbackStyle` loses `defType` (an
+unrecognized style key no longer decides visibility); `ontologyProbes.injection`
+is reworked as above; `derivedBySpreadStaysConsistent.stillResolvesTheSameStyle`
+compares by reference, same value. Nothing else moves.
+
+— 2026-10-21 — agent

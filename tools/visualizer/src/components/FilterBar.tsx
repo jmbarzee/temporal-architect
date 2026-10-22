@@ -48,11 +48,11 @@ interface FilterBarProps {
   /** The axes shown, in order. R17/R18/R19: editable, and may be empty. */
   chain: readonly string[]
   /**
-   * Values available per axis, for axes this bar has no built-in source for.
+   * Values available per axis, read off the graph by the host.
    *
-   * The two shipped axes are sourced from `allFiles` and the taxonomy. A host
-   * that declares a third supplies its values here; without it the axis renders
-   * an empty, explicitly-disabled section rather than vanishing.
+   * The file axis is also sourced from `allFiles` for its counts; every other
+   * axis takes its domain from here. An axis with no entry renders an empty,
+   * explicitly-disabled section rather than vanishing.
    */
   valuesByDimension?: ReadonlyMap<string, readonly string[]>
   /** Omitted by a host that does not want the chain edited in place. */
@@ -144,7 +144,7 @@ export function FilterBar({
       labelClass: 'header-file-name',
     }],
     [DEF_TYPE_DIMENSION, {
-      values: [...new Set(ontology.nodeTypeKeys.map(k => ontology.styleForKey(k).defType))],
+      values: [...(valuesByDimension?.get(DEF_TYPE_DIMENSION) ?? [])],
       counts: typeCounts,
       hidden: hiddenMatchByType,
       sectionClass: 'header-types-section',
@@ -158,7 +158,7 @@ export function FilterBar({
       iconClass: 'header-type-icon',
       labelClass: 'header-type-label',
     }],
-  ]), [allFiles, fileCounts, typeCounts, hiddenMatchByFile, hiddenMatchByType, ontology])
+  ]), [allFiles, fileCounts, typeCounts, hiddenMatchByFile, hiddenMatchByType, valuesByDimension])
 
   /**
    * Presentation for an axis this bar has no entry for.

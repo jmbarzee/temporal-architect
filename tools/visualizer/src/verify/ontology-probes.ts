@@ -14,7 +14,7 @@
 //      past the container again, the two rows below stop disagreeing and this
 //      probe goes red.
 
-import { RELATION_DIMENSION } from '../graph/dimension'
+import { DEF_TYPE_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
 import { filterOfSets } from '../filter/types'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { GraphEdge } from '../graph/model'
@@ -31,15 +31,18 @@ import type { SimNode } from '../graph/simulation'
 import { defaultParamsFor } from '../graph/simulation'
 import { foldReheatPolicy } from '../graph/dimension'
 import { bandFor, chargeFor, coreRadiusFor, resolvePhysics, springForKey } from '../graph/forces'
-import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
 
 const UNDECLARED = 'notADeclaredKey' as NodeType
 
-function node(id: string, nodeType: NodeType, parentId?: string): SimNode {
+/** The alternate taxonomy's kind projection — its adapter would write these. */
+const ALT_DEF_TYPE: Record<string, string> = { worker: 'tier-2', workflow: 'tier-3', activity: 'tier-4' }
+
+function node(id: string, nodeType: NodeType, parentId?: string, defType = NODE_TYPE_REGISTRY[nodeType].defType): SimNode {
   return {
-    id, dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
+    id, dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType, [DEF_TYPE_DIMENSION]: defType },
     name: id, orphan: parentId === undefined,
     definitionKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
@@ -52,18 +55,30 @@ const NODES: SimNode[] = [
   node('wf', 'workflow', 'wk'),
   node('act', 'activity', 'wk'),
 ]
+// The same three nodes as the alternate taxonomy's adapter would build them:
+// the kind axis is materialized by whoever builds the node (D50), so a
+// different projection is a different graph, not a different read.
+const ALT_NODES: SimNode[] = NODES.map(n => {
+  const t = n.dimensions[TEMPORAL_TYPE_DIMENSION] as NodeType
+  return node(n.id, t, n.parentId, ALT_DEF_TYPE[t])
+})
 const EDGES: GraphEdge[] = [
   { id: 'c0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
   { id: 'd0', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
 ]
-const BY_ID = new Map(NODES.map(n => [n.id, n]))
-const SOURCE = { nodes: NODES, edges: EDGES, getNode: (id: string) => BY_ID.get(id) }
+const sourceOf = (nodes: SimNode[]) => {
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  return { nodes, edges: EDGES, getNode: (id: string) => byId.get(id) }
+}
+const SOURCE = sourceOf(NODES)
+const ALT_SOURCE = sourceOf(ALT_NODES)
 
 /**
- * A taxonomy that answers differently from the shipped one: it declares the same
- * keys but maps them to different filter keys entirely. Nothing about it is
+ * A taxonomy that answers differently from the shipped one: the same keys,
+ * restyled, with a different summary rule on the worker. Nothing about it is
  * domain-specific — that is the point. If the graph engine is genuinely driven
- * by its container, filtering on `tier-2` selects the worker.
+ * by its container, the worker's summary comes out as a degree under this one
+ * and a container count under the shipped one, on the same nodes.
  */
 const ALTERNATE = createOntology({
   styleDimension: TEMPORAL_TYPE_DIMENSION,
@@ -72,17 +87,17 @@ const ALTERNATE = createOntology({
   nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
   filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
   nodeStyles: {
-    worker: { ...NODE_TYPE_REGISTRY.worker, defType: 'tier-2', summaryKind: 'degree' },
-    workflow: { ...NODE_TYPE_REGISTRY.workflow, defType: 'tier-3' },
-    activity: { ...NODE_TYPE_REGISTRY.activity, defType: 'tier-4' },
+    worker: { ...NODE_TYPE_REGISTRY.worker, defType: ALT_DEF_TYPE.worker, summaryKind: 'degree' },
+    workflow: { ...NODE_TYPE_REGISTRY.workflow, defType: ALT_DEF_TYPE.workflow },
+    activity: { ...NODE_TYPE_REGISTRY.activity, defType: ALT_DEF_TYPE.activity },
   } as Record<NodeType, (typeof NODE_TYPE_REGISTRY)['worker']>,
   edgeTypes: DEFAULT_ONTOLOGY.edgeTypes,
   resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
   fallbackStyle: NODE_TYPE_REGISTRY.activity,
 })
 
-function visible(ontology: typeof DEFAULT_ONTOLOGY, types: string[]): Json {
-  const vg = computeVisibleGraph(SOURCE, filterOfSets(new Set(types), new Set<string>()), ontology)
+function visible(ontology: typeof DEFAULT_ONTOLOGY, source: typeof SOURCE, types: string[]): Json {
+  const vg = computeVisibleGraph(source, filterOfSets(new Set(types), new Set<string>()), ontology)
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     summaries: sorted([...vg.nodeSummaries].map(([id, s]) => `${id}=${s}`)),
@@ -231,8 +246,8 @@ function physicsInjection(): Json {
     nodeTypeKeys: ['north', 'south'],
     filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
     nodeStyles: {
-      north: { ...NODE_TYPE_REGISTRY.worker, defType: 'northDef' },
-      south: { ...NODE_TYPE_REGISTRY.activity, defType: 'southDef' },
+      north: NODE_TYPE_REGISTRY.worker,
+      south: NODE_TYPE_REGISTRY.activity,
     },
     // Its own edge table and rule, so the spring rows below can only come out
     // right by reading the container.
@@ -288,8 +303,7 @@ function physicsInjection(): Json {
       return {
         axisAfterSpread: derived.styleAxis(),
         stillResolvesTheSameStyle:
-          derived.resolveNodeStyle(worker).defType ===
-          DEFAULT_ONTOLOGY.resolveNodeStyle(worker).defType,
+          derived.resolveNodeStyle(worker) === DEFAULT_ONTOLOGY.resolveNodeStyle(worker),
         physicsAgreesWithStyling:
           defaultParamsFor(derived).push.mapping.dimension === derived.styleAxis(),
       }
@@ -348,14 +362,12 @@ export function ontologyProbes(): Json {
     prototypeNamedValues: prototypeNamedValues(),
     reheatPolicy: reheatPolicy(),
     physicsInjection: physicsInjection(),
-    // What a miss resolves to, field by field. The `defType` matters most: it is
-    // what the visibility predicate tests, so it decides whether an unrecognized
-    // node is permanently visible, permanently hidden, or accidentally lumped in
-    // with a real type.
+    // What a miss resolves to, field by field. Visibility is not among them any
+    // more: the kind axis is on the node (D50), so an unrecognized style key
+    // changes how a node is drawn and summarized, never whether it is shown.
     fallbackStyle: {
       label: fallback.label,
       icon: fallback.icon,
-      defType: fallback.defType,
       summaryKind: fallback.summaryKind,
       size: { r: fallback.size.r, iconSize: fallback.size.iconSize },
       physics: {
@@ -377,13 +389,16 @@ export function ontologyProbes(): Json {
     declaredKeyUnaffected:
       DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }) === NODE_TYPE_REGISTRY.worker,
 
-    // The seam, exercised. Same graph, same filter vocabulary, two taxonomies —
-    // the answers must differ, or nothing is actually being injected.
+    // The seam, exercised. Visibility now reads the node (its adapter wrote the
+    // kind axis), so the shipped nodes are invisible under the alternate keys
+    // whichever taxonomy is supplied — that is the first pair. What the
+    // container still decides is what the visible set *means*: the same node
+    // ids summarize differently under the two taxonomies, which is the second.
     injection: {
-      shippedTaxonomyOnItsOwnKeys: visible(DEFAULT_ONTOLOGY, ['workerDef', 'workflowDef']),
-      shippedTaxonomyOnAlternateKeys: visible(DEFAULT_ONTOLOGY, ['tier-2', 'tier-3']),
-      alternateTaxonomyOnItsOwnKeys: visible(ALTERNATE, ['tier-2', 'tier-3']),
-      alternateTaxonomyOnShippedKeys: visible(ALTERNATE, ['workerDef', 'workflowDef']),
+      shippedNodesOnShippedKeys: visible(DEFAULT_ONTOLOGY, SOURCE, ['workerDef', 'workflowDef']),
+      shippedNodesOnAlternateKeys: visible(ALTERNATE, SOURCE, ['tier-2', 'tier-3']),
+      alternateNodesOnAlternateKeys: visible(ALTERNATE, ALT_SOURCE, ['tier-2', 'tier-3']),
+      alternateNodesUnderShippedTaxonomy: visible(DEFAULT_ONTOLOGY, ALT_SOURCE, ['tier-2', 'tier-3']),
     },
   }
 }

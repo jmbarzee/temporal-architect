@@ -30,15 +30,6 @@ export interface NodeTypeDefinition {
   label: string
   /** Single glyph shown inside the canvas node and in tree-view chips. */
   icon: string
-  /**
-   * The key the visibility filter tests against.
-   *
-   * A plain string on purpose. The engine compares it and groups by it; it never
-   * parses it or enumerates the legal values, so a host is free to use its own
-   * vocabulary — including synthetic keys for values that have no first-class
-   * declaration of their own.
-   */
-  defType: string
   /** Whether this value is visible when the graph first loads. */
   defaultVisible: boolean
 

@@ -19,7 +19,6 @@
 //     constructed object.
 
 import type { DimensionDescriptor, DimensionId, DimensionMap, DimensionValue } from './dimension'
-import { DEF_TYPE_DIMENSION } from './dimension'
 import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
@@ -63,14 +62,10 @@ export interface Ontology {
   /** One axis's policies, or undefined if the host does not declare it. */
   descriptorFor(dimension: DimensionId): DimensionDescriptor | undefined
   /**
-   * The value a subject presents on one axis — the single place the filter's
-   * one projection lives.
-   *
-   * Most axes are read straight off the node's dimension map. `defType` is not:
-   * its values are a *projection* of the style axis, which is what lets two
-   * declared kinds share a filter key and one chip cover three of them. Stating
-   * that here means the predicate, the reconciler and the chips all agree by
-   * construction instead of each re-deriving it.
+   * The value a subject presents on one axis — read off its dimension map, for
+   * every axis alike. An axis that is a projection of another (this domain's
+   * kind axis is a function of its type axis) is materialized by the host when
+   * it builds the node, so nothing here knows which axes are derived.
    */
   valueOn(subject: StyleSubject, dimension: DimensionId): DimensionValue | undefined
   /** Every node-type key, in declaration order (top of the hierarchy first). */
@@ -173,10 +168,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     styleAxis: () => styleDimension,
     filterDimensions: spec.filterDimensions,
     descriptorFor: id => byDimension.get(id),
-    valueOn: (subject, dimension) =>
-      dimension === DEF_TYPE_DIMENSION
-        ? styleForKey(valueFor(subject)).defType
-        : subject.dimensions[dimension],
+    valueOn: (subject, dimension) => subject.dimensions[dimension],
     // `hasOwn`, for the same reason as `styleForKey` (D39): a value named
     // `constructor` or `toString` resolves up the prototype chain, the `??`
     // never fires, and this returns a Function where a string is expected.

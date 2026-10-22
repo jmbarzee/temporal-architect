@@ -11,10 +11,10 @@ which is worth noticing rather than assuming.
 | file | zone | leak | imported by |
 |---|---|---:|---|
 | `App.tsx` | neither | 5 | `main.tsx` |
-| `adapter/build.ts` | shim | 55 | **6** files |
+| `adapter/build.ts` | shim | 54 | `adapter/useGraphModel.ts`, `verify/tier-a.ts` |
 | `adapter/edge-types.ts` | shim | 160 | **5** files |
 | `adapter/node-type-styles.ts` | shim | 1 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
-| `adapter/node-types.ts` | shim | 124 | **13** files |
+| `adapter/node-types.ts` | shim | 125 | **13** files |
 | `adapter/useGraphModel.ts` | shim | 3 | `components/GraphView.tsx` |
 | `components/CanvasErrorBoundary.tsx` | manifest |  | `components/GraphView.tsx` |
 | `components/ChargeControls.tsx` | manifest |  | `components/GraphControlPanel.tsx` |
@@ -81,7 +81,7 @@ which is worth noticing rather than assuming.
 | `verify/fixtures.ts` | neither | 10 | `verify/main.ts`, `verify/tier-a.ts` |
 | `verify/force-probes.ts` | neither | 20 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
-| `verify/ontology-probes.ts` | neither | 47 | `verify/static-golden.ts` |
+| `verify/ontology-probes.ts` | neither | 53 | `verify/static-golden.ts` |
 | `verify/rng.ts` | neither |  | `verify/force-probes.ts`, `verify/tier-b.ts` |
 | `verify/snapshot.ts` | neither |  | **8** files |
 | `verify/static-golden.ts` | neither | 14 | `verify/main.ts` |

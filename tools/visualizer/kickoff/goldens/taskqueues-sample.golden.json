@@ -191,6 +191,7 @@
         {
           "definitionKey": "activity:ChargePayment",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -202,6 +203,7 @@
         {
           "definitionKey": "activity:ChargePayment",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -213,6 +215,7 @@
         {
           "definitionKey": "activity:GenerateThumbnail",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -224,6 +227,7 @@
         {
           "definitionKey": "activity:GetPaymentStatus",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -235,6 +239,7 @@
         {
           "definitionKey": "activity:GetPaymentStatus",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -246,6 +251,7 @@
         {
           "definitionKey": "activity:RecordEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -257,6 +263,7 @@
         {
           "definitionKey": "activity:RecordEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -268,6 +275,7 @@
         {
           "definitionKey": "activity:ShipOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -279,6 +287,7 @@
         {
           "definitionKey": "activity:ShipOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -290,6 +299,7 @@
         {
           "definitionKey": "activity:TranscodeVideo",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -301,6 +311,7 @@
         {
           "definitionKey": "activity:ValidateOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -312,6 +323,7 @@
         {
           "definitionKey": "namespace:ecommerce",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -322,6 +334,7 @@
         {
           "definitionKey": "namespace:media",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -332,6 +345,7 @@
         {
           "definitionKey": "namespace:partner",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -342,6 +356,7 @@
         {
           "definitionKey": "nexusEndpoint:AnalyticsEndpoint",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -354,6 +369,7 @@
         {
           "definitionKey": "nexusEndpoint:PaymentEndpoint",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -366,6 +382,7 @@
         {
           "definitionKey": "nexusOperation:AnalyticsService.TrackEvent",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -379,6 +396,7 @@
         {
           "definitionKey": "nexusOperation:PaymentService.CheckPaymentStatus",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -392,6 +410,7 @@
         {
           "definitionKey": "nexusOperation:PaymentService.CheckPaymentStatus",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -405,6 +424,7 @@
         {
           "definitionKey": "nexusService:AnalyticsService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -419,6 +439,7 @@
         {
           "definitionKey": "nexusService:PaymentService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -433,6 +454,7 @@
         {
           "definitionKey": "nexusService:PaymentService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -447,6 +469,7 @@
         {
           "definitionKey": "worker:analyticsWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -459,6 +482,7 @@
         {
           "definitionKey": "worker:expressShipWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -471,6 +495,7 @@
         {
           "definitionKey": "worker:gpuWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -483,6 +508,7 @@
         {
           "definitionKey": "worker:mediaWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -495,6 +521,7 @@
         {
           "definitionKey": "worker:orderWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -507,6 +534,7 @@
         {
           "definitionKey": "worker:partnerWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -519,6 +547,7 @@
         {
           "definitionKey": "worker:paymentWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -531,6 +560,7 @@
         {
           "definitionKey": "worker:paymentWorkerSecondary",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -543,6 +573,7 @@
         {
           "definitionKey": "worker:realtimeAnalyticsWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -555,6 +586,7 @@
         {
           "definitionKey": "worker:standardShipWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -567,6 +599,7 @@
         {
           "definitionKey": "workflow:MediaPipeline",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -578,6 +611,7 @@
         {
           "definitionKey": "workflow:OrderWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -589,6 +623,7 @@
         {
           "definitionKey": "workflow:PartnerCheckout",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -600,6 +635,7 @@
         {
           "definitionKey": "workflow:TrackEventWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -611,6 +647,7 @@
         {
           "definitionKey": "workflow:TrackEventWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },

@@ -1303,7 +1303,6 @@
     "declaredKeyUnaffected": true,
     "fallbackIsStable": true,
     "fallbackStyle": {
-      "defType": "unknownDef",
       "icon": "?",
       "label": "Unknown",
       "physics": {
@@ -1321,7 +1320,7 @@
       "summaryKind": "none"
     },
     "injection": {
-      "alternateTaxonomyOnItsOwnKeys": {
+      "alternateNodesOnAlternateKeys": {
         "summaries": [
           "wf=→1",
           "wk=←1"
@@ -1331,15 +1330,21 @@
           "wk"
         ]
       },
-      "alternateTaxonomyOnShippedKeys": {
+      "alternateNodesUnderShippedTaxonomy": {
+        "summaries": [
+          "wf=→1",
+          "wk=1wf"
+        ],
+        "visibleNodeIds": [
+          "wf",
+          "wk"
+        ]
+      },
+      "shippedNodesOnAlternateKeys": {
         "summaries": [],
         "visibleNodeIds": []
       },
-      "shippedTaxonomyOnAlternateKeys": {
-        "summaries": [],
-        "visibleNodeIds": []
-      },
-      "shippedTaxonomyOnItsOwnKeys": {
+      "shippedNodesOnShippedKeys": {
         "summaries": [
           "wf=→1",
           "wk=1wf"
@@ -2365,6 +2370,7 @@
       {
         "definitionKey": "namespace:ns",
         "dimensions": {
+          "defType": "namespaceDef",
           "sourceFile": "a.twf",
           "temporalType": "namespace"
         },
@@ -2374,6 +2380,7 @@
       {
         "definitionKey": "namespace:nsOrphan",
         "dimensions": {
+          "defType": "namespaceDef",
           "temporalType": "namespace"
         },
         "id": "nsOrphan",
@@ -2382,6 +2389,7 @@
       {
         "definitionKey": "worker:wk",
         "dimensions": {
+          "defType": "workerDef",
           "sourceFile": "a.twf",
           "temporalType": "worker"
         },
@@ -2391,6 +2399,7 @@
       {
         "definitionKey": "worker:wkB",
         "dimensions": {
+          "defType": "workerDef",
           "sourceFile": "b.twf",
           "temporalType": "worker"
         },
@@ -2400,6 +2409,7 @@
       {
         "definitionKey": "nexusService:svc",
         "dimensions": {
+          "defType": "nexusServiceDef",
           "sourceFile": "a.twf",
           "temporalType": "nexusService"
         },
@@ -2409,6 +2419,7 @@
       {
         "definitionKey": "nexusEndpoint:ep",
         "dimensions": {
+          "defType": "nexusEndpointDef",
           "sourceFile": "a.twf",
           "temporalType": "nexusEndpoint"
         },
@@ -2418,6 +2429,7 @@
       {
         "definitionKey": "workflow:caller",
         "dimensions": {
+          "defType": "workflowDef",
           "sourceFile": "a.twf",
           "temporalType": "workflow"
         },
@@ -2427,6 +2439,7 @@
       {
         "definitionKey": "nexusOperation:op",
         "dimensions": {
+          "defType": "nexusOperationDef",
           "sourceFile": "a.twf",
           "temporalType": "nexusOperation"
         },
@@ -2436,6 +2449,7 @@
       {
         "definitionKey": "workflow:backing",
         "dimensions": {
+          "defType": "workflowDef",
           "sourceFile": "b.twf",
           "temporalType": "workflow"
         },
@@ -2445,6 +2459,7 @@
       {
         "definitionKey": "activity:act",
         "dimensions": {
+          "defType": "activityDef",
           "sourceFile": "a.twf",
           "temporalType": "activity"
         },
@@ -2454,6 +2469,7 @@
       {
         "definitionKey": "activity:act",
         "dimensions": {
+          "defType": "activityDef",
           "sourceFile": "b.twf",
           "temporalType": "activity"
         },

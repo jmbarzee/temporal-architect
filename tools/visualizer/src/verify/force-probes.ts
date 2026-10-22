@@ -39,7 +39,7 @@ import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { defaultParamsFor } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { mulberry32 } from './rng'
-import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { sortedRecord } from './snapshot'
 

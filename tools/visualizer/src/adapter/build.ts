@@ -22,22 +22,29 @@ import type {
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import type { EdgeCategoryKind } from '../graph/taxonomy'
 import type { NodeType } from './node-types'
+import { NODE_TYPE_REGISTRY, TEMPORAL_TYPE_DIMENSION } from './node-types'
 import type { DimensionMap } from '../graph/dimension'
 
-// The two axes this domain projects a node onto. Names, not concepts, belong to
-// the host: the library never mentions either id.
-import { DISPATCH_DIMENSION, RELATION_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
-
-export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
+// The axes this domain projects a node onto. Names, not concepts, belong to the
+// host: the library never mentions any of these ids.
+import { DEF_TYPE_DIMENSION, DISPATCH_DIMENSION, RELATION_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 /**
  * Project a parser node onto its axes. Absent values are OMITTED rather than
  * set to a placeholder — "this node has no source file" and "this node's source
  * file is the empty string" are different facts, and the visibility rules key on
  * the difference.
+ *
+ * The kind axis is a function of the type axis, and it is written here, once,
+ * rather than derived by the engine on every read: a node carries its position
+ * on every axis the host filters or lays out on, and which of those are
+ * projections of which is the host's business.
  */
 function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): DimensionMap {
-  const dims: Record<string, string> = { [TEMPORAL_TYPE_DIMENSION]: nodeType }
+  const dims: Record<string, string> = {
+    [TEMPORAL_TYPE_DIMENSION]: nodeType,
+    [DEF_TYPE_DIMENSION]: NODE_TYPE_REGISTRY[nodeType].defType,
+  }
   if (sourceFile !== undefined) dims[SOURCE_FILE_DIMENSION] = sourceFile
   return dims
 }

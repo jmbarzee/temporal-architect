@@ -41,7 +41,6 @@ import type { NodeTypeDefinition } from '../graph/taxonomy'
 import type { DimensionDescriptor, FilterChip } from '../graph/dimension'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
-import { TEMPORAL_TYPE_DIMENSION } from './build'
 
 /**
  * A node style plus the two fields that are this domain's own.
@@ -51,7 +50,20 @@ import { TEMPORAL_TYPE_DIMENSION } from './build'
  * into `styleGroups` directly because the grouping below is derived from them,
  * and deriving it here is what keeps the ordering in one place.
  */
+/**
+ * The axis this domain styles and filters its node types on. The adapter writes
+ * it onto every node; nothing in the engine names it.
+ */
+export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
+
 export interface TemporalNodeTypeDefinition extends NodeTypeDefinition {
+  /**
+   * The value this type projects onto the kind axis — what the kind chips
+   * filter on. The adapter materializes it on each node at build time, so the
+   * engine reads it off the node's dimension map like any other axis and never
+   * learns that one axis is a function of another.
+   */
+  defType: string
   /**
    * Which conceptual ladder this node type belongs to.
    * 'main'  — standard deployment path (namespace → worker → workflow/activity)

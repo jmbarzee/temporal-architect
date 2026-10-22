@@ -242,6 +242,7 @@
         {
           "definitionKey": "activity:AlertComplianceViolation",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -253,6 +254,7 @@
         {
           "definitionKey": "activity:ApplyDocumentReview",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -264,6 +266,7 @@
         {
           "definitionKey": "activity:AuthenticateResume",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -275,6 +278,7 @@
         {
           "definitionKey": "activity:CalculateDTIAndLTV",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -286,6 +290,7 @@
         {
           "definitionKey": "activity:CheckDocumentExpiration",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -297,6 +302,7 @@
         {
           "definitionKey": "activity:DeliverDisclosure",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -308,6 +314,7 @@
         {
           "definitionKey": "activity:EvaluateDocumentCompleteness",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -319,6 +326,7 @@
         {
           "definitionKey": "activity:EvaluateEligibility",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -330,6 +338,7 @@
         {
           "definitionKey": "activity:GenerateLoanEstimate",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -341,6 +350,7 @@
         {
           "definitionKey": "activity:HandoffToClosing",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -352,6 +362,7 @@
         {
           "definitionKey": "activity:LoadApplicationState",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -363,6 +374,7 @@
         {
           "definitionKey": "activity:LockRate",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -374,6 +386,7 @@
         {
           "definitionKey": "activity:MarkConditionCleared",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -385,6 +398,7 @@
         {
           "definitionKey": "activity:NotifyBorrowerMilestone",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -396,6 +410,7 @@
         {
           "definitionKey": "activity:NotifyConditionsAssigned",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -407,6 +422,7 @@
         {
           "definitionKey": "activity:PullCredit",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -418,6 +434,7 @@
         {
           "definitionKey": "activity:RecordAuditEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -429,6 +446,7 @@
         {
           "definitionKey": "activity:RecordCondition",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -440,6 +458,7 @@
         {
           "definitionKey": "activity:RunAutomatedUnderwriting",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -451,6 +470,7 @@
         {
           "definitionKey": "activity:SaveApplicationStep",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -462,6 +482,7 @@
         {
           "definitionKey": "activity:SendAdverseActionNotice",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -473,6 +494,7 @@
         {
           "definitionKey": "activity:SendConditionReminder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -484,6 +506,7 @@
         {
           "definitionKey": "activity:SendDocumentRefreshAlert",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -495,6 +518,7 @@
         {
           "definitionKey": "activity:SendLockExpirationAlert",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -506,6 +530,7 @@
         {
           "definitionKey": "activity:SendNudgeEmail",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -517,6 +542,7 @@
         {
           "definitionKey": "activity:StoreDocument",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -528,6 +554,7 @@
         {
           "definitionKey": "activity:ValidateConditionClearance",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -539,6 +566,7 @@
         {
           "definitionKey": "activity:ValidateDocument",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -550,6 +578,7 @@
         {
           "definitionKey": "activity:ValidateStep",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -561,6 +590,7 @@
         {
           "definitionKey": "activity:VerifyTridCompliance",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
           },
@@ -572,6 +602,7 @@
         {
           "definitionKey": "namespace:loanOrigination",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "namespace"
           },
@@ -582,6 +613,7 @@
         {
           "definitionKey": "worker:loanWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "worker"
           },
@@ -594,6 +626,7 @@
         {
           "definitionKey": "workflow:ConditionLoop",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "workflow"
           },
@@ -605,6 +638,7 @@
         {
           "definitionKey": "workflow:DocumentCollection",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "workflow"
           },
@@ -616,6 +650,7 @@
         {
           "definitionKey": "workflow:IntakeWizard",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "workflow"
           },
@@ -627,6 +662,7 @@
         {
           "definitionKey": "workflow:LoanLifecycle",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "workflow"
           },
@@ -638,6 +674,7 @@
         {
           "definitionKey": "workflow:RateLockMonitor",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "workflow"
           },

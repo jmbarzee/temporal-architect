@@ -362,6 +362,7 @@
         {
           "definitionKey": "activity:AlertTimeout",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -373,6 +374,7 @@
         {
           "definitionKey": "activity:ChargePayment",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -384,6 +386,7 @@
         {
           "definitionKey": "activity:ChargePayment",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -395,6 +398,7 @@
         {
           "definitionKey": "activity:ChargePaymentMethod",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -406,6 +410,7 @@
         {
           "definitionKey": "activity:DoLocalWork",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -417,6 +422,7 @@
         {
           "definitionKey": "activity:GenerateThumbnail",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -428,6 +434,7 @@
         {
           "definitionKey": "activity:GetPaymentStatus",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -439,6 +446,7 @@
         {
           "definitionKey": "activity:GetPaymentStatus",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -450,6 +458,7 @@
         {
           "definitionKey": "activity:InitShard",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -461,6 +470,7 @@
         {
           "definitionKey": "activity:LookupPayment",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -472,6 +482,7 @@
         {
           "definitionKey": "activity:RecordEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -483,6 +494,7 @@
         {
           "definitionKey": "activity:RecordEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -494,6 +506,7 @@
         {
           "definitionKey": "activity:RecordPaymentTransaction",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -505,6 +518,7 @@
         {
           "definitionKey": "activity:SendPaymentConfirmation",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -516,6 +530,7 @@
         {
           "definitionKey": "activity:ShipOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -527,6 +542,7 @@
         {
           "definitionKey": "activity:ShipOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -538,6 +554,7 @@
         {
           "definitionKey": "activity:TranscodeVideo",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -549,6 +566,7 @@
         {
           "definitionKey": "activity:ValidateCheckout",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -560,6 +578,7 @@
         {
           "definitionKey": "activity:ValidateOrder",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
           },
@@ -571,6 +590,7 @@
         {
           "definitionKey": "activity:ValidatePaymentDetails",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "nexus.twf",
             "temporalType": "activity"
           },
@@ -582,6 +602,7 @@
         {
           "definitionKey": "namespace:bootstrapApp",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
           },
@@ -592,6 +613,7 @@
         {
           "definitionKey": "namespace:ecommerce",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -602,6 +624,7 @@
         {
           "definitionKey": "namespace:fabric-shard-{org}",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
           },
@@ -615,6 +638,7 @@
         {
           "definitionKey": "namespace:media",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -625,6 +649,7 @@
         {
           "definitionKey": "namespace:notifications",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
           },
@@ -635,6 +660,7 @@
         {
           "definitionKey": "namespace:orders",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
           },
@@ -645,6 +671,7 @@
         {
           "definitionKey": "namespace:partner",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
           },
@@ -655,6 +682,7 @@
         {
           "definitionKey": "namespace:payments",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
           },
@@ -665,6 +693,7 @@
         {
           "definitionKey": "nexusEndpoint:AnalyticsEndpoint",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -677,6 +706,7 @@
         {
           "definitionKey": "nexusEndpoint:NotificationsEndpoint",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -689,6 +719,7 @@
         {
           "definitionKey": "nexusEndpoint:PaymentEndpoint",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -701,6 +732,7 @@
         {
           "definitionKey": "nexusEndpoint:PaymentsEndpoint",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -713,6 +745,7 @@
         {
           "definitionKey": "nexusEndpoint:fabric-shard-{org}-BootstrapShard",
           "dimensions": {
+            "defType": "nexusEndpointDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusEndpoint"
           },
@@ -728,6 +761,7 @@
         {
           "definitionKey": "nexusOperation:AnalyticsService.TrackEvent",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -741,6 +775,7 @@
         {
           "definitionKey": "nexusOperation:BootstrapService.BootstrapShard",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusOperation"
           },
@@ -754,6 +789,7 @@
         {
           "definitionKey": "nexusOperation:NotificationsService.SendConfirmation",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusOperation"
           },
@@ -767,6 +803,7 @@
         {
           "definitionKey": "nexusOperation:PaymentService.CheckPaymentStatus",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -780,6 +817,7 @@
         {
           "definitionKey": "nexusOperation:PaymentService.CheckPaymentStatus",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
@@ -793,6 +831,7 @@
         {
           "definitionKey": "nexusOperation:PaymentsService.GetPaymentStatus",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusOperation"
           },
@@ -806,6 +845,7 @@
         {
           "definitionKey": "nexusOperation:PaymentsService.ProcessPayment",
           "dimensions": {
+            "defType": "nexusOperationDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusOperation"
           },
@@ -819,6 +859,7 @@
         {
           "definitionKey": "nexusService:AnalyticsService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -833,6 +874,7 @@
         {
           "definitionKey": "nexusService:BootstrapService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusService"
           },
@@ -847,6 +889,7 @@
         {
           "definitionKey": "nexusService:NotificationsService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusService"
           },
@@ -861,6 +904,7 @@
         {
           "definitionKey": "nexusService:PaymentService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -875,6 +919,7 @@
         {
           "definitionKey": "nexusService:PaymentService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
@@ -889,6 +934,7 @@
         {
           "definitionKey": "nexusService:PaymentsService",
           "dimensions": {
+            "defType": "nexusServiceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusService"
           },
@@ -903,6 +949,7 @@
         {
           "definitionKey": "worker:analyticsWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -915,6 +962,7 @@
         {
           "definitionKey": "worker:bootstrapCallerWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "nexus.twf",
             "temporalType": "worker"
           },
@@ -927,6 +975,7 @@
         {
           "definitionKey": "worker:bootstrapWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "nexus.twf",
             "temporalType": "worker"
           },
@@ -939,6 +988,7 @@
         {
           "definitionKey": "worker:checkoutWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "nexus.twf",
             "temporalType": "worker"
           },
@@ -951,6 +1001,7 @@
         {
           "definitionKey": "worker:expressShipWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -963,6 +1014,7 @@
         {
           "definitionKey": "worker:gpuWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -975,6 +1027,7 @@
         {
           "definitionKey": "worker:mediaWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -987,6 +1040,7 @@
         {
           "definitionKey": "worker:notificationWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "nexus.twf",
             "temporalType": "worker"
           },
@@ -999,6 +1053,7 @@
         {
           "definitionKey": "worker:orderWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -1011,6 +1066,7 @@
         {
           "definitionKey": "worker:partnerWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -1023,6 +1079,7 @@
         {
           "definitionKey": "worker:paymentProcessingWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "nexus.twf",
             "temporalType": "worker"
           },
@@ -1035,6 +1092,7 @@
         {
           "definitionKey": "worker:paymentWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -1047,6 +1105,7 @@
         {
           "definitionKey": "worker:paymentWorkerSecondary",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -1059,6 +1118,7 @@
         {
           "definitionKey": "worker:realtimeAnalyticsWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -1071,6 +1131,7 @@
         {
           "definitionKey": "worker:standardShipWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
           },
@@ -1083,6 +1144,7 @@
         {
           "definitionKey": "workflow:AsyncNexusCaller",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
           },
@@ -1094,6 +1156,7 @@
         {
           "definitionKey": "workflow:BootstrapCaller",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
           },
@@ -1105,6 +1168,7 @@
         {
           "definitionKey": "workflow:BootstrapShardWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
           },
@@ -1116,6 +1180,7 @@
         {
           "definitionKey": "workflow:MediaPipeline",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -1127,6 +1192,7 @@
         {
           "definitionKey": "workflow:NexusWithOptions",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
           },
@@ -1138,6 +1204,7 @@
         {
           "definitionKey": "workflow:NexusWithTimeout",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
           },
@@ -1149,6 +1216,7 @@
         {
           "definitionKey": "workflow:OrderCheckout",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
           },
@@ -1160,6 +1228,7 @@
         {
           "definitionKey": "workflow:OrderWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -1171,6 +1240,7 @@
         {
           "definitionKey": "workflow:PartnerCheckout",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -1182,6 +1252,7 @@
         {
           "definitionKey": "workflow:ProcessPaymentWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
           },
@@ -1193,6 +1264,7 @@
         {
           "definitionKey": "workflow:SendConfirmationWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
           },
@@ -1204,6 +1276,7 @@
         {
           "definitionKey": "workflow:TrackEventWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },
@@ -1215,6 +1288,7 @@
         {
           "definitionKey": "workflow:TrackEventWorkflow",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
           },

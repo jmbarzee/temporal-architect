@@ -344,6 +344,7 @@
         {
           "definitionKey": "activity:AggregateDeprovisionResults",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -355,6 +356,7 @@
         {
           "definitionKey": "activity:AggregateProvisioningResults",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -366,6 +368,7 @@
         {
           "definitionKey": "activity:AlertSecurityTeam",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -377,6 +380,7 @@
         {
           "definitionKey": "activity:AlertSecurityTeamBreakGlass",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -388,6 +392,7 @@
         {
           "definitionKey": "activity:AlertSecurityTeamIncompleteOffboard",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -399,6 +404,7 @@
         {
           "definitionKey": "activity:ArchiveIdentity",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -410,6 +416,7 @@
         {
           "definitionKey": "activity:AutoRevokeUndecidedItems",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -421,6 +428,7 @@
         {
           "definitionKey": "activity:CalculateRoleDelta",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -432,6 +440,7 @@
         {
           "definitionKey": "activity:CreateManualDeprovisioningTicket",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -443,6 +452,7 @@
         {
           "definitionKey": "activity:CreateManualProvisioningTicket",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -454,6 +464,7 @@
         {
           "definitionKey": "activity:DisableAuthentication",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -465,6 +476,7 @@
         {
           "definitionKey": "activity:EmitAuditEvent",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -476,6 +488,7 @@
         {
           "definitionKey": "activity:EscalateManualDeprovisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -487,6 +500,7 @@
         {
           "definitionKey": "activity:EscalateManualProvisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -498,6 +512,7 @@
         {
           "definitionKey": "activity:EscalatePostIncidentReview",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -509,6 +524,7 @@
         {
           "definitionKey": "activity:EvaluatePolicy",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -520,6 +536,7 @@
         {
           "definitionKey": "activity:EvaluateRenewalPolicy",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -531,6 +548,7 @@
         {
           "definitionKey": "activity:ExecuteDeprovisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -542,6 +560,7 @@
         {
           "definitionKey": "activity:ExecuteProvisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -553,6 +572,7 @@
         {
           "definitionKey": "activity:GenerateCampaignReport",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -564,6 +584,7 @@
         {
           "definitionKey": "activity:GenerateReviewItems",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -575,6 +596,7 @@
         {
           "definitionKey": "activity:IdentifySharedResources",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -586,6 +608,7 @@
         {
           "definitionKey": "activity:NotifyApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -597,6 +620,7 @@
         {
           "definitionKey": "activity:NotifyBreakGlassApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -608,6 +632,7 @@
         {
           "definitionKey": "activity:NotifyManagerForMicroCert",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -619,6 +644,7 @@
         {
           "definitionKey": "activity:NotifyPostIncidentReviewers",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -630,6 +656,7 @@
         {
           "definitionKey": "activity:NotifyRequester",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -641,6 +668,7 @@
         {
           "definitionKey": "activity:ReassignApprovalTask",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -652,6 +680,7 @@
         {
           "definitionKey": "activity:ResolveEscalationTarget",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -663,6 +692,7 @@
         {
           "definitionKey": "activity:ResolveFallbackApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -674,6 +704,7 @@
         {
           "definitionKey": "activity:SendCampaignReminders",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -685,6 +716,7 @@
         {
           "definitionKey": "activity:SignalAccessRequestRevoke",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -696,6 +728,7 @@
         {
           "definitionKey": "activity:TransferResourceOwnership",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -707,6 +740,7 @@
         {
           "definitionKey": "activity:ValidateApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -718,6 +752,7 @@
         {
           "definitionKey": "activity:ValidateBreakGlassApprover",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -729,6 +764,7 @@
         {
           "definitionKey": "activity:ValidateCertificationReviewer",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -740,6 +776,7 @@
         {
           "definitionKey": "activity:ValidateDelegation",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -751,6 +788,7 @@
         {
           "definitionKey": "activity:ValidatePostIncidentReview",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -762,6 +800,7 @@
         {
           "definitionKey": "activity:VerifyDeprovisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -773,6 +812,7 @@
         {
           "definitionKey": "activity:VerifyProvisioning",
           "dimensions": {
+            "defType": "activityDef",
             "sourceFile": "access-control.twf",
             "temporalType": "activity"
           },
@@ -784,6 +824,7 @@
         {
           "definitionKey": "namespace:accessControl",
           "dimensions": {
+            "defType": "namespaceDef",
             "sourceFile": "access-control.twf",
             "temporalType": "namespace"
           },
@@ -794,6 +835,7 @@
         {
           "definitionKey": "worker:connectorWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "access-control.twf",
             "temporalType": "worker"
           },
@@ -806,6 +848,7 @@
         {
           "definitionKey": "worker:coreWorker",
           "dimensions": {
+            "defType": "workerDef",
             "sourceFile": "access-control.twf",
             "temporalType": "worker"
           },
@@ -818,6 +861,7 @@
         {
           "definitionKey": "workflow:AccessRequest",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -829,6 +873,7 @@
         {
           "definitionKey": "workflow:ApprovalChain",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -840,6 +885,7 @@
         {
           "definitionKey": "workflow:BreakGlassRequest",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -851,6 +897,7 @@
         {
           "definitionKey": "workflow:CertificationCampaign",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -862,6 +909,7 @@
         {
           "definitionKey": "workflow:DeprovisionAll",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -873,6 +921,7 @@
         {
           "definitionKey": "workflow:DeprovisionEntitlement",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -884,6 +933,7 @@
         {
           "definitionKey": "workflow:OffboardIdentity",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -895,6 +945,7 @@
         {
           "definitionKey": "workflow:ProvisionAll",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -906,6 +957,7 @@
         {
           "definitionKey": "workflow:ProvisionEntitlement",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
@@ -917,6 +969,7 @@
         {
           "definitionKey": "workflow:TransferIdentity",
           "dimensions": {
+            "defType": "workflowDef",
             "sourceFile": "access-control.twf",
             "temporalType": "workflow"
           },
