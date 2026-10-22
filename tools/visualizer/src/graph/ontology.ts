@@ -24,6 +24,7 @@ import type { GraphEdge } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
 import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
 import type { ScalarAxis } from './scalar'
+import type { EdgeStroke } from './scheme'
 import { BUILT_IN_SCALARS } from './scalar'
 
 /** The minimum a consumer needs of a node in order to resolve its style. */
@@ -78,6 +79,8 @@ export interface Ontology {
   readonly edgeTypes: readonly EdgeTypeDefinition[]
   /** Every computed scalar a layout axis may key on: the built-ins, then the host's. */
   readonly scalars: readonly ScalarAxis[]
+  /** How the canvas strokes an edge of this type (D57). Loud for an id the host did not declare. */
+  edgeStrokeFor(id: EdgeTypeId): EdgeStroke
 
   /**
    * Style, size, physics and summary metadata for a value. Never throws — a
@@ -178,6 +181,13 @@ export function createOntology(spec: OntologySpec): Ontology {
   // is missing the same key, which is a different bug being hidden by the
   // de-duplication meant for the first.
   const warned = new Set<string>()
+  const strokeById = new Map(spec.edgeTypes.map(e => [e.id, e.style] as const))
+  const edgeStrokeFor = (id: EdgeTypeId): EdgeStroke => {
+    const stroke = strokeById.get(id)
+    if (!stroke) throw new Error(`edge type ${JSON.stringify(id)} has no stroke: the taxonomy does not declare it`)
+    return stroke
+  }
+
   const styleForKey = (key: DimensionValue | undefined): NodeTypeDefinition => {
     // `Object.hasOwn`, not a plain index: keys are host-supplied strings, and
     // `nodeStyles['constructor']` walks the prototype chain and returns the
@@ -216,6 +226,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     nodeTypeKeys: spec.nodeTypeKeys,
     edgeTypes: spec.edgeTypes,
     scalars: [...BUILT_IN_SCALARS, ...spec.scalars],
+    edgeStrokeFor,
     styleForKey,
     valueFor,
     // Hot path: one property read, one record lookup, one branch. No allocation

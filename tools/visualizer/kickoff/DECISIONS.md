@@ -1414,3 +1414,78 @@ the undeclared node is pulled to the origin now (point 2);
 `tuningProbes.layoutAxisKeys` and `scalarProbes`. Nothing else moves.
 
 — 2026-10-22 — agent
+
+**D57 — The colour scheme is the taxonomy's, both themes at once; the canvas
+reads the theme; one edge classifier; the graph pane chooses its theme (Unit
+6).** R10, R11, R15, R16, R21; T6, T11, T13, T15; B22, B23, B25, B29, B30.
+The model, chosen so that colour is stored once and read everywhere:
+
+1. **The scheme object is the taxonomy.** `NodeTypeDefinition.color` is a
+   `ThemedColor { light: ColorPair, dark: ColorPair }` — every value declares
+   both themes, no optional dark half to half-migrate (T15) — beside the
+   `size` it already carried, so a host swapping schemes swaps one object
+   (D14, R11). `EdgeTypeDefinition.style` is an `EdgeStroke { color:
+   { light, dark }, alpha, dash, width }`: the edge palette is injected per
+   edge type, not a library table of literals. `cssVarSuffix` is gone: the
+   custom-property name is derived (`cssSuffix` kebab-cases the value id),
+   so the injector's output is byte-identical and nothing stores a name.
+2. **One edge classifier** (T11, B22). A stroke is the resolved edge type's:
+   `edgeStrokeFor(edgeType)` on the ontology, and `edge-styles.ts` — the
+   renderer's second classifier — is deleted. Where the two disagreed the
+   physics classifier won: every disagreement over the five fixtures (66
+   graduated-edge rows, none on a full graph) was the renderer's rule "an
+   edge carrying `nexusEndpoint` metadata is a nexus call", which kept a
+   spliced caller→backing edge pink after the operation was filtered out.
+   Those edges now draw as what the physics says they are — a workflow,
+   worker or namespace dependency. The metadata stays: the endpoint's
+   transitive highlight reads it. Tier C and Tier A's graduated-edge rows
+   record the edge type alone; the style column is gone because the style
+   is the type's.
+3. **The canvas reads the theme** (T15, B23, B25): node bodies, push rings,
+   the band overlay's colours and edge strokes all resolve through
+   `color[theme]`; the group-glow palette stays the library's own cycling
+   table (not per value, so not the scheme's — a future scheme field, not
+   this unit's). `withAlpha` normalises any CSS colour the browser can parse
+   (hex of either length, `rgb()`, names through a memoised 2D-context pass)
+   and answers a neutral for anything else with one `console.error`, never a
+   throw inside the draw loop (T6, T4).
+4. **The theme is the graph pane's choice** (R21). A three-state toolbar
+   button — system, light, dark — persisted with the pane's other state; the
+   resolved theme is the choice, or the host's when system: an ancestor
+   `.vscode-dark` / `[data-theme="dark"]`, else `prefers-color-scheme`,
+   observed for change. An explicit choice sets `data-theme` on the pane's
+   root, and the stylesheets key their dark rules on
+   `:is(.vscode-dark, [data-theme="dark"])` and their light defaults on
+   `:root, [data-theme="light"]`, so the pane can be dark in a light host
+   and light in a dark one.
+5. **Per-value CSS is inline** (B29, B30). The pane's root carries
+   `--color-<suffix>` / `--color-<suffix>-border` for every style value in
+   the resolved theme; tokens and typed slider rows read them; a filter chip
+   borrows a style value's colour as it borrows its icon (`FilterChip.tint`),
+   and its hover and active backgrounds are `color-mix` of that tint at a
+   per-theme percentage — the sixteen literal `rgba()` tints and their eight
+   dark overrides are gone. `mountNodeTypeStyles` stays on the public
+   surface (C3) and emits the same `:root` variables from the default
+   taxonomy for a host's own CSS; the library's components no longer depend
+   on it, and its typed-row classes — read by nothing once the rows are
+   inline — are not emitted.
+6. **R16** (every label and abbreviation configurable) was already the
+   spec's: `styleLabel`, `abbreviations`, each style's `label`, each edge
+   type's `label`, each filter dimension's and chip's `label` — the
+   `ALTERNATE` and `OTHER_AXIS` probes have pinned that since Units 4 and 5.
+   Recorded here as covered, not re-done.
+
+**Golden change (§8.2).** Tier C: every row loses its style column; the
+edge-type column is byte-identical on all 245 rows (D3's condition, checked
+by diff). Tier A: `graph.edges` and every state's `graduatedEdges` lines
+lose the style column likewise — format only, checked line by line — and
+`edgeClassification.byStyleKey`, the renderer classifier's histogram, is
+gone; the 66 rows above are the ones whose colour changed on screen, and
+they are pinned now as the composition of two rows — the edge's type here
+and that type's stroke in `schemeProbes.strokes`. `static`: `generatedCss`
+loses the seven typed-row class lines; the synthetic cases' `graduatedEdges`
+lose the style column; new `schemeProbes` (the suffix rule, the colour
+normaliser's table, the inline variables under the default and an alternate
+palette, the stroke per edge type, the sizes). Nothing else moves.
+
+— 2026-10-22 — agent

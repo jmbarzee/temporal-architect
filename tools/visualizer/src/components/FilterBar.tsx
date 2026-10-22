@@ -10,6 +10,7 @@
 // is identical across views.
 
 import { useOntology } from './graph-view/useOntology'
+import { colorVar } from '../graph/scheme'
 import { selectionFor } from '../filter/types'
 import React from 'react'
 import './FilterBar.css'
@@ -238,6 +239,7 @@ export function FilterBar({
                     <button
                       key={chip.id}
                       className={cls}
+                      style={chip.tint ? ({ ['--chip-tint' as string]: `var(${colorVar(chip.tint)})` } as React.CSSProperties) : undefined}
                       onClick={() => onFilterChange(toggleGroup(filter, dimension, chip.values))}
                       title={chip.tooltip ?? (isActive ? `Hide ${chip.label.toLowerCase()}` : `Show ${chip.label.toLowerCase()}`)}
                     >

@@ -53,6 +53,8 @@ export type PersistedState = {
   treeChain?: string[]
   graphChain?: string[]
   searchQuery?: string
+  /** The graph pane's theme choice (R21); absent means system. Additive, so no version bump (D4). */
+  graphTheme?: 'system' | 'light' | 'dark'
 }
 
 interface VsCodeApi {

@@ -6,19 +6,19 @@
   padding: 0;
 }
 
-:root {
-  /* Light theme (default) */
+:root,
+[data-theme="light"] {
+  /* Light theme (default), and a pane that chose light inside a dark host */
   --color-workflow: #8B7EC8;
   --color-activity: #7CB9E8;
   --color-signal: #E8A0BF;
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
 
-  /* Graph node-type palette — generated at runtime from NODE_TYPE_REGISTRY
-     via mountNodeTypeStyles() in App.tsx / webview.tsx.
-     The CSS variables --color-<suffix> and --color-<suffix>-border for each
-     node type are injected into :root by that call; they are not hard-coded
-     here so that adding a new node type only requires one registry entry. */
+  /* Graph node-type palette: the graph pane carries --color-<suffix> and
+     --color-<suffix>-border for every style value inline, in its resolved
+     theme (D57). mountNodeTypeStyles() publishes the same variables on :root
+     for a host's own CSS. */
 
   --color-bg: #f8fafc;
   --color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);

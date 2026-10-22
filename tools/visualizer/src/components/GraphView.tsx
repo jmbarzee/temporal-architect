@@ -13,6 +13,10 @@ import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, presentSpringCategories, resolvePhysics, resolveSprings } from '../graph/forces'
 import { isIdentityMapping } from '../graph/dimension'
+import type { EdgeStroke } from '../graph/scheme'
+import { schemeVars } from '../graph/scheme'
+import { useTheme, THEME_CHOICES } from './graph-view/useTheme'
+import type { ThemeChoice } from './graph-view/useTheme'
 import { axisOptions, layoutAxisOptions, pairTuning } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
@@ -59,6 +63,9 @@ interface GraphViewProps {
   // before any decomposition exists). Optional; absent for read-only hosts.
   onRequestDecomposition?: (params: DecompositionParams) => void
   onShowInTree?: (name: string, defType: string) => void
+  /** The pane's theme choice and where a new one goes (R21). */
+  theme: ThemeChoice
+  onThemeChange: (next: ThemeChoice) => void
   filter: FilterState
   onFilterChange: (next: FilterState) => void
   pins: PinState
@@ -96,7 +103,7 @@ export function GraphView({
   pendingFocus,
   onFocusConsumed,
   overriddenPins,
-  onOverriddenPinsConsumed,
+  onOverriddenPinsConsumed, theme: themeChoice, onThemeChange,
 }: GraphViewProps) {
   const ontology = useOntology()
   // Filter state is now driven by props from WorkflowCanvas (spec § Filter
@@ -186,10 +193,15 @@ export function GraphView({
   // The frame the band forces act in and the overlay the canvas draws, both
   // over the WHOLE graph — the same frame the simulation seeds and ticks in.
   const frame = React.useMemo(() => layoutFrame(readableGraph(graph), resolved), [graph, resolved])
+  // The theme the pane draws in: the choice, or the host's for system. The
+  // scheme rides inline as custom properties in that theme (D57), and every
+  // visible edge's stroke is resolved here once, not per frame (T25).
+  const theme = useTheme(containerRef, themeChoice)
+  const schemeStyle = React.useMemo(() => schemeVars(ontology, theme) as React.CSSProperties, [ontology, theme])
   const overlay = React.useMemo(() => bandOverlay(graph.nodes.values(), forceParams, resolved, frame,
     (axis, bucket) => axis.mapping.dimension === ontology.styleAxis() && isIdentityMapping(axis.mapping)
-      ? ontology.styleForKey(bucket).color.fill
-      : '#94A3B8'), [graph, forceParams, resolved, frame, ontology])
+      ? ontology.styleForKey(bucket).color[theme].fill
+      : '#94A3B8'), [graph, forceParams, resolved, frame, ontology, theme])
 
   // Classification does not depend on overrides, so this keys on the mapping
   // and not on `resolved`, which is a new object after every slider edit.
@@ -227,6 +239,18 @@ export function GraphView({
   // summaries + downstream-depth scores), recomputed on filter / sim-rebuild.
   const { visibleNodes, visibleEdges, visibleIds, nodeSummaries, downstreamScores } =
     useVisibleGraph(simRef, simVersion, filter)
+
+  // Every visible edge's stroke, resolved here once from the taxonomy's one
+  // classifier (D57), not per frame (T25).
+  const edgeStrokes = React.useMemo(() => {
+    const strokes = new Map<GraphEdge, EdgeStroke>()
+    for (const edge of visibleEdges) {
+      const src = getSimNode(edge.sourceId)
+      const tgt = getSimNode(edge.targetId)
+      strokes.set(edge, ontology.edgeStrokeFor(ontology.resolveEdgeType(edge, src && ontology.valueFor(src), tgt && ontology.valueFor(tgt))))
+    }
+    return strokes
+  }, [visibleEdges, ontology, getSimNode])
 
   // --- Decomposition group overlay (GRAPH_VIEW.md § Decomposition Group
   // Overlay). Selection (which division per chunk is active/enabled/expanded)
@@ -509,7 +533,8 @@ export function GraphView({
     <div
       className="graph-view"
       ref={containerRef}
-      style={toolbarHeight ? ({ ['--toolbar-height' as string]: `${toolbarHeight}px` } as React.CSSProperties) : undefined}
+      data-theme={themeChoice === 'system' ? undefined : themeChoice}
+      style={{ ...schemeStyle, ...(toolbarHeight ? { ['--toolbar-height' as string]: `${toolbarHeight}px` } : {}) } as React.CSSProperties}
     >
       {/* Canvas fills the full viewport beneath the floating overlay */}
       <div className="graph-canvas-area">
@@ -535,6 +560,8 @@ export function GraphView({
             forceParams={forceParams}
             resolved={resolved}
             overlay={overlay}
+            theme={theme}
+            edgeStrokes={edgeStrokes}
             activeSection={activeSection}
             activePushBucket={activePushBucket}
             activeGravityBucket={activeGravityBucket}
@@ -614,6 +641,14 @@ export function GraphView({
       {/* Bottom-center: simulation controls + live fps. */}
       <div className="graph-bottom-center">
         <button className="graph-toolbar-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
+        <button
+          className={`graph-toolbar-btn${themeChoice === 'system' ? '' : ' active'}`}
+          onClick={() => onThemeChange(THEME_CHOICES[(THEME_CHOICES.indexOf(themeChoice) + 1) % THEME_CHOICES.length])}
+          title={`Colour scheme: ${themeChoice}${themeChoice === 'system' ? ` (${theme})` : ''} — click to change`}
+          aria-label="Colour scheme"
+        >
+          {themeChoice === 'system' ? 'Auto' : themeChoice === 'light' ? 'Light' : 'Dark'}
+        </button>
         <button
           className={`graph-toolbar-btn ${running ? 'active' : ''}`}
           onClick={handleToggleRunning}

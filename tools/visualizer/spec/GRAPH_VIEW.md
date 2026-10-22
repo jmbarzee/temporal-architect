@@ -131,7 +131,7 @@ Higher-level dependency edges are **derived** by projecting Level 3 dependency e
 The deployment graph is constructed **upstream** by `twf graph` (see `tools/lsp/parser/graph/`). The visualizer consumes the resulting JSON and translates each piece into its view counterpart. Construction inside the visualizer is a single pass over the parser payload:
 
 1. **Translate nodes.** For each `parserGraph.nodes[i]`, emit a view node with `id` (parser's composite deployment ID), `level` (derived from the parser's `definition` kind via `nodeLevel()`), `parentId` (looked up from the parser's containment edges), and `definitionKey` (= `parserGraph.nodes[i].definition`). The AST is consulted only to fill `sourceFile` so the per-file filter chip works; everything structural comes from the parser. For packaged designs the `definitionKey` name is package-qualified (§ Packages and Qualified Identity); a node's package is read from that name, and the AST lookup for `sourceFile` — keyed on bare definition names — is reconciled against the qualified IDs via the file's `package` clause.
-2. **Translate edges.** For each `parserGraph.edges[i]`, emit a view edge. `kind: "containment"` and `kind: "nexusRoute"` (the endpoint↔operation composition) both become `edgeType: "containment"`; the dispatch kinds (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`) all become `edgeType: "dependency"`. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so the canvas can colour spliced caller-to-backing edges in the nexus palette. `nexusRoute` edges are not in the parser's containment set, so they never reassign an operation's `parentId` (which stays its owning service).
+2. **Translate edges.** For each `parserGraph.edges[i]`, emit a view edge. `kind: "containment"` and `kind: "nexusRoute"` (the endpoint↔operation composition) both become `edgeType: "containment"`; the dispatch kinds (`activityCall`, `workflowCall`, `nexusCall`, `asyncBacking`) all become `edgeType: "dependency"`. `nexusCall` edges copy `routing.nexusEndpoint` onto the view edge so an endpoint's transitive highlight can follow its routes; the stroke of a spliced caller-to-backing edge is its resolved type's (a workflow dependency), not the nexus palette's (D57). `nexusRoute` edges are not in the parser's containment set, so they never reassign an operation's `parentId` (which stays its owning service).
 3. **Translate coarsened edges.** For each `parserGraph.coarsenedEdges[i]`, emit an L2 (`tier === "worker"`) or L1 (`tier === "namespace"`) view dependency edge. No projection logic runs in the visualizer — the parser has already aggregated dispatch edges by `(from, to, tier)` and discarded self-loops.
 4. **Build `duplicateGroups`.** Index every view node by its `definitionKey`; the resulting `Map<definitionKey, Set<nodeId>>` powers the duplicate-highlight interaction (see § Interaction States: Duplicate Highlighting).
 
@@ -325,7 +325,7 @@ Each node type should be visually distinct using redundant encoding (don't rely 
 | Activity       | Circle or pill        | Small     |
 | NexusService   | Circle or pill        | Small     |
 
-Level 3 node types share the same size tier but are distinguished by color and icon (matching the tree view's existing color system: purple for workflows, blue for activities, pink for nexus services).
+Level 3 node types share the same size tier but are distinguished by color and icon (matching the tree view's existing color system: purple for workflows, blue for activities, pink for nexus services). Fill and border are the value's declared colour in the pane's resolved theme (§ Color); the canvas is theme-aware, so a dark pane draws the dark palette.
 
 Each node displays **only its name** as a label — all other detail (composition counts, file, connection degree, duplicate copies) lives in the hover box, not under the node. Labels use a dedicated `--color-graph-label` colour (softened — slate-700 in light themes, slate-300 in dark — rather than maximum contrast, so names aren't the only bright text on the canvas) at a semibold weight and slight translucency (so edges stay visible through them). Names up to 15 characters are shown in full; longer names are truncated to 12 characters plus an ellipsis. Overlap is handled by collision-based elision — see § Visual Density.
 
@@ -345,6 +345,8 @@ Each node displays **only its name** as a label — all other detail (compositio
 | Nexus dependency (→ via nexus)   | Solid, distinct color | Arrowhead    |
 | Containment (↔ adjacent levels)  | Dashed       | None (undirected)   |
 
+Every edge is stroked by its **resolved edge type** — the same classification that picks its spring — through the stroke the taxonomy declares for that type (`EdgeTypeDefinition.style`: colour per theme, alpha, dash, width). There is one classifier (D57): a spliced caller-to-backing edge, whose operation is filtered out, draws as the workflow dependency its type says it is.
+
 **Arrowheads are visible at rest.** Direction encoding is essential for answering "what depends on what?" (Q7) without hovering. Arrowheads point from the dependent node toward the dependency (A → B means "A depends on B"). They must be legible at typical zoom levels — scale arrowhead size with zoom so they remain visible but don't dominate at close zoom. Containment edges have no arrowhead (the relationship is symmetric membership).
 
 Edge opacity and thickness can be secondary signals — thicker or more opaque for higher-traffic connections if multiplicity data is available in the future.
@@ -353,7 +355,7 @@ Nexus edges carry metadata (endpoint, service, operation) shown on hover. Hoveri
 
 ### Color
 
-See [PRODUCT.md](./PRODUCT.md) § Visual Identity for the shared color palette. Edges inherit the color of their source node, or use a neutral color to reduce visual noise.
+See [PRODUCT.md](./PRODUCT.md) § Visual Identity for the shared color palette. **The colour scheme is the taxonomy's** (D57): every style value declares its fill and border in both themes (`color.light`, `color.dark`) beside its size, and every edge type declares its stroke per theme — one injected object carries palette and sizes, so a host swapping schemes swaps both (R10, R11, R15). The canvas draws in the pane's **resolved theme**: the user's choice from the **colour-scheme button** (bottom-centre: Auto / Light / Dark, persisted with the pane's other state, R21), or for Auto the host's — an ancestor's `.vscode-dark` or `data-theme`, else the OS preference — observed for change. An explicit choice sets `data-theme` on the pane, so the pane can be dark in a light host and light in a dark one. The pane carries `--color-<suffix>` and `--color-<suffix>-border` for every style value inline, in that theme; tokens, typed rows and filter-chip tints read them (a chip borrows a style value's colour as it borrows its icon, `FilterChip.tint`, and mixes its hover and active backgrounds from it at a per-theme percentage). Group-glow colours are the library's own cycling palette, not per value. Edges do not inherit their source node's colour; their stroke is their type's.
 
 ### Node Summaries
 
@@ -431,7 +433,7 @@ Two reasons:
 The graph's own state and quick controls float at the bottom of the canvas, out of the way of the top filter overlay:
 
 - **Node / edge count** (bottom-left) — `N nodes, M edges` (counts the currently visible/graduated set). Informational; updates reactively with filters. Shifts right when the keyboard-shortcuts panel (bottom-left) is open so the two don't overlap.
-- **Fit / Play-Pause / fps** (bottom-center) — a single centred cluster: **Fit** frames the viewport to all visible nodes (`F`); **Play / Pause** toggles simulation ticking (`Space`); and the live `fps` reads out while the simulation runs.
+- **Fit / Scheme / Play-Pause / fps** (bottom-center) — a single centred cluster: **Fit** frames the viewport to all visible nodes (`F`); the **colour-scheme button** cycles Auto → Light → Dark (R21, § Color); **Play / Pause** toggles simulation ticking (`Space`); and the live `fps` reads out while the simulation runs.
 
 (There is no manual Reheat button; reheating is automatic.) **Show in Tree** is no longer a toolbar control — it lives in the node hover tooltip (§ Interaction States: Hover).
 

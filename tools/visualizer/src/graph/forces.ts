@@ -17,6 +17,7 @@ import type { GraphEdge } from './model'
 import { relationOf } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange, LayoutTuning } from './simulation'
 import type { ScalarAxis, ScalarSpan } from './scalar'
+import type { EdgeStroke } from './scheme'
 import { isScalarTuning } from './scalar'
 import type { ReadableGraph } from './model'
 import type { Ontology } from './ontology'
@@ -475,6 +476,11 @@ export function bandStripes(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<
  */
 export const ABSENT_EDGE_PHYSICS: SpringPhysics = { strength: 0, distance: 0 }
 
+// A pair category is a spring, never a stroke — the canvas strokes an edge by
+// its resolved type on the style axis (D57) — so its description carries one
+// neutral stroke for the shape's sake.
+const PAIR_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.5, dash: [], width: 1.3 }
+
 /**
  * What a category starts from when nothing declared a spring for it: the mean
  * of the host's declared springs, so a bucket on a foreign axis is tuned from
@@ -573,6 +579,7 @@ export function resolveSprings(pair: PairTuning, ontology: Ontology): ResolvedSp
       if (!A || !B) return undefined
       return {
         id,
+        style: PAIR_STROKE,
         label: `${A.abbreviation}↔${B.abbreviation}`,
         sourceType: a,
         targetType: b,

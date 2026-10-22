@@ -97,11 +97,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     tier: 'container',
     defaultVisible: false,
     color: {
-      fill:       '#475569',  // slate-600
-      border:     '#1E293B',
-      fillDark:   '#94A3B8',  // slate-400
-      borderDark: '#475569',
-      cssVarSuffix: 'namespace',
+      light: { fill: '#475569', border: '#1E293B' }, // slate-600
+      dark:  { fill: '#94A3B8', border: '#475569' }, // slate-400
     },
     size: { r: 20, iconSize: 18 },
     physics: {
@@ -120,11 +117,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     tier: 'container',
     defaultVisible: false,
     color: {
-      fill:       '#9F1239',  // rose-900 — deep, sits just under namespace
-      border:     '#4C0519',
-      fillDark:   '#BE123C',  // rose-700 — lighter on dark
-      borderDark: '#881337',
-      cssVarSuffix: 'nexus-endpoint',
+      light: { fill: '#9F1239', border: '#4C0519' }, // rose-900 — deep, sits just under namespace
+      dark:  { fill: '#BE123C', border: '#881337' }, // rose-700 — lighter on dark
     },
     size: { r: 15, iconSize: 14 },
     physics: {
@@ -143,11 +137,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     tier: 'host',
     defaultVisible: true,
     color: {
-      fill:       '#94A3B8',  // slate-400
-      border:     '#475569',
-      fillDark:   '#CBD5E1',  // slate-300
-      borderDark: '#64748B',
-      cssVarSuffix: 'worker',
+      light: { fill: '#94A3B8', border: '#475569' }, // slate-400
+      dark:  { fill: '#CBD5E1', border: '#64748B' }, // slate-300
     },
     size: { r: 20, iconSize: 18 },
     physics: {
@@ -166,11 +157,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     tier: 'host',
     defaultVisible: false,
     color: {
-      fill:       '#DB2777',  // pink-600
-      border:     '#831843',
-      fillDark:   '#EC4899',  // pink-500
-      borderDark: '#9D174D',
-      cssVarSuffix: 'nexus-service',
+      light: { fill: '#DB2777', border: '#831843' }, // pink-600
+      dark:  { fill: '#EC4899', border: '#9D174D' }, // pink-500
     },
     size: { r: 20, iconSize: 18 },
     physics: {
@@ -189,11 +177,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     tier: 'orchestrator',
     defaultVisible: true,
     color: {
-      fill:       '#8B7EC8',
-      border:     '#5D4F95',
-      fillDark:   '#A89BD8',
-      borderDark: '#6B5BB0',
-      cssVarSuffix: 'workflow',
+      light: { fill: '#8B7EC8', border: '#5D4F95' },
+      dark:  { fill: '#A89BD8', border: '#6B5BB0' },
     },
     size: { r: 11, iconSize: 12 },
     physics: {
@@ -212,10 +197,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     tier: 'orchestrator',
     defaultVisible: false,
     color: {
-      fill:       '#F9A8D4',
-      border:     '#BE185D',
-      borderDark: '#DB2777',
-      cssVarSuffix: 'nexus-operation',
+      light: { fill: '#F9A8D4', border: '#BE185D' },
+      dark:  { fill: '#F9A8D4', border: '#DB2777' },
     },
     size: { r: 11, iconSize: 12 },
     physics: {
@@ -234,10 +217,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     tier: 'leaf',
     defaultVisible: false,
     color: {
-      fill:       '#7CB9E8',
-      border:     '#4A8BC2',
-      borderDark: '#5DA8DD',
-      cssVarSuffix: 'activity',
+      light: { fill: '#7CB9E8', border: '#4A8BC2' },
+      dark:  { fill: '#7CB9E8', border: '#5DA8DD' },
     },
     size: { r: 8, iconSize: 10 },
     physics: {
@@ -311,9 +292,8 @@ const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
   tier: 'leaf',
   defaultVisible: false,
   color: {
-    fill: '#CBD5E1',
-    border: '#94A3B8',
-    cssVarSuffix: 'unknown',
+    light: { fill: '#CBD5E1', border: '#94A3B8' },
+    dark:  { fill: '#CBD5E1', border: '#94A3B8' },
   },
   size: { r: 10, iconSize: 11 },
   physics: {
@@ -345,12 +325,14 @@ const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
 // The chip grouping for the kind axis, lifted from the theme's
 // VIEW_FILTER_ENTRIES shape so the bar does not need to import the theme.
 const VIEW_FILTER_CHIPS: readonly FilterChip[] = [
-  { id: 'namespaceDef', label: 'Namespaces', icon: NODE_TYPE_REGISTRY.namespace.icon, values: ['namespaceDef'] },
-  { id: 'workerDef', label: 'Workers', icon: NODE_TYPE_REGISTRY.worker.icon, values: ['workerDef'] },
-  { id: 'nexus', label: 'Nexus', icon: NODE_TYPE_REGISTRY.nexusEndpoint.icon,
+  { id: 'namespaceDef', label: 'Namespaces', icon: NODE_TYPE_REGISTRY.namespace.icon, tint: 'namespace', values: ['namespaceDef'] },
+  { id: 'workerDef', label: 'Workers', icon: NODE_TYPE_REGISTRY.worker.icon, tint: 'worker', values: ['workerDef'] },
+  // The group wears the operation's light pink: the three deepest palette
+  // extremes stay reserved for per-node accents, and the group chip sits softer.
+  { id: 'nexus', label: 'Nexus', icon: NODE_TYPE_REGISTRY.nexusEndpoint.icon, tint: 'nexusOperation',
     values: ['nexusEndpointDef', 'nexusServiceDef', 'nexusOperationDef'] },
-  { id: 'workflowDef', label: 'Workflows', icon: NODE_TYPE_REGISTRY.workflow.icon, values: ['workflowDef'] },
-  { id: 'activityDef', label: 'Activities', icon: NODE_TYPE_REGISTRY.activity.icon, values: ['activityDef'] },
+  { id: 'workflowDef', label: 'Workflows', icon: NODE_TYPE_REGISTRY.workflow.icon, tint: 'workflow', values: ['workflowDef'] },
+  { id: 'activityDef', label: 'Activities', icon: NODE_TYPE_REGISTRY.activity.icon, tint: 'activity', values: ['activityDef'] },
 ]
 
 const KIND_ABBREV: Record<string, string> = Object.fromEntries(

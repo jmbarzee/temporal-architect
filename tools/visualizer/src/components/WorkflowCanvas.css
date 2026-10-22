@@ -66,11 +66,11 @@
   background: transparent;
 }
 
-.vscode-dark .tab-bar-btn:hover {
+:is(.vscode-dark, [data-theme=\"dark\"]) .tab-bar-btn:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.vscode-dark .tab-bar-btn:disabled:hover {
+:is(.vscode-dark, [data-theme=\"dark\"]) .tab-bar-btn:disabled:hover {
   background: transparent;
 }
 

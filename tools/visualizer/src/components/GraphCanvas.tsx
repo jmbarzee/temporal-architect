@@ -14,7 +14,8 @@ import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewpo
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
 import type { Ontology } from '../graph/ontology'
 import { useOntology } from './graph-view/useOntology'
-import { edgeStyleFor } from '../graph/edge-styles'
+import type { EdgeStroke, Theme } from '../graph/scheme'
+import { withAlpha } from '../graph/scheme'
 import type { ForceSection } from './GraphControlPanel'
 import type { GravityHover } from './GravityControls'
 
@@ -127,15 +128,10 @@ function cssVar(el: Element | null, name: string, fallback: string): string {
   return v || fallback
 }
 
-// withAlpha turns a #RRGGBB hex into an rgba() string at the given alpha — used
-// for the group-glow gradient stops so a member halo fades cleanly to nothing.
-function withAlpha(hex: string, alpha: number): string {
-  const h = hex.replace('#', '')
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
+// What an edge draws as when the view's stroke map has no entry for it — a
+// state the view does not produce (the map is built from the same edge array
+// this canvas is given), kept quiet because this runs in the draw loop (T4).
+const NEUTRAL_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.5, dash: [], width: 1.3 }
 
 const ARROWHEAD_SIZE = 8
 const CULL_MARGIN = 100
@@ -176,6 +172,9 @@ interface GraphCanvasProps {
   resolved: ResolvedPhysics
   /** The band overlay as data — stripes per axis, rings — computed by the view in the forces' frame. */
   overlay: BandOverlay
+  /** The theme the pane draws in, and every visible edge's stroke, resolved once by the view (D57, T25). */
+  theme: Theme
+  edgeStrokes: ReadonlyMap<GraphEdge, EdgeStroke>
   activeSection: ForceSection
   activePushBucket: string | null
   activeGravityBucket: GravityHover | null
@@ -204,6 +203,8 @@ interface DrawData {
   forceParams: ForceParams
   resolved: ResolvedPhysics
   overlay: BandOverlay
+  theme: Theme
+  edgeStrokes: ReadonlyMap<GraphEdge, EdgeStroke>
   activeSection: ForceSection
   activePushBucket: string | null
   activeGravityBucket: GravityHover | null
@@ -225,7 +226,7 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, forceParams, resolved, overlay, activeSection, activePushBucket,
+  running, forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket,
   activeGravityBucket, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
@@ -277,14 +278,14 @@ export function GraphCanvas({
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, overlay, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, overlay, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -530,7 +531,7 @@ export function GraphCanvas({
           Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
         const edgeHighlighted = d.highlightedEdges?.has(edge.id) ?? false
-        const style = edgeStyleFor(edge, d.ontology.valueFor(src), d.ontology.valueFor(tgt))
+        const style = d.edgeStrokes.get(edge) ?? NEUTRAL_STROKE
         const baseAlpha = style.alpha
         // An edge is search-dimmed if a search is active and either
         // endpoint isn't a match — keeps the visible chain readable
@@ -545,7 +546,7 @@ export function GraphCanvas({
 
         ctx.beginPath()
         ctx.setLineDash([...style.dash])
-        ctx.strokeStyle = style.color
+        ctx.strokeStyle = style.color[d.theme]
         ctx.lineWidth = style.width
         ctx.moveTo(sx, sy)
         ctx.lineTo(tx, ty)
@@ -573,7 +574,7 @@ export function GraphCanvas({
             ay - ARROWHEAD_SIZE * Math.sin(angle + Math.PI / 6),
           )
           ctx.closePath()
-          ctx.fillStyle = style.color
+          ctx.fillStyle = style.color[d.theme]
           ctx.fill()
         }
 
@@ -619,7 +620,7 @@ export function GraphCanvas({
           const baseAlpha = highlighted ? 0.28 : 0.05
           const stepAlpha = highlighted ? 0.06 : 0.015
 
-          const color = d.ontology.resolveNodeStyle(node).color.fill
+          const color = d.ontology.resolveNodeStyle(node).color[d.theme].fill
           ctx.strokeStyle = color
 
           const effectiveCharge = Math.abs(chargeFor(d.resolved.push, node)) * pushMul
@@ -708,7 +709,7 @@ export function GraphCanvas({
           if (activePullKey) {
             // Border: a tension-coloured casing wider than the edge, then the
             // edge's own colour redrawn on top at full opacity.
-            const style = edgeStyleFor(edge, d.ontology.valueFor(src), d.ontology.valueFor(tgt))
+            const style = d.edgeStrokes.get(edge) ?? NEUTRAL_STROKE
             ctx.beginPath()
             ctx.moveTo(sx, sy)
             ctx.lineTo(tx, ty)
@@ -721,7 +722,7 @@ export function GraphCanvas({
             ctx.beginPath()
             ctx.moveTo(sx, sy)
             ctx.lineTo(tx, ty)
-            ctx.strokeStyle = style.color
+            ctx.strokeStyle = style.color[d.theme]
             ctx.globalAlpha = 1
             ctx.lineWidth = style.width
             ctx.setLineDash([...style.dash])
@@ -867,8 +868,7 @@ export function GraphCanvas({
         const nodeDimmed = (hasHighlight && !nodeHighlighted) || searchDimmed
         ctx.globalAlpha = nodeDimmed ? dimAlpha : 1
 
-        const fill   = def.color.fill
-        const border = def.color.border
+        const { fill, border } = def.color[d.theme]
         const icon   = def.icon
 
         // Filled body + crisp border. The border is ~3 stops darker than the

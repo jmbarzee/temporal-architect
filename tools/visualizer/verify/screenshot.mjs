@@ -9,12 +9,16 @@
 // using node's global WebSocket (node >= 22). No puppeteer, no playwright.
 //
 //   node verify/screenshot.mjs <unit> [--port 5178] [--out kickoff/screenshots]
-//       [--tab Gravity] [--subtab "Y Axis"] [--select gravity-axis-y=scalar:reach]
+//       [--tab Gravity] [--subtab "Y Axis"] [--select gravity-axis-y=scalar:reach] [--dark]
 //
 // The three optional flags steer the control-panel capture: click a panel tab
 // by its label, then a sub-tab by its label (tabs are buttons or `role=tab`), then set a <select> by element id
 // (through React's own setter, so the app sees a change). A unit whose
 // evidence lives behind a tab names it here rather than growing this script.
+//
+// `--dark` marks the document the way a dark host does (`.vscode-dark` on
+// <body>) before anything renders, and names the captures `-dark`; a
+// theme-aware canvas (D57) has two appearances to evidence.
 //
 // Expects a dev server already running (`npm run dev`), because the gate is a
 // pass over the *running app*, not over a build artifact.
@@ -45,6 +49,8 @@ const outDir = flag('--out', 'kickoff/screenshots')
 const panelTab = flag('--tab', null)
 const panelSubtab = flag('--subtab', null)
 const panelSelect = flag('--select', null)
+const dark = args.includes('--dark')
+const suffix = dark ? '-dark' : ''
 const cdpPort = 9222
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -199,6 +205,7 @@ async function main() {
     const url = `http://localhost:${port}/?ast=/fixtures/${fixture}.json`
     await send('Page.navigate', { url }, sessionId)
     await sleep(2500)
+    if (dark) await evalIn(`document.body.classList.add('vscode-dark'), 'dark'`)
     await evalIn(ERRORS_HOOK)
     const tab = await evalIn(CLICK_GRAPH)
     if (tab !== 'ok') throw new Error(`${fixture}: ${tab}`)
@@ -217,7 +224,7 @@ async function main() {
     const errors = await evalIn('JSON.stringify(window.__twfErrors || [])')
 
     const { data } = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
-    const file = join(outDir, `${unit}-${fixture}.png`)
+    const file = join(outDir, `${unit}-${fixture}${suffix}.png`)
     writeFileSync(file, Buffer.from(data, 'base64'))
     // A second capture with the control panel open: the requirements that live
     // in the panel (its tabs, maps and curves) are otherwise invisible to this
@@ -233,7 +240,7 @@ async function main() {
     }
     const errorsAfterPanel = await evalIn('JSON.stringify(window.__twfErrors || [])')
     const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
-    writeFileSync(join(outDir, `${unit}-${fixture}-controls.png`), Buffer.from(shot.data, 'base64'))
+    writeFileSync(join(outDir, `${unit}-${fixture}-controls${suffix}.png`), Buffer.from(shot.data, 'base64'))
     results.push({ fixture, counts, chips, errors: errorsAfterPanel, file, panel })
     console.log(`  ${fixture.padEnd(22)} ${counts.padEnd(20)} chips=${chips}  panel=${panel}  errors=${errorsAfterPanel}`)
   }

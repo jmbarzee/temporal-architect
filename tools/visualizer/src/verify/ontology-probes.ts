@@ -262,6 +262,7 @@ function physicsInjection(): Json {
       id: 'zoneLink', label: 'N↔S', sourceType: 'north', targetType: 'south',
       category: 'dependency',
       physics: { strength: 0.7, distance: 123 }, tooltip: 'zone link',
+      style: { color: { light: '#000000', dark: '#FFFFFF' }, alpha: 1, dash: [], width: 1 },
     }],
     resolveEdgeType: () => 'zoneLink',
     scalars: [],

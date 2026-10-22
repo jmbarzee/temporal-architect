@@ -35,11 +35,11 @@
   border-color: rgba(139, 126, 200, 0.35);
 }
 
-.vscode-dark .pin-toggle:hover {
+:is(.vscode-dark, [data-theme=\"dark\"]) .pin-toggle:hover {
   background: rgba(168, 155, 216, 0.12);
 }
 
-.vscode-dark .pin-toggle.pinned {
+:is(.vscode-dark, [data-theme=\"dark\"]) .pin-toggle.pinned {
   background: rgba(168, 155, 216, 0.18);
   border-color: rgba(168, 155, 216, 0.4);
 }

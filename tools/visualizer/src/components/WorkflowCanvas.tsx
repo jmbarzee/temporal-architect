@@ -15,6 +15,7 @@ import { GraphView } from './GraphView'
 import type { FilterState, PinState, ViewTransition, FilterDimension } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
 import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../filter/storage'
+import type { ThemeChoice } from './graph-view/useTheme'
 import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface WorkflowCanvasProps {
@@ -213,6 +214,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // views (spec § Search Scope). Search is non-destructive (dim, not hide)
   // so sharing is safe.
   const [searchQuery, setSearchQuery] = React.useState<string>(persisted.searchQuery ?? '')
+  const [graphTheme, setGraphTheme] = React.useState<ThemeChoice>(persisted.graphTheme ?? 'system')
   const [searchActive, setSearchActive] = React.useState<boolean>(false)
 
   // Pending-focus target for cross-view nav. Reconciler has already
@@ -237,8 +239,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
       treePins: pinsToPersisted(treePins),
       graphPins: pinsToPersisted(graphPins),
       searchQuery,
+      graphTheme,
     })
-  }, [treeFilter, graphFilter, treePins, graphPins, treeChain, graphChain, searchQuery])
+  }, [treeFilter, graphFilter, treePins, graphPins, treeChain, graphChain, searchQuery, graphTheme])
 
   // Stale file cleanup: when the AST changes, remove any selectedFiles
   // entries that no longer exist in either view. Pins are not touched —
@@ -479,6 +482,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               decomposition={decomposition}
               onRequestDecomposition={onRequestDecomposition}
               onShowInTree={historyMode ? undefined : showInTree}
+              theme={graphTheme}
+              onThemeChange={setGraphTheme}
               filter={graphFilter}
               onFilterChange={setGraphFilter}
               pins={graphPins}

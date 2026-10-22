@@ -264,9 +264,8 @@
 }
 
 /* ── Type colour theming ───────────────────────────────────────────────────
-   Per-type rows (charges, bands, edge endpoints) read from --type-color.
-   The .graph-control-typed-<nodeType> assignments that set --type-color are
-   generated at runtime by mountNodeTypeStyles() in App.tsx / webview.tsx.
+   Per-type rows (charges, bands, edge endpoints) read from --type-color,
+   which each typed row sets inline from the pane's --color-<suffix> (D57).
 */
 
 /* Rows that carry a single node type get a coloured left-accent and tint

@@ -13,7 +13,6 @@
 import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { resolveSprings } from '../graph/forces'
 import { pairTuning, styleIdentityMapping } from '../graph/simulation'
-import { edgeStyleKeyFor } from '../graph/edge-styles'
 import type { GraphEdge } from '../graph/model'
 import type { EdgeCategoryKind } from '../graph/taxonomy'
 import { DISPATCH_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
@@ -43,17 +42,17 @@ export function tierC(): Json {
             },
           }
           const key = `${edgeType}|${src}|${tgt}|${dispatchKind ?? '-'}`
-          // Both classifiers, side by side. They are independent and already
-          // disagree; the table is where that disagreement is enumerated.
-          rows[key] = `${edgeTypeFor(edge, src, tgt)}|${edgeStyleKeyFor(edge, src, tgt)}`
+          // The one classifier (D57): a stroke is the resolved type's, so the
+          // type is the whole answer.
+          rows[key] = edgeTypeFor(edge, src, tgt)
         }
       }
     }
   }
 
-  // The `nexusEndpoint`-carrying variant of every dependency pair: the renderer
-  // reads that field and the physics classifier never does, so it is a second
-  // axis on which the two can diverge.
+  // The `nexusEndpoint`-carrying variant of every dependency pair: the
+  // classifier never reads that field, and this is where that stays pinned
+  // (D3) now that no renderer rule reads it either (D57).
   const withEndpoint: Record<string, string> = {}
   for (const src of ALL_NODE_TYPES) {
     for (const tgt of ALL_NODE_TYPES) {
@@ -64,8 +63,7 @@ export function tierC(): Json {
         dimensions: { [RELATION_DIMENSION]: 'dependency' },
         payload: { nexusEndpoint: 'SomeEndpoint' },
       }
-      withEndpoint[`dependency|${src}|${tgt}|ep`] =
-        `${edgeTypeFor(edge, src, tgt)}|${edgeStyleKeyFor(edge, src, tgt)}`
+      withEndpoint[`dependency|${src}|${tgt}|ep`] = edgeTypeFor(edge, src, tgt)
     }
   }
 
