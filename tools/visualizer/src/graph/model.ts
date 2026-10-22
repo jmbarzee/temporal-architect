@@ -113,6 +113,22 @@ export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): DimensionValue 
   return edge.dimensions[DISPATCH_DIMENSION]
 }
 
+/**
+ * A graph as a reader sees it — its nodes, its edges, and a lookup by id —
+ * the shape a computed scalar, the layout frame and the view's visible-graph
+ * derivation all read. Nodes are an array, never a one-shot iterator: a
+ * reader walks them more than once. A `Simulation` satisfies it structurally.
+ */
+export interface ReadableGraph {
+  readonly nodes: readonly GraphNode[]
+  readonly edges: readonly GraphEdge[]
+  getNode(id: string): GraphNode | undefined
+}
+
+export function readableGraph(graph: Graph): ReadableGraph {
+  return { nodes: [...graph.nodes.values()], edges: graph.edges, getNode: id => graph.nodes.get(id) }
+}
+
 export interface Graph {
   nodes: Map<string, GraphNode>
   edges: GraphEdge[]

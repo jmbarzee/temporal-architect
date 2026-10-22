@@ -1,16 +1,16 @@
 // One layout axis of the Gravity tab — X or Y — as a sub-tab body: which
-// mapping the axis keys on, one column per bucket carrying the bucket's rest
+// mapping or scalar the axis keys on, one column per bucket carrying the bucket's rest
 // band as two handles (R30), the axis's own strength in the left gutter (R32),
 // and the band force curve beneath (R33). Both axes are this one component:
 // they are the same kind of thing (T22), so they get the same surface.
 // See GRAPH_VIEW.md § Control Panel → GRAVITY.
 
 import React from 'react'
-import type { ForceParams, AxisOption, AxisTuning, BandRange } from '../graph/simulation'
-import { TOKEN_CEILING, withOverride } from '../graph/simulation'
+import type { ForceParams, LayoutAxisOption, AxisTuning, BandRange, LayoutTuning } from '../graph/simulation'
+import { TOKEN_CEILING, layoutAxisKey, mappedTuning, withOverride } from '../graph/simulation'
+import type { ScalarSpan } from '../graph/scalar'
 import type { ResolvedAxis, ResolvedPhysics } from '../graph/forces'
-import { bandRangeFor } from '../graph/forces'
-import type { DimensionalMapping } from '../graph/dimension'
+import { bandRangeFor, isScalarAxis } from '../graph/forces'
 import { useOntology } from './graph-view/useOntology'
 import { bucketColor } from './controls/bucketColor'
 import { Plot } from './controls/Plot'
@@ -32,8 +32,8 @@ interface AxisControlsProps {
   axis: LayoutAxis
   params: ForceParams
   resolved: ResolvedPhysics
-  /** Every mapping the graph admits; an axis takes one whose bucket count fits the ceiling. */
-  axes: readonly AxisOption[]
+  /** Every axis this one may key on: mappings whose bucket count fits the ceiling, and computed scalars (R28). */
+  axes: readonly LayoutAxisOption[]
   onParamChange: (patch: Partial<ForceParams>) => void
   onRelayout: (patch: Partial<ForceParams>) => void
   hovered: GravityHover | null
@@ -44,7 +44,7 @@ const tuningKey = (axis: LayoutAxis): 'bandX' | 'bandY' => (axis === 'x' ? 'band
 const strengthKey = (axis: LayoutAxis): 'gravityX' | 'gravityY' => (axis === 'x' ? 'gravityX' : 'gravityY')
 // Patches spelled out per axis, so the compiler checks the value against the
 // field — a computed key under a cast would let a tuning land in a strength.
-const tuningPatch = (axis: LayoutAxis, tuning: AxisTuning<BandRange>): Partial<ForceParams> =>
+const tuningPatch = (axis: LayoutAxis, tuning: LayoutTuning): Partial<ForceParams> =>
   axis === 'x' ? { bandX: tuning } : { bandY: tuning }
 const strengthPatch = (axis: LayoutAxis, value: number): Partial<ForceParams> =>
   axis === 'x' ? { gravityX: value } : { gravityY: value }
@@ -64,66 +64,191 @@ const W_MAX = 600
 const W_STEP = 10
 const DOT_R = 5
 
-const yForWorld = (v: number) => PT + ((v - W_MIN) / (W_MAX - W_MIN)) * (PB - PT)
-const valForY = (y: number) => W_MIN + ((y - PT) / (PB - PT)) * (W_MAX - W_MIN)
+// The plot is vertical for both axes. For Y it reads as the screen does —
+// a larger y is lower. For X it reads as a rotated chart: a larger x (further
+// right on the canvas) is higher, so a scalar's "1 at the right" sits at the
+// top of the X plot as "1 at the top" sits at the top of the Y plot.
+const yForWorld = (axis: LayoutAxis, v: number) => {
+  const t = (v - W_MIN) / (W_MAX - W_MIN)
+  return axis === 'y' ? PT + t * (PB - PT) : PB - t * (PB - PT)
+}
+const valForY = (axis: LayoutAxis, y: number) => {
+  const t = axis === 'y' ? (y - PT) / (PB - PT) : (PB - y) / (PB - PT)
+  return W_MIN + t * (W_MAX - W_MIN)
+}
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const snap = (v: number, step: number) => Math.round(v / step) * step
 
 export function AxisControls({ axis, params, resolved, axes, onParamChange, onRelayout, hovered, onHover }: AxisControlsProps) {
   const ontology = useOntology()
   const key = tuningKey(axis)
-  const tuning: AxisTuning<BandRange> = params[key]
-  const table: ResolvedAxis<BandRange> = axis === 'x' ? resolved.bandX : resolved.bandY
+  const tuning: LayoutTuning = params[key]
+  const table = axis === 'x' ? resolved.bandX : resolved.bandY
   const strength = params[strengthKey(axis)]
   const label = axis.toUpperCase()
   const ignored = axis === 'x' && params.radial
+  const current = layoutAxisKey(tuning)
 
-  const onAxisChange = (mapping: DimensionalMapping) => {
-    if (mapping.dimension === tuning.mapping.dimension) return
-    // A new axis starts from the taxonomy's declared bands on its buckets.
-    onRelayout(tuningPatch(axis, { mapping, overrides: new Map() }))
+  const onAxisChange = (value: string) => {
+    if (value === current) return
+    const chosen = axes.find(o => layoutAxisKey(o) === value)
+    if (!chosen) return
+    // A new axis starts from the taxonomy: the declared bands on a mapping's
+    // buckets, or the declared extent as a scalar's span (nothing stored).
+    onRelayout(tuningPatch(axis, chosen.kind === 'scalar'
+      ? { scalar: chosen.scalar.id }
+      : { mapping: chosen.option.mapping, overrides: new Map() }))
   }
 
   return (
     <div className={`gravity-section-tools${strength > 0 && !ignored ? '' : ' inactive'}`}>
-      <Equation>{<>F = <FormulaValue id={`bandStrength${label}`}>strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
+      {/* The equation varies by kind (R29): outside a band, or away from the scalar's point. */}
+      <Equation>{isScalarAxis(table)
+        ? <>F = <FormulaValue id={`bandStrength${label}`}>strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup>, d = |p − p<sub>0</sub> − s·(p<sub>1</sub> − p<sub>0</sub>)|</>
+        : <>F = <FormulaValue id={`bandStrength${label}`}>strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
 
       <div className="axis-row">
         <label className="axis-label" htmlFor={`gravity-axis-${axis}`}>axis</label>
         <select
           id={`gravity-axis-${axis}`}
           className="axis-select"
-          value={tuning.mapping.dimension}
-          title={`The dimension the ${label} axis keys on: one column per bucket`}
-          onChange={e => {
-            const option = axes.find(o => o.mapping.dimension === e.target.value)
-            if (option) onAxisChange(option.mapping)
-          }}
+          value={current}
+          title={`What the ${label} axis keys on: one column per bucket of a mapping, or a computed scalar as a gradient`}
+          onChange={e => onAxisChange(e.target.value)}
         >
-          {axes.map(o => (
-            <option key={o.mapping.dimension} value={o.mapping.dimension} disabled={o.pushTokens > TOKEN_CEILING}>
-              {o.pushTokens > TOKEN_CEILING ? `${o.mapping.label} — ${o.pushTokens} columns (max ${TOKEN_CEILING})` : `${o.mapping.label} (${o.pushTokens})`}
-            </option>
-          ))}
+          {axes.map(o => o.kind === 'scalar'
+            ? <option key={layoutAxisKey(o)} value={layoutAxisKey(o)} title={o.scalar.tooltip}>{o.scalar.label} — computed</option>
+            : <option key={layoutAxisKey(o)} value={layoutAxisKey(o)} disabled={o.option.pushTokens > TOKEN_CEILING}>
+                {o.option.pushTokens > TOKEN_CEILING ? `${o.option.mapping.label} — ${o.option.pushTokens} columns (max ${TOKEN_CEILING})` : `${o.option.mapping.label} (${o.option.pushTokens})`}
+              </option>)}
         </select>
         {ignored && <span className="axis-note">ignored in radial</span>}
       </div>
 
-      <AxisPlot
-        axis={axis}
-        radial={params.radial}
-        tuning={tuning}
-        table={table}
-        strength={strength}
-        onStrength={v => onParamChange(strengthPatch(axis, v))}
-        onBand={(bucket, next) => onParamChange(tuningPatch(axis, withOverride(tuning, bucket, next)))}
-        hovered={hovered}
-        onHover={onHover}
-        color={bucket => bucketColor(ontology, tuning.mapping, bucket)}
-      />
+      {/* The resolved axis decides the kind; the tuning is narrowed to match, loudly. */}
+      {isScalarAxis(table) ? (
+        <ScalarPlot
+          axis={axis}
+          radial={params.radial}
+          label={table.scalar.label}
+          tooltip={table.scalar.tooltip}
+          span={table.span}
+          strength={strength}
+          onStrength={v => onParamChange(strengthPatch(axis, v))}
+          onSpan={span => onParamChange(tuningPatch(axis, { scalar: table.scalar.id, span }))}
+        />
+      ) : (
+        <AxisPlot
+          axis={axis}
+          radial={params.radial}
+          tuning={mappedTuning(tuning)}
+          table={table}
+          strength={strength}
+          onStrength={v => onParamChange(strengthPatch(axis, v))}
+          onBand={(bucket, next) => onParamChange(tuningPatch(axis, withOverride(mappedTuning(tuning), bucket, next)))}
+          hovered={hovered}
+          onHover={onHover}
+          color={bucket => bucketColor(ontology, mappedTuning(tuning).mapping, bucket)}
+        />
+      )}
 
       <AxisCurve axis={axis} params={params} onParamChange={onParamChange} />
     </div>
+  )
+}
+
+// A scalar axis as a control: a gradient from the end where a score of 0
+// rests to the end where 1 rests, in place of the columns (R31). The two ends
+// are handles that move freely — past each other flips the axis. Where each
+// node sits along it is the scalar's answer, not the user's.
+function ScalarPlot({ axis, radial, label, tooltip, span, strength, onStrength, onSpan }: {
+  axis: LayoutAxis
+  radial: boolean
+  label: string
+  tooltip: string
+  span: ScalarSpan
+  strength: number
+  onStrength: (v: number) => void
+  onSpan: (span: ScalarSpan) => void
+}) {
+  const svgRef = React.useRef<SVGSVGElement>(null)
+  const dragRef = React.useRef<keyof ScalarSpan | null>(null)
+  const axisLabel = axis.toUpperCase()
+  const x = (PL + PR) / 2
+  const userY = (e: React.PointerEvent): number => {
+    const svg = svgRef.current
+    if (!svg) return 0
+    const pt = svg.createSVGPoint()
+    pt.x = e.clientX
+    pt.y = e.clientY
+    const ctm = svg.getScreenCTM()
+    if (!ctm) return 0
+    return pt.matrixTransform(ctm.inverse()).y
+  }
+  const handleDown = (e: React.PointerEvent, end: keyof ScalarSpan) => {
+    e.preventDefault()
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+    dragRef.current = end
+  }
+  const handleMove = (e: React.PointerEvent) => {
+    const end = dragRef.current
+    if (!end) return
+    onSpan({ ...span, [end]: clamp(snap(valForY(axis, userY(e)), W_STEP), W_MIN, W_MAX) })
+  }
+  const handleUp = (e: React.PointerEvent) => {
+    dragRef.current = null
+    ;(e.currentTarget as Element).releasePointerCapture?.(e.pointerId)
+  }
+  const y0 = yForWorld(axis, span.zero)
+  const y1 = yForWorld(axis, span.one)
+  const gradientId = React.useId()
+  const handle = (end: keyof ScalarSpan, y: number) => (
+    <g key={end}>
+      <text x={PL + 10} y={y + 4} textAnchor="middle" className="gravity-band-label">{end === 'zero' ? '0' : '1'}</text>
+      <circle cx={x} cy={y} r={DOT_R} className="gravity-band-dot gravity-scalar-dot"
+        onPointerDown={e => handleDown(e, end)} onPointerMove={handleMove} onPointerUp={handleUp}>
+        <title>{`where a score of ${end === 'zero' ? 0 : 1} rests on ${axisLabel}: ${span[end]}`}</title>
+      </circle>
+    </g>
+  )
+  return (
+    <Plot
+      yLabel={`${axisLabel} strength`}
+      ySlider={
+        <Slider
+          orientation="vertical"
+          min={0} max={0.25} step={0.005}
+          value={strength}
+          onChange={onStrength}
+          title={`${axisLabel} pull strength (scale all); 0 switches the axis off`}
+          ariaLabel={`${axisLabel} strength`}
+          popId={`bandStrength${axisLabel}`}
+        />
+      }
+      bottom={<div className="ctl-plot-xlabel">{radial && axis === 'y' ? 'ring: the span’s low end innermost' : `${axisLabel} position: ${label}, 0 → 1`}</div>}
+    >
+      <svg
+        ref={svgRef}
+        className="gravity-band-svg"
+        viewBox={`0 0 ${AP_W} ${AP_H}`}
+        role="group"
+        aria-label={`${axisLabel} axis: ${label}, a computed scalar; drag the 0 and 1 ends`}
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1={y0} x2="0" y2={y1} gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="var(--color-text-muted)" stopOpacity="0.15" />
+            <stop offset="1" stopColor="var(--color-text)" stopOpacity="0.55" />
+          </linearGradient>
+        </defs>
+        <rect x={PL} y={PT} width={PR - PL} height={PB - PT} className="gravity-band-bg" />
+        <title>{tooltip}</title>
+        <rect x={PL + 24} y={Math.min(y0, y1)} width={PR - PL - 48} height={Math.abs(y1 - y0)} fill={`url(#${gradientId})`} className="gravity-scalar-gradient" />
+        <text x={x} y={PT - 6} textAnchor="middle" className="gravity-band-label">{label}</text>
+        <line x1={x} y1={PT} x2={x} y2={PB} className="gravity-band-track" />
+        {handle('zero', y0)}
+        {handle('one', y1)}
+      </svg>
+    </Plot>
   )
 }
 
@@ -164,7 +289,7 @@ function AxisPlot({ axis, radial, tuning, table, strength, onStrength, onBand, h
     const drag = dragRef.current
     if (!drag) return
     const cur = bandRangeFor(table, drag.bucket)
-    const v = clamp(snap(valForY(userY(e)), W_STEP), W_MIN, W_MAX)
+    const v = clamp(snap(valForY(axis, userY(e)), W_STEP), W_MIN, W_MAX)
     onBand(drag.bucket, drag.edge === 'min'
       ? { min: Math.min(v, cur.max - W_STEP), max: cur.max }
       : { min: cur.min, max: Math.max(v, cur.min + W_STEP) })
@@ -208,8 +333,8 @@ function AxisPlot({ axis, radial, tuning, table, strength, onStrength, onBand, h
         <g className="gravity-band-stripes">
           {buckets.map((b, i) => {
             const r = bandRangeFor(table, b.id)
-            const yTop = yForWorld(r.min)
-            const yBot = yForWorld(r.max)
+            const yTop = yForWorld(axis, r.min)
+            const yBot = yForWorld(axis, r.max)
             const half = (PR - PL) / buckets.length / 2
             return (
               <rect
@@ -224,8 +349,8 @@ function AxisPlot({ axis, radial, tuning, table, strength, onStrength, onBand, h
         {buckets.map((b, i) => {
           const x = colX(i)
           const r = bandRangeFor(table, b.id)
-          const yTop = yForWorld(r.min)
-          const yBot = yForWorld(r.max)
+          const yTop = yForWorld(axis, r.min)
+          const yBot = yForWorld(axis, r.max)
           const c = color(b.id)
           return (
             <g

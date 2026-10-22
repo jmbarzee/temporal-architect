@@ -9,6 +9,12 @@
 // using node's global WebSocket (node >= 22). No puppeteer, no playwright.
 //
 //   node verify/screenshot.mjs <unit> [--port 5178] [--out kickoff/screenshots]
+//       [--tab Gravity] [--subtab "Y Axis"] [--select gravity-axis-y=scalar:reach]
+//
+// The three optional flags steer the control-panel capture: click a panel tab
+// by its label, then a sub-tab by its label (tabs are buttons or `role=tab`), then set a <select> by element id
+// (through React's own setter, so the app sees a change). A unit whose
+// evidence lives behind a tab names it here rather than growing this script.
 //
 // Expects a dev server already running (`npm run dev`), because the gate is a
 // pass over the *running app*, not over a build artifact.
@@ -36,6 +42,9 @@ const flag = (name, dflt) => {
 }
 const port = flag('--port', '5178')
 const outDir = flag('--out', 'kickoff/screenshots')
+const panelTab = flag('--tab', null)
+const panelSubtab = flag('--subtab', null)
+const panelSelect = flag('--select', null)
 const cdpPort = 9222
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -142,6 +151,27 @@ const OPEN_CONTROLS = `
     return 'open'
   })()`
 
+// Click the tab (a button, or anything in the tab role) whose text is exactly `label`.
+const CLICK_LABEL = label => `
+  (() => {
+    const b = [...document.querySelectorAll('button, [role="tab"]')]
+      .find(e => e.textContent.trim() === ${JSON.stringify(label)})
+    if (!b) return 'no button ' + ${JSON.stringify(label)}
+    b.click()
+    return 'clicked'
+  })()`
+
+// Set a controlled <select> the way a user would: React listens for the
+// change event and reads the value through its own setter.
+const SET_SELECT = (id, value) => `
+  (() => {
+    const el = document.getElementById(${JSON.stringify(id)})
+    if (!el) return 'no select ' + ${JSON.stringify(id)}
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(value)})
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+    return el.value === ${JSON.stringify(value)} ? 'set' : 'refused ' + el.value
+  })()`
+
 const ERRORS_HOOK = `
   (() => {
     window.__twfErrors = [];
@@ -192,8 +222,15 @@ async function main() {
     // A second capture with the control panel open: the requirements that live
     // in the panel (its tabs, maps and curves) are otherwise invisible to this
     // gate's evidence, which showed every panel collapsed.
-    const panel = await evalIn(OPEN_CONTROLS)
+    let panel = await evalIn(OPEN_CONTROLS)
     await sleep(800)
+    if (panelTab) { panel += ' tab=' + await evalIn(CLICK_LABEL(panelTab)); await sleep(400) }
+    if (panelSubtab) { panel += ' subtab=' + await evalIn(CLICK_LABEL(panelSubtab)); await sleep(400) }
+    if (panelSelect) {
+      const [id, value] = panelSelect.split('=')
+      panel += ' select=' + await evalIn(SET_SELECT(id, value))
+      await sleep(4000)                     // a new axis relays out; let it settle
+    }
     const errorsAfterPanel = await evalIn('JSON.stringify(window.__twfErrors || [])')
     const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
     writeFileSync(join(outDir, `${unit}-${fixture}-controls.png`), Buffer.from(shot.data, 'base64'))
@@ -205,6 +242,13 @@ async function main() {
   const bad = results.filter(r => r.errors !== '[]')
   if (bad.length) {
     console.error('APPLICATION ERRORS on: ' + bad.map(b => b.fixture).join(', '))
+    process.exitCode = 1
+  }
+  // A panel step that did not apply is a capture of the wrong state, not
+  // evidence: the exit status says so rather than leaving it to the reader.
+  const missed = results.filter(r => /no toggle|no button|no select|refused/.test(r.panel))
+  if (missed.length) {
+    console.error('PANEL STEP DID NOT APPLY on: ' + missed.map(b => `${b.fixture} (${b.panel})`).join(', '))
     process.exitCode = 1
   }
 }

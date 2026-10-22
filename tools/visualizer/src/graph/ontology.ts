@@ -23,6 +23,8 @@ import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
 import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
+import type { ScalarAxis } from './scalar'
+import { BUILT_IN_SCALARS } from './scalar'
 
 /** The minimum a consumer needs of a node in order to resolve its style. */
 export type StyleSubject = { dimensions: DimensionMap }
@@ -74,6 +76,8 @@ export interface Ontology {
   readonly nodeTypeKeys: readonly DimensionValue[]
   /** Every edge category, in control-panel order. */
   readonly edgeTypes: readonly EdgeTypeDefinition[]
+  /** Every computed scalar a layout axis may key on: the built-ins, then the host's. */
+  readonly scalars: readonly ScalarAxis[]
 
   /**
    * Style, size, physics and summary metadata for a value. Never throws — a
@@ -129,6 +133,12 @@ export interface OntologySpec {
   edgeTypes: readonly EdgeTypeDefinition[]
   resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
   /**
+   * Computed scalars this host adds to the built-ins (R8): each reads node
+   * metadata — its own payload included — and the graph's structure, and
+   * answers per node in [0, 1]. Empty is a fine answer.
+   */
+  scalars: readonly ScalarAxis[]
+  /**
    * Returned for a key the host did not declare. Required, not optional: a
    * taxonomy that cannot say what an unknown value looks like has no answer for
    * the one case that matters.
@@ -155,6 +165,11 @@ export function createOntology(spec: OntologySpec): Ontology {
   for (const k of Object.keys(nodeStyles)) if (!keys.has(k)) problems.push(`nodeStyles declares ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
   for (const g of spec.styleGroups) for (const v of g.values) if (!keys.has(v)) problems.push(`styleGroups.${g.id} names ${JSON.stringify(v)}, which nodeTypeKeys does not list`)
   for (const k of Object.keys(spec.abbreviations)) if (!keys.has(k)) problems.push(`abbreviations names ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
+  const scalarIds = new Set<string>()
+  for (const sc of [...BUILT_IN_SCALARS, ...spec.scalars]) {
+    if (scalarIds.has(sc.id)) problems.push(`scalar ${JSON.stringify(sc.id)} is declared twice (the built-ins are reach, degree and depth)`)
+    scalarIds.add(sc.id)
+  }
   if (problems.length > 0) throw new Error(`taxonomy is incoherent: ${problems.join('; ')}`)
   const byDimension = new Map(spec.filterDimensions.map(d => [d.id, d]))
   // Warn once per unrecognized key, and once PER ONTOLOGY: this resolves per
@@ -200,6 +215,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     styleGroups: spec.styleGroups,
     nodeTypeKeys: spec.nodeTypeKeys,
     edgeTypes: spec.edgeTypes,
+    scalars: [...BUILT_IN_SCALARS, ...spec.scalars],
     styleForKey,
     valueFor,
     // Hot path: one property read, one record lookup, one branch. No allocation

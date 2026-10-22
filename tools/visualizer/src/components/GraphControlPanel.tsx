@@ -14,7 +14,7 @@ import type { GravityHover } from './GravityControls'
 import { Slider } from './controls/Slider'
 import { EquationSection } from './controls/EquationSection'
 import { PopProvider } from './controls/PopContext'
-import type { AxisOption } from '../graph/simulation'
+import type { AxisOption, LayoutAxisOption } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
@@ -50,6 +50,8 @@ interface GraphControlPanelProps {
   onRelayout: (partial: Partial<ForceParams>) => void
   /** Every axis push/pull may key on for this graph, with its measured cost. */
   axes: readonly AxisOption[]
+  /** Every axis X or Y may key on: those mappings, and the computed scalars. */
+  layoutAxes: readonly LayoutAxisOption[]
   /** The spring categories some edge of the graph falls in. */
   presentSprings: ReadonlySet<string>
   onAxisChange: (mapping: DimensionalMapping) => void
@@ -135,7 +137,7 @@ const NODE_SCALE_SLIDERS: NodeScaleSliderDef[] = [
 ]
 
 export function GraphControlPanel({
-  params, resolved, onParamChange, onAdjust, onRelayout, axes, presentSprings, onAxisChange,
+  params, resolved, onParamChange, onAdjust, onRelayout, axes, layoutAxes, presentSprings, onAxisChange,
   onActiveSection,
   onActivePushBucket, onActiveGravityBucket, onActivePullEdge,
   nodeScale, onNodeScaleChange,
@@ -239,7 +241,7 @@ export function GraphControlPanel({
                 <GravityControls
                   params={params}
                   resolved={resolved}
-                  axes={axes}
+                  axes={layoutAxes}
                   onParamChange={emitParamChange}
                   onRelayout={onRelayout}
                   hovered={hoveredGravityBucket}
