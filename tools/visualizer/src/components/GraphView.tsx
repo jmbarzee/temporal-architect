@@ -10,16 +10,17 @@ import type { Decomposition } from '../types/decomposition'
 import type { DecompositionParams } from './protocol'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
-import { bandOverlay, layoutFrame, presentSpringCategories, resolvePhysics, resolveSprings, presentBuckets, isScalarAxis } from '../graph/forces'
+import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
 import { isIdentityMapping } from '../graph/dimension'
 import type { FocusTarget } from '../filter/types'
 import { matchesFocus } from '../filter/types'
-import type { PresentSets } from './GraphControlPanel'
+import type { PresentSets } from './graph-view/present'
+import { presentSetsOf } from './graph-view/present'
 import type { EdgeStroke } from '../graph/scheme'
 import { schemeVars } from '../graph/scheme'
 import { useTheme, THEME_CHOICES } from './graph-view/useTheme'
 import type { ThemeChoice } from './graph-view/useTheme'
-import { axisOptions, layoutAxisOptions, pairTuning } from '../graph/simulation'
+import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
 import { SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
@@ -180,9 +181,6 @@ export function GraphView({
     onToggleRunning: handleToggleRunning,
   } = useSimulation(graph, onSimRebuild)
 
-  // Classification does not depend on overrides, so what keys on the pair axis
-  // keys on its mapping, not on `resolved` (a new object after every slider edit).
-  const pairMapping = forceParams.pair.mapping
 
   // The dense per-bucket tables the kernels read, resolved once per
   // (params, taxonomy) here and handed to the canvas and every control (T25).
@@ -210,9 +208,9 @@ export function GraphView({
   // A new axis starts both pair forces from the taxonomy's declared physics on
   // its buckets (D47: a tuning keyed by one axis has no reading on another).
   const handleAxisChange = React.useCallback((mapping: DimensionalMapping) => {
-    if (mapping.dimension === pairMapping.dimension) return
+    if (mapping.dimension === forceParams.pair.mapping.dimension) return
     handleRelayout({ pair: pairTuning(mapping) })
-  }, [pairMapping, handleRelayout])
+  }, [forceParams.pair.mapping.dimension, handleRelayout])
 
   // Render-time node sizing (independent of the simulation). Tunable from the
   // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
@@ -250,22 +248,14 @@ export function GraphView({
   }, [visibleEdges, ontology, getSimNode])
 
   // What the controls offer: only what the post-filter visible set holds
-  // (R35, D59) — a token per bucket some visible node falls in, a column per
-  // such bucket on each layout axis, a pull token per spring category some
-  // visible edge falls in. The axis dropdowns still measure the whole graph:
-  // an axis's usability does not flip with a filter. Classification does not
-  // depend on overrides, so the pull half keys on the mapping, not on
-  // `resolved`, which is a new object after every slider edit.
-  const presentSprings = React.useMemo(
-    () => presentSpringCategories(resolveSprings(pairTuning(pairMapping), ontology), visibleEdges, getSimNode),
-    [pairMapping, ontology, visibleEdges, getSimNode],
+  // (R35, D59) — one function, `presentSetsOf`, that the harness calls too.
+  // The pull half is read over the edges the simulation springs (the graph's
+  // own, both ends visible), not over the graduated edges it draws (D60).
+  const sprung = React.useMemo(() => sprungEdges(graph.edges, visibleIds), [graph, visibleIds])
+  const present = React.useMemo<PresentSets>(
+    () => presentSetsOf(visibleNodes, sprung, resolved, getSimNode),
+    [visibleNodes, sprung, resolved, ontology, getSimNode],
   )
-  const present = React.useMemo<PresentSets>(() => ({
-    push: new Set(presentBuckets(visibleNodes, resolved.push)),
-    bandX: isScalarAxis(resolved.bandX) ? new Set<string>() : new Set(presentBuckets(visibleNodes, resolved.bandX)),
-    bandY: isScalarAxis(resolved.bandY) ? new Set<string>() : new Set(presentBuckets(visibleNodes, resolved.bandY)),
-    springs: presentSprings,
-  }), [visibleNodes, resolved, presentSprings])
 
   // --- Decomposition group overlay (GRAPH_VIEW.md § Decomposition Group
   // Overlay). Selection (which division per chunk is active/enabled/expanded)

@@ -1444,31 +1444,85 @@
         ],
         "hookedHighlights": {
           "activity": {
-            "edges": "derived",
+            "edges": [],
             "from": "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
             "nodes": [
               "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl"
             ]
           },
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:accessControl",
             "nodes": [
               "namespace:accessControl"
             ]
           },
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:connectorWorker/namespace:accessControl",
             "nodes": [
               "worker:connectorWorker/namespace:accessControl"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl"
+            ],
             "from": "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
             "nodes": [
-              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl"
+              "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
+              "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
+              "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
+              "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
+              "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
+              "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
+              "activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
+              "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
+              "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
+              "activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
+              "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
+              "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
+              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
+              "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl"
             ]
           }
         },
@@ -1783,31 +1837,85 @@
         ],
         "hookedHighlights": {
           "activity": {
-            "edges": "derived",
+            "edges": [],
             "from": "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
             "nodes": [
               "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl"
             ]
           },
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:accessControl",
             "nodes": [
               "namespace:accessControl"
             ]
           },
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:connectorWorker/namespace:accessControl",
             "nodes": [
               "worker:connectorWorker/namespace:accessControl"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl"
+            ],
             "from": "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
             "nodes": [
-              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl"
+              "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
+              "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
+              "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
+              "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
+              "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
+              "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
+              "activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
+              "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
+              "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
+              "activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
+              "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
+              "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
+              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
+              "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl"
             ]
           }
         },
@@ -1996,17 +2104,39 @@
         ],
         "hookedHighlights": {
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:connectorWorker/namespace:accessControl",
             "nodes": [
               "worker:connectorWorker/namespace:accessControl"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:worker:coreWorker/namespace:accessControl→worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl"
+            ],
             "from": "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
             "nodes": [
-              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl"
+              "worker:connectorWorker/namespace:accessControl",
+              "worker:coreWorker/namespace:accessControl",
+              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
+              "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl"
             ]
           }
         },
@@ -2172,17 +2302,71 @@
         ],
         "hookedHighlights": {
           "activity": {
-            "edges": "derived",
+            "edges": [],
             "from": "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
             "nodes": [
               "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl"
+            ],
             "from": "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
             "nodes": [
-              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl"
+              "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
+              "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
+              "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
+              "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
+              "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
+              "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
+              "activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
+              "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
+              "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
+              "activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
+              "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
+              "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
+              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
+              "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl"
             ]
           }
         },
@@ -2327,7 +2511,7 @@
         "graduatedEdges": [],
         "hookedHighlights": {
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:accessControl",
             "nodes": [
               "namespace:accessControl"
@@ -2359,8 +2543,6 @@
             "workflow"
           ],
           "springs": [
-            "linkWorkerToActivity",
-            "linkWorkerToWorkflow",
             "linkWorkflowToActivity",
             "linkWorkflowToWorkflow"
           ]
@@ -2529,24 +2711,78 @@
         ],
         "hookedHighlights": {
           "activity": {
-            "edges": "derived",
+            "edges": [],
             "from": "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
             "nodes": [
               "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl"
             ]
           },
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:accessControl",
             "nodes": [
               "namespace:accessControl"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl"
+            ],
             "from": "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
             "nodes": [
-              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl"
+              "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl",
+              "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl",
+              "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl",
+              "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl",
+              "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl",
+              "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl",
+              "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl",
+              "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:NotifyApprover/worker:coreWorker/namespace:accessControl",
+              "activity:NotifyRequester/worker:coreWorker/namespace:accessControl",
+              "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl",
+              "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl",
+              "activity:ValidateApprover/worker:coreWorker/namespace:accessControl",
+              "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl",
+              "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl",
+              "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl",
+              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
+              "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl"
             ]
           }
         },
@@ -2690,14 +2926,14 @@
         ],
         "hookedHighlights": {
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:accessControl",
             "nodes": [
               "namespace:accessControl"
             ]
           },
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:connectorWorker/namespace:accessControl",
             "nodes": [
               "worker:connectorWorker/namespace:accessControl"
@@ -2787,17 +3023,39 @@
         ],
         "hookedHighlights": {
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:connectorWorker/namespace:accessControl",
             "nodes": [
               "worker:connectorWorker/namespace:accessControl"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:worker:coreWorker/namespace:accessControl→worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:AccessRequest/worker:coreWorker/namespace:accessControl→workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ApprovalChain/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl→workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionAll/worker:coreWorker/namespace:accessControl→workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→worker:connectorWorker/namespace:accessControl",
+              "grad:workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl→worker:coreWorker/namespace:accessControl"
+            ],
             "from": "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
             "nodes": [
-              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl"
+              "worker:connectorWorker/namespace:accessControl",
+              "worker:coreWorker/namespace:accessControl",
+              "workflow:AccessRequest/worker:coreWorker/namespace:accessControl",
+              "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl",
+              "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl"
             ]
           }
         },

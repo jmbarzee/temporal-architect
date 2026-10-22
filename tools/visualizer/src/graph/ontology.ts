@@ -225,6 +225,12 @@ export function createOntology(spec: OntologySpec): Ontology {
     colour(`edgeTypes.${e.id}.style.color.light`, e.style.color.light)
     colour(`edgeTypes.${e.id}.style.color.dark`, e.style.color.dark)
   }
+  for (const k of spec.nodeTypeKeys) {
+    const style = hasOwn(spec.nodeStyles, k) ? spec.nodeStyles[k] : undefined
+    if (style && style.whenHidden !== 'ascend' && style.whenHidden !== 'splice') {
+      problems.push(`nodeStyles.${k}.whenHidden is ${JSON.stringify(style.whenHidden)}, not 'ascend' or 'splice'`)
+    }
+  }
   const scalarIds = new Set<string>()
   for (const sc of [...BUILT_IN_SCALARS, ...spec.scalars]) {
     if (scalarIds.has(sc.id)) problems.push(`scalar ${JSON.stringify(sc.id)} is declared twice (the built-ins are reach, degree and depth)`)

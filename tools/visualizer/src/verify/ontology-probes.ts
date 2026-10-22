@@ -141,6 +141,59 @@ function hiddenPolicy(ontology: typeof DEFAULT_ONTOLOGY): Json {
   return sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${e.dimensions[RELATION_DIMENSION]}`))
 }
 
+// Two graduated edges landing on one pair (D60): a call edge carrying
+// metadata, spliced through a hidden operation to its backing, and the
+// operation's own metadata-less edge to the same backing, spliced on its
+// source side to the same caller. The one carrying metadata keeps precedence
+// whichever the parser emits first — the rule the fixtures pinned, said
+// without a payload key.
+const edgeLine = (e: GraphEdge) => `${e.sourceId} -> ${e.targetId}|${e.dimensions[RELATION_DIMENSION]}${e.payload ? '|meta=' + Object.keys(e.payload).sort().join(',') : ''}`
+function collision(callFirst: boolean): Json {
+  const nodes: SimNode[] = [
+    node('wk', 'worker'),
+    node('caller', 'workflow', 'wk'),
+    node('svc', 'nexusService', 'wk'),
+    node('op', 'nexusOperation', 'svc'),
+    node('backing', 'workflow', 'wk'),
+  ]
+  const call: GraphEdge = { id: 'call', sourceId: 'caller', targetId: 'op', dimensions: { [RELATION_DIMENSION]: 'dependency' }, payload: { route: 'ep' } }
+  const backs: GraphEdge[] = [{ id: 'backs', sourceId: 'op', targetId: 'backing', dimensions: { [RELATION_DIMENSION]: 'dependency' } }]
+  const contain: GraphEdge[] = [
+    { id: 'c1', sourceId: 'caller', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+    { id: 'c2', sourceId: 'svc', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+    { id: 'c3', sourceId: 'op', targetId: 'svc', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+    { id: 'c4', sourceId: 'backing', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  ]
+  const edges = callFirst ? [...contain, call, ...backs] : [...contain, ...backs, call]
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  const vg = computeVisibleGraph({ nodes, edges, getNode: (id: string) => byId.get(id) }, filterOfSets(new Set(['workerDef', 'workflowDef', 'nexusServiceDef']), new Set<string>()), DEFAULT_ONTOLOGY)
+  return sorted(vg.visibleEdges.filter(e => e.dimensions[RELATION_DIMENSION] === 'dependency').map(edgeLine))
+}
+
+// Two hidden spliced nodes that call each other, and a visible caller into the
+// cycle: the resolution passes each hidden node once and ends (REVIEW_7 C3).
+function cycle(): Json {
+  const nodes: SimNode[] = [
+    node('wk', 'worker'),
+    node('caller', 'workflow', 'wk'),
+    node('svc', 'nexusService', 'wk'),
+    node('ping', 'nexusOperation', 'svc'),
+    node('pong', 'nexusOperation', 'svc'),
+  ]
+  const edges: GraphEdge[] = [
+    { id: 'c1', sourceId: 'caller', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+    { id: 'c2', sourceId: 'svc', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+    { id: 'c3', sourceId: 'ping', targetId: 'svc', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+    { id: 'c4', sourceId: 'pong', targetId: 'svc', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+    { id: 'd0', sourceId: 'caller', targetId: 'ping', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+    { id: 'd1', sourceId: 'ping', targetId: 'pong', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+    { id: 'd2', sourceId: 'pong', targetId: 'ping', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  ]
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  const vg = computeVisibleGraph({ nodes, edges, getNode: (id: string) => byId.get(id) }, filterOfSets(new Set(['workerDef', 'workflowDef']), new Set<string>()), DEFAULT_ONTOLOGY)
+  return sorted(vg.visibleEdges.map(edgeLine))
+}
+
 /**
  * The mapping primitive, including the case it refuses to build.
  *
@@ -446,6 +499,9 @@ export function ontologyProbes(): Json {
     hiddenPolicy: {
       ascend: hiddenPolicy(DEFAULT_ONTOLOGY),
       splice: hiddenPolicy(SPLICING),
+      collisionCallFirst: collision(true),
+      collisionCallLast: collision(false),
+      cycle: cycle(),
     },
   }
 }

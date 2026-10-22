@@ -9,10 +9,10 @@
 // snapshots it directly, and the taxonomy arrives as a parameter, so both the
 // visibility predicate and the summary dispatch resolve through the container.
 //
-// What is NOT yet injected, so nobody reads more into this than it says: the
-// splice branch in `resolveDepEndpoint` and the per-child counting
-// inside the summary strategies still test hardcoded node-type values. Those are
-// separate blast-radius rows owned by later units.
+// Nothing here names a value: the hidden-node policy is the taxonomy's
+// (`whenHidden`, D59), the summaries read its abbreviations (D58), and the
+// precedence between graduated edges that land on one pair reads only
+// whether an edge carries metadata (D60).
 
 import { computeDownstreamReach } from '../../graph/scalar'
 import { isContainment } from '../../graph/model'
@@ -71,9 +71,9 @@ function findNearestVisibleAncestor(
 // "if visible keep, else walk to nearest visible ancestor". A value whose
 // declared policy is `splice` (D59, B16) follows the hidden node's own
 // dependency edges through to the far side instead, so caller → hidden →
-// callee draws as caller → callee. The answer says whether it spliced: on a
-// collision between two graduated edges, the spliced one keeps precedence,
-// since it still carries what the hidden hop knew.
+// callee draws as caller → callee. A hidden node is passed through at most
+// once per resolution (`visited`): hidden spliced nodes may call each other,
+// and a cycle among them used to recurse without end (REVIEW_7 C3).
 function resolveDepEndpoint(
   nodeId: string,
   visible: boolean,
@@ -82,8 +82,11 @@ function resolveDepEndpoint(
   visibleIds: Set<string>,
   getNode: (id: string) => SimNode | undefined,
   ontology: Ontology,
-): { ids: string[]; spliced: boolean } {
-  if (visible) return { ids: [nodeId], spliced: false }
+  visited: Set<string> = new Set(),
+): string[] {
+  if (visible) return [nodeId]
+  if (visited.has(nodeId)) return []
+  visited.add(nodeId)
   const node = getNode(nodeId)
   if (node && ontology.resolveNodeStyle(node).whenHidden === 'splice') {
     const out: string[] = []
@@ -93,15 +96,18 @@ function resolveDepEndpoint(
         ? (e.sourceId === nodeId ? e.targetId : null)  // outgoing — the hidden node is the source
         : (e.targetId === nodeId ? e.sourceId : null)  // incoming — the hidden node is the target
       if (!adjId) continue
-      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode, ontology).ids) {
+      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode, ontology, visited)) {
         out.push(r)
       }
     }
-    if (out.length > 0) return { ids: out, spliced: true }
+    if (out.length > 0) return out
   }
   const ancestor = findNearestVisibleAncestor(nodeId, visibleIds, getNode)
-  return { ids: ancestor ? [ancestor] : [], spliced: false }
+  return ancestor ? [ancestor] : []
 }
+
+/** Whether an edge carries any host metadata — what a graduated edge keeps of the hop it passed through. */
+const carriesMetadata = (e: GraphEdge): boolean => e.payload !== undefined && Object.keys(e.payload).length > 0
 
 // Glanceable per-node summary string, dispatched on the taxonomy's summaryKind.
 function computeGraphNodeSummary(
@@ -209,8 +215,6 @@ export function computeVisibleGraph(
   const getNode = (id: string) => sim.getNode(id)
   const graduatedEdges: GraphEdge[] = []
   const depEdgeKeys = new Map<string, GraphEdge>()
-  // The keys a spliced edge has claimed: an ascended edge never replaces one.
-  const splicedKeys = new Set<string>()
 
   for (const edge of sim.edges) {
     const srcVisible = ids.has(edge.sourceId)
@@ -233,13 +237,15 @@ export function computeVisibleGraph(
     } else {
       const sources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode, ontology)
       const targets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode, ontology)
-      const spliced = sources.spliced || targets.spliced
-      for (const rs of sources.ids) {
-        for (const rt of targets.ids) {
+      for (const rs of sources) {
+        for (const rt of targets) {
           if (rs === rt) continue
           const key = `${rs}→${rt}`
-          if (splicedKeys.has(key) && !spliced) continue
-          if (spliced) splicedKeys.add(key)
+          // Two graduated edges on one pair: the one carrying metadata keeps
+          // precedence over one carrying none (it still says what the hidden
+          // hop was); otherwise the later one replaces the earlier (D60).
+          const existing = depEdgeKeys.get(key)
+          if (existing && carriesMetadata(existing) && !carriesMetadata(edge)) continue
           depEdgeKeys.set(key, {
             ...edge,
             sourceId: rs,

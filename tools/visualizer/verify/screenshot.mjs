@@ -10,7 +10,7 @@
 //
 //   node verify/screenshot.mjs <unit> [--port 5178] [--out kickoff/screenshots]
 //       [--tab Gravity] [--subtab "Y Axis"] [--select gravity-axis-y=scalar:reach] [--dark]
-//       [--toggle Nexus]
+//       [--toggle Nexus] [--only stress-sample]
 //
 // The optional flags steer the capture: `--toggle` clicks a filter chip by
 // its label after the all-on sweep (so the capture shows a post-filter set);
@@ -59,6 +59,7 @@ const panelSubtab = flag('--subtab', null)
 const panelSelect = flag('--select', null)
 const toggleChip = flag('--toggle', null)
 const dark = args.includes('--dark')
+const only = flag('--only', null)           // one fixture, when a chip only some fixtures carry is toggled
 const suffix = dark ? '-dark' : ''
 const cdpPort = 9222
 
@@ -222,7 +223,7 @@ async function main() {
   await send('Page.enable', {}, sessionId)
   const results = []
 
-  for (const fixture of FIXTURES) {
+  for (const fixture of FIXTURES.filter(f => !only || f === only)) {
     const url = `http://localhost:${port}/?ast=/fixtures/${fixture}.json`
     await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }] }, sessionId)
     await send('Page.navigate', { url }, sessionId)
@@ -242,7 +243,13 @@ async function main() {
       chips = again
     }
     let toggled = ''
-    if (toggleChip) { toggled = await evalIn(CLICK_CHIP(toggleChip)); await sleep(1500) }
+    if (toggleChip) {
+      const before = await evalIn(COUNTS)
+      toggled = await evalIn(CLICK_CHIP(toggleChip))
+      await sleep(1500)
+      // A toggle that changed nothing is a capture of the pre-filter set.
+      if (toggled === 'toggled' && (await evalIn(COUNTS)) === before) toggled = 'no change'
+    }
     await sleep(4000)                       // let the layout settle before capturing
     const counts = await evalIn(COUNTS)
     const errors = await evalIn('JSON.stringify(window.__twfErrors || [])')
@@ -283,7 +290,7 @@ async function main() {
     console.error('WRONG THEME on: ' + wrongTheme.map(b => `${b.fixture} (${b.theme})`).join(', '))
     process.exitCode = 1
   }
-  const missed = results.filter(r => /no toggle|no button|no select|no chip|refused/.test(r.panel))
+  const missed = results.filter(r => /no toggle|no button|no select|no chip|no change|refused/.test(r.panel))
   if (missed.length) {
     console.error('PANEL STEP DID NOT APPLY on: ' + missed.map(b => `${b.fixture} (${b.panel})`).join(', '))
     process.exitCode = 1

@@ -465,6 +465,16 @@ const MAX_POSITION = 1e6
 // *further* within the same window rather than dragging the tail out *longer*.
 const REHEAT_TICKS = 200
 
+/**
+ * The edges a visible set springs: the graph's own, with both ends visible.
+ * A graduated edge (re-pointed for drawing across a hidden node) is never
+ * sprung — so the controls read this same predicate to offer pull tokens
+ * (`components/graph-view/present.ts`), and nothing else restates it.
+ */
+export function sprungEdges(edges: readonly GraphEdge[], visibleIds: ReadonlySet<string>): GraphEdge[] {
+  return edges.filter(e => visibleIds.has(e.sourceId) && visibleIds.has(e.targetId))
+}
+
 export class Simulation {
   nodes: SimNode[]
   edges: GraphEdge[]
@@ -590,9 +600,7 @@ export class Simulation {
       ? this.nodes.filter(n => visibleIds.has(n.id))
       : this.nodes
 
-    const activeEdges = visibleIds
-      ? this.edges.filter(e => visibleIds.has(e.sourceId) && visibleIds.has(e.targetId))
-      : this.edges
+    const activeEdges = visibleIds ? sprungEdges(this.edges, visibleIds) : this.edges
 
     // Forces — each scaled by the current alpha, mutating node velocities.
     // (Implemented in ./forces, one function per category.) Center gravity is

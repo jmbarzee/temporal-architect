@@ -1494,6 +1494,16 @@
         "act2 -> wk|dependency",
         "wk -> act|dependency"
       ],
+      "collisionCallFirst": [
+        "caller -> backing|dependency|meta=route"
+      ],
+      "collisionCallLast": [
+        "caller -> backing|dependency|meta=route"
+      ],
+      "cycle": [
+        "caller -> wk|containment",
+        "caller -> wk|dependency"
+      ],
       "splice": [
         "act -> wk|containment",
         "act2 -> act|dependency",
@@ -2475,6 +2485,7 @@
       }
     },
     "refusals": {
+      "badWhenHidden": "taxonomy is incoherent: nodeStyles.worker.whenHidden is \"Splice\", not 'ascend' or 'splice'",
       "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex or rgb() colour",
       "emptySuffix": "taxonomy is incoherent: style value \"工作流\" has no custom-property name (its id kebab-cases to nothing)",
       "namedColour": "taxonomy is incoherent: nodeStyles.worker.color.light.fill is \"slategray\", not a hex or rgb() colour",
@@ -3204,6 +3215,51 @@
       "shipped": [
         "k"
       ]
+    }
+  },
+  "viewProbes": {
+    "focus": {
+      "nameAndValue": true,
+      "nameOnly": true,
+      "undefinedValueIgnored": true,
+      "valueNodeLacks": false,
+      "wrongName": false,
+      "wrongValue": false
+    },
+    "offered": {
+      "allTypes": {
+        "columnHandles": 28,
+        "present": {
+          "bandX": 7,
+          "bandY": 7,
+          "push": 7,
+          "springs": 13
+        },
+        "tokens": 20,
+        "visibleNodes": 37
+      },
+      "defaultTypes": {
+        "columnHandles": 8,
+        "present": {
+          "bandX": 2,
+          "bandY": 2,
+          "push": 2,
+          "springs": 2
+        },
+        "tokens": 4,
+        "visibleNodes": 13
+      },
+      "none": {
+        "columnHandles": 0,
+        "present": {
+          "bandX": 0,
+          "bandY": 0,
+          "push": 0,
+          "springs": 0
+        },
+        "tokens": 0,
+        "visibleNodes": 0
+      }
     }
   }
 }

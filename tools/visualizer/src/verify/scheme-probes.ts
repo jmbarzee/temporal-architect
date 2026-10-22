@@ -69,6 +69,8 @@ export function schemeProbes(): Json {
       emptySuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeTypeKeys: [...ALL_NODE_TYPES, '工作流'], nodeStyles: { ...NODE_TYPE_REGISTRY, '工作流': NODE_TYPE_REGISTRY.workflow } as typeof NODE_TYPE_REGISTRY })),
       namedColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeStyles: { ...NODE_TYPE_REGISTRY, worker: { ...NODE_TYPE_REGISTRY.worker, color: { light: { fill: 'slategray', border: '#000' }, dark: NODE_TYPE_REGISTRY.worker.color.dark } } } as typeof NODE_TYPE_REGISTRY })),
       cssVariableColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, edgeTypes: DEFAULT_ONTOLOGY_SPEC.edgeTypes.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
+      // A hidden-node policy outside its two values (D60): refused, not read as ascend.
+      badWhenHidden: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeStyles: { ...NODE_TYPE_REGISTRY, worker: { ...NODE_TYPE_REGISTRY.worker, whenHidden: String('Splice') } } as typeof NODE_TYPE_REGISTRY })),
     },
     // The theme a marker declares (D58): VS Code's high-contrast LIGHT webview
     // carries the plain high-contrast class too, so light is read first.

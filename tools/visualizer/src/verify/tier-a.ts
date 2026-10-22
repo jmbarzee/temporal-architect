@@ -10,8 +10,10 @@ import { buildGraph } from '../adapter/build'
 import { edgeTypeFor } from '../adapter/edge-types'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import { payloadString } from '../graph/model'
-import { Simulation, axisOptions, fitsCeiling, pairTuning, defaultParamsFor } from '../graph/simulation'
-import { presentSpringCategories, resolveSprings, presentBuckets, mappedAxis, resolvePhysics } from '../graph/forces'
+import { Simulation, axisOptions, fitsCeiling, pairTuning, defaultParamsFor, sprungEdges } from '../graph/simulation'
+import { presentSpringCategories, resolveSprings, resolvePhysics } from '../graph/forces'
+import { presentSetsOf } from '../components/graph-view/present'
+import { highlightOf } from '../graph/highlight'
 import { BUILT_IN_SCALARS } from '../graph/scalar'
 import { readableGraph } from '../graph/model'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
@@ -90,26 +92,22 @@ function visibleState(
     graduatedEdges: sorted(vg.visibleEdges.map(e => edgeLine(e, nodeOf))),
     nodeSummaries: sortedRecord([...vg.nodeSummaries]),
     downstreamScores: sortedRecord([...vg.downstreamScores]),
-    // What the controls offer in this state (R35, D59): the push and band
-    // buckets some visible node falls in, the spring categories some visible
-    // edge falls in — read the way the view reads them.
+    // What the controls offer in this state (R35, D59): `presentSetsOf`, the
+    // function the view calls, over the visible nodes and the edges the
+    // simulation springs — pinned, not re-derived (REVIEW_7 C5).
     controls: (() => {
       const resolved = resolvePhysics(defaultParamsFor(DEFAULT_ONTOLOGY), DEFAULT_ONTOLOGY)
-      return {
-        push: sorted(presentBuckets(vg.visibleNodes, resolved.push)),
-        bandX: sorted(presentBuckets(vg.visibleNodes, mappedAxis(resolved.bandX))),
-        bandY: sorted(presentBuckets(vg.visibleNodes, mappedAxis(resolved.bandY))),
-        springs: sorted([...presentSpringCategories(resolved.spring, vg.visibleEdges, nodeOf)]),
-      }
+      const p = presentSetsOf(vg.visibleNodes, sprungEdges(sim.edges, vg.visibleIds), resolved, nodeOf)
+      return { push: sorted(p.push), bandX: sorted(p.bandX), bandY: sorted(p.bandY), springs: sorted(p.springs) }
     })(),
-    // The host's highlight hook (D59), asked for the first visible node of each
-    // style value with only that node lit: what it widens or replaces, per
-    // value, in this state. The library's own walk is not pinned here.
+    // The highlight as drawn (D59, D60): `highlightOf` — the library's walk,
+    // the host's hook, the derived edges — for the first visible node of each
+    // style value, per state.
     hookedHighlights: sortedRecord(DEFAULT_ONTOLOGY.nodeTypeKeys.flatMap(value => {
       const first = vg.visibleNodes.find(n => DEFAULT_ONTOLOGY.valueFor(n) === value)
       if (!first) return []
-      const lit = DEFAULT_ONTOLOGY.highlight(first, { nodes: new Set([first.id]) }, { visibleNodes: vg.visibleNodes, visibleEdges: vg.visibleEdges, visibleIds: vg.visibleIds, getNode: nodeOf })
-      return [[value, { from: first.id, nodes: sorted(lit.nodes), edges: lit.edges ? sorted(lit.edges) : 'derived' }] as const]
+      const lit = highlightOf(DEFAULT_ONTOLOGY, first, 'downstream', { visibleNodes: vg.visibleNodes, visibleEdges: vg.visibleEdges, visibleIds: vg.visibleIds, getNode: nodeOf })
+      return [[value, { from: first.id, nodes: sorted(lit.nodes), edges: sorted(lit.edges) }] as const]
     })),
   }
 }

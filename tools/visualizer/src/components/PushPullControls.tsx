@@ -78,7 +78,7 @@ export function PushPullControls({
           id="pushpull-axis"
           className="axis-select"
           value={current}
-          title="The dimension push and pull key on: one push token per bucket, one pull token per spring category present"
+          title="The dimension push and pull key on. Tokens are the visible set's: a push token per bucket some visible node falls in, a pull token per spring category some sprung edge falls in; the counts measure the whole graph"
           onChange={e => {
             const option = axes.find(o => o.mapping.dimension === e.target.value)
             if (option) onAxisChange(option.mapping)

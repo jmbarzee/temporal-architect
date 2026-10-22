@@ -34,18 +34,8 @@ const CONTROL_TABS: { id: ControlTab; label: string }[] = [
   { id: 'misc', label: 'Misc' },
 ]
 
-/**
- * What the post-filter visible set holds, as the controls read it (R35, D59):
- * the push buckets some visible node falls in, the band buckets per layout
- * axis likewise (empty on a scalar axis — it has no buckets), and the spring
- * categories some visible edge falls in.
- */
-export interface PresentSets {
-  readonly push: ReadonlySet<string>
-  readonly bandX: ReadonlySet<string>
-  readonly bandY: ReadonlySet<string>
-  readonly springs: ReadonlySet<string>
-}
+export type { PresentSets } from './graph-view/present'
+import type { PresentSets } from './graph-view/present'
 
 interface GraphControlPanelProps {
   params: ForceParams

@@ -1017,36 +1017,45 @@
         ],
         "hookedHighlights": {
           "activity": {
-            "edges": "derived",
+            "edges": [],
             "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
             "nodes": [
               "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce"
             ]
           },
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:ecommerce",
             "nodes": [
               "namespace:ecommerce"
             ]
           },
           "nexusEndpoint": {
-            "edges": [],
+            "edges": [
+              "grad:workflow:PartnerCheckout/worker:partnerWorker/namespace:partner→nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+            ],
             "from": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
             "nodes": [
               "namespace:ecommerce",
-              "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce"
+              "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+              "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner"
             ]
           },
           "nexusOperation": {
-            "edges": "derived",
+            "edges": [
+              "grad:nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce→workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+              "grad:workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce→activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce"
+            ],
             "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
-              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+              "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
+              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+              "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce"
             ]
           },
           "nexusService": {
-            "edges": "derived",
+            "edges": [],
             "from": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
               "namespace:ecommerce",
@@ -1055,16 +1064,21 @@
             ]
           },
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
               "worker:analyticsWorker/namespace:ecommerce"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:TranscodeVideo/worker:gpuWorker/namespace:media"
+            ],
             "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
             "nodes": [
+              "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+              "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
               "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
             ]
           }
@@ -1291,36 +1305,45 @@
         ],
         "hookedHighlights": {
           "activity": {
-            "edges": "derived",
+            "edges": [],
             "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
             "nodes": [
               "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce"
             ]
           },
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:ecommerce",
             "nodes": [
               "namespace:ecommerce"
             ]
           },
           "nexusEndpoint": {
-            "edges": [],
+            "edges": [
+              "grad:workflow:PartnerCheckout/worker:partnerWorker/namespace:partner→nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+            ],
             "from": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
             "nodes": [
               "namespace:ecommerce",
-              "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce"
+              "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+              "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner"
             ]
           },
           "nexusOperation": {
-            "edges": "derived",
+            "edges": [
+              "grad:nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce→workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+              "grad:workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce→activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce"
+            ],
             "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
-              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+              "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
+              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+              "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce"
             ]
           },
           "nexusService": {
-            "edges": "derived",
+            "edges": [],
             "from": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
               "namespace:ecommerce",
@@ -1329,16 +1352,21 @@
             ]
           },
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
               "worker:analyticsWorker/namespace:ecommerce"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:TranscodeVideo/worker:gpuWorker/namespace:media"
+            ],
             "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
             "nodes": [
+              "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+              "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
               "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
             ]
           }
@@ -1437,8 +1465,7 @@
           ],
           "springs": [
             "linkWorkerToWorker",
-            "linkWorkerToWorkflow",
-            "linkWorkflowToWorkflow"
+            "linkWorkerToWorkflow"
           ]
         },
         "downstreamScores": {
@@ -1483,16 +1510,22 @@
         ],
         "hookedHighlights": {
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
               "worker:analyticsWorker/namespace:ecommerce"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:worker:mediaWorker/namespace:media→worker:gpuWorker/namespace:media",
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→worker:gpuWorker/namespace:media",
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→worker:mediaWorker/namespace:media"
+            ],
             "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
             "nodes": [
+              "worker:gpuWorker/namespace:media",
+              "worker:mediaWorker/namespace:media",
               "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
             ]
           }
@@ -1591,23 +1624,33 @@
         ],
         "hookedHighlights": {
           "activity": {
-            "edges": "derived",
+            "edges": [],
             "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
             "nodes": [
               "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce"
             ]
           },
           "nexusOperation": {
-            "edges": "derived",
+            "edges": [
+              "grad:nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce→workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
+              "grad:workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce→activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce"
+            ],
             "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
-              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+              "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
+              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+              "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:TranscodeVideo/worker:gpuWorker/namespace:media"
+            ],
             "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
             "nodes": [
+              "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+              "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
               "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
             ]
           }
@@ -1696,7 +1739,7 @@
         ],
         "hookedHighlights": {
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:ecommerce",
             "nodes": [
               "namespace:ecommerce"
@@ -1731,10 +1774,7 @@
           ],
           "springs": [
             "linkNsToNs",
-            "linkWorkerToActivity",
-            "linkWorkerToWorkflow",
-            "linkWorkflowToActivity",
-            "linkWorkflowToWorkflow"
+            "linkWorkflowToActivity"
           ]
         },
         "downstreamScores": {
@@ -1790,23 +1830,31 @@
         ],
         "hookedHighlights": {
           "activity": {
-            "edges": "derived",
+            "edges": [],
             "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
             "nodes": [
               "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce"
             ]
           },
           "namespace": {
-            "edges": "derived",
+            "edges": [
+              "grad:namespace:ecommerce→activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce"
+            ],
             "from": "namespace:ecommerce",
             "nodes": [
+              "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
               "namespace:ecommerce"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:TranscodeVideo/worker:gpuWorker/namespace:media"
+            ],
             "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
             "nodes": [
+              "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
+              "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
               "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
             ]
           }
@@ -1911,14 +1959,14 @@
         ],
         "hookedHighlights": {
           "namespace": {
-            "edges": "derived",
+            "edges": [],
             "from": "namespace:ecommerce",
             "nodes": [
               "namespace:ecommerce"
             ]
           },
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
               "worker:analyticsWorker/namespace:ecommerce"
@@ -1964,8 +2012,7 @@
           ],
           "springs": [
             "linkWorkerToWorker",
-            "linkWorkerToWorkflow",
-            "linkWorkflowToWorkflow"
+            "linkWorkerToWorkflow"
           ]
         },
         "downstreamScores": {
@@ -2010,16 +2057,22 @@
         ],
         "hookedHighlights": {
           "worker": {
-            "edges": "derived",
+            "edges": [],
             "from": "worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
               "worker:analyticsWorker/namespace:ecommerce"
             ]
           },
           "workflow": {
-            "edges": "derived",
+            "edges": [
+              "grad:worker:mediaWorker/namespace:media→worker:gpuWorker/namespace:media",
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→worker:gpuWorker/namespace:media",
+              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→worker:mediaWorker/namespace:media"
+            ],
             "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
             "nodes": [
+              "worker:gpuWorker/namespace:media",
+              "worker:mediaWorker/namespace:media",
               "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
             ]
           }

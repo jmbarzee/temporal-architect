@@ -457,7 +457,8 @@ function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph)
     const edges = new Set<string>()
     if (active.parentId && graph.visibleIds.has(active.parentId)) nodes.add(active.parentId)
     for (const edge of graph.visibleEdges) {
-      if (payloadString(edge, 'nexusEndpoint') === active.name) {
+      // The parser writes the endpoint's node id into the routing metadata.
+      if (payloadString(edge, 'nexusEndpoint') === active.id) {
         edges.add(edge.id)
         if (graph.visibleIds.has(edge.sourceId)) nodes.add(edge.sourceId)
         if (graph.visibleIds.has(edge.targetId)) nodes.add(edge.targetId)

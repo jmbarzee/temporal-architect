@@ -17,6 +17,7 @@ import { isScalarAxis, mappedAxis, resolvePhysics } from '../graph/forces'
 import type { ResolvedLayoutAxis } from '../graph/forces'
 import { scalarProbes } from './scalar-probes'
 import { schemeProbes } from './scheme-probes'
+import { viewProbes } from './view-probes'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
@@ -256,6 +257,7 @@ export function staticGolden(): Json {
     tuningProbes: tuningProbes(),
     scalarProbes: scalarProbes(),
     schemeProbes: schemeProbes(),
+    viewProbes: viewProbes(),
     syntheticVisible: syntheticVisible(),
     filterChipLayer: filterChipLayer(),
     reconcileMatrix: reconcileMatrix(),

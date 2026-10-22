@@ -11,7 +11,7 @@
 
 import { existsSync, statSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
-import { manifestFiles, readLines, gateConfig, report, PKG_ROOT } from './manifest.mjs'
+import { manifestFiles, readLines, gateConfig, report, PKG_ROOT, SHIM_COMPONENTS } from './manifest.mjs'
 
 // Matched on PATH SEGMENTS, not as substrings. `'../adapter'` — an index import
 // of the shim folder, with no trailing slash — is the exact shape Unit 2 creates,
@@ -22,6 +22,10 @@ const FORBIDDEN = [
   /(^|\/)types\/(ast|parser-graph|decomposition)(\.\w+)?(\/|$)/,
   /(^|\/)components\/blocks(\/|$)/,
 ]
+// A host component excluded from the manifest by name is the host's too: an
+// import of one from a library file is the same edge as an import of the
+// adapter, and the gate could not see it (REVIEW_7 C6).
+const HOST_COMPONENTS = new Set(SHIM_COMPONENTS)
 const forbids = spec => FORBIDDEN.some(re => re.test(spec))
 const STATEMENT_START = /^\s*(?:import|export)\b/
 // The module specifier, once the statement has been rejoined: either
@@ -104,6 +108,7 @@ function reachesForbidden(fromFile, spec, seen = new Set(), depth = 0) {
   if (forbids(spec)) return spec
   if (depth >= 6) return null
   const target = resolveLocal(fromFile, spec)
+  if (target !== null && HOST_COMPONENTS.has(target)) return spec
   if (target === null || seen.has(target)) return null
   seen.add(target)
   for (const { spec: next, isReExport } of importsOf(readLines(target))) {

@@ -10,10 +10,9 @@
 import React from 'react'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
-import { getTransitiveDeps, getHighlightedEdgeIds } from '../../graph/highlight'
+import { highlightOf } from '../../graph/highlight'
 import { useOntology } from './useOntology'
 
-/** A node that sits nowhere on any axis — used when an id does not resolve. */
 import type { ForceSection } from '../GraphControlPanel'
 import type { GravityHover } from '../GravityControls'
 
@@ -90,13 +89,9 @@ export function useHighlight(
       return { highlightedNodes: null as Set<string> | null, highlightedEdges: null as Set<string> | null }
     }
     const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
-    const walked = getTransitiveDeps(activeId, visibleEdges, visibleIds, direction)
     const activeNode = getNode(activeId)
-    const lit = activeNode
-      ? ontology.highlight(activeNode, { nodes: walked }, { visibleNodes, visibleEdges, visibleIds, getNode })
-      : { nodes: walked }
-    const nodes = new Set(lit.nodes)
-    const edges = lit.edges ? new Set(lit.edges) : getHighlightedEdgeIds(nodes, visibleEdges)
+    if (!activeNode) return { highlightedNodes: null as Set<string> | null, highlightedEdges: null as Set<string> | null }
+    const { nodes, edges } = highlightOf(ontology, activeNode, direction, { visibleNodes, visibleEdges, visibleIds, getNode })
     return { highlightedNodes: nodes, highlightedEdges: edges }
   }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, getNode, ontology])
 

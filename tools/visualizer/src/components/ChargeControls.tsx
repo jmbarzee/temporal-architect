@@ -142,7 +142,7 @@ export function ChargeCurves({ params, resolved, present, onParamChange, hovered
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-  }, [params, pushMul, push, crMul, exp, ontology])
+  }, [params, pushMul, push, crMul, exp, ontology, present])
 
   return (
     <ForceCurves

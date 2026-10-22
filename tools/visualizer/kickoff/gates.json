@@ -12,7 +12,7 @@
   ],
   "leakCeiling": 4,
   "totalCeiling": 1091,
-  "boundaryCeiling": 6,
+  "boundaryCeiling": 8,
   "forbiddenPatternAllowlist": [
     {
       "file": "src/filter/storage.ts",

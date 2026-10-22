@@ -1635,3 +1635,101 @@ and, per filter state, `controls` and `hookedHighlights`;
 `ontologyProbes.hiddenPolicy` new. Nothing else moves.
 
 — 2026-10-22 — agent
+
+**D60 — What REVIEW_7 changed: the controls offer what the simulation
+springs, the view's wiring is what the harness pins, the hidden-node
+precedence reads metadata, and D59 §2 is corrected (Unit 7 close).** The
+five-lens review (33 findings, 9 clusters, 9 verified, 0 refuted) confirmed
+four of the six filed-blocker clusters at major and found the rest in what
+D59 had claimed and not measured.
+
+1. **Stale curves** (C1, blocker → confirmed major). `ChargeCurves`
+   memoised its curves on the parameters alone, so a chip toggle dropped
+   the map's tokens and left every curve. The memo keys on the present set.
+   A server render cannot see a stale memo, so Gate 5 carries this one: the
+   screenshot script's `--toggle` fails a capture whose counts after the
+   toggle equal the counts before (record-9).
+2. **The dead endpoint highlight** (C2, blocker → confirmed major). The hook
+   compared the routing metadata — the endpoint's node id, as the parser
+   writes it — to the endpoint's bare name, so no call ever lit, and D59's
+   new `hookedHighlights` rows pinned the empty answer. It compares the id.
+   Every such row moves: the endpoint's edges populate, and because the
+   harness now calls `highlightOf` (§5) each row carries the whole
+   highlight — the library's walk, the hook, the derived edge ids — where it
+   carried the hook's answer over the active node alone and the word
+   "derived".
+3. **The splice recursion** (C3, blocker → confirmed major; older than D59,
+   in code D59 rewrote). Two hidden spliced nodes that call each other
+   recursed without end — a valid `.twf` with two sync operations
+   nexus-calling each other blanked the Graph view at the default filter. A
+   hidden node is passed through once per resolution (`visited`);
+   `hiddenPolicy.cycle` pins the chain. And `createOntology` refuses a
+   `whenHidden` outside its two values instead of reading it as ascend (C8,
+   model-7), pinned in `schemeProbes.refusals.badWhenHidden`.
+4. **Precedence by metadata; D59 §2 corrected** (C4, major confirmed). D59
+   §2 said "the spliced one keeps precedence … is what the old rule meant,
+   said without the payload key". It was not: the rule was a boolean
+   last-wins among spliced edges, which agreed with the old payload rule
+   only in the parser's edge order (168 of 640 fixture states differ under
+   the reverse order). The rule now reads whether an edge carries metadata
+   (`carriesMetadata`): between two graduated edges on one pair, the one
+   carrying payload keeps precedence over one carrying none, in either
+   order — `hiddenPolicy.collisionCallFirst` and `collisionCallLast` both
+   answer `caller -> backing|meta=route`. Every fixture graduated-edge row
+   is still byte-identical.
+5. **The view's wiring is what the harness pins** (C5, blocker → partly
+   major; C9, blocker → confirmed major). Tier A's `controls` re-derived R35
+   in the harness, so the view could read the whole graph with every gate
+   green — and it did read the wrong edges: pull tokens were classified
+   over the graduated edges the canvas draws, which the simulation never
+   springs, so the `linkWorkflowToWorkflow` token under the default filter
+   tuned nothing (its six edges all graduated; zero displacement under an
+   override). The predicate is stated once, in the simulation
+   (`sprungEdges`), and `presentSetsOf` (`components/graph-view/present.ts`)
+   is the one function the view, Tier A and the new `viewProbes` call;
+   `highlightOf` (`graph/highlight.ts`) is likewise the one highlight the
+   view and Tier A call. `viewProbes` server-renders the push/pull and
+   gravity tabs under three states of the nexus fixture and counts what
+   they offer against the sets — all types: 20 tokens = 7 push + 13 pull and
+   28 column handles = 2 × (7 + 7); the default: 4 and 8; none: 0 and 0 — and
+   pins `matchesFocus` on six targets. `controls.springs` moves where a
+   category was held only by graduated edges: `linkWorkflowToWorkflow`
+   under the default filter on the nexus, multifile and taskqueues
+   fixtures, the worker categories where workers are hidden on all five,
+   `linkWorkerToWorker` in two decomposition states.
+6. **The boundary gate sees host components** (C6, blocker → partly major).
+   An import that resolves to a shim component (`SHIM_COMPONENTS`) counts;
+   the gate had been blind to `GraphView`'s imports of `GroupsModal` and
+   `protocol`, through which any host vocabulary could ride uncounted.
+   Measured **8**; the ceiling rises 6 → 8 with that reason — the two edges
+   were always there, and are Unit 8's to cut. Not changed: the pattern
+   gate's `as-record` rule keys on spelling and the harness is outside it
+   (gates-6, minor) — the harness is not shipped.
+7. **Prose, and the two sets called "present"** (C7, major → partly minor).
+   "Present" names two sets and D59 named one: the frame's — the median of
+   the band centres present over the WHOLE graph, which seeds, pulls and
+   draws the overlay (D54) — and the controls' — what the VISIBLE set holds
+   (R35). D59 §1 reverses D51's whole-graph pull tokens and leaves D54's
+   overlay whole, and said neither; this says both. The spec names both at
+   the two places they meet, the axis dropdown's title says which set its
+   tokens are and what its counts measure, and the two stale comments (the
+   derivation's header, the highlight hook's orphaned doc line) are gone.
+   Not done: an empty state for a tab whose visible set holds nothing
+   (controls-4, minor) — an issue at the close.
+8. **One focus shape** (C8, model-8). `CrossViewTarget` is deleted; the
+   host and the view exchange the library's `FocusTarget { name, values }`,
+   and a miss is a miss rather than `''`. Not changed: the hooks read
+   `TEMPORAL_TYPE_DIMENSION` (record-5) — the host's one constant, from
+   which its `styleDimension` is assigned; the hooks are the host's, and a
+   host reads its own axis by its own name.
+
+**Golden change (§8.2).** Moves: every per-state `hookedHighlights` row
+(edges from `"derived"` to the derived ids, nodes to the whole highlight;
+the endpoint's edges populate); `controls.springs` where a category was
+held only by graduated edges (§5). Added:
+`static.ontologyProbes.hiddenPolicy.{collisionCallFirst, collisionCallLast,
+cycle}`, `static.viewProbes`, `static.schemeProbes.refusals.badWhenHidden`.
+Byte-identical: every graduated-edge row, every summary, Tier B, Tier C,
+`edge-types`, and every other static probe.
+
+— 2026-10-22 — agent

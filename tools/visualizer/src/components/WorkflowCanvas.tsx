@@ -109,14 +109,6 @@ export const NavigationContext = React.createContext<NavigationContextType>({
   navigateTo: () => {},
 })
 
-// Cross-view focus target — carries the visual-focus subject across a
-// focus transition. The filter expansion has already happened in the
-// reconciler by the time the destination view sees this; the view only
-// uses it to scroll/center/flash.
-export interface CrossViewTarget {
-  name: string
-  defType: string
-}
 
 type ActiveView = 'tree' | 'graph'
 
@@ -230,7 +222,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // Pending-focus target for cross-view nav. Reconciler has already
   // expanded the destination's filter by the time this is set; the
   // destination view consumes it for scroll/center/flash only.
-  const [pendingFocus, setPendingFocus] = React.useState<CrossViewTarget | null>(null)
+  // The visual-focus subject of a focus transition, as the library shapes it:
+  // the filter expansion has already happened in the reconciler; a view only
+  // scrolls, centres and flashes.
+  const [pendingFocus, setPendingFocus] = React.useState<FocusTarget | null>(null)
 
   // Pin-override metadata: which dimensions the most recent focus
   // transition bypassed in each view. The view consumes this on render
@@ -360,10 +355,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     }
 
     if (transition.kind === 'focus') {
-      setPendingFocus({
-        name: transition.target.name,
-        defType: transition.target.values[DEF_TYPE_DIMENSION] ?? '',
-      })
+      setPendingFocus(transition.target)
     }
 
     if (target === 'graph') setGraphEverShown(true)
@@ -399,12 +391,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   }, [ast.definitions, switchView])
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
-  // The graph pane matches a focus by dimension values and never learns which
-  // axis this host pins a name with (D59, B35).
-  const graphFocus = React.useMemo<FocusTarget | null>(
-    () => pendingFocus ? { name: pendingFocus.name, values: { [DEF_TYPE_DIMENSION]: pendingFocus.defType } } : null,
-    [pendingFocus],
-  )
+
 
   const handleSearchChange = React.useCallback((query: string, active: boolean) => {
     setSearchQuery(query)
@@ -511,7 +498,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               searchQuery={searchQuery}
               searchActive={searchActive}
               onSearchChange={handleSearchChange}
-              pendingFocus={graphFocus}
+              pendingFocus={pendingFocus}
               onFocusConsumed={clearPendingFocus}
               overriddenPins={graphOverriddenPins}
               onOverriddenPinsConsumed={clearGraphOverriddenPins}
