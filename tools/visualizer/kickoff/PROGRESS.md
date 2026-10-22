@@ -194,8 +194,14 @@ should be read:
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
 
-**Exact next action: begin Unit 4** (`PLAN.md` §6.2). Ceilings ratcheted to the
-Unit 3 close: leak **204**, total **1266**, boundary **7**.
+**Unit 4 started** on `visualizer/dimensions-unit-4`, branched from unit-3 @
+`aedde37`. **Record the sha, every checkpoint:** on resume after a six-week
+pause the app had re-pointed this worktree to its own session branch at the
+feature base, and the first `checkout -b unit-4` silently branched from there.
+Caught only because pre-Unit-2 symbols showed up in a grep. First action of any
+resumed session: `git log --oneline -1` against the sha here.
+
+Ceilings at the Unit 3 close: leak **204**, total **1266**, boundary **7**.
 
 Three things Unit 4 should settle first, all recorded and none of them mine to
 decide alone:

@@ -601,3 +601,11 @@ actually found bugs on this run, handed to every finder. Several Unit 2 findings
 had been latent since Unit 1, and shape #1 has produced the worst finding in
 three consecutive units. Cheap recall beats expensive rediscovery, and it frees
 finder budget for genuinely new ground.
+
+**11. Sonnet by default; Opus only where a mistake is expensive.** [added at the
+Unit 4 boundary, on instruction] Finders, verifiers and clusterers run on Sonnet.
+Opus is reserved for the one or two lenses per unit where a blind spot costs the
+most — on this run that is the force model and the gates themselves, the same
+places §3.5.5 already said to keep spending. Every `agent()` call names its
+`model` explicitly, so the default is a decision rather than an omission; a call
+with no `model` is a review finding.
