@@ -10,9 +10,9 @@
     "allows more than is measured fails as STALE, so the ratchet cannot go slack",
     "unnoticed."
   ],
-  "leakCeiling": 4,
-  "totalCeiling": 1091,
-  "boundaryCeiling": 8,
+  "leakCeiling": 0,
+  "totalCeiling": 1089,
+  "boundaryCeiling": 0,
   "forbiddenPatternAllowlist": [
     {
       "file": "src/filter/storage.ts",

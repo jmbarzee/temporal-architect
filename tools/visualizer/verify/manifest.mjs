@@ -42,6 +42,8 @@ const GLOBS = [
  * to be excluded on purpose.
  */
 export const SHIM_COMPONENTS = [
+  'src/components/ErrorBars.css',
+  'src/components/ErrorBars.tsx',
   'src/components/GroupsModal.css',
   'src/components/GroupsModal.tsx',
   'src/components/StyleGuide.tsx',

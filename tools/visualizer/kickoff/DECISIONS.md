@@ -1733,3 +1733,50 @@ Byte-identical: every graduated-edge row, every summary, Tier B, Tier C,
 `edge-types`, and every other static probe.
 
 — 2026-10-22 — agent
+
+**D61 — The view takes what the host reads: the eight import edges are cut
+in place, before the move (Unit 8a).** Gate 6 at 0 and the leak gate at 0 —
+R38 reached inside `tools/visualizer/` so that the move itself can be the
+pure directory move the plan describes. Each edge, and what replaced it:
+
+1. **The graph is a prop** (D41 closed). `GraphView` takes `graph: Graph`;
+   the host calls `useGraphModel(ast, parserGraph)` — now the adapter's one
+   reading of the payload for the view: the graph built from the parser's
+   deployment graph, and the findings. The chip-flash set depends on the
+   filter alone, so it is the view's own hook (`useRecentlyChanged`), read by
+   both views in place of the copy the tree view carried (STANDING_CHECKS
+   #1).
+2. **The chip counts are the host's reading of its own data.** The bar
+   counted top-level definitions per file and per type off the AST; it now
+   takes `counts` per axis and value, and the host computes them
+   (`definitionCounts(ast, selectedFiles)` — one function, both views). The
+   same numbers, read where they always came from, handed across instead of
+   derived inside.
+3. **The findings bars are a slot.** The error and warning bars — file
+   errors and diagnostics, partitioned by the host's file filter — are the
+   parser's shapes end to end. `ErrorBars` moved whole, with its stylesheet,
+   to the host; the bar renders whatever `findings` node it is handed, and
+   both views hand it the same component.
+4. **Groups over the whole graph in, groups as drawn out.** The
+   decomposition — chunks, ranked division strategies, sections, the modal
+   that edits which are shown — is the host's; the view's part is to restrict
+   a group to the visible set, drop the empty, and colour what is left in
+   order. `graph/groups.ts` keeps exactly that (`NodeGroup` in,
+   `ActiveGroup` out, `activeGroupsOf`, the palette, the strengths);
+   `adapter/groups.ts` keeps the selection model and `nodeGroupsOf`. The
+   host owns the selection and hover state, renders the modal through
+   `groupsControl(active)`, and reads the colours back from the groups as
+   drawn — the palette cycles over what is shown, as before, because the
+   empty are dropped before the colours are dealt. The modal, `protocol` and
+   the decomposition types leave the view with it.
+
+**Measured.** Gate 6: 8 → **0**. Leak: 4 → **0**. Total vocabulary 1091 →
+**1089** — the two `TWFFile` mentions, gone rather than moved. Every golden
+byte-identical (7/7). In the browser on the decomposition fixture, the six
+chips carry the same counts in both views (37 · 1 · 1 · 0 · 5 · 30), the
+Groups control is present, 0 console errors. Ceilings ratcheted to 0 / 1089
+/ 0.
+
+**Golden change (§8.2).** None.
+
+— 2026-10-22 — agent

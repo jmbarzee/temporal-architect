@@ -4,10 +4,6 @@
 import { readableGraph, isContainment } from '../graph/model'
 import React from 'react'
 import './GraphView.css'
-import type { TWFFile } from '../types/ast'
-import type { ParserGraph } from '../types/parser-graph'
-import type { Decomposition } from '../types/decomposition'
-import type { DecompositionParams } from './protocol'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
@@ -22,7 +18,7 @@ import { useTheme, THEME_CHOICES } from './graph-view/useTheme'
 import type { ThemeChoice } from './graph-view/useTheme'
 import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
-import type { GraphEdge } from '../graph/model'
+import type { Graph, GraphEdge } from '../graph/model'
 import { SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
 import { useOntology } from './graph-view/useOntology'
@@ -32,16 +28,9 @@ import { zoomAt } from '../graph/viewport'
 import { GraphCanvas } from './GraphCanvas'
 import { CanvasErrorBoundary } from './CanvasErrorBoundary'
 import { GraphControlPanel } from './GraphControlPanel'
-import { GroupsModal } from './GroupsModal'
-import {
-  computeActiveGroups,
-  boostGroupsForNodes,
-  initialGroupSelection,
-  type GroupSelection,
-  type GroupHover,
-} from '../graph/groups'
+import { activeGroupsOf, boostGroupsForNodes, type ActiveGroup, type NodeGroup } from '../graph/groups'
 import { FilterBar } from './FilterBar'
-import { useGraphModel } from '../adapter/useGraphModel'
+import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
 import { useViewport } from './graph-view/useViewport'
 import { useHighlight } from './graph-view/useHighlight'
 import { useSimulation } from './graph-view/useSimulation'
@@ -52,17 +41,16 @@ interface GraphViewProps {
   // Whether this view is the active tab. Both views stay mounted (keep-alive),
   // so the inactive one must not respond to global keyboard shortcuts.
   active: boolean
-  ast: TWFFile
-  // Deployment graph from the parser — primary input. AST is secondary
-  // (sourceFile lookup, hover details).
-  parserGraph: ParserGraph
-  // Decomposition from the parser's chunking — drives the group overlay. Optional;
-  // when absent the Groups modal/overlay is inert.
-  decomposition?: Decomposition
-  // Outbound recompute request. When wired, the Groups panel's Params tab becomes
-  // editable and can request a fresh decomposition (including the first one,
-  // before any decomposition exists). Optional; absent for read-only hosts.
-  onRequestDecomposition?: (params: DecompositionParams) => void
+  /** The graph, built by the host from whatever it reads. */
+  graph: Graph
+  /** Chip badge counts per axis and value — the host's reading of its own data. */
+  counts: ReadonlyMap<string, ReadonlyMap<string, number>>
+  /** The host's findings bars, rendered under the filter chips. */
+  findings?: React.ReactNode
+  /** Groups to glow, over the whole graph; the view restricts them to the visible set and colours them. */
+  groups?: readonly NodeGroup[]
+  /** The host's control for its groups (a legend, a modal), rendered top-left and handed the groups as drawn, colours included. */
+  groupsControl?: (active: readonly ActiveGroup[]) => React.ReactNode
   onShowInTree?: (target: FocusTarget) => void
   /** The pane's theme choice and where a new one goes (R21). */
   theme: ThemeChoice
@@ -87,10 +75,11 @@ interface GraphViewProps {
 
 export function GraphView({
   active,
-  ast,
-  parserGraph,
-  decomposition,
-  onRequestDecomposition,
+  graph,
+  counts,
+  findings,
+  groups,
+  groupsControl,
   onShowInTree,
   filter,
   onFilterChange,
@@ -141,14 +130,7 @@ export function GraphView({
     return () => ro.disconnect()
   }, [])
 
-  // Pure data layer (graph build, file list, filter-change flash, diagnostics
-  // partition) — everything derived straight from props, no sim/DOM.
-  const {
-    graph,
-    recentlyChanged,
-    errors,
-    diagnostics,
-  } = useGraphModel(ast, parserGraph, filter)
+  const recentlyChanged = useRecentlyChanged(filter)
 
   // What each filter axis can take, read off the graph: the engine declares no
   // value vocabulary, so the bar learns an axis's domain from the nodes.
@@ -257,20 +239,6 @@ export function GraphView({
     [visibleNodes, sprung, resolved, ontology, getSimNode],
   )
 
-  // --- Decomposition group overlay (GRAPH_VIEW.md § Decomposition Group
-  // Overlay). Selection (which division per chunk is active/enabled/expanded)
-  // and the transient hover preview are owned here; the active glow groups are
-  // derived from them + the decomposition + the visible set. Selection resets
-  // when a new decomposition arrives. ---
-  const [groupSelection, setGroupSelection] = React.useState<GroupSelection>(
-    () => initialGroupSelection(decomposition),
-  )
-  const [groupHover, setGroupHover] = React.useState<GroupHover | null>(null)
-  React.useEffect(() => {
-    setGroupSelection(initialGroupSelection(decomposition))
-    setGroupHover(null)
-  }, [decomposition])
-
   // Selection / hover / keyboard-focus / shift + control-panel preview state,
   // plus the derived transitive-dependency highlight sets and focusedNodeId.
   const {
@@ -286,14 +254,10 @@ export function GraphView({
     activePullEdge, setActivePullEdge,
   } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph)
 
-  // Active glow groups for the overlay: each frontier section of every
-  // enabled/hovered division, resolved to the visible node ids it covers (via
-  // duplicateGroups, intersected with the visible set). Drives both the canvas
-  // glow and the modal's color swatches.
-  const activeGroups = React.useMemo(
-    () => computeActiveGroups(decomposition, groupSelection, groupHover, graph.duplicateGroups, visibleIds),
-    [decomposition, groupSelection, groupHover, graph.duplicateGroups, visibleIds],
-  )
+  // The groups as drawn (GRAPH_VIEW.md § Decomposition Group Overlay): the
+  // host's, restricted to the visible set and coloured in order. Drives the
+  // canvas glow and the host's control.
+  const activeGroups = React.useMemo(() => activeGroupsOf(groups ?? [], visibleIds), [groups, visibleIds])
 
   // Canvas glow set: the active groups with the group under the hovered/selected
   // node strengthened, so one group surfaces from many faint ones as the pointer
@@ -593,7 +557,7 @@ export function GraphView({
             the modal tracks the real toolbar bottom (not a fixed offset). */}
         <div className="graph-toolbar" ref={toolbarRef}>
           <FilterBar
-            ast={ast}
+            counts={counts}
             valuesByDimension={valuesByDimension}
             filter={filter}
             onFilterChange={onFilterChange}
@@ -610,8 +574,7 @@ export function GraphView({
             searchTitle="Search nodes (/)"
             searchPlaceholder="Search nodes..."
             searchExtra={searchExtra}
-            errors={errors}
-            diagnostics={diagnostics}
+            findings={findings}
           />
         </div>
 
@@ -682,18 +645,8 @@ export function GraphView({
         onNodeScaleChange={handleNodeScaleChange}
       />
 
-      {/* Groups modal — decomposition overlay control (top-left). Renders
-          nothing when there is no decomposition AND no recompute action wired;
-          with an action it renders so the first request can be made. */}
-      <GroupsModal
-        decomposition={decomposition}
-        selection={groupSelection}
-        onSelectionChange={setGroupSelection}
-        hover={groupHover}
-        onHover={setGroupHover}
-        activeGroups={activeGroups}
-        onRequestDecomposition={onRequestDecomposition}
-      />
+      {/* The host's control for its groups (top-left), handed the groups as drawn. */}
+      {groupsControl?.(activeGroups)}
 
       {/* Shortcuts panel */}
       {shortcutsOpen && (

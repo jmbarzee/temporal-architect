@@ -13,19 +13,21 @@ which is worth noticing rather than assuming.
 | `App.tsx` | neither | 5 | `main.tsx` |
 | `adapter/build.ts` | shim | 54 | **6** files |
 | `adapter/edge-types.ts` | shim | 174 | **4** files |
+| `adapter/groups.ts` | shim | 1 | `components/GroupsModal.tsx`, `components/WorkflowCanvas.tsx` |
 | `adapter/node-type-styles.ts` | shim | 1 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
 | `adapter/node-types.ts` | shim | 146 | **17** files |
-| `adapter/useGraphModel.ts` | shim | 3 | `components/GraphView.tsx` |
+| `adapter/useGraphModel.ts` | shim | 4 | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx` |
 | `components/AxisControls.tsx` | manifest |  | `components/GravityControls.tsx` |
 | `components/CanvasErrorBoundary.tsx` | manifest |  | `components/GraphView.tsx` |
 | `components/ChargeControls.tsx` | manifest |  | `components/PushPullControls.tsx` |
-| `components/FilterBar.tsx` | manifest | 2 | `components/GraphView.tsx`, `components/TreeView.tsx` |
+| `components/ErrorBars.tsx` | neither |  | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx` |
+| `components/FilterBar.tsx` | manifest |  | `components/GraphView.tsx`, `components/TreeView.tsx` |
 | `components/ForceMap.tsx` | manifest |  | `components/AxisControls.tsx`, `components/ChargeControls.tsx`, `components/SpringControls.tsx` |
 | `components/GraphCanvas.tsx` | manifest |  | `components/GraphView.tsx` |
 | `components/GraphControlPanel.tsx` | manifest |  | **5** files |
-| `components/GraphView.tsx` | manifest | 2 | `components/WorkflowCanvas.tsx` |
+| `components/GraphView.tsx` | manifest |  | `components/WorkflowCanvas.tsx` |
 | `components/GravityControls.tsx` | manifest |  | **4** files |
-| `components/GroupsModal.tsx` | neither | 7 | `components/GraphView.tsx` |
+| `components/GroupsModal.tsx` | neither | 7 | `components/WorkflowCanvas.tsx` |
 | `components/PinToggle.tsx` | manifest |  | `components/FilterBar.tsx` |
 | `components/PushPullControls.tsx` | manifest |  | `components/GraphControlPanel.tsx`, `verify/view-probes.ts` |
 | `components/SpringControls.tsx` | manifest |  | `components/PushPullControls.tsx` |
@@ -53,6 +55,7 @@ which is worth noticing rather than assuming.
 | `components/graph-view/present.ts` | manifest |  | **4** files |
 | `components/graph-view/useHighlight.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useOntology.ts` | manifest |  | **13** files |
+| `components/graph-view/useRecentlyChanged.ts` | manifest |  | `components/GraphView.tsx`, `components/TreeView.tsx` |
 | `components/graph-view/useSimulation.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useSimulationLoop.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/useTheme.ts` | manifest |  | `components/GraphView.tsx`, `components/WorkflowCanvas.tsx`, `verify/scheme-probes.ts` |
@@ -60,14 +63,14 @@ which is worth noticing rather than assuming.
 | `components/graph-view/useVisibleGraph.ts` | manifest |  | `components/GraphView.tsx` |
 | `components/graph-view/visibleGraph.ts` | manifest |  | **9** files |
 | `components/icons/GearIcons.tsx` | neither | 2 | `components/FilterBar.tsx`, `theme/temporal-theme.tsx` |
-| `components/protocol.ts` | neither | 3 | **6** files |
+| `components/protocol.ts` | neither | 3 | **5** files |
 | `filter/reconcile.ts` | manifest |  | `components/WorkflowCanvas.tsx`, `verify/static-golden.ts` |
 | `filter/storage.ts` | manifest |  | `components/WorkflowCanvas.tsx` |
 | `filter/toggle.ts` | manifest |  | `components/FilterBar.tsx`, `verify/static-golden.ts` |
 | `filter/types.ts` | manifest |  | **17** files |
 | `graph/dimension.ts` | manifest |  | **30** files |
 | `graph/forces.ts` | manifest |  | **20** files |
-| `graph/groups.ts` | manifest |  | `components/GraphView.tsx`, `components/GroupsModal.tsx` |
+| `graph/groups.ts` | manifest |  | `adapter/groups.ts`, `components/GraphView.tsx`, `components/GroupsModal.tsx` |
 | `graph/highlight.ts` | manifest |  | `components/graph-view/useHighlight.ts`, `verify/tier-a.ts` |
 | `graph/model.ts` | manifest |  | **24** files |
 | `graph/node-scale.ts` | manifest |  | **4** files |
@@ -81,9 +84,9 @@ which is worth noticing rather than assuming.
 | `lib.ts` | neither | 24 | — |
 | `main.tsx` | neither |  | — |
 | `theme/temporal-theme.tsx` | shim | 50 | **7** files |
-| `types/ast.ts` | shim | 26 | **18** files |
-| `types/decomposition.ts` | shim | 3 | **7** files |
-| `types/parser-graph.ts` | shim | 3 | **8** files |
+| `types/ast.ts` | shim | 26 | **17** files |
+| `types/decomposition.ts` | shim | 3 | **6** files |
+| `types/parser-graph.ts` | shim | 3 | **7** files |
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
 | `verify/filter-states.ts` | neither | 13 | `verify/tier-a.ts` |
 | `verify/fixtures.ts` | neither | 10 | **5** files |

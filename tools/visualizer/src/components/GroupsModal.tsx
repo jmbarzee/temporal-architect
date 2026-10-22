@@ -13,8 +13,8 @@ import {
   initializedSelection,
   type GroupSelection,
   type GroupHover,
-  type ActiveGroup,
-} from '../graph/groups'
+} from '../adapter/groups'
+import type { ActiveGroup } from '../graph/groups'
 
 type GroupsTab = 'groups' | 'params'
 
@@ -30,7 +30,7 @@ interface GroupsModalProps {
   onHover: (h: GroupHover | null) => void
   // The currently-glowing groups, used to color the section swatches so the
   // modal reads as the legend for what's on the canvas.
-  activeGroups: ActiveGroup[]
+  activeGroups: readonly ActiveGroup[]
   // Outbound recompute request. When wired, the Params tab becomes an editable
   // control set that builds a `DecompositionParams` and calls this; the panel
   // also renders (to host the controls) even before any decomposition exists, so
