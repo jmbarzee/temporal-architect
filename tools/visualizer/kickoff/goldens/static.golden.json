@@ -1487,8 +1487,29 @@
       },
       "summaryKind": "none"
     },
+    "hiddenPolicy": {
+      "ascend": [
+        "act -> wk|containment",
+        "act2 -> wk|containment",
+        "act2 -> wk|dependency",
+        "wk -> act|dependency"
+      ],
+      "splice": [
+        "act -> wk|containment",
+        "act2 -> act|dependency",
+        "act2 -> wk|containment"
+      ]
+    },
     "injection": {
       "alternateNodesOnAlternateKeys": {
+        "contextLines": [
+          "wf=wk",
+          "wk="
+        ],
+        "graduatedEdges": [
+          "wf -> wk|containment",
+          "wf -> wk|dependency"
+        ],
         "summaries": [
           "wf=→1",
           "wk=←1"
@@ -1499,6 +1520,14 @@
         ]
       },
       "alternateNodesUnderShippedTaxonomy": {
+        "contextLines": [
+          "wf=wk",
+          "wk="
+        ],
+        "graduatedEdges": [
+          "wf -> wk|containment",
+          "wf -> wk|dependency"
+        ],
         "summaries": [
           "wf=→1",
           "wk=1 Wf"
@@ -1509,10 +1538,20 @@
         ]
       },
       "shippedNodesOnAlternateKeys": {
+        "contextLines": [],
+        "graduatedEdges": [],
         "summaries": [],
         "visibleNodeIds": []
       },
       "shippedNodesOnShippedKeys": {
+        "contextLines": [
+          "wf=wk",
+          "wk="
+        ],
+        "graduatedEdges": [
+          "wf -> wk|containment",
+          "wf -> wk|dependency"
+        ],
         "summaries": [
           "wf=→1",
           "wk=1 Wf"

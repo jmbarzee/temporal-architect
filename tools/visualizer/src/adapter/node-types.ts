@@ -36,6 +36,9 @@ export type NodeType =
   | 'activity'
 
 import { createOntology } from '../graph/ontology'
+import { payloadString } from '../graph/model'
+import type { GraphNode } from '../graph/model'
+import type { Highlight, HighlightGraph } from '../graph/ontology'
 import type { Ontology, OntologySpec } from '../graph/ontology'
 import type { NodeTypeDefinition } from '../graph/taxonomy'
 import type { DimensionDescriptor, FilterChip } from '../graph/dimension'
@@ -95,6 +98,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     defType: 'namespaceDef',
     ladder: 'main',
     tier: 'container',
+    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#475569', border: '#1E293B' }, // slate-600
@@ -115,6 +119,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     defType: 'nexusEndpointDef',
     ladder: 'nexus',
     tier: 'container',
+    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#9F1239', border: '#4C0519' }, // rose-900 — deep, sits just under namespace
@@ -135,6 +140,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     defType: 'workerDef',
     ladder: 'main',
     tier: 'host',
+    whenHidden: 'ascend',
     defaultVisible: true,
     color: {
       light: { fill: '#94A3B8', border: '#475569' }, // slate-400
@@ -155,6 +161,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     defType: 'nexusServiceDef',
     ladder: 'nexus',
     tier: 'host',
+    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#DB2777', border: '#831843' }, // pink-600
@@ -175,6 +182,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     defType: 'workflowDef',
     ladder: 'main',
     tier: 'orchestrator',
+    whenHidden: 'ascend',
     defaultVisible: true,
     color: {
       light: { fill: '#8B7EC8', border: '#5D4F95' },
@@ -195,6 +203,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     defType: 'nexusOperationDef',
     ladder: 'nexus',
     tier: 'orchestrator',
+    whenHidden: 'splice',
     defaultVisible: false,
     color: {
       light: { fill: '#F9A8D4', border: '#BE185D' },
@@ -215,6 +224,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
     defType: 'activityDef',
     ladder: 'main',
     tier: 'leaf',
+    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#7CB9E8', border: '#4A8BC2' },
@@ -290,6 +300,7 @@ const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
   defType: 'unknownDef',
   ladder: 'main',
   tier: 'leaf',
+  whenHidden: 'ascend',
   defaultVisible: false,
   color: {
     light: { fill: '#CBD5E1', border: '#94A3B8' },
@@ -398,6 +409,85 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
   },
 ]
 
+// Strip the kind prefix from a parser metadata field ('worker:paymentWorker'
+// → 'paymentWorker'): the parser includes the kind label so consumers can
+// identify the referenced entity; the hover box wants the bare name.
+function stripKindPrefix(s: string | undefined): string | undefined {
+  if (!s) return undefined
+  const i = s.indexOf(':')
+  return i >= 0 ? s.slice(i + 1) : s
+}
+
+/**
+ * The hover box's context line (D59, B35). The nexus values show their
+ * addressing metadata — `<parent context> · <task queue>` per the spec — read
+ * from this domain's own payload keys, which the library never learns; every
+ * other value shows its parent's name.
+ */
+function contextLineFor(node: GraphNode, parent: GraphNode | undefined): string | undefined {
+  const parentName = parent?.name
+  const queue = payloadString(node, 'queue')
+  const hostWorker = payloadString(node, 'worker')
+  switch (node.dimensions[TEMPORAL_TYPE_DIMENSION]) {
+    case 'nexusEndpoint':
+      // The namespace is the endpoint's containment parent; the queue is
+      // intrinsic display metadata.
+      return [parentName, queue].filter(Boolean).join(' · ') || undefined
+    case 'nexusService':
+      return [stripKindPrefix(hostWorker), queue].filter(Boolean).join(' · ') || undefined
+    case 'nexusOperation':
+      return [parentName, stripKindPrefix(hostWorker), queue].filter(Boolean).join(' · ') || undefined
+    default:
+      return parentName
+  }
+}
+
+/**
+ * The highlight for an active node (D59). An endpoint's highlight follows its
+ * routing metadata — every edge whose payload names it, and their visible
+ * ends — instead of the dependency walk; a service's widens the walk with the
+ * endpoints fronting its operations (the parser's nexusRoute edges, reached
+ * through the service's operation children rather than re-derived from
+ * (namespace, queue)); every other value takes the walk as it is.
+ */
+function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight {
+  const value = active.dimensions[TEMPORAL_TYPE_DIMENSION]
+  if (value === 'nexusEndpoint') {
+    const nodes = new Set<string>([active.id])
+    const edges = new Set<string>()
+    if (active.parentId && graph.visibleIds.has(active.parentId)) nodes.add(active.parentId)
+    for (const edge of graph.visibleEdges) {
+      if (payloadString(edge, 'nexusEndpoint') === active.name) {
+        edges.add(edge.id)
+        if (graph.visibleIds.has(edge.sourceId)) nodes.add(edge.sourceId)
+        if (graph.visibleIds.has(edge.targetId)) nodes.add(edge.targetId)
+      }
+    }
+    return { nodes, edges }
+  }
+  if (value === 'nexusService') {
+    const nodes = new Set(base.nodes)
+    const operationIds = new Set<string>()
+    for (const n of graph.visibleNodes) {
+      if (n.dimensions[TEMPORAL_TYPE_DIMENSION] === 'nexusOperation' && n.parentId === active.id) operationIds.add(n.id)
+    }
+    for (const edge of graph.visibleEdges) {
+      // Resolved from the target node, not from a copy cached on the edge:
+      // graduation re-points edges, and a cached endpoint type survives the
+      // re-pointing while being wrong about it.
+      if (graph.getNode(edge.targetId)?.dimensions[TEMPORAL_TYPE_DIMENSION] !== 'nexusEndpoint') continue
+      if (!operationIds.has(edge.sourceId)) continue
+      if (graph.visibleIds.has(edge.targetId)) {
+        nodes.add(edge.targetId)
+        const ep = graph.getNode(edge.targetId)
+        if (ep?.parentId && graph.visibleIds.has(ep.parentId)) nodes.add(ep.parentId)
+      }
+    }
+    return { nodes }
+  }
+  return base
+}
+
 /**
  * This domain's taxonomy, as a spec: exported so a variant can be built from it
  * (`createOntology({ ...DEFAULT_ONTOLOGY_SPEC, … })`) rather than by spreading
@@ -420,6 +510,8 @@ export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   resolveEdgeType: edgeTypeFor,
   // The built-in scalars (reach, degree, depth) suffice for this domain today.
   scalars: [],
+  contextLine: contextLineFor,
+  highlight: highlightFor,
   fallbackStyle: FALLBACK_NODE_STYLE,
 }
 

@@ -10,11 +10,10 @@
 // visibility predicate and the summary dispatch resolve through the container.
 //
 // What is NOT yet injected, so nobody reads more into this than it says: the
-// operation-splice branch in `resolveDepEndpoint` and the per-child counting
+// splice branch in `resolveDepEndpoint` and the per-child counting
 // inside the summary strategies still test hardcoded node-type values. Those are
 // separate blast-radius rows owned by later units.
 
-import { payloadString } from '../../graph/model'
 import { computeDownstreamReach } from '../../graph/scalar'
 import { isContainment } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
@@ -69,9 +68,12 @@ function findNearestVisibleAncestor(
 }
 
 // Resolve a dependency-edge endpoint to one or more visible node ids. Default:
-// "if visible keep, else walk to nearest visible ancestor". Exception: hidden
-// nexus operations splice *through* (following the call relationship) instead of
-// ascending, so caller → operation → backing becomes caller → backing.
+// "if visible keep, else walk to nearest visible ancestor". A value whose
+// declared policy is `splice` (D59, B16) follows the hidden node's own
+// dependency edges through to the far side instead, so caller → hidden →
+// callee draws as caller → callee. The answer says whether it spliced: on a
+// collision between two graduated edges, the spliced one keeps precedence,
+// since it still carries what the hidden hop knew.
 function resolveDepEndpoint(
   nodeId: string,
   visible: boolean,
@@ -80,27 +82,25 @@ function resolveDepEndpoint(
   visibleIds: Set<string>,
   getNode: (id: string) => SimNode | undefined,
   ontology: Ontology,
-): string[] {
-  if (visible) return [nodeId]
+): { ids: string[]; spliced: boolean } {
+  if (visible) return { ids: [nodeId], spliced: false }
   const node = getNode(nodeId)
-  // Still a domain literal: WHICH value splices is a host policy, and injecting
-  // it is a later unit's job (B16). What changed is where the value comes from.
-  if (node && ontology.valueFor(node) === 'nexusOperation') {
+  if (node && ontology.resolveNodeStyle(node).whenHidden === 'splice') {
     const out: string[] = []
     for (const e of sim.edges) {
       if (isContainment(e)) continue
       const adjId = side === 'tgt'
-        ? (e.sourceId === nodeId ? e.targetId : null)  // outgoing — operation is source
-        : (e.targetId === nodeId ? e.sourceId : null)  // incoming — operation is target
+        ? (e.sourceId === nodeId ? e.targetId : null)  // outgoing — the hidden node is the source
+        : (e.targetId === nodeId ? e.sourceId : null)  // incoming — the hidden node is the target
       if (!adjId) continue
-      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode, ontology)) {
+      for (const r of resolveDepEndpoint(adjId, visibleIds.has(adjId), side, sim, visibleIds, getNode, ontology).ids) {
         out.push(r)
       }
     }
-    if (out.length > 0) return out
+    if (out.length > 0) return { ids: out, spliced: true }
   }
   const ancestor = findNearestVisibleAncestor(nodeId, visibleIds, getNode)
-  return ancestor ? [ancestor] : []
+  return { ids: ancestor ? [ancestor] : [], spliced: false }
 }
 
 // Glanceable per-node summary string, dispatched on the taxonomy's summaryKind.
@@ -209,6 +209,8 @@ export function computeVisibleGraph(
   const getNode = (id: string) => sim.getNode(id)
   const graduatedEdges: GraphEdge[] = []
   const depEdgeKeys = new Map<string, GraphEdge>()
+  // The keys a spliced edge has claimed: an ascended edge never replaces one.
+  const splicedKeys = new Set<string>()
 
   for (const edge of sim.edges) {
     const srcVisible = ids.has(edge.sourceId)
@@ -229,14 +231,15 @@ export function computeVisibleGraph(
         }
       }
     } else {
-      const resolvedSources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode, ontology)
-      const resolvedTargets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode, ontology)
-      for (const rs of resolvedSources) {
-        for (const rt of resolvedTargets) {
+      const sources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode, ontology)
+      const targets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode, ontology)
+      const spliced = sources.spliced || targets.spliced
+      for (const rs of sources.ids) {
+        for (const rt of targets.ids) {
           if (rs === rt) continue
           const key = `${rs}→${rt}`
-          const existing = depEdgeKeys.get(key)
-          if (existing && payloadString(existing, 'nexusEndpoint') && !payloadString(edge, 'nexusEndpoint')) continue
+          if (splicedKeys.has(key) && !spliced) continue
+          if (spliced) splicedKeys.add(key)
           depEdgeKeys.set(key, {
             ...edge,
             sourceId: rs,

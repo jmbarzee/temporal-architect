@@ -53,6 +53,45 @@
         "pushTokens": 7
       }
     ],
+    "contextLines": {
+      "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "paymentWorker",
+      "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": "paymentWorkerSecondary",
+      "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": "mediaWorker",
+      "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce": "paymentWorker",
+      "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": "paymentWorkerSecondary",
+      "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce": "analyticsWorker",
+      "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce": "realtimeAnalyticsWorker",
+      "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce": "expressShipWorker",
+      "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce": "standardShipWorker",
+      "activity:TranscodeVideo/worker:gpuWorker/namespace:media": "gpuWorker",
+      "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce": "orderWorker",
+      "namespace:ecommerce": "",
+      "namespace:media": "",
+      "namespace:partner": "",
+      "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce": "ecommerce · analytics",
+      "nexusEndpoint:PaymentEndpoint/namespace:ecommerce": "ecommerce · payments",
+      "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce": "AnalyticsService · analyticsWorker · analytics",
+      "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce": "PaymentService · paymentWorker · payments",
+      "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce": "PaymentService · paymentWorkerSecondary · payments-secondary",
+      "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce": "analyticsWorker · analytics",
+      "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce": "paymentWorker · payments",
+      "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce": "paymentWorkerSecondary · payments-secondary",
+      "worker:analyticsWorker/namespace:ecommerce": "ecommerce",
+      "worker:expressShipWorker/namespace:ecommerce": "ecommerce",
+      "worker:gpuWorker/namespace:media": "media",
+      "worker:mediaWorker/namespace:media": "media",
+      "worker:orderWorker/namespace:ecommerce": "ecommerce",
+      "worker:partnerWorker/namespace:partner": "partner",
+      "worker:paymentWorker/namespace:ecommerce": "ecommerce",
+      "worker:paymentWorkerSecondary/namespace:ecommerce": "ecommerce",
+      "worker:realtimeAnalyticsWorker/namespace:ecommerce": "ecommerce",
+      "worker:standardShipWorker/namespace:ecommerce": "ecommerce",
+      "workflow:MediaPipeline/worker:mediaWorker/namespace:media": "mediaWorker",
+      "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce": "orderWorker",
+      "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner": "partnerWorker",
+      "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce": "analyticsWorker",
+      "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce": "realtimeAnalyticsWorker"
+    },
     "edgeClassification": {
       "byEdgeType": {
         "linkEndpointToNamespace": 2,
@@ -835,6 +874,50 @@
     },
     "visibleSubgraph": {
       "types:all · files:none": {
+        "controls": {
+          "bandX": [
+            "activity",
+            "namespace",
+            "nexusEndpoint",
+            "nexusOperation",
+            "nexusService",
+            "worker",
+            "workflow"
+          ],
+          "bandY": [
+            "activity",
+            "namespace",
+            "nexusEndpoint",
+            "nexusOperation",
+            "nexusService",
+            "worker",
+            "workflow"
+          ],
+          "push": [
+            "activity",
+            "namespace",
+            "nexusEndpoint",
+            "nexusOperation",
+            "nexusService",
+            "worker",
+            "workflow"
+          ],
+          "springs": [
+            "linkEndpointToNamespace",
+            "linkEndpointToOperation",
+            "linkNexusToOperation",
+            "linkNsToNs",
+            "linkNsToWorker",
+            "linkOperationToActivity",
+            "linkOperationToWorkflow",
+            "linkWorkerToActivity",
+            "linkWorkerToNexus",
+            "linkWorkerToWorker",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToActivity",
+            "linkWorkflowToOperation"
+          ]
+        },
         "downstreamScores": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": 0,
           "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": 0,
@@ -932,6 +1015,60 @@
           "linkWorkflowToOperation|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
           "linkWorkflowToOperation|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
+        "hookedHighlights": {
+          "activity": {
+            "edges": "derived",
+            "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
+            "nodes": [
+              "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce"
+            ]
+          },
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce"
+            ]
+          },
+          "nexusEndpoint": {
+            "edges": [],
+            "from": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce",
+              "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce"
+            ]
+          },
+          "nexusOperation": {
+            "edges": "derived",
+            "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "nexusService": {
+            "edges": "derived",
+            "from": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce",
+              "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+              "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "worker": {
+            "edges": "derived",
+            "from": "worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+            "nodes": [
+              "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
+            ]
+          }
+        },
         "nodeSummaries": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "←1",
           "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": "←1",
@@ -1011,6 +1148,50 @@
         ]
       },
       "types:all · files:task-queues.twf": {
+        "controls": {
+          "bandX": [
+            "activity",
+            "namespace",
+            "nexusEndpoint",
+            "nexusOperation",
+            "nexusService",
+            "worker",
+            "workflow"
+          ],
+          "bandY": [
+            "activity",
+            "namespace",
+            "nexusEndpoint",
+            "nexusOperation",
+            "nexusService",
+            "worker",
+            "workflow"
+          ],
+          "push": [
+            "activity",
+            "namespace",
+            "nexusEndpoint",
+            "nexusOperation",
+            "nexusService",
+            "worker",
+            "workflow"
+          ],
+          "springs": [
+            "linkEndpointToNamespace",
+            "linkEndpointToOperation",
+            "linkNexusToOperation",
+            "linkNsToNs",
+            "linkNsToWorker",
+            "linkOperationToActivity",
+            "linkOperationToWorkflow",
+            "linkWorkerToActivity",
+            "linkWorkerToNexus",
+            "linkWorkerToWorker",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToActivity",
+            "linkWorkflowToOperation"
+          ]
+        },
         "downstreamScores": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": 0,
           "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": 0,
@@ -1108,6 +1289,60 @@
           "linkWorkflowToOperation|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
           "linkWorkflowToOperation|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
+        "hookedHighlights": {
+          "activity": {
+            "edges": "derived",
+            "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
+            "nodes": [
+              "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce"
+            ]
+          },
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce"
+            ]
+          },
+          "nexusEndpoint": {
+            "edges": [],
+            "from": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce",
+              "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce"
+            ]
+          },
+          "nexusOperation": {
+            "edges": "derived",
+            "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "nexusService": {
+            "edges": "derived",
+            "from": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce",
+              "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
+              "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "worker": {
+            "edges": "derived",
+            "from": "worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+            "nodes": [
+              "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
+            ]
+          }
+        },
         "nodeSummaries": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "←1",
           "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": "←1",
@@ -1187,6 +1422,25 @@
         ]
       },
       "types:default · files:none": {
+        "controls": {
+          "bandX": [
+            "worker",
+            "workflow"
+          ],
+          "bandY": [
+            "worker",
+            "workflow"
+          ],
+          "push": [
+            "worker",
+            "workflow"
+          ],
+          "springs": [
+            "linkWorkerToWorker",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "worker:analyticsWorker/namespace:ecommerce": 0.666667,
           "worker:expressShipWorker/namespace:ecommerce": 0,
@@ -1227,6 +1481,22 @@
           "linkWorkerToWorkflow|containment|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
           "linkWorkflowToWorkflow|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
+        "hookedHighlights": {
+          "worker": {
+            "edges": "derived",
+            "from": "worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+            "nodes": [
+              "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
+            ]
+          }
+        },
         "nodeSummaries": {
           "worker:analyticsWorker/namespace:ecommerce": "1 Wf",
           "worker:mediaWorker/namespace:media": "1 Wf",
@@ -1260,6 +1530,29 @@
         ]
       },
       "types:l3 · files:none": {
+        "controls": {
+          "bandX": [
+            "activity",
+            "nexusOperation",
+            "workflow"
+          ],
+          "bandY": [
+            "activity",
+            "nexusOperation",
+            "workflow"
+          ],
+          "push": [
+            "activity",
+            "nexusOperation",
+            "workflow"
+          ],
+          "springs": [
+            "linkOperationToActivity",
+            "linkOperationToWorkflow",
+            "linkWorkflowToActivity",
+            "linkWorkflowToOperation"
+          ]
+        },
         "downstreamScores": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": 0,
           "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": 0,
@@ -1296,6 +1589,29 @@
           "linkWorkflowToOperation|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
           "linkWorkflowToOperation|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
+        "hookedHighlights": {
+          "activity": {
+            "edges": "derived",
+            "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
+            "nodes": [
+              "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce"
+            ]
+          },
+          "nexusOperation": {
+            "edges": "derived",
+            "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+            "nodes": [
+              "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
+            ]
+          }
+        },
         "nodeSummaries": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "←1",
           "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": "←1",
@@ -1341,14 +1657,35 @@
         ]
       },
       "types:none · files:none": {
+        "controls": {
+          "bandX": [],
+          "bandY": [],
+          "push": [],
+          "springs": []
+        },
         "downstreamScores": {},
         "graduatedEdges": [],
+        "hookedHighlights": {},
         "nodeSummaries": {},
         "visibleEdgeCount": 0,
         "visibleNodeCount": 0,
         "visibleNodeIds": []
       },
       "types:ns · files:none": {
+        "controls": {
+          "bandX": [
+            "namespace"
+          ],
+          "bandY": [
+            "namespace"
+          ],
+          "push": [
+            "namespace"
+          ],
+          "springs": [
+            "linkNsToNs"
+          ]
+        },
         "downstreamScores": {
           "namespace:ecommerce": 0,
           "namespace:media": 0,
@@ -1357,6 +1694,15 @@
         "graduatedEdges": [
           "linkNsToNs|dependency|namespace:partner -> namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
+        "hookedHighlights": {
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce"
+            ]
+          }
+        },
         "nodeSummaries": {},
         "visibleEdgeCount": 1,
         "visibleNodeCount": 3,
@@ -1367,6 +1713,30 @@
         ]
       },
       "types:ns+wf+act · files:none": {
+        "controls": {
+          "bandX": [
+            "activity",
+            "namespace",
+            "workflow"
+          ],
+          "bandY": [
+            "activity",
+            "namespace",
+            "workflow"
+          ],
+          "push": [
+            "activity",
+            "namespace",
+            "workflow"
+          ],
+          "springs": [
+            "linkNsToNs",
+            "linkWorkerToActivity",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToActivity",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": 0,
           "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce": 0,
@@ -1418,6 +1788,29 @@
           "linkWorkflowToActivity|dependency|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce|dispatch=activityCall",
           "linkWorkflowToWorkflow|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
+        "hookedHighlights": {
+          "activity": {
+            "edges": "derived",
+            "from": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
+            "nodes": [
+              "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce"
+            ]
+          },
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+            "nodes": [
+              "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
+            ]
+          }
+        },
         "nodeSummaries": {
           "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce": "←1",
           "activity:GenerateThumbnail/worker:mediaWorker/namespace:media": "←1",
@@ -1463,6 +1856,25 @@
         ]
       },
       "types:ns+worker · files:none": {
+        "controls": {
+          "bandX": [
+            "namespace",
+            "worker"
+          ],
+          "bandY": [
+            "namespace",
+            "worker"
+          ],
+          "push": [
+            "namespace",
+            "worker"
+          ],
+          "springs": [
+            "linkNsToNs",
+            "linkNsToWorker",
+            "linkWorkerToWorker"
+          ]
+        },
         "downstreamScores": {
           "namespace:ecommerce": 1,
           "namespace:media": 1,
@@ -1497,6 +1909,22 @@
           "linkWorkerToWorker|dependency|worker:partnerWorker/namespace:partner -> worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
           "linkWorkerToWorker|dependency|worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
+        "hookedHighlights": {
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:ecommerce",
+            "nodes": [
+              "namespace:ecommerce"
+            ]
+          },
+          "worker": {
+            "edges": "derived",
+            "from": "worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "worker:analyticsWorker/namespace:ecommerce"
+            ]
+          }
+        },
         "nodeSummaries": {
           "namespace:ecommerce": "7 Wk",
           "namespace:media": "2 Wk",
@@ -1521,6 +1949,25 @@
         ]
       },
       "types:worker+wf · files:none": {
+        "controls": {
+          "bandX": [
+            "worker",
+            "workflow"
+          ],
+          "bandY": [
+            "worker",
+            "workflow"
+          ],
+          "push": [
+            "worker",
+            "workflow"
+          ],
+          "springs": [
+            "linkWorkerToWorker",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "worker:analyticsWorker/namespace:ecommerce": 0.666667,
           "worker:expressShipWorker/namespace:ecommerce": 0,
@@ -1561,6 +2008,22 @@
           "linkWorkerToWorkflow|containment|workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce -> worker:realtimeAnalyticsWorker/namespace:ecommerce",
           "linkWorkflowToWorkflow|dependency|workflow:PartnerCheckout/worker:partnerWorker/namespace:partner -> workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall"
         ],
+        "hookedHighlights": {
+          "worker": {
+            "edges": "derived",
+            "from": "worker:analyticsWorker/namespace:ecommerce",
+            "nodes": [
+              "worker:analyticsWorker/namespace:ecommerce"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
+            "nodes": [
+              "workflow:MediaPipeline/worker:mediaWorker/namespace:media"
+            ]
+          }
+        },
         "nodeSummaries": {
           "worker:analyticsWorker/namespace:ecommerce": "1 Wf",
           "worker:mediaWorker/namespace:media": "1 Wf",

@@ -370,7 +370,7 @@
 
 /* === Diagnostic rows ===========================================
    Validator/resolver/parse findings emitted in the JSON envelope by
-   `twf parse`. Rendered inside the error/warning bars (FilterBar).
+   the parser. Rendered inside the error/warning bars (FilterBar).
    ============================================================= */
 
 /* A single diagnostic row. Two-line layout:

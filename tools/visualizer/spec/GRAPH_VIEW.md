@@ -351,7 +351,7 @@ Every edge is stroked by its **resolved edge type** — the same classification 
 
 Edge opacity and thickness can be secondary signals — thicker or more opaque for higher-traffic connections if multiplicity data is available in the future.
 
-Nexus edges carry metadata (endpoint, service, operation) shown on hover. Hovering a nexus edge can highlight all edges sharing the same nexus scope (endpoint, service, or operation) to reveal shared routing.
+Nexus edges carry metadata (endpoint, service, operation) shown on hover. Hovering a nexus edge can highlight all edges sharing the same nexus scope (endpoint, service, or operation) to reveal shared routing. What a hidden node does to the dependency edges touching it is the taxonomy's per-value policy (`whenHidden`, D59): `ascend` re-points the edge to the nearest visible ancestor; `splice` — the operation's — follows the hidden node's own dependency edges through, so caller → operation → backing draws as caller → backing, and a spliced edge keeps precedence over an ascended one that lands on the same pair.
 
 ### Color
 
@@ -450,6 +450,8 @@ The panel is collapsed by default (progressive disclosure); the collapsed toggle
 **PUSH/PULL**
 
 The two pair forces share one tab. At its top, above the sub-tabs so it stays visible whichever force is being edited, an **axis** dropdown names the dimension both forces key on: push charges are per bucket of that axis, pull springs per pair of buckets. The default is the type axis (`temporalType`), where the host's hand-tuned spring table applies; any filter axis the graph carries (files, kinds) is offered too, bucketed by the values present. Below it, **Push** and **Pull** are sub-tabs styled like Gravity's Band/Topological — accent-underlined, bodies stacked in one cell so switching never resizes the panel — but without the on/off switches, since neither force has an off. Each body is its equation, its 2D map, and its force-curve read-out.
+
+**What a control offers is what the visible set holds** (R35, D59): a push token per bucket some *visible* node falls in, a pull token per spring category some *visible* edge falls in, and on each layout axis a column per bucket some visible node falls in — toggling a chip off removes its tokens and columns, and a bucket's tuning is kept, unshown, for when it returns. The axis dropdowns alone measure the whole graph: an axis's usability does not flip with a filter.
 
 **The token ceiling.** An axis is offered only while its control surface stays usable: at most **24** push tokens (one per bucket) and 24 pull tokens (one per spring category some edge of the graph falls in). The dropdown shows each axis's cost beside its name — `File (3 · 8)` — and lists one that exceeds the ceiling disabled, with the count that disqualified it. Switching axes starts both forces from the declared (or typical) physics on the new buckets — a tuning keyed by one axis has no reading on another. When the graph changes, an axis bucketed by the values present is rebuilt for the new values with the tuning kept where its values survive; if the graph grows past the ceiling on the chosen axis, or the axis vanishes, the forces fall back to the type axis.
 
@@ -675,7 +677,7 @@ The `<parent context> · <task queue>` pattern for nexus types surfaces the two 
 
 ### Nexus Routing Association (Hover)
 
-The nexus family has transient hover behaviors that reveal routing relationships without persistent edges. These complement the standard transitive-dep highlight and apply automatically based on node type.
+The nexus family has transient hover behaviors that reveal routing relationships without persistent edges. These complement the standard transitive-dep highlight and apply automatically based on node type. They are the taxonomy's, not the library's (D59): the host's `highlight` hook refines the library's transitive walk for an active node, and its `contextLine` hook writes the hover box's context line — the library computes the walk and the parent's name, and asks.
 
 **Hover on a `nexusEndpoint` node:** Standard transitive-dep BFS does not apply — endpoints have no outgoing dependency edges (they are pure addressing aliases). Instead, the canvas highlights all visible `nexusCall` edges whose routing metadata names this endpoint, plus the source and target nodes of those edges. The endpoint's namespace parent is also highlighted for context. The result makes the "which calls route through this entry point?" question answerable at a glance — the fan-out shows every caller and every operation that a call through this endpoint reaches.
 

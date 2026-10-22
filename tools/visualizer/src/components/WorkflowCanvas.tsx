@@ -1,4 +1,5 @@
 import { selectionFor } from '../filter/types'
+import type { FocusTarget } from '../filter/types'
 import React from 'react'
 import { OntologyContext } from './graph-view/useOntology'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
@@ -384,7 +385,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     })
   }, [ast.definitions, switchView])
 
-  const showInTree = React.useCallback((name: string, defType: string) => {
+  const showInTree = React.useCallback((target: FocusTarget) => {
+    const name = target.name
+    const defType = target.values[DEF_TYPE_DIMENSION] ?? ''
     const def = ast.definitions.find(d => d.name === name && d.type === defType)
     switchView('tree', {
       kind: 'focus',
@@ -396,6 +399,12 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   }, [ast.definitions, switchView])
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
+  // The graph pane matches a focus by dimension values and never learns which
+  // axis this host pins a name with (D59, B35).
+  const graphFocus = React.useMemo<FocusTarget | null>(
+    () => pendingFocus ? { name: pendingFocus.name, values: { [DEF_TYPE_DIMENSION]: pendingFocus.defType } } : null,
+    [pendingFocus],
+  )
 
   const handleSearchChange = React.useCallback((query: string, active: boolean) => {
     setSearchQuery(query)
@@ -502,7 +511,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               searchQuery={searchQuery}
               searchActive={searchActive}
               onSearchChange={handleSearchChange}
-              pendingFocus={pendingFocus}
+              pendingFocus={graphFocus}
               onFocusConsumed={clearPendingFocus}
               overriddenPins={graphOverriddenPins}
               onOverriddenPinsConsumed={clearGraphOverriddenPins}

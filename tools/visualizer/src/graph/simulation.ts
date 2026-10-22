@@ -361,7 +361,7 @@ export interface DynamicsParams {
 export type ForceParams = ChargeParams & LinkParams & GravityParams & DynamicsParams
 
 // Defaults are a hand-tuned baseline captured from interactive use across
-// the topic library and the example workflows. The model is intentionally
+// the topic library and the example graphs. The model is intentionally
 // charge-dominant: repulsion does most of the layout work, the per-type Y
 // bands hold the hierarchy, and the link springs act as short tethers
 // rather than rigid rods. Concretely:

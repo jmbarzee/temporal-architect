@@ -38,6 +38,45 @@
         "pushTokens": 4
       }
     ],
+    "contextLines": {
+      "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:LockRate/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:PullCredit/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "namespace:loanOrigination": "",
+      "worker:loanWorker/namespace:loanOrigination": "loanOrigination",
+      "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination": "loanWorker",
+      "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination": "loanWorker"
+    },
     "edgeClassification": {
       "byEdgeType": {
         "linkNsToWorker": 1,
@@ -847,6 +886,33 @@
     },
     "visibleSubgraph": {
       "types:all · files:none": {
+        "controls": {
+          "bandX": [
+            "activity",
+            "namespace",
+            "worker",
+            "workflow"
+          ],
+          "bandY": [
+            "activity",
+            "namespace",
+            "worker",
+            "workflow"
+          ],
+          "push": [
+            "activity",
+            "namespace",
+            "worker",
+            "workflow"
+          ],
+          "springs": [
+            "linkNsToWorker",
+            "linkWorkerToActivity",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToActivity",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": 0,
           "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": 0,
@@ -962,6 +1028,36 @@
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall",
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall"
         ],
+        "hookedHighlights": {
+          "activity": {
+            "edges": "derived",
+            "from": "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination"
+            ]
+          },
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:loanOrigination",
+            "nodes": [
+              "namespace:loanOrigination"
+            ]
+          },
+          "worker": {
+            "edges": "derived",
+            "from": "worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "worker:loanWorker/namespace:loanOrigination"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination"
+            ]
+          }
+        },
         "nodeSummaries": {
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": "←1",
@@ -1044,6 +1140,33 @@
         ]
       },
       "types:all · files:resumable-loan-application.twf": {
+        "controls": {
+          "bandX": [
+            "activity",
+            "namespace",
+            "worker",
+            "workflow"
+          ],
+          "bandY": [
+            "activity",
+            "namespace",
+            "worker",
+            "workflow"
+          ],
+          "push": [
+            "activity",
+            "namespace",
+            "worker",
+            "workflow"
+          ],
+          "springs": [
+            "linkNsToWorker",
+            "linkWorkerToActivity",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToActivity",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": 0,
           "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": 0,
@@ -1159,6 +1282,36 @@
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall",
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall"
         ],
+        "hookedHighlights": {
+          "activity": {
+            "edges": "derived",
+            "from": "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination"
+            ]
+          },
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:loanOrigination",
+            "nodes": [
+              "namespace:loanOrigination"
+            ]
+          },
+          "worker": {
+            "edges": "derived",
+            "from": "worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "worker:loanWorker/namespace:loanOrigination"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination"
+            ]
+          }
+        },
         "nodeSummaries": {
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": "←1",
@@ -1241,6 +1394,25 @@
         ]
       },
       "types:default · files:none": {
+        "controls": {
+          "bandX": [
+            "worker",
+            "workflow"
+          ],
+          "bandY": [
+            "worker",
+            "workflow"
+          ],
+          "push": [
+            "worker",
+            "workflow"
+          ],
+          "springs": [
+            "linkWorkerToWorker",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "worker:loanWorker/namespace:loanOrigination": 1,
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": 0.5,
@@ -1265,6 +1437,22 @@
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall",
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall"
         ],
+        "hookedHighlights": {
+          "worker": {
+            "edges": "derived",
+            "from": "worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "worker:loanWorker/namespace:loanOrigination"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination"
+            ]
+          }
+        },
         "nodeSummaries": {
           "worker:loanWorker/namespace:loanOrigination": "5 Wf",
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": "→1 ←1",
@@ -1285,6 +1473,24 @@
         ]
       },
       "types:l3 · files:none": {
+        "controls": {
+          "bandX": [
+            "activity",
+            "workflow"
+          ],
+          "bandY": [
+            "activity",
+            "workflow"
+          ],
+          "push": [
+            "activity",
+            "workflow"
+          ],
+          "springs": [
+            "linkWorkflowToActivity",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": 0,
           "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": 0,
@@ -1362,6 +1568,22 @@
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall",
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall"
         ],
+        "hookedHighlights": {
+          "activity": {
+            "edges": "derived",
+            "from": "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination"
+            ]
+          }
+        },
         "nodeSummaries": {
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": "←1",
@@ -1440,18 +1662,46 @@
         ]
       },
       "types:none · files:none": {
+        "controls": {
+          "bandX": [],
+          "bandY": [],
+          "push": [],
+          "springs": []
+        },
         "downstreamScores": {},
         "graduatedEdges": [],
+        "hookedHighlights": {},
         "nodeSummaries": {},
         "visibleEdgeCount": 0,
         "visibleNodeCount": 0,
         "visibleNodeIds": []
       },
       "types:ns · files:none": {
+        "controls": {
+          "bandX": [
+            "namespace"
+          ],
+          "bandY": [
+            "namespace"
+          ],
+          "push": [
+            "namespace"
+          ],
+          "springs": []
+        },
         "downstreamScores": {
           "namespace:loanOrigination": 0
         },
         "graduatedEdges": [],
+        "hookedHighlights": {
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:loanOrigination",
+            "nodes": [
+              "namespace:loanOrigination"
+            ]
+          }
+        },
         "nodeSummaries": {},
         "visibleEdgeCount": 0,
         "visibleNodeCount": 1,
@@ -1460,6 +1710,29 @@
         ]
       },
       "types:ns+wf+act · files:none": {
+        "controls": {
+          "bandX": [
+            "activity",
+            "namespace",
+            "workflow"
+          ],
+          "bandY": [
+            "activity",
+            "namespace",
+            "workflow"
+          ],
+          "push": [
+            "activity",
+            "namespace",
+            "workflow"
+          ],
+          "springs": [
+            "linkWorkerToActivity",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToActivity",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": 0,
           "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": 0,
@@ -1573,6 +1846,29 @@
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall",
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall"
         ],
+        "hookedHighlights": {
+          "activity": {
+            "edges": "derived",
+            "from": "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination"
+            ]
+          },
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:loanOrigination",
+            "nodes": [
+              "namespace:loanOrigination"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination"
+            ]
+          }
+        },
         "nodeSummaries": {
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination": "←1",
           "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination": "←1",
@@ -1653,6 +1949,23 @@
         ]
       },
       "types:ns+worker · files:none": {
+        "controls": {
+          "bandX": [
+            "namespace",
+            "worker"
+          ],
+          "bandY": [
+            "namespace",
+            "worker"
+          ],
+          "push": [
+            "namespace",
+            "worker"
+          ],
+          "springs": [
+            "linkNsToWorker"
+          ]
+        },
         "downstreamScores": {
           "namespace:loanOrigination": 0,
           "worker:loanWorker/namespace:loanOrigination": 0
@@ -1660,6 +1973,22 @@
         "graduatedEdges": [
           "linkNsToWorker|containment|worker:loanWorker/namespace:loanOrigination -> namespace:loanOrigination"
         ],
+        "hookedHighlights": {
+          "namespace": {
+            "edges": "derived",
+            "from": "namespace:loanOrigination",
+            "nodes": [
+              "namespace:loanOrigination"
+            ]
+          },
+          "worker": {
+            "edges": "derived",
+            "from": "worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "worker:loanWorker/namespace:loanOrigination"
+            ]
+          }
+        },
         "nodeSummaries": {
           "namespace:loanOrigination": "1 Wk"
         },
@@ -1671,6 +2000,25 @@
         ]
       },
       "types:worker+wf · files:none": {
+        "controls": {
+          "bandX": [
+            "worker",
+            "workflow"
+          ],
+          "bandY": [
+            "worker",
+            "workflow"
+          ],
+          "push": [
+            "worker",
+            "workflow"
+          ],
+          "springs": [
+            "linkWorkerToWorker",
+            "linkWorkerToWorkflow",
+            "linkWorkflowToWorkflow"
+          ]
+        },
         "downstreamScores": {
           "worker:loanWorker/namespace:loanOrigination": 1,
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": 0.5,
@@ -1695,6 +2043,22 @@
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall",
           "linkWorkflowToWorkflow|dependency|workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination -> workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination|dispatch=workflowCall"
         ],
+        "hookedHighlights": {
+          "worker": {
+            "edges": "derived",
+            "from": "worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "worker:loanWorker/namespace:loanOrigination"
+            ]
+          },
+          "workflow": {
+            "edges": "derived",
+            "from": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
+            "nodes": [
+              "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination"
+            ]
+          }
+        },
         "nodeSummaries": {
           "worker:loanWorker/namespace:loanOrigination": "5 Wf",
           "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination": "→1 ←1",

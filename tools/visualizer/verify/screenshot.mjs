@@ -10,11 +10,15 @@
 //
 //   node verify/screenshot.mjs <unit> [--port 5178] [--out kickoff/screenshots]
 //       [--tab Gravity] [--subtab "Y Axis"] [--select gravity-axis-y=scalar:reach] [--dark]
+//       [--toggle Nexus]
 //
-// The three optional flags steer the control-panel capture: click a panel tab
-// by its label, then a sub-tab by its label (tabs are buttons or `role=tab`), then set a <select> by element id
-// (through React's own setter, so the app sees a change). A unit whose
-// evidence lives behind a tab names it here rather than growing this script.
+// The optional flags steer the capture: `--toggle` clicks a filter chip by
+// its label after the all-on sweep (so the capture shows a post-filter set);
+// `--tab`, `--subtab` and `--select` open a panel tab by its label, then a
+// sub-tab by its label (tabs are buttons or `role=tab`), then set a <select>
+// by element id (through React's own setter, so the app sees a change). A
+// unit whose evidence lives behind a tab or a filter names it here rather
+// than growing this script.
 //
 // The theme is pinned, never inherited from the machine: the light run
 // emulates `prefers-color-scheme: light`; `--dark` emulates dark AND marks
@@ -53,6 +57,7 @@ const outDir = flag('--out', 'kickoff/screenshots')
 const panelTab = flag('--tab', null)
 const panelSubtab = flag('--subtab', null)
 const panelSelect = flag('--select', null)
+const toggleChip = flag('--toggle', null)
 const dark = args.includes('--dark')
 const suffix = dark ? '-dark' : ''
 const cdpPort = 9222
@@ -182,6 +187,18 @@ const SET_SELECT = (id, value) => `
     return el.value === ${JSON.stringify(value)} ? 'set' : 'refused ' + el.value
   })()`
 
+// Click the filter chip whose label starts with `label`.
+const CLICK_CHIP = label => `
+  (() => {
+    // The graph pane's bar, not the tree's: both are mounted, the tree's first.
+    const pane = document.querySelector('.graph-view') || document
+    const b = [...pane.querySelectorAll('button.header-type-tag, button.header-file-tag')]
+      .find(e => (e.querySelector('.header-type-label, .header-file-label') || e).textContent.trim().startsWith(${JSON.stringify(label)}))
+    if (!b) return 'no chip ' + ${JSON.stringify(label)}
+    b.click()
+    return 'toggled'
+  })()`
+
 const ERRORS_HOOK = `
   (() => {
     window.__twfErrors = [];
@@ -224,6 +241,8 @@ async function main() {
       if (JSON.parse(again).clicked === 0) { chips = again; break }
       chips = again
     }
+    let toggled = ''
+    if (toggleChip) { toggled = await evalIn(CLICK_CHIP(toggleChip)); await sleep(1500) }
     await sleep(4000)                       // let the layout settle before capturing
     const counts = await evalIn(COUNTS)
     const errors = await evalIn('JSON.stringify(window.__twfErrors || [])')
@@ -247,8 +266,8 @@ async function main() {
     const theme = await evalIn(`(document.querySelector('.graph-view') || {}).dataset?.theme || 'no pane'`)
     const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
     writeFileSync(join(outDir, `${unit}-${fixture}-controls${suffix}.png`), Buffer.from(shot.data, 'base64'))
-    results.push({ fixture, counts, chips, errors: errorsAfterPanel, file, panel, theme })
-    console.log(`  ${fixture.padEnd(22)} ${counts.padEnd(20)} theme=${theme} chips=${chips}  panel=${panel}  errors=${errorsAfterPanel}`)
+    results.push({ fixture, counts, chips, errors: errorsAfterPanel, file, panel: panel + (toggled ? ' toggle=' + toggled : ''), theme })
+    console.log(`  ${fixture.padEnd(22)} ${counts.padEnd(20)} theme=${theme} chips=${chips}${toggled ? ' toggle=' + toggled : ''}  panel=${panel}  errors=${errorsAfterPanel}`)
   }
 
   console.log(`\nwrote ${results.length} screenshot(s) to ${outDir}/`)
@@ -264,7 +283,7 @@ async function main() {
     console.error('WRONG THEME on: ' + wrongTheme.map(b => `${b.fixture} (${b.theme})`).join(', '))
     process.exitCode = 1
   }
-  const missed = results.filter(r => /no toggle|no button|no select|refused/.test(r.panel))
+  const missed = results.filter(r => /no toggle|no button|no select|no chip|refused/.test(r.panel))
   if (missed.length) {
     console.error('PANEL STEP DID NOT APPLY on: ' + missed.map(b => `${b.fixture} (${b.panel})`).join(', '))
     process.exitCode = 1

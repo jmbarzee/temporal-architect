@@ -1576,3 +1576,62 @@ renamed likewise, and `refusals`, `markers`, `choices` new. Nothing else
 moves.
 
 — 2026-10-22 — agent
+
+**D59 — Controls offer what the visible set holds; the last three behaviours
+are the taxonomy's (Unit 7).** R35; B16, B17, B35; leak ceiling 0, reached
+to within the host's wire types.
+
+1. **Post-filter-scoped controls** (R35). A control offers only what the
+   post-filter visible set holds: a push token per bucket some visible node
+   falls in, a pull token per spring category some visible edge falls in, a
+   column per such bucket on each layout axis. The view computes one
+   `PresentSets { push, bandX, bandY, springs }` from the visible nodes and
+   edges and the panel hands each control its half; a bucket's tuning is
+   kept, unshown, for when its nodes return. The axis dropdowns alone still
+   measure the whole graph — an axis's usability does not flip with a
+   filter. Tier A records the sets per filter state (`controls`).
+2. **The hidden-node policy is the taxonomy's** (B16). `NodeTypeDefinition
+   .whenHidden: 'ascend' | 'splice'` says what a dependency edge touching a
+   hidden node of that value does — re-point to the nearest visible
+   ancestor, or follow the node's own dependency edges through. The adapter
+   says `splice` for the operation and `ascend` for every other value; the
+   derivation reads the policy and names no value. On a collision between
+   two graduated edges the spliced one keeps precedence — it still carries
+   what the hidden hop knew — which is what the old rule "prefer the edge
+   carrying `nexusEndpoint`" meant, said without the payload key. Every
+   graduated-edge row is byte-identical (the proof the plan asked for);
+   `ontologyProbes.hiddenPolicy` shows the two answers on one chain.
+3. **The hover box's context line and the highlight are hooks** (B35, and
+   the routing highlight). `OntologySpec.contextLine(node, parent)` (default:
+   the parent's name) and `OntologySpec.highlight(active, base, graph)`
+   (default: the library's transitive walk) carry what the library used to
+   hardcode: the nexus values' `<parent> · <queue>` lines from their own
+   payload keys, the endpoint's highlight by routing metadata, the service's
+   widening by the endpoints fronting its operations. The icon in the hover
+   box is the value's own; the host's filter descriptors are no longer
+   imported for it (one boundary violation fewer). Tier A records the
+   context line per node (`contextLines`) and the hook's answer for the
+   first visible node of each value per state (`hookedHighlights`).
+4. **Focus by values** (B35). A cross-view focus target is the library's
+   `FocusTarget { name, values }` — the shape the reconciler already used —
+   and the view matches a node on the name and every value the target names
+   (`matchesFocus`); the host pins a name with whatever axis it has, and the
+   view never learns which. `onShowInTree` hands the host a target built
+   from the node's own dimensions.
+5. **The summary dispatch** (B17) was Unit 6's (D58 §6): `children | degree |
+   none`, read through `abbreviationFor`. Nothing remained to inject; the
+   row is counted here because the plan assigned it here.
+6. **Vocabulary.** The library's manifest reads 4 occurrences, all the host's
+   wire types in two props (`ast: TWFFile` on the view and the filter bar,
+   with their imports) — what Unit 8's library move replaces with a `Graph`
+   built by the host. Every comment, token and literal is gone: the tension
+   colours are chrome tokens (`--tension-*`), and the leak ceiling is
+   ratcheted to 4 with the arithmetic in PROGRESS.
+
+**Golden change (§8.2).** Every existing row byte-identical — summaries,
+graduated edges, Tier C, static. Added: Tier A `contextLines` (whole graph)
+and, per filter state, `controls` and `hookedHighlights`;
+`ontologyProbes.injection.*` gain `graduatedEdges` and `contextLines`;
+`ontologyProbes.hiddenPolicy` new. Nothing else moves.
+
+— 2026-10-22 — agent

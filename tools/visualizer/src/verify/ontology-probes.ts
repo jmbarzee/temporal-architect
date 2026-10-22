@@ -19,7 +19,7 @@ import { filterOfSets } from '../filter/types'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { GraphEdge } from '../graph/model'
 import type { NodeType } from '../adapter/node-types'
-import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
+import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
 import { createOntology } from '../graph/ontology'
 import {
   createDimensionalMapping,
@@ -107,7 +107,38 @@ function visible(ontology: typeof DEFAULT_ONTOLOGY, source: typeof SOURCE, types
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     summaries: sorted([...vg.nodeSummaries].map(([id, s]) => `${id}=${s}`)),
+    graduatedEdges: sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${e.dimensions[RELATION_DIMENSION]}`)),
+    // The hover box's context line per visible node — the taxonomy's hook, or
+    // its default, the parent's name (D59).
+    contextLines: sorted(vg.visibleNodes.map(n => `${n.id}=${ontology.contextLine(n, n.parentId ? source.getNode(n.parentId) : undefined) ?? ''}`)),
   }
+}
+
+// A chain for the hidden-node policy (D59, B16): act2 → wf → act, with wf
+// hidden and both activities visible. `ascend` re-points wf's two edges to its
+// worker (act2 → wk, wk → act); `splice` follows wf's own dependency edges
+// through, so the chain survives as the one edge act2 → act.
+const CHAIN_NODES: SimNode[] = [
+  node('wk', 'worker'),
+  node('wf', 'workflow', 'wk'),
+  node('act', 'activity', 'wk'),
+  node('act2', 'activity', 'wk'),
+]
+const CHAIN_EDGES: GraphEdge[] = [
+  { id: 'c0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c1', sourceId: 'act', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c2', sourceId: 'act2', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'd0', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'd1', sourceId: 'act2', targetId: 'wf', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+]
+const CHAIN = (() => { const byId = new Map(CHAIN_NODES.map(n => [n.id, n])); return { nodes: CHAIN_NODES, edges: CHAIN_EDGES, getNode: (id: string) => byId.get(id) } })()
+const SPLICING = createOntology({
+  ...DEFAULT_ONTOLOGY_SPEC,
+  nodeStyles: { ...NODE_TYPE_REGISTRY, workflow: { ...NODE_TYPE_REGISTRY.workflow, whenHidden: 'splice' } } as typeof NODE_TYPE_REGISTRY,
+})
+function hiddenPolicy(ontology: typeof DEFAULT_ONTOLOGY): Json {
+  const vg = computeVisibleGraph(CHAIN, filterOfSets(new Set(['workerDef', 'activityDef']), new Set<string>()), ontology)
+  return sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${e.dimensions[RELATION_DIMENSION]}`))
 }
 
 /**
@@ -408,6 +439,13 @@ export function ontologyProbes(): Json {
       shippedNodesOnAlternateKeys: visible(ALTERNATE, SOURCE, ['tier-2', 'tier-3']),
       alternateNodesOnAlternateKeys: visible(ALTERNATE, ALT_SOURCE, ['tier-2', 'tier-3']),
       alternateNodesUnderShippedTaxonomy: visible(DEFAULT_ONTOLOGY, ALT_SOURCE, ['tier-2', 'tier-3']),
+    },
+    // The hidden-node policy is the taxonomy's (D59, B16): the same chain, the
+    // same hidden value, two answers — ascended edges under the shipped
+    // policy, one spliced edge under a taxonomy that says `splice`.
+    hiddenPolicy: {
+      ascend: hiddenPolicy(DEFAULT_ONTOLOGY),
+      splice: hiddenPolicy(SPLICING),
     },
   }
 }

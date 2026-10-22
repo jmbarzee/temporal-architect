@@ -20,11 +20,25 @@
 
 import type { DimensionDescriptor, DimensionId, DimensionMap, DimensionValue } from './dimension'
 import { hasOwn } from './dimension'
-import type { GraphEdge } from './model'
+import type { GraphEdge, GraphNode } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
 import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
 import type { ScalarAxis } from './scalar'
 import type { EdgeStroke } from './scheme'
+
+/** A highlight: the node ids lit and the edge ids lit. Edges absent means "every visible edge between lit nodes". */
+export interface Highlight {
+  readonly nodes: ReadonlySet<string>
+  readonly edges?: ReadonlySet<string>
+}
+
+/** What a highlight rule may read: the visible graph, and a lookup for any node. */
+export interface HighlightGraph {
+  readonly visibleNodes: readonly GraphNode[]
+  readonly visibleEdges: readonly GraphEdge[]
+  readonly visibleIds: ReadonlySet<string>
+  getNode(id: string): GraphNode | undefined
+}
 import { cssSuffix, isSchemeColor } from './scheme'
 import { BUILT_IN_SCALARS } from './scalar'
 
@@ -82,6 +96,10 @@ export interface Ontology {
   readonly scalars: readonly ScalarAxis[]
   /** How the canvas strokes an edge of this type (D57). Loud for an id the host did not declare. */
   edgeStrokeFor(id: EdgeTypeId): EdgeStroke
+  /** The hover box's context line for a node — the host's, or its parent's name (D59). */
+  contextLine(node: GraphNode, parent: GraphNode | undefined): string | undefined
+  /** The highlight for an active node — the host's refinement of the library's transitive walk (D59). */
+  highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight
 
   /**
    * Style, size, physics and summary metadata for a value. Never throws — a
@@ -142,6 +160,18 @@ export interface OntologySpec {
    * answers per node in [0, 1]. Empty is a fine answer.
    */
   scalars: readonly ScalarAxis[]
+  /**
+   * The hover box's context line for a node (D59, B35): what a host wants
+   * said under the name — addressing metadata from its own payload, a parent
+   * by another name. Absent, the line is the parent's name.
+   */
+  contextLine?: (node: GraphNode, parent: GraphNode | undefined) => string | undefined
+  /**
+   * The highlight for an active node (D59): given the library's transitive
+   * walk from it, the host may widen it (members it relates by metadata) or
+   * replace it. Absent, the walk is the highlight.
+   */
+  highlight?: (active: GraphNode, base: Highlight, graph: HighlightGraph) => Highlight
   /**
    * Returned for a key the host did not declare. Required, not optional: a
    * taxonomy that cannot say what an unknown value looks like has no answer for
@@ -260,5 +290,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     // — this runs per node per frame in the draw loop.
     resolveNodeStyle: subject => styleForKey(valueFor(subject)),
     resolveEdgeType: spec.resolveEdgeType,
+    contextLine: spec.contextLine ?? ((_node, parent) => parent?.name),
+    highlight: spec.highlight ?? ((_active, base) => base),
   }
 }
