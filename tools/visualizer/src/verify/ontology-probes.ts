@@ -30,7 +30,7 @@ import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
 import { defaultParamsFor } from '../graph/simulation'
 import { foldReheatPolicy } from '../graph/dimension'
-import { bandFor, chargeFor, coreRadiusFor, resolvePhysics } from '../graph/forces'
+import { bandFor, chargeFor, coreRadiusFor, mappedAxis, resolvePhysics } from '../graph/forces'
 import { dimensionsFor } from '../adapter/build'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'
@@ -98,6 +98,7 @@ const ALTERNATE = createOntology({
   } as Record<NodeType, (typeof NODE_TYPE_REGISTRY)['worker']>,
   edgeTypes: DEFAULT_ONTOLOGY.edgeTypes,
   resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
+  scalars: [],
   fallbackStyle: NODE_TYPE_REGISTRY.activity,
 })
 
@@ -202,7 +203,7 @@ function prototypeNamedValues(): Json {
     const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
     const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
     const node = subject
-    const band = bandFor(resolved.bandY, node)
+    const band = bandFor(mappedAxis(resolved.bandY), node)
     rows.push({
       name,
       styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
@@ -263,6 +264,7 @@ function physicsInjection(): Json {
       physics: { strength: 0.7, distance: 123 }, tooltip: 'zone link',
     }],
     resolveEdgeType: () => 'zoneLink',
+    scalars: [],
     fallbackStyle: NODE_TYPE_REGISTRY.activity,
   })
   const zoned = defaultParamsFor(OTHER_AXIS)

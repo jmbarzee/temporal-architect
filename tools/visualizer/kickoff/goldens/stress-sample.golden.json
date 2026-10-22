@@ -1023,6 +1023,173 @@
         "access-control.twf"
       ]
     },
+    "scalars": {
+      "degree": {
+        "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl": 0.02,
+        "activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl": 0.02,
+        "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl": 0.02,
+        "activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl": 0.02,
+        "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl": 1,
+        "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl": 0.02,
+        "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl": 0.02,
+        "activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl": 0.02,
+        "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl": 0.02,
+        "activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:NotifyApprover/worker:coreWorker/namespace:accessControl": 0.04,
+        "activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:NotifyRequester/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ValidateApprover/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl": 0.02,
+        "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl": 0.04,
+        "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl": 0.04,
+        "namespace:accessControl": 0,
+        "worker:connectorWorker/namespace:accessControl": 0.02,
+        "worker:coreWorker/namespace:accessControl": 0.02,
+        "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": 0.42,
+        "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": 0.28,
+        "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": 0.3,
+        "workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl": 0.18,
+        "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl": 0.12,
+        "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl": 0.28,
+        "workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl": 0.22,
+        "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl": 0.06,
+        "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl": 0.24,
+        "workflow:TransferIdentity/worker:coreWorker/namespace:accessControl": 0.22
+      },
+      "depth": {
+        "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": 1,
+        "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl": 1,
+        "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl": 1,
+        "activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl": 1,
+        "activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl": 1,
+        "activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl": 1,
+        "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl": 1,
+        "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl": 1,
+        "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl": 1,
+        "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl": 1,
+        "activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl": 1,
+        "activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl": 1,
+        "activity:NotifyApprover/worker:coreWorker/namespace:accessControl": 1,
+        "activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl": 1,
+        "activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl": 1,
+        "activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl": 1,
+        "activity:NotifyRequester/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl": 1,
+        "activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl": 1,
+        "activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl": 1,
+        "activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ValidateApprover/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl": 1,
+        "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl": 1,
+        "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl": 1,
+        "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl": 1,
+        "namespace:accessControl": 0,
+        "worker:connectorWorker/namespace:accessControl": 0.5,
+        "worker:coreWorker/namespace:accessControl": 0.5,
+        "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl": 1,
+        "workflow:TransferIdentity/worker:coreWorker/namespace:accessControl": 1
+      },
+      "reach": {
+        "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": 0,
+        "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl": 0,
+        "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl": 0,
+        "activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl": 0,
+        "activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl": 0,
+        "activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl": 0,
+        "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl": 0,
+        "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl": 0,
+        "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl": 0,
+        "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl": 0,
+        "activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl": 0,
+        "activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl": 0,
+        "activity:NotifyApprover/worker:coreWorker/namespace:accessControl": 0,
+        "activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl": 0,
+        "activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl": 0,
+        "activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl": 0,
+        "activity:NotifyRequester/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl": 0,
+        "activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl": 0,
+        "activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl": 0,
+        "activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ValidateApprover/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl": 0,
+        "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl": 0,
+        "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl": 0,
+        "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl": 0,
+        "namespace:accessControl": 1,
+        "worker:connectorWorker/namespace:accessControl": 0,
+        "worker:coreWorker/namespace:accessControl": 0.833333,
+        "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": 0.5,
+        "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": 0.166667,
+        "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": 0.333333,
+        "workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl": 0.166667,
+        "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl": 0.333333,
+        "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl": 0.166667,
+        "workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl": 0.5,
+        "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl": 0.333333,
+        "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl": 0.166667,
+        "workflow:TransferIdentity/worker:coreWorker/namespace:accessControl": 0.666667
+      }
+    },
     "visibleSubgraph": {
       "types:all · files:access-control.twf": {
         "downstreamScores": {
@@ -3142,6 +3309,434 @@
           48.644276,
           254.128906
         ]
+      },
+      "yReach": {
+        "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": [
+          10.044632,
+          277.56264
+        ],
+        "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl": [
+          -5.852622,
+          271.30598
+        ],
+        "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl": [
+          61.972827,
+          321.558363
+        ],
+        "activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl": [
+          2.304238,
+          280.332057
+        ],
+        "activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl": [
+          -0.310769,
+          275.817596
+        ],
+        "activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl": [
+          -2.590969,
+          277.266241
+        ],
+        "activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl": [
+          -7.959082,
+          273.364445
+        ],
+        "activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl": [
+          -21.466302,
+          276.074784
+        ],
+        "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl": [
+          67.888563,
+          321.346313
+        ],
+        "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl": [
+          78.493197,
+          317.321122
+        ],
+        "activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl": [
+          67.245039,
+          268.896838
+        ],
+        "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl": [
+          17.582447,
+          280.727238
+        ],
+        "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl": [
+          61.789649,
+          317.555176
+        ],
+        "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl": [
+          81.160121,
+          317.719582
+        ],
+        "activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl": [
+          14.613479,
+          274.212402
+        ],
+        "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl": [
+          -11.087542,
+          271.840785
+        ],
+        "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl": [
+          3.962501,
+          287.27559
+        ],
+        "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl": [
+          64.845109,
+          320.853246
+        ],
+        "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl": [
+          76.130737,
+          325.324843
+        ],
+        "activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl": [
+          24.207961,
+          283.565992
+        ],
+        "activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl": [
+          28.278073,
+          286.213546
+        ],
+        "activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl": [
+          -13.462222,
+          281.152862
+        ],
+        "activity:NotifyApprover/worker:coreWorker/namespace:accessControl": [
+          39.71384,
+          302.595328
+        ],
+        "activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl": [
+          2.434315,
+          293.723336
+        ],
+        "activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl": [
+          -10.445976,
+          267.829211
+        ],
+        "activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl": [
+          17.428861,
+          294.119448
+        ],
+        "activity:NotifyRequester/worker:coreWorker/namespace:accessControl": [
+          35.602485,
+          287.14861
+        ],
+        "activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl": [
+          3.530972,
+          277.346932
+        ],
+        "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl": [
+          30.434697,
+          292.370999
+        ],
+        "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl": [
+          26.374401,
+          296.575051
+        ],
+        "activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl": [
+          23.960552,
+          299.465546
+        ],
+        "activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl": [
+          17.261393,
+          293.839826
+        ],
+        "activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl": [
+          -9.041633,
+          277.375201
+        ],
+        "activity:ValidateApprover/worker:coreWorker/namespace:accessControl": [
+          20.149309,
+          293.403682
+        ],
+        "activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl": [
+          5.725119,
+          293.964937
+        ],
+        "activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl": [
+          12.821631,
+          290.943487
+        ],
+        "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl": [
+          37.079183,
+          292.532645
+        ],
+        "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl": [
+          17.705847,
+          279.43248
+        ],
+        "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl": [
+          43.085854,
+          305.188572
+        ],
+        "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl": [
+          57.520869,
+          309.605993
+        ],
+        "namespace:accessControl": [
+          120.737564,
+          -274.078136
+        ],
+        "worker:connectorWorker/namespace:accessControl": [
+          117.923161,
+          284.242235
+        ],
+        "worker:coreWorker/namespace:accessControl": [
+          94.376289,
+          -136.326408
+        ],
+        "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": [
+          65.717772,
+          147.404448
+        ],
+        "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": [
+          -10.900025,
+          297.75167
+        ],
+        "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": [
+          34.391839,
+          261.1503
+        ],
+        "workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl": [
+          -11.800938,
+          286.062989
+        ],
+        "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl": [
+          63.500138,
+          83.257141
+        ],
+        "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl": [
+          11.423034,
+          273.870039
+        ],
+        "workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl": [
+          63.166855,
+          134.621438
+        ],
+        "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl": [
+          40.648405,
+          136.096798
+        ],
+        "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl": [
+          -1.67263,
+          287.710714
+        ],
+        "workflow:TransferIdentity/worker:coreWorker/namespace:accessControl": [
+          67.886069,
+          14.532044
+        ]
+      },
+      "yReachRadial": {
+        "activity:AggregateDeprovisionResults/worker:coreWorker/namespace:accessControl": [
+          -369.790104,
+          -128.915652
+        ],
+        "activity:AggregateProvisioningResults/worker:coreWorker/namespace:accessControl": [
+          -336.991503,
+          -197.931191
+        ],
+        "activity:AlertSecurityTeam/worker:connectorWorker/namespace:accessControl": [
+          169.257392,
+          429.478981
+        ],
+        "activity:AlertSecurityTeamBreakGlass/worker:coreWorker/namespace:accessControl": [
+          -368.361592,
+          -131.838324
+        ],
+        "activity:AlertSecurityTeamIncompleteOffboard/worker:coreWorker/namespace:accessControl": [
+          -355.697578,
+          -161.205299
+        ],
+        "activity:ArchiveIdentity/worker:coreWorker/namespace:accessControl": [
+          -324.364653,
+          -216.609295
+        ],
+        "activity:AutoRevokeUndecidedItems/worker:coreWorker/namespace:accessControl": [
+          -345.135652,
+          -182.330398
+        ],
+        "activity:CalculateRoleDelta/worker:coreWorker/namespace:accessControl": [
+          -352.414508,
+          -168.131746
+        ],
+        "activity:CreateManualDeprovisioningTicket/worker:connectorWorker/namespace:accessControl": [
+          109.886517,
+          446.528142
+        ],
+        "activity:CreateManualProvisioningTicket/worker:connectorWorker/namespace:accessControl": [
+          120.834703,
+          442.237489
+        ],
+        "activity:DisableAuthentication/worker:connectorWorker/namespace:accessControl": [
+          105.745298,
+          406.127163
+        ],
+        "activity:EmitAuditEvent/worker:coreWorker/namespace:accessControl": [
+          -334.574854,
+          -201.197106
+        ],
+        "activity:EscalateManualDeprovisioning/worker:connectorWorker/namespace:accessControl": [
+          166.811549,
+          429.983353
+        ],
+        "activity:EscalateManualProvisioning/worker:connectorWorker/namespace:accessControl": [
+          175.71179,
+          426.396667
+        ],
+        "activity:EscalatePostIncidentReview/worker:coreWorker/namespace:accessControl": [
+          -352.193365,
+          -168.762039
+        ],
+        "activity:EvaluatePolicy/worker:coreWorker/namespace:accessControl": [
+          -333.245581,
+          -203.767223
+        ],
+        "activity:EvaluateRenewalPolicy/worker:coreWorker/namespace:accessControl": [
+          -313.926042,
+          -231.921968
+        ],
+        "activity:ExecuteDeprovisioning/worker:connectorWorker/namespace:accessControl": [
+          189.212643,
+          420.933443
+        ],
+        "activity:ExecuteProvisioning/worker:connectorWorker/namespace:accessControl": [
+          158.997276,
+          431.540634
+        ],
+        "activity:GenerateCampaignReport/worker:coreWorker/namespace:accessControl": [
+          -318.076993,
+          -226.319422
+        ],
+        "activity:GenerateReviewItems/worker:coreWorker/namespace:accessControl": [
+          -361.778365,
+          -151.380152
+        ],
+        "activity:IdentifySharedResources/worker:coreWorker/namespace:accessControl": [
+          -349.541194,
+          -173.714398
+        ],
+        "activity:NotifyApprover/worker:coreWorker/namespace:accessControl": [
+          -358.743454,
+          -154.627718
+        ],
+        "activity:NotifyBreakGlassApprover/worker:coreWorker/namespace:accessControl": [
+          -340.712377,
+          -190.438845
+        ],
+        "activity:NotifyManagerForMicroCert/worker:coreWorker/namespace:accessControl": [
+          -368.658469,
+          -130.234919
+        ],
+        "activity:NotifyPostIncidentReviewers/worker:coreWorker/namespace:accessControl": [
+          -337.446838,
+          -196.004283
+        ],
+        "activity:NotifyRequester/worker:coreWorker/namespace:accessControl": [
+          -354.403459,
+          -163.926076
+        ],
+        "activity:ReassignApprovalTask/worker:coreWorker/namespace:accessControl": [
+          -310.601964,
+          -235.856258
+        ],
+        "activity:ResolveEscalationTarget/worker:coreWorker/namespace:accessControl": [
+          -356.132952,
+          -160.349853
+        ],
+        "activity:ResolveFallbackApprover/worker:coreWorker/namespace:accessControl": [
+          -331.414653,
+          -205.661276
+        ],
+        "activity:SendCampaignReminders/worker:coreWorker/namespace:accessControl": [
+          -339.829825,
+          -193.305191
+        ],
+        "activity:SignalAccessRequestRevoke/worker:coreWorker/namespace:accessControl": [
+          -362.370057,
+          -150.23299
+        ],
+        "activity:TransferResourceOwnership/worker:coreWorker/namespace:accessControl": [
+          -359.238643,
+          -153.695223
+        ],
+        "activity:ValidateApprover/worker:coreWorker/namespace:accessControl": [
+          -338.496964,
+          -193.974058
+        ],
+        "activity:ValidateBreakGlassApprover/worker:coreWorker/namespace:accessControl": [
+          -314.339726,
+          -230.878632
+        ],
+        "activity:ValidateCertificationReviewer/worker:coreWorker/namespace:accessControl": [
+          -374.846844,
+          -118.954665
+        ],
+        "activity:ValidateDelegation/worker:coreWorker/namespace:accessControl": [
+          -348.274262,
+          -176.122534
+        ],
+        "activity:ValidatePostIncidentReview/worker:coreWorker/namespace:accessControl": [
+          -353.187379,
+          -166.837126
+        ],
+        "activity:VerifyDeprovisioning/worker:connectorWorker/namespace:accessControl": [
+          190.361385,
+          415.311499
+        ],
+        "activity:VerifyProvisioning/worker:connectorWorker/namespace:accessControl": [
+          118.779591,
+          439.592187
+        ],
+        "namespace:accessControl": [
+          113.11907,
+          78.637467
+        ],
+        "worker:connectorWorker/namespace:accessControl": [
+          297.424811,
+          337.973734
+        ],
+        "worker:coreWorker/namespace:accessControl": [
+          7.013891,
+          60.04867
+        ],
+        "workflow:AccessRequest/worker:coreWorker/namespace:accessControl": [
+          85.056025,
+          128.306523
+        ],
+        "workflow:ApprovalChain/worker:coreWorker/namespace:accessControl": [
+          251.59898,
+          181.328845
+        ],
+        "workflow:BreakGlassRequest/worker:coreWorker/namespace:accessControl": [
+          175.547921,
+          149.372037
+        ],
+        "workflow:CertificationCampaign/worker:coreWorker/namespace:accessControl": [
+          208.933392,
+          231.152562
+        ],
+        "workflow:DeprovisionAll/worker:coreWorker/namespace:accessControl": [
+          163.376548,
+          168.088209
+        ],
+        "workflow:DeprovisionEntitlement/worker:coreWorker/namespace:accessControl": [
+          206.631877,
+          235.0385
+        ],
+        "workflow:OffboardIdentity/worker:coreWorker/namespace:accessControl": [
+          112.639835,
+          100.44206
+        ],
+        "workflow:ProvisionAll/worker:coreWorker/namespace:accessControl": [
+          146.637791,
+          179.035296
+        ],
+        "workflow:ProvisionEntitlement/worker:coreWorker/namespace:accessControl": [
+          240.310999,
+          197.996326
+        ],
+        "workflow:TransferIdentity/worker:coreWorker/namespace:accessControl": [
+          41.838146,
+          60.136389
+        ]
       }
     },
     "allFinite": true,
@@ -3175,6 +3770,16 @@
       ],
       "x": [],
       "y": []
+    },
+    "overlayScalarY": {
+      "acting": true,
+      "rings": [],
+      "x": [
+        "-190..190: activity,namespace,worker,workflow"
+      ],
+      "y": [
+        "-420..420: gradient 0@420 1@-420"
+      ]
     },
     "params": {
       "bandTolerance": 0.05,

@@ -12,8 +12,8 @@ import type { NodeType } from '../adapter/node-types'
 import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
 import {
-  Simulation, axisOptions, defaultParamsFor, fitsCeiling, pairTuning, retunedFor,
-  withPushOverride, withSpringOverride, withOverride, TOKEN_CEILING,
+  Simulation, axisOptions, defaultParamsFor, fitsCeiling, pairTuning, retunedFor, scalarTuning,
+  withPushOverride, withSpringOverride, withOverride, TOKEN_CEILING, isScalarTuning,
 } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { resolvePhysics, springFor } from '../graph/forces'
@@ -31,6 +31,12 @@ import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 
 const SEED = 0x7a1e
+
+/** The mapped half of a layout tuning; loud if a probe reaches a scalar where it expected buckets. */
+function mapped(t: ForceParams['bandY']): Exclude<ForceParams['bandY'], { scalar: string }> {
+  if (isScalarTuning(t)) throw new Error('probe expected a mapped axis')
+  return t
+}
 
 function multifile(): Graph {
   const fixture = FIXTURES.find(f => f.name === 'multifile-sample')
@@ -138,7 +144,7 @@ function retune(graph: Graph): Json {
   const styledTuned: ForceParams = {
     ...styled,
     pair: withPushOverride(styled.pair, 'worker', { charge: -1, coreRadius: 2 }),
-    bandY: withOverride(styled.bandY, 'worker', { min: -5, max: 5 }),
+    bandY: withOverride(mapped(styled.bandY), 'worker', { min: -5, max: 5 }),
   }
   const swapped = retunedFor(styledTuned, three, graph)
   return {
@@ -173,16 +179,25 @@ function retune(graph: Graph): Json {
       const grown = retunedFor(tuned, DEFAULT_ONTOLOGY, manyFiles(30))
       return {
         sameGraphReturnsSameObject: same === tuned,
-        fileDropped: { xBuckets: droppedFile.bandX.mapping.buckets.map(b => b.id), yBuckets: droppedFile.bandY.mapping.buckets.map(b => b.id), xOverrideKept: droppedFile.bandX.overrides.has('nexus.twf'), yOverrideKept: droppedFile.bandY.overrides.has('nexus.twf') },
-        axisVanished: { x: gone.bandX.mapping.dimension, y: gone.bandY.mapping.dimension, xOverrides: gone.bandX.overrides.size, yOverrides: gone.bandY.overrides.size },
-        outgrown: { x: grown.bandX.mapping.dimension, y: grown.bandY.mapping.dimension, xOverrides: grown.bandX.overrides.size },
+        fileDropped: { xBuckets: mapped(droppedFile.bandX).mapping.buckets.map(b => b.id), yBuckets: mapped(droppedFile.bandY).mapping.buckets.map(b => b.id), xOverrideKept: mapped(droppedFile.bandX).overrides.has('nexus.twf'), yOverrideKept: mapped(droppedFile.bandY).overrides.has('nexus.twf') },
+        axisVanished: { x: mapped(gone.bandX).mapping.dimension, y: mapped(gone.bandY).mapping.dimension, xOverrides: mapped(gone.bandX).overrides.size, yOverrides: mapped(gone.bandY).overrides.size },
+        outgrown: { x: mapped(grown.bandX).mapping.dimension, y: mapped(grown.bandY).mapping.dimension, xOverrides: mapped(grown.bandX).overrides.size },
+        // A scalar axis has no buckets: a graph change keeps it by reference; a
+        // taxonomy that does not know the scalar falls it back to the style identity.
+        scalar: (() => {
+          const onReach: ForceParams = { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: scalarTuning(DEFAULT_ONTOLOGY, 'reach', 'y') }
+          const kept = retunedFor(onReach, DEFAULT_ONTOLOGY, without(graph, 'task-queues.twf'))
+          const unknown: ForceParams = { ...onReach, bandY: { scalar: 'not-a-scalar', span: { zero: 1, one: -1 } } }
+          const fell = retunedFor(unknown, DEFAULT_ONTOLOGY, graph)
+          return { graphChangeKeepsIt: kept.bandY === onReach.bandY, unknownScalarFallsBack: !isScalarTuning(fell.bandY) && (fell.bandY as { mapping: { dimension: string } }).mapping.dimension === 'temporalType' }
+        })(),
       }
     })(),
     taxonomySwapped: {
       pairBuckets: swapped.pair.mapping.buckets.map(b => b.id),
-      bandBuckets: swapped.bandY.mapping.buckets.map(b => b.id),
+      bandBuckets: mapped(swapped.bandY).mapping.buckets.map(b => b.id),
       pushOverrideKept: swapped.pair.push.has('worker'),
-      bandOverrideKept: swapped.bandY.overrides.has('worker'),
+      bandOverrideKept: mapped(swapped.bandY).overrides.has('worker'),
       sameTaxonomyReturnsSameObject: retunedFor(styledTuned, DEFAULT_ONTOLOGY, graph) === styledTuned,
     },
   }

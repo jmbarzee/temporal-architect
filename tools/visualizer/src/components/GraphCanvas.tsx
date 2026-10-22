@@ -800,15 +800,26 @@ export function GraphCanvas({
         const stripes = (coord: 'x' | 'y') => {
           const list = coord === 'x' ? d.overlay.x : d.overlay.y
           const highlight = drawnOn(coord)
-          for (const { lo, hi, buckets } of list) {
-            const s1 = coord === 'y' ? worldToScreen(vp, 0, lo)[1] : worldToScreen(vp, lo, 0)[0]
-            const s2 = coord === 'y' ? worldToScreen(vp, 0, hi)[1] : worldToScreen(vp, hi, 0)[0]
+          const toScreen = (v: number) => (coord === 'y' ? worldToScreen(vp, 0, v)[1] : worldToScreen(vp, v, 0)[0])
+          for (const { lo, hi, buckets, gradient } of list) {
+            const s1 = toScreen(lo)
+            const s2 = toScreen(hi)
             if (s2 < 0 || s1 > (coord === 'y' ? h : w)) continue
             const isActive = highlight && hover !== null && buckets.includes(hover.bucket)
             const isDimmed = highlight && !isActive
             const color = fillOf(buckets[0])
-            ctx.fillStyle = color
-            ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
+            if (gradient) {
+              // A scalar axis: one gradient from its 0 end to its 1 end (R31).
+              const z = toScreen(gradient.zero), o = toScreen(gradient.one)
+              const g = coord === 'y' ? ctx.createLinearGradient(0, z, 0, o) : ctx.createLinearGradient(z, 0, o, 0)
+              g.addColorStop(0, cssVar(canvas, '--color-text-muted', '#94A3B8'))
+              g.addColorStop(1, cssVar(canvas, '--color-text', '#1E293B'))
+              ctx.fillStyle = g
+              ctx.globalAlpha = 0.12
+            } else {
+              ctx.fillStyle = color
+              ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
+            }
             if (coord === 'y') ctx.fillRect(0, s1, w, s2 - s1)
             else ctx.fillRect(s1, 0, s2 - s1, h)
             ctx.strokeStyle = color

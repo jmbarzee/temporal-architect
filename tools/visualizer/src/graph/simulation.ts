@@ -10,7 +10,6 @@ import {
   applyTopologicalGravity,
   applyCenterGravity,
   bandAxesActing,
-  bucketOf,
   layoutFrame,
   presentSpringCategories,
   topologicalActing,
@@ -19,7 +18,8 @@ import {
   springFor,
 } from './forces'
 import type { Rng } from './rng'
-import type { EdgeCategory, LayoutFrame, PhysicsSubject, ResolvedPhysics } from './forces'
+import type { EdgeCategory, LayoutFrame, LayoutSubject, ResolvedPhysics } from './forces'
+import type { ScalarAxis } from './scalar'
 import type { DimensionalMapping } from './dimension'
 import { identityMapping, valuesOn } from './dimension'
 import type { Ontology } from './ontology'
@@ -91,6 +91,32 @@ export function withOverride<T>(tuning: AxisTuning<T>, bucketId: string, value: 
   overrides.set(bucketId, value)
   return { ...tuning, overrides }
 }
+
+/**
+ * Where a scalar's unit interval lands on an axis: the world coordinate a
+ * score of 0 rests at, and the one a score of 1 rests at. Either may be the
+ * lower — a span reads like a chart's axis and flips by dragging its ends
+ * past each other.
+ */
+export interface ScalarSpan {
+  readonly zero: number
+  readonly one: number
+}
+
+/**
+ * A layout axis backed by a computed scalar (R8): which scalar, and its span.
+ * No buckets, no overrides — the scalar decides where each node rests; the
+ * user decides where 0 and 1 are.
+ */
+export interface ScalarTuning {
+  readonly scalar: string
+  readonly span: ScalarSpan
+}
+
+/** What a layout axis keys on: a dimensional mapping, or a computed scalar (R28). */
+export type LayoutTuning = AxisTuning<BandRange> | ScalarTuning
+
+export const isScalarTuning = (t: LayoutTuning): t is ScalarTuning => 'scalar' in t
 
 /**
  * The two pair forces' tuning: ONE axis for both, and only what the user has
@@ -194,6 +220,40 @@ export function axisOptions(ontology: Ontology, graph: Graph): AxisOption[] {
   }))
 }
 
+/** One choice for a layout axis: a mapping (with its cost) or a computed scalar. */
+export type LayoutAxisOption =
+  | { readonly kind: 'mapping'; readonly option: AxisOption }
+  | { readonly kind: 'scalar'; readonly scalar: ScalarAxis }
+
+/** Every axis X or Y can key on: the mappings push/pull can, then every scalar the taxonomy knows. */
+export function layoutAxisOptions(ontology: Ontology, graph: Graph): LayoutAxisOption[] {
+  return [
+    ...axisOptions(ontology, graph).map(option => ({ kind: 'mapping' as const, option })),
+    ...ontology.scalars.map(scalar => ({ kind: 'scalar' as const, scalar })),
+  ]
+}
+
+/**
+ * The span a scalar axis starts with: the declared bands' extent on that axis,
+ * centred on the origin, so the layout keeps its scale when an axis switches
+ * kind — and read like a chart: 1 at the top (screen y grows downward) and
+ * at the right.
+ */
+export function defaultSpan(ontology: Ontology, axis: 'x' | 'y'): ScalarSpan {
+  let min = Infinity, max = -Infinity
+  for (const k of ontology.nodeTypeKeys) {
+    const b = ontology.styleForKey(k).physics.band[axis]
+    min = Math.min(min, b.min); max = Math.max(max, b.max)
+  }
+  const half = Number.isFinite(min) ? (max - min) / 2 : 300
+  return axis === 'y' ? { zero: half, one: -half } : { zero: -half, one: half }
+}
+
+/** The tuning for a layout axis that keys on a scalar, on its default span. */
+export function scalarTuning(ontology: Ontology, scalar: string, axis: 'x' | 'y'): ScalarTuning {
+  return { scalar, span: defaultSpan(ontology, axis) }
+}
+
 /** Same axis, same buckets, same values — order-insensitive, since node order is not a fact about the graph. */
 function sameBuckets(a: DimensionalMapping, b: DimensionalMapping): boolean {
   const key = (m: DimensionalMapping) =>
@@ -238,9 +298,15 @@ export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph
     pushTokens: mapping.buckets.length,
     pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), ontology), graph.edges, nodeOf).size,
   })
+  // A scalar axis has no buckets to go stale; it falls back only when the
+  // taxonomy no longer knows the scalar (a swap), with the style identity.
+  const refreshLayout = (tuning: LayoutTuning): LayoutTuning =>
+    isScalarTuning(tuning)
+      ? (ontology.scalars.some(sc => sc.id === tuning.scalar) ? tuning : identityTuning<BandRange>(ontology))
+      : refresh(tuning, m => ({ mapping: m, overrides: new Map() }), bucketsFit)
   const pair = refresh(params.pair, pairTuning, pairFits)
-  const bandX = refresh(params.bandX, m => ({ mapping: m, overrides: new Map() }), bucketsFit)
-  const bandY = refresh(params.bandY, m => ({ mapping: m, overrides: new Map() }), bucketsFit)
+  const bandX = refreshLayout(params.bandX)
+  const bandY = refreshLayout(params.bandY)
   return pair === params.pair && bandX === params.bandX && bandY === params.bandY ? params : { ...params, pair, bandX, bandY }
 }
 
@@ -276,8 +342,8 @@ export interface GravityParams {
    * (T22). A strength of zero switches an axis off; when both are off and
    * topological gravity is too, center gravity is the baseline.
    */
-  bandX: AxisTuning<BandRange>
-  bandY: AxisTuning<BandRange>
+  bandX: LayoutTuning
+  bandY: LayoutTuning
   gravityX: number
   gravityY: number
   // Band falloff exponent applied to the displacement outside the rest band
@@ -482,7 +548,7 @@ export class Simulation {
     this.nodes = []
     this.nodeMap = new Map()
     const seedNodes = [...graph.nodes.values()]
-    this.frame = layoutFrame(seedNodes, this.resolved)
+    this.frame = layoutFrame({ nodes: seedNodes, edges: graph.edges, nodeOf: id => graph.nodes.get(id) }, this.resolved)
     for (const node of seedNodes) {
       const [x, y] = this.seedPosition(node, rng)
       const sim: SimNode = { ...node, x, y, vx: 0, vy: 0, pinned: false }
@@ -515,20 +581,15 @@ export class Simulation {
     return this.nodeMap.get(id)
   }
 
-  // A node's rest band on one axis in the frame: re-centred, or the centre
-  // itself for a node in no bucket.
-  private axisBand(node: PhysicsSubject, axis: 'x' | 'y'): { lo: number; hi: number } {
-    const table = axis === 'x' ? this.resolved.bandX : this.resolved.bandY
-    const center = axis === 'x' ? this.frame.centerX : this.frame.centerY
-    const bucket = bucketOf(table, node)
-    const band = bucket === undefined ? undefined : table.byBucket.get(bucket)
-    return band === undefined ? { lo: 0, hi: 0 } : { lo: band.min - center, hi: band.max - center }
+  // A node's rest interval on one axis in the frame — a re-centred band, a
+  // scalar's point, or the centre itself for a node with no value there.
+  private axisBand(node: LayoutSubject, axis: 'x' | 'y'): { lo: number; hi: number } {
+    return this.frame.rest(axis, node) ?? { lo: 0, hi: 0 }
   }
 
-  private seedPosition(node: PhysicsSubject, rng: Rng): [number, number] {
+  private seedPosition(node: LayoutSubject, rng: Rng): [number, number] {
     if (this.params.radial) {
-      const bucket = bucketOf(this.resolved.bandY, node)
-      const r = (bucket === undefined ? undefined : this.frame.rings.get(bucket)) ?? 0
+      const r = this.frame.ringOf(node) ?? 0
       const theta = rng() * Math.PI * 2
       return [r * Math.cos(theta), r * Math.sin(theta)]
     }
@@ -663,7 +724,7 @@ export class Simulation {
     // A patch may replace a whole tuning; the dense tables and the per-edge
     // classification follow it.
     this.resolved = resolvePhysics(this.params, this.ontology)
-    this.frame = layoutFrame(this.nodes, this.resolved)
+    this.frame = layoutFrame({ nodes: this.nodes, edges: this.edges, nodeOf: id => this.nodeMap.get(id) }, this.resolved)
     this.springByEdge = null
   }
 
@@ -696,8 +757,7 @@ export class Simulation {
     let sx: number
     let sy: number
     if (this.params.radial) {
-      const bucket = bucketOf(this.resolved.bandY, node)
-      const r = (bucket === undefined ? undefined : this.frame.rings.get(bucket)) ?? Math.hypot(x, y)
+      const r = this.frame.ringOf(node) ?? Math.hypot(x, y)
       const theta = Math.atan2(y, x)
       sx = r * Math.cos(theta)
       sy = r * Math.sin(theta)

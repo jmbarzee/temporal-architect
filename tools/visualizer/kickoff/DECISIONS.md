@@ -1256,3 +1256,63 @@ the per-type dual-range rules; `tuningProbes.overrides.firstTick*` follow the
 seed; `tuningProbes.retune.bandAxes` is new. Nothing else moves.
 
 — 2026-10-21 — agent
+
+**D55 — Computed scalar axes: a number per node as a layout axis (Unit 5b).**
+A layout axis may key on a computed scalar instead of a mapping (R8, R9,
+R28, R31). The model, chosen so that the scalar path is the band path with
+the bucket removed, not a second force:
+
+1. **The interface** (`graph/scalar.ts`): `ScalarAxis { id, label, tooltip,
+   compute(graph) }` answers one value per node in `[0, 1]` from a
+   `ScalarGraph { nodes, edges, nodeOf }` — node metadata (a host's own
+   payload included) and the graph's structure, nothing else. A node absent
+   from the answer has no value on the axis and rests at its centre, as a
+   node in no bucket does. Three built-ins read only structure: **reach**
+   (the downstream-depth score topological gravity already computed, moved
+   here as `computeDownstreamReach` and read by the view over the visible
+   subgraph, by an axis over the whole graph), **degree** (dependency edges
+   in and out over the busiest node's) and **depth** (containment depth over
+   the deepest). A host adds its own through `OntologySpec.scalars`;
+   `createOntology` refuses a duplicate id. The ontology is not on the
+   public surface (C3), so this is not a surface change.
+2. **The tuning**: `LayoutTuning = AxisTuning<BandRange> | ScalarTuning`,
+   where `ScalarTuning { scalar, span: ScalarSpan }` and `ScalarSpan { zero,
+   one }` is where a score of 0 rests and where 1 rests, in world units.
+   Either may be the lower: the span reads like a chart's axis and flips by
+   dragging its ends past each other. `defaultSpan` is the declared bands'
+   extent on that axis centred on the origin, 1 at the top and at the right
+   — so a new scalar axis keeps the layout's scale and reads as a chart.
+3. **The frame answers per node** (`LayoutFrame.rest(axis, node)`,
+   `ringOf(node)`): a mapped axis's re-centred band, a scalar's point
+   `zero + s·(one − zero)`, or nothing. Scores are computed once per frame
+   over the WHOLE node set (D54's rule), so seed, force and overlay agree.
+   The kernel is one function, `pullToRest`, for both kinds: a scalar's rest
+   is a band of zero height, so the force is always on and the strength and
+   exponent sliders mean what they meant. In radial a scalar Y rings each
+   node by the `ringRadii` rule — the span's low end innermost — so radial is
+   a pure function of the cartesian rest on both kinds.
+4. **The overlay** is still data: a scalar axis is one stripe carrying
+   `gradient: ScalarSpan`, and the canvas draws it from the 0 end to the 1
+   end; a scalar Y in radial draws no rings (every node has its own).
+5. **The controls**: the axis dropdown lists the mappings that fit the
+   ceiling, then every scalar the taxonomy knows (R28 completed); the
+   equation varies by kind (R29 completed — `d = |p − p₀ − s·(p₁ − p₀)|`);
+   and `ScalarPlot` — a gradient between two free handles labelled 0 and 1 —
+   replaces the columns (R31). The pair axis stays mappings-only: push and
+   pull need buckets.
+6. **Retuning**: a scalar tuning has no buckets to go stale, so a graph
+   change keeps it by reference; a taxonomy that no longer knows the scalar
+   (a swap) falls it back to the style identity. Probed in
+   `tuningProbes.retune.bandAxes.scalar`.
+7. **Tier B's residence diagnostic** reads from the frame, so it typechecks
+   on either kind; the run it prints for is the default, mapped one.
+
+**Golden change (§8.2).** Tier A and Tier C byte-identical; Tier A gains
+`scalars` — every built-in's value per node per fixture. Tier B gains the
+short runs `yReach` and `yReachRadial` and the row `overlayScalarY`; every
+existing row is byte-identical (the `downstreamScores` rows prove the moved
+function is the same function). `static` gains `tuningProbes.retune
+.bandAxes.scalar`. Every line of every diff is an addition; the one removed
+line is the trailing comma a new sibling added. Nothing else moves.
+
+— 2026-10-21 — agent

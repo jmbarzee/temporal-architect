@@ -2740,7 +2740,11 @@
           "xOverrides": 0,
           "y": "temporalType"
         },
-        "sameGraphReturnsSameObject": true
+        "sameGraphReturnsSameObject": true,
+        "scalar": {
+          "graphChangeKeepsIt": true,
+          "unknownScalarFallsBack": true
+        }
       },
       "fileDropped": {
         "buckets": [

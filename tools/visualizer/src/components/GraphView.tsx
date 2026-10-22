@@ -13,7 +13,7 @@ import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, presentSpringCategories, resolvePhysics, resolveSprings } from '../graph/forces'
 import { isIdentityMapping } from '../graph/dimension'
-import { axisOptions, pairTuning } from '../graph/simulation'
+import { axisOptions, layoutAxisOptions, pairTuning } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
 import { payloadString } from '../graph/model'
@@ -182,9 +182,10 @@ export function GraphView({
   // the current one (the pull tokens). Both read the whole graph, not the
   // visible subset — tuning covers what a filter may reveal next.
   const axes = React.useMemo(() => axisOptions(ontology, graph), [ontology, graph])
+  const layoutAxes = React.useMemo(() => layoutAxisOptions(ontology, graph), [ontology, graph])
   // The frame the band forces act in and the overlay the canvas draws, both
   // over the WHOLE graph — the same frame the simulation seeds and ticks in.
-  const frame = React.useMemo(() => layoutFrame(graph.nodes.values(), resolved), [graph, resolved])
+  const frame = React.useMemo(() => layoutFrame({ nodes: graph.nodes.values(), edges: graph.edges, nodeOf: id => graph.nodes.get(id) }, resolved), [graph, resolved])
   const overlay = React.useMemo(() => bandOverlay(graph.nodes.values(), forceParams, resolved, frame,
     (axis, bucket) => axis.mapping.dimension === ontology.styleAxis() && isIdentityMapping(axis.mapping)
       ? ontology.styleForKey(bucket).color.fill
@@ -633,6 +634,7 @@ export function GraphView({
         onAdjust={handleForceAdjust}
         onRelayout={handleRelayout}
         axes={axes}
+        layoutAxes={layoutAxes}
         presentSprings={presentSprings}
         onAxisChange={handleAxisChange}
         onActiveSection={setActiveSection}

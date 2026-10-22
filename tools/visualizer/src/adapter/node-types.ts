@@ -436,6 +436,8 @@ export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   nodeStyles: NODE_TYPE_REGISTRY,
   edgeTypes: ALL_EDGE_TYPES,
   resolveEdgeType: edgeTypeFor,
+  // The built-in scalars (reach, degree, depth) suffice for this domain today.
+  scalars: [],
   fallbackStyle: FALLBACK_NODE_STYLE,
 }
 
