@@ -1554,602 +1554,602 @@
     "afterShortRun": {
       "centerOnly": {
         "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-          137.689184,
-          185.987491
+          -44.317295,
+          222.727959
         ],
         "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-          142.796098,
-          193.802967
+          -33.514197,
+          231.444054
         ],
         "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-          151.849703,
-          237.306003
+          -31.528218,
+          273.373524
         ],
         "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          145.834643,
-          228.468415
+          -29.439794,
+          265.354739
         ],
         "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-          145.039011,
-          179.197664
+          -36.738132,
+          223.274763
         ],
         "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-          135.781629,
-          205.997263
+          -44.075277,
+          247.614755
         ],
         "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-          147.711898,
-          219.362111
+          -33.847688,
+          254.942127
         ],
         "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-          117.512075,
-          257.533881
+          -65.751325,
+          293.585133
         ],
         "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-          126.507055,
-          239.975848
+          -54.210614,
+          282.642278
         ],
         "namespace:bootstrapApp": [
-          93.269717,
-          -229.254265
+          -81.982167,
+          -192.334017
         ],
         "namespace:fabric-shard-{org}": [
-          143.369365,
-          -187.978166
+          -32.213569,
+          -150.895585
         ],
         "namespace:notifications": [
-          50.592417,
-          -218.947586
+          -124.807982,
+          -182.931264
         ],
         "namespace:orders": [
-          72.047245,
-          -201.240072
+          -103.3508,
+          -164.277484
         ],
         "namespace:payments": [
-          178.287736,
-          -214.641759
+          4.702257,
+          -177.452205
         ],
         "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-          107.799793,
-          -137.523999
+          -77.699844,
+          -98.635444
         ],
         "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-          191.778925,
-          -124.853301
+          4.967401,
+          -84.873089
         ],
         "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-          157.033592,
-          -37.625091
+          -25.294639,
+          1.51169
         ],
         "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          170.04818,
-          157.796117
+          -10.542109,
+          195.426563
         ],
         "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-          175.301028,
-          205.633238
+          -9.465855,
+          243.606833
         ],
         "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-          180.65695,
-          76.468974
+          -2.072127,
+          114.112066
         ],
         "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-          138.770923,
-          137.453872
+          -44.819481,
+          174.856066
         ],
         "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          173.276587,
-          113.859455
+          -3.844584,
+          151.699863
         ],
         "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-          163.826583,
-          97.404275
+          -16.46228,
+          137.973007
         ],
         "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-          171.972971,
-          101.931419
+          -8.83197,
+          137.911714
         ],
         "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          102.777987,
-          -18.806307
+          -72.667202,
+          18.472478
         ],
         "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          141.461159,
-          68.91213
+          -33.720721,
+          105.796684
         ],
         "worker:checkoutWorker/namespace:orders": [
-          93.399816,
-          40.130054
+          -86.537583,
+          78.643183
         ],
         "worker:notificationWorker/namespace:notifications": [
-          103.924568,
-          30.826493
+          -71.656918,
+          67.636607
         ],
         "worker:paymentProcessingWorker/namespace:payments": [
-          143.067,
-          61.426493
+          -34.36233,
+          101.164565
         ],
         "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-          162.82972,
-          185.091473
+          -20.361878,
+          224.544241
         ],
         "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          136.303885,
-          202.721078
+          -42.366237,
+          245.705141
         ],
         "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          151.819219,
-          213.376168
+          -23.852329,
+          250.663776
         ],
         "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-          121.331009,
-          141.612319
+          -60.010436,
+          183.049521
         ],
         "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-          156.309699,
-          162.914606
+          -25.659992,
+          202.435291
         ],
         "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-          140.881576,
-          239.511466
+          -44.413012,
+          281.65597
         ],
         "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-          115.702463,
-          201.535455
+          -62.575754,
+          240.184748
         ],
         "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-          171.808286,
-          211.757526
+          -8.393017,
+          248.010143
         ]
       },
       "default": {
         "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-          140.992829,
-          193.357186
+          -49.007171,
+          233.357186
         ],
         "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-          153.013699,
-          212.018817
+          -36.986301,
+          252.018817
         ],
         "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-          152.594352,
-          237.556977
+          -37.405648,
+          277.556977
         ],
         "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          157.954204,
-          249.675915
+          -32.045796,
+          289.675915
         ],
         "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-          156.765882,
-          185.653133
+          -33.234118,
+          225.653133
         ],
         "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-          149.614916,
-          219.857027
+          -40.385084,
+          259.857027
         ],
         "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-          150.013489,
-          228.828068
+          -39.986511,
+          268.828068
         ],
         "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-          118.610997,
-          269.836636
+          -71.389003,
+          309.836636
         ],
         "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-          138.455775,
-          244.984185
+          -51.544225,
+          284.984185
         ],
         "namespace:bootstrapApp": [
-          101.552397,
-          -248.437633
+          -88.447603,
+          -208.437633
         ],
         "namespace:fabric-shard-{org}": [
-          154.755747,
-          -204.028765
+          -35.244253,
+          -164.028765
         ],
         "namespace:notifications": [
-          57.481515,
-          -238.17066
+          -132.518485,
+          -198.17066
         ],
         "namespace:orders": [
-          78.009387,
-          -218.813829
+          -111.990613,
+          -178.813829
         ],
         "namespace:payments": [
-          194.71104,
-          -230.979664
+          4.71104,
+          -190.979664
         ],
         "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-          110.27574,
-          -138.120914
+          -79.72426,
+          -98.120914
         ],
         "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-          194.739499,
-          -124.900047
+          4.739499,
+          -84.900047
         ],
         "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-          163.492591,
-          -38.323824
+          -26.339269,
+          1.65513
         ],
         "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          175.223683,
-          156.397296
+          -14.776317,
+          196.397296
         ],
         "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-          178.701987,
-          204.487332
+          -11.298013,
+          244.487332
         ],
         "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-          186.829217,
-          74.559251
+          -3.007735,
+          114.529114
         ],
         "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-          141.361719,
-          144.402909
+          -48.638281,
+          184.402909
         ],
         "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          184.140215,
-          114.651897
+          -5.859785,
+          154.651897
         ],
         "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-          172.788593,
-          100.22102
+          -17.211407,
+          140.22102
         ],
         "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-          177.580828,
-          104.081726
+          -12.419172,
+          144.081726
         ],
         "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          111.367592,
-          -23.42245
+          -78.632408,
+          16.57755
         ],
         "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          153.474142,
-          73.011495
+          -36.525858,
+          113.011495
         ],
         "worker:checkoutWorker/namespace:orders": [
-          98.569913,
-          39.438712
+          -91.430087,
+          79.438712
         ],
         "worker:notificationWorker/namespace:notifications": [
-          109.957988,
-          29.563617
+          -80.042012,
+          69.563617
         ],
         "worker:paymentProcessingWorker/namespace:payments": [
-          154.796735,
-          62.910872
+          -35.203265,
+          102.910872
         ],
         "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-          171.432524,
-          194.534664
+          -18.567476,
+          234.534664
         ],
         "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          146.847801,
-          213.115669
+          -43.152199,
+          253.115669
         ],
         "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          165.150723,
-          231.309482
+          -24.849277,
+          271.309482
         ],
         "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-          128.842345,
-          149.219425
+          -61.157655,
+          189.219425
         ],
         "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-          167.204819,
-          172.048606
+          -22.795181,
+          212.048606
         ],
         "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-          146.855753,
-          243.403363
+          -43.144247,
+          283.403363
         ],
         "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-          126.216789,
-          216.04963
+          -63.783211,
+          256.04963
         ],
         "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-          175.701935,
-          224.870378
+          -14.298065,
+          264.870378
         ]
       },
       "radial": {
         "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-          152.476186,
-          217.319318
+          -61.598978,
+          265.21671
         ],
         "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-          174.708375,
-          256.670323
+          -47.130675,
+          294.196776
         ],
         "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-          159.447714,
-          251.603962
+          -45.514144,
+          297.102118
         ],
         "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          179.519685,
-          287.161977
+          -36.312033,
+          332.137263
         ],
         "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-          180.843226,
-          214.026342
+          -36.32736,
+          249.643029
         ],
         "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-          170.521763,
-          257.280048
+          -43.760031,
+          294.163037
         ],
         "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-          155.597491,
-          247.124362
+          -52.979924,
+          299.544127
         ],
         "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-          123.82636,
-          290.972337
+          -79.907981,
+          333.363033
         ],
         "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-          157.735319,
-          267.957135
+          -51.182498,
+          303.870252
         ],
         "namespace:bootstrapApp": [
-          84.065088,
-          -207.39526
+          -75.828543,
+          -175.822706
         ],
         "namespace:fabric-shard-{org}": [
-          130.820693,
-          -168.26264
+          -29.675441,
+          -136.576767
         ],
         "namespace:notifications": [
-          43.8551,
-          -196.863427
+          -117.663301,
+          -165.011823
         ],
         "namespace:orders": [
-          65.919684,
-          -181.602628
+          -94.697894,
+          -148.676731
         ],
         "namespace:payments": [
-          155.629882,
-          -192.106301
+          4.570804,
+          -165.656107
         ],
         "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-          105.352381,
-          -136.958755
+          -76.165113,
+          -99.060053
         ],
         "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-          189.351503,
-          -124.803551
+          3.480903,
+          -84.902162
         ],
         "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-          152.747671,
-          -37.286978
+          -26.727042,
+          1.685814
         ],
         "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          186.963171,
-          166.306978
+          -22.183767,
+          213.81795
         ],
         "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-          182.510099,
-          203.499878
+          -14.647266,
+          245.853301
         ],
         "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-          205.712275,
-          80.390028
+          -8.229361,
+          135.432455
         ],
         "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-          151.858284,
-          164.822967
+          -58.215328,
+          213.888492
         ],
         "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          193.278147,
-          113.991243
+          -19.471523,
+          159.876298
         ],
         "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-          176.870181,
-          99.990872
+          -10.618719,
+          149.435513
         ],
         "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-          180.298925,
-          105.916208
+          -20.455153,
+          153.19994
         ],
         "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          126.758434,
-          -30.319857
+          -102.133055,
+          10.214307
         ],
         "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          164.537094,
-          79.281021
+          -46.597285,
+          138.85452
         ],
         "worker:checkoutWorker/namespace:orders": [
-          112.183383,
-          36.617252
+          -105.536691,
+          80.881489
         ],
         "worker:notificationWorker/namespace:notifications": [
-          134.564936,
-          19.903183
+          -99.028928,
+          75.851995
         ],
         "worker:paymentProcessingWorker/namespace:payments": [
-          163.526425,
-          66.607737
+          -51.141176,
+          95.80193
         ],
         "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-          186.45597,
-          217.21653
+          -24.021421,
+          263.12903
         ],
         "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          161.793253,
-          232.255488
+          -48.324535,
+          270.817716
         ],
         "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          185.053103,
-          258.149657
+          -26.969938,
+          304.52753
         ],
         "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-          153.653791,
-          177.570823
+          -67.95143,
+          213.377298
         ],
         "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-          184.805626,
-          198.1568
+          -29.745649,
+          245.674127
         ],
         "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-          156.101033,
-          249.120094
+          -42.69872,
+          285.641231
         ],
         "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-          143.912709,
-          244.830553
+          -69.476997,
+          285.053883
         ],
         "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-          184.847789,
-          256.315188
+          -23.293204,
+          298.108432
         ]
       },
       "topological": {
         "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-          138.148355,
-          187.683102
+          -52.023324,
+          226.877091
         ],
         "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-          154.07104,
-          206.372296
+          -35.866261,
+          245.527504
         ],
         "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-          151.495689,
-          237.914749
+          -38.420607,
+          277.861793
         ],
         "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          158.036659,
-          241.63508
+          -31.938014,
+          280.855485
         ],
         "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-          155.58571,
-          185.072385
+          -34.620944,
+          224.974717
         ],
         "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-          149.058717,
-          215.291392
+          -41.053156,
+          254.632559
         ],
         "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-          150.53442,
-          224.097887
+          -39.392772,
+          263.467084
         ],
         "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-          116.4939,
-          265.663644
+          -73.566486,
+          304.877215
         ],
         "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-          138.052341,
-          244.021717
+          -52.090612,
+          283.979725
         ],
         "namespace:bootstrapApp": [
-          101.41448,
-          -299.600771
+          -88.561175,
+          -280.631025
         ],
         "namespace:fabric-shard-{org}": [
-          154.91049,
-          -261.146712
+          -35.064508,
+          -240.140783
         ],
         "namespace:notifications": [
-          60.975573,
-          -292.050925
+          -127.960832,
+          -271.522246
         ],
         "namespace:orders": [
-          78.954141,
-          -276.791207
+          -110.941739,
+          -257.651792
         ],
         "namespace:payments": [
-          194.627892,
-          -280.797636
+          4.558786,
+          -259.206082
         ],
         "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-          109.114461,
-          -137.827856
+          -81.099667,
+          -97.774431
         ],
         "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-          195.029363,
-          -124.89578
+          5.018877,
+          -84.897256
         ],
         "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-          164.743319,
-          -38.492101
+          -24.716468,
+          1.428646
         ],
         "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          177.636012,
-          155.757056
+          -12.21718,
+          195.719897
         ],
         "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-          179.925557,
-          203.735719
+          -10.048223,
+          243.707321
         ],
         "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-          185.870044,
-          74.655732
+          -3.976681,
+          114.615182
         ],
         "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-          144.818625,
-          132.158952
+          -45.119237,
+          171.292001
         ],
         "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          184.226079,
-          86.517075
+          -6.529726,
+          122.287485
         ],
         "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-          162.097288,
-          72.872293
+          -29.392225,
+          109.492729
         ],
         "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-          185.60042,
-          59.383627
+          -3.828774,
+          94.519048
         ],
         "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          109.790359,
-          -103.166991
+          -80.235906,
+          -74.801656
         ],
         "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          155.482364,
-          -35.083437
+          -34.039254,
+          -5.852289
         ],
         "worker:checkoutWorker/namespace:orders": [
-          103.205478,
-          4.405288
+          -86.899407,
+          34.032251
         ],
         "worker:notificationWorker/namespace:notifications": [
-          107.083556,
-          -58.209478
+          -82.91066,
+          -28.861296
         ],
         "worker:paymentProcessingWorker/namespace:payments": [
-          154.896421,
-          -13.783323
+          -35.06474,
+          16.065454
         ],
         "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-          155.402263,
-          160.273026
+          -35.578102,
+          197.413601
         ],
         "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-          133.246749,
-          201.534995
+          -57.405743,
+          241.378043
         ],
         "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-          165.158038,
-          219.567343
+          -24.82592,
+          258.494133
         ],
         "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-          118.513431,
-          130.43556
+          -72.313974,
+          170.089959
         ],
         "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-          148.803401,
-          136.318797
+          -41.980164,
+          173.285726
         ],
         "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-          135.991764,
-          235.391093
+          -54.688087,
+          274.993949
         ],
         "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-          127.216636,
-          207.241846
+          -62.725596,
+          246.211834
         ],
         "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-          177.083314,
-          216.213243
+          -12.843134,
+          255.13497
         ]
       }
     },
@@ -2179,152 +2179,152 @@
     },
     "seededPositions": {
       "activity:AlertTimeout/worker:checkoutWorker/namespace:orders": [
-        231.323466,
-        299.745547
+        41.323466,
+        339.745547
       ],
       "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments": [
-        72.560861,
-        269.290361
+        -117.439139,
+        309.290361
       ],
       "activity:DoLocalWork/worker:checkoutWorker/namespace:orders": [
-        234.542833,
-        360.427213
+        44.542833,
+        400.427213
       ],
       "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-        150.367384,
-        303.299269
+        -39.632616,
+        343.299269
       ],
       "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments": [
-        79.722869,
-        313.155104
+        -110.277131,
+        353.155104
       ],
       "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments": [
-        74.028104,
-        325.583666
+        -115.971896,
+        365.583666
       ],
       "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications": [
-        245.950639,
-        320.563872
+        55.950639,
+        360.563872
       ],
       "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders": [
-        229.232136,
-        343.081756
+        39.232136,
+        383.081756
       ],
       "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments": [
-        80.944798,
-        380.35523
+        -109.055202,
+        420.35523
       ],
       "namespace:bootstrapApp": [
-        106.681302,
-        -258.983786
+        -83.318698,
+        -218.983786
       ],
       "namespace:fabric-shard-{org}": [
-        148.57753,
-        -248.951722
+        -41.42247,
+        -208.951722
       ],
       "namespace:notifications": [
-        70.897087,
-        -252.92259
+        -119.102913,
+        -212.92259
       ],
       "namespace:orders": [
-        72.49561,
-        -244.721707
+        -117.50439,
+        -204.721707
       ],
       "namespace:payments": [
-        195.156666,
-        -256.80303
+        5.156666,
+        -216.80303
       ],
       "nexusEndpoint:NotificationsEndpoint/namespace:notifications": [
-        73.674361,
-        -283.539945
+        -116.325639,
+        -243.539945
       ],
       "nexusEndpoint:PaymentsEndpoint/namespace:payments": [
-        190.96817,
-        -274.577924
+        0.96817,
+        -234.577924
       ],
       "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}": [
-        143.520586,
-        -186.983131
+        -46.479414,
+        -146.983131
       ],
       "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-        213.149836,
-        301.386063
+        23.149836,
+        341.386063
       ],
       "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications": [
-        235.341182,
-        342.460712
+        45.341182,
+        382.460712
       ],
       "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments": [
-        234.125533,
-        216.065723
+        44.125533,
+        256.065723
       ],
       "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments": [
-        241.663526,
-        232.11551
+        51.663526,
+        272.11551
       ],
       "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-        156.620313,
-        -20.020175
+        -33.379687,
+        19.979825
       ],
       "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications": [
-        231.313898,
-        -29.847546
+        41.313898,
+        10.152454
       ],
       "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments": [
-        83.260725,
-        36.263858
+        -106.739275,
+        76.263858
       ],
       "worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-        106.320547,
-        -97.127015
+        -83.679453,
+        -57.127015
       ],
       "worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-        158.397538,
-        39.679215
+        -31.602462,
+        79.679215
       ],
       "worker:checkoutWorker/namespace:orders": [
-        77.066968,
-        -108.923061
+        -112.933032,
+        -68.923061
       ],
       "worker:notificationWorker/namespace:notifications": [
-        60.900705,
-        -50.99579
+        -129.099295,
+        -10.99579
       ],
       "worker:paymentProcessingWorker/namespace:payments": [
-        188.890703,
-        -71.823177
+        -1.109297,
+        -31.823177
       ],
       "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders": [
-        78.443377,
-        277.286471
+        -111.556623,
+        317.286471
       ],
       "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp": [
-        101.046959,
-        347.649391
+        -88.953041,
+        387.649391
       ],
       "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}": [
-        159.319945,
-        298.818705
+        -30.680055,
+        338.818705
       ],
       "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders": [
-        69.90391,
-        270.593152
+        -120.09609,
+        310.593152
       ],
       "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders": [
-        80.903244,
-        257.251365
+        -109.096756,
+        297.251365
       ],
       "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders": [
-        68.929586,
-        366.738654
+        -121.070414,
+        406.738654
       ],
       "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments": [
-        186.200154,
-        280.595758
+        -3.799846,
+        320.595758
       ],
       "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications": [
-        70.000894,
-        243.489944
+        -119.999106,
+        283.489944
       ]
     },
     "stableWithinTickBudget": true,

@@ -69,7 +69,6 @@ const DOT_R = 5
 
 const yForWorld = (v: number) => PT + ((v - W_MIN) / (W_MAX - W_MIN)) * (PB - PT)
 const valForY = (y: number) => W_MIN + ((y - PT) / (PB - PT)) * (W_MAX - W_MIN)
-const xForWorld = (v: number) => PL + ((v - W_MIN) / (W_MAX - W_MIN)) * (PR - PL)
 // One empty slot between the two groups, so the ladders read as two runs.
 const colSlot = (i: number, firstGroupCount: number) => (i < firstGroupCount ? i : i + 1)
 const colX = (i: number, cols: { order: DimensionValue[]; firstGroupCount: number }) =>
@@ -77,11 +76,10 @@ const colX = (i: number, cols: { order: DimensionValue[]; firstGroupCount: numbe
 
 function GravityBandPlot({ params, resolved, onParamChange, hoveredType, onHoverType }: GravityControlProps) {
   const ontology = useOntology()
-  const { band } = resolved
+  const band = resolved.bandY
   const cols = columnsFor(ontology)
   const svgRef = React.useRef<SVGSVGElement>(null)
   const dragRef = React.useRef<{ type: DimensionValue; edge: 'min' | 'max' } | null>(null)
-  const [xbandHover, setXbandHover] = React.useState(false)
 
   const userY = (e: React.PointerEvent): number => {
     const svg = svgRef.current
@@ -107,7 +105,7 @@ function GravityBandPlot({ params, resolved, onParamChange, hoveredType, onHover
     const next = drag.edge === 'min'
       ? { min: Math.min(v, cur.max - W_STEP), max: cur.max }
       : { min: cur.min, max: Math.max(v, cur.min + W_STEP) }
-    onParamChange({ band: withOverride(params.band, drag.type, next) })
+    onParamChange({ bandY: withOverride(params.bandY, drag.type, next) })
   }
   const handleUp = (e: React.PointerEvent) => {
     dragRef.current = null
@@ -130,19 +128,6 @@ function GravityBandPlot({ params, resolved, onParamChange, hoveredType, onHover
       }
       bottom={
         <>
-          {/* X-range band: horizontal two-handle slider immediately under the plot. */}
-          <div
-            className="gravity-xband"
-            onMouseEnter={() => setXbandHover(true)}
-            onMouseLeave={() => setXbandHover(false)}
-          >
-            <DualRange
-              min={W_MIN} max={W_MAX} step={W_STEP}
-              valueMin={params.bandXMin} valueMax={params.bandXMax}
-              onChangeMin={v => onParamChange({ bandXMin: v })}
-              onChangeMax={v => onParamChange({ bandXMax: v })}
-            />
-          </div>
           <Slider
             min={0} max={0.25} step={0.005}
           value={params.gravityX}
@@ -180,12 +165,6 @@ function GravityBandPlot({ params, resolved, onParamChange, hoveredType, onHover
               />
             )
           })}
-          {/* X band: the horizontal range with no gravity, drawn as a vertical stripe. */}
-          <rect
-            x={xForWorld(params.bandXMin)} y={PT}
-            width={Math.max(0, xForWorld(params.bandXMax) - xForWorld(params.bandXMin))} height={PB - PT}
-            className={`gravity-xband-stripe${xbandHover ? ' active' : ''}`}
-          />
         </g>
 
         {/* Per-type vertical sliders (track + two handles), on top. */}
@@ -225,7 +204,7 @@ function GravityBandPlot({ params, resolved, onParamChange, hoveredType, onHover
 type GravitySub = 'band' | 'topological'
 
 export function GravityControls({ params, resolved, onParamChange, onGravitySet, hoveredType, onHoverType }: GravityControlProps) {
-  const mode = params.gravityMode
+  const mode = params.radial ? 'radial' : 'cartesian'
   const [sub, setSub] = React.useState<GravitySub>('band')
   return (
     <div className="gravity-controls">
@@ -238,7 +217,7 @@ export function GravityControls({ params, resolved, onParamChange, onGravitySet,
               role="tab"
               aria-selected={mode === m}
               className={`gravity-mode-btn${mode === m ? ' active' : ''}`}
-              onClick={() => onGravitySet({ gravityMode: m })}
+              onClick={() => onGravitySet({ radial: m === 'radial' })}
             >
               {m === 'cartesian' ? 'Cartesian' : 'Radial'}
             </button>
@@ -249,15 +228,14 @@ export function GravityControls({ params, resolved, onParamChange, onGravitySet,
       {/* Sub-tabs — each carries its own enable switch, so both forces' on/off
           state is visible at all times even though only one body shows. */}
       <SubTabs label="Gravity force">
-        <SubTab label="Band" active={sub === 'band'} onSelect={() => setSub('band')}
-          leading={<ForceSwitch label="Band" enabled={params.bandEnabled} onToggle={v => onGravitySet({ bandEnabled: v })} />} />
+        <SubTab label="Band" active={sub === 'band'} onSelect={() => setSub('band')} />
         <SubTab label="Topological" active={sub === 'topological'} onSelect={() => setSub('topological')}
           leading={<ForceSwitch label="Topological" enabled={params.topologicalEnabled} onToggle={v => onGravitySet({ topologicalEnabled: v })} />} />
       </SubTabs>
 
       <SubTabBodies>
         <SubTabBody active={sub === 'band'}>
-          <div className={`gravity-section-tools${params.bandEnabled ? '' : ' inactive'}`}>
+          <div className={`gravity-section-tools${params.gravityX > 0 || params.gravityY > 0 ? '' : ' inactive'}`}>
             <Equation>{<>F = <FormulaValue id="bandStrength">strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
             <GravityBandPlot params={params} resolved={resolved} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
             <BandCurves params={params} onParamChange={onParamChange} />
@@ -272,8 +250,8 @@ export function GravityControls({ params, resolved, onParamChange, onGravitySet,
               <label className="graph-control-slider-label">strength</label>
               <Slider
                 min={0} max={2} step={0.02}
-                value={params.gravityDownstream}
-                onChange={v => onParamChange({ gravityDownstream: v })}
+                value={params.gravityTopological}
+                onChange={v => onParamChange({ gravityTopological: v })}
                 popId="topoStrength"
               />
             </div>
@@ -380,34 +358,5 @@ function TopologicalCurve({ exp }: { exp: number }) {
       <text x={(x0 + x1) / 2} y={TC_H - 1} textAnchor="middle" className="gravity-topo-curve-axis">depth</text>
       <text x={5} y={yMid} textAnchor="middle" className="gravity-topo-curve-axis" transform={`rotate(-90 5 ${yMid})`}>pull</text>
     </svg>
-  )
-}
-
-// Minimal two-handle range slider (the gravity X band).
-function DualRange({
-  min, max, step, valueMin, valueMax, onChangeMin, onChangeMax,
-}: {
-  min: number; max: number; step: number
-  valueMin: number; valueMax: number
-  onChangeMin: (v: number) => void; onChangeMax: (v: number) => void
-}) {
-  const range = max - min
-  const minPct = ((valueMin - min) / range) * 100
-  const widthPct = Math.max(0, ((valueMax - valueMin) / range) * 100)
-  return (
-    <div className="dual-range dual-range-namespace">
-      <div className="dual-range-track" />
-      <div className="dual-range-fill" style={{ left: `${minPct}%`, width: `${widthPct}%` }} />
-      <input
-        type="range" className="dual-range-input dual-range-input-low"
-        min={min} max={max} step={step} value={valueMin}
-        onChange={e => onChangeMin(Math.min(Number(e.target.value), valueMax - step))}
-      />
-      <input
-        type="range" className="dual-range-input dual-range-input-high"
-        min={min} max={max} step={step} value={valueMax}
-        onChange={e => onChangeMax(Math.max(Number(e.target.value), valueMin + step))}
-      />
-    </div>
   )
 }

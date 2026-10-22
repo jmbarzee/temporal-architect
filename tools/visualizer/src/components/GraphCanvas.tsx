@@ -4,10 +4,12 @@
 import { isContainment } from '../graph/model'
 import React from 'react'
 import type { GraphEdge } from '../graph/model'
-import type { ForceParams, SimNode } from '../graph/simulation'
-import { bucketOf } from '../graph/forces'
+import type { BandRange, ForceParams, SimNode } from '../graph/simulation'
+import { bandForKey, bucketOf, medianBandCenter, presentBuckets, ringRadii } from '../graph/forces'
+import type { ResolvedAxis } from '../graph/forces'
+import { isIdentityMapping } from '../graph/dimension'
 import type { ResolvedPhysics } from '../graph/forces'
-import { bandForKey, chargeFor, coreRadiusFor, springFor, RADIAL_R_MIN, RADIAL_R_MAX } from '../graph/simulation'
+import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
@@ -768,32 +770,24 @@ export function GraphCanvas({
       //               a global X band.
       //   radial    — concentric rings at each tier's target radius about the
       //               world origin.
-      if (gravityActive && d.forceParams.bandEnabled) {
-        // Node types present in the visible set (their band centres drive both
-        // the cartesian median and the radial ring mapping).
-        const present: DimensionValue[] = []
-        const seenTypes = new Set<DimensionValue>()
-        for (const n of d.nodes) {
-          const value = d.ontology.valueFor(n)
-          if (value === undefined || seenTypes.has(value)) continue
-          seenTypes.add(value)
-          present.push(value)
-        }
-        const centerOf = (t: DimensionValue) => {
-          const b = bandForKey(d.resolved.band, t)
-          return (b.yMin + b.yMax) / 2
-        }
+      const gx = d.forceParams.gravityX
+      const gy = d.forceParams.gravityY
+      if (gravityActive && (gx > 0 || gy > 0)) {
+        // Only buckets some visible node falls in — the set the force re-centres
+        // on and maps to rings — so the overlay never shows a band that is acting
+        // on nothing (D53, T12). The band maths is the engine's, not a copy of it.
+        const fillOf = (axis: ResolvedAxis<BandRange>, bucket: string | undefined): string =>
+          bucket !== undefined && axis.mapping.dimension === d.ontology.styleAxis() && isIdentityMapping(axis.mapping)
+            ? d.ontology.styleForKey(bucket).color.fill
+            : cssVar(canvas, '--color-text-muted', '#94A3B8')
+        const hover = d.activeGravityType
 
-        if (d.forceParams.gravityMode === 'radial') {
-          const centers = present.map(centerOf)
-          const lo = centers.length ? Math.min(...centers) : 0
-          const span = (centers.length ? Math.max(...centers) : 0) - lo || 1
+        if (d.forceParams.radial) {
           const [ox, oy] = worldToScreen(vp, 0, 0)
-          for (const t of present) {
-            const targetR = RADIAL_R_MIN + ((centerOf(t) - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)
-            const isActive = d.activeGravityType === t
-            const isDimmed = d.activeGravityType !== null && !isActive
-            ctx.strokeStyle = d.ontology.styleForKey(t).color.fill
+          for (const [bucket, targetR] of ringRadii(d.nodes, d.resolved.bandY)) {
+            const isActive = hover !== null && hover === bucket
+            const isDimmed = hover !== null && !isActive
+            ctx.strokeStyle = fillOf(d.resolved.bandY, bucket)
             ctx.globalAlpha = isActive ? 0.6 : isDimmed ? 0.1 : 0.28
             ctx.lineWidth = isActive ? 1.5 : 1
             ctx.setLineDash([])
@@ -802,52 +796,41 @@ export function GraphCanvas({
             ctx.stroke()
           }
         } else {
-          // Median band centre over the visible types (matches applyBandGravity).
-          const sorted = present.map(centerOf).sort((a, b) => a - b)
-          const m = sorted.length
-          const median = m ? (m % 2 ? sorted[(m - 1) / 2] : (sorted[m / 2 - 1] + sorted[m / 2]) / 2) : 0
-
-          for (const t of d.ontology.nodeTypeKeys) {
-            const band = bandForKey(d.resolved.band, t)
-            const [, sy1] = worldToScreen(vp, 0, band.yMin - median)
-            const [, sy2] = worldToScreen(vp, 0, band.yMax - median)
-            if (sy2 < 0 || sy1 > h) continue
-
-            const isActive = d.activeGravityType === t
-            const isDimmed = d.activeGravityType !== null && !isActive
-
-            const nodeColor = d.ontology.styleForKey(t).color.fill
-            ctx.fillStyle = nodeColor
-            ctx.globalAlpha = isActive ? 0.20 : isDimmed ? 0.04 : 0.10
-            ctx.fillRect(0, sy1, w, sy2 - sy1)
-
-            ctx.strokeStyle = nodeColor
-            ctx.globalAlpha = isActive ? 0.55 : isDimmed ? 0.08 : 0.22
-            ctx.lineWidth = isActive ? 1.5 : 1
-            ctx.setLineDash([])
-            ctx.beginPath()
-            ctx.moveTo(0, sy1); ctx.lineTo(w, sy1)
-            ctx.moveTo(0, sy2); ctx.lineTo(w, sy2)
-            ctx.stroke()
+          // One stripe per distinct band on the axis: buckets that share a band
+          // (the default X window, two tiers on one Y band) draw once, so the
+          // overlay's density reads as bands rather than as bucket counts.
+          const stripes = (axis: ResolvedAxis<BandRange>, coord: 'x' | 'y', highlight: boolean) => {
+            const center = medianBandCenter(d.nodes, axis)
+            const drawn = new Map<string, { lo: number; hi: number; color: string; active: boolean }>()
+            for (const bucket of presentBuckets(d.nodes, axis)) {
+              const b = bandForKey(axis, bucket)
+              const key = `${b.min}:${b.max}`
+              const active = highlight && hover !== null && hover === bucket
+              const prev = drawn.get(key)
+              if (prev) { prev.active = prev.active || active; continue }
+              drawn.set(key, { lo: b.min - center, hi: b.max - center, color: fillOf(axis, bucket), active })
+            }
+            for (const { lo, hi, color, active } of drawn.values()) {
+              const s1 = coord === 'y' ? worldToScreen(vp, 0, lo)[1] : worldToScreen(vp, lo, 0)[0]
+              const s2 = coord === 'y' ? worldToScreen(vp, 0, hi)[1] : worldToScreen(vp, hi, 0)[0]
+              if (s2 < 0 || s1 > (coord === 'y' ? h : w)) continue
+              const isDimmed = highlight && hover !== null && !active
+              ctx.fillStyle = color
+              ctx.globalAlpha = active ? 0.20 : isDimmed ? 0.04 : 0.10
+              if (coord === 'y') ctx.fillRect(0, s1, w, s2 - s1)
+              else ctx.fillRect(s1, 0, s2 - s1, h)
+              ctx.strokeStyle = color
+              ctx.globalAlpha = active ? 0.55 : isDimmed ? 0.08 : 0.22
+              ctx.lineWidth = active ? 1.5 : 1
+              ctx.setLineDash([])
+              ctx.beginPath()
+              if (coord === 'y') { ctx.moveTo(0, s1); ctx.lineTo(w, s1); ctx.moveTo(0, s2); ctx.lineTo(w, s2) }
+              else { ctx.moveTo(s1, 0); ctx.lineTo(s1, h); ctx.moveTo(s2, 0); ctx.lineTo(s2, h) }
+              ctx.stroke()
+            }
           }
-
-          // X band: dashed verticals at xMin and xMax with a faint fill.
-          const [sxMin] = worldToScreen(vp, d.forceParams.bandXMin, 0)
-          const [sxMax] = worldToScreen(vp, d.forceParams.bandXMax, 0)
-          if (sxMin < w + CULL_MARGIN && sxMax > -CULL_MARGIN) {
-            ctx.strokeStyle = '#8B7EC8'
-            ctx.globalAlpha = 0.5
-            ctx.lineWidth = 1.5
-            ctx.setLineDash([6, 6])
-            ctx.beginPath()
-            ctx.moveTo(sxMin, 0); ctx.lineTo(sxMin, h)
-            ctx.moveTo(sxMax, 0); ctx.lineTo(sxMax, h)
-            ctx.stroke()
-            ctx.fillStyle = '#8B7EC8'
-            ctx.globalAlpha = 0.05
-            ctx.fillRect(sxMin, 0, sxMax - sxMin, h)
-            ctx.setLineDash([])
-          }
+          if (gy > 0) stripes(d.resolved.bandY, 'y', true)
+          if (gx > 0) stripes(d.resolved.bandX, 'x', false)
         }
 
         ctx.globalAlpha = 1

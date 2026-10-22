@@ -202,7 +202,7 @@ function prototypeNamedValues(): Json {
     const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
     const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
     const node = subject
-    const band = bandFor(resolved.band, node)
+    const band = bandFor(resolved.bandY, node)
     rows.push({
       name,
       styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
@@ -210,7 +210,7 @@ function prototypeNamedValues(): Json {
       charge: chargeFor(resolved.push, node),
       coreRadius: coreRadiusFor(resolved.push, node),
       chargeIsFinite: Number.isFinite(chargeFor(resolved.push, node)),
-      band: `${band.yMin}..${band.yMax}`,
+      band: `${band.min}..${band.max}`,
       // D39 fixed styleForKey and the force lookups and missed this one.
       abbreviation: DEFAULT_ONTOLOGY.abbreviationFor(name),
       abbreviationIsString: typeof DEFAULT_ONTOLOGY.abbreviationFor(name) === 'string',
@@ -379,7 +379,7 @@ export function ontologyProbes(): Json {
       physics: {
         charge: fallback.physics.charge,
         coreRadius: fallback.physics.coreRadius,
-        yBand: { ...fallback.physics.yBand },
+        band: { x: { ...fallback.physics.band.x }, y: { ...fallback.physics.band.y } },
       },
     },
     // A miss must be stable, not a fresh object each time: the draw loop resolves

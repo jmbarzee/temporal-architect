@@ -76,9 +76,9 @@ function median(values: number[]): number {
 function scenarios(): [string, ForceParams][] {
   return [
     ['default', defaultParamsFor(DEFAULT_ONTOLOGY)],
-    ['radial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }],
-    ['topological', { ...defaultParamsFor(DEFAULT_ONTOLOGY), topologicalEnabled: true, gravityDownstream: 0.4 }],
-    ['centerOnly', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandEnabled: false, topologicalEnabled: false }],
+    ['radial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true }],
+    ['topological', { ...defaultParamsFor(DEFAULT_ONTOLOGY), topologicalEnabled: true, gravityTopological: 0.4 }],
+    ['centerOnly', { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityX: 0, gravityY: 0, topologicalEnabled: false }],
   ]
 }
 
@@ -137,7 +137,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // on distinct centre *values* — several types deliberately share a band, so
   // with all 7 present there are only 4 distinct values.
   const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
-  const centers = bandCenters(active, resolved)
+  const centers = bandCenters(active, resolved.bandY)
   const distinctTypesPresent = new Set(active.map(n => DEFAULT_ONTOLOGY.valueFor(n))).size
 
   let maxAbs = 0
@@ -153,9 +153,9 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   const shift = median(centers)
   let outsideBand = 0
   for (const n of active) {
-    const band = bandFor(resolved.band, n)
-    const slack = Math.abs(band.yMax - band.yMin) * TIER_B_PARAMS.bandTolerance
-    if (!(n.y >= band.yMin - shift - slack && n.y <= band.yMax - shift + slack)) outsideBand++
+    const band = bandFor(resolved.bandY, n)
+    const slack = Math.abs(band.max - band.min) * TIER_B_PARAMS.bandTolerance
+    if (!(n.y >= band.min - shift - slack && n.y <= band.max - shift + slack)) outsideBand++
   }
   const meanSpeed = active.length === 0
     ? 0

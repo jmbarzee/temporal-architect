@@ -10,6 +10,7 @@ import {
   applyTopologicalGravity,
   applyCenterGravity,
   bandFor,
+  medianBandCenter,
   presentSpringCategories,
   resolvePhysics,
   resolveSprings,
@@ -33,7 +34,6 @@ export {
   RADIAL_R_MIN,
   RADIAL_R_MAX,
 } from './forces'
-export type { YBand } from './forces'
 
 export interface SimNode extends GraphNode {
   x: number
@@ -218,9 +218,13 @@ export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph
   const pair = nextPair === undefined || (nextPair.dimension !== style && !fits(nextPair))
     ? pairTuning(styleIdentityMapping(ontology))
     : sameBuckets(nextPair, params.pair.mapping) ? params.pair : { ...params.pair, mapping: nextPair }
-  const nextBand = refreshed(params.band.mapping) ?? styleIdentityMapping(ontology)
-  const band = sameBuckets(nextBand, params.band.mapping) ? params.band : { ...params.band, mapping: nextBand }
-  return pair === params.pair && band === params.band ? params : { ...params, pair, band }
+  const refreshBand = (tuning: AxisTuning<BandRange>): AxisTuning<BandRange> => {
+    const next = refreshed(tuning.mapping) ?? styleIdentityMapping(ontology)
+    return sameBuckets(next, tuning.mapping) ? tuning : { ...tuning, mapping: next }
+  }
+  const bandX = refreshBand(params.bandX)
+  const bandY = refreshBand(params.bandY)
+  return pair === params.pair && bandX === params.bandX && bandY === params.bandY ? params : { ...params, pair, bandX, bandY }
 }
 
 // PUSH — repulsion. Per-type charge strength and core radius, the masters that
@@ -245,44 +249,41 @@ export interface LinkParams {
   linkExponent: number       // power of displacement in spring force (1 = linear/Hooke)
 }
 
-// GRAVITY — hierarchical anchoring. The graph has an inherent vertical hierarchy
-// (namespace → worker → definition), so gravity is split into two axes expressed
-// as rest bands: a global X band [bandXMin, bandXMax] (no force inside, pull
-// toward the nearest edge outside) and a per-type Y band [yMin, yMax]. This
-// anchors world coordinates (NS at top, L4 at bottom) rather than letting the
-// centre drift, removing the need for canvas-side COM compensation. Plus the
-// optional downstream-reach vertical pull.
+// GRAVITY — anchoring. Each layout axis carries per-bucket rest bands (no force
+// inside, pull toward the nearest edge outside), re-centred on the median of
+// the bands present so the stack sits on the origin without canvas-side
+// compensation. Plus the optional topological pull and the center baseline.
 export interface GravityParams {
+  /**
+   * The two layout axes' rest bands — the same shape, each on its own mapping
+   * (T22). A strength of zero switches an axis off; when both are off and
+   * topological gravity is too, center gravity is the baseline.
+   */
+  bandX: AxisTuning<BandRange>
+  bandY: AxisTuning<BandRange>
   gravityX: number
   gravityY: number
   // Band falloff exponent applied to the displacement outside the rest band
   // (force = strength × d^exp). 1 = linear (Hooke); higher = softer just outside
   // the band, stiffer far out. Mirrors the Pull tab's linkExponent.
   gravityBandExp: number
+  /**
+   * Radial layout: the Y axis's bands become rings about the origin (uppermost
+   * bucket innermost) and X is ignored; topological gravity's focal point moves
+   * from the top to the centre. Entered from the Y axis's switch (R27).
+   */
+  radial: boolean
   // Topological gravity strength: scales the single-sided inward pull on each
   // node by its (shaped) downstream-reach score. Default 0 (off).
-  // The name predates the force's current meaning; renaming it is breaking for
-  // library consumers, so it is tracked separately — see https://github.com/jmbarzee/temporal-architect/issues/90.
-  gravityDownstream: number
+  gravityTopological: number
   // Topological contrast: exponent applied to the reach score (score^exp) so
   // high-reach roots dominate. 1 = linear; higher = sharper tiering (only the
   // biggest hubs pull hard).
   gravityTopologicalExp: number
   // Center gravity strength: radial pull toward the world origin — the baseline
-  // cohesion/anchor force used when neither Band nor Topological is active.
+  // cohesion/anchor force used when neither band axis nor Topological is active.
   gravityCenter: number
-  // Layout mode for Band + Topological gravity. 'cartesian' maps the hierarchy
-  // to vertical position; 'radial' maps it to distance from the origin
-  // (uppermost tier innermost) with charge spreading nodes around each ring.
-  gravityMode: 'cartesian' | 'radial'
-  // Which shaping forces are active (non-exclusive). When both are off, center
-  // gravity is the baseline that keeps the graph cohesive.
-  bandEnabled: boolean
   topologicalEnabled: boolean
-  bandXMin: number
-  bandXMax: number
-  /** Per-bucket Y rest band. One constructed value — see `AxisTuning`. */
-  band: AxisTuning<BandRange>
 }
 
 // DYNAMICS — how the simulation cools and damps over time.
@@ -342,29 +343,24 @@ export function defaultParamsFor(ontology: Ontology): ForceParams {
     // Both default to the axis the taxonomy resolves style on, so the layout
     // keys on the same thing it is coloured by. Unit 4 makes this a choice.
     pair: pairTuning(styleIdentityMapping(ontology)),
-    band: identityTuning<BandRange>(ontology),
+    bandX: identityTuning<BandRange>(ontology),
+    bandY: identityTuning<BandRange>(ontology),
 
-    // Hierarchical gravity. Y bands carry the vertical structure of the
-    // layout — strong (gravityY = 0.145) and overlapping at the edges so
-    // adjacent tiers can soften their boundary instead of forming a hard
-    // stripe. The X band is asymmetric (0..380) because the canvas's
-    // initial fit-to-view re-centres anyway; what matters is the band
-    // width, which is generous enough to let wide fan-outs spread laterally.
+    // Gravity. The Y bands carry the vertical structure of the layout — strong
+    // (gravityY = 0.145) and overlapping at the edges so adjacent tiers can
+    // soften their boundary instead of forming a hard stripe. The X bands bound
+    // the horizontal spread, gently (gravityX = 0.05): wide fan-outs may spread.
     gravityX: 0.05,
     gravityY: 0.145,
     gravityBandExp: 1,
+    radial: false,
     // Off by default — the experiment lives behind a slider. When non-zero,
-    // every node with a positive downstream score gets an additional vy pull
-    // toward `bandMin - score * bandHeight`, layered additively on top of the
-    // per-value Y-band gravity above.
-    gravityDownstream: 0,
+    // every node with a positive downstream score gets an additional pull
+    // toward the focal point, layered additively on top of the bands.
+    gravityTopological: 0,
     gravityTopologicalExp: 3,
     gravityCenter: 0.05,
-    gravityMode: 'cartesian',
-    bandEnabled: true,
     topologicalEnabled: false,
-    bandXMin:    0,
-    bandXMax:  380,
 
     // Dynamics. alphaMin is well below the d3 default (0.001) so the
     // simulation continues into its slow-cooling tail — layouts read as
@@ -454,17 +450,22 @@ export class Simulation {
     this.ontology = ontology
     this.resolved = resolvePhysics(this.params, ontology)
 
-    // Initialize SimNodes inside their Y bands so the first tick doesn't have
-    // to violently relocate them to the hierarchy. X is jittered around 0
-    // (the X anchor); Y is jittered within the band centre.
+    // Seed each node inside its rest bands on both axes, re-centred exactly as
+    // the band force re-centres them (on the median of the present centres), so
+    // the first tick does not relocate what the seeding placed (T2). A node with
+    // no value on an axis has the absent band: a point at that axis's centre.
     this.nodes = []
     this.nodeMap = new Map()
-    const xCenter = (this.params.bandXMin + this.params.bandXMax) / 2
-    const xJitter = Math.max(40, (this.params.bandXMax - this.params.bandXMin) * 0.7)
-    for (const node of graph.nodes.values()) {
-      const band = bandFor(this.resolved.band, node)
-      const yCenter = (band.yMin + band.yMax) / 2
-      const yJitter = Math.max(20, (band.yMax - band.yMin) / 2)
+    const seedNodes = [...graph.nodes.values()]
+    const shiftX = medianBandCenter(seedNodes, this.resolved.bandX)
+    const shiftY = medianBandCenter(seedNodes, this.resolved.bandY)
+    for (const node of seedNodes) {
+      const bx = bandFor(this.resolved.bandX, node)
+      const by = bandFor(this.resolved.bandY, node)
+      const xCenter = (bx.min + bx.max) / 2 - shiftX
+      const yCenter = (by.min + by.max) / 2 - shiftY
+      const xJitter = Math.max(40, (bx.max - bx.min) * 0.7)
+      const yJitter = Math.max(20, (by.max - by.min) / 2)
       const sim: SimNode = {
         ...node,
         x: xCenter + (rng() - 0.5) * xJitter,
@@ -513,9 +514,10 @@ export class Simulation {
     // is read inside the band/topological forces.
     applyChargeForce(active, this.params, this.resolved, this.alpha, this.rng)
     applyLinkForce(activeEdges, this.nodeMap, this.params, this.edgeCategory, this.alpha, this.rng)
-    if (this.params.bandEnabled) applyBandGravity(active, this.params, this.resolved, this.alpha, this.rng)
+    const bands = this.params.gravityX > 0 || this.params.gravityY > 0
+    if (bands) applyBandGravity(active, this.params, this.resolved, this.alpha, this.rng)
     if (this.params.topologicalEnabled) applyTopologicalGravity(active, this.params, this.alpha, downstreamScores)
-    if (!this.params.bandEnabled && !this.params.topologicalEnabled) {
+    if (!bands && !this.params.topologicalEnabled) {
       applyCenterGravity(active, this.params, this.alpha)
     }
 
@@ -639,12 +641,14 @@ export class Simulation {
 
   // Seed a node at a given position (used when new nodes appear during a
   // level-toggle transition). X follows the seed point; Y snaps into the
-  // node's own band so the hierarchy is honoured immediately.
+  // node's own band — re-centred as the force sees it — so the hierarchy is
+  // honoured immediately.
   seedAt(id: string, x: number, y: number): void {
     const node = this.nodeMap.get(id)
     if (!node) return
-    const band = bandFor(this.resolved.band, node)
-    const yClamped = Math.min(Math.max(y, band.yMin), band.yMax)
+    const band = bandFor(this.resolved.bandY, node)
+    const shift = medianBandCenter(this.nodes, this.resolved.bandY)
+    const yClamped = Math.min(Math.max(y, band.min - shift), band.max - shift)
     node.x = x + (this.rng() - 0.5) * 10
     node.y = yClamped + (this.rng() - 0.5) * 10
     node.vx = 0

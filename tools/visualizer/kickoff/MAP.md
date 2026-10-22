@@ -23,7 +23,7 @@ which is worth noticing rather than assuming.
 | `components/GraphCanvas.tsx` | manifest | 3 | `components/GraphView.tsx` |
 | `components/GraphControlPanel.tsx` | manifest |  | **4** files |
 | `components/GraphView.tsx` | manifest | 30 | `components/WorkflowCanvas.tsx` |
-| `components/GravityControls.tsx` | manifest | 4 | `components/GraphControlPanel.tsx` |
+| `components/GravityControls.tsx` | manifest | 3 | `components/GraphControlPanel.tsx` |
 | `components/GroupsModal.tsx` | neither | 7 | `components/GraphView.tsx` |
 | `components/PinToggle.tsx` | manifest |  | `components/FilterBar.tsx` |
 | `components/PushPullControls.tsx` | manifest |  | `components/GraphControlPanel.tsx` |
@@ -71,7 +71,7 @@ which is worth noticing rather than assuming.
 | `graph/node-scale.ts` | manifest |  | **4** files |
 | `graph/ontology.ts` | manifest |  | **10** files |
 | `graph/rng.ts` | manifest |  | **4** files |
-| `graph/simulation.ts` | manifest | 5 | **23** files |
+| `graph/simulation.ts` | manifest | 3 | **23** files |
 | `graph/taxonomy.ts` | manifest | 1 | **9** files |
 | `graph/viewport.ts` | manifest |  | **4** files |
 | `lib.ts` | neither | 24 | — |

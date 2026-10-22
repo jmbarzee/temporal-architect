@@ -1129,3 +1129,56 @@ new wording ("is incoherent"), since one message now covers three refusals.
 Nothing else moves.
 
 — 2026-10-21 — agent
+
+**D53 — Two symmetric layout axes; bands re-centred and seeded alike; the
+overlay draws what acts (Unit 5a-i/ii; T22, T12, T2; closes #90).**
+
+- `GravityParams` carries `bandX` and `bandY`, each an `AxisTuning<BandRange>`
+  on its own mapping. Gone: `band` (Y only), `bandXMin`/`bandXMax` (one global
+  window), `bandEnabled`, `gravityMode`. A strength of zero is an axis switched
+  off (`gravityX`, `gravityY`); `radial: boolean` replaces the mode string —
+  Y's bands become rings, X is ignored, topological's focal point moves to the
+  centre. `gravityDownstream` is `gravityTopological` (#90): `ForceParams` is
+  not in the published surface, which `surface-gate` now proves.
+- `NodeTypeDefinition.physics.yBand` is `physics.band: { x, y }`. The shim
+  declares every type's `x` as the window it always had (`X_WINDOW`, 0–380),
+  so the default horizontal physics is unchanged — measured: on every fixture
+  no node reaches the window, the X force never fires, and `gravityX` at 0 or
+  ×4 moves nothing.
+- One rule on both axes (`pullToBands`): per-bucket bands, re-centred on the
+  median of the centres present. X was never re-centred; it is now, so the
+  window sits at −190..190 about the origin, which the canvas's fit absorbs.
+- Seeding (T2) places a node at the re-centred band centre on both axes, so
+  the seed and the force agree. Y used to seed at the *unshifted* centre and
+  the first ticks relocated every node by the median — the thing seeding
+  exists to prevent, in mild form. A node with no value on an axis has the
+  absent band: a point at that axis's centre.
+- The band maths lives once (T12): `presentBuckets`, `bandCenters`,
+  `medianBandCenter`, `ringRadii` are the engine's and the overlay calls them.
+  **Present, not all:** the overlay draws only buckets some visible node falls
+  in, on both axes and in both modes — the set the force re-centres on and
+  rings. A stripe for a bucket with no visible node was decoration that misled
+  about the median. Buckets sharing a band draw one stripe.
+- `YBand { yMin, yMax }` is gone; `bandForKey` and `bandFor` return `BandRange`.
+
+**Golden change (§8.2).** Tier A and Tier C byte-identical. `static`:
+`nodeTypes[].physics.yBand` → `band.{x,y}`; `defaultForceParams.band` →
+`bandX` and `bandY`, and its scalars follow the params (`bandEnabled`,
+`bandXMin`, `bandXMax`, `gravityMode`, `gravityDownstream` gone; `radial`,
+`gravityTopological` added); probe rows that read a band follow the shape; the
+`bandCartesian` kernel rows (`forceProbes`, `absentValue`, `nonIdentityParams`)
+move in their x components only — the probe nodes sit at absolute x and the
+window is now about the origin, so different nodes are outside it. Tier B:
+every fixture's `seededPositions` move by exactly (−190, −median of the present
+Y centres) — a pure translation, verified node by node (−190 on every x; −120
+on decomposition and stress, +40 on the three nexus-based fixtures);
+`afterShortRun.default` is the same translation within a pixel, since the
+first ticks no longer relocate nodes by the median; the radial and topological
+scenarios differ by more, from the different start. `seedAt` is unchanged (its
+y lies inside the shifted band on every fixture). Every structural invariant
+is equal. The occupancy diagnostic (not goldened — D24, D26) moved on stress
+from 3/53 to 32/53 and by at most one elsewhere: the new seeding lands stress's
+forty activities in a different basin of the same forces, and the X axis is
+inert on it by the measurement above.
+
+— 2026-10-21 — agent

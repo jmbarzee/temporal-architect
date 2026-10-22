@@ -138,7 +138,7 @@ function retune(graph: Graph): Json {
   const styledTuned: ForceParams = {
     ...styled,
     pair: withPushOverride(styled.pair, 'worker', { charge: -1, coreRadius: 2 }),
-    band: withOverride(styled.band, 'worker', { min: -5, max: 5 }),
+    bandY: withOverride(styled.bandY, 'worker', { min: -5, max: 5 }),
   }
   const swapped = retunedFor(styledTuned, three, graph)
   return {
@@ -157,9 +157,9 @@ function retune(graph: Graph): Json {
     },
     taxonomySwapped: {
       pairBuckets: swapped.pair.mapping.buckets.map(b => b.id),
-      bandBuckets: swapped.band.mapping.buckets.map(b => b.id),
+      bandBuckets: swapped.bandY.mapping.buckets.map(b => b.id),
       pushOverrideKept: swapped.pair.push.has('worker'),
-      bandOverrideKept: swapped.band.overrides.has('worker'),
+      bandOverrideKept: swapped.bandY.overrides.has('worker'),
       sameTaxonomyReturnsSameObject: retunedFor(styledTuned, DEFAULT_ONTOLOGY, graph) === styledTuned,
     },
   }
