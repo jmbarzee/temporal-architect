@@ -8,14 +8,16 @@ createOntology
 defaultFilter
 isContainment
 passesSelection
+payloadNumber
 payloadString
 pinnedFor
 reconcileFilter
-relationOf
 schemeStylesheet
 schemeVars
 selectionFor
 themeChoiceOf
+toggleGroup
+toggleValue
 type ActiveGroup
 type Band
 type ColorPair
@@ -28,7 +30,6 @@ type EdgeType
 type EdgeTypeId
 type FilterBarProps
 type FilterChip
-type FilterDimension
 type FilterState
 type FocusTarget
 type Graph
@@ -55,18 +56,16 @@ type ResolvedDimensionDescriptor
 type ResolvedEdgeType
 type ResolvedNodeStyle
 type ScalarAxis
-type ScalarSpan
 type SearchState
 type Selection
 type SpringPhysics
-type StyleSubject
 type Theme
 type ThemeChoice
 type ThemedColor
 type ViewTransition
 useHostTheme
 useOntology
-useRecentlyChanged
 validateGraph
 valuesOn
+withPin
 withSelection

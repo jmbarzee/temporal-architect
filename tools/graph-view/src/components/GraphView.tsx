@@ -762,7 +762,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
                 className="gv-graph-search-result"
                 onClick={() => handleSelectSearchResult(n.id)}
               >
-                <span className="gv-graph-search-result-type">{ontology.valueFor(n)}</span>
+                <span className="gv-graph-search-result-type">{ontology.resolveNodeStyle(n).label}</span>
                 <span className="gv-graph-search-result-name">{n.name}</span>
               </button>
             ))}

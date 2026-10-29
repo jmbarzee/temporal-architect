@@ -234,7 +234,7 @@ The graph uses the **kind chips** of the shared filter bar to control which node
 
 ### Type Toggle Control
 
-The Kind axis's chips, as the host's descriptor declares them (`chipsFor`): **Namespaces** · **Workers** · **Nexus** · **Workflows** · **Activities** — five chips over seven kinds. The **Nexus** chip is a **group** (`FilterChip.values`) that controls three kinds together:
+Each filter row opens with its axis's label, small and muted, so a row reads as a named axis (D73). The Kind axis's chips, as the host's descriptor declares them (`chipsFor`): **Namespaces** · **Workers** · **Nexus** · **Workflows** · **Activities** — five chips over seven kinds. The **Nexus** chip is a **group** (`FilterChip.values`) that controls three kinds together:
 - **NexusEndpoint** — the routing alias (container tier, parented to their namespace)
 - **NexusService** — the callable API surface (host tier, hosted on a worker)
 - **NexusOperation** — the per-operation callable handle (orchestrator tier, child of its service)

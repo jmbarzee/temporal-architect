@@ -89,7 +89,7 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/graph-view/useControllable.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useHighlight.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useOntology.ts` | manifest |  | **9** files |
-| `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
+| `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulation.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulationLoop.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useTheme.ts` | manifest |  | `verify/scheme-probes.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
@@ -98,7 +98,7 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/graph-view/visibleGraph.ts` | manifest |  | **9** files |
 | `../graph-view/components/icons/SearchIcon.tsx` | manifest |  | `../graph-view/components/FilterBar.tsx` |
 | `../graph-view/filter/reconcile.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
-| `../graph-view/filter/toggle.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/FilterBar.tsx` |
+| `../graph-view/filter/toggle.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/FilterBar.tsx`, `../graph-view/index.ts` |
 | `../graph-view/filter/types.ts` | manifest |  | **12** files |
 | `../graph-view/graph/dimension.ts` | manifest |  | **29** files |
 | `../graph-view/graph/forces.ts` | manifest |  | **20** files |

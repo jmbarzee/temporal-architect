@@ -2523,3 +2523,43 @@ hook, the hook without a code).
 boundary 0.
 
 — 2026-10-28 — agent
+
+**D73 — Unit 15, surface trim, packaging, documentation (API_WORK.md Set 6).**
+The last of the six sets: the entry says what a host needs and nothing it
+does not, the README can produce a host, and what is deferred is filed.
+
+1. **The surface, trimmed and completed.** Removed: `ScalarSpan` (in no
+   public signature), `StyleSubject` (inlined where the `Ontology` reads a
+   node's dimensions), `FilterDimension` (an alias of `DimensionId`),
+   `useRecentlyChanged` (the bar tracks it itself since D71), `relationOf`
+   (`isContainment` and the relation axis suffice). Added: `payloadNumber`
+   beside `payloadString` (the catalog had written its own), `withPin`,
+   `toggleGroup`, `toggleValue` (the filter operations a host's own bar
+   calls). `ViewTransition` and `ReconcileResult` stay: the first host names
+   them. 72 → 71 names.
+2. **The README can produce a host.** Rewritten against the shipped surface:
+   a quick start that is the smallest host in full, then the taxonomy, the
+   graph's identity rules, the view's state ownership and handle, the
+   two-view recipe, theming, the collapse rules and the limits, with the
+   deferred work linked. The quick start's ```tsx block is compiled by the
+   library's artifact gate against the copied declarations, so a README that
+   names a prop the surface lost fails the gate, not a reader's editor.
+3. **Construction checks (6.3) — done in D70.**
+4. **The React 19 types gate (6.4) — deferred,
+   [#200](https://github.com/jmbarzee/temporal-architect/issues/200):** the
+   gate would need `@types/react@19`, a new dependency.
+5. **The theme observer (6.5) — done in D67.**
+6. **Presentation (6.6).** Each filter row opens with its axis's label
+   (`.gv-header-axis-label`), so a row reads as a named axis and not a bare
+   run of chips; a search result names the value's style label, not its id.
+   The node glyph stays white: it reads on every declared fill, and a glyph
+   colour per value belongs with #194. `payloadNumber` ships (above).
+7. **The example (6.7) — done in D66**, committed and typechecked, and now
+   the second host the README's reader can compare against.
+
+**Golden change (§8.2).** None: the trimmed names were read by no probe through the entry, the axis label and the search label are markup the probes do not capture, and `payloadNumber` is new. 7/7 goldens byte-identical.
+
+**Measured.** Surface 71 names; the README's quick start compiles in the
+artifact gate. Total vocabulary 1090 / 1090; leak 0; boundary 0.
+
+— 2026-10-28 — agent

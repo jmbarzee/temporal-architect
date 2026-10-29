@@ -98,6 +98,15 @@ export function payloadString(
   return typeof value === 'string' ? value : undefined
 }
 
+/** Read one number out of a node's host-owned payload; undefined for a missing key or a non-number, never a coercion. */
+export function payloadNumber(
+  node: { payload?: Readonly<Record<string, unknown>> },
+  key: string,
+): number | undefined {
+  const value = node.payload?.[key]
+  return typeof value === 'number' ? value : undefined
+}
+
 export interface GraphEdge {
   id: string
   sourceId: string

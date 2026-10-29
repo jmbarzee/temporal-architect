@@ -21,7 +21,7 @@ import type {
   GraphViewHandle,
   PinState,
   ViewTransition,
-  FilterDimension,
+  DimensionId,
   ThemeChoice,
 } from '@temporal-architect/graph-view'
 import React from 'react'
@@ -274,7 +274,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // transition bypassed in the Tree. The Tree consumes this on render
   // to flash its pin icon, then calls back to clear. The Graph view keeps its
   // own: `focusNode` flashes any pin it overrides.
-  const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<FilterDimension>>(new Set())
+  const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<DimensionId>>(new Set())
 
   // The Graph view's handle, and the node a cross-view focus asked it to reveal.
   // The view mounts lazily on first show, so the handle can be null on the tick
