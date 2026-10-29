@@ -46,27 +46,26 @@ import type {
   HighlightGraph,
   Ontology,
   OntologySpec,
-  NodeTypeDefinition,
+  NodeStyle,
+  ResolvedNodeStyle,
   DimensionDescriptor,
   FilterChip,
 } from '@temporal-architect/graph-view'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
 
 /**
- * A node style plus the two fields that are this domain's own.
- *
- * `ladder` and `tier` name tiers of one specific deployment model, so they are
- * not part of the library shape. They stay declarative rather than being folded
- * into `styleGroups` directly because the grouping below is derived from them,
- * and deriving it here is what keeps the ordering in one place.
- */
-/**
  * The axis this domain styles and filters its node types on. The adapter writes
  * it onto every node; nothing in the engine names it.
  */
 export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
 
-export interface TemporalNodeTypeDefinition extends NodeTypeDefinition {
+/**
+ * A node style plus the fields that are this domain's own: the kind the type
+ * projects onto, the two tiers of the deployment model it sits on, and whether
+ * its kind is selected when the view first opens. The library reads none of
+ * them; it reaches the style through the `Ontology`.
+ */
+export interface TemporalNodeStyle extends NodeStyle {
   /**
    * The value this type projects onto the kind axis — what the kind chips
    * filter on. The adapter materializes it on each node at build time, so the
@@ -87,10 +86,16 @@ export interface TemporalNodeTypeDefinition extends NodeTypeDefinition {
    * 'orchestrator' — callable units that orchestrate work
    * 'leaf'         — leaf execution units
    *
-   * Read only by the ladder ordering below; sizing and summary kind come from
-   * the explicit style fields rather than from switching on this.
+   * Read only by the static golden; sizing and summary kind come from the
+   * explicit style fields rather than from switching on this.
    */
   tier: 'container' | 'host' | 'orchestrator' | 'leaf'
+  /**
+   * Whether this type's kind is selected when the view first opens: the kind
+   * axis's initial selection (`DEFAULT_KINDS`) is the kinds of the types that
+   * say so.
+   */
+  defaultVisible: boolean
 }
 
 // The horizontal rest band every type shares by default: what the one global X
@@ -98,9 +103,16 @@ export interface TemporalNodeTypeDefinition extends NodeTypeDefinition {
 // the X axis is the same kind of thing as the Y axis (T22).
 const X_WINDOW = { min: 0, max: 380 }
 
-export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = {
+// A registry entry: the style less the id its position gives it, and with every
+// field the library would default written out — this domain declares each one
+// per type, and what reads the registry (the theme, the static golden) takes
+// them as given instead of resolving them.
+type RegistryEntry = Omit<ResolvedNodeStyle, 'id'> & Pick<TemporalNodeStyle, 'defType' | 'ladder' | 'tier' | 'defaultVisible'>
+
+export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
   namespace: {
     label: 'Namespace',
+    abbreviation: 'NS',
     icon: '⧉',
     defType: 'namespaceDef',
     ladder: 'main',
@@ -122,6 +134,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
 
   nexusEndpoint: {
     label: 'Nexus Endpoint',
+    abbreviation: 'Ep',
     icon: '⌖',
     defType: 'nexusEndpointDef',
     ladder: 'nexus',
@@ -143,6 +156,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
 
   worker: {
     label: 'Worker',
+    abbreviation: 'Wk',
     icon: '□',
     defType: 'workerDef',
     ladder: 'main',
@@ -164,6 +178,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
 
   nexusService: {
     label: 'Nexus Service',
+    abbreviation: 'Nx',
     icon: '★',
     defType: 'nexusServiceDef',
     ladder: 'nexus',
@@ -185,6 +200,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
 
   workflow: {
     label: 'Workflow',
+    abbreviation: 'Wf',
     icon: '⚙⚙',
     defType: 'workflowDef',
     ladder: 'main',
@@ -206,6 +222,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
 
   nexusOperation: {
     label: 'Nexus Operation',
+    abbreviation: 'Op',
     icon: '☆',
     defType: 'nexusOperationDef',
     ladder: 'nexus',
@@ -227,6 +244,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
 
   activity: {
     label: 'Activity',
+    abbreviation: 'Act',
     icon: '⚙',
     defType: 'activityDef',
     ladder: 'main',
@@ -247,19 +265,6 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, TemporalNodeTypeDefinition> = 
   },
 }
 
-// Short abbreviations for the control-panel labels (charge-map tokens,
-// gravity-band rows). Kept here so they stay in sync with the registry when
-// node types change.
-const SLIDER_ABBREV: Record<NodeType, string> = {
-  namespace:      'NS',
-  nexusEndpoint:  'Ep',
-  worker:         'Wk',
-  nexusService:   'Nx',
-  workflow:       'Wf',
-  nexusOperation: 'Op',
-  activity:       'Act',
-}
-
 /**
  * The short label used in the control panel for a node type, e.g. 'NS', 'Ep',
  * 'Wk'. The old hierarchical 'L1'/'L1.5' level prefix has been dropped — the
@@ -267,7 +272,7 @@ const SLIDER_ABBREV: Record<NodeType, string> = {
  * colours already convey the hierarchy.
  */
 export function sliderLabelFor(t: NodeType): string {
-  return SLIDER_ABBREV[t]
+  return NODE_TYPE_REGISTRY[t].abbreviation
 }
 
 /** Ordered list of all node types (declaration order = top-of-hierarchy first). */
@@ -281,19 +286,14 @@ export const ALL_NODE_TYPES: NodeType[] = [
   'activity',
 ]
 
-// Per-ladder, top-to-bottom ordering, derived from each type's tier. Consumers
-// that lay types out by family + hierarchy (e.g. the gravity band plot's columns)
-// read these instead of hardcoding the order, so a registry change reflows them.
-const TIER_RANK: Record<TemporalNodeTypeDefinition['tier'], number> = {
-  container: 0, host: 1, orchestrator: 2, leaf: 3,
-}
-const byTier = (a: NodeType, b: NodeType) =>
-  TIER_RANK[NODE_TYPE_REGISTRY[a].tier] - TIER_RANK[NODE_TYPE_REGISTRY[b].tier]
-
-/** Main deployment ladder (namespace → worker → workflow → activity), tier-ordered. */
-export const MAIN_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REGISTRY[t].ladder === 'main').sort(byTier)
-/** Nexus ladder (endpoint → service → operation), tier-ordered. */
-export const NEXUS_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REGISTRY[t].ladder === 'nexus').sort(byTier)
+/**
+ * The kinds selected when the view first opens: the projection of every type
+ * whose entry says it is visible by default. Declared once; the kind axis's
+ * `initialSelection` returns it.
+ */
+export const DEFAULT_KINDS: string[] = ALL_NODE_TYPES
+  .filter(t => NODE_TYPE_REGISTRY[t].defaultVisible)
+  .map(t => NODE_TYPE_REGISTRY[t].defType)
 
 // The style a node gets when its key is not in the registry. Impossible today —
 // the key space is closed — but the seam exists to open it, and the alternative
@@ -301,7 +301,7 @@ export const NEXUS_LADDER: NodeType[] = ALL_NODE_TYPES.filter(t => NODE_TYPE_REG
 // catches it and the canvas simply stops repainting. Deliberately neutral: grey,
 // small, no glyph, so an unstyled node reads as "unrecognized" rather than
 // impersonating a real type.
-const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
+const FALLBACK_NODE_STYLE: Omit<TemporalNodeStyle, 'id'> = {
   label: 'Unknown',
   icon: '?',
   defType: 'unknownDef',
@@ -334,11 +334,11 @@ const FALLBACK_NODE_STYLE: TemporalNodeTypeDefinition = {
  * **Order is meaningful**: it is the default filter chain, left to right, so it
  * has to match the bar the product already shipped — files first, then kinds.
  *
- * Every field below is a behaviour that used to be a hardcoded branch in
- * `computeVisibleGraph`, `reconcile.ts` or `useSimulationLoop`. They are written
- * out per axis rather than shared, because the two axes disagree on all three
- * policies and a `for (const dim of dims)` loop over a shared rule silently
- * flattens them (T7, T8, T9).
+ * An axis declares its id, its label and what an empty selection means; every
+ * other policy follows from that, and an axis writes one out only where it
+ * answers differently. The two axes want opposite answers, which is why each is
+ * declared on its own: the file axis narrows (empty shows everything), the kind
+ * axis is an allow-list (empty hides everything).
  */
 // The chip grouping for the kind axis, lifted from the theme's
 // VIEW_FILTER_ENTRIES shape so the bar does not need to import the theme.
@@ -354,7 +354,7 @@ const VIEW_FILTER_CHIPS: readonly FilterChip[] = [
 ]
 
 const KIND_ABBREV: Record<string, string> = Object.fromEntries(
-  ALL_NODE_TYPES.map(t => [NODE_TYPE_REGISTRY[t].defType, SLIDER_ABBREV[t]]),
+  ALL_NODE_TYPES.map(t => [NODE_TYPE_REGISTRY[t].defType, NODE_TYPE_REGISTRY[t].abbreviation]),
 )
 
 const FILTER_DIMENSIONS: DimensionDescriptor[] = [
@@ -364,20 +364,12 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
     // Quiet neutral tags, as an origin reads; the kind axis below wears the
     // tinted chips (D67).
     presentation: 'tag',
-    // Empty shows everything — the opposite of the axis above, and deliberate:
-    // adding the first file chip while the filter is off would otherwise
-    // activate the filter and hide every other file (T7).
+    // Empty shows everything: adding the first file chip while the filter is
+    // off would otherwise activate the filter and hide every other file (T7).
+    // A narrowing axis's defaults — a node with no file stays visible, a focus
+    // expands only an active selection, a change reheats in place and keeps the
+    // user's pan and zoom — are exactly the policies this axis wants.
     emptyMeans: 'all',
-    // A node with no source file stays visible under any file filter.
-    absentMeans: 'visible',
-    // The consequence of `emptyMeans: 'all'`: adding the first value NARROWS
-    // from everything to one thing, so expanding to reveal a focus target would
-    // hide everything else. Only expand an already-active selection (T8).
-    focus: 'whenActive',
-    // Not structural — no ancestor seed, and no refit so the user's pan/zoom
-    // survives. `resume` is still true: dropping it is the specific mistake T9
-    // warns about, and it leaves the canvas frozen after every file toggle.
-    reheat: { alpha: 0.3, seedRevealed: false, refit: false, resume: true },
     // One chip per file, in whatever order the graph yielded them.
     chipsFor: values => values.map(v => ({
       id: v,
@@ -394,28 +386,21 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
   {
     id: DEF_TYPE_DIMENSION,
     label: 'Kind',
-    // Empty hides everything: the chips are an allow-list.
+    // Empty hides everything: the chips are an allow-list. An allow-list's
+    // defaults — an absent kind hidden, a focus always expanding, a structural
+    // reheat that seeds, refits and resumes, a label that is the kind itself —
+    // are exactly the policies this axis wants.
     emptyMeans: 'none',
-    // Unreachable in practice — the taxonomy's fallback style gives every node
-    // a defType — but an axis has to answer, and the restrictive answer matches
-    // this axis's empty semantics.
-    absentMeans: 'hidden',
-    // Adding a kind to an allow-list only ever widens what is visible, so
-    // focusing can always expand it.
-    focus: 'always',
-    // Structural: revealing a kind can introduce nodes with no on-screen
-    // history, so they are seeded at their nearest visible ancestor before the
-    // reheat, and the camera refits to the new extent.
-    reheat: { alpha: 0.5, seedRevealed: true, refit: true, resume: true },
     // Five chips over seven filter keys: the three nexus kinds share one. That
     // folding is the domain choice this hook exists for.
     chipsFor: () => VIEW_FILTER_CHIPS,
-    labelFor: v => v,
     // A kind is a type's projection, so it abbreviates as the type does. Two
     // characters of the kind's own name collided ("wo" for two kinds, "ne" for
     // three), which left push/pull tokens on this axis indistinguishable. A
     // kind this registry does not know keeps the two-character fallback.
     abbreviationFor: v => KIND_ABBREV[v] ?? v.slice(0, 2),
+    // Not every kind: the default view shows workers and workflows.
+    initialSelection: () => DEFAULT_KINDS,
   },
 ]
 
@@ -507,20 +492,11 @@ function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph)
 export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   styleDimension: TEMPORAL_TYPE_DIMENSION,
   styleLabel: 'Type',
-  abbreviations: SLIDER_ABBREV,
-  // The two ladders, as presentation grouping. A control surface lays the main
-  // deployment path out in one run and the nexus addressing path in another.
-  styleGroups: [
-    { id: 'main', values: MAIN_LADDER },
-    { id: 'nexus', values: NEXUS_LADDER },
-  ],
-  nodeTypeKeys: ALL_NODE_TYPES,
+  // Declaration order is top of the hierarchy first.
+  values: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t] })),
   filterDimensions: FILTER_DIMENSIONS,
-  nodeStyles: NODE_TYPE_REGISTRY,
   edgeTypes: ALL_EDGE_TYPES,
   resolveEdgeType: edgeTypeFor,
-  // The built-in scalars (reach, degree, depth) suffice for this domain today.
-  scalars: [],
   contextLine: contextLineFor,
   highlight: highlightFor,
   // Two graduated edges on one pair: the one carrying routing metadata

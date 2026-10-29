@@ -15,11 +15,11 @@ import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { resolveSprings } from '@temporal-architect/graph-view/graph/forces'
 import { pairTuning, styleIdentityMapping } from '@temporal-architect/graph-view/graph/simulation'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
-import type { EdgeCategoryKind } from '@temporal-architect/graph-view/graph/taxonomy'
 import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
+import type { Relation } from '@temporal-architect/graph-view/graph/dimension'
 import type { Json } from './snapshot'
 
-const EDGE_TYPES: EdgeCategoryKind[] = ['containment', 'dependency']
+const EDGE_TYPES: Relation[] = ['containment', 'dependency']
 const DISPATCH_KINDS: (string | undefined)[] = [undefined, 'signalSend']
 
 export function tierC(): Json {

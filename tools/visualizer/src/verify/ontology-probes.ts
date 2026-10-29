@@ -19,15 +19,16 @@ import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
 import { filterOfSets } from './filter-states'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
-import type { NodeType } from '../adapter/node-types'
-import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
+import type { NodeType, TemporalNodeStyle } from '../adapter/node-types'
+import type { NodeStyle } from '@temporal-architect/graph-view/graph/taxonomy'
+import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
 import {
   createDimensionalMapping,
   identityMapping,
   internValue,
 } from '@temporal-architect/graph-view/graph/dimension'
-import type { DimensionDescriptor } from '@temporal-architect/graph-view/graph/dimension'
+import type { AxisNamer } from '@temporal-architect/graph-view/graph/dimension'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
 import { foldReheatPolicy } from '@temporal-architect/graph-view/graph/dimension'
@@ -85,19 +86,20 @@ const ALT_SOURCE = sourceOf(ALT_NODES)
  * by its container, the worker's summary comes out as a degree under this one
  * and a container count under the shipped one, on the same nodes.
  */
+const ALT_VALUES: string[] = ['worker', 'workflow', 'activity']
+const alternate = (id: NodeType, overrides: Partial<TemporalNodeStyle>): NodeStyle => ({ id, ...NODE_TYPE_REGISTRY[id], ...overrides })
 const ALTERNATE = createOntology({
   styleDimension: TEMPORAL_TYPE_DIMENSION,
   styleLabel: 'Tier',
-  abbreviations: { worker: 'T2', workflow: 'T3', activity: 'T4' },
-  styleGroups: [{ id: 'tiers', values: ['worker', 'workflow', 'activity'] }],
-  nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
+  values: [
+    alternate('worker', { abbreviation: 'T2', defType: ALT_DEF_TYPE.worker, summaryKind: 'degree' }),
+    alternate('workflow', { abbreviation: 'T3', defType: ALT_DEF_TYPE.workflow }),
+    alternate('activity', { abbreviation: 'T4', defType: ALT_DEF_TYPE.activity }),
+  ],
   filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
-  nodeStyles: {
-    worker: { ...NODE_TYPE_REGISTRY.worker, defType: ALT_DEF_TYPE.worker, summaryKind: 'degree' },
-    workflow: { ...NODE_TYPE_REGISTRY.workflow, defType: ALT_DEF_TYPE.workflow },
-    activity: { ...NODE_TYPE_REGISTRY.activity, defType: ALT_DEF_TYPE.activity },
-  } as Record<NodeType, (typeof NODE_TYPE_REGISTRY)['worker']>,
-  edgeTypes: DEFAULT_ONTOLOGY.edgeTypes,
+  // Only the shipped edge types that run between values this taxonomy declares:
+  // an edge type to a value nobody declared is refused at construction.
+  edgeTypes: DEFAULT_ONTOLOGY.edgeTypes.filter(e => ALT_VALUES.includes(e.sourceType) && ALT_VALUES.includes(e.targetType)),
   resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
   scalars: [],
   fallbackStyle: NODE_TYPE_REGISTRY.activity,
@@ -135,7 +137,7 @@ const CHAIN_EDGES: GraphEdge[] = [
 const CHAIN = (() => { const byId = new Map(CHAIN_NODES.map(n => [n.id, n])); return { nodes: CHAIN_NODES, edges: CHAIN_EDGES, getNode: (id: string) => byId.get(id) } })()
 const SPLICING = createOntology({
   ...DEFAULT_ONTOLOGY_SPEC,
-  nodeStyles: { ...NODE_TYPE_REGISTRY, workflow: { ...NODE_TYPE_REGISTRY.workflow, whenHidden: 'splice' } } as typeof NODE_TYPE_REGISTRY,
+  values: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t], ...(t === 'workflow' ? { whenHidden: 'splice' as const } : {}) })),
 })
 function hiddenPolicy(ontology: typeof DEFAULT_ONTOLOGY): Json {
   const vg = computeVisibleGraph(CHAIN, filterOfSets(new Set(['workerDef', 'activityDef']), new Set<string>()), ontology)
@@ -205,12 +207,8 @@ function cycle(): Json {
  * by someone alphabetising a declaration for readability.
  */
 function mappingProbes(): Json {
-  const descriptor: DimensionDescriptor = {
+  const descriptor: AxisNamer = {
     id: 'probe', label: 'Probe',
-    emptyMeans: 'none', absentMeans: 'visible',
-    focus: 'always',
-    reheat: { alpha: 0.5, seedRevealed: true, refit: true, resume: true },
-    chipsFor: values => values.map(v => ({ id: v, label: v, values: [v] })),
     labelFor: v => v.toUpperCase(),
     abbreviationFor: v => v.slice(0, 1).toUpperCase(),
   }
@@ -266,7 +264,7 @@ function mappingProbes(): Json {
  * as a declared value. The consequences are not local: the `Object` function
  * enters the force arithmetic as NaN, and because charge couples a pair by the
  * *average* of two charges, one such node takes the whole layout non-finite.
- * `styleForKey` meanwhile returns the constructor as though it were a style,
+ * `styleOf` meanwhile returns the constructor as though it were a style,
  * and the first read of `.size.r` throws inside the draw loop — the exact
  * failure the required-fallback design exists to prevent.
  *
@@ -297,7 +295,7 @@ function prototypeNamedValues(): Json {
       coreRadius: coreRadiusFor(resolved.push, node),
       chargeIsFinite: Number.isFinite(chargeFor(resolved.push, node)),
       band: `${band.min}..${band.max}`,
-      // D39 fixed styleForKey and the force lookups and missed this one.
+      // D39 fixed the style lookup and the force lookups and missed this one.
       abbreviation: DEFAULT_ONTOLOGY.abbreviationFor(name),
       abbreviationIsString: typeof DEFAULT_ONTOLOGY.abbreviationFor(name) === 'string',
     })
@@ -333,19 +331,16 @@ function physicsInjection(): Json {
   const OTHER_AXIS = createOntology({
     styleDimension: 'zone',
     styleLabel: 'Zone',
-    abbreviations: { north: 'N', south: 'S' },
-    styleGroups: [{ id: 'zones', values: ['north', 'south'] }],
-    nodeTypeKeys: ['north', 'south'],
+    values: [
+      { id: 'north', ...NODE_TYPE_REGISTRY.worker, abbreviation: 'N' },
+      { id: 'south', ...NODE_TYPE_REGISTRY.activity, abbreviation: 'S' },
+    ],
     filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
-    nodeStyles: {
-      north: NODE_TYPE_REGISTRY.worker,
-      south: NODE_TYPE_REGISTRY.activity,
-    },
     // Its own edge table and rule, so the spring rows below can only come out
     // right by reading the container.
     edgeTypes: [{
       id: 'zoneLink', label: 'N↔S', sourceType: 'north', targetType: 'south',
-      category: 'dependency',
+      relation: 'dependency',
       physics: { strength: 0.7, distance: 123 }, tooltip: 'zone link',
       style: { color: { light: '#000000', dark: '#FFFFFF' }, alpha: 1, dash: [], width: 1 },
     }],
@@ -479,9 +474,18 @@ export function ontologyProbes(): Json {
     // guard, and the one a dimension model makes reachable for the first time.
     absentValueResolvesToFallback:
       DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }) === fallback,
-    // A declared key must NOT reach the fallback.
-    declaredKeyUnaffected:
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }) === NODE_TYPE_REGISTRY.worker,
+    // A declared key must NOT reach the fallback: it resolves to its own entry
+    // (defaults filled in, so the resolved style is a new object, not the
+    // declared one), and to the same object every time.
+    declaredKeyResolvesToItself: (() => {
+      const worker = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
+      const style = DEFAULT_ONTOLOGY.resolveNodeStyle(worker)
+      return {
+        sameLabel: style.label === NODE_TYPE_REGISTRY.worker.label,
+        sameFill: style.color.light.fill === NODE_TYPE_REGISTRY.worker.color.light.fill,
+        stable: DEFAULT_ONTOLOGY.styleOf('worker') === DEFAULT_ONTOLOGY.resolveNodeStyle(worker),
+      }
+    })(),
 
     // The seam, exercised. Visibility now reads the node (its adapter wrote the
     // kind axis), so the shipped nodes are invisible under the alternate keys

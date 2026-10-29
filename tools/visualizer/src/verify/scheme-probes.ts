@@ -7,7 +7,7 @@
 
 import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import type { NodeTypeDefinition } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { NodeStyle } from '@temporal-architect/graph-view/graph/taxonomy'
 import { THEMES, cssSuffix, colorVar, rgbOf, schemeVars, withAlpha } from '@temporal-architect/graph-view/graph/scheme'
 import { themeChoiceOf, themeOfMarker } from '@temporal-architect/graph-view/components/graph-view/useTheme'
 import type { ThemeMarker } from '@temporal-architect/graph-view/components/graph-view/useTheme'
@@ -25,17 +25,15 @@ function marker(dataTheme?: string): ThemeMarker {
 }
 
 /** The shipped palette with every colour replaced: the same keys, a second scheme. */
-function restyled(): Record<string, NodeTypeDefinition> {
-  const out: Record<string, NodeTypeDefinition> = {}
-  ALL_NODE_TYPES.forEach((t, i) => {
+function restyled(): NodeStyle[] {
+  return ALL_NODE_TYPES.map((t, i) => {
     const hex = (n: number) => `#${(0x101010 * (i + 1) + n).toString(16).padStart(6, '0')}`
-    out[t] = { ...NODE_TYPE_REGISTRY[t], color: { light: { fill: hex(0), border: hex(1) }, dark: { fill: hex(2), border: hex(3) } } }
+    return { id: t, ...NODE_TYPE_REGISTRY[t], color: { light: { fill: hex(0), border: hex(1) }, dark: { fill: hex(2), border: hex(3) } } }
   })
-  return out
 }
 
 export function schemeProbes(): Json {
-  const second = createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeStyles: restyled() as typeof NODE_TYPE_REGISTRY })
+  const second = createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: restyled() })
   const defaults = Object.fromEntries(THEMES.map(th => [th, schemeVars(DEFAULT_ONTOLOGY, th)]))
   const seconds = Object.fromEntries(THEMES.map(th => [th, schemeVars(second, th)]))
   const sameNames = THEMES.every(th => JSON.stringify(Object.keys(defaults[th]).sort()) === JSON.stringify(Object.keys(seconds[th]).sort()))
@@ -65,12 +63,12 @@ export function schemeProbes(): Json {
     // What the taxonomy refuses at construction (D58): two values sharing a
     // custom-property name, a value with none, a colour no reader can parse.
     refusals: {
-      sharedSuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeTypeKeys: [...ALL_NODE_TYPES, 'nexus-endpoint'], nodeStyles: { ...NODE_TYPE_REGISTRY, 'nexus-endpoint': NODE_TYPE_REGISTRY.nexusEndpoint } as typeof NODE_TYPE_REGISTRY })),
-      emptySuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeTypeKeys: [...ALL_NODE_TYPES, '工作流'], nodeStyles: { ...NODE_TYPE_REGISTRY, '工作流': NODE_TYPE_REGISTRY.workflow } as typeof NODE_TYPE_REGISTRY })),
-      namedColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeStyles: { ...NODE_TYPE_REGISTRY, worker: { ...NODE_TYPE_REGISTRY.worker, color: { light: { fill: 'slategray', border: '#000' }, dark: NODE_TYPE_REGISTRY.worker.color.dark } } } as typeof NODE_TYPE_REGISTRY })),
+      sharedSuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: [...DEFAULT_ONTOLOGY_SPEC.values, { id: 'nexus-endpoint', ...NODE_TYPE_REGISTRY.nexusEndpoint }] })),
+      emptySuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: [...DEFAULT_ONTOLOGY_SPEC.values, { id: '工作流', ...NODE_TYPE_REGISTRY.workflow }] })),
+      namedColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: DEFAULT_ONTOLOGY_SPEC.values.map(v => v.id === 'worker' ? { ...v, color: { light: { fill: 'slategray', border: '#000' }, dark: v.color.dark } } : v) })),
       cssVariableColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, edgeTypes: DEFAULT_ONTOLOGY_SPEC.edgeTypes.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
       // A hidden-node policy outside its two values (D60): refused, not read as ascend.
-      badWhenHidden: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeStyles: { ...NODE_TYPE_REGISTRY, worker: { ...NODE_TYPE_REGISTRY.worker, whenHidden: String('Splice') } } as typeof NODE_TYPE_REGISTRY })),
+      badWhenHidden: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: DEFAULT_ONTOLOGY_SPEC.values.map(v => v.id === 'worker' ? { ...v, whenHidden: String('Splice') as NodeStyle['whenHidden'] } : v) })),
     },
     // The theme a marker declares: its `data-theme`, light or dark, and nothing
     // else — an editor's body classes are the host's to translate (D67).

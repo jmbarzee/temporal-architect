@@ -14,7 +14,10 @@
 //
 // The search query lives outside a FilterState because it is globally shared.
 
-import type { DimensionId, DimensionDescriptor } from '../graph/dimension'
+import type { DimensionId, ResolvedDimensionDescriptor } from '../graph/dimension'
+import { valuesOn } from '../graph/dimension'
+import type { Graph } from '../graph/model'
+import type { Ontology } from '../graph/ontology'
 
 /** The chosen values on one axis. Empty means what the axis's descriptor says. */
 export type Selection = ReadonlySet<string>
@@ -131,6 +134,18 @@ export type ReconcileResult = {
   overriddenPins: Set<FilterDimension>
 }
 
+/**
+ * The filter a view starts from: on every filter axis, what its descriptor's
+ * `initialSelection` chooses from the values the graph presents there —
+ * every value on an allow-list, none on a narrowing axis, or the host's own
+ * choice.
+ */
+export function defaultFilter(ontology: Pick<Ontology, 'filterDimensions'>, graph: Pick<Graph, 'nodes'>): FilterState {
+  const out = new Map<DimensionId, Selection>()
+  for (const d of ontology.filterDimensions) out.set(d.id, new Set(d.initialSelection(valuesOn(graph.nodes.values(), d.id))))
+  return out
+}
+
 /** Whether a node answers to a focus target: the name, and every value the target names. */
 export function matchesFocus(node: { name: string; dimensions: Readonly<Record<string, string>> }, target: FocusTarget): boolean {
   if (node.name !== target.name) return false
@@ -153,7 +168,7 @@ export function matchesFocus(node: { name: string; dimensions: Readonly<Record<s
  */
 export function passesSelection(
   filter: FilterState,
-  dimensions: readonly DimensionDescriptor[],
+  dimensions: readonly ResolvedDimensionDescriptor[],
   valueOn: (dimension: string) => string | undefined,
 ): boolean {
   for (const dim of dimensions) {

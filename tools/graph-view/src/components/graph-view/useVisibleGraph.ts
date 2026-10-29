@@ -6,7 +6,7 @@
 // frame.
 
 import type { FilterState } from '../../filter/types'
-import type { DimensionDescriptor } from '../../graph/dimension'
+import type { ResolvedDimensionDescriptor } from '../../graph/dimension'
 import React from 'react'
 import type { Simulation } from '../../graph/simulation'
 import { computeVisibleGraph, EMPTY_VISIBLE_GRAPH } from './visibleGraph'
@@ -20,7 +20,7 @@ export function useVisibleGraph(
   simVersion: number,
   filter: FilterState,
   /** The axes the view shows — the only ones that filter. */
-  axes: readonly DimensionDescriptor[],
+  axes: readonly ResolvedDimensionDescriptor[],
 ): VisibleGraph {
   const ontology = useOntology()
   return React.useMemo<VisibleGraph>(() => {

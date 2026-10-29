@@ -5,6 +5,7 @@ RELATION_DIMENSION
 copyGroups
 copyKeyOf
 createOntology
+defaultFilter
 isContainment
 passesSelection
 payloadString
@@ -16,14 +17,14 @@ schemeVars
 selectionFor
 themeChoiceOf
 type ActiveGroup
+type Band
 type ColorPair
 type DimensionDescriptor
 type DimensionId
 type DimensionMap
 type DimensionValue
-type EdgeCategoryKind
 type EdgeStroke
-type EdgeTypeDefinition
+type EdgeType
 type EdgeTypeId
 type FilterChip
 type FilterDimension
@@ -37,17 +38,21 @@ type GraphNode
 type Highlight
 type HighlightGraph
 type NodeGroup
-type NodeTypeDefinition
+type NodeStyle
 type Ontology
 type OntologySpec
 type PinState
 type ReadableGraph
 type ReconcileResult
+type ReheatPolicy
+type Relation
+type ResolvedDimensionDescriptor
+type ResolvedEdgeType
+type ResolvedNodeStyle
 type ScalarAxis
 type ScalarSpan
 type Selection
 type SpringPhysics
-type StyleGroup
 type StyleSubject
 type Theme
 type ThemeChoice

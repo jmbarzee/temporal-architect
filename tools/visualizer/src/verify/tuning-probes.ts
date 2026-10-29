@@ -134,10 +134,13 @@ function retune(graph: Graph): Json {
   // are not, and the override on a surviving value must survive with it.
   const three = createOntology({
     ...DEFAULT_ONTOLOGY_SPEC,
-    nodeTypeKeys: ['worker', 'workflow', 'activity'],
-    nodeStyles: { worker: NODE_TYPE_REGISTRY.worker, workflow: NODE_TYPE_REGISTRY.workflow, activity: NODE_TYPE_REGISTRY.activity },
-    styleGroups: [{ id: 'three', values: ['worker', 'workflow', 'activity'] }],
-    abbreviations: { worker: 'Wk', workflow: 'Wf', activity: 'Act' },
+    values: [
+      { id: 'worker', ...NODE_TYPE_REGISTRY.worker },
+      { id: 'workflow', ...NODE_TYPE_REGISTRY.workflow },
+      { id: 'activity', ...NODE_TYPE_REGISTRY.activity },
+    ],
+    // The edge types among those three values: one to a value nobody declared is refused.
+    edgeTypes: DEFAULT_ONTOLOGY_SPEC.edgeTypes.filter(e => ['worker', 'workflow', 'activity'].includes(e.sourceType) && ['worker', 'workflow', 'activity'].includes(e.targetType)),
   })
   const styled = defaultParamsFor(DEFAULT_ONTOLOGY)
   const styledTuned: ForceParams = {
@@ -212,13 +215,13 @@ function foreignAxisPhysics(graph: Graph): Json {
   const params = fileAxisParams(graph)
   const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
   const typical = resolvePhysics({ ...params, pair: pairTuning(params.pair.mapping) }, DEFAULT_ONTOLOGY).push.byBucket.get('task-queues.twf')
-  const fallback = DEFAULT_ONTOLOGY.styleForKey('not-a-style-key').physics
+  const fallback = DEFAULT_ONTOLOGY.styleOf('not-a-style-key').physics
   return {
     buckets: sortedRecord([...resolved.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)),
     typicalIsNotTheFallback: typical !== undefined && (typical.charge !== fallback.charge || typical.coreRadius !== fallback.coreRadius),
     typicalIsTheDeclaredMean: (() => {
-      const keys = DEFAULT_ONTOLOGY.nodeTypeKeys
-      const mean = keys.reduce((s, k) => s + DEFAULT_ONTOLOGY.styleForKey(k).physics.charge, 0) / keys.length
+      const keys = DEFAULT_ONTOLOGY.styleValues
+      const mean = keys.reduce((s, k) => s + DEFAULT_ONTOLOGY.styleOf(k).physics.charge, 0) / keys.length
       return typical !== undefined && Math.abs(typical.charge - mean) < 1e-9
     })(),
     springIsTypical: (() => {
@@ -257,7 +260,7 @@ function visibilityPolicy(): Json {
   const noKind: SimNode = { ...withKind, id: 'n', dimensions: { ...withKind.dimensions } }
   delete (noKind.dimensions as Record<string, string>)[DEF_TYPE_DIMENSION]
   const source = { nodes: [withKind, noKind], edges: [], getNode: (id: string) => (id === 'k' ? withKind : id === 'n' ? noKind : undefined) }
-  const allKinds = new Set(DEFAULT_ONTOLOGY.nodeTypeKeys.map(k => NODE_TYPE_REGISTRY[k as NodeType].defType))
+  const allKinds = new Set(DEFAULT_ONTOLOGY.styleValues.map(k => NODE_TYPE_REGISTRY[k as NodeType].defType))
   const filter = filterOfSets(allKinds, new Set<string>())
   const lenient = createOntology({
     ...DEFAULT_ONTOLOGY_SPEC,
@@ -275,10 +278,13 @@ function coherence(): Json {
     try { f(); return 'NOT REFUSED' } catch (err) { return err instanceof Error ? err.message : String(err) }
   }
   const namer = { id: 'probe', label: 'Probe', labelFor: (v: string) => v, abbreviationFor: (v: string) => v.slice(0, 2) }
+  const spec = DEFAULT_ONTOLOGY_SPEC
   return {
-    ghostKey: refusal(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeTypeKeys: [...DEFAULT_ONTOLOGY_SPEC.nodeTypeKeys, 'ghost'] })),
-    undeclaredStyle: refusal(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeStyles: { ...DEFAULT_ONTOLOGY_SPEC.nodeStyles, ghost: NODE_TYPE_REGISTRY.worker } })),
-    groupOutsideKeys: refusal(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, styleGroups: [{ id: 'g', values: ['ghost'] }] })),
+    duplicateValue: refusal(() => createOntology({ ...spec, values: [...spec.values, spec.values[0]] })),
+    edgeEndpointUndeclared: refusal(() => createOntology({ ...spec, edgeTypes: [...spec.edgeTypes, { ...spec.edgeTypes[0], id: 'ghostLink', sourceType: 'ghost' }] })),
+    duplicateEdgeType: refusal(() => createOntology({ ...spec, edgeTypes: [...spec.edgeTypes, spec.edgeTypes[0]] })),
+    duplicateFilterAxis: refusal(() => createOntology({ ...spec, filterDimensions: [...spec.filterDimensions, spec.filterDimensions[0]] })),
+    crossedBand: refusal(() => createOntology({ ...spec, values: spec.values.map((v, i) => i === 0 ? { ...v, physics: { ...v.physics, band: { ...v.physics?.band, y: { min: 10, max: -10 } } } } : v) })),
     duplicateBucketId: refusal(() => createDimensionalMapping({ id: 'm', label: 'M', dimension: 'probe', buckets: [
       { id: 'a', label: 'A', abbreviation: 'A', values: ['v1'] }, { id: 'a', label: 'A', abbreviation: 'A', values: ['v2'] }] })),
     emptyBucket: refusal(() => createDimensionalMapping({ id: 'm', label: 'M', dimension: 'probe', buckets: [{ id: 'e', label: 'E', abbreviation: 'E', values: [] }] })),

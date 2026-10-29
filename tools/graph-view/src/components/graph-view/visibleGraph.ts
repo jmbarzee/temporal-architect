@@ -22,7 +22,7 @@ import { isContainment } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge, ReadableGraph } from '../../graph/model'
 import type { Ontology } from '../../graph/ontology'
-import type { DimensionDescriptor } from '../../graph/dimension'
+import type { ResolvedDimensionDescriptor } from '../../graph/dimension'
 import type { EdgeTypeId } from '../../graph/taxonomy'
 import type { PhysicsSubject } from '../../graph/forces'
 import type { FilterState } from '../../filter/types'
@@ -142,7 +142,7 @@ function computeGraphNodeSummary(
       if (value === undefined) continue
       counts.set(value, (counts.get(value) ?? 0) + 1)
     }
-    return ontology.nodeTypeKeys
+    return ontology.styleValues
       .filter(k => counts.has(k))
       .map(k => `${counts.get(k)} ${ontology.abbreviationFor(k)}`)
       .join(' · ')
@@ -170,7 +170,7 @@ export function passesFilter(
   node: PhysicsSubject,
   filter: FilterState,
   ontology: Ontology,
-  axes: readonly DimensionDescriptor[] = ontology.filterDimensions,
+  axes: readonly ResolvedDimensionDescriptor[] = ontology.filterDimensions,
 ): boolean {
   return passesSelection(filter, axes, dim => ontology.valueOn(node, dim))
 }
@@ -202,7 +202,7 @@ export function computeVisibleGraph(
   sim: VisibleGraphSource,
   filter: FilterState,
   ontology: Ontology,
-  axes: readonly DimensionDescriptor[] = ontology.filterDimensions,
+  axes: readonly ResolvedDimensionDescriptor[] = ontology.filterDimensions,
 ): VisibleGraph {
   const ids = new Set<string>()
   const vNodes: SimNode[] = []

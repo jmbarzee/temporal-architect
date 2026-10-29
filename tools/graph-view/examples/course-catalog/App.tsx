@@ -4,7 +4,7 @@
 
 import React from 'react'
 import {
-  GraphView, OntologyContext, copyGroups, copyKeyOf, payloadString, pinnedFor, reconcileFilter, schemeVars, selectionFor, useHostTheme, withSelection,
+  GraphView, OntologyContext, copyGroups, copyKeyOf, defaultFilter, payloadString, pinnedFor, reconcileFilter, schemeVars, selectionFor, useHostTheme, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
   ActiveGroup, FilterState, FocusTarget, Graph, GraphNode, NodeGroup, PinState, Selection, Theme, ThemeChoice,
@@ -12,7 +12,7 @@ import type {
 import { catalog } from './data'
 import type { Campus, Catalog } from './data'
 import { buildGraph } from './graph'
-import { CAMPUS, CAMPUS_LABEL, ENTITIES, ENTITY, NODE_STYLES, ontology, payloadNumber } from './ontology'
+import { CAMPUS, CAMPUS_LABEL, ENTITY, ontology, payloadNumber } from './ontology'
 import type { Entity } from './ontology'
 import './app.css'
 
@@ -71,10 +71,7 @@ const focusTargetOf = (n: GraphNode): FocusTarget => ({ name: n.name, values: n.
 const NO_PINS = new Set<string>()
 
 export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice }) {
-  const [filter, setFilter] = React.useState<FilterState>(() => new Map([
-    [ENTITY, new Set(ENTITIES.filter(e => NODE_STYLES[e].defaultVisible))],
-    [CAMPUS, new Set<string>()],
-  ]))
+  const [filter, setFilter] = React.useState<FilterState>(() => defaultFilter(ontology, graph))
   const [pins, setPins] = React.useState<PinState>(() => new Map())
   const [chain, setChain] = React.useState<readonly string[]>(() => ontology.filterDimensions.map(d => d.id))
   const [search, setSearch] = React.useState({ query: '', active: false })
@@ -210,7 +207,7 @@ function Details({ target, campusPinned, onReveal, onOnlyCampus, onClose }: {
   return (
     <aside className="catalog-details">
       <button className="catalog-close" onClick={onClose} aria-label="Close details">×</button>
-      <div className="catalog-muted">{entity ? NODE_STYLES[entity].label : 'Unknown'}</div>
+      <div className="catalog-muted">{entity ? ontology.styleOf(entity).label : 'Unknown'}</div>
       <h2>{target.name}</h2>
       <dl>
         {listings.length > 0 && <><dt>Listed as</dt><dd>{listings.map(n => payloadString(n, 'code')).filter(Boolean).join(', ') || '—'}</dd></>}

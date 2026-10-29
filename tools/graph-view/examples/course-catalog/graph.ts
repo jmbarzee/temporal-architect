@@ -17,18 +17,9 @@ export function buildGraph(catalog: Catalog): Graph {
   /** Catalog code → node id, so requirements can resolve. */
   const byCode = new Map<string, string>()
 
-  // parentId and the containment edge are one fact; both are written here.
-  const add = (node: GraphNode) => {
-    nodes.set(node.id, node)
-    if (node.parentId) {
-      edges.push({
-        id: `in:${node.id}`,
-        sourceId: node.id,
-        targetId: node.parentId,
-        dimensions: { [RELATION_DIMENSION]: 'containment' },
-      })
-    }
-  }
+  // Containment is `parentId` and nothing else: the library derives the
+  // containment edge from it, so only dependencies are listed as edges.
+  const add = (node: GraphNode) => { nodes.set(node.id, node) }
   const depends = (from: string, req: Requirement) => {
     const to = byCode.get(req.code)
     if (!to) return // reported as a finding by the host shell

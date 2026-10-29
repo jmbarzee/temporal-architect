@@ -27,7 +27,7 @@ import type {
   Graph,
   GraphEdge,
   GraphNode,
-  EdgeCategoryKind,
+  Relation,
   DimensionMap,
 } from '@temporal-architect/graph-view'
 import type { NodeType } from './node-types'
@@ -240,7 +240,7 @@ function parserEdgeToViewEdge(
   // containment-style edge, matching the prior locally-derived edge. It
   // does NOT feed the parentByChild map, so the operation's parentId
   // stays its owning service.
-  const relation: EdgeCategoryKind =
+  const relation: Relation =
     pe.kind === 'containment' || pe.kind === 'nexusRoute' ? 'containment' : 'dependency'
   const dimensions: Record<string, string> = { [RELATION_DIMENSION]: relation }
   // The producer's kind, verbatim, on every dependency edge. It used to be

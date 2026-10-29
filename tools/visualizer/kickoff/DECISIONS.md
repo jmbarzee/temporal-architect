@@ -2292,3 +2292,93 @@ describes, and the `isContainment` doc moved from `relationOf` to
 rule changed.
 
 — 2026-10-28 — agent
+
+**D70 — Unit 12, say each fact once; default what can be defaulted (API_WORK.md Set 3).**
+The spec declared the style values four times and every policy by hand. Now
+a value is declared once, in order, and everything with a sensible default
+is optional; the hosts migrate in one unit, as the pre-v1 rule asks.
+
+1. **One ordered list of values.** `OntologySpec.values: NodeStyle[]`
+   replaces `nodeTypeKeys`, `nodeStyles`, `abbreviations` and `styleGroups`
+   (the last had no reader). A `NodeStyle` needs its `id`, `label` and
+   `color`; `abbreviation` defaults to the label's first two characters,
+   `icon` to none, `size.r` to 12 and `iconSize` to nine tenths of it,
+   `physics.charge` to −40 r and `coreRadius` to 4 r, `physics.band.y` to
+   the value's slice of a stack from −300 to 400 by its position in the
+   order (neighbours overlapping a fifth; one value takes the whole stack),
+   `band.x` to 0–380, `whenHidden` to `ascend`, `summaryKind` to `degree`.
+   `defaultVisible` is gone from the library; the first host keeps it as its
+   own field feeding the kind axis's `initialSelection`. `styleLabel`,
+   `scalars` and `fallbackStyle` are optional (the default fallback: a grey
+   disc with a question mark that rests anywhere in the stack).
+   `Ontology.nodeTypeKeys` → `styleValues`, `styleForKey` → `styleOf`, and
+   what they answer is a `ResolvedNodeStyle`, one object per value for the
+   container's life.
+2. **Edge types say their relation.** `EdgeTypeDefinition` → `EdgeType`,
+   `category` → `relation` (the axis's own word; `EdgeCategoryKind` →
+   `Relation`, declared beside `RELATION_DIMENSION`), `physics` optional
+   (the mean of the declared springs, or 0.5 / 120 when none is declared)
+   and `tooltip` optional (the label). The diagnostic
+   `edge-type-category-mismatch` is `edge-type-relation-mismatch`.
+3. **A filter axis is an id, a label and what empty means.** `absentMeans`,
+   `focus` and `reheat` follow from `emptyMeans` — an allow-list hides a
+   valueless node, always expands for a focus and reseeds, refits and
+   reheats to 0.5; a narrowing axis shows it, expands only an active
+   selection and reheats to 0.3 in place — and may be overridden field by
+   field. `chipsFor` defaults to one chip per value (on the style axis,
+   wearing the value's icon and tint), `labelFor` and `abbreviationFor` to
+   the style's on the style axis and to the value otherwise. New:
+   `initialSelection(values)`, every value on an allow-list and none on a
+   narrowing axis, read by the exported `defaultFilter(ontology, graph)`.
+   The engine reads `ResolvedDimensionDescriptor`.
+4. **`parentId` is the one containment fact.** The view derives the edge
+   `in:<child>` from it where the host lists none (`withContainmentEdges`,
+   after validation); a host may still list containment edges of its own,
+   which is how the first host's routing edges stay. `parent-edge-missing`
+   is gone; `containment-parent-mismatch` fires only for a node that lists
+   containment edges and none to its parent. The README states the rule
+   for an entity in two containers: two nodes sharing a `copyKey`.
+5. **`counts` and `chain` are optional** on `GraphView`: the graph's node
+   counts per axis (`countsOn`), and every declared filter axis in order.
+6. **Construction refuses more.** Besides the colour, suffix, policy and
+   scalar checks: a value declared twice, an edge type declared twice or
+   with an endpoint no value declares, a filter axis declared twice, a band
+   whose min exceeds its max.
+7. **The hosts.** The first host's registry keeps every declared number
+   (its layout is pinned by the goldens) and gains `abbreviation` per
+   entry; its two descriptors drop the policies the defaults already say.
+   The catalog drops its physics, its fallback, its band constant and its
+   containment edges, and declares its campus chips by `labelFor` alone —
+   the small host shows the defaults.
+
+**Golden change (§8.2).** `static` alone — the fixture tiers do not move,
+because the first host's declared physics are unchanged and its containment
+edges are still listed. The sixteen `edgeTypes` rows carry `relation` for
+`category`, values identical. `hostProbes.rendered.chips` read the style's
+labels (`Cluster`, `Pod`, `Service`) now that the probe's axis declares no
+`labelFor`, and a `chipCounts` row appears — the view's own node counts, the
+probe omitting `counts` and `chain`. `integrityProbes.validation.diagnostics`
+loses `warning parent-edge-missing q` and spells
+`edge-type-relation-mismatch`. `ontologyProbes.declaredKeyUnaffected`, an
+identity comparison with the declared object that resolution no longer
+preserves, becomes `declaredKeyResolvesToItself` (same label, same fill,
+stable across reads); `ontologyProbes.prototypeNamedValues[*].abbreviation`
+is the value's first two characters rather than the whole value, the one
+rule for an undeclared value. `schemeProbes.refusals.namedColour` and
+`badWhenHidden` name `values.worker` for `nodeStyles.worker`.
+`tuningProbes.coherence` trades `ghostKey`, `undeclaredStyle` and
+`groupOutsideKeys` — refusals of lists that no longer exist — for
+`duplicateValue`, `edgeEndpointUndeclared`, `duplicateEdgeType`,
+`duplicateFilterAxis` and `crossedBand`. `defaultsProbes` is new (`minimal`,
+`typicalSpring`, `defaultFilter`, `containment`, `stackBand`). Every physics,
+force, node-type, generated-stylesheet and tier row is byte-identical.
+
+**Measured.** The surface list: 65 names (−4: `EdgeCategoryKind`,
+`EdgeTypeDefinition`, `NodeTypeDefinition`, `StyleGroup`; +9: `defaultFilter`,
+`Band`, `EdgeType`, `NodeStyle`, `ReheatPolicy`, `Relation`,
+`ResolvedDimensionDescriptor`, `ResolvedEdgeType`, `ResolvedNodeStyle`).
+Total vocabulary 1106 → **1090**, ratcheted down: the first host's spelled-out
+policies, its abbreviation table and its ladder constants are gone. Leak 0,
+boundary 0.
+
+— 2026-10-28 — agent

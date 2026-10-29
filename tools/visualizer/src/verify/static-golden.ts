@@ -21,6 +21,7 @@ import { viewProbes } from './view-probes'
 import { seamProbes } from './seam-probes'
 import { hostProbes } from './host-probes'
 import { integrityProbes } from './integrity-probes'
+import { defaultsProbes } from './defaults-probes'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
@@ -72,7 +73,7 @@ function edgeTypeRows(): Json {
       label: e.label,
       sourceType: e.sourceType,
       targetType: e.targetType,
-      category: e.category,
+      relation: e.relation,
       physics: { strength: e.physics.strength, distance: e.physics.distance },
     }] as const),
   )
@@ -264,6 +265,7 @@ export function staticGolden(): Json {
     seamProbes: seamProbes(),
     hostProbes: hostProbes(),
     integrityProbes: integrityProbes(),
+    defaultsProbes: defaultsProbes(),
     syntheticVisible: syntheticVisible(),
     filterChipLayer: filterChipLayer(),
     reconcileMatrix: reconcileMatrix(),

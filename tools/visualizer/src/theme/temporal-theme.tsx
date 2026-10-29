@@ -64,7 +64,7 @@ export interface DefTypeConfig {
 // stay in sync with the entries without a separate hand-maintained list.
 //
 // Resolved through the ontology rather than by indexing the registry object.
-// The difference is not cosmetic: `styleForKey` answers a key it does not know
+// The difference is not cosmetic: `styleOf` answers a value it does not know
 // with the declared neutral style, where `REGISTRY[t]` returns `undefined` and
 // the failure surfaces later as a blank icon or an unreadable label (T16).
 //

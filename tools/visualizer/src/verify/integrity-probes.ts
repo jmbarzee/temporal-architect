@@ -13,7 +13,7 @@
 
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
 import type { OntologySpec } from '@temporal-architect/graph-view/graph/ontology'
-import type { NodeTypeDefinition, EdgeTypeDefinition } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { NodeStyle, EdgeType } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { DimensionDescriptor } from '@temporal-architect/graph-view/graph/dimension'
 import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
 import type { Graph, GraphEdge } from '@temporal-architect/graph-view/graph/model'
@@ -28,31 +28,24 @@ const KIND = 'kind'
 const ZONE = 'zone'
 const EDGE_KIND = 'edgeKind'
 
-const style = (label: string, tier: number): NodeTypeDefinition => ({
-  label, icon: label[0], defaultVisible: true, whenHidden: 'ascend', summaryKind: tier === 0 ? 'children' : 'degree',
+const body = (label: string, abbreviation: string, tier: number): Omit<NodeStyle, 'id'> => ({
+  label, abbreviation, icon: label[0], whenHidden: 'ascend', summaryKind: tier === 0 ? 'children' : 'degree',
   color: { light: { fill: '#336699', border: '#224466' }, dark: { fill: '#336699', border: '#224466' } },
   size: { r: 10, iconSize: 10 },
   physics: { charge: -300, coreRadius: 30, band: { x: { min: -100, max: 100 }, y: { min: tier * 100, max: tier * 100 + 50 } } },
 })
-const edgeType = (id: string, category: 'containment' | 'dependency', dash: number[]): EdgeTypeDefinition => ({
-  id, label: id, sourceType: 'leaf', targetType: category === 'containment' ? 'box' : 'leaf', category,
+const style = (id: string, ...rest: Parameters<typeof body>): NodeStyle => ({ id, ...body(...rest) })
+const edgeType = (id: string, relation: 'containment' | 'dependency', dash: number[]): EdgeType => ({
+  id, label: id, sourceType: 'leaf', targetType: relation === 'containment' ? 'box' : 'leaf', relation,
   physics: { strength: 0.5, distance: 80 }, style: { color: { light: '#888888', dark: '#aaaaaa' }, alpha: 0.8, dash, width: 1 }, tooltip: id,
 })
-const axis = (id: string, empty: 'all' | 'none'): DimensionDescriptor => ({
-  id, label: id, emptyMeans: empty, absentMeans: empty === 'all' ? 'visible' : 'hidden', focus: empty === 'all' ? 'whenActive' : 'always',
-  reheat: { alpha: 0.5, seedRevealed: empty === 'none', refit: empty === 'none', resume: true },
-  chipsFor: values => values.map(v => ({ id: v, label: v, values: [v] })),
-  labelFor: v => v, abbreviationFor: v => v.slice(0, 2),
-})
+const axis = (id: string, empty: 'all' | 'none'): DimensionDescriptor => ({ id, label: id, emptyMeans: empty })
 
 /** A containment edge is `contains`; a dependency is `signals` or `calls` by its own axis; two spellings are deliberately wrong. */
 const SPEC: OntologySpec = {
   styleDimension: KIND, styleLabel: 'Kind',
-  abbreviations: { box: 'Bx', leaf: 'Lf' },
-  styleGroups: [{ id: 'all', values: ['box', 'leaf'] }],
-  nodeTypeKeys: ['box', 'leaf'],
+  values: [style('box', 'Box', 'Bx', 0), style('leaf', 'Leaf', 'Lf', 1)],
   filterDimensions: [axis(KIND, 'none'), axis(ZONE, 'all')],
-  nodeStyles: { box: style('Box', 0), leaf: style('Leaf', 1) },
   edgeTypes: [edgeType('contains', 'containment', [4, 4]), edgeType('calls', 'dependency', []), edgeType('signals', 'dependency', [2, 2])],
   resolveEdgeType: edge => {
     const kind = edge.dimensions[EDGE_KIND]
@@ -62,7 +55,7 @@ const SPEC: OntologySpec = {
     return kind === 'signals' ? 'signals' : 'calls'
   },
   scalars: [],
-  fallbackStyle: style('Unknown', 1),
+  fallbackStyle: body('Unknown', 'Un', 1),
 }
 const ONTOLOGY = createOntology(SPEC)
 /** The same taxonomy, preferring a signal over a call when two graduated edges collide. */

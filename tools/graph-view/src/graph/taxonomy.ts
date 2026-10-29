@@ -1,95 +1,124 @@
 // The definition *shapes* a taxonomy is expressed in.
 //
 // This is the library half of the registries. The shapes live here; the entries
-// — which node types exist, what they are called, what colour they are — live
+// — which node styles exist, what they are called, what colour they are — live
 // with the host, and reach the engine through an `Ontology`. That split is the
 // whole point: a host declares its own values against these shapes and gets the
-// full graph engine, without the library knowing a single one of its type names.
+// full graph engine, without the library knowing a single one of its names.
 //
-// What that means concretely, and what it cost to get here: the fields below are
-// the ones with no domain in them. Two fields did have a domain and are *not*
-// here — `ladder` and `tier`, both of which named tiers of one specific
-// deployment model. Each already documented itself as docs-only or
-// registry-private, so neither had a reader in the engine to break; a host that
-// wants them declares them on its own entry type, which extends these.
+// Each shape comes twice: the *declared* form a host writes, in which
+// everything that has a sensible default is optional, and the *resolved* form
+// the engine reads, in which every field is present. `createOntology` turns
+// the one into the other once, so the draw loop never asks "was this given?".
 
 import type { DimensionValue } from './dimension'
 import type { EdgeStroke, ThemedColor } from './scheme'
 
 // ── Node styles ─────────────────────────────────────────────────────────────
 
+/** A rest band on one layout axis: the range inside which a value feels no gravity. */
+export interface Band { min: number; max: number }
+
 /**
- * How one value on the style axis is drawn, sized, and physically weighted.
+ * How one value on the style axis is drawn, sized, and physically weighted,
+ * as a host declares it. Only the id, the label and the colour are required;
+ * the rest is derived from them and from the value's position in the
+ * declaration order (top of the hierarchy first):
  *
- * Reached through `Ontology.resolveNodeStyle`, never by key lookup from the
- * engine — a miss has to resolve to a declared fallback rather than throw,
- * because the resolution happens per node per frame inside the draw loop where
- * an exception stops the canvas repainting for good.
+ *   - `abbreviation`: the first two characters of the label.
+ *   - `icon`: none.
+ *   - `size.r`: 12; `size.iconSize`: nine tenths of the radius, at least 9.
+ *   - `physics.charge`: −40 × r; `physics.coreRadius`: 4 × r.
+ *   - `physics.band.y`: the value's slice of the stack, by position — the
+ *     first value's band at the top of the canvas, the last at the bottom,
+ *     neighbours overlapping a fifth; `physics.band.x`: 0 to 380.
+ *   - `whenHidden`: `ascend`; `summaryKind`: `degree`.
+ *
+ * A field given overrides its default, field by field — a band's `x` may be
+ * declared and its `y` left to the stack.
  */
-export interface NodeTypeDefinition {
+export interface NodeStyle {
+  /** The value on the style axis this style is for. */
+  id: DimensionValue
   /** Display name, e.g. "Endpoint". */
   label: string
-  /** Single glyph shown inside the canvas node and on the value's filter chip. */
-  icon: string
-  /** Whether this value is visible when the graph first loads. */
-  defaultVisible: boolean
+  /**
+   * One or two characters for a control token: a control surface renders a
+   * token per value and has no room for a name.
+   */
+  abbreviation?: string
+  /** Single glyph drawn inside the canvas node. */
+  icon?: string
+  /** Fill and border in both themes; the canvas reads `color[theme]`. */
+  color: ThemedColor
+  size?: {
+    /** Circle radius in world units. Hit-test radius = r + 4. */
+    r?: number
+    /** Font size for the icon glyph (px). */
+    iconSize?: number
+  }
+  physics?: {
+    /**
+     * Repulsion charge. Negative = repulsion. The starting point for the
+     * value the user tunes at runtime via the control panel.
+     */
+    charge?: number
+    /**
+     * Core radius (charge softening, as a length). A pair of nodes softens
+     * its charge by the squared average of the two endpoints' effective core
+     * radii (`coreRadiusMultiplier × coreRadius`), added to d². Larger =
+     * gentler, wider plateau.
+     */
+    coreRadius?: number
+    /**
+     * Rest bands, one per layout axis, inside which this value feels no
+     * gravity. `y` is the hierarchy (negative = top of canvas); `x` bounds
+     * the horizontal spread. The simulation seeds nodes inside their bands on
+     * creation, so the structure is visible before the first tick — which
+     * also makes this the seeding function, not only the gravity target.
+     */
+    band?: { x?: Band; y?: Band }
+  }
   /**
    * What a dependency edge touching a HIDDEN node of this value does:
    * `ascend` re-points the endpoint to the node's nearest visible ancestor;
    * `splice` follows the node's own dependency edges through to the far
    * side, so caller → hidden → callee draws as caller → callee.
    */
-  whenHidden: 'ascend' | 'splice'
-
-  // --- Visual ---
-  /** Fill and border in both themes; the canvas reads `color[theme]`. */
-  color: ThemedColor
-  size: {
-    /** Circle radius in world units. Hit-test radius = r + 4. */
-    r: number
-    /** Font size for the icon glyph (px). */
-    iconSize: number
-  }
-
-  // --- Physics ---
-  physics: {
-    /**
-     * Default repulsion charge. Negative = repulsion. The starting point for
-     * the value the user tunes at runtime via the control panel.
-     */
-    charge: number
-    /**
-     * Default core radius (charge softening, as a length). A pair of nodes
-     * softens its charge by the squared average of the two endpoints'
-     * effective core radii (`coreRadiusMultiplier × coreRadius`), added to d².
-     * Larger = gentler, wider plateau.
-     */
-    coreRadius: number
-    /**
-     * Default rest bands, one per layout axis, inside which this value feels
-     * no gravity. `y` is the hierarchy (negative = top of canvas); `x` bounds
-     * the horizontal spread. The simulation seeds nodes inside their bands on
-     * creation, so the structure is visible before the first tick — which also
-     * makes this the seeding function, not only the gravity target.
-     */
-    band: { x: { min: number; max: number }; y: { min: number; max: number } }
-  }
-
-  // --- Summary ---
+  whenHidden?: 'ascend' | 'splice'
   /**
    * The glanceable summary for a node of this value: the children it contains,
    * counted per style value and named by that value's abbreviation
    * (`2 Wk · 1 Ep`); its dependency degree (`→3 ←2`); or nothing.
    */
+  summaryKind?: 'children' | 'degree' | 'none'
+}
+
+/**
+ * A node style with every default filled in — what `Ontology.styleOf` answers.
+ *
+ * Reached through `Ontology.resolveNodeStyle`, never by key lookup from the
+ * engine — a miss has to resolve to the fallback rather than throw, because
+ * the resolution happens per node per frame inside the draw loop where an
+ * exception stops the canvas repainting for good.
+ */
+export interface ResolvedNodeStyle {
+  id: DimensionValue
+  label: string
+  abbreviation: string
+  /** Empty when the style declares none: nothing is drawn. */
+  icon: string
+  color: ThemedColor
+  size: { r: number; iconSize: number }
+  physics: { charge: number; coreRadius: number; band: { x: Band; y: Band } }
+  whenHidden: 'ascend' | 'splice'
   summaryKind: 'children' | 'degree' | 'none'
 }
 
 // ── Edge types ──────────────────────────────────────────────────────────────
 
-export type EdgeCategoryKind = 'containment' | 'dependency'
-
 /**
- * Stable id for one edge category.
+ * Stable id for one edge type.
  *
  * A string, not a union, and that is the library's whole position on edge
  * vocabulary: it is the override key in the spring tuning and the hover-link
@@ -104,7 +133,14 @@ export interface SpringPhysics {
   distance: number
 }
 
-export interface EdgeTypeDefinition {
+/**
+ * One kind of edge, as a host declares it: which values it runs between, which
+ * relation it expresses, how it is stroked, and — optionally — its spring and
+ * its hover text. A spring left out starts from the typical spring, the mean
+ * of the declared ones (or a middling one when none is declared); a tooltip
+ * left out is the label.
+ */
+export interface EdgeType {
   /** Stable id — also the override key in the spring tuning. */
   id: EdgeTypeId
   /** Short control-panel label. */
@@ -112,15 +148,89 @@ export interface EdgeTypeDefinition {
   /**
    * Canonical endpoint values on the style axis — these drive the split-colour
    * token (source | target). Values rather than declared types, because the
-   * engine resolves an edge's category from where its endpoint *nodes* sit,
-   * not from anything cached on the edge.
+   * engine resolves an edge's type from where its endpoint *nodes* sit, not
+   * from anything cached on the edge.
    */
   sourceType: DimensionValue
   targetType: DimensionValue
-  category: EdgeCategoryKind
-  /** Declared stiffness / rest length — what the category resolves to until tuned. */
-  physics: SpringPhysics
+  /** Which relation an edge of this type expresses; an edge must resolve to a type of its own relation. */
+  relation: 'containment' | 'dependency'
+  /** Declared stiffness / rest length — what the type resolves to until tuned. */
+  physics?: SpringPhysics
   /** How the canvas strokes an edge of this type, in both themes. */
   style: EdgeStroke
+  tooltip?: string
+}
+
+/** An edge type with its defaults filled in — what `Ontology.edgeTypes` carries. */
+export interface ResolvedEdgeType extends EdgeType {
+  physics: SpringPhysics
   tooltip: string
+}
+
+// ── Defaults ────────────────────────────────────────────────────────────────
+
+/** The vertical extent the declared values' bands are laid along, top to bottom. */
+const STACK = { top: -300, bottom: 400 } as const
+const DEFAULT_BAND_X: Band = { min: 0, max: 380 }
+const DEFAULT_RADIUS = 12
+/** The spring a type starts from when no declared type carries one. */
+export const MIDDLING_SPRING: SpringPhysics = { strength: 0.5, distance: 120 }
+
+/**
+ * The rest band on the hierarchy axis for the value at position `i` of `n`:
+ * centres spread evenly down the stack, each band wide enough to overlap its
+ * neighbours by a fifth, so the structure reads as tiers without a gap a node
+ * could never rest in. One value alone takes the whole stack.
+ */
+export function stackBand(i: number, n: number): Band {
+  if (n <= 1) return { min: STACK.top, max: STACK.bottom }
+  const gap = (STACK.bottom - STACK.top) / (n - 1)
+  const centre = STACK.top + gap * i
+  const half = gap * 0.6
+  return { min: Math.round(centre - half), max: Math.round(centre + half) }
+}
+
+/**
+ * A declared style with every default filled in, given its position in the
+ * declaration order. Pure: the same inputs give the same object, so the
+ * taxonomy resolves each value once and hands out that one object.
+ */
+export function resolveNodeStyle(style: NodeStyle, i: number, n: number): ResolvedNodeStyle {
+  const r = style.size?.r ?? DEFAULT_RADIUS
+  return {
+    ...style,
+    abbreviation: style.abbreviation ?? style.label.slice(0, 2),
+    icon: style.icon ?? '',
+    size: { r, iconSize: style.size?.iconSize ?? Math.max(9, Math.round(r * 0.9)) },
+    physics: {
+      charge: style.physics?.charge ?? -40 * r,
+      coreRadius: style.physics?.coreRadius ?? 4 * r,
+      band: {
+        x: style.physics?.band?.x ?? { ...DEFAULT_BAND_X },
+        y: style.physics?.band?.y ?? stackBand(i, n),
+      },
+    },
+    whenHidden: style.whenHidden ?? 'ascend',
+    summaryKind: style.summaryKind ?? 'degree',
+  }
+}
+
+/**
+ * The spring a type starts from when it declares none: the mean of the
+ * declared springs, so the undeclared one is tuned from this host's scale
+ * rather than from a number out of another's; the middling spring when no
+ * type declares one.
+ */
+export function typicalSpringOf(types: readonly EdgeType[]): SpringPhysics {
+  let strength = 0, distance = 0, n = 0
+  for (const t of types) {
+    if (!t.physics) continue
+    strength += t.physics.strength; distance += t.physics.distance; n++
+  }
+  return n === 0 ? { ...MIDDLING_SPRING } : { strength: strength / n, distance: distance / n }
+}
+
+export function resolveEdgeType(type: EdgeType, typical: SpringPhysics): ResolvedEdgeType {
+  return { ...type, physics: type.physics ?? { ...typical }, tooltip: type.tooltip ?? type.label }
 }

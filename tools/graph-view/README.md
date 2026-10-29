@@ -33,28 +33,36 @@ import '@temporal-architect/graph-view/styles.css'
 
 ## The contract
 
-- `createOntology(spec: OntologySpec): Ontology` — the taxonomy: the style
-  axis's keys and a `NodeTypeDefinition` per value (label, icon, colour per
-  theme, size, physics, what happens to its edges when hidden), `edgeTypes`
-  with a stroke each and the rule that classifies an edge, the filter
-  dimensions and their chips, scalar axes, abbreviations, and the hooks a host
-  may supply (a hover box's context line, a highlight). An incoherent spec is
-  refused at construction, loudly.
+- `createOntology(spec: OntologySpec): Ontology` — the taxonomy. The style
+  axis and its ordered `values`, each a `NodeStyle`: an id, a label and a
+  colour per theme are required; abbreviation, icon, size, physics (charge,
+  core radius, a rest band per layout axis) and the hidden-node policy
+  default from the label, the size and the value's position in the order
+  (top of the hierarchy first). `edgeTypes` with a stroke each and the rule
+  that classifies an edge; `filterDimensions`, each an id, a label and what
+  an empty selection means, the policies and the chips defaulting from that
+  and an `initialSelection` for the first open; optional scalar axes and the
+  hooks a host may supply (a hover box's context line, a highlight, which of
+  two colliding edges survives). An incoherent spec is refused at
+  construction, loudly.
 - `Graph` — `nodes` and `edges`, each carrying `dimensions` and an opaque
   `payload` the view never reads. Every edge carries `relation`
-  (`containment` or `dependency`); a containment edge runs from the child to
-  its container, and the child's `parentId` is that container. Nodes that are
-  copies of one entity share a `copyKey`; the library indexes them
+  (`containment` or `dependency`). A node's `parentId` names its container;
+  the view derives the containment edge from it, so a host writes the fact
+  once. Containment is a tree: an entity that sits in two containers is two
+  nodes sharing a `copyKey`, and the library indexes the copies
   (`copyGroups`), draws their halo and counts them in the hover box. A node
   may carry `badges` (short texts drawn as chips above it) and a `ring`.
 - `GraphView` — the component. It needs an `OntologyContext.Provider` above it,
   a parent that is a flex column with a height (the pane fills what it is
-  given and renders at zero height otherwise), and the `graph`, the filter
-  state with its callbacks, the chip `counts` and `findings` the host wants
-  under the bar, `groups` to glow, and the pane's theme choice. Filter chips
-  rendered outside the pane (a second view sharing the bar) need the scheme's
-  variables on an ancestor: `schemeVars(ontology, theme)` inline, or
-  `schemeStylesheet(ontology)` mounted once.
+  given and renders at zero height otherwise), the `graph`, and the filter
+  state with its callbacks — `defaultFilter(ontology, graph)` is the state
+  to start from. The chip `counts` (the graph's node counts unless given),
+  the `chain` of axes shown (every declared axis unless given), the
+  `findings` under the bar and the `groups` to glow are optional. Filter
+  chips rendered outside the pane (a second view sharing the bar) need the
+  scheme's variables on an ancestor: `schemeVars(ontology, theme)` inline,
+  or `schemeStylesheet(ontology)` mounted once.
 
 `src/index.ts` names the whole surface; the tarball ships `dist-lib/`, this
 file and the licence.

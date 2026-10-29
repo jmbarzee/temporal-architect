@@ -147,9 +147,9 @@ export function styleIdentityMapping(ontology: Ontology): DimensionalMapping {
   return identityMapping({
     id: ontology.styleAxis(),
     label: ontology.styleLabel(),
-    labelFor: value => ontology.styleForKey(value).label,
+    labelFor: value => ontology.styleOf(value).label,
     abbreviationFor: value => ontology.abbreviationFor(value),
-  }, ontology.nodeTypeKeys)
+  }, ontology.styleValues)
 }
 
 /** A single-axis tuning on the style axis, bucketed by identity, nothing overridden. */

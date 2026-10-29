@@ -19,9 +19,8 @@ export type GraphDiagnosticCode =
   | 'edge-relation-unknown'
   | 'edge-type-rule-threw'
   | 'edge-type-undeclared'
-  | 'edge-type-category-mismatch'
+  | 'edge-type-relation-mismatch'
   | 'parent-missing'
-  | 'parent-edge-missing'
   | 'containment-parent-mismatch'
   | 'node-value-undeclared'
 
@@ -39,7 +38,7 @@ const RELATIONS = new Set(['containment', 'dependency'])
 export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic[] {
   const out: GraphDiagnostic[] = []
   const declaredTypes = new Map(ontology.edgeTypes.map(e => [e.id, e]))
-  const declaredValues = new Set(ontology.nodeTypeKeys)
+  const declaredValues = new Set(ontology.styleValues)
 
   // Nodes: a parent that exists, a style value the taxonomy declares.
   for (const node of graph.nodes.values()) {
@@ -53,9 +52,9 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
   }
 
   // Edges: unique ids, both ends present, a known relation, a declared type
-  // whose category is the relation.
+  // whose relation is the edge's.
   const seenIds = new Set<string>()
-  const containmentParent = new Map<string, string>()
+  const containers = new Map<string, Set<string>>()
   for (const edge of graph.edges) {
     if (seenIds.has(edge.id)) {
       out.push({ severity: 'error', code: 'edge-id-duplicate', edgeId: edge.id, message: `edge id ${JSON.stringify(edge.id)} is used more than once` })
@@ -74,7 +73,11 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
       out.push({ severity: 'error', code: 'edge-relation-unknown', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has relation ${JSON.stringify(relation)}; the engine knows "containment" and "dependency"` })
       continue
     }
-    if (relation === 'containment') containmentParent.set(edge.sourceId, edge.targetId)
+    if (relation === 'containment') {
+      const set = containers.get(edge.sourceId) ?? new Set<string>()
+      set.add(edge.targetId)
+      containers.set(edge.sourceId, set)
+    }
     let typeId: string
     try {
       typeId = ontology.resolveEdgeType(edge, ontology.valueFor(src), ontology.valueFor(tgt))
@@ -87,20 +90,18 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
       out.push({ severity: 'error', code: 'edge-type-undeclared', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} resolves to type ${JSON.stringify(typeId)}, which edgeTypes does not declare` })
       continue
     }
-    if (declared.category !== relation) {
-      out.push({ severity: 'error', code: 'edge-type-category-mismatch', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} is a ${relation} edge but resolves to type ${JSON.stringify(typeId)}, declared as ${declared.category}` })
+    if (declared.relation !== relation) {
+      out.push({ severity: 'error', code: 'edge-type-relation-mismatch', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} is a ${relation} edge but resolves to type ${JSON.stringify(typeId)}, declared as ${declared.relation}` })
     }
   }
 
-  // The two readings of containment agree: a node's parentId is the target of
-  // its containment edge, and a containment edge's source names its target as
-  // parent.
+  // The two readings of containment agree: a node that lists containment
+  // edges of its own lists one to its parent. A node listing none gets that
+  // edge derived from `parentId`; a node with no parent may list what it likes.
   for (const node of graph.nodes.values()) {
-    const viaEdge = containmentParent.get(node.id)
-    if (node.parentId !== undefined && graph.nodes.has(node.parentId) && viaEdge === undefined) {
-      out.push({ severity: 'warning', code: 'parent-edge-missing', nodeId: node.id, message: `node ${JSON.stringify(node.id)} has parent ${JSON.stringify(node.parentId)} but no containment edge to it` })
-    } else if (viaEdge !== undefined && viaEdge !== node.parentId) {
-      out.push({ severity: 'warning', code: 'containment-parent-mismatch', nodeId: node.id, message: `node ${JSON.stringify(node.id)} has a containment edge to ${JSON.stringify(viaEdge)} but its parentId is ${JSON.stringify(node.parentId)}` })
+    const viaEdges = containers.get(node.id)
+    if (node.parentId !== undefined && viaEdges !== undefined && !viaEdges.has(node.parentId)) {
+      out.push({ severity: 'warning', code: 'containment-parent-mismatch', nodeId: node.id, message: `node ${JSON.stringify(node.id)} has containment edges to ${[...viaEdges].map(c => JSON.stringify(c)).join(' and ')} but its parentId is ${JSON.stringify(node.parentId)}` })
     }
   }
   return out

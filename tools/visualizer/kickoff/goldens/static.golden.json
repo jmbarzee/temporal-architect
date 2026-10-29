@@ -187,154 +187,460 @@
     "maxZoomMul": 1.65,
     "minZoomMul": 0.4
   },
+  "defaultsProbes": {
+    "containment": {
+      "addedOnce": 1,
+      "edgeIds": [
+        "in:x",
+        "own:y"
+      ],
+      "validation": {
+        "containmentAsDependency": [
+          "edge-type-relation-mismatch"
+        ],
+        "listsNonParent": [
+          "containment-parent-mismatch"
+        ],
+        "parentWithoutEdges": []
+      }
+    },
+    "defaultFilter": {
+      "kind": [
+        "a",
+        "b",
+        "c"
+      ],
+      "zone": []
+    },
+    "minimal": {
+      "descriptors": {
+        "kind": {
+          "abbreviationFor": "Al",
+          "absentMeans": "hidden",
+          "chips": [
+            {
+              "icon": null,
+              "id": "a",
+              "label": "Alpha",
+              "tint": "a",
+              "values": [
+                "a"
+              ]
+            },
+            {
+              "icon": null,
+              "id": "b",
+              "label": "Beta",
+              "tint": "b",
+              "values": [
+                "b"
+              ]
+            }
+          ],
+          "focus": "always",
+          "initialSelection": [
+            "a",
+            "b"
+          ],
+          "labelFor": "Alpha",
+          "presentation": "chip",
+          "reheat": {
+            "alpha": 0.5,
+            "refit": true,
+            "resume": true,
+            "seedRevealed": true
+          }
+        },
+        "zone": {
+          "abbreviationFor": "a",
+          "absentMeans": "visible",
+          "chips": [
+            {
+              "icon": null,
+              "id": "a",
+              "label": "a",
+              "tint": null,
+              "values": [
+                "a"
+              ]
+            },
+            {
+              "icon": null,
+              "id": "b",
+              "label": "b",
+              "tint": null,
+              "values": [
+                "b"
+              ]
+            }
+          ],
+          "focus": "whenActive",
+          "initialSelection": [],
+          "labelFor": "a",
+          "presentation": "chip",
+          "reheat": {
+            "alpha": 0.3,
+            "refit": false,
+            "resume": true,
+            "seedRevealed": false
+          }
+        }
+      },
+      "edgeTypes": {
+        "calls": {
+          "physics": {
+            "distance": 120,
+            "strength": 0.5
+          },
+          "tooltip": "calls"
+        },
+        "in": {
+          "physics": {
+            "distance": 120,
+            "strength": 0.5
+          },
+          "tooltip": "in"
+        }
+      },
+      "fallback": {
+        "abbreviation": "Un",
+        "icon": "?",
+        "physics": {
+          "band": {
+            "x": {
+              "max": 380,
+              "min": 0
+            },
+            "y": {
+              "max": 610,
+              "min": -510
+            }
+          },
+          "charge": -400,
+          "coreRadius": 40
+        },
+        "size": {
+          "iconSize": 9,
+          "r": 10
+        },
+        "summaryKind": "none",
+        "whenHidden": "ascend"
+      },
+      "styleLabel": "kind",
+      "values": {
+        "a": {
+          "abbreviation": "Al",
+          "icon": "",
+          "physics": {
+            "band": {
+              "x": {
+                "max": 380,
+                "min": 0
+              },
+              "y": {
+                "max": -90,
+                "min": -510
+              }
+            },
+            "charge": -480,
+            "coreRadius": 48
+          },
+          "size": {
+            "iconSize": 11,
+            "r": 12
+          },
+          "summaryKind": "degree",
+          "whenHidden": "ascend"
+        },
+        "b": {
+          "abbreviation": "Be",
+          "icon": "",
+          "physics": {
+            "band": {
+              "x": {
+                "max": 380,
+                "min": 0
+              },
+              "y": {
+                "max": 260,
+                "min": -160
+              }
+            },
+            "charge": -480,
+            "coreRadius": 48
+          },
+          "size": {
+            "iconSize": 11,
+            "r": 12
+          },
+          "summaryKind": "degree",
+          "whenHidden": "ascend"
+        },
+        "c": {
+          "abbreviation": "Ga",
+          "icon": "",
+          "physics": {
+            "band": {
+              "x": {
+                "max": 380,
+                "min": 0
+              },
+              "y": {
+                "max": 610,
+                "min": 190
+              }
+            },
+            "charge": -480,
+            "coreRadius": 48
+          },
+          "size": {
+            "iconSize": 11,
+            "r": 12
+          },
+          "summaryKind": "degree",
+          "whenHidden": "ascend"
+        }
+      }
+    },
+    "stackBand": [
+      {
+        "i": 0,
+        "max": 400,
+        "min": -300,
+        "n": 1
+      },
+      {
+        "i": 0,
+        "max": 120,
+        "min": -720,
+        "n": 2
+      },
+      {
+        "i": 1,
+        "max": 820,
+        "min": -20,
+        "n": 2
+      },
+      {
+        "i": 0,
+        "max": -160,
+        "min": -440,
+        "n": 4
+      },
+      {
+        "i": 1,
+        "max": 73,
+        "min": -207,
+        "n": 4
+      },
+      {
+        "i": 2,
+        "max": 307,
+        "min": 27,
+        "n": 4
+      },
+      {
+        "i": 3,
+        "max": 540,
+        "min": 260,
+        "n": 4
+      },
+      {
+        "i": 0,
+        "max": -230,
+        "min": -370,
+        "n": 7
+      },
+      {
+        "i": 1,
+        "max": -113,
+        "min": -253,
+        "n": 7
+      },
+      {
+        "i": 2,
+        "max": 3,
+        "min": -137,
+        "n": 7
+      },
+      {
+        "i": 3,
+        "max": 120,
+        "min": -20,
+        "n": 7
+      },
+      {
+        "i": 4,
+        "max": 237,
+        "min": 97,
+        "n": 7
+      },
+      {
+        "i": 5,
+        "max": 353,
+        "min": 213,
+        "n": 7
+      },
+      {
+        "i": 6,
+        "max": 470,
+        "min": 330,
+        "n": 7
+      }
+    ],
+    "typicalSpring": {
+      "distance": 200,
+      "strength": 0.6
+    }
+  },
   "edgeTypes": {
     "linkEndpointToNamespace": {
-      "category": "containment",
       "label": "Ep↔NS",
       "physics": {
         "distance": 690,
         "strength": 1
       },
+      "relation": "containment",
       "sourceType": "nexusEndpoint",
       "targetType": "namespace"
     },
     "linkEndpointToOperation": {
-      "category": "containment",
       "label": "Ep↔Op",
       "physics": {
         "distance": 470,
         "strength": 1.5
       },
+      "relation": "containment",
       "sourceType": "nexusEndpoint",
       "targetType": "nexusOperation"
     },
     "linkNexusToOperation": {
-      "category": "containment",
       "label": "Nx↔Op",
       "physics": {
         "distance": 600,
         "strength": 1.4
       },
+      "relation": "containment",
       "sourceType": "nexusService",
       "targetType": "nexusOperation"
     },
     "linkNsToNs": {
-      "category": "dependency",
       "label": "NS↔NS",
       "physics": {
         "distance": 870,
         "strength": 0.25
       },
+      "relation": "dependency",
       "sourceType": "namespace",
       "targetType": "namespace"
     },
     "linkNsToWorker": {
-      "category": "containment",
       "label": "NS↔Wk",
       "physics": {
         "distance": 800,
         "strength": 0.3
       },
+      "relation": "containment",
       "sourceType": "namespace",
       "targetType": "worker"
     },
     "linkOperationToActivity": {
-      "category": "dependency",
       "label": "Op↔Act",
       "physics": {
         "distance": 300,
         "strength": 1.4
       },
+      "relation": "dependency",
       "sourceType": "nexusOperation",
       "targetType": "activity"
     },
     "linkOperationToWorkflow": {
-      "category": "dependency",
       "label": "Op→Wf",
       "physics": {
         "distance": 360,
         "strength": 1.55
       },
+      "relation": "dependency",
       "sourceType": "nexusOperation",
       "targetType": "workflow"
     },
     "linkSignalSend": {
-      "category": "dependency",
       "label": "Wf→Sig",
       "physics": {
         "distance": 520,
         "strength": 0.3
       },
+      "relation": "dependency",
       "sourceType": "workflow",
       "targetType": "workflow"
     },
     "linkWorkerToActivity": {
-      "category": "containment",
       "label": "Wk↔Act",
       "physics": {
         "distance": 210,
         "strength": 0.35
       },
+      "relation": "containment",
       "sourceType": "worker",
       "targetType": "activity"
     },
     "linkWorkerToNexus": {
-      "category": "containment",
       "label": "Wk↔Nx",
       "physics": {
         "distance": 430,
         "strength": 1.25
       },
+      "relation": "containment",
       "sourceType": "worker",
       "targetType": "nexusService"
     },
     "linkWorkerToWorker": {
-      "category": "dependency",
       "label": "Wk↔Wk",
       "physics": {
         "distance": 720,
         "strength": 0.3
       },
+      "relation": "dependency",
       "sourceType": "worker",
       "targetType": "worker"
     },
     "linkWorkerToWorkflow": {
-      "category": "containment",
       "label": "Wk↔Wf",
       "physics": {
         "distance": 190,
         "strength": 0.55
       },
+      "relation": "containment",
       "sourceType": "worker",
       "targetType": "workflow"
     },
     "linkWorkflowToActivity": {
-      "category": "dependency",
       "label": "Wf↔Act",
       "physics": {
         "distance": 40,
         "strength": 1.9
       },
+      "relation": "dependency",
       "sourceType": "workflow",
       "targetType": "activity"
     },
     "linkWorkflowToOperation": {
-      "category": "dependency",
       "label": "Wf→Op",
       "physics": {
         "distance": 330,
         "strength": 1.5
       },
+      "relation": "dependency",
       "sourceType": "workflow",
       "targetType": "nexusOperation"
     },
     "linkWorkflowToWorkflow": {
-      "category": "dependency",
       "label": "Wf↔Wf",
       "physics": {
         "distance": 420,
         "strength": 0.5
       },
+      "relation": "dependency",
       "sourceType": "workflow",
       "targetType": "workflow"
     }
@@ -1271,11 +1577,18 @@
     "podFill": "#336699",
     "rendered": {
       "canvas": true,
+      "chipCounts": [
+        "1",
+        "2",
+        "2",
+        "3",
+        "4"
+      ],
       "chips": [
-        "cluster",
+        "Cluster",
+        "Pod",
+        "Service",
         "east",
-        "pod",
-        "service",
         "west"
       ],
       "files": []
@@ -1360,11 +1673,10 @@
         "error edge-endpoint-missing missing",
         "error edge-id-duplicate ok",
         "error edge-relation-unknown friend",
-        "error edge-type-category-mismatch cw",
+        "error edge-type-relation-mismatch cw",
         "error edge-type-undeclared bogus",
         "error parent-missing y",
-        "warning node-value-undeclared q",
-        "warning parent-edge-missing q"
+        "warning node-value-undeclared q"
       ],
       "drawnEdges": [
         "c1: x -> b1",
@@ -1575,7 +1887,11 @@
   },
   "ontologyProbes": {
     "absentValueResolvesToFallback": true,
-    "declaredKeyUnaffected": true,
+    "declaredKeyResolvesToItself": {
+      "sameFill": true,
+      "sameLabel": true,
+      "stable": true
+    },
     "fallbackIsStable": true,
     "fallbackStyle": {
       "icon": "?",
@@ -1773,7 +2089,7 @@
     },
     "prototypeNamedValues": [
       {
-        "abbreviation": "constructor",
+        "abbreviation": "co",
         "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
@@ -1784,7 +2100,7 @@
         "styleLabel": "Unknown"
       },
       {
-        "abbreviation": "__proto__",
+        "abbreviation": "__",
         "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
@@ -1795,7 +2111,7 @@
         "styleLabel": "Unknown"
       },
       {
-        "abbreviation": "toString",
+        "abbreviation": "to",
         "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
@@ -1806,7 +2122,7 @@
         "styleLabel": "Unknown"
       },
       {
-        "abbreviation": "hasOwnProperty",
+        "abbreviation": "ha",
         "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
@@ -1817,7 +2133,7 @@
         "styleLabel": "Unknown"
       },
       {
-        "abbreviation": "valueOf",
+        "abbreviation": "va",
         "abbreviationIsString": true,
         "band": "0..0",
         "charge": 0,
@@ -2596,10 +2912,10 @@
       }
     },
     "refusals": {
-      "badWhenHidden": "taxonomy is incoherent: nodeStyles.worker.whenHidden is \"Splice\", not 'ascend' or 'splice'",
+      "badWhenHidden": "taxonomy is incoherent: values.worker.whenHidden is \"Splice\", not 'ascend' or 'splice'",
       "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex or rgb() colour",
       "emptySuffix": "taxonomy is incoherent: style value \"工作流\" has no custom-property name (its id kebab-cases to nothing)",
-      "namedColour": "taxonomy is incoherent: nodeStyles.worker.color.light.fill is \"slategray\", not a hex or rgb() colour",
+      "namedColour": "taxonomy is incoherent: values.worker.color.light.fill is \"slategray\", not a hex or rgb() colour",
       "sharedSuffix": "taxonomy is incoherent: style values \"nexusEndpoint\" and \"nexus-endpoint\" share the custom-property name --gv-node-nexus-endpoint"
     },
     "secondScheme": {
@@ -3515,16 +3831,18 @@
   },
   "tuningProbes": {
     "coherence": {
+      "crossedBand": "taxonomy is incoherent: values.namespace.physics.band.y runs from 10 to -10; a band's min must not exceed its max",
       "duplicateAbbreviationsNumbered": [
         "ne",
         "ne2",
         "ot"
       ],
       "duplicateBucketId": "dimensional mapping \"m\" is incoherent: bucket id \"a\" is declared twice. A value in two buckets has no defined answer for which one tunes it.",
-      "emptyBucket": "dimensional mapping \"m\" is incoherent: bucket \"e\" has no values. A value in two buckets has no defined answer for which one tunes it.",
-      "ghostKey": "taxonomy is incoherent: nodeTypeKeys lists \"ghost\" but nodeStyles declares no style for it",
-      "groupOutsideKeys": "taxonomy is incoherent: styleGroups.g names \"ghost\", which nodeTypeKeys does not list",
-      "undeclaredStyle": "taxonomy is incoherent: nodeStyles declares \"ghost\", which nodeTypeKeys does not list"
+      "duplicateEdgeType": "taxonomy is incoherent: edge type \"linkNsToNs\" is declared twice",
+      "duplicateFilterAxis": "taxonomy is incoherent: filter dimension \"sourceFile\" is declared twice",
+      "duplicateValue": "taxonomy is incoherent: style value \"namespace\" is declared twice",
+      "edgeEndpointUndeclared": "taxonomy is incoherent: edgeTypes.ghostLink.sourceType is \"ghost\", which values does not declare",
+      "emptyBucket": "dimensional mapping \"m\" is incoherent: bucket \"e\" has no values. A value in two buckets has no defined answer for which one tunes it."
     },
     "foreignAxisPhysics": {
       "buckets": {

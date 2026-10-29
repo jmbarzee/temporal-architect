@@ -8,7 +8,7 @@
 import type { FilterState } from '../../filter/types'
 import { selectionFor } from '../../filter/types'
 import { foldReheatPolicy } from '../../graph/dimension'
-import type { DimensionDescriptor } from '../../graph/dimension'
+import type { ResolvedDimensionDescriptor } from '../../graph/dimension'
 import { passesFilter } from './visibleGraph'
 import React from 'react'
 import type { Simulation, SimNode } from '../../graph/simulation'
@@ -25,7 +25,7 @@ export interface SimulationLoopParams {
   downstreamScores: Map<string, number>
   filter: FilterState
   /** The axes the view filters on — its chain; a change elsewhere in the filter moves nothing here. */
-  axes: readonly DimensionDescriptor[]
+  axes: readonly ResolvedDimensionDescriptor[]
   hoveredNodeId: string | null
   selectedNodeId: string | null
   containerRef: React.RefObject<HTMLDivElement>

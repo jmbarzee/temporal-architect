@@ -72,85 +72,139 @@ export interface AxisNamer {
   abbreviationFor(value: DimensionValue): string
 }
 
+/** What a filter change asks of the running simulation. */
+export interface ReheatPolicy {
+  /** Alpha to reheat to. */
+  alpha: number
+  /** Seed newly-revealed nodes at their nearest visible ancestor first. */
+  seedRevealed: boolean
+  /** Clear the initial-fit guard, so the camera refits to the new extent. */
+  refit: boolean
+  /** Resume ticking. */
+  resume: boolean
+}
+
 /**
- * Everything the view layer needs to know about one axis, beyond its values.
+ * One filter axis, as a host declares it: its id, its label, and what an
+ * empty selection on it means. Everything else is policy with a default that
+ * follows from `emptyMeans`, because the two kinds of axis want opposite
+ * answers to each question:
+ *
+ *   - an **allow-list** (`emptyMeans: 'none'`): a node with no value is
+ *     hidden, a focus always expands the selection, a change reseeds the
+ *     revealed nodes at their ancestors, refits the camera and reheats to
+ *     0.5, and the initial selection is every value;
+ *   - a **narrowing** axis (`emptyMeans: 'all'`): a node with no value stays
+ *     visible, a focus expands only an already-active selection (adding the
+ *     first value would narrow everything to one thing — the opposite of
+ *     focus), a change reheats to 0.3 in place and keeps the user's pan and
+ *     zoom, and the initial selection is empty.
  *
  * **It does not carry the values.** Those are derived, not declared: the style
- * axis's values come from the taxonomy, and the source-file axis's come from
- * scanning the graph. Declaring them here too would be the same fact in two
- * places with nothing enforcing agreement, free to drift apart unnoticed.
- *
- * What it does carry is **policy**, and the policies are per-axis because the
- * two existing axes genuinely disagree on all three. A shared loop over
- * dimensions flattens them and silently changes behaviour.
+ * axis's values come from the taxonomy, and an origin axis's from scanning the
+ * graph. Declaring them here too would be the same fact in two places with
+ * nothing enforcing agreement, free to drift apart unnoticed.
  */
-export interface DimensionDescriptor extends AxisNamer {
+export interface DimensionDescriptor {
+  id: DimensionId
+  /** Human label for the axis itself, e.g. for a dropdown or a chip group. */
+  label: string
   /**
-   * What an EMPTY selection on this axis means.
-   *
-   * The two existing axes disagree, deliberately: an empty type selection hides
-   * everything, while an empty file selection shows everything — because adding
-   * a file chip while the filter is off would otherwise activate the filter and
-   * hide every file but that one.
+   * What an EMPTY selection on this axis means: `none` hides everything (the
+   * chips are an allow-list), `all` shows everything (the chips narrow).
    */
   emptyMeans: 'all' | 'none'
+  /** What happens to a node carrying NO value on this axis while a selection is active. */
+  absentMeans?: 'visible' | 'hidden'
   /**
-   * What happens to a node carrying NO value on this axis while a selection is
-   * active. Also per-axis: a node with no source file is visible under any file
-   * filter today.
+   * How far a focus transition expands this axis to reveal its target:
+   * `always` adds the target's value unconditionally; `whenActive` adds it
+   * only if a selection is already active.
    */
-  absentMeans: 'visible' | 'hidden'
+  focus?: 'always' | 'whenActive'
+  /** What a change on this axis does to the running simulation, field by field. */
+  reheat?: Partial<ReheatPolicy>
   /**
-   * How far a focus transition expands this axis to reveal its target.
-   *
-   *   'always'     — add the target's value unconditionally (the type axis).
-   *   'whenActive' — add it only if a selection is already active, because on an
-   *                  `emptyMeans: 'all'` axis adding the first value *narrows*
-   *                  from everything to one thing. Expanding to reveal a target
-   *                  would hide everything else — the opposite of focus.
+   * How this axis's available values group into chips. Not one chip per
+   * value: a chip may cover several values. Takes the available values
+   * rather than reading a declared list, because an axis's values are
+   * derived from the graph. Absent, one chip per value, labelled by
+   * `labelFor` and, on the style axis, wearing the value's icon and tint.
    */
-  focus: 'always' | 'whenActive'
+  chipsFor?(values: readonly DimensionValue[]): readonly FilterChip[]
+  /** A value's display name. Absent: the style's label on the style axis, else the value itself. */
+  labelFor?(value: DimensionValue): string
+  /** One or two characters for a token. Absent: the style's abbreviation on the style axis, else the value's first two characters. */
+  abbreviationFor?(value: DimensionValue): string
   /**
-   * What a change on this axis does to the running simulation.
-   *
-   * Four independent fields rather than one "strength", because the two axes
-   * differ on three of them and a descriptor derived from a careless reading of
-   * "types reheat harder" would drop `resume` and leave the canvas frozen after
-   * every toggle.
+   * The values selected when the view first opens, given the values the
+   * graph presents on this axis. Absent: every value on an allow-list,
+   * none on a narrowing axis. `defaultFilter` reads it.
    */
-  reheat: {
-    /** Alpha to reheat to. */
-    alpha: number
-    /** Seed newly-revealed nodes at their nearest visible ancestor first. */
-    seedRevealed: boolean
-    /** Clear the initial-fit guard, so the camera refits to the new extent. */
-    refit: boolean
-    /** Resume ticking. Never false today — and it is written out per axis
-     *  precisely so that stays a decision rather than an omission. */
-    resume: boolean
-  }
-  /**
-   * How this axis's available values group into chips.
-   *
-   * Not one chip per value: a chip may cover several values, which is how one
-   * chip may front several declared values. Host-declared because the grouping
-   * is a domain choice — but the *shape* is not, so the bar renders any axis
-   * without knowing which one it is.
-   *
-   * Takes the available values rather than reading a declared list, because an
-   * axis's values are derived from the graph. See the note on this interface
-   * about not storing them twice.
-   */
-  chipsFor(values: readonly DimensionValue[]): readonly FilterChip[]
+  initialSelection?(values: readonly DimensionValue[]): readonly DimensionValue[]
   /**
    * How the bar draws this axis's chips. `chip` (the default) is a tinted,
    * glyph-led button that reads as a category; `tag` is a quieter, neutral
    * label that reads as an origin — a file, a source, a place — and shows an
    * "everything included" state when the selection is empty on an
-   * `emptyMeans: 'all'` axis. Presentation is the descriptor's, so no axis id
-   * is special to the bar.
+   * `emptyMeans: 'all'` axis.
    */
   presentation?: 'chip' | 'tag'
+}
+
+/** A filter axis with every policy filled in — what `Ontology.filterDimensions` carries. */
+export interface ResolvedDimensionDescriptor extends AxisNamer {
+  emptyMeans: 'all' | 'none'
+  absentMeans: 'visible' | 'hidden'
+  focus: 'always' | 'whenActive'
+  reheat: ReheatPolicy
+  chipsFor(values: readonly DimensionValue[]): readonly FilterChip[]
+  initialSelection(values: readonly DimensionValue[]): readonly DimensionValue[]
+  presentation: 'chip' | 'tag'
+}
+
+/** How the style axis names and adorns its values, for a descriptor's defaults. */
+export interface StyleNamer {
+  axis: DimensionId
+  labelFor(value: DimensionValue): string
+  abbreviationFor(value: DimensionValue): string
+  iconFor(value: DimensionValue): string
+}
+
+/**
+ * A declared axis with every default filled in. The policies follow from
+ * `emptyMeans`; the names follow from the style axis when this is it, and
+ * from the value itself otherwise.
+ */
+export function resolveDescriptor(d: DimensionDescriptor, style: StyleNamer): ResolvedDimensionDescriptor {
+  const allow = d.emptyMeans === 'none'
+  const onStyle = d.id === style.axis
+  const labelFor = d.labelFor ?? (onStyle ? style.labelFor : (v: DimensionValue) => v)
+  const abbreviationFor = d.abbreviationFor ?? (onStyle ? style.abbreviationFor : (v: DimensionValue) => v.slice(0, 2))
+  return {
+    id: d.id,
+    label: d.label,
+    emptyMeans: d.emptyMeans,
+    absentMeans: d.absentMeans ?? (allow ? 'hidden' : 'visible'),
+    focus: d.focus ?? (allow ? 'always' : 'whenActive'),
+    reheat: {
+      alpha: d.reheat?.alpha ?? (allow ? 0.5 : 0.3),
+      seedRevealed: d.reheat?.seedRevealed ?? allow,
+      refit: d.reheat?.refit ?? allow,
+      resume: d.reheat?.resume ?? true,
+    },
+    labelFor,
+    abbreviationFor,
+    chipsFor: d.chipsFor ?? (values => values.map(v => ({
+      id: v,
+      label: labelFor(v),
+      icon: onStyle ? style.iconFor(v) || undefined : undefined,
+      tint: onStyle ? v : undefined,
+      values: [v],
+    }))),
+    initialSelection: d.initialSelection ?? (values => (allow ? values : [])),
+    presentation: d.presentation ?? 'chip',
+  }
 }
 
 /** Where a node sits on one axis, or undefined when it carries no value there. */
@@ -313,6 +367,27 @@ export function valuesOn(
 }
 
 /**
+ * How many subjects carry each value on each of the given axes — the chip
+ * badges' numbers when a host does not supply its own reading. An axis no
+ * subject has a value on gets an empty map, never a missing one.
+ */
+export function countsOn(
+  subjects: Iterable<{ dimensions: DimensionMap }>,
+  dimensions: readonly DimensionId[],
+): ReadonlyMap<DimensionId, ReadonlyMap<DimensionValue, number>> {
+  const out = new Map<DimensionId, Map<DimensionValue, number>>(dimensions.map(d => [d, new Map()]))
+  for (const s of subjects) {
+    for (const d of dimensions) {
+      const v = s.dimensions[d]
+      if (v === undefined) continue
+      const m = out.get(d)!
+      m.set(v, (m.get(v) ?? 0) + 1)
+    }
+  }
+  return out
+}
+
+/**
  * Does this table declare `key` itself, rather than inheriting it?
  *
  * Every keyed lookup on a dimension value must go through this. Values are
@@ -331,11 +406,7 @@ export function hasOwn(table: object, key: string): boolean {
 }
 
 /** What a filter change asks of the running simulation, folded across axes. */
-export interface ReheatPlan {
-  alpha: number
-  seedRevealed: boolean
-  refit: boolean
-  resume: boolean
+export interface ReheatPlan extends ReheatPolicy {
   /** The axes that actually changed — empty means "do nothing". */
   changed: readonly DimensionId[]
 }
@@ -354,7 +425,7 @@ export interface ReheatPlan {
  * any axis that wants seeding, refitting or resuming gets it.
  */
 export function foldReheatPolicy(
-  changedDimensions: readonly DimensionDescriptor[],
+  changedDimensions: readonly ResolvedDimensionDescriptor[],
 ): ReheatPlan {
   let alpha = 0, seedRevealed = false, refit = false, resume = false
   for (const dim of changedDimensions) {
@@ -378,3 +449,6 @@ export function foldReheatPolicy(
  * the host declares.
  */
 export const RELATION_DIMENSION: DimensionId = 'relation'
+
+/** The two values the relation axis takes. */
+export type Relation = 'containment' | 'dependency'

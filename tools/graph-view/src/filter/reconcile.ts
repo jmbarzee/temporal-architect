@@ -27,14 +27,14 @@ import {
   selectionFor,
   withSelection,
 } from './types'
-import type { DimensionDescriptor } from '../graph/dimension'
+import type { ResolvedDimensionDescriptor } from '../graph/dimension'
 
 export function reconcileFilter(
   destFilter: FilterState,
   sourceFilter: FilterState,
   destPins: PinState,
   intent: ViewTransition,
-  dimensions: readonly DimensionDescriptor[],
+  dimensions: readonly ResolvedDimensionDescriptor[],
 ): ReconcileResult {
   switch (intent.kind) {
     case 'manual':
@@ -62,7 +62,7 @@ function reconcileManual(
   destFilter: FilterState,
   sourceFilter: FilterState,
   destPins: PinState,
-  dimensions: readonly DimensionDescriptor[],
+  dimensions: readonly ResolvedDimensionDescriptor[],
 ): ReconcileResult {
   let next = destFilter
   for (const dim of dimensions) {
@@ -92,7 +92,7 @@ function reconcileFocus(
   destFilter: FilterState,
   destPins: PinState,
   target: FocusTarget,
-  dimensions: readonly DimensionDescriptor[],
+  dimensions: readonly ResolvedDimensionDescriptor[],
 ): ReconcileResult {
   let next = destFilter
   const overridden = new Set<FilterDimension>()

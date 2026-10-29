@@ -104,7 +104,7 @@ function visibleState(
     // The highlight as drawn (D59, D60): `highlightOf` — the library's walk,
     // the host's hook, the derived edges — for the first visible node of each
     // style value, per state.
-    hookedHighlights: sortedRecord(DEFAULT_ONTOLOGY.nodeTypeKeys.flatMap(value => {
+    hookedHighlights: sortedRecord(DEFAULT_ONTOLOGY.styleValues.flatMap(value => {
       const first = vg.visibleNodes.find(n => DEFAULT_ONTOLOGY.valueFor(n) === value)
       if (!first) return []
       const lit = highlightOf(DEFAULT_ONTOLOGY, first, 'downstream', { visibleNodes: vg.visibleNodes, visibleEdges: vg.visibleEdges, visibleIds: vg.visibleIds, getNode: nodeOf })

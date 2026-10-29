@@ -1,8 +1,7 @@
 // Graph data model for the force-directed graph view.
 
-import type { DimensionMap } from './dimension'
+import type { DimensionMap, Relation } from './dimension'
 import { RELATION_DIMENSION } from './dimension'
-import type { EdgeCategoryKind } from './taxonomy'
 
 export interface GraphNode {
   /**
@@ -32,12 +31,12 @@ export interface GraphNode {
    */
   payload?: Readonly<Record<string, unknown>>
   /**
-   * The container this node sits in, when it has one. The same fact as the
-   * containment edge from this node to its container — the host writes both
-   * from one lookup, and the view reads this one where it needs a parent at
-   * O(1) (the ancestor walk, reach, seeding) and the edges where it needs the
-   * children (summaries, graduation, drawing). Two readings of one fact, kept
-   * in step by the host that writes them.
+   * The container this node sits in, when it has one. One string: containment
+   * is a tree, and an entity that sits in two containers is modelled as two
+   * nodes sharing a `copyKey`. The view derives the containment edge from
+   * this node to its container (`withContainmentEdges`) when the host does
+   * not list one, so a host writes the fact once; a host may still list
+   * containment edges of its own, between any two nodes.
    */
   parentId?: string
   /**
@@ -125,7 +124,7 @@ export interface GraphEdge {
  * loud: an edge with no relation, or a misspelt one, is a host bug, and letting
  * it classify as a dependency would give it a real spring with no error.
  */
-export function relationOf(edge: Pick<GraphEdge, 'dimensions'>): EdgeCategoryKind {
+export function relationOf(edge: Pick<GraphEdge, 'dimensions'>): Relation {
   const r = edge.dimensions[RELATION_DIMENSION]
   if (r === 'containment' || r === 'dependency') return r
   throw new Error(`edge relation ${JSON.stringify(r)} is not one the engine knows; expected "containment" or "dependency"`)
@@ -134,6 +133,30 @@ export function relationOf(edge: Pick<GraphEdge, 'dimensions'>): EdgeCategoryKin
 /** Does this edge express containment (as opposed to a dependency)? */
 export function isContainment(edge: Pick<GraphEdge, 'dimensions'>): boolean {
   return relationOf(edge) === 'containment'
+}
+
+/**
+ * The graph with a containment edge from every node to its `parentId`, for
+ * each node whose host listed none: `in:<node id>`, from the child to its
+ * container. A node whose parent is not in the graph gets none (validation
+ * names that), and a host's own edge to the parent stands. The host's
+ * objects are not mutated; a graph needing nothing is returned as is.
+ */
+export function withContainmentEdges(graph: Graph): Graph {
+  const listed = new Set<string>()
+  const ids = new Set<string>()
+  for (const e of graph.edges) {
+    ids.add(e.id)
+    if (e.dimensions[RELATION_DIMENSION] === 'containment' && e.targetId === graph.nodes.get(e.sourceId)?.parentId) listed.add(e.sourceId)
+  }
+  const added: GraphEdge[] = []
+  for (const node of graph.nodes.values()) {
+    if (node.parentId === undefined || !graph.nodes.has(node.parentId) || listed.has(node.id)) continue
+    const id = `in:${node.id}`
+    if (ids.has(id)) continue
+    added.push({ id, sourceId: node.id, targetId: node.parentId, dimensions: { [RELATION_DIMENSION]: 'containment' } })
+  }
+  return added.length === 0 ? graph : { nodes: graph.nodes, edges: [...graph.edges, ...added] }
 }
 
 

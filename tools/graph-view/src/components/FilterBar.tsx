@@ -17,7 +17,7 @@ import type { Ontology } from '../graph/ontology'
 // and the chip draws neutral.
 const UNDECLARED_TINTS = new Set<string>()
 function tintOf(chipId: string, tint: DimensionValue, ontology: Ontology): DimensionValue {
-  if (ontology.nodeTypeKeys.includes(tint)) return tint
+  if (ontology.styleValues.includes(tint)) return tint
   if (!UNDECLARED_TINTS.has(chipId)) {
     UNDECLARED_TINTS.add(chipId)
     console.error(`[filter] chip ${JSON.stringify(chipId)} borrows the colour of ${JSON.stringify(tint)}, which the taxonomy does not declare`)
@@ -27,7 +27,7 @@ function tintOf(chipId: string, tint: DimensionValue, ontology: Ontology): Dimen
 import { selectionFor } from '../filter/types'
 import React from 'react'
 import './FilterBar.css'
-import type { DimensionDescriptor } from '../graph/dimension'
+import type { ResolvedDimensionDescriptor } from '../graph/dimension'
 import { pinnedFor, withPin, withSelection } from '../filter/types'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { toggleGroup } from '../filter/toggle'
@@ -111,7 +111,7 @@ export function FilterBar({
   // wears. Every axis renders, declared or not — an axis that is filtering
   // must be visible and removable, and vanishing is what once made a third
   // axis dangerous rather than merely unsupported.
-  const lookFor = (dimension: string, descriptor?: DimensionDescriptor) => ({
+  const lookFor = (dimension: string, descriptor?: ResolvedDimensionDescriptor) => ({
     values: [...(valuesByDimension.get(dimension) ?? [])],
     counts: counts.get(dimension) ?? NO_COUNTS,
     hidden: hiddenMatches?.get(dimension),

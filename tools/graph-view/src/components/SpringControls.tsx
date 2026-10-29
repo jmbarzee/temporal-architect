@@ -67,7 +67,7 @@ export function SpringMap({ params, resolved, present, onParamChange, hoveredEdg
       y: ph.strength,
       colorA: bucketColor(ontology, spring.mapping, c.sourceType),
       colorB: bucketColor(ontology, spring.mapping, c.targetType),
-      outline: c.category === 'containment' ? 'dashed' : 'solid',
+      outline: c.relation === 'containment' ? 'dashed' : 'solid',
       label: c.label,
       tooltip: c.tooltip,
     }

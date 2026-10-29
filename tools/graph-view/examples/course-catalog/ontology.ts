@@ -4,8 +4,8 @@
 
 import { createOntology, payloadString, RELATION_DIMENSION } from '@temporal-architect/graph-view'
 import type {
-  DimensionDescriptor, EdgeStroke, EdgeTypeDefinition, FilterChip, GraphNode, Highlight, HighlightGraph,
-  NodeTypeDefinition, OntologySpec, ReadableGraph, ScalarAxis,
+  DimensionDescriptor, EdgeStroke, EdgeType, FilterChip, GraphNode, Highlight, HighlightGraph,
+  NodeStyle, OntologySpec, ReadableGraph, ScalarAxis,
 } from '@temporal-architect/graph-view'
 import type { Campus } from './data'
 
@@ -16,73 +16,52 @@ export const CAMPUS = 'campus'
 export const REQUIREMENT = 'requirement'
 
 export type Entity = 'faculty' | 'department' | 'course' | 'lab'
-export const ENTITIES: readonly Entity[] = ['faculty', 'department', 'course', 'lab']
 
 export const CAMPUS_LABEL: Record<Campus, string> = { north: 'North campus', south: 'South campus', online: 'Online' }
 
-// Shared horizontal rest band; the vertical bands stack the hierarchy top-down.
-const X = { min: 0, max: 420 }
-
-export const NODE_STYLES: Record<Entity, NodeTypeDefinition> = {
-  faculty: {
+// The node styles, top of the hierarchy first. A value declares what it is
+// called, how it looks and how big it is; the rest is the library's — the
+// charge and rest band follow from the radius and the position in this list.
+// Only faculties and departments summarise what they contain; the others show
+// their dependency degree, which is the default.
+export const VALUES: readonly NodeStyle[] = [
+  {
+    id: 'faculty',
     label: 'Faculty',
     icon: '⌂',
-    defaultVisible: false,
-    whenHidden: 'ascend',
-    summaryKind: 'children',
+    abbreviation: 'Fa',
     color: { light: { fill: '#334155', border: '#0F172A' }, dark: { fill: '#94A3B8', border: '#475569' } },
     size: { r: 22, iconSize: 18 },
-    physics: { charge: -900, coreRadius: 90, band: { x: X, y: { min: -340, max: -160 } } },
+    summaryKind: 'children',
   },
-  department: {
+  {
+    id: 'department',
     label: 'Department',
     icon: '▦',
-    defaultVisible: true,
-    whenHidden: 'ascend',
-    summaryKind: 'children',
+    abbreviation: 'Dp',
     color: { light: { fill: '#0F766E', border: '#134E4A' }, dark: { fill: '#2DD4BF', border: '#0F766E' } },
     size: { r: 16, iconSize: 14 },
-    physics: { charge: -700, coreRadius: 64, band: { x: X, y: { min: -220, max: 60 } } },
+    summaryKind: 'children',
   },
-  course: {
+  {
+    id: 'course',
     label: 'Course',
     icon: '✎',
-    defaultVisible: true,
-    whenHidden: 'ascend',
-    summaryKind: 'degree',
+    abbreviation: 'Co',
     color: { light: { fill: '#B45309', border: '#78350F' }, dark: { fill: '#F59E0B', border: '#B45309' } },
     size: { r: 10, iconSize: 11 },
-    physics: { charge: -380, coreRadius: 36, band: { x: X, y: { min: 40, max: 400 } } },
   },
-  lab: {
+  {
+    id: 'lab',
     label: 'Lab',
     icon: '⚗',
-    defaultVisible: false,
-    whenHidden: 'ascend',
-    summaryKind: 'degree',
+    abbreviation: 'Lb',
     color: { light: { fill: '#BE185D', border: '#831843' }, dark: { fill: '#F472B6', border: '#BE185D' } },
     size: { r: 7, iconSize: 9 },
-    physics: { charge: -180, coreRadius: 20, band: { x: X, y: { min: 260, max: 500 } } },
   },
-}
+]
 
-const ABBREVIATIONS: Record<Entity, string> = {
-  faculty: 'Fa',
-  department: 'Dp',
-  course: 'Co',
-  lab: 'Lb',
-}
-
-const FALLBACK: NodeTypeDefinition = {
-  label: 'Unknown',
-  icon: '?',
-  defaultVisible: false,
-  whenHidden: 'ascend',
-  summaryKind: 'none',
-  color: { light: { fill: '#CBD5E1', border: '#94A3B8' }, dark: { fill: '#CBD5E1', border: '#94A3B8' } },
-  size: { r: 8, iconSize: 9 },
-  physics: { charge: -200, coreRadius: 24, band: { x: X, y: { min: 40, max: 400 } } },
-}
+const styleOf = (id: Entity): NodeStyle => VALUES.find(v => v.id === id)!
 
 // ── Edges ───────────────────────────────────────────────────────────────────
 
@@ -92,18 +71,18 @@ const CONTAINS: EdgeStroke = {
   dash: [3, 4],
   width: 1,
 }
-const contains = (id: string, label: string, child: Entity, parent: Entity, strength: number, distance: number): EdgeTypeDefinition => ({
+const contains = (id: string, label: string, child: Entity, parent: Entity, strength: number, distance: number): EdgeType => ({
   id,
   label,
   sourceType: child,
   targetType: parent,
-  category: 'containment',
+  relation: 'containment',
   physics: { strength, distance },
   style: CONTAINS,
-  tooltip: `${NODE_STYLES[child].label} in ${NODE_STYLES[parent].label}`,
+  tooltip: `${styleOf(child).label} in ${styleOf(parent).label}`,
 })
 
-export const EDGE_TYPES: readonly EdgeTypeDefinition[] = [
+export const EDGE_TYPES: readonly EdgeType[] = [
   contains('deptInFaculty', 'Dp→Fa', 'department', 'faculty', 0.35, 520),
   contains('courseInDept', 'Co→Dp', 'course', 'department', 0.5, 200),
   contains('labInCourse', 'Lb→Co', 'lab', 'course', 0.9, 60),
@@ -112,7 +91,7 @@ export const EDGE_TYPES: readonly EdgeTypeDefinition[] = [
     label: 'Pre',
     sourceType: 'course',
     targetType: 'course',
-    category: 'dependency',
+    relation: 'dependency',
     physics: { strength: 0.6, distance: 260 },
     tooltip: 'Must be passed first',
     style: {
@@ -128,7 +107,7 @@ export const EDGE_TYPES: readonly EdgeTypeDefinition[] = [
     label: 'Co-req',
     sourceType: 'course',
     targetType: 'course',
-    category: 'dependency',
+    relation: 'dependency',
     physics: { strength: 1.2, distance: 120 },
     tooltip: 'Taken in the same term',
     style: {
@@ -143,7 +122,7 @@ export const EDGE_TYPES: readonly EdgeTypeDefinition[] = [
     label: 'Rec',
     sourceType: 'course',
     targetType: 'course',
-    category: 'dependency',
+    relation: 'dependency',
     physics: { strength: 0.2, distance: 420 },
     tooltip: 'Recommended background',
     style: {
@@ -174,21 +153,21 @@ const ENTITY_CHIPS: readonly FilterChip[] = [
   {
     id: 'organisation',
     label: 'Organisation',
-    icon: NODE_STYLES.faculty.icon,
+    icon: styleOf('faculty').icon,
     tint: 'faculty',
     values: ['faculty', 'department'],
   },
   {
     id: 'course',
     label: 'Courses',
-    icon: NODE_STYLES.course.icon,
+    icon: styleOf('course').icon,
     tint: 'course',
     values: ['course'],
   },
   {
     id: 'lab',
     label: 'Labs',
-    icon: NODE_STYLES.lab.icon,
+    icon: styleOf('lab').icon,
     tint: 'lab',
     values: ['lab'],
   },
@@ -198,38 +177,21 @@ const FILTERS: readonly DimensionDescriptor[] = [
   {
     id: ENTITY,
     label: 'Show',
-    // An allow-list: nothing selected shows nothing.
+    // An allow-list: nothing selected shows nothing. Its names come from the
+    // style axis, which this is; its chips group three values into two.
     emptyMeans: 'none',
-    absentMeans: 'hidden',
-    focus: 'always',
-    reheat: {
-      alpha: 0.5,
-      seedRevealed: true,
-      refit: true,
-      resume: true,
-    },
     chipsFor: values => ENTITY_CHIPS.filter(c => c.values.some(v => values.includes(v))),
-    labelFor: v => NODE_STYLES[v as Entity]?.label ?? v,
-    abbreviationFor: v => ABBREVIATIONS[v as Entity] ?? v.slice(0, 2),
+    // Opens on departments and courses, not on every entity.
+    initialSelection: () => ['department', 'course'],
   },
   {
     id: CAMPUS,
     label: 'Campus',
-    // Nothing selected shows every campus; faculties and departments have none and always show.
+    // Nothing selected shows every campus; faculties and departments have none
+    // and always show. A narrowing axis, so the policies and the one chip per
+    // campus are the defaults.
     emptyMeans: 'all',
-    absentMeans: 'visible',
-    focus: 'whenActive',
-    reheat: {
-      alpha: 0.3,
-      seedRevealed: false,
-      refit: false,
-      resume: true,
-    },
-    chipsFor: values => (Object.keys(CAMPUS_LABEL) as Campus[])
-      .filter(c => values.includes(c))
-      .map(c => ({ id: c, label: CAMPUS_LABEL[c], values: [c] })),
     labelFor: v => CAMPUS_LABEL[v as Campus] ?? v,
-    abbreviationFor: v => v.slice(0, 2),
   },
 ]
 
@@ -295,17 +257,13 @@ function highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): H
 export const spec: OntologySpec = {
   styleDimension: ENTITY,
   styleLabel: 'Entity',
-  abbreviations: ABBREVIATIONS,
-  styleGroups: [{ id: 'catalog', values: ENTITIES }],
-  nodeTypeKeys: ENTITIES,
+  values: VALUES,
   filterDimensions: FILTERS,
-  nodeStyles: NODE_STYLES,
   edgeTypes: EDGE_TYPES,
   resolveEdgeType,
   scalars: SCALARS,
   contextLine,
   highlight,
-  fallbackStyle: FALLBACK,
 }
 
 export const ontology = createOntology(spec)

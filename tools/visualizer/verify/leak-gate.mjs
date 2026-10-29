@@ -28,7 +28,7 @@
 // and it is wrong: the shim is allowed its domain, so an ordinary shim refactor
 // that names its own domain type once more is not a regression. That distinction
 // was settled empirically — the flat version failed on the very commit that
-// introduced it, over one extra `TemporalEdgeTypeDefinition` in a doc comment.
+// introduced it, over one extra `TemporalEdgeType` in a doc comment.
 //
 // **Relocation is never a valid reason.** That is the whole point: a move keeps
 // the total flat by construction, so it can no longer be reported as a drop.

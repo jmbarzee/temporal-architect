@@ -1,5 +1,6 @@
 import {
   selectionFor,
+  defaultFilter,
   OntologyContext,
   copyGroups,
   pinnedFor,
@@ -34,7 +35,6 @@ import { GroupsModal } from './GroupsModal'
 import { ErrorBars } from './ErrorBars'
 import { useGraphModel, definitionCounts } from '../adapter/useGraphModel'
 import { initialGroupSelection, nodeGroupsOf, type GroupSelection, type GroupHover } from '../adapter/groups'
-import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
 
 interface WorkflowCanvasProps {
   /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
@@ -135,15 +135,6 @@ const STORAGE: StorageConfig = {
   hostApiGlobal: '__twfVsCodeApi',
 }
 
-const DEFAULT_VISIBLE_TYPES_ARRAY = DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type)
-
-function defaultFilter(ast: TWFFile): FilterState {
-  return new Map([
-    [SOURCE_FILE_DIMENSION, ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>()],
-    [DEF_TYPE_DIMENSION, new Set(DEFAULT_VISIBLE_TYPES_ARRAY)],
-  ])
-}
-
 const DEFAULT_PINS: PinState = new Map([
   [SOURCE_FILE_DIMENSION, false],
   [DEF_TYPE_DIMENSION, false],
@@ -196,13 +187,25 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // happens while it's visible (a hidden 0×0 container would fit to nothing).
   const [graphEverShown, setGraphEverShown] = React.useState(historyMode)
 
+  // The Graph view's inputs, read here off the payload: the graph built from
+  // the parser's deployment graph, the findings, the chip counts (D61). The
+  // view builds none of them and never sees the AST or the parser graph. Read
+  // before the filters below: the filter a view starts from is the library's
+  // default over this graph, narrowed to the focused file when there is one.
+  const model = useGraphModel(ast, graphInput)
+  const startingFilter = () => withSelection(
+    defaultFilter(DEFAULT_ONTOLOGY, model.graph),
+    SOURCE_FILE_DIMENSION,
+    ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
+  )
+
   // Per-view structural filter state, lifted from each view so the
   // reconciler at switch time has access to both.
   const [treeFilter, setTreeFilter] = React.useState<FilterState>(() =>
-    persistedToFilter(persisted.treeFilter, defaultFilter(ast))
+    persistedToFilter(persisted.treeFilter, startingFilter())
   )
   const [graphFilter, setGraphFilter] = React.useState<FilterState>(() =>
-    persistedToFilter(persisted.graphFilter, defaultFilter(ast))
+    persistedToFilter(persisted.graphFilter, startingFilter())
   )
 
   // Per-view pin state — when a dimension is pinned, the manual reconciler
@@ -220,10 +223,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const [treePins, setTreePins] = React.useState<PinState>(() => persistedToPins(persisted.treePins, DEFAULT_PINS))
   const [graphPins, setGraphPins] = React.useState<PinState>(() => persistedToPins(persisted.graphPins, DEFAULT_PINS))
 
-  // The Graph view's inputs, read here off the payload: the graph built from
-  // the parser's deployment graph, the findings, the chip counts (D61). The
-  // view builds none of them and never sees the AST or the parser graph.
-  const model = useGraphModel(ast, graphInput)
   const graphCounts = React.useMemo(() => definitionCounts(ast, selectionFor(graphFilter, SOURCE_FILE_DIMENSION)), [ast, graphFilter])
 
   // The group overlay's selection and hover preview (GRAPH_VIEW.md

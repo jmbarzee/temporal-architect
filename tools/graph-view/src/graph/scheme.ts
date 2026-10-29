@@ -59,8 +59,8 @@ export const colorVar = (value: DimensionValue): string => `--gv-node-${cssSuffi
  */
 export function schemeVars(ontology: Ontology, theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {}
-  for (const key of ontology.nodeTypeKeys) {
-    const c = ontology.styleForKey(key).color[theme]
+  for (const key of ontology.styleValues) {
+    const c = ontology.styleOf(key).color[theme]
     vars[colorVar(key)] = c.fill
     vars[`${colorVar(key)}-border`] = c.border
   }
@@ -123,8 +123,8 @@ export function withAlpha(color: string, alpha: number): string {
 export function schemeStylesheet(ontology: Ontology): string {
   const lightVars: string[] = []
   const darkVars: string[] = []
-  for (const key of ontology.nodeTypeKeys) {
-    const { light, dark } = ontology.styleForKey(key).color
+  for (const key of ontology.styleValues) {
+    const { light, dark } = ontology.styleOf(key).color
     const v = colorVar(key)
     lightVars.push(`  ${v}: ${light.fill};`)
     lightVars.push(`  ${v}-border: ${light.border};`)

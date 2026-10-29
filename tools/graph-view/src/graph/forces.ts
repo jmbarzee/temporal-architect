@@ -21,7 +21,8 @@ import { isScalarTuning } from './scalar'
 import type { ReadableGraph } from './model'
 import type { Ontology } from './ontology'
 import type { DimensionalMapping } from './dimension'
-import type { EdgeCategoryKind, EdgeTypeDefinition, EdgeTypeId, SpringPhysics } from './taxonomy'
+import type { EdgeTypeId, ResolvedEdgeType, SpringPhysics } from './taxonomy'
+import type { Relation } from './dimension'
 import type { Rng } from './rng'
 
 /** The minimum a force needs of a node in order to look up its physics. */
@@ -125,7 +126,7 @@ export function bucketOf(on: { readonly mapping: DimensionalMapping }, node: Phy
 function declaredPush(ontology: Ontology, values: readonly DimensionValue[]): PushPhysics {
   let charge = 0, coreRadius = 0
   for (const v of values) {
-    const ph = ontology.styleForKey(v).physics
+    const ph = ontology.styleOf(v).physics
     charge += ph.charge; coreRadius += ph.coreRadius
   }
   const n = Math.max(values.length, 1)
@@ -135,7 +136,7 @@ function declaredPush(ontology: Ontology, values: readonly DimensionValue[]): Pu
 function declaredBand(ontology: Ontology, values: readonly DimensionValue[], axis: 'x' | 'y'): BandRange {
   let min = Infinity, max = -Infinity
   for (const v of values) {
-    const b = ontology.styleForKey(v).physics.band[axis]
+    const b = ontology.styleOf(v).physics.band[axis]
     min = Math.min(min, b.min); max = Math.max(max, b.max)
   }
   return values.length === 0 ? { ...ABSENT_VALUE_PHYSICS.band } : { min, max }
@@ -149,7 +150,7 @@ function declaredBand(ontology: Ontology, values: readonly DimensionValue[], axi
  * downward) and at the right.
  */
 export function defaultSpan(ontology: Ontology, axis: 'x' | 'y'): ScalarSpan {
-  const extent = declaredBand(ontology, ontology.nodeTypeKeys, axis)
+  const extent = declaredBand(ontology, ontology.styleValues, axis)
   const half = (extent.max - extent.min) / 2
   return axis === 'y' ? { zero: half, one: -half } : { zero: -half, one: half }
 }
@@ -175,10 +176,10 @@ export function resolvePhysics(params: ChargeParams & GravityParams & LinkParams
   const style = ontology.styleAxis()
   const pushFor = (m: DimensionalMapping) => m.dimension === style
     ? (values: readonly DimensionValue[]) => declaredPush(ontology, values)
-    : () => declaredPush(ontology, ontology.nodeTypeKeys)
+    : () => declaredPush(ontology, ontology.styleValues)
   const bandOn = (m: DimensionalMapping, axis: 'x' | 'y') => m.dimension === style
     ? (values: readonly DimensionValue[]) => declaredBand(ontology, values, axis)
-    : () => declaredBand(ontology, ontology.nodeTypeKeys, axis)
+    : () => declaredBand(ontology, ontology.styleValues, axis)
   const layout = (t: LayoutTuning, axis: 'x' | 'y'): ResolvedLayoutAxis => {
     if (!isScalarTuning(t)) return resolveAxis(t.mapping, t.overrides, bandOn(t.mapping, axis))
     const scalar = ontology.scalars.find(sc => sc.id === t.scalar)
@@ -480,7 +481,7 @@ export const ABSENT_EDGE_PHYSICS: SpringPhysics = { strength: 0, distance: 0 }
  * a pair category synthesises it — and neither needs physics or a stroke here
  * (physics is `physicsFor`, and a pair is a spring, never a stroke).
  */
-export type EdgeCategoryDescription = Pick<EdgeTypeDefinition, 'id' | 'label' | 'sourceType' | 'targetType' | 'category' | 'tooltip'>
+export type EdgeCategoryDescription = Pick<ResolvedEdgeType, 'id' | 'label' | 'sourceType' | 'targetType' | 'relation' | 'tooltip'>
 
 /**
  * What a category starts from when nothing declared a spring for it: the mean
@@ -502,11 +503,11 @@ export function typicalSpring(ontology: Ontology): SpringPhysics {
  * pair. Ids are keys, never labels; `describe` turns one back into something a
  * token can show.
  */
-function pairId(relation: EdgeCategoryKind, a: string, b: string): EdgeTypeId {
+function pairId(relation: Relation, a: string, b: string): EdgeTypeId {
   return JSON.stringify(a <= b ? [relation, a, b] : [relation, b, a])
 }
 
-function parsePairId(id: EdgeTypeId): [EdgeCategoryKind, string, string] | undefined {
+function parsePairId(id: EdgeTypeId): [Relation, string, string] | undefined {
   try {
     const t: unknown = JSON.parse(id)
     if (Array.isArray(t) && t.length === 3 && (t[0] === 'containment' || t[0] === 'dependency') &&
@@ -583,7 +584,7 @@ export function resolveSprings(pair: PairTuning, ontology: Ontology): ResolvedSp
         label: `${A.abbreviation}↔${B.abbreviation}`,
         sourceType: a,
         targetType: b,
-        category: relation,
+        relation,
         physics: typical,
         tooltip: `${A.label} ↔ ${B.label} ${relation}`,
       }

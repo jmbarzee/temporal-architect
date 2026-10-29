@@ -1,7 +1,7 @@
 // Graph View: force-directed visualization of definition relationships.
 // Wires together graph construction, simulation, viewport, rendering, and interaction.
 
-import { readableGraph, isContainment } from '../graph/model'
+import { readableGraph, isContainment, withContainmentEdges } from '../graph/model'
 import React from 'react'
 import './GraphView.css'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
@@ -19,7 +19,7 @@ import type { ThemeChoice } from './graph-view/useTheme'
 import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 import type { Graph, GraphEdge } from '../graph/model'
-import { valuesOn } from '../graph/dimension'
+import { countsOn, valuesOn } from '../graph/dimension'
 import { copyGroups, copyKeyOf } from '../graph/model'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
 import { useOntology } from './graph-view/useOntology'
@@ -53,8 +53,8 @@ interface GraphViewProps {
   keyboard?: 'pane' | 'global' | 'none'
   /** The graph, built by the host from whatever it reads. */
   graph: Graph
-  /** Chip badge counts per axis and value — the host's reading of its own data. */
-  counts: ReadonlyMap<string, ReadonlyMap<string, number>>
+  /** Chip badge counts per axis and value — the host's reading of its own data. Absent, the graph's node counts. */
+  counts?: ReadonlyMap<string, ReadonlyMap<string, number>>
   /** The host's findings bars, rendered under the filter chips. */
   findings?: React.ReactNode
   /** Groups to glow, over the whole graph; the view restricts them to the visible set and colours them. */
@@ -70,7 +70,8 @@ interface GraphViewProps {
   onFilterChange: (next: FilterState) => void
   pins: PinState
   onPinsChange: (next: PinState) => void
-  chain: readonly string[]
+  /** The axes shown, in order. Absent, every declared filter axis in declaration order. */
+  chain?: readonly string[]
   onChainChange?: (next: readonly string[]) => void
   searchQuery: string
   searchActive: boolean
@@ -88,7 +89,7 @@ export function GraphView({
   active,
   keyboard = 'pane',
   graph: hostGraph,
-  counts,
+  counts: hostCounts,
   findings,
   groups,
   groupsControl,
@@ -97,7 +98,7 @@ export function GraphView({
   onFilterChange,
   pins,
   onPinsChange,
-  chain,
+  chain: hostChain,
   onChainChange,
   searchQuery,
   searchActive,
@@ -110,7 +111,12 @@ export function GraphView({
   const ontology = useOntology()
   // Filter state is driven by props from the host shell, and the axes this view
   // filters on are the chain's, in order: an axis the host declared but this
-  // view does not show is not filtering here.
+  // view does not show is not filtering here. A host that names no chain
+  // shows every declared axis.
+  const chain = React.useMemo(
+    () => hostChain ?? ontology.filterDimensions.map(d => d.id),
+    [hostChain, ontology],
+  )
   const filterAxes = React.useMemo(
     () => chain.flatMap(id => { const d = ontology.descriptorFor(id); return d ? [d] : [] }),
     [chain, ontology],
@@ -118,7 +124,13 @@ export function GraphView({
   // The host's graph, checked once: every defect named, the edges an
   // error names left out of what is drawn, the list shown under the bar.
   const diagnostics = React.useMemo(() => validateGraph(hostGraph, ontology), [hostGraph, ontology])
-  const graph = React.useMemo(() => dropInvalid(hostGraph, diagnostics), [hostGraph, diagnostics])
+  // What is drawn: the host's graph less what an error names, plus the
+  // containment edge each `parentId` implies where the host listed none.
+  const graph = React.useMemo(() => withContainmentEdges(dropInvalid(hostGraph, diagnostics)), [hostGraph, diagnostics])
+  // The chip badges: the host's reading of its own data, or a count of the
+  // graph's nodes per axis and value.
+  const nodeCounts = React.useMemo(() => countsOn(graph.nodes.values(), chain), [graph, chain])
+  const counts = hostCounts ?? nodeCounts
   // Every node's copies, by the key they share — derived here, once per graph.
   const copies = React.useMemo(() => copyGroups(graph), [graph])
 
@@ -208,7 +220,7 @@ export function GraphView({
   const schemeStyle = React.useMemo(() => schemeVars(ontology, theme) as React.CSSProperties, [ontology, theme])
   const overlay = React.useMemo(() => bandOverlay(graph.nodes.values(), forceParams, resolved, frame,
     (axis, bucket) => axis.mapping.dimension === ontology.styleAxis() && isIdentityMapping(axis.mapping)
-      ? ontology.styleForKey(bucket).color[theme].fill
+      ? ontology.styleOf(bucket).color[theme].fill
       : undefined), [graph, forceParams, resolved, frame, ontology, theme])
 
   // A new axis starts both pair forces from the taxonomy's declared physics on
