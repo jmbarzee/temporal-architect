@@ -10,9 +10,10 @@
 import React from 'react'
 import { Simulation, defaultParamsFor, retunedFor } from '../../graph/simulation'
 import { defaultRng } from '../../graph/rng'
-import { useOntology } from './useOntology'
 import type { ForceParams, SimNode } from '../../graph/simulation'
 import type { Graph } from '../../graph/model'
+import { graphShapeEquals } from '../../graph/model'
+import type { Ontology } from '../../graph/ontology'
 
 export interface SimulationController {
   simRef: React.MutableRefObject<Simulation | null>
@@ -33,15 +34,21 @@ export interface SimulationController {
 
 export function useSimulation(
   graph: Graph,
-  // Called after each (re)creation so the camera/loop can reset their own
-  // coordination refs (initial-fit guard, fps tracker). Held in a ref so its
-  // changing identity never re-triggers the rebuild — only `graph` does.
-  onRebuild?: () => void,
+  ontology: Ontology,
+  // Where nodes start: the host's kept layout, by node id. Read when the
+  // simulation is built; the previous simulation's positions take precedence
+  // on a rebuild, so a graph update keeps the layout the user has.
+  positions: ReadonlyMap<string, { x: number; y: number }> | undefined,
+  // Called after each (re)creation with whether positions were carried over,
+  // so the camera can keep its place when the layout kept its. Held in a ref
+  // so its changing identity never re-triggers the rebuild.
+  onRebuild?: (continued: boolean) => void,
 ): SimulationController {
   const simRef = React.useRef<Simulation | null>(null)
+  const prevGraphRef = React.useRef<Graph | null>(null)
+  const warnedRef = React.useRef(false)
   const dragNodeRef = React.useRef<string | null>(null)
   const [running, setRunning] = React.useState(true)
-  const ontology = useOntology()
   // Lazy initializer, and `ontology` has to be read before it: the starting
   // parameters are derived from the taxonomy now, so a module-load constant is
   // no longer available to seed this with.
@@ -66,8 +73,20 @@ export function useSimulation(
   // to need a provenance ref here to detect; a tuning that carries its own
   // mapping has nothing left to detect.
   React.useEffect(() => {
-    simRef.current = new Simulation(graph, forceParams, defaultRng, ontology)
-    onRebuildRef.current?.()
+    const prev = simRef.current
+    // A new graph object of the same shape rebuilds the simulation for
+    // nothing; said once, because the fix is on the host's side (memoise).
+    if (prev && prevGraphRef.current && prevGraphRef.current !== graph && !warnedRef.current && graphShapeEquals(prevGraphRef.current, graph)) {
+      warnedRef.current = true
+      console.warn('[graph] the graph\'s identity changed but its shape did not; the view rebuilt its simulation for nothing. Keep one graph object until its nodes or edges change.')
+    }
+    prevGraphRef.current = graph
+    // Where nodes start: the host's kept layout under the previous
+    // simulation's, so a graph update keeps the layout the user has.
+    const start = new Map<string, { x: number; y: number }>(positions ?? [])
+    if (prev) for (const n of prev.nodes) start.set(n.id, { x: n.x, y: n.y })
+    simRef.current = new Simulation(graph, forceParams, defaultRng, ontology, start.size > 0 ? start : undefined)
+    onRebuildRef.current?.(prev !== null)
     setRunning(true)
     setSimVersion(v => v + 1)
   }, [graph, ontology]) // eslint-disable-line react-hooks/exhaustive-deps

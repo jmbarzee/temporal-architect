@@ -73,6 +73,13 @@ function counts(): Json {
   return out
 }
 
+/** Each chip's label and its badge, read off the bar's markup. */
+function badgesOf(html: string): Json {
+  const badges: Record<string, string> = {}
+  for (const m of html.matchAll(/class="gv-header-(?:type-label|file-name)">([^<]*)<\/span><span class="gv-header-chip-count">([^<]*)<\/span>/g)) badges[m[1]] = m[2]
+  return sortedRecord(Object.entries(badges))
+}
+
 /** The bar as rendered with the host's counts in its badges and its findings in the slot. */
 function barRendered(): Json {
   const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
@@ -84,17 +91,27 @@ function barRendered(): Json {
       counts: definitionCounts(fixture.ast, new Set()),
       filter, onFilterChange: noop, pins: new Map<string, boolean>(), onPinsChange: noop,
       overriddenPins: new Set<string>(), recentlyChanged: new Set<string>(),
-      searchQuery: '', searchActive: false, onSearchChange: noop, searchInputRef: React.createRef<HTMLInputElement>(),
+      search: { query: '', active: false }, onSearchChange: noop, searchInputRef: React.createRef<HTMLInputElement>(),
       searchTitle: 'Search', searchPlaceholder: 'Search',
       chain: [SOURCE_FILE_DIMENSION, DEF_TYPE_DIMENSION],
-      valuesByDimension: new Map(DEFAULT_ONTOLOGY.filterDimensions.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
+      values: new Map(DEFAULT_ONTOLOGY.filterDimensions.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
       findings: React.createElement('div', { 'data-probe': 'findings' }),
     })))
-  const badges: Record<string, string> = {}
-  for (const m of html.matchAll(/class="gv-header-(?:type-label|file-name)">([^<]*)<\/span><span class="gv-header-chip-count">([^<]*)<\/span>/g)) badges[m[1]] = m[2]
-  return { badges: sortedRecord(Object.entries(badges)), findingsSlot: html.includes('data-probe="findings"') }
+  return { badges: badgesOf(html), findingsSlot: html.includes('data-probe="findings"') }
+}
+
+/** The bar given the graph and nothing else of its own: values and badge counts are read off the nodes. */
+function barFromGraph(): Json {
+  const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
+  if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
+  const graph = buildFixtureGraph(fixture)
+  const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: DEFAULT_ONTOLOGY },
+    React.createElement(FilterBar, {
+      graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, pins: new Map<string, boolean>(), onPinsChange: noop,
+    })))
+  return { badges: badgesOf(html) }
 }
 
 export function seamProbes(): Json {
-  return { viewHalf: viewHalf(), hostHalf: hostHalf(), counts: counts(), barRendered: barRendered() }
+  return { viewHalf: viewHalf(), hostHalf: hostHalf(), counts: counts(), barRendered: barRendered(), barFromGraph: barFromGraph() }
 }

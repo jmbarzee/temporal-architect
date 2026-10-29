@@ -17,6 +17,8 @@ import { loadState, saveState, type PersistedFilter, type PersistedPins, type St
 import type {
   FocusTarget,
   FilterState,
+  GraphNode,
+  GraphViewHandle,
   PinState,
   ViewTransition,
   FilterDimension,
@@ -262,19 +264,23 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const schemeStyle = React.useMemo(() => schemeVars(DEFAULT_ONTOLOGY, hostTheme) as React.CSSProperties, [hostTheme])
   const [searchActive, setSearchActive] = React.useState<boolean>(false)
 
-  // Pending-focus target for cross-view nav. Reconciler has already
-  // expanded the destination's filter by the time this is set; the
-  // destination view consumes it for scroll/center/flash only.
-  // The visual-focus subject of a focus transition, as the library shapes it:
-  // the filter expansion has already happened in the reconciler; a view only
-  // scrolls, centres and flashes.
+  // Pending-focus target for a focus into the Tree. Reconciler has already
+  // expanded the Tree's filter by the time this is set; the Tree consumes it
+  // for scroll/flash only. (A focus into the Graph is `pendingGraphFocusId`
+  // below: the view does its own reconcile.)
   const [pendingFocus, setPendingFocus] = React.useState<FocusTarget | null>(null)
 
   // Pin-override metadata: which dimensions the most recent focus
-  // transition bypassed in each view. The view consumes this on render
-  // to flash its pin icon, then calls back to clear.
+  // transition bypassed in the Tree. The Tree consumes this on render
+  // to flash its pin icon, then calls back to clear. The Graph view keeps its
+  // own: `focusNode` flashes any pin it overrides.
   const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<FilterDimension>>(new Set())
-  const [graphOverriddenPins, setGraphOverriddenPins] = React.useState<Set<FilterDimension>>(new Set())
+
+  // The Graph view's handle, and the node a cross-view focus asked it to reveal.
+  // The view mounts lazily on first show, so the handle can be null on the tick
+  // the request is made: the id waits here until the ref exists.
+  const graphRef = React.useRef<GraphViewHandle>(null)
+  const [pendingGraphFocusId, setPendingGraphFocusId] = React.useState<string | null>(null)
 
   // Persist on every relevant state change. localStorage in standalone;
   // vscode.setState in webview (via the storage shim).
@@ -369,6 +375,19 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // by construction (Show in [view] is always cross-view).
     if (target === activeView && transition.kind === 'manual') return
 
+    // A focus into the Graph: the view reconciles its own filter, flashes any
+    // pin it overrides and centres on the node when asked. Find the node and
+    // ask once the view is mounted and shown.
+    if (target === 'graph' && transition.kind === 'focus') {
+      const { name, values } = transition.target
+      const node = [...model.graph.nodes.values()].find(n =>
+        n.name === name && n.dimensions[DEF_TYPE_DIMENSION] === values[DEF_TYPE_DIMENSION])
+      setPendingGraphFocusId(node?.id ?? null)
+      setGraphEverShown(true)
+      setActiveView('graph')
+      return
+    }
+
     const dest = target === 'tree' ? treeFilter : graphFilter
     const source = target === 'tree' ? graphFilter : treeFilter
     const destPins = target === 'tree' ? treePins : graphPins
@@ -392,9 +411,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     if (target === 'tree') {
       if (newFilter !== dest) setTreeFilter(newFilter)
       setTreeOverriddenPins(overriddenPins)
-    } else {
-      if (newFilter !== dest) setGraphFilter(newFilter)
-      setGraphOverriddenPins(overriddenPins)
+    } else if (newFilter !== dest) {
+      setGraphFilter(newFilter)
     }
 
     if (transition.kind === 'focus') {
@@ -403,7 +421,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
     if (target === 'graph') setGraphEverShown(true)
     setActiveView(target)
-  }, [activeView, treeFilter, graphFilter, treePins, graphPins, historyMode])
+  }, [activeView, treeFilter, graphFilter, treePins, graphPins, historyMode, model.graph])
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
@@ -420,9 +438,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     })
   }, [ast.definitions, switchView])
 
-  const showInTree = React.useCallback((target: FocusTarget) => {
-    const name = target.name
-    const defType = target.values[DEF_TYPE_DIMENSION] ?? ''
+  const showInTree = React.useCallback((node: GraphNode) => {
+    const name = node.name
+    const defType = node.dimensions[DEF_TYPE_DIMENSION] ?? ''
     const def = ast.definitions.find(d => d.name === name && d.type === defType)
     switchView('tree', {
       kind: 'focus',
@@ -435,6 +453,14 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
 
+  // Ask the Graph view to focus the requested node once its handle exists.
+  React.useEffect(() => {
+    if (pendingGraphFocusId === null) return
+    const handle = graphRef.current
+    if (!handle) return
+    handle.focusNode(pendingGraphFocusId)
+    setPendingGraphFocusId(null)
+  }, [pendingGraphFocusId, graphEverShown])
 
   const handleSearchChange = React.useCallback((query: string, active: boolean) => {
     setSearchQuery(query)
@@ -443,9 +469,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   const clearTreeOverriddenPins = React.useCallback(() => {
     setTreeOverriddenPins(prev => prev.size === 0 ? prev : new Set())
-  }, [])
-  const clearGraphOverriddenPins = React.useCallback(() => {
-    setGraphOverriddenPins(prev => prev.size === 0 ? prev : new Set())
   }, [])
 
   // When the Tree's file filter narrows to exactly one file, open it in
@@ -524,8 +547,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
         {graphEverShown && (
           <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
             <GraphView
-              active={activeView === 'graph'}
-              keyboard="global"
+              ref={graphRef}
+              keyboard={activeView === 'graph' ? 'global' : 'none'}
               graph={model.graph}
               counts={graphCounts}
               findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} />}
@@ -550,13 +573,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               onPinsChange={setGraphPins}
               chain={graphChain}
               onChainChange={setGraphChain}
-              searchQuery={searchQuery}
-              searchActive={searchActive}
-              onSearchChange={handleSearchChange}
-              pendingFocus={pendingFocus}
-              onFocusConsumed={clearPendingFocus}
-              overriddenPins={graphOverriddenPins}
-              onOverriddenPinsConsumed={clearGraphOverriddenPins}
+              search={{ query: searchQuery, active: searchActive }}
+              onSearchChange={next => handleSearchChange(next.query, next.active)}
             />
           </div>
         )}

@@ -14,7 +14,7 @@ import React from 'react'
 import type { Simulation, SimNode } from '../../graph/simulation'
 import type { Viewport } from '../../graph/viewport'
 import { fitToView } from '../../graph/viewport'
-import { useOntology } from './useOntology'
+import type { Ontology } from '../../graph/ontology'
 
 export interface SimulationLoopParams {
   simRef: React.MutableRefObject<Simulation | null>
@@ -33,6 +33,7 @@ export interface SimulationLoopParams {
   pendingCenterRef: React.MutableRefObject<{ nodeId: string } | null>
   setViewport: React.Dispatch<React.SetStateAction<Viewport>>
   setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>
+  ontology: Ontology
 }
 
 export function useSimulationLoop({
@@ -40,9 +41,8 @@ export function useSimulationLoop({
   visibleIds, visibleNodes, downstreamScores,
   filter, axes,
   hoveredNodeId, selectedNodeId,
-  containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
+  containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId, ontology,
 }: SimulationLoopParams): { fps: number } {
-  const ontology = useOntology()
   // Frame-rate indicator. Updated ~2×/sec from the loop.
   const [fps, setFps] = React.useState(0)
   const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })

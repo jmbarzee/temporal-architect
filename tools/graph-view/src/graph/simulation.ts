@@ -519,6 +519,9 @@ export class Simulation {
     params: Partial<ForceParams> | undefined,
     rng: Rng,
     ontology: Ontology,
+    // Where a node starts when something already knows: a layout the host
+    // kept, or the previous simulation's. A node with an entry is not seeded.
+    positions?: ReadonlyMap<string, { x: number; y: number }>,
   ) {
     this.params = { ...defaultParamsFor(ontology), ...params }
     this.alpha = 1.0
@@ -539,7 +542,8 @@ export class Simulation {
     const seedNodes = [...graph.nodes.values()]
     this.frame = layoutFrame(readableGraph(graph), this.resolved)
     for (const node of seedNodes) {
-      const [x, y] = this.seedPosition(node, rng)
+      const given = positions?.get(node.id)
+      const [x, y] = given ? [given.x, given.y] : this.seedPosition(node, rng)
       const sim: SimNode = { ...node, x, y, vx: 0, vy: 0, pinned: false }
       this.nodes.push(sim)
       this.nodeMap.set(sim.id, sim)
@@ -549,7 +553,7 @@ export class Simulation {
     // the child's own X band) or same angle (radial) — so they stack under
     // their container; the other coordinate stays the child's own.
     for (const node of this.nodes) {
-      if (!node.parentId) continue
+      if (!node.parentId || positions?.has(node.id)) continue
       const parent = this.nodeMap.get(node.parentId)
       if (!parent) continue
       if (this.params.radial) {

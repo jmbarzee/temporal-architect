@@ -10,7 +10,9 @@ html, body, #root { height: 100%; margin: 0; }
   color: var(--gv-color-text);
   font-family: var(--gv-font-sans);
 }
-.catalog-app[data-theme="dark"] { color-scheme: dark; }
+/* The themed elements are the view's root and the side panel, not this shell:
+   an ancestor's `data-theme` is what the view reads as the host's. */
+.catalog-pane [data-theme="dark"], .catalog-details[data-theme="dark"] { color-scheme: dark; }
 
 /* GraphView fills a flex column with a definite height. */
 .catalog-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -53,6 +55,7 @@ html, body, #root { height: 100%; margin: 0; }
   padding: 16px;
   overflow: auto;
   font-size: 13px;
+  color: var(--gv-color-text);
   background: var(--gv-color-surface);
   border-left: 1px solid var(--gv-color-border);
 }

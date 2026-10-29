@@ -2382,3 +2382,84 @@ policies, its abbreviation table and its ladder constants are gone. Leak 0,
 boundary 0.
 
 — 2026-10-28 — agent
+
+**D71 — Unit 13, the `GraphView` contract: props, state, outputs (API_WORK.md Set 4).**
+Seventeen of twenty-two props were required, transient view state was the
+host's, and a focus took three host steps through a name. Now the view
+needs its graph and a taxonomy and owns what is its own.
+
+1. **One required prop.** `graph`; the taxonomy through the `ontology` prop
+   or the `OntologyContext` above (the prop wins, neither throws before any
+   hook). The view provides the context to its own tree, so every control
+   inside reads the one it was given.
+2. **State the host may control or leave.** `filter`, `pins`, `chain`,
+   `search` (one object, `{ query, active }`) and `theme` each follow the
+   React convention through `useControllable`: value and callback to
+   control, neither to let the view keep it (seeded from `defaultFilter`,
+   no pins, every declared axis, a closed search, `system`), the callback
+   alone to be told. The chain is editable in the bar unless controlled
+   without a callback.
+3. **Transient state is the view's.** The pins a focus overrides flash from
+   the view's own 600 ms state; the centre-on-node request is the ref's.
+   `pendingFocus`, `onFocusConsumed`, `overriddenPins` and
+   `onOverriddenPinsConsumed` are gone. `active` is gone with them: `keyboard`
+   says where the keys listen, and a tab shell passes `global` for its
+   active tab and `none` for the hidden one.
+4. **The handle.** `focusNode(id)` is the whole recipe — `reconcileFilter`
+   on the axes shown, the flash, the centre and the selection once the
+   layout has settled — and answers false for an id not in the graph;
+   `fit()`; `getPositions()` and `setPositions()` carry a layout out and
+   back. `reconcileFilter`, `FocusTarget` and `matchesFocus` stay exported
+   for a host reconciling a manual switch between two views.
+5. **By node, not by name.** `crossView.onFocus` receives the `GraphNode`,
+   so a host learns which copy was clicked and need not look its record up
+   again. The spec's `highlight` hook receives the walk's direction.
+6. **Outputs and inputs.** `onSelectionChange`, `onNodeActivate`
+   (double-click), `onHover`, `onThemeResolved`, read through refs so a
+   fresh callback each render is not re-notified; `className`, `style`,
+   `controls`, `themeToggle`, `positions`; `NodeGroup.color`.
+7. **Layout continuity.** A rebuilt simulation starts every node it still
+   has where the previous one left it (the host's `positions` under that),
+   the camera stays, and the one-shot fit stays one-shot; a new graph
+   object of the same shape (`graphShapeEquals`) is reported once as a host
+   rebuilding what it could have kept. The README states the identity
+   rule.
+8. **`FilterBar` without the pane's internals.** `values` or `graph`;
+   counts, the recently-changed set, the input ref, the search copy, the
+   pins flashed and the chain all default; `FilterBarProps` and `valuesOn`
+   are exported.
+9. **`useGraphViewState` — declined.** With uncontrolled defaults a one-view
+   host needs nothing, and the two-view host keeps per-view state with its
+   own persistence; a hook returning a props bundle would be a third shape
+   for the same state. Revisit if a third host asks.
+
+**The hosts.** The visualizer passes `keyboard` by its active tab, the search
+as one object, `Show in Tree` by node, and focuses the graph through the
+ref (the tree half of its cross-view flow is its own and unchanged). The
+catalog keeps its filter and theme controlled (its side panel sets them),
+observes the pins, leaves the chain and the search to the view, reveals
+through the ref and opens its details on the node.
+
+**Golden change (§8.2).** `static` alone, additive — every existing row is
+byte-identical and the six fixture goldens with them. `hostProbes.rendered`
+gains `panelPresent`, and `hostProbes.ontologyProp` is new: the view mounted
+with the `ontology` prop and no provider, `controls` and `themeToggle` off, a
+class and a style of the host's (`withoutProvider`, `rootClass`,
+`panelAbsent`, `themeButtonAbsent`, `styleMerged`, `schemeKept`).
+`seamProbes.barFromGraph` is new: the bar with only `graph`, its badges the
+node counts. `contractProbes` is new: `positions` (two nodes kept where
+given, the third seeded, a kept child not re-stacked under its parent),
+`groupColour` (a declared colour over the palette's), `highlightDirection`
+(the hook sees `upstream` and `downstream`, and its answer is drawn),
+`graphShape` (the same object, a structural copy, a changed parent, a
+changed end, a removed edge).
+
+**Measured.** The surface: 72 names (+7: `FilterBarProps`, `GraphViewHandle`,
+`GraphViewProps`, `HighlightDirection`, `Position`, `SearchState`,
+`valuesOn`). Total vocabulary 1090 / 1090; leak 0; boundary 0. One thing the
+catalog found: a host that writes the resolved theme onto an ancestor of the
+pane locks `system`, because the pane reads that ancestor to resolve it — the
+README says so, and the catalog carries its `data-theme` on the panel beside
+the pane.
+
+— 2026-10-28 — agent

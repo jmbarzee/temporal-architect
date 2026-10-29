@@ -22,6 +22,7 @@ import { seamProbes } from './seam-probes'
 import { hostProbes } from './host-probes'
 import { integrityProbes } from './integrity-probes'
 import { defaultsProbes } from './defaults-probes'
+import { contractProbes } from './contract-probes'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
@@ -266,6 +267,7 @@ export function staticGolden(): Json {
     hostProbes: hostProbes(),
     integrityProbes: integrityProbes(),
     defaultsProbes: defaultsProbes(),
+    contractProbes: contractProbes(),
     syntheticVisible: syntheticVisible(),
     filterChipLayer: filterChipLayer(),
     reconcileMatrix: reconcileMatrix(),

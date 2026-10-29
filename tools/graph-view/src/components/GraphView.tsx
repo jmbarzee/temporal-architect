@@ -1,28 +1,28 @@
-// Graph View: force-directed visualization of definition relationships.
-// Wires together graph construction, simulation, viewport, rendering, and interaction.
+// Graph View: a force-directed graph, filtered, highlighted and tuned.
+// Wires together validation, simulation, viewport, rendering and interaction.
 
-import { readableGraph, isContainment, withContainmentEdges } from '../graph/model'
 import React from 'react'
 import './GraphView.css'
-import type { FilterState, PinState, FilterDimension } from '../filter/types'
+import { readableGraph, isContainment, withContainmentEdges } from '../graph/model'
+import type { Graph, GraphEdge, GraphNode } from '../graph/model'
+import type { FilterState, PinState } from '../filter/types'
+import { defaultFilter, passesSelection } from '../filter/types'
+import { reconcileFilter } from '../filter/reconcile'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
-import { isIdentityMapping } from '../graph/dimension'
-import type { FocusTarget } from '../filter/types'
-import { matchesFocus, passesSelection } from '../filter/types'
+import { countsOn, isIdentityMapping, valuesOn } from '../graph/dimension'
+import type { DimensionalMapping } from '../graph/dimension'
 import type { PresentSets } from './graph-view/present'
 import { presentSetsOf } from './graph-view/present'
-import type { EdgeStroke } from '../graph/scheme'
+import type { EdgeStroke, Theme } from '../graph/scheme'
 import { schemeVars } from '../graph/scheme'
 import { useTheme, THEME_CHOICES } from './graph-view/useTheme'
 import type { ThemeChoice } from './graph-view/useTheme'
 import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
-import type { DimensionalMapping } from '../graph/dimension'
-import type { Graph, GraphEdge } from '../graph/model'
-import { countsOn, valuesOn } from '../graph/dimension'
 import { copyGroups, copyKeyOf } from '../graph/model'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
-import { useOntology } from './graph-view/useOntology'
+import { OntologyContext, useOntology } from './graph-view/useOntology'
+import type { Ontology } from '../graph/ontology'
 import { worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
@@ -31,28 +31,59 @@ import { CanvasErrorBoundary } from './CanvasErrorBoundary'
 import { GraphControlPanel } from './GraphControlPanel'
 import { activeGroupsOf, boostGroupsForNodes, type ActiveGroup, type NodeGroup } from '../graph/groups'
 import { FilterBar } from './FilterBar'
+import type { SearchState } from './FilterBar'
+export type { SearchState } from './FilterBar'
 import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
 import { useViewport } from './graph-view/useViewport'
 import { useHighlight } from './graph-view/useHighlight'
 import { useSimulation } from './graph-view/useSimulation'
 import { useVisibleGraph } from './graph-view/useVisibleGraph'
 import { useSimulationLoop } from './graph-view/useSimulationLoop'
+import { useControllable, useLatest } from './graph-view/useControllable'
 import { validateGraph, dropInvalid } from '../graph/validate'
 import type { GraphDiagnostic } from '../graph/validate'
 
-interface GraphViewProps {
-  // Whether this view is the active tab. Both views stay mounted (keep-alive),
-  // so the inactive one must not respond to global keyboard shortcuts.
-  active: boolean
+/** A node's position in the layout, in world units. */
+export interface Position { x: number; y: number }
+
+/**
+ * What a host may ask of a mounted view. `focusNode` is the whole focus
+ * recipe in one call: widen the filter just enough on the axes shown
+ * (overriding a pin, which flashes), centre on the node once the layout has
+ * settled, and select it.
+ */
+export interface GraphViewHandle {
+  /** Reveal, centre and select a node by id. False when the id is not in the graph. */
+  focusNode(id: string): boolean
+  /** Frame the visible nodes. */
+  fit(): void
+  /** Every node's position, by id — a layout the host may keep and hand back as `positions`. */
+  getPositions(): Map<string, Position>
+  /** Move nodes to the given positions (pinned ones stay) and let the layout settle around them. */
+  setPositions(positions: ReadonlyMap<string, Position>): void
+}
+
+/**
+ * The view's inputs. Only `graph` is required, with a taxonomy from either the
+ * `ontology` prop or an `OntologyContext.Provider` above. Every piece of state
+ * follows the React convention: pass the value and its callback to control it,
+ * or neither and the view keeps it; a callback alone still reports changes.
+ */
+export interface GraphViewProps {
+  /** The graph, built by the host from whatever it reads. Keep one object until its nodes or edges change. */
+  graph: Graph
+  /** The taxonomy, when not supplied through `OntologyContext`. */
+  ontology?: Ontology
   /**
-   * Where the pane's shortcuts listen. `pane`: the root is focusable and
-   * handles the keys that reach it, so a host page keeps Tab and Space for its
-   * own controls. `global`: the window, while `active` — for a host whose
-   * whole page is this pane. `none`: no shortcuts.
+   * Where the pane's shortcuts listen. `pane` (the default): the root is
+   * focusable and handles the keys that reach it, so a host page keeps Tab
+   * and Space for its own controls. `global`: the window — for a host whose
+   * whole page is this pane, or a tab shell's active tab. `none`: no
+   * shortcuts — a tab shell's hidden tab.
    */
   keyboard?: 'pane' | 'global' | 'none'
-  /** The graph, built by the host from whatever it reads. */
-  graph: Graph
+  /** Where nodes start, by id — a layout the host kept (`getPositions`). Read when the simulation is built. */
+  positions?: ReadonlyMap<string, Position>
   /** Chip badge counts per axis and value — the host's reading of its own data. Absent, the graph's node counts. */
   counts?: ReadonlyMap<string, ReadonlyMap<string, number>>
   /** The host's findings bars, rendered under the filter chips. */
@@ -61,62 +92,89 @@ interface GraphViewProps {
   groups?: readonly NodeGroup[]
   /** The host's control for its groups (a legend, a modal), rendered inside the pane — which sets `--gv-toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included. */
   groupsControl?: (active: readonly ActiveGroup[]) => React.ReactNode
-  /** The host's cross-view action for a node — its label, and what it does with the target — offered in the hover box. */
-  crossView?: { label: string; onFocus: (target: FocusTarget) => void }
-  /** The pane's theme choice and where a new one goes. */
-  theme: ThemeChoice
-  onThemeChange: (next: ThemeChoice) => void
-  filter: FilterState
-  onFilterChange: (next: FilterState) => void
-  pins: PinState
-  onPinsChange: (next: PinState) => void
-  /** The axes shown, in order. Absent, every declared filter axis in declaration order. */
+  /** The host's action for a node — its label, and what it does with the node — offered in the hover box. */
+  crossView?: { label: string; onFocus: (node: GraphNode) => void }
+  /** Whether the control panel (the forces, the node scale) is offered. Default true. */
+  controls?: boolean
+  /** Whether the Auto / Light / Dark button is offered. Default true. */
+  themeToggle?: boolean
+  /** Added to the root's class list; the root keeps its own. */
+  className?: string
+  /** Merged onto the root's style; the scheme's variables stay. */
+  style?: React.CSSProperties
+
+  /** The selection per axis. Default: `defaultFilter(ontology, graph)`, seeded once. */
+  filter?: FilterState
+  onFilterChange?: (next: FilterState) => void
+  /** Which axes are pinned against a cross-view adoption. Default: none. */
+  pins?: PinState
+  onPinsChange?: (next: PinState) => void
+  /** The axes shown, in order. Default: every declared filter axis. Editable in the bar unless controlled without a callback. */
   chain?: readonly string[]
   onChainChange?: (next: readonly string[]) => void
-  searchQuery: string
-  searchActive: boolean
-  onSearchChange: (query: string, active: boolean) => void
-  pendingFocus: FocusTarget | null
-  onFocusConsumed: () => void
-  overriddenPins: Set<FilterDimension>
-  onOverriddenPinsConsumed: () => void
+  /** The search control. Default: closed and empty. */
+  search?: SearchState
+  onSearchChange?: (next: SearchState) => void
+  /** The pane's theme choice. Default: `system`. */
+  theme?: ThemeChoice
+  onThemeChange?: (next: ThemeChoice) => void
+
+  /** The selected node, or null when the selection clears. */
+  onSelectionChange?: (node: GraphNode | null) => void
+  /** A node double-clicked. */
+  onNodeActivate?: (node: GraphNode) => void
+  /** The node under the pointer, or null. */
+  onHover?: (node: GraphNode | null) => void
+  /** The theme the pane resolved to draw in — the choice, or the host's for `system`. */
+  onThemeResolved?: (theme: Theme) => void
 }
 
-// Graph-view filter entries — shared with the Tree view so the two bars agree
-// Graph views always show the same chip layout. See VIEW_FILTER_ENTRIES.
+const NO_FLASH: ReadonlySet<string> = new Set()
 
-export function GraphView({
-  active,
-  keyboard = 'pane',
+// A layout effect where there is a layout: on a server render there is none,
+// and React says so on the console for every `useLayoutEffect` it meets.
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect
+
+export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(function GraphView({
   graph: hostGraph,
+  ontology: ontologyProp,
+  keyboard = 'pane',
+  positions,
   counts: hostCounts,
   findings,
   groups,
   groupsControl,
   crossView,
-  filter,
-  onFilterChange,
-  pins,
-  onPinsChange,
-  chain: hostChain,
-  onChainChange,
-  searchQuery,
-  searchActive,
-  onSearchChange,
-  pendingFocus,
-  onFocusConsumed,
-  overriddenPins,
-  onOverriddenPinsConsumed, theme: themeChoice, onThemeChange,
-}: GraphViewProps) {
-  const ontology = useOntology()
-  // Filter state is driven by props from the host shell, and the axes this view
-  // filters on are the chain's, in order: an axis the host declared but this
-  // view does not show is not filtering here. A host that names no chain
-  // shows every declared axis.
-  const chain = React.useMemo(
-    () => hostChain ?? ontology.filterDimensions.map(d => d.id),
-    [hostChain, ontology],
-  )
+  controls = true,
+  themeToggle = true,
+  className,
+  style,
+  filter: filterProp, onFilterChange,
+  pins: pinsProp, onPinsChange,
+  chain: hostChain, onChainChange,
+  search: searchProp, onSearchChange,
+  theme: themeProp, onThemeChange,
+  onSelectionChange, onNodeActivate, onHover, onThemeResolved,
+}: GraphViewProps, ref) {
+  // The taxonomy: the prop, or the context. Neither is a wiring bug a
+  // default would hide, so it is said here, once, before any hook.
+  const fromContext = React.useContext(OntologyContext)
+  const ontology = ontologyProp ?? fromContext
+  if (!ontology) {
+    throw new Error('GraphView has no taxonomy: pass `ontology`, or mount it inside <OntologyContext.Provider value={…}>.')
+  }
+  // State the host may control or leave to the view: the filter, the pins,
+  // the chain of axes shown, the search control, the theme choice.
+  const [filter, setFilter] = useControllable(filterProp, onFilterChange, () => defaultFilter(ontology, hostGraph))
+  const [pins, setPins] = useControllable(pinsProp, onPinsChange, () => new Map<string, boolean>())
+  const [chain, setChain] = useControllable(hostChain, onChainChange, () => ontology.filterDimensions.map(d => d.id))
+  const chainEditable = hostChain === undefined || onChainChange !== undefined
+  const [search, setSearch] = useControllable(searchProp, onSearchChange, () => ({ query: '', active: false }))
+  const [themeChoice, setThemeChoice] = useControllable(themeProp, onThemeChange, () => 'system' as ThemeChoice)
+  const searchQuery = search.query
+  const searchActive = search.active
+  // The axes this view filters on are the chain's, in order: an axis the host
+  // declared but this view does not show is not filtering here.
   const filterAxes = React.useMemo(
     () => chain.flatMap(id => { const d = ontology.descriptorFor(id); return d ? [d] : [] }),
     [chain, ontology],
@@ -156,7 +214,7 @@ export function GraphView({
   // search results included.
   const toolbarRef = React.useRef<HTMLDivElement>(null)
   const [toolbarHeight, setToolbarHeight] = React.useState(0)
-  React.useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const el = toolbarRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
     const update = () => setToolbarHeight(el.getBoundingClientRect().height)
@@ -178,8 +236,10 @@ export function GraphView({
   // Reset camera/fps coordination on each sim rebuild. Held by useSimulation
   // and invoked from its build effect (selection reset is owned by useHighlight,
   // keyed on `graph`).
-  const onSimRebuild = React.useCallback(() => {
-    initialFitDone.current = false
+  // The camera refits after the first build only: a rebuild that carried the
+  // layout over keeps the user's pan and zoom.
+  const onSimRebuild = React.useCallback((continued: boolean) => {
+    if (!continued) initialFitDone.current = false
   }, [initialFitDone])
 
   // Simulation spine: the instance, version signal, running flag, forceParams,
@@ -197,7 +257,7 @@ export function GraphView({
     onNodeDragMove: handleNodeDragMove,
     onNodeDragEnd: handleNodeDragEnd,
     onToggleRunning: handleToggleRunning,
-  } = useSimulation(graph, onSimRebuild)
+  } = useSimulation(graph, ontology, positions, onSimRebuild)
 
 
   // The dense per-bucket tables the kernels read, resolved once per
@@ -238,12 +298,14 @@ export function GraphView({
     setNodeScale(prev => ({ ...prev, ...patch }))
   }, [])
 
-  // Clear pin-override flash after ~600ms so the visual flash plays once.
+  // The pins a focus overrode flash once, for 600 ms, then clear. The view's
+  // own state: a host never sees it.
+  const [flashPins, setFlashPins] = React.useState<ReadonlySet<string>>(NO_FLASH)
   React.useEffect(() => {
-    if (overriddenPins.size === 0) return
-    const timer = setTimeout(onOverriddenPinsConsumed, 600)
+    if (flashPins.size === 0) return
+    const timer = setTimeout(() => setFlashPins(NO_FLASH), 600)
     return () => clearTimeout(timer)
-  }, [overriddenPins, onOverriddenPinsConsumed])
+  }, [flashPins])
 
   // Stale-file cleanup is now owned by the host shell (it touches both views'
   // filters consistently when the AST changes).
@@ -251,7 +313,7 @@ export function GraphView({
   // Visible subgraph derived from the live sim (filter + edge graduation +
   // summaries + downstream-depth scores), recomputed on filter / sim-rebuild.
   const { visibleNodes, visibleEdges, visibleIds, edgeTypes, nodeSummaries, downstreamScores } =
-    useVisibleGraph(simRef, simVersion, filter, filterAxes)
+    useVisibleGraph(simRef, simVersion, filter, filterAxes, ontology)
 
   // Every visible edge's stroke, from the type the derivation resolved on the
   // edge's ORIGINAL endpoints, once, not per frame. An edge
@@ -308,7 +370,7 @@ export function GraphView({
     activePushBucket, setActivePushBucket,
     activeGravityBucket, setActiveGravityBucket,
     activePullEdge, setActivePullEdge,
-  } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph)
+  } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph, ontology)
 
   // The groups as drawn: the
   // host's, restricted to the visible set and coloured in order. Drives the
@@ -364,15 +426,32 @@ export function GraphView({
     visibleIds, visibleNodes, downstreamScores,
     filter, axes: filterAxes,
     hoveredNodeId, selectedNodeId,
-    containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
+    containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId, ontology,
   })
 
-  // Double-click node: center and zoom to neighbors
+  // What the host hears: the selection, the hover, a double-click and the
+  // resolved theme. Read through refs, so a host passing a fresh function
+  // each render is not re-notified of an unchanged value.
+  const onSelectionChangeRef = useLatest(onSelectionChange)
+  const onHoverRef = useLatest(onHover)
+  const onNodeActivateRef = useLatest(onNodeActivate)
+  const onThemeResolvedRef = useLatest(onThemeResolved)
+  React.useEffect(() => {
+    onSelectionChangeRef.current?.(selectedNodeId === null ? null : graph.nodes.get(selectedNodeId) ?? null)
+  }, [selectedNodeId]) // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    onHoverRef.current?.(hoveredNodeId === null ? null : graph.nodes.get(hoveredNodeId) ?? null)
+  }, [hoveredNodeId]) // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { onThemeResolvedRef.current?.(theme) }, [theme]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Double-click node: center and zoom to neighbors, and tell the host.
   const handleDoubleClickNode = React.useCallback((id: string) => {
     const sim = simRef.current
     if (!sim) return
     const node = sim.getNode(id)
     if (!node) return
+    const hostNode = graph.nodes.get(id)
+    if (hostNode) onNodeActivateRef.current?.(hostNode)
     const neighborIds = new Set<string>([id])
     for (const edge of sim.edges) {
       if (edge.sourceId === id) neighborIds.add(edge.targetId)
@@ -392,9 +471,9 @@ export function GraphView({
   // query is globally shared so clearing it on close affects both views.
   const toggleSearch = () => {
     if (searchActive) {
-      onSearchChange('', false)
+      setSearch({ query: '', active: false })
     } else {
-      onSearchChange(searchQuery, true)
+      setSearch({ query: searchQuery, active: true })
       setTimeout(() => searchInputRef.current?.focus(), 50)
     }
   }
@@ -439,34 +518,47 @@ export function GraphView({
     })
   }
 
-  // Focused node ID (for keyboard nav)
-  // Cross-view focus: the host shell's reconciler has already
-  // expanded the destination filter so the target is visible. We only
-  // arrange the visual focus part — set up the center-on-target ref
-  // and reheat the simulation if it had stabilized.
-  React.useEffect(() => {
-    if (!pendingFocus) return
-    const sim = simRef.current
-    if (sim) {
-      // Matched on whatever dimension values the host pinned the name with;
-      // this view never learns which axis that was.
-      const targetNode = sim.nodes.find(n => matchesFocus(n, pendingFocus))
-      if (targetNode) {
-        pendingCenterRef.current = { nodeId: targetNode.id }
-        if (!running) {
-          simRef.current?.reheat(0.1)
-          setRunning(true)
-        }
+  // What a host may ask of the mounted view. `focusNode` is the whole focus
+  // recipe: widen the filter just enough on the axes shown (a pin it
+  // overrides flashes), then centre on and select the node once the layout
+  // has settled — the loop consumes the request after its warm-up.
+  const visibleNodesRef = useLatest(visibleNodes)
+  React.useImperativeHandle(ref, () => ({
+    focusNode: (id: string) => {
+      const node = graph.nodes.get(id)
+      if (!node) return false
+      const target = { name: node.name, values: node.dimensions }
+      const result = reconcileFilter(filter, filter, pins, { kind: 'focus', target }, filterAxes)
+      if (result.filter !== filter) setFilter(result.filter)
+      if (result.overriddenPins.size > 0) setFlashPins(result.overriddenPins)
+      pendingCenterRef.current = { nodeId: id }
+      if (!running) {
+        simRef.current?.reheat(0.1)
+        setRunning(true)
       }
-    }
-    onFocusConsumed()
-  }, [pendingFocus]) // eslint-disable-line react-hooks/exhaustive-deps
+      return true
+    },
+    fit: () => fit(visibleNodesRef.current),
+    getPositions: () => new Map((simRef.current?.nodes ?? []).map(n => [n.id, { x: n.x, y: n.y }])),
+    setPositions: (next: ReadonlyMap<string, Position>) => {
+      const sim = simRef.current
+      if (!sim) return
+      for (const [id, p] of next) {
+        const n = sim.getNode(id)
+        if (!n || n.pinned) continue
+        n.x = p.x; n.y = p.y; n.vx = 0; n.vy = 0
+      }
+      sim.reheat(0.1)
+      setRunning(true)
+    },
+  }), [graph, filter, pins, filterAxes, setFilter, running, fit, setRunning, simRef, pendingCenterRef, visibleNodesRef])
 
   // Keyboard, scoped by `keyboard`: on the pane, the focusable root
-  // handles the keys that reach it; globally, the window does while this view
-  // is `active` — the hidden (inactive) view, kept mounted, never also handles
-  // them. A control keeps its own keys either way: Space on a button activates
-  // the button, not the simulation, and Tab from a control moves focus.
+  // handles the keys that reach it; globally, the window does — a tab shell
+  // passes `global` for its active tab and `none` for the hidden one, kept
+  // mounted. A control keeps its own keys either way: Space on a button
+  // activates the button, not the simulation, and Tab from a control moves
+  // focus.
   const handleKey = React.useCallback((e: KeyboardEvent) => {
     const target = e.target instanceof Element ? e.target : null
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
@@ -535,7 +627,7 @@ export function GraphView({
       case '/': {
         e.preventDefault()
         if (!searchActive) {
-          onSearchChange(searchQuery, true)
+          setSearch({ query: searchQuery, active: true })
           setTimeout(() => searchInputRef.current?.focus(), 50)
         } else {
           searchInputRef.current?.focus()
@@ -553,12 +645,12 @@ export function GraphView({
         break
       }
     }
-  }, [keyboard, visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, onSearchChange, shortcutsOpen, handleFitToView, handleToggleRunning]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [keyboard, visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, setSearch, shortcutsOpen, handleFitToView, handleToggleRunning]) // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-    if (keyboard !== 'global' || !active) return
+    if (keyboard !== 'global') return
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [keyboard, active, handleKey])
+  }, [keyboard, handleKey])
   const paneKeyDown = React.useCallback((e: React.KeyboardEvent) => handleKey(e.nativeEvent), [handleKey])
 
   const nodeCount = visibleNodes.length
@@ -572,14 +664,15 @@ export function GraphView({
   ) : null
 
   return (
+    <OntologyContext.Provider value={ontology}>
     <CanvasErrorBoundary what="graph view">
     <div
-      className="gv-graph-view"
+      className={`gv-graph-view${className ? ` ${className}` : ''}`}
       ref={containerRef}
       data-theme={theme}
       tabIndex={keyboard === 'pane' ? 0 : undefined}
       onKeyDown={keyboard === 'pane' ? paneKeyDown : undefined}
-      style={{ ...schemeStyle, ...(toolbarHeight ? { ['--gv-toolbar-height' as string]: `${toolbarHeight}px` } : {}) } as React.CSSProperties}
+      style={{ ...schemeStyle, ...(toolbarHeight ? { ['--gv-toolbar-height' as string]: `${toolbarHeight}px` } : {}), ...style } as React.CSSProperties}
     >
       {/* Canvas fills the full viewport beneath the floating overlay */}
       <div className="gv-graph-canvas-area">
@@ -638,18 +731,17 @@ export function GraphView({
         <div className="gv-graph-toolbar">
           <FilterBar
             counts={counts}
-            valuesByDimension={valuesByDimension}
+            values={valuesByDimension}
             filter={filter}
-            onFilterChange={onFilterChange}
+            onFilterChange={setFilter}
             pins={pins}
-            onPinsChange={onPinsChange}
+            onPinsChange={setPins}
             chain={chain}
-            onChainChange={onChainChange}
-            overriddenPins={overriddenPins}
+            onChainChange={chainEditable ? setChain : undefined}
+            overriddenPins={flashPins}
             recentlyChanged={recentlyChanged}
-            searchQuery={searchQuery}
-            searchActive={searchActive}
-            onSearchChange={onSearchChange}
+            search={search}
+            onSearchChange={setSearch}
             searchInputRef={searchInputRef}
             searchTitle="Search nodes (/)"
             searchPlaceholder="Search nodes..."
@@ -689,14 +781,16 @@ export function GraphView({
       {/* Bottom-center: simulation controls + live fps. */}
       <div className="gv-graph-bottom-center">
         <button className="gv-graph-toolbar-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
-        <button
-          className={`gv-graph-toolbar-btn${themeChoice === 'system' ? '' : ' active'}`}
-          onClick={() => onThemeChange(THEME_CHOICES[(THEME_CHOICES.indexOf(themeChoice) + 1) % THEME_CHOICES.length])}
-          title={`Colour scheme: ${themeChoice}${themeChoice === 'system' ? ` (${theme})` : ''} — click to change`}
-          aria-label="Colour scheme"
-        >
-          {themeChoice === 'system' ? 'Auto' : themeChoice === 'light' ? 'Light' : 'Dark'}
-        </button>
+        {themeToggle && (
+          <button
+            className={`gv-graph-toolbar-btn${themeChoice === 'system' ? '' : ' active'}`}
+            onClick={() => setThemeChoice(THEME_CHOICES[(THEME_CHOICES.indexOf(themeChoice) + 1) % THEME_CHOICES.length])}
+            title={`Colour scheme: ${themeChoice}${themeChoice === 'system' ? ` (${theme})` : ''} — click to change`}
+            aria-label="Colour scheme"
+          >
+            {themeChoice === 'system' ? 'Auto' : themeChoice === 'light' ? 'Light' : 'Dark'}
+          </button>
+        )}
         <button
           className={`gv-graph-toolbar-btn ${running ? 'active' : ''}`}
           onClick={handleToggleRunning}
@@ -710,7 +804,7 @@ export function GraphView({
       </div>
 
       {/* Control panel */}
-      <GraphControlPanel
+      {controls && <GraphControlPanel
         params={forceParams}
         resolved={resolved}
         onParamChange={handleParamChange}
@@ -726,7 +820,7 @@ export function GraphView({
         onActivePullEdge={setActivePullEdge}
         nodeScale={nodeScale}
         onNodeScaleChange={handleNodeScaleChange}
-      />
+      />}
 
       {/* The host's control for its groups (top-left), handed the groups as drawn. */}
       {groupsControl?.(activeGroups)}
@@ -754,8 +848,9 @@ export function GraphView({
       )}
     </div>
     </CanvasErrorBoundary>
+    </OntologyContext.Provider>
   )
-}
+})
 
 /** The pane's own findings about the host's graph: each with its code; errors name edges the view does not draw. */
 function GraphDiagnostics({ diagnostics }: { diagnostics: readonly GraphDiagnostic[] }) {
@@ -787,7 +882,7 @@ interface GraphHoverTooltipProps {
   copies: ReadonlyMap<string, ReadonlySet<string>>
   nodeSummaries: Map<string, string>
   // The host's cross-view action from the tooltip, when it offers one.
-  crossView?: { label: string; onFocus: (target: FocusTarget) => void }
+  crossView?: { label: string; onFocus: (node: GraphNode) => void }
   // The tooltip is interactive: these keep it open while the pointer is over
   // it (so the cross-view button is clickable).
   onMouseEnter: () => void
@@ -874,7 +969,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       {crossView && (
         <button
           className="gv-tooltip-cross-view"
-          onClick={() => crossView.onFocus({ name: node.name, values: node.dimensions })}
+          onClick={() => crossView.onFocus(node)}
           title={crossView.label}
         >
           {crossView.label}

@@ -11,7 +11,7 @@ import React from 'react'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
 import { highlightOf } from '../../graph/highlight'
-import { useOntology } from './useOntology'
+import type { Ontology } from '../../graph/ontology'
 
 import type { ForceSection } from '../GraphControlPanel'
 import type { GravityHover } from '../GravityControls'
@@ -45,8 +45,8 @@ export function useHighlight(
   // Changes whenever the underlying graph is rebuilt; clears selection so a
   // stale id never lingers across graphs (was inline in the sim-rebuild effect).
   resetKey: unknown,
+  ontology: Ontology,
 ): HighlightController {
-  const ontology = useOntology()
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null)
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)

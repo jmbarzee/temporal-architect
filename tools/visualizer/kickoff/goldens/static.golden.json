@@ -1,4 +1,46 @@
 {
+  "contractProbes": {
+    "graphShape": {
+      "edgeRemoved": false,
+      "parentChanged": false,
+      "same": true,
+      "structuralCopy": true,
+      "targetChanged": false
+    },
+    "groupColour": {
+      "g": "#123456",
+      "h": "#B45309"
+    },
+    "highlightDirection": {
+      "lit": {
+        "downstream": [
+          "a",
+          "b"
+        ],
+        "upstream": [
+          "a"
+        ]
+      },
+      "seen": [
+        "upstream",
+        "downstream"
+      ]
+    },
+    "positions": {
+      "kept": {
+        "a": [
+          11,
+          22
+        ],
+        "b": [
+          -5,
+          7
+        ]
+      },
+      "seededDiffers": true,
+      "seededIsFinite": true
+    }
+  },
   "defaultForceParams": {
     "alphaDecay": 0.005,
     "alphaMin": 0.0001,
@@ -1574,6 +1616,14 @@
       "service",
       "pod"
     ],
+    "ontologyProp": {
+      "panelAbsent": true,
+      "rootClass": "gv-graph-view probe-host",
+      "schemeKept": true,
+      "styleMerged": true,
+      "themeButtonAbsent": true,
+      "withoutProvider": true
+    },
     "podFill": "#336699",
     "rendered": {
       "canvas": true,
@@ -1591,7 +1641,8 @@
         "east",
         "west"
       ],
-      "files": []
+      "files": [],
+      "panelPresent": true
     },
     "scalar": {
       "c1": 0,
@@ -3093,6 +3144,16 @@
     "variableFor": "--gv-node-nexus-endpoint"
   },
   "seamProbes": {
+    "barFromGraph": {
+      "badges": {
+        "Activities": "9",
+        "Namespaces": "5",
+        "Nexus": "10",
+        "Workers": "5",
+        "Workflows": "8",
+        "nexus.twf": "37"
+      }
+    },
     "barRendered": {
       "badges": {
         "Activities": "9",

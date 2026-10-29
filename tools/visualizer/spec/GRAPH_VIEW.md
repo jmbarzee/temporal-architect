@@ -656,7 +656,7 @@ In both modes:
   3. **Duplicate-copies line** (only when the definition has more than one visible copy): `copy N of M`, where M is the number of sister copies currently visible. Makes the per-worker duplication explicit and tells the user the cross-canvas highlight on the other copies is intentional.
   4. Immediate connection counts: N outgoing ("depends on"), M incoming ("depended on by").
   5. Direction indicator: "dependencies" (default hover) or "dependents" (Shift held). Makes the Shift modifier's effect discoverable.
-  6. The host's **cross-view button** — in this host "Show in Tree", which invokes the `focus(target)` view transition to the Tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions); the label and the action are the host's (`crossView`). This is the graph's sole "Show in Tree" affordance. It is offered on every node, an endpoint or operation included, though those have no tree block of their own ([#183](https://github.com/jmbarzee/temporal-architect/issues/183)).
+  6. The host's **cross-view button** — in this host "Show in Tree", which invokes the `focus(target)` view transition to the Tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions); the label and the action are the host's (`crossView`), and the action is handed the node itself, so the host knows which deployment copy was clicked (D71). This is the graph's sole "Show in Tree" affordance. It is offered on every node, an endpoint or operation included, though those have no tree block of their own ([#183](https://github.com/jmbarzee/temporal-architect/issues/183)).
 
 The tooltip is **interactive**: it stays open while the pointer is over it (a short grace period bridges the gap as the pointer travels from the node onto the tooltip) so the Show in Tree button is clickable. Moving the pointer off both the node and the tooltip dismisses it.
 
@@ -876,7 +876,7 @@ See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Live Reload for the shared reloa
 
 The graph view supports keyboard navigation for node selection, viewport control, and interaction states.
 
-**Scope.** Where the keys listen is the host's choice, through the view's `keyboard` prop (D66). On the pane (the library's default), the pane is focusable, the keys below act while it or its canvas has focus, Tab cycles nodes only while the pane itself is focused, and Escape with nothing left to close returns focus to the host — so a host page keeps Tab and Space for its own controls. Globally — this host's choice, since the pane is the whole webview — the window listens while the Graph view is the active tab. In either scope a control keeps its own keys: Space on a button activates the button, not the simulation, and Tab from a control moves focus.
+**Scope.** Where the keys listen is the host's choice, through the view's `keyboard` prop (D66). On the pane (the library's default), the pane is focusable, the keys below act while it or its canvas has focus, Tab cycles nodes only while the pane itself is focused, and Escape with nothing left to close returns focus to the host — so a host page keeps Tab and Space for its own controls. Globally — this host's choice, since the pane is the whole webview — the window listens; the shell passes `global` while the Graph view is the active tab and `none` while it is the hidden one, kept mounted (D71). In either scope a control keeps its own keys: Space on a button activates the button, not the simulation, and Tab from a control moves focus.
 
 ### Key Bindings
 
