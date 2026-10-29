@@ -1,0 +1,32 @@
+# Course catalog — an example host
+
+A university course catalog drawn with `@temporal-architect/graph-view`:
+faculties contain departments, departments contain courses, courses contain
+labs. Prerequisite, co-requisite and recommended links cross the hierarchy, and
+only the edge's own `requirement` tells them apart. A cross-listed course
+(Biochemistry is both CHEM 310 and BIOL 310) is one node per listing, glowing
+together. Degree programmes are glow groups, and catalog errors are findings.
+
+The example imports only the package's public entry.
+
+## Run
+
+From `tools/graph-view`:
+
+```sh
+npx vite --config examples/course-catalog/vite.config.ts        # http://localhost:5179
+node_modules/.bin/tsc --noEmit -p examples/course-catalog/tsconfig.json
+```
+
+Add `?theme=dark` (or `light`) to the URL to pin the pane's theme.
+
+## What each file exercises
+
+| File | Library seam |
+|---|---|
+| `data.ts` | None. This is the domain data in its own shape. |
+| `ontology.ts` | `createOntology`. It declares a style axis (`entity`, which is also the allow-list filter), node styles with physics, edge types and `resolveEdgeType` over the `requirement` axis, two filter axes with opposite `emptyMeans` and `chipsFor`, payload scalars, `contextLine`, `highlight` and `fallbackStyle`. |
+| `graph.ts` | `Graph`. It writes `parentId` and the containment edge from one lookup, and also sets `RELATION_DIMENSION`, `definitionKey`, `duplicateGroups` and `orphan`. |
+| `App.tsx` | `GraphView` props, `OntologyContext`, `counts`, `findings`, `groups`/`groupsControl`, `crossView`, `reconcileFilter` with `pendingFocus` (Reveal), `withSelection`/`selectionFor`/`pinnedFor`, and `useHostTheme` + `schemeVars` for the shell's own chrome. |
+| `main.tsx` | `themeChoiceOf`. |
+| `app.css` | The library's tokens (`--color-*`, `--toolbar-height`) and the scheme's `--node-<value>`. |

@@ -191,14 +191,28 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
     })
   }
 
-  // --- Edges (containment + dispatch, both as-emitted) ---
+  // --- Edges (containment + dispatch), one per (caller, callee, kind) ---
+  //
+  // The parser emits one edge per call site; this graph answers "does X reach
+  // Y, and how" (GRAPH_VIEW.md § Edges), so repeated call sites fold into one
+  // edge here and the first keeps its routing payload as the representative.
+  // This fold is the host's: the library draws every edge it is given, two
+  // edges between one pair being two facts (D66). What is NOT folded is two
+  // kinds between one pair — a call and a signal both show.
+  const seenEdges = new Set<string>()
   for (const pe of parserGraph.edges) {
+    const key = `${pe.from}\u0000${pe.to}\u0000${pe.kind}`
+    if (seenEdges.has(key)) continue
+    seenEdges.add(key)
     const view = parserEdgeToViewEdge(pe, nodes, edgeSeq++)
     if (view) edges.push(view)
   }
 
   // --- Coarsened edges (worker-tier + namespace-tier dispatch projection) ---
   for (const ce of parserGraph.coarsenedEdges) {
+    const key = `${ce.from}\u0000${ce.to}\u0000coarsened`
+    if (seenEdges.has(key)) continue
+    seenEdges.add(key)
     const view = coarsenedEdgeToViewEdge(ce, nodes, edgeSeq++)
     if (view) edges.push(view)
   }

@@ -44,6 +44,7 @@ import {
   SOURCE_FILE_DIMENSION,
 } from '@temporal-architect/graph-view'
 import type {
+  GraphEdge,
   GraphNode,
   Highlight,
   HighlightGraph,
@@ -523,6 +524,14 @@ export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   scalars: [],
   contextLine: contextLineFor,
   highlight: highlightFor,
+  // Two graduated edges on one pair: the one carrying routing metadata
+  // survives, in either edge order, so an endpoint's highlight still finds
+  // the edge it routed. Every payload this host writes on a dependency edge
+  // is that metadata, so "carries a payload" is the whole test (D60, D66).
+  collapse: (kept, candidate) => {
+    const carries = (e: GraphEdge) => e.payload !== undefined && Object.keys(e.payload).length > 0
+    return carries(candidate) && !carries(kept) ? candidate : kept
+  },
   fallbackStyle: FALLBACK_NODE_STYLE,
 }
 

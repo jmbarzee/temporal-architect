@@ -175,6 +175,8 @@ interface GraphCanvasProps {
   /** The theme the pane draws in, and every visible edge's stroke, resolved once by the view (D57, T25). */
   theme: Theme
   edgeStrokes: ReadonlyMap<GraphEdge, EdgeStroke>
+  /** Lane offsets in screen pixels for edges that share a pair of endpoints, by edge id; absent means on the line (D66). */
+  edgeOffsets: ReadonlyMap<string, number>
   activeSection: ForceSection
   activePushBucket: string | null
   activeGravityBucket: GravityHover | null
@@ -182,6 +184,26 @@ interface GraphCanvasProps {
   nodeScale: NodeScaleParams
   // Decomposition group glow layer (drawn behind everything). Empty = no overlay.
   groupGlows: GroupGlow[]
+}
+
+/**
+ * Shift a segment sideways into its lane: parallel edges between one pair of
+ * nodes would otherwise draw on top of each other and read as one. The
+ * perpendicular is taken in a fixed orientation of the pair (lower id first),
+ * so the two directions of a pair take distinct lanes rather than the same
+ * one mirrored.
+ */
+function laneOffset(
+  edge: GraphEdge, offset: number, sx: number, sy: number, tx: number, ty: number,
+): [number, number, number, number] {
+  if (!offset) return [sx, sy, tx, ty]
+  const forward = edge.sourceId < edge.targetId
+  const dx = forward ? tx - sx : sx - tx
+  const dy = forward ? ty - sy : sy - ty
+  const len = Math.hypot(dx, dy) || 1
+  const nx = (-dy / len) * offset
+  const ny = (dx / len) * offset
+  return [sx + nx, sy + ny, tx + nx, ty + ny]
 }
 
 // All data the draw function needs, stored in a ref to avoid effect teardown
@@ -205,6 +227,7 @@ interface DrawData {
   overlay: BandOverlay
   theme: Theme
   edgeStrokes: ReadonlyMap<GraphEdge, EdgeStroke>
+  edgeOffsets: ReadonlyMap<string, number>
   activeSection: ForceSection
   activePushBucket: string | null
   activeGravityBucket: GravityHover | null
@@ -226,7 +249,7 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket,
+  running, forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket,
   activeGravityBucket, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
@@ -278,14 +301,14 @@ export function GraphCanvas({
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     ontology,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -524,8 +547,9 @@ export function GraphCanvas({
         const tgt = d.nodeMap.get(edge.targetId)
         if (!src || !tgt) continue
 
-        const [sx, sy] = worldToScreen(vp, src.x, src.y)
-        const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
+        const [sx0, sy0] = worldToScreen(vp, src.x, src.y)
+        const [tx0, ty0] = worldToScreen(vp, tgt.x, tgt.y)
+        const [sx, sy, tx, ty] = laneOffset(edge, d.edgeOffsets.get(edge.id) ?? 0, sx0, sy0, tx0, ty0)
 
         if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
           Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
@@ -686,8 +710,9 @@ export function GraphCanvas({
           const cat = springFor(d.resolved.spring, edge, src, tgt)
           if (activePullKey && cat.key !== activePullKey) continue
 
-          const [sx, sy] = worldToScreen(vp, src.x, src.y)
-          const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
+          const [sx0, sy0] = worldToScreen(vp, src.x, src.y)
+          const [tx0, ty0] = worldToScreen(vp, tgt.x, tgt.y)
+          const [sx, sy, tx, ty] = laneOffset(edge, d.edgeOffsets.get(edge.id) ?? 0, sx0, sy0, tx0, ty0)
           if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
             Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 

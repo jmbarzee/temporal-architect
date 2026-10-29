@@ -1,0 +1,70 @@
+/* The shell's own chrome. It reads the library's tokens (--color-*, --font-*,
+   --accent) and the scheme's per-value variables (--node-<value>). */
+
+html, body, #root { height: 100%; margin: 0; }
+
+.catalog-app {
+  height: 100%;
+  display: flex;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+.catalog-app[data-theme="dark"] { color-scheme: dark; }
+
+/* GraphView fills a flex column with a definite height. */
+.catalog-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.catalog-muted { color: var(--color-text-muted); }
+
+.catalog-findings {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #92400E;
+  background: #FEF3C7;
+  border-top: 1px solid var(--color-border);
+}
+[data-theme="dark"] .catalog-findings { color: #FCD34D; background: #3A2A0C; }
+.catalog-findings summary { cursor: pointer; }
+.catalog-findings ul { margin: 6px 0 2px; padding-left: 18px; }
+
+/* Rendered inside the pane, which publishes its toolbar's height. Below the
+   overlay (z 10), so the search results drop over it. */
+.catalog-legend {
+  position: absolute;
+  top: calc(var(--toolbar-height, 0px) + 12px);
+  left: 12px;
+  z-index: 9;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: var(--tooltip-shadow);
+}
+.catalog-legend-title { font-weight: 600; margin-bottom: 4px; }
+.catalog-legend-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+.catalog-swatch { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--color-border); }
+
+.catalog-details {
+  position: relative;
+  width: 300px;
+  flex: none;
+  padding: 16px;
+  overflow: auto;
+  font-size: 13px;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+}
+.catalog-details h2 { margin: 2px 0 12px; font-size: 18px; }
+.catalog-details h3 { margin: 16px 0 6px; font-size: 13px; }
+.catalog-details dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 12px; }
+.catalog-details dt { color: var(--color-text-muted); }
+.catalog-details dd { margin: 0; }
+.catalog-close { position: absolute; top: 8px; right: 8px; border: none; background: none; font-size: 18px; color: inherit; cursor: pointer; }
+.catalog-requires { list-style: none; margin: 0; padding: 0; }
+.catalog-requires li { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+.catalog-requires button { margin-left: auto; }
+.catalog-req { font-size: 11px; padding: 1px 6px; border-radius: 8px; border: 1px solid var(--color-border); }
+.catalog-req-prerequisite { color: var(--node-course); border-color: var(--node-course); }
+.catalog-missing { margin-left: auto; color: #B91C1C; font-size: 11px; }

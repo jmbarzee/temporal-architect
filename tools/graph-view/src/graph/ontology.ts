@@ -135,6 +135,8 @@ export interface Ontology {
    * denormalized copy goes stale the moment graduation re-points an edge.
    */
   resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
+  /** Which of two graduated edges on one visible pair survives (D66): the host's choice, or the one kept so far. */
+  collapse(kept: GraphEdge, candidate: GraphEdge): GraphEdge
 }
 
 /** What a host declares in order to build one. */
@@ -172,6 +174,15 @@ export interface OntologySpec {
    * replace it. Absent, the walk is the highlight.
    */
   highlight?: (active: GraphNode, base: Highlight, graph: HighlightGraph) => Highlight
+  /**
+   * When two dependency edges each lose an end to a hidden node and come to
+   * run between the same two visible nodes, which of the two originals the
+   * drawn edge stands for (D66). Both arguments are the host's own edges, so
+   * a host whose edges carry routing metadata may prefer the one that does.
+   * Absent, the one met first in the host's edge order is kept. Two edges
+   * whose ends are both visible are never collapsed.
+   */
+  collapse?: (kept: GraphEdge, candidate: GraphEdge) => GraphEdge
   /**
    * Returned for a key the host did not declare. Required, not optional: a
    * taxonomy that cannot say what an unknown value looks like has no answer for
@@ -296,6 +307,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     // — this runs per node per frame in the draw loop.
     resolveNodeStyle: subject => styleForKey(valueFor(subject)),
     resolveEdgeType: spec.resolveEdgeType,
+    collapse: spec.collapse ?? (kept => kept),
     contextLine: spec.contextLine ?? ((_node, parent) => parent?.name),
     highlight: spec.highlight ?? ((_active, base) => base),
   }

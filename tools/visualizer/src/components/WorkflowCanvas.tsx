@@ -517,6 +517,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
           <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
             <GraphView
               active={activeView === 'graph'}
+              keyboard="global"
               graph={model.graph}
               counts={graphCounts}
               findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} />}

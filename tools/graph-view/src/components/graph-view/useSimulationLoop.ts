@@ -8,6 +8,7 @@
 import type { FilterState } from '../../filter/types'
 import { selectionFor } from '../../filter/types'
 import { foldReheatPolicy } from '../../graph/dimension'
+import type { DimensionDescriptor } from '../../graph/dimension'
 import { passesFilter } from './visibleGraph'
 import React from 'react'
 import type { Simulation, SimNode } from '../../graph/simulation'
@@ -23,6 +24,8 @@ export interface SimulationLoopParams {
   visibleNodes: SimNode[]
   downstreamScores: Map<string, number>
   filter: FilterState
+  /** The axes the view filters on — its chain (D66); a change elsewhere in the filter moves nothing here. */
+  axes: readonly DimensionDescriptor[]
   hoveredNodeId: string | null
   selectedNodeId: string | null
   containerRef: React.RefObject<HTMLDivElement>
@@ -35,7 +38,7 @@ export interface SimulationLoopParams {
 export function useSimulationLoop({
   simRef, running, setRunning,
   visibleIds, visibleNodes, downstreamScores,
-  filter,
+  filter, axes,
   hoveredNodeId, selectedNodeId,
   containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
 }: SimulationLoopParams): { fps: number } {
@@ -144,7 +147,7 @@ export function useSimulationLoop({
     if (!sim) { prevFilter.current = filter; return }
 
     const { alpha, seedRevealed, refit, resume } = foldReheatPolicy(
-      ontology.filterDimensions.filter(
+      axes.filter(
         dim => selectionFor(prev, dim.id) !== selectionFor(filter, dim.id),
       ),
     )
@@ -152,13 +155,13 @@ export function useSimulationLoop({
     if (alpha > 0) {
       if (seedRevealed) {
         for (const node of sim.nodes) {
-          if (!passesFilter(node, filter, ontology)) continue
-          if (passesFilter(node, prev, ontology)) continue
+          if (!passesFilter(node, filter, ontology, axes)) continue
+          if (passesFilter(node, prev, ontology, axes)) continue
           let ancestorId = node.parentId
           while (ancestorId) {
             const ancestor = sim.getNode(ancestorId)
             if (!ancestor) break
-            if (passesFilter(ancestor, filter, ontology)) {
+            if (passesFilter(ancestor, filter, ontology, axes)) {
               sim.seedAt(node.id, ancestor.x, ancestor.y)
               break
             }

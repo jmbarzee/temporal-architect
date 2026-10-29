@@ -1290,6 +1290,92 @@
       "s2": 0
     }
   },
+  "integrityProbes": {
+    "chainScope": {
+      "zoneChained": [
+        "b1",
+        "x",
+        "y"
+      ],
+      "zoneUnchained": [
+        "b1",
+        "b2",
+        "x",
+        "y",
+        "z"
+      ]
+    },
+    "graduatedCollapse": {
+      "firstWins": {
+        "edges": [
+          "grad:b1→b2: b1 -> b2"
+        ],
+        "types": {
+          "grad:b1→b2": "calls"
+        }
+      },
+      "preferSignals": {
+        "edges": [
+          "grad:b1→b2: b1 -> b2"
+        ],
+        "types": {
+          "grad:b1→b2": "signals"
+        }
+      }
+    },
+    "groupColours": {
+      "dark": {
+        "g1": "#2DD4BF",
+        "g3": "#A78BFA"
+      },
+      "light": {
+        "g1": "#0F766E",
+        "g3": "#6D28D9"
+      }
+    },
+    "parallelEdges": {
+      "edges": [
+        "c1: x -> b1",
+        "c2: y -> b1",
+        "c3: z -> b2",
+        "xy-call: x -> y",
+        "xy-signal: x -> y",
+        "xz: x -> z",
+        "yx: y -> x",
+        "yz: y -> z"
+      ],
+      "types": {
+        "c1": "contains",
+        "c2": "contains",
+        "c3": "contains",
+        "xy-call": "calls",
+        "xy-signal": "signals",
+        "xz": "calls",
+        "yx": "calls",
+        "yz": "signals"
+      }
+    },
+    "validation": {
+      "cleanGraphIsSame": true,
+      "diagnostics": [
+        "error edge-endpoint-missing missing",
+        "error edge-id-duplicate ok",
+        "error edge-relation-unknown friend",
+        "error edge-type-category-mismatch cw",
+        "error edge-type-undeclared bogus",
+        "error parent-missing y",
+        "warning node-value-undeclared q",
+        "warning parent-edge-missing q"
+      ],
+      "drawnEdges": [
+        "c1: x -> b1",
+        "ok: x -> w"
+      ],
+      "parentsCleared": [
+        "y"
+      ]
+    }
+  },
   "nodeTypes": {
     "activity": {
       "defType": "activityDef",
@@ -3010,7 +3096,7 @@
         "strength": 1
       },
       {
-        "color": "#F59E0B",
+        "color": "#A78BFA",
         "id": "c",
         "nodeIds": [
           "n3"
@@ -3018,7 +3104,7 @@
         "strength": 2.2
       },
       {
-        "color": "#A78BFA",
+        "color": "#34D399",
         "id": "e",
         "nodeIds": [
           "n1"
@@ -3246,13 +3332,13 @@
           "linkEndpointToNamespace|containment|ep -> ns",
           "linkNsToWorker|containment|wk -> ns",
           "linkNsToWorker|containment|wkB -> ns",
+          "linkSignalSend|dependency|caller -> backing",
           "linkWorkerToActivity|containment|act -> wk",
           "linkWorkerToActivity|containment|actCopy -> wkB",
           "linkWorkerToNexus|containment|svc -> wk",
           "linkWorkerToWorkflow|containment|backing -> wkB",
           "linkWorkerToWorkflow|containment|caller -> wk",
-          "linkWorkflowToActivity|dependency|caller -> act",
-          "linkWorkflowToWorkflow|dependency|caller -> backing"
+          "linkWorkflowToActivity|dependency|caller -> act"
         ],
         "nodeSummaries": {
           "act": "←1",

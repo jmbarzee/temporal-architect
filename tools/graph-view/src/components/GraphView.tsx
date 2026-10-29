@@ -36,11 +36,20 @@ import { useHighlight } from './graph-view/useHighlight'
 import { useSimulation } from './graph-view/useSimulation'
 import { useVisibleGraph } from './graph-view/useVisibleGraph'
 import { useSimulationLoop } from './graph-view/useSimulationLoop'
+import { validateGraph, dropInvalid } from '../graph/validate'
+import type { GraphDiagnostic } from '../graph/validate'
 
 interface GraphViewProps {
   // Whether this view is the active tab. Both views stay mounted (keep-alive),
   // so the inactive one must not respond to global keyboard shortcuts.
   active: boolean
+  /**
+   * Where the pane's shortcuts listen (D66). `pane`: the root is focusable and
+   * handles the keys that reach it, so a host page keeps Tab and Space for its
+   * own controls. `global`: the window, while `active` — for a host whose
+   * whole page is this pane. `none`: no shortcuts.
+   */
+  keyboard?: 'pane' | 'global' | 'none'
   /** The graph, built by the host from whatever it reads. */
   graph: Graph
   /** Chip badge counts per axis and value — the host's reading of its own data. */
@@ -76,7 +85,8 @@ interface GraphViewProps {
 
 export function GraphView({
   active,
-  graph,
+  keyboard = 'pane',
+  graph: hostGraph,
   counts,
   findings,
   groups,
@@ -97,8 +107,18 @@ export function GraphView({
   onOverriddenPinsConsumed, theme: themeChoice, onThemeChange,
 }: GraphViewProps) {
   const ontology = useOntology()
-  // Filter state is now driven by props from the host shell (spec § Filter
-  // State Model). Read the two structural dimensions through `filter`.
+  // Filter state is driven by props from the host shell (spec § Filter State
+  // Model), and the axes this view filters on are the chain's, in order: an
+  // axis the host declared but this view does not show is not filtering here
+  // (D44, D66).
+  const filterAxes = React.useMemo(
+    () => chain.flatMap(id => { const d = ontology.descriptorFor(id); return d ? [d] : [] }),
+    [chain, ontology],
+  )
+  // The host's graph, checked once (D66): every defect named, the edges an
+  // error names left out of what is drawn, the list shown under the bar.
+  const diagnostics = React.useMemo(() => validateGraph(hostGraph, ontology), [hostGraph, ontology])
+  const graph = React.useMemo(() => dropInvalid(hostGraph, diagnostics), [hostGraph, diagnostics])
 
   // --- Core state ---
   // Camera (viewport transform, container ref, fit/center coordination).
@@ -115,10 +135,11 @@ export function GraphView({
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
 
-  // The toolbar (filter chips + file row + search + error/warning bars) floats
-  // over the full-bleed canvas, and its height is dynamic (it grows when error
-  // bars expand or chips wrap). Measure it so the Groups modal can sit just
-  // below it instead of guessing with a magic offset that the toolbar outgrows.
+  // The overlay (filter chips, search, the host's findings, the pane's
+  // diagnostics, the search results) floats over the full-bleed canvas, and
+  // its height is dynamic. It is measured whole, so a host control anchored
+  // at `--toolbar-height` sits under everything the overlay shows, the open
+  // search results included (D66).
   const toolbarRef = React.useRef<HTMLDivElement>(null)
   const [toolbarHeight, setToolbarHeight] = React.useState(0)
   React.useLayoutEffect(() => {
@@ -215,20 +236,40 @@ export function GraphView({
 
   // Visible subgraph derived from the live sim (filter + edge graduation +
   // summaries + downstream-depth scores), recomputed on filter / sim-rebuild.
-  const { visibleNodes, visibleEdges, visibleIds, nodeSummaries, downstreamScores } =
-    useVisibleGraph(simRef, simVersion, filter)
+  const { visibleNodes, visibleEdges, visibleIds, edgeTypes, nodeSummaries, downstreamScores } =
+    useVisibleGraph(simRef, simVersion, filter, filterAxes)
 
-  // Every visible edge's stroke, resolved here once from the taxonomy's one
-  // classifier (D57), not per frame (T25).
+  // Every visible edge's stroke, from the type the derivation resolved on the
+  // edge's ORIGINAL endpoints (D57, D66), once, not per frame (T25). An edge
+  // whose type the taxonomy does not declare has no entry and draws neutral;
+  // `validateGraph` has already named it.
   const edgeStrokes = React.useMemo(() => {
     const strokes = new Map<GraphEdge, EdgeStroke>()
     for (const edge of visibleEdges) {
-      const src = getSimNode(edge.sourceId)
-      const tgt = getSimNode(edge.targetId)
-      strokes.set(edge, ontology.edgeStrokeFor(ontology.resolveEdgeType(edge, src && ontology.valueFor(src), tgt && ontology.valueFor(tgt))))
+      const type = edgeTypes.get(edge.id)
+      if (type !== undefined) strokes.set(edge, ontology.edgeStrokeFor(type))
     }
     return strokes
-  }, [visibleEdges, ontology, getSimNode])
+  }, [visibleEdges, edgeTypes, ontology])
+
+  // Parallel dependency edges — two or more between one pair of visible nodes,
+  // kept apart since D66 — take lanes a few pixels either side of the line so
+  // both read. One pass per visible set.
+  const edgeOffsets = React.useMemo(() => {
+    const byPair = new Map<string, string[]>()
+    for (const e of visibleEdges) {
+      if (isContainment(e)) continue
+      const key = e.sourceId < e.targetId ? `${e.sourceId}|${e.targetId}` : `${e.targetId}|${e.sourceId}`
+      const list = byPair.get(key)
+      if (list) list.push(e.id); else byPair.set(key, [e.id])
+    }
+    const out = new Map<string, number>()
+    for (const ids of byPair.values()) {
+      if (ids.length < 2) continue
+      ids.forEach((id, i) => out.set(id, (i - (ids.length - 1) / 2) * 7))
+    }
+    return out
+  }, [visibleEdges])
 
   // What the controls offer: only what the post-filter visible set holds
   // (R35, D59) — one function, `presentSetsOf`, that the harness calls too.
@@ -258,7 +299,7 @@ export function GraphView({
   // The groups as drawn (GRAPH_VIEW.md § Decomposition Group Overlay): the
   // host's, restricted to the visible set and coloured in order. Drives the
   // canvas glow and the host's control.
-  const activeGroups = React.useMemo(() => activeGroupsOf(groups ?? [], visibleIds), [groups, visibleIds])
+  const activeGroups = React.useMemo(() => activeGroupsOf(groups ?? [], visibleIds, theme), [groups, visibleIds, theme])
 
   // Canvas glow set: the active groups with the group under the hovered/selected
   // node strengthened, so one group surfaces from many faint ones as the pointer
@@ -290,7 +331,7 @@ export function GraphView({
       if (!node.name.toLowerCase().includes(lq)) continue
       if (visibleIds.has(node.id)) { visible.add(node.id); continue }
       hidden++
-      const failing = ontology.filterDimensions.find(d => !passesSelection(filter, [d], dim => ontology.valueOn(node, dim)))
+      const failing = filterAxes.find(d => !passesSelection(filter, [d], dim => ontology.valueOn(node, dim)))
       const value = failing ? ontology.valueOn(node, failing.id) : undefined
       if (!failing || value === undefined) continue
       const tally = byAxis.get(failing.id) ?? new Map<string, number>()
@@ -298,7 +339,7 @@ export function GraphView({
       byAxis.set(failing.id, tally)
     }
     return { visibleMatchIds: visible, hiddenMatchCount: hidden, hiddenMatches: byAxis }
-  }, [searchQuery, visibleIds, filter, ontology])
+  }, [searchQuery, visibleIds, filter, filterAxes, ontology])
 
   // Physics loop + filter-driven reheats. Owns the RAF tick (with one-shot
   // initial fit, cross-view center, fps, and stability stop), the hover tooltip
@@ -307,7 +348,7 @@ export function GraphView({
   const { fps } = useSimulationLoop({
     simRef, running, setRunning,
     visibleIds, visibleNodes, downstreamScores,
-    filter,
+    filter, axes: filterAxes,
     hoveredNodeId, selectedNodeId,
     containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
   })
@@ -407,91 +448,104 @@ export function GraphView({
     onFocusConsumed()
   }, [pendingFocus]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keyboard navigation. Gated on `active` so the hidden (inactive) view —
-  // both views stay mounted for keep-alive — doesn't also handle shortcuts.
-  React.useEffect(() => {
-    if (!active) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+  // Keyboard, scoped by `keyboard` (D66): on the pane, the focusable root
+  // handles the keys that reach it; globally, the window does while this view
+  // is `active` — the hidden (inactive) view, kept mounted, never also handles
+  // them. A control keeps its own keys either way: Space on a button activates
+  // the button, not the simulation, and Tab from a control moves focus.
+  const handleKey = React.useCallback((e: KeyboardEvent) => {
+    const target = e.target instanceof Element ? e.target : null
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
+    const onControl = target !== null && target !== containerRef.current &&
+      target.closest('button, select, a, [contenteditable], [role="tab"]') !== null
+    if (onControl && e.key !== 'Escape') return
 
-      switch (e.key) {
-        case 'Tab': {
-          e.preventDefault()
-          const count = visibleNodes.length
-          if (count === 0) return
-          if (e.shiftKey) {
-            setFocusedIndex(prev => prev > 0 ? prev - 1 : count - 1)
-          } else {
-            setFocusedIndex(prev => prev < count - 1 ? prev + 1 : 0)
-          }
-          break
+    switch (e.key) {
+      case 'Tab': {
+        // On the pane, Tab cycles nodes only while the pane itself is focused;
+        // from anywhere else it moves focus as it always does.
+        if (keyboard === 'pane' && target !== containerRef.current) return
+        e.preventDefault()
+        const count = visibleNodes.length
+        if (count === 0) return
+        if (e.shiftKey) {
+          setFocusedIndex(prev => prev > 0 ? prev - 1 : count - 1)
+        } else {
+          setFocusedIndex(prev => prev < count - 1 ? prev + 1 : 0)
         }
-        case 'Enter': {
-          e.preventDefault()
-          if (focusedNodeId) setSelectedNodeId(focusedNodeId)
-          break
+        break
+      }
+      case 'Enter': {
+        e.preventDefault()
+        if (focusedNodeId) setSelectedNodeId(focusedNodeId)
+        break
+      }
+      case 'Escape': {
+        e.preventDefault()
+        if (shortcutsOpen) { setShortcutsOpen(false); break }
+        if (searchActive) { toggleSearch(); break }
+        if (selectedNodeId) { setSelectedNodeId(null); break }
+        // Nothing left to close: on the pane, give focus back to the host.
+        if (keyboard === 'pane') containerRef.current?.blur()
+        break
+      }
+      case 'ArrowLeft':
+      case 'ArrowRight':
+      case 'ArrowUp':
+      case 'ArrowDown': {
+        e.preventDefault()
+        const PAN_STEP = 30
+        const dx = e.key === 'ArrowLeft' ? PAN_STEP : e.key === 'ArrowRight' ? -PAN_STEP : 0
+        const dy = e.key === 'ArrowUp' ? PAN_STEP : e.key === 'ArrowDown' ? -PAN_STEP : 0
+        setViewport(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }))
+        break
+      }
+      case '+':
+      case '=': {
+        e.preventDefault()
+        setViewport(prev => zoomAt(prev, (containerRef.current?.clientWidth ?? 400) / 2, (containerRef.current?.clientHeight ?? 400) / 2, 1.15))
+        break
+      }
+      case '-':
+      case '_': {
+        e.preventDefault()
+        setViewport(prev => zoomAt(prev, (containerRef.current?.clientWidth ?? 400) / 2, (containerRef.current?.clientHeight ?? 400) / 2, 0.85))
+        break
+      }
+      case 'f':
+      case 'F': {
+        e.preventDefault()
+        handleFitToView()
+        break
+      }
+      case '/': {
+        e.preventDefault()
+        if (!searchActive) {
+          onSearchChange(searchQuery, true)
+          setTimeout(() => searchInputRef.current?.focus(), 50)
+        } else {
+          searchInputRef.current?.focus()
         }
-        case 'Escape': {
-          e.preventDefault()
-          if (shortcutsOpen) { setShortcutsOpen(false); break }
-          if (searchActive) { toggleSearch(); break }
-          if (selectedNodeId) { setSelectedNodeId(null); break }
-          break
-        }
-        case 'ArrowLeft':
-        case 'ArrowRight':
-        case 'ArrowUp':
-        case 'ArrowDown': {
-          e.preventDefault()
-          const PAN_STEP = 30
-          const dx = e.key === 'ArrowLeft' ? PAN_STEP : e.key === 'ArrowRight' ? -PAN_STEP : 0
-          const dy = e.key === 'ArrowUp' ? PAN_STEP : e.key === 'ArrowDown' ? -PAN_STEP : 0
-          setViewport(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }))
-          break
-        }
-        case '+':
-        case '=': {
-          e.preventDefault()
-          setViewport(prev => zoomAt(prev, (containerRef.current?.clientWidth ?? 400) / 2, (containerRef.current?.clientHeight ?? 400) / 2, 1.15))
-          break
-        }
-        case '-':
-        case '_': {
-          e.preventDefault()
-          setViewport(prev => zoomAt(prev, (containerRef.current?.clientWidth ?? 400) / 2, (containerRef.current?.clientHeight ?? 400) / 2, 0.85))
-          break
-        }
-        case 'f':
-        case 'F': {
-          e.preventDefault()
-          handleFitToView()
-          break
-        }
-        case '/': {
-          e.preventDefault()
-          if (!searchActive) {
-            onSearchChange(searchQuery, true)
-            setTimeout(() => searchInputRef.current?.focus(), 50)
-          } else {
-            searchInputRef.current?.focus()
-          }
-          break
-        }
-        case ' ': {
-          e.preventDefault()
-          handleToggleRunning()
-          break
-        }
-        case '?': {
-          e.preventDefault()
-          setShortcutsOpen(prev => !prev)
-          break
-        }
+        break
+      }
+      case ' ': {
+        e.preventDefault()
+        handleToggleRunning()
+        break
+      }
+      case '?': {
+        e.preventDefault()
+        setShortcutsOpen(prev => !prev)
+        break
       }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [active, visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, onSearchChange, shortcutsOpen, handleFitToView, handleToggleRunning])
+  }, [keyboard, visibleNodes, focusedNodeId, selectedNodeId, searchActive, searchQuery, onSearchChange, shortcutsOpen, handleFitToView, handleToggleRunning]) // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    if (keyboard !== 'global' || !active) return
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [keyboard, active, handleKey])
+  const paneKeyDown = React.useCallback((e: React.KeyboardEvent) => handleKey(e.nativeEvent), [handleKey])
 
   const nodeCount = visibleNodes.length
   const edgeCount = visibleEdges.length
@@ -504,10 +558,13 @@ export function GraphView({
   ) : null
 
   return (
+    <CanvasErrorBoundary what="graph view">
     <div
       className="graph-view"
       ref={containerRef}
       data-theme={theme}
+      tabIndex={keyboard === 'pane' ? 0 : undefined}
+      onKeyDown={keyboard === 'pane' ? paneKeyDown : undefined}
       style={{ ...schemeStyle, ...(toolbarHeight ? { ['--toolbar-height' as string]: `${toolbarHeight}px` } : {}) } as React.CSSProperties}
     >
       {/* Canvas fills the full viewport beneath the floating overlay */}
@@ -536,6 +593,7 @@ export function GraphView({
             overlay={overlay}
             theme={theme}
             edgeStrokes={edgeStrokes}
+            edgeOffsets={edgeOffsets}
             activeSection={activeSection}
             activePushBucket={activePushBucket}
             activeGravityBucket={activeGravityBucket}
@@ -559,11 +617,11 @@ export function GraphView({
         />
       </div>
 
-      {/* Floating overlay: shared filter bar (with the error/warning bars) */}
-      <div className="graph-overlay">
-        {/* Measured wrapper: its height drives where the Groups modal sits, so
-            the modal tracks the real toolbar bottom (not a fixed offset). */}
-        <div className="graph-toolbar" ref={toolbarRef}>
+      {/* Floating overlay: the shared filter bar (with the host's findings), the
+          pane's own diagnostics, the search results. Measured whole: its height
+          is `--toolbar-height`, where a host control anchors (D66). */}
+      <div className="graph-overlay" ref={toolbarRef}>
+        <div className="graph-toolbar">
           <FilterBar
             counts={counts}
             valuesByDimension={valuesByDimension}
@@ -586,6 +644,8 @@ export function GraphView({
             findings={findings}
           />
         </div>
+
+        {diagnostics.length > 0 && <GraphDiagnostics diagnostics={diagnostics} />}
 
         {/* Search results dropdown */}
         {visibleMatchIds && visibleMatchIds.size > 0 && searchActive && (
@@ -679,6 +739,26 @@ export function GraphView({
         </div>
       )}
     </div>
+    </CanvasErrorBoundary>
+  )
+}
+
+/** The pane's own findings about the host's graph (D66): each with its code; errors name edges the view does not draw. */
+function GraphDiagnostics({ diagnostics }: { diagnostics: readonly GraphDiagnostic[] }) {
+  const errors = diagnostics.filter(d => d.severity === 'error').length
+  const warnings = diagnostics.length - errors
+  const parts: string[] = []
+  if (errors > 0) parts.push(`${errors} graph error${errors === 1 ? '' : 's'}`)
+  if (warnings > 0) parts.push(`${warnings} graph warning${warnings === 1 ? '' : 's'}`)
+  return (
+    <details className={`graph-diagnostics${errors > 0 ? ' has-errors' : ''}`} role={errors > 0 ? 'alert' : undefined}>
+      <summary>{parts.join(', ')}{errors > 0 ? ' — the edges named are not drawn' : ''}</summary>
+      <ul>
+        {diagnostics.map((d, i) => (
+          <li key={i} className={`graph-diagnostic ${d.severity}`}><code>{d.code}</code>{d.message}</li>
+        ))}
+      </ul>
+    </details>
   )
 }
 

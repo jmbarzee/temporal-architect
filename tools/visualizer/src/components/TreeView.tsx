@@ -241,8 +241,11 @@ export function TreeView({
     // dimension map. This used to be a second hand-written implementation of
     // both axes' empty/absent semantics, so a descriptor change moved the graph
     // and left the tree behind.
+    // Only the axes this view shows filter (D66): the chain's descriptors, as
+    // in the graph view.
+    const axes = chain.flatMap(id => { const d = ontology.descriptorFor(id); return d ? [d] : [] })
     const filtered = ast.definitions.filter((def): def is Definition =>
-      passesSelection(filter, ontology.filterDimensions, dim =>
+      passesSelection(filter, axes, dim =>
         dim === DEF_TYPE_DIMENSION ? def.type
         : dim === SOURCE_FILE_DIMENSION ? def.sourceFile
         : undefined))
@@ -254,7 +257,7 @@ export function TreeView({
     })
 
     return filtered
-  }, [ast.definitions, filter])
+  }, [ast.definitions, filter, chain, ontology])
 
   // Search matches against the *visible* definition set. Matches outside
   // the visible set (hidden by file/type filters) are surfaced as

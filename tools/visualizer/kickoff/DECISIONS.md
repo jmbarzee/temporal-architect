@@ -2090,3 +2090,81 @@ once, by me, and the review read it against the code three more times.
 **Golden change (§8.2).** None.
 
 — 2026-10-22 — agent
+
+**D66 — Unit 10, the defects the three readings found, fixed without
+changing the surface's shape (API_WORK.md Set 1).** Six behaviours the
+library had that no host could work around, each pinned by a probe on a
+taxonomy of its own (`static.integrityProbes`), and one fold that belongs to
+the first host.
+
+1. **Two edges between two visible nodes are two edges.** The visible-graph
+   derivation keyed every dependency edge by its endpoint pair, visible ends
+   included, so a call and a signal between the same two workflows drew as
+   one, and which one depended on whether its payload was non-empty — the
+   library reading the payload it promised never to read. Now an edge whose
+   ends are both visible is drawn as given, with its own id, and parallel
+   edges take lanes seven pixels apart. Only graduated edges collapse, per
+   pair, and which survives is the taxonomy's new optional `collapse(kept,
+   candidate)` hook — the host's edges in, the host's choice out; absent, the
+   one met first. An original edge between two visible nodes stands for every
+   projection that lands on its pair: at a coarse tier the parser's coarsened
+   edge is drawn, not a re-derivation of the same calls beside it. The first
+   host's hook keeps the edge carrying routing metadata, in either order,
+   which is D60's rule said by the host that owns the payload.
+2. **The first host folds repeated call sites itself.** The parser emits one
+   edge per call site (stress: 47 repeats of a pair and kind among 156 edges;
+   decomposition: 31 among 105), and the view's pair key had been folding them
+   by accident — doubling the spring between a workflow and an activity it
+   calls twice. `build.ts` folds edges of one (caller, callee, kind) and keeps
+   the first call site's routing payload; the library draws what it is given.
+3. **Every edge is classified once, on its original endpoints.** The stroke
+   memo re-classified graduated edges by their re-pointed ends, so a host
+   rule had to answer for endpoint pairs its model never produces. The
+   derivation now resolves each original edge's type and a graduated edge
+   carries its origin's (`VisibleGraph.edgeTypes`); the view reads the map.
+4. **Only the axes a view shows filter.** `computeVisibleGraph`,
+   `passesFilter` and the reheat fold take the chain's descriptors (every
+   declared axis remains the default for a caller that shows them all);
+   `GraphView` passes its chain's, and so does the tree view. An axis removed
+   from the chain stops filtering, as D44 and the spec already said.
+5. **Defects in a host's graph are named, not thrown from a memo.**
+   `validateGraph(graph, ontology)` — exported — reports dangling endpoints,
+   unknown relations, undeclared or mismatched edge types, a rule that throws,
+   duplicate edge ids, a missing parent, and the two readings of containment
+   disagreeing, as diagnostics with codes. The view runs it once per graph,
+   draws `dropInvalid`'s result (the edges an error names left out, a missing
+   parent cleared) and shows the list under the bar, inside its own error
+   boundary — a second boundary now wraps the whole pane, so no throw in it
+   reaches the host's tree. The derivation itself is total: a rule that throws
+   or answers an undeclared id leaves the edge typeless, drawn neutral.
+6. **The keyboard is scoped.** A `keyboard: 'pane' | 'global' | 'none'` prop,
+   `pane` by default: the root is focusable and handles keys that reach it,
+   Tab cycles nodes only while the pane itself is focused, Escape with nothing
+   to close blurs it. The first host chooses `global`, the webview being the
+   whole page. In both scopes a control keeps its own keys.
+7. **A group's colour is its place in the host's list**, in a palette per
+   theme (the light set a few stops deeper), so hiding one group recolours
+   none of the others. The measured overlay — bar, findings, diagnostics and
+   the open search results — is what `--toolbar-height` reports, so a host
+   control anchored under it sits under all of it.
+
+**Not done here, by design.** Springs still resolve through the host's rule
+only while push/pull keys on the style axis (D2); the pair rule elsewhere is a
+design the API_WORK.md Set 5 pass decides. The construction checks the
+independent review asked for (duplicate type ids, bands) are Set 6.
+
+**Golden change (§8.2).** Expected and regenerated, six of seven goldens:
+`stress-sample` and `decomposition-sample` carry the fold (edge counts 157 →
+110 and 105 → 74), so every row that counts edges, springs or positions
+moves; `nexus-sample`, `multifile-sample` and `taskqueues-sample` keep their
+line counts — the edges drawn at every state are the same pairs — and change
+only where an edge with both ends visible now carries its own id (`e54`
+instead of `grad:…`; graduated ids 51 → 10 on nexus) and where, at a coarse
+tier, the parser's coarsened edge is the one drawn (`linkNsToNs` without the
+route payload the re-derived edge carried); `static` gains `integrityProbes`,
+recolours two `seamProbes` groups by their declared index, and in
+`syntheticVisible` the signal edge between the visible caller and backing
+stands where the spliced call's projection used to be drawn over it. Every
+other row is byte-identical.
+
+— 2026-10-28 — agent

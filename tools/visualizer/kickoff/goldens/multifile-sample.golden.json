@@ -1914,7 +1914,7 @@
           },
           "namespace": {
             "edges": [
-              "grad:namespace:bootstrapApp→namespace:fabric-shard-{org}"
+              "e103"
             ],
             "from": "namespace:bootstrapApp",
             "nodes": [
@@ -1924,7 +1924,7 @@
           },
           "nexusEndpoint": {
             "edges": [
-              "grad:workflow:PartnerCheckout/worker:partnerWorker/namespace:partner→nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+              "e90"
             ],
             "from": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
             "nodes": [
@@ -1936,8 +1936,8 @@
           },
           "nexusOperation": {
             "edges": [
-              "grad:nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce→workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
-              "grad:workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce→activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce"
+              "e27",
+              "e99"
             ],
             "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
@@ -1964,12 +1964,12 @@
           },
           "workflow": {
             "edges": [
-              "grad:nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments→workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments"
+              "e44",
+              "e66",
+              "e67",
+              "e93",
+              "e94",
+              "e95"
             ],
             "from": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
             "nodes": [
@@ -2288,7 +2288,7 @@
           },
           "namespace": {
             "edges": [
-              "grad:namespace:bootstrapApp→namespace:fabric-shard-{org}"
+              "e103"
             ],
             "from": "namespace:bootstrapApp",
             "nodes": [
@@ -2298,7 +2298,7 @@
           },
           "nexusEndpoint": {
             "edges": [
-              "grad:workflow:OrderCheckout/worker:checkoutWorker/namespace:orders→nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications"
+              "e82"
             ],
             "from": "nexusEndpoint:NotificationsEndpoint/namespace:notifications",
             "nodes": [
@@ -2310,8 +2310,8 @@
           },
           "nexusOperation": {
             "edges": [
-              "grad:nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}→workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}",
-              "grad:workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}→activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}"
+              "e30",
+              "e71"
             ],
             "from": "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
             "nodes": [
@@ -2331,7 +2331,7 @@
           },
           "worker": {
             "edges": [
-              "grad:worker:bootstrapCallerWorker/namespace:bootstrapApp→worker:bootstrapWorker/namespace:fabric-shard-{org}"
+              "e107"
             ],
             "from": "worker:bootstrapCallerWorker/namespace:bootstrapApp",
             "nodes": [
@@ -2341,12 +2341,12 @@
           },
           "workflow": {
             "edges": [
-              "grad:nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments→workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments"
+              "e44",
+              "e66",
+              "e67",
+              "e93",
+              "e94",
+              "e95"
             ],
             "from": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
             "nodes": [
@@ -2687,7 +2687,7 @@
           },
           "namespace": {
             "edges": [
-              "grad:namespace:bootstrapApp→namespace:fabric-shard-{org}"
+              "e103"
             ],
             "from": "namespace:bootstrapApp",
             "nodes": [
@@ -2697,7 +2697,7 @@
           },
           "nexusEndpoint": {
             "edges": [
-              "grad:workflow:PartnerCheckout/worker:partnerWorker/namespace:partner→nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+              "e90"
             ],
             "from": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
             "nodes": [
@@ -2709,8 +2709,8 @@
           },
           "nexusOperation": {
             "edges": [
-              "grad:nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce→workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
-              "grad:workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce→activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce"
+              "e27",
+              "e99"
             ],
             "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
@@ -2737,12 +2737,12 @@
           },
           "workflow": {
             "edges": [
-              "grad:nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments→workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments"
+              "e44",
+              "e66",
+              "e67",
+              "e93",
+              "e94",
+              "e95"
             ],
             "from": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
             "nodes": [
@@ -3064,7 +3064,7 @@
           },
           "nexusEndpoint": {
             "edges": [
-              "grad:workflow:PartnerCheckout/worker:partnerWorker/namespace:partner→nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce"
+              "e90"
             ],
             "from": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
             "nodes": [
@@ -3076,8 +3076,8 @@
           },
           "nexusOperation": {
             "edges": [
-              "grad:nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce→workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
-              "grad:workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce→activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce"
+              "e27",
+              "e99"
             ],
             "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
@@ -3104,8 +3104,8 @@
           },
           "workflow": {
             "edges": [
-              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
-              "grad:workflow:MediaPipeline/worker:mediaWorker/namespace:media→activity:TranscodeVideo/worker:gpuWorker/namespace:media"
+              "e73",
+              "e74"
             ],
             "from": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
             "nodes": [
@@ -3298,8 +3298,8 @@
           },
           "workflow": {
             "edges": [
-              "grad:worker:checkoutWorker/namespace:orders→worker:notificationWorker/namespace:notifications",
-              "grad:worker:checkoutWorker/namespace:orders→worker:paymentProcessingWorker/namespace:payments",
+              "e108",
+              "e109",
               "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→worker:checkoutWorker/namespace:orders",
               "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
               "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→worker:paymentProcessingWorker/namespace:payments"
@@ -3481,8 +3481,8 @@
           },
           "nexusOperation": {
             "edges": [
-              "grad:nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce→workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
-              "grad:workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce→activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce"
+              "e27",
+              "e99"
             ],
             "from": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
             "nodes": [
@@ -3493,12 +3493,12 @@
           },
           "workflow": {
             "edges": [
-              "grad:nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments→workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments"
+              "e44",
+              "e66",
+              "e67",
+              "e93",
+              "e94",
+              "e95"
             ],
             "from": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
             "nodes": [
@@ -3639,15 +3639,15 @@
           "namespace:payments": 0
         },
         "graduatedEdges": [
-          "linkNsToNs|dependency|namespace:bootstrapApp -> namespace:fabric-shard-{org}|ep=nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}|dispatch=nexusCall",
-          "linkNsToNs|dependency|namespace:orders -> namespace:notifications|ep=nexusEndpoint:NotificationsEndpoint/namespace:notifications|dispatch=nexusCall",
-          "linkNsToNs|dependency|namespace:orders -> namespace:payments|ep=nexusEndpoint:PaymentsEndpoint/namespace:payments|dispatch=nexusCall",
-          "linkNsToNs|dependency|namespace:partner -> namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
+          "linkNsToNs|dependency|namespace:bootstrapApp -> namespace:fabric-shard-{org}",
+          "linkNsToNs|dependency|namespace:orders -> namespace:notifications",
+          "linkNsToNs|dependency|namespace:orders -> namespace:payments",
+          "linkNsToNs|dependency|namespace:partner -> namespace:ecommerce"
         ],
         "hookedHighlights": {
           "namespace": {
             "edges": [
-              "grad:namespace:bootstrapApp→namespace:fabric-shard-{org}"
+              "e103"
             ],
             "from": "namespace:bootstrapApp",
             "nodes": [
@@ -3810,7 +3810,7 @@
           },
           "namespace": {
             "edges": [
-              "grad:namespace:bootstrapApp→namespace:fabric-shard-{org}"
+              "e103"
             ],
             "from": "namespace:bootstrapApp",
             "nodes": [
@@ -3820,11 +3820,11 @@
           },
           "workflow": {
             "edges": [
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
-              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
-              "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments"
+              "e66",
+              "e93",
+              "e94",
+              "e95",
+              "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments"
             ],
             "from": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
             "nodes": [
@@ -3990,20 +3990,20 @@
           "linkNsToWorker|containment|worker:paymentWorkerSecondary/namespace:ecommerce -> namespace:ecommerce",
           "linkNsToWorker|containment|worker:realtimeAnalyticsWorker/namespace:ecommerce -> namespace:ecommerce",
           "linkNsToWorker|containment|worker:standardShipWorker/namespace:ecommerce -> namespace:ecommerce",
-          "linkWorkerToWorker|dependency|worker:bootstrapCallerWorker/namespace:bootstrapApp -> worker:bootstrapWorker/namespace:fabric-shard-{org}|ep=nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}|dispatch=nexusCall",
-          "linkWorkerToWorker|dependency|worker:checkoutWorker/namespace:orders -> worker:notificationWorker/namespace:notifications|ep=nexusEndpoint:NotificationsEndpoint/namespace:notifications|dispatch=nexusCall",
-          "linkWorkerToWorker|dependency|worker:checkoutWorker/namespace:orders -> worker:paymentProcessingWorker/namespace:payments|ep=nexusEndpoint:PaymentsEndpoint/namespace:payments|dispatch=nexusCall",
+          "linkWorkerToWorker|dependency|worker:bootstrapCallerWorker/namespace:bootstrapApp -> worker:bootstrapWorker/namespace:fabric-shard-{org}",
+          "linkWorkerToWorker|dependency|worker:checkoutWorker/namespace:orders -> worker:notificationWorker/namespace:notifications",
+          "linkWorkerToWorker|dependency|worker:checkoutWorker/namespace:orders -> worker:paymentProcessingWorker/namespace:payments",
           "linkWorkerToWorker|dependency|worker:mediaWorker/namespace:media -> worker:gpuWorker/namespace:media",
           "linkWorkerToWorker|dependency|worker:orderWorker/namespace:ecommerce -> worker:expressShipWorker/namespace:ecommerce",
           "linkWorkerToWorker|dependency|worker:orderWorker/namespace:ecommerce -> worker:paymentWorker/namespace:ecommerce",
           "linkWorkerToWorker|dependency|worker:orderWorker/namespace:ecommerce -> worker:standardShipWorker/namespace:ecommerce",
-          "linkWorkerToWorker|dependency|worker:partnerWorker/namespace:partner -> worker:analyticsWorker/namespace:ecommerce|ep=nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce|dispatch=nexusCall",
-          "linkWorkerToWorker|dependency|worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce|ep=nexusEndpoint:PaymentEndpoint/namespace:ecommerce|dispatch=nexusCall"
+          "linkWorkerToWorker|dependency|worker:partnerWorker/namespace:partner -> worker:analyticsWorker/namespace:ecommerce",
+          "linkWorkerToWorker|dependency|worker:partnerWorker/namespace:partner -> worker:paymentWorker/namespace:ecommerce"
         ],
         "hookedHighlights": {
           "namespace": {
             "edges": [
-              "grad:namespace:bootstrapApp→namespace:fabric-shard-{org}"
+              "e103"
             ],
             "from": "namespace:bootstrapApp",
             "nodes": [
@@ -4162,8 +4162,8 @@
           },
           "workflow": {
             "edges": [
-              "grad:worker:checkoutWorker/namespace:orders→worker:notificationWorker/namespace:notifications",
-              "grad:worker:checkoutWorker/namespace:orders→worker:paymentProcessingWorker/namespace:payments",
+              "e108",
+              "e109",
               "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→worker:checkoutWorker/namespace:orders",
               "grad:workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders→workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
               "grad:workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments→worker:paymentProcessingWorker/namespace:payments"

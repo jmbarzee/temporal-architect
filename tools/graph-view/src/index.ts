@@ -33,4 +33,6 @@ export type { Highlight, HighlightGraph, Ontology, OntologySpec, StyleGroup, Sty
 export { schemeStylesheet, schemeVars } from './graph/scheme'
 export type { ColorPair, EdgeStroke, Theme, ThemedColor } from './graph/scheme'
 export type { ScalarAxis, ScalarSpan } from './graph/scalar'
+export { validateGraph } from './graph/validate'
+export type { GraphDiagnostic, GraphDiagnosticCode } from './graph/validate'
 export type { EdgeCategoryKind, EdgeTypeDefinition, EdgeTypeId, NodeTypeDefinition, SpringPhysics } from './graph/taxonomy'

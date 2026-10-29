@@ -26,6 +26,9 @@
   --tension-stretch: #d97706;
   --tension-compress: #7CB9E8;
   --tension-rest: #7EC8B8;
+  /* The pane's own diagnostics strip: what the host's graph got wrong (D66). */
+  --diagnostic-error: #b91c1c;
+  --diagnostic-warning: #b45309;
 
   --color-bg: #f8fafc;
   --color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -55,6 +58,8 @@
   --tension-stretch: #fbbf24;
   --tension-compress: #7CB9E8;
   --tension-rest: #7EC8B8;
+  --diagnostic-error: #f87171;
+  --diagnostic-warning: #fbbf24;
   --color-bg: #1e1e1e;
   --color-bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
   --color-text: #d4d4d4;

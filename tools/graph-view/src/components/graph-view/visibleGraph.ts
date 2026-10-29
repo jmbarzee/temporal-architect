@@ -1,24 +1,29 @@
 // computeVisibleGraph — the pure derivation behind useVisibleGraph.
 //
-// Filters the graph's nodes by the type/file filter, graduates edges across
-// hidden types (containment walks up to the nearest visible ancestor; dependency
-// edges project/splice and dedupe), and computes per-node summaries +
-// downstream-depth scores.
+// Filters the graph's nodes on the axes the view shows, graduates edges across
+// hidden nodes (containment walks up to the nearest visible ancestor;
+// dependency edges project or splice, and the graduated ones collapse per
+// pair), classifies every edge once on its original endpoints, and computes
+// per-node summaries and downstream-reach scores.
 //
 // Lifted out of the hook so it is callable without React: the golden harness
 // snapshots it directly, and the taxonomy arrives as a parameter, so both the
 // visibility predicate and the summary dispatch resolve through the container.
 //
 // Nothing here names a value: the hidden-node policy is the taxonomy's
-// (`whenHidden`, D59), the summaries read its abbreviations (D58), and the
-// precedence between graduated edges that land on one pair reads only
-// whether an edge carries metadata (D60).
+// (`whenHidden`, D59), the summaries read its abbreviations (D58), and which
+// of two graduated edges on one pair survives is the taxonomy's `collapse`
+// (D66). An edge with both ends visible is never collapsed and keeps its id:
+// two edges between the same two visible nodes are two facts, and the
+// payload is not read here or anywhere else in the library.
 
 import { computeDownstreamReach } from '../../graph/scalar'
 import { isContainment } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge, ReadableGraph } from '../../graph/model'
 import type { Ontology } from '../../graph/ontology'
+import type { DimensionDescriptor } from '../../graph/dimension'
+import type { EdgeTypeId } from '../../graph/taxonomy'
 import type { PhysicsSubject } from '../../graph/forces'
 import type { FilterState } from '../../filter/types'
 import { passesSelection } from '../../filter/types'
@@ -27,6 +32,14 @@ export interface VisibleGraph {
   visibleNodes: SimNode[]
   visibleEdges: GraphEdge[]
   visibleIds: Set<string>
+  /**
+   * Each visible edge's type, by its id, resolved once from the ORIGINAL
+   * edge's endpoints: a graduated edge carries the type of the edge it stands
+   * for, so the host's rule never meets an endpoint pair its model does not
+   * produce (D66). Undefined for an edge whose type the taxonomy does not
+   * declare — `validateGraph` names those; here they draw neutral.
+   */
+  edgeTypes: Map<string, EdgeTypeId | undefined>
   nodeSummaries: Map<string, string>
   downstreamScores: Map<string, number>
 }
@@ -45,6 +58,7 @@ export const EMPTY_VISIBLE_GRAPH: VisibleGraph = {
   visibleNodes: [],
   visibleEdges: [],
   visibleIds: new Set<string>(),
+  edgeTypes: new Map<string, EdgeTypeId | undefined>(),
   nodeSummaries: new Map<string, string>(),
   downstreamScores: new Map<string, number>(),
 }
@@ -105,9 +119,6 @@ function resolveDepEndpoint(
   return ancestor ? [ancestor] : []
 }
 
-/** Whether an edge carries any host metadata — what a graduated edge keeps of the hop it passed through. */
-const carriesMetadata = (e: GraphEdge): boolean => e.payload !== undefined && Object.keys(e.payload).length > 0
-
 // Glanceable per-node summary string, dispatched on the taxonomy's summaryKind.
 function computeGraphNodeSummary(
   node: SimNode,
@@ -150,36 +161,70 @@ function computeGraphNodeSummary(
   return parts.join(' ')
 }
 
-
-
-/** `passesSelection` for a graph node, projected through the taxonomy. */
+/**
+ * `passesSelection` for a graph node, projected through the taxonomy, on the
+ * axes given — the view's chain. Every declared axis is the default for a
+ * caller that shows them all.
+ */
 export function passesFilter(
   node: PhysicsSubject,
   filter: FilterState,
   ontology: Ontology,
+  axes: readonly DimensionDescriptor[] = ontology.filterDimensions,
 ): boolean {
-  return passesSelection(filter, ontology.filterDimensions, dim => ontology.valueOn(node, dim))
+  return passesSelection(filter, axes, dim => ontology.valueOn(node, dim))
+}
+
+/**
+ * Every edge's type from its own endpoints, once. The host's rule may throw
+ * or answer with an id the table does not declare; both are host bugs that
+ * `validateGraph` reports, and this derivation stays total: such an edge has
+ * no type here and draws neutral.
+ */
+function classifyEdges(sim: VisibleGraphSource, ontology: Ontology): Map<string, EdgeTypeId | undefined> {
+  const declared = new Set(ontology.edgeTypes.map(e => e.id))
+  const out = new Map<string, EdgeTypeId | undefined>()
+  for (const edge of sim.edges) {
+    const src = sim.getNode(edge.sourceId)
+    const tgt = sim.getNode(edge.targetId)
+    let id: EdgeTypeId | undefined
+    try {
+      id = ontology.resolveEdgeType(edge, src && ontology.valueFor(src), tgt && ontology.valueFor(tgt))
+    } catch {
+      id = undefined
+    }
+    out.set(edge.id, id !== undefined && declared.has(id) ? id : undefined)
+  }
+  return out
 }
 
 export function computeVisibleGraph(
   sim: VisibleGraphSource,
   filter: FilterState,
   ontology: Ontology,
+  axes: readonly DimensionDescriptor[] = ontology.filterDimensions,
 ): VisibleGraph {
   const ids = new Set<string>()
   const vNodes: SimNode[] = []
 
   for (const node of sim.nodes) {
-    if (passesFilter(node, filter, ontology)) {
+    if (passesFilter(node, filter, ontology, axes)) {
       ids.add(node.id)
       vNodes.push(node)
     }
   }
 
-  // Graduate edges across hidden types.
+  const originalTypes = classifyEdges(sim, ontology)
+  const edgeTypes = new Map<string, EdgeTypeId | undefined>()
+
+  // Graduate edges across hidden nodes. Two passes over the host's edges: the
+  // ones drawn as given first, then the projections, because a projection
+  // that lands on a pair an original edge already connects is dropped (D66) —
+  // the original stands for that reach, whichever order the host listed them.
   const getNode = (id: string) => sim.getNode(id)
-  const graduatedEdges: GraphEdge[] = []
-  const depEdgeKeys = new Map<string, GraphEdge>()
+  const kept: GraphEdge[] = []
+  const originalPairs = new Set<string>()
+  const projected: GraphEdge[] = []
 
   for (const edge of sim.edges) {
     const srcVisible = ids.has(edge.sourceId)
@@ -188,41 +233,53 @@ export function computeVisibleGraph(
     if (isContainment(edge)) {
       if (!srcVisible) continue  // hidden child — drop
       if (tgtVisible) {
-        graduatedEdges.push(edge)
+        kept.push(edge)
+        edgeTypes.set(edge.id, originalTypes.get(edge.id))
       } else {
         const ancestor = findNearestVisibleAncestor(edge.targetId, ids, getNode)
         if (ancestor) {
-          graduatedEdges.push({
-            ...edge,
-            targetId: ancestor,
-            id: `grad:${edge.id}`,
-          })
+          const id = `grad:${edge.id}`
+          kept.push({ ...edge, targetId: ancestor, id })
+          edgeTypes.set(id, originalTypes.get(edge.id))
         }
       }
+    } else if (srcVisible && tgtVisible) {
+      // Both ends visible: the host's edge, as given. Never collapsed with a
+      // parallel one — two edges between two visible nodes are two facts.
+      kept.push(edge)
+      edgeTypes.set(edge.id, originalTypes.get(edge.id))
+      originalPairs.add(`${edge.sourceId}→${edge.targetId}`)
     } else {
-      const sources = resolveDepEndpoint(edge.sourceId, srcVisible, 'src', sim, ids, getNode, ontology)
-      const targets = resolveDepEndpoint(edge.targetId, tgtVisible, 'tgt', sim, ids, getNode, ontology)
-      for (const rs of sources) {
-        for (const rt of targets) {
-          if (rs === rt) continue
-          const key = `${rs}→${rt}`
-          // Two graduated edges on one pair: the one carrying metadata keeps
-          // precedence over one carrying none (it still says what the hidden
-          // hop was); otherwise the later one replaces the earlier (D60).
-          const existing = depEdgeKeys.get(key)
-          if (existing && carriesMetadata(existing) && !carriesMetadata(edge)) continue
-          depEdgeKeys.set(key, {
-            ...edge,
-            sourceId: rs,
-            targetId: rt,
-            id: `grad:${key}`,
-          })
-        }
+      projected.push(edge)
+    }
+  }
+
+  // Graduated dependency edges, one per visible pair: the original each stands
+  // for, and the edge as drawn.
+  const graduated = new Map<string, { origin: GraphEdge; edge: GraphEdge }>()
+  for (const edge of projected) {
+    const sources = resolveDepEndpoint(edge.sourceId, ids.has(edge.sourceId), 'src', sim, ids, getNode, ontology)
+    const targets = resolveDepEndpoint(edge.targetId, ids.has(edge.targetId), 'tgt', sim, ids, getNode, ontology)
+    for (const rs of sources) {
+      for (const rt of targets) {
+        if (rs === rt) continue
+        const key = `${rs}→${rt}`
+        if (originalPairs.has(key)) continue
+        // Two graduated edges on one pair stand for two paths through hidden
+        // nodes that now read as one reach; the taxonomy says which survives
+        // (D66), and the one met first does when it does not say.
+        const existing = graduated.get(key)
+        if (existing && ontology.collapse(existing.origin, edge) === existing.origin) continue
+        graduated.set(key, { origin: edge, edge: { ...edge, sourceId: rs, targetId: rt, id: `grad:${key}` } })
       }
     }
   }
 
-  const vEdges = [...graduatedEdges, ...depEdgeKeys.values()]
+  const vEdges = [...kept]
+  for (const { origin, edge } of graduated.values()) {
+    vEdges.push(edge)
+    edgeTypes.set(edge.id, originalTypes.get(origin.id))
+  }
 
   const vNodeMap = new Map<string, SimNode>()
   for (const n of vNodes) vNodeMap.set(n.id, n)
@@ -236,5 +293,5 @@ export function computeVisibleGraph(
   // over the whole graph is a layout axis (graph/scalar.ts).
   const downstreamScores = computeDownstreamReach({ nodes: vNodes, edges: vEdges, getNode: id => vNodeMap.get(id) })
 
-  return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, nodeSummaries, downstreamScores }
+  return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, edgeTypes, nodeSummaries, downstreamScores }
 }

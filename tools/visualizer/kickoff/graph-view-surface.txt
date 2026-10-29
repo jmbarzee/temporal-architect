@@ -30,6 +30,8 @@ type FilterDimension
 type FilterState
 type FocusTarget
 type Graph
+type GraphDiagnostic
+type GraphDiagnosticCode
 type GraphEdge
 type GraphNode
 type Highlight
@@ -54,4 +56,5 @@ type ViewTransition
 useHostTheme
 useOntology
 useRecentlyChanged
+validateGraph
 withSelection
