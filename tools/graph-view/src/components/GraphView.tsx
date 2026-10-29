@@ -404,7 +404,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     let hidden = 0
     const byAxis = new Map<string, Map<string, number>>()
     for (const node of sim.nodes) {
-      if (!node.name.toLowerCase().includes(lq)) continue
+      if (!ontology.searchText(node).toLowerCase().includes(lq)) continue
       if (visibleIds.has(node.id)) { visible.add(node.id); continue }
       hidden++
       const failing = filterAxes.find(d => !passesSelection(filter, [d], dim => ontology.valueOn(node, dim)))

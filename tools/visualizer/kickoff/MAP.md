@@ -53,7 +53,7 @@ which is worth noticing rather than assuming.
 | `verify/host-probes.ts` | neither | 2 | `verify/static-golden.ts` |
 | `verify/integrity-probes.ts` | neither | 10 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
-| `verify/ontology-probes.ts` | neither | 84 | `verify/static-golden.ts` |
+| `verify/ontology-probes.ts` | neither | 85 | `verify/static-golden.ts` |
 | `verify/rng.ts` | neither | 1 | **5** files |
 | `verify/scalar-probes.ts` | neither | 12 | `verify/static-golden.ts` |
 | `verify/scheme-probes.ts` | neither | 15 | `verify/static-golden.ts` |
@@ -64,7 +64,7 @@ which is worth noticing rather than assuming.
 | `verify/tier-a.ts` | neither | 13 | **5** files |
 | `verify/tier-b.ts` | neither | 6 | `verify/main.ts` |
 | `verify/tier-c.ts` | neither | 17 | `verify/main.ts` |
-| `verify/tuning-probes.ts` | neither | 71 | `verify/contract-probes.ts`, `verify/static-golden.ts` |
+| `verify/tuning-probes.ts` | neither | 73 | `verify/contract-probes.ts`, `verify/static-golden.ts` |
 | `verify/view-probes.ts` | neither | 13 | `verify/static-golden.ts` |
 | `../graph-view/components/AxisControls.tsx` | manifest |  | `../graph-view/components/GravityControls.tsx` |
 | `../graph-view/components/CanvasErrorBoundary.tsx` | manifest |  | `../graph-view/components/GraphView.tsx` |

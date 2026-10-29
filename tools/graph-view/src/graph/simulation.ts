@@ -21,7 +21,7 @@ import type { Rng } from './rng'
 import type { EdgeCategory, LayoutFrame, LayoutSubject, ResolvedPhysics } from './forces'
 import type { ScalarAxis, ScalarTuning } from './scalar'
 import { isScalarTuning } from './scalar'
-import type { DimensionalMapping } from './dimension'
+import type { AxisNamer, DimensionId, DimensionValue, DimensionalMapping } from './dimension'
 import { identityMapping, valuesOn } from './dimension'
 import type { Ontology } from './ontology'
 
@@ -194,12 +194,10 @@ export function fitsCeiling(option: AxisOption): boolean {
  * the dropdown can show beside an axis it has to decline.
  */
 export function axisOptions(ontology: Ontology, graph: Graph): AxisOption[] {
-  const style = ontology.styleAxis()
   const mappings: DimensionalMapping[] = [styleIdentityMapping(ontology)]
-  for (const d of ontology.filterDimensions) {
-    if (d.id === style) continue
-    const values = valuesOn(graph.nodes.values(), d.id)
-    if (values.length > 0) mappings.push(identityMapping(d, values))
+  for (const dimension of nodeAxes(ontology, graph)) {
+    const values = valuesOn(graph.nodes.values(), dimension)
+    if (values.length > 0) mappings.push(identityMapping(namerFor(ontology, dimension), values))
   }
   const nodeOf = (id: string) => graph.nodes.get(id)
   return mappings.map(mapping => ({
@@ -207,6 +205,40 @@ export function axisOptions(ontology: Ontology, graph: Graph): AxisOption[] {
     pushTokens: mapping.buckets.length,
     pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), ontology), graph.edges, nodeOf).size,
   }))
+}
+
+/**
+ * Every axis the nodes carry other than the style axis: the declared filter
+ * axes first, in declaration order, then any other axis a node has a value
+ * on, in first-encounter order. An axis is a fact about the nodes, not a
+ * declaration: a host that writes `term` on its nodes may push and pull on
+ * it without declaring a filter for it.
+ */
+function nodeAxes(ontology: Ontology, graph: Graph): DimensionId[] {
+  const style = ontology.styleAxis()
+  const out: DimensionId[] = []
+  const seen = new Set<DimensionId>([style])
+  for (const d of ontology.filterDimensions) {
+    if (seen.has(d.id)) continue
+    seen.add(d.id); out.push(d.id)
+  }
+  for (const node of graph.nodes.values()) {
+    for (const dimension of Object.keys(node.dimensions)) {
+      if (seen.has(dimension)) continue
+      seen.add(dimension); out.push(dimension)
+    }
+  }
+  return out
+}
+
+/** How an axis names itself and its values: its descriptor's way, or — for an axis no descriptor declares — the id and the value. */
+function namerFor(ontology: Ontology, dimension: DimensionId): AxisNamer {
+  return ontology.descriptorFor(dimension) ?? {
+    id: dimension,
+    label: dimension,
+    labelFor: (v: DimensionValue) => v,
+    abbreviationFor: (v: DimensionValue) => v.slice(0, 2),
+  }
 }
 
 /** One choice for a layout axis: a mapping (with its cost) or a computed scalar. */
@@ -253,21 +285,23 @@ export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph
   const nodeOf = (id: string) => graph.nodes.get(id)
   const refreshed = (m: DimensionalMapping): DimensionalMapping | undefined => {
     if (m.dimension === style) return styleIdentityMapping(ontology)
-    const descriptor = ontology.descriptorFor(m.dimension)
-    if (!descriptor) return undefined
     const values = valuesOn(graph.nodes.values(), m.dimension)
-    return values.length === 0 ? undefined : identityMapping(descriptor, values)
+    return values.length === 0 ? undefined : identityMapping(namerFor(ontology, m.dimension), values)
   }
   // One rule for every tuning: re-bucket; fall back to the style axis with
-  // nothing overridden when the axis vanished or outgrew its ceiling; keep the
-  // same object when the buckets did not change. What "fits" means is the only
-  // thing that differs — buckets for a band axis, buckets and present pairs for
-  // the pair axis — so it is the one thing passed in.
+  // nothing overridden when the axis vanished or outgrew its ceiling — said
+  // on the console, since the control the user set it on now shows another
+  // axis; keep the same object when the buckets did not change. What "fits"
+  // means is the only thing that differs — buckets for a band axis, buckets
+  // and present pairs for the pair axis — so it is the one thing passed in.
   const refresh = <T extends { mapping: DimensionalMapping }>(
     tuning: T, fresh: (mapping: DimensionalMapping) => T, fits: (mapping: DimensionalMapping) => boolean,
   ): T => {
     const next = refreshed(tuning.mapping)
-    if (next === undefined || (next.dimension !== style && !fits(next))) return fresh(styleIdentityMapping(ontology))
+    if (next === undefined || (next.dimension !== style && !fits(next))) {
+      fellBack(tuning.mapping.dimension, next === undefined ? 'no node carries it any more' : `it has ${next.buckets.length} buckets, past the ceiling of ${TOKEN_CEILING}`)
+      return fresh(styleIdentityMapping(ontology))
+    }
     return sameBuckets(next, tuning.mapping) ? tuning : { ...tuning, mapping: next }
   }
   const bucketsFit = (mapping: DimensionalMapping) => mapping.buckets.length <= TOKEN_CEILING
@@ -286,6 +320,16 @@ export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph
   const bandX = refreshLayout(params.bandX)
   const bandY = refreshLayout(params.bandY)
   return pair === params.pair && bandX === params.bandX && bandY === params.bandY ? params : { ...params, pair, bandX, bandY }
+}
+
+// A fallback is said once per axis and reason: it happens on every retune
+// after the first, and the user has one control to look at, not a stream.
+const FELL_BACK = new Set<string>()
+function fellBack(dimension: DimensionId, reason: string): void {
+  const key = `${dimension}\u0000${reason}`
+  if (FELL_BACK.has(key)) return
+  FELL_BACK.add(key)
+  console.warn(`[graph] the ${JSON.stringify(dimension)} axis cannot be tuned on: ${reason}; the forces returned to the style axis with nothing overridden.`)
 }
 
 // PUSH — repulsion. Per-type charge strength and core radius, the masters that

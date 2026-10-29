@@ -19,6 +19,7 @@ import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
 import { filterOfSets } from './filter-states'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
+import { payloadString } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType, TemporalNodeStyle } from '../adapter/node-types'
 import type { NodeStyle } from '@temporal-architect/graph-view/graph/taxonomy'
 import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
@@ -444,9 +445,21 @@ function reheatPolicy(): Json {
   return { declared, folds }
 }
 
+/** What the search matches on: the name unless the host's hook says otherwise. */
+function searchText(): Json {
+  const byCode = createOntology({ ...DEFAULT_ONTOLOGY_SPEC, searchText: n => `${payloadString(n, 'code') ?? ''} ${n.name}`.trim() })
+  const coded = { ...NODES[1], payload: { code: 'WF-7' } }
+  return {
+    default: DEFAULT_ONTOLOGY.searchText(NODES[1]),
+    hooked: byCode.searchText(coded),
+    hookedWithoutCode: byCode.searchText(NODES[1]),
+  }
+}
+
 export function ontologyProbes(): Json {
   const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
+    searchText: searchText(),
     mappings: mappingProbes(),
     prototypeNamedValues: prototypeNamedValues(),
     reheatPolicy: reheatPolicy(),

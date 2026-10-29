@@ -2463,3 +2463,63 @@ README says so, and the catalog carries its `data-theme` on the panel beside
 the pane.
 
 — 2026-10-28 — agent
+
+**D72 — Unit 14, the model questions decided (API_WORK.md Set 5).**
+Six questions about what the model can say, each answered as built here,
+deferred to an issue, or declined with the reason — the pass the plan asked
+for before the surface is trimmed.
+
+1. **Colour by another axis (5.1) — declined for the first publish,
+   [#194](https://github.com/jmbarzee/temporal-architect/issues/194).** The
+   style axis is the one axis that carries colour, size, icon, physics,
+   classification and summaries; colouring by a file or a term is a derived
+   taxonomy and a rebuild today. A `colorBy` prop with a palette over
+   another axis's values is the feature; it is not what a first host needs.
+2. **A plain node dimension as a push, pull or layout axis (5.2) — built.**
+   `axisOptions` offers every axis the nodes carry: the style axis, the
+   declared filter axes in declaration order under their labels, then any
+   other axis a node has a value on, in first-encounter order, under its id
+   and with its values as they are. A host that writes `term` on its nodes
+   tunes on it without declaring a filter. A tuning on an axis that vanishes
+   or outgrows the token ceiling still returns the forces to the style axis
+   with nothing overridden — and now says so once on the console, since the
+   control the user set it on shows another axis.
+3. **Multi-parent containment (5.3) — decided, no build.** `parentId` is one
+   string (D70) and an entity in two containers is two nodes sharing a
+   `copyKey`; the README states the rule. A host's own second containment
+   edge is allowed — the first host's routing edges are exactly that — and
+   `containment-parent-mismatch` names one that contradicts the parent.
+   Summaries count containment edges by design: an endpoint's routed
+   operations are its children.
+4. **Edge collapse (5.4) — done in D66.** `OntologySpec.collapse` is the
+   host's rule for two graduated edges on one pair.
+5. **An opaque `Ontology` (5.5) — declined for now,
+   [#195](https://github.com/jmbarzee/temporal-architect/issues/195).** The
+   harness and the first host's tree-side bar read the members a brand would
+   hide; every consumer would pay a cast for a stability the engine does
+   not yet need. The issue carries the split (a public read half, an
+   engine-only half) for when it does.
+6. **The gaps (5.6).** Built: `OntologySpec.searchText(node)`, what the
+   search control matches on, the name unless the host says otherwise (the
+   catalog's codes, say). Deferred with issues: undirected edges
+   ([#196](https://github.com/jmbarzee/temporal-architect/issues/196)),
+   per-edge weight and width
+   ([#197](https://github.com/jmbarzee/temporal-architect/issues/197)), the
+   pane's English strings
+   ([#198](https://github.com/jmbarzee/temporal-architect/issues/198)). Kept:
+   a chip tint must name a style value — `chipsFor` is a function of the
+   values the graph presents, so construction cannot see its output, and the
+   render-time error, said once per chip, stays.
+
+**Golden change (§8.2).** `static` alone, additive — every existing row is
+byte-identical and the six fixture goldens with them: `tuningProbes.plainAxis`
+(the axes offered over a graph whose nodes carry an undeclared `term`, a
+tuning on it kept across a retune, the fallback to the style axis when the
+axis vanishes, said once) and `ontologyProbes.searchText` (the default, the
+hook, the hook without a code).
+
+**Measured.** Surface 72 (no names move: `searchText` is a member of
+`OntologySpec` and `Ontology`). Total vocabulary 1090 / 1090; leak 0;
+boundary 0.
+
+— 2026-10-28 — agent

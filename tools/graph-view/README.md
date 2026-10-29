@@ -7,7 +7,7 @@ the **values** on each, and for the style axis a colour, size, icon and physics
 per value, plus how an edge classifies from the values at its ends — through
 `createOntology(spec)`. It builds a `Graph` of nodes and edges carrying
 dimension maps, and mounts `GraphView`. The view lays the graph out (push and
-pull on a chosen dimension, two layout axes keyed on a dimension or a computed
+pull on any axis the nodes carry, two layout axes keyed on an axis or a computed
 scalar), filters it on any declared axis, highlights it, and lets the user tune
 the forces — without knowing what any node or edge means. The host's vocabulary
 never enters this package; a ratchet in the first host's package holds it at
@@ -42,8 +42,8 @@ import '@temporal-architect/graph-view/styles.css'
   that classifies an edge; `filterDimensions`, each an id, a label and what
   an empty selection means, the policies and the chips defaulting from that
   and an `initialSelection` for the first open; optional scalar axes and the
-  hooks a host may supply (a hover box's context line, a highlight, which of
-  two colliding edges survives). An incoherent spec is refused at
+  hooks a host may supply (a hover box's context line, the text the search
+  matches on, a highlight, which of two colliding edges survives). An incoherent spec is refused at
   construction, loudly.
 - `Graph` — `nodes` and `edges`, each carrying `dimensions` and an opaque
   `payload` the view never reads. Every edge carries `relation`

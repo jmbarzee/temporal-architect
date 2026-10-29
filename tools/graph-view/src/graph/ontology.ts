@@ -91,6 +91,8 @@ export interface Ontology {
   edgeStrokeFor(id: EdgeTypeId): EdgeStroke
   /** The hover box's context line(s) for a node — the host's, or its parent's name. */
   contextLine(node: GraphNode, parent: GraphNode | undefined): string | readonly string[] | undefined
+  /** What the search control matches against for a node — the host's text, or the name. */
+  searchText(node: GraphNode): string
   /** The highlight for an active node — the host's refinement of the library's transitive walk in the given direction. */
   highlight(active: GraphNode, base: Highlight, graph: HighlightGraph, direction: HighlightDirection): Highlight
 
@@ -162,6 +164,11 @@ export interface OntologySpec {
    * origin — as one line or several. Absent, the line is the parent's name.
    */
   contextLine?: (node: GraphNode, parent: GraphNode | undefined) => string | readonly string[] | undefined
+  /**
+   * What the search control matches a node on, case-insensitively: a code
+   * from the payload beside the name, say. Absent, the name.
+   */
+  searchText?: (node: GraphNode) => string
   /**
    * The highlight for an active node: given the library's transitive walk
    * from it in `direction`, the host may widen it (members it relates by
@@ -342,6 +349,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     resolveEdgeType: spec.resolveEdgeType,
     collapse: spec.collapse ?? (kept => kept),
     contextLine: spec.contextLine ?? ((_node, parent) => parent?.name),
+    searchText: spec.searchText ?? (node => node.name),
     highlight: spec.highlight ?? ((_active, base) => base),
   }
 }

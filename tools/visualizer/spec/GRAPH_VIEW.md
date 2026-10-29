@@ -448,7 +448,7 @@ The panel is collapsed by default (progressive disclosure); the collapsed toggle
 
 **PUSH/PULL**
 
-The two pair forces share one tab. At its top, above the sub-tabs so it stays visible whichever force is being edited, an **axis** dropdown names the dimension both forces key on: push charges are per bucket of that axis, pull springs per pair of buckets — the tokens shown being those the visible set holds (R35, below), while the dropdown's counts measure the whole graph. The default is the type axis (`temporalType`), where the host's hand-tuned spring table applies; any filter axis the graph carries (files, kinds) is offered too, bucketed by the values present. Below it, **Push** and **Pull** are sub-tabs styled like Gravity's Band/Topological — accent-underlined, bodies stacked in one cell so switching never resizes the panel — but without the on/off switches, since neither force has an off. Each body is its equation, its 2D map, and its force-curve read-out.
+The two pair forces share one tab. At its top, above the sub-tabs so it stays visible whichever force is being edited, an **axis** dropdown names the dimension both forces key on: push charges are per bucket of that axis, pull springs per pair of buckets — the tokens shown being those the visible set holds (R35, below), while the dropdown's counts measure the whole graph. The default is the type axis (`temporalType`), where the host's hand-tuned spring table applies; any other axis the nodes carry is offered too, bucketed by the values present — a declared filter axis (files, kinds) under its label, an axis the host wrote on its nodes without declaring a filter for it under its id (D72); an axis that vanishes or outgrows the token ceiling returns the forces to the type axis and says so once on the console. Below it, **Push** and **Pull** are sub-tabs styled like Gravity's Band/Topological — accent-underlined, bodies stacked in one cell so switching never resizes the panel — but without the on/off switches, since neither force has an off. Each body is its equation, its 2D map, and its force-curve read-out.
 
 **What a control offers is what the visible set holds** (R35, D59): a push token per bucket some *visible* node falls in, a pull token per spring category some edge the simulation springs falls in — an original edge with both ends visible, since a graduated edge is drawn but never sprung — and on each layout axis a column per bucket some visible node falls in — toggling a chip off removes its tokens and columns, and a bucket's tuning is kept, unshown, for when it returns. The axis dropdowns alone measure the whole graph: an axis's usability does not flip with a filter.
 
@@ -619,7 +619,7 @@ No ring, halo, or other decorative highlight is used to mark matches — full-vs
 
 ### Search and Hidden Matches
 
-Search matches against **all** nodes, including those excluded by structural filters. The results split:
+Search matches against **all** nodes, including those excluded by structural filters, on the text the taxonomy's `searchText` hook gives for a node — the name unless the host says otherwise (D72). The results split:
 
 - **Visible matches** — nodes that match the search AND pass the current type and file filters. Rendered at full opacity in the graph.
 - **Hidden matches** — nodes that match the search but are excluded by structural filters (a kind whose chip is off, a file not selected). Not rendered in the graph.

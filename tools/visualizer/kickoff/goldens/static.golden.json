@@ -2242,6 +2242,11 @@
           "seedRevealed": false
         }
       }
+    },
+    "searchText": {
+      "default": "wf",
+      "hooked": "WF-7 wf",
+      "hookedWithoutCode": "wf"
     }
   },
   "reconcileMatrix": {
@@ -3963,6 +3968,20 @@
         "strength": 0.33
       },
       "simulationMovesDifferently": true
+    },
+    "plainAxis": {
+      "fellBackToStyle": true,
+      "keptOnTerm": true,
+      "offered": [
+        "temporalType=Type:namespace/NS,nexusEndpoint/Ep,worker/Wk,nexusService/Nx,workflow/Wf,nexusOperation/Op,activity/Act",
+        "sourceFile=File:a.twf/a.",
+        "defType=Kind:workflowDef/Wf",
+        "term=term:spring/sp,autumn/au"
+      ],
+      "said": [
+        "the \"term\" axis cannot be tuned on: no node carries it any more; the forces returned to the style axis with nothing overridden."
+      ],
+      "saidOnce": 1
     },
     "retune": {
       "axisVanished": {

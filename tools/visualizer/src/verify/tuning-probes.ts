@@ -292,9 +292,45 @@ function coherence(): Json {
   }
 }
 
+/**
+ * An axis the host wrote on its nodes without declaring a filter for it is
+ * offered for push, pull and layout like a declared one, labelled by its id;
+ * a tuning on it survives a retune while the nodes carry it and returns to
+ * the style axis, said once on the console, when they stop.
+ */
+function plainAxis(): Json {
+  const withTerm = (id: string, term: string | undefined): GraphNode => {
+    const n = syntheticNode(id, 'workflow', 'a.twf')
+    return term === undefined ? n : { ...n, dimensions: { ...n.dimensions, term } }
+  }
+  const graph = graphOf([withTerm('n1', 'spring'), withTerm('n2', 'autumn'), withTerm('n3', 'spring')], [])
+  const options = axisOptions(DEFAULT_ONTOLOGY, graph)
+  const term = options.find(o => o.mapping.dimension === 'term')
+  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const onTerm: ForceParams = { ...params, pair: pairTuning(term!.mapping), bandY: { mapping: term!.mapping, overrides: new Map() } }
+  const warnings: string[] = []
+  const warn = console.warn
+  console.warn = (...args: unknown[]) => { warnings.push(String(args[0])) }
+  let kept: ForceParams, fallen: ForceParams
+  try {
+    kept = retunedFor(onTerm, DEFAULT_ONTOLOGY, graph)
+    fallen = retunedFor(onTerm, DEFAULT_ONTOLOGY, graphOf([withTerm('n1', undefined)], []))
+  } finally {
+    console.warn = warn
+  }
+  return {
+    offered: options.map(o => `${o.mapping.dimension}=${o.mapping.label}:${o.mapping.buckets.map(b => `${b.id}/${b.abbreviation}`).join(',')}`),
+    keptOnTerm: kept.pair.mapping.dimension === 'term' && (!isScalarTuning(kept.bandY) && kept.bandY.mapping.dimension === 'term'),
+    fellBackToStyle: fallen.pair.mapping.dimension === DEFAULT_ONTOLOGY.styleAxis() && (!isScalarTuning(fallen.bandY) && fallen.bandY.mapping.dimension === DEFAULT_ONTOLOGY.styleAxis()),
+    saidOnce: warnings.length,
+    said: warnings.map(w => w.replace(/^\[graph\] /, '')),
+  }
+}
+
 export function tuningProbes(): Json {
   const graph = multifile()
   return {
+    plainAxis: plainAxis(),
     overrides: overrides(graph),
     retune: retune(graph),
     foreignAxisPhysics: foreignAxisPhysics(graph),
