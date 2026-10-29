@@ -78,8 +78,8 @@ interface FilterBarProps {
 
 /** The classes a section's chips wear, by the axis's declared presentation. */
 const LOOKS = {
-  chip: { sectionClass: 'header-types-section', rowClass: 'header-types-row', chipClass: 'header-type-tag', modifierPrefix: 'header-type', activeClass: 'active', iconClass: 'header-type-icon', labelClass: 'header-type-label' },
-  tag: { sectionClass: 'header-files-section', rowClass: 'header-files-row', chipClass: 'header-file-tag', modifierPrefix: '', activeClass: 'selected', iconClass: 'header-file-icon', labelClass: 'header-file-name' },
+  chip: { sectionClass: 'gv-header-types-section', rowClass: 'gv-header-types-row', chipClass: 'gv-header-type-tag', modifierPrefix: 'gv-header-type', activeClass: 'active', iconClass: 'gv-header-type-icon', labelClass: 'gv-header-type-label' },
+  tag: { sectionClass: 'gv-header-files-section', rowClass: 'gv-header-files-row', chipClass: 'gv-header-file-tag', modifierPrefix: '', activeClass: 'selected', iconClass: 'gv-header-file-icon', labelClass: 'gv-header-file-name' },
 } as const
 
 export function FilterBar({
@@ -133,7 +133,7 @@ export function FilterBar({
   }
 
   return (
-    <div className={`canvas-header${refreshFlash ? ' refresh-flash' : ''}`}>
+    <div className={`gv-canvas-header${refreshFlash ? ' refresh-flash' : ''}`}>
       {chain.map(dimension => {
         const descriptor = ontology.descriptorFor(dimension)
         if (!descriptor) return null
@@ -157,7 +157,7 @@ export function FilterBar({
             <div className={`${look.sectionClass}${pinned ? ' section-pinned' : ''}`}>
               <div className={look.rowClass}>
                 {empty && (
-                  <span className="header-chain-empty" title={`${descriptor.label} has no values in this view`}>
+                  <span className="gv-header-chain-empty" title={`${descriptor.label} has no values in this view`}>
                     no {descriptor.label.toLowerCase()} values
                   </span>
                 )}
@@ -176,15 +176,15 @@ export function FilterBar({
                     <button
                       key={chip.id}
                       className={cls}
-                      style={chip.tint ? ({ ['--chip-tint' as string]: `var(${colorVar(tintOf(chip.id, chip.tint, ontology))})` } as React.CSSProperties) : undefined}
+                      style={chip.tint ? ({ ['--gv-chip-tint' as string]: `var(${colorVar(tintOf(chip.id, chip.tint, ontology))})` } as React.CSSProperties) : undefined}
                       onClick={() => onFilterChange(toggleGroup(filter, dimension, chip.values))}
                       title={chip.tooltip ?? (isActive ? `Hide ${chip.label.toLowerCase()}` : `Show ${chip.label.toLowerCase()}`)}
                     >
                       {chip.icon && <span className={look.iconClass}>{chip.icon}</span>}
                       <span className={look.labelClass}>{chip.label}</span>
-                      <span className="header-chip-count">{count}</span>
+                      <span className="gv-header-chip-count">{count}</span>
                       {hiddenCount > 0 && (
-                        <span className="header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden by this filter`}>
+                        <span className="gv-header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden by this filter`}>
                           {hiddenCount}
                         </span>
                       )}
@@ -200,7 +200,7 @@ export function FilterBar({
               />
               {onChainChange && (
                 <button
-                  className="header-chain-remove"
+                  className="gv-header-chain-remove"
                   onClick={() => {
                     // Removing an axis also stops it filtering. Keeping the
                     // selection would leave the view filtered by something with
@@ -226,32 +226,32 @@ export function FilterBar({
                 >×</button>
               )}
             </div>
-            <div className="header-divider" />
+            <div className="gv-header-divider" />
           </React.Fragment>
         )
       })}
 
       {onChainChange && available.length > 0 && (
-        <div className="header-chain-add">
+        <div className="gv-header-chain-add">
           <button
-            className="header-chain-add-button"
+            className="gv-header-chain-add-button"
             onClick={() => onChainChange([...chain, available[0]!])}
             title={`Add the ${ontology.descriptorFor(available[0]!)?.label ?? available[0]} filter`}
           >+</button>
         </div>
       )}
 
-      <div className="header-divider" />
+      <div className="gv-header-divider" />
 
-      <div className="header-controls-section">
-        <div className={`header-search ${searchActive ? 'active' : ''}`}>
-          <button className="header-search-toggle" onClick={toggleSearch} title={searchTitle}>
+      <div className="gv-header-controls-section">
+        <div className={`gv-header-search ${searchActive ? 'active' : ''}`}>
+          <button className="gv-header-search-toggle" onClick={toggleSearch} title={searchTitle}>
             <SearchIcon size={14} />
           </button>
           {searchActive && (
             <input
               ref={searchInputRef}
-              className="header-search-input"
+              className="gv-header-search-input"
               type="text"
               placeholder={searchPlaceholder}
               value={searchQuery}

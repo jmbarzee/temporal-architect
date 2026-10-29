@@ -22,7 +22,7 @@ export function PinToggle({ pinned, onClick, flashing, label }: PinToggleProps) 
     ? `${label} filter pinned — held as it is; click to unpin`
     : `${label} filter unpinned — click to pin and hold it as it is`
   const className = [
-    'pin-toggle',
+    'gv-pin-toggle',
     pinned ? 'pinned' : '',
     flashing ? 'flashing' : '',
   ].filter(Boolean).join(' ')

@@ -44,11 +44,12 @@ export function cssSuffix(value: DimensionValue): string {
 }
 
 /**
- * The custom property a value's fill is published under (`--node-<suffix>`;
- * `-border` for its border). Its own prefix: the chrome's tokens are
- * `--color-*`, and a value id may be anything a host names (D58).
+ * The custom property a value's fill is published under (`--gv-node-<suffix>`;
+ * `-border` for its border). The `gv-` prefix keeps it from a host's own
+ * properties, and its own `node-` stem apart from the chrome's tokens
+ * (`--gv-color-*`): a value id may be anything a host names (D58).
  */
-export const colorVar = (value: DimensionValue): string => `--node-${cssSuffix(value)}`
+export const colorVar = (value: DimensionValue): string => `--gv-node-${cssSuffix(value)}`
 
 /**
  * The inline custom properties a pane carries for one theme: every style

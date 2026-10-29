@@ -106,7 +106,7 @@ if (!existsSync(cssPath)) { console.error(`FAIL ${relative(PKG_ROOT, cssPath)} i
 else {
   const css = readFileSync(cssPath, 'utf8')
   // The themed tokens once per theme block; the fonts, which no theme changes, once.
-  for (const [token, expected] of [['--accent:', 2], ['--color-bg:', 2], ['--font-sans:', 1]]) {
+  for (const [token, expected] of [['--gv-accent:', 2], ['--gv-color-bg:', 2], ['--gv-font-sans:', 1]]) {
     const n = (css.match(new RegExp(token.replace(/[-:]/g, '\\$&'), 'g')) ?? []).length
     if (n !== expected) { console.error(`FAIL published stylesheet: ${token} declared ${n} time(s), expected ${expected} — the token sheet is missing or doubled.`); failed = true }
   }

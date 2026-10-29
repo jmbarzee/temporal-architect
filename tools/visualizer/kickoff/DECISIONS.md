@@ -2223,3 +2223,38 @@ and reads its theme-marker rows against `data-theme` alone (five rows where
 there were seven). No edge, position, spring or summary row moves.
 
 — 2026-10-28 — agent
+
+**D68 — Unit 11b, the library's CSS in its own namespace (API_WORK.md 2.5).**
+Every custom property the library declares or sets and every class its
+components render gained the prefix `gv-` (`--gv-accent`, `--gv-color-text`,
+`--gv-toolbar-height`, `--gv-node-<value>`, `.gv-graph-view`,
+`.gv-header-type-tag`, `.gv-spring-token`, …): 32 tokens and 156 classes,
+names only, no rule's value changed — the library's stylesheets and
+components differ from before by the inserted prefix and nothing else, and
+the chrome is pixel-identical in both themes above the canvas. A host page's
+own `--accent` or `.header` no longer meets the library's.
+
+1. **The host reads the library's tokens through aliases**, declared once in
+   its `styles/index.css` for each theme block (`--color-text:
+   var(--gv-color-text)` and nine more), so its own rules are unchanged; the
+   catalog, being small, reads `--gv-*` directly. `--toolbar-height` is set
+   inline on the pane, so it is read as `--gv-toolbar-height` where it is
+   read, not aliased.
+2. **Modifier classes stay bare** (`active`, `selected`, `all-included`,
+   `pinned`, `flashing`, `hidden`, `has-errors`, `error`, `warning`,
+   `recently-changed`, `section-pinned`, `open`, `on`, `dim`, `inactive`,
+   `shifted`, `refresh-flash`): no stylesheet selects any of them except as a
+   compound with a prefixed class, and the first host's groups modal reuses
+   three of them beside its own. A host page with a bare `.hidden` rule would
+   still reach library elements; prefixing them is a follow-up. Keyframe
+   names, element ids and `data-*` attributes are also unprefixed.
+3. **The gates spell the new names**: the two artifact gates expect
+   `--gv-accent:`, `--gv-color-bg:` and `--gv-font-sans:`; the screenshot gate
+   and the harness probes select `.gv-…`.
+
+**Golden change (§8.2).** `static` alone: the 56 lines of the generated
+stylesheet row and the `schemeVars` records carry `--gv-node-*` for
+`--node-*`; stripping the prefix gives the committed file byte for byte. No
+class name appears in any golden, so no other row moves.
+
+— 2026-10-28 — agent

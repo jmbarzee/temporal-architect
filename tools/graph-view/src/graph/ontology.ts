@@ -218,7 +218,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     const suffix = cssSuffix(k)
     if (suffix === '') problems.push(`style value ${JSON.stringify(k)} has no custom-property name (its id kebab-cases to nothing)`)
     const other = bySuffix.get(suffix)
-    if (other !== undefined) problems.push(`style values ${JSON.stringify(other)} and ${JSON.stringify(k)} share the custom-property name --node-${suffix}`)
+    if (other !== undefined) problems.push(`style values ${JSON.stringify(other)} and ${JSON.stringify(k)} share the custom-property name --gv-node-${suffix}`)
     bySuffix.set(suffix, k)
   }
   // Every colour must be a form every reader parses without a browser (hex or

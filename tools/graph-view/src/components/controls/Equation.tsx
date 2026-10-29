@@ -9,6 +9,6 @@ import React from 'react'
 export function Equation({ children }: { children: React.ReactNode }) {
   if (children === '' || children === null || children === undefined) return null
   return typeof children === 'string'
-    ? <pre className="graph-control-equation-formula">{children}</pre>
-    : <div className="graph-control-equation-formula">{children}</div>
+    ? <pre className="gv-graph-control-equation-formula">{children}</pre>
+    : <div className="gv-graph-control-equation-formula">{children}</div>
 }

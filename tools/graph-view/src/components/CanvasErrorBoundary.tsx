@@ -42,9 +42,9 @@ export class CanvasErrorBoundary extends React.Component<
   render(): React.ReactNode {
     if (this.state.error) {
       return (
-        <div className="graph-canvas-error" role="alert">
+        <div className="gv-graph-canvas-error" role="alert">
           <p>The {this.props.what ?? 'graph canvas'} failed to render.</p>
-          <p className="graph-canvas-error-detail">{this.state.error.message}</p>
+          <p className="gv-graph-canvas-error-detail">{this.state.error.message}</p>
         </div>
       )
     }

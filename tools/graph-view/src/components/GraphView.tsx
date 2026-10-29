@@ -59,7 +59,7 @@ interface GraphViewProps {
   findings?: React.ReactNode
   /** Groups to glow, over the whole graph; the view restricts them to the visible set and colours them. */
   groups?: readonly NodeGroup[]
-  /** The host's control for its groups (a legend, a modal), rendered inside the pane — which sets `--toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included. */
+  /** The host's control for its groups (a legend, a modal), rendered inside the pane — which sets `--gv-toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included. */
   groupsControl?: (active: readonly ActiveGroup[]) => React.ReactNode
   /** The host's cross-view action for a node — its label, and what it does with the target — offered in the hover box. */
   crossView?: { label: string; onFocus: (target: FocusTarget) => void }
@@ -141,7 +141,7 @@ export function GraphView({
   // The overlay (filter chips, search, the host's findings, the pane's
   // diagnostics, the search results) floats over the full-bleed canvas, and
   // its height is dynamic. It is measured whole, so a host control anchored
-  // at `--toolbar-height` sits under everything the overlay shows, the open
+  // at `--gv-toolbar-height` sits under everything the overlay shows, the open
   // search results included (D66).
   const toolbarRef = React.useRef<HTMLDivElement>(null)
   const [toolbarHeight, setToolbarHeight] = React.useState(0)
@@ -555,7 +555,7 @@ export function GraphView({
 
   // Graph-view search adornment: the hidden-match "+N" badge.
   const searchExtra = hiddenMatchCount > 0 ? (
-    <span className="header-search-badge" title={`${hiddenMatchCount} match${hiddenMatchCount !== 1 ? 'es' : ''} hidden by filters`}>
+    <span className="gv-header-search-badge" title={`${hiddenMatchCount} match${hiddenMatchCount !== 1 ? 'es' : ''} hidden by filters`}>
       +{hiddenMatchCount}
     </span>
   ) : null
@@ -563,15 +563,15 @@ export function GraphView({
   return (
     <CanvasErrorBoundary what="graph view">
     <div
-      className="graph-view"
+      className="gv-graph-view"
       ref={containerRef}
       data-theme={theme}
       tabIndex={keyboard === 'pane' ? 0 : undefined}
       onKeyDown={keyboard === 'pane' ? paneKeyDown : undefined}
-      style={{ ...schemeStyle, ...(toolbarHeight ? { ['--toolbar-height' as string]: `${toolbarHeight}px` } : {}) } as React.CSSProperties}
+      style={{ ...schemeStyle, ...(toolbarHeight ? { ['--gv-toolbar-height' as string]: `${toolbarHeight}px` } : {}) } as React.CSSProperties}
     >
       {/* Canvas fills the full viewport beneath the floating overlay */}
-      <div className="graph-canvas-area">
+      <div className="gv-graph-canvas-area">
         <CanvasErrorBoundary>
           <GraphCanvas
             nodes={visibleNodes}
@@ -622,9 +622,9 @@ export function GraphView({
 
       {/* Floating overlay: the shared filter bar (with the host's findings), the
           pane's own diagnostics, the search results. Measured whole: its height
-          is `--toolbar-height`, where a host control anchors (D66). */}
-      <div className="graph-overlay" ref={toolbarRef}>
-        <div className="graph-toolbar">
+          is `--gv-toolbar-height`, where a host control anchors (D66). */}
+      <div className="gv-graph-overlay" ref={toolbarRef}>
+        <div className="gv-graph-toolbar">
           <FilterBar
             counts={counts}
             valuesByDimension={valuesByDimension}
@@ -652,15 +652,15 @@ export function GraphView({
 
         {/* Search results dropdown */}
         {visibleMatchIds && visibleMatchIds.size > 0 && searchActive && (
-          <div className="graph-search-results">
+          <div className="gv-graph-search-results">
             {visibleNodes.filter(n => visibleMatchIds.has(n.id)).map(n => (
               <button
                 key={n.id}
-                className="graph-search-result"
+                className="gv-graph-search-result"
                 onClick={() => handleSelectSearchResult(n.id)}
               >
-                <span className="graph-search-result-type">{ontology.valueFor(n)}</span>
-                <span className="graph-search-result-name">{n.name}</span>
+                <span className="gv-graph-search-result-type">{ontology.valueFor(n)}</span>
+                <span className="gv-graph-search-result-name">{n.name}</span>
               </button>
             ))}
           </div>
@@ -669,17 +669,17 @@ export function GraphView({
 
       {/* Bottom-left: node/edge counts (shifts right when the shortcuts panel
           is open so they don't overlap). */}
-      <div className={`graph-bottom-left${shortcutsOpen ? ' shifted' : ''}`}>
-        <span className="graph-count">
+      <div className={`gv-graph-bottom-left${shortcutsOpen ? ' shifted' : ''}`}>
+        <span className="gv-graph-count">
           {nodeCount} node{nodeCount !== 1 ? 's' : ''}, {edgeCount} edge{edgeCount !== 1 ? 's' : ''}
         </span>
       </div>
 
       {/* Bottom-center: simulation controls + live fps. */}
-      <div className="graph-bottom-center">
-        <button className="graph-toolbar-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
+      <div className="gv-graph-bottom-center">
+        <button className="gv-graph-toolbar-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
         <button
-          className={`graph-toolbar-btn${themeChoice === 'system' ? '' : ' active'}`}
+          className={`gv-graph-toolbar-btn${themeChoice === 'system' ? '' : ' active'}`}
           onClick={() => onThemeChange(THEME_CHOICES[(THEME_CHOICES.indexOf(themeChoice) + 1) % THEME_CHOICES.length])}
           title={`Colour scheme: ${themeChoice}${themeChoice === 'system' ? ` (${theme})` : ''} — click to change`}
           aria-label="Colour scheme"
@@ -687,7 +687,7 @@ export function GraphView({
           {themeChoice === 'system' ? 'Auto' : themeChoice === 'light' ? 'Light' : 'Dark'}
         </button>
         <button
-          className={`graph-toolbar-btn ${running ? 'active' : ''}`}
+          className={`gv-graph-toolbar-btn ${running ? 'active' : ''}`}
           onClick={handleToggleRunning}
           title={running ? 'Pause simulation (Space)' : 'Resume simulation (Space)'}
         >
@@ -695,7 +695,7 @@ export function GraphView({
         </button>
         {/* Always rendered (reserving its width) so toggling Play/Pause never
             shifts the centred cluster; hidden when the simulation is paused. */}
-        <span className={`graph-count-fps${running ? '' : ' hidden'}`} title="Simulation frames per second">{fps} fps</span>
+        <span className={`gv-graph-count-fps${running ? '' : ' hidden'}`} title="Simulation frames per second">{fps} fps</span>
       </div>
 
       {/* Control panel */}
@@ -722,12 +722,12 @@ export function GraphView({
 
       {/* Shortcuts panel */}
       {shortcutsOpen && (
-        <div className="graph-shortcuts-panel">
-          <div className="graph-shortcuts-title">
+        <div className="gv-graph-shortcuts-panel">
+          <div className="gv-graph-shortcuts-title">
             Keyboard Shortcuts
-            <button className="graph-shortcuts-close" onClick={() => setShortcutsOpen(false)}>&times;</button>
+            <button className="gv-graph-shortcuts-close" onClick={() => setShortcutsOpen(false)}>&times;</button>
           </div>
-          <div className="graph-shortcuts-list">
+          <div className="gv-graph-shortcuts-list">
             <Shortcut keys="Tab / Shift+Tab" desc="Cycle focus" />
             <Shortcut keys="Enter" desc="Select focused node" />
             <Shortcut keys="Escape" desc="Deselect / close" />
@@ -754,11 +754,11 @@ function GraphDiagnostics({ diagnostics }: { diagnostics: readonly GraphDiagnost
   if (errors > 0) parts.push(`${errors} graph error${errors === 1 ? '' : 's'}`)
   if (warnings > 0) parts.push(`${warnings} graph warning${warnings === 1 ? '' : 's'}`)
   return (
-    <details className={`graph-diagnostics${errors > 0 ? ' has-errors' : ''}`} role={errors > 0 ? 'alert' : undefined}>
+    <details className={`gv-graph-diagnostics${errors > 0 ? ' has-errors' : ''}`} role={errors > 0 ? 'alert' : undefined}>
       <summary>{parts.join(', ')}{errors > 0 ? ' — the edges named are not drawn' : ''}</summary>
       <ul>
         {diagnostics.map((d, i) => (
-          <li key={i} className={`graph-diagnostic ${d.severity}`}><code>{d.code}</code>{d.message}</li>
+          <li key={i} className={`gv-graph-diagnostic ${d.severity}`}><code>{d.code}</code>{d.message}</li>
         ))}
       </ul>
     </details>
@@ -836,33 +836,33 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
 
   return (
     <div
-      className="graph-hover-tooltip"
+      className="gv-graph-hover-tooltip"
       style={{ left: sx, top: sy }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <div className="tooltip-identity">
-        {icon && <span className="tooltip-type-icon">{icon}</span>}
-        <span className="tooltip-name">{node.name}</span>
+      <div className="gv-tooltip-identity">
+        {icon && <span className="gv-tooltip-type-icon">{icon}</span>}
+        <span className="gv-tooltip-name">{node.name}</span>
       </div>
-      {contextLines.map((line, i) => <div key={i} className="tooltip-parent">{line}</div>)}
-      {compositionLine && <div className="tooltip-summary">{compositionLine}</div>}
-      {badgesLine && <div className="tooltip-summary">{badgesLine}</div>}
+      {contextLines.map((line, i) => <div key={i} className="gv-tooltip-parent">{line}</div>)}
+      {compositionLine && <div className="gv-tooltip-summary">{compositionLine}</div>}
+      {badgesLine && <div className="gv-tooltip-summary">{badgesLine}</div>}
       {copyCount > 1 && (
-        <div className="tooltip-duplicates" title="The same entity appears in more than one place. Hovering any copy marks all copies.">
+        <div className="gv-tooltip-duplicates" title="The same entity appears in more than one place. Hovering any copy marks all copies.">
           copy {copyIndex} of {copyCount}
         </div>
       )}
       {(outgoing > 0 || incoming > 0) && (
-        <div className="tooltip-connections">
-          {outgoing > 0 && <span className="tooltip-conn-out">→{outgoing}</span>}
-          {incoming > 0 && <span className="tooltip-conn-in">←{incoming}</span>}
+        <div className="gv-tooltip-connections">
+          {outgoing > 0 && <span className="gv-tooltip-conn-out">→{outgoing}</span>}
+          {incoming > 0 && <span className="gv-tooltip-conn-in">←{incoming}</span>}
         </div>
       )}
-      <div className="tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
+      <div className="gv-tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
       {crossView && (
         <button
-          className="tooltip-cross-view"
+          className="gv-tooltip-cross-view"
           onClick={() => crossView.onFocus({ name: node.name, values: node.dimensions })}
           title={crossView.label}
         >
@@ -875,9 +875,9 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
 
 function Shortcut({ keys, desc }: { keys: string; desc: string }) {
   return (
-    <div className="graph-shortcut-row">
-      <kbd className="graph-shortcut-key">{keys}</kbd>
-      <span className="graph-shortcut-desc">{desc}</span>
+    <div className="gv-graph-shortcut-row">
+      <kbd className="gv-graph-shortcut-key">{keys}</kbd>
+      <span className="gv-graph-shortcut-desc">{desc}</span>
     </div>
   )
 }

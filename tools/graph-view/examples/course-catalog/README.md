@@ -29,4 +29,4 @@ Add `?theme=dark` (or `light`) to the URL to pin the pane's theme.
 | `graph.ts` | `Graph`. It writes `parentId` and the containment edge from one lookup, sets `RELATION_DIMENSION` and its own `requirement` axis on every edge, gives a cross-listed course's nodes one `copyKey`, and rings a listing no department owns. |
 | `App.tsx` | `GraphView` props, `OntologyContext`, `counts`, `findings`, `groups`/`groupsControl`, `crossView`, `reconcileFilter` with `pendingFocus` (Reveal), `withSelection`/`selectionFor`/`pinnedFor`, and `useHostTheme` + `schemeVars` for the shell's own chrome. |
 | `main.tsx` | `themeChoiceOf`. |
-| `app.css` | The library's tokens (`--color-*`, `--toolbar-height`) and the scheme's `--node-<value>`. |
+| `app.css` | The library's tokens (`--gv-color-*`, `--gv-toolbar-height`) and the scheme's `--gv-node-<value>`. |

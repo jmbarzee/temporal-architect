@@ -450,9 +450,9 @@ export function GraphCanvas({
       // Resolve theme-tracking colours every frame. Cheap (CSS lookup +
       // string trim per draw) and guarantees the canvas text follows a
       // theme switch without needing a full effect teardown.
-      // Dedicated, high-contrast label colour (darker than --color-text in
+      // Dedicated, high-contrast label colour (darker than --gv-color-text in
       // light themes, brighter in dark) so node names pop off the background.
-      const labelColor = cssVar(canvas, '--color-graph-label', '#0f172a')
+      const labelColor = cssVar(canvas, '--gv-color-graph-label', '#0f172a')
       // Dim variant keeps the same hue, just at low alpha. We synthesise it
       // by appending an alpha to the resolved hex when possible; otherwise
       // fall back to the existing rgba grey.
@@ -689,9 +689,9 @@ export function GraphCanvas({
         // highlight reads as part of the visualizer, not a generic stoplight:
         // amber = stretched, cool blue = compressed, calm
         // timer-teal = near rest.
-        const tensionStretch = cssVar(canvas, '--tension-stretch', '#d97706')
-        const tensionCompress = cssVar(canvas, '--tension-compress', '#7CB9E8')
-        const tensionRest = cssVar(canvas, '--tension-rest', '#7EC8B8')
+        const tensionStretch = cssVar(canvas, '--gv-tension-stretch', '#d97706')
+        const tensionCompress = cssVar(canvas, '--gv-tension-compress', '#7CB9E8')
+        const tensionRest = cssVar(canvas, '--gv-tension-rest', '#7EC8B8')
         for (const edge of d.edges) {
           const src = d.nodeMap.get(edge.sourceId)
           const tgt = d.nodeMap.get(edge.targetId)
@@ -791,7 +791,7 @@ export function GraphCanvas({
         const hover = d.activeGravityBucket
         const fillOf = (bucket: string | undefined): string => {
           const color = bucket !== undefined ? d.overlay.colors.get(bucket) : undefined
-          return color ?? cssVar(canvas, '--color-text-muted', '#94A3B8')
+          return color ?? cssVar(canvas, '--gv-color-text-muted', '#94A3B8')
         }
         const drawnOn = (axis: 'x' | 'y') => hover !== null && hover.axis === axis &&
           (axis === 'y' && d.overlay.rings.length > 0
@@ -828,8 +828,8 @@ export function GraphCanvas({
               // A scalar axis: one gradient from its 0 end to its 1 end (R31).
               const z = toScreen(gradient.zero), o = toScreen(gradient.one)
               const g = coord === 'y' ? ctx.createLinearGradient(0, z, 0, o) : ctx.createLinearGradient(z, 0, o, 0)
-              g.addColorStop(0, cssVar(canvas, '--color-text-muted', '#94A3B8'))
-              g.addColorStop(1, cssVar(canvas, '--color-text', '#1E293B'))
+              g.addColorStop(0, cssVar(canvas, '--gv-color-text-muted', '#94A3B8'))
+              g.addColorStop(1, cssVar(canvas, '--gv-color-text', '#1E293B'))
               ctx.fillStyle = g
               ctx.globalAlpha = 0.12
             } else {
@@ -1070,7 +1070,7 @@ export function GraphCanvas({
   }, [size]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={containerRef} className="graph-canvas-container">
+    <div ref={containerRef} className="gv-graph-canvas-container">
       <canvas
         ref={canvasRef}
         style={{ width: size.w, height: size.h }}

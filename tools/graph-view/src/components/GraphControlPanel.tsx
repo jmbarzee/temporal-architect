@@ -186,9 +186,9 @@ export function GraphControlPanel({
   }, [onParamChange, onAdjust])
 
   return (
-    <div className={`graph-control-panel ${open ? 'open' : ''}`}>
+    <div className={`gv-graph-control-panel ${open ? 'open' : ''}`}>
       <button
-        className="graph-control-panel-toggle"
+        className="gv-graph-control-panel-toggle"
         onClick={() => setOpen(!open)}
         title="Toggle control panel"
       >
@@ -197,15 +197,15 @@ export function GraphControlPanel({
 
       {open && (
         <PopProvider>
-        <div className="graph-control-panel-body">
+        <div className="gv-graph-control-panel-body">
           {/* Control tabs — only one section is shown at a time. */}
-          <div className="graph-control-tabs" role="tablist">
+          <div className="gv-graph-control-tabs" role="tablist">
             {CONTROL_TABS.map(t => (
               <button
                 key={t.id}
                 role="tab"
                 aria-selected={activeTab === t.id}
-                className={`graph-control-tab${activeTab === t.id ? ' active' : ''}`}
+                className={`gv-graph-control-tab${activeTab === t.id ? ' active' : ''}`}
                 onClick={() => setActiveTab(t.id)}
               >
                 {t.label}
@@ -217,7 +217,7 @@ export function GraphControlPanel({
               cell; only the active one is visible. The grid auto-sizes to the
               tallest/widest tab, so the panel never resizes when switching
               tabs — the browser computes the "max required space" for us. */}
-          <div className="graph-control-sections">
+          <div className="gv-graph-control-sections">
             {/* PUSH/PULL section */}
             <SectionSlot active={activeTab === 'forces'}>
               <PushPullControls
@@ -258,16 +258,16 @@ export function GraphControlPanel({
             {/* MISC section — non-force controls: simulation dynamics and
                 render-time node scaling, each in its own labelled sub-section. */}
             <SectionSlot active={activeTab === 'misc'}>
-              <div className="graph-control-subsection">
-                <div className="graph-control-subsection-title">Dynamics</div>
+              <div className="gv-graph-control-subsection">
+                <div className="gv-graph-control-subsection-title">Dynamics</div>
                 <EquationSection subtitle="" equation={'v \u00D7= friction\n\u03B1 \u2212= cooling, stop at threshold'} onHover={h => onActiveSection(h ? 'dynamics' : null)}>
                   {DYNAMICS_SLIDERS.map(s => (
                     <SliderRow key={s.key} def={s} value={params[s.key]} onChange={v => emitParamChange({ [s.key]: v } as Partial<ForceParams>)} />
                   ))}
                 </EquationSection>
               </div>
-              <div className="graph-control-subsection">
-                <div className="graph-control-subsection-title">Node scaling</div>
+              <div className="gv-graph-control-subsection">
+                <div className="gv-graph-control-subsection-title">Node scaling</div>
                 <EquationSection subtitle="" equation={'size = base \u00D7 clamp(zoom, floor, cap)'} onHover={() => {}}>
                   {NODE_SCALE_SLIDERS.map(s => (
                     <SliderRow key={s.key} def={s} value={nodeScale[s.key]} onChange={v => onNodeScaleChange({ [s.key]: v } as Partial<NodeScaleParams>)} />
@@ -284,13 +284,13 @@ export function GraphControlPanel({
 }
 
 // A stacking slot for one force section. All slots share a single grid cell
-// (see .graph-control-sections), so the panel sizes to the tallest section and
+// (see .gv-graph-control-sections), so the panel sizes to the tallest section and
 // never changes size when switching tabs. Inactive slots stay mounted but
 // hidden (visibility + pointer-events) so they still contribute to the grid's
 // max size and keep their input state.
 function SectionSlot({ active, children }: { active: boolean; children: React.ReactNode }) {
   return (
-    <div className={`graph-control-section-slot${active ? ' active' : ''}`} aria-hidden={!active}>
+    <div className={`gv-graph-control-section-slot${active ? ' active' : ''}`} aria-hidden={!active}>
       {children}
     </div>
   )
@@ -305,14 +305,14 @@ function SliderRow({ def, value, onChange, nodeType }: {
   const display = def.step < 1 ? String(value) : String(Math.round(value))
   // A typed row reads its colour from the pane's inline variables (D57).
   const typed = nodeType
-    ? { className: 'graph-control-slider graph-control-typed-row', style: { ['--type-color' as string]: `var(${colorVar(nodeType)})` } as React.CSSProperties }
-    : { className: 'graph-control-slider', style: undefined }
+    ? { className: 'gv-graph-control-slider gv-graph-control-typed-row', style: { ['--gv-type-color' as string]: `var(${colorVar(nodeType)})` } as React.CSSProperties }
+    : { className: 'gv-graph-control-slider', style: undefined }
 
   return (
     <div className={typed.className} style={typed.style} title={def.tooltip}>
-      <label className="graph-control-slider-label">{def.label}</label>
+      <label className="gv-graph-control-slider-label">{def.label}</label>
       <Slider min={def.min} max={def.max} step={def.step} value={value} onChange={onChange} />
-      <span className="graph-control-slider-value">{display}</span>
+      <span className="gv-graph-control-slider-value">{display}</span>
     </div>
   )
 }

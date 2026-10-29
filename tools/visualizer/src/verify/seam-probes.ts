@@ -91,7 +91,7 @@ function barRendered(): Json {
       findings: React.createElement('div', { 'data-probe': 'findings' }),
     })))
   const badges: Record<string, string> = {}
-  for (const m of html.matchAll(/class="header-(?:type-label|file-name)">([^<]*)<\/span><span class="header-chip-count">([^<]*)<\/span>/g)) badges[m[1]] = m[2]
+  for (const m of html.matchAll(/class="gv-header-(?:type-label|file-name)">([^<]*)<\/span><span class="gv-header-chip-count">([^<]*)<\/span>/g)) badges[m[1]] = m[2]
   return { badges: sortedRecord(Object.entries(badges)), findingsSlot: html.includes('data-probe="findings"') }
 }
 

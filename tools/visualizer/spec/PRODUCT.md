@@ -88,7 +88,7 @@ Each definition type has a dedicated color used consistently across both views. 
 
 Every color palette has a matching dark variant.
 
-**In the graph, the palette is the taxonomy's declaration** (D57): every style value carries its fill and border in both themes (`color.light`, `color.dark`) beside its size, and every edge type its stroke; the pane carries them as `--node-<suffix>` custom properties in its resolved theme, and the filter chips borrow a value's colour as a tint. The tree's `--block-*` tokens are the host's own.
+**In the graph, the palette is the taxonomy's declaration** (D57): every style value carries its fill and border in both themes (`color.light`, `color.dark`) beside its size, and every edge type its stroke; the pane carries them as `--gv-node-<suffix>` custom properties in its resolved theme, and the filter chips borrow a value's colour as a tint. The tree's `--block-*` tokens are the host's own.
 
 ### Icon system
 

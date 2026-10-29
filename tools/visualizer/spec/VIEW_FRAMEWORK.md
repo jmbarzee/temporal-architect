@@ -140,7 +140,7 @@ The filter bar is a **single shared component** (`FilterBar`, the library's) ren
 
 The layout stack is:
 
-1. **Filter bar** (`canvas-header`) — shared; visually identical across views. File chips, kind chips, search, and the error/warning bars (§ Error Handling).
+1. **Filter bar** (`gv-canvas-header`) — shared; visually identical across views. File chips, kind chips, search, and the error/warning bars (§ Error Handling).
 2. **Content** — tree block list or graph canvas, filling remaining space.
 
 The filter bar is always first, so users always know where to find it regardless of which view they're in.

@@ -1,8 +1,8 @@
 /* Shared filter bar: canvas header, chips, search — extracted from styles/index.css (issue #56). The findings bars rendered under it are the host's (ErrorBars.css). */
 /* === Canvas Header === */
-.canvas-header {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+.gv-canvas-header {
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
   border-radius: 10px;
   margin-bottom: 20px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -10,19 +10,19 @@
 }
 
 /* Transition indicator: a subtle flash when the host says its data reloaded */
-.canvas-header.refresh-flash {
+.gv-canvas-header.refresh-flash {
   animation: refreshFlash 0.6s ease;
 }
 
 @keyframes refreshFlash {
   0% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
-  30% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) var(--accent-tint-ring), transparent), 0 1px 4px rgba(0, 0, 0, 0.06); }
+  30% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-ring), transparent), 0 1px 4px rgba(0, 0, 0, 0.06); }
   100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
 }
 
 
 /* --- Files Section --- */
-.header-files-section {
+.gv-header-files-section {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -31,12 +31,12 @@
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.header-files-section.section-pinned {
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-weak), transparent);
-  box-shadow: inset 2px 0 0 var(--accent);
+.gv-header-files-section.section-pinned {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
+  box-shadow: inset 2px 0 0 var(--gv-accent);
 }
 
-.header-files-row {
+.gv-header-files-row {
   flex: 1 1 auto;
   display: flex;
   flex-wrap: wrap;
@@ -44,67 +44,67 @@
   min-width: 0;
 }
 
-.header-file-tag {
+.gv-header-file-tag {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--gv-color-border);
   border-radius: 6px;
-  font-family: var(--font-mono);
+  font-family: var(--gv-font-mono);
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
   white-space: nowrap;
 }
 
-.header-file-tag:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
+.gv-header-file-tag:hover {
+  border-color: var(--gv-accent);
+  color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
 }
 
-.header-file-tag.selected {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-active), transparent);
-  color: var(--accent);
+.gv-header-file-tag.selected {
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-active), transparent);
+  color: var(--gv-accent);
   font-weight: 500;
 }
 
 /* Third state: no files selected → all files implicitly included */
-.header-file-tag.all-included {
-  border-color: color-mix(in srgb, var(--accent) var(--accent-tint-ring), transparent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-weak), transparent);
-  color: var(--color-text-muted);
+.gv-header-file-tag.all-included {
+  border-color: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-ring), transparent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
+  color: var(--gv-color-text-muted);
 }
 
-.header-file-tag.all-included:hover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-active), transparent);
-  color: var(--accent);
+.gv-header-file-tag.all-included:hover {
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-active), transparent);
+  color: var(--gv-accent);
 }
 
-.header-file-icon {
+.gv-header-file-icon {
   font-size: 12px;
   line-height: 1;
 }
 
-.header-file-name {
+.gv-header-file-name {
   line-height: 1;
 }
 
 /* --- Header Divider --- */
-.header-divider {
+.gv-header-divider {
   height: 1px;
-  background: var(--color-border);
+  background: var(--gv-color-border);
   margin: 0;
 }
 
 /* --- Controls Section --- */
-.header-controls-section {
+.gv-header-controls-section {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -113,7 +113,7 @@
 }
 
 /* --- Search --- */
-.header-search {
+.gv-header-search {
   display: flex;
   align-items: center;
   gap: 0;
@@ -123,12 +123,12 @@
   border: 1px solid transparent;
 }
 
-.header-search.active {
-  border-color: var(--color-border);
-  background: var(--inset-bg);
+.gv-header-search.active {
+  border-color: var(--gv-color-border);
+  background: var(--gv-inset-bg);
 }
 
-.header-search-toggle {
+.gv-header-search-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,37 +137,37 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
-.header-search:not(.active) .header-search-toggle {
-  border: 1px solid var(--color-border);
+.gv-header-search:not(.active) .gv-header-search-toggle {
+  border: 1px solid var(--gv-color-border);
 }
 
-.header-search-toggle:hover {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
+.gv-header-search-toggle:hover {
+  color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
 }
 
-.header-search-input {
+.gv-header-search-input {
   width: 200px;
   height: 32px;
   padding: 0 10px 0 2px;
   border: none;
   background: transparent;
-  font-family: var(--font-mono);
+  font-family: var(--gv-font-mono);
   font-size: 13px;
-  color: var(--color-text);
+  color: var(--gv-color-text);
   outline: none;
   animation: searchExpand 0.2s ease;
 }
 
-.header-search-input::placeholder {
-  color: var(--color-text-muted);
+.gv-header-search-input::placeholder {
+  color: var(--gv-color-text-muted);
   opacity: 0.6;
 }
 
@@ -183,7 +183,7 @@
 }
 
 /* --- Definition Type Toggles --- */
-.header-types-section {
+.gv-header-types-section {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -192,12 +192,12 @@
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.header-types-section.section-pinned {
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-weak), transparent);
-  box-shadow: inset 2px 0 0 var(--accent);
+.gv-header-types-section.section-pinned {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
+  box-shadow: inset 2px 0 0 var(--gv-accent);
 }
 
-.header-types-row {
+.gv-header-types-row {
   flex: 1 1 auto;
   display: flex;
   flex-wrap: wrap;
@@ -205,37 +205,37 @@
   min-width: 0;
 }
 
-.header-type-tag {
+.gv-header-type-tag {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--gv-color-border);
   border-radius: 6px;
-  font-family: var(--font-sans);
+  font-family: var(--gv-font-sans);
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
   white-space: nowrap;
 }
 
-.header-type-icon {
+.gv-header-type-icon {
   font-size: 12px;
   line-height: 1;
 }
 
-.header-type-label {
+.gv-header-type-label {
   line-height: 1;
 }
 
 /* Definition-count badge on the file and type chips — a muted count of the
    top-level definitions the chip represents (type counts respect the file
    filter; file counts are per-file totals). */
-.header-chip-count {
-  font-family: var(--font-mono);
+.gv-header-chip-count {
+  font-family: var(--gv-font-mono);
   font-size: 11px;
   line-height: 1;
   opacity: 0.6;
@@ -244,34 +244,34 @@
 
 /* All filter chips share the same hover / active recipe — the only thing
    that varies per type is which palette variable drives the colour. The
-   --chip-tint and --chip-tint-bg pair is set per chip class below; the
+   --gv-chip-tint and --gv-chip-tint-bg pair is set per chip class below; the
    shared rules read those vars so adding a new node type is "set the two
    vars" not "duplicate fifteen lines of CSS". */
-.header-type-tag:hover {
-  border-color: var(--chip-tint, var(--color-border));
-  color: var(--chip-tint, var(--color-text-muted));
-  background: var(--chip-tint-bg-hover, transparent);
+.gv-header-type-tag:hover {
+  border-color: var(--gv-chip-tint, var(--gv-color-border));
+  color: var(--gv-chip-tint, var(--gv-color-text-muted));
+  background: var(--gv-chip-tint-bg-hover, transparent);
 }
-.header-type-tag.active {
-  border-color: var(--chip-tint, var(--color-border));
-  color: var(--chip-tint, var(--color-text-muted));
-  background: var(--chip-tint-bg-active, transparent);
+.gv-header-type-tag.active {
+  border-color: var(--gv-chip-tint, var(--gv-color-border));
+  color: var(--gv-chip-tint, var(--gv-color-text-muted));
+  background: var(--gv-chip-tint-bg-active, transparent);
   font-weight: 500;
 }
 
-/* A chip's tint is the style value it borrows (inline `--chip-tint`, set by
-   the bar from the themed root's --node-<suffix>, D58); its hover and active
+/* A chip's tint is the style value it borrows (inline `--gv-chip-tint`, set by
+   the bar from the themed root's --gv-node-<suffix>, D58); its hover and active
    backgrounds are that tint mixed down to the theme's tint percentages, so
    the bar needs no per-kind rule, no literal palette and no dark rule. */
-.header-type-tag {
-  --chip-tint-bg-hover: color-mix(in srgb, var(--chip-tint, var(--color-text-muted)) var(--accent-tint-hover), transparent);
-  --chip-tint-bg-active: color-mix(in srgb, var(--chip-tint, var(--color-text-muted)) var(--accent-tint-active), transparent);
+.gv-header-type-tag {
+  --gv-chip-tint-bg-hover: color-mix(in srgb, var(--gv-chip-tint, var(--gv-color-text-muted)) var(--gv-accent-tint-hover), transparent);
+  --gv-chip-tint-bg-active: color-mix(in srgb, var(--gv-chip-tint, var(--gv-color-text-muted)) var(--gv-accent-tint-active), transparent);
 }
 
 
 /* Tiny badge on file chips / type toggles showing how many search
    matches are hidden by that filter. */
-.header-hidden-badge {
+.gv-header-hidden-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -279,7 +279,7 @@
   height: 16px;
   margin-left: 4px;
   padding: 0 4px;
-  font-family: var(--font-mono);
+  font-family: var(--gv-font-mono);
   font-size: 10px;
   font-weight: 600;
   color: #F59E0B;
@@ -290,15 +290,15 @@
 
 /* Filter chip / toggle animation when changed by a focus transition's
    reconciler expansion (~400ms). */
-.header-file-tag.recently-changed,
-.header-type-tag.recently-changed {
+.gv-header-file-tag.recently-changed,
+.gv-header-type-tag.recently-changed {
   animation: filterChipFlash 0.45s ease;
 }
 
 @keyframes filterChipFlash {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); }
-  40%  { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 0%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gv-accent) 50%, transparent); }
+  40%  { box-shadow: 0 0 0 4px color-mix(in srgb, var(--gv-accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gv-accent) 0%, transparent); }
 }
 
 
@@ -307,10 +307,10 @@
    one appended. Deliberately neutral: these are structural affordances, and the
    per-axis tints above are Unit 6's to rework. */
 
-.header-chain-remove {
+.gv-header-chain-remove {
   border: none;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   cursor: pointer;
   font-size: 13px;
   line-height: 1;
@@ -321,18 +321,18 @@
 }
 
 /* Revealed on hover so the bar stays quiet until the user reaches for it. */
-.header-files-section:hover .header-chain-remove,
-.header-types-section:hover .header-chain-remove,
-.header-chain-remove:focus-visible {
+.gv-header-files-section:hover .gv-header-chain-remove,
+.gv-header-types-section:hover .gv-header-chain-remove,
+.gv-header-chain-remove:focus-visible {
   opacity: 1;
 }
 
-.header-chain-remove:hover {
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
-  color: var(--color-text);
+.gv-header-chain-remove:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+  color: var(--gv-color-text);
 }
 
-.header-chain-add {
+.gv-header-chain-add {
   display: flex;
   align-items: center;
   padding: 0 6px;
@@ -340,10 +340,10 @@
 
 /* Also the empty-chain state (R18): with every axis removed the bar collapses
    to this one button, which is the only way back. */
-.header-chain-add-button {
-  border: 1px dashed var(--color-border);
+.gv-header-chain-add-button {
+  border: 1px dashed var(--gv-color-border);
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   cursor: pointer;
   font-size: 13px;
   line-height: 1;
@@ -351,17 +351,17 @@
   border-radius: 4px;
 }
 
-.header-chain-add-button:hover {
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
-  color: var(--color-text);
+.gv-header-chain-add-button:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+  color: var(--gv-color-text);
   border-style: solid;
 }
 
 /* An axis in the chain with nothing to offer. It still renders — an axis that
    is filtering must always be visible and removable, and vanishing is what made
    an unrecognised axis dangerous rather than merely unsupported. */
-.header-chain-empty {
-  color: var(--color-text-muted);
+.gv-header-chain-empty {
+  color: var(--gv-color-text-muted);
   font-size: 11px;
   font-style: italic;
   padding: 3px 6px;
@@ -369,13 +369,13 @@
 
 /* The same third state on a chip-presentation axis: an `emptyMeans: 'all'`
    axis with nothing selected is matching everything, whichever look it wears. */
-.header-type-tag.all-included {
-  border-color: color-mix(in srgb, var(--accent) var(--accent-tint-ring), transparent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-weak), transparent);
-  color: var(--color-text-muted);
+.gv-header-type-tag.all-included {
+  border-color: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-ring), transparent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
+  color: var(--gv-color-text-muted);
 }
-.header-type-tag.all-included:hover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-active), transparent);
-  color: var(--accent);
+.gv-header-type-tag.all-included:hover {
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-active), transparent);
+  color: var(--gv-accent);
 }

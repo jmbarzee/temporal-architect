@@ -6,7 +6,7 @@ import React from 'react'
 // same trick the main tabs use.
 
 export function SubTabs({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="force-subtabs" role="tablist" aria-label={label}>{children}</div>
+  return <div className="gv-force-subtabs" role="tablist" aria-label={label}>{children}</div>
 }
 
 /**
@@ -26,20 +26,20 @@ export function SubTab({ label, active, onSelect, leading }: {
       role="tab"
       aria-selected={active}
       tabIndex={0}
-      className={`force-subtab${active ? ' active' : ''}`}
+      className={`gv-force-subtab${active ? ' active' : ''}`}
       onClick={onSelect}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
     >
       {leading}
-      <span className="force-subtab-label">{label}</span>
+      <span className="gv-force-subtab-label">{label}</span>
     </div>
   )
 }
 
 export function SubTabBodies({ children }: { children: React.ReactNode }) {
-  return <div className="force-bodies">{children}</div>
+  return <div className="gv-force-bodies">{children}</div>
 }
 
 export function SubTabBody({ active, children }: { active: boolean; children: React.ReactNode }) {
-  return <div className={`force-body${active ? ' active' : ''}`} aria-hidden={!active}>{children}</div>
+  return <div className={`gv-force-body${active ? ' active' : ''}`} aria-hidden={!active}>{children}</div>
 }

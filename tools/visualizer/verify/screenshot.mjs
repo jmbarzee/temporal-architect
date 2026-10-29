@@ -24,7 +24,7 @@
 // emulates `prefers-color-scheme: light`; `--dark` emulates dark AND marks
 // the document the way a dark host does (`.vscode-dark` on <body>), and names
 // the captures `-dark`. Each capture reports the pane's resolved theme
-// (`data-theme` on `.graph-view`) and the run fails if it is not the one
+// (`data-theme` on `.gv-graph-view`) and the run fails if it is not the one
 // asked for — a theme-aware canvas (D57) has two appearances to evidence,
 // and a capture in the wrong one is not evidence (REVIEW_6 C2).
 //
@@ -161,7 +161,7 @@ const COUNTS = `
 // Open the control panel on its first tab; no-op when already open.
 const OPEN_CONTROLS = `
   (() => {
-    const b = document.querySelector('.graph-control-panel-toggle')
+    const b = document.querySelector('.gv-graph-control-panel-toggle')
     if (!b) return 'no toggle'
     if (b.textContent.trim().startsWith('▶')) b.click()
     return 'open'
@@ -192,9 +192,9 @@ const SET_SELECT = (id, value) => `
 const CLICK_CHIP = label => `
   (() => {
     // The graph pane's bar, not the tree's: both are mounted, the tree's first.
-    const pane = document.querySelector('.graph-view') || document
-    const b = [...pane.querySelectorAll('button.header-type-tag, button.header-file-tag')]
-      .find(e => (e.querySelector('.header-type-label, .header-file-label') || e).textContent.trim().startsWith(${JSON.stringify(label)}))
+    const pane = document.querySelector('.gv-graph-view') || document
+    const b = [...pane.querySelectorAll('button.gv-header-type-tag, button.gv-header-file-tag')]
+      .find(e => (e.querySelector('.gv-header-type-label, .gv-header-file-label') || e).textContent.trim().startsWith(${JSON.stringify(label)}))
     if (!b) return 'no chip ' + ${JSON.stringify(label)}
     b.click()
     return 'toggled'
@@ -270,7 +270,7 @@ async function main() {
       await sleep(4000)                     // a new axis relays out; let it settle
     }
     const errorsAfterPanel = await evalIn('JSON.stringify(window.__twfErrors || [])')
-    const theme = await evalIn(`(document.querySelector('.graph-view') || {}).dataset?.theme || 'no pane'`)
+    const theme = await evalIn(`(document.querySelector('.gv-graph-view') || {}).dataset?.theme || 'no pane'`)
     const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
     writeFileSync(join(outDir, `${unit}-${fixture}-controls${suffix}.png`), Buffer.from(shot.data, 'base64'))
     results.push({ fixture, counts, chips, errors: errorsAfterPanel, file, panel: panel + (toggled ? ' toggle=' + toggled : ''), theme })

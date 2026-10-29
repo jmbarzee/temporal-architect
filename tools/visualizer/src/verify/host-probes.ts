@@ -98,8 +98,8 @@ export function hostProbes(): Json {
     scalar: sortedRecord([...scalar]),
     rendered: {
       canvas: html.includes('<canvas'),
-      chips: sorted([...html.matchAll(/class="header-type-label">([^<]*)</g)].map(m => m[1])),
-      files: sorted([...html.matchAll(/class="header-file-name">([^<]*)</g)].map(m => m[1])),
+      chips: sorted([...html.matchAll(/class="gv-header-type-label">([^<]*)</g)].map(m => m[1])),
+      files: sorted([...html.matchAll(/class="gv-header-file-name">([^<]*)</g)].map(m => m[1])),
     },
   }
 }
