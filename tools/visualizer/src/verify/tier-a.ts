@@ -6,11 +6,11 @@
 
 import { DISPATCH_DIMENSION } from '../adapter/edge-types'
 import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
-import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
+import { filterOfSets } from './filter-states'
 import { buildGraph } from '../adapter/build'
 import { edgeTypeFor } from '../adapter/edge-types'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
-import { payloadString } from '@temporal-architect/graph-view/graph/model'
+import { copyGroups, copyKeyOf, payloadString } from '@temporal-architect/graph-view/graph/model'
 import { Simulation, axisOptions, fitsCeiling, pairTuning, defaultParamsFor, sprungEdges } from '@temporal-architect/graph-view/graph/simulation'
 import { presentSpringCategories, resolveSprings, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { presentSetsOf } from '@temporal-architect/graph-view/components/graph-view/present'
@@ -20,7 +20,7 @@ import { readableGraph } from '@temporal-architect/graph-view/graph/model'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
-import { SOURCE_FILE_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
+import { SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { histogram, sorted, sortedRecord } from './snapshot'
@@ -43,8 +43,8 @@ function nodeRow(n: GraphNode): Json {
     // inside it are the strings the field used to hold.
     dimensions: { ...n.dimensions },
     name: n.name,
-    orphan: n.orphan,
-    definitionKey: n.definitionKey,
+    ring: n.ring ?? null,
+    copyKey: copyKeyOf(n),
   }
   if (n.parentId !== undefined) row.parentId = n.parentId
   // Host payload, read back by key. Emitted under the same names the fields
@@ -53,7 +53,7 @@ function nodeRow(n: GraphNode): Json {
     const v = payloadString(n, key)
     if (v !== undefined) row[key] = v
   }
-  if (n.templateParams !== undefined) row.templateParams = [...n.templateParams]
+  if (n.badges !== undefined) row.badges = [...n.badges]
   return row
 }
 
@@ -152,8 +152,8 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       sourceFiles: allFilesOf(graph),
       nodes: nodes.map(nodeRow),
       edges: edgeLines,
-      duplicateGroups: sortedRecord(
-        [...graph.duplicateGroups].map(([k, ids]) => [k, sorted(ids)] as const),
+      copyGroups: sortedRecord(
+        [...copyGroups(graph)].map(([k, ids]) => [k, sorted(ids)] as const),
       ),
     },
     edgeClassification: {
@@ -188,7 +188,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
     // The hover box's context line per node (D59, B35): the taxonomy's hook
     // read against the fixture's own payloads, or its default — the parent's
     // name — where the hook says nothing.
-    contextLines: sortedRecord(nodes.map(n => [n.id, DEFAULT_ONTOLOGY.contextLine(n, n.parentId ? nodeOf(n.parentId) : undefined) ?? ''] as const)),
+    contextLines: sortedRecord(nodes.map(n => { const c = DEFAULT_ONTOLOGY.contextLine(n, n.parentId ? nodeOf(n.parentId) : undefined); return [n.id, c === undefined ? '' : typeof c === 'string' ? c : [...c]] as const })),
     // Every built-in scalar's value per node over the whole graph (R8, R9) —
     // reach is the same function topological gravity reads over the visible
     // subgraph, so its rows here and `downstreamScores` there must agree

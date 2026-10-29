@@ -2168,3 +2168,58 @@ stands where the spliced call's projection used to be drawn over it. Every
 other row is byte-identical.
 
 — 2026-10-28 — agent
+
+**D67 — Unit 11, the first host removed from the library's model and
+behaviour (API_WORK.md Set 2, items 2.1–2.4).** Three readings agreed that
+the leak ratchet's zero was about words, not shapes: the library still carried
+the first host's two axes, its parser's node fields, its editor's theme
+classes and its two-view wording. Each is now the host's.
+
+1. **No library-declared node axis.** `DEF_TYPE_DIMENSION` and
+   `SOURCE_FILE_DIMENSION` are gone from the library, with `filterOfSets`;
+   `RELATION_DIMENSION` remains the one axis the library declares, because
+   its engine reads it. The first host declares its two ids in
+   `adapter/dimensions.ts` (the same strings, so persisted state is unchanged)
+   and pairs them in the harness's `filter-states.ts`. How an axis's chips
+   look is the descriptor's new `presentation: 'chip' | 'tag'` — the bar
+   names no axis, and the "everything included" state is drawn for an
+   `emptyMeans: 'all'` axis in either look. The hover box no longer prints a
+   file name read off a fixed axis; `contextLine` may return several lines
+   and a host that wants an origin shown puts it there.
+2. **Node identity in the library's own words.** `definitionKey` →
+   `copyKey?` (absent: the node is its own key); `orphan: boolean` → `ring?:
+   'dashed'`; `templateParams` → `badges?: readonly string[]`, drawn as
+   given. `Graph.duplicateGroups` is gone: `copyGroups(graph)` derives the
+   index inside the library, once per graph, and is exported for a host's own
+   overlays; `copyKeyOf(node)` is the key. The hover box says "the same
+   entity appears in more than one place". The first host writes `ring:
+   'dashed'` for the parser's orphans, `copyKey` from its definition field and
+   `× {param}` badges from its template holes.
+3. **The library reads one theme signal.** `useHostTheme` and
+   `schemeStylesheet` know only `data-theme`; the `.vscode-*` body classes,
+   the `.vscode-dark` selector in the tokens and the `--vscode-*` variables in
+   the bar's stylesheet are gone. The first host's shell reads the editor's
+   body classes itself (`theme/useEditorTheme.ts`) and sets `data-theme` on
+   its root, which is what the library sees.
+4. **One view's words.** The pin says a pinned axis is held as it is; the
+   bar's flash is "the host says its data reloaded"; the filter module speaks
+   of a host's views, not a tree and an AST.
+
+**Deferred within the set.** The CSS namespace (2.5) and the doc-comment
+sweep (2.6) follow in this unit as their own commits; the vocabulary drift
+(2.7) is folded into Set 3, where the spec's shape changes anyway.
+
+**Measured.** Total vocabulary 1104 → **1106**, ratcheted up with reason: two
+words in the host's new `adapter/dimensions.ts` and `theme/useEditorTheme.ts`
+headers; leak 0, boundary 0. The surface list loses the two axis constants
+and gains `copyGroups` and `copyKeyOf` (60 names).
+
+**Golden change (§8.2).** Expected and regenerated, six of seven goldens,
+every line count unchanged but `static`'s: node rows carry `ring` and
+`copyKey` where they carried `orphan` and `definitionKey`, `copyGroups` where
+the fixture rows carried `duplicateGroups`, `badges` where `templateParams`;
+`static` loses the `.vscode-dark` selector from the generated stylesheet row
+and reads its theme-marker rows against `data-theme` alone (five rows where
+there were seven). No edge, position, spring or summary row moves.
+
+— 2026-10-28 — agent

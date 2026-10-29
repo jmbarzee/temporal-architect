@@ -206,7 +206,7 @@
   border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 8px 10px;
-  /* Interactive: the tooltip carries a "Show in Tree" button, so it must
+  /* Interactive: the tooltip carries the host's cross-view button, so it must
      capture pointer events. A grace period in GraphView keeps it open while
      the pointer travels from the node onto it. */
   pointer-events: auto;
@@ -216,7 +216,7 @@
   box-shadow: var(--tooltip-shadow);
 }
 
-/* "Show in Tree" button inside the hover tooltip. */
+/* The host's cross-view button inside the hover tooltip. */
 .tooltip-cross-view {
   margin-top: 8px;
   width: 100%;

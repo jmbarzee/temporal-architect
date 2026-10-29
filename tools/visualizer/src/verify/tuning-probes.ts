@@ -19,12 +19,10 @@ import { isScalarTuning } from '@temporal-architect/graph-view/graph/scalar'
 import type { ForceParams, SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { resolvePhysics, springFor } from '@temporal-architect/graph-view/graph/forces'
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import {
-  DEF_TYPE_DIMENSION, RELATION_DIMENSION, SOURCE_FILE_DIMENSION,
-  createDimensionalMapping, identityMapping,
-} from '@temporal-architect/graph-view/graph/dimension'
+import { RELATION_DIMENSION, createDimensionalMapping, identityMapping } from '@temporal-architect/graph-view/graph/dimension'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
-import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
+import { filterOfSets } from './filter-states'
 import { FIXTURES } from './fixtures'
 import { buildFixtureGraph } from './tier-a'
 import { mulberry32 } from './rng'
@@ -46,11 +44,11 @@ function multifile(): Graph {
 }
 
 function graphOf(nodes: GraphNode[], edges: GraphEdge[]): Graph {
-  return { nodes: new Map(nodes.map(n => [n.id, n])), edges, duplicateGroups: new Map() }
+  return { nodes: new Map(nodes.map(n => [n.id, n])), edges }
 }
 
 function syntheticNode(id: string, nodeType: NodeType, sourceFile: string | undefined): GraphNode {
-  return { id, dimensions: dimensionsFor(nodeType, sourceFile), name: id, orphan: true, definitionKey: `${nodeType}:${id}` }
+  return { id, dimensions: dimensionsFor(nodeType, sourceFile), name: id, ring: 'dashed', copyKey: `${nodeType}:${id}` }
 }
 
 /** N files, one node each, chained by dependency edges — past the ceiling for N > 24. */

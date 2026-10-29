@@ -1,6 +1,7 @@
-// A small lock-icon button used on the filter bar's Files and Types
-// sections. When pinned, the corresponding dimension is held across
-// `manual` view transitions (spec § Per-Dimension Pinning).
+// A small lock-icon button on each of the filter bar's axis sections. A
+// pinned axis holds its selection: a host that reconciles the filter between
+// its views (`reconcileFilter`'s `manual` transition) leaves a pinned axis as
+// it is.
 //
 // The pin can briefly flash to indicate it was overridden by a focus
 // transition — that's signaled by the `flashing` prop, which the parent
@@ -12,13 +13,14 @@ interface PinToggleProps {
   pinned: boolean
   onClick: () => void
   flashing?: boolean
-  label: string  // e.g., "files" or "types" — used in the title/aria-label
+  /** The axis's label, for the title and aria-label. */
+  label: string
 }
 
 export function PinToggle({ pinned, onClick, flashing, label }: PinToggleProps) {
   const title = pinned
-    ? `${label} filter pinned — click to unpin`
-    : `${label} filter unpinned — click to pin and stop syncing with the other view`
+    ? `${label} filter pinned — held as it is; click to unpin`
+    : `${label} filter unpinned — click to pin and hold it as it is`
   const className = [
     'pin-toggle',
     pinned ? 'pinned' : '',

@@ -70,7 +70,7 @@ const PREFER_SIGNALS = createOntology({ ...SPEC, collapse: (kept, candidate) => 
 
 function node(id: string, kind: string, zone: string, parentId?: string): SimNode {
   return {
-    id, name: id, dimensions: { [KIND]: kind, [ZONE]: zone }, orphan: parentId === undefined && kind !== 'box', definitionKey: id,
+    id, name: id, dimensions: { [KIND]: kind, [ZONE]: zone }, ring: parentId === undefined && kind !== 'box' ? 'dashed' : undefined, copyKey: id,
     ...(parentId !== undefined ? { parentId } : {}),
     x: 0, y: 0, vx: 0, vy: 0, pinned: false,
   }
@@ -138,7 +138,7 @@ function validation(): Json {
     dep('bogus', 'w', 'x', 'bogus'),
     dep('ok', 'w', 'x', 'calls'),
   ]
-  const graph: Graph = { nodes: new Map(nodes.map(n => [n.id, n])), edges, duplicateGroups: new Map() }
+  const graph: Graph = { nodes: new Map(nodes.map(n => [n.id, n])), edges }
   const diagnostics = validateGraph(graph, ONTOLOGY)
   const drawn = dropInvalid(graph, diagnostics)
   return {

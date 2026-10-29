@@ -96,8 +96,8 @@ Tree-block icons are defined in a central theme map (`temporal-theme.tsx`); grap
 
 ### Theming
 
-- Auto follows the host — an ancestor's `.vscode-dark` or `data-theme`, else the OS colour scheme — and is light when none says otherwise.
-- Dark theme activates via the `.vscode-dark` class (VS Code webview) or a `[data-theme="dark"]` attribute on an ancestor; the graph pane also has its own choice — Auto / Light / Dark, persisted (R21) — carried as `data-theme` on the pane, so it can be dark in a light host and light in a dark one.
+- Auto follows the host — an ancestor's `data-theme`, else the OS colour scheme — and is light when none says otherwise. The library reads only `data-theme`; this host translates the editor's body classes (`.vscode-dark`, the high-contrast classes) into a `data-theme` on its root (D67).
+- Dark theme activates via a `[data-theme="dark"]` attribute on an ancestor — set by the shell from the VS Code webview's body classes, or by any other host however it knows its theme; the graph pane also has its own choice — Auto / Light / Dark, persisted (R21) — carried as `data-theme` on the pane, so it can be dark in a light host and light in a dark one.
 - Hover brightness shifts direction between themes (`0.95` in light, `1.1` in dark).
 
 ### Border conventions
@@ -122,7 +122,7 @@ Badges are node **adornments** — small markers drawn beside a graph node, dist
 |-------|-----------|---------|
 | `?` unresolved | — | **Deferred** ([#185](https://github.com/jmbarzee/temporal-architect/issues/185)): unresolved references reach the graph only as warnings in the findings bar; the tree's `?` badge (§ Border conventions) has no graph counterpart yet |
 | Orphan ring | Workers, orchestrators and leaves | A dashed ring around a node not contained by any parent (see GRAPH_VIEW.md § Orphan Definitions) |
-| Cardinality (`× {param}`) | Namespace / NexusEndpoint | The node is a parameterized family; one `× {param}` chip per entry in the node's `templateParams` wire field (chip count = array length, chip label = bare param name). See GRAPH_VIEW.md § Visual Encoding → Node Appearance. |
+| Cardinality (`× {param}`) | Namespace / NexusEndpoint | The node is a parameterized family; the host writes one `× {param}` badge per entry in the node's `templateParams` wire field, and the library draws its badges as a chip row (chip count = array length, chip label = bare param name). See GRAPH_VIEW.md § Visual Encoding → Node Appearance. |
 
 ### Edge styles (Graph View)
 

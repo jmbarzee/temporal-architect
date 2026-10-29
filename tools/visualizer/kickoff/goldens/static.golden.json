@@ -1246,7 +1246,6 @@
     "  --node-activity: #7CB9E8;",
     "  --node-activity-border: #4A8BC2;",
     "}",
-    ".vscode-dark,",
     "[data-theme=\"dark\"] {",
     "  --node-namespace: #94A3B8;",
     "  --node-namespace-border: #475569;",
@@ -2536,12 +2535,10 @@
       }
     },
     "markers": {
-      "darkHost": "dark",
       "dataThemeDark": "dark",
+      "dataThemeLight": "light",
       "dataThemeOther": null,
-      "highContrastDark": "dark",
-      "highContrastLight": "light",
-      "lightHost": "light",
+      "noAttribute": null,
       "none": null
     },
     "normaliser": {
@@ -3406,7 +3403,7 @@
     },
     "nodes": [
       {
-        "definitionKey": "namespace:ns",
+        "copyKey": "namespace:ns",
         "dimensions": {
           "defType": "namespaceDef",
           "sourceFile": "a.twf",
@@ -3416,7 +3413,7 @@
         "parentId": null
       },
       {
-        "definitionKey": "namespace:nsOrphan",
+        "copyKey": "namespace:nsOrphan",
         "dimensions": {
           "defType": "namespaceDef",
           "temporalType": "namespace"
@@ -3425,7 +3422,7 @@
         "parentId": null
       },
       {
-        "definitionKey": "worker:wk",
+        "copyKey": "worker:wk",
         "dimensions": {
           "defType": "workerDef",
           "sourceFile": "a.twf",
@@ -3435,7 +3432,7 @@
         "parentId": "ns"
       },
       {
-        "definitionKey": "worker:wkB",
+        "copyKey": "worker:wkB",
         "dimensions": {
           "defType": "workerDef",
           "sourceFile": "b.twf",
@@ -3445,7 +3442,7 @@
         "parentId": "ns"
       },
       {
-        "definitionKey": "nexusService:svc",
+        "copyKey": "nexusService:svc",
         "dimensions": {
           "defType": "nexusServiceDef",
           "sourceFile": "a.twf",
@@ -3455,7 +3452,7 @@
         "parentId": "wk"
       },
       {
-        "definitionKey": "nexusEndpoint:ep",
+        "copyKey": "nexusEndpoint:ep",
         "dimensions": {
           "defType": "nexusEndpointDef",
           "sourceFile": "a.twf",
@@ -3465,7 +3462,7 @@
         "parentId": "ns"
       },
       {
-        "definitionKey": "workflow:caller",
+        "copyKey": "workflow:caller",
         "dimensions": {
           "defType": "workflowDef",
           "sourceFile": "a.twf",
@@ -3475,7 +3472,7 @@
         "parentId": "wk"
       },
       {
-        "definitionKey": "nexusOperation:op",
+        "copyKey": "nexusOperation:op",
         "dimensions": {
           "defType": "nexusOperationDef",
           "sourceFile": "a.twf",
@@ -3485,7 +3482,7 @@
         "parentId": "svc"
       },
       {
-        "definitionKey": "workflow:backing",
+        "copyKey": "workflow:backing",
         "dimensions": {
           "defType": "workflowDef",
           "sourceFile": "b.twf",
@@ -3495,7 +3492,7 @@
         "parentId": "wkB"
       },
       {
-        "definitionKey": "activity:act",
+        "copyKey": "activity:act",
         "dimensions": {
           "defType": "activityDef",
           "sourceFile": "a.twf",
@@ -3505,7 +3502,7 @@
         "parentId": "wk"
       },
       {
-        "definitionKey": "activity:act",
+        "copyKey": "activity:act",
         "dimensions": {
           "defType": "activityDef",
           "sourceFile": "b.twf",

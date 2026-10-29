@@ -21,11 +21,8 @@ import type {
 } from '../types/parser-graph'
 // The axes this domain projects a node onto. Names, not concepts, belong to the
 // host: the library never mentions any of these ids.
-import {
-  DEF_TYPE_DIMENSION,
-  RELATION_DIMENSION,
-  SOURCE_FILE_DIMENSION,
-} from '@temporal-architect/graph-view'
+import { RELATION_DIMENSION } from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type {
   Graph,
   GraphEdge,
@@ -185,9 +182,12 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
         queue: pn.queue,
       },
       parentId: parentByChild.get(pn.id),
-      orphan: pn.orphan ?? false,
-      definitionKey: pn.definition,
-      templateParams: pn.templateParams,
+      // The parser's orphan flag becomes the library's ring; its definition
+      // key, the key every deployment copy of one definition shares; its
+      // template holes, one `× {param}` badge each (D67).
+      ring: pn.orphan ? 'dashed' : undefined,
+      copyKey: pn.definition,
+      badges: pn.templateParams?.map(p => `× ${p}`),
     })
   }
 
@@ -222,17 +222,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
   // every other parser edge. The visualizer no longer derives it from
   // node (namespace, queue) metadata — the parser owns that matching.
 
-  // --- Duplicate groups (definitionKey → every nodeId that represents it) ---
-  // The parser's `definition` field is already the right grouping key —
-  // every deployment of the same definition shares it.
-  const duplicateGroups = new Map<string, Set<string>>()
-  for (const node of nodes.values()) {
-    const group = duplicateGroups.get(node.definitionKey) ?? new Set<string>()
-    group.add(node.id)
-    duplicateGroups.set(node.definitionKey, group)
-  }
-
-  return { nodes, edges, duplicateGroups }
+  return { nodes, edges }
 }
 
 // ---------------------------------------------------------------------------

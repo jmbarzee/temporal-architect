@@ -9,7 +9,7 @@ import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import { buildGraph } from './build'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type { Graph } from '@temporal-architect/graph-view'
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing

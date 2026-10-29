@@ -1,12 +1,11 @@
 import {
   useOntology,
   passesSelection,
-  DEF_TYPE_DIMENSION,
-  SOURCE_FILE_DIMENSION,
   selectionFor,
   useRecentlyChanged,
   FilterBar,
 } from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import type { FocusTarget, FilterState, PinState, FilterDimension } from '@temporal-architect/graph-view'
 import React from 'react'
 import './TreeView.css'

@@ -1,13 +1,11 @@
-// Shared filter bar for both the Tree and Graph views.
+// The filter bar: one section of chips per axis in the chain, each with its
+// pin and its remove control, the search control, and a slot at the bottom
+// the host fills with its findings. A host with more than one view renders
+// it in each, so the views' toolbars stay in lockstep.
 //
-// Owns the markup that used to be duplicated in TreeView and GraphView: the
-// file chips, the definition-type chips, the search control, and — at the
-// bottom — the error/warning bars. Defining it once is what keeps the two
-// views' toolbars in lockstep (spec § Unified Filter Bar / § Error Handling).
-//
-// View-specific extras (the Tree's "N of M" search counter, the Graph's
-// hidden-match "+N" badge) are passed in as `searchExtra`; everything else
-// is identical across views.
+// How an axis's chips look is the descriptor's `presentation`; the bar names
+// no axis. A view-specific adornment on the search control (a match counter,
+// a hidden-match badge) comes in as `searchExtra`.
 
 import { useOntology } from './graph-view/useOntology'
 import { colorVar } from '../graph/scheme'
@@ -29,7 +27,7 @@ function tintOf(chipId: string, tint: DimensionValue, ontology: Ontology): Dimen
 import { selectionFor } from '../filter/types'
 import React from 'react'
 import './FilterBar.css'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import type { DimensionDescriptor } from '../graph/dimension'
 import { pinnedFor, withPin, withSelection } from '../filter/types'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import { toggleGroup } from '../filter/toggle'
@@ -74,9 +72,15 @@ interface FilterBarProps {
   onChainChange?: (next: readonly string[]) => void
   /** The host's findings bars, rendered under the chips. */
   findings?: React.ReactNode
-  /** Tree view flashes the whole header on AST refresh. */
+  /** Flash the whole bar once — a host signals that its data was reloaded. */
   refreshFlash?: boolean
 }
+
+/** The classes a section's chips wear, by the axis's declared presentation. */
+const LOOKS = {
+  chip: { sectionClass: 'header-types-section', rowClass: 'header-types-row', chipClass: 'header-type-tag', modifierPrefix: 'header-type', activeClass: 'active', iconClass: 'header-type-icon', labelClass: 'header-type-label' },
+  tag: { sectionClass: 'header-files-section', rowClass: 'header-files-row', chipClass: 'header-file-tag', modifierPrefix: '', activeClass: 'selected', iconClass: 'header-file-icon', labelClass: 'header-file-name' },
+} as const
 
 export function FilterBar({
   counts,
@@ -102,81 +106,22 @@ export function FilterBar({
 }: FilterBarProps) {
   const ontology = useOntology()
 
-  // **The only place this bar names an axis.** Everything below loops over the
-  // chain and reads the rest from descriptors. What is left here is presentation
-  // and data-sourcing: which values exist, their counts, and the CSS classes the
-  // current stylesheet keys on. Unit 6 owns the class names (B30's hand-written
-  // chip tints) and Unit 7 replaces the value sourcing with the post-filter
-  // visible set, so this table is where both land.
-  const PRESENTATION = React.useMemo(() => new Map<string, {
-    values: string[]
-    counts: ReadonlyMap<string, number>
-    hidden?: ReadonlyMap<string, number>
-    sectionClass: string
-    rowClass: string
-    chipClass: string
-    /** Per-chip modifier stem the stylesheet keys on, or '' for none. */
-    modifierPrefix: string
-    activeClass: string
-    iconClass: string
-    labelClass: string
-  }>([
-    [SOURCE_FILE_DIMENSION, {
-      values: [...(valuesByDimension.get(SOURCE_FILE_DIMENSION) ?? [])],
-      counts: counts.get(SOURCE_FILE_DIMENSION) ?? NO_COUNTS,
-      hidden: hiddenMatches?.get(SOURCE_FILE_DIMENSION),
-      sectionClass: 'header-files-section',
-      rowClass: 'header-files-row',
-      chipClass: 'header-file-tag',
-      // File chips have never had a per-file modifier class.
-      modifierPrefix: '',
-      activeClass: 'selected',
-      iconClass: 'header-file-icon',
-      labelClass: 'header-file-name',
-    }],
-    [DEF_TYPE_DIMENSION, {
-      values: [...(valuesByDimension.get(DEF_TYPE_DIMENSION) ?? [])],
-      counts: counts.get(DEF_TYPE_DIMENSION) ?? NO_COUNTS,
-      hidden: hiddenMatches?.get(DEF_TYPE_DIMENSION),
-      sectionClass: 'header-types-section',
-      rowClass: 'header-types-row',
-      chipClass: 'header-type-tag',
-      // `header-type-<id>`, NOT `header-type-tag-<id>`: FilterBar.css keys the
-      // eight per-kind tints on the former, and deriving the modifier from
-      // chipClass silently killed every one of them.
-      modifierPrefix: 'header-type',
-      activeClass: 'active',
-      iconClass: 'header-type-icon',
-      labelClass: 'header-type-label',
-    }],
-  ]), [counts, hiddenMatches, valuesByDimension])
-
-  /**
-   * Presentation for an axis this bar has no entry for.
-   *
-   * A third declared axis used to be *silently* unrenderable: `PRESENTATION` had
-   * two entries, an axis missing from it returned null, and the section simply
-   * did not appear — while its selection kept filtering the graph. Invisible
-   * filtering is the same failure D44 exists to prevent, so an unknown axis now
-   * renders with neutral styling and whatever values the host supplied.
-   */
-  const lookFor = (dimension: string) => PRESENTATION.get(dimension) ?? {
+  // What a section is made of: the values the host read off its data, their
+  // counts and hidden matches, and the classes its declared presentation
+  // wears. Every axis renders, declared or not — an axis that is filtering
+  // must be visible and removable, and vanishing is what once made a third
+  // axis dangerous rather than merely unsupported.
+  const lookFor = (dimension: string, descriptor?: DimensionDescriptor) => ({
     values: [...(valuesByDimension.get(dimension) ?? [])],
     counts: counts.get(dimension) ?? NO_COUNTS,
     hidden: hiddenMatches?.get(dimension),
-    sectionClass: 'header-types-section',
-    rowClass: 'header-types-row',
-    chipClass: 'header-type-tag',
-    modifierPrefix: '',
-    activeClass: 'active',
-    iconClass: 'header-type-icon',
-    labelClass: 'header-type-label',
-  }
+    ...LOOKS[descriptor?.presentation ?? 'chip'],
+  })
 
   // Axes the host declares that the chain is not already showing.
   const available = ontology.filterDimensions
     .map(d => d.id)
-    .filter(id => !chain.includes(id) && lookFor(id).values.length > 0)
+    .filter(id => !chain.includes(id) && (valuesByDimension.get(id)?.length ?? 0) > 0)
 
   const toggleSearch = () => {
     if (searchActive) {
@@ -192,7 +137,7 @@ export function FilterBar({
       {chain.map(dimension => {
         const descriptor = ontology.descriptorFor(dimension)
         if (!descriptor) return null
-        const look = lookFor(dimension)
+        const look = lookFor(dimension, descriptor)
         const chips = descriptor.chipsFor(look.values)
         // No values to offer: render the header and its remove control anyway,
         // so an axis that is filtering is always visible and always removable.

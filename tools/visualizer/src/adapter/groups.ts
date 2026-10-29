@@ -117,15 +117,15 @@ function frontierSections(division: Division, expanded: Set<string>): Section[] 
 // nodeGroupsOf turns the decomposition + selection + hover into the flat list of
 // groups the view is asked to glow, each over every node its members cover. A
 // chunk contributes when it is enabled or being hovered; for each, its active
-// division's frontier sections become groups, with members mapped through
-// duplicateGroups (definitionKey -> sister node ids). The hovered section is
-// emphasised. The view restricts each group to the visible set and colours what
-// is left, in this order.
+// division's frontier sections become groups, with members mapped through the
+// copy index (`copyGroups(graph)`: definition key -> every deployment copy's
+// node id). The hovered section is emphasised. The view restricts each group
+// to the visible set and colours what is left, in this order.
 export function nodeGroupsOf(
   decomposition: Decomposition | undefined,
   selection: GroupSelection,
   hover: GroupHover | null,
-  duplicateGroups: Map<string, Set<string>>,
+  duplicateGroups: ReadonlyMap<string, ReadonlySet<string>>,
 ): NodeGroup[] {
   if (!decomposition || !selection.glowEnabled) return []
 
@@ -158,7 +158,7 @@ export function nodeGroupsOf(
 
 // resolveMembers maps a list of definition keys to every graph node id they
 // cover (each member through its sister-copies).
-function resolveMembers(members: string[], duplicateGroups: Map<string, Set<string>>): Set<string> {
+function resolveMembers(members: string[], duplicateGroups: ReadonlyMap<string, ReadonlySet<string>>): Set<string> {
   const nodeIds = new Set<string>()
   for (const member of members) {
     const copies = duplicateGroups.get(member)

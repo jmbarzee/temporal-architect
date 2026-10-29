@@ -114,9 +114,10 @@ export function withAlpha(color: string, alpha: number): string {
 
 /**
  * A stylesheet for a host's own CSS: every style value's fill and border on
- * `:root`, and the dark values that differ under the host's dark selectors.
- * The pane does not read this — it carries `schemeVars` inline — so a host
- * that styles nothing of its own by node type never needs it.
+ * `:root`, and the dark values that differ under `[data-theme="dark"]` — the
+ * one selector the library themes by. The pane does not read this — it
+ * carries `schemeVars` inline — so a host that styles nothing of its own by
+ * node value never needs it.
  */
 export function schemeStylesheet(ontology: Ontology): string {
   const lightVars: string[] = []
@@ -130,6 +131,6 @@ export function schemeStylesheet(ontology: Ontology): string {
     if (dark.border !== light.border) darkVars.push(`  ${v}-border: ${dark.border};`)
   }
   const parts: string[] = [`:root {\n${lightVars.join('\n')}\n}`]
-  if (darkVars.length > 0) parts.push(`.vscode-dark,\n[data-theme="dark"] {\n${darkVars.join('\n')}\n}`)
+  if (darkVars.length > 0) parts.push(`[data-theme="dark"] {\n${darkVars.join('\n')}\n}`)
   return parts.join('\n')
 }

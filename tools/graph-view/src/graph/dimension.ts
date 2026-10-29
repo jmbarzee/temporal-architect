@@ -134,15 +134,24 @@ export interface DimensionDescriptor extends AxisNamer {
    * How this axis's available values group into chips.
    *
    * Not one chip per value: a chip may cover several values, which is how one
-   * one chip may front several declared kinds. Host-declared because the grouping
+   * chip may front several declared values. Host-declared because the grouping
    * is a domain choice — but the *shape* is not, so the bar renders any axis
    * without knowing which one it is.
    *
    * Takes the available values rather than reading a declared list, because an
-   * axis's values are derived: files come from scanning the graph, kinds from
-   * the taxonomy. See the note on this interface about not storing them twice.
+   * axis's values are derived from the graph. See the note on this interface
+   * about not storing them twice.
    */
   chipsFor(values: readonly DimensionValue[]): readonly FilterChip[]
+  /**
+   * How the bar draws this axis's chips. `chip` (the default) is a tinted,
+   * glyph-led button that reads as a category; `tag` is a quieter, neutral
+   * label that reads as an origin — a file, a source, a place — and shows an
+   * "everything included" state when the selection is empty on an
+   * `emptyMeans: 'all'` axis. Presentation is the descriptor's, so no axis id
+   * is special to the bar.
+   */
+  presentation?: 'chip' | 'tag'
 }
 
 /** Where a node sits on one axis, or undefined when it carries no value there. */
@@ -305,21 +314,6 @@ export function valuesOn(
 }
 
 /**
- * The axis a node's originating file sits on.
- *
- * Declared by the library, unlike the axes a host invents, because the library
- * ships the filter that reads it: a chain that offers "filter by file" has to
- * agree with the host on which axis that is. Nothing about a file is
- * domain-specific — this is shared vocabulary, not borrowed vocabulary.
- *
- * Note its empty-set semantics are the *opposite* of the type axis's: an empty
- * file selection shows everything, because adding a file chip while the filter
- * is off would otherwise activate the filter and hide every file but that one
- * (T7).
- */
-export const SOURCE_FILE_DIMENSION: DimensionId = 'sourceFile'
-
-/**
  * Does this table declare `key` itself, rather than inheriting it?
  *
  * Every keyed lookup on a dimension value must go through this. Values are
@@ -336,19 +330,6 @@ export const SOURCE_FILE_DIMENSION: DimensionId = 'sourceFile'
 export function hasOwn(table: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(table, key)
 }
-
-/**
- * The axis the visibility filter selects node kinds on.
- *
- * Its values are a host projection of the style axis — a style's kind, written
- * onto each node by the host's adapter when it builds the graph — which is what
- * lets two styles share a filter key, and one chip cover three declared kinds.
- * The engine reads it off the node like any other axis and never learns it is
- * derived. Library-declared for the same reason as the file axis: the library
- * ships the filter that reads it, so both halves have to agree on which axis
- * it is.
- */
-export const DEF_TYPE_DIMENSION: DimensionId = 'defType'
 
 /** What a filter change asks of the running simulation, folded across axes. */
 export interface ReheatPlan {
@@ -387,14 +368,14 @@ export function foldReheatPolicy(
 }
 
 /**
- * The one axis every edge carries. Library-declared, like the file and kind
- * axes, because the engine ships the code that reads it: edge graduation,
- * highlighting and spring resolution all branch on `relation`.
+ * The one axis every edge carries, and the only axis the library declares:
+ * the engine ships the code that reads it — edge graduation, highlighting and
+ * spring resolution all branch on `relation`.
  *
  *   relation — 'containment' | 'dependency'. The structural meaning of the edge.
  *
- * Anything else an edge carries is the host's. The first host adds `dispatch`,
- * its call kind, which only its own edge rules read — D48 said the engine read
- * it, and it no longer does (D64).
+ * Every other axis, on nodes and on edges, is the host's own, named by the
+ * host; the library reads them only through the descriptors and the rules
+ * the host declares.
  */
 export const RELATION_DIMENSION: DimensionId = 'relation'

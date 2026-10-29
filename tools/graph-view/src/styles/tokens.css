@@ -45,7 +45,6 @@
   --focus-ring-color: #4A90D9;
 }
 
-.vscode-dark,
 [data-theme="dark"] {
   --accent: #A89BD8;
   --accent-tint-weak: 6%;

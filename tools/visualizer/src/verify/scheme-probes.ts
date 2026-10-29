@@ -19,9 +19,9 @@ function thrown(run: () => unknown): string {
   try { run(); return 'returned' } catch (e) { return (e as Error).message }
 }
 
-/** A marker stand-in: what an element with these classes and this attribute would say. */
-function marker(classes: string[], dataTheme?: string): ThemeMarker {
-  return { getAttribute: name => (name === 'data-theme' ? dataTheme ?? null : null), classList: { contains: c => classes.includes(c) } }
+/** A marker stand-in: what an element with this `data-theme` would say. */
+function marker(dataTheme?: string): ThemeMarker {
+  return { getAttribute: name => (name === 'data-theme' ? dataTheme ?? null : null) }
 }
 
 /** The shipped palette with every colour replaced: the same keys, a second scheme. */
@@ -72,15 +72,13 @@ export function schemeProbes(): Json {
       // A hidden-node policy outside its two values (D60): refused, not read as ascend.
       badWhenHidden: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, nodeStyles: { ...NODE_TYPE_REGISTRY, worker: { ...NODE_TYPE_REGISTRY.worker, whenHidden: String('Splice') } } as typeof NODE_TYPE_REGISTRY })),
     },
-    // The theme a marker declares (D58): VS Code's high-contrast LIGHT webview
-    // carries the plain high-contrast class too, so light is read first.
+    // The theme a marker declares: its `data-theme`, light or dark, and nothing
+    // else — an editor's body classes are the host's to translate (D67).
     markers: {
-      lightHost: themeOfMarker(marker(['vscode-light'])) ?? null,
-      darkHost: themeOfMarker(marker(['vscode-dark'])) ?? null,
-      highContrastDark: themeOfMarker(marker(['vscode-high-contrast'])) ?? null,
-      highContrastLight: themeOfMarker(marker(['vscode-high-contrast', 'vscode-high-contrast-light'])) ?? null,
-      dataThemeDark: themeOfMarker(marker([], 'dark')) ?? null,
-      dataThemeOther: themeOfMarker(marker([], 'sepia')) ?? null,
+      dataThemeLight: themeOfMarker(marker('light')) ?? null,
+      dataThemeDark: themeOfMarker(marker('dark')) ?? null,
+      dataThemeOther: themeOfMarker(marker('sepia')) ?? null,
+      noAttribute: themeOfMarker(marker()) ?? null,
       none: themeOfMarker(null) ?? null,
     },
     // A persisted choice outside the three is system, not a throw in render (D4).

@@ -37,12 +37,8 @@ export type NodeType =
   | 'nexusOperation'
   | 'activity'
 
-import {
-  createOntology,
-  payloadString,
-  DEF_TYPE_DIMENSION,
-  SOURCE_FILE_DIMENSION,
-} from '@temporal-architect/graph-view'
+import { createOntology, payloadString } from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type {
   GraphEdge,
   GraphNode,
@@ -365,6 +361,9 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
   {
     id: SOURCE_FILE_DIMENSION,
     label: 'File',
+    // Quiet neutral tags, as an origin reads; the kind axis below wears the
+    // tinted chips (D67).
+    presentation: 'tag',
     // Empty shows everything — the opposite of the axis above, and deliberate:
     // adding the first file chip while the filter is off would otherwise
     // activate the filter and hide every other file (T7).

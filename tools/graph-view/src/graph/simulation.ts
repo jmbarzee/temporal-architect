@@ -453,7 +453,7 @@ export function defaultParamsFor(ontology: Ontology): ForceParams {
 //
 // MAX_POSITION: hard bound on world coordinates. Final safety net so the canvas
 // 2D context never receives non-finite or astronomically-large coords (which
-// can OOM the GPU command buffer and crash the webview renderer).
+// can OOM the GPU command buffer and crash the renderer).
 const MAX_VELOCITY = 50
 const MAX_POSITION = 1e6
 

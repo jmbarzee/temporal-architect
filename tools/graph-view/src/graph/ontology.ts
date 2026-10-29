@@ -96,8 +96,8 @@ export interface Ontology {
   readonly scalars: readonly ScalarAxis[]
   /** How the canvas strokes an edge of this type (D57). Loud for an id the host did not declare. */
   edgeStrokeFor(id: EdgeTypeId): EdgeStroke
-  /** The hover box's context line for a node — the host's, or its parent's name (D59). */
-  contextLine(node: GraphNode, parent: GraphNode | undefined): string | undefined
+  /** The hover box's context line(s) for a node — the host's, or its parent's name. */
+  contextLine(node: GraphNode, parent: GraphNode | undefined): string | readonly string[] | undefined
   /** The highlight for an active node — the host's refinement of the library's transitive walk (D59). */
   highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight
 
@@ -163,11 +163,11 @@ export interface OntologySpec {
    */
   scalars: readonly ScalarAxis[]
   /**
-   * The hover box's context line for a node (D59, B35): what a host wants
-   * said under the name — addressing metadata from its own payload, a parent
-   * by another name. Absent, the line is the parent's name.
+   * The hover box's context under the name: what a host wants said there —
+   * addressing metadata from its own payload, a parent by another name, an
+   * origin — as one line or several. Absent, the line is the parent's name.
    */
-  contextLine?: (node: GraphNode, parent: GraphNode | undefined) => string | undefined
+  contextLine?: (node: GraphNode, parent: GraphNode | undefined) => string | readonly string[] | undefined
   /**
    * The highlight for an active node (D59): given the library's transitive
    * walk from it, the host may widen it (members it relates by metadata) or

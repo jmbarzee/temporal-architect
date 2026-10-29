@@ -1,9 +1,9 @@
-DEF_TYPE_DIMENSION
 FilterBar
 GraphView
 OntologyContext
 RELATION_DIMENSION
-SOURCE_FILE_DIMENSION
+copyGroups
+copyKeyOf
 createOntology
 isContainment
 passesSelection

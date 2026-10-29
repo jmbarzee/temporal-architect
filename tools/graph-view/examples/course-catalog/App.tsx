@@ -4,7 +4,7 @@
 
 import React from 'react'
 import {
-  GraphView, OntologyContext, payloadString, pinnedFor, reconcileFilter, schemeVars, selectionFor, useHostTheme, withSelection,
+  GraphView, OntologyContext, copyGroups, copyKeyOf, payloadString, pinnedFor, reconcileFilter, schemeVars, selectionFor, useHostTheme, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
   ActiveGroup, FilterState, FocusTarget, Graph, GraphNode, NodeGroup, PinState, Selection, Theme, ThemeChoice,
@@ -55,11 +55,12 @@ const FINDINGS = findingsOf(catalog)
 
 /** A programme glows over every copy of its courses and their labs. */
 function programmeGroups(g: Graph, enabled: ReadonlySet<string>, hovered: string | null): NodeGroup[] {
+  const copies = copyGroups(g)
   return catalog.programmes.filter(p => enabled.has(p.id)).map(p => {
     const ids = new Set<string>()
     for (const code of p.courses) {
       const node = nodeByCode.get(code)
-      if (node) for (const copy of g.duplicateGroups.get(node.definitionKey) ?? []) ids.add(copy)
+      if (node) for (const copy of copies.get(copyKeyOf(node)) ?? []) ids.add(copy)
     }
     for (const n of g.nodes.values()) if (n.parentId && ids.has(n.parentId)) ids.add(n.id)
     return { id: p.id, nodeIds: ids, emphasized: hovered === p.id }

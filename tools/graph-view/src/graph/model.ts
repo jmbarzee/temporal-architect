@@ -41,28 +41,46 @@ export interface GraphNode {
    * in step by the host that writes them (D64).
    */
   parentId?: string
-  /** True when no parent in the hierarchy (uninstantiated definition). */
-  orphan: boolean
+  /**
+   * A mark the host puts on a node that is set apart: a dashed ring drawn
+   * around it. What "set apart" means is the host's — the first host marks a
+   * node that has no container. Absent, no ring.
+   */
+  ring?: 'dashed'
 
   /**
-   * Stable identifier shared across every copy of the same underlying
-   * definition. One definition instantiated in three places produces three
-   * nodes with three distinct `id`s but a single `definitionKey`. Used to look
-   * up sister copies for the duplicate-highlight interaction, and as the
-   * grouping key for `Graph.duplicateGroups`.
-   *
+   * The key every copy of one underlying entity shares. One entity placed in
+   * three containers produces three nodes with three `id`s and one `copyKey`;
+   * the view draws the copies with a halo, lights them together, and counts
+   * them in the hover box ("copy 2 of 3"). Absent, the node is its own key.
    * Like `id`, opaque: the host decides how to derive it.
    */
-  definitionKey: string
+  copyKey?: string
 
   /**
-   * Template holes of a parameterized family of nodes, in first-appearance
-   * order (e.g. `fabric-shard-{org}` → `['org']`). The producer collapses the
-   * family to one representative node; this drives the cardinality badge.
-   * Display-only metadata, never identity. Absent/`[]` means a static node
-   * (renders unchanged).
+   * Short texts drawn as chips above the node, as given — a cardinality, a
+   * tag, a count. Display only, never identity. Absent or empty, no chips.
    */
-  templateParams?: string[]
+  badges?: readonly string[]
+}
+
+/** The key a node's copies share: its `copyKey`, or its own id. */
+export const copyKeyOf = (node: Pick<GraphNode, 'id' | 'copyKey'>): string => node.copyKey ?? node.id
+
+/**
+ * Every node id by the key it shares with its copies, over a whole graph —
+ * the index the view and a host's group overlay read. Derived here from the
+ * nodes, once per graph, rather than supplied beside them.
+ */
+export function copyGroups(graph: Pick<Graph, 'nodes'>): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>()
+  for (const node of graph.nodes.values()) {
+    const key = copyKeyOf(node)
+    const group = out.get(key)
+    if (group) group.add(node.id)
+    else out.set(key, new Set([node.id]))
+  }
+  return out
 }
 
 /**
@@ -139,12 +157,4 @@ export function readableGraph(graph: Graph): ReadableGraph {
 export interface Graph {
   nodes: Map<string, GraphNode>
   edges: GraphEdge[]
-  /**
-   * `definitionKey` → every node id that carries it: the index of the key the
-   * nodes already hold, built by the host once all nodes exist. A singleton
-   * has one entry; a definition deployed in three places has three. The view
-   * reads it for the duplicate halo and the hover box's "copy N of M", and the
-   * first host for its group overlay.
-   */
-  duplicateGroups: Map<string, Set<string>>
 }

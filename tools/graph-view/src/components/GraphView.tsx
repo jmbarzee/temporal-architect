@@ -19,7 +19,8 @@ import type { ThemeChoice } from './graph-view/useTheme'
 import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
 import type { DimensionalMapping } from '../graph/dimension'
 import type { Graph, GraphEdge } from '../graph/model'
-import { SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
+import { valuesOn } from '../graph/dimension'
+import { copyGroups, copyKeyOf } from '../graph/model'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
 import { useOntology } from './graph-view/useOntology'
 import { worldToScreen } from '../graph/viewport'
@@ -119,6 +120,8 @@ export function GraphView({
   // error names left out of what is drawn, the list shown under the bar.
   const diagnostics = React.useMemo(() => validateGraph(hostGraph, ontology), [hostGraph, ontology])
   const graph = React.useMemo(() => dropInvalid(hostGraph, diagnostics), [hostGraph, diagnostics])
+  // Every node's copies, by the key they share — derived here, once per graph.
+  const copies = React.useMemo(() => copyGroups(graph), [graph])
 
   // --- Core state ---
   // Camera (viewport transform, container ref, fit/center coordination).
@@ -609,7 +612,7 @@ export function GraphView({
           visibleIds={visibleIds}
           viewport={viewport}
           shiftHeld={shiftHeld}
-          duplicateGroups={graph.duplicateGroups}
+          copies={copies}
           nodeSummaries={nodeSummaries}
           crossView={crossView}
           onMouseEnter={cancelHoverClear}
@@ -769,7 +772,8 @@ interface GraphHoverTooltipProps {
   visibleIds: Set<string>
   viewport: Viewport
   shiftHeld: boolean
-  duplicateGroups: Map<string, Set<string>>
+  /** Every node's copies by their shared key, over the whole graph. */
+  copies: ReadonlyMap<string, ReadonlySet<string>>
   nodeSummaries: Map<string, string>
   // The host's cross-view action from the tooltip, when it offers one.
   crossView?: { label: string; onFocus: (target: FocusTarget) => void }
@@ -779,7 +783,7 @@ interface GraphHoverTooltipProps {
   onMouseLeave: () => void
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, duplicateGroups, nodeSummaries, crossView, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, copies, nodeSummaries, crossView, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
   // Before the early returns: this is a hook, and the component bails out four
   // different ways below.
   const ontology = useOntology()
@@ -789,12 +793,13 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   const node = sim.getNode(hoveredNodeId)
   if (!node) return null
 
-  // The context line is the taxonomy's answer (D59, B35): a host that keys a
-  // value's identity on its own metadata says so there; the library's
-  // default is the parent's name. The icon is the value's own.
-  const contextLine = ontology.contextLine(node, node.parentId ? sim.getNode(node.parentId) : undefined)
+  // The context under the name is the taxonomy's answer: a host that keys a
+  // value's identity on its own metadata says so there, as one line or
+  // several; the library's default is the parent's name. The icon is the
+  // value's own.
+  const context = ontology.contextLine(node, node.parentId ? sim.getNode(node.parentId) : undefined)
+  const contextLines = context === undefined ? [] : typeof context === 'string' ? [context] : [...context]
   const icon = ontology.resolveNodeStyle(node).icon
-  const fileName = node.dimensions[SOURCE_FILE_DIMENSION]?.split('/').pop()
 
   // The composition line for a node that summarises its children (counted
   // per style value, named by its abbreviation). These used to render as a
@@ -806,13 +811,8 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
       ? nodeSummaries.get(hoveredNodeId) || undefined
       : undefined
 
-  // Cardinality line for a parameterized-family representative (issue #100):
-  // this one node stands for a family that fans out once per template param.
-  // Mirrors the canvas `× {param}` badge. Absent on static nodes.
-  const cardinalityLine =
-    node.templateParams && node.templateParams.length > 0
-      ? node.templateParams.map(p => `× ${p}`).join(' ')
-      : undefined
+  // The node's badges, as the canvas draws them above it, in one line.
+  const badgesLine = node.badges && node.badges.length > 0 ? node.badges.join(' ') : undefined
 
   let outgoing = 0, incoming = 0
   for (const e of visibleEdges) {
@@ -821,12 +821,11 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
     if (e.targetId === hoveredNodeId) incoming++
   }
 
-  // Duplicate-copies indicator: if this definition has more than one
-  // node in the graph, show "N copies" so the user knows the highlight
-  // they're seeing is intentional ("this is one of several"). Count
-  // only sister copies that survive the current filter — a hidden copy
-  // isn't a copy from the user's current point of view.
-  const sisters = duplicateGroups.get(node.definitionKey)
+  // Copies indicator: when the same entity has more than one node in the
+  // graph, say "copy i of N" so the user knows the halo they're seeing is
+  // intentional. Count only copies that survive the current filter — a hidden
+  // copy isn't a copy from the user's current point of view.
+  const sisters = copies.get(copyKeyOf(node))
   const visibleCopies = sisters
     ? Array.from(sisters).filter(id => visibleIds.has(id))
     : [node.id]
@@ -846,16 +845,11 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         {icon && <span className="tooltip-type-icon">{icon}</span>}
         <span className="tooltip-name">{node.name}</span>
       </div>
-      {contextLine && <div className="tooltip-parent">{contextLine}</div>}
+      {contextLines.map((line, i) => <div key={i} className="tooltip-parent">{line}</div>)}
       {compositionLine && <div className="tooltip-summary">{compositionLine}</div>}
-      {cardinalityLine && (
-        <div className="tooltip-summary" title="Parameterized family: this node represents one instance per template parameter.">
-          {cardinalityLine}
-        </div>
-      )}
-      {fileName && <div className="tooltip-file">{fileName}</div>}
+      {badgesLine && <div className="tooltip-summary">{badgesLine}</div>}
       {copyCount > 1 && (
-        <div className="tooltip-duplicates" title="This definition appears in more than one place. Hovering any copy marks all copies.">
+        <div className="tooltip-duplicates" title="The same entity appears in more than one place. Hovering any copy marks all copies.">
           copy {copyIndex} of {copyCount}
         </div>
       )}

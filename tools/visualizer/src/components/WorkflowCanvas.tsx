@@ -1,8 +1,7 @@
 import {
   selectionFor,
   OntologyContext,
-  DEF_TYPE_DIMENSION,
-  SOURCE_FILE_DIMENSION,
+  copyGroups,
   pinnedFor,
   withSelection,
   GraphView,
@@ -11,6 +10,8 @@ import {
   useHostTheme,
   schemeVars,
 } from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
+import { useEditorTheme } from '../theme/useEditorTheme'
 import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../adapter/storage'
 import type {
   FocusTarget,
@@ -235,9 +236,12 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     setGroupSelection(initialGroupSelection(decomposition))
     setGroupHover(null)
   }, [decomposition])
+  // Every node's deployment copies by their shared key, derived from the graph
+  // (D67); the group overlay maps a decomposition's members through it.
+  const copies = React.useMemo(() => copyGroups(model.graph), [model.graph])
   const nodeGroups = React.useMemo(
-    () => nodeGroupsOf(decomposition, groupSelection, groupHover, model.graph.duplicateGroups),
-    [decomposition, groupSelection, groupHover, model.graph.duplicateGroups],
+    () => nodeGroupsOf(decomposition, groupSelection, groupHover, copies),
+    [decomposition, groupSelection, groupHover, copies],
   )
 
   // Globally-shared search state — one query applied identically to both
@@ -250,7 +254,12 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // reads the taxonomy's colours, not a mounted stylesheet (D58). The graph
   // pane overrides both with its own choice.
   const rootRef = React.useRef<HTMLDivElement>(null)
-  const hostTheme = useHostTheme(rootRef)
+  // The editor's theme when this runs as a webview, else whatever an ancestor
+  // declares or the OS prefers; set on the root as `data-theme`, the one
+  // signal the library reads (D67).
+  const editorTheme = useEditorTheme()
+  const detectedTheme = useHostTheme(rootRef)
+  const hostTheme = editorTheme ?? detectedTheme
   const schemeStyle = React.useMemo(() => schemeVars(DEFAULT_ONTOLOGY, hostTheme) as React.CSSProperties, [hostTheme])
   const [searchActive, setSearchActive] = React.useState<boolean>(false)
 
