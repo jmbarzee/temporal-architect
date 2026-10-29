@@ -1,5 +1,4 @@
 // Graph data model for the force-directed graph view.
-// Derived from GRAPH_VIEW.md § Graph Data Model.
 
 import type { DimensionMap } from './dimension'
 import { RELATION_DIMENSION } from './dimension'
@@ -38,13 +37,13 @@ export interface GraphNode {
    * from one lookup, and the view reads this one where it needs a parent at
    * O(1) (the ancestor walk, reach, seeding) and the edges where it needs the
    * children (summaries, graduation, drawing). Two readings of one fact, kept
-   * in step by the host that writes them (D64).
+   * in step by the host that writes them.
    */
   parentId?: string
   /**
    * A mark the host puts on a node that is set apart: a dashed ring drawn
-   * around it. What "set apart" means is the host's — the first host marks a
-   * node that has no container. Absent, no ring.
+   * around it. What "set apart" means is the host's — say, a node that
+   * has no container. Absent, no ring.
    */
   ring?: 'dashed'
 
@@ -108,7 +107,7 @@ export interface GraphEdge {
    * Where this edge sits on every axis it has a value for. The library declares
    * one, `RELATION_DIMENSION`, whose value must be `containment` or `dependency`
    * (`relationOf` throws on anything else, at the first read); a host adds its
-   * own — the first host's `dispatch`, its call kind. A containment edge runs
+   * own (a call kind, say). A containment edge runs
    * from the child (`sourceId`) to its container (`targetId`), and the child's
    * `parentId` names that container.
    */
@@ -121,7 +120,6 @@ export interface GraphEdge {
   payload?: Readonly<Record<string, unknown>>
 }
 
-/** Does this edge express containment (as opposed to a dependency)? */
 /**
  * The edge's relation, as one of the two values the engine knows. Closed and
  * loud: an edge with no relation, or a misspelt one, is a host bug, and letting
@@ -133,6 +131,7 @@ export function relationOf(edge: Pick<GraphEdge, 'dimensions'>): EdgeCategoryKin
   throw new Error(`edge relation ${JSON.stringify(r)} is not one the engine knows; expected "containment" or "dependency"`)
 }
 
+/** Does this edge express containment (as opposed to a dependency)? */
 export function isContainment(edge: Pick<GraphEdge, 'dimensions'>): boolean {
   return relationOf(edge) === 'containment'
 }

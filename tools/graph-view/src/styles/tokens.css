@@ -1,5 +1,5 @@
 /* The library's design tokens — the chrome's colours, the tint percentages
-   color-mix() dilutes to, the fonts, the focus ring — on the themed root (D58):
+   color-mix() dilutes to, the fonts, the focus ring — on the themed root:
    `:root` and a pane that chose light, or a dark host and a pane that chose
    dark. Every rule in the library that differs by theme reads one of these and
    keys on no ancestor class, so the nearest themed root wins. A host reads the
@@ -7,7 +7,7 @@
 
 :root,
 [data-theme="light"] {
-  /* The chrome's own tokens (D58). The accent is the chrome's, not a node
+  /* The chrome's own tokens. The accent is the chrome's, not a node
      value's fill — they coincide by taste, not by identity. The tint
      percentages are what color-mix() dilutes an accent or a chip's tint to;
      the dark block raises them because the surface is darker. Every rule
@@ -26,7 +26,7 @@
   --gv-tension-stretch: #d97706;
   --gv-tension-compress: #7CB9E8;
   --gv-tension-rest: #7EC8B8;
-  /* The pane's own diagnostics strip: what the host's graph got wrong (D66). */
+  /* The pane's own diagnostics strip: what the host's graph got wrong. */
   --gv-diagnostic-error: #b91c1c;
   --gv-diagnostic-warning: #b45309;
 

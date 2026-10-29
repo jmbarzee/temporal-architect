@@ -2,12 +2,11 @@
 // axes, each the same surface (`AxisControls`): a mapping, one column per
 // bucket with its rest band as two handles (or, on a scalar axis, a gradient
 // with its two ends), the axis's strength, the force
-// curve beneath. Y carries the Radial switch — the way radial mode is entered
-// (R27): Y's bands become rings about the origin and X is ignored. Topological
+// curve beneath. Y carries the Radial switch — the way radial mode is entered:
+// Y's bands become rings about the origin and X is ignored. Topological
 // keeps its own switch: a depth→pull curve plus strength/exp sliders. Center
 // gravity is the unexplained baseline (active when both axes are at zero
 // strength and Topological is off), so it has no control here.
-// See GRAPH_VIEW spec § Gravity / Control Panel.
 
 import React from 'react'
 import type { PresentSets } from './GraphControlPanel'
@@ -25,11 +24,11 @@ export type { GravityHover, LayoutAxis } from './AxisControls'
 
 interface GravityControlProps {
   params: ForceParams
-  /** The dense tables the kernels read, resolved once by the view (T25). */
+  /** The dense tables the kernels read, resolved once by the view. */
   resolved: ResolvedPhysics
   /** Every axis X or Y may key on: mappings with their bucket count, and computed scalars. */
   axes: readonly LayoutAxisOption[]
-  /** The band buckets some visible node falls in, per axis — the only columns worth drawing (R35). */
+  /** The band buckets some visible node falls in, per axis — the only columns worth drawing. */
   present: Pick<PresentSets, 'bandX' | 'bandY'>
   onParamChange: (patch: Partial<ForceParams>) => void
   onRelayout: (partial: Partial<ForceParams>) => void

@@ -1,6 +1,6 @@
 // reconcileFilter is the single decision point for what the destination view's
 // filter looks like after a view switch. Every switch site in the host shell
-// routes through it — see spec § View Transitions.
+// routes through it.
 //
 // Pure: destination filter, source filter, destination pins, the transition
 // intent, and the axes' descriptors in. A new filter out, plus which pinned axes
@@ -8,7 +8,7 @@
 //
 // It now loops over axes instead of branching on two names, which is only safe
 // because the per-axis differences are carried as descriptor policy rather than
-// assumed uniform (T8). The one that bites is `focus`: types expand
+// assumed uniform. The one that bites is `focus`: types expand
 // unconditionally, files expand only when the file selection is already active.
 // A loop over a shared rule would flatten that, and the flattened version hides
 // the whole graph on a focus transition.

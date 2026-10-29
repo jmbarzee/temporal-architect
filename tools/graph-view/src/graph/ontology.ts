@@ -25,6 +25,8 @@ import type { NodeTypeDefinition } from './taxonomy'
 import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
 import type { ScalarAxis } from './scalar'
 import type { EdgeStroke } from './scheme'
+import { cssSuffix, isSchemeColor } from './scheme'
+import { BUILT_IN_SCALARS } from './scalar'
 
 /** A highlight: the node ids lit and the edge ids lit. Edges absent means "every visible edge between lit nodes". */
 export interface Highlight {
@@ -39,22 +41,17 @@ export interface HighlightGraph {
   readonly visibleIds: ReadonlySet<string>
   getNode(id: string): GraphNode | undefined
 }
-import { cssSuffix, isSchemeColor } from './scheme'
-import { BUILT_IN_SCALARS } from './scalar'
 
 /** The minimum a consumer needs of a node in order to resolve its style. */
 export type StyleSubject = { dimensions: DimensionMap }
 
 export interface Ontology {
   /**
-   * The axis style resolution keys on.
+   * The axis this taxonomy resolves style on.
    *
    * One axis, named once. Every other feature elects its own — the physics reads
    * its axis off the force params, filters read theirs off the filter — and no
    * feature composes two.
-   */
-  /**
-   * The axis this taxonomy resolves style on.
    *
    * A method, not a field, and that is a correctness property rather than a
    * style choice. It was a field *and* a value closed over by `valueFor` and
@@ -76,7 +73,7 @@ export interface Ontology {
    * The axes the filter chain may operate on, with their per-axis policies.
    *
    * Host-declared, like the entries: which axes exist is a domain fact. The
-   * engine reads only the policies (T7/T8/T9) and never enumerates the ids.
+   * engine reads only the policies and never enumerates the ids.
    */
   readonly filterDimensions: readonly DimensionDescriptor[]
   /** One axis's policies, or undefined if the host does not declare it. */
@@ -94,11 +91,11 @@ export interface Ontology {
   readonly edgeTypes: readonly EdgeTypeDefinition[]
   /** Every computed scalar a layout axis may key on: the built-ins, then the host's. */
   readonly scalars: readonly ScalarAxis[]
-  /** How the canvas strokes an edge of this type (D57). Loud for an id the host did not declare. */
+  /** How the canvas strokes an edge of this type. Loud for an id the host did not declare. */
   edgeStrokeFor(id: EdgeTypeId): EdgeStroke
   /** The hover box's context line(s) for a node — the host's, or its parent's name. */
   contextLine(node: GraphNode, parent: GraphNode | undefined): string | readonly string[] | undefined
-  /** The highlight for an active node — the host's refinement of the library's transitive walk (D59). */
+  /** The highlight for an active node — the host's refinement of the library's transitive walk. */
   highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight
 
   /**
@@ -130,22 +127,22 @@ export interface Ontology {
    * given its two endpoint values. The engine reads the axis and hands the
    * values over, so the rule never decides which dimension to look at — and it
    * applies only while springs key on the style axis unmapped; any other
-   * (axis, mapping) resolves through the library's pair rule (D2). The values
+   * (axis, mapping) resolves through the library's pair rule. The values
    * are read live from the endpoint nodes, never cached on the edge: a
    * denormalized copy goes stale the moment graduation re-points an edge.
    */
   resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
-  /** Which of two graduated edges on one visible pair survives (D66): the host's choice, or the one kept so far. */
+  /** Which of two graduated edges on one visible pair survives: the host's choice, or the one kept so far. */
   collapse(kept: GraphEdge, candidate: GraphEdge): GraphEdge
 }
 
-/** What a host declares in order to build one. */
 /** A named run of values that lay out together on a control surface. */
 export interface StyleGroup {
   id: string
   values: readonly DimensionValue[]
 }
 
+/** What a host declares in order to build an `Ontology`. */
 export interface OntologySpec {
   styleDimension: DimensionId
   styleLabel: string
@@ -157,7 +154,7 @@ export interface OntologySpec {
   edgeTypes: readonly EdgeTypeDefinition[]
   resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
   /**
-   * Computed scalars this host adds to the built-ins (R8): each reads node
+   * Computed scalars this host adds to the built-ins: each reads node
    * metadata — its own payload included — and the graph's structure, and
    * answers per node in [0, 1]. Empty is a fine answer.
    */
@@ -169,7 +166,7 @@ export interface OntologySpec {
    */
   contextLine?: (node: GraphNode, parent: GraphNode | undefined) => string | readonly string[] | undefined
   /**
-   * The highlight for an active node (D59): given the library's transitive
+   * The highlight for an active node: given the library's transitive
    * walk from it, the host may widen it (members it relates by metadata) or
    * replace it. Absent, the walk is the highlight.
    */
@@ -177,7 +174,7 @@ export interface OntologySpec {
   /**
    * When two dependency edges each lose an end to a hidden node and come to
    * run between the same two visible nodes, which of the two originals the
-   * drawn edge stands for (D66). Both arguments are the host's own edges, so
+   * drawn edge stands for. Both arguments are the host's own edges, so
    * a host whose edges carry routing metadata may prefer the one that does.
    * Absent, the one met first in the host's edge order is kept. Two edges
    * whose ends are both visible are never collapsed.
@@ -212,7 +209,7 @@ export function createOntology(spec: OntologySpec): Ontology {
   for (const k of Object.keys(spec.abbreviations)) if (!keys.has(k)) problems.push(`abbreviations names ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
   // The custom-property name is derived from the value id (kebab case), so two
   // ids may share one — and one may be empty. Refuse both: the canvas and a
-  // token would read the same value differently (D58).
+  // token would read the same value differently.
   const bySuffix = new Map<string, DimensionValue>()
   for (const k of spec.nodeTypeKeys) {
     const suffix = cssSuffix(k)
@@ -222,7 +219,7 @@ export function createOntology(spec: OntologySpec): Ontology {
     bySuffix.set(suffix, k)
   }
   // Every colour must be a form every reader parses without a browser (hex or
-  // rgb()); the canvas would otherwise ignore it silently (T6).
+  // rgb()); the canvas would otherwise ignore it silently.
   const colour = (where: string, c: string) => { if (!isSchemeColor(c)) problems.push(`${where} is ${JSON.stringify(c)}, not a hex or rgb() colour`) }
   for (const k of spec.nodeTypeKeys) {
     const style = hasOwn(spec.nodeStyles, k) ? spec.nodeStyles[k] : undefined
@@ -290,10 +287,9 @@ export function createOntology(spec: OntologySpec): Ontology {
     filterDimensions: spec.filterDimensions,
     descriptorFor: id => byDimension.get(id),
     valueOn: (subject, dimension) => subject.dimensions[dimension],
-    // `hasOwn`, for the same reason as `styleForKey` (D39): a value named
+    // `hasOwn`, for the same reason as `styleForKey`: a value named
     // `constructor` or `toString` resolves up the prototype chain, the `??`
     // never fires, and this returns a Function where a string is expected.
-    // D39 fixed the two lookups it found and missed this one.
     abbreviationFor: value =>
       hasOwn(spec.abbreviations, value) ? spec.abbreviations[value] : value,
     styleGroups: spec.styleGroups,

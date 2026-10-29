@@ -1,4 +1,4 @@
-/* Shared filter bar: canvas header, chips, search — extracted from styles/index.css (issue #56). The findings bars rendered under it are the host's (ErrorBars.css). */
+/* Shared filter bar: canvas header, chips, search. The findings bars rendered under it are the host's. */
 /* === Canvas Header === */
 .gv-canvas-header {
   background: var(--gv-color-surface);
@@ -260,7 +260,7 @@
 }
 
 /* A chip's tint is the style value it borrows (inline `--gv-chip-tint`, set by
-   the bar from the themed root's --gv-node-<suffix>, D58); its hover and active
+   the bar from the themed root's --gv-node-<suffix>); its hover and active
    backgrounds are that tint mixed down to the theme's tint percentages, so
    the bar needs no per-kind rule, no literal palette and no dark rule. */
 .gv-header-type-tag {
@@ -302,10 +302,9 @@
 }
 
 
-/* --- Filter chain controls (R17, R18) ------------------------------------
+/* --- Filter chain controls ------------------------------------
    The chain is an ordered list of axes; each section can be removed and a new
-   one appended. Deliberately neutral: these are structural affordances, and the
-   per-axis tints above are Unit 6's to rework. */
+   one appended. Deliberately neutral: these are structural affordances. */
 
 .gv-header-chain-remove {
   border: none;
@@ -338,7 +337,7 @@
   padding: 0 6px;
 }
 
-/* Also the empty-chain state (R18): with every axis removed the bar collapses
+/* Also the empty-chain state: with every axis removed the bar collapses
    to this one button, which is the only way back. */
 .gv-header-chain-add-button {
   border: 1px dashed var(--gv-color-border);

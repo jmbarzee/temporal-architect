@@ -5,7 +5,6 @@
 // spring-specific math (split-colour tokens from the resolved spring
 // categories, signed-response curves) and feeds presentational data into the
 // primitives.
-// See GRAPH_VIEW.md § Control Panel.
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
@@ -41,7 +40,7 @@ function describedCategories(spring: ResolvedPhysics['spring'], present: Readonl
 
 interface SpringControlProps {
   params: ForceParams
-  /** The dense tables the kernels read, resolved once by the view (T25). */
+  /** The dense tables the kernels read, resolved once by the view. */
   resolved: ResolvedPhysics
   /** The categories some edge of the graph falls in — the only ones worth a token. */
   present: ReadonlySet<string>

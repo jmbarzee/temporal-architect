@@ -6,7 +6,7 @@
 // catches such errors and renders a static fallback in place of what it
 // wraps, leaving the rest of the app interactive. The view mounts one around
 // the canvas and one around its own root, so no throw in the pane reaches the
-// host's tree (D66).
+// host's tree.
 
 import React from 'react'
 

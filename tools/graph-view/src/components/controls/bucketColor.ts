@@ -2,9 +2,9 @@
 //
 // On the style axis, bucketed by identity, a bucket IS a styled value and takes
 // that value's colour — the `--gv-node-<suffix>` the pane carries inline in its
-// resolved theme (D57), so a token and its nodes match across themes. Any other
-// bucketing has no declared colour (a palette for arbitrary axes is a filed
-// issue), and says so with one neutral tone rather than warning its way to the
+// resolved theme, so a token and its nodes match across themes. Any other
+// bucketing has no declared colour (there is no palette for arbitrary axes
+// yet), and says so with one neutral tone rather than warning its way to the
 // fallback style once per bucket.
 
 import type { DimensionalMapping } from '../../graph/dimension'

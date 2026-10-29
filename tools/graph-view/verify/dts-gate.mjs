@@ -113,4 +113,26 @@ else {
   if (!failed) console.log('published stylesheet: the design tokens are declared, once per theme where themed')
 }
 
+// 5. No project record reaches a consumer's IDE hover. The doc comments ship
+//    with the declarations; a decision, trap or review id, a plan section or a
+//    spec file name in one of them means nothing outside this repository, and
+//    "the first host" is a host the package must not know. Only comments are
+//    read, so a type parameter named `T1` in code is not a hit.
+const RECORD = /\b(?:D\d{1,3}|T\d{1,2}|B\d{1,2}|R\d{1,2}|C\d{1,2}|REVIEW_\d+)\b|PLAN §|KICKOFF|GRAPH_VIEW\.md|VIEW_FRAMEWORK|PRODUCT\.md|first host|the visualizer/
+const records = []
+for (const file of shipped) {
+  const text = readFileSync(file, 'utf8')
+  for (const comment of text.match(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g) ?? []) {
+    const m = RECORD.exec(comment)
+    if (m) records.push(`${relative(PKG_ROOT, file)}: ${JSON.stringify(m[0])} in ${JSON.stringify(comment.replace(/\s+/g, ' ').slice(0, 80))}`)
+  }
+}
+if (records.length) {
+  console.error('FAIL published declarations carry project records in their doc comments:')
+  for (const r of records) console.error('  ' + r)
+  failed = true
+} else {
+  console.log(`published docs: no project record in ${shipped.length} declaration file(s)`)
+}
+
 process.exit(failed ? 1 : 0)

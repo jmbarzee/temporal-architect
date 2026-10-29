@@ -6,7 +6,7 @@
 // `useVisibleGraph`'s deps and `useSimulationLoop`'s `prev === next`
 // comparisons), so preserving the untouched axes' references is load-bearing
 // behaviour rather than an optimisation — a reducer that rebuilt them all would
-// re-run edge graduation and reheat the layout on every unrelated edit (T5).
+// re-run edge graduation and reheat the layout on every unrelated edit.
 
 import type { DimensionId } from '../graph/dimension'
 import type { FilterState } from './types'

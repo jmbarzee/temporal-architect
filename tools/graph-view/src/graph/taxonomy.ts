@@ -24,17 +24,17 @@ import type { EdgeStroke, ThemedColor } from './scheme'
  * Reached through `Ontology.resolveNodeStyle`, never by key lookup from the
  * engine — a miss has to resolve to a declared fallback rather than throw,
  * because the resolution happens per node per frame inside the draw loop where
- * an exception stops the canvas repainting for good (T4).
+ * an exception stops the canvas repainting for good.
  */
 export interface NodeTypeDefinition {
   /** Display name, e.g. "Endpoint". */
   label: string
-  /** Single glyph shown inside the canvas node and in tree-view chips. */
+  /** Single glyph shown inside the canvas node and on the value's filter chip. */
   icon: string
   /** Whether this value is visible when the graph first loads. */
   defaultVisible: boolean
   /**
-   * What a dependency edge touching a HIDDEN node of this value does (D59):
+   * What a dependency edge touching a HIDDEN node of this value does:
    * `ascend` re-points the endpoint to the node's nearest visible ancestor;
    * `splice` follows the node's own dependency edges through to the far
    * side, so caller → hidden → callee draws as caller → callee.
@@ -70,7 +70,7 @@ export interface NodeTypeDefinition {
      * no gravity. `y` is the hierarchy (negative = top of canvas); `x` bounds
      * the horizontal spread. The simulation seeds nodes inside their bands on
      * creation, so the structure is visible before the first tick — which also
-     * makes this the seeding function, not only the gravity target (T2).
+     * makes this the seeding function, not only the gravity target.
      */
     band: { x: { min: number; max: number }; y: { min: number; max: number } }
   }
@@ -113,14 +113,14 @@ export interface EdgeTypeDefinition {
    * Canonical endpoint values on the style axis — these drive the split-colour
    * token (source | target). Values rather than declared types, because the
    * engine resolves an edge's category from where its endpoint *nodes* sit,
-   * not from anything cached on the edge (B14).
+   * not from anything cached on the edge.
    */
   sourceType: DimensionValue
   targetType: DimensionValue
   category: EdgeCategoryKind
   /** Declared stiffness / rest length — what the category resolves to until tuned. */
   physics: SpringPhysics
-  /** How the canvas strokes an edge of this type, in both themes (D57). */
+  /** How the canvas strokes an edge of this type, in both themes. */
   style: EdgeStroke
   tooltip: string
 }

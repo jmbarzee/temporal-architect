@@ -1,5 +1,4 @@
 // Force-directed simulation engine.
-// Implements GRAPH_VIEW.md § Layout: Force-Directed Simulation.
 
 import type { GraphNode, GraphEdge, Graph } from './model'
 import { readableGraph } from './model'
@@ -66,10 +65,10 @@ export interface BandRange { min: number; max: number }
  * Three facts that must agree — which axis, how its values bucket, and the
  * per-bucket numbers — as ONE constructed value, so there is no second field for
  * them to disagree with. The axis and its table used to be two independent
- * fields (`chargeDimension` and `charge`), and the Unit 2 review found the exact
- * state that admits: after a taxonomy swap the axis was the new one and the
- * table was still keyed by the old, every lookup missed, and the layout silently
- * collapsed (PLAN §6.6).
+ * fields (`chargeDimension` and `charge`), and that admitted the exact state
+ * where, after a taxonomy swap, the axis was the new one and the table was
+ * still keyed by the old, every lookup missed, and the layout silently
+ * collapsed.
  *
  * `overrides` holds **only what the user changed**, keyed by bucket id. Every
  * other bucket resolves to the taxonomy's declared physics at read time
@@ -78,7 +77,7 @@ export interface BandRange { min: number; max: number }
  * step, because nothing here duplicates the taxonomy. It also makes "is this
  * value tuned?" answerable — presence is the answer — and reset granular.
  *
- * T10 holds: the scalars beside this stay flat, so `keyof ForceParams` and the
+ * The scalars beside this stay flat, so `keyof ForceParams` and the
  * key-addressed sliders are unchanged. Only the table fields changed shape.
  */
 export interface AxisTuning<T> {
@@ -96,7 +95,7 @@ export function withOverride<T>(tuning: AxisTuning<T>, bucketId: string, value: 
 
 /**
  * What a layout axis keys on: a dimensional mapping with its overrides, or a
- * computed scalar with its span (R28). The narrowers are two guards
+ * computed scalar with its span. The narrowers are two guards
  * (`isScalarTuning`, `isScalarAxis`) and two loud casts for the callers that
  * hold the kind already (`mappedTuning`, `mappedAxis`).
  */
@@ -111,7 +110,7 @@ export function mappedTuning(t: LayoutTuning): AxisTuning<BandRange> {
 /**
  * The two pair forces' tuning: ONE axis for both, and only what the user has
  * changed on each. Push and pull keying on different axes is a state the
- * domain has no meaning for (D51: one dropdown drives both), so the type does
+ * domain has no meaning for (one dropdown drives both), so the type does
  * not admit it — the mapping is stored once, here.
  */
 export interface PairTuning {
@@ -171,7 +170,7 @@ export const SEED_BIAS = 0.35
  * The bounded-token rule. A dimension is usable for push/pull only through a
  * mapping small enough that one token per bucket (push) and one per spring
  * category present (pull) is still a control surface a person can use. Above
- * this the surface is unbounded, which PLAN §5.1 names as a tripwire.
+ * this the surface is unbounded.
  */
 export const TOKEN_CEILING = 24
 
@@ -318,8 +317,8 @@ export interface LinkParams {
 // compensation. Plus the optional topological pull and the center baseline.
 export interface GravityParams {
   /**
-   * The two layout axes' rest bands — the same shape, each on its own mapping
-   * (T22). A strength of zero switches an axis off; when both are off and
+   * The two layout axes' rest bands — the same shape, each on its own mapping.
+   * A strength of zero switches an axis off; when both are off and
    * topological gravity is too, center gravity is the baseline.
    */
   bandX: LayoutTuning
@@ -333,7 +332,7 @@ export interface GravityParams {
   /**
    * Radial layout: the Y axis's bands become rings about the origin (uppermost
    * bucket innermost) and X is ignored; topological gravity's focal point moves
-   * from the top to the centre. Entered from the Y axis's switch (R27).
+   * from the top to the centre. Entered from the Y axis's switch.
    */
   radial: boolean
   // Topological gravity strength: scales the single-sided inward pull on each
@@ -404,7 +403,7 @@ export type ForceParams = ChargeParams & LinkParams & GravityParams & DynamicsPa
 export function defaultParamsFor(ontology: Ontology): ForceParams {
   return {
     // Both default to the axis the taxonomy resolves style on, so the layout
-    // keys on the same thing it is coloured by. Unit 4 makes this a choice.
+    // keys on the same thing it is coloured by.
     pair: pairTuning(styleIdentityMapping(ontology)),
     bandX: identityTuning<BandRange>(ontology),
     bandY: identityTuning<BandRange>(ontology),
@@ -499,7 +498,7 @@ export class Simulation {
 
   // The per-bucket tables, resolved once from (params, taxonomy) and read by the
   // kernels per pair / per node. Recomputed only when either input changes —
-  // never per tick, and never inside a loop (T25).
+  // never per tick, and never inside a loop.
   private resolved: ResolvedPhysics
   // The frame the band forces act in — median centres and ring radii over the
   // WHOLE node set — shared by seeding, the kernels and (through the view) the
@@ -527,12 +526,12 @@ export class Simulation {
     this.ontology = ontology
     this.resolved = resolvePhysics(this.params, ontology)
 
-    // Seed each node in the frame the forces act in (T2). Cartesian: inside its
+    // Seed each node in the frame the forces act in. Cartesian: inside its
     // rest band on both axes, re-centred as the force re-centres them, and
     // biased toward the band's bottom edge by SEED_BIAS — centred seeding left a
     // third of the stress layouts with the bottom tier wedged above the tier
     // over it; a seed that pre-orders the tiers lets the band force lift rather
-    // than sort (D54, measured over 24 seeds). Radial: on the bucket's
+    // than sort (measured over 24 seeds). Radial: on the bucket's
     // ring at a random angle, children near their parent's angle. A node in no
     // bucket sits at the axis's centre, or at the origin.
     this.nodes = []

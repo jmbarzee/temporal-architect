@@ -2,7 +2,7 @@
 // once, and the three readers that turn them into pixels: the custom-property
 // name a value's colour is published under, the inline variables a pane
 // carries for the resolved theme, and a colour normaliser for the canvas,
-// which cannot throw (T4) and so reads only the forms the taxonomy admits (T6).
+// which cannot throw and so reads only the forms the taxonomy admits.
 
 import type { DimensionValue } from './dimension'
 import type { Ontology } from './ontology'
@@ -47,7 +47,7 @@ export function cssSuffix(value: DimensionValue): string {
  * The custom property a value's fill is published under (`--gv-node-<suffix>`;
  * `-border` for its border). The `gv-` prefix keeps it from a host's own
  * properties, and its own `node-` stem apart from the chrome's tokens
- * (`--gv-color-*`): a value id may be anything a host names (D58).
+ * (`--gv-color-*`): a value id may be anything a host names.
  */
 export const colorVar = (value: DimensionValue): string => `--gv-node-${cssSuffix(value)}`
 
@@ -96,8 +96,8 @@ const REFUSED = new Set<string>()
 /**
  * A colour at an alpha, as `rgba()`, for a canvas gradient or fill. A colour
  * outside the scheme's forms becomes a neutral grey, said once per colour on
- * the console — never a throw, because this runs inside the draw loop (T4,
- * T6). Unreachable for a taxonomy's colours, which are refused at
+ * the console — never a throw, because this runs inside the draw loop.
+ * Unreachable for a taxonomy's colours, which are refused at
  * construction; it guards the library's own group palette and any caller
  * that bypasses the taxonomy.
  */

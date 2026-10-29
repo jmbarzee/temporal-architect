@@ -1,5 +1,4 @@
 // Canvas-based graph renderer with mouse interaction.
-// Implements GRAPH_VIEW.md § Visual Encoding, § Viewport Controls, § Interaction States.
 
 import { copyKeyOf, isContainment } from '../graph/model'
 import React from 'react'
@@ -28,9 +27,9 @@ const DIM_ALPHA = 0.2
 // readable without losing the hover/search focus effect when no glow is shown.
 const DIM_ALPHA_GROUPS = 0.5
 
-// Decomposition group glow (drawn behind everything; see GRAPH_VIEW.md
-// § Decomposition Group Overlay). A member's halo extends GROUP_GLOW_PAD screen
-// px beyond its node body so adjacent members' halos overlap and fuse.
+// Decomposition group glow (drawn behind everything). A member's halo extends
+// GROUP_GLOW_PAD screen px beyond its node body so adjacent members' halos
+// overlap and fuse.
 const GROUP_GLOW_PAD = 16
 const GROUP_GLOW_CENTER_ALPHA = 0.42
 const GROUP_GLOW_EDGE_ALPHA = 0.16
@@ -121,7 +120,7 @@ function cssVar(el: Element | null, name: string, fallback: string): string {
 
 // What an edge draws as when the view's stroke map has no entry for it — a
 // state the view does not produce (the map is built from the same edge array
-// this canvas is given), kept quiet because this runs in the draw loop (T4).
+// this canvas is given), kept quiet because this runs in the draw loop.
 const NEUTRAL_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.5, dash: [], width: 1.3 }
 
 const ARROWHEAD_SIZE = 8
@@ -159,14 +158,14 @@ interface GraphCanvasProps {
   searchMatchIds: Set<string> | null
   running: boolean
   forceParams: ForceParams
-  /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw (T25). */
+  /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw. */
   resolved: ResolvedPhysics
   /** The band overlay as data — stripes per axis, rings — computed by the view in the forces' frame. */
   overlay: BandOverlay
-  /** The theme the pane draws in, and every visible edge's stroke, resolved once by the view (D57, T25). */
+  /** The theme the pane draws in, and every visible edge's stroke, resolved once by the view. */
   theme: Theme
   edgeStrokes: ReadonlyMap<GraphEdge, EdgeStroke>
-  /** Lane offsets in screen pixels for edges that share a pair of endpoints, by edge id; absent means on the line (D66). */
+  /** Lane offsets in screen pixels for edges that share a pair of endpoints, by edge id; absent means on the line. */
   edgeOffsets: ReadonlyMap<string, number>
   activeSection: ForceSection
   activePushBucket: string | null
@@ -686,7 +685,7 @@ export function GraphCanvas({
       if (pullActive || activePullKey) {
         const distMul = d.forceParams.distanceMultiplier
         // Tension palette drawn from the app's own colours (theme-aware) so the
-        // highlight reads as part of the visualizer, not a generic stoplight:
+        // highlight reads as part of the view, not a generic stoplight:
         // amber = stretched, cool blue = compressed, calm
         // timer-teal = near rest.
         const tensionStretch = cssVar(canvas, '--gv-tension-stretch', '#d97706')
@@ -825,7 +824,7 @@ export function GraphCanvas({
             const isDimmed = highlight && !isActive
             const color = fillOf(buckets[0])
             if (gradient) {
-              // A scalar axis: one gradient from its 0 end to its 1 end (R31).
+              // A scalar axis: one gradient from its 0 end to its 1 end.
               const z = toScreen(gradient.zero), o = toScreen(gradient.one)
               const g = coord === 'y' ? ctx.createLinearGradient(0, z, 0, o) : ctx.createLinearGradient(z, 0, o, 0)
               g.addColorStop(0, cssVar(canvas, '--gv-color-text-muted', '#94A3B8'))
@@ -921,9 +920,9 @@ export function GraphCanvas({
           ctx.restore()
         }
 
-        // No search-match ring. Per spec § Search Behavior, search is
-        // expressed as opacity only (full vs. DIM_ALPHA above) — the
-        // ring vocabulary is reserved for other decoration.
+        // No search-match ring: search is expressed as opacity only (full vs.
+        // DIM_ALPHA above) — the ring vocabulary is reserved for other
+        // decoration.
 
         // Duplicate halo — colored ring in the node's own fill color drawn on
         // every visible copy of a definition whenever ANY of those copies is

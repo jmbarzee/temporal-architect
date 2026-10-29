@@ -1,7 +1,7 @@
 // The Push/Pull tab: one axis dropdown shared by both pair forces, then Push
 // and Pull as sub-tabs — styled like Gravity's Band/Topological, without the
 // switches, since neither force has an off. Each body is its equation, its 2D
-// map, and its force-curve read-out. See GRAPH_VIEW.md § Control Panel.
+// map, and its force-curve read-out.
 
 import React from 'react'
 import type { PresentSets } from './GraphControlPanel'
@@ -23,8 +23,7 @@ interface PushPullProps {
   resolved: ResolvedPhysics
   /** Every axis the graph admits, with what each would cost to show. */
   axes: readonly AxisOption[]
-  /** The spring categories some edge of the graph falls in — the pull tokens. */
-  /** What the visible set holds: push buckets and spring categories worth a token (R35). */
+  /** What the visible set holds: push buckets and spring categories worth a token. */
   present: Pick<PresentSets, 'push' | 'springs'>
   onParamChange: (patch: Partial<ForceParams>) => void
   onAxisChange: (mapping: DimensionalMapping) => void

@@ -11,7 +11,7 @@
 //                 (per item), an optional baseline, and per-item vertical
 //                 markers, with one global `exp` slider beneath.
 //
-// Both reuse the `.gv-spring-*` / `.gv-force-curve-*` CSS classes (see index.css).
+// Both reuse the `.gv-spring-*` / `.gv-force-curve-*` CSS classes (see ForceMap.css).
 
 import React from 'react'
 import './ForceMap.css'

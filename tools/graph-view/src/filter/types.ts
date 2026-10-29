@@ -4,7 +4,7 @@
 // every consumer had one branch per axis and a third axis meant a third branch
 // everywhere; now it is a map over whatever axes the host declares.
 //
-// **Set identity is load-bearing here, not an optimisation (T5).**
+// **Set identity is load-bearing here, not an optimisation.**
 // `useVisibleGraph` memoises on the Set reference and `useSimulationLoop`
 // compares `prev === next` to decide whether an axis changed. So every operation
 // in this module is copy-on-write: the axis being edited gets a new Set, and
@@ -12,8 +12,7 @@
 // record would re-run edge graduation and reheat the layout on every unrelated
 // edit — silently, since the output is identical.
 //
-// The search query lives outside a FilterState because it is globally shared
-// (spec § Search Scope).
+// The search query lives outside a FilterState because it is globally shared.
 
 import type { DimensionId, DimensionDescriptor } from '../graph/dimension'
 
@@ -27,10 +26,10 @@ export type Selection = ReadonlySet<string>
  * A string-keyed record permits `filter.selectedFiles` — it typechecks, returns
  * `undefined`, and every downstream `.has` throws or silently reports nothing.
  * That exact mistake survived the migration in **six** separate places (three
- * production, three in the harness), passing typecheck, all six gates and 7/7
- * goldens, and was caught only by loading the app. The domain has no axis called
+ * production, three in the harness), passing typecheck and every automated
+ * check, and was caught only by loading the app. The domain has no axis called
  * `selectedFiles`; a Map makes saying so unrepresentable instead of merely
- * wrong (PLAN §6.6's test).
+ * wrong.
  */
 export type FilterState = ReadonlyMap<DimensionId, Selection>
 

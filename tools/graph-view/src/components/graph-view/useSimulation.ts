@@ -52,7 +52,7 @@ export function useSimulation(
   // the style axis or a scalar axis after a taxonomy swap), keeps overrides
   // whose values survive, and returns the same object when nothing moved. It
   // runs in render so nothing downstream ever resolves a stale tuning against
-  // a new taxonomy (REVIEW_5b C5); the state catches up in the effect below.
+  // a new taxonomy; the state catches up in the effect below.
   const forceParams = React.useMemo(() => retunedFor(rawParams, ontology, graph), [rawParams, ontology, graph])
   React.useEffect(() => {
     if (forceParams !== rawParams) setRawParams(forceParams)
@@ -64,7 +64,7 @@ export function useSimulation(
 
   // Create the simulation when the graph or the taxonomy changes. A swap used
   // to need a provenance ref here to detect; a tuning that carries its own
-  // mapping has nothing left to detect (D47).
+  // mapping has nothing left to detect.
   React.useEffect(() => {
     simRef.current = new Simulation(graph, forceParams, defaultRng, ontology)
     onRebuildRef.current?.()

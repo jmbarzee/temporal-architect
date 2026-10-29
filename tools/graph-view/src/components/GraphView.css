@@ -1,4 +1,4 @@
-/* Graph view: overlay, bottom controls, tooltip, search, shortcuts — extracted from styles/index.css (issue #56). */
+/* Graph view: overlay, bottom controls, tooltip, search, shortcuts. */
 /* === Graph View === */
 .gv-graph-view {
   flex: 1;
@@ -7,15 +7,15 @@
   overflow: hidden;
 }
 
-/* The pane is focusable when its keyboard is scoped to it (D66): the ring
+/* The pane is focusable when its keyboard is scoped to it: the ring
    says the shortcuts are live; Escape with nothing to close gives focus back. */
 .gv-graph-view:focus-visible {
   outline: 2px solid var(--gv-focus-ring-color);
   outline-offset: -2px;
 }
 
-/* The pane's own diagnostics: what the host's graph got wrong, under the bar
-   (D66). Errors name edges the view does not draw; warnings, things it draws
+/* The pane's own diagnostics: what the host's graph got wrong, under the bar.
+   Errors name edges the view does not draw; warnings, things it draws
    but the host should know. */
 .gv-graph-diagnostics {
   background: color-mix(in srgb, var(--gv-color-surface) 92%, transparent);
@@ -48,7 +48,7 @@
 
 /* Floating overlay: filter bar + toolbar + errors header. Sits above
    the full-viewport canvas so zoomed content can extend visibly under
-   the overlay edges (spec § Overlay Layout). */
+   the overlay edges. */
 .gv-graph-overlay {
   position: absolute;
   top: 0;

@@ -58,10 +58,8 @@ export const CORE_RADIUS_MIN = 2
  * *finite and bounded* — which is the guard's actual job, and the thing whose
  * absence produces a NaN four frames later or a hard throw — without inventing
  * a "non-participant" concept in the physics. Making absent values true
- * non-participants is a change to the force model, which belongs with the
- * push/pull rework rather than in a unit whose contract is "no behavior change".
- * See DECISIONS.md D31. The effect on neighbours is under golden, so the
- * trade cannot drift silently.
+ * non-participants is a change to the force model, and is not made here. The
+ * effect on neighbours is under golden, so the trade cannot drift silently.
  */
 export const ABSENT_VALUE_PHYSICS = {
   charge: 0,
@@ -76,7 +74,7 @@ export const ABSENT_VALUE_PHYSICS = {
 // (four reads per pair, O(n²)). So the tables are resolved ONCE per
 // (params, taxonomy) into dense per-bucket maps here, and the kernels read
 // those. Resolution is the only place the taxonomy's declared physics is
-// consulted for the forces, and it never runs inside a loop (T25).
+// consulted for the forces, and it never runs inside a loop.
 
 /** A per-bucket table, resolved from one axis's tuning and the taxonomy. */
 export interface ResolvedAxis<T> {
@@ -106,7 +104,7 @@ export type LayoutSubject = PhysicsSubject & { id: string }
 
 export interface ResolvedPhysics {
   push: ResolvedAxis<PushPhysics>
-  /** The two layout axes — the same shape, resolved the same way (T22); either may be a scalar (R28). */
+  /** The two layout axes — the same shape, resolved the same way; either may be a scalar. */
   bandX: ResolvedLayoutAxis
   bandY: ResolvedLayoutAxis
   spring: ResolvedSprings
@@ -236,7 +234,7 @@ export function bandFor(band: ResolvedAxis<BandRange>, node: PhysicsSubject): Ba
 /**
  * The buckets some node of `nodes` falls in, in first-encounter order — the
  * set the band force re-centres on, the radial mapping rings, and the overlay
- * draws (D53: present, never all declared). A node with no value on the axis
+ * draws (present, never all declared). A node with no value on the axis
  * is in no bucket: it has no band, joins no median, and sits at the axis's
  * centre.
  */
@@ -293,9 +291,9 @@ export function ringRadii(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<Ba
  * set: for a mapped axis the median centre (and, on Y, the ring per bucket);
  * for a scalar axis every node's score. One frame for seeding, the force and
  * the overlay, so they agree by construction — a frame over the visible subset
- * would move with every filter toggle and disagree with the seed (REVIEW_5a
- * C1). It answers two questions per node: where it rests on an axis, and
- * which ring it belongs on.
+ * would move with every filter toggle and disagree with the seed. It answers
+ * two questions per node: where it rests on an axis, and which ring it belongs
+ * on.
  */
 export interface LayoutFrame {
   readonly centerX: number
@@ -374,7 +372,7 @@ export function topologicalActing(params: GravityParams): boolean {
 
 /**
  * One stripe of the overlay: a band on an axis and every present bucket that
- * shares it — or, for a scalar axis, the whole span as one gradient (R31):
+ * shares it — or, for a scalar axis, the whole span as one gradient:
  * no buckets to name, and `gradient` says which end is 0 and which is 1.
  */
 export interface BandStripe {
@@ -384,13 +382,6 @@ export interface BandStripe {
   readonly gradient?: ScalarSpan
 }
 
-/**
- * The overlay's stripes on one axis, as data: one per distinct band among the
- * buckets present, re-centred on the frame. Buckets that share a band share a
- * stripe (the default X window, two tiers on one Y band), so the overlay's
- * density reads as bands rather than bucket counts. Pure, so a golden can read
- * it (REVIEW_5a C8).
- */
 /** One ring of the radial overlay: a radius, and every present Y bucket that maps to it. */
 export interface BandRing {
   readonly radius: number
@@ -399,7 +390,7 @@ export interface BandRing {
 
 /**
  * The band overlay as data: what the canvas draws, decided here so a golden can
- * read it (REVIEW_5a C8). Stripes only while that axis acts in cartesian; rings
+ * read it. Stripes only while that axis acts in cartesian; rings
  * only while Y acts in radial — the same predicates the tick uses, so the
  * overlay never shows a force that does nothing. `colors` is the view's: one
  * per bucket, keyed by bucket id.
@@ -453,6 +444,13 @@ export function bandOverlay(
   }
 }
 
+/**
+ * The overlay's stripes on one axis, as data: one per distinct band among the
+ * buckets present, re-centred on the frame. Buckets that share a band share a
+ * stripe (the default X window, two tiers on one Y band), so the overlay's
+ * density reads as bands rather than bucket counts. Pure, so a golden can read
+ * it.
+ */
 export function bandStripes(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>, center: number): BandStripe[] {
   const byBand = new Map<string, { lo: number; hi: number; buckets: string[] }>()
   for (const bucket of presentBuckets(nodes, axis)) {
@@ -522,9 +520,9 @@ function parsePairId(id: EdgeTypeId): [EdgeCategoryKind, string, string] | undef
  *
  * Two classifiers can fill it, and which one is decided here, once, not per
  * edge. On the style axis bucketed by identity, the host's declared table and
- * its prioritized rule apply verbatim (D2): the hand-tuned springs, and a
+ * its prioritized rule apply verbatim: the hand-tuned springs, and a
  * precedence no pair rule reproduces — two of its categories share endpoint
- * values and differ only on the edge's own dispatch (T14). On any other
+ * values and differ only on the edge's own dispatch. On any other
  * (axis, mapping) the library's pair rule applies: one category per unordered
  * bucket pair per relation, each the host's typical spring until tuned. The
  * pair rule enumerates nothing: a category exists when an edge falls in it,
@@ -631,12 +629,12 @@ export function presentSpringCategories(
   return present
 }
 
-// ── Coordinate adapter (for the deferred radial gravity mode, issue 51) ──────
+// ── Coordinate adapter ────────────────────────────────────────────────────────
 //
 // Polar conversion about the world origin, with a guard near r = 0 where the
 // angle is undefined and a radial force would otherwise spike. Not used by the
-// current cartesian forces; provided so the radial gravity work (issue 51) can
-// express targets in (r, theta) and convert back to (x, y) accelerations.
+// forces here, which work in cartesian coordinates; provided so a radial force
+// can express targets in (r, theta) and convert back to (x, y) accelerations.
 export function toPolar(x: number, y: number): { r: number; theta: number } {
   const r = Math.hypot(x, y)
   if (r < 1e-6) return { r: 0, theta: 0 }
@@ -667,7 +665,7 @@ export function applyChargeForce(
   const chargeExp = params.chargeExponent
   // Per-node physics once, O(n), before the O(n²) pair loop reads it: each
   // accessor is a dimension read and two map lookups, and the loop below would
-  // otherwise make four of those per pair (T25).
+  // otherwise make four of those per pair.
   const n = active.length
   const charge = new Float64Array(n)
   const rEff = new Float64Array(n)
@@ -791,7 +789,7 @@ export function applyBandGravity(
 // median, a scalar's point, or the centre itself for a node with no value. The
 // pull never carries a node past its rest in one tick: a point has no band to
 // absorb an overshoot, so an uncapped |d|^exp at exp > 1 bounced nodes across
-// it every tick up to the velocity ceiling (REVIEW_5b C13).
+// it every tick up to the velocity ceiling.
 function pullToRest(
   active: SimNode[],
   coord: 'x' | 'y',
@@ -858,9 +856,8 @@ function applyBandGravityRadial(
 // node's downstream-depth score, drawing the orchestrators atop deep call chains
 // toward the focal point while leaving leaves (score 0) untouched —
 // charge handles spreading those outward. Origin-relative, so it is independent
-// of the band layout. In the (current) cartesian interpretation the focal point
-// is "up", toward the top of the world; the radial interpretation (focal =
-// origin) lands with the radial gravity mode (issue 51).
+// of the band layout. In the cartesian interpretation the focal point is "up",
+// toward the top of the world; in radial mode (focal = origin) it is the centre.
 const TOPOLOGICAL_FOCAL_Y = -350
 
 export function applyTopologicalGravity(

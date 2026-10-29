@@ -37,25 +37,12 @@ export function internValue(parts: string | readonly string[]): DimensionValue {
   return typeof parts === 'string' ? parts : parts.join('\u0000')
 }
 
-/**
- * Everything the view layer needs to know about one axis, beyond its values.
- *
- * **It does not carry the values.** Those are derived, not declared: the style
- * axis's values come from the taxonomy, and the source-file axis's come from
- * scanning the graph. Declaring them here too would be the same fact in two
- * places with nothing enforcing agreement — the shape PLAN §6.6 exists to warn
- * about, and it would have been introduced on the very unit that recorded it.
- *
- * What it does carry is **policy**, and the policies are per-axis because the
- * two existing axes genuinely disagree on all three. A shared loop over
- * dimensions flattens them and silently changes behaviour (T7, T8, T9).
- */
 /** One button in a filter bar: a label, an optional glyph, and the values it toggles. */
 export interface FilterChip {
   id: string
   label: string
   icon?: string
-  /** A style value whose colour this chip wears, in the pane's theme (D57); none means neutral. */
+  /** A style value whose colour this chip wears, in the pane's theme; none means neutral. */
   tint?: DimensionValue
   /**
    * Hover text, when the label alone is not enough to identify the chip.
@@ -85,6 +72,18 @@ export interface AxisNamer {
   abbreviationFor(value: DimensionValue): string
 }
 
+/**
+ * Everything the view layer needs to know about one axis, beyond its values.
+ *
+ * **It does not carry the values.** Those are derived, not declared: the style
+ * axis's values come from the taxonomy, and the source-file axis's come from
+ * scanning the graph. Declaring them here too would be the same fact in two
+ * places with nothing enforcing agreement, free to drift apart unnoticed.
+ *
+ * What it does carry is **policy**, and the policies are per-axis because the
+ * two existing axes genuinely disagree on all three. A shared loop over
+ * dimensions flattens them and silently changes behaviour.
+ */
 export interface DimensionDescriptor extends AxisNamer {
   /**
    * What an EMPTY selection on this axis means.
@@ -92,7 +91,7 @@ export interface DimensionDescriptor extends AxisNamer {
    * The two existing axes disagree, deliberately: an empty type selection hides
    * everything, while an empty file selection shows everything — because adding
    * a file chip while the filter is off would otherwise activate the filter and
-   * hide every file but that one (T7).
+   * hide every file but that one.
    */
   emptyMeans: 'all' | 'none'
   /**
@@ -102,7 +101,7 @@ export interface DimensionDescriptor extends AxisNamer {
    */
   absentMeans: 'visible' | 'hidden'
   /**
-   * How far a focus transition expands this axis to reveal its target (T8).
+   * How far a focus transition expands this axis to reveal its target.
    *
    *   'always'     — add the target's value unconditionally (the type axis).
    *   'whenActive' — add it only if a selection is already active, because on an
@@ -112,7 +111,7 @@ export interface DimensionDescriptor extends AxisNamer {
    */
   focus: 'always' | 'whenActive'
   /**
-   * What a change on this axis does to the running simulation (T9).
+   * What a change on this axis does to the running simulation.
    *
    * Four independent fields rather than one "strength", because the two axes
    * differ on three of them and a descriptor derived from a careless reading of
@@ -346,9 +345,9 @@ export interface ReheatPlan {
  *
  * Pure and outside React so it can be goldened. It was inline in the loop hook,
  * where **no gate could reach it**: all four fields of a descriptor's `reheat`
- * could be inverted — including `resume: false`, the exact failure T9 names,
- * which freezes the canvas after every toggle — and typecheck, all six gates and
- * 7/7 goldens stayed green. Declared policy nothing reads is not policy.
+ * could be inverted — including `resume: false`, which freezes the canvas after
+ * every toggle — and every check stayed green. Declared policy nothing reads is
+ * not policy.
  *
  * Several axes can move at once (a view switch does exactly that), so the
  * policies combine rather than the last one winning: the strongest reheat, and

@@ -1,4 +1,4 @@
-/* Graph control panel: panel chrome, force tabs, equations, sliders, switch, dual-range — extracted from styles/index.css (issue #56). */
+/* Graph control panel: panel chrome, force tabs, equations, sliders, switch, dual-range. */
 /* Graph Control Panel */
 .gv-graph-control-panel {
   position: absolute;
@@ -265,7 +265,7 @@
 
 /* ── Type colour theming ───────────────────────────────────────────────────
    Per-type rows (charges, bands, edge endpoints) read from --gv-type-color,
-   which each typed row sets inline from the pane's --gv-node-<suffix> (D57).
+   which each typed row sets inline from the pane's --gv-node-<suffix>.
 */
 
 /* Rows that carry a single node type get a coloured left-accent and tint

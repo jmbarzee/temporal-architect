@@ -2,7 +2,7 @@
 // groups over the WHOLE graph (an id, the node ids the group covers, whether it
 // is emphasised); the view restricts each to the visible set, drops the
 // empty, and colours each by its place in the host's list — so a group keeps
-// its colour when a filter hides the groups before it (D66). Membership is
+// its colour when a filter hides the groups before it. Membership is
 // derived on every render, never baked into the static graph, exactly like
 // the hover and search highlight sets. What a group IS — the host's chunking,
 // what the user has drilled into — is the host's; the host turns its own
@@ -76,7 +76,7 @@ export interface ActiveGroup {
  * The groups as drawn: each restricted to the visible set
  * (filter-as-source-of-truth), the empty dropped, each coloured by its place
  * in the host's list in the theme's palette — so hiding one group recolours
- * none of the others (D66).
+ * none of the others.
  */
 export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: ReadonlySet<string>, theme: Theme = 'dark'): ActiveGroup[] {
   const palette = GROUP_PALETTE[theme]

@@ -2258,3 +2258,37 @@ stylesheet row and the `schemeVars` records carry `--gv-node-*` for
 class name appears in any golden, so no other row moves.
 
 — 2026-10-28 — agent
+
+**D69 — Unit 11c, the library's comments without the project's records (API_WORK.md 2.6).**
+The library's source carried 149 references in 36 files to things that exist
+only in this repository: decision, trap, blast-radius, requirement and review
+ids (`D57`, `T4`, `B14`, `R8`, `C8`, `REVIEW_8`), plan sections, the kickoff
+folder, the spec files (`GRAPH_VIEW.md`, `PRODUCT.md`), and the first host by
+name or by its adapter's paths. Every one is gone; where the id stood for a
+reason, the reason is written out in its place, and where it stood for
+nothing a consumer could act on, the clause is dropped. 41 files change and
+no code does: the diff is comment text, plus the two mid-file imports in
+`ontology.ts` moved to its head, the stacked JSDoc blocks on `styleAxis`
+reduced to one, the orphaned block above `StyleGroup` attached to what it
+describes, and the `isContainment` doc moved from `relationOf` to
+`isContainment`.
+
+1. **The artifact gate holds the line.** Both `dts-gate.mjs` files read every
+   comment in every shipped `.d.ts` and fail on a project record; the
+   library's also fails on "first host" and "the visualizer", which the
+   host's own gate may legitimately say. Only comments are read, so an
+   identifier in code is never a hit. Against the pre-sweep build the
+   library's gate reported fifteen hits in four files — the hovers a
+   consumer had been seeing.
+2. **The records stay where they belong.** `DECISIONS.md`, `API_WORK.md`
+   and the reviews still cite the code by path; the code no longer cites
+   them back. The host's source (`tools/visualizer/src`) keeps its
+   references — it is this repository's, and its gate checks ids only.
+3. **`total` does not move.** The leak gate's vocabulary ceiling counts the
+   first host's words in the library; the sweep removed only words the
+   registry does not count, so it stays 1106 / 1106.
+
+**Golden change (§8.2).** None — no behaviour, no shipped name, no stylesheet
+rule changed.
+
+— 2026-10-28 — agent

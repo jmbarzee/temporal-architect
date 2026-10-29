@@ -1,9 +1,8 @@
 // One layout axis of the Gravity tab — X or Y — as a sub-tab body: which
 // mapping or scalar the axis keys on, one column per bucket carrying the bucket's rest
-// band as two handles (R30), the axis's own strength in the left gutter (R32),
-// and the band force curve beneath (R33). Both axes are this one component:
-// they are the same kind of thing (T22), so they get the same surface.
-// See GRAPH_VIEW.md § Control Panel → GRAVITY.
+// band as two handles, the axis's own strength in the left gutter,
+// and the band force curve beneath. Both axes are this one component:
+// they are the same kind of thing, so they get the same surface.
 
 import React from 'react'
 import type { ForceParams, LayoutAxisOption, AxisTuning, BandRange, LayoutTuning } from '../graph/simulation'
@@ -32,9 +31,9 @@ interface AxisControlsProps {
   axis: LayoutAxis
   params: ForceParams
   resolved: ResolvedPhysics
-  /** Every axis this one may key on: mappings whose bucket count fits the ceiling, and computed scalars (R28). */
+  /** Every axis this one may key on: mappings whose bucket count fits the ceiling, and computed scalars. */
   axes: readonly LayoutAxisOption[]
-  /** The buckets some visible node falls in on this axis — the only columns worth drawing (R35). */
+  /** The buckets some visible node falls in on this axis — the only columns worth drawing. */
   present: ReadonlySet<string>
   onParamChange: (patch: Partial<ForceParams>) => void
   onRelayout: (patch: Partial<ForceParams>) => void
@@ -104,7 +103,7 @@ export function AxisControls({ axis, params, resolved, axes, present, onParamCha
 
   return (
     <div className={`gv-gravity-section-tools${strength > 0 && !ignored ? '' : ' inactive'}`}>
-      {/* The equation varies by kind (R29): outside a band, or away from the scalar's point. */}
+      {/* The equation varies by kind: outside a band, or away from the scalar's point. */}
       <Equation>{isScalarAxis(table)
         ? <>F = <FormulaValue id={`bandStrength${label}`}>strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup>, d = |p − p<sub>0</sub> − s·(p<sub>1</sub> − p<sub>0</sub>)|</>
         : <>F = <FormulaValue id={`bandStrength${label}`}>strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
@@ -161,7 +160,7 @@ export function AxisControls({ axis, params, resolved, axes, present, onParamCha
 }
 
 // A scalar axis as a control: a gradient from the end where a score of 0
-// rests to the end where 1 rests, in place of the columns (R31). The two ends
+// rests to the end where 1 rests, in place of the columns. The two ends
 // are handles that move freely — past each other flips the axis. Where each
 // node sits along it is the scalar's answer, not the user's.
 function ScalarPlot({ axis, radial, label, tooltip, span, strength, onStrength, onSpan }: {
@@ -270,7 +269,7 @@ function AxisPlot({ axis, radial, tuning, table, present, strength, onStrength, 
 }) {
   const svgRef = React.useRef<SVGSVGElement>(null)
   const dragRef = React.useRef<{ bucket: string; edge: 'min' | 'max' } | null>(null)
-  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  // Only the buckets the visible set holds; the tuning keeps the rest.
   const buckets = tuning.mapping.buckets.filter(b => present.has(b.id))
   const colX = (i: number) => PL + ((i + 0.5) / Math.max(1, buckets.length)) * (PR - PL)
   const label = axis.toUpperCase()

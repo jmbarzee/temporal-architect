@@ -39,7 +39,7 @@ import type { PresentSets } from './graph-view/present'
 
 interface GraphControlPanelProps {
   params: ForceParams
-  /** The dense tables the kernels read, resolved once by the view (T25). */
+  /** The dense tables the kernels read, resolved once by the view. */
   resolved: ResolvedPhysics
   // Patch-based: a control emits the subset of params it changed. (handleGravityChange
   // already used this shape; unifying lets nested map params be written too.)
@@ -56,7 +56,7 @@ interface GraphControlPanelProps {
   axes: readonly AxisOption[]
   /** Every axis X or Y may key on: those mappings, and the computed scalars. */
   layoutAxes: readonly LayoutAxisOption[]
-  /** What the post-filter visible set holds, per control (R35): the only buckets and categories worth a token or a column. */
+  /** What the post-filter visible set holds, per control: the only buckets and categories worth a token or a column. */
   present: PresentSets
   onAxisChange: (mapping: DimensionalMapping) => void
   onActiveSection: (section: ForceSection) => void
@@ -303,7 +303,7 @@ function SliderRow({ def, value, onChange, nodeType }: {
   nodeType?: DimensionValue
 }) {
   const display = def.step < 1 ? String(value) : String(Math.round(value))
-  // A typed row reads its colour from the pane's inline variables (D57).
+  // A typed row reads its colour from the pane's inline variables.
   const typed = nodeType
     ? { className: 'gv-graph-control-slider gv-graph-control-typed-row', style: { ['--gv-type-color' as string]: `var(${colorVar(nodeType)})` } as React.CSSProperties }
     : { className: 'gv-graph-control-slider', style: undefined }

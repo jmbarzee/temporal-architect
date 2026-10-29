@@ -13,8 +13,8 @@ import type { DimensionValue } from '../graph/dimension'
 import type { Ontology } from '../graph/ontology'
 
 // A chip's tint names a style value; one that names nothing declared is a
-// host bug, said once per chip on the console rather than thrown in render
-// (T4), and the chip draws neutral.
+// host bug, said once per chip on the console rather than thrown in render,
+// and the chip draws neutral.
 const UNDECLARED_TINTS = new Set<string>()
 function tintOf(chipId: string, tint: DimensionValue, ontology: Ontology): DimensionValue {
   if (ontology.nodeTypeKeys.includes(tint)) return tint
@@ -58,7 +58,7 @@ interface FilterBarProps {
   searchExtra?: React.ReactNode
   /** Search matches hidden by a chip, per axis and value — the badge the chip hiding them wears. Optional. */
   hiddenMatches?: ReadonlyMap<string, ReadonlyMap<string, number>>
-  /** The axes shown, in order. R17/R18/R19: editable, and may be empty. */
+  /** The axes shown, in order: editable, and may be empty. */
   chain: readonly string[]
   /**
    * Values available per axis, read off the data by the host — the one source
