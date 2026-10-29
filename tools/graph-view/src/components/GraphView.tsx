@@ -459,7 +459,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     }
     const neighbors = sim.nodes.filter(n => neighborIds.has(n.id))
     fit(neighbors, 80)
-  }, [fit])
+  }, [fit, graph])
 
   // Fit-to-view
   const handleFitToView = React.useCallback(() => {
@@ -653,6 +653,12 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   }, [keyboard, handleKey])
   const paneKeyDown = React.useCallback((e: React.KeyboardEvent) => handleKey(e.nativeEvent), [handleKey])
 
+  // The hover box hands the host its own node object, never the simulation's copy.
+  const hostCrossView = React.useMemo(() => crossView && {
+    label: crossView.label,
+    onFocus: (node: GraphNode) => crossView.onFocus(graph.nodes.get(node.id) ?? node),
+  }, [crossView, graph])
+
   const nodeCount = visibleNodes.length
   const edgeCount = visibleEdges.length
 
@@ -718,7 +724,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
           shiftHeld={shiftHeld}
           copies={copies}
           nodeSummaries={nodeSummaries}
-          crossView={crossView}
+          crossView={hostCrossView}
           onMouseEnter={cancelHoverClear}
           onMouseLeave={() => handleHoverNode(null)}
         />
