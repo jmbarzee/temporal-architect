@@ -16,6 +16,7 @@ import type { Theme } from './scheme'
 // stops deeper, so a glow reads on a pale canvas. Smarter assignment
 // (structural map-colouring, stable semantic hue) is deferred — see
 // https://github.com/jmbarzee/temporal-architect/issues/44.
+/** The cycling glow palette per theme; a group with no `color` of its own takes the slot for its place in the list. */
 export const GROUP_PALETTE: Readonly<Record<Theme, readonly string[]>> = {
   dark: [
     '#2DD4BF', // teal
@@ -54,6 +55,7 @@ const HOVER_STRENGTH = 2.2
 // the pointer surface, so the user can read which group any node belongs to
 // without hunting in the legend. It brightens *and* swells the group's glow
 // (see GROUP_GLOW_FOCUS_SWELL in GraphCanvas) so it clearly lifts out of the field.
+/** The glow strength of the group holding the hovered or selected node. */
 export const NODE_FOCUS_STRENGTH = 2.2
 
 /** A group as the host asks for it: over the whole graph, visible or not. */
@@ -70,6 +72,7 @@ export interface NodeGroup {
 export interface ActiveGroup {
   id: string
   color: string
+  /** The glow's intensity: 1, or more for a group that is emphasised or holds the hovered or selected node. */
   strength: number
   nodeIds: Set<string>
 }
@@ -96,6 +99,7 @@ export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: Readonl
 // focused node ids (the node hovered or selected on the canvas), so that group
 // surfaces out of a field of many faint ones. Returns the same array when no
 // focus node lands in any group, so the common case allocates nothing.
+/** The active groups with any that holds one of the given nodes glowing at `NODE_FOCUS_STRENGTH`; the same array when none does. */
 export function boostGroupsForNodes(
   groups: ActiveGroup[],
   focusIds: Array<string | null>,

@@ -4,7 +4,7 @@
    hidden-match badges, focus-transition animation, search dim
    =========================================================== */
 
-/* Per-dimension pin toggle on Files / Types sections */
+/* Per-axis pin toggle on Files / Types sections */
 .gv-pin-toggle {
   flex: 0 0 auto;
   display: inline-flex;

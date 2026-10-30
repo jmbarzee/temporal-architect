@@ -6,12 +6,12 @@ import './GraphView.css'
 import { nodesById, readableGraph, isContainment, withContainmentEdges } from '../graph/model'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import type { FilterState, AxisLocks } from '../filter/types'
-import { defaultFilter, filterStatesEqual, hiddenMatchesOf, listEqual, locksEqual, passesDescriptors, selectionFor, selectionsEqual, withSelection } from '../filter/types'
+import { initialFilter, filterStatesEqual, hiddenMatchesOf, listEqual, locksEqual, passesDescriptors, selectionFor, selectionsEqual, withSelection } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
 import { countsOn, isIdentityMapping, valuesOn } from '../graph/axis'
-import type { DimensionalMapping } from '../graph/axis'
+import type { AxisMapping } from '../graph/axis'
 import type { PresentSets } from './graph-view/present'
 import { presentSetsOf } from './graph-view/present'
 import type { EdgeStroke, Theme } from '../graph/scheme'
@@ -71,6 +71,10 @@ export interface GraphViewChrome {
   diagnostics?: boolean
   /** The shortcuts panel and the `?` key that opens it. */
   shortcuts?: boolean
+  /** The control panel (the forces, the node scale). */
+  controls?: boolean
+  /** The Auto / Light / Dark button. It sits in the transport cluster, so `transport: false` hides it too. */
+  themeToggle?: boolean
   /** The "dependencies / dependents" line in the hover box. */
   directionLine?: boolean
   /** Centre and zoom to a node's neighbours on double-click. */
@@ -90,7 +94,7 @@ export interface GraphViewHandle {
   select(id: string | null): void
   /** Frame the visible nodes. */
   fit(): void
-  /** Every node's position, by id — a layout the host may keep and hand back as `positions`. */
+  /** Every node's position, by id — a layout the host may keep and hand back as `defaultPositions`. */
   getPositions(): Map<string, Position>
   /** Move nodes to the given positions (pinned ones stay) and let the layout settle around them. */
   setPositions(positions: ReadonlyMap<string, Position>): void
@@ -115,8 +119,8 @@ export interface GraphViewProps {
    * shortcuts — a tab shell's hidden tab.
    */
   keyboard?: 'pane' | 'global' | 'none'
-  /** Where nodes start, by id — a layout the host kept (`getPositions`). Read when the simulation is built. */
-  positions?: ReadonlyMap<string, Position>
+  /** Where nodes start, by id — a layout the host kept (`getPositions`). Read whenever the simulation is built; a node the live layout already holds keeps its place. */
+  defaultPositions?: ReadonlyMap<string, Position>
   /** Chip badge counts per axis and value — the host's reading of its own data. Absent, the graph's entity counts (the copies of one `copyKey` once). */
   counts?: ReadonlyMap<string, ReadonlyMap<string, number>>
   /** The host's findings bars, rendered under the filter chips. */
@@ -127,10 +131,6 @@ export interface GraphViewProps {
   groupsControl?: (active: readonly ActiveGroup[], control: GroupsControl) => React.ReactNode
   /** The host's action for a node, offered in the hover box: one for every node, or the host's answer per node (null for none). */
   nodeAction?: NodeAction | ((node: GraphNode) => NodeAction | null)
-  /** Whether the control panel (the forces, the node scale) is offered. Default true. */
-  controls?: boolean
-  /** Whether the Auto / Light / Dark button is offered. Default true. */
-  themeToggle?: boolean
   /** Which parts of the pane's chrome are offered. Default: everything, the lock toggles only when `locks` is controlled with its callback. */
   chrome?: GraphViewChrome
   /** The search control's title and placeholder, for a host with its own words. */
@@ -158,8 +158,9 @@ export interface GraphViewProps {
   /** Merged onto the root's style; the scheme's variables stay. */
   style?: React.CSSProperties
 
-  /** The selection per axis. Default: `defaultFilter`, or `defaultFilter(taxonomy, graph)` seeded once. */
+  /** The selection per axis. Default: `defaultFilter`, or `initialFilter(taxonomy, graph)`, re-seeded from each new graph on every axis still at the selection it opened with. */
   filter?: FilterState
+  /** Every change to the filter — the user's, and the view's own re-seed on a graph change. */
   onFilterChange?: (next: FilterState) => void
   /**
    * Where the view's own filter starts when the host does not control it —
@@ -203,18 +204,22 @@ export interface GraphViewProps {
 
 const NO_FLASH: ReadonlySet<string> = new Set()
 
+/**
+ * The graph view: the host's `Graph`, laid out by forces, filtered by the
+ * bar, highlighted on hover and selection, tuned by the control panel and
+ * drawn on a canvas. Only `graph` and a taxonomy are required; every piece
+ * of state is controlled by the host or kept by the view.
+ */
 export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(function GraphView({
   graph: hostGraph,
   taxonomy: taxonomyProp,
   keyboard = 'pane',
-  positions,
+  defaultPositions,
   counts: hostCounts,
   findings,
   groups,
   groupsControl,
   nodeAction,
-  controls = true,
-  themeToggle = true,
   chrome,
   searchTitle = 'Search nodes (/)',
   searchPlaceholder = 'Search nodes...',
@@ -244,7 +249,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // the axes shown, the search control, the theme choice. The first three
   // are compared by content, so a host that rebuilds one each render is not
   // read as a change.
-  const [rawFilter, setFilter] = useControllable(filterProp, onFilterChange, () => defaultFilterProp ?? defaultFilter(taxonomy, hostGraph))
+  const [rawFilter, setFilter] = useControllable(filterProp, onFilterChange, () => defaultFilterProp ?? initialFilter(taxonomy, hostGraph))
   const filter = useStable(rawFilter, filterStatesEqual)
   // The filter as last WRITTEN, for a write that follows another in one
   // commit — the re-seed below, then a focus landing on the node that just
@@ -262,9 +267,9 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     if (before === hostGraph) return
     seededFromRef.current = hostGraph
     if (defaultFilterProp !== undefined) return
-    // The seeds are `defaultFilter`'s — snapped to whole chips — on both sides.
-    const opened = defaultFilter(taxonomy, before)
-    const seed = defaultFilter(taxonomy, hostGraph)
+    // The seeds are `initialFilter`'s — snapped to whole chips — on both sides.
+    const opened = initialFilter(taxonomy, before)
+    const seed = initialFilter(taxonomy, hostGraph)
     let next = filter
     for (const d of taxonomy.filterAxes) {
       if (!selectionsEqual(selectionFor(filter, d.id), selectionFor(opened, d.id))) continue
@@ -295,6 +300,8 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     shortcuts: chrome?.shortcuts ?? true,
     directionLine: chrome?.directionLine ?? true,
     activateZoom: chrome?.activateZoom ?? true,
+    controls: chrome?.controls ?? true,
+    themeToggle: chrome?.themeToggle ?? true,
   }
   // The host's graph, checked once: every defect named, the edges an
   // error names left out of what is drawn, the list shown under the bar.
@@ -346,7 +353,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
 
   // What each filter axis can take, read off the graph: the engine declares no
   // value vocabulary, so the bar learns an axis's domain from the nodes.
-  const valuesByDimension = React.useMemo(
+  const valuesByAxis = React.useMemo(
     () => new Map(taxonomy.filterAxes.map(d => [d.id, valuesOn(graph.nodes, d.id)])),
     [graph, taxonomy],
   )
@@ -374,7 +381,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     onNodeDragMove: handleNodeDragMove,
     onNodeDragEnd: handleNodeDragEnd,
     onToggleRunning: handleToggleRunning,
-  } = useSimulation(graph, taxonomy, positions, onSimRebuild)
+  } = useSimulation(graph, taxonomy, defaultPositions, onSimRebuild)
 
 
   // The dense per-bucket tables the kernels read, resolved once per
@@ -396,16 +403,16 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   const theme = useTheme(containerRef, themeChoice)
   const schemeStyle = React.useMemo(() => schemeVars(taxonomy, theme) as React.CSSProperties, [taxonomy, theme])
   const overlay = React.useMemo(() => bandOverlay(graph.nodes, forceParams, resolved, frame,
-    (axis, bucket) => axis.mapping.dimension === taxonomy.styleAxis() && isIdentityMapping(axis.mapping)
+    (axis, bucket) => axis.mapping.axis === taxonomy.styleAxis() && isIdentityMapping(axis.mapping)
       ? taxonomy.styleOf(bucket).color[theme].fill
       : undefined), [graph, forceParams, resolved, frame, taxonomy, theme])
 
   // A new axis starts both pair forces from the taxonomy's declared physics on
   // its buckets (a tuning keyed by one axis has no reading on another).
-  const handleAxisChange = React.useCallback((mapping: DimensionalMapping) => {
-    if (mapping.dimension === forceParams.pair.mapping.dimension) return
+  const handleAxisChange = React.useCallback((mapping: AxisMapping) => {
+    if (mapping.axis === forceParams.pair.mapping.axis) return
     handleRelayout({ pair: pairTuning(mapping) })
-  }, [forceParams.pair.mapping.dimension, handleRelayout])
+  }, [forceParams.pair.mapping.axis, handleRelayout])
 
   // Render-time node sizing (independent of the simulation). Tunable from the
   // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
@@ -673,7 +680,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const node = graphIndex.get(id)
     if (!node) return false
     const base = filterRef.current
-    const result = reconcileFilter({ destination: base, source: base, locks, transition: { kind: 'focus', target: { values: node.dimensions } }, taxonomy, axes })
+    const result = reconcileFilter({ destination: base, source: base, locks, transition: { kind: 'focus', target: { values: node.values } }, taxonomy, axes })
     if (result.filter !== base) { filterRef.current = result.filter; setFilter(result.filter) }
     if (result.overriddenLocks.size > 0) setFlashLocks(result.overriddenLocks)
     // Whether the widened filter shows the node: a value absent on a hiding
@@ -919,7 +926,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
             chrome={{ search: show.search, locks: show.locks }}
             theme={theme}
             counts={counts}
-            values={valuesByDimension}
+            values={valuesByAxis}
             filter={filter}
             onFilterChange={setFilter}
             locks={locks}
@@ -969,7 +976,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       {/* Bottom-center: simulation controls + live fps. */}
       {show.transport && <div className="gv-graph-bottom-center">
         <button className="gv-graph-toolbar-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
-        {themeToggle && (
+        {show.themeToggle && (
           <button
             className={`gv-graph-toolbar-btn${themeChoice === 'system' ? '' : ' active'}`}
             onClick={() => setThemeChoice(THEME_CHOICES[(THEME_CHOICES.indexOf(themeChoice) + 1) % THEME_CHOICES.length])}
@@ -992,7 +999,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       </div>}
 
       {/* Control panel */}
-      {controls && <GraphControlPanel
+      {show.controls && <GraphControlPanel
         params={forceParams}
         resolved={resolved}
         onParamChange={handleParamChange}
@@ -1049,7 +1056,7 @@ function GraphDiagnostics({ diagnostics }: { diagnostics: readonly GraphDiagnost
   if (warnings > 0) parts.push(`${warnings} graph warning${warnings === 1 ? '' : 's'}`)
   return (
     <details className={`gv-graph-diagnostics${errors > 0 ? ' has-errors' : ''}`} role={errors > 0 ? 'alert' : undefined}>
-      <summary>{parts.join(', ')}{errors > 0 ? ' — the edges named are not drawn' : ''}</summary>
+      <summary>{parts.join(', ')}{errors > 0 ? ' — what is named is not drawn' : ''}</summary>
       <ul>
         {diagnostics.map((d, i) => (
           <li key={i} className={`gv-graph-diagnostic ${d.severity}`}><code>{d.code}</code>{d.message}</li>

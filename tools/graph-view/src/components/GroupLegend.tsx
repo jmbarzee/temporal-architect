@@ -8,6 +8,7 @@ import React from 'react'
 import './GroupLegend.css'
 import type { ActiveGroup } from '../graph/groups'
 
+/** The legend's inputs: the items, the groups as drawn, and the host's toggle and emphasis. */
 export interface GroupLegendProps {
   /** Every group the host offers, in order, with its label. */
   items: readonly { id: string; label: string }[]
@@ -23,6 +24,11 @@ export interface GroupLegendProps {
   className?: string
 }
 
+/**
+ * A legend for the group overlay: every group the host offers with the colour
+ * the view drew it in, a checkbox when the host lets the user turn groups on
+ * and off, and hover emphasis through the view's own `emphasize`.
+ */
 export function GroupLegend({ items, active, enabled, onToggle, onEmphasize, title, className }: GroupLegendProps) {
   const colorById = React.useMemo(() => new Map(active.map(g => [g.id, g.color] as const)), [active])
   // A legend that goes away under the pointer takes its emphasis with it.

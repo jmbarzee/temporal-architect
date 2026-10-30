@@ -217,7 +217,7 @@ export function TreeView({
   const visibleDefinitions = React.useMemo(() => {
     // Same policy as the graph, via passesSelection; only the projection is
     // local, because a definition has named fields where a graph node has a
-    // dimension map. This used to be a second hand-written implementation of
+    // `values` map. This used to be a second hand-written implementation of
     // both axes' empty/absent semantics, so a descriptor change moved the graph
     // and left the tree behind.
     // Only the axes this view shows filter (D66), as in the graph view.

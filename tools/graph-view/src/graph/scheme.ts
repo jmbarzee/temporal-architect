@@ -7,9 +7,12 @@
 import type { AxisValue } from './axis'
 import type { Taxonomy } from './taxonomy'
 
+/** The two themes every colour is declared in. */
 export type Theme = 'light' | 'dark'
+/** Both themes, in order. */
 export const THEMES: readonly Theme[] = ['light', 'dark']
 
+/** A fill and a border. */
 export interface ColorPair {
   /** Canvas fill colour. */
   readonly fill: string
@@ -99,6 +102,7 @@ export function rgbOf(color: string): readonly [number, number, number] | undefi
   return undefined
 }
 
+/** Whether a colour is one every reader parses: hex, `rgb()` or `hsl()`. */
 export const isSchemeColor = (color: string): boolean => rgbOf(color) !== undefined
 
 const NEUTRAL: readonly [number, number, number] = [148, 163, 184]

@@ -172,7 +172,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
     const ast = astLookup.get(pn.definition)
     nodes.push({
       id: pn.id,
-      dimensions: dimensionsFor(nodeType, ast?.sourceFile),
+      values: dimensionsFor(nodeType, ast?.sourceFile),
       name: displayNameFor(nodeType, name),
       // Per-domain display metadata the library must not interpret (R3). The
       // tooltip reads these back out by name; nothing in the engine does.
@@ -255,7 +255,7 @@ function parserEdgeToViewEdge(
   // what lets 4c resolve springs from dispatch rather than from endpoint types
   // alone (T14's sixteenth case). A containment edge dispatches nothing, so it
   // carries no axes at all.
-  if (relation === 'dependency') out.dimensions = { [DISPATCH_DIMENSION]: pe.kind }
+  if (relation === 'dependency') out.values = { [DISPATCH_DIMENSION]: pe.kind }
   // Which endpoint routed the call is per call site, not identity and not an
   // axis — the same operation is reachable through two endpoints in different
   // namespaces — so it rides as host-owned payload.

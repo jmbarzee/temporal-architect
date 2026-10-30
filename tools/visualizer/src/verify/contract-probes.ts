@@ -113,12 +113,12 @@ function graphEquality(): Json {
     { ...syntheticNode('a', 'workflow', undefined), payload },
     { ...syntheticNode('b', 'activity', undefined), parentId: 'a' },
   ], [dependency('e', 'a', 'b')])
-  const again = graphOf(a.nodes.map(n => ({ ...n, dimensions: { ...n.dimensions } })), a.edges.map(e => ({ ...e })))
+  const again = graphOf(a.nodes.map(n => ({ ...n, values: { ...n.values } })), a.edges.map(e => ({ ...e })))
   const renamed = graphOf(a.nodes.map(n => (n.id === 'b' ? { ...n, name: 'other' } : n)), [...a.edges])
-  const moved = graphOf(a.nodes.map(n => (n.id === 'b' ? { ...n, dimensions: { ...n.dimensions, file: 'x' } } : n)), [...a.edges])
+  const moved = graphOf(a.nodes.map(n => (n.id === 'b' ? { ...n, values: { ...n.values, file: 'x' } } : n)), [...a.edges])
   const newPayload = graphOf(a.nodes.map(n => (n.id === 'a' ? { ...n, payload: { k: 1 } } : n)), [...a.edges])
   const reordered = graphOf([a.nodes[1], a.nodes[0]], [...a.edges])
-  const edgeValue = graphOf([...a.nodes], [{ ...a.edges[0], dimensions: { kind: 'signal' } }])
+  const edgeValue = graphOf([...a.nodes], [{ ...a.edges[0], values: { kind: 'signal' } }])
   return {
     sameContent: graphEquals(a, again),
     renamed: graphEquals(a, renamed),

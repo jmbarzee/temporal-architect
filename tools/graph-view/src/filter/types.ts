@@ -18,7 +18,7 @@ import type { Graph } from '../graph/model'
 import type { Taxonomy } from '../graph/taxonomy'
 
 /** The chosen values on one axis. Empty means what the axis's descriptor says. */
-export type Selection = ReadonlySet<string>
+export type AxisSelection = ReadonlySet<string>
 
 /**
  * A selection per axis.
@@ -32,7 +32,7 @@ export type Selection = ReadonlySet<string>
  * `selectedFiles`; a Map makes saying so unrepresentable instead of merely
  * wrong.
  */
-export type FilterState = ReadonlyMap<AxisId, Selection>
+export type FilterState = ReadonlyMap<AxisId, AxisSelection>
 
 /**
  * Per-axis freeze state. A pinned axis is not adopted from the source view by
@@ -40,10 +40,8 @@ export type FilterState = ReadonlyMap<AxisId, Selection>
  */
 export type AxisLocks = ReadonlyMap<AxisId, boolean>
 
-/** Retained as a name for readability; an axis is identified by its dimension. */
-export type FilterDimension = AxisId
 
-const EMPTY: Selection = new Set<string>()
+const EMPTY: AxisSelection = new Set<string>()
 
 /**
  * The selection on one axis, or an empty one.
@@ -52,16 +50,17 @@ const EMPTY: Selection = new Set<string>()
  * identity between reads — a fresh `new Set()` per call would defeat exactly the
  * memoisation this module exists to protect.
  */
-export function selectionFor(state: FilterState, dim: AxisId): Selection {
+export function selectionFor(state: FilterState, dim: AxisId): AxisSelection {
   return state.get(dim) ?? EMPTY
 }
 
 /** Every axis the state carries a selection for. */
-export function dimensionsOf(state: FilterState): AxisId[] {
+export function axesOf(state: FilterState): AxisId[] {
   return [...state.keys()].sort()
 }
 
-export function selectionsEqual(a: Selection, b: Selection): boolean {
+/** Whether two selections hold the same values. */
+export function selectionsEqual(a: AxisSelection, b: AxisSelection): boolean {
   if (a === b) return true
   if (a.size !== b.size) return false
   for (const v of a) if (!b.has(v)) return false
@@ -78,7 +77,7 @@ export function selectionsEqual(a: Selection, b: Selection): boolean {
 export function withSelection(
   state: FilterState,
   dim: AxisId,
-  next: Selection,
+  next: AxisSelection,
 ): FilterState {
   if (selectionsEqual(selectionFor(state, dim), next)) return state
   const out = new Map(state)
@@ -116,6 +115,7 @@ export function withLock(pins: AxisLocks, dim: AxisId, value: boolean): AxisLock
   return out
 }
 
+/** Whether an axis is locked against adoption. */
 export function lockedFor(pins: AxisLocks, dim: AxisId): boolean {
   return pins.get(dim) ?? false
 }
@@ -130,6 +130,7 @@ export type FocusTarget = {
   values: Readonly<Record<AxisId, string | undefined>>
 }
 
+/** How a view is being switched to: by the user (`manual`: adopt the source's selections) or to show a node (`focus`: widen for its values). */
 export type ViewTransition =
   | { kind: 'manual' }
   | { kind: 'focus'; target: FocusTarget }
@@ -140,7 +141,7 @@ export type ViewTransition =
  */
 export type ReconcileResult = {
   filter: FilterState
-  overriddenLocks: Set<FilterDimension>
+  overriddenLocks: Set<AxisId>
 }
 
 /**
@@ -149,8 +150,8 @@ export type ReconcileResult = {
  * every value on an allow-list, none on a narrowing axis, or the host's own
  * choice.
  */
-export function defaultFilter(taxonomy: Pick<Taxonomy, 'filterAxes'>, graph: Pick<Graph, 'nodes'>): FilterState {
-  const out = new Map<AxisId, Selection>()
+export function initialFilter(taxonomy: Pick<Taxonomy, 'filterAxes'>, graph: Pick<Graph, 'nodes'>): FilterState {
+  const out = new Map<AxisId, AxisSelection>()
   for (const d of taxonomy.filterAxes) {
     const values = valuesOn(graph.nodes, d.id)
     const chosen = new Set(d.initialSelection(values))
@@ -208,7 +209,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
  */
 export function filterFromJSON(value: unknown): FilterState | undefined {
   if (!isPlainRecord(value)) return undefined
-  const out = new Map<AxisId, Selection>()
+  const out = new Map<AxisId, AxisSelection>()
   for (const [dim, values] of Object.entries(value)) {
     if (!Array.isArray(values) || !values.every((v): v is string => typeof v === 'string')) return undefined
     out.set(dim, new Set(values))
@@ -233,9 +234,9 @@ export function locksFromJSON(value: unknown): AxisLocks | undefined {
 }
 
 /** Whether a node answers to a focus target: every value the target names. */
-export function matchesFocus(node: { dimensions: Readonly<Record<string, string>> }, target: FocusTarget): boolean {
+export function matchesFocus(node: { values: Readonly<Record<string, string>> }, target: FocusTarget): boolean {
   for (const [dim, value] of Object.entries(target.values)) {
-    if (value !== undefined && node.dimensions[dim] !== value) return false
+    if (value !== undefined && node.values[dim] !== value) return false
   }
   return true
 }
@@ -246,9 +247,9 @@ export function matchesFocus(node: { dimensions: Readonly<Record<string, string>
  *
  * The policy — what an empty selection means, what an absent value means — is
  * here once, read from each axis's descriptor. The *projection* is the caller's,
- * and deliberately so: a graph node carries a dimension map, while a host's
+ * and deliberately so: a graph node carries a value map, while a host's
  * other views may hold records with named fields. Those are different shapes,
- * so sharing the accessor would mean inventing a fake dimension map for one of
+ * so sharing the accessor would mean inventing a fake value map for one of
  * them. Sharing the policy is the part that matters: two views of one product
  * that each wrote their own copy disagreed about what the filter meant. An
  * axis the taxonomy does not declare filters nothing.
@@ -269,10 +270,10 @@ export function passesSelection(
 /** `passesSelection` over descriptors already resolved — the view's hot path, which resolves them once per render. */
 export function passesDescriptors(
   filter: FilterState,
-  dimensions: readonly ResolvedAxisDescriptor[],
-  valueOn: (dimension: string) => string | undefined,
+  axes: readonly ResolvedAxisDescriptor[],
+  valueOn: (axis: string) => string | undefined,
 ): boolean {
-  for (const dim of dimensions) {
+  for (const dim of axes) {
     const selection = selectionFor(filter, dim.id)
     if (selection.size === 0) {
       if (dim.emptyMeans === 'none') return false
@@ -299,7 +300,7 @@ export interface HiddenMatches {
 }
 
 /** What `hiddenMatchesOf` reads. */
-export interface HiddenMatchesInput<N extends { id: string; dimensions?: AxisValues }> {
+export interface HiddenMatchesInput<N extends { id: string; values?: AxisValues }> {
   /** Every node the search ran over, visible or not. */
   nodes: Iterable<N>
   filter: FilterState
@@ -308,7 +309,7 @@ export interface HiddenMatchesInput<N extends { id: string; dimensions?: AxisVal
   axes: readonly AxisId[]
   visibleIds: ReadonlySet<string>
   matches: (node: N) => boolean
-  /** A node's value on an axis. Default: its `dimensions`. */
+  /** A node's value on an axis. Default: its `values`. */
   valueOn?: (node: N, axis: AxisId) => string | undefined
 }
 
@@ -318,8 +319,8 @@ export interface HiddenMatchesInput<N extends { id: string; dimensions?: AxisVal
  * on the chip hiding it — the first axis in `axes` the node fails, under the
  * node's value there — so a host's second bar can wear the same badges.
  */
-export function hiddenMatchesOf<N extends { id: string; dimensions?: AxisValues }>({ nodes, filter, taxonomy, axes, visibleIds, matches, valueOn }: HiddenMatchesInput<N>): HiddenMatches {
-  const read = valueOn ?? ((node: N, axis: AxisId) => node.dimensions?.[axis])
+export function hiddenMatchesOf<N extends { id: string; values?: AxisValues }>({ nodes, filter, taxonomy, axes, visibleIds, matches, valueOn }: HiddenMatchesInput<N>): HiddenMatches {
+  const read = valueOn ?? ((node: N, axis: AxisId) => node.values?.[axis])
   const descriptors = axes.flatMap(id => { const d = taxonomy.axisFor(id); return d ? [d] : [] })
   const visible = new Set<string>()
   let hiddenCount = 0

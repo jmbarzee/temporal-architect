@@ -25,11 +25,12 @@
 //     where a search's matches land under a filter, what a switch or a focus
 //     does to a filter, who answers to a focus, what the nodes say per axis.
 
-import { countsOn, defaultFilter, hiddenMatchesOf, matchesFocus, passesSelection, reconcileFilter } from '@temporal-architect/graph-view'
+import { countsOn, initialFilter, hiddenMatchesOf, matchesFocus, passesSelection, reconcileFilter } from '@temporal-architect/graph-view'
 import type { AxisId, FilterState, FocusTarget, AxisLocks, ViewTransition } from '@temporal-architect/graph-view'
 import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { Taxonomy, TaxonomySpec } from '@temporal-architect/graph-view/graph/taxonomy'
-import type { AxisDescriptor, Relation } from '@temporal-architect/graph-view/graph/axis'
+import { reheatOf } from '@temporal-architect/graph-view/graph/axis'
+import type { AxisDescriptor, Relation, ResolvedAxisDescriptor } from '@temporal-architect/graph-view/graph/axis'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
 import { readableGraph, withContainmentEdges } from '@temporal-architect/graph-view/graph/model'
 import type { EdgeStroke, ThemedColor } from '@temporal-architect/graph-view/graph/scheme'
@@ -63,7 +64,7 @@ const VALUES: readonly NodeStyle[] = [
  * row is about — no rule to classify an edge, no filter axes: the minimum.
  */
 function bareSpec(edgeTypes: readonly EdgeType[]): TaxonomySpec {
-  return { styleAxis: KIND, values: VALUES, edgeTypes }
+  return { styleAxis: KIND, styles: VALUES, edgeTypes }
 }
 
 /** The same, with the two filter axes the earlier rows read: an allow-list on the style axis, a narrowing zone. */
@@ -109,7 +110,7 @@ function minimal(): Json {
     descriptors: sortedRecord(MINIMAL.filterAxes.map(d => [d.id, {
       absentMeans: d.absentMeans,
       focus: d.focus,
-      reheat: { alpha: d.reheat.alpha, seedRevealed: d.reheat.seedRevealed, refit: d.reheat.refit, resume: d.reheat.resume },
+      reheat: reheatRow(d),
       presentation: d.presentation,
       chips: d.chipsFor(['a', 'b']).map(c => ({ id: c.id, label: c.label, icon: c.icon ?? null, tint: c.tint ?? null, values: [...c.values] })),
       labelFor: d.labelFor('a'),
@@ -131,15 +132,15 @@ function typicalSpring(): Json {
 }
 
 const node = (id: string, kind: string, zone?: string, parentId?: string): GraphNode =>
-  ({ id, name: id, dimensions: zone === undefined ? { [KIND]: kind } : { [KIND]: kind, [ZONE]: zone }, ...(parentId !== undefined ? { parentId } : {}) })
+  ({ id, name: id, values: zone === undefined ? { [KIND]: kind } : { [KIND]: kind, [ZONE]: zone }, ...(parentId !== undefined ? { parentId } : {}) })
 const contains = (id: string, child: string, parent: string): GraphEdge =>
   ({ id, sourceId: child, targetId: parent, relation: 'containment' })
 const graphOf = (nodes: GraphNode[], edges: GraphEdge[] = []): Graph => ({ nodes, edges })
 
 /** An allow-list opens with every value the graph presents; a narrowing axis, with none. */
-function defaultFilterRow(): Json {
+function initialFilterRow(): Json {
   const graph = graphOf([node('n1', 'a', 'east'), node('n2', 'b', 'east'), node('n3', 'c', 'west'), node('n4', 'c')])
-  return sortedRecord([...defaultFilter(MINIMAL, graph)].map(([axis, selection]) => [axis, sorted(selection)] as const))
+  return sortedRecord([...initialFilter(MINIMAL, graph)].map(([axis, selection]) => [axis, sorted(selection)] as const))
 }
 
 /** The containment edge `parentId` implies, and what validation makes of a host's own. */
@@ -194,8 +195,10 @@ function refusalOf(run: () => unknown): string {
 const diagnosticRows = (graph: Graph, taxonomy: Taxonomy): Json =>
   validateGraph(graph, taxonomy).map(d => ({ severity: d.severity, code: d.code, subject: d.edgeId ?? d.nodeId ?? null, message: d.message }))
 
-const reheatRow = (d: { reheat: { alpha: number; seedRevealed: boolean; refit: boolean; resume: boolean } }): Json =>
-  ({ alpha: d.reheat.alpha, seedRevealed: d.reheat.seedRevealed, refit: d.reheat.refit, resume: d.reheat.resume })
+const reheatRow = (d: ResolvedAxisDescriptor): Json => {
+  const policy = reheatOf(d)
+  return { alpha: policy.alpha, seedRevealed: policy.seedRevealed, refit: policy.refit, resume: policy.resume }
+}
 
 /**
  * No `classifyEdge` at all: an edge is the declared type whose relation and
@@ -238,9 +241,9 @@ function sharedPair(): Json {
   const signals = unstyled('signals', 'dependency', 'c', 'c')
   const tieBreaker = createTaxonomy({
     ...bareSpec([calls, signals]),
-    classifyEdge: edge => (edge.dimensions?.[KIND] === 'signal' ? 'signals' : undefined),
+    classifyEdge: edge => (edge.values?.[KIND] === 'signal' ? 'signals' : undefined),
   })
-  const edge = (dimensions?: Record<string, string>): GraphEdge => ({ id: 'e', sourceId: 's', targetId: 't', ...(dimensions ? { dimensions } : {}) })
+  const edge = (values?: Record<string, string>): GraphEdge => ({ id: 'e', sourceId: 's', targetId: 't', ...(values ? { values } : {}) })
   return {
     sameOrientation: refusalOf(() => createTaxonomy(bareSpec([calls, signals]))),
     oppositeOrientation: refusalOf(() => createTaxonomy(bareSpec([unstyled('x', 'dependency', 'a', 'b'), unstyled('y', 'dependency', 'b', 'a')]))),
@@ -427,7 +430,7 @@ function hiddenMatches(): Json {
   const kindThenZone = axes
   const zoneThenKind = [...axes].reverse()
   const filter = selection(['a', 'b'], ['east'])
-  const shown = (f: FilterState, chain: readonly AxisId[]) => new Set(POOL.filter(n => passesSelection(f, MINIMAL, chain, dim => n.dimensions[dim])).map(n => n.id))
+  const shown = (f: FilterState, chain: readonly AxisId[]) => new Set(POOL.filter(n => passesSelection(f, MINIMAL, chain, dim => n.values[dim])).map(n => n.id))
   const split = (f: FilterState, chain: readonly AxisId[], visible: ReadonlySet<string>) => {
     const r = hiddenMatchesOf({ nodes: POOL, filter: f, taxonomy: MINIMAL, axes: chain, visibleIds: visible, matches: n => n.name.includes('api') })
     return { visible: sorted(r.visible), hiddenCount: r.hiddenCount, hiddenByAxis: nested(r.hiddenByAxis) }
@@ -494,9 +497,9 @@ function reconciling(): Json {
   }
 }
 
-/** Who answers to a focus: every value it names, on the node's own dimensions; a name it may carry is not read. */
+/** Who answers to a focus: every value it names, on the node's own axes; a name it may carry is not read. */
 function focusMatching(): Json {
-  const node = { dimensions: { [KIND]: 'a', [ZONE]: 'east' } }
+  const node = { values: { [KIND]: 'a', [ZONE]: 'east' } }
   const withName: FocusTarget & { name: string } = { name: 'something else', values: { [KIND]: 'a' } }
   return {
     empty: matchesFocus(node, { values: {} }),
@@ -527,9 +530,9 @@ function pass2b(): Json {
 /** Copies of one entity count once on a chip; a node without a key is its own entity. */
 function countsByCopy(): Json {
   const counts = countsOn([
-    { id: 'x1', copyKey: 'x', dimensions: { kind: 'course', dept: 'a' } },
-    { id: 'x2', copyKey: 'x', dimensions: { kind: 'course', dept: 'b' } },
-    { id: 'y', dimensions: { kind: 'course', dept: 'a' } },
+    { id: 'x1', copyKey: 'x', values: { kind: 'course', dept: 'a' } },
+    { id: 'x2', copyKey: 'x', values: { kind: 'course', dept: 'b' } },
+    { id: 'y', values: { kind: 'course', dept: 'a' } },
   ], ['kind', 'dept'])
   return { kind: sortedRecord([...counts.get('kind')!]), dept: sortedRecord([...counts.get('dept')!]) }
 }
@@ -546,7 +549,7 @@ const PROBE_COLOUR = { light: { fill: '#111111', border: '#222222' }, dark: { fi
 function linkedViews(): Json {
   const taxonomy = createTaxonomy({
     styleAxis: 'kind',
-    values: [{ id: 'a', label: 'A', color: PROBE_COLOUR }, { id: 'b', label: 'B', color: PROBE_COLOUR }],
+    styles: [{ id: 'a', label: 'A', color: PROBE_COLOUR }, { id: 'b', label: 'B', color: PROBE_COLOUR }],
     edgeTypes: [],
     filterAxes: [{ id: 'kind', label: 'Kind', emptyMeans: 'none' }, { id: 'file', label: 'File', emptyMeans: 'all' }],
   })
@@ -580,18 +583,18 @@ function splitChipSnap(): Json {
   ].filter(c => c.values.some(v => values.includes(v)))
   const build = (initial: readonly string[]) => createTaxonomy({
     styleAxis: 'entity',
-    values: ['faculty', 'department', 'course'].map(id => ({ id, label: id, color: PROBE_COLOUR })),
+    styles: ['faculty', 'department', 'course'].map(id => ({ id, label: id, color: PROBE_COLOUR })),
     edgeTypes: [],
     filterAxes: [{ id: 'entity', label: 'Show', emptyMeans: 'none', chipsFor: chips, initialSelection: () => initial }],
   })
-  const nodes = ['faculty', 'department', 'course'].map(v => ({ id: v, name: v, dimensions: { entity: v } }))
+  const nodes = ['faculty', 'department', 'course'].map(v => ({ id: v, name: v, values: { entity: v } }))
   const warned: string[] = []
   const original = console.warn
   console.warn = (msg: unknown) => { warned.push(String(msg)) }
   try {
     const split = build(['department', 'course'])
-    const first = sorted(selectionFor(defaultFilter(split, { nodes }), 'entity'))
-    defaultFilter(split, { nodes })
+    const first = sorted(selectionFor(initialFilter(split, { nodes }), 'entity'))
+    initialFilter(split, { nodes })
     // Once per taxonomy and chip: the second seeding of the same taxonomy says nothing more.
     const warnedOnce = warned.filter(w => w.includes('splits the chip')).length
     const partial = nodes.filter(n => n.id !== 'faculty')
@@ -599,8 +602,8 @@ function splitChipSnap(): Json {
       split: first,
       warnedOnce,
       // A chip chosen through a value the graph lacks reads as on to the bar, so its present values are added too.
-      absentValue: sorted(selectionFor(defaultFilter(build(['faculty']), { nodes: partial }), 'entity')),
-      whole: sorted(selectionFor(defaultFilter(build(['faculty', 'department']), { nodes }), 'entity')),
+      absentValue: sorted(selectionFor(initialFilter(build(['faculty']), { nodes: partial }), 'entity')),
+      whole: sorted(selectionFor(initialFilter(build(['faculty', 'department']), { nodes }), 'entity')),
     }
   } finally { console.warn = original }
 }
@@ -621,7 +624,7 @@ export function defaultsProbes(): Json {
     splitChipSnap: splitChipSnap(),
     groupEmphasis: groupEmphasis(),
     typicalSpring: typicalSpring(),
-    defaultFilter: defaultFilterRow(),
+    defaultFilter: initialFilterRow(),
     containment: containment(),
     stackBand: stackBands(),
     pass2: pass2(),

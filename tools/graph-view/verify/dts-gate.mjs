@@ -148,4 +148,68 @@ if (records.length) {
   console.log(`published docs: no project record in ${shipped.length} declaration file(s)`)
 }
 
+// 6. Every shipped export carries a doc comment. The declarations are what a
+//    consumer's editor shows; a name without a sentence is a name the host
+//    guesses at. Re-exports (`export { X } from`) are followed to where X is
+//    declared, so a type declared once and re-exported counts as documented
+//    there.
+const DECL = /^export (?:default )?(?:declare )?(?:abstract |async )?(?:const|let|var|function|interface|type|class|enum|namespace) ([A-Za-z_$][\w$]*)/gm
+const undocumented = []
+for (const file of shipped) {
+  const text = readFileSync(file, 'utf8')
+  let last = null
+  for (const m of text.matchAll(DECL)) {
+    // A further overload of a function shares the first signature's comment.
+    const overload = m[1] === last && /\bfunction\b/.test(m[0])
+    last = m[1]
+    if (overload) continue
+    const before = text.slice(0, m.index).trimEnd()
+    if (!before.endsWith('*/')) undocumented.push(`${relative(PKG_ROOT, file)}: ${m[1]}`)
+  }
+}
+if (undocumented.length) {
+  console.error('FAIL published declarations without a doc comment:')
+  for (const u of undocumented) console.error('  ' + u)
+  failed = true
+} else {
+  console.log(`published docs: every exported declaration in ${shipped.length} file(s) carries a doc comment`)
+}
+
+// 7. Every identifier the README names in backticks that is declared somewhere
+//    in the source is on the surface — the entry's exports — so the README
+//    never names a module-internal function as if a host could import it.
+const srcDir = join(PKG_ROOT, 'src')
+function allSource(dir, out = []) {
+  for (const name of readdirSync(dir)) {
+    const abs = join(dir, name)
+    if (statSync(abs).isDirectory()) allSource(abs, out)
+    else if (/\.tsx?$/.test(name)) out.push(abs)
+  }
+  return out
+}
+const declared = new Set()
+// A word that is also a string value in the source (a summary kind, a
+// relation, a scalar id) is a value when the README writes it, not a name a
+// host would import; those are skipped.
+const valueWords = new Set()
+for (const file of allSource(srcDir)) {
+  const text = readFileSync(file, 'utf8')
+  for (const m of text.matchAll(/^export (?:default )?(?:abstract |async )?(?:const|let|var|function|interface|type|class|enum|namespace) ([A-Za-z_$][\w$]*)/gm)) declared.add(m[1])
+  for (const m of text.matchAll(/'([A-Za-z_$][\w$]*)'/g)) valueWords.add(m[1])
+}
+const entry = readFileSync(typesPath, 'utf8')
+const surface = new Set([...entry.matchAll(/export (?:type )?\{([^}]+)\}/g)].flatMap(m => m[1].split(',').map(s => s.trim().replace(/^type /, '').replace(/^[\w$]+\s+as\s+/, '')).filter(Boolean)))
+// Every identifier inside every backtick span: a type annotation, a member
+// access or a generic names a declaration as surely as a bare word does.
+const named = new Set()
+for (const span of readme.matchAll(/`([^`\n]+)`/g)) for (const id of span[1].matchAll(/[A-Za-z_$][\w$]*/g)) named.add(id[0])
+const internal = [...named].filter(n => declared.has(n) && !surface.has(n) && !valueWords.has(n)).sort()
+if (internal.length) {
+  console.error('FAIL the README names declarations that are not on the surface (a host cannot import them):')
+  for (const n of internal) console.error('  ' + n)
+  failed = true
+} else {
+  console.log(`published docs: every declaration the README names is on the surface (${surface.size} names)`)
+}
+
 process.exit(failed ? 1 : 0)

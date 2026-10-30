@@ -37,7 +37,7 @@ export function tierC(): Json {
             sourceId: 'src',
             targetId: 'tgt',
             relation: edgeType,
-            ...(dispatchKind ? { dimensions: { [DISPATCH_DIMENSION]: dispatchKind } } : {}),
+            ...(dispatchKind ? { values: { [DISPATCH_DIMENSION]: dispatchKind } } : {}),
           }
           const key = `${edgeType}|${src}|${tgt}|${dispatchKind ?? '-'}`
           // The one classifier (D57): a stroke is the resolved type's, so the

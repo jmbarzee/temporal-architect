@@ -31,7 +31,7 @@ function load(name: string, raw: unknown): Fixture {
   if ((payload.ast.definitions ?? []).length === 0) {
     // The exact silent failure the composite-envelope recipe exists to prevent:
     // an AST-less envelope normalizes to `{ definitions: [] }`, which empties
-    // the file dimension without erroring anywhere.
+    // the file axis without erroring anywhere.
     throw new Error(`fixture ${name}: empty AST half`)
   }
   return { name, ast: payload.ast, parserGraph: payload.parserGraph, decomposition: payload.decomposition }

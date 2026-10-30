@@ -12,8 +12,10 @@ import React from 'react'
 import { useIsomorphicLayoutEffect } from './useIsomorphicLayoutEffect'
 import type { Theme } from '../../graph/scheme'
 
+/** A theme choice: `system` follows the host, `light` and `dark` are fixed. */
 export type ThemeChoice = 'system' | Theme
 
+/** The three choices, in the order the pane's button cycles them. */
 export const THEME_CHOICES: readonly ThemeChoice[] = ['system', 'light', 'dark']
 
 /** A persisted or host-supplied choice, or system for anything outside the three: discard the field, not the state. */
@@ -26,6 +28,7 @@ export interface ThemeMarker {
   getAttribute(name: string): string | null
 }
 
+/** The one attribute the library reads a host's theme from. */
 export const THEME_MARKER_SELECTOR = '[data-theme]'
 
 /** The theme a marker declares; a `data-theme` outside light and dark declares nothing. */

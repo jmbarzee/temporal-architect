@@ -173,14 +173,14 @@ function reconcileMatrix(): Json {
   return sortedRecord(rows)
 }
 
-// ── Per-dimension Set identity ──────────────────────────────────────────────
+// ── Per-axis Set identity ──────────────────────────────────────────────
 
 /**
- * A scripted sequence of single-dimension edits, recording which dimension's
+ * A scripted sequence of single-axis edits, recording which axis's
  * Set changed identity at each step.
  *
- * The expected shape is the whole point: an edit to one dimension must leave
- * every other dimension's Set reference untouched. Consumers key their memos
+ * The expected shape is the whole point: an edit to one axis must leave
+ * every other axis's Set reference untouched. Consumers key their memos
  * and their reheat decisions on Set identity, so a reducer that rebuilt both
  * would re-run edge graduation and reheat the layout on every unrelated edit —
  * with no type error and no visible symptom other than the graph twitching.
@@ -218,7 +218,7 @@ function filterSetIdentity(): Json {
     destination: current, source: SOURCE_STATE, locks: NO_PINS, transition: { kind: 'manual' }, taxonomy: DEFAULT_TAXONOMY, axes: DEFAULT_AXES,
   }).filter)
   // Reconciling against itself changes nothing, so the dest object comes back
-  // by reference and no dimension's identity moves.
+  // by reference and no axis's identity moves.
   record('reconcile(manual, self)', reconcileFilter({
     destination: current, source: current, locks: NO_PINS, transition: { kind: 'manual' }, taxonomy: DEFAULT_TAXONOMY, axes: DEFAULT_AXES,
   }).filter)
@@ -234,7 +234,7 @@ function layoutRow(tuning: LayoutTuning, resolved: ResolvedLayoutAxis): Json {
     return { scalar: tuning.scalar, span: { zero: resolved.span.zero, one: resolved.span.one }, spanIsUsers: tuning.span !== undefined }
   }
   const t = mappedTuning(tuning)
-  return { axis: t.mapping.dimension, buckets: sortedRecord([...mappedAxis(resolved).byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) }
+  return { axis: t.mapping.axis, buckets: sortedRecord([...mappedAxis(resolved).byBucket].map(([k, v]) => [k, { min: v.min, max: v.max }] as const)) }
 }
 
 export function staticGolden(): Json {
@@ -243,7 +243,7 @@ export function staticGolden(): Json {
     edgeTypes: edgeTypeRows(),
     // The whole tuned parameter set. Without it a wholesale retune — every
     // scalar changed — is a change no gate can see, and the per-value maps are
-    // the thing later units re-key by dimension.
+    // the thing later units re-key by axis.
     defaultForceParams: (() => {
       const p = defaultParamsFor(DEFAULT_TAXONOMY)
       const r = resolvePhysics(p, DEFAULT_TAXONOMY)
@@ -255,10 +255,10 @@ export function staticGolden(): Json {
       // through the resolved physics, since the pair rule enumerates nothing.
       return {
         ...scalars,
-        push: { axis: pair.mapping.dimension, buckets: sortedRecord([...r.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)) },
+        push: { axis: pair.mapping.axis, buckets: sortedRecord([...r.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)) },
         bandX: layoutRow(bandX, r.bandX),
         bandY: layoutRow(bandY, r.bandY),
-        spring: { axis: pair.mapping.dimension, categories: sortedRecord(DEFAULT_TAXONOMY.edgeTypes.map(e => { const v = r.spring.physicsFor(e.id); return [e.id, { strength: v.strength, distance: v.distance }] as const })) },
+        spring: { axis: pair.mapping.axis, categories: sortedRecord(DEFAULT_TAXONOMY.edgeTypes.map(e => { const v = r.spring.physicsFor(e.id); return [e.id, { strength: v.strength, distance: v.distance }] as const })) },
       }
     })() as unknown as Json,
     defaultNodeScale: { ...DEFAULT_NODE_SCALE },

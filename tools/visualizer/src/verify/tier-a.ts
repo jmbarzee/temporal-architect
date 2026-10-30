@@ -44,7 +44,7 @@ function contextLineRow(line: ContextLine): Json {
 export function allFilesOf(graph: Graph): string[] {
   const files = new Set<string>()
   for (const node of graph.nodes) {
-    const file = node.dimensions[SOURCE_FILE_DIMENSION]
+    const file = node.values[SOURCE_FILE_DIMENSION]
     if (file) files.add(file)
   }
   return sorted(files)
@@ -56,7 +56,7 @@ function nodeRow(n: GraphNode): Json {
     // The one row shape change Unit 2 makes, enumerated in D17/D34: a node's
     // identity was one string and is now a map of axis to value. The values
     // inside it are the strings the field used to hold.
-    dimensions: { ...n.dimensions },
+    values: { ...n.values },
     name: n.name,
     ring: n.ring ?? null,
     copyKey: copyKeyOf(n),
@@ -89,7 +89,7 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
   ]
   const ep = payloadString(e, 'nexusEndpoint')
   if (ep !== undefined) parts.push(`ep=${ep}`)
-  const dispatch = e.dimensions?.[DISPATCH_DIMENSION]
+  const dispatch = e.values?.[DISPATCH_DIMENSION]
   if (dispatch !== undefined) parts.push(`dispatch=${dispatch}`)
   return parts.join('|')
 }
@@ -148,7 +148,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       visibleState(sim, new Set(ts.visibleTypes), new Set()),
     ])
   }
-  // File states, taken with every type visible so the file dimension is the
+  // File states, taken with every type visible so the file axis is the
   // only thing moving.
   const allTypes = TYPE_STATES.find(t => t.name === ALL_TYPES_STATE)
   if (!allTypes) throw new Error('filter-states: the all-types state is missing')
@@ -195,7 +195,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
     // it — the declared table's on the style axis, the pair rule's elsewhere.
     // The ceiling arithmetic, pinned per fixture (Unit 4e).
     axes: axisOptions(DEFAULT_TAXONOMY, graph).map(o => ({
-      axis: o.mapping.dimension,
+      axis: o.mapping.axis,
       pushTokens: o.pushTokens,
       pullTokens: o.pullTokens,
       fits: fitsCeiling(o),

@@ -25,14 +25,14 @@ import { ALL_NODE_TYPES, DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY, DEFAULT_TAXONOMY_
 import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
 import { rgbOf } from '@temporal-architect/graph-view/graph/scheme'
 import {
-  createDimensionalMapping,
+  createAxisMapping,
   identityMapping,
   internValue,
 } from '@temporal-architect/graph-view/graph/axis'
 import type { AxisNamer } from '@temporal-architect/graph-view/graph/axis'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
-import { foldReheatPolicy } from '@temporal-architect/graph-view/graph/axis'
+import { foldReheatPolicy, reheatOf } from '@temporal-architect/graph-view/graph/axis'
 import { bandFor, chargeFor, coreRadiusFor, mappedAxis, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { dimensionsFor } from '../adapter/build'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
@@ -49,7 +49,7 @@ function node(id: string, nodeType: NodeType, parentId?: string, defType?: strin
     id,
     // The adapter's projection, with the kind overridable for the alternate
     // taxonomy's nodes (its adapter would project differently).
-    dimensions: defType === undefined ? dimensionsFor(nodeType, undefined) : { ...dimensionsFor(nodeType, undefined), [DEF_TYPE_DIMENSION]: defType },
+    values: defType === undefined ? dimensionsFor(nodeType, undefined) : { ...dimensionsFor(nodeType, undefined), [DEF_TYPE_DIMENSION]: defType },
     name: id, ring: parentId === undefined ? 'dashed' : undefined,
     copyKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
@@ -66,7 +66,7 @@ const NODES: SimNode[] = [
 // the kind axis is materialized by whoever builds the node (D50), so a
 // different projection is a different graph, not a different read.
 const ALT_NODES: SimNode[] = NODES.map(n => {
-  const t = n.dimensions[TEMPORAL_TYPE_DIMENSION] as NodeType
+  const t = n.values[TEMPORAL_TYPE_DIMENSION] as NodeType
   return node(n.id, t, n.parentId, ALT_DEF_TYPE[t])
 })
 const EDGES: GraphEdge[] = [
@@ -92,7 +92,7 @@ const alternate = (id: NodeType, overrides: Partial<TemporalNodeStyle>): NodeSty
 const ALTERNATE = createTaxonomy({
   styleAxis: TEMPORAL_TYPE_DIMENSION,
   styleLabel: 'Tier',
-  values: [
+  styles: [
     alternate('worker', { abbreviation: 'T2', defType: ALT_DEF_TYPE.worker, summaryKind: 'degree' }),
     alternate('workflow', { abbreviation: 'T3', defType: ALT_DEF_TYPE.workflow }),
     alternate('activity', { abbreviation: 'T4', defType: ALT_DEF_TYPE.activity }),
@@ -138,7 +138,7 @@ const CHAIN_EDGES: GraphEdge[] = [
 const CHAIN = (() => { const byId = new Map(CHAIN_NODES.map(n => [n.id, n])); return { nodes: CHAIN_NODES, edges: CHAIN_EDGES, getNode: (id: string) => byId.get(id) } })()
 const SPLICING = createTaxonomy({
   ...DEFAULT_TAXONOMY_SPEC,
-  values: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t], ...(t === 'workflow' ? { whenHidden: 'splice' as const } : {}) })),
+  styles: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t], ...(t === 'workflow' ? { whenHidden: 'splice' as const } : {}) })),
 })
 function hiddenPolicy(taxonomy: typeof DEFAULT_TAXONOMY): Json {
   const vg = computeVisibleGraph(CHAIN, filterOfSets(new Set(['workerDef', 'activityDef']), new Set<string>()), taxonomy)
@@ -213,8 +213,8 @@ function mappingProbes(): Json {
     labelFor: v => v.toUpperCase(),
     abbreviationFor: v => v.slice(0, 1).toUpperCase(),
   }
-  const grouped = createDimensionalMapping({
-    id: 'probe:grouped', label: 'Grouped', dimension: 'probe',
+  const grouped = createAxisMapping({
+    id: 'probe:grouped', label: 'Grouped', axis: 'probe',
     buckets: [
       { id: 'ab', label: 'A+B', abbreviation: 'AB', values: ['a', 'b'] },
       { id: 'cd', label: 'C+D', abbreviation: 'CD', values: ['c', 'd'] },
@@ -222,8 +222,8 @@ function mappingProbes(): Json {
   })
   let refusal = 'NOT REFUSED — the guarantee is not enforced'
   try {
-    createDimensionalMapping({
-      id: 'probe:overlapping', label: 'Overlapping', dimension: 'probe',
+    createAxisMapping({
+      id: 'probe:overlapping', label: 'Overlapping', axis: 'probe',
       buckets: [
         { id: 'ab', label: 'A+B', abbreviation: 'AB', values: ['a', 'b'] },
         { id: 'bc', label: 'B+C', abbreviation: 'BC', values: ['b', 'c'] },
@@ -256,7 +256,7 @@ function mappingProbes(): Json {
 
 
 /**
- * Dimension values that name `Object.prototype` members.
+ * Axis values that name `Object.prototype` members.
  *
  * Values are host-supplied strings, so nothing stops one being called
  * `constructor`. A plain `table[key]` read resolves that up the prototype chain
@@ -284,13 +284,13 @@ function prototypeNamedValues(): Json {
   // key space to collide with.
   const rows: Json[] = []
   for (const name of NAMES) {
-    const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
+    const subject = { values: { [TEMPORAL_TYPE_DIMENSION]: name } }
     const style = DEFAULT_TAXONOMY.nodeStyleOf(subject)
     const node = subject
     const band = bandFor(mappedAxis(resolved.bandY), node)
     rows.push({
       name,
-      styleIsFallback: style === DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: {} }),
+      styleIsFallback: style === DEFAULT_TAXONOMY.nodeStyleOf({ values: {} }),
       styleLabel: style.label,
       charge: chargeFor(resolved.push, node),
       coreRadius: coreRadiusFor(resolved.push, node),
@@ -323,7 +323,7 @@ function prototypeNamedValues(): Json {
 function physicsInjection(): Json {
   const fromDefault = defaultParamsFor(DEFAULT_TAXONOMY)
   const fromAlternate = defaultParamsFor(ALTERNATE)
-  const worker = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
+  const worker = { values: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
 
   // A taxonomy on a DIFFERENT axis entirely. Its charge map is keyed by values
   // no node in the shipped domain carries, so a consumer that ignored the
@@ -332,7 +332,7 @@ function physicsInjection(): Json {
   const OTHER_AXIS = createTaxonomy({
     styleAxis: 'zone',
     styleLabel: 'Zone',
-    values: [
+    styles: [
       { id: 'north', ...NODE_TYPE_REGISTRY.worker, abbreviation: 'N' },
       { id: 'south', ...NODE_TYPE_REGISTRY.activity, abbreviation: 'S' },
     ],
@@ -350,14 +350,14 @@ function physicsInjection(): Json {
     fallbackStyle: NODE_TYPE_REGISTRY.activity,
   })
   const zoned = defaultParamsFor(OTHER_AXIS)
-  const northNode = { dimensions: { zone: 'north' } }
+  const northNode = { values: { zone: 'north' } }
 
   return {
     // The axis itself must come from the container.
     axes: {
-      shipped: fromDefault.pair.mapping.dimension,
-      otherAxis: zoned.pair.mapping.dimension,
-      differ: fromDefault.pair.mapping.dimension !== zoned.pair.mapping.dimension,
+      shipped: fromDefault.pair.mapping.axis,
+      otherAxis: zoned.pair.mapping.axis,
+      differ: fromDefault.pair.mapping.axis !== zoned.pair.mapping.axis,
     },
     // And so must the key space the maps are built over.
     chargeKeys: {
@@ -395,7 +395,7 @@ function physicsInjection(): Json {
         stillResolvesTheSameStyle:
           derived.nodeStyleOf(worker) === DEFAULT_TAXONOMY.nodeStyleOf(worker),
         physicsAgreesWithStyling:
-          defaultParamsFor(derived).pair.mapping.dimension === derived.styleAxis(),
+          defaultParamsFor(derived).pair.mapping.axis === derived.styleAxis(),
       }
     })(),
   }
@@ -417,11 +417,12 @@ function reheatPolicy(): Json {
   const dims = DEFAULT_TAXONOMY.filterAxes
   const declared: Record<string, Json> = {}
   for (const d of dims) {
+    const policy = reheatOf(d)
     declared[d.id] = {
-      alpha: d.reheat.alpha,
-      seedRevealed: d.reheat.seedRevealed,
-      refit: d.reheat.refit,
-      resume: d.reheat.resume,
+      alpha: policy.alpha,
+      seedRevealed: policy.seedRevealed,
+      refit: policy.refit,
+      resume: policy.resume,
       emptyMeans: d.emptyMeans,
       absentMeans: d.absentMeans,
       focus: d.focus,
@@ -467,7 +468,7 @@ function matchClassification(): Json {
   const colour = { light: { fill: '#111111', border: '#222222' }, dark: { fill: '#333333', border: '#444444' } }
   const base = {
     styleAxis: 'kind',
-    values: [{ id: 'a', label: 'A', color: colour }, { id: 'b', label: 'B', color: colour }],
+    styles: [{ id: 'a', label: 'A', color: colour }, { id: 'b', label: 'B', color: colour }],
   }
   const taxonomy = createTaxonomy({
     ...base,
@@ -478,7 +479,7 @@ function matchClassification(): Json {
       { id: 'onlyMatched', label: 'only', sourceValue: 'a', targetValue: 'a', relation: 'dependency', match: { via: 'x' } },
     ],
   })
-  const edge = (dimensions?: Record<string, string>): GraphEdge => ({ id: 'e', sourceId: 's', targetId: 't', relation: 'dependency', dimensions })
+  const edge = (values?: Record<string, string>): GraphEdge => ({ id: 'e', sourceId: 's', targetId: 't', relation: 'dependency', values })
   const twoAlike = [
     { id: 'one', label: '1', sourceValue: 'a', targetValue: 'b', relation: 'dependency' as const },
     { id: 'two', label: '2', sourceValue: 'a', targetValue: 'b', relation: 'dependency' as const },
@@ -509,14 +510,14 @@ function matchClassification(): Json {
 /** A colour written as hsl() is a scheme colour, read as the channels a browser would give. */
 function hslColour(): Json {
   const colour = { light: { fill: 'hsl(210, 50%, 40%)', border: 'hsl(210deg 50% 20% / 0.5)' }, dark: { fill: '#333333', border: '#444444' } }
-  const taxonomy = createTaxonomy({ styleAxis: 'kind', values: [{ id: 'a', label: 'A', color: colour }], edgeTypes: [] })
+  const taxonomy = createTaxonomy({ styleAxis: 'kind', styles: [{ id: 'a', label: 'A', color: colour }], edgeTypes: [] })
   const fill = rgbOf(taxonomy.styleOf('a').color.light.fill)
   const border = rgbOf(taxonomy.styleOf('a').color.light.border)
   return { fill: fill ? [...fill] : null, border: border ? [...border] : null }
 }
 
 export function taxonomyProbes(): Json {
-  const fallback = DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
+  const fallback = DEFAULT_TAXONOMY.nodeStyleOf({ values: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
     searchText: searchText(),
     matchClassification: matchClassification(),
@@ -542,17 +543,17 @@ export function taxonomyProbes(): Json {
     // A miss must be stable, not a fresh object each time: the draw loop resolves
     // per node per frame and callers compare styles by reference.
     fallbackIsStable:
-      DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }) ===
-      DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }),
+      DEFAULT_TAXONOMY.nodeStyleOf({ values: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }) ===
+      DEFAULT_TAXONOMY.nodeStyleOf({ values: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }),
     // A node with no value on the style axis at all — the other half of the
-    // guard, and the one a dimension model makes reachable for the first time.
+    // guard, and the one an axis model makes reachable for the first time.
     absentValueResolvesToFallback:
-      DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: {} }) === fallback,
+      DEFAULT_TAXONOMY.nodeStyleOf({ values: {} }) === fallback,
     // A declared key must NOT reach the fallback: it resolves to its own entry
     // (defaults filled in, so the resolved style is a new object, not the
     // declared one), and to the same object every time.
     declaredKeyResolvesToItself: (() => {
-      const worker = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
+      const worker = { values: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
       const style = DEFAULT_TAXONOMY.nodeStyleOf(worker)
       return {
         sameLabel: style.label === NODE_TYPE_REGISTRY.worker.label,

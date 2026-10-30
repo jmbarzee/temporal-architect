@@ -8,6 +8,7 @@
 import type { ReadableGraph } from './model'
 import { isContainment } from './model'
 
+/** A computed scalar a layout axis may key on: a number per node, read off the graph and mapped onto [0, 1]. */
 export interface ScalarAxis {
   /** Stable id — the tuning names the scalar by it. */
   readonly id: string
@@ -175,6 +176,7 @@ export function rangeNormalized(values: Map<string, number>): Map<string, number
   return scores
 }
 
+/** The built-in reach scalar. */
 export const downstreamReach: ScalarAxis = {
   id: 'reach',
   label: 'Reach',
@@ -183,6 +185,7 @@ export const downstreamReach: ScalarAxis = {
   normalize: 'none',
 }
 
+/** The built-in degree scalar. */
 export const degree: ScalarAxis = {
   id: 'degree',
   label: 'Degree',
@@ -191,6 +194,7 @@ export const degree: ScalarAxis = {
   normalize: 'none',
 }
 
+/** The built-in depth scalar. */
 export const containmentDepth: ScalarAxis = {
   id: 'depth',
   label: 'Depth',

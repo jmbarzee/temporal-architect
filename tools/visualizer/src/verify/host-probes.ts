@@ -17,7 +17,7 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  createTaxonomy, TaxonomyContext, GraphView, FilterBar, defaultFilter, isContainment, nodesById,
+  createTaxonomy, TaxonomyContext, GraphView, FilterBar, initialFilter, isContainment, nodesById,
 } from '@temporal-architect/graph-view'
 import type {
   TaxonomySpec, NodeStyle, EdgeType, AxisDescriptor, ScalarAxis, ReadableGraph,
@@ -56,7 +56,7 @@ const fanOut: ScalarAxis = {
 }
 const spec: TaxonomySpec = {
   styleAxis: KIND, styleLabel: 'Kind',
-  values: [style('cluster', 'Cluster', 'Cl', 'C', 0, 20), style('service', 'Service', 'Sv', 'S', 1, 14), style('pod', 'Pod', 'Pd', 'P', 2, 8)],
+  styles: [style('cluster', 'Cluster', 'Cl', 'C', 0, 20), style('service', 'Service', 'Sv', 'S', 1, 14), style('pod', 'Pod', 'Pd', 'P', 2, 8)],
   filterAxes: [axis(ZONE, 'Zone', 'all'), axis(KIND, 'Kind', 'none')],
   edgeTypes: [edgeType('contains', 'containment', 'pod', 'service'), edgeType('calls', 'dependency', 'pod', 'pod')],
   classifyEdge: edge => (isContainment(edge) ? 'contains' : 'calls'),
@@ -65,7 +65,7 @@ const spec: TaxonomySpec = {
 }
 
 function node(id: string, kind: string, zone: string, parentId?: string): GraphNode {
-  return { id, name: id, dimensions: { [KIND]: kind, [ZONE]: zone }, ring: !parentId && kind !== 'cluster' ? 'dashed' : undefined, copyKey: id, parentId }
+  return { id, name: id, values: { [KIND]: kind, [ZONE]: zone }, ring: !parentId && kind !== 'cluster' ? 'dashed' : undefined, copyKey: id, parentId }
 }
 function edge(id: string, sourceId: string, targetId: string, relation: Relation): GraphEdge {
   return { id, sourceId, targetId, relation }
@@ -88,7 +88,7 @@ const pinToggles = (html: string): number => (html.match(/class="gv-pin-toggle[ 
 export function hostProbes(): Json {
   const taxonomy = createTaxonomy(spec)
   const graph = graphOf()
-  // The smallest host: `graph`, under the provider. No `counts`, no `chain`, no
+  // The smallest host: `graph`, under the provider. No `counts`, no `axes`, no
   // `filter` — the view takes the graph's node counts, every declared axis in
   // order, and the library's default filter.
   const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: taxonomy },
@@ -96,13 +96,13 @@ export function hostProbes(): Json {
   // The other way in: the taxonomy as a prop, no provider above.
   const withProp = renderToStaticMarkup(
     React.createElement(GraphView, {
-      graph, taxonomy, controls: false, themeToggle: false, className: 'probe-host', style: { minHeight: 1 },
-      chrome: { search: false, transport: false, diagnostics: false, shortcuts: false },
+      graph, taxonomy, className: 'probe-host', style: { minHeight: 1 },
+      chrome: { search: false, transport: false, diagnostics: false, shortcuts: false, controls: false, themeToggle: false },
     }))
   // The bar on its own: the taxonomy as a prop, no provider, the graph to read
   // its values off, and nothing about pins.
   const barProp = renderToStaticMarkup(
-    React.createElement(FilterBar, { taxonomy, graph, filter: defaultFilter(taxonomy, graph), onFilterChange: () => {} }))
+    React.createElement(FilterBar, { taxonomy, graph, filter: initialFilter(taxonomy, graph), onFilterChange: () => {} }))
   const byId = nodesById(graph.nodes)
   const scalar = fanOut.compute({ nodes: graph.nodes, edges: graph.edges, getNode: id => byId.get(id) })
   return {

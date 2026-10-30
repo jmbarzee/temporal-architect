@@ -18,7 +18,6 @@ import type {
   AxisLocks,
   ViewTransition,
   ReconcileResult,
-  FilterDimension,
   FocusTarget,
 } from './types'
 import {
@@ -85,14 +84,14 @@ function reconcileManual(
   destFilter: FilterState,
   sourceFilter: FilterState,
   destPins: AxisLocks,
-  dimensions: readonly ResolvedAxisDescriptor[],
+  axes: readonly ResolvedAxisDescriptor[],
 ): ReconcileResult {
   let next = destFilter
-  for (const dim of dimensions) {
+  for (const dim of axes) {
     if (lockedFor(destPins, dim.id)) continue
     next = withSelection(next, dim.id, selectionFor(sourceFilter, dim.id))
   }
-  return { filter: next, overriddenLocks: new Set<FilterDimension>() }
+  return { filter: next, overriddenLocks: new Set<AxisId>() }
 }
 
 /**
@@ -115,12 +114,12 @@ function reconcileFocus(
   destFilter: FilterState,
   destPins: AxisLocks,
   target: FocusTarget,
-  dimensions: readonly ResolvedAxisDescriptor[],
+  axes: readonly ResolvedAxisDescriptor[],
 ): ReconcileResult {
   let next = destFilter
-  const overridden = new Set<FilterDimension>()
+  const overridden = new Set<AxisId>()
 
-  for (const dim of dimensions) {
+  for (const dim of axes) {
     const value = target.values[dim.id]
     if (value === undefined) continue
 

@@ -21,13 +21,13 @@ import { normalized, rangeNormalized } from './scalar'
 import { isScalarTuning } from './scalar'
 import type { ReadableGraph } from './model'
 import type { Taxonomy } from './taxonomy'
-import type { DimensionalMapping } from './axis'
+import type { AxisMapping } from './axis'
 import type { EdgeTypeId, ResolvedEdgeType, SpringPhysics } from './shapes'
 import type { Relation } from './axis'
 import type { Rng } from './rng'
 
 /** The minimum a force needs of a node in order to look up its physics. */
-export type PhysicsSubject = { dimensions: Readonly<Record<AxisId, AxisValue>> }
+export type PhysicsSubject = { values: Readonly<Record<AxisId, AxisValue>> }
 
 // ── Per-value / per-edge accessors ──────────────────────────────────────────
 // Each force reads its per-value/per-edge numbers from the keyed param maps via
@@ -80,7 +80,7 @@ export const ABSENT_VALUE_PHYSICS = {
 
 /** A per-bucket table, resolved from one axis's tuning and the taxonomy. */
 export interface ResolvedAxis<T> {
-  readonly mapping: DimensionalMapping
+  readonly mapping: AxisMapping
   readonly byBucket: ReadonlyMap<string, T>
 }
 
@@ -101,7 +101,7 @@ export function mappedAxis(a: ResolvedLayoutAxis): ResolvedAxis<BandRange> {
   return a
 }
 
-/** What the layout frame needs of a node: its dimensions, and its id for a scalar's score. */
+/** What the layout frame needs of a node: its values, and its id for a scalar's score. */
 export type LayoutSubject = PhysicsSubject & { id: string }
 
 export interface ResolvedPhysics {
@@ -113,8 +113,8 @@ export interface ResolvedPhysics {
 }
 
 /** The bucket a node falls in on an axis, or undefined when it carries no value there. */
-export function bucketOf(on: { readonly mapping: DimensionalMapping }, node: PhysicsSubject): string | undefined {
-  return on.mapping.bucketFor(node.dimensions[on.mapping.dimension])?.id
+export function bucketOf(on: { readonly mapping: AxisMapping }, node: PhysicsSubject): string | undefined {
+  return on.mapping.bucketFor(node.values[on.mapping.axis])?.id
 }
 
 /**
@@ -157,7 +157,7 @@ export function defaultSpan(taxonomy: Taxonomy, axis: 'x' | 'y'): ScalarSpan {
 }
 
 function resolveAxis<T>(
-  mapping: DimensionalMapping,
+  mapping: AxisMapping,
   overrides: ReadonlyMap<string, T>,
   declared: (values: readonly AxisValue[]) => T,
 ): ResolvedAxis<T> {
@@ -175,10 +175,10 @@ export function resolvePhysics(params: ChargeParams & GravityParams & LinkParams
   // than from a lookup that would miss to the fallback style, once per bucket,
   // with a warning about placeholder styling that is not even true.
   const style = taxonomy.styleAxis()
-  const pushFor = (m: DimensionalMapping) => m.dimension === style
+  const pushFor = (m: AxisMapping) => m.axis === style
     ? (values: readonly AxisValue[]) => declaredPush(taxonomy, values)
     : () => declaredPush(taxonomy, taxonomy.styleValues)
-  const bandOn = (m: DimensionalMapping, axis: 'x' | 'y') => m.dimension === style
+  const bandOn = (m: AxisMapping, axis: 'x' | 'y') => m.axis === style
     ? (values: readonly AxisValue[]) => declaredBand(taxonomy, values, axis)
     : () => declaredBand(taxonomy, taxonomy.styleValues, axis)
   const layout = (t: LayoutTuning, axis: 'x' | 'y'): ResolvedLayoutAxis => {
@@ -535,7 +535,7 @@ function parsePairId(id: EdgeTypeId): [Relation, string, string] | undefined {
  * which is what a control surface shows and what the token ceiling counts.
  */
 export interface ResolvedSprings {
-  readonly mapping: DimensionalMapping
+  readonly mapping: AxisMapping
   /**
    * The category of an edge from its endpoints' bucket ids, or undefined when
    * an endpoint is unbucketed, or — on the style axis — when no declared type
@@ -551,7 +551,7 @@ export interface ResolvedSprings {
 
 export function resolveSprings(pair: PairTuning, taxonomy: Taxonomy): ResolvedSprings {
   const { mapping, spring: overrides } = pair
-  if (mapping.dimension === taxonomy.styleAxis() && isIdentityMapping(mapping)) {
+  if (mapping.axis === taxonomy.styleAxis() && isIdentityMapping(mapping)) {
     const table = new Map(taxonomy.edgeTypes.map(e => [e.id, e]))
     return {
       mapping,
@@ -665,7 +665,7 @@ export function applyChargeForce(
   const pushMul = params.pushMultiplier
   const chargeExp = params.chargeExponent
   // Per-node physics once, O(n), before the O(n²) pair loop reads it: each
-  // accessor is a dimension read and two map lookups, and the loop below would
+  // accessor is an axis read and two map lookups, and the loop below would
   // otherwise make four of those per pair.
   const n = active.length
   const charge = new Float64Array(n)

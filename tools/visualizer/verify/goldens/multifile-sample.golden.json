@@ -492,941 +492,941 @@
       "nodes": [
         {
           "copyKey": "activity:AlertTimeout",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:AlertTimeout/worker:checkoutWorker/namespace:orders",
           "name": "AlertTimeout",
           "parentId": "worker:checkoutWorker/namespace:orders",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ChargePayment",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ChargePayment/worker:paymentWorker/namespace:ecommerce",
           "name": "ChargePayment",
           "parentId": "worker:paymentWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ChargePayment",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ChargePayment/worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "ChargePayment",
           "parentId": "worker:paymentWorkerSecondary/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ChargePaymentMethod",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ChargePaymentMethod/worker:paymentProcessingWorker/namespace:payments",
           "name": "ChargePaymentMethod",
           "parentId": "worker:paymentProcessingWorker/namespace:payments",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:DoLocalWork",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:DoLocalWork/worker:checkoutWorker/namespace:orders",
           "name": "DoLocalWork",
           "parentId": "worker:checkoutWorker/namespace:orders",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:GenerateThumbnail",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:GenerateThumbnail/worker:mediaWorker/namespace:media",
           "name": "GenerateThumbnail",
           "parentId": "worker:mediaWorker/namespace:media",
-          "ring": null
-        },
-        {
-          "copyKey": "activity:GetPaymentStatus",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "activityDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "activity"
-          },
+          }
+        },
+        {
+          "copyKey": "activity:GetPaymentStatus",
           "id": "activity:GetPaymentStatus/worker:paymentWorker/namespace:ecommerce",
           "name": "GetPaymentStatus",
           "parentId": "worker:paymentWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:GetPaymentStatus",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:GetPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "GetPaymentStatus",
           "parentId": "worker:paymentWorkerSecondary/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:InitShard",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:InitShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
           "name": "InitShard",
           "parentId": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:LookupPayment",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:LookupPayment/worker:paymentProcessingWorker/namespace:payments",
           "name": "LookupPayment",
           "parentId": "worker:paymentProcessingWorker/namespace:payments",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:RecordEvent",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:RecordEvent/worker:analyticsWorker/namespace:ecommerce",
           "name": "RecordEvent",
           "parentId": "worker:analyticsWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:RecordEvent",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:RecordEvent/worker:realtimeAnalyticsWorker/namespace:ecommerce",
           "name": "RecordEvent",
           "parentId": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:RecordPaymentTransaction",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:RecordPaymentTransaction/worker:paymentProcessingWorker/namespace:payments",
           "name": "RecordPaymentTransaction",
           "parentId": "worker:paymentProcessingWorker/namespace:payments",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:SendPaymentConfirmation",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:SendPaymentConfirmation/worker:notificationWorker/namespace:notifications",
           "name": "SendPaymentConfirmation",
           "parentId": "worker:notificationWorker/namespace:notifications",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ShipOrder",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ShipOrder/worker:expressShipWorker/namespace:ecommerce",
           "name": "ShipOrder",
           "parentId": "worker:expressShipWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ShipOrder",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ShipOrder/worker:standardShipWorker/namespace:ecommerce",
           "name": "ShipOrder",
           "parentId": "worker:standardShipWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:TranscodeVideo",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:TranscodeVideo/worker:gpuWorker/namespace:media",
           "name": "TranscodeVideo",
           "parentId": "worker:gpuWorker/namespace:media",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ValidateCheckout",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ValidateCheckout/worker:checkoutWorker/namespace:orders",
           "name": "ValidateCheckout",
           "parentId": "worker:checkoutWorker/namespace:orders",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ValidateOrder",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ValidateOrder/worker:orderWorker/namespace:ecommerce",
           "name": "ValidateOrder",
           "parentId": "worker:orderWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ValidatePaymentDetails",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ValidatePaymentDetails/worker:paymentProcessingWorker/namespace:payments",
           "name": "ValidatePaymentDetails",
           "parentId": "worker:paymentProcessingWorker/namespace:payments",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "namespace:bootstrapApp",
-          "dimensions": {
+          "id": "namespace:bootstrapApp",
+          "name": "bootstrapApp",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:bootstrapApp",
-          "name": "bootstrapApp",
-          "ring": null
+          }
         },
         {
           "copyKey": "namespace:ecommerce",
-          "dimensions": {
+          "id": "namespace:ecommerce",
+          "name": "ecommerce",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:ecommerce",
-          "name": "ecommerce",
-          "ring": null
+          }
         },
         {
           "badges": [
             "× org"
           ],
           "copyKey": "namespace:fabric-shard-{org}",
-          "dimensions": {
+          "id": "namespace:fabric-shard-{org}",
+          "name": "fabric-shard-{org}",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:fabric-shard-{org}",
-          "name": "fabric-shard-{org}",
-          "ring": null
+          }
         },
         {
           "copyKey": "namespace:media",
-          "dimensions": {
+          "id": "namespace:media",
+          "name": "media",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:media",
-          "name": "media",
-          "ring": null
+          }
         },
         {
           "copyKey": "namespace:notifications",
-          "dimensions": {
+          "id": "namespace:notifications",
+          "name": "notifications",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:notifications",
-          "name": "notifications",
-          "ring": null
+          }
         },
         {
           "copyKey": "namespace:orders",
-          "dimensions": {
+          "id": "namespace:orders",
+          "name": "orders",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:orders",
-          "name": "orders",
-          "ring": null
+          }
         },
         {
           "copyKey": "namespace:partner",
-          "dimensions": {
+          "id": "namespace:partner",
+          "name": "partner",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:partner",
-          "name": "partner",
-          "ring": null
+          }
         },
         {
           "copyKey": "namespace:payments",
-          "dimensions": {
+          "id": "namespace:payments",
+          "name": "payments",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:payments",
-          "name": "payments",
-          "ring": null
+          }
         },
         {
           "copyKey": "nexusEndpoint:AnalyticsEndpoint",
-          "dimensions": {
-            "defType": "nexusEndpointDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "nexusEndpoint"
-          },
           "id": "nexusEndpoint:AnalyticsEndpoint/namespace:ecommerce",
           "name": "AnalyticsEndpoint",
           "parentId": "namespace:ecommerce",
           "queue": "analytics",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "nexusEndpointDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusEndpoint"
+          }
         },
         {
           "copyKey": "nexusEndpoint:NotificationsEndpoint",
-          "dimensions": {
-            "defType": "nexusEndpointDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "nexusEndpoint"
-          },
           "id": "nexusEndpoint:NotificationsEndpoint/namespace:notifications",
           "name": "NotificationsEndpoint",
           "parentId": "namespace:notifications",
           "queue": "notifications",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "nexusEndpointDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "nexusEndpoint"
+          }
         },
         {
           "copyKey": "nexusEndpoint:PaymentEndpoint",
-          "dimensions": {
-            "defType": "nexusEndpointDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "nexusEndpoint"
-          },
           "id": "nexusEndpoint:PaymentEndpoint/namespace:ecommerce",
           "name": "PaymentEndpoint",
           "parentId": "namespace:ecommerce",
           "queue": "payments",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "nexusEndpointDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusEndpoint"
+          }
         },
         {
           "copyKey": "nexusEndpoint:PaymentsEndpoint",
-          "dimensions": {
-            "defType": "nexusEndpointDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "nexusEndpoint"
-          },
           "id": "nexusEndpoint:PaymentsEndpoint/namespace:payments",
           "name": "PaymentsEndpoint",
           "parentId": "namespace:payments",
           "queue": "payments",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "nexusEndpointDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "nexusEndpoint"
+          }
         },
         {
           "badges": [
             "× org"
           ],
           "copyKey": "nexusEndpoint:fabric-shard-{org}-BootstrapShard",
-          "dimensions": {
-            "defType": "nexusEndpointDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "nexusEndpoint"
-          },
           "id": "nexusEndpoint:fabric-shard-{org}-BootstrapShard/namespace:fabric-shard-{org}",
           "name": "fabric-shard-{org}-BootstrapShard",
           "parentId": "namespace:fabric-shard-{org}",
           "queue": "q-{org}-bootstrap",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "nexusEndpointDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "nexusEndpoint"
+          }
         },
         {
           "copyKey": "nexusOperation:AnalyticsService.TrackEvent",
-          "dimensions": {
-            "defType": "nexusOperationDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "nexusOperation"
-          },
           "id": "nexusOperation:AnalyticsService.TrackEvent/worker:analyticsWorker/namespace:ecommerce",
           "name": "TrackEvent",
           "parentId": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
           "queue": "analytics",
           "ring": null,
+          "values": {
+            "defType": "nexusOperationDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusOperation"
+          },
           "worker": "worker:analyticsWorker"
         },
         {
           "copyKey": "nexusOperation:BootstrapService.BootstrapShard",
-          "dimensions": {
-            "defType": "nexusOperationDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "nexusOperation"
-          },
           "id": "nexusOperation:BootstrapService.BootstrapShard/worker:bootstrapWorker/namespace:fabric-shard-{org}",
           "name": "BootstrapShard",
           "parentId": "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}",
           "queue": "q-{org}-bootstrap",
           "ring": null,
-          "worker": "worker:bootstrapWorker"
-        },
-        {
-          "copyKey": "nexusOperation:NotificationsService.SendConfirmation",
-          "dimensions": {
+          "values": {
             "defType": "nexusOperationDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusOperation"
           },
+          "worker": "worker:bootstrapWorker"
+        },
+        {
+          "copyKey": "nexusOperation:NotificationsService.SendConfirmation",
           "id": "nexusOperation:NotificationsService.SendConfirmation/worker:notificationWorker/namespace:notifications",
           "name": "SendConfirmation",
           "parentId": "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications",
           "queue": "notifications",
           "ring": null,
+          "values": {
+            "defType": "nexusOperationDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "nexusOperation"
+          },
           "worker": "worker:notificationWorker"
         },
         {
           "copyKey": "nexusOperation:PaymentService.CheckPaymentStatus",
-          "dimensions": {
-            "defType": "nexusOperationDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "nexusOperation"
-          },
           "id": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorker/namespace:ecommerce",
           "name": "CheckPaymentStatus",
           "parentId": "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce",
           "queue": "payments",
           "ring": null,
-          "worker": "worker:paymentWorker"
-        },
-        {
-          "copyKey": "nexusOperation:PaymentService.CheckPaymentStatus",
-          "dimensions": {
+          "values": {
             "defType": "nexusOperationDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusOperation"
           },
+          "worker": "worker:paymentWorker"
+        },
+        {
+          "copyKey": "nexusOperation:PaymentService.CheckPaymentStatus",
           "id": "nexusOperation:PaymentService.CheckPaymentStatus/worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "CheckPaymentStatus",
           "parentId": "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce",
           "queue": "payments-secondary",
           "ring": null,
+          "values": {
+            "defType": "nexusOperationDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusOperation"
+          },
           "worker": "worker:paymentWorkerSecondary"
         },
         {
           "copyKey": "nexusOperation:PaymentsService.GetPaymentStatus",
-          "dimensions": {
-            "defType": "nexusOperationDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "nexusOperation"
-          },
           "id": "nexusOperation:PaymentsService.GetPaymentStatus/worker:paymentProcessingWorker/namespace:payments",
           "name": "GetPaymentStatus",
           "parentId": "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments",
           "queue": "payments",
           "ring": null,
-          "worker": "worker:paymentProcessingWorker"
-        },
-        {
-          "copyKey": "nexusOperation:PaymentsService.ProcessPayment",
-          "dimensions": {
+          "values": {
             "defType": "nexusOperationDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusOperation"
           },
+          "worker": "worker:paymentProcessingWorker"
+        },
+        {
+          "copyKey": "nexusOperation:PaymentsService.ProcessPayment",
           "id": "nexusOperation:PaymentsService.ProcessPayment/worker:paymentProcessingWorker/namespace:payments",
           "name": "ProcessPayment",
           "parentId": "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments",
           "queue": "payments",
           "ring": null,
+          "values": {
+            "defType": "nexusOperationDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "nexusOperation"
+          },
           "worker": "worker:paymentProcessingWorker"
         },
         {
           "copyKey": "nexusService:AnalyticsService",
-          "dimensions": {
-            "defType": "nexusServiceDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "nexusService"
-          },
           "id": "nexusService:AnalyticsService/worker:analyticsWorker/namespace:ecommerce",
           "name": "AnalyticsService",
           "namespace": "namespace:ecommerce",
           "parentId": "worker:analyticsWorker/namespace:ecommerce",
           "queue": "analytics",
           "ring": null,
+          "values": {
+            "defType": "nexusServiceDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusService"
+          },
           "worker": "worker:analyticsWorker"
         },
         {
           "copyKey": "nexusService:BootstrapService",
-          "dimensions": {
-            "defType": "nexusServiceDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "nexusService"
-          },
           "id": "nexusService:BootstrapService/worker:bootstrapWorker/namespace:fabric-shard-{org}",
           "name": "BootstrapService",
           "namespace": "namespace:fabric-shard-{org}",
           "parentId": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
           "queue": "q-{org}-bootstrap",
           "ring": null,
-          "worker": "worker:bootstrapWorker"
-        },
-        {
-          "copyKey": "nexusService:NotificationsService",
-          "dimensions": {
+          "values": {
             "defType": "nexusServiceDef",
             "sourceFile": "nexus.twf",
             "temporalType": "nexusService"
           },
+          "worker": "worker:bootstrapWorker"
+        },
+        {
+          "copyKey": "nexusService:NotificationsService",
           "id": "nexusService:NotificationsService/worker:notificationWorker/namespace:notifications",
           "name": "NotificationsService",
           "namespace": "namespace:notifications",
           "parentId": "worker:notificationWorker/namespace:notifications",
           "queue": "notifications",
           "ring": null,
+          "values": {
+            "defType": "nexusServiceDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "nexusService"
+          },
           "worker": "worker:notificationWorker"
         },
         {
           "copyKey": "nexusService:PaymentService",
-          "dimensions": {
-            "defType": "nexusServiceDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "nexusService"
-          },
           "id": "nexusService:PaymentService/worker:paymentWorker/namespace:ecommerce",
           "name": "PaymentService",
           "namespace": "namespace:ecommerce",
           "parentId": "worker:paymentWorker/namespace:ecommerce",
           "queue": "payments",
           "ring": null,
-          "worker": "worker:paymentWorker"
-        },
-        {
-          "copyKey": "nexusService:PaymentService",
-          "dimensions": {
+          "values": {
             "defType": "nexusServiceDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "nexusService"
           },
+          "worker": "worker:paymentWorker"
+        },
+        {
+          "copyKey": "nexusService:PaymentService",
           "id": "nexusService:PaymentService/worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "PaymentService",
           "namespace": "namespace:ecommerce",
           "parentId": "worker:paymentWorkerSecondary/namespace:ecommerce",
           "queue": "payments-secondary",
           "ring": null,
+          "values": {
+            "defType": "nexusServiceDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "nexusService"
+          },
           "worker": "worker:paymentWorkerSecondary"
         },
         {
           "copyKey": "nexusService:PaymentsService",
-          "dimensions": {
-            "defType": "nexusServiceDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "nexusService"
-          },
           "id": "nexusService:PaymentsService/worker:paymentProcessingWorker/namespace:payments",
           "name": "PaymentsService",
           "namespace": "namespace:payments",
           "parentId": "worker:paymentProcessingWorker/namespace:payments",
           "queue": "payments",
           "ring": null,
+          "values": {
+            "defType": "nexusServiceDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "nexusService"
+          },
           "worker": "worker:paymentProcessingWorker"
         },
         {
           "copyKey": "worker:analyticsWorker",
-          "dimensions": {
-            "defType": "workerDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "worker"
-          },
           "id": "worker:analyticsWorker/namespace:ecommerce",
           "name": "analyticsWorker",
           "parentId": "namespace:ecommerce",
           "queue": "analytics",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workerDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          }
         },
         {
           "copyKey": "worker:bootstrapCallerWorker",
-          "dimensions": {
-            "defType": "workerDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "worker"
-          },
           "id": "worker:bootstrapCallerWorker/namespace:bootstrapApp",
           "name": "bootstrapCallerWorker",
           "parentId": "namespace:bootstrapApp",
           "queue": "bootstrap-app",
-          "ring": null
-        },
-        {
-          "copyKey": "worker:bootstrapWorker",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workerDef",
             "sourceFile": "nexus.twf",
             "temporalType": "worker"
-          },
+          }
+        },
+        {
+          "copyKey": "worker:bootstrapWorker",
           "id": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
           "name": "bootstrapWorker",
           "parentId": "namespace:fabric-shard-{org}",
           "queue": "q-{org}-bootstrap",
-          "ring": null
-        },
-        {
-          "copyKey": "worker:checkoutWorker",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workerDef",
             "sourceFile": "nexus.twf",
             "temporalType": "worker"
-          },
+          }
+        },
+        {
+          "copyKey": "worker:checkoutWorker",
           "id": "worker:checkoutWorker/namespace:orders",
           "name": "checkoutWorker",
           "parentId": "namespace:orders",
           "queue": "checkout",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workerDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "worker"
+          }
         },
         {
           "copyKey": "worker:expressShipWorker",
-          "dimensions": {
-            "defType": "workerDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "worker"
-          },
           "id": "worker:expressShipWorker/namespace:ecommerce",
           "name": "expressShipWorker",
           "parentId": "namespace:ecommerce",
           "queue": "shipping-express",
-          "ring": null
-        },
-        {
-          "copyKey": "worker:gpuWorker",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
-          },
+          }
+        },
+        {
+          "copyKey": "worker:gpuWorker",
           "id": "worker:gpuWorker/namespace:media",
           "name": "gpuWorker",
           "parentId": "namespace:media",
           "queue": "gpu-transcode",
-          "ring": null
-        },
-        {
-          "copyKey": "worker:mediaWorker",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
-          },
+          }
+        },
+        {
+          "copyKey": "worker:mediaWorker",
           "id": "worker:mediaWorker/namespace:media",
           "name": "mediaWorker",
           "parentId": "namespace:media",
           "queue": "media",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workerDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          }
         },
         {
           "copyKey": "worker:notificationWorker",
-          "dimensions": {
-            "defType": "workerDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "worker"
-          },
           "id": "worker:notificationWorker/namespace:notifications",
           "name": "notificationWorker",
           "parentId": "namespace:notifications",
           "queue": "notifications",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workerDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "worker"
+          }
         },
         {
           "copyKey": "worker:orderWorker",
-          "dimensions": {
-            "defType": "workerDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "worker"
-          },
           "id": "worker:orderWorker/namespace:ecommerce",
           "name": "orderWorker",
           "parentId": "namespace:ecommerce",
           "queue": "orders",
-          "ring": null
-        },
-        {
-          "copyKey": "worker:partnerWorker",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
-          },
+          }
+        },
+        {
+          "copyKey": "worker:partnerWorker",
           "id": "worker:partnerWorker/namespace:partner",
           "name": "partnerWorker",
           "parentId": "namespace:partner",
           "queue": "partner",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workerDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          }
         },
         {
           "copyKey": "worker:paymentProcessingWorker",
-          "dimensions": {
-            "defType": "workerDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "worker"
-          },
           "id": "worker:paymentProcessingWorker/namespace:payments",
           "name": "paymentProcessingWorker",
           "parentId": "namespace:payments",
           "queue": "payments",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workerDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "worker"
+          }
         },
         {
           "copyKey": "worker:paymentWorker",
-          "dimensions": {
-            "defType": "workerDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "worker"
-          },
           "id": "worker:paymentWorker/namespace:ecommerce",
           "name": "paymentWorker",
           "parentId": "namespace:ecommerce",
           "queue": "payments",
-          "ring": null
-        },
-        {
-          "copyKey": "worker:paymentWorkerSecondary",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
-          },
+          }
+        },
+        {
+          "copyKey": "worker:paymentWorkerSecondary",
           "id": "worker:paymentWorkerSecondary/namespace:ecommerce",
           "name": "paymentWorkerSecondary",
           "parentId": "namespace:ecommerce",
           "queue": "payments-secondary",
-          "ring": null
-        },
-        {
-          "copyKey": "worker:realtimeAnalyticsWorker",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
-          },
+          }
+        },
+        {
+          "copyKey": "worker:realtimeAnalyticsWorker",
           "id": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
           "name": "realtimeAnalyticsWorker",
           "parentId": "namespace:ecommerce",
           "queue": "analytics-realtime",
-          "ring": null
-        },
-        {
-          "copyKey": "worker:standardShipWorker",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workerDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "worker"
-          },
+          }
+        },
+        {
+          "copyKey": "worker:standardShipWorker",
           "id": "worker:standardShipWorker/namespace:ecommerce",
           "name": "standardShipWorker",
           "parentId": "namespace:ecommerce",
           "queue": "shipping-standard",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workerDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "worker"
+          }
         },
         {
           "copyKey": "workflow:AsyncNexusCaller",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:AsyncNexusCaller/worker:checkoutWorker/namespace:orders",
           "name": "AsyncNexusCaller",
           "parentId": "worker:checkoutWorker/namespace:orders",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:BootstrapCaller",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:BootstrapCaller/worker:bootstrapCallerWorker/namespace:bootstrapApp",
           "name": "BootstrapCaller",
           "parentId": "worker:bootstrapCallerWorker/namespace:bootstrapApp",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:BootstrapShardWorkflow",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:BootstrapShardWorkflow/worker:bootstrapWorker/namespace:fabric-shard-{org}",
           "name": "BootstrapShardWorkflow",
           "parentId": "worker:bootstrapWorker/namespace:fabric-shard-{org}",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:MediaPipeline",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:MediaPipeline/worker:mediaWorker/namespace:media",
           "name": "MediaPipeline",
           "parentId": "worker:mediaWorker/namespace:media",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:NexusWithOptions",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:NexusWithOptions/worker:checkoutWorker/namespace:orders",
           "name": "NexusWithOptions",
           "parentId": "worker:checkoutWorker/namespace:orders",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:NexusWithTimeout",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:NexusWithTimeout/worker:checkoutWorker/namespace:orders",
           "name": "NexusWithTimeout",
           "parentId": "worker:checkoutWorker/namespace:orders",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:OrderCheckout",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:OrderCheckout/worker:checkoutWorker/namespace:orders",
           "name": "OrderCheckout",
           "parentId": "worker:checkoutWorker/namespace:orders",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:OrderWorkflow",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:OrderWorkflow/worker:orderWorker/namespace:ecommerce",
           "name": "OrderWorkflow",
           "parentId": "worker:orderWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:PartnerCheckout",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:PartnerCheckout/worker:partnerWorker/namespace:partner",
           "name": "PartnerCheckout",
           "parentId": "worker:partnerWorker/namespace:partner",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:ProcessPaymentWorkflow",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "nexus.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:ProcessPaymentWorkflow/worker:paymentProcessingWorker/namespace:payments",
           "name": "ProcessPaymentWorkflow",
           "parentId": "worker:paymentProcessingWorker/namespace:payments",
-          "ring": null
-        },
-        {
-          "copyKey": "workflow:SendConfirmationWorkflow",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workflowDef",
             "sourceFile": "nexus.twf",
             "temporalType": "workflow"
-          },
+          }
+        },
+        {
+          "copyKey": "workflow:SendConfirmationWorkflow",
           "id": "workflow:SendConfirmationWorkflow/worker:notificationWorker/namespace:notifications",
           "name": "SendConfirmationWorkflow",
           "parentId": "worker:notificationWorker/namespace:notifications",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "nexus.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:TrackEventWorkflow",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "task-queues.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:TrackEventWorkflow/worker:analyticsWorker/namespace:ecommerce",
           "name": "TrackEventWorkflow",
           "parentId": "worker:analyticsWorker/namespace:ecommerce",
-          "ring": null
-        },
-        {
-          "copyKey": "workflow:TrackEventWorkflow",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workflowDef",
             "sourceFile": "task-queues.twf",
             "temporalType": "workflow"
-          },
+          }
+        },
+        {
+          "copyKey": "workflow:TrackEventWorkflow",
           "id": "workflow:TrackEventWorkflow/worker:realtimeAnalyticsWorker/namespace:ecommerce",
           "name": "TrackEventWorkflow",
           "parentId": "worker:realtimeAnalyticsWorker/namespace:ecommerce",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "task-queues.twf",
+            "temporalType": "workflow"
+          }
         }
       ],
       "sourceFiles": [

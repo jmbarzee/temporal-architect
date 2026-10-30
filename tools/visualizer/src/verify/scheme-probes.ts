@@ -35,7 +35,7 @@ function restyled(): NodeStyle[] {
 }
 
 export function schemeProbes(): Json {
-  const second = createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, values: restyled() })
+  const second = createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, styles: restyled() })
   const defaults = Object.fromEntries(THEMES.map(th => [th, schemeVars(DEFAULT_TAXONOMY, th)]))
   const seconds = Object.fromEntries(THEMES.map(th => [th, schemeVars(second, th)]))
   const sameNames = THEMES.every(th => JSON.stringify(Object.keys(defaults[th]).sort()) === JSON.stringify(Object.keys(seconds[th]).sort()))
@@ -54,7 +54,7 @@ export function schemeProbes(): Json {
       const extra = ['nexus-endpoint', '研究室', 'café', 'cafè']
       const taxonomy = createTaxonomy({
         ...DEFAULT_TAXONOMY_SPEC,
-        values: [...DEFAULT_TAXONOMY_SPEC.values, ...extra.map(id => ({ id, ...NODE_TYPE_REGISTRY.nexusEndpoint }))],
+        styles: [...DEFAULT_TAXONOMY_SPEC.styles, ...extra.map(id => ({ id, ...NODE_TYPE_REGISTRY.nexusEndpoint }))],
       })
       return sortedRecord(['nexusEndpoint', ...extra].map(v => [v, taxonomy.colorVar(v)] as const))
     })(),
@@ -77,10 +77,10 @@ export function schemeProbes(): Json {
     strokeForUnknown: (() => { try { DEFAULT_TAXONOMY.edgeStrokeFor('not-a-type'); return 'returned' } catch (e) { return (e as Error).message } })(),
     // What the taxonomy refuses at construction (D58): a colour no reader can parse.
     refusals: {
-      namedColour: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, values: DEFAULT_TAXONOMY_SPEC.values.map(v => v.id === 'worker' ? { ...v, color: { light: { fill: 'slategray', border: '#000' }, dark: v.color.dark } } : v) })),
+      namedColour: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, styles: DEFAULT_TAXONOMY_SPEC.styles.map(v => v.id === 'worker' ? { ...v, color: { light: { fill: 'slategray', border: '#000' }, dark: v.color.dark } } : v) })),
       cssVariableColour: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, edgeTypes: ALL_EDGE_TYPES.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
       // A hidden-node policy outside its two values (D60): refused, not read as ascend.
-      badWhenHidden: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, values: DEFAULT_TAXONOMY_SPEC.values.map(v => v.id === 'worker' ? { ...v, whenHidden: String('Splice') as NodeStyle['whenHidden'] } : v) })),
+      badWhenHidden: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, styles: DEFAULT_TAXONOMY_SPEC.styles.map(v => v.id === 'worker' ? { ...v, whenHidden: String('Splice') as NodeStyle['whenHidden'] } : v) })),
     },
     // The theme a marker declares: its `data-theme`, light or dark, and nothing
     // else — an editor's body classes are the host's to translate (D67).

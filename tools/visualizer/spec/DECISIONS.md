@@ -2960,3 +2960,79 @@ boundary 0; forbidden patterns 0 new (the hook builds its records from a
 typed loop, not a cast); 7/7 goldens with `static` regenerated under this
 decision; both published-type gates clean, the README's two code blocks
 compiled; the catalog typechecked.
+
+**D79 — Unit 21, one vocabulary, the type surface, docs as contracts (#209 Sets 4 and 5).**
+The last unit of the fourth run: the words the third review found doubled,
+the types it found leaking or missing, and the sentences a stranger reads
+first — with two gates so they stay true.
+
+1. **One word per concept, by codemod.** A node's and an edge's axis values
+   are `values` (`GraphNode.values`, `GraphEdge.values`, `StyleSubject`,
+   `PhysicsSubject`); the spec's style list is `styles` (`TaxonomySpec.styles`).
+   Every parameter, local and field that said "dimension" for an axis says
+   `axis`/`axes` (`valueOf(values, axis)`, `countsOn(nodes, axes)`,
+   `AxisMapping` and `createAxisMapping`, `mapping.axis`, `axesOf`). The
+   filter's chosen values are an `AxisSelection`, so "selection" alone means
+   the selected node; `FilterDimension` is gone (`AxisId`). React's
+   `default*` reads as React does: `initialFilter(taxonomy, graph)` is the
+   function, `defaultFilter` the uncontrolled prop, `defaultPositions` the
+   kept layout. The bar's classes for the axes shown are `gv-header-add`,
+   `gv-header-add-button`, `gv-header-add-menu(-item)`, `gv-header-remove`,
+   `gv-header-axis-empty` — not a "chain".
+2. **The chrome switches in one place.** `controls` and `themeToggle` move
+   into `chrome` beside the other seven.
+3. **The type surface.** `RecentlyChanged` is exported (the bar's props
+   named it); `ReheatPolicy` and `ResolvedAxisDescriptor.reheat` leave the
+   surface — the descriptor carries `keepCamera`, and the engine derives the
+   policy (`reheatOf`) where it folds it; `ActiveGroup.strength` says what
+   it is; `FilterBarProps` is a union, `values` or `graph`, so a bar with
+   neither fails to compile rather than at render.
+4. **Docs as contracts.** Every shipped export carries a doc comment that
+   says what it is and what it promises; the README's Inputs name `chrome`'s
+   nine parts; a "What to know" bullet states the eight behaviours the review
+   found only in the implementation.
+5. **Two gates.** The published-types gate now refuses a shipped exported
+   declaration without a doc comment, following re-exports to the
+   declaration; and refuses a README that names, in backticks, a declaration
+   from the source that the entry does not export — the check that would
+   have caught `toggleValue` two units ago.
+
+**Golden change (§8.2).** Names only. The five fixture goldens and `static`
+move where the harness serialises a node's or an edge's axis values under
+their field name (`dimensions` → `values`): 37, 74, 37, 53 and 37 keys in
+the fixtures and 11 in `static`, the values under them byte-identical,
+checked by a key-mapping comparison of each committed golden against the
+produced one before `--write`. Beyond the keys, `static` differs in eight
+message strings the codemod reworded — "axis mapping" for "dimensional
+mapping" three times, "filter axis" for "filter dimension" once, and the
+style paths and the undeclared-endpoint message naming `styles` rather than
+`values` four times (the review's catch). `edge-types` is unchanged. The surface list changes by name only: `initialFilter` for
+`defaultFilter`, `AxisSelection` for `Selection`, `RecentlyChanged` in,
+`ReheatPolicy` out — 98 names as before.
+
+**Measured.** Surface 90 + 98 names; leak 0 of 0; total vocabulary 1059 of
+1059; boundary 0; forbidden patterns 0 new; 7/7 goldens with five fixtures
+and `static` regenerated under this decision (names only, checked); both
+published-type gates clean, the README's two code blocks compiled, every one
+of 21 shipped declaration files documented, every README-named declaration
+on the surface; the catalog typechecked.
+
+**Review (the unit's fan-out).** Six finders, each finding checked by a
+skeptic: twenty-six confirmed (a dozen distinct), none refuted, all closed.
+The codemod left words behind where a template literal, a prose heading or a
+comment held them: `createTaxonomy` still named the style list `values` in
+its refusals (four `static` rows moved with the fix), the README's
+selected-node heading and a canvas comment had become "AxisSelection", two
+doc comments named `defaultFilter` as the reader of `initialSelection` (now
+the prop that bypasses it), `valueOn`'s default said `axes`, "a axis" three
+times, and the two specs still said "dimension" and "Per-Dimension Pinning".
+The bar's union members carried their doc comments inline, which declaration
+emit drops — they sit on their own lines now. The two new gates were made
+sharper: every identifier inside a backtick span is checked, not only a bare
+name; `export { X as Y }` keeps the alias; the declaration regex covers
+default, abstract, async, let, var and namespace, and a function's later
+overloads share its comment. Contracts tightened: the `filter` prop's doc
+says the default re-seeds (and `onFilterChange` hears it), `defaultPositions`
+is read whenever the simulation is built, `chrome.themeToggle` sits inside
+the transport cluster, an error diagnostic may drop a node, and the README
+names `valuesOn` for a second view's values.

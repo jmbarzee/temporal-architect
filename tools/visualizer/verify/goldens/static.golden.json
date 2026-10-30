@@ -3275,9 +3275,9 @@
       }
     },
     "refusals": {
-      "badWhenHidden": "taxonomy is incoherent: values.worker.whenHidden is \"Splice\", not 'ascend' or 'splice'",
+      "badWhenHidden": "taxonomy is incoherent: styles.worker.whenHidden is \"Splice\", not 'ascend' or 'splice'",
       "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex, rgb() or hsl() colour",
-      "namedColour": "taxonomy is incoherent: values.worker.color.light.fill is \"slategray\", not a hex, rgb() or hsl() colour"
+      "namedColour": "taxonomy is incoherent: styles.worker.color.light.fill is \"slategray\", not a hex, rgb() or hsl() colour"
     },
     "secondScheme": {
       "allDiffer": true,
@@ -4126,112 +4126,112 @@
     "nodes": [
       {
         "copyKey": "namespace:ns",
-        "dimensions": {
+        "id": "ns",
+        "parentId": null,
+        "values": {
           "defType": "namespaceDef",
           "sourceFile": "a.twf",
           "temporalType": "namespace"
-        },
-        "id": "ns",
-        "parentId": null
+        }
       },
       {
         "copyKey": "namespace:nsOrphan",
-        "dimensions": {
+        "id": "nsOrphan",
+        "parentId": null,
+        "values": {
           "defType": "namespaceDef",
           "temporalType": "namespace"
-        },
-        "id": "nsOrphan",
-        "parentId": null
+        }
       },
       {
         "copyKey": "worker:wk",
-        "dimensions": {
+        "id": "wk",
+        "parentId": "ns",
+        "values": {
           "defType": "workerDef",
           "sourceFile": "a.twf",
           "temporalType": "worker"
-        },
-        "id": "wk",
-        "parentId": "ns"
+        }
       },
       {
         "copyKey": "worker:wkB",
-        "dimensions": {
+        "id": "wkB",
+        "parentId": "ns",
+        "values": {
           "defType": "workerDef",
           "sourceFile": "b.twf",
           "temporalType": "worker"
-        },
-        "id": "wkB",
-        "parentId": "ns"
+        }
       },
       {
         "copyKey": "nexusService:svc",
-        "dimensions": {
+        "id": "svc",
+        "parentId": "wk",
+        "values": {
           "defType": "nexusServiceDef",
           "sourceFile": "a.twf",
           "temporalType": "nexusService"
-        },
-        "id": "svc",
-        "parentId": "wk"
+        }
       },
       {
         "copyKey": "nexusEndpoint:ep",
-        "dimensions": {
+        "id": "ep",
+        "parentId": "ns",
+        "values": {
           "defType": "nexusEndpointDef",
           "sourceFile": "a.twf",
           "temporalType": "nexusEndpoint"
-        },
-        "id": "ep",
-        "parentId": "ns"
+        }
       },
       {
         "copyKey": "workflow:caller",
-        "dimensions": {
+        "id": "caller",
+        "parentId": "wk",
+        "values": {
           "defType": "workflowDef",
           "sourceFile": "a.twf",
           "temporalType": "workflow"
-        },
-        "id": "caller",
-        "parentId": "wk"
+        }
       },
       {
         "copyKey": "nexusOperation:op",
-        "dimensions": {
+        "id": "op",
+        "parentId": "svc",
+        "values": {
           "defType": "nexusOperationDef",
           "sourceFile": "a.twf",
           "temporalType": "nexusOperation"
-        },
-        "id": "op",
-        "parentId": "svc"
+        }
       },
       {
         "copyKey": "workflow:backing",
-        "dimensions": {
+        "id": "backing",
+        "parentId": "wkB",
+        "values": {
           "defType": "workflowDef",
           "sourceFile": "b.twf",
           "temporalType": "workflow"
-        },
-        "id": "backing",
-        "parentId": "wkB"
+        }
       },
       {
         "copyKey": "activity:act",
-        "dimensions": {
+        "id": "act",
+        "parentId": "wk",
+        "values": {
           "defType": "activityDef",
           "sourceFile": "a.twf",
           "temporalType": "activity"
-        },
-        "id": "act",
-        "parentId": "wk"
+        }
       },
       {
         "copyKey": "activity:act",
-        "dimensions": {
+        "id": "actCopy",
+        "parentId": "wkB",
+        "values": {
           "defType": "activityDef",
           "sourceFile": "b.twf",
           "temporalType": "activity"
-        },
-        "id": "actCopy",
-        "parentId": "wkB"
+        }
       }
     ]
   },
@@ -4390,7 +4390,7 @@
         "deduplicatesInASet": 1,
         "stringPassesThrough": true
       },
-      "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" is incoherent: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
+      "intersectingBucketsRefused": "axis mapping \"probe:overlapping\" is incoherent: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
     },
     "matchClassification": {
       "emptyMatchRefused": "refused",
@@ -4580,18 +4580,18 @@
   },
   "tuningProbes": {
     "coherence": {
-      "crossedBand": "taxonomy is incoherent: values.namespace.physics.band.y runs from 10 to -10; a band's min must not exceed its max",
+      "crossedBand": "taxonomy is incoherent: styles.namespace.physics.band.y runs from 10 to -10; a band's min must not exceed its max",
       "duplicateAbbreviationsNumbered": [
         "ne",
         "ne2",
         "ot"
       ],
-      "duplicateBucketId": "dimensional mapping \"m\" is incoherent: bucket id \"a\" is declared twice. A value in two buckets has no defined answer for which one tunes it.",
+      "duplicateBucketId": "axis mapping \"m\" is incoherent: bucket id \"a\" is declared twice. A value in two buckets has no defined answer for which one tunes it.",
       "duplicateEdgeType": "taxonomy is incoherent: edge type \"linkNsToNs\" is declared twice",
-      "duplicateFilterAxis": "taxonomy is incoherent: filter dimension \"sourceFile\" is declared twice",
+      "duplicateFilterAxis": "taxonomy is incoherent: filter axis \"sourceFile\" is declared twice",
       "duplicateValue": "taxonomy is incoherent: style value \"namespace\" is declared twice",
-      "edgeEndpointUndeclared": "taxonomy is incoherent: edgeTypes.ghostLink.sourceValue is \"ghost\", which values does not declare",
-      "emptyBucket": "dimensional mapping \"m\" is incoherent: bucket \"e\" has no values. A value in two buckets has no defined answer for which one tunes it."
+      "edgeEndpointUndeclared": "taxonomy is incoherent: edgeTypes.ghostLink.sourceValue is \"ghost\", which styles does not declare",
+      "emptyBucket": "axis mapping \"m\" is incoherent: bucket \"e\" has no values. A value in two buckets has no defined answer for which one tunes it."
     },
     "foreignAxisPhysics": {
       "buckets": {

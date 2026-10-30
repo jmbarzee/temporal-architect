@@ -68,7 +68,7 @@ export interface TemporalNodeStyle extends NodeStyle {
   /**
    * The value this type projects onto the kind axis — what the kind chips
    * filter on. The adapter materializes it on each node at build time, so the
-   * engine reads it off the node's dimension map like any other axis and never
+   * engine reads it off the node's values like any other axis and never
    * learns that one axis is a function of another.
    */
   defType: string
@@ -403,7 +403,7 @@ function contextLineFor(node: GraphNode, parent: GraphNode | undefined): string 
   const parentName = parent?.name
   const queue = payloadString(node, 'queue')
   const hostWorker = payloadString(node, 'worker')
-  switch (node.dimensions[TEMPORAL_TYPE_DIMENSION]) {
+  switch (node.values[TEMPORAL_TYPE_DIMENSION]) {
     case 'nexusEndpoint':
       // The namespace is the endpoint's containment parent; the queue is
       // intrinsic display metadata.
@@ -426,7 +426,7 @@ function contextLineFor(node: GraphNode, parent: GraphNode | undefined): string 
  * (namespace, queue)); every other value takes the walk as it is.
  */
 function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight {
-  const value = active.dimensions[TEMPORAL_TYPE_DIMENSION]
+  const value = active.values[TEMPORAL_TYPE_DIMENSION]
   if (value === 'nexusEndpoint') {
     const nodes = new Set<string>([active.id])
     const edges = new Set<string>()
@@ -445,13 +445,13 @@ function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph)
     const nodes = new Set(base.nodes)
     const operationIds = new Set<string>()
     for (const n of graph.visibleNodes) {
-      if (n.dimensions[TEMPORAL_TYPE_DIMENSION] === 'nexusOperation' && n.parentId === active.id) operationIds.add(n.id)
+      if (n.values[TEMPORAL_TYPE_DIMENSION] === 'nexusOperation' && n.parentId === active.id) operationIds.add(n.id)
     }
     for (const edge of graph.visibleEdges) {
       // Resolved from the target node, not from a copy cached on the edge:
       // graduation re-points edges, and a cached endpoint type survives the
       // re-pointing while being wrong about it.
-      if (graph.getNode(edge.targetId)?.dimensions[TEMPORAL_TYPE_DIMENSION] !== 'nexusEndpoint') continue
+      if (graph.getNode(edge.targetId)?.values[TEMPORAL_TYPE_DIMENSION] !== 'nexusEndpoint') continue
       if (!operationIds.has(edge.sourceId)) continue
       if (graph.visibleIds.has(edge.targetId)) {
         nodes.add(edge.targetId)
@@ -473,7 +473,7 @@ export const DEFAULT_TAXONOMY_SPEC: TaxonomySpec = {
   styleAxis: TEMPORAL_TYPE_DIMENSION,
   styleLabel: 'Type',
   // Declaration order is top of the hierarchy first.
-  values: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t] })),
+  styles: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t] })),
   filterAxes: FILTER_DIMENSIONS,
   edgeTypes: ALL_EDGE_TYPES,
   classifyEdge: edgeTypeFor,

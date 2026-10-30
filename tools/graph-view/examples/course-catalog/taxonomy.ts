@@ -149,7 +149,7 @@ export const EDGE_TYPES: readonly EdgeType[] = [
  */
 function classifyEdge(edge: GraphEdge, src: string | undefined, tgt: string | undefined, declared: string | undefined): string | undefined {
   if (declared !== undefined || isContainment(edge) || (src !== 'lab' && tgt !== 'lab')) return declared
-  const kind = edge.dimensions?.[REQUIREMENT]
+  const kind = edge.values?.[REQUIREMENT]
   return kind === 'corequisite' || kind === 'recommended' ? kind : 'prerequisite'
 }
 
@@ -235,7 +235,7 @@ const SCALARS: readonly ScalarAxis[] = [
 function contextLine(node: GraphNode, parent: GraphNode | undefined): string | undefined {
   const code = payloadString(node, 'code')
   const credits = payloadNumber(node, 'credits')
-  switch (node.dimensions[ENTITY]) {
+  switch (node.values[ENTITY]) {
     case 'faculty': return payloadString(node, 'dean')
     case 'department': return [code, parent?.name].filter(Boolean).join(' · ')
     default: return [code, credits !== undefined ? `${credits} cr` : undefined, payloadString(node, 'term')].filter(Boolean).join(' · ')
@@ -248,7 +248,7 @@ function contextLine(node: GraphNode, parent: GraphNode | undefined): string | u
  * the library's walk.
  */
 function highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight {
-  if (active.dimensions[ENTITY] !== 'department') return base
+  if (active.values[ENTITY] !== 'department') return base
   const nodes = new Set(base.nodes)
   for (const n of graph.visibleNodes) {
     if (n.parentId === active.id) nodes.add(n.id)
@@ -264,7 +264,7 @@ function highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): H
 export const spec: TaxonomySpec = {
   styleAxis: ENTITY,
   styleLabel: 'Entity',
-  values: VALUES,
+  styles: VALUES,
   filterAxes: FILTERS,
   edgeTypes: EDGE_TYPES,
   classifyEdge,

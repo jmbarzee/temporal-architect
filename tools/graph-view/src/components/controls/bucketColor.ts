@@ -7,13 +7,13 @@
 // yet), and says so with one neutral tone rather than warning its way to the
 // fallback style once per bucket.
 
-import type { DimensionalMapping } from '../../graph/axis'
+import type { AxisMapping } from '../../graph/axis'
 import { isIdentityMapping } from '../../graph/axis'
 import type { Taxonomy } from '../../graph/taxonomy'
 
 export const NEUTRAL_BUCKET_COLOR = 'var(--gv-color-text-muted)'
 
-export function bucketColor(taxonomy: Taxonomy, mapping: DimensionalMapping, bucketId: string): string {
-  const styled = mapping.dimension === taxonomy.styleAxis() && isIdentityMapping(mapping)
+export function bucketColor(taxonomy: Taxonomy, mapping: AxisMapping, bucketId: string): string {
+  const styled = mapping.axis === taxonomy.styleAxis() && isIdentityMapping(mapping)
   return styled ? `var(${taxonomy.colorVar(bucketId)})` : NEUTRAL_BUCKET_COLOR
 }

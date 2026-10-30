@@ -15,6 +15,7 @@
 import React from 'react'
 import type { Taxonomy } from '../../graph/taxonomy'
 
+/** The taxonomy for every view and bar below the provider, so a host passes it once. */
 export const TaxonomyContext = React.createContext<Taxonomy | null>(null)
 
 /**

@@ -287,447 +287,447 @@
       "nodes": [
         {
           "copyKey": "activity:AlertComplianceViolation",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination",
           "name": "AlertComplianceViolation",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ApplyDocumentReview",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination",
           "name": "ApplyDocumentReview",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:AuthenticateResume",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination",
           "name": "AuthenticateResume",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:CalculateDTIAndLTV",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination",
           "name": "CalculateDTIAndLTV",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:CheckDocumentExpiration",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination",
           "name": "CheckDocumentExpiration",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:DeliverDisclosure",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination",
           "name": "DeliverDisclosure",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:EvaluateDocumentCompleteness",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination",
           "name": "EvaluateDocumentCompleteness",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:EvaluateEligibility",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination",
           "name": "EvaluateEligibility",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:GenerateLoanEstimate",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination",
           "name": "GenerateLoanEstimate",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:HandoffToClosing",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination",
           "name": "HandoffToClosing",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:LoadApplicationState",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination",
           "name": "LoadApplicationState",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:LockRate",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:LockRate/worker:loanWorker/namespace:loanOrigination",
           "name": "LockRate",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:MarkConditionCleared",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination",
           "name": "MarkConditionCleared",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:NotifyBorrowerMilestone",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination",
           "name": "NotifyBorrowerMilestone",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:NotifyConditionsAssigned",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination",
           "name": "NotifyConditionsAssigned",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:PullCredit",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:PullCredit/worker:loanWorker/namespace:loanOrigination",
           "name": "PullCredit",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:RecordAuditEvent",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination",
           "name": "RecordAuditEvent",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:RecordCondition",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination",
           "name": "RecordCondition",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:RunAutomatedUnderwriting",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination",
           "name": "RunAutomatedUnderwriting",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:SaveApplicationStep",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination",
           "name": "SaveApplicationStep",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:SendAdverseActionNotice",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination",
           "name": "SendAdverseActionNotice",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:SendConditionReminder",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination",
           "name": "SendConditionReminder",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:SendDocumentRefreshAlert",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination",
           "name": "SendDocumentRefreshAlert",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:SendLockExpirationAlert",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination",
           "name": "SendLockExpirationAlert",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:SendNudgeEmail",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination",
           "name": "SendNudgeEmail",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:StoreDocument",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination",
           "name": "StoreDocument",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ValidateConditionClearance",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateConditionClearance",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ValidateDocument",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateDocument",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "activity:ValidateStep",
-          "dimensions": {
-            "defType": "activityDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "activity"
-          },
           "id": "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateStep",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
-        },
-        {
-          "copyKey": "activity:VerifyTridCompliance",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "activity"
-          },
+          }
+        },
+        {
+          "copyKey": "activity:VerifyTridCompliance",
           "id": "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination",
           "name": "VerifyTridCompliance",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "activityDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          }
         },
         {
           "copyKey": "namespace:loanOrigination",
-          "dimensions": {
+          "id": "namespace:loanOrigination",
+          "name": "loanOrigination",
+          "ring": null,
+          "values": {
             "defType": "namespaceDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "namespace"
-          },
-          "id": "namespace:loanOrigination",
-          "name": "loanOrigination",
-          "ring": null
+          }
         },
         {
           "copyKey": "worker:loanWorker",
-          "dimensions": {
-            "defType": "workerDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "worker"
-          },
           "id": "worker:loanWorker/namespace:loanOrigination",
           "name": "loanWorker",
           "parentId": "namespace:loanOrigination",
           "queue": "loan-origination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workerDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "worker"
+          }
         },
         {
           "copyKey": "workflow:ConditionLoop",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
           "name": "ConditionLoop",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:DocumentCollection",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination",
           "name": "DocumentCollection",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:IntakeWizard",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination",
           "name": "IntakeWizard",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          }
         },
         {
           "copyKey": "workflow:LoanLifecycle",
-          "dimensions": {
-            "defType": "workflowDef",
-            "sourceFile": "resumable-loan-application.twf",
-            "temporalType": "workflow"
-          },
           "id": "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination",
           "name": "LoanLifecycle",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
-        },
-        {
-          "copyKey": "workflow:RateLockMonitor",
-          "dimensions": {
+          "ring": null,
+          "values": {
             "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
             "temporalType": "workflow"
-          },
+          }
+        },
+        {
+          "copyKey": "workflow:RateLockMonitor",
           "id": "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination",
           "name": "RateLockMonitor",
           "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "ring": null
+          "ring": null,
+          "values": {
+            "defType": "workflowDef",
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          }
         }
       ],
       "sourceFiles": [

@@ -1,11 +1,11 @@
 # @temporal-architect/graph-view
 
-A force-directed graph view with composable dimensions, as a React component.
+A force-directed graph view with composable axes, as a React component.
 
-A host declares what its graph is made of — the **dimensions** its nodes carry,
+A host declares what its graph is made of — the **axes** its nodes carry values on,
 the **values** on each, and for the style axis a colour per value — through
 `createTaxonomy(spec)`. It builds a `Graph` of nodes and edges carrying
-dimension maps, and mounts `GraphView`. The view lays the graph out (push and
+their values on those axes, and mounts `GraphView`. The view lays the graph out (push and
 pull on any axis the nodes carry, two layout axes keyed on an axis or a
 computed scalar), filters it on any declared axis, highlights it, and lets the
 user tune the forces — without knowing what any node or edge means. The host's
@@ -41,7 +41,7 @@ import '@temporal-architect/graph-view/styles.css'
 
 const taxonomy = createTaxonomy({
   styleAxis: 'kind',
-  values: [
+  styles: [
     { id: 'team', label: 'Team', icon: '⌂', summaryKind: 'children',
       color: { light: { fill: '#475569', border: '#1E293B' }, dark: { fill: '#94A3B8', border: '#475569' } }, size: { r: 18 } },
     { id: 'service', label: 'Service', icon: '◆',
@@ -55,9 +55,9 @@ const taxonomy = createTaxonomy({
 })
 
 const nodes: GraphNode[] = [
-  { id: 'payments', name: 'Payments', dimensions: { kind: 'team' } },
-  { id: 'checkout', name: 'Checkout', dimensions: { kind: 'service' }, parentId: 'payments' },
-  { id: 'ledger', name: 'Ledger', dimensions: { kind: 'service' }, parentId: 'payments' },
+  { id: 'payments', name: 'Payments', values: { kind: 'team' } },
+  { id: 'checkout', name: 'Checkout', values: { kind: 'service' }, parentId: 'payments' },
+  { id: 'ledger', name: 'Ledger', values: { kind: 'service' }, parentId: 'payments' },
 ]
 const graph: Graph = {
   nodes,
@@ -89,7 +89,8 @@ derive a variant, build one from the spec (`createTaxonomy({ ...spec, … })`),
 never by spreading the built object.
 
 - **The style axis and its values.** `styleAxis` names the axis every
-  node is styled on; `values` lists its values, top of the hierarchy first.
+  node is styled on; `styles` lists its values' styles, top of the hierarchy
+  first.
   A `NodeStyle` needs its `id`, `label` and `color` (fill and border, per
   theme: hex, `rgb()` or `hsl()`); everything else has a default, and a
   value that restates one says nothing:
@@ -115,7 +116,7 @@ never by spreading the built object.
   springs, `tooltip` to the label. An edge is classified once, on the style
   values of its original endpoints: the declared type of its relation whose
   endpoints match in either orientation and whose `match` — values the edge
-  itself must carry on the host's edge axes — its `dimensions` satisfy. Two
+  itself must carry on the host's edge axes — its `values` satisfy. Two
   types on one pair are told apart by `match` (a call and a signal between
   two services, by the edge's `kind`), with the type that declares none as
   the fallback, or by their declared orientation: a satisfied `match` beats
@@ -159,7 +160,7 @@ never by spreading the built object.
 ## The graph
 
 `Graph` is `nodes` (an array, in layout order; the view indexes it, and
-`nodesById` does the same for a host) and `edges`. Both carry `dimensions`, a map
+`nodesById` does the same for a host) and `edges`. Both carry `values`, a map
 from axis to value, and an opaque `payload` the view never reads
 (`payloadString` and `payloadNumber` read it for you). Ids are opaque: the
 engine compares them and never parses one.
@@ -173,7 +174,7 @@ engine compares them and never parses one.
   containment edge from a node to its `parentId` is derived; one a host lists
   itself, to any node, is drawn dashed and sprung but never walked as the
   parent, and `validateGraph` names one that contradicts `parentId`. A host
-  adds axes of its own to edges and nodes alike through `dimensions`; any
+  adds axes of its own to edges and nodes alike through `values`; any
   axis the nodes carry can be pushed, pulled and laid out on.
 - **Adornments.** A node may carry `badges` (short texts drawn as chips above
   it) and a `ring` (`dashed`, for a node set apart).
@@ -200,7 +201,7 @@ Everything else is optional.
 - **State.** The filter, the locks, the axes shown, the search control
   (`{ query, active }`) and the theme choice each follow the React convention:
   pass the value and its callback to control it, neither to let the view keep
-  it, the callback alone to be told. `defaultFilter(taxonomy, graph)` is the
+  it, the callback alone to be told. `initialFilter(taxonomy, graph)` is the
   filter the view starts from — an `initialSelection` that splits a chip is
   snapped to the whole chip, with a warning: a host that controls the filter
   seeds its state with it, and a host that leaves the filter to the view but
@@ -224,14 +225,16 @@ Everything else is optional.
   `--gv-toolbar-height`, and handed the groups as drawn and `emphasize`;
   `GroupLegend` is one — items, the active groups, a toggle and the
   emphasis), a `nodeAction` for the hover box (`{ label, onSelect }`, or a
-  function of the node answering one or null), `controls`
-  and `themeToggle` to hide the panel and the theme button, `chrome` to turn
-  off the search control, the lock toggles (off until the host controls
-  `locks` with `onLocksChange`), the Fit / Play / count cluster, the
-  diagnostics list, the
+  function of the node answering one or null), `chrome` to turn
+  off the control panel, the theme button, the search control, the lock
+  toggles (off until the host controls `locks` with `onLocksChange`), the
+  Fit / theme / Play / count cluster (which takes the theme button with it),
+  the diagnostics list, the
   shortcuts panel, the hover box's direction line or the double-click zoom,
   `searchTitle` and `searchPlaceholder` for the host's own words,
-  `className`, `style`, and `positions` (a kept layout).
+  `className`, `style`, and `defaultPositions` (a kept layout, read whenever
+  the simulation is built; a node the live layout already holds keeps its
+  place).
 - **Outputs.** `onSelectionChange(node | null)`, `onNodeActivate(node)` on a
   double-click, `onHover(node | null)`, `onThemeResolved(theme)`,
   `onDiagnostics(diagnostics)` whenever the graph's defects are recomputed
@@ -246,6 +249,18 @@ Everything else is optional.
   revealed); `select(id | null)` sets or clears the selection; `fit()` frames
   the visible set; `getPositions()` and `setPositions()` carry a layout out
   and back in.
+- **What to know.** The view's own filter re-seeds on a graph change for
+  every axis still at the selection it opened with — unless the host gave
+  `defaultFilter` — and `onFilterChange` hears it. `onHover(null)` arrives 150 ms after the pointer leaves, so a
+  tooltip can be reached. Removing an axis in the bar resets its selection
+  to "match everything" and fires `onFilterChange` before `onAxesChange`.
+  Two declared types on one pair with no `match` to tell them apart are
+  refused; with `classifyEdge` given, its answer stands. Derived containment
+  edges are `in:<id>` (numbered on a collision) and reach `highlight` and
+  `collapse`. An error diagnostic drops the edge, or the later node of a
+  duplicated id, or clears the `parentId`, it names. The search dropdown lists visible matches; hidden ones badge the
+  chip hiding them. The pane's theme observer watches every `data-theme` in
+  the document.
 - **Keyboard.** `keyboard` scopes the shortcuts: `pane` (the default — the
   focusable root handles the keys that reach it, so a page keeps Tab and
   Space for its own controls), `global` (the window — a page that is the
@@ -277,7 +292,7 @@ export function TwoViews({ taxonomy, graph }: { taxonomy: Taxonomy; graph: Graph
   // A focus into either view widens the destination's filter through the hook;
   // the graph view also gets the request, which centres on and selects the node.
   const show = (target: View, node: GraphNode) => {
-    linked.switchTo(target, { kind: 'focus', target: { values: node.dimensions } }, view)
+    linked.switchTo(target, { kind: 'focus', target: { values: node.values } }, view)
     if (target === 'graph') setFocus({ id: node.id, key: ++seq.current })
     setView(target)
   }
@@ -300,7 +315,8 @@ view's filter and `linked.updateFilters(fn)` every view's (a stale value
 pruned when the data changes); `linked.state` is everything, for a host that
 persists it. The bar
 carries its own theme and scheme (`theme`, default `system`), so it needs no
-wrapper; give it the `graph` (or the `values` per axis) and, if the host reads
+wrapper; give it the `graph` (or the `values` per axis — `valuesOn(records,
+axis)` reads them off any subjects carrying `values`) and, if the host reads
 its own data, the `counts`. The lock toggles appear only when `locks` is
 controlled with its callback — `useLinkedViews` does — or `chrome.locks` asks.
 

@@ -46,7 +46,7 @@ which is worth noticing rather than assuming.
 | `types/parser-graph.ts` | shim | 3 | **7** files |
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
 | `verify/contract-probes.ts` | neither | 22 | `verify/static-golden.ts` |
-| `verify/defaults-probes.ts` | neither | 19 | `verify/static-golden.ts` |
+| `verify/defaults-probes.ts` | neither | 20 | `verify/static-golden.ts` |
 | `verify/filter-states.ts` | neither | 14 | **7** files |
 | `verify/fixtures.ts` | neither | 10 | **6** files |
 | `verify/force-probes.ts` | neither | 28 | `verify/static-golden.ts` |
@@ -92,7 +92,7 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/graph-view/useHighlight.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useIsomorphicLayoutEffect.ts` | manifest |  | `../graph-view/components/GraphView.tsx`, `../graph-view/components/graph-view/useTheme.ts` |
 | `../graph-view/components/graph-view/useLinkedViews.ts` | manifest |  | `../graph-view/index.ts` |
-| `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
+| `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
 | `../graph-view/components/graph-view/useSimulation.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulationLoop.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useTaxonomy.ts` | manifest |  | **10** files |

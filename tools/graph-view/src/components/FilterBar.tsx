@@ -8,7 +8,7 @@
 // a hidden-match badge) comes in as `searchExtra`.
 
 import { TaxonomyContext } from './graph-view/useTaxonomy'
-import type { AxisValue } from '../graph/axis'
+import type { AxisId, AxisValue } from '../graph/axis'
 import { countsOn, valuesOn } from '../graph/axis'
 import type { Graph } from '../graph/model'
 import type { Taxonomy } from '../graph/taxonomy'
@@ -35,7 +35,7 @@ import React from 'react'
 import './FilterBar.css'
 import type { ResolvedAxisDescriptor } from '../graph/axis'
 import { filterStatesEqual, listEqual, lockedFor, locksEqual, withLock, withSelection } from '../filter/types'
-import type { FilterState, AxisLocks, FilterDimension } from '../filter/types'
+import type { FilterState, AxisLocks } from '../filter/types'
 import { toggleGroup } from '../filter/toggle'
 import { LockToggle } from './LockToggle'
 import { SearchIcon } from './icons/SearchIcon'
@@ -45,12 +45,6 @@ const NO_LOCKS: ReadonlySet<string> = new Set()
 /** The search control's state: the query, and whether the control is open. */
 export interface SearchState { query: string; active: boolean }
 
-/**
- * The bar's inputs. The filter and its callback are the one requirement; the
- * values each axis offers come from `values` or from `graph`, and everything
- * else the pane supplies for its own bar has a default here, so a host's
- * second view renders the same bar without rebuilding the pane's internals.
- */
 /** Which of the bar's own controls are offered: the search on by default, the lock toggles when the host controls `locks` or asks here. */
 export interface FilterBarChrome {
   /** The search control. */
@@ -59,7 +53,27 @@ export interface FilterBarChrome {
   locks?: boolean
 }
 
-export interface FilterBarProps {
+/**
+ * The bar's inputs. The filter and its callback are the one requirement; the
+ * values each axis offers come from `values` or from `graph` — one of the
+ * two — and everything else the pane supplies for its own bar has a default
+ * here, so a host's second view renders the same bar without rebuilding the
+ * pane's internals.
+ */
+export type FilterBarProps = FilterBarBaseProps & (
+  | {
+      /** Values available per axis — the one source every axis's chips are built from; an axis with no entry renders an empty, disabled section rather than vanishing. */
+      values: ReadonlyMap<string, readonly string[]>
+      graph?: undefined
+    }
+  | {
+      /** The graph the bar filters: the values each axis offers are read off its nodes. */
+      graph: Graph
+      values?: undefined
+    }
+)
+
+interface FilterBarBaseProps {
   /** The taxonomy, when not supplied through `TaxonomyContext`. */
   taxonomy?: Taxonomy
   /** Which controls are offered. Default: the search; the lock toggles when the host controls `locks` with `onLocksChange`. */
@@ -73,22 +87,13 @@ export interface FilterBarProps {
   theme?: ThemeChoice
   /** Chip badge counts per axis and value, read by the host off its own data. Absent: the graph's entity counts (the copies of one `copyKey` once) when `graph` is given, else no badges. */
   counts?: ReadonlyMap<string, ReadonlyMap<string, number>>
-  /**
-   * Values available per axis — the one source every axis's chips are built
-   * from. Absent, read off `graph`; one of the two is required. An axis with
-   * no entry renders an empty, explicitly-disabled section rather than
-   * vanishing.
-   */
-  values?: ReadonlyMap<string, readonly string[]>
-  /** The graph the bar filters, when `values` is not read elsewhere. */
-  graph?: Graph
   filter: FilterState
   onFilterChange: (next: FilterState) => void
   /** Which axes are locked. Controlling it with `onLocksChange` shows the lock toggles; a value without its callback is read-only and shows none unless `chrome.locks` asks. */
   locks?: AxisLocks
   onLocksChange?: (next: AxisLocks) => void
   /** Axes a focus just overrode the lock of. The bar flashes them once, for 600 ms, whenever the value changes; the host need not clear it. */
-  overriddenLocks?: ReadonlySet<FilterDimension>
+  overriddenLocks?: ReadonlySet<AxisId>
   /** The values that just turned on, per axis — drives the chip flash. Default: tracked here from the filter's changes. */
   recentlyChanged?: RecentlyChanged
   /** The search control. Default: the bar's own, closed and empty. */
@@ -118,6 +123,12 @@ const LOOKS = {
   tag: { sectionClass: 'gv-tag-section', rowClass: 'gv-tag-row', chipClass: 'gv-tag', modifierPrefix: '', activeClass: 'selected', iconClass: 'gv-tag-icon', labelClass: 'gv-tag-label' },
 } as const
 
+/**
+ * The shared filter bar: a section of chips per axis shown with its lock and
+ * remove controls, the add-axis control, the search control, and the host's
+ * findings under them. The pane renders it for itself; a host renders it in
+ * a second view with the same props, through `useLinkedViews`.
+ */
 export function FilterBar({
   taxonomy: taxonomyProp,
   chrome,
@@ -146,7 +157,6 @@ export function FilterBar({
   const fromContext = React.useContext(TaxonomyContext)
   const taxonomy = taxonomyProp ?? fromContext
   if (!taxonomy) throw new Error('FilterBar has no taxonomy: pass `taxonomy`, or mount it inside <TaxonomyContext.Provider value={…}>.')
-  if (!hostValues && !graph) throw new Error('FilterBar needs the values each axis offers: pass `values`, or the `graph` to read them off.')
   const undeclaredTints = React.useRef(new Set<string>())
   // The filter, locks and axes compared by content, as the pane compares
   // them: a host rebuilding one each render changes nothing here.
@@ -196,7 +206,7 @@ export function FilterBar({
   const recentlyChanged = hostRecentlyChanged ?? tracked
   // Values for every declared axis, not only the shown ones: an axis the user
   // removed is offered back by "+" only if its values are known.
-  const valuesByDimension = React.useMemo(
+  const valuesByAxis = React.useMemo(
     () => hostValues ?? new Map([...new Set([...taxonomy.filterAxes.map(d => d.id), ...axes])].map(d => [d, graph ? valuesOn(graph.nodes, d) : []])),
     [hostValues, graph, axes, taxonomy],
   )
@@ -210,17 +220,17 @@ export function FilterBar({
   // wears. Every axis renders, declared or not — an axis that is filtering
   // must be visible and removable, and vanishing is what once made a third
   // axis dangerous rather than merely unsupported.
-  const lookFor = (dimension: string, descriptor?: ResolvedAxisDescriptor) => ({
-    values: [...(valuesByDimension.get(dimension) ?? [])],
-    counts: counts?.get(dimension),
-    hidden: hiddenMatches?.get(dimension),
+  const lookFor = (axis: string, descriptor?: ResolvedAxisDescriptor) => ({
+    values: [...(valuesByAxis.get(axis) ?? [])],
+    counts: counts?.get(axis),
+    hidden: hiddenMatches?.get(axis),
     ...LOOKS[descriptor?.presentation ?? 'chip'],
   })
 
-  // Axes the host declares that the axes is not already showing.
+  // Axes the host declares that the bar is not already showing.
   const available = taxonomy.filterAxes
     .map(d => d.id)
-    .filter(id => !axes.includes(id) && (valuesByDimension.get(id)?.length ?? 0) > 0)
+    .filter(id => !axes.includes(id) && (valuesByAxis.get(id)?.length ?? 0) > 0)
   // The menu is for a choice: with fewer than two to choose from it closes,
   // so a stale open flag cannot show it again on a later render.
   React.useEffect(() => { if (available.length < 2) setAddOpen(false) }, [available.length])
@@ -236,10 +246,10 @@ export function FilterBar({
 
   return (
     <div className={`gv-canvas-header${refreshing ? ' refresh-flash' : ''}`} ref={rootRef} data-theme={theme} style={schemeStyle}>
-      {axes.map(dimension => {
-        const descriptor = taxonomy.axisFor(dimension)
+      {axes.map(axis => {
+        const descriptor = taxonomy.axisFor(axis)
         if (!descriptor) return null
-        const look = lookFor(dimension, descriptor)
+        const look = lookFor(axis, descriptor)
         // A chip none of whose values the data presents is not offered, whoever built it.
         const present = new Set(look.values)
         const chips = descriptor.chipsFor(look.values).filter(c => c.values.some(v => present.has(v)))
@@ -249,26 +259,26 @@ export function FilterBar({
         // unsupported.
         const empty = chips.length === 0
 
-        const selection = selectionFor(filter, dimension)
-        const locked = lockedFor(locks, dimension)
+        const selection = selectionFor(filter, axis)
+        const locked = lockedFor(locks, axis)
         // An `emptyMeans: 'all'` axis with nothing selected is not "off" — it is
         // matching everything, and the chips say so rather than reading as a
         // filter that hides the lot.
         const allIncluded = selection.size === 0 && descriptor.emptyMeans === 'all'
 
         return (
-          <React.Fragment key={dimension}>
+          <React.Fragment key={axis}>
             <div className={`${look.sectionClass}${locked ? ' section-pinned' : ''}`}>
               <div className={look.rowClass}>
                 <span className="gv-header-axis-label">{descriptor.label}</span>
                 {empty && (
-                  <span className="gv-header-chain-empty" title={`${descriptor.label} has no values in this view`}>
+                  <span className="gv-header-axis-empty" title={`${descriptor.label} has no values in this view`}>
                     no {descriptor.label.toLowerCase()} values
                   </span>
                 )}
                 {chips.map(chip => {
                   const isActive = chip.values.some(v => selection.has(v))
-                  const isChanged = chip.values.some(v => recentlyChanged.get(dimension)?.has(v))
+                  const isChanged = chip.values.some(v => recentlyChanged.get(axis)?.has(v))
                   const hiddenCount = chip.values.reduce((sum, v) => sum + (look.hidden?.get(v) ?? 0), 0)
                   const count = look.counts === undefined ? undefined : chip.values.reduce((sum, v) => sum + (look.counts!.get(v) ?? 0), 0)
                   const cls = [
@@ -282,7 +292,7 @@ export function FilterBar({
                       key={chip.id}
                       className={cls}
                       style={chip.tint ? ({ ['--gv-chip-tint' as string]: `var(${taxonomy.colorVar(tintOf(chip.id, chip.tint, taxonomy, undeclaredTints.current))})` } as React.CSSProperties) : undefined}
-                      onClick={() => onFilterChange(toggleGroup(filter, dimension, chip.values))}
+                      onClick={() => onFilterChange(toggleGroup(filter, axis, chip.values))}
                       title={chip.tooltip ?? (isActive ? `Hide ${chip.label.toLowerCase()}` : `Show ${chip.label.toLowerCase()}`)}
                     >
                       {chip.icon && <span className={look.iconClass}>{chip.icon}</span>}
@@ -300,14 +310,14 @@ export function FilterBar({
               {showLocks && (
                 <LockToggle
                   locked={locked}
-                  onClick={() => setLocks(withLock(locks, dimension, !locked))}
-                  flashing={flashing.has(dimension)}
+                  onClick={() => setLocks(withLock(locks, axis, !locked))}
+                  flashing={flashing.has(axis)}
                   label={descriptor.label}
                 />
               )}
               {axesEditable && (
                 <button
-                  className="gv-header-chain-remove"
+                  className="gv-header-remove"
                   onClick={() => {
                     // Removing an axis also stops it filtering. Keeping the
                     // selection would leave the view filtered by something with
@@ -322,12 +332,12 @@ export function FilterBar({
                     // one and the full value set for the other.
                     onFilterChange(withSelection(
                       filter,
-                      dimension,
+                      axis,
                       descriptor.emptyMeans === 'all'
                         ? new Set<string>()
                         : new Set(chips.flatMap(c => [...c.values])),
                     ))
-                    setAxes(axes.filter(d => d !== dimension))
+                    setAxes(axes.filter(d => d !== axis))
                   }}
                   title={`Remove the ${descriptor.label} filter`}
                 >×</button>
@@ -339,18 +349,18 @@ export function FilterBar({
       })}
 
       {axesEditable && available.length > 0 && (
-        <div className="gv-header-chain-add">
+        <div className="gv-header-add">
           <button
-            className="gv-header-chain-add-button"
+            className="gv-header-add-button"
             onClick={() => (available.length === 1 ? setAxes([...axes, available[0]!]) : setAddOpen(open => !open))}
             title={available.length === 1 ? `Add the ${labelOf(available[0]!)} filter` : 'Add a filter'}
             aria-haspopup={available.length > 1 ? 'menu' : undefined}
             aria-expanded={available.length > 1 ? addOpen : undefined}
           >+</button>
           {addOpen && available.length > 1 && (
-            <div className="gv-header-chain-menu" role="menu" onKeyDown={e => { if (e.key === 'Escape') setAddOpen(false) }}>
+            <div className="gv-header-add-menu" role="menu" onKeyDown={e => { if (e.key === 'Escape') setAddOpen(false) }}>
               {available.map(id => (
-                <button key={id} role="menuitem" className="gv-header-chain-menu-item" onClick={() => { setAxes([...axes, id]); setAddOpen(false) }}>
+                <button key={id} role="menuitem" className="gv-header-add-menu-item" onClick={() => { setAxes([...axes, id]); setAddOpen(false) }}>
                   {labelOf(id)}
                 </button>
               ))}

@@ -254,6 +254,7 @@ export function typicalSpringOf(types: readonly EdgeType[]): SpringPhysics {
   return n === 0 ? { ...MIDDLING_SPRING } : { strength: strength / n, distance: distance / n }
 }
 
+/** A declared edge type with its defaults filled in: the typical spring, the neutral stroke field by field, the label as tooltip. */
 export function resolveEdgeType(type: EdgeType, typical: SpringPhysics): ResolvedEdgeType {
   return {
     ...type,

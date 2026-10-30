@@ -29,7 +29,7 @@ export function buildGraph(catalog: Catalog): Graph {
       id: `${req.kind}:${from}->${to}`,
       sourceId: from,
       targetId: to,
-      dimensions: { [REQUIREMENT]: req.kind },
+      values: { [REQUIREMENT]: req.kind },
     })
   }
 
@@ -38,7 +38,7 @@ export function buildGraph(catalog: Catalog): Graph {
       id: `faculty:${f.id}`,
       name: f.name,
       copyKey: `faculty:${f.id}`,
-      dimensions: { [ENTITY]: 'faculty' },
+      values: { [ENTITY]: 'faculty' },
       payload: { dean: f.dean },
     })
   }
@@ -48,7 +48,7 @@ export function buildGraph(catalog: Catalog): Graph {
       name: d.name,
       copyKey: `dept:${d.subject}`,
       parentId: `faculty:${d.faculty}`,
-      dimensions: { [ENTITY]: 'department' },
+      values: { [ENTITY]: 'department' },
       payload: { code: d.subject },
     })
   }
@@ -61,7 +61,7 @@ export function buildGraph(catalog: Catalog): Graph {
         name: c.title,
         copyKey: `course:${c.id}`,
         parentId: dept,
-        dimensions: { [ENTITY]: 'course', [CAMPUS]: c.campus },
+        values: { [ENTITY]: 'course', [CAMPUS]: c.campus },
         payload: {
           code,
           credits: c.credits,
@@ -81,7 +81,7 @@ export function buildGraph(catalog: Catalog): Graph {
         name: lab.title,
         copyKey: `lab:${lab.code}`,
         parentId: `course:${c.listings[0]}`,
-        dimensions: { [ENTITY]: 'lab', [CAMPUS]: c.campus },
+        values: { [ENTITY]: 'lab', [CAMPUS]: c.campus },
         payload: {
           code: lab.code,
           credits: lab.credits,

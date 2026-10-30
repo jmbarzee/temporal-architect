@@ -47,11 +47,11 @@ const axis = (id: string, empty: 'all' | 'none'): AxisDescriptor => ({ id, label
  */
 const SPEC: TaxonomySpec = {
   styleAxis: KIND, styleLabel: 'Kind',
-  values: [style('box', 'Box', 'Bx', 0), style('leaf', 'Leaf', 'Lf', 1)],
+  styles: [style('box', 'Box', 'Bx', 0), style('leaf', 'Leaf', 'Lf', 1)],
   filterAxes: [axis(KIND, 'none'), axis(ZONE, 'all')],
   edgeTypes: [edgeType('contains', 'containment', [4, 4]), edgeType('calls', 'dependency', []), edgeType('signals', 'dependency', [2, 2])],
   classifyEdge: edge => {
-    const kind = edge.dimensions?.[EDGE_KIND]
+    const kind = edge.values?.[EDGE_KIND]
     if (kind === 'mismatch') return 'calls'            // a containment edge answered as a dependency type
     if (kind === 'bogus') return 'nonesuch'            // an id the table does not declare: a warning, and the edge draws neutral
     if (relationOf(edge) === 'containment') return 'contains'
@@ -62,26 +62,26 @@ const SPEC: TaxonomySpec = {
 }
 const ONTOLOGY = createTaxonomy(SPEC)
 /** The same taxonomy, preferring a signal over a call when two graduated edges collide. */
-const PREFER_SIGNALS = createTaxonomy({ ...SPEC, collapse: (kept, candidate) => candidate.dimensions?.[EDGE_KIND] === 'signals' ? candidate : kept })
+const PREFER_SIGNALS = createTaxonomy({ ...SPEC, collapse: (kept, candidate) => candidate.values?.[EDGE_KIND] === 'signals' ? candidate : kept })
 
 function node(id: string, kind: string, zone: string, parentId?: string): SimNode {
   return {
-    id, name: id, dimensions: { [KIND]: kind, [ZONE]: zone }, ring: parentId === undefined && kind !== 'box' ? 'dashed' : undefined, copyKey: id,
+    id, name: id, values: { [KIND]: kind, [ZONE]: zone }, ring: parentId === undefined && kind !== 'box' ? 'dashed' : undefined, copyKey: id,
     ...(parentId !== undefined ? { parentId } : {}),
     x: 0, y: 0, vx: 0, vy: 0, pinned: false,
   }
 }
 function dep(id: string, sourceId: string, targetId: string, kind: 'calls' | 'signals' | 'bogus' | 'mismatch'): GraphEdge {
-  return { id, sourceId, targetId, relation: 'dependency', dimensions: { [EDGE_KIND]: kind } }
+  return { id, sourceId, targetId, relation: 'dependency', values: { [EDGE_KIND]: kind } }
 }
 function contains(id: string, child: string, box: string, kind?: 'mismatch'): GraphEdge {
-  return { id, sourceId: child, targetId: box, relation: 'containment', ...(kind ? { dimensions: { [EDGE_KIND]: kind } } : {}) }
+  return { id, sourceId: child, targetId: box, relation: 'containment', ...(kind ? { values: { [EDGE_KIND]: kind } } : {}) }
 }
 const source = (nodes: SimNode[], edges: GraphEdge[]) => {
   const byId = new Map(nodes.map(n => [n.id, n]))
   return { nodes, edges, getNode: (id: string) => byId.get(id) }
 }
-const all = (nodes: SimNode[]) => new Map([[KIND, new Set(nodes.map(n => n.dimensions[KIND]))], [ZONE, new Set<string>()]])
+const all = (nodes: SimNode[]) => new Map([[KIND, new Set(nodes.map(n => n.values[KIND]))], [ZONE, new Set<string>()]])
 const line = (e: GraphEdge) => `${e.id}: ${e.sourceId} -> ${e.targetId}`
 
 // Two boxes; two leaves in the first, one in the second; the first box's

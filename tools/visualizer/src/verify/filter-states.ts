@@ -40,7 +40,7 @@ export const ALL_TYPES_STATE = 'types:all'
 
 /**
  * File states for one fixture: no file filter (which means *all* files — the
- * inverse of the type dimension), each file alone, and, when there is more than
+ * inverse of the type axis), each file alone, and, when there is more than
  * one, every file at once.
  */
 export function fileStates(allFiles: string[]): { name: string; selectedFiles: string[] }[] {

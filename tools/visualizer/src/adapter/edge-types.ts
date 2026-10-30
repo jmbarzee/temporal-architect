@@ -26,8 +26,8 @@ import type { NodeType } from './node-types'
  * containment edge carries none; it dispatches nothing.
  */
 export const DISPATCH_DIMENSION: AxisId = 'dispatch'
-export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): AxisValue | undefined {
-  return edge.dimensions?.[DISPATCH_DIMENSION]
+export function dispatchOf(edge: Pick<GraphEdge, 'values'>): AxisValue | undefined {
+  return edge.values?.[DISPATCH_DIMENSION]
 }
 // This domain's edge categories. The *shape* is library-owned (`./taxonomy`);
 // what is declared here is the closed set of ids this deployment model has, and
@@ -152,7 +152,7 @@ export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
 // workflow → workflow pair the table's `match` reaches (the parser emits no
 // other; Tier C pins it).
 export function edgeTypeFor(
-  edge: Pick<GraphEdge, 'relation' | 'dimensions'>,
+  edge: Pick<GraphEdge, 'relation' | 'values'>,
   src: AxisValue | undefined,
   tgt: AxisValue | undefined,
   // The declarations' answer, as the library hands it: a string, since the

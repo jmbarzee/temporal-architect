@@ -71,7 +71,7 @@ export function viewProbes(): Json {
     },
     // The focus matcher (D59), on values alone: an empty target, a value the node has, a wrong one, one it lacks, every value of several.
     focus: (() => {
-      const node = { dimensions: { kind: 'k1', file: 'f1' } }
+      const node = { values: { kind: 'k1', file: 'f1' } }
       return {
         valuesOnly: matchesFocus(node, { values: {} }),
         valueMatch: matchesFocus(node, { values: { kind: 'k1' } }),

@@ -6,7 +6,7 @@
 //   - **A node with no source file is always visible**, even when a file filter
 //     is active. Every node in every fixture carries a source file, so the
 //     `node.sourceFile &&` clause in the visibility predicate is dead under test
-//     — and that clause is the absent-value half of the two dimensions' opposite
+//     — and that clause is the absent-value half of the two axes' opposite
 //     empty-set semantics.
 //   - **Splicing through a hidden operation.** Reachable from the fixtures, but
 //     only in one shape; here it is isolated so the rule is legible.
@@ -35,7 +35,7 @@ function n(
 ): SimNode {
   return {
     id,
-    dimensions: dimensionsFor(nodeType, sourceFile),
+    values: dimensionsFor(nodeType, sourceFile),
     name: id,
     ring: parentId === undefined ? 'dashed' : undefined,
     copyKey: `${nodeType}:${id}`,
@@ -76,7 +76,7 @@ const EDGES: GraphEdge[] = [
   { id: 'd0', sourceId: 'caller', targetId: 'op', relation: 'dependency', payload: { nexusEndpoint: 'ep' } },
   { id: 'd1', sourceId: 'op', targetId: 'backing', relation: 'dependency' },
   { id: 'd2', sourceId: 'caller', targetId: 'act', relation: 'dependency' },
-  { id: 'd3', sourceId: 'caller', targetId: 'backing', relation: 'dependency', dimensions: { [DISPATCH_DIMENSION]: 'signalSend' } },
+  { id: 'd3', sourceId: 'caller', targetId: 'backing', relation: 'dependency', values: { [DISPATCH_DIMENSION]: 'signalSend' } },
 ]
 
 const BY_ID = new Map(NODES.map(node => [node.id, node]))
@@ -126,7 +126,7 @@ export function syntheticVisible(): Json {
   return {
     nodes: NODES.map(node => ({
       id: node.id,
-      dimensions: { ...node.dimensions },
+      values: { ...node.values },
       parentId: node.parentId ?? null,
 
       copyKey: copyKeyOf(node),

@@ -16,7 +16,7 @@ The views use a **tab switching** model. One view is active at a time. Each view
 
 A tab bar at the top of the visualizer with two tabs: **Tree** and **Graph**. The active tab is visually highlighted. Clicking a tab switches the active view.
 
-**State on switch:** Each view preserves its scroll/zoom and expand/collapse state across tab switches. Filter state is reconciled per § View Transitions: pinned dimensions hold their values across switches; unpinned dimensions propagate from the source view. Search is shared across views and is not affected by switching.
+**State on switch:** Each view preserves its scroll/zoom and expand/collapse state across tab switches. Filter state is reconciled per § View Transitions: pinned axes hold their values across switches; unpinned axes propagate from the source view. Search is shared across views and is not affected by switching.
 
 
 ## View Transitions
@@ -29,7 +29,7 @@ This vocabulary unifies what would otherwise be separate features ("Show in Grap
 
 | Intent | Trigger | Reconciliation |
 |---|---|---|
-| `manual` | User clicks the destination tab in the tab bar. | For each filter axis the destination shows (its chain): if **pinned** (§ Per-Dimension Pinning), leave it alone; otherwise adopt the source view's current selection. An axis the destination does not show is not reconciled. |
+| `manual` | User clicks the destination tab in the tab bar. | For each filter axis the destination shows: if **pinned** (§ Per-Axis Pinning), leave it alone; otherwise adopt the source view's current selection. An axis the destination does not show is not reconciled. |
 | `focus(target)` | User invokes "Show in [view]" on a definition or node. | Take destination's current filter and **expand** it only as needed to make the target visible — the target names its values per axis (`FocusTarget`), and each axis's focus policy says how: a kind is always added; a file only widens an already-active selection, since adding the first file would narrow from everything to one. Pins do not block expansion — a `focus` transition can override a pin, with a visible cue. The pin state itself is not changed. |
 
 A `mirror` intent (force one view's filters onto the other, ignoring pins) is deliberately **not** exposed: it would let one view silently discard the other's filter state. The name is reserved should an explicit power-user gesture ever justify it.
@@ -45,7 +45,7 @@ It is the only consumer of `ViewTransition`. Switch-trigger code at the call sit
 ### Behavior Sequence (`manual` — Tab Click)
 
 1. **Switch tab** — destination view becomes active.
-2. **Reconcile** — apply the `manual` rule, dimension by dimension.
+2. **Reconcile** — apply the `manual` rule, axis by axis.
 3. No filter-bar animation — the user is now in the destination view and reads the resulting state directly. Animating on every tab click would be visually noisy when the user just wants to see what's there.
 
 ### Behavior Sequence (`focus(target)` — "Show in [View]")
@@ -81,7 +81,7 @@ Filters remain authoritative. `focus(target)` never bypasses filters silently �
 
 ## Unified Filter Bar
 
-Both views display the same filter bar, rendered from the host's declared filter axes (R6, R14, R19) in the view's **chain** — the axes shown, in order, editable per view (R17): each axis is a row of chips with its pin and a `×`, shown on hover, that removes it (and stops it filtering); a `+` appears when a declared axis is not shown and adds the first such axis at the end; an empty chain is the small bar with just `+` and the search (R18). The default chain is the host's declared order, File then Kind, so the `+` is absent by default.
+Both views display the same filter bar, rendered from the host's declared filter axes (R6, R14, R19) as the view's **axes** — those shown, in order, editable per view (R17): each axis is a row of chips with its lock and a `×`, shown on hover, that removes it (and stops it filtering); a `+` appears when a declared axis is not shown and adds it — a menu of them when several are available (D78); with every axis removed the bar is just `+` and the search (R18). The default axes are the host's declared order, File then Kind, so the `+` is absent by default.
 
 ```
 [file chips...]                                          🔒 (×)
@@ -89,11 +89,11 @@ Both views display the same filter bar, rendered from the host's declared filter
 [🔍 search]
 ```
 
-**Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the Tree's file filter narrows to a single file, the host is asked to open that file (`onOpenFile`). For **packaged** designs, a node's [`package`](../../../skills/temporal-architect-design/topics/packages.md) is recoverable from its qualified node-ID (see GRAPH_VIEW.md § Packages and Qualified Identity), so package is available as a **derived grouping lens** parallel to the source-file dimension — no new wire data. Today "package" ≈ the source-file chip; an unpackaged design has a single implicit package, so the lens is inert for it.
+**Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the Tree's file filter narrows to a single file, the host is asked to open that file (`onOpenFile`). For **packaged** designs, a node's [`package`](../../../skills/temporal-architect-design/topics/packages.md) is recoverable from its qualified node-ID (see GRAPH_VIEW.md § Packages and Qualified Identity), so package is available as a **derived grouping lens** parallel to the source-file axis — no new wire data. Today "package" ≈ the source-file chip; an unpackaged design has a single implicit package, so the lens is inert for it.
 
 **Kind chips** — the Kind axis's chips as its descriptor declares them: five chips over seven kinds (Nexus groups the endpoint, service and operation kinds), each tinted with a style value's colour from the taxonomy (`FilterChip.tint`) and carrying its icon. Each chip shows/hides every item of its kinds. Both views render the same chips from the same descriptor — the graph has no separate tier selector.
 
-**Per-axis pin icons** — A small lock icon sits at the trailing edge of each axis's section in each view's filter bar. See § Per-Dimension Pinning below.
+**Per-axis pin icons** — A small lock icon sits at the trailing edge of each axis's section in each view's filter bar. See § Per-Axis Pinning below.
 
 **Name search** — Text input (toggled by `/` or `Ctrl+F`). Case-insensitive substring match against definition/node names. Search is **non-destructive in both views**: it dims non-matching items rather than hiding them. See § Search Scope below.
 
@@ -101,21 +101,21 @@ Both views display the same filter bar, rendered from the host's declared filter
 
 The filter state is a map from axis to its selected values (`FilterState`), held as **per-view state** at the `WorkflowCanvas` level — one copy for the Tree view's filter, one copy for the Graph view's. What an empty selection means (File: everything; Kind: nothing) and what a node with no value on an axis does (File: stays visible) are each axis's declared policy, read in one place for both views. While a view is active, the user freely edits its filter without affecting the other view.
 
-On every view switch, the reconciler (§ View Transitions) decides how the destination view's filter responds to the source view's current state. The default behavior is **propagation**: edits in one view flow to the other so the views stay in sync. The user can opt out of propagation per dimension by **pinning** that dimension on the view they want to hold steady.
+On every view switch, the reconciler (§ View Transitions) decides how the destination view's filter responds to the source view's current state. The default behavior is **propagation**: edits in one view flow to the other so the views stay in sync. The user can opt out of propagation per axis by **pinning** that axis on the view they want to hold steady.
 
 This design satisfies two competing intuitions:
 
 - A casual user flipping between views expects continuity — narrowing files in Tree should narrow them in Graph too. Default propagation gives this for free.
-- A power user maintaining asymmetric configurations (e.g., Tree narrowed to one file as a drilldown; Graph wide as a map) needs the views to diverge. A pin on the dimension to hold steady gives this with one click.
+- A power user maintaining asymmetric configurations (e.g., Tree narrowed to one file as a drilldown; Graph wide as a map) needs the views to diverge. A pin on the axis to hold steady gives this with one click.
 
-### Per-Dimension Pinning
+### Per-Axis Pinning
 
 In the library's API a pinned axis is a **lock** — `locks` / `onLocksChange` on the views and the bar, `AxisLocks`, `lockedFor`, `withLock`, `overriddenLocks` — so that "pinned" names one thing, a node held in place (D76). This document keeps the product's word, pin, for the toggle the user sees.
 
 Each axis section in a view's filter bar carries a **pin icon**. A pin freezes its axis at its current value:
 
-- **Unpinned (default, 🔓):** `manual` transitions adopt the source view's current value for this dimension. Edits propagate automatically.
-- **Pinned (🔒):** `manual` transitions skip this dimension. The view holds its current value regardless of what the other view does.
+- **Unpinned (default, 🔓):** `manual` transitions adopt the source view's current value for this axis. Edits propagate automatically.
+- **Pinned (🔒):** `manual` transitions skip this axis. The view holds its current value regardless of what the other view does.
 - **Unpinning:** resumes propagation from the current values. There is no retroactive catch-up — the next switch is the first opportunity for the pinned view to adopt the source.
 
 `focus(target)` transitions may override a pin to expose the target (per § View Transitions). The pin state itself is not changed by the override; only that one transition bypasses it. The filter bar animation in step 3 of the `focus` sequence visibly flashes the overridden pin so the user sees what was bypassed.
@@ -140,7 +140,7 @@ Because search is non-destructive, badges apply only to matches hidden by *struc
 
 ### Layout Stack
 
-The filter bar is a **single shared component** (`FilterBar`, the library's) rendered by both views — one chip section per axis in the chain, each with its pin and per-chip counts, the search, and a slot at its bottom that the host fills with its **error/warning bars**. The counts and the findings are the host's, handed in: the bar knows the taxonomy's axes and chips, not the AST. Defining it once is what keeps the two views' toolbars in lockstep.
+The filter bar is a **single shared component** (`FilterBar`, the library's) rendered by both views — one chip section per axis shown, each with its lock and per-chip counts, the search, and a slot at its bottom that the host fills with its **error/warning bars**. The counts and the findings are the host's, handed in: the bar knows the taxonomy's axes and chips, not the AST. Defining it once is what keeps the two views' toolbars in lockstep.
 
 The layout stack is:
 
@@ -242,7 +242,7 @@ Definitions and nodes are matched across AST versions **by name**. A definition 
 | State | Behavior |
 |-------|----------|
 | Filter selections (per view) | Preserved. If a filtered file no longer exists, remove it from the selection. |
-| Pin states (per view, per dimension) | Preserved. Pins are a user preference and survive reloads. |
+| Pin states (per view, per axis) | Preserved. Pins are a user preference and survive reloads. |
 | Shared search query | Preserved. Results recomputed against new data. |
 | Selection | Tree: preserved if the item still exists. Graph: cleared on every rebuild ([#180](https://github.com/jmbarzee/temporal-architect/issues/180)). |
 

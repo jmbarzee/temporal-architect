@@ -1,6 +1,6 @@
 import {
   selectionFor,
-  defaultFilter,
+  initialFilter,
   filterFromJSON,
   filterToJSON,
   locksFromJSON,
@@ -176,7 +176,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // default over this graph, narrowed to the focused file when there is one.
   const model = useGraphModel(ast, graphInput)
   const startingFilter = () => withSelection(
-    defaultFilter(DEFAULT_TAXONOMY, model.graph),
+    initialFilter(DEFAULT_TAXONOMY, model.graph),
     SOURCE_FILE_DIMENSION,
     ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
   )
@@ -273,7 +273,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   // Stale file cleanup: when the AST changes, remove any selectedFiles
   // entries that no longer exist in either view. Pins are not touched —
-  // a user who pinned the files dimension still has the dimension pinned
+  // a user who pinned the files axis still has the axis pinned
   // even if its contents shrink to empty.
   React.useEffect(() => {
     const allFiles = new Set<string>()
@@ -289,7 +289,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   // Focused-file auto-tracking (Tree only, preserves prior behavior).
   // When the editor's focused file changes, narrow the Tree to it — but
-  // only when the Tree's files dimension is unpinned, since a pinned
+  // only when the Tree's files axis is unpinned, since a pinned
   // user explicitly opted out of tracking.
   const treeFilePinned = lockedFor(linked.state.tree.locks, SOURCE_FILE_DIMENSION)
   const treeShowsFiles = linked.state.tree.axes.includes(SOURCE_FILE_DIMENSION)
@@ -348,7 +348,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     if (target === 'graph' && transition.kind === 'focus') {
       const { name, values } = transition.target
       const node = model.graph.nodes.find(n =>
-        n.name === name && n.dimensions[DEF_TYPE_DIMENSION] === values[DEF_TYPE_DIMENSION])
+        n.name === name && n.values[DEF_TYPE_DIMENSION] === values[DEF_TYPE_DIMENSION])
       setGraphFocus(node ? { id: node.id, key: ++graphFocusSeq.current } : null)
       setGraphEverShown(true)
       setActiveView('graph')
@@ -386,7 +386,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   const showInTree = React.useCallback((node: GraphNode) => {
     const name = node.name
-    const defType = node.dimensions[DEF_TYPE_DIMENSION] ?? ''
+    const defType = node.values[DEF_TYPE_DIMENSION] ?? ''
     const def = ast.definitions.find(d => d.name === name && d.type === defType)
     switchView('tree', {
       kind: 'focus',

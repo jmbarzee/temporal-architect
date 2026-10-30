@@ -12,14 +12,14 @@ import { selectionFor, withSelection } from './types'
 /** Toggle one value on one axis. */
 export function toggleValue(
   filter: FilterState,
-  dimension: AxisId,
+  axis: AxisId,
   value: string,
 ): FilterState {
-  const current = selectionFor(filter, dimension)
+  const current = selectionFor(filter, axis)
   const next = new Set(current)
   if (next.has(value)) next.delete(value)
   else next.add(value)
-  return withSelection(filter, dimension, next)
+  return withSelection(filter, axis, next)
 }
 
 /**
@@ -31,13 +31,13 @@ export function toggleValue(
  */
 export function toggleGroup(
   filter: FilterState,
-  dimension: AxisId,
+  axis: AxisId,
   values: readonly string[],
 ): FilterState {
-  const current = selectionFor(filter, dimension)
+  const current = selectionFor(filter, axis)
   const anyOn = values.some(v => current.has(v))
   const next = new Set(current)
   if (anyOn) for (const v of values) next.delete(v)
   else for (const v of values) next.add(v)
-  return withSelection(filter, dimension, next)
+  return withSelection(filter, axis, next)
 }

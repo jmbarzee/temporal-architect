@@ -23,7 +23,7 @@
 //      iteration to amplify a last-place difference, rounds identically
 //      everywhere.
 
-import { createDimensionalMapping } from '@temporal-architect/graph-view/graph/axis'
+import { createAxisMapping } from '@temporal-architect/graph-view/graph/axis'
 import {
   applyBandGravity,
   resolvePhysics,
@@ -54,7 +54,7 @@ const PROBE_SEED = 0x5eed
 function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
   return {
     id,
-    dimensions: dimensionsFor(nodeType, undefined),
+    values: dimensionsFor(nodeType, undefined),
     name: id,
     copyKey: `${nodeType}:${id}`,
     x,
@@ -69,7 +69,7 @@ function node(id: string, nodeType: NodeType, x: number, y: number): SimNode {
 // adapter's projection cannot place a type the registry lacks, and would not
 // be asked to — `nodeTypeFromKind` refuses the kind first.
 function undeclaredNode(id: string, x: number, y: number): SimNode {
-  return { ...node(id, 'workflow', x, y), dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'notADeclaredType' } }
+  return { ...node(id, 'workflow', x, y), values: { [TEMPORAL_TYPE_DIMENSION]: 'notADeclaredType' } }
 }
 
 /**
@@ -237,8 +237,8 @@ function nonIdentityParams(): Json {
  */
 function mappedAxisSprings(): Json {
   const params = defaultParamsFor(DEFAULT_TAXONOMY)
-  const mapping = createDimensionalMapping({
-    id: 'probe:two', label: 'two', dimension: TEMPORAL_TYPE_DIMENSION,
+  const mapping = createAxisMapping({
+    id: 'probe:two', label: 'two', axis: TEMPORAL_TYPE_DIMENSION,
     buckets: [
       { id: 'control', label: 'control', abbreviation: 'C', values: ['namespace', 'worker', 'nexusEndpoint'] },
       { id: 'work', label: 'work', abbreviation: 'W', values: ['workflow', 'activity', 'nexusService', 'nexusOperation'] },

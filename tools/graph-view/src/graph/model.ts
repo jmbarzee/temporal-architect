@@ -2,6 +2,7 @@
 
 import type { AxisValues, Relation } from './axis'
 
+/** A node of the host's graph: an opaque id, a name, its values on the host's axes, and an optional parent, copy key, ring, badges and payload. */
 export interface GraphNode {
   /**
    * Stable identity, owned by whoever produced the graph.
@@ -19,7 +20,7 @@ export interface GraphNode {
    * This replaces the single type string a node used to carry. Features elect
    * one axis each and read it from here; nothing composes across axes.
    */
-  dimensions: AxisValues
+  values: AxisValues
   name: string
   /**
    * Metadata the host owns and the library does not interpret.
@@ -107,6 +108,7 @@ export function payloadNumber(
   return typeof value === 'number' ? value : undefined
 }
 
+/** An edge of the host's graph: two node ids, a relation, the edge's own axis values and an opaque payload. */
 export interface GraphEdge {
   id: string
   sourceId: string
@@ -121,7 +123,7 @@ export interface GraphEdge {
    */
   relation?: Relation
   /** Where this edge sits on the host's own axes (a call kind, say) — what an edge type's `match` reads. Absent, none. */
-  dimensions?: AxisValues
+  values?: AxisValues
   /**
    * Metadata the host owns and the library does not interpret — the same
    * contract as `GraphNode.payload`. Per-call-site detail that is not identity
@@ -189,6 +191,7 @@ export interface ReadableGraph {
   getNode(id: string): GraphNode | undefined
 }
 
+/** A host's graph as a reader sees it: its nodes and edges, and a lookup by id built once. */
 export function readableGraph(graph: Graph): ReadableGraph {
   const byId = nodesById(graph.nodes)
   return { nodes: graph.nodes, edges: graph.edges, getNode: id => byId.get(id) }
@@ -227,13 +230,13 @@ export function graphEquals(a: Graph, b: Graph): boolean {
     const x = a.nodes[i], y = b.nodes[i]
     if (x === y) continue
     if (x.id !== y.id || x.name !== y.name || x.parentId !== y.parentId || x.copyKey !== y.copyKey || x.ring !== y.ring || x.payload !== y.payload) return false
-    if (!sameValues(x.dimensions, y.dimensions) || !sameList(x.badges, y.badges)) return false
+    if (!sameValues(x.values, y.values) || !sameList(x.badges, y.badges)) return false
   }
   for (let i = 0; i < a.edges.length; i++) {
     const x = a.edges[i], y = b.edges[i]
     if (x === y) continue
     if (x.id !== y.id || x.sourceId !== y.sourceId || x.targetId !== y.targetId || x.relation !== y.relation || x.payload !== y.payload) return false
-    if (!sameValues(x.dimensions, y.dimensions)) return false
+    if (!sameValues(x.values, y.values)) return false
   }
   return true
 }

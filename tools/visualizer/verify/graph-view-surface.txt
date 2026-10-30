@@ -7,11 +7,11 @@ TaxonomyContext
 copyGroups
 countsOn
 createTaxonomy
-defaultFilter
 filterFromJSON
 filterStatesEqual
 filterToJSON
 hiddenMatchesOf
+initialFilter
 isContainment
 lockedFor
 locksFromJSON
@@ -33,6 +33,7 @@ type AxisDescriptor
 type AxisId
 type AxisLocks
 type AxisNamer
+type AxisSelection
 type AxisValue
 type AxisValues
 type Band
@@ -71,16 +72,15 @@ type NodeGroup
 type NodeStyle
 type Position
 type ReadableGraph
+type RecentlyChanged
 type ReconcileInput
 type ReconcileResult
-type ReheatPolicy
 type Relation
 type ResolvedAxisDescriptor
 type ResolvedEdgeType
 type ResolvedNodeStyle
 type ScalarAxis
 type SearchState
-type Selection
 type SpringPhysics
 type StyleSubject
 type Taxonomy

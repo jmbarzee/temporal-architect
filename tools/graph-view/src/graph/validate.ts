@@ -14,6 +14,13 @@ import type { Graph, GraphEdge, GraphNode } from './model'
 import { nodesById, relationOf } from './model'
 import type { Taxonomy } from './taxonomy'
 
+/**
+ * The defects `validateGraph` names. Errors: a node or edge id used twice,
+ * an edge whose endpoint is not in the graph, an unknown relation, a type
+ * whose relation is not the edge's, a rule that threw, a parent not in the
+ * graph. Warnings: an edge no type claims, a style value the taxonomy does
+ * not declare, containment edges that contradict `parentId`.
+ */
 export type GraphDiagnosticCode =
   | 'edge-id-duplicate'
   | 'edge-endpoint-missing'
@@ -26,6 +33,7 @@ export type GraphDiagnosticCode =
   | 'node-value-undeclared'
   | 'node-id-duplicate'
 
+/** One defect in a host's graph, as data: its severity, its code, a message, and the node or edge it names. */
 export interface GraphDiagnostic {
   /** An error names something the view cannot draw as given; a warning, something it draws but the host should know. */
   severity: 'error' | 'warning'

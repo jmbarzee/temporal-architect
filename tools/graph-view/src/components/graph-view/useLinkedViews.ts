@@ -12,7 +12,7 @@ import type { Graph } from '../../graph/model'
 import type { Taxonomy } from '../../graph/taxonomy'
 import { NO_LOCKS, linkedSwitch } from '../../filter/linked'
 import type { LinkedViewState } from '../../filter/linked'
-import { defaultFilter, selectionFor, selectionsEqual, withSelection } from '../../filter/types'
+import { initialFilter, selectionFor, selectionsEqual, withSelection } from '../../filter/types'
 import type { AxisLocks, FilterState, ReconcileResult, ViewTransition } from '../../filter/types'
 import { useLatest } from './useControllable'
 
@@ -87,7 +87,7 @@ export function useLinkedViews<V extends string>({ taxonomy, views, initial, gra
     const given = initial?.(view)
     if (given?.filter === undefined) seededViewsRef.current.add(view)
     return {
-      filter: given?.filter ?? defaultFilter(taxonomy, graph ?? { nodes: [] }),
+      filter: given?.filter ?? initialFilter(taxonomy, graph ?? { nodes: [] }),
       locks: given?.locks ?? new Map(),
       axes: given?.axes ?? taxonomy.filterAxes.map(d => d.id),
       overriddenLocks: NO_LOCKS,
@@ -117,8 +117,8 @@ export function useLinkedViews<V extends string>({ taxonomy, views, initial, gra
     const before = seededFromRef.current
     if (before === graph || graph === undefined) return
     seededFromRef.current = graph
-    const opened = defaultFilter(taxonomyRef.current, before ?? { nodes: [] })
-    const seed = defaultFilter(taxonomyRef.current, graph)
+    const opened = initialFilter(taxonomyRef.current, before ?? { nodes: [] })
+    const seed = initialFilter(taxonomyRef.current, graph)
     setState(prev => {
       let changed = false
       const out: Record<V, LinkedViewState> = { ...prev }
