@@ -83,6 +83,7 @@ export interface WorkflowDefJSON {
   name: string;
   params: string;
   returnType?: string;
+  idScheme?: IDSchemeJSON;
   defaultOptions?: OptionsBlockJSON;
   state?: StateBlockJSON;
   signals: (SignalDeclJSON | undefined)[];
@@ -397,10 +398,51 @@ export interface SignalSendStmtJSON {
   type: string;
   line: number /* int */;
   column: number /* int */;
-  handle: string;
+  head: SendHeadJSON;
   signal: string;
   args?: string;
   resolved?: ResolvedRefJSON;
+}
+/**
+ * SendHeadJSON is a signal send's head: a workflow type (Package, Type, and an
+ * Address) or a handle (Handle). Kind is "type" or "handle".
+ */
+export interface SendHeadJSON {
+  kind: string;
+  line: number /* int */;
+  column: number /* int */;
+  package?: string;
+  type?: string;
+  handle?: string;
+  address?: AddressJSON;
+}
+/**
+ * AddressJSON is the id: / run_id: block under a type-headed send.
+ */
+export interface AddressJSON {
+  line: number /* int */;
+  column: number /* int */;
+  id: IDValueJSON;
+  runId?: string;
+}
+/**
+ * IDValueJSON is an address's id: value. Kind is "literal" (Literal, Parts),
+ * "parent", or "name" (Name).
+ */
+export interface IDValueJSON {
+  kind: string;
+  literal?: string;
+  parts?: string[];
+  name?: string;
+}
+/**
+ * IDSchemeJSON is a workflow type's id_scheme: template and its hole paths.
+ */
+export interface IDSchemeJSON {
+  line: number /* int */;
+  column: number /* int */;
+  template: string;
+  holes?: string[];
 }
 export interface PromiseStmtJSON {
   type: string;

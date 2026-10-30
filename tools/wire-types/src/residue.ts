@@ -136,7 +136,7 @@ export type SymbolKind =
   | "nexusService";
 
 /** Diagnostic.severity / .kind in tools/lsp/pipeline/model.go. */
-export type DiagnosticSeverity = "error" | "warning";
+export type DiagnosticSeverity = "error" | "warning" | "hint";
 export type DiagnosticKind = "parse" | "resolve" | "validate" | "graph";
 
 /** graph EdgeXxx / TierXxx / SeverityXxx / Diag* constants in graph/graph.go. */

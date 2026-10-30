@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -50,6 +51,25 @@ const (
 	ErrSignalSendHandleNotWorkflow
 	// ErrSignalSendUndefinedSignal: the target workflow does not declare the named signal.
 	ErrSignalSendUndefinedSignal
+
+	// --- Workflow ID scheme / addressed send errors ---
+
+	// ErrTypeNeedsID: a send headed by a workflow type carries no `id:`.
+	ErrTypeNeedsID
+	// ErrHandleTakesNoID: a send headed by a handle carries an address.
+	ErrHandleTakesNoID
+	// ErrNoIDScheme: a literal `id:` names a type that declares no id_scheme.
+	ErrNoIDScheme
+	// ErrIDMirrorMismatch: a literal `id:` differs from the type's scheme in
+	// fixed text or hole count.
+	ErrIDMirrorMismatch
+	// ErrMirrorCopiedFromScheme: a literal's holes are byte-equal to the scheme's
+	// and none is rooted in the sender's params — likely pasted, not mirrored.
+	// Hint severity.
+	ErrMirrorCopiedFromScheme
+	// ErrReservedName: `parent` declared as a param, binding, promise, or
+	// condition; it is reserved so `id: parent` has one meaning.
+	ErrReservedName
 
 	// --- Nexus resolution errors ---
 
@@ -108,7 +128,7 @@ type ResolveError struct {
 	Msg      string
 	Line     int
 	Column   int
-	Severity string // "error" (default) or "warning"
+	Severity string // "error" (default), "warning", or "hint"
 	Kind     ErrorKind
 	Name     string // primary entity referenced by this error
 	// File is the base name of the source file this error is attributed to
@@ -165,6 +185,18 @@ func (k ErrorKind) String() string {
 		return "SIGNAL_SEND_HANDLE_NOT_WORKFLOW"
 	case ErrSignalSendUndefinedSignal:
 		return "SIGNAL_SEND_UNDEFINED_SIGNAL"
+	case ErrTypeNeedsID:
+		return "TYPE_NEEDS_ID"
+	case ErrHandleTakesNoID:
+		return "HANDLE_TAKES_NO_ID"
+	case ErrNoIDScheme:
+		return "NO_ID_SCHEME"
+	case ErrIDMirrorMismatch:
+		return "ID_MIRROR_MISMATCH"
+	case ErrMirrorCopiedFromScheme:
+		return "MIRROR_COPIED_FROM_SCHEME"
+	case ErrReservedName:
+		return "RESERVED_NAME"
 	case ErrNexusAsyncUndefinedWorkflow:
 		return "NEXUS_ASYNC_UNDEFINED_WORKFLOW"
 	case ErrNexusUndefinedEndpoint:
@@ -462,16 +494,18 @@ func Resolve(file *ast.File) []*ResolveError {
 			updates:    updates,
 			conditions: conditions,
 			promises:   promises,
+			params:     ast.ParamNames(wf.Params),
 		}
 
+		s.checkReservedNames(wf)
 		for _, sig := range wf.Signals {
-			ctx.resolveStatements(sig.Body)
+			ctx.withParams(sig.Params).resolveStatements(sig.Body)
 		}
 		for _, q := range wf.Queries {
-			ctx.resolveStatements(q.Body)
+			ctx.withParams(q.Params).resolveStatements(q.Body)
 		}
 		for _, u := range wf.Updates {
-			ctx.resolveStatements(u.Body)
+			ctx.withParams(u.Params).resolveStatements(u.Body)
 		}
 		ctx.resolveStatements(wf.Body)
 	}
@@ -515,6 +549,7 @@ func Resolve(file *ast.File) []*ResolveError {
 					updates:    map[string]*ast.UpdateDecl{},
 					conditions: map[string]*ast.ConditionDecl{},
 					promises:   map[string]*ast.PromiseStmt{},
+					params:     ast.ParamNames(op.Params),
 				}
 				syncCtx.resolveStatements(op.Body)
 			}
@@ -630,6 +665,17 @@ type resolveCtx struct {
 	updates    map[string]*ast.UpdateDecl
 	conditions map[string]*ast.ConditionDecl
 	promises   map[string]*ast.PromiseStmt
+	params     map[string]bool // the sender's own params: the runnable's, plus a handler's
+}
+
+// withParams returns a copy of c whose params also include a handler's.
+func (c *resolveCtx) withParams(handlerParams string) *resolveCtx {
+	hc := *c
+	hc.params = ast.ParamNames(handlerParams)
+	for name := range c.params {
+		hc.params[name] = true
+	}
+	return &hc
 }
 
 func (c *resolveCtx) resolveStatements(stmts []ast.Statement) {
@@ -757,34 +803,105 @@ func (c *resolveCtx) resolveAsyncTarget(target ast.AsyncTarget, line, column int
 	}
 }
 
-// resolveSignalSend resolves a cross-workflow signal send. The handle must be a
+// resolveSignalSend resolves a cross-workflow signal send. The parser classified
+// the head by shape; here a bare head that names an in-scope promise is a handle
+// (the local handle shadows a same-named type) and any other bare head is a type.
+func (c *resolveCtx) resolveSignalSend(s *ast.SignalSendStmt) {
+	h := &s.Head
+	if h.Type.Package == "" {
+		name := h.Type.Name
+		if h.Kind == ast.SendHeadHandle {
+			name = h.Handle.Name
+		}
+		_, isPromise := c.promises[name]
+		switch {
+		case isPromise && h.Kind == ast.SendHeadType:
+			c.errorf(ErrHandleTakesNoID, h.Address.Pos, name, "%s is a handle; a send to a handle takes no address", name)
+			h.Kind, h.Handle, h.Type, h.Address = ast.SendHeadHandle, ast.Ref[*ast.PromiseStmt]{Pos: h.Pos, Name: name}, ast.Ref[*ast.WorkflowDef]{}, nil
+		case !isPromise && h.Kind == ast.SendHeadHandle:
+			h.Kind, h.Type, h.Handle = ast.SendHeadType, ast.Ref[*ast.WorkflowDef]{Pos: h.Pos, Name: name}, ast.Ref[*ast.PromiseStmt]{}
+		}
+	}
+	if h.Kind == ast.SendHeadHandle {
+		c.resolveHandleSend(s)
+		return
+	}
+	c.resolveTypeSend(s)
+}
+
+// resolveTypeSend resolves a send headed by a workflow type: the type and its
+// handler, then the address against the type's id_scheme.
+func (c *resolveCtx) resolveTypeSend(s *ast.SignalSendStmt) {
+	h := &s.Head
+	if h.Address == nil {
+		if _, ok := c.s.workflows[pkgKey{c.ownPkg, h.Type.Name}]; ok || h.Type.Package != "" {
+			c.errorf(ErrTypeNeedsID, h.Pos, h.Type.Name, "a send to workflow type %s needs an id: line naming the instance", h.Type.Name)
+		} else {
+			c.errorf(ErrUndefinedPromiseOrCondition, h.Pos, h.Type.Name, "undefined handle or workflow type: %s", h.Type.Name)
+			return
+		}
+	}
+
+	targetPkg, external, ok := c.s.resolveQualifier(c.ownPkg, h.Type.Package, h.Line, h.Column, c.file)
+	if !ok {
+		return
+	}
+	if external {
+		h.External = true
+		return
+	}
+	wf, found := c.s.workflows[pkgKey{targetPkg, h.Type.Name}]
+	if !found {
+		c.errorf(ErrUndefinedWorkflow, h.Pos, h.Type.Name, "undefined workflow: %s", h.Type.Name)
+		return
+	}
+	h.Type.Resolved = wf
+
+	if !declaresSignal(wf, s.Signal) {
+		c.errorf(ErrUndefinedSignal, s.Pos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wf.Name)
+	}
+	if h.Address != nil && h.Address.ID.Kind == ast.IDLiteral {
+		c.checkMirror(wf, h.Address.ID)
+	}
+}
+
+// checkMirror checks a literal id: against the type's id_scheme: the same fixed
+// text and hole count, with the sender's own names in the holes.
+func (c *resolveCtx) checkMirror(wf *ast.WorkflowDef, id ast.IDValue) {
+	if wf.IDScheme == nil {
+		c.errorf(ErrNoIDScheme, id.Pos, wf.Name, "workflow %s declares no id_scheme, so a literal id: has nothing to mirror; send to a name holding the whole ID", wf.Name)
+		return
+	}
+	scheme := wf.IDScheme
+	schemeFixed, _, _ := ast.ParseIDTemplate(scheme.Template)
+	litFixed, _, _ := ast.ParseIDTemplate(id.Literal)
+	if !slices.Equal(schemeFixed, litFixed) {
+		c.errorf(ErrIDMirrorMismatch, id.Pos, wf.Name, "id %q does not mirror workflow %s's id_scheme %q: fixed text and hole count must match", id.Literal, wf.Name, scheme.Template)
+		return
+	}
+	if len(id.Parts) == 0 || !slices.Equal(id.Parts, scheme.Holes) {
+		return
+	}
+	for _, part := range id.Parts {
+		if c.params[ast.IDPathRoot(part)] {
+			return
+		}
+	}
+	err := c.errorf(ErrMirrorCopiedFromScheme, id.Pos, wf.Name, "id %q repeats workflow %s's own param names; fill the holes with the sender's names", id.Literal, wf.Name)
+	err.Severity = "hint"
+}
+
+// resolveHandleSend resolves a send headed by a handle. The handle must be a
 // workflow-bound promise, and the target workflow must declare the named signal.
 // On full success the handle's Resolved pointer is linked to the promise so the
 // graph and JSON layers can reach the target workflow.
-func (c *resolveCtx) resolveSignalSend(s *ast.SignalSendStmt) {
-	promise, ok := c.promises[s.Handle.Name]
-	if !ok {
-		c.s.errs = append(c.s.errs, &ResolveError{
-			Msg:    fmt.Sprintf("undefined promise or condition: %s", s.Handle.Name),
-			Line:   s.Handle.Line,
-			Column: s.Handle.Column,
-			Kind:   ErrUndefinedPromiseOrCondition,
-			Name:   s.Handle.Name,
-			File:   c.file,
-		})
-		return
-	}
+func (c *resolveCtx) resolveHandleSend(s *ast.SignalSendStmt) {
+	handle := &s.Head.Handle
+	promise := c.promises[handle.Name]
 
 	wt, ok := promise.Target.(*ast.WorkflowTarget)
 	if !ok {
-		c.s.errs = append(c.s.errs, &ResolveError{
-			Msg:    fmt.Sprintf("signal-send handle %q is not a workflow-bound promise; the handle must come from `promise %s <- workflow X(args)`", s.Handle.Name, s.Handle.Name),
-			Line:   s.Handle.Line,
-			Column: s.Handle.Column,
-			Kind:   ErrSignalSendHandleNotWorkflow,
-			Name:   s.Handle.Name,
-			File:   c.file,
-		})
+		c.errorf(ErrSignalSendHandleNotWorkflow, handle.Pos, handle.Name, "signal-send handle %q is not a workflow-bound promise; the handle must come from `promise %s <- workflow X(args)`", handle.Name, handle.Name)
 		return
 	}
 
@@ -795,21 +912,125 @@ func (c *resolveCtx) resolveSignalSend(s *ast.SignalSendStmt) {
 		return
 	}
 
-	for _, sig := range wt.Workflow.Resolved.Signals {
-		if sig.Name == s.Signal {
-			s.Handle.Resolved = promise
-			return
+	if declaresSignal(wt.Workflow.Resolved, s.Signal) {
+		handle.Resolved = promise
+		return
+	}
+	c.errorf(ErrSignalSendUndefinedSignal, s.Pos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wt.Workflow.Resolved.Name)
+}
+
+func declaresSignal(wf *ast.WorkflowDef, name string) bool {
+	for _, sig := range wf.Signals {
+		if sig.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// errorf appends an error-severity ResolveError attributed to the enclosing
+// definition's file and returns it so a caller can lower its severity.
+func (c *resolveCtx) errorf(kind ErrorKind, pos ast.Pos, name, format string, args ...any) *ResolveError {
+	err := &ResolveError{
+		Msg:    fmt.Sprintf(format, args...),
+		Line:   pos.Line,
+		Column: pos.Column,
+		Kind:   kind,
+		Name:   name,
+		File:   c.file,
+	}
+	c.s.errs = append(c.s.errs, err)
+	return err
+}
+
+// reservedName is the one name a model may not declare: `id: parent` must mean
+// the parent execution, never a variable.
+const reservedName = "parent"
+
+// checkReservedNames reports `parent` declared anywhere in a workflow — its
+// params, a handler's params, a condition, a promise, or a `->` binding.
+func (s *state) checkReservedNames(wf *ast.WorkflowDef) {
+	report := func(pos ast.Pos, what string) {
+		s.errs = append(s.errs, &ResolveError{
+			Msg:    fmt.Sprintf("%q is reserved and cannot name a %s; `id: parent` addresses the parent execution", reservedName, what),
+			Line:   pos.Line,
+			Column: pos.Column,
+			Kind:   ErrReservedName,
+			Name:   reservedName,
+			File:   wf.SourceFile,
+		})
+	}
+	checkParams := func(pos ast.Pos, params string) {
+		if ast.ParamNames(params)[reservedName] {
+			report(pos, "param")
+		}
+	}
+	checkBinding := func(pos ast.Pos, binding string) {
+		if binding != "" && ast.IDPathRoot(binding) == reservedName {
+			report(pos, "binding")
 		}
 	}
 
-	c.s.errs = append(c.s.errs, &ResolveError{
-		Msg:    fmt.Sprintf("signal %q is not declared by workflow %s", s.Signal, wt.Workflow.Resolved.Name),
-		Line:   s.Line,
-		Column: s.Column,
-		Kind:   ErrSignalSendUndefinedSignal,
-		Name:   s.Signal,
-		File:   c.file,
-	})
+	checkParams(wf.Pos, wf.Params)
+	if wf.State != nil {
+		for _, cond := range wf.State.Conditions {
+			if cond.Name == reservedName {
+				report(cond.Pos, "condition")
+			}
+		}
+	}
+	var bodies [][]ast.Statement
+	for _, sig := range wf.Signals {
+		checkParams(sig.Pos, sig.Params)
+		bodies = append(bodies, sig.Body)
+	}
+	for _, q := range wf.Queries {
+		checkParams(q.Pos, q.Params)
+		bodies = append(bodies, q.Body)
+	}
+	for _, u := range wf.Updates {
+		checkParams(u.Pos, u.Params)
+		bodies = append(bodies, u.Body)
+	}
+	bodies = append(bodies, wf.Body)
+	for _, body := range bodies {
+		ast.WalkStatements(body, func(st ast.Statement) bool {
+			switch st := st.(type) {
+			case *ast.PromiseStmt:
+				if st.Name == reservedName {
+					report(st.Pos, "promise")
+				}
+			case *ast.ActivityCall:
+				checkBinding(st.Pos, st.Result)
+			case *ast.WorkflowCall:
+				checkBinding(st.Pos, st.Result)
+			case *ast.NexusCall:
+				checkBinding(st.Pos, st.Result)
+			}
+			return true
+		}, ast.WithAsyncTargets(func(target ast.AsyncTarget, parent ast.Statement) bool {
+			pos := ast.Pos{Line: parent.NodeLine(), Column: parent.NodeColumn()}
+			switch t := target.(type) {
+			case *ast.ActivityTarget:
+				checkBinding(pos, t.Result)
+			case *ast.WorkflowTarget:
+				checkBinding(pos, t.Result)
+			case *ast.NexusTarget:
+				checkBinding(pos, t.Result)
+			case *ast.IdentTarget:
+				checkBinding(pos, t.Result)
+			case *ast.SignalTarget:
+				if ast.ParamNames(t.Params)[reservedName] {
+					report(pos, "binding")
+				}
+			case *ast.UpdateTarget:
+				if ast.ParamNames(t.Params)[reservedName] {
+					report(pos, "binding")
+				}
+			}
+			return true
+		}))
+	}
 }
 
 // collectInto registers a definition under its (package, name) key, appending a

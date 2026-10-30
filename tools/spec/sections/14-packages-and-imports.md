@@ -80,6 +80,8 @@ recognized in these positions:
 - activity calls — `activity billing.ChargeCard(order)`
 - workflow calls — `workflow orders.ProcessOrder(order)` (and the `detach` / `promise` / `await` /
   `await one` variants)
+- a signal send's workflow-type head — `signal orders.ShipItem.Shipped(t)` (a handle head is never
+  qualified)
 - worker registration entries — `workflow orders.ProcessOrder`, `activity billing.ChargeCard`,
   `nexus service orders.OrderService`
 - the nexus **service** reference — `nexus OrderEndpoint orders.OrderService.PlaceOrder(order)`
@@ -87,7 +89,7 @@ recognized in these positions:
 
 A qualifier is **not** recognized on the nexus endpoint or the nexus operation (see the
 [nexus qualification table](./04-nexus.md#nexus-qualification-table)), nor on in-workflow
-constructs that happen to use a dot — the `signal handle.Name(args)` send target, `await`/`promise`
+constructs that happen to use a dot — a `signal handle.Name(args)` handle head, `await`/`promise`
 ident targets, and `set`/`unset` condition names are never package-qualified.
 
 ## Implicit Default Package

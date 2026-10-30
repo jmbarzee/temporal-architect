@@ -1035,11 +1035,11 @@ workflow ProcessPayment(order):
 	}
 	wf := file.Definitions[0].(*ast.WorkflowDef)
 	send := wf.Body[1].(*ast.SignalSendStmt)
-	if send.Handle.Resolved == nil {
+	if send.Head.Handle.Resolved == nil {
 		t.Fatal("signal-send handle not resolved")
 	}
-	if send.Handle.Resolved.Name != "pay" {
-		t.Errorf("handle resolved to %q, expected 'pay'", send.Handle.Resolved.Name)
+	if send.Head.Handle.Resolved.Name != "pay" {
+		t.Errorf("handle resolved to %q, expected 'pay'", send.Head.Handle.Resolved.Name)
 	}
 }
 
@@ -1115,7 +1115,7 @@ func TestSignalSendTargetWorkflowUndefined(t *testing.T) {
 	}
 	wf := file.Definitions[0].(*ast.WorkflowDef)
 	send := wf.Body[1].(*ast.SignalSendStmt)
-	if send.Handle.Resolved != nil {
+	if send.Head.Handle.Resolved != nil {
 		t.Error("handle should remain unresolved when target workflow is undefined")
 	}
 }

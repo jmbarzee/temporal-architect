@@ -67,6 +67,8 @@ type Parser struct {
 
 	bodyCtx bodyContext
 
+	inSyncNexus bool // true while parsing a sync nexus operation body
+
 	collecting bool          // true when collecting errors instead of bailing
 	errors     []*ParseError // accumulated errors in collecting mode
 
@@ -98,6 +100,7 @@ func init() {
 		token.ACTIVITY:        parseActivityCall,
 		token.WORKFLOW:        parseWorkflowCall,
 		token.SIGNAL:          parseSignalSendStmt,
+		token.ID_SCHEME:       parseMisplacedIDScheme,
 		token.DETACH:          parseWorkflowCallOrNexus,
 		token.NEXUS:           parseNexusCall,
 		token.AWAIT:           parseAwaitStmt, // handles both single await and await blocks
@@ -294,6 +297,9 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 		case bodyWorkflow:
 			parseFn, ok = workflowStmtParsers[p.current.Type]
 		case bodyActivity:
+			if p.current.Type == token.ID_SCHEME {
+				return nil, p.misplacedIDScheme()
+			}
 			// Check for temporal keywords that aren't allowed.
 			if temporalKeywords[p.current.Type] {
 				return nil, p.errorf("%s is not allowed in activity body", p.current.Literal)
@@ -313,6 +319,9 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 
 		stmt, err := parseFn(p)
 		if err != nil {
+			return nil, err
+		}
+		if err := p.checkMisplacedAddress(stmt); err != nil {
 			return nil, err
 		}
 		stmts = append(stmts, stmt)

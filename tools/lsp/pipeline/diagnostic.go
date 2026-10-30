@@ -85,6 +85,7 @@ func Summarize(file *ast.File, diags []Diagnostic) ast.FileSummary {
 		switch d.Severity {
 		case "warning":
 			s.Warnings++
+		case "hint":
 		default:
 			s.Errors++
 		}

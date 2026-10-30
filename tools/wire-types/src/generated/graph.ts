@@ -135,14 +135,21 @@ export interface CoarsenedEdge {
 /**
  * Unresolved records a call site whose callee couldn't be resolved by
  * the resolver (e.g. typo in activity name). No edge is emitted; the
- * entry exists so consumers can surface broken references.
+ * entry exists so consumers can surface broken references. Reason is
+ * empty for a broken reference and UnresolvedExternal for one carried
+ * unchecked through an import of a package absent from the tree.
  */
 export interface Unresolved {
   from: string;
   name: string;
   kind: string;
   line: number /* int */;
+  reason?: string;
 }
+/**
+ * Unresolved reasons.
+ */
+export const UnresolvedExternal = "external";
 /**
  * Diagnostic codes emitted by the graph stage. They sit alongside
  * parse/resolve/validate diagnostics in the CLI envelope.

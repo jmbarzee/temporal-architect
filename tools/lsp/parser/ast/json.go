@@ -235,6 +235,7 @@ type WorkflowDefJSON struct {
 	Name           string            `json:"name"`
 	Params         string            `json:"params"`
 	ReturnType     string            `json:"returnType,omitempty"`
+	IDScheme       *IDSchemeJSON     `json:"idScheme,omitempty"`
 	DefaultOptions *OptionsBlockJSON `json:"defaultOptions,omitempty"`
 	State          *StateBlockJSON   `json:"state,omitempty"`
 	Signals        []*SignalDeclJSON `json:"signals"`
@@ -266,6 +267,14 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 		Params:         w.Params,
 		ReturnType:     w.ReturnType,
 		DefaultOptions: marshalOptionsBlock(w.DefaultOptions),
+	}
+	if w.IDScheme != nil {
+		wj.IDScheme = &IDSchemeJSON{
+			Line:     w.IDScheme.Line,
+			Column:   w.IDScheme.Column,
+			Template: w.IDScheme.Template,
+			Holes:    w.IDScheme.Holes,
+		}
 	}
 	if w.State != nil {
 		sj := &StateBlockJSON{}
@@ -769,27 +778,54 @@ func marshalComment(s *Comment) (json.RawMessage, error) {
 }
 
 func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
+	h := s.Head
+	hj := SendHeadJSON{
+		Kind:    string(h.Kind),
+		Line:    h.Line,
+		Column:  h.Column,
+		Address: marshalAddress(h.Address),
+	}
+	if h.Kind == SendHeadType {
+		hj.Package, hj.Type = h.Type.Package, h.Type.Name
+	} else {
+		hj.Handle = h.Handle.Name
+	}
 	sj := SignalSendStmtJSON{
 		Type:   "signalSend",
 		Line:   s.Line,
 		Column: s.Column,
-		Handle: s.Handle.Name,
+		Head:   hj,
 		Signal: s.Signal,
 		Args:   s.Args,
 	}
-	// resolved surfaces the target workflow the handle was started against —
-	// what the visualizer needs to draw the signalSend edge. Reached by
-	// following the resolved handle promise to its WorkflowTarget.
-	if s.Handle.Resolved != nil {
-		if wt, ok := s.Handle.Resolved.Target.(*WorkflowTarget); ok && wt.Workflow.Resolved != nil {
-			sj.Resolved = &ResolvedRefJSON{
-				Name:   wt.Workflow.Resolved.Name,
-				Line:   wt.Workflow.Resolved.Line,
-				Column: wt.Workflow.Resolved.Column,
-			}
+	// resolved surfaces the target workflow — what the visualizer needs to draw
+	// the signalSend edge: the type head's own definition, or the workflow a
+	// handle's promise was started against.
+	if target := s.Target(); target != nil {
+		sj.Resolved = &ResolvedRefJSON{
+			Name:   target.Name,
+			Line:   target.Line,
+			Column: target.Column,
 		}
 	}
 	return json.Marshal(sj)
+}
+
+func marshalAddress(a *Address) *AddressJSON {
+	if a == nil {
+		return nil
+	}
+	return &AddressJSON{
+		Line:   a.Line,
+		Column: a.Column,
+		ID: IDValueJSON{
+			Kind:    string(a.ID.Kind),
+			Literal: a.ID.Literal,
+			Parts:   a.ID.Parts,
+			Name:    a.ID.Name,
+		},
+		RunID: a.RunID,
+	}
 }
 
 func marshalPromiseStmt(s *PromiseStmt) (json.RawMessage, error) {
@@ -1094,10 +1130,47 @@ type SignalSendStmtJSON struct {
 	Type     string           `json:"type"`
 	Line     int              `json:"line"`
 	Column   int              `json:"column"`
-	Handle   string           `json:"handle"`
+	Head     SendHeadJSON     `json:"head"`
 	Signal   string           `json:"signal"`
 	Args     string           `json:"args,omitempty"`
 	Resolved *ResolvedRefJSON `json:"resolved,omitempty"`
+}
+
+// SendHeadJSON is a signal send's head: a workflow type (Package, Type, and an
+// Address) or a handle (Handle). Kind is "type" or "handle".
+type SendHeadJSON struct {
+	Kind    string       `json:"kind"`
+	Line    int          `json:"line"`
+	Column  int          `json:"column"`
+	Package string       `json:"package,omitempty"`
+	Type    string       `json:"type,omitempty"`
+	Handle  string       `json:"handle,omitempty"`
+	Address *AddressJSON `json:"address,omitempty"`
+}
+
+// AddressJSON is the id: / run_id: block under a type-headed send.
+type AddressJSON struct {
+	Line   int         `json:"line"`
+	Column int         `json:"column"`
+	ID     IDValueJSON `json:"id"`
+	RunID  string      `json:"runId,omitempty"`
+}
+
+// IDValueJSON is an address's id: value. Kind is "literal" (Literal, Parts),
+// "parent", or "name" (Name).
+type IDValueJSON struct {
+	Kind    string   `json:"kind"`
+	Literal string   `json:"literal,omitempty"`
+	Parts   []string `json:"parts,omitempty"`
+	Name    string   `json:"name,omitempty"`
+}
+
+// IDSchemeJSON is a workflow type's id_scheme: template and its hole paths.
+type IDSchemeJSON struct {
+	Line     int      `json:"line"`
+	Column   int      `json:"column"`
+	Template string   `json:"template"`
+	Holes    []string `json:"holes,omitempty"`
 }
 
 type PromiseStmtJSON struct {

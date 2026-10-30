@@ -25,6 +25,9 @@ const (
 	ErrExplicitRoutingMismatch
 	ErrImplicitRoutingMismatch
 	ErrEndpointServiceLinkage
+	ErrNotAParent
+	ErrStarterLacksSignal
+	ErrIDSchemeOverlap
 )
 
 // Error represents a validation error with position info.
@@ -32,7 +35,7 @@ type Error struct {
 	Msg      string
 	Line     int
 	Column   int
-	Severity string // "error" (default) or "warning"
+	Severity string // "error" (default), "warning", or "hint"
 	Kind     ErrorKind
 	Name     string // primary entity referenced by this error
 }
@@ -79,6 +82,12 @@ func (k ErrorKind) String() string {
 		return "IMPLICIT_ROUTING_MISMATCH"
 	case ErrEndpointServiceLinkage:
 		return "ENDPOINT_SERVICE_LINKAGE"
+	case ErrNotAParent:
+		return "NOT_A_PARENT"
+	case ErrStarterLacksSignal:
+		return "STARTER_LACKS_SIGNAL"
+	case ErrIDSchemeOverlap:
+		return "ID_SCHEME_OVERLAP"
 	}
 	return "UNKNOWN"
 }
@@ -201,6 +210,10 @@ func Validate(file *ast.File) []*Error {
 
 	// 5-6. Call routing + endpoint-service linkage (walks resolved bodies).
 	v.walkAllBodies()
+
+	// 7. id: parent claims and id_scheme overlap (definition order, for stable output).
+	v.checkParentSends(file.Definitions)
+	v.checkIDSchemeOverlap(file.Definitions)
 
 	return v.errs
 }

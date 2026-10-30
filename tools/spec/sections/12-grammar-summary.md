@@ -11,11 +11,16 @@ qualified_ref  ::= [IDENT '.'] IDENT                 # optional leading package-
 
 workflow_def ::= 'workflow' IDENT params ['->' return_type] ':'
                  NEWLINE INDENT
+                 [id_scheme]
                  [default_options_block]
                  [state_block]
                  [signal_decl*] [query_decl*] [update_decl*]
                  statement*
                  DEDENT
+
+id_scheme ::= 'id_scheme' ':' STRING NEWLINE
+              # STRING ::= [fixed] ( '{' path '}' fixed )* [ '{' path '}' ]
+              # path   ::= IDENT ('.' IDENT)*   — root is a declared param
 
 activity_def ::= 'activity' IDENT params ['->' return_type] ':'
                  NEWLINE INDENT [default_options_block] statement* DEDENT
@@ -61,9 +66,12 @@ statement ::= activity_call | workflow_call | nexus_call | signal_send_stmt | pr
             | if_stmt | for_stmt | close_stmt | return_stmt
             | break_stmt | continue_stmt | assignment
 
-signal_send_stmt ::= 'signal' send_target args NEWLINE
-send_target ::= ident_handle_target
-ident_handle_target ::= IDENT '.' IDENT
+signal_send_stmt ::= 'signal' send_head '.' IDENT args NEWLINE [address]
+send_head        ::= qualified_ref | IDENT          # type (needs address) | handle
+address          ::= INDENT 'id' ':' id_value NEWLINE
+                            [ 'run_id' ':' path NEWLINE ] DEDENT
+id_value         ::= STRING | 'parent' | path
+path             ::= IDENT ('.' IDENT)*
 
 promise_stmt ::= 'promise' IDENT '<-' async_target NEWLINE
 set_stmt ::= 'set' IDENT NEWLINE
@@ -95,11 +103,12 @@ close_stmt ::= 'close' ('complete' | 'fail' | 'continue_as_new') ['(' args ')'] 
 **Qualified names.** `qualified_ref` is an optional leading `pkg.` package-leaf qualifier on a
 referenced name (see [Packages and Imports](./14-packages-and-imports.md)). It is legal only in the
 keyword-led call/registration positions: the callee of an activity or workflow call (and their
-`await` / `promise` / `await one` variants), a worker registration entry, the nexus **service**
+`await` / `promise` / `await one` variants), a signal send's type head, a worker registration entry, the nexus **service**
 reference, and an async operation's backing-workflow reference. The nexus **endpoint** and
-**operation** are never qualified. Signal/update await targets, `ident_target`, `set`/`unset`
-condition names, and the `signal handle.Name` send target are not package-qualified — their names
-and dots refer to in-workflow constructs, not cross-package symbols. The qualifier resolves against
+**operation** are never qualified. A signal send's **type** head is a `qualified_ref`
+(`signal orders.ShipItem.Shipped(t)`); its handle head is not. Signal/update await targets,
+`ident_target`, and `set`/`unset` condition names are not package-qualified — their names and dots
+refer to in-workflow constructs, not cross-package symbols. The qualifier resolves against
 the imported package that owns the referenced symbol; an unresolved (external) import makes qualified
 references resolve as external.
 

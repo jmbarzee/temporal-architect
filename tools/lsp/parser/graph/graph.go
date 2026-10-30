@@ -127,13 +127,21 @@ type CoarsenedEdge struct {
 
 // Unresolved records a call site whose callee couldn't be resolved by
 // the resolver (e.g. typo in activity name). No edge is emitted; the
-// entry exists so consumers can surface broken references.
+// entry exists so consumers can surface broken references. Reason is
+// empty for a broken reference and UnresolvedExternal for one carried
+// unchecked through an import of a package absent from the tree.
 type Unresolved struct {
-	From string `json:"from"`
-	Name string `json:"name"`
-	Kind string `json:"kind"`
-	Line int    `json:"line"`
+	From   string `json:"from"`
+	Name   string `json:"name"`
+	Kind   string `json:"kind"`
+	Line   int    `json:"line"`
+	Reason string `json:"reason,omitempty"`
 }
+
+// Unresolved reasons.
+const (
+	UnresolvedExternal = "external"
+)
 
 // Diagnostic codes emitted by the graph stage. They sit alongside
 // parse/resolve/validate diagnostics in the CLI envelope.

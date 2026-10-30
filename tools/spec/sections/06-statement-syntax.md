@@ -97,7 +97,7 @@ The block contents **reuse `option_entry` verbatim** — identical keys, value g
 
 **Placement.**
 - `activity_def`: the `default_options:` block leads the body, before any statements.
-- `workflow_def`: the `default_options:` block is the **first** body element, before the `state:` block — a definition's defaults are its external invocation contract, which reads above its internal `state:`.
+- `workflow_def`: the `default_options:` block leads the body — after only the `id_scheme:` line, if any, and before the `state:` block — a definition's defaults are its external invocation contract, which reads above its internal `state:`.
 
 **Precedence — call-site `options:` overrides definition `default_options:`, per key.** For a given call, a key present in the call site's `options:` block wins; keys the call site omits fall back to the definition's `default_options:`. Nested blocks (`retry_policy`, `priority`) are **atomic** — a call-site `retry_policy:` replaces the definition's `retry_policy:` entirely, with no field-level deep merge. This is faithful to the SDKs (a RetryPolicy is passed as one struct) and avoids surprising cross-layer field combinations. TWF does not *compute* the merged result; the spec **states** the precedence so codegen and readers agree, and `twf check` validates each block's keys independently.
 
@@ -141,6 +141,10 @@ workflow_call ::= ['detach'] 'workflow' IDENT args ['->' result] [NEWLINE option
 Modifiers:
 - `detach`: Fire-and-forget child workflow (no result)
 
+A start never writes the child's workflow ID — it derives from the callee's
+[`id_scheme:`](./01-workflows.md#id-scheme), if any. An `id:`/`run_id:` line under a start, or a
+`workflow_id:` key in its `options:`, is `ID_AT_START`.
+
 ## Nexus Call
 
 ```
@@ -169,36 +173,35 @@ detach nexus NotificationEndpoint NotificationService.SendEmail(email)
 ## Signal Send
 
 ```
-signal_send_stmt ::= 'signal' send_target args NEWLINE
-
-send_target ::= ident_handle_target
-
-ident_handle_target ::= IDENT '.' IDENT
-                       # IDENT 1 = promise bound to a workflow call (the handle)
-                       # IDENT 2 = signal handler name declared by the target workflow
+signal_send_stmt ::= 'signal' send_head '.' IDENT args NEWLINE [address]
+send_head        ::= qualified_ref | IDENT          # type (needs address) | handle
+address          ::= INDENT 'id' ':' id_value NEWLINE
+                            [ 'run_id' ':' path NEWLINE ] DEDENT
+id_value         ::= STRING | 'parent' | path
+path             ::= IDENT ('.' IDENT)*
 ```
 
-Sends a signal to another running workflow that the sender started and still holds a handle to. The handle is a workflow-bound `promise` (`promise child <- workflow X(args)`); the dot-qualified name selects a signal the target workflow declares. Maps to `ChildWorkflowFuture.SignalChildWorkflow`.
+Sends a signal to another running workflow. The head is a **workflow type**, addressed by the
+indented `id:` (and optional `run_id:`) lines below the send, or a **handle** — a workflow-bound
+`promise` — which takes no address. The trailing IDENT names a signal the target workflow declares.
+Addressing forms and their semantics are in [Cross-Workflow Signals](./13-cross-workflow-signals.md).
 
-A `.` after the name is what distinguishes a send from a signal *arrival* target (`await signal Name`): `signal pay.OrderShipped(id)` is a send, `await signal OrderShipped` is an arrival.
-
-**Signal send is fire-and-forget.** It is a statement only — there is no `await` or `promise` form, and it is not an `await one` case. A signal carries no return value, so the only thing a sender could wait on is *send acceptance*, never the receiver's handler running; modeling that would invite the misreading "the target processed my signal." The one scenario where an asynchronous send helps is raw throughput (not blocking the sender on dispatch), but it carries a strong tradeoff: the sender loses the ability to (1) learn that the target workflow did not exist and (2) handle delivery failures locally. That tradeoff is rarely justified, so the DSL keeps signal send to the single fire-and-forget statement form.
-
-**Example:**
 ```twf
-workflow OrderSaga(order: Order) -> (SagaResult):
-    promise pay <- workflow ProcessPayment(order)
-    promise ship <- workflow ShipOrder(order)
-
-    # Notify the payment workflow that the order has shipped
-    signal pay.OrderShipped(shipmentId)
-
-    # Wait for both children to finish
-    await all:
-        await pay -> payment
-        await ship -> shipment
-    close complete(SagaResult{payment, shipment})
+signal ShipItem.Shipped(event.tracking)
+    id: "ship-{event.orderId}-{event.sku}"
+signal ship.Shipped(t)
 ```
+
+- The address must start on its own line: `signal X.Y() id: w` is a targeted parse error.
+- `id:` takes one `STRING`, `parent`, or one path; anything else is `ID_VALUE_MALFORMED` — bind
+  it on the line before.
+- `run_id:` is optional, always a path, and only follows a literal or path `id:`.
+- No `options:` under a send — no SDK has a per-send option; the slot after `run_id:` is reserved.
+  Misplaced address lines are `ADDRESS_MISPLACED`.
+
+A `.` after the name is what distinguishes a send from a signal *arrival* target (`await signal Name`) and from a handler declaration (`signal Name(params):`).
+
+**Signal send is fire-and-forget** — a statement only, with no `await`, `promise`, or `await one` form; see [Cross-Workflow Signals — Fire-and-forget](./13-cross-workflow-signals.md#fire-and-forget).
 
 ## Promise Statement
 

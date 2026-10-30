@@ -2,7 +2,7 @@
 
 ## Workflow Statements
 
-Available in workflow context (workflow definitions, signal/update handlers, and sync nexus operation bodies). `signal_send_stmt` (cross-workflow signal send) is a workflow-context statement; it is not available in the activity statement set below.
+Available in workflow context (workflow definitions, signal/update handlers, and sync nexus operation bodies). `signal_send_stmt` (cross-workflow signal send, addressed by handle or by workflow type + ID) is a workflow-context statement; it is not available in the activity statement set below. It may be the first body statement.
 
 ```
 statement ::= activity_call

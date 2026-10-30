@@ -476,3 +476,71 @@ func namespaceNameFromID(id string) string {
 	}
 	return id
 }
+
+// TestTypeHeadSignalSendEdge covers a send addressed by workflow type and ID:
+// it draws the same signalSend edge to the head's type as a handle send.
+func TestTypeHeadSignalSendEdge(t *testing.T) {
+	src := `
+workflow Notifier(orderId: string):
+    signal ProcessPayment.OrderShipped(orderId)
+        id: "pay-{orderId}"
+
+workflow ProcessPayment(order: string) -> (string):
+    id_scheme: "pay-{order}"
+    signal OrderShipped(id: string):
+        shipped = true
+    return order
+
+worker sagaWorker:
+    workflow Notifier
+    workflow ProcessPayment
+
+namespace ecommerce:
+    worker sagaWorker
+        options:
+            task_queue: "orders"
+`
+	file, parseErrs := parser.ParseFileAll(src)
+	if len(parseErrs) > 0 {
+		t.Fatalf("parse: %v", parseErrs[0])
+	}
+	if errs := resolver.Resolve(file); len(errs) > 0 {
+		t.Fatalf("resolve: %v", errs[0])
+	}
+	g := Extract(file)
+	from := "workflow:Notifier/worker:sagaWorker/namespace:ecommerce"
+	to := "workflow:ProcessPayment/worker:sagaWorker/namespace:ecommerce"
+	if !hasEdge(g, from, to, EdgeSignalSend) {
+		t.Fatalf("expected signalSend edge %s -> %s; edges: %+v", from, to, g.Edges)
+	}
+}
+
+// TestExternalTypeHeadUnresolvedReason verifies a type head through an import
+// of an absent package is recorded as Unresolved with Reason "external".
+func TestExternalTypeHeadUnresolvedReason(t *testing.T) {
+	src := `package billing
+
+import "acme/shipping"
+
+workflow Notifier(wid: string):
+    signal shipping.ShipItem.Shipped(wid)
+        id: wid
+
+worker w:
+    workflow Notifier
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`
+	file, parseErrs := parser.ParseFileAll(src)
+	if len(parseErrs) > 0 {
+		t.Fatalf("parse: %v", parseErrs[0])
+	}
+	resolver.Resolve(file)
+	g := Extract(file)
+	if len(g.Unresolved) != 1 || g.Unresolved[0].Name != "ShipItem" || g.Unresolved[0].Reason != UnresolvedExternal {
+		t.Fatalf("expected one external Unresolved for ShipItem, got %+v", g.Unresolved)
+	}
+}
