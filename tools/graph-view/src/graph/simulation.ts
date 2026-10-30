@@ -159,10 +159,16 @@ export function identityTuning<T>(taxonomy: Taxonomy): AxisTuning<T> {
 
 /**
  * Seeding bias: how far below a band's centre, as a fraction of its height, a
- * node starts. Measured over 24 RNG seeds on three fixtures (kickoff/studies/
- * seed-bias.md): seeding at the centre leaves the bottom tier wedged above the
- * tier over it in a third of the stress layouts; seeding at the bottom third
- * pre-orders the tiers and the band force only has to lift.
+ * node starts. Measured over 24 RNG seeds on three fixtures, 400 ticks each,
+ * counting the nodes that settle outside their band: seeded at the centre of
+ * two overlapping bands, the stress layout left the bottom tier wedged above
+ * the tier over it in a third of the seeds (mean 11.9 outsiders, max 42),
+ * because charge alone cannot sort interleaved tiers and the band force only
+ * acts on nodes already outside their band. Seeded 0.35 of the band's height
+ * below the centre, the tiers start pre-ordered and the force only has to
+ * lift (mean 3.5, max 13). Uniform-within-band and a wider jitter were both
+ * worse than the centre. The frame is unchanged by the bias, so seed and
+ * force still agree; only where within the band a node starts moved (D54).
  */
 export const SEED_BIAS = 0.35
 

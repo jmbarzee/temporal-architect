@@ -112,7 +112,7 @@ export interface ViewFilterEntry {
  * Declared once, in `adapter/node-types.ts`, and projected here into the shape
  * the tree view already consumes. It was briefly declared in BOTH places, and
  * the total-vocabulary ceiling caught that within a minute (+23) — a grouping
- * stored twice is exactly the shape PLAN §6.6 is about, and having a counter
+ * stored twice is the shape the ceiling exists to catch, and having a counter
  * notice it is the point of D40.
  */
 export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] =

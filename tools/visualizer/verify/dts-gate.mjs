@@ -2,8 +2,8 @@
 //
 // `build:lib` exiting 0 is a weaker claim than it looks: declarations are
 // emitted from an allowlist, a declaration whose import points outside the
-// package resolves fine while it sits in this repository (REVIEW_8 C8), and a
-// stylesheet has no type-checker (REVIEW_6 C1, REVIEW_8 C10). So this gate:
+// package resolves fine while it sits in this repository, and a stylesheet has
+// no type-checker. So this gate:
 //
 //   1. walks every shipped `.d.ts` and refuses an import that resolves outside
 //      the published directory — the repo-relative path a declaration gets when
@@ -114,9 +114,9 @@ else {
 }
 
 // 5. No project record reaches a consumer's IDE hover. The doc comments ship
-//    with the declarations; a decision, trap or review id, a plan section or
-//    the kickoff folder named in one of them means nothing outside this
-//    repository. Only comments are read, so an identifier in code is not a hit.
+//    with the declarations; a decision, trap or review id, or a plan section
+//    named in one of them means nothing outside this repository. Only comments
+//    are read, so an identifier in code is not a hit.
 const RECORD = /\b(?:D\d{1,3}|T\d{1,2}|B\d{1,2}|R\d{1,2}|C\d{1,2}|REVIEW_\d+)\b|PLAN §|KICKOFF/
 const records = []
 for (const file of shipped) {

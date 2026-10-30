@@ -179,9 +179,9 @@ typecheck: typecheck-graph-view typecheck-visualizer
 
 ## The visualizer's TypeScript program reaches the library's source, whose files
 ## resolve React from the sibling's own node_modules: with the sibling not
-## installed, tsc prints 77 errors and the declarations build swallows them
-## (REVIEW_8 C7). Every target that compiles either package installs the sibling
-## first, so a job that installs only the visualizer still builds correctly.
+## installed, tsc prints 77 errors and the declarations build swallows them.
+## Every target that compiles either package installs the sibling first, so a
+## job that installs only the visualizer still builds correctly.
 tools/graph-view/node_modules/.package-lock.json: tools/graph-view/package-lock.json
 	cd tools/graph-view && npm ci
 

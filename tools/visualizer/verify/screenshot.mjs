@@ -1,14 +1,13 @@
-// Gate 5's artifact, captured reproducibly.
+// The visual check's evidence, captured reproducibly.
 //
-// VERIFICATION.md §3.1 Gate 5 is a *judgement* gate — "not automated; do it
-// yourself" — and this does not automate the judging. It captures criterion 6,
-// the committed PNG, so that the evidence for a pass is produced the same way
-// every unit instead of by hand each time.
+// Whether the app renders well is a judgement, not an automated check, and this
+// does not automate the judging. It captures the PNGs so that the evidence for
+// a pass is produced the same way every time instead of by hand.
 //
-// Zero dependencies, per C2: system Chrome driven over the DevTools protocol
+// Zero dependencies: system Chrome driven over the DevTools protocol
 // using node's global WebSocket (node >= 22). No puppeteer, no playwright.
 //
-//   node verify/screenshot.mjs <unit> [--port 5178] [--out kickoff/screenshots]
+//   node verify/screenshot.mjs <label> [--port 5178] [--out screenshots]
 //       [--tab Gravity] [--subtab "Y Axis"] [--select gravity-axis-y=scalar:reach] [--dark]
 //       [--toggle Nexus] [--only stress-sample]
 //
@@ -17,7 +16,7 @@
 // `--tab`, `--subtab` and `--select` open a panel tab by its label, then a
 // sub-tab by its label (tabs are buttons or `role=tab`), then set a <select>
 // by element id (through React's own setter, so the app sees a change). A
-// unit whose evidence lives behind a tab or a filter names it here rather
+// capture whose evidence lives behind a tab or a filter names it here rather
 // than growing this script.
 //
 // The theme is pinned, never inherited from the machine: the light run
@@ -26,9 +25,9 @@
 // the captures `-dark`. Each capture reports the pane's resolved theme
 // (`data-theme` on `.gv-graph-view`) and the run fails if it is not the one
 // asked for — a theme-aware canvas (D57) has two appearances to evidence,
-// and a capture in the wrong one is not evidence (REVIEW_6 C2).
+// and a capture in the wrong one is not evidence.
 //
-// Expects a dev server already running (`npm run dev`), because the gate is a
+// Expects a dev server already running (`npm run dev`), because the check is a
 // pass over the *running app*, not over a build artifact.
 
 import { spawn } from 'node:child_process'
@@ -43,9 +42,9 @@ const FIXTURES = [
 ]
 
 const args = process.argv.slice(2)
-const unit = args[0]
-if (!unit) {
-  console.error('usage: node verify/screenshot.mjs <unit> [--port N] [--out DIR]')
+const label = args[0]
+if (!label) {
+  console.error('usage: node verify/screenshot.mjs <label> [--port N] [--out DIR]')
   process.exit(2)
 }
 const flag = (name, dflt) => {
@@ -53,7 +52,7 @@ const flag = (name, dflt) => {
   return i >= 0 ? args[i + 1] : dflt
 }
 const port = flag('--port', '5178')
-const outDir = flag('--out', 'kickoff/screenshots')
+const outDir = flag('--out', 'screenshots')
 const panelTab = flag('--tab', null)
 const panelSubtab = flag('--subtab', null)
 const panelSelect = flag('--select', null)
@@ -255,11 +254,11 @@ async function main() {
     const errors = await evalIn('JSON.stringify(window.__twfErrors || [])')
 
     const { data } = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
-    const file = join(outDir, `${unit}-${fixture}${suffix}.png`)
+    const file = join(outDir, `${label}-${fixture}${suffix}.png`)
     writeFileSync(file, Buffer.from(data, 'base64'))
     // A second capture with the control panel open: the requirements that live
-    // in the panel (its tabs, maps and curves) are otherwise invisible to this
-    // gate's evidence, which showed every panel collapsed.
+    // in the panel (its tabs, maps and curves) are otherwise invisible to the
+    // evidence, which showed every panel collapsed.
     let panel = await evalIn(OPEN_CONTROLS)
     await sleep(800)
     if (panelTab) { panel += ' tab=' + await evalIn(CLICK_LABEL(panelTab)); await sleep(400) }
@@ -272,7 +271,7 @@ async function main() {
     const errorsAfterPanel = await evalIn('JSON.stringify(window.__twfErrors || [])')
     const theme = await evalIn(`(document.querySelector('.gv-graph-view') || {}).dataset?.theme || 'no pane'`)
     const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
-    writeFileSync(join(outDir, `${unit}-${fixture}-controls${suffix}.png`), Buffer.from(shot.data, 'base64'))
+    writeFileSync(join(outDir, `${label}-${fixture}-controls${suffix}.png`), Buffer.from(shot.data, 'base64'))
     results.push({ fixture, counts, chips, errors: errorsAfterPanel, file, panel: panel + (toggled ? ' toggle=' + toggled : ''), theme })
     console.log(`  ${fixture.padEnd(22)} ${counts.padEnd(20)} theme=${theme} chips=${chips}${toggled ? ' toggle=' + toggled : ''}  panel=${panel}  errors=${errorsAfterPanel}`)
   }

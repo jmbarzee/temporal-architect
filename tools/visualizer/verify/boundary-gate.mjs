@@ -2,7 +2,7 @@
 //
 // The library is its own package (D62), so the rule is a boundary in both
 // directions, and every edge is RESOLVED rather than matched on its spelling
-// (REVIEW_8 C1–C3: a relative path, the host's `@/` alias, a barrel in the
+// (a relative path, the host's `@/` alias, a barrel in the
 // harness, a stylesheet `@import` and vite's `import.meta.glob` all reached
 // across while a specifier-prefix test printed 0).
 //
@@ -126,7 +126,7 @@ for (const file of manifestFiles()) {
 }
 
 // The library's own build and compiler configs: a path map or an alias there is
-// a specifier spelling this gate would otherwise not see (REVIEW_8 C3).
+// a specifier spelling this gate would otherwise not see.
 for (const name of readdirSync(libRoot)) {
   const abs = resolve(libRoot, name)
   if (/^tsconfig.*\.json$/.test(name)) {

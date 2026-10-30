@@ -1,4 +1,4 @@
-// The control surface as rendered (REVIEW_7 C5): the push/pull tab and the
+// The control surface as rendered: the push/pull tab and the
 // gravity tab server-rendered under two filter states of one fixture, with the
 // present sets the view computes, counting what they offer. Tier A's
 // `controls` rows pin the sets; these rows pin that the components OFFER them

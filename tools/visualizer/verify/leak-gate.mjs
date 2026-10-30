@@ -2,8 +2,8 @@
 //
 // Counts domain-specific vocabulary across the manifest, per occurrence, case
 // -insensitively, skipping any line carrying a URL so provenance links to
-// issues do not count. The pattern is [immutable] (PLAN.md §6.5); this script
-// implements it and does not get to change it.
+// issues do not count. The pattern is fixed; this script implements it and
+// does not get to change it.
 //
 // The count may never rise. It counts VOCABULARY, not dependencies — Gate 6
 // counts import edges, and neither alone is sufficient.
@@ -100,7 +100,7 @@ if (cfg.totalCeiling !== undefined) {
     console.error('deleting anything; this ceiling is what stops that from reading as progress.')
     totalCode = 1
   } else if (grand < cfg.totalCeiling) {
-    console.log(`  ${cfg.totalCeiling - grand} below the total ceiling — lower it in kickoff/gates.json at the unit boundary.`)
+    console.log(`  ${cfg.totalCeiling - grand} below the total ceiling — ratchet it down in verify/gates.json.`)
   }
 }
 

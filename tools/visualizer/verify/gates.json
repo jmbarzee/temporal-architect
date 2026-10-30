@@ -1,9 +1,9 @@
 {
   "_comment": [
-    "Ceilings and the allowlist for the three ratchet gates. Ratcheted DOWN at",
-    "each unit boundary; PLAN.md section 6.5 carries the per-unit leak ceilings.",
-    "A ceiling that has to rise is a flag-and-proceed with the new number and the",
-    "reason -- never a silent reset.",
+    "Ceilings and the allowlist for the three ratchet gates. A ceiling only ever",
+    "moves DOWN, to the measured count, once the drop is deliberate. A ceiling",
+    "that has to rise is a flag-and-proceed with the new number and the reason",
+    "-- never a silent reset.",
     "",
     "forbiddenPatternAllowlist is APPEND-FORBIDDEN. Entries may only be removed",
     "or lowered, and the gate enforces the lowering half itself: an entry that",

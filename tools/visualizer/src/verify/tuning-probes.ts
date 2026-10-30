@@ -164,7 +164,7 @@ function retune(graph: Graph): Json {
       ceiling: TOKEN_CEILING,
       fellBackTo: outgrown.pair.mapping.dimension,
     },
-    // The band axes under the same rule as the pair axis (REVIEW_5a C4): an
+    // The band axes under the same rule as the pair axis: an
     // axis bucketed by observed values follows the graph, keeps its overrides
     // while the value survives, and falls back to the style axis with nothing
     // overridden when the axis vanishes or outgrows the ceiling — on X too.
@@ -352,7 +352,7 @@ export function tuningProbes(): Json {
   }
 }
 
-// The one spelling of a layout-axis choice (REVIEW_5b C7): every option's
+// The one spelling of a layout-axis choice: every option's
 // key is distinct, and the tuning the control builds from an option answers
 // to the option's own key — so the dropdown can never show a value the params
 // do not hold.

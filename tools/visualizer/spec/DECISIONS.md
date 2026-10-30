@@ -1,13 +1,19 @@
 # Decision Log
 
-**§7.4. [living] — the agent appends. Never rewrite or delete an entry; supersede
-it with a new one that references the old id.**
+**Append-only. Never rewrite or delete an entry; supersede it with a new one
+that references the old id.**
 
-Required for: any golden `--write`, any §5.3 override, any deferral of a
-denominator item, any user-visible behavior change, and any non-obvious choice a
-later session or validator might otherwise relitigate.
+Required for: any golden regeneration (`npm run verify -- --write --decision
+D<n>` refuses without a matching entry here), any change to a frozen surface
+(`npm run surface-gate -- --write`), any user-visible behavior change, and any
+non-obvious choice a later reader might otherwise relitigate.
 
 Format: `Dn — decision — rationale — date — who`
+
+The entries cite the planning, review and progress records of the run that
+produced them — `KICKOFF §`, `PLAN §`, `VERIFICATION §`, `NON_INFERABLE` trap
+ids (`T<n>`), `REVIEW_<unit>` findings (`C<n>`), `PROGRESS`. Those records were
+removed when the run closed; `git log -- tools/visualizer/kickoff` reaches them.
 
 ---
 

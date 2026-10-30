@@ -1,11 +1,11 @@
-// A second host, written against the library's public entry and nothing else
-// (REVIEW_8 C18): a taxonomy of its own — three values, two edge types, a
-// filter axis of each policy, a scalar reading the graph — declared through
-// `createTaxonomy`, a graph built by hand, and the view mounted on a server
-// render. What this pins is that the surface suffices for a host that is not
-// the visualizer; the row changes when the contract does. A server render
-// mounts the chrome and the canvas but builds no simulation (that is an
-// effect), so the count row and the hover box are not what it can see.
+// A second host, written against the library's public entry and nothing else:
+// a taxonomy of its own — three values, two edge types, a filter axis of each
+// policy, a scalar reading the graph — declared through `createTaxonomy`, a
+// graph built by hand, and the view mounted on a server render. What this pins
+// is that the surface suffices for a host that is not the visualizer; the row
+// changes when the contract does. A server render mounts the chrome and the
+// canvas but builds no simulation (that is an effect), so the count row and
+// the hover box are not what it can see.
 //
 // Three mounts. The smallest host: `graph` and nothing else, inside the
 // provider — every state prop left to the view. The other way in: the

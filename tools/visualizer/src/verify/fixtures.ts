@@ -16,7 +16,7 @@ import stressSample from '../../public/fixtures/stress-sample.json'
 import multifileSample from '../../public/fixtures/multifile-sample.json'
 
 export interface Fixture {
-  /** Also the golden's filename stem: `kickoff/goldens/<name>.golden.json`. */
+  /** Also the golden's filename stem: `verify/goldens/<name>.golden.json`. */
   name: string
   ast: TWFFile
   parserGraph: ParserGraph

@@ -120,7 +120,7 @@ which is worth noticing rather than assuming.
 ## Files nothing imports
 
 An entry point, dead code, or a symbol whose only reader is the harness —
-the third is F15, and no gate counts readers.
+and no gate counts readers.
 
 - `src/lib.ts` (neither)
 - `src/main.tsx` (neither)
@@ -128,8 +128,8 @@ the third is F15, and no gate counts readers.
 
 ## Files only the harness imports
 
-A golden row keeps these looking alive (F15). Each one is either a symbol the
-product will read in a later unit, or dead code with a pin.
+A golden row keeps these looking alive. Each one is either a symbol the
+product will read later, or dead code with a pin.
 
 - `src/verify/contract-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/defaults-probes.ts` (neither) — verify/static-golden.ts

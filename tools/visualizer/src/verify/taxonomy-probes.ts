@@ -174,7 +174,7 @@ function collision(callFirst: boolean): Json {
 }
 
 // Two hidden spliced nodes that call each other, and a visible caller into the
-// cycle: the resolution passes each hidden node once and ends (REVIEW_7 C3).
+// cycle: the resolution passes each hidden node once and ends.
 function cycle(): Json {
   const nodes: SimNode[] = [
     node('wk', 'worker'),

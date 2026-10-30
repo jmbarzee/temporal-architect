@@ -1,12 +1,11 @@
-// The library: every source file of the sibling package `tools/graph-view/`,
-// which is where Unit 8 moved the manifest (PLAN.md §6.5, D62). The three
-// ratchet gates measure it from here, in the host package, because the goldens
-// and the fixtures that drive them are the host's. The globbed tree picks up
-// new files automatically: a module added to the library joins every gate the
-// moment it exists.
+// The library: every source file of the sibling package `tools/graph-view/`
+// (D62). The three ratchet gates measure it from here, in the host package,
+// because the goldens and the fixtures that drive them are the host's. The
+// globbed tree picks up new files automatically: a module added to the library
+// joins every gate the moment it exists.
 //
-// The manifest and the leak pattern are [immutable] — PLAN.md §6.5 declares
-// them and this file implements them, it does not get to define them.
+// The manifest and the leak pattern are fixed (D62); this file implements them,
+// it does not get to redefine them.
 //
 // Plain JS, outside tsconfig's `include`, so it may use node builtins.
 
@@ -20,7 +19,7 @@ export const LIB_DIR = '../graph-view'
 export const LIB_SRC = `${LIB_DIR}/src`
 
 // Every extension a bundler would ship: a `.mjs` beside the `.ts` files carries
-// imports and vocabulary just the same (REVIEW_8 C4).
+// imports and vocabulary just the same.
 const SOURCE_EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.css']
 const GLOBS = [{ dir: LIB_SRC, exts: SOURCE_EXTS }]
 
@@ -88,9 +87,9 @@ export function manifestFiles() {
 
 export const readLines = file => readFileSync(resolve(PKG_ROOT, file), 'utf8').split('\n')
 
-/** The gate ceilings and the forbidden-pattern allowlist, ratcheted per unit. */
+/** The gate ceilings and the forbidden-pattern allowlist, ratcheted down as the counts fall. */
 export function gateConfig() {
-  return JSON.parse(readFileSync(resolve(PKG_ROOT, 'kickoff', 'gates.json'), 'utf8'))
+  return JSON.parse(readFileSync(resolve(PKG_ROOT, 'verify', 'gates.json'), 'utf8'))
 }
 
 /** Print a per-file table plus a total, then return the exit code. */
@@ -103,7 +102,7 @@ export function report(label, counts, total, ceiling, hint) {
     return 1
   }
   if (total < ceiling) {
-    console.log(`  ${ceiling - total} below the ceiling — lower it in kickoff/gates.json at the unit boundary.`)
+    console.log(`  ${ceiling - total} below the ceiling — ratchet it down in verify/gates.json.`)
   }
   return 0
 }

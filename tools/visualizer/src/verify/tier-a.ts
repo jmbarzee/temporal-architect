@@ -95,7 +95,7 @@ function visibleState(
     downstreamScores: sortedRecord([...vg.downstreamScores]),
     // What the controls offer in this state (R35, D59): `presentSetsOf`, the
     // function the view calls, over the visible nodes and the edges the
-    // simulation springs — pinned, not re-derived (REVIEW_7 C5).
+    // simulation springs — pinned, not re-derived.
     controls: (() => {
       const resolved = resolvePhysics(defaultParamsFor(DEFAULT_TAXONOMY), DEFAULT_TAXONOMY)
       const p = presentSetsOf(vg.visibleNodes, sprungEdges(sim.edges, vg.visibleIds), resolved, nodeOf)

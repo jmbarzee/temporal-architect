@@ -82,7 +82,7 @@ function scenarios(): [string, ForceParams][] {
     ['yReachRadial', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach' }, radial: true }],
     // X on a scalar, and a span the user flipped: the X default ("1 at the
     // right"), a span read against its orientation, and the ring rule on a
-    // flipped span are read by no other row (REVIEW_5b C2).
+    // flipped span are read by no other row.
     ['xDegree', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandX: { scalar: 'degree' } }],
     ['yReachFlipped', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } } }],
     ['yReachFlippedRadial', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } }, radial: true }],
@@ -101,7 +101,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // `seedAt` is the other half of the seeding path and is reached by no fixture
   // run: it fires only when a filter toggle reveals a node. Two more draws. The
   // point is far outside every band on both axes, so the clamp into the frame
-  // is what the row pins — an in-band point made it a no-op (REVIEW_5a C8).
+  // is what the row pins — an in-band point made it a no-op.
   const first = [...graph.nodes.keys()].sort()[0]
   const seedAtProbe = (() => {
     const sim = seededSimulation(graph)
@@ -177,8 +177,8 @@ export function tierB(fixtureName: string, graph: Graph): Json {
 
   // A scalar's rest is a point, so its pull is always on. At exponent 3 an
   // uncapped |d|^exp carried every node past its point each tick, up to the
-  // velocity ceiling, and the short runs above could not see it (REVIEW_5b
-  // C13). Settled: after the full run and a slider-sized nudge, the mean
+  // velocity ceiling, and the short runs above could not see it. Settled:
+  // after the full run and a slider-sized nudge, the mean
   // speed is below the rest threshold. The speed itself is a diagnostic.
   const settlesAtExp3 = (name: string, params: ForceParams): boolean => {
     const s = seededSimulation(graph, { ...params, gravityBandExp: 3 })

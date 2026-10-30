@@ -16,7 +16,7 @@
 //
 // Plain JS on purpose: this lives outside tsconfig's `include`, so it may use
 // node builtins that the typechecked half (src/verify/main.ts) may not — see
-// DECISIONS.md D10 and NON_INFERABLE.md T33.
+// spec/DECISIONS.md D10.
 
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'

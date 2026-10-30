@@ -1,8 +1,7 @@
-// The scalar path's declared invariants, each with a reader (REVIEW_5b C1,
-// C2, C3, C4): the default span per axis, the [0, 1] contract, a node with no
-// value, a degenerate span, and the host-scalar extension point that no
-// fixture reaches — a scalar declared through the taxonomy, reading its own
-// payload, driving an axis.
+// The scalar path's declared invariants, each with a reader: the default span
+// per axis, the [0, 1] contract, a node with no value, a degenerate span, and
+// the host-scalar extension point that no fixture reaches — a scalar declared
+// through the taxonomy, reading its own payload, driving an axis.
 
 import type { Graph } from '@temporal-architect/graph-view/graph/model'
 import { readableGraph } from '@temporal-architect/graph-view/graph/model'

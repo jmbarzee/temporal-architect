@@ -1,4 +1,4 @@
-// The host-to-view seams D61 cut, pinned (REVIEW_8 C21): the view's half of the
+// The host-to-view seams D61 cut, pinned: the view's half of the
 // group overlay (restrict to the visible set, drop the empty, colour in order,
 // glow the emphasised), the host's half (its decomposition and an initialized
 // selection into groups over the whole graph), the chip counts the host reads

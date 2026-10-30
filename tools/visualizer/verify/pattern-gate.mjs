@@ -17,8 +17,9 @@
 //                 the two type vocabularies, and they are why an unmapped key
 //                 mislabels rather than crashes.
 //
-// Every pattern is present at Unit 0, so the check ships with a committed
-// baseline allowlist in kickoff/gates.json. That allowlist is APPEND-FORBIDDEN:
+// Every pattern was present when the gate was introduced, so the check ships
+// with a committed baseline allowlist in verify/gates.json. That allowlist is
+// APPEND-FORBIDDEN:
 // entries may only be removed or lowered, and the gate enforces the "lowered"
 // half itself — an entry whose budget exceeds the measured count fails, so the
 // ratchet cannot silently go slack.
@@ -86,7 +87,7 @@ for (const file of [...manifestFiles(), ...shimFiles()]) {
   if (file.endsWith('.css')) {
     // A stylesheet has no escaping of quotes to do; `\\"` inside a selector
     // makes the attribute value include the quote characters, and the rule
-    // matches nothing while every gate stays green (REVIEW_6 C1).
+    // matches nothing while every gate stays green.
     const escaped = (text.match(/\\"/g) ?? []).length
     if (escaped > 0) measured.set(`${file}:css-escaped-quote`, escaped)
     continue
@@ -117,7 +118,7 @@ for (const [key, count] of [...measured].sort()) {
 for (const [key, allowed] of [...budget].sort()) {
   const count = measured.get(key) ?? 0
   if (count < allowed) {
-    console.error(`  STALE    ${key} — allows ${allowed} but only ${count} remain; lower it in kickoff/gates.json`)
+    console.error(`  STALE    ${key} — allows ${allowed} but only ${count} remain; lower it in verify/gates.json`)
     failures++
   }
 }

@@ -2,8 +2,8 @@
 //
 // `build:lib` exiting 0 is a weaker claim than it looks: declarations are
 // emitted from an allowlist, a declaration whose import points outside the
-// package resolves fine while it sits in this repository (REVIEW_8 C8), and a
-// stylesheet has no type-checker (REVIEW_6 C1, REVIEW_8 C10). So this gate:
+// package resolves fine while it sits in this repository, and a stylesheet has
+// no type-checker. So this gate:
 //
 //   1. walks every shipped `.d.ts` and refuses an import that resolves outside
 //      the published directory — the repo-relative path a declaration gets when
