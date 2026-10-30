@@ -10,13 +10,13 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { activeGroupsOf } from '@temporal-architect/graph-view/graph/groups'
 import type { NodeGroup } from '@temporal-architect/graph-view/graph/groups'
-import { OntologyContext } from '@temporal-architect/graph-view/components/graph-view/useOntology'
+import { TaxonomyContext } from '@temporal-architect/graph-view/components/graph-view/useTaxonomy'
 import { FilterBar } from '@temporal-architect/graph-view/components/FilterBar'
 import { filterOfSets } from './filter-states'
-import { valuesOn } from '@temporal-architect/graph-view/graph/dimension'
+import { valuesOn } from '@temporal-architect/graph-view/graph/axis'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { copyGroups } from '@temporal-architect/graph-view/graph/model'
-import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
+import { DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
 import { definitionCounts } from '../adapter/useGraphModel'
 import { initialGroupSelection, initializedSelection, nodeGroupsOf } from '../adapter/groups'
 import { FIXTURES } from './fixtures'
@@ -76,7 +76,7 @@ function counts(): Json {
 /** Each chip's label and its badge, read off the bar's markup. */
 function badgesOf(html: string): Json {
   const badges: Record<string, string> = {}
-  for (const m of html.matchAll(/class="gv-header-(?:type-label|file-name)">([^<]*)<\/span><span class="gv-header-chip-count">([^<]*)<\/span>/g)) badges[m[1]] = m[2]
+  for (const m of html.matchAll(/class="gv-(?:chip-label|tag-label)">([^<]*)<\/span><span class="gv-header-chip-count">([^<]*)<\/span>/g)) badges[m[1]] = m[2]
   return sortedRecord(Object.entries(badges))
 }
 
@@ -89,15 +89,15 @@ function barRendered(): Json {
   if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
   const graph = buildFixtureGraph(fixture)
   const filter = filterOfSets(defaultTypes, new Set<string>())
-  const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: DEFAULT_ONTOLOGY },
+  const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY },
     React.createElement(FilterBar, {
       counts: definitionCounts(fixture.ast, new Set()),
-      filter, onFilterChange: noop, pins: new Map<string, boolean>(), onPinsChange: noop,
-      overriddenPins: new Set<string>(),
+      filter, onFilterChange: noop, locks: new Map<string, boolean>(), onLocksChange: noop,
+      overriddenLocks: new Set<string>(),
       search: { query: '', active: false }, onSearchChange: noop, searchInputRef: React.createRef<HTMLInputElement>(),
       searchTitle: 'Search', searchPlaceholder: 'Search',
-      chain: [SOURCE_FILE_DIMENSION, DEF_TYPE_DIMENSION],
-      values: new Map(DEFAULT_ONTOLOGY.filterDimensions.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
+      axes: [SOURCE_FILE_DIMENSION, DEF_TYPE_DIMENSION],
+      values: new Map(DEFAULT_TAXONOMY.filterAxes.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
       findings: React.createElement('div', { 'data-probe': 'findings' }),
     })))
   return { badges: badgesOf(html), findingsSlot: html.includes('data-probe="findings"'), pinToggles: pinToggles(html) }
@@ -108,9 +108,9 @@ function barFromGraph(): Json {
   const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
   if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
   const graph = buildFixtureGraph(fixture)
-  const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: DEFAULT_ONTOLOGY },
+  const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY },
     React.createElement(FilterBar, {
-      graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, pins: new Map<string, boolean>(), onPinsChange: noop,
+      graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, locks: new Map<string, boolean>(), onLocksChange: noop,
     })))
   return { badges: badgesOf(html), pinToggles: pinToggles(html) }
 }
@@ -120,7 +120,7 @@ function barWithoutPins(): Json {
   const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
   if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
   const graph = buildFixtureGraph(fixture)
-  const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: DEFAULT_ONTOLOGY },
+  const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY },
     React.createElement(FilterBar, { graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop })))
   return { badges: badgesOf(html), pinToggles: pinToggles(html), pinTogglesAbsent: !html.includes('gv-pin-toggle') }
 }
@@ -130,8 +130,8 @@ function barChromePins(): Json {
   const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
   if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
   const graph = buildFixtureGraph(fixture)
-  const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: DEFAULT_ONTOLOGY },
-    React.createElement(FilterBar, { graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, chrome: { pins: true } })))
+  const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY },
+    React.createElement(FilterBar, { graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, chrome: { locks: true } })))
   return { pinToggles: pinToggles(html) }
 }
 

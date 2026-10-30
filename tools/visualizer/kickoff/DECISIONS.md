@@ -2701,3 +2701,59 @@ request, not a state, so a host focusing the same node twice sets null in
 between, which the prop's doc now says.
 
 — 2026-10-30 — agent
+
+**D76 — Unit 18, one vocabulary, the first host's residue, the surface (API_WORK_2.md Set 6).**
+The last unit of the third run: every name on the surface says one thing,
+said one way, applied by a codemod over the library, both hosts, the harness
+and the documents, with tsc deciding what was left by hand.
+
+1. **Taxonomy, not ontology.** `createTaxonomy`, `Taxonomy`, `TaxonomySpec`,
+   `TaxonomyContext`, `useTaxonomy`, the `taxonomy` prop; the module that
+   builds it is `graph/taxonomy.ts`, and the shapes it is built from moved
+   to `graph/shapes.ts`.
+2. **Axis, not dimension.** `AxisId`, `AxisValue`, `AxisValues` (a node's
+   map of them, still its `dimensions` field), `AxisDescriptor`,
+   `ResolvedAxisDescriptor`, `AxisNamer`; `styleAxis` and `filterAxes` in the
+   spec, `axisFor` on the taxonomy; the axes a view shows are its `axes`
+   (`onAxesChange`), not a chain. The module is `graph/axis.ts`.
+3. **One meaning per word.** "Resolve" is left to the types whose defaults
+   are filled in (`ResolvedNodeStyle`, `ResolvedEdgeType`,
+   `ResolvedAxisDescriptor`): the lookup is `nodeStyleOf(subject)` and
+   `styleValueOf(subject)`, the classification `classifyEdge`. An edge type
+   runs between `sourceValue` and `targetValue`. The hover box's host action
+   is `nodeAction: { label, onSelect }`. The axes held against a cross-view
+   adoption are `locks` (`AxisLocks`, `onLocksChange`, `lockedFor`,
+   `withLock`, `overriddenLocks`, `chrome.locks`, `LockToggle`), so "pinned"
+   means one thing: a node held in place.
+4. **The first host's residue.** The bar's classes are the chip's and the
+   tag's own (`gv-chip-section`, `gv-chip-row`, `gv-chip`, `gv-chip-<id>`,
+   `gv-chip-icon`, `gv-chip-label`; `gv-tag-section`, `gv-tag-row`,
+   `gv-tag`, `gv-tag-icon`, `gv-tag-label`), not "types" and "files"; the doc
+   examples name a service and a pod, and a path's last segment.
+5. **The surface.** Removed `toggleValue` (the bar does not use it) and
+   `copyKeyOf` (a one-liner). Kept `useHostTheme`, which the plan listed:
+   the first host resolves its shell's theme with it before the pane has
+   reported one — a deviation from the plan, recorded. Kept `ReheatPolicy`
+   (D74). Added `AxisNamer` and `StyleSubject`, the two types that appeared
+   in exported signatures without being exported. `searchInputRef` accepts
+   React 19's `RefObject<HTMLInputElement | null>`.
+6. **The documents follow.** The README, the two specs and the catalog's
+   README speak the new names; `API_WORK_2.md` keeps the names it was
+   written in, as the plan.
+
+**Golden change (§8.2).** `static` alone, names only — the six fixture
+goldens byte-identical, and every value in `static` the same once the keys
+are read under their new names: `overriddenPins` → `overriddenLocks` in
+every reconcile row, `sourceType` / `targetType` → `sourceValue` /
+`targetValue` in the edge-type rows, `ontologyProbes` → `taxonomyProbes`,
+`ontologyProp` → `taxonomyProp`, and one refusal message
+(`tuningProbes.coherence.edgeEndpointUndeclared`) naming `sourceValue`. The
+seam probe's badge regex, which the codemod could not reach because it
+spelled the chip and tag classes split across an alternation, was corrected
+by hand so its rows read as before.
+
+**Measured.** Surface 80 names (the renamed ones one for one; −`toggleValue`,
+`copyKeyOf`; +`AxisNamer`, `StyleSubject`). Total vocabulary 1089 / 1089;
+leak 0; boundary 0.
+
+— 2026-10-30 — agent

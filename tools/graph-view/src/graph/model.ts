@@ -1,6 +1,6 @@
 // Graph data model for the force-directed graph view.
 
-import type { DimensionMap, Relation } from './dimension'
+import type { AxisValues, Relation } from './axis'
 
 export interface GraphNode {
   /**
@@ -19,7 +19,7 @@ export interface GraphNode {
    * This replaces the single type string a node used to carry. Features elect
    * one axis each and read it from here; nothing composes across axes.
    */
-  dimensions: DimensionMap
+  dimensions: AxisValues
   name: string
   /**
    * Metadata the host owns and the library does not interpret.
@@ -120,7 +120,7 @@ export interface GraphEdge {
    */
   relation?: Relation
   /** Where this edge sits on the host's own axes (a call kind, say). Absent, none. */
-  dimensions?: DimensionMap
+  dimensions?: AxisValues
   /**
    * Metadata the host owns and the library does not interpret — the same
    * contract as `GraphNode.payload`. Per-call-site detail that is not identity

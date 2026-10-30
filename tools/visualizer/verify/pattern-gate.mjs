@@ -34,11 +34,11 @@ const RULES = [
     // must be DELETED, never widened — and a rule naming one type enforces that
     // only until the type is renamed. `NodeType` no longer exists anywhere the
     // gate can see, so the rule measured 0 across the whole gated surface while
-    // the identical cheat was re-introducible verbatim as `as DimensionValue`.
+    // the identical cheat was re-introducible verbatim as `as AxisValue`.
     // I had already made that exact mistake once this unit; the STALE check
     // caught it then, and would not have caught it a second time.
     id: 'as-identity-cast',
-    re: /\bas\s+(?:NodeType|DimensionValue|DimensionId|EdgeTypeId)\b/g,
+    re: /\bas\s+(?:NodeType|AxisValue|AxisId|EdgeTypeId)\b/g,
   },
   { id: 'as-record', re: /\bas\s+Record</g },
   // The double assertion is how a cast that no longer compiles gets forced

@@ -7,11 +7,11 @@
 // app start; idempotent. The text is the scheme's (`schemeStylesheet`); this
 // module only mounts it for the shipped taxonomy.
 
-import { DEFAULT_ONTOLOGY } from './node-types'
+import { DEFAULT_TAXONOMY } from './node-types'
 import { schemeStylesheet } from '@temporal-architect/graph-view'
 /** The CSS string to inject for the shipped taxonomy. */
 export function buildNodeTypeCSS(): string {
-  return schemeStylesheet(DEFAULT_ONTOLOGY)
+  return schemeStylesheet(DEFAULT_TAXONOMY)
 }
 
 /** Mount (or refresh) the node-type stylesheet. Idempotent — reuses the same <style> element on re-calls. */

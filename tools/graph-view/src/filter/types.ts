@@ -14,10 +14,10 @@
 //
 // The search query lives outside a FilterState because it is globally shared.
 
-import type { DimensionId, ResolvedDimensionDescriptor } from '../graph/dimension'
-import { valuesOn } from '../graph/dimension'
+import type { AxisId, ResolvedAxisDescriptor } from '../graph/axis'
+import { valuesOn } from '../graph/axis'
 import type { Graph } from '../graph/model'
-import type { Ontology } from '../graph/ontology'
+import type { Taxonomy } from '../graph/taxonomy'
 
 /** The chosen values on one axis. Empty means what the axis's descriptor says. */
 export type Selection = ReadonlySet<string>
@@ -34,16 +34,16 @@ export type Selection = ReadonlySet<string>
  * `selectedFiles`; a Map makes saying so unrepresentable instead of merely
  * wrong.
  */
-export type FilterState = ReadonlyMap<DimensionId, Selection>
+export type FilterState = ReadonlyMap<AxisId, Selection>
 
 /**
  * Per-axis freeze state. A pinned axis is not adopted from the source view by
  * the `manual` reconciler.
  */
-export type PinState = ReadonlyMap<DimensionId, boolean>
+export type AxisLocks = ReadonlyMap<AxisId, boolean>
 
 /** Retained as a name for readability; an axis is identified by its dimension. */
-export type FilterDimension = DimensionId
+export type FilterDimension = AxisId
 
 const EMPTY: Selection = new Set<string>()
 
@@ -54,12 +54,12 @@ const EMPTY: Selection = new Set<string>()
  * identity between reads — a fresh `new Set()` per call would defeat exactly the
  * memoisation this module exists to protect.
  */
-export function selectionFor(state: FilterState, dim: DimensionId): Selection {
+export function selectionFor(state: FilterState, dim: AxisId): Selection {
   return state.get(dim) ?? EMPTY
 }
 
 /** Every axis the state carries a selection for. */
-export function dimensionsOf(state: FilterState): DimensionId[] {
+export function dimensionsOf(state: FilterState): AxisId[] {
   return [...state.keys()].sort()
 }
 
@@ -79,7 +79,7 @@ export function selectionsEqual(a: Selection, b: Selection): boolean {
  */
 export function withSelection(
   state: FilterState,
-  dim: DimensionId,
+  dim: AxisId,
   next: Selection,
 ): FilterState {
   if (selectionsEqual(selectionFor(state, dim), next)) return state
@@ -99,13 +99,13 @@ export function filterStatesEqual(a: FilterState, b: FilterState): boolean {
 }
 
 /** Flip one axis's pin, copy-on-write. */
-export function withPin(pins: PinState, dim: DimensionId, value: boolean): PinState {
+export function withLock(pins: AxisLocks, dim: AxisId, value: boolean): AxisLocks {
   const out = new Map(pins)
   out.set(dim, value)
   return out
 }
 
-export function pinnedFor(pins: PinState, dim: DimensionId): boolean {
+export function lockedFor(pins: AxisLocks, dim: AxisId): boolean {
   return pins.get(dim) ?? false
 }
 
@@ -116,7 +116,7 @@ export function pinnedFor(pins: PinState, dim: DimensionId): boolean {
  * view of its own carries it in a type of its own.
  */
 export type FocusTarget = {
-  values: Readonly<Record<DimensionId, string | undefined>>
+  values: Readonly<Record<AxisId, string | undefined>>
 }
 
 export type ViewTransition =
@@ -129,7 +129,7 @@ export type ViewTransition =
  */
 export type ReconcileResult = {
   filter: FilterState
-  overriddenPins: Set<FilterDimension>
+  overriddenLocks: Set<FilterDimension>
 }
 
 /**
@@ -138,9 +138,9 @@ export type ReconcileResult = {
  * every value on an allow-list, none on a narrowing axis, or the host's own
  * choice.
  */
-export function defaultFilter(ontology: Pick<Ontology, 'filterDimensions'>, graph: Pick<Graph, 'nodes'>): FilterState {
-  const out = new Map<DimensionId, Selection>()
-  for (const d of ontology.filterDimensions) out.set(d.id, new Set(d.initialSelection(valuesOn(graph.nodes.values(), d.id))))
+export function defaultFilter(taxonomy: Pick<Taxonomy, 'filterAxes'>, graph: Pick<Graph, 'nodes'>): FilterState {
+  const out = new Map<AxisId, Selection>()
+  for (const d of taxonomy.filterAxes) out.set(d.id, new Set(d.initialSelection(valuesOn(graph.nodes.values(), d.id))))
   return out
 }
 
@@ -165,7 +165,7 @@ export function matchesFocus(node: { dimensions: Readonly<Record<string, string>
  */
 export function passesSelection(
   filter: FilterState,
-  dimensions: readonly ResolvedDimensionDescriptor[],
+  dimensions: readonly ResolvedAxisDescriptor[],
   valueOn: (dimension: string) => string | undefined,
 ): boolean {
   for (const dim of dimensions) {
@@ -191,7 +191,7 @@ export interface HiddenMatches {
   /** How many matching nodes the filter hides. */
   hiddenCount: number
   /** The hidden matches per axis and value — on the first axis in the chain each node fails, under its value there. */
-  hiddenByAxis: ReadonlyMap<DimensionId, ReadonlyMap<string, number>>
+  hiddenByAxis: ReadonlyMap<AxisId, ReadonlyMap<string, number>>
 }
 
 /**
@@ -203,14 +203,14 @@ export interface HiddenMatches {
 export function hiddenMatchesOf<N extends { id: string }>(
   nodes: Iterable<N>,
   filter: FilterState,
-  axes: readonly ResolvedDimensionDescriptor[],
+  axes: readonly ResolvedAxisDescriptor[],
   visibleIds: ReadonlySet<string>,
   matches: (node: N) => boolean,
-  valueOn: (node: N, dimension: DimensionId) => string | undefined,
+  valueOn: (node: N, dimension: AxisId) => string | undefined,
 ): HiddenMatches {
   const visible = new Set<string>()
   let hiddenCount = 0
-  const hiddenByAxis = new Map<DimensionId, Map<string, number>>()
+  const hiddenByAxis = new Map<AxisId, Map<string, number>>()
   for (const node of nodes) {
     if (!matches(node)) continue
     if (visibleIds.has(node.id)) { visible.add(node.id); continue }

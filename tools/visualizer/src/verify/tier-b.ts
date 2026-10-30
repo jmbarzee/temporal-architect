@@ -27,7 +27,7 @@ import type { Graph } from '@temporal-architect/graph-view/graph/model'
 import { defaultParamsFor, Simulation } from '@temporal-architect/graph-view/graph/simulation'
 import type { ForceParams, SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_TAXONOMY } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 import { mulberry32 } from './rng'
@@ -56,8 +56,8 @@ export const TIER_B_PARAMS = {
 } as const
 
 /** A fresh, seeded simulation over a fixture's graph. */
-export function seededSimulation(graph: Graph, params: ForceParams = defaultParamsFor(DEFAULT_ONTOLOGY)): Simulation {
-  return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed), DEFAULT_ONTOLOGY)
+export function seededSimulation(graph: Graph, params: ForceParams = defaultParamsFor(DEFAULT_TAXONOMY)): Simulation {
+  return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed), DEFAULT_TAXONOMY)
 }
 
 function positions(nodes: SimNode[]): Json {
@@ -73,19 +73,19 @@ function positions(nodes: SimNode[]): Json {
  */
 function scenarios(): [string, ForceParams][] {
   return [
-    ['default', defaultParamsFor(DEFAULT_ONTOLOGY)],
-    ['radial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true }],
-    ['topological', { ...defaultParamsFor(DEFAULT_ONTOLOGY), topologicalEnabled: true, gravityTopological: 0.4 }],
-    ['centerOnly', { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityX: 0, gravityY: 0, topologicalEnabled: false }],
+    ['default', defaultParamsFor(DEFAULT_TAXONOMY)],
+    ['radial', { ...defaultParamsFor(DEFAULT_TAXONOMY), radial: true }],
+    ['topological', { ...defaultParamsFor(DEFAULT_TAXONOMY), topologicalEnabled: true, gravityTopological: 0.4 }],
+    ['centerOnly', { ...defaultParamsFor(DEFAULT_TAXONOMY), gravityX: 0, gravityY: 0, topologicalEnabled: false }],
     // Y on a computed scalar (5b): every node rests at its reach along the span.
-    ['yReach', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' } }],
-    ['yReachRadial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' }, radial: true }],
+    ['yReach', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach' } }],
+    ['yReachRadial', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach' }, radial: true }],
     // X on a scalar, and a span the user flipped: the X default ("1 at the
     // right"), a span read against its orientation, and the ring rule on a
     // flipped span are read by no other row (REVIEW_5b C2).
-    ['xDegree', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandX: { scalar: 'degree' } }],
-    ['yReachFlipped', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } } }],
-    ['yReachFlippedRadial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } }, radial: true }],
+    ['xDegree', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandX: { scalar: 'degree' } }],
+    ['yReachFlipped', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } } }],
+    ['yReachFlippedRadial', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } }, radial: true }],
   ]
 }
 
@@ -111,7 +111,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
     return n ? { id: first, position: [n.x, n.y] as Json } : null
   })()
   const seedAtRadialProbe = (() => {
-    const sim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true })
+    const sim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_TAXONOMY), radial: true })
     if (first === undefined) return null
     sim.seedAt(first, -1e4, 1e4)
     const n = sim.getNode(first)
@@ -120,7 +120,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
 
   // Downstream scores, needed by the topological scenario.
   const scoreSim = seededSimulation(graph)
-  const vg = computeVisibleGraph(scoreSim, filterOfSets(ALL_DEF_TYPES, new Set<string>()), DEFAULT_ONTOLOGY)
+  const vg = computeVisibleGraph(scoreSim, filterOfSets(ALL_DEF_TYPES, new Set<string>()), DEFAULT_TAXONOMY)
 
   // ── Short runs, one per force configuration. Positions goldened exactly.
   const shortRuns: [string, Json][] = scenarios().map(([name, params]) => {
@@ -152,7 +152,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // in the simulation notices. Asserted on the count of ENTRIES COLLECTED, never
   // on distinct centre *values* — several types deliberately share a band, so
   // with all 7 present there are only 4 distinct values.
-  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const resolved = resolvePhysics(params, DEFAULT_TAXONOMY)
   const frame = layoutFrame(sim, resolved)
   const centers = bandCenters(active, mappedAxis(resolved.bandY))
   // The overlay as the canvas draws it, from the same frame the force used:
@@ -160,7 +160,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // Colours are the view's; here every bucket is uncoloured.
   const overlayRows = (s: Simulation) => {
     const p = s.params
-    const r = resolvePhysics(p, DEFAULT_ONTOLOGY)
+    const r = resolvePhysics(p, DEFAULT_TAXONOMY)
     const o = bandOverlay(s.nodes, p, r, layoutFrame(s, r), () => '#')
     const stripe = (s: BandStripe) =>
       s.gradient ? `${s.lo}..${s.hi}: gradient 0@${s.gradient.zero} 1@${s.gradient.one}` : `${s.lo}..${s.hi}: ${sorted(s.buckets).join(',')}`
@@ -171,9 +171,9 @@ export function tierB(fixtureName: string, graph: Graph): Json {
       rings: o.rings.map(r => `${r.radius}: ${sorted(r.buckets).join(',')}`),
     }
   }
-  const radialSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true })
-  const reachSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' } })
-  const flippedSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } } })
+  const radialSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_TAXONOMY), radial: true })
+  const reachSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach' } })
+  const flippedSim = seededSimulation(graph, { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach', span: { zero: -420, one: 420 } } })
 
   // A scalar's rest is a point, so its pull is always on. At exponent 3 an
   // uncapped |d|^exp carried every node past its point each tick, up to the
@@ -202,7 +202,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
     console.error(`[tier-b] ${fixtureName}: ${name} at exp 3, meanSpeedAfterNudge=${speed.toExponential(3)} reversals=${flips.toFixed(3)}`)
     return flips < TIER_B_PARAMS.settledReversals && speed < TIER_B_PARAMS.settledSpeed
   }
-  const distinctTypesPresent = new Set(active.map(n => DEFAULT_ONTOLOGY.valueFor(n))).size
+  const distinctTypesPresent = new Set(active.map(n => DEFAULT_TAXONOMY.styleValueOf(n))).size
 
   let maxAbs = 0
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
@@ -249,10 +249,10 @@ export function tierB(fixtureName: string, graph: Graph): Json {
     overlayScalarY: overlayRows(reachSim),
     overlayScalarYFlipped: overlayRows(flippedSim),
     scalarSettlesAtExp3: {
-      yReach: settlesAtExp3('yReach', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' } }),
-      xDegree: settlesAtExp3('xDegree', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandX: { scalar: 'degree' } }),
-      yReachRadial: settlesAtExp3('yReachRadial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' }, radial: true }),
-      mappedY: settlesAtExp3('mappedY', defaultParamsFor(DEFAULT_ONTOLOGY)),
+      yReach: settlesAtExp3('yReach', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach' } }),
+      xDegree: settlesAtExp3('xDegree', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandX: { scalar: 'degree' } }),
+      yReachRadial: settlesAtExp3('yReachRadial', { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach' }, radial: true }),
+      mappedY: settlesAtExp3('mappedY', defaultParamsFor(DEFAULT_TAXONOMY)),
     },
     allFinite: nonFinite.length === 0,
     nonFiniteNodeIds: sorted(nonFinite),

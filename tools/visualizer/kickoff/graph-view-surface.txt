@@ -2,34 +2,34 @@ BAND_FRAME
 FilterBar
 GraphView
 NEUTRAL_STROKE
-OntologyContext
+TaxonomyContext
 copyGroups
-copyKeyOf
 countsOn
-createOntology
+createTaxonomy
 defaultFilter
 filterStatesEqual
 hiddenMatchesOf
 isContainment
+lockedFor
 matchesFocus
 passesSelection
 payloadNumber
 payloadString
-pinnedFor
 reconcileFilter
 schemeStylesheet
 schemeVars
 selectionFor
 themeChoiceOf
 toggleGroup
-toggleValue
 type ActiveGroup
+type AxisDescriptor
+type AxisId
+type AxisLocks
+type AxisNamer
+type AxisValue
+type AxisValues
 type Band
 type ColorPair
-type DimensionDescriptor
-type DimensionId
-type DimensionMap
-type DimensionValue
 type EdgeStroke
 type EdgeType
 type EdgeTypeId
@@ -52,29 +52,29 @@ type HighlightDirection
 type HighlightGraph
 type NodeGroup
 type NodeStyle
-type Ontology
-type OntologySpec
-type PinState
 type Position
 type ReadableGraph
 type ReconcileInput
 type ReconcileResult
 type ReheatPolicy
 type Relation
-type ResolvedDimensionDescriptor
+type ResolvedAxisDescriptor
 type ResolvedEdgeType
 type ResolvedNodeStyle
 type ScalarAxis
 type SearchState
 type Selection
 type SpringPhysics
+type StyleSubject
+type Taxonomy
+type TaxonomySpec
 type Theme
 type ThemeChoice
 type ThemedColor
 type ViewTransition
 useHostTheme
-useOntology
+useTaxonomy
 validateGraph
 valuesOn
-withPin
+withLock
 withSelection

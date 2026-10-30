@@ -2,7 +2,7 @@
 
 import type { GraphNode, GraphEdge, Graph } from './model'
 import { readableGraph } from './model'
-import type { EdgeTypeId, SpringPhysics } from './taxonomy'
+import type { EdgeTypeId, SpringPhysics } from './shapes'
 import {
   applyChargeForce,
   applyLinkForce,
@@ -21,9 +21,9 @@ import type { Rng } from './rng'
 import type { EdgeCategory, LayoutFrame, LayoutSubject, ResolvedPhysics } from './forces'
 import type { ScalarAxis, ScalarTuning } from './scalar'
 import { isScalarTuning } from './scalar'
-import type { AxisNamer, DimensionId, DimensionValue, DimensionalMapping } from './dimension'
-import { identityMapping, valuesOn } from './dimension'
-import type { Ontology } from './ontology'
+import type { AxisNamer, AxisId, AxisValue, DimensionalMapping } from './axis'
+import { identityMapping, valuesOn } from './axis'
+import type { Taxonomy } from './taxonomy'
 
 // The force helpers now live in ./forces; re-export them so existing consumers
 // (GraphCanvas, GraphControlPanel, ChargeControls) keep importing them here.
@@ -143,18 +143,18 @@ export function withSpringOverride(pair: PairTuning, id: EdgeTypeId, value: Spri
  * value. The style axis has no descriptor (it is not a filter), so its labels
  * come from the taxonomy rather than through `identityMapping`.
  */
-export function styleIdentityMapping(ontology: Ontology): DimensionalMapping {
+export function styleIdentityMapping(taxonomy: Taxonomy): DimensionalMapping {
   return identityMapping({
-    id: ontology.styleAxis(),
-    label: ontology.styleLabel(),
-    labelFor: value => ontology.styleOf(value).label,
-    abbreviationFor: value => ontology.abbreviationFor(value),
-  }, ontology.styleValues)
+    id: taxonomy.styleAxis(),
+    label: taxonomy.styleLabel(),
+    labelFor: value => taxonomy.styleOf(value).label,
+    abbreviationFor: value => taxonomy.abbreviationFor(value),
+  }, taxonomy.styleValues)
 }
 
 /** A single-axis tuning on the style axis, bucketed by identity, nothing overridden. */
-export function identityTuning<T>(ontology: Ontology): AxisTuning<T> {
-  return { mapping: styleIdentityMapping(ontology), overrides: new Map() }
+export function identityTuning<T>(taxonomy: Taxonomy): AxisTuning<T> {
+  return { mapping: styleIdentityMapping(taxonomy), overrides: new Map() }
 }
 
 /**
@@ -193,17 +193,17 @@ export function fitsCeiling(option: AxisOption): boolean {
  * it. The token counts are measured, not estimated, so the ceiling is a number
  * the dropdown can show beside an axis it has to decline.
  */
-export function axisOptions(ontology: Ontology, graph: Graph): AxisOption[] {
-  const mappings: DimensionalMapping[] = [styleIdentityMapping(ontology)]
-  for (const dimension of nodeAxes(ontology, graph)) {
+export function axisOptions(taxonomy: Taxonomy, graph: Graph): AxisOption[] {
+  const mappings: DimensionalMapping[] = [styleIdentityMapping(taxonomy)]
+  for (const dimension of nodeAxes(taxonomy, graph)) {
     const values = valuesOn(graph.nodes.values(), dimension)
-    if (values.length > 0) mappings.push(identityMapping(namerFor(ontology, dimension), values))
+    if (values.length > 0) mappings.push(identityMapping(namerFor(taxonomy, dimension), values))
   }
   const nodeOf = (id: string) => graph.nodes.get(id)
   return mappings.map(mapping => ({
     mapping,
     pushTokens: mapping.buckets.length,
-    pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), ontology), graph.edges, nodeOf).size,
+    pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), taxonomy), graph.edges, nodeOf).size,
   }))
 }
 
@@ -214,11 +214,11 @@ export function axisOptions(ontology: Ontology, graph: Graph): AxisOption[] {
  * declaration: a host that writes `term` on its nodes may push and pull on
  * it without declaring a filter for it.
  */
-function nodeAxes(ontology: Ontology, graph: Graph): DimensionId[] {
-  const style = ontology.styleAxis()
-  const out: DimensionId[] = []
-  const seen = new Set<DimensionId>([style])
-  for (const d of ontology.filterDimensions) {
+function nodeAxes(taxonomy: Taxonomy, graph: Graph): AxisId[] {
+  const style = taxonomy.styleAxis()
+  const out: AxisId[] = []
+  const seen = new Set<AxisId>([style])
+  for (const d of taxonomy.filterAxes) {
     if (seen.has(d.id)) continue
     seen.add(d.id); out.push(d.id)
   }
@@ -232,12 +232,12 @@ function nodeAxes(ontology: Ontology, graph: Graph): DimensionId[] {
 }
 
 /** How an axis names itself and its values: its descriptor's way, or — for an axis no descriptor declares — the id and the value. */
-function namerFor(ontology: Ontology, dimension: DimensionId): AxisNamer {
-  return ontology.descriptorFor(dimension) ?? {
+function namerFor(taxonomy: Taxonomy, dimension: AxisId): AxisNamer {
+  return taxonomy.axisFor(dimension) ?? {
     id: dimension,
     label: dimension,
-    labelFor: (v: DimensionValue) => v,
-    abbreviationFor: (v: DimensionValue) => v.slice(0, 2),
+    labelFor: (v: AxisValue) => v,
+    abbreviationFor: (v: AxisValue) => v.slice(0, 2),
   }
 }
 
@@ -247,10 +247,10 @@ export type LayoutAxisOption =
   | { readonly kind: 'scalar'; readonly scalar: ScalarAxis }
 
 /** Every axis X or Y can key on: the mappings push/pull can (already measured), then every scalar the taxonomy knows. */
-export function layoutAxisOptions(axes: readonly AxisOption[], ontology: Ontology): LayoutAxisOption[] {
+export function layoutAxisOptions(axes: readonly AxisOption[], taxonomy: Taxonomy): LayoutAxisOption[] {
   return [
     ...axes.map(option => ({ kind: 'mapping' as const, option })),
-    ...ontology.scalars.map(scalar => ({ kind: 'scalar' as const, scalar })),
+    ...taxonomy.scalars.map(scalar => ({ kind: 'scalar' as const, scalar })),
   ]
 }
 
@@ -280,13 +280,13 @@ function sameBuckets(a: DimensionalMapping, b: DimensionalMapping): boolean {
  * moved. An axis the graph no longer carries, or one that has grown past the
  * token ceiling, falls back to the style axis with nothing overridden.
  */
-export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph): ForceParams {
-  const style = ontology.styleAxis()
+export function retunedFor(params: ForceParams, taxonomy: Taxonomy, graph: Graph): ForceParams {
+  const style = taxonomy.styleAxis()
   const nodeOf = (id: string) => graph.nodes.get(id)
   const refreshed = (m: DimensionalMapping): DimensionalMapping | undefined => {
-    if (m.dimension === style) return styleIdentityMapping(ontology)
+    if (m.dimension === style) return styleIdentityMapping(taxonomy)
     const values = valuesOn(graph.nodes.values(), m.dimension)
-    return values.length === 0 ? undefined : identityMapping(namerFor(ontology, m.dimension), values)
+    return values.length === 0 ? undefined : identityMapping(namerFor(taxonomy, m.dimension), values)
   }
   // One rule for every tuning: re-bucket; fall back to the style axis with
   // nothing overridden when the axis vanished or outgrew its ceiling — said
@@ -300,7 +300,7 @@ export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph
     const next = refreshed(tuning.mapping)
     if (next === undefined || (next.dimension !== style && !fits(next))) {
       fellBack(tuning.mapping.dimension, next === undefined ? 'no node carries it any more' : `it has ${next.buckets.length} buckets, past the ceiling of ${TOKEN_CEILING}`)
-      return fresh(styleIdentityMapping(ontology))
+      return fresh(styleIdentityMapping(taxonomy))
     }
     return sameBuckets(next, tuning.mapping) ? tuning : { ...tuning, mapping: next }
   }
@@ -308,13 +308,13 @@ export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph
   const pairFits = (mapping: DimensionalMapping) => fitsCeiling({
     mapping,
     pushTokens: mapping.buckets.length,
-    pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), ontology), graph.edges, nodeOf).size,
+    pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), taxonomy), graph.edges, nodeOf).size,
   })
   // A scalar axis has no buckets to go stale; it falls back only when the
   // taxonomy no longer knows the scalar (a swap), with the style identity.
   const refreshLayout = (tuning: LayoutTuning): LayoutTuning =>
     isScalarTuning(tuning)
-      ? (ontology.scalars.some(sc => sc.id === tuning.scalar) ? tuning : identityTuning<BandRange>(ontology))
+      ? (taxonomy.scalars.some(sc => sc.id === tuning.scalar) ? tuning : identityTuning<BandRange>(taxonomy))
       : refresh(tuning, m => ({ mapping: m, overrides: new Map() }), bucketsFit)
   const pair = refresh(params.pair, pairTuning, pairFits)
   const bandX = refreshLayout(params.bandX)
@@ -325,7 +325,7 @@ export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph
 // A fallback is said once per axis and reason: it happens on every retune
 // after the first, and the user has one control to look at, not a stream.
 const FELL_BACK = new Set<string>()
-function fellBack(dimension: DimensionId, reason: string): void {
+function fellBack(dimension: AxisId, reason: string): void {
   const key = `${dimension}\u0000${reason}`
   if (FELL_BACK.has(key)) return
   FELL_BACK.add(key)
@@ -444,13 +444,13 @@ export type ForceParams = ChargeParams & LinkParams & GravityParams & DynamicsPa
  * that today (the control panel rebuilds each map immutably), which is exactly
  * why it would have been a bad bug to acquire later rather than one to find.
  */
-export function defaultParamsFor(ontology: Ontology): ForceParams {
+export function defaultParamsFor(taxonomy: Taxonomy): ForceParams {
   return {
     // Both default to the axis the taxonomy resolves style on, so the layout
     // keys on the same thing it is coloured by.
-    pair: pairTuning(styleIdentityMapping(ontology)),
-    bandX: identityTuning<BandRange>(ontology),
-    bandY: identityTuning<BandRange>(ontology),
+    pair: pairTuning(styleIdentityMapping(taxonomy)),
+    bandX: identityTuning<BandRange>(taxonomy),
+    bandY: identityTuning<BandRange>(taxonomy),
 
     // Gravity. The Y bands carry the vertical structure of the layout — strong
     // (gravityY = 0.145) and overlapping at the edges so adjacent tiers can
@@ -538,7 +538,7 @@ export class Simulation {
 
   // The taxonomy the link force resolves spring categories through. Held rather
   // than imported so the engine is not bound to one set of edge categories.
-  private ontology: Ontology
+  private taxonomy: Taxonomy
 
   // The per-bucket tables, resolved once from (params, taxonomy) and read by the
   // kernels per pair / per node. Recomputed only when either input changes —
@@ -554,7 +554,7 @@ export class Simulation {
   // first use and dropped whenever the tables are re-resolved.
   private springByEdge: Map<string, EdgeCategory> | null = null
 
-  // `ontology` is REQUIRED, deliberately. It was defaulted first, and the single
+  // `taxonomy` is REQUIRED, deliberately. It was defaulted first, and the single
   // production construction site then quietly kept the shipped taxonomy while
   // every component resolved through an injected one — a split-brain that no
   // gate could see because both halves were individually correct.
@@ -562,16 +562,16 @@ export class Simulation {
     graph: Graph,
     params: Partial<ForceParams> | undefined,
     rng: Rng,
-    ontology: Ontology,
+    taxonomy: Taxonomy,
     // Where a node starts when something already knows: a layout the host
     // kept, or the previous simulation's. A node with an entry is not seeded.
     positions?: ReadonlyMap<string, { x: number; y: number }>,
   ) {
-    this.params = { ...defaultParamsFor(ontology), ...params }
+    this.params = { ...defaultParamsFor(taxonomy), ...params }
     this.alpha = 1.0
     this.rng = rng
-    this.ontology = ontology
-    this.resolved = resolvePhysics(this.params, ontology)
+    this.taxonomy = taxonomy
+    this.resolved = resolvePhysics(this.params, taxonomy)
 
     // Seed each node in the frame the forces act in. Cartesian: inside its
     // rest band on both axes, re-centred as the force re-centres them, and
@@ -758,7 +758,7 @@ export class Simulation {
     Object.assign(this.params, params)
     // A patch may replace a whole tuning; the dense tables and the per-edge
     // classification follow it.
-    this.resolved = resolvePhysics(this.params, this.ontology)
+    this.resolved = resolvePhysics(this.params, this.taxonomy)
     this.frame = layoutFrame(this, this.resolved)
     this.springByEdge = null
   }

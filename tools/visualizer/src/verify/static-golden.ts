@@ -8,7 +8,7 @@
 // the reconciler's transition matrix, and the Set-identity trace that is the
 // only detector for the memoization trap (T5).
 
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_TAXONOMY } from '../adapter/node-types'
 import { DEFAULT_NODE_SCALE } from '@temporal-architect/graph-view/graph/node-scale'
 import { defaultParamsFor, mappedTuning } from '@temporal-architect/graph-view/graph/simulation'
 import type { LayoutTuning } from '@temporal-architect/graph-view/graph/simulation'
@@ -25,14 +25,14 @@ import { defaultsProbes } from './defaults-probes'
 import { contractProbes } from './contract-probes'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
-import { ontologyProbes } from './ontology-probes'
+import { taxonomyProbes } from './taxonomy-probes'
 import { tuningProbes } from './tuning-probes'
 import { ALL_EDGE_TYPES } from '../adapter/edge-types'
 import { buildNodeTypeCSS } from '../adapter/node-type-styles'
 import { VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 import { reconcileFilter } from '@temporal-architect/graph-view/filter/reconcile'
 import { toggleValue, toggleGroup } from '@temporal-architect/graph-view/filter/toggle'
-import type { FilterState, PinState, ViewTransition } from '@temporal-architect/graph-view/filter/types'
+import type { FilterState, AxisLocks, ViewTransition } from '@temporal-architect/graph-view/filter/types'
 import { selectionFor } from '@temporal-architect/graph-view/filter/types'
 import type { Json } from './snapshot'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
@@ -72,8 +72,8 @@ function edgeTypeRows(): Json {
   return sortedRecord(
     ALL_EDGE_TYPES.map(e => [e.id, {
       label: e.label,
-      sourceType: e.sourceType,
-      targetType: e.targetType,
+      sourceValue: e.sourceValue,
+      targetValue: e.targetValue,
       relation: e.relation,
       physics: { strength: e.physics.strength, distance: e.physics.distance },
     }] as const),
@@ -121,20 +121,20 @@ const DEST_STATES: [string, FilterState][] = [
 const SOURCE_STATE = filterOf([FILE_B], ['activityDef', 'nexusServiceDef'])
 
 // Axis-keyed. Naming these `files`/`types` still TYPECHECKS against
-// `Record<DimensionId, boolean>` — it just pins two axes that do not exist, so
+// `Record<AxisId, boolean>` — it just pins two axes that do not exist, so
 // every real pin reads false and the whole matrix collapses to its unpinned
 // rows. The golden shrinking by 186 lines is what caught it.
-const pinsOf = (files: boolean, types: boolean): PinState =>
+const pinsOf = (files: boolean, types: boolean): AxisLocks =>
   new Map([[SOURCE_FILE_DIMENSION, files], [DEF_TYPE_DIMENSION, types]])
 
-const PIN_STATES: [string, PinState][] = [
+const PIN_STATES: [string, AxisLocks][] = [
   ['pins:none', pinsOf(false, false)],
   ['pins:files', pinsOf(true, false)],
   ['pins:types', pinsOf(false, true)],
   ['pins:both', pinsOf(true, true)],
 ]
 
-const NO_PINS: PinState = new Map()
+const NO_PINS: AxisLocks = new Map()
 
 const INTENTS: [string, ViewTransition][] = [
   ['manual', { kind: 'manual' }],
@@ -153,11 +153,11 @@ function reconcileMatrix(): Json {
   for (const [destName, dest] of DEST_STATES) {
     for (const [pinName, pins] of PIN_STATES) {
       for (const [intentName, intent] of INTENTS) {
-        const result = reconcileFilter({ destination: dest, source: SOURCE_STATE, pins, transition: intent, axes: DEFAULT_ONTOLOGY.filterDimensions })
+        const result = reconcileFilter({ destination: dest, source: SOURCE_STATE, locks: pins, transition: intent, axes: DEFAULT_TAXONOMY.filterAxes })
         rows.push([`${destName} · ${pinName} · ${intentName}`, {
           selectedFiles: sorted(selectionFor(result.filter, SOURCE_FILE_DIMENSION)),
           visibleTypes: sorted(selectionFor(result.filter, DEF_TYPE_DIMENSION)),
-          overriddenPins: sorted(result.overriddenPins),
+          overriddenLocks: sorted(result.overriddenLocks),
           // The reconciler returns the dest object itself when nothing changed.
           // Consumers memoize on that identity, so it is behaviour, not detail.
           returnedDestUnchanged: result.filter === dest,
@@ -189,7 +189,7 @@ function filterSetIdentity(): Json {
       op,
       // Compared through `selectionFor`, not by reading a named field. The
       // named-field version survived the axis-keyed migration by TYPECHECKING
-      // against `Record<DimensionId, …>` and then reading `undefined` on both
+      // against `Record<AxisId, …>` and then reading `undefined` on both
       // sides — so every row reported `false`, and the golden asserted the T5
       // fix while measuring nothing. The fix was real and the probe was blind:
       // two halves, each individually plausible (F12).
@@ -210,12 +210,12 @@ function filterSetIdentity(): Json {
   }
   record(`toggleFile(${FILE_A}) [off]`, toggleValue(current, SOURCE_FILE_DIMENSION, FILE_A))
   record('reconcile(manual, unpinned)', reconcileFilter({
-    destination: current, source: SOURCE_STATE, pins: NO_PINS, transition: { kind: 'manual' }, axes: DEFAULT_ONTOLOGY.filterDimensions,
+    destination: current, source: SOURCE_STATE, locks: NO_PINS, transition: { kind: 'manual' }, axes: DEFAULT_TAXONOMY.filterAxes,
   }).filter)
   // Reconciling against itself changes nothing, so the dest object comes back
   // by reference and no dimension's identity moves.
   record('reconcile(manual, self)', reconcileFilter({
-    destination: current, source: current, pins: NO_PINS, transition: { kind: 'manual' }, axes: DEFAULT_ONTOLOGY.filterDimensions,
+    destination: current, source: current, locks: NO_PINS, transition: { kind: 'manual' }, axes: DEFAULT_TAXONOMY.filterAxes,
   }).filter)
 
   return steps
@@ -240,8 +240,8 @@ export function staticGolden(): Json {
     // scalar changed — is a change no gate can see, and the per-value maps are
     // the thing later units re-key by dimension.
     defaultForceParams: (() => {
-      const p = defaultParamsFor(DEFAULT_ONTOLOGY)
-      const r = resolvePhysics(p, DEFAULT_ONTOLOGY)
+      const p = defaultParamsFor(DEFAULT_TAXONOMY)
+      const r = resolvePhysics(p, DEFAULT_TAXONOMY)
       const { pair, bandX, bandY, ...scalars } = p
       // Scalars verbatim; the tunings as the dense tables they resolve to,
       // which is what the kernels consume and what the old `charge` /
@@ -253,12 +253,12 @@ export function staticGolden(): Json {
         push: { axis: pair.mapping.dimension, buckets: sortedRecord([...r.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)) },
         bandX: layoutRow(bandX, r.bandX),
         bandY: layoutRow(bandY, r.bandY),
-        spring: { axis: pair.mapping.dimension, categories: sortedRecord(DEFAULT_ONTOLOGY.edgeTypes.map(e => { const v = r.spring.physicsFor(e.id); return [e.id, { strength: v.strength, distance: v.distance }] as const })) },
+        spring: { axis: pair.mapping.dimension, categories: sortedRecord(DEFAULT_TAXONOMY.edgeTypes.map(e => { const v = r.spring.physicsFor(e.id); return [e.id, { strength: v.strength, distance: v.distance }] as const })) },
       }
     })() as unknown as Json,
     defaultNodeScale: { ...DEFAULT_NODE_SCALE },
     forceProbes: forceProbes(),
-    ontologyProbes: ontologyProbes(),
+    taxonomyProbes: taxonomyProbes(),
     tuningProbes: tuningProbes(),
     scalarProbes: scalarProbes(),
     schemeProbes: schemeProbes(),

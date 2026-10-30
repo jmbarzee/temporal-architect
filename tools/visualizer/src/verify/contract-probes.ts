@@ -14,11 +14,11 @@
 import { Simulation } from '@temporal-architect/graph-view/graph/simulation'
 import { activeGroupsOf } from '@temporal-architect/graph-view/graph/groups'
 import { highlightOf } from '@temporal-architect/graph-view/graph/highlight'
-import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import type { HighlightDirection } from '@temporal-architect/graph-view/graph/ontology'
+import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { HighlightDirection } from '@temporal-architect/graph-view/graph/taxonomy'
 import { graphShapeEquals } from '@temporal-architect/graph-view/graph/model'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
-import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
+import { DEFAULT_TAXONOMY, DEFAULT_TAXONOMY_SPEC } from '../adapter/node-types'
 import { mulberry32 } from './rng'
 import { syntheticNode } from './tuning-probes'
 import type { Json } from './snapshot'
@@ -42,7 +42,7 @@ function positions(): Json {
     syntheticNode('c', 'worker', undefined),
   ], [])
   const given = new Map([['a', { x: 11, y: 22 }], ['b', { x: -5, y: 7 }]])
-  const sim = new Simulation(graph, undefined, mulberry32(SEED), DEFAULT_ONTOLOGY, given)
+  const sim = new Simulation(graph, undefined, mulberry32(SEED), DEFAULT_TAXONOMY, given)
   const at = (id: string) => {
     const node = sim.getNode(id)
     if (!node) throw new Error(`contract-probes: the simulation has no node ${id}`)
@@ -69,15 +69,15 @@ function groupColour(): Json {
 /** The hook hears `upstream` and `downstream` as the walk is asked for them, and what it returns is what lights. */
 function highlightDirection(): Json {
   const seen: HighlightDirection[] = []
-  const ontology = createOntology({
-    ...DEFAULT_ONTOLOGY_SPEC,
+  const taxonomy = createTaxonomy({
+    ...DEFAULT_TAXONOMY_SPEC,
     highlight: (_active, base, _graph, direction) => { seen.push(direction); return base },
   })
   const nodes = [syntheticNode('a', 'workflow', undefined), syntheticNode('b', 'activity', undefined)]
   const graph = graphOf(nodes, [dependency('e', 'a', 'b')])
   const visible = { visibleNodes: nodes, visibleEdges: graph.edges, visibleIds: new Set(graph.nodes.keys()), getNode: (id: string) => graph.nodes.get(id) }
-  const upstream = highlightOf(ontology, nodes[0], 'upstream', visible)
-  const downstream = highlightOf(ontology, nodes[0], 'downstream', visible)
+  const upstream = highlightOf(taxonomy, nodes[0], 'upstream', visible)
+  const downstream = highlightOf(taxonomy, nodes[0], 'downstream', visible)
   return { seen, lit: { upstream: sorted(upstream.nodes), downstream: sorted(downstream.nodes) } }
 }
 

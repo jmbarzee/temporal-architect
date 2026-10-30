@@ -26,15 +26,15 @@
 //     does to a filter, who answers to a focus, what the nodes say per axis.
 
 import { countsOn, defaultFilter, hiddenMatchesOf, matchesFocus, passesSelection, reconcileFilter } from '@temporal-architect/graph-view'
-import type { FilterState, FocusTarget, PinState, ViewTransition } from '@temporal-architect/graph-view'
-import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import type { Ontology, OntologySpec } from '@temporal-architect/graph-view/graph/ontology'
-import type { DimensionDescriptor, Relation } from '@temporal-architect/graph-view/graph/dimension'
+import type { FilterState, FocusTarget, AxisLocks, ViewTransition } from '@temporal-architect/graph-view'
+import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { Taxonomy, TaxonomySpec } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { AxisDescriptor, Relation } from '@temporal-architect/graph-view/graph/axis'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
 import { readableGraph, withContainmentEdges } from '@temporal-architect/graph-view/graph/model'
 import type { EdgeStroke, ThemedColor } from '@temporal-architect/graph-view/graph/scheme'
-import { NEUTRAL_STROKE, stackBand } from '@temporal-architect/graph-view/graph/taxonomy'
-import type { EdgeType, NodeStyle, ResolvedNodeStyle } from '@temporal-architect/graph-view/graph/taxonomy'
+import { NEUTRAL_STROKE, stackBand } from '@temporal-architect/graph-view/graph/shapes'
+import type { EdgeType, NodeStyle, ResolvedNodeStyle } from '@temporal-architect/graph-view/graph/shapes'
 import { BUILT_IN_SCALARS, normalized } from '@temporal-architect/graph-view/graph/scalar'
 import type { ScalarAxis } from '@temporal-architect/graph-view/graph/scalar'
 import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
@@ -58,15 +58,15 @@ const VALUES: readonly NodeStyle[] = [
  * Three values with only the three required fields, and whichever edge types a
  * row is about — no rule to classify an edge, no filter axes: the minimum.
  */
-function bareSpec(edgeTypes: readonly EdgeType[]): OntologySpec {
-  return { styleDimension: KIND, values: VALUES, edgeTypes }
+function bareSpec(edgeTypes: readonly EdgeType[]): TaxonomySpec {
+  return { styleAxis: KIND, values: VALUES, edgeTypes }
 }
 
 /** The same, with the two filter axes the earlier rows read: an allow-list on the style axis, a narrowing zone. */
-function specOf(edgeTypes: readonly EdgeType[]): OntologySpec {
+function specOf(edgeTypes: readonly EdgeType[]): TaxonomySpec {
   return {
     ...bareSpec(edgeTypes),
-    filterDimensions: [
+    filterAxes: [
       { id: KIND, label: 'Kind', emptyMeans: 'none' },
       { id: ZONE, label: 'Zone', emptyMeans: 'all' },
     ],
@@ -74,14 +74,14 @@ function specOf(edgeTypes: readonly EdgeType[]): OntologySpec {
 }
 
 /** An edge type that declares no spring and no tooltip. */
-const bare = (id: string, relation: EdgeType['relation'], sourceType: string, targetType: string): EdgeType =>
-  ({ id, label: id, sourceType, targetType, relation, style: STROKE })
+const bare = (id: string, relation: EdgeType['relation'], sourceValue: string, targetValue: string): EdgeType =>
+  ({ id, label: id, sourceValue, targetValue, relation, style: STROKE })
 
 /** An edge type that declares nothing but what it runs between: no spring, no tooltip, no stroke. */
-const unstyled = (id: string, relation: EdgeType['relation'], sourceType: string, targetType: string): EdgeType =>
-  ({ id, label: id, sourceType, targetType, relation })
+const unstyled = (id: string, relation: EdgeType['relation'], sourceValue: string, targetValue: string): EdgeType =>
+  ({ id, label: id, sourceValue, targetValue, relation })
 
-const MINIMAL = createOntology(specOf([bare('in', 'containment', 'b', 'a'), bare('calls', 'dependency', 'c', 'c')]))
+const MINIMAL = createTaxonomy(specOf([bare('in', 'containment', 'b', 'a'), bare('calls', 'dependency', 'c', 'c')]))
 
 const styleRow = (s: ResolvedNodeStyle): Json => ({
   abbreviation: s.abbreviation,
@@ -102,7 +102,7 @@ function minimal(): Json {
     values: sortedRecord(MINIMAL.styleValues.map(v => [v, styleRow(MINIMAL.styleOf(v))] as const)),
     fallback: styleRow(MINIMAL.styleOf('nope')),
     edgeTypes: sortedRecord(MINIMAL.edgeTypes.map(e => [e.id, { physics: { strength: e.physics.strength, distance: e.physics.distance }, tooltip: e.tooltip }] as const)),
-    descriptors: sortedRecord(MINIMAL.filterDimensions.map(d => [d.id, {
+    descriptors: sortedRecord(MINIMAL.filterAxes.map(d => [d.id, {
       absentMeans: d.absentMeans,
       focus: d.focus,
       reheat: { alpha: d.reheat.alpha, seedRevealed: d.reheat.seedRevealed, refit: d.reheat.refit, resume: d.reheat.resume },
@@ -117,12 +117,12 @@ function minimal(): Json {
 
 /** Two of three edge types declare a spring; the third starts from their mean. */
 function typicalSpring(): Json {
-  const ontology = createOntology(specOf([
+  const taxonomy = createTaxonomy(specOf([
     { ...bare('first', 'dependency', 'a', 'a'), physics: { strength: 0.4, distance: 100 } },
     { ...bare('second', 'dependency', 'b', 'b'), physics: { strength: 0.8, distance: 300 } },
     bare('third', 'dependency', 'c', 'c'),
   ]))
-  const third = ontology.edgeTypes.find(e => e.id === 'third')!
+  const third = taxonomy.edgeTypes.find(e => e.id === 'third')!
   return { strength: third.physics.strength, distance: third.physics.distance }
 }
 
@@ -145,7 +145,7 @@ function containment(): Json {
     [contains('own:y', 'y', 'p')],
   )
   const derived = withContainmentEdges(graph)
-  const codes = (g: Graph, ontology = MINIMAL) => validateGraph(g, ontology).map(d => d.code).sort()
+  const codes = (g: Graph, taxonomy = MINIMAL) => validateGraph(g, taxonomy).map(d => d.code).sort()
   return {
     // `x` gets `in:x`; `y` listed its own, so gets none; `z`'s parent is not in the graph.
     edgeIds: sorted(derived.edges.map(e => e.id)),
@@ -158,7 +158,7 @@ function containment(): Json {
       // A containment edge the rule answers with a dependency type.
       containmentAsDependency: codes(
         graphOf([node('p', 'a'), node('n', 'b', undefined, 'p')], [contains('e', 'n', 'p')]),
-        createOntology({ ...specOf([bare('in', 'containment', 'b', 'a'), bare('calls', 'dependency', 'c', 'c')]), classifyEdge: () => 'calls' }),
+        createTaxonomy({ ...specOf([bare('in', 'containment', 'b', 'a'), bare('calls', 'dependency', 'c', 'c')]), classifyEdge: () => 'calls' }),
       ),
     },
   }
@@ -187,8 +187,8 @@ function refusalOf(run: () => unknown): string {
   try { run(); return 'returned' } catch (e) { return e instanceof Error ? e.message : String(e) }
 }
 
-const diagnosticRows = (graph: Graph, ontology: Ontology): Json =>
-  validateGraph(graph, ontology).map(d => ({ severity: d.severity, code: d.code, subject: d.edgeId ?? d.nodeId ?? null, message: d.message }))
+const diagnosticRows = (graph: Graph, taxonomy: Taxonomy): Json =>
+  validateGraph(graph, taxonomy).map(d => ({ severity: d.severity, code: d.code, subject: d.edgeId ?? d.nodeId ?? null, message: d.message }))
 
 const reheatRow = (d: { reheat: { alpha: number; seedRevealed: boolean; refit: boolean; resume: boolean } }): Json =>
   ({ alpha: d.reheat.alpha, seedRevealed: d.reheat.seedRevealed, refit: d.reheat.refit, resume: d.reheat.resume })
@@ -199,13 +199,13 @@ const reheatRow = (d: { reheat: { alpha: number; seedRevealed: boolean; refit: b
  * no type covers has no type — a warning, not an error, and it draws neutral.
  */
 function classification(): Json {
-  const ontology = createOntology(bareSpec([
+  const taxonomy = createTaxonomy(bareSpec([
     unstyled('in', 'containment', 'b', 'a'),
     unstyled('links', 'dependency', 'a', 'b'),
     unstyled('calls', 'dependency', 'c', 'c'),
   ]))
   const classify = (relation: Relation | undefined, src: string | undefined, tgt: string | undefined) =>
-    ontology.classifyEdge({ id: 'e', sourceId: 's', targetId: 't', ...(relation ? { relation } : {}) }, src, tgt) ?? null
+    taxonomy.classifyEdge({ id: 'e', sourceId: 's', targetId: 't', ...(relation ? { relation } : {}) }, src, tgt) ?? null
   const graph = graphOf(
     [node('na', 'a'), node('nb', 'b'), node('nc', 'c')],
     [dependency('ok', 'na', 'nb'), dependency('uncovered', 'na', 'nc')],
@@ -219,7 +219,7 @@ function classification(): Json {
     uncovered: classify(undefined, 'a', 'c'),
     containmentWithNoType: classify('containment', 'c', 'c'),
     endpointWithNoValue: classify(undefined, undefined, 'a'),
-    validation: diagnosticRows(graph, ontology),
+    validation: diagnosticRows(graph, taxonomy),
   }
 }
 
@@ -231,17 +231,17 @@ function classification(): Json {
 function sharedPair(): Json {
   const calls = unstyled('calls', 'dependency', 'c', 'c')
   const signals = unstyled('signals', 'dependency', 'c', 'c')
-  const tieBreaker = createOntology({
+  const tieBreaker = createTaxonomy({
     ...bareSpec([calls, signals]),
     classifyEdge: edge => (edge.dimensions?.[KIND] === 'signal' ? 'signals' : undefined),
   })
   const edge = (dimensions?: Record<string, string>): GraphEdge => ({ id: 'e', sourceId: 's', targetId: 't', ...(dimensions ? { dimensions } : {}) })
   return {
-    sameOrientation: refusalOf(() => createOntology(bareSpec([calls, signals]))),
-    oppositeOrientation: refusalOf(() => createOntology(bareSpec([unstyled('x', 'dependency', 'a', 'b'), unstyled('y', 'dependency', 'b', 'a')]))),
+    sameOrientation: refusalOf(() => createTaxonomy(bareSpec([calls, signals]))),
+    oppositeOrientation: refusalOf(() => createTaxonomy(bareSpec([unstyled('x', 'dependency', 'a', 'b'), unstyled('y', 'dependency', 'b', 'a')]))),
     // A containment type and a dependency type on one pair are two pairs.
-    otherRelation: refusalOf(() => createOntology(bareSpec([unstyled('in', 'containment', 'c', 'c'), calls]))),
-    withTieBreaker: refusalOf(() => createOntology({ ...bareSpec([calls, signals]), classifyEdge: () => 'signals' })),
+    otherRelation: refusalOf(() => createTaxonomy(bareSpec([unstyled('in', 'containment', 'c', 'c'), calls]))),
+    withTieBreaker: refusalOf(() => createTaxonomy({ ...bareSpec([calls, signals]), classifyEdge: () => 'signals' })),
     tieBreakerFirst: tieBreaker.classifyEdge(edge({ [KIND]: 'signal' }), 'c', 'c') ?? null,
     pairWhenItSaysNothing: tieBreaker.classifyEdge(edge(), 'c', 'c') ?? null,
   }
@@ -249,11 +249,11 @@ function sharedPair(): Json {
 
 /** A stroke left out is the neutral stroke, field by field; a partial one is merged over it. */
 function strokes(): Json {
-  const ontology = createOntology(bareSpec([
+  const taxonomy = createTaxonomy(bareSpec([
     unstyled('plain', 'dependency', 'a', 'a'),
     { ...unstyled('wide', 'dependency', 'b', 'b'), style: { width: 3 } },
   ]))
-  const styleOf = (id: string): EdgeStroke => ontology.edgeTypes.find(e => e.id === id)!.style
+  const styleOf = (id: string): EdgeStroke => taxonomy.edgeTypes.find(e => e.id === id)!.style
   return {
     neutral: strokeRow(NEUTRAL_STROKE),
     omitted: strokeRow(styleOf('plain')),
@@ -265,14 +265,14 @@ function strokes(): Json {
 
 /** An id the taxonomy does not declare strokes neutral, says so once on the console, and never throws. */
 function unknownStroke(): Json {
-  const ontology = createOntology(bareSpec([unstyled('plain', 'dependency', 'a', 'a')]))
+  const taxonomy = createTaxonomy(bareSpec([unstyled('plain', 'dependency', 'a', 'a')]))
   const warnings: string[] = []
   const warn = console.warn
   console.warn = (...args: unknown[]) => { warnings.push(args.map(String).join(' ')) }
   let outcome: Json = {}
   try {
-    const first = ontology.edgeStrokeFor('nope')
-    ontology.edgeStrokeFor('nope')
+    const first = taxonomy.edgeStrokeFor('nope')
+    taxonomy.edgeStrokeFor('nope')
     outcome = { threw: false, equalsNeutral: JSON.stringify(strokeRow(first)) === JSON.stringify(strokeRow(NEUTRAL_STROKE)) }
   } catch (e) {
     outcome = { threw: true, message: e instanceof Error ? e.message : String(e) }
@@ -282,9 +282,9 @@ function unknownStroke(): Json {
   return { ...(outcome as { [k: string]: Json }), warnings }
 }
 
-/** No `filterDimensions`: the style axis alone, as an allow-list, labelled by `styleLabel` or else its id. */
+/** No `filterAxes`: the style axis alone, as an allow-list, labelled by `styleLabel` or else its id. */
 function filterAxes(): Json {
-  const axes = (ontology: Ontology): Json => ontology.filterDimensions.map(d => ({
+  const axes = (taxonomy: Taxonomy): Json => taxonomy.filterAxes.map(d => ({
     id: d.id,
     label: d.label,
     emptyMeans: d.emptyMeans,
@@ -295,34 +295,34 @@ function filterAxes(): Json {
     chips: d.chipsFor(['a', 'b']).map(c => ({ id: c.id, label: c.label, icon: c.icon ?? null, tint: c.tint ?? null })),
   }))
   return {
-    labelled: axes(createOntology({ ...bareSpec([]), styleLabel: 'Kind' })),
-    unlabelled: axes(createOntology(bareSpec([]))),
+    labelled: axes(createTaxonomy({ ...bareSpec([]), styleLabel: 'Kind' })),
+    unlabelled: axes(createTaxonomy(bareSpec([]))),
   }
 }
 
 /** `keepCamera` states the camera policy outright; left out, an allow-list refits and a narrowing axis keeps the view. */
 function cameraPolicy(): Json {
-  const axes: DimensionDescriptor[] = [
+  const axes: AxisDescriptor[] = [
     { id: 'allowDefault', label: 'A', emptyMeans: 'none' },
     { id: 'allowKeeps', label: 'B', emptyMeans: 'none', keepCamera: true },
     { id: 'narrowDefault', label: 'C', emptyMeans: 'all' },
     { id: 'narrowRefits', label: 'D', emptyMeans: 'all', keepCamera: false },
   ]
-  const ontology = createOntology({ ...bareSpec([]), filterDimensions: axes })
-  return sortedRecord(axes.map(a => [a.id, reheatRow(ontology.descriptorFor(a.id)!)] as const))
+  const taxonomy = createTaxonomy({ ...bareSpec([]), filterAxes: axes })
+  return sortedRecord(axes.map(a => [a.id, reheatRow(taxonomy.axisFor(a.id)!)] as const))
 }
 
 /** `tooltipFor` shows in a default chip; an abbreviation left out is the first two characters of the label. */
 function names(): Json {
-  const ontology = createOntology({
+  const taxonomy = createTaxonomy({
     ...bareSpec([]),
-    filterDimensions: [
+    filterAxes: [
       { id: 'campus', label: 'Campus', emptyMeans: 'all', labelFor: () => 'North campus' },
       { id: 'file', label: 'File', emptyMeans: 'all', tooltipFor: v => `src/${v}.ts` },
     ],
   })
-  const campus = ontology.descriptorFor('campus')!
-  const file = ontology.descriptorFor('file')!
+  const campus = taxonomy.axisFor('campus')!
+  const file = taxonomy.axisFor('file')!
   return {
     abbreviationFromLabel: campus.abbreviationFor('anything'),
     abbreviationFromValue: file.abbreviationFor('util'),
@@ -341,7 +341,7 @@ function names(): Json {
 function rawScalar(): Json {
   const scalar = (id: string, answer: Record<string, number>, normalize?: ScalarAxis['normalize']): ScalarAxis =>
     ({ id, label: id, tooltip: 'probe', compute: () => new Map(Object.entries(answer)), ...(normalize ? { normalize } : {}) })
-  const ontology = createOntology({
+  const taxonomy = createTaxonomy({
     ...bareSpec([]),
     scalars: [
       scalar('raw', { a: 2, b: 4 }),
@@ -352,8 +352,8 @@ function rawScalar(): Json {
   })
   const graph = graphOf([node('a', 'a'), node('b', 'b')])
   const rests = (id: string) => {
-    const params = { ...defaultParamsFor(ontology), bandY: { scalar: id, span: { zero: 0, one: 100 } } }
-    const frame = layoutFrame(readableGraph(graph), resolvePhysics(params, ontology))
+    const params = { ...defaultParamsFor(taxonomy), bandY: { scalar: id, span: { zero: 0, one: 100 } } }
+    const frame = layoutFrame(readableGraph(graph), resolvePhysics(params, taxonomy))
     return sortedRecord([...graph.nodes.values()].map(n => [n.id, frame.rest('y', n).lo] as const))
   }
   return {
@@ -369,7 +369,7 @@ function rawScalar(): Json {
 /** A Map keyed by something other than the node's own id is a warning: the view reads the node by its id. */
 function keyMismatch(): Json {
   const graph: Graph = { nodes: new Map([['x', node('y', 'a')]]), edges: [] }
-  return diagnosticRows(graph, createOntology(bareSpec([])))
+  return diagnosticRows(graph, createTaxonomy(bareSpec([])))
 }
 
 /** A derived containment edge takes the first free numbered variant of `in:<id>` when a host edge has the plain one. */
@@ -401,7 +401,7 @@ function pass2(): Json {
 // ── Pass 2b: the filter functions a host's second view shares ──────────────
 
 const selection = (kind: string[], zone: string[]): FilterState => new Map([[KIND, new Set(kind)], [ZONE, new Set(zone)]])
-const pinned = (kind: boolean, zone: boolean): PinState => new Map([[KIND, kind], [ZONE, zone]])
+const pinned = (kind: boolean, zone: boolean): AxisLocks => new Map([[KIND, kind], [ZONE, zone]])
 const nested = (m: ReadonlyMap<string, ReadonlyMap<string, number>>): Json =>
   sortedRecord([...m].map(([axis, tally]) => [axis, sortedRecord([...tally])] as const))
 const filterRow = (f: FilterState): Json => ({ kind: sorted(f.get(KIND) ?? []), zone: sorted(f.get(ZONE) ?? []) })
@@ -419,7 +419,7 @@ const POOL: readonly GraphNode[] = [
  * the filter passes but the caller hides is counted and tallies on no axis.
  */
 function hiddenMatches(): Json {
-  const axes = MINIMAL.filterDimensions
+  const axes = MINIMAL.filterAxes
   const kindThenZone = axes
   const zoneThenKind = [...axes].reverse()
   const filter = selection(['a', 'b'], ['east'])
@@ -449,12 +449,12 @@ function hiddenMatches(): Json {
  * axes it had to override.
  */
 function reconciling(): Json {
-  const axes = MINIMAL.filterDimensions
-  const row = (destination: FilterState, source: FilterState, pins: PinState, transition: ViewTransition, over = axes): Json => {
-    const r = reconcileFilter({ destination, source, pins, transition, axes: over })
+  const axes = MINIMAL.filterAxes
+  const row = (destination: FilterState, source: FilterState, locks: AxisLocks, transition: ViewTransition, over = axes): Json => {
+    const r = reconcileFilter({ destination, source, locks, transition, axes: over })
     return {
       ...(filterRow(r.filter) as { [k: string]: Json }),
-      overriddenPins: sorted(r.overriddenPins),
+      overriddenLocks: sorted(r.overriddenLocks),
       returnedDestination: r.filter === destination,
       keptKindSet: r.filter.get(KIND) === destination.get(KIND),
       keptZoneSet: r.filter.get(ZONE) === destination.get(ZONE),

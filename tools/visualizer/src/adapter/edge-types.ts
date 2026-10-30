@@ -11,11 +11,11 @@
 
 import { isContainment } from '@temporal-architect/graph-view'
 import type {
-  DimensionValue,
+  AxisValue,
   GraphEdge,
   EdgeType,
   EdgeStroke,
-  DimensionId,
+  AxisId,
   SpringPhysics,
 } from '@temporal-architect/graph-view'
 import type { NodeType } from './node-types'
@@ -25,8 +25,8 @@ import type { NodeType } from './node-types'
  * and read by the edge rules below — and by nothing in the library (D64). A
  * containment edge carries none; it dispatches nothing.
  */
-export const DISPATCH_DIMENSION: DimensionId = 'dispatch'
-export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): DimensionValue | undefined {
+export const DISPATCH_DIMENSION: AxisId = 'dispatch'
+export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): AxisValue | undefined {
   return edge.dimensions?.[DISPATCH_DIMENSION]
 }
 // This domain's edge categories. The *shape* is library-owned (`./taxonomy`);
@@ -58,8 +58,8 @@ export type EdgeTypeId =
  */
 export interface TemporalEdgeType extends EdgeType {
   id: EdgeTypeId
-  sourceType: NodeType
-  targetType: NodeType
+  sourceValue: NodeType
+  targetValue: NodeType
   // Declared by every entry here, where the library lets a type leave them out.
   physics: SpringPhysics
   style: EdgeStroke
@@ -82,53 +82,53 @@ const NEXUS_CALL: EdgeStroke           = { color: { light: '#F472B6', dark: '#F9
 // One entry per edge category. Order is the control-panel token order (emergent
 // positioning makes it cosmetic); the matcher below does not depend on it.
 export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
-  { id: 'linkNsToNs', label: 'NS↔NS', sourceType: 'namespace', targetType: 'namespace',
+  { id: 'linkNsToNs', label: 'NS↔NS', sourceValue: 'namespace', targetValue: 'namespace',
     relation: 'dependency',
     physics: { strength: 0.25, distance: 870 }, style: NS_DEPENDENCY, tooltip: 'Namespace ↔ Namespace dependency' },
-  { id: 'linkNsToWorker', label: 'NS↔Wk', sourceType: 'namespace', targetType: 'worker',
+  { id: 'linkNsToWorker', label: 'NS↔Wk', sourceValue: 'namespace', targetValue: 'worker',
     relation: 'containment',
     physics: { strength: 0.30, distance: 800 }, style: CONTAINMENT, tooltip: 'Namespace ↔ Worker containment' },
-  { id: 'linkWorkerToWorker', label: 'Wk↔Wk', sourceType: 'worker', targetType: 'worker',
+  { id: 'linkWorkerToWorker', label: 'Wk↔Wk', sourceValue: 'worker', targetValue: 'worker',
     relation: 'dependency',
     physics: { strength: 0.30, distance: 720 }, style: WORKER_DEPENDENCY, tooltip: 'Worker ↔ Worker dependency' },
-  { id: 'linkWorkerToWorkflow', label: 'Wk↔Wf', sourceType: 'worker', targetType: 'workflow',
+  { id: 'linkWorkerToWorkflow', label: 'Wk↔Wf', sourceValue: 'worker', targetValue: 'workflow',
     relation: 'containment',
     physics: { strength: 0.55, distance: 190 }, style: CONTAINMENT, tooltip: 'Worker ↔ Workflow containment' },
-  { id: 'linkWorkerToActivity', label: 'Wk↔Act', sourceType: 'worker', targetType: 'activity',
+  { id: 'linkWorkerToActivity', label: 'Wk↔Act', sourceValue: 'worker', targetValue: 'activity',
     relation: 'containment',
     physics: { strength: 0.35, distance: 210 }, style: CONTAINMENT, tooltip: 'Worker ↔ Activity containment' },
-  { id: 'linkWorkerToNexus', label: 'Wk↔Nx', sourceType: 'worker', targetType: 'nexusService',
+  { id: 'linkWorkerToNexus', label: 'Wk↔Nx', sourceValue: 'worker', targetValue: 'nexusService',
     relation: 'containment',
     physics: { strength: 1.25, distance: 430 }, style: CONTAINMENT, tooltip: 'Worker ↔ Nexus service containment' },
-  { id: 'linkNexusToOperation', label: 'Nx↔Op', sourceType: 'nexusService', targetType: 'nexusOperation',
+  { id: 'linkNexusToOperation', label: 'Nx↔Op', sourceValue: 'nexusService', targetValue: 'nexusOperation',
     relation: 'containment',
     physics: { strength: 1.40, distance: 600 }, style: OP_CONTAINMENT, tooltip: 'Nexus service ↔ Nexus operation containment' },
-  { id: 'linkEndpointToNamespace', label: 'Ep↔NS', sourceType: 'nexusEndpoint', targetType: 'namespace',
+  { id: 'linkEndpointToNamespace', label: 'Ep↔NS', sourceValue: 'nexusEndpoint', targetValue: 'namespace',
     relation: 'containment',
     physics: { strength: 1.00, distance: 690 }, style: CONTAINMENT, tooltip: 'Nexus endpoint ↔ Namespace containment' },
-  { id: 'linkWorkflowToWorkflow', label: 'Wf↔Wf', sourceType: 'workflow', targetType: 'workflow',
+  { id: 'linkWorkflowToWorkflow', label: 'Wf↔Wf', sourceValue: 'workflow', targetValue: 'workflow',
     relation: 'dependency',
     physics: { strength: 0.50, distance: 420 }, style: WORKFLOW_DEPENDENCY, tooltip: 'Workflow ↔ Workflow dependency' },
   // Weaker and longer than the Wf↔Wf call spring on purpose: a signal send is a
   // *soft* edge. It couples two workflows without binding them — the sender
   // never waits on the receiver's handler — so the layout should let them drift
   // apart rather than clamp them together the way a child-workflow call does.
-  { id: 'linkSignalSend', label: 'Wf→Sig', sourceType: 'workflow', targetType: 'workflow',
+  { id: 'linkSignalSend', label: 'Wf→Sig', sourceValue: 'workflow', targetValue: 'workflow',
     relation: 'dependency',
     physics: { strength: 0.30, distance: 520 }, style: WORKFLOW_DEPENDENCY, tooltip: 'Workflow → Workflow signal send (fire-and-forget)' },
-  { id: 'linkWorkflowToActivity', label: 'Wf↔Act', sourceType: 'workflow', targetType: 'activity',
+  { id: 'linkWorkflowToActivity', label: 'Wf↔Act', sourceValue: 'workflow', targetValue: 'activity',
     relation: 'dependency',
     physics: { strength: 1.90, distance: 40 }, style: WORKFLOW_TO_ACTIVITY, tooltip: 'Workflow ↔ Activity dependency' },
-  { id: 'linkWorkflowToOperation', label: 'Wf→Op', sourceType: 'workflow', targetType: 'nexusOperation',
+  { id: 'linkWorkflowToOperation', label: 'Wf→Op', sourceValue: 'workflow', targetValue: 'nexusOperation',
     relation: 'dependency',
     physics: { strength: 1.50, distance: 330 }, style: NEXUS_CALL, tooltip: 'Workflow → Nexus operation (the nexus call)' },
-  { id: 'linkOperationToWorkflow', label: 'Op→Wf', sourceType: 'nexusOperation', targetType: 'workflow',
+  { id: 'linkOperationToWorkflow', label: 'Op→Wf', sourceValue: 'nexusOperation', targetValue: 'workflow',
     relation: 'dependency',
     physics: { strength: 1.55, distance: 360 }, style: NEXUS_CALL, tooltip: 'Nexus operation → Workflow (backing workflow / sync-op call)' },
-  { id: 'linkOperationToActivity', label: 'Op↔Act', sourceType: 'nexusOperation', targetType: 'activity',
+  { id: 'linkOperationToActivity', label: 'Op↔Act', sourceValue: 'nexusOperation', targetValue: 'activity',
     relation: 'dependency',
     physics: { strength: 1.40, distance: 300 }, style: NEXUS_CALL, tooltip: 'Nexus operation ↔ Activity dependency (sync-op body call)' },
-  { id: 'linkEndpointToOperation', label: 'Ep↔Op', sourceType: 'nexusEndpoint', targetType: 'nexusOperation',
+  { id: 'linkEndpointToOperation', label: 'Ep↔Op', sourceValue: 'nexusEndpoint', targetValue: 'nexusOperation',
     relation: 'containment',
     physics: { strength: 1.50, distance: 470 }, style: EP_COMPOSITION, tooltip: 'Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)' },
 ]
@@ -145,10 +145,10 @@ export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
 // containment; Workflow↔Activity dep).
 export function edgeTypeFor(
   edge: Pick<GraphEdge, 'relation' | 'dimensions'>,
-  src: DimensionValue | undefined,
-  tgt: DimensionValue | undefined,
+  src: AxisValue | undefined,
+  tgt: AxisValue | undefined,
 ): EdgeTypeId {
-  const has = (a: DimensionValue, b: DimensionValue) =>
+  const has = (a: AxisValue, b: AxisValue) =>
     (src === a && tgt === b) || (src === b && tgt === a)
 
   let id: EdgeTypeId

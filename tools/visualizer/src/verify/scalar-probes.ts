@@ -1,14 +1,14 @@
 // The scalar path's declared invariants, each with a reader (REVIEW_5b C1,
 // C2, C3, C4): the default span per axis, the [0, 1] contract, a node with no
 // value, a degenerate span, and the host-scalar extension point that no
-// fixture reaches — a scalar declared through the ontology, reading its own
+// fixture reaches — a scalar declared through the taxonomy, reading its own
 // payload, driving an axis.
 
 import type { Graph } from '@temporal-architect/graph-view/graph/model'
 import { readableGraph } from '@temporal-architect/graph-view/graph/model'
-import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
-import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import type { Ontology } from '@temporal-architect/graph-view/graph/ontology'
+import { DEFAULT_TAXONOMY, DEFAULT_TAXONOMY_SPEC } from '../adapter/node-types'
+import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { Taxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { ForceParams } from '@temporal-architect/graph-view/graph/simulation'
 import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
 import type { ScalarAxis } from '@temporal-architect/graph-view/graph/scalar'
@@ -30,14 +30,14 @@ function thrown(run: () => unknown): string {
 }
 
 /** A frame over the graph for the given Y tuning, under the given taxonomy. */
-function frameFor(graph: Graph, ontology: Ontology, bandY: ForceParams['bandY'], radial = false) {
-  const params: ForceParams = { ...defaultParamsFor(ontology), bandY, radial }
-  return layoutFrame(readableGraph(graph), resolvePhysics(params, ontology))
+function frameFor(graph: Graph, taxonomy: Taxonomy, bandY: ForceParams['bandY'], radial = false) {
+  const params: ForceParams = { ...defaultParamsFor(taxonomy), bandY, radial }
+  return layoutFrame(readableGraph(graph), resolvePhysics(params, taxonomy))
 }
 
 /** A taxonomy that adds one host scalar to the shipped spec. */
-function withScalar(scalar: ScalarAxis): Ontology {
-  return createOntology({ ...DEFAULT_ONTOLOGY_SPEC, scalars: [scalar] })
+function withScalar(scalar: ScalarAxis): Taxonomy {
+  return createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, scalars: [scalar] })
 }
 
 export function scalarProbes(): Json {
@@ -72,27 +72,27 @@ export function scalarProbes(): Json {
 
   // A degenerate span: every valued node rests at the one point, on the
   // innermost ring in radial, and nothing is NaN.
-  const flat = frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'reach', span: { zero: 100, one: 100 } })
-  const flatRadial = frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'reach', span: { zero: 100, one: 100 } }, true)
+  const flat = frameFor(graph, DEFAULT_TAXONOMY, { scalar: 'reach', span: { zero: 100, one: 100 } })
+  const flatRadial = frameFor(graph, DEFAULT_TAXONOMY, { scalar: 'reach', span: { zero: 100, one: 100 } }, true)
 
   // A flipped span: the same scalar reads the other way, and the ring rule
   // follows the span's low end, not the score.
-  const up = frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'reach' })
-  const down = frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'reach', span: { zero: -420, one: 420 } })
-  const upRadial = frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'reach' }, true)
-  const downRadial = frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'reach', span: { zero: -420, one: 420 } }, true)
+  const up = frameFor(graph, DEFAULT_TAXONOMY, { scalar: 'reach' })
+  const down = frameFor(graph, DEFAULT_TAXONOMY, { scalar: 'reach', span: { zero: -420, one: 420 } })
+  const upRadial = frameFor(graph, DEFAULT_TAXONOMY, { scalar: 'reach' }, true)
+  const downRadial = frameFor(graph, DEFAULT_TAXONOMY, { scalar: 'reach', span: { zero: -420, one: 420 } }, true)
 
   // `normalize: 'none'` is what puts the answer under the [0, 1] contract; by default the frame divides by the largest and 2 is not out of range.
   const outOfRange: ScalarAxis = { id: 'two', label: 'Two', tooltip: 'probe', normalize: 'none', compute: g => new Map([...g.nodes].map(n => [n.id, 2])) }
   const notANumber: ScalarAxis = { id: 'nan', label: 'NaN', tooltip: 'probe', compute: g => new Map([...g.nodes].map(n => [n.id, Number.NaN])) }
 
   return {
-    defaultSpan: { x: { ...defaultSpan(DEFAULT_ONTOLOGY, 'x') }, y: { ...defaultSpan(DEFAULT_ONTOLOGY, 'y') } },
+    defaultSpan: { x: { ...defaultSpan(DEFAULT_TAXONOMY, 'x') }, y: { ...defaultSpan(DEFAULT_TAXONOMY, 'y') } },
     contract: {
       outOfRange: thrown(() => frameFor(graph, withScalar(outOfRange), { scalar: 'two' })),
       notANumber: thrown(() => frameFor(graph, withScalar(notANumber), { scalar: 'nan' })),
       duplicateId: thrown(() => withScalar({ ...idLength, id: 'reach' })),
-      unknownScalar: thrown(() => frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'not-a-scalar' })),
+      unknownScalar: thrown(() => frameFor(graph, DEFAULT_TAXONOMY, { scalar: 'not-a-scalar' })),
     },
     hostScalar: {
       offered: hosted.scalars.map(s => s.id),

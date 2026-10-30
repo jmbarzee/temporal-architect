@@ -4,7 +4,7 @@
 // `./taxonomy`; what is here is only the values: which node types this domain
 // has, what they are called, how they are drawn and physically weighted. That
 // is the direction the dependency has to run. Nothing in the engine imports
-// this file — everything resolves through the `Ontology` built at the bottom —
+// this file — everything resolves through the `Taxonomy` built at the bottom —
 // which is what lets the whole thing move out of the library without the engine
 // noticing.
 //
@@ -37,18 +37,18 @@ export type NodeType =
   | 'nexusOperation'
   | 'activity'
 
-import { createOntology, payloadString } from '@temporal-architect/graph-view'
+import { createTaxonomy, payloadString } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type {
   GraphEdge,
   GraphNode,
   Highlight,
   HighlightGraph,
-  Ontology,
-  OntologySpec,
+  Taxonomy,
+  TaxonomySpec,
   NodeStyle,
   ResolvedNodeStyle,
-  DimensionDescriptor,
+  AxisDescriptor,
   FilterChip,
 } from '@temporal-architect/graph-view'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
@@ -63,7 +63,7 @@ export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
  * A node style plus the fields that are this domain's own: the kind the type
  * projects onto, the two tiers of the deployment model it sits on, and whether
  * its kind is selected when the view first opens. The library reads none of
- * them; it reaches the style through the `Ontology`.
+ * them; it reaches the style through the `Taxonomy`.
  */
 export interface TemporalNodeStyle extends NodeStyle {
   /**
@@ -357,7 +357,7 @@ const KIND_ABBREV: Record<string, string> = Object.fromEntries(
   ALL_NODE_TYPES.map(t => [NODE_TYPE_REGISTRY[t].defType, NODE_TYPE_REGISTRY[t].abbreviation]),
 )
 
-const FILTER_DIMENSIONS: DimensionDescriptor[] = [
+const FILTER_DIMENSIONS: AxisDescriptor[] = [
   {
     id: SOURCE_FILE_DIMENSION,
     label: 'File',
@@ -486,15 +486,15 @@ function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph)
 
 /**
  * This domain's taxonomy, as a spec: exported so a variant can be built from it
- * (`createOntology({ ...DEFAULT_ONTOLOGY_SPEC, … })`) rather than by spreading
+ * (`createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, … })`) rather than by spreading
  * the built container, whose closures would still read these fields.
  */
-export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
-  styleDimension: TEMPORAL_TYPE_DIMENSION,
+export const DEFAULT_TAXONOMY_SPEC: TaxonomySpec = {
+  styleAxis: TEMPORAL_TYPE_DIMENSION,
   styleLabel: 'Type',
   // Declaration order is top of the hierarchy first.
   values: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t] })),
-  filterDimensions: FILTER_DIMENSIONS,
+  filterAxes: FILTER_DIMENSIONS,
   edgeTypes: ALL_EDGE_TYPES,
   classifyEdge: edgeTypeFor,
   contextLine: contextLineFor,
@@ -510,4 +510,4 @@ export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   fallbackStyle: FALLBACK_NODE_STYLE,
 }
 
-export const DEFAULT_ONTOLOGY: Ontology = createOntology(DEFAULT_ONTOLOGY_SPEC)
+export const DEFAULT_TAXONOMY: Taxonomy = createTaxonomy(DEFAULT_TAXONOMY_SPEC)

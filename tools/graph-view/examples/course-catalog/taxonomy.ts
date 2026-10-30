@@ -1,11 +1,11 @@
 // The catalog's taxonomy: what its nodes and edges are, how they look and
 // weigh, how they filter. Everything the view knows about the domain comes
-// through `ontology` below.
+// through `taxonomy` below.
 
-import { createOntology, isContainment, payloadNumber, payloadString } from '@temporal-architect/graph-view'
+import { createTaxonomy, isContainment, payloadNumber, payloadString } from '@temporal-architect/graph-view'
 import type {
-  DimensionDescriptor, EdgeStroke, EdgeType, FilterChip, GraphEdge, GraphNode, Highlight, HighlightGraph,
-  NodeStyle, OntologySpec, ReadableGraph, ScalarAxis,
+  AxisDescriptor, EdgeStroke, EdgeType, FilterChip, GraphEdge, GraphNode, Highlight, HighlightGraph,
+  NodeStyle, TaxonomySpec, ReadableGraph, ScalarAxis,
 } from '@temporal-architect/graph-view'
 import type { Campus } from './data'
 
@@ -76,8 +76,8 @@ const CONTAINS: EdgeStroke = {
 const contains = (id: string, label: string, child: Entity, parent: Entity, strength: number, distance: number): EdgeType => ({
   id,
   label,
-  sourceType: child,
-  targetType: parent,
+  sourceValue: child,
+  targetValue: parent,
   relation: 'containment',
   physics: { strength, distance },
   style: CONTAINS,
@@ -91,8 +91,8 @@ export const EDGE_TYPES: readonly EdgeType[] = [
   {
     id: 'prerequisite',
     label: 'Pre',
-    sourceType: 'course',
-    targetType: 'course',
+    sourceValue: 'course',
+    targetValue: 'course',
     relation: 'dependency',
     physics: { strength: 0.6, distance: 260 },
     tooltip: 'Must be passed first',
@@ -107,8 +107,8 @@ export const EDGE_TYPES: readonly EdgeType[] = [
     // Same endpoints as a prerequisite; only the edge's own `requirement` tells them apart.
     id: 'corequisite',
     label: 'Co-req',
-    sourceType: 'course',
-    targetType: 'course',
+    sourceValue: 'course',
+    targetValue: 'course',
     relation: 'dependency',
     physics: { strength: 1.2, distance: 120 },
     tooltip: 'Taken in the same term',
@@ -122,8 +122,8 @@ export const EDGE_TYPES: readonly EdgeType[] = [
   {
     id: 'recommended',
     label: 'Rec',
-    sourceType: 'course',
-    targetType: 'course',
+    sourceValue: 'course',
+    targetValue: 'course',
     relation: 'dependency',
     physics: { strength: 0.2, distance: 420 },
     tooltip: 'Recommended background',
@@ -175,7 +175,7 @@ const ENTITY_CHIPS: readonly FilterChip[] = [
   },
 ]
 
-const FILTERS: readonly DimensionDescriptor[] = [
+const FILTERS: readonly AxisDescriptor[] = [
   {
     id: ENTITY,
     label: 'Show',
@@ -252,11 +252,11 @@ function highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): H
   return { nodes }
 }
 
-export const spec: OntologySpec = {
-  styleDimension: ENTITY,
+export const spec: TaxonomySpec = {
+  styleAxis: ENTITY,
   styleLabel: 'Entity',
   values: VALUES,
-  filterDimensions: FILTERS,
+  filterAxes: FILTERS,
   edgeTypes: EDGE_TYPES,
   classifyEdge,
   scalars: SCALARS,
@@ -264,4 +264,4 @@ export const spec: OntologySpec = {
   highlight,
 }
 
-export const ontology = createOntology(spec)
+export const taxonomy = createTaxonomy(spec)

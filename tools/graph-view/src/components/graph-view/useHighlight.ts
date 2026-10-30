@@ -11,7 +11,7 @@ import React from 'react'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge } from '../../graph/model'
 import { highlightOf } from '../../graph/highlight'
-import type { Ontology } from '../../graph/ontology'
+import type { Taxonomy } from '../../graph/taxonomy'
 
 import type { ForceSection } from '../GraphControlPanel'
 import type { GravityHover } from '../GravityControls'
@@ -45,7 +45,7 @@ export function useHighlight(
   // Changes whenever the underlying graph is rebuilt; clears selection so a
   // stale id never lingers across graphs (was inline in the sim-rebuild effect).
   resetKey: unknown,
-  ontology: Ontology,
+  taxonomy: Taxonomy,
 ): HighlightController {
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null)
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null)
@@ -91,9 +91,9 @@ export function useHighlight(
     const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
     const activeNode = getNode(activeId)
     if (!activeNode) return { highlightedNodes: null as Set<string> | null, highlightedEdges: null as Set<string> | null }
-    const { nodes, edges } = highlightOf(ontology, activeNode, direction, { visibleNodes, visibleEdges, visibleIds, getNode })
+    const { nodes, edges } = highlightOf(taxonomy, activeNode, direction, { visibleNodes, visibleEdges, visibleIds, getNode })
     return { highlightedNodes: nodes, highlightedEdges: edges }
-  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, getNode, ontology])
+  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, getNode, taxonomy])
 
   return {
     hoveredNodeId, setHoveredNodeId,

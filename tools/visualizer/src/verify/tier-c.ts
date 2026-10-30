@@ -11,11 +11,11 @@
 // operation ↔ operation case that resolves to the workflow → operation spring.
 
 import { DISPATCH_DIMENSION } from '../adapter/edge-types'
-import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { ALL_NODE_TYPES, DEFAULT_TAXONOMY } from '../adapter/node-types'
 import { resolveSprings } from '@temporal-architect/graph-view/graph/forces'
 import { pairTuning, styleIdentityMapping } from '@temporal-architect/graph-view/graph/simulation'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
-import type { Relation } from '@temporal-architect/graph-view/graph/dimension'
+import type { Relation } from '@temporal-architect/graph-view/graph/axis'
 import type { Json } from './snapshot'
 
 const EDGE_TYPES: Relation[] = ['containment', 'dependency']
@@ -25,7 +25,7 @@ export function tierC(): Json {
   // Through the ENGINE's classifier, not the shim's function directly: on the
   // style axis bucketed by identity the engine applies the host's rule, so this
   // pins the precedence as the simulation sees it, membership check included.
-  const engine = resolveSprings(pairTuning(styleIdentityMapping(DEFAULT_ONTOLOGY)), DEFAULT_ONTOLOGY)
+  const engine = resolveSprings(pairTuning(styleIdentityMapping(DEFAULT_TAXONOMY)), DEFAULT_TAXONOMY)
   const edgeTypeFor = (edge: GraphEdge, src: string, tgt: string) => engine.classify(edge, src, tgt) ?? '(unbucketed)'
   const rows: Record<string, string> = {}
   for (const edgeType of EDGE_TYPES) {

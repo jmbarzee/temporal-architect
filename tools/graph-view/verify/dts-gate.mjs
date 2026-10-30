@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url'
 
 const PKG_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const pkg = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf8'))
-// The taxonomy (`createOntology`, the scalar axes) IS this package's surface; the
+// The taxonomy (`createTaxonomy`, the scalar axes) IS this package's surface; the
 // force model behind it is not (D53, #90, D62).
 const PRIVATE = [/\/graph\/simulation\.d\.ts$/, /\/graph\/forces\.d\.ts$/]
 

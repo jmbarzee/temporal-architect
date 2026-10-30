@@ -1,7 +1,7 @@
 import React from 'react'
 import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
 import { SingleGearIcon, InterlockingGearsIcon } from './GearIcons'
-import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
+import { ALL_NODE_TYPES, DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 // --- Core types ---
 
 export interface PrimitiveTheme {
@@ -63,7 +63,7 @@ export interface DefTypeConfig {
 // Generate DEF_TYPE_CONFIGS from the taxonomy so icon, label, and defaultOn
 // stay in sync with the entries without a separate hand-maintained list.
 //
-// Resolved through the ontology rather than by indexing the registry object.
+// Resolved through the taxonomy rather than by indexing the registry object.
 // The difference is not cosmetic: `styleOf` answers a value it does not know
 // with the declared neutral style, where `REGISTRY[t]` returns `undefined` and
 // the failure surfaces later as a blank icon or an unreadable label (T16).
@@ -116,7 +116,7 @@ export interface ViewFilterEntry {
  * notice it is the point of D40.
  */
 export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] =
-  (DEFAULT_ONTOLOGY.descriptorFor(DEF_TYPE_DIMENSION)?.chipsFor([]) ?? []).map(chip => ({
+  (DEFAULT_TAXONOMY.axisFor(DEF_TYPE_DIMENSION)?.chipsFor([]) ?? []).map(chip => ({
     id: chip.id,
     icon: chip.icon ?? '',
     label: chip.label,

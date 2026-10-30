@@ -2,7 +2,7 @@
 //
 // A force-directed graph view with composable dimensions. A host declares its
 // taxonomy — the axes its nodes carry, the values on each, their colours, sizes
-// and physics, how edges classify — through `createOntology(spec)`, builds a
+// and physics, how edges classify — through `createTaxonomy(spec)`, builds a
 // `Graph` of nodes carrying dimension maps, and mounts `GraphView`. The view
 // lays out, filters, highlights and tunes the graph without knowing what any of
 // it means. The surface is what a host needs to declare a taxonomy, build
@@ -18,25 +18,25 @@ export { FilterBar } from './components/FilterBar'
 export type { FilterBarChrome, FilterBarProps } from './components/FilterBar'
 export { GraphView } from './components/GraphView'
 export type { GraphViewChrome, GraphViewHandle, GraphViewProps, Position, SearchState } from './components/GraphView'
-export { OntologyContext, useOntology } from './components/graph-view/useOntology'
+export { TaxonomyContext, useTaxonomy } from './components/graph-view/useTaxonomy'
 export { themeChoiceOf, useHostTheme } from './components/graph-view/useTheme'
 export type { ThemeChoice } from './components/graph-view/useTheme'
 export { reconcileFilter } from './filter/reconcile'
 export type { ReconcileInput } from './filter/reconcile'
-export { toggleGroup, toggleValue } from './filter/toggle'
-export { defaultFilter, filterStatesEqual, hiddenMatchesOf, matchesFocus, passesSelection, pinnedFor, selectionFor, withPin, withSelection } from './filter/types'
-export type { FilterState, FocusTarget, HiddenMatches, PinState, ReconcileResult, Selection, ViewTransition } from './filter/types'
-export { countsOn, valuesOn } from './graph/dimension'
-export type { DimensionDescriptor, DimensionId, DimensionMap, DimensionValue, FilterChip, ReheatPolicy, Relation, ResolvedDimensionDescriptor } from './graph/dimension'
+export { toggleGroup } from './filter/toggle'
+export { defaultFilter, filterStatesEqual, hiddenMatchesOf, matchesFocus, passesSelection, lockedFor, selectionFor, withLock, withSelection } from './filter/types'
+export type { FilterState, FocusTarget, HiddenMatches, AxisLocks, ReconcileResult, Selection, ViewTransition } from './filter/types'
+export { countsOn, valuesOn } from './graph/axis'
+export type { AxisDescriptor, AxisId, AxisNamer, AxisValues, AxisValue, FilterChip, ReheatPolicy, Relation, ResolvedAxisDescriptor } from './graph/axis'
 export type { ActiveGroup, NodeGroup } from './graph/groups'
-export { copyGroups, copyKeyOf, isContainment, payloadNumber, payloadString } from './graph/model'
+export { copyGroups, isContainment, payloadNumber, payloadString } from './graph/model'
 export type { Graph, GraphEdge, GraphNode, ReadableGraph } from './graph/model'
-export { createOntology } from './graph/ontology'
-export type { Highlight, HighlightDirection, HighlightGraph, Ontology, OntologySpec } from './graph/ontology'
+export { createTaxonomy } from './graph/taxonomy'
+export type { Highlight, HighlightDirection, HighlightGraph, StyleSubject, Taxonomy, TaxonomySpec } from './graph/taxonomy'
 export { schemeStylesheet, schemeVars } from './graph/scheme'
 export type { ColorPair, EdgeStroke, Theme, ThemedColor } from './graph/scheme'
 export type { ScalarAxis } from './graph/scalar'
 export { validateGraph } from './graph/validate'
 export type { GraphDiagnostic, GraphDiagnosticCode } from './graph/validate'
-export { BAND_FRAME, NEUTRAL_STROKE } from './graph/taxonomy'
-export type { Band, EdgeType, EdgeTypeId, NodeStyle, ResolvedEdgeType, ResolvedNodeStyle, SpringPhysics } from './graph/taxonomy'
+export { BAND_FRAME, NEUTRAL_STROKE } from './graph/shapes'
+export type { Band, EdgeType, EdgeTypeId, NodeStyle, ResolvedEdgeType, ResolvedNodeStyle, SpringPhysics } from './graph/shapes'

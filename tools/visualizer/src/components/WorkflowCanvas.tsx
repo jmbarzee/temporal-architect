@@ -1,9 +1,9 @@
 import {
   selectionFor,
   defaultFilter,
-  OntologyContext,
+  TaxonomyContext,
   copyGroups,
-  pinnedFor,
+  lockedFor,
   withSelection,
   GraphView,
   reconcileFilter,
@@ -17,12 +17,12 @@ import { loadState, saveState, type PersistedFilter, type PersistedPins, type St
 import type {
   FilterState,
   GraphNode,
-  PinState,
-  DimensionId,
+  AxisLocks,
+  AxisId,
   ThemeChoice,
 } from '@temporal-architect/graph-view'
 import React from 'react'
-import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { DEFAULT_TAXONOMY } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
@@ -139,7 +139,7 @@ const STORAGE: StorageConfig = {
   hostApiGlobal: '__twfVsCodeApi',
 }
 
-const DEFAULT_PINS: PinState = new Map([
+const DEFAULT_PINS: AxisLocks = new Map([
   [SOURCE_FILE_DIMENSION, false],
   [DEF_TYPE_DIMENSION, false],
 ])
@@ -161,12 +161,12 @@ function filterToPersisted(f: FilterState): PersistedFilter {
   return out
 }
 
-function persistedToPins(p: PersistedPins | undefined, fallback: PinState): PinState {
+function persistedToPins(p: PersistedPins | undefined, fallback: AxisLocks): AxisLocks {
   if (!p) return fallback
   return new Map(Object.entries(p))
 }
 
-function pinsToPersisted(pins: PinState): PersistedPins {
+function pinsToPersisted(pins: AxisLocks): PersistedPins {
   const out: PersistedPins = {}
   for (const [dimension, pinned] of pins) out[dimension] = pinned
   return out
@@ -198,7 +198,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // default over this graph, narrowed to the focused file when there is one.
   const model = useGraphModel(ast, graphInput)
   const startingFilter = () => withSelection(
-    defaultFilter(DEFAULT_ONTOLOGY, model.graph),
+    defaultFilter(DEFAULT_TAXONOMY, model.graph),
     SOURCE_FILE_DIMENSION,
     ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
   )
@@ -218,14 +218,14 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // declared order, so "default displayed filters" is configurable by declaring
   // a different taxonomy rather than by a setting.
   const DEFAULT_CHAIN = React.useMemo(
-    () => DEFAULT_ONTOLOGY.filterDimensions.map(d => d.id), [])
+    () => DEFAULT_TAXONOMY.filterAxes.map(d => d.id), [])
   const [treeChain, setTreeChain] = React.useState<readonly string[]>(
     () => persisted.treeChain ?? DEFAULT_CHAIN)
   const [graphChain, setGraphChain] = React.useState<readonly string[]>(
     () => persisted.graphChain ?? DEFAULT_CHAIN)
 
-  const [treePins, setTreePins] = React.useState<PinState>(() => persistedToPins(persisted.treePins, DEFAULT_PINS))
-  const [graphPins, setGraphPins] = React.useState<PinState>(() => persistedToPins(persisted.graphPins, DEFAULT_PINS))
+  const [treePins, setTreePins] = React.useState<AxisLocks>(() => persistedToPins(persisted.treePins, DEFAULT_PINS))
+  const [graphPins, setGraphPins] = React.useState<AxisLocks>(() => persistedToPins(persisted.graphPins, DEFAULT_PINS))
 
   const graphCounts = React.useMemo(() => definitionCounts(ast, selectionFor(graphFilter, SOURCE_FILE_DIMENSION)), [ast, graphFilter])
 
@@ -263,7 +263,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const editorTheme = useEditorTheme()
   const detectedTheme = useHostTheme(rootRef)
   const hostTheme = editorTheme ?? detectedTheme
-  const schemeStyle = React.useMemo(() => schemeVars(DEFAULT_ONTOLOGY, hostTheme) as React.CSSProperties, [hostTheme])
+  const schemeStyle = React.useMemo(() => schemeVars(DEFAULT_TAXONOMY, hostTheme) as React.CSSProperties, [hostTheme])
   const [searchActive, setSearchActive] = React.useState<boolean>(false)
 
   // Pending-focus target for a focus into the Tree. Reconciler has already
@@ -276,7 +276,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // transition bypassed in the Tree. The Tree consumes this on render
   // to flash its pin icon, then calls back to clear. The Graph view keeps its
   // own: `focusNode` flashes any pin it overrides.
-  const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<DimensionId>>(new Set())
+  const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<AxisId>>(new Set())
 
   // The node a cross-view focus asked the Graph view to reveal, centre and
   // select. The view applies it whenever it changes to an id, including the one
@@ -321,7 +321,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // When the editor's focused file changes, narrow the Tree to it — but
   // only when the Tree's files dimension is unpinned, since a pinned
   // user explicitly opted out of tracking.
-  const treeFilePinned = pinnedFor(treePins, SOURCE_FILE_DIMENSION)
+  const treeFilePinned = lockedFor(treePins, SOURCE_FILE_DIMENSION)
   const treeShowsFiles = treeChain.includes(SOURCE_FILE_DIMENSION)
   React.useEffect(() => {
     if (treeFilePinned) return
@@ -335,7 +335,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
         return withSelection(prev, SOURCE_FILE_DIMENSION, next)
       })
     }
-    // Depends on the file axis's pin, NOT the whole PinState. Widening it to
+    // Depends on the file axis's pin, NOT the whole AxisLocks. Widening it to
     // the Map when pins became Maps meant pinning the KIND axis produced a new
     // Map, re-ran this effect, and silently reset the Tree's file selection to
     // the focused file.
@@ -404,15 +404,15 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // is nothing for a manual adopt or a focus expansion to do.
     const destChain = target === 'tree' ? treeChain : graphChain
     const destDimensions = destChain
-      .map(id => DEFAULT_ONTOLOGY.descriptorFor(id))
+      .map(id => DEFAULT_TAXONOMY.axisFor(id))
       .filter((d): d is NonNullable<typeof d> => d !== undefined)
 
-    const { filter: newFilter, overriddenPins } =
-      reconcileFilter({ destination: dest, source, pins: destPins, transition, axes: destDimensions })
+    const { filter: newFilter, overriddenLocks } =
+      reconcileFilter({ destination: dest, source, locks: destPins, transition, axes: destDimensions })
 
     if (target === 'tree') {
       if (newFilter !== dest) setTreeFilter(newFilter)
-      setTreeOverriddenPins(overriddenPins)
+      setTreeOverriddenPins(overriddenLocks)
     } else if (newFilter !== dest) {
       setGraphFilter(newFilter)
     }
@@ -481,7 +481,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // manifest, which is exactly why it is the one that names a domain: the
     // engine below it resolves everything through the container and never
     // imports the entries.
-    <OntologyContext.Provider value={DEFAULT_ONTOLOGY}>
+    <TaxonomyContext.Provider value={DEFAULT_TAXONOMY}>
     <DefinitionContext.Provider value={context}>
       <div className={shellClassName} style={{ ...schemeStyle, ...(style) }} onClick={onRefocus} ref={rootRef} data-theme={hostTheme}>
         <div className="tab-bar">
@@ -523,16 +523,16 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               onShowInGraph={showInGraph}
               filter={treeFilter}
               onFilterChange={setTreeFilter}
-              pins={treePins}
-              onPinsChange={setTreePins}
-              chain={treeChain}
-              onChainChange={setTreeChain}
+              locks={treePins}
+              onLocksChange={setTreePins}
+              axes={treeChain}
+              onAxesChange={setTreeChain}
               searchQuery={searchQuery}
               searchActive={searchActive}
               onSearchChange={handleSearchChange}
               pendingFocus={pendingFocus}
               onFocusConsumed={clearPendingFocus}
-              overriddenPins={treeOverriddenPins}
+              overriddenLocks={treeOverriddenPins}
               onOverriddenPinsConsumed={clearTreeOverriddenPins}
             />
           </div>
@@ -557,15 +557,15 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
                   onRequestDecomposition={onRequestDecomposition}
                 />
               )}
-              crossView={historyMode ? undefined : { label: 'Show in Tree', onFocus: showInTree }}
+              nodeAction={historyMode ? undefined : { label: 'Show in Tree', onSelect: showInTree }}
               theme={graphTheme}
               onThemeChange={setGraphTheme}
               filter={graphFilter}
               onFilterChange={setGraphFilter}
-              pins={graphPins}
-              onPinsChange={setGraphPins}
-              chain={graphChain}
-              onChainChange={setGraphChain}
+              locks={graphPins}
+              onLocksChange={setGraphPins}
+              axes={graphChain}
+              onAxesChange={setGraphChain}
               search={{ query: searchQuery, active: searchActive }}
               onSearchChange={next => handleSearchChange(next.query, next.active)}
             />
@@ -573,6 +573,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
         )}
       </div>
     </DefinitionContext.Provider>
-    </OntologyContext.Provider>
+    </TaxonomyContext.Provider>
   )
 }

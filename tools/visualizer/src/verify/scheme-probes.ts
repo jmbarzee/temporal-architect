@@ -6,10 +6,10 @@
 // host's declaration — what the pane publishes — not as a rendering claim;
 // what the canvas does with them is Gate 5's.
 
-import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
+import { DEFAULT_TAXONOMY, DEFAULT_TAXONOMY_SPEC, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
 import { ALL_EDGE_TYPES } from '../adapter/edge-types'
-import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import type { NodeStyle } from '@temporal-architect/graph-view/graph/taxonomy'
+import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { NodeStyle } from '@temporal-architect/graph-view/graph/shapes'
 import { THEMES, cssSuffix, rgbOf, schemeVars, withAlpha } from '@temporal-architect/graph-view/graph/scheme'
 import { themeChoiceOf, themeOfMarker } from '@temporal-architect/graph-view/components/graph-view/useTheme'
 import type { ThemeMarker } from '@temporal-architect/graph-view/components/graph-view/useTheme'
@@ -35,8 +35,8 @@ function restyled(): NodeStyle[] {
 }
 
 export function schemeProbes(): Json {
-  const second = createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: restyled() })
-  const defaults = Object.fromEntries(THEMES.map(th => [th, schemeVars(DEFAULT_ONTOLOGY, th)]))
+  const second = createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, values: restyled() })
+  const defaults = Object.fromEntries(THEMES.map(th => [th, schemeVars(DEFAULT_TAXONOMY, th)]))
   const seconds = Object.fromEntries(THEMES.map(th => [th, schemeVars(second, th)]))
   const sameNames = THEMES.every(th => JSON.stringify(Object.keys(defaults[th]).sort()) === JSON.stringify(Object.keys(seconds[th]).sort()))
   const allDiffer = THEMES.every(th => Object.keys(defaults[th]).every(k => defaults[th][k] !== seconds[th][k]))
@@ -44,7 +44,7 @@ export function schemeProbes(): Json {
     // The naming rule: kebab-case of the value id, so `--color-nexus-endpoint`
     // is derived, never stored.
     suffixes: sortedRecord(['namespace', 'nexusEndpoint', 'nexusService', 'twoWords', 'ALLCAPS', 'with space', 'a1B2'].map(v => [v, cssSuffix(v)] as const)),
-    variableFor: DEFAULT_ONTOLOGY.colorVar('nexusEndpoint'),
+    variableFor: DEFAULT_TAXONOMY.colorVar('nexusEndpoint'),
     // The name each value is published under (the taxonomy's `colorVar`): the
     // kebab suffix where it is unique and non-empty, a numbered name by
     // declaration position where it is empty (`研究室`) or another value's
@@ -52,11 +52,11 @@ export function schemeProbes(): Json {
     // refused; any string a host's data produces is a value.
     colorVarNames: (() => {
       const extra = ['nexus-endpoint', '研究室', 'café', 'cafè']
-      const ontology = createOntology({
-        ...DEFAULT_ONTOLOGY_SPEC,
-        values: [...DEFAULT_ONTOLOGY_SPEC.values, ...extra.map(id => ({ id, ...NODE_TYPE_REGISTRY.nexusEndpoint }))],
+      const taxonomy = createTaxonomy({
+        ...DEFAULT_TAXONOMY_SPEC,
+        values: [...DEFAULT_TAXONOMY_SPEC.values, ...extra.map(id => ({ id, ...NODE_TYPE_REGISTRY.nexusEndpoint }))],
       })
-      return sortedRecord(['nexusEndpoint', ...extra].map(v => [v, ontology.colorVar(v)] as const))
+      return sortedRecord(['nexusEndpoint', ...extra].map(v => [v, taxonomy.colorVar(v)] as const))
     })(),
     // What the canvas can read, and what it does with what it cannot (T6):
     // never a throw, a neutral instead.
@@ -71,16 +71,16 @@ export function schemeProbes(): Json {
     // the scheme is swapping the taxonomy's colours, nothing else (R10, R15).
     secondScheme: { sameNames, allDiffer },
     // Every edge type's stroke, as declared, per theme.
-    strokes: sortedRecord(DEFAULT_ONTOLOGY.edgeTypes.map(e => [e.id, {
+    strokes: sortedRecord(DEFAULT_TAXONOMY.edgeTypes.map(e => [e.id, {
       light: e.style.color.light, dark: e.style.color.dark, alpha: e.style.alpha, dash: [...e.style.dash], width: e.style.width,
     }] as const)),
-    strokeForUnknown: (() => { try { DEFAULT_ONTOLOGY.edgeStrokeFor('not-a-type'); return 'returned' } catch (e) { return (e as Error).message } })(),
+    strokeForUnknown: (() => { try { DEFAULT_TAXONOMY.edgeStrokeFor('not-a-type'); return 'returned' } catch (e) { return (e as Error).message } })(),
     // What the taxonomy refuses at construction (D58): a colour no reader can parse.
     refusals: {
-      namedColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: DEFAULT_ONTOLOGY_SPEC.values.map(v => v.id === 'worker' ? { ...v, color: { light: { fill: 'slategray', border: '#000' }, dark: v.color.dark } } : v) })),
-      cssVariableColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, edgeTypes: ALL_EDGE_TYPES.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
+      namedColour: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, values: DEFAULT_TAXONOMY_SPEC.values.map(v => v.id === 'worker' ? { ...v, color: { light: { fill: 'slategray', border: '#000' }, dark: v.color.dark } } : v) })),
+      cssVariableColour: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, edgeTypes: ALL_EDGE_TYPES.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
       // A hidden-node policy outside its two values (D60): refused, not read as ascend.
-      badWhenHidden: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: DEFAULT_ONTOLOGY_SPEC.values.map(v => v.id === 'worker' ? { ...v, whenHidden: String('Splice') as NodeStyle['whenHidden'] } : v) })),
+      badWhenHidden: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, values: DEFAULT_TAXONOMY_SPEC.values.map(v => v.id === 'worker' ? { ...v, whenHidden: String('Splice') as NodeStyle['whenHidden'] } : v) })),
     },
     // The theme a marker declares: its `data-theme`, light or dark, and nothing
     // else — an editor's body classes are the host's to translate (D67).

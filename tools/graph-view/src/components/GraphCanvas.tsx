@@ -11,10 +11,10 @@ import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
-import type { Ontology } from '../graph/ontology'
-import { useOntology } from './graph-view/useOntology'
+import type { Taxonomy } from '../graph/taxonomy'
+import { useTaxonomy } from './graph-view/useTaxonomy'
 import type { EdgeStroke, Theme } from '../graph/scheme'
-import { NEUTRAL_STROKE } from '../graph/taxonomy'
+import { NEUTRAL_STROKE } from '../graph/shapes'
 import { withAlpha } from '../graph/scheme'
 import type { ForceSection } from './GraphControlPanel'
 import type { GravityHover } from './GravityControls'
@@ -200,7 +200,7 @@ function laneOffset(
 interface DrawData {
   // Read by the loop rather than closed over: drawData.current is rewritten
   // every render, a closure is not.
-  ontology: Ontology
+  taxonomy: Taxonomy
   nodes: SimNode[]
   edges: GraphEdge[]
   nodeMap: Map<string, SimNode>
@@ -283,18 +283,18 @@ export function GraphCanvas({
     return copyKeyOf(activeNode)
   }, [hoveredNodeId, selectedNodeId, nodeMap, dupNodeIds])
 
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
 
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
-    ontology,
+    taxonomy,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
     forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
-    ontology,
+    taxonomy,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
     forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
@@ -323,12 +323,12 @@ export function GraphCanvas({
       // convert to world units by dividing by scale, plus a small slop. A
       // cardinality badge (parameterized family) sits above the body, so grow
       // the target by its extent to keep the badge part of the clickable node.
-      const screenR = ontology.resolveNodeStyle(n).size.r * mul + badgeExtent(n, mul)
+      const screenR = taxonomy.nodeStyleOf(n).size.r * mul + badgeExtent(n, mul)
       const r = screenR / viewport.scale + 4
       if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
-  }, [nodes, viewport, nodeScale, ontology])
+  }, [nodes, viewport, nodeScale, taxonomy])
 
   // Mouse handlers
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
@@ -514,7 +514,7 @@ export function GraphCanvas({
           const node = d.nodeMap.get(id)
           if (!node) continue
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
-          const gr = d.ontology.resolveNodeStyle(node).size.r * mul + GROUP_GLOW_PAD * glowSwell(g.strength)
+          const gr = d.taxonomy.nodeStyleOf(node).size.r * mul + GROUP_GLOW_PAD * glowSwell(g.strength)
           if (sx + gr < 0 || sx - gr > w || sy + gr < 0 || sy - gr > h) continue
           const a = Math.min(0.92, GROUP_GLOW_CENTER_ALPHA * g.strength)
           const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, gr)
@@ -572,7 +572,7 @@ export function GraphCanvas({
           const angle = Math.atan2(ty - sy, tx - sx)
           // Stop the arrowhead at the target's on-screen edge (screen radius =
           // def.r × nodeSizeMul(scale)) so it tracks the zoom-scaled node body.
-          const tgtR = d.ontology.resolveNodeStyle(tgt).size.r * nodeSizeMul(vp.scale, d.nodeScale)
+          const tgtR = d.taxonomy.nodeStyleOf(tgt).size.r * nodeSizeMul(vp.scale, d.nodeScale)
           const offset = tgtR + 2
           const ax = tx - Math.cos(angle) * offset
           const ay = ty - Math.sin(angle) * offset
@@ -633,7 +633,7 @@ export function GraphCanvas({
           const baseAlpha = highlighted ? 0.28 : 0.05
           const stepAlpha = highlighted ? 0.06 : 0.015
 
-          const color = d.ontology.resolveNodeStyle(node).color[d.theme].fill
+          const color = d.taxonomy.nodeStyleOf(node).color[d.theme].fill
           ctx.strokeStyle = color
 
           const effectiveCharge = Math.abs(chargeFor(d.resolved.push, node)) * pushMul
@@ -865,12 +865,12 @@ export function GraphCanvas({
       // label may collide with a node drawn later in the same loop.
       const nodeCircles = d.nodes.map(n => {
         const [nx, ny] = worldToScreen(vp, n.x, n.y)
-        return { x: nx, y: ny, r: d.ontology.resolveNodeStyle(n).size.r * mul }
+        return { x: nx, y: ny, r: d.taxonomy.nodeStyleOf(n).size.r * mul }
       })
 
       for (const node of d.nodes) {
         const [sx, sy] = worldToScreen(vp, node.x, node.y)
-        const def = d.ontology.resolveNodeStyle(node)
+        const def = d.taxonomy.nodeStyleOf(node)
         const r = def.size.r * mul
         const hw = r  // nodes are circles: half-width = half-height = r
 

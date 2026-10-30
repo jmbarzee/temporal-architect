@@ -4,7 +4,7 @@
 
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view'
 import type { Catalog, Requirement } from './data'
-import { CAMPUS, ENTITY, REQUIREMENT } from './ontology'
+import { CAMPUS, ENTITY, REQUIREMENT } from './taxonomy'
 
 const subjectOf = (code: string) => code.split(' ')[0]
 /** "MATH 210" → 2; "CHEM 101L" → 1. */

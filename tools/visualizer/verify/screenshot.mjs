@@ -193,8 +193,8 @@ const CLICK_CHIP = label => `
   (() => {
     // The graph pane's bar, not the tree's: both are mounted, the tree's first.
     const pane = document.querySelector('.gv-graph-view') || document
-    const b = [...pane.querySelectorAll('button.gv-header-type-tag, button.gv-header-file-tag')]
-      .find(e => (e.querySelector('.gv-header-type-label, .gv-header-file-label') || e).textContent.trim().startsWith(${JSON.stringify(label)}))
+    const b = [...pane.querySelectorAll('button.gv-chip, button.gv-tag')]
+      .find(e => (e.querySelector('.gv-chip-label, .gv-header-file-label') || e).textContent.trim().startsWith(${JSON.stringify(label)}))
     if (!b) return 'no chip ' + ${JSON.stringify(label)}
     b.click()
     return 'toggled'

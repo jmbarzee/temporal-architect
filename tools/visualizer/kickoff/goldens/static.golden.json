@@ -752,7 +752,7 @@
             "kind": [
               "a"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": true,
             "zone": [
               "east"
@@ -765,7 +765,7 @@
               "a",
               "b"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": false,
             "zone": [
               "east"
@@ -778,7 +778,7 @@
               "a",
               "b"
             ],
-            "overriddenPins": [
+            "overriddenLocks": [
               "kind",
               "zone"
             ],
@@ -795,7 +795,7 @@
               "a",
               "b"
             ],
-            "overriddenPins": [
+            "overriddenLocks": [
               "kind"
             ],
             "returnedDestination": false,
@@ -807,7 +807,7 @@
             "kind": [
               "a"
             ],
-            "overriddenPins": [
+            "overriddenLocks": [
               "zone"
             ],
             "returnedDestination": false,
@@ -823,7 +823,7 @@
               "a",
               "b"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": false,
             "zone": [
               "east"
@@ -835,7 +835,7 @@
             "kind": [
               "a"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": false,
             "zone": [
               "east",
@@ -849,7 +849,7 @@
               "a",
               "b"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": false,
             "zone": []
           }
@@ -861,7 +861,7 @@
             "kind": [
               "a"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": true,
             "zone": [
               "east"
@@ -874,7 +874,7 @@
               "b",
               "c"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": false,
             "zone": [
               "west"
@@ -887,7 +887,7 @@
               "b",
               "c"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": false,
             "zone": [
               "east"
@@ -899,7 +899,7 @@
             "kind": [
               "a"
             ],
-            "overriddenPins": [],
+            "overriddenLocks": [],
             "returnedDestination": false,
             "zone": [
               "west"
@@ -1007,8 +1007,8 @@
         "strength": 1
       },
       "relation": "containment",
-      "sourceType": "nexusEndpoint",
-      "targetType": "namespace"
+      "sourceValue": "nexusEndpoint",
+      "targetValue": "namespace"
     },
     "linkEndpointToOperation": {
       "label": "Ep↔Op",
@@ -1017,8 +1017,8 @@
         "strength": 1.5
       },
       "relation": "containment",
-      "sourceType": "nexusEndpoint",
-      "targetType": "nexusOperation"
+      "sourceValue": "nexusEndpoint",
+      "targetValue": "nexusOperation"
     },
     "linkNexusToOperation": {
       "label": "Nx↔Op",
@@ -1027,8 +1027,8 @@
         "strength": 1.4
       },
       "relation": "containment",
-      "sourceType": "nexusService",
-      "targetType": "nexusOperation"
+      "sourceValue": "nexusService",
+      "targetValue": "nexusOperation"
     },
     "linkNsToNs": {
       "label": "NS↔NS",
@@ -1037,8 +1037,8 @@
         "strength": 0.25
       },
       "relation": "dependency",
-      "sourceType": "namespace",
-      "targetType": "namespace"
+      "sourceValue": "namespace",
+      "targetValue": "namespace"
     },
     "linkNsToWorker": {
       "label": "NS↔Wk",
@@ -1047,8 +1047,8 @@
         "strength": 0.3
       },
       "relation": "containment",
-      "sourceType": "namespace",
-      "targetType": "worker"
+      "sourceValue": "namespace",
+      "targetValue": "worker"
     },
     "linkOperationToActivity": {
       "label": "Op↔Act",
@@ -1057,8 +1057,8 @@
         "strength": 1.4
       },
       "relation": "dependency",
-      "sourceType": "nexusOperation",
-      "targetType": "activity"
+      "sourceValue": "nexusOperation",
+      "targetValue": "activity"
     },
     "linkOperationToWorkflow": {
       "label": "Op→Wf",
@@ -1067,8 +1067,8 @@
         "strength": 1.55
       },
       "relation": "dependency",
-      "sourceType": "nexusOperation",
-      "targetType": "workflow"
+      "sourceValue": "nexusOperation",
+      "targetValue": "workflow"
     },
     "linkSignalSend": {
       "label": "Wf→Sig",
@@ -1077,8 +1077,8 @@
         "strength": 0.3
       },
       "relation": "dependency",
-      "sourceType": "workflow",
-      "targetType": "workflow"
+      "sourceValue": "workflow",
+      "targetValue": "workflow"
     },
     "linkWorkerToActivity": {
       "label": "Wk↔Act",
@@ -1087,8 +1087,8 @@
         "strength": 0.35
       },
       "relation": "containment",
-      "sourceType": "worker",
-      "targetType": "activity"
+      "sourceValue": "worker",
+      "targetValue": "activity"
     },
     "linkWorkerToNexus": {
       "label": "Wk↔Nx",
@@ -1097,8 +1097,8 @@
         "strength": 1.25
       },
       "relation": "containment",
-      "sourceType": "worker",
-      "targetType": "nexusService"
+      "sourceValue": "worker",
+      "targetValue": "nexusService"
     },
     "linkWorkerToWorker": {
       "label": "Wk↔Wk",
@@ -1107,8 +1107,8 @@
         "strength": 0.3
       },
       "relation": "dependency",
-      "sourceType": "worker",
-      "targetType": "worker"
+      "sourceValue": "worker",
+      "targetValue": "worker"
     },
     "linkWorkerToWorkflow": {
       "label": "Wk↔Wf",
@@ -1117,8 +1117,8 @@
         "strength": 0.55
       },
       "relation": "containment",
-      "sourceType": "worker",
-      "targetType": "workflow"
+      "sourceValue": "worker",
+      "targetValue": "workflow"
     },
     "linkWorkflowToActivity": {
       "label": "Wf↔Act",
@@ -1127,8 +1127,8 @@
         "strength": 1.9
       },
       "relation": "dependency",
-      "sourceType": "workflow",
-      "targetType": "activity"
+      "sourceValue": "workflow",
+      "targetValue": "activity"
     },
     "linkWorkflowToOperation": {
       "label": "Wf→Op",
@@ -1137,8 +1137,8 @@
         "strength": 1.5
       },
       "relation": "dependency",
-      "sourceType": "workflow",
-      "targetType": "nexusOperation"
+      "sourceValue": "workflow",
+      "targetValue": "nexusOperation"
     },
     "linkWorkflowToWorkflow": {
       "label": "Wf↔Wf",
@@ -1147,8 +1147,8 @@
         "strength": 0.5
       },
       "relation": "dependency",
-      "sourceType": "workflow",
-      "targetType": "workflow"
+      "sourceValue": "workflow",
+      "targetValue": "workflow"
     }
   },
   "filterChipLayer": {
@@ -2084,16 +2084,6 @@
       "service",
       "pod"
     ],
-    "ontologyProp": {
-      "panelAbsent": true,
-      "rootClass": "gv-graph-view probe-host",
-      "schemeKept": true,
-      "searchAbsent": true,
-      "styleMerged": true,
-      "themeButtonAbsent": true,
-      "transportAbsent": true,
-      "withoutProvider": true
-    },
     "podFill": "#336699",
     "rendered": {
       "canvas": true,
@@ -2122,6 +2112,16 @@
       "p3": 0,
       "s1": 0.5,
       "s2": 0
+    },
+    "taxonomyProp": {
+      "panelAbsent": true,
+      "rootClass": "gv-graph-view probe-host",
+      "schemeKept": true,
+      "searchAbsent": true,
+      "styleMerged": true,
+      "themeButtonAbsent": true,
+      "transportAbsent": true,
+      "withoutProvider": true
     }
   },
   "integrityProbes": {
@@ -2408,322 +2408,9 @@
       "tier": "orchestrator"
     }
   },
-  "ontologyProbes": {
-    "absentValueResolvesToFallback": true,
-    "declaredKeyResolvesToItself": {
-      "sameFill": true,
-      "sameLabel": true,
-      "stable": true
-    },
-    "fallbackIsStable": true,
-    "fallbackStyle": {
-      "icon": "?",
-      "label": "Unknown",
-      "physics": {
-        "band": {
-          "x": {
-            "max": 380,
-            "min": 0
-          },
-          "y": {
-            "max": 460,
-            "min": 100
-          }
-        },
-        "charge": -300,
-        "coreRadius": 30
-      },
-      "size": {
-        "iconSize": 11,
-        "r": 10
-      },
-      "summaryKind": "none"
-    },
-    "hiddenPolicy": {
-      "ascend": [
-        "act -> wk|containment",
-        "act2 -> wk|containment",
-        "act2 -> wk|dependency",
-        "wk -> act|dependency"
-      ],
-      "collisionCallFirst": [
-        "caller -> backing|dependency|meta=route"
-      ],
-      "collisionCallLast": [
-        "caller -> backing|dependency|meta=route"
-      ],
-      "cycle": [
-        "caller -> wk|containment",
-        "caller -> wk|dependency"
-      ],
-      "splice": [
-        "act -> wk|containment",
-        "act2 -> act|dependency",
-        "act2 -> wk|containment"
-      ]
-    },
-    "injection": {
-      "alternateNodesOnAlternateKeys": {
-        "contextLines": [
-          "wf=wk",
-          "wk="
-        ],
-        "graduatedEdges": [
-          "wf -> wk|containment",
-          "wf -> wk|dependency"
-        ],
-        "summaries": [
-          "wf=→1",
-          "wk=←1"
-        ],
-        "visibleNodeIds": [
-          "wf",
-          "wk"
-        ]
-      },
-      "alternateNodesUnderShippedTaxonomy": {
-        "contextLines": [
-          "wf=wk",
-          "wk="
-        ],
-        "graduatedEdges": [
-          "wf -> wk|containment",
-          "wf -> wk|dependency"
-        ],
-        "summaries": [
-          "wf=→1",
-          "wk=1 Wf"
-        ],
-        "visibleNodeIds": [
-          "wf",
-          "wk"
-        ]
-      },
-      "shippedNodesOnAlternateKeys": {
-        "contextLines": [],
-        "graduatedEdges": [],
-        "summaries": [],
-        "visibleNodeIds": []
-      },
-      "shippedNodesOnShippedKeys": {
-        "contextLines": [
-          "wf=wk",
-          "wk="
-        ],
-        "graduatedEdges": [
-          "wf -> wk|containment",
-          "wf -> wk|dependency"
-        ],
-        "summaries": [
-          "wf=→1",
-          "wk=1 Wf"
-        ],
-        "visibleNodeIds": [
-          "wf",
-          "wk"
-        ]
-      }
-    },
-    "mappings": {
-      "grouped": {
-        "absentResolves": true,
-        "buckets": [
-          "ab:a,b",
-          "cd:c,d"
-        ],
-        "resolved": [
-          "a -> ab",
-          "b -> ab",
-          "c -> cd",
-          "d -> cd",
-          "e -> none"
-        ]
-      },
-      "identity": [
-        "a=A:a",
-        "b=B:b",
-        "c=C:c",
-        "d=D:d"
-      ],
-      "interning": {
-        "compositeIsDistinct": true,
-        "compositeIsStable": true,
-        "deduplicatesInASet": 1,
-        "stringPassesThrough": true
-      },
-      "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" is incoherent: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
-    },
-    "physicsInjection": {
-      "axes": {
-        "differ": true,
-        "otherAxis": "zone",
-        "shipped": "temporalType"
-      },
-      "chargeKeys": {
-        "otherAxis": [
-          "north",
-          "south"
-        ],
-        "shipped": [
-          "activity",
-          "namespace",
-          "nexusEndpoint",
-          "nexusOperation",
-          "nexusService",
-          "worker",
-          "workflow"
-        ]
-      },
-      "derivedBySpreadStaysConsistent": {
-        "axisAfterSpread": "temporalType",
-        "physicsAgreesWithStyling": true,
-        "stillResolvesTheSameStyle": true
-      },
-      "northNodeUnderOwnTaxonomy": -770,
-      "northNodeUnderShippedTaxonomy": 0,
-      "springKeys": {
-        "otherAxis": [
-          "zoneLink"
-        ],
-        "shipped": [
-          "linkEndpointToNamespace",
-          "linkEndpointToOperation",
-          "linkNexusToOperation",
-          "linkNsToNs",
-          "linkNsToWorker",
-          "linkOperationToActivity",
-          "linkOperationToWorkflow",
-          "linkSignalSend",
-          "linkWorkerToActivity",
-          "linkWorkerToNexus",
-          "linkWorkerToWorker",
-          "linkWorkerToWorkflow",
-          "linkWorkflowToActivity",
-          "linkWorkflowToOperation",
-          "linkWorkflowToWorkflow"
-        ]
-      },
-      "workerChargeAlternate": -770,
-      "workerChargeShipped": -770,
-      "zoneSpring": {
-        "distance": 123,
-        "strength": 0.7
-      }
-    },
-    "prototypeNamedValues": [
-      {
-        "abbreviation": "co",
-        "abbreviationIsString": true,
-        "band": "0..0",
-        "charge": 0,
-        "chargeIsFinite": true,
-        "coreRadius": 2,
-        "name": "constructor",
-        "styleIsFallback": true,
-        "styleLabel": "Unknown"
-      },
-      {
-        "abbreviation": "__",
-        "abbreviationIsString": true,
-        "band": "0..0",
-        "charge": 0,
-        "chargeIsFinite": true,
-        "coreRadius": 2,
-        "name": "__proto__",
-        "styleIsFallback": true,
-        "styleLabel": "Unknown"
-      },
-      {
-        "abbreviation": "to",
-        "abbreviationIsString": true,
-        "band": "0..0",
-        "charge": 0,
-        "chargeIsFinite": true,
-        "coreRadius": 2,
-        "name": "toString",
-        "styleIsFallback": true,
-        "styleLabel": "Unknown"
-      },
-      {
-        "abbreviation": "ha",
-        "abbreviationIsString": true,
-        "band": "0..0",
-        "charge": 0,
-        "chargeIsFinite": true,
-        "coreRadius": 2,
-        "name": "hasOwnProperty",
-        "styleIsFallback": true,
-        "styleLabel": "Unknown"
-      },
-      {
-        "abbreviation": "va",
-        "abbreviationIsString": true,
-        "band": "0..0",
-        "charge": 0,
-        "chargeIsFinite": true,
-        "coreRadius": 2,
-        "name": "valueOf",
-        "styleIsFallback": true,
-        "styleLabel": "Unknown"
-      }
-    ],
-    "reheatPolicy": {
-      "declared": {
-        "defType": {
-          "absentMeans": "hidden",
-          "alpha": 0.5,
-          "emptyMeans": "none",
-          "focus": "always",
-          "refit": true,
-          "resume": true,
-          "seedRevealed": true
-        },
-        "sourceFile": {
-          "absentMeans": "visible",
-          "alpha": 0.3,
-          "emptyMeans": "all",
-          "focus": "whenActive",
-          "refit": false,
-          "resume": true,
-          "seedRevealed": false
-        }
-      },
-      "folds": {
-        "(none)": {
-          "alpha": 0,
-          "refit": false,
-          "resume": false,
-          "seedRevealed": false
-        },
-        "defType": {
-          "alpha": 0.5,
-          "refit": true,
-          "resume": true,
-          "seedRevealed": true
-        },
-        "defType+sourceFile": {
-          "alpha": 0.5,
-          "refit": true,
-          "resume": true,
-          "seedRevealed": true
-        },
-        "sourceFile": {
-          "alpha": 0.3,
-          "refit": false,
-          "resume": true,
-          "seedRevealed": false
-        }
-      }
-    },
-    "searchText": {
-      "default": "wf",
-      "hooked": "WF-7 wf",
-      "hookedWithoutCode": "wf"
-    }
-  },
   "reconcileMatrix": {
     "dest:noFiles · pins:both · focus:existingType": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": true,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2732,7 +2419,7 @@
       ]
     },
     "dest:noFiles · pins:both · focus:newType+newFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -2744,7 +2431,7 @@
       ]
     },
     "dest:noFiles · pins:both · focus:noSourceFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -2756,7 +2443,7 @@
       ]
     },
     "dest:noFiles · pins:both · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": true,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2765,7 +2452,7 @@
       ]
     },
     "dest:noFiles · pins:files · focus:existingType": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": true,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2774,7 +2461,7 @@
       ]
     },
     "dest:noFiles · pins:files · focus:newType+newFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2784,7 +2471,7 @@
       ]
     },
     "dest:noFiles · pins:files · focus:noSourceFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2794,7 +2481,7 @@
       ]
     },
     "dest:noFiles · pins:files · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2803,7 +2490,7 @@
       ]
     },
     "dest:noFiles · pins:none · focus:existingType": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": true,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2812,7 +2499,7 @@
       ]
     },
     "dest:noFiles · pins:none · focus:newType+newFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2822,7 +2509,7 @@
       ]
     },
     "dest:noFiles · pins:none · focus:noSourceFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2832,7 +2519,7 @@
       ]
     },
     "dest:noFiles · pins:none · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/b.twf"
@@ -2843,7 +2530,7 @@
       ]
     },
     "dest:noFiles · pins:types · focus:existingType": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": true,
       "selectedFiles": [],
       "visibleTypes": [
@@ -2852,7 +2539,7 @@
       ]
     },
     "dest:noFiles · pins:types · focus:newType+newFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -2864,7 +2551,7 @@
       ]
     },
     "dest:noFiles · pins:types · focus:noSourceFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -2876,7 +2563,7 @@
       ]
     },
     "dest:noFiles · pins:types · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/b.twf"
@@ -2887,7 +2574,7 @@
       ]
     },
     "dest:noTypes · pins:both · focus:existingType": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -2899,7 +2586,7 @@
       ]
     },
     "dest:noTypes · pins:both · focus:newType+newFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType",
         "sourceFile"
       ],
@@ -2913,7 +2600,7 @@
       ]
     },
     "dest:noTypes · pins:both · focus:noSourceFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -2925,7 +2612,7 @@
       ]
     },
     "dest:noTypes · pins:both · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": true,
       "selectedFiles": [
         "topics/a.twf"
@@ -2933,7 +2620,7 @@
       "visibleTypes": []
     },
     "dest:noTypes · pins:files · focus:existingType": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -2943,7 +2630,7 @@
       ]
     },
     "dest:noTypes · pins:files · focus:newType+newFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "sourceFile"
       ],
       "returnedDestUnchanged": false,
@@ -2956,7 +2643,7 @@
       ]
     },
     "dest:noTypes · pins:files · focus:noSourceFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -2966,7 +2653,7 @@
       ]
     },
     "dest:noTypes · pins:files · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -2977,7 +2664,7 @@
       ]
     },
     "dest:noTypes · pins:none · focus:existingType": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -2987,7 +2674,7 @@
       ]
     },
     "dest:noTypes · pins:none · focus:newType+newFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf",
@@ -2998,7 +2685,7 @@
       ]
     },
     "dest:noTypes · pins:none · focus:noSourceFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -3008,7 +2695,7 @@
       ]
     },
     "dest:noTypes · pins:none · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/b.twf"
@@ -3019,7 +2706,7 @@
       ]
     },
     "dest:noTypes · pins:types · focus:existingType": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -3031,7 +2718,7 @@
       ]
     },
     "dest:noTypes · pins:types · focus:newType+newFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -3044,7 +2731,7 @@
       ]
     },
     "dest:noTypes · pins:types · focus:noSourceFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -3056,7 +2743,7 @@
       ]
     },
     "dest:noTypes · pins:types · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/b.twf"
@@ -3064,7 +2751,7 @@
       "visibleTypes": []
     },
     "dest:oneFile · pins:both · focus:existingType": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -3077,7 +2764,7 @@
       ]
     },
     "dest:oneFile · pins:both · focus:newType+newFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType",
         "sourceFile"
       ],
@@ -3092,7 +2779,7 @@
       ]
     },
     "dest:oneFile · pins:both · focus:noSourceFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -3105,7 +2792,7 @@
       ]
     },
     "dest:oneFile · pins:both · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": true,
       "selectedFiles": [
         "topics/a.twf"
@@ -3115,7 +2802,7 @@
       ]
     },
     "dest:oneFile · pins:files · focus:existingType": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -3126,7 +2813,7 @@
       ]
     },
     "dest:oneFile · pins:files · focus:newType+newFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "sourceFile"
       ],
       "returnedDestUnchanged": false,
@@ -3140,7 +2827,7 @@
       ]
     },
     "dest:oneFile · pins:files · focus:noSourceFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -3151,7 +2838,7 @@
       ]
     },
     "dest:oneFile · pins:files · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -3162,7 +2849,7 @@
       ]
     },
     "dest:oneFile · pins:none · focus:existingType": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -3173,7 +2860,7 @@
       ]
     },
     "dest:oneFile · pins:none · focus:newType+newFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf",
@@ -3185,7 +2872,7 @@
       ]
     },
     "dest:oneFile · pins:none · focus:noSourceFile": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/a.twf"
@@ -3196,7 +2883,7 @@
       ]
     },
     "dest:oneFile · pins:none · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/b.twf"
@@ -3207,7 +2894,7 @@
       ]
     },
     "dest:oneFile · pins:types · focus:existingType": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -3220,7 +2907,7 @@
       ]
     },
     "dest:oneFile · pins:types · focus:newType+newFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -3234,7 +2921,7 @@
       ]
     },
     "dest:oneFile · pins:types · focus:noSourceFile": {
-      "overriddenPins": [
+      "overriddenLocks": [
         "defType"
       ],
       "returnedDestUnchanged": false,
@@ -3247,7 +2934,7 @@
       ]
     },
     "dest:oneFile · pins:types · manual": {
-      "overriddenPins": [],
+      "overriddenLocks": [],
       "returnedDestUnchanged": false,
       "selectedFiles": [
         "topics/b.twf"
@@ -4389,6 +4076,319 @@
       }
     ]
   },
+  "taxonomyProbes": {
+    "absentValueResolvesToFallback": true,
+    "declaredKeyResolvesToItself": {
+      "sameFill": true,
+      "sameLabel": true,
+      "stable": true
+    },
+    "fallbackIsStable": true,
+    "fallbackStyle": {
+      "icon": "?",
+      "label": "Unknown",
+      "physics": {
+        "band": {
+          "x": {
+            "max": 380,
+            "min": 0
+          },
+          "y": {
+            "max": 460,
+            "min": 100
+          }
+        },
+        "charge": -300,
+        "coreRadius": 30
+      },
+      "size": {
+        "iconSize": 11,
+        "r": 10
+      },
+      "summaryKind": "none"
+    },
+    "hiddenPolicy": {
+      "ascend": [
+        "act -> wk|containment",
+        "act2 -> wk|containment",
+        "act2 -> wk|dependency",
+        "wk -> act|dependency"
+      ],
+      "collisionCallFirst": [
+        "caller -> backing|dependency|meta=route"
+      ],
+      "collisionCallLast": [
+        "caller -> backing|dependency|meta=route"
+      ],
+      "cycle": [
+        "caller -> wk|containment",
+        "caller -> wk|dependency"
+      ],
+      "splice": [
+        "act -> wk|containment",
+        "act2 -> act|dependency",
+        "act2 -> wk|containment"
+      ]
+    },
+    "injection": {
+      "alternateNodesOnAlternateKeys": {
+        "contextLines": [
+          "wf=wk",
+          "wk="
+        ],
+        "graduatedEdges": [
+          "wf -> wk|containment",
+          "wf -> wk|dependency"
+        ],
+        "summaries": [
+          "wf=→1",
+          "wk=←1"
+        ],
+        "visibleNodeIds": [
+          "wf",
+          "wk"
+        ]
+      },
+      "alternateNodesUnderShippedTaxonomy": {
+        "contextLines": [
+          "wf=wk",
+          "wk="
+        ],
+        "graduatedEdges": [
+          "wf -> wk|containment",
+          "wf -> wk|dependency"
+        ],
+        "summaries": [
+          "wf=→1",
+          "wk=1 Wf"
+        ],
+        "visibleNodeIds": [
+          "wf",
+          "wk"
+        ]
+      },
+      "shippedNodesOnAlternateKeys": {
+        "contextLines": [],
+        "graduatedEdges": [],
+        "summaries": [],
+        "visibleNodeIds": []
+      },
+      "shippedNodesOnShippedKeys": {
+        "contextLines": [
+          "wf=wk",
+          "wk="
+        ],
+        "graduatedEdges": [
+          "wf -> wk|containment",
+          "wf -> wk|dependency"
+        ],
+        "summaries": [
+          "wf=→1",
+          "wk=1 Wf"
+        ],
+        "visibleNodeIds": [
+          "wf",
+          "wk"
+        ]
+      }
+    },
+    "mappings": {
+      "grouped": {
+        "absentResolves": true,
+        "buckets": [
+          "ab:a,b",
+          "cd:c,d"
+        ],
+        "resolved": [
+          "a -> ab",
+          "b -> ab",
+          "c -> cd",
+          "d -> cd",
+          "e -> none"
+        ]
+      },
+      "identity": [
+        "a=A:a",
+        "b=B:b",
+        "c=C:c",
+        "d=D:d"
+      ],
+      "interning": {
+        "compositeIsDistinct": true,
+        "compositeIsStable": true,
+        "deduplicatesInASet": 1,
+        "stringPassesThrough": true
+      },
+      "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" is incoherent: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
+    },
+    "physicsInjection": {
+      "axes": {
+        "differ": true,
+        "otherAxis": "zone",
+        "shipped": "temporalType"
+      },
+      "chargeKeys": {
+        "otherAxis": [
+          "north",
+          "south"
+        ],
+        "shipped": [
+          "activity",
+          "namespace",
+          "nexusEndpoint",
+          "nexusOperation",
+          "nexusService",
+          "worker",
+          "workflow"
+        ]
+      },
+      "derivedBySpreadStaysConsistent": {
+        "axisAfterSpread": "temporalType",
+        "physicsAgreesWithStyling": true,
+        "stillResolvesTheSameStyle": true
+      },
+      "northNodeUnderOwnTaxonomy": -770,
+      "northNodeUnderShippedTaxonomy": 0,
+      "springKeys": {
+        "otherAxis": [
+          "zoneLink"
+        ],
+        "shipped": [
+          "linkEndpointToNamespace",
+          "linkEndpointToOperation",
+          "linkNexusToOperation",
+          "linkNsToNs",
+          "linkNsToWorker",
+          "linkOperationToActivity",
+          "linkOperationToWorkflow",
+          "linkSignalSend",
+          "linkWorkerToActivity",
+          "linkWorkerToNexus",
+          "linkWorkerToWorker",
+          "linkWorkerToWorkflow",
+          "linkWorkflowToActivity",
+          "linkWorkflowToOperation",
+          "linkWorkflowToWorkflow"
+        ]
+      },
+      "workerChargeAlternate": -770,
+      "workerChargeShipped": -770,
+      "zoneSpring": {
+        "distance": 123,
+        "strength": 0.7
+      }
+    },
+    "prototypeNamedValues": [
+      {
+        "abbreviation": "co",
+        "abbreviationIsString": true,
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "name": "constructor",
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      },
+      {
+        "abbreviation": "__",
+        "abbreviationIsString": true,
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "name": "__proto__",
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      },
+      {
+        "abbreviation": "to",
+        "abbreviationIsString": true,
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "name": "toString",
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      },
+      {
+        "abbreviation": "ha",
+        "abbreviationIsString": true,
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "name": "hasOwnProperty",
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      },
+      {
+        "abbreviation": "va",
+        "abbreviationIsString": true,
+        "band": "0..0",
+        "charge": 0,
+        "chargeIsFinite": true,
+        "coreRadius": 2,
+        "name": "valueOf",
+        "styleIsFallback": true,
+        "styleLabel": "Unknown"
+      }
+    ],
+    "reheatPolicy": {
+      "declared": {
+        "defType": {
+          "absentMeans": "hidden",
+          "alpha": 0.5,
+          "emptyMeans": "none",
+          "focus": "always",
+          "refit": true,
+          "resume": true,
+          "seedRevealed": true
+        },
+        "sourceFile": {
+          "absentMeans": "visible",
+          "alpha": 0.3,
+          "emptyMeans": "all",
+          "focus": "whenActive",
+          "refit": false,
+          "resume": true,
+          "seedRevealed": false
+        }
+      },
+      "folds": {
+        "(none)": {
+          "alpha": 0,
+          "refit": false,
+          "resume": false,
+          "seedRevealed": false
+        },
+        "defType": {
+          "alpha": 0.5,
+          "refit": true,
+          "resume": true,
+          "seedRevealed": true
+        },
+        "defType+sourceFile": {
+          "alpha": 0.5,
+          "refit": true,
+          "resume": true,
+          "seedRevealed": true
+        },
+        "sourceFile": {
+          "alpha": 0.3,
+          "refit": false,
+          "resume": true,
+          "seedRevealed": false
+        }
+      }
+    },
+    "searchText": {
+      "default": "wf",
+      "hooked": "WF-7 wf",
+      "hookedWithoutCode": "wf"
+    }
+  },
   "tuningProbes": {
     "coherence": {
       "crossedBand": "taxonomy is incoherent: values.namespace.physics.band.y runs from 10 to -10; a band's min must not exceed its max",
@@ -4401,7 +4401,7 @@
       "duplicateEdgeType": "taxonomy is incoherent: edge type \"linkNsToNs\" is declared twice",
       "duplicateFilterAxis": "taxonomy is incoherent: filter dimension \"sourceFile\" is declared twice",
       "duplicateValue": "taxonomy is incoherent: style value \"namespace\" is declared twice",
-      "edgeEndpointUndeclared": "taxonomy is incoherent: edgeTypes.ghostLink.sourceType is \"ghost\", which values does not declare",
+      "edgeEndpointUndeclared": "taxonomy is incoherent: edgeTypes.ghostLink.sourceValue is \"ghost\", which values does not declare",
       "emptyBucket": "dimensional mapping \"m\" is incoherent: bucket \"e\" has no values. A value in two buckets has no defined answer for which one tunes it."
     },
     "foreignAxisPhysics": {

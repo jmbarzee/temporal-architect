@@ -1,29 +1,29 @@
 // A small lock-icon button on each of the filter bar's axis sections. A
-// pinned axis holds its selection: a host that reconciles the filter between
-// its views (`reconcileFilter`'s `manual` transition) leaves a pinned axis as
+// locked axis holds its selection: a host that reconciles the filter between
+// its views (`reconcileFilter`'s `manual` transition) leaves a locked axis as
 // it is.
 //
-// The pin can briefly flash to indicate it was overridden by a focus
+// The lock can briefly flash to indicate it was overridden by a focus
 // transition — that's signaled by the `flashing` prop, which the parent
-// sets for ~600ms after a focus transition that bypassed the pin.
+// sets for ~600ms after a focus transition that bypassed the lock.
 
-import './PinToggle.css'
+import './LockToggle.css'
 
-interface PinToggleProps {
-  pinned: boolean
+interface LockToggleProps {
+  locked: boolean
   onClick: () => void
   flashing?: boolean
   /** The axis's label, for the title and aria-label. */
   label: string
 }
 
-export function PinToggle({ pinned, onClick, flashing, label }: PinToggleProps) {
-  const title = pinned
-    ? `${label} filter pinned — held as it is; click to unpin`
-    : `${label} filter unpinned — click to pin and hold it as it is`
+export function LockToggle({ locked, onClick, flashing, label }: LockToggleProps) {
+  const title = locked
+    ? `${label} filter locked — held as it is; click to unlock`
+    : `${label} filter unlocked — click to lock and hold it as it is`
   const className = [
     'gv-pin-toggle',
-    pinned ? 'pinned' : '',
+    locked ? 'pinned' : '',
     flashing ? 'flashing' : '',
   ].filter(Boolean).join(' ')
 
@@ -33,9 +33,9 @@ export function PinToggle({ pinned, onClick, flashing, label }: PinToggleProps) 
       onClick={onClick}
       title={title}
       aria-label={title}
-      aria-pressed={pinned}
+      aria-pressed={locked}
     >
-      {pinned ? <LockClosedIcon /> : <LockOpenIcon />}
+      {locked ? <LockClosedIcon /> : <LockOpenIcon />}
     </button>
   )
 }

@@ -53,7 +53,6 @@ which is worth noticing rather than assuming.
 | `verify/host-probes.ts` | neither | 2 | `verify/static-golden.ts` |
 | `verify/integrity-probes.ts` | neither | 10 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
-| `verify/ontology-probes.ts` | neither | 84 | `verify/static-golden.ts` |
 | `verify/rng.ts` | neither | 1 | **5** files |
 | `verify/scalar-probes.ts` | neither | 12 | `verify/static-golden.ts` |
 | `verify/scheme-probes.ts` | neither | 17 | `verify/static-golden.ts` |
@@ -61,6 +60,7 @@ which is worth noticing rather than assuming.
 | `verify/snapshot.ts` | neither |  | **17** files |
 | `verify/static-golden.ts` | neither | 24 | `verify/main.ts` |
 | `verify/synthetic-visible.ts` | neither | 32 | `verify/static-golden.ts` |
+| `verify/taxonomy-probes.ts` | neither | 84 | `verify/static-golden.ts` |
 | `verify/tier-a.ts` | neither | 13 | **5** files |
 | `verify/tier-b.ts` | neither | 6 | `verify/main.ts` |
 | `verify/tier-c.ts` | neither | 16 | `verify/main.ts` |
@@ -75,7 +75,7 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/GraphControlPanel.tsx` | manifest |  | **5** files |
 | `../graph-view/components/GraphView.tsx` | manifest |  | `../graph-view/index.ts` |
 | `../graph-view/components/GravityControls.tsx` | manifest |  | **4** files |
-| `../graph-view/components/PinToggle.tsx` | manifest |  | `../graph-view/components/FilterBar.tsx` |
+| `../graph-view/components/LockToggle.tsx` | manifest |  | `../graph-view/components/FilterBar.tsx` |
 | `../graph-view/components/PushPullControls.tsx` | manifest |  | `verify/view-probes.ts`, `../graph-view/components/GraphControlPanel.tsx` |
 | `../graph-view/components/SpringControls.tsx` | manifest |  | `../graph-view/components/PushPullControls.tsx` |
 | `../graph-view/components/controls/Equation.tsx` | manifest |  | `../graph-view/components/AxisControls.tsx`, `../graph-view/components/GravityControls.tsx`, `../graph-view/components/controls/EquationSection.tsx` |
@@ -89,10 +89,10 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/graph-view/useControllable.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useHighlight.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useIsomorphicLayoutEffect.ts` | manifest |  | `../graph-view/components/GraphView.tsx`, `../graph-view/components/graph-view/useTheme.ts` |
-| `../graph-view/components/graph-view/useOntology.ts` | manifest |  | **10** files |
 | `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulation.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulationLoop.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
+| `../graph-view/components/graph-view/useTaxonomy.ts` | manifest |  | **10** files |
 | `../graph-view/components/graph-view/useTheme.ts` | manifest |  | `verify/scheme-probes.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
 | `../graph-view/components/graph-view/useViewport.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useVisibleGraph.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
@@ -101,18 +101,18 @@ which is worth noticing rather than assuming.
 | `../graph-view/filter/reconcile.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
 | `../graph-view/filter/toggle.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/FilterBar.tsx`, `../graph-view/index.ts` |
 | `../graph-view/filter/types.ts` | manifest |  | **12** files |
-| `../graph-view/graph/dimension.ts` | manifest |  | **25** files |
+| `../graph-view/graph/axis.ts` | manifest |  | **25** files |
 | `../graph-view/graph/forces.ts` | manifest |  | **21** files |
 | `../graph-view/graph/groups.ts` | manifest |  | **5** files |
 | `../graph-view/graph/highlight.ts` | manifest |  | `verify/contract-probes.ts`, `verify/tier-a.ts`, `../graph-view/components/graph-view/useHighlight.ts` |
 | `../graph-view/graph/model.ts` | manifest |  | **28** files |
 | `../graph-view/graph/node-scale.ts` | manifest |  | **4** files |
-| `../graph-view/graph/ontology.ts` | manifest |  | **24** files |
 | `../graph-view/graph/rng.ts` | manifest |  | **4** files |
 | `../graph-view/graph/scalar.ts` | manifest |  | **11** files |
 | `../graph-view/graph/scheme.ts` | manifest |  | **9** files |
+| `../graph-view/graph/shapes.ts` | manifest |  | **11** files |
 | `../graph-view/graph/simulation.ts` | manifest |  | **29** files |
-| `../graph-view/graph/taxonomy.ts` | manifest |  | **11** files |
+| `../graph-view/graph/taxonomy.ts` | manifest |  | **24** files |
 | `../graph-view/graph/validate.ts` | manifest |  | **4** files |
 | `../graph-view/graph/viewport.ts` | manifest |  | **4** files |
 | `../graph-view/index.ts` | manifest |  | **13** files |
@@ -133,19 +133,19 @@ product will read in a later unit, or dead code with a pin.
 
 - `src/verify/contract-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/defaults-probes.ts` (neither) — verify/static-golden.ts
-- `src/verify/filter-states.ts` (neither) — verify/ontology-probes.ts, verify/seam-probes.ts, verify/synthetic-visible.ts, verify/tier-a.ts, verify/tier-b.ts, verify/tuning-probes.ts, verify/view-probes.ts
+- `src/verify/filter-states.ts` (neither) — verify/seam-probes.ts, verify/synthetic-visible.ts, verify/taxonomy-probes.ts, verify/tier-a.ts, verify/tier-b.ts, verify/tuning-probes.ts, verify/view-probes.ts
 - `src/verify/fixtures.ts` (neither) — verify/main.ts, verify/scalar-probes.ts, verify/seam-probes.ts, verify/tier-a.ts, verify/tuning-probes.ts, verify/view-probes.ts
 - `src/verify/force-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/host-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/integrity-probes.ts` (neither) — verify/static-golden.ts
-- `src/verify/ontology-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/rng.ts` (neither) — verify/contract-probes.ts, verify/force-probes.ts, verify/tier-b.ts, verify/tuning-probes.ts, verify/view-probes.ts
 - `src/verify/scalar-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/scheme-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/seam-probes.ts` (neither) — verify/static-golden.ts
-- `src/verify/snapshot.ts` (neither) — verify/contract-probes.ts, verify/defaults-probes.ts, verify/force-probes.ts, verify/host-probes.ts, verify/integrity-probes.ts, verify/main.ts, verify/ontology-probes.ts, verify/scalar-probes.ts, verify/scheme-probes.ts, verify/seam-probes.ts, verify/static-golden.ts, verify/synthetic-visible.ts, verify/tier-a.ts, verify/tier-b.ts, verify/tier-c.ts, verify/tuning-probes.ts, verify/view-probes.ts
+- `src/verify/snapshot.ts` (neither) — verify/contract-probes.ts, verify/defaults-probes.ts, verify/force-probes.ts, verify/host-probes.ts, verify/integrity-probes.ts, verify/main.ts, verify/scalar-probes.ts, verify/scheme-probes.ts, verify/seam-probes.ts, verify/static-golden.ts, verify/synthetic-visible.ts, verify/taxonomy-probes.ts, verify/tier-a.ts, verify/tier-b.ts, verify/tier-c.ts, verify/tuning-probes.ts, verify/view-probes.ts
 - `src/verify/static-golden.ts` (neither) — verify/main.ts
 - `src/verify/synthetic-visible.ts` (neither) — verify/static-golden.ts
+- `src/verify/taxonomy-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/tier-a.ts` (neither) — verify/main.ts, verify/scalar-probes.ts, verify/seam-probes.ts, verify/tuning-probes.ts, verify/view-probes.ts
 - `src/verify/tier-b.ts` (neither) — verify/main.ts
 - `src/verify/tier-c.ts` (neither) — verify/main.ts

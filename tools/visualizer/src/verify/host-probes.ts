@@ -1,7 +1,7 @@
 // A second host, written against the library's public entry and nothing else
 // (REVIEW_8 C18): a taxonomy of its own — three values, two edge types, a
 // filter axis of each policy, a scalar reading the graph — declared through
-// `createOntology`, a graph built by hand, and the view mounted on a server
+// `createTaxonomy`, a graph built by hand, and the view mounted on a server
 // render. What this pins is that the surface suffices for a host that is not
 // the visualizer; the row changes when the contract does. A server render
 // mounts the chrome and the canvas but builds no simulation (that is an
@@ -12,15 +12,15 @@
 // taxonomy as a prop with no provider, the control panel and the theme button
 // left out, the search, the transport cluster, the defect list and the
 // shortcuts left out of the chrome, a class and a style handed to the root.
-// And the bar alone: `ontology` and `graph`, no provider and no pins.
+// And the bar alone: `taxonomy` and `graph`, no provider and no pins.
 
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  createOntology, OntologyContext, GraphView, FilterBar, defaultFilter, isContainment,
+  createTaxonomy, TaxonomyContext, GraphView, FilterBar, defaultFilter, isContainment,
 } from '@temporal-architect/graph-view'
 import type {
-  OntologySpec, NodeStyle, EdgeType, DimensionDescriptor, ScalarAxis, ReadableGraph,
+  TaxonomySpec, NodeStyle, EdgeType, AxisDescriptor, ScalarAxis, ReadableGraph,
   Graph, GraphNode, GraphEdge, Relation, ThemedColor, EdgeStroke,
 } from '@temporal-architect/graph-view'
 import type { Json } from './snapshot'
@@ -40,10 +40,10 @@ const style = (id: string, ...rest: Parameters<typeof body>): NodeStyle => ({ id
 const fallback = body('Unknown', 'Un', '?', 2, 8)
 const stroke: EdgeStroke = { color: { light: '#888888', dark: '#aaaaaa' }, alpha: 0.8, dash: [], width: 1 }
 const edgeType = (id: string, relation: Relation, src: string, tgt: string): EdgeType => ({
-  id, label: id, sourceType: src, targetType: tgt, relation, physics: { strength: 0.5, distance: 80 }, style: relation === 'containment' ? { ...stroke, dash: [4, 4] } : stroke, tooltip: id,
+  id, label: id, sourceValue: src, targetValue: tgt, relation, physics: { strength: 0.5, distance: 80 }, style: relation === 'containment' ? { ...stroke, dash: [4, 4] } : stroke, tooltip: id,
 })
 // The minimal declaration: the policies follow from what an empty selection means.
-const axis = (id: string, label: string, empty: 'all' | 'none'): DimensionDescriptor => ({ id, label, emptyMeans: empty })
+const axis = (id: string, label: string, empty: 'all' | 'none'): AxisDescriptor => ({ id, label, emptyMeans: empty })
 /** Out-degree over dependency edges, normalised to the busiest node. */
 const fanOut: ScalarAxis = {
   id: 'fanOut', label: 'Fan-out', tooltip: 'calls made, as a share of the most',
@@ -54,10 +54,10 @@ const fanOut: ScalarAxis = {
     return new Map([...graph.nodes].map(n => [n.id, (out.get(n.id) ?? 0) / max]))
   },
 }
-const spec: OntologySpec = {
-  styleDimension: KIND, styleLabel: 'Kind',
+const spec: TaxonomySpec = {
+  styleAxis: KIND, styleLabel: 'Kind',
   values: [style('cluster', 'Cluster', 'Cl', 'C', 0, 20), style('service', 'Service', 'Sv', 'S', 1, 14), style('pod', 'Pod', 'Pd', 'P', 2, 8)],
-  filterDimensions: [axis(ZONE, 'Zone', 'all'), axis(KIND, 'Kind', 'none')],
+  filterAxes: [axis(ZONE, 'Zone', 'all'), axis(KIND, 'Kind', 'none')],
   edgeTypes: [edgeType('contains', 'containment', 'pod', 'service'), edgeType('calls', 'dependency', 'pod', 'pod')],
   classifyEdge: edge => (isContainment(edge) ? 'contains' : 'calls'),
   scalars: [fanOut],
@@ -86,39 +86,39 @@ const PANEL = 'gv-graph-control-panel'
 const pinToggles = (html: string): number => (html.match(/class="gv-pin-toggle[ "]/g) ?? []).length
 
 export function hostProbes(): Json {
-  const ontology = createOntology(spec)
+  const taxonomy = createTaxonomy(spec)
   const graph = graphOf()
   // The smallest host: `graph`, under the provider. No `counts`, no `chain`, no
   // `filter` — the view takes the graph's node counts, every declared axis in
   // order, and the library's default filter.
-  const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: ontology },
+  const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: taxonomy },
     React.createElement(GraphView, { graph })))
   // The other way in: the taxonomy as a prop, no provider above.
   const withProp = renderToStaticMarkup(
     React.createElement(GraphView, {
-      graph, ontology, controls: false, themeToggle: false, className: 'probe-host', style: { minHeight: 1 },
+      graph, taxonomy, controls: false, themeToggle: false, className: 'probe-host', style: { minHeight: 1 },
       chrome: { search: false, transport: false, diagnostics: false, shortcuts: false },
     }))
   // The bar on its own: the taxonomy as a prop, no provider, the graph to read
   // its values off, and nothing about pins.
   const barProp = renderToStaticMarkup(
-    React.createElement(FilterBar, { ontology, graph, filter: defaultFilter(ontology, graph), onFilterChange: () => {} }))
+    React.createElement(FilterBar, { taxonomy, graph, filter: defaultFilter(taxonomy, graph), onFilterChange: () => {} }))
   const scalar = fanOut.compute({ nodes: [...graph.nodes.values()], edges: graph.edges, getNode: id => graph.nodes.get(id) })
   return {
-    keys: [...ontology.styleValues],
-    podFill: ontology.styleOf('pod').color.light.fill,
-    callsStroke: [...ontology.edgeStrokeFor('calls').dash],
+    keys: [...taxonomy.styleValues],
+    podFill: taxonomy.styleOf('pod').color.light.fill,
+    callsStroke: [...taxonomy.edgeStrokeFor('calls').dash],
     scalar: sortedRecord([...scalar]),
     rendered: {
       canvas: html.includes('<canvas'),
-      chips: sorted([...html.matchAll(/class="gv-header-type-label">([^<]*)</g)].map(m => m[1])),
-      files: sorted([...html.matchAll(/class="gv-header-file-name">([^<]*)</g)].map(m => m[1])),
+      chips: sorted([...html.matchAll(/class="gv-chip-label">([^<]*)</g)].map(m => m[1])),
+      files: sorted([...html.matchAll(/class="gv-tag-label">([^<]*)</g)].map(m => m[1])),
       chipCounts: sorted([...html.matchAll(/class="gv-header-chip-count">([^<]*)</g)].map(m => m[1])),
       panelPresent: html.includes(PANEL),
       // The view offers pin toggles only to a host that engages pins.
       pinToggles: pinToggles(html),
     },
-    ontologyProp: {
+    taxonomyProp: {
       withoutProvider: withProp.includes('<canvas'),
       rootClass: rootClassOf(withProp),
       styleMerged: withProp.includes('min-height:1px'),

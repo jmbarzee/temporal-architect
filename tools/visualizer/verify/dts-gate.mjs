@@ -30,7 +30,7 @@ const PKG_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const pkg = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf8'))
 // The engine's parameter and force modules are private everywhere: `ForceParams` is not
 // part of either published surface (D53, #90, D62).
-const PRIVATE = [/\/graph\/simulation\.d\.ts$/, /\/graph\/forces\.d\.ts$/, /\/graph\/ontology\.d\.ts$/, /\/graph\/scalar\.d\.ts$/]
+const PRIVATE = [/\/graph\/simulation\.d\.ts$/, /\/graph\/forces\.d\.ts$/, /\/graph\/taxonomy\.d\.ts$/, /\/graph\/scalar\.d\.ts$/]
 
 const typesEntry = pkg.exports?.['.']?.types ?? pkg.types
 if (!typesEntry) { console.error('dts gate: package.json declares no types entry point.'); process.exit(1) }

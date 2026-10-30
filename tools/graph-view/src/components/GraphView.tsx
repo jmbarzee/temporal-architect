@@ -5,13 +5,13 @@ import React from 'react'
 import './GraphView.css'
 import { readableGraph, isContainment, withContainmentEdges } from '../graph/model'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
-import type { FilterState, PinState } from '../filter/types'
+import type { FilterState, AxisLocks } from '../filter/types'
 import { defaultFilter, hiddenMatchesOf, passesSelection, selectionFor, selectionsEqual, withSelection } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
-import { countsOn, isIdentityMapping, valuesOn } from '../graph/dimension'
-import type { DimensionalMapping } from '../graph/dimension'
+import { countsOn, isIdentityMapping, valuesOn } from '../graph/axis'
+import type { DimensionalMapping } from '../graph/axis'
 import type { PresentSets } from './graph-view/present'
 import { presentSetsOf } from './graph-view/present'
 import type { EdgeStroke, Theme } from '../graph/scheme'
@@ -21,8 +21,8 @@ import type { ThemeChoice } from './graph-view/useTheme'
 import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
 import { copyGroups, copyKeyOf } from '../graph/model'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
-import { OntologyContext, useOntology } from './graph-view/useOntology'
-import type { Ontology } from '../graph/ontology'
+import { TaxonomyContext, useTaxonomy } from './graph-view/useTaxonomy'
+import type { Taxonomy } from '../graph/taxonomy'
 import { worldToScreen } from '../graph/viewport'
 import type { Viewport } from '../graph/viewport'
 import { zoomAt } from '../graph/viewport'
@@ -51,8 +51,8 @@ export interface Position { x: number; y: number }
 export interface GraphViewChrome {
   /** The search control in the bar. */
   search?: boolean
-  /** The pin toggle on each axis. Default: only when the host engages pins (`pins` or `onPinsChange`). */
-  pins?: boolean
+  /** The lock toggle on each axis. Default: only when the host engages locks (`locks` or `onLocksChange`). */
+  locks?: boolean
   /** The Fit / theme / Play cluster and the node count. */
   transport?: boolean
   /** The pane's own list of the graph's defects under the bar. */
@@ -86,15 +86,15 @@ export interface GraphViewHandle {
 
 /**
  * The view's inputs. Only `graph` is required, with a taxonomy from either the
- * `ontology` prop or an `OntologyContext.Provider` above. Every piece of state
+ * `taxonomy` prop or an `TaxonomyContext.Provider` above. Every piece of state
  * follows the React convention: pass the value and its callback to control it,
  * or neither and the view keeps it; a callback alone still reports changes.
  */
 export interface GraphViewProps {
   /** The graph, built by the host from whatever it reads. Keep one object until its nodes or edges change. */
   graph: Graph
-  /** The taxonomy, when not supplied through `OntologyContext`. */
-  ontology?: Ontology
+  /** The taxonomy, when not supplied through `TaxonomyContext`. */
+  taxonomy?: Taxonomy
   /**
    * Where the pane's shortcuts listen. `pane` (the default): the root is
    * focusable and handles the keys that reach it, so a host page keeps Tab
@@ -114,12 +114,12 @@ export interface GraphViewProps {
   /** The host's control for its groups (a legend, a modal), rendered inside the pane — which sets `--gv-toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included. */
   groupsControl?: (active: readonly ActiveGroup[]) => React.ReactNode
   /** The host's action for a node — its label, and what it does with the node — offered in the hover box. */
-  crossView?: { label: string; onFocus: (node: GraphNode) => void }
+  nodeAction?: { label: string; onSelect: (node: GraphNode) => void }
   /** Whether the control panel (the forces, the node scale) is offered. Default true. */
   controls?: boolean
   /** Whether the Auto / Light / Dark button is offered. Default true. */
   themeToggle?: boolean
-  /** Which parts of the pane's chrome are offered. Default: everything, pins only when engaged. */
+  /** Which parts of the pane's chrome are offered. Default: everything, locks only when engaged. */
   chrome?: GraphViewChrome
   /** The search control's title and placeholder, for a host with its own words. */
   searchTitle?: string
@@ -139,15 +139,15 @@ export interface GraphViewProps {
   /** Merged onto the root's style; the scheme's variables stay. */
   style?: React.CSSProperties
 
-  /** The selection per axis. Default: `defaultFilter(ontology, graph)`, seeded once. */
+  /** The selection per axis. Default: `defaultFilter(taxonomy, graph)`, seeded once. */
   filter?: FilterState
   onFilterChange?: (next: FilterState) => void
   /** Which axes are pinned against a cross-view adoption. Default: none. */
-  pins?: PinState
-  onPinsChange?: (next: PinState) => void
+  locks?: AxisLocks
+  onLocksChange?: (next: AxisLocks) => void
   /** The axes shown, in order. Default: every declared filter axis. Editable in the bar unless controlled without a callback. */
-  chain?: readonly string[]
-  onChainChange?: (next: readonly string[]) => void
+  axes?: readonly string[]
+  onAxesChange?: (next: readonly string[]) => void
   /** The search control. Default: closed and empty. */
   search?: SearchState
   onSearchChange?: (next: SearchState) => void
@@ -169,14 +169,14 @@ const NO_FLASH: ReadonlySet<string> = new Set()
 
 export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(function GraphView({
   graph: hostGraph,
-  ontology: ontologyProp,
+  taxonomy: taxonomyProp,
   keyboard = 'pane',
   positions,
   counts: hostCounts,
   findings,
   groups,
   groupsControl,
-  crossView,
+  nodeAction,
   controls = true,
   themeToggle = true,
   chrome,
@@ -187,22 +187,22 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   className,
   style,
   filter: filterProp, onFilterChange,
-  pins: pinsProp, onPinsChange,
-  chain: hostChain, onChainChange,
+  locks: locksProp, onLocksChange,
+  axes: hostAxes, onAxesChange,
   search: searchProp, onSearchChange,
   theme: themeProp, onThemeChange,
   onSelectionChange, onNodeActivate, onHover, onThemeResolved,
 }: GraphViewProps, ref) {
   // The taxonomy: the prop, or the context. Neither is a wiring bug a
   // default would hide, so it is said here, once, before any hook.
-  const fromContext = React.useContext(OntologyContext)
-  const ontology = ontologyProp ?? fromContext
-  if (!ontology) {
-    throw new Error('GraphView has no taxonomy: pass `ontology`, or mount it inside <OntologyContext.Provider value={…}>.')
+  const fromContext = React.useContext(TaxonomyContext)
+  const taxonomy = taxonomyProp ?? fromContext
+  if (!taxonomy) {
+    throw new Error('GraphView has no taxonomy: pass `taxonomy`, or mount it inside <TaxonomyContext.Provider value={…}>.')
   }
-  // State the host may control or leave to the view: the filter, the pins,
-  // the chain of axes shown, the search control, the theme choice.
-  const [filter, setFilter] = useControllable(filterProp, onFilterChange, () => defaultFilter(ontology, hostGraph))
+  // State the host may control or leave to the view: the filter, the locks,
+  // the axes shown, the search control, the theme choice.
+  const [filter, setFilter] = useControllable(filterProp, onFilterChange, () => defaultFilter(taxonomy, hostGraph))
   // A graph that changes while an axis still holds the selection it opened
   // with re-seeds that axis from the new graph: a host that mounts empty
   // while its data loads is not left blank, and a value first seen later is
@@ -213,29 +213,29 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     if (before === hostGraph) return
     seededFromRef.current = hostGraph
     let next = filter
-    for (const d of ontology.filterDimensions) {
+    for (const d of taxonomy.filterAxes) {
       const opened = new Set(d.initialSelection(valuesOn(before.nodes.values(), d.id)))
       if (!selectionsEqual(selectionFor(filter, d.id), opened)) continue
       next = withSelection(next, d.id, new Set(d.initialSelection(valuesOn(hostGraph.nodes.values(), d.id))))
     }
     if (next !== filter) setFilter(next)
   }, [hostGraph]) // eslint-disable-line react-hooks/exhaustive-deps
-  const [pins, setPins] = useControllable(pinsProp, onPinsChange, () => new Map<string, boolean>())
-  const [chain, setChain] = useControllable(hostChain, onChainChange, () => ontology.filterDimensions.map(d => d.id))
-  const chainEditable = hostChain === undefined || onChainChange !== undefined
+  const [locks, setLocks] = useControllable(locksProp, onLocksChange, () => new Map<string, boolean>())
+  const [axes, setAxes] = useControllable(hostAxes, onAxesChange, () => taxonomy.filterAxes.map(d => d.id))
+  const axesEditable = hostAxes === undefined || onAxesChange !== undefined
   const [search, setSearch] = useControllable(searchProp, onSearchChange, () => ({ query: '', active: false }))
   const [themeChoice, setThemeChoice] = useControllable(themeProp, onThemeChange, () => 'system' as ThemeChoice)
   const searchQuery = search.query
   const searchActive = search.active
-  // The axes this view filters on are the chain's, in order: an axis the host
+  // The axes this view filters on are those shown, in order: an axis the host
   // declared but this view does not show is not filtering here.
   const filterAxes = React.useMemo(
-    () => chain.flatMap(id => { const d = ontology.descriptorFor(id); return d ? [d] : [] }),
-    [chain, ontology],
+    () => axes.flatMap(id => { const d = taxonomy.axisFor(id); return d ? [d] : [] }),
+    [axes, taxonomy],
   )
   const show = {
     search: chrome?.search ?? true,
-    pins: chrome?.pins ?? (pinsProp !== undefined || onPinsChange !== undefined),
+    locks: chrome?.locks ?? (locksProp !== undefined || onLocksChange !== undefined),
     transport: chrome?.transport ?? true,
     diagnostics: chrome?.diagnostics ?? true,
     shortcuts: chrome?.shortcuts ?? true,
@@ -244,13 +244,13 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   }
   // The host's graph, checked once: every defect named, the edges an
   // error names left out of what is drawn, the list shown under the bar.
-  const diagnostics = React.useMemo(() => validateGraph(hostGraph, ontology), [hostGraph, ontology])
+  const diagnostics = React.useMemo(() => validateGraph(hostGraph, taxonomy), [hostGraph, taxonomy])
   // What is drawn: the host's graph less what an error names, plus the
   // containment edge each `parentId` implies where the host listed none.
   const graph = React.useMemo(() => withContainmentEdges(dropInvalid(hostGraph, diagnostics)), [hostGraph, diagnostics])
   // The chip badges: the host's reading of its own data, or a count of the
   // graph's nodes per axis and value.
-  const nodeCounts = React.useMemo(() => countsOn(graph.nodes.values(), chain), [graph, chain])
+  const nodeCounts = React.useMemo(() => countsOn(graph.nodes.values(), axes), [graph, axes])
   const counts = hostCounts ?? nodeCounts
   // Every node's copies, by the key they share — derived here, once per graph.
   const copies = React.useMemo(() => copyGroups(graph), [graph])
@@ -292,8 +292,8 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // What each filter axis can take, read off the graph: the engine declares no
   // value vocabulary, so the bar learns an axis's domain from the nodes.
   const valuesByDimension = React.useMemo(
-    () => new Map(ontology.filterDimensions.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
-    [graph, ontology],
+    () => new Map(taxonomy.filterAxes.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
+    [graph, taxonomy],
   )
 
   // Reset camera/fps coordination on each sim rebuild. Held by useSimulation
@@ -320,19 +320,19 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     onNodeDragMove: handleNodeDragMove,
     onNodeDragEnd: handleNodeDragEnd,
     onToggleRunning: handleToggleRunning,
-  } = useSimulation(graph, ontology, positions, onSimRebuild)
+  } = useSimulation(graph, taxonomy, positions, onSimRebuild)
 
 
   // The dense per-bucket tables the kernels read, resolved once per
   // (params, taxonomy) here and handed to the canvas and every control.
-  const resolved = React.useMemo(() => resolvePhysics(forceParams, ontology), [forceParams, ontology])
+  const resolved = React.useMemo(() => resolvePhysics(forceParams, taxonomy), [forceParams, taxonomy])
 
   // What the push/pull tab offers: every axis this graph admits with its
   // measured token cost, and the spring categories some edge falls in under
   // the current one (the pull tokens). Both read the whole graph, not the
   // visible subset — tuning covers what a filter may reveal next.
-  const axes = React.useMemo(() => axisOptions(ontology, graph), [ontology, graph])
-  const layoutAxes = React.useMemo(() => layoutAxisOptions(axes, ontology), [axes, ontology])
+  const axisChoices = React.useMemo(() => axisOptions(taxonomy, graph), [taxonomy, graph])
+  const layoutAxes = React.useMemo(() => layoutAxisOptions(axisChoices, taxonomy), [axisChoices, taxonomy])
   // The frame the band forces act in and the overlay the canvas draws, both
   // over the WHOLE graph — the same frame the simulation seeds and ticks in.
   const frame = React.useMemo(() => layoutFrame(readableGraph(graph), resolved), [graph, resolved])
@@ -340,11 +340,11 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // scheme rides inline as custom properties in that theme, and every
   // visible edge's stroke is resolved here once, not per frame.
   const theme = useTheme(containerRef, themeChoice)
-  const schemeStyle = React.useMemo(() => schemeVars(ontology, theme) as React.CSSProperties, [ontology, theme])
+  const schemeStyle = React.useMemo(() => schemeVars(taxonomy, theme) as React.CSSProperties, [taxonomy, theme])
   const overlay = React.useMemo(() => bandOverlay(graph.nodes.values(), forceParams, resolved, frame,
-    (axis, bucket) => axis.mapping.dimension === ontology.styleAxis() && isIdentityMapping(axis.mapping)
-      ? ontology.styleOf(bucket).color[theme].fill
-      : undefined), [graph, forceParams, resolved, frame, ontology, theme])
+    (axis, bucket) => axis.mapping.dimension === taxonomy.styleAxis() && isIdentityMapping(axis.mapping)
+      ? taxonomy.styleOf(bucket).color[theme].fill
+      : undefined), [graph, forceParams, resolved, frame, taxonomy, theme])
 
   // A new axis starts both pair forces from the taxonomy's declared physics on
   // its buckets (a tuning keyed by one axis has no reading on another).
@@ -361,14 +361,14 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     setNodeScale(prev => ({ ...prev, ...patch }))
   }, [])
 
-  // The pins a focus overrode flash once, for 600 ms, then clear. The view's
+  // The locks a focus overrode flash once, for 600 ms, then clear. The view's
   // own state: a host never sees it.
-  const [flashPins, setFlashPins] = React.useState<ReadonlySet<string>>(NO_FLASH)
+  const [flashLocks, setFlashLocks] = React.useState<ReadonlySet<string>>(NO_FLASH)
   React.useEffect(() => {
-    if (flashPins.size === 0) return
-    const timer = setTimeout(() => setFlashPins(NO_FLASH), 600)
+    if (flashLocks.size === 0) return
+    const timer = setTimeout(() => setFlashLocks(NO_FLASH), 600)
     return () => clearTimeout(timer)
-  }, [flashPins])
+  }, [flashLocks])
 
   // Stale-file cleanup is now owned by the host shell (it touches both views'
   // filters consistently when the AST changes).
@@ -376,7 +376,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // Visible subgraph derived from the live sim (filter + edge graduation +
   // summaries + downstream-depth scores), recomputed on filter / sim-rebuild.
   const { visibleNodes, visibleEdges, visibleIds, edgeTypes, nodeSummaries, downstreamScores } =
-    useVisibleGraph(simRef, simVersion, filter, filterAxes, ontology)
+    useVisibleGraph(simRef, simVersion, filter, filterAxes, taxonomy)
 
   // Every visible edge's stroke, from the type the derivation resolved on the
   // edge's ORIGINAL endpoints, once, not per frame. An edge
@@ -386,10 +386,10 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const strokes = new Map<GraphEdge, EdgeStroke>()
     for (const edge of visibleEdges) {
       const type = edgeTypes.get(edge.id)
-      if (type !== undefined) strokes.set(edge, ontology.edgeStrokeFor(type))
+      if (type !== undefined) strokes.set(edge, taxonomy.edgeStrokeFor(type))
     }
     return strokes
-  }, [visibleEdges, edgeTypes, ontology])
+  }, [visibleEdges, edgeTypes, taxonomy])
 
   // Parallel dependency edges — two or more between one pair of visible nodes,
   // kept apart — take lanes a few pixels either side of the line so
@@ -417,7 +417,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   const sprung = React.useMemo(() => sprungEdges(graph.edges, visibleIds), [graph, visibleIds])
   const present = React.useMemo<PresentSets>(
     () => presentSetsOf(visibleNodes, sprung, resolved, getSimNode),
-    [visibleNodes, sprung, resolved, ontology, getSimNode],
+    [visibleNodes, sprung, resolved, taxonomy, getSimNode],
   )
 
   // Selection / hover / keyboard-focus / shift + control-panel preview state,
@@ -433,7 +433,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     activePushBucket, setActivePushBucket,
     activeGravityBucket, setActiveGravityBucket,
     activePullEdge, setActivePullEdge,
-  } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph, ontology)
+  } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph, taxonomy)
 
   // The groups as drawn: the
   // host's, restricted to the visible set and coloured in order. Drives the
@@ -463,9 +463,9 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const sim = simRef.current
     if (!sim) return { visibleMatchIds: new Set<string>(), hiddenMatchCount: 0, hiddenMatches: none }
     const split = hiddenMatchesOf(sim.nodes, filter, filterAxes, visibleIds,
-      node => ontology.searchText(node).toLowerCase().includes(lq), (node, dim) => ontology.valueOn(node, dim))
+      node => taxonomy.searchText(node).toLowerCase().includes(lq), (node, dim) => taxonomy.valueOn(node, dim))
     return { visibleMatchIds: split.visible, hiddenMatchCount: split.hiddenCount, hiddenMatches: split.hiddenByAxis }
-  }, [searchQuery, visibleIds, filter, filterAxes, ontology])
+  }, [searchQuery, visibleIds, filter, filterAxes, taxonomy])
 
   // Physics loop + filter-driven reheats. Owns the RAF tick (with one-shot
   // initial fit, cross-view center, fps, and stability stop), the hover tooltip
@@ -476,7 +476,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     visibleIds, visibleNodes, downstreamScores,
     filter, axes: filterAxes,
     hoveredNodeId, selectedNodeId,
-    containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId, ontology,
+    containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId, taxonomy,
   })
 
   // What the host hears: the selection, the hover, a double-click and the
@@ -583,12 +583,12 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   const focusNodeById = React.useCallback((id: string): boolean => {
     const node = graph.nodes.get(id)
     if (!node) return false
-    const result = reconcileFilter({ destination: filter, source: filter, pins, transition: { kind: 'focus', target: { values: node.dimensions } }, axes: filterAxes })
+    const result = reconcileFilter({ destination: filter, source: filter, locks, transition: { kind: 'focus', target: { values: node.dimensions } }, axes: filterAxes })
     if (result.filter !== filter) setFilter(result.filter)
-    if (result.overriddenPins.size > 0) setFlashPins(result.overriddenPins)
+    if (result.overriddenLocks.size > 0) setFlashLocks(result.overriddenLocks)
     // Whether the widened filter shows the node: a value absent on a hiding
     // axis cannot be revealed by widening, and the host should know.
-    const shown = passesSelection(result.filter, filterAxes, dim => ontology.valueOn(node, dim))
+    const shown = passesSelection(result.filter, filterAxes, dim => taxonomy.valueOn(node, dim))
     if (!shown) return false
     pendingCenterRef.current = { nodeId: id }
     if (!running) {
@@ -596,7 +596,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       setRunning(true)
     }
     return true
-  }, [graph, filter, pins, filterAxes, setFilter, running, setRunning, simRef, pendingCenterRef, ontology])
+  }, [graph, filter, locks, filterAxes, setFilter, running, setRunning, simRef, pendingCenterRef, taxonomy])
   // The declarative focus: applied whenever the host names a node, including
   // the one it named before this pane mounted.
   React.useEffect(() => {
@@ -732,10 +732,10 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   const paneKeyDown = React.useCallback((e: React.KeyboardEvent) => handleKey(e.nativeEvent), [handleKey])
 
   // The hover box hands the host its own node object, never the simulation's copy.
-  const hostCrossView = React.useMemo(() => crossView && {
-    label: crossView.label,
-    onFocus: (node: GraphNode) => crossView.onFocus(hostGraph.nodes.get(node.id) ?? node),
-  }, [crossView, hostGraph])
+  const hostCrossView = React.useMemo(() => nodeAction && {
+    label: nodeAction.label,
+    onSelect: (node: GraphNode) => nodeAction.onSelect(hostGraph.nodes.get(node.id) ?? node),
+  }, [nodeAction, hostGraph])
 
   const nodeCount = visibleNodes.length
   const edgeCount = visibleEdges.length
@@ -748,7 +748,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   ) : null
 
   return (
-    <OntologyContext.Provider value={ontology}>
+    <TaxonomyContext.Provider value={taxonomy}>
     <CanvasErrorBoundary what="graph view">
     <div
       className={`gv-graph-view${className ? ` ${className}` : ''}`}
@@ -803,7 +803,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
           directionLine={show.directionLine}
           copies={copies}
           nodeSummaries={nodeSummaries}
-          crossView={hostCrossView}
+          nodeAction={hostCrossView}
           onMouseEnter={cancelHoverClear}
           onMouseLeave={() => handleHoverNode(null)}
         />
@@ -815,16 +815,16 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       <div className="gv-graph-overlay" ref={toolbarRef}>
         <div className="gv-graph-toolbar">
           <FilterBar
-            chrome={{ search: show.search, pins: show.pins }}
+            chrome={{ search: show.search, locks: show.locks }}
             counts={counts}
             values={valuesByDimension}
             filter={filter}
             onFilterChange={setFilter}
-            pins={pins}
-            onPinsChange={setPins}
-            chain={chain}
-            onChainChange={chainEditable ? setChain : undefined}
-            overriddenPins={flashPins}
+            locks={locks}
+            onLocksChange={setLocks}
+            axes={axes}
+            onAxesChange={axesEditable ? setAxes : undefined}
+            overriddenLocks={flashLocks}
             recentlyChanged={recentlyChanged}
             search={search}
             onSearchChange={setSearch}
@@ -848,7 +848,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
                 className="gv-graph-search-result"
                 onClick={() => handleSelectSearchResult(n.id)}
               >
-                <span className="gv-graph-search-result-type">{ontology.resolveNodeStyle(n).label}</span>
+                <span className="gv-graph-search-result-type">{taxonomy.nodeStyleOf(n).label}</span>
                 <span className="gv-graph-search-result-name">{n.name}</span>
               </button>
             ))}
@@ -896,7 +896,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
         onParamChange={handleParamChange}
         onAdjust={handleForceAdjust}
         onRelayout={handleRelayout}
-        axes={axes}
+        axes={axisChoices}
         layoutAxes={layoutAxes}
         present={present}
         onAxisChange={handleAxisChange}
@@ -934,7 +934,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       )}
     </div>
     </CanvasErrorBoundary>
-    </OntologyContext.Provider>
+    </TaxonomyContext.Provider>
   )
 })
 
@@ -970,17 +970,17 @@ interface GraphHoverTooltipProps {
   copies: ReadonlyMap<string, ReadonlySet<string>>
   nodeSummaries: Map<string, string>
   // The host's cross-view action from the tooltip, when it offers one.
-  crossView?: { label: string; onFocus: (node: GraphNode) => void }
+  nodeAction?: { label: string; onSelect: (node: GraphNode) => void }
   // The tooltip is interactive: these keep it open while the pointer is over
   // it (so the cross-view button is clickable).
   onMouseEnter: () => void
   onMouseLeave: () => void
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, directionLine, copies, nodeSummaries, crossView, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, directionLine, copies, nodeSummaries, nodeAction, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
   // Before the early returns: this is a hook, and the component bails out four
   // different ways below.
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
   if (!hoveredNodeId) return null
   const sim = simRef.current
   if (!sim) return null
@@ -991,15 +991,15 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   // value's identity on its own metadata says so there, as one line or
   // several; the library's default is the parent's name. The icon is the
   // value's own.
-  const context = ontology.contextLine(node, node.parentId ? sim.getNode(node.parentId) : undefined)
+  const context = taxonomy.contextLine(node, node.parentId ? sim.getNode(node.parentId) : undefined)
   const contextLines = context === undefined ? [] : typeof context === 'string' ? [context] : [...context]
-  const icon = ontology.resolveNodeStyle(node).icon
+  const icon = taxonomy.nodeStyleOf(node).icon
 
   // The composition line for a node that summarises its children (counted
   // per style value, named by its abbreviation). These used to render as a
   // badge under the node; they now live in the box. Degree nodes are covered
   // by the connection counts row below, so we don't duplicate them here.
-  const summaryKind = ontology.resolveNodeStyle(node).summaryKind
+  const summaryKind = taxonomy.nodeStyleOf(node).summaryKind
   const compositionLine =
     summaryKind === 'children'
       ? nodeSummaries.get(hoveredNodeId) || undefined
@@ -1054,13 +1054,13 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         </div>
       )}
       {directionLine && <div className="gv-tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>}
-      {crossView && (
+      {nodeAction && (
         <button
           className="gv-tooltip-cross-view"
-          onClick={() => crossView.onFocus(node)}
-          title={crossView.label}
+          onClick={() => nodeAction.onSelect(node)}
+          title={nodeAction.label}
         >
-          {crossView.label}
+          {nodeAction.label}
         </button>
       )}
     </div>

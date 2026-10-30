@@ -8,14 +8,14 @@
 // behaviour rather than an optimisation — a reducer that rebuilt them all would
 // re-run edge graduation and reheat the layout on every unrelated edit.
 
-import type { DimensionId } from '../graph/dimension'
+import type { AxisId } from '../graph/axis'
 import type { FilterState } from './types'
 import { selectionFor, withSelection } from './types'
 
 /** Toggle one value on one axis. */
 export function toggleValue(
   filter: FilterState,
-  dimension: DimensionId,
+  dimension: AxisId,
   value: string,
 ): FilterState {
   const current = selectionFor(filter, dimension)
@@ -34,7 +34,7 @@ export function toggleValue(
  */
 export function toggleGroup(
   filter: FilterState,
-  dimension: DimensionId,
+  dimension: AxisId,
   values: readonly string[],
 ): FilterState {
   const current = selectionFor(filter, dimension)

@@ -11,10 +11,10 @@
 //     `dropInvalid` leaves out exactly the edges an error names;
 //   - a group keeps its colour when a filter hides the groups before it.
 
-import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import type { OntologySpec } from '@temporal-architect/graph-view/graph/ontology'
-import type { NodeStyle, EdgeType } from '@temporal-architect/graph-view/graph/taxonomy'
-import type { DimensionDescriptor, Relation } from '@temporal-architect/graph-view/graph/dimension'
+import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { TaxonomySpec } from '@temporal-architect/graph-view/graph/taxonomy'
+import type { NodeStyle, EdgeType } from '@temporal-architect/graph-view/graph/shapes'
+import type { AxisDescriptor, Relation } from '@temporal-architect/graph-view/graph/axis'
 import type { Graph, GraphEdge } from '@temporal-architect/graph-view/graph/model'
 import { relationOf } from '@temporal-architect/graph-view/graph/model'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
@@ -36,19 +36,19 @@ const body = (label: string, abbreviation: string, tier: number): Omit<NodeStyle
 })
 const style = (id: string, ...rest: Parameters<typeof body>): NodeStyle => ({ id, ...body(...rest) })
 const edgeType = (id: string, relation: Relation, dash: number[]): EdgeType => ({
-  id, label: id, sourceType: 'leaf', targetType: relation === 'containment' ? 'box' : 'leaf', relation,
+  id, label: id, sourceValue: 'leaf', targetValue: relation === 'containment' ? 'box' : 'leaf', relation,
   physics: { strength: 0.5, distance: 80 }, style: { color: { light: '#888888', dark: '#aaaaaa' }, alpha: 0.8, dash, width: 1 }, tooltip: id,
 })
-const axis = (id: string, empty: 'all' | 'none'): DimensionDescriptor => ({ id, label: id, emptyMeans: empty })
+const axis = (id: string, empty: 'all' | 'none'): AxisDescriptor => ({ id, label: id, emptyMeans: empty })
 
 /**
  * A containment edge is `contains`; a dependency is `signals` or `calls` by its own axis; two spellings are deliberately wrong.
  * `calls` and `signals` run between the same two values, so the rule is the tie-breaker the declared pairs cannot be.
  */
-const SPEC: OntologySpec = {
-  styleDimension: KIND, styleLabel: 'Kind',
+const SPEC: TaxonomySpec = {
+  styleAxis: KIND, styleLabel: 'Kind',
   values: [style('box', 'Box', 'Bx', 0), style('leaf', 'Leaf', 'Lf', 1)],
-  filterDimensions: [axis(KIND, 'none'), axis(ZONE, 'all')],
+  filterAxes: [axis(KIND, 'none'), axis(ZONE, 'all')],
   edgeTypes: [edgeType('contains', 'containment', [4, 4]), edgeType('calls', 'dependency', []), edgeType('signals', 'dependency', [2, 2])],
   classifyEdge: edge => {
     const kind = edge.dimensions?.[EDGE_KIND]
@@ -60,9 +60,9 @@ const SPEC: OntologySpec = {
   scalars: [],
   fallbackStyle: body('Unknown', 'Un', 1),
 }
-const ONTOLOGY = createOntology(SPEC)
+const ONTOLOGY = createTaxonomy(SPEC)
 /** The same taxonomy, preferring a signal over a call when two graduated edges collide. */
-const PREFER_SIGNALS = createOntology({ ...SPEC, collapse: (kept, candidate) => candidate.dimensions?.[EDGE_KIND] === 'signals' ? candidate : kept })
+const PREFER_SIGNALS = createTaxonomy({ ...SPEC, collapse: (kept, candidate) => candidate.dimensions?.[EDGE_KIND] === 'signals' ? candidate : kept })
 
 function node(id: string, kind: string, zone: string, parentId?: string): SimNode {
   return {
@@ -106,8 +106,8 @@ function parallelEdges(): Json {
 /** Leaves hidden: the two reaches from b1 to b2 collapse to one graduated edge — the call met first, or the signal when the taxonomy prefers it. */
 function graduatedCollapse(): Json {
   const boxesOnly = new Map([[KIND, new Set(['box'])], [ZONE, new Set<string>()]])
-  const drawn = (ontology: typeof ONTOLOGY) => {
-    const vg = computeVisibleGraph(source(NODES, EDGES), boxesOnly, ontology)
+  const drawn = (taxonomy: typeof ONTOLOGY) => {
+    const vg = computeVisibleGraph(source(NODES, EDGES), boxesOnly, taxonomy)
     return { edges: sorted(vg.visibleEdges.map(line)), types: sortedRecord([...vg.edgeTypes].map(([id, t]) => [id, t ?? null] as const)) }
   }
   return { firstWins: drawn(ONTOLOGY), preferSignals: drawn(PREFER_SIGNALS) }
@@ -116,8 +116,8 @@ function graduatedCollapse(): Json {
 /** A zone selection that excludes the west filters only when the zone axis is in the chain. */
 function chainScope(): Json {
   const eastOnly = new Map([[KIND, new Set(['box', 'leaf'])], [ZONE, new Set(['east'])]])
-  const kindAxis = ONTOLOGY.filterDimensions.filter(d => d.id === KIND)
-  const chained = computeVisibleGraph(source(NODES, EDGES), eastOnly, ONTOLOGY, ONTOLOGY.filterDimensions)
+  const kindAxis = ONTOLOGY.filterAxes.filter(d => d.id === KIND)
+  const chained = computeVisibleGraph(source(NODES, EDGES), eastOnly, ONTOLOGY, ONTOLOGY.filterAxes)
   const unchained = computeVisibleGraph(source(NODES, EDGES), eastOnly, ONTOLOGY, kindAxis)
   return { zoneChained: sorted(chained.visibleIds), zoneUnchained: sorted(unchained.visibleIds) }
 }

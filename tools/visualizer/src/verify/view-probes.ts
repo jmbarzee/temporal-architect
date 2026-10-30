@@ -8,12 +8,12 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Graph } from '@temporal-architect/graph-view/graph/model'
-import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
+import { DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
 import { Simulation, axisOptions, defaultParamsFor, layoutAxisOptions, sprungEdges } from '@temporal-architect/graph-view/graph/simulation'
 import { resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import { presentSetsOf } from '@temporal-architect/graph-view/components/graph-view/present'
-import { OntologyContext } from '@temporal-architect/graph-view/components/graph-view/useOntology'
+import { TaxonomyContext } from '@temporal-architect/graph-view/components/graph-view/useTaxonomy'
 import { PushPullControls } from '@temporal-architect/graph-view/components/PushPullControls'
 import { GravityControls } from '@temporal-architect/graph-view/components/GravityControls'
 import { matchesFocus } from '@temporal-architect/graph-view/filter/types'
@@ -34,20 +34,20 @@ const noop = () => {}
 
 /** What the two force tabs offer in one filter state, rendered. */
 function offered(graph: Graph, visibleTypes: string[]): Json {
-  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
-  const sim = new Simulation(graph, params, mulberry32(1), DEFAULT_ONTOLOGY)
-  const vg = computeVisibleGraph(sim, filterOfSets(new Set(visibleTypes), new Set<string>()), DEFAULT_ONTOLOGY)
-  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const params = defaultParamsFor(DEFAULT_TAXONOMY)
+  const sim = new Simulation(graph, params, mulberry32(1), DEFAULT_TAXONOMY)
+  const vg = computeVisibleGraph(sim, filterOfSets(new Set(visibleTypes), new Set<string>()), DEFAULT_TAXONOMY)
+  const resolved = resolvePhysics(params, DEFAULT_TAXONOMY)
   const present = presentSetsOf(vg.visibleNodes, sprungEdges(graph.edges, vg.visibleIds), resolved, id => sim.getNode(id))
-  const axes = axisOptions(DEFAULT_ONTOLOGY, graph)
-  const wrap = (el: React.ReactElement) => renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: DEFAULT_ONTOLOGY }, el))
+  const axes = axisOptions(DEFAULT_TAXONOMY, graph)
+  const wrap = (el: React.ReactElement) => renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY }, el))
   const pushPull = wrap(React.createElement(PushPullControls, {
     params, resolved, axes, present,
     onParamChange: noop, onAxisChange: noop, onActiveSection: noop,
     hoveredPushBucket: null, onHoverPushBucket: noop, hoveredEdge: null, onHoverEdge: noop,
   }))
   const gravity = wrap(React.createElement(GravityControls, {
-    params, resolved, axes: layoutAxisOptions(axes, DEFAULT_ONTOLOGY), present,
+    params, resolved, axes: layoutAxisOptions(axes, DEFAULT_TAXONOMY), present,
     onParamChange: noop, onRelayout: noop, hovered: null, onHover: noop,
   }))
   return {

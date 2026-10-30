@@ -15,16 +15,16 @@
 // before it reaches this type; `internValue` is that step.
 
 /** A named axis of node identity, e.g. the type axis or the source-file axis. */
-export type DimensionId = string
+export type AxisId = string
 
 /**
  * One value on an axis. A stable interned string: two nodes on the same value
  * must produce keys that are `===` equal, not merely equivalent.
  */
-export type DimensionValue = string
+export type AxisValue = string
 
 /** Where a node sits on every axis it has a value for. */
-export type DimensionMap = Readonly<Record<DimensionId, DimensionValue>>
+export type AxisValues = Readonly<Record<AxisId, AxisValue>>
 
 /**
  * Fold anything into a stable value key.
@@ -33,7 +33,7 @@ export type DimensionMap = Readonly<Record<DimensionId, DimensionValue>>
  * object gives a deterministic string rather than a new object each call, so a
  * `Set` of these deduplicates the way the caller expects.
  */
-export function internValue(parts: string | readonly string[]): DimensionValue {
+export function internValue(parts: string | readonly string[]): AxisValue {
   return typeof parts === 'string' ? parts : parts.join('\u0000')
 }
 
@@ -43,19 +43,18 @@ export interface FilterChip {
   label: string
   icon?: string
   /** A style value whose colour this chip wears, in the pane's theme; none means neutral. */
-  tint?: DimensionValue
+  tint?: AxisValue
   /**
    * Hover text, when the label alone is not enough to identify the chip.
    *
-   * A file chip shows its basename and needs its full path here: two files
-   * with the same basename in different directories are otherwise
-   * indistinguishable.
+   * A chip for a path shows its last segment and needs the whole path here:
+   * two paths with the same last segment are otherwise indistinguishable.
    * Omitted means "Show/Hide <label>", which is right for a chip whose label is
    * already the whole identity.
    */
   tooltip?: string
   /** Toggled as a unit — "any on" turns the whole group off. */
-  values: readonly DimensionValue[]
+  values: readonly AxisValue[]
 }
 
 /**
@@ -64,12 +63,12 @@ export interface FilterChip {
  * descriptor) can supply one too and share the identity-mapping builder.
  */
 export interface AxisNamer {
-  id: DimensionId
+  id: AxisId
   /** Human label for the axis itself, e.g. for a dropdown or a chip group. */
   label: string
-  labelFor(value: DimensionValue): string
+  labelFor(value: AxisValue): string
   /** One or two characters for a token. */
-  abbreviationFor(value: DimensionValue): string
+  abbreviationFor(value: AxisValue): string
 }
 
 /** What a filter change asks of the running simulation. */
@@ -105,8 +104,8 @@ export interface ReheatPolicy {
  * graph. Declaring them here too would be the same fact in two places with
  * nothing enforcing agreement, free to drift apart unnoticed.
  */
-export interface DimensionDescriptor {
-  id: DimensionId
+export interface AxisDescriptor {
+  id: AxisId
   /** Human label for the axis itself, e.g. for a dropdown or a chip group. */
   label: string
   /**
@@ -136,19 +135,19 @@ export interface DimensionDescriptor {
    * derived from the graph. Absent, one chip per value, labelled by
    * `labelFor` and, on the style axis, wearing the value's icon and tint.
    */
-  chipsFor?(values: readonly DimensionValue[]): readonly FilterChip[]
+  chipsFor?(values: readonly AxisValue[]): readonly FilterChip[]
   /** A value's display name. Absent: the style's label on the style axis, else the value itself. */
-  labelFor?(value: DimensionValue): string
+  labelFor?(value: AxisValue): string
   /** One or two characters for a token. Absent: the style's abbreviation on the style axis, else the first two characters of `labelFor`'s answer. */
-  abbreviationFor?(value: DimensionValue): string
+  abbreviationFor?(value: AxisValue): string
   /** A chip's hover text, when the label alone does not identify the value (a file's full path under its basename). Absent: none. */
-  tooltipFor?(value: DimensionValue): string
+  tooltipFor?(value: AxisValue): string
   /**
    * The values selected when the view first opens, given the values the
    * graph presents on this axis. Absent: every value on an allow-list,
    * none on a narrowing axis. `defaultFilter` reads it.
    */
-  initialSelection?(values: readonly DimensionValue[]): readonly DimensionValue[]
+  initialSelection?(values: readonly AxisValue[]): readonly AxisValue[]
   /**
    * How the bar draws this axis's chips. `chip` (the default) is a tinted,
    * glyph-led button that reads as a category; `tag` is a quieter, neutral
@@ -159,25 +158,25 @@ export interface DimensionDescriptor {
   presentation?: 'chip' | 'tag'
 }
 
-/** A filter axis with every policy filled in — what `Ontology.filterDimensions` carries. */
-export interface ResolvedDimensionDescriptor extends AxisNamer {
+/** A filter axis with every policy filled in — what `Taxonomy.filterAxes` carries. */
+export interface ResolvedAxisDescriptor extends AxisNamer {
   emptyMeans: 'all' | 'none'
   absentMeans: 'visible' | 'hidden'
   focus: 'always' | 'whenActive'
   /** What a change on this axis asks of the simulation — derived from `emptyMeans` and `keepCamera`. */
   reheat: ReheatPolicy
-  tooltipFor?(value: DimensionValue): string
-  chipsFor(values: readonly DimensionValue[]): readonly FilterChip[]
-  initialSelection(values: readonly DimensionValue[]): readonly DimensionValue[]
+  tooltipFor?(value: AxisValue): string
+  chipsFor(values: readonly AxisValue[]): readonly FilterChip[]
+  initialSelection(values: readonly AxisValue[]): readonly AxisValue[]
   presentation: 'chip' | 'tag'
 }
 
 /** How the style axis names and adorns its values, for a descriptor's defaults. */
 export interface StyleNamer {
-  axis: DimensionId
-  labelFor(value: DimensionValue): string
-  abbreviationFor(value: DimensionValue): string
-  iconFor(value: DimensionValue): string
+  axis: AxisId
+  labelFor(value: AxisValue): string
+  abbreviationFor(value: AxisValue): string
+  iconFor(value: AxisValue): string
 }
 
 /**
@@ -185,11 +184,11 @@ export interface StyleNamer {
  * `emptyMeans`; the names follow from the style axis when this is it, and
  * from the value itself otherwise.
  */
-export function resolveDescriptor(d: DimensionDescriptor, style: StyleNamer): ResolvedDimensionDescriptor {
+export function resolveDescriptor(d: AxisDescriptor, style: StyleNamer): ResolvedAxisDescriptor {
   const allow = d.emptyMeans === 'none'
   const onStyle = d.id === style.axis
-  const labelFor = d.labelFor ?? (onStyle ? style.labelFor : (v: DimensionValue) => v)
-  const abbreviationFor = d.abbreviationFor ?? (onStyle ? style.abbreviationFor : (v: DimensionValue) => labelFor(v).slice(0, 2))
+  const labelFor = d.labelFor ?? (onStyle ? style.labelFor : (v: AxisValue) => v)
+  const abbreviationFor = d.abbreviationFor ?? (onStyle ? style.abbreviationFor : (v: AxisValue) => labelFor(v).slice(0, 2))
   const keepCamera = d.keepCamera ?? !allow
   return {
     id: d.id,
@@ -216,9 +215,9 @@ export function resolveDescriptor(d: DimensionDescriptor, style: StyleNamer): Re
 
 /** Where a node sits on one axis, or undefined when it carries no value there. */
 export function valueOf(
-  dimensions: DimensionMap,
-  dimension: DimensionId,
-): DimensionValue | undefined {
+  dimensions: AxisValues,
+  dimension: AxisId,
+): AxisValue | undefined {
   return dimensions[dimension]
 }
 
@@ -235,7 +234,7 @@ export interface MappingBucket {
    * answer better.
    */
   abbreviation: string
-  values: readonly DimensionValue[]
+  values: readonly AxisValue[]
 }
 
 /**
@@ -249,16 +248,16 @@ export interface MappingBucket {
 export interface DimensionalMapping {
   id: string
   label: string
-  dimension: DimensionId
+  dimension: AxisId
   buckets: readonly MappingBucket[]
   /** The bucket a value belongs to, or undefined if the mapping omits it. */
-  bucketFor(value: DimensionValue | undefined): MappingBucket | undefined
+  bucketFor(value: AxisValue | undefined): MappingBucket | undefined
 }
 
 export interface DimensionalMappingSpec {
   id: string
   label: string
-  dimension: DimensionId
+  dimension: AxisId
   buckets: readonly MappingBucket[]
 }
 
@@ -272,7 +271,7 @@ export interface DimensionalMappingSpec {
  * loudly, at construction, rather than resolving arbitrarily per lookup.
  */
 export function createDimensionalMapping(spec: DimensionalMappingSpec): DimensionalMapping {
-  const owner = new Map<DimensionValue, string>()
+  const owner = new Map<AxisValue, string>()
   const collisions: string[] = []
   const ids = new Set<string>()
   for (const bucket of spec.buckets) {
@@ -299,7 +298,7 @@ export function createDimensionalMapping(spec: DimensionalMappingSpec): Dimensio
     )
   }
 
-  const byValue = new Map<DimensionValue, MappingBucket>()
+  const byValue = new Map<AxisValue, MappingBucket>()
   for (const bucket of spec.buckets) {
     for (const value of bucket.values) byValue.set(value, bucket)
   }
@@ -320,7 +319,7 @@ export function createDimensionalMapping(spec: DimensionalMappingSpec): Dimensio
  */
 export function identityMapping(
   axis: AxisNamer,
-  values: readonly DimensionValue[],
+  values: readonly AxisValue[],
 ): DimensionalMapping {
   // A namer answers per value and cannot see its neighbours, so two values may
   // abbreviate alike (two files whose names share a prefix). A token label that
@@ -362,10 +361,10 @@ export function isIdentityMapping(mapping: DimensionalMapping): boolean {
  * surface or a filter learns what an axis can take.
  */
 export function valuesOn(
-  subjects: Iterable<{ dimensions: DimensionMap }>,
-  dimension: DimensionId,
-): DimensionValue[] {
-  const seen = new Set<DimensionValue>()
+  subjects: Iterable<{ dimensions: AxisValues }>,
+  dimension: AxisId,
+): AxisValue[] {
+  const seen = new Set<AxisValue>()
   for (const s of subjects) {
     const v = s.dimensions[dimension]
     if (v !== undefined) seen.add(v)
@@ -379,10 +378,10 @@ export function valuesOn(
  * subject has a value on gets an empty map, never a missing one.
  */
 export function countsOn(
-  subjects: Iterable<{ dimensions: DimensionMap }>,
-  dimensions: readonly DimensionId[],
-): ReadonlyMap<DimensionId, ReadonlyMap<DimensionValue, number>> {
-  const out = new Map<DimensionId, Map<DimensionValue, number>>(dimensions.map(d => [d, new Map()]))
+  subjects: Iterable<{ dimensions: AxisValues }>,
+  dimensions: readonly AxisId[],
+): ReadonlyMap<AxisId, ReadonlyMap<AxisValue, number>> {
+  const out = new Map<AxisId, Map<AxisValue, number>>(dimensions.map(d => [d, new Map()]))
   for (const s of subjects) {
     for (const d of dimensions) {
       const v = s.dimensions[d]
@@ -415,7 +414,7 @@ export function hasOwn(table: object, key: string): boolean {
 /** What a filter change asks of the running simulation, folded across axes. */
 export interface ReheatPlan extends ReheatPolicy {
   /** The axes that actually changed — empty means "do nothing". */
-  changed: readonly DimensionId[]
+  changed: readonly AxisId[]
 }
 
 /**
@@ -432,7 +431,7 @@ export interface ReheatPlan extends ReheatPolicy {
  * any axis that wants seeding, refitting or resuming gets it.
  */
 export function foldReheatPolicy(
-  changedDimensions: readonly ResolvedDimensionDescriptor[],
+  changedDimensions: readonly ResolvedAxisDescriptor[],
 ): ReheatPlan {
   let alpha = 0, seedRevealed = false, refit = false, resume = false
   for (const dim of changedDimensions) {

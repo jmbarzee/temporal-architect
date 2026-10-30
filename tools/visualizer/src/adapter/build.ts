@@ -27,7 +27,7 @@ import type {
   GraphEdge,
   GraphNode,
   Relation,
-  DimensionMap,
+  AxisValues,
 } from '@temporal-architect/graph-view'
 import type { NodeType } from './node-types'
 import { NODE_TYPE_REGISTRY, TEMPORAL_TYPE_DIMENSION } from './node-types'
@@ -43,7 +43,7 @@ import { DISPATCH_DIMENSION } from './edge-types'
  * on every axis the host filters or lays out on, and which of those are
  * projections of which is the host's business.
  */
-export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): DimensionMap {
+export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): AxisValues {
   const dims: Record<string, string> = {
     [TEMPORAL_TYPE_DIMENSION]: nodeType,
     [DEF_TYPE_DIMENSION]: NODE_TYPE_REGISTRY[nodeType].defType,

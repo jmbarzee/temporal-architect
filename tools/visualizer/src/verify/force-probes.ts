@@ -23,7 +23,7 @@
 //      iteration to amplify a last-place difference, rounds identically
 //      everywhere.
 
-import { createDimensionalMapping } from '@temporal-architect/graph-view/graph/dimension'
+import { createDimensionalMapping } from '@temporal-architect/graph-view/graph/axis'
 import {
   applyBandGravity,
   resolvePhysics,
@@ -38,7 +38,7 @@ import {
 import type { EdgeCategory, ResolvedSprings } from '@temporal-architect/graph-view/graph/forces'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
-import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { DEFAULT_TAXONOMY } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
 import { defaultParamsFor, pairTuning, withPushOverride } from '@temporal-architect/graph-view/graph/simulation'
 import type { ForceParams, SimNode } from '@temporal-architect/graph-view/graph/simulation'
@@ -109,7 +109,7 @@ function nonFinite(nodes: SimNode[]): string[] {
 
 function probe(run: (nodes: SimNode[], params: ForceParams, rng: () => number) => void): Json {
   const nodes = probeNodes()
-  run(nodes, defaultParamsFor(DEFAULT_ONTOLOGY), mulberry32(PROBE_SEED))
+  run(nodes, defaultParamsFor(DEFAULT_TAXONOMY), mulberry32(PROBE_SEED))
   return {
     allFinite: allFinite(nodes),
     nonFiniteNodeIds: nonFinite(nodes),
@@ -148,7 +148,7 @@ function nodeAt(map: Map<string, SimNode>, id: string): SimNode {
 
 /** The band kernel as the simulation runs it: in the frame over the nodes it is given. */
 function bandGravity(nodes: SimNode[], params: ForceParams, rng: () => number): void {
-  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const resolved = resolvePhysics(params, DEFAULT_TAXONOMY)
   applyBandGravity(nodes, params, layoutFrame(probeGraph(nodes), resolved), 1, rng)
 }
 
@@ -175,7 +175,7 @@ function absentValueProbes(): Json {
   }
   const run = (apply: (nodes: SimNode[], params: ForceParams, rng: () => number) => void): Json => {
     const nodes = withUnknown()
-    apply(nodes, defaultParamsFor(DEFAULT_ONTOLOGY), mulberry32(PROBE_SEED))
+    apply(nodes, defaultParamsFor(DEFAULT_TAXONOMY), mulberry32(PROBE_SEED))
     return {
       allFinite: allFinite(nodes),
       nonFiniteNodeIds: nonFinite(nodes),
@@ -188,14 +188,14 @@ function absentValueProbes(): Json {
     }
   }
   return {
-    charge: run((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
+    charge: run((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_TAXONOMY), 1, rng)),
     bandCartesian: run((nodes, params, rng) => bandGravity(nodes, { ...params, radial: false }, rng)),
     bandRadial: run((nodes, params, rng) => bandGravity(nodes, { ...params, radial: true }, rng)),
     // The unknown node's edge reaches the host's rule with an undefined bucket
     // and falls to its catch-all, so it still pulls; under a mapping (below) the
     // same edge is unbucketed and inert. Both are pinned.
     link: run((nodes, params, rng) =>
-      applyLinkForce([...PROBE_EDGES, UNKNOWN_EDGE], nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_ONTOLOGY).spring, nodeMapOf(nodes)), 1, rng)),
+      applyLinkForce([...PROBE_EDGES, UNKNOWN_EDGE], nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_TAXONOMY).spring, nodeMapOf(nodes)), 1, rng)),
   }
 }
 
@@ -208,7 +208,7 @@ function absentValueProbes(): Json {
  * its identity and one non-integer override.
  */
 function nonIdentityParams(): Json {
-  const base = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const base = defaultParamsFor(DEFAULT_TAXONOMY)
   const params: ForceParams = {
     ...base,
     pushMultiplier: 0.9, coreRadiusMultiplier: 1.7, chargeExponent: 0.85,
@@ -216,7 +216,7 @@ function nonIdentityParams(): Json {
     gravityX: 0.07, gravityY: 0.11, gravityBandExp: 1.4,
     pair: withPushOverride(base.pair, 'workflow', { charge: -333.3, coreRadius: 17.25 }),
   }
-  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const resolved = resolvePhysics(params, DEFAULT_TAXONOMY)
   const kernel = (apply: (nodes: SimNode[], rng: () => number) => void): Json => {
     const nodes = probeNodes()
     apply(nodes, mulberry32(PROBE_SEED))
@@ -236,7 +236,7 @@ function nonIdentityParams(): Json {
  * classified keys are the hover and override ids a control surface will show.
  */
 function mappedAxisSprings(): Json {
-  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const params = defaultParamsFor(DEFAULT_TAXONOMY)
   const mapping = createDimensionalMapping({
     id: 'probe:two', label: 'two', dimension: TEMPORAL_TYPE_DIMENSION,
     buckets: [
@@ -244,8 +244,8 @@ function mappedAxisSprings(): Json {
       { id: 'work', label: 'work', abbreviation: 'W', values: ['workflow', 'activity', 'nexusService', 'nexusOperation'] },
     ],
   })
-  const identity = resolvePhysics(params, DEFAULT_ONTOLOGY).spring
-  const mappedPhysics = resolvePhysics({ ...params, pair: pairTuning(mapping) }, DEFAULT_ONTOLOGY)
+  const identity = resolvePhysics(params, DEFAULT_TAXONOMY).spring
+  const mappedPhysics = resolvePhysics({ ...params, pair: pairTuning(mapping) }, DEFAULT_TAXONOMY)
   const mapped = mappedPhysics.spring
   const edges = [...PROBE_EDGES, UNKNOWN_EDGE]
   const nodes = probeNodes()
@@ -255,7 +255,7 @@ function mappedAxisSprings(): Json {
     sortedRecord(edges.map(e => [e.id, springFor(spring, e, nodeAt(map, e.sourceId), nodeAt(map, e.targetId)).key ?? '(unbucketed)'] as const))
   applyLinkForce(edges, map, params, categoryOf(mapped, map), 1, mulberry32(PROBE_SEED))
   return {
-    identityDeclared: DEFAULT_ONTOLOGY.edgeTypes.map(e => e.id).filter(id => identity.describe(id) !== undefined),
+    identityDeclared: DEFAULT_TAXONOMY.edgeTypes.map(e => e.id).filter(id => identity.describe(id) !== undefined),
     identityClassified: classify(identity),
     // The pair rule enumerates nothing; its categories are the ones present.
     mappedPresent: sorted(presentSpringCategories(mapped, edges, id => map.get(id))),
@@ -273,9 +273,9 @@ export function forceProbes(): Json {
   return {
     seed: PROBE_SEED,
     absentValue: absentValueProbes(),
-    charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_ONTOLOGY), 1, rng)),
+    charge: probe((nodes, params, rng) => applyChargeForce(nodes, params, resolvePhysics(params, DEFAULT_TAXONOMY), 1, rng)),
     link: probe((nodes, params, rng) =>
-      applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_ONTOLOGY).spring, nodeMapOf(nodes)), 1, rng)),
+      applyLinkForce(PROBE_EDGES, nodeMapOf(nodes), params, categoryOf(resolvePhysics(params, DEFAULT_TAXONOMY).spring, nodeMapOf(nodes)), 1, rng)),
     mappedAxisSprings: mappedAxisSprings(),
     nonIdentityParams: nonIdentityParams(),
     bandCartesian: probe((nodes, params, rng) => bandGravity(nodes, { ...params, radial: false }, rng)),
@@ -284,7 +284,7 @@ export function forceProbes(): Json {
     bandRadial: (() => {
       const nodes = probeNodes()
       nodes.push(node('origin', 'workflow', 0, 0))
-      bandGravity(nodes, { ...defaultParamsFor(DEFAULT_ONTOLOGY), radial: true }, mulberry32(PROBE_SEED))
+      bandGravity(nodes, { ...defaultParamsFor(DEFAULT_TAXONOMY), radial: true }, mulberry32(PROBE_SEED))
       return {
         allFinite: allFinite(nodes),
         nonFiniteNodeIds: nonFinite(nodes),

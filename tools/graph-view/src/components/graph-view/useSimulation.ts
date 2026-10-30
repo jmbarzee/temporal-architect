@@ -13,7 +13,7 @@ import { defaultRng } from '../../graph/rng'
 import type { ForceParams, SimNode } from '../../graph/simulation'
 import type { Graph } from '../../graph/model'
 import { graphShapeEquals } from '../../graph/model'
-import type { Ontology } from '../../graph/ontology'
+import type { Taxonomy } from '../../graph/taxonomy'
 
 export interface SimulationController {
   simRef: React.MutableRefObject<Simulation | null>
@@ -34,7 +34,7 @@ export interface SimulationController {
 
 export function useSimulation(
   graph: Graph,
-  ontology: Ontology,
+  taxonomy: Taxonomy,
   // Where nodes start: the host's kept layout, by node id. Read when the
   // simulation is built; the previous simulation's positions take precedence
   // on a rebuild, so a graph update keeps the layout the user has.
@@ -51,13 +51,13 @@ export function useSimulation(
   // render; three identities inside two seconds is that, said once.
   const ontologyChanges = React.useRef<number[]>([])
   const warnedOntologyRef = React.useRef(false)
-  const prevOntologyRef = React.useRef<Ontology | null>(null)
+  const prevOntologyRef = React.useRef<Taxonomy | null>(null)
   const dragNodeRef = React.useRef<string | null>(null)
   const [running, setRunning] = React.useState(true)
-  // Lazy initializer, and `ontology` has to be read before it: the starting
+  // Lazy initializer, and `taxonomy` has to be read before it: the starting
   // parameters are derived from the taxonomy now, so a module-load constant is
   // no longer available to seed this with.
-  const [rawParams, setRawParams] = React.useState<ForceParams>(() => defaultParamsFor(ontology))
+  const [rawParams, setRawParams] = React.useState<ForceParams>(() => defaultParamsFor(taxonomy))
   // What the view and the simulation read: the parameters as retuned for the
   // graph and the taxonomy — `retunedFor` rebuilds any tuning whose buckets no
   // longer match (an axis bucketed by observed values after a file is added,
@@ -65,7 +65,7 @@ export function useSimulation(
   // whose values survive, and returns the same object when nothing moved. It
   // runs in render so nothing downstream ever resolves a stale tuning against
   // a new taxonomy; the state catches up in the effect below.
-  const forceParams = React.useMemo(() => retunedFor(rawParams, ontology, graph), [rawParams, ontology, graph])
+  const forceParams = React.useMemo(() => retunedFor(rawParams, taxonomy, graph), [rawParams, taxonomy, graph])
   React.useEffect(() => {
     if (forceParams !== rawParams) setRawParams(forceParams)
   }, [forceParams, rawParams])
@@ -86,26 +86,26 @@ export function useSimulation(
       console.warn('[graph] the graph\'s identity changed but its shape did not; the view rebuilt its simulation for nothing. Keep one graph object until its nodes or edges change.')
     }
     prevGraphRef.current = graph
-    if (prevOntologyRef.current !== null && prevOntologyRef.current !== ontology && !warnedOntologyRef.current) {
+    if (prevOntologyRef.current !== null && prevOntologyRef.current !== taxonomy && !warnedOntologyRef.current) {
       const now = typeof performance !== 'undefined' ? performance.now() : 0
       const recent = ontologyChanges.current.filter(t => now - t < 2000)
       recent.push(now)
       ontologyChanges.current = recent
       if (recent.length >= 3) {
         warnedOntologyRef.current = true
-        console.warn('[graph] the taxonomy\'s identity changed three times in two seconds; the view rebuilds its simulation for each. Build the ontology once, outside render.')
+        console.warn('[graph] the taxonomy\'s identity changed three times in two seconds; the view rebuilds its simulation for each. Build the taxonomy once, outside render.')
       }
     }
-    prevOntologyRef.current = ontology
+    prevOntologyRef.current = taxonomy
     // Where nodes start: the host's kept layout under the previous
     // simulation's, so a graph update keeps the layout the user has.
     const start = new Map<string, { x: number; y: number }>(positions ?? [])
     if (prev) for (const n of prev.nodes) start.set(n.id, { x: n.x, y: n.y })
-    simRef.current = new Simulation(graph, forceParams, defaultRng, ontology, start.size > 0 ? start : undefined)
+    simRef.current = new Simulation(graph, forceParams, defaultRng, taxonomy, start.size > 0 ? start : undefined)
     onRebuildRef.current?.(prev !== null)
     setRunning(true)
     setSimVersion(v => v + 1)
-  }, [graph, ontology]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [graph, taxonomy]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Every later change reaches the live simulation here, once, after the
   // retune above — never a raw patch the taxonomy could refuse.

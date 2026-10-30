@@ -4,8 +4,8 @@
 // carries for the resolved theme, and a colour normaliser for the canvas,
 // which cannot throw and so reads only the forms the taxonomy admits.
 
-import type { DimensionValue } from './dimension'
-import type { Ontology } from './ontology'
+import type { AxisValue } from './axis'
+import type { Taxonomy } from './taxonomy'
 
 export type Theme = 'light' | 'dark'
 export const THEMES: readonly Theme[] = ['light', 'dark']
@@ -35,7 +35,7 @@ export interface EdgeStroke {
  * The stem of a value's custom-property name: the value id in kebab case
  * (`twoWords` → `two-words`). Derived, never stored.
  */
-export function cssSuffix(value: DimensionValue): string {
+export function cssSuffix(value: AxisValue): string {
   return value
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .replace(/[^A-Za-z0-9]+/g, '-')
@@ -50,12 +50,12 @@ export function cssSuffix(value: DimensionValue): string {
  * tints and typed rows read, and they follow the resolved theme by being
  * recomputed, not overridden.
  */
-export function schemeVars(ontology: Ontology, theme: Theme): Record<string, string> {
+export function schemeVars(taxonomy: Taxonomy, theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {}
-  for (const key of ontology.styleValues) {
-    const c = ontology.styleOf(key).color[theme]
-    vars[ontology.colorVar(key)] = c.fill
-    vars[`${ontology.colorVar(key)}-border`] = c.border
+  for (const key of taxonomy.styleValues) {
+    const c = taxonomy.styleOf(key).color[theme]
+    vars[taxonomy.colorVar(key)] = c.fill
+    vars[`${taxonomy.colorVar(key)}-border`] = c.border
   }
   return vars
 }
@@ -113,12 +113,12 @@ export function withAlpha(color: string, alpha: number): string {
  * carries `schemeVars` inline — so a host that styles nothing of its own by
  * node value never needs it.
  */
-export function schemeStylesheet(ontology: Ontology): string {
+export function schemeStylesheet(taxonomy: Taxonomy): string {
   const lightVars: string[] = []
   const darkVars: string[] = []
-  for (const key of ontology.styleValues) {
-    const { light, dark } = ontology.styleOf(key).color
-    const v = ontology.colorVar(key)
+  for (const key of taxonomy.styleValues) {
+    const { light, dark } = taxonomy.styleOf(key).color
+    const v = taxonomy.colorVar(key)
     lightVars.push(`  ${v}: ${light.fill};`)
     lightVars.push(`  ${v}-border: ${light.border};`)
     if (dark.fill !== light.fill) darkVars.push(`  ${v}: ${dark.fill};`)

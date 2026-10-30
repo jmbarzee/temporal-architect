@@ -1,6 +1,6 @@
 // The taxonomy seam for components.
 //
-// Pure functions take an ontology as a parameter; React components read it from
+// Pure functions take an taxonomy as a parameter; React components read it from
 // context, because the alternative is threading one prop through every
 // intermediate component that does not otherwise care about it.
 //
@@ -10,12 +10,12 @@
 // existed anywhere in the tree. A missing provider is a wiring bug that hides
 // perfectly: nothing is undefined, nothing throws, the graph renders, and it
 // renders the shipped domain's colours no matter which taxonomy the host meant
-// to install. So the default is `null` and `useOntology` throws on it.
+// to install. So the default is `null` and `useTaxonomy` throws on it.
 
 import React from 'react'
-import type { Ontology } from '../../graph/ontology'
+import type { Taxonomy } from '../../graph/taxonomy'
 
-export const OntologyContext = React.createContext<Ontology | null>(null)
+export const TaxonomyContext = React.createContext<Taxonomy | null>(null)
 
 /**
  * The taxonomy in scope.
@@ -23,15 +23,15 @@ export const OntologyContext = React.createContext<Ontology | null>(null)
  * Throws when no provider is above the caller. That is the point: a wrong
  * taxonomy is invisible, a missing one should not be.
  */
-export function useOntology(): Ontology {
-  const ontology = React.useContext(OntologyContext)
-  if (ontology === null) {
+export function useTaxonomy(): Taxonomy {
+  const taxonomy = React.useContext(TaxonomyContext)
+  if (taxonomy === null) {
     throw new Error(
-      'useOntology() was called with no OntologyContext.Provider above it. ' +
+      'useTaxonomy() was called with no TaxonomyContext.Provider above it. ' +
       'The graph engine resolves styles, filter keys, spring categories and ' +
       'physics through the taxonomy, so there is no meaningful default — wrap ' +
-      'the tree in <OntologyContext.Provider value={…}>.',
+      'the tree in <TaxonomyContext.Provider value={…}>.',
     )
   }
-  return ontology
+  return taxonomy
 }

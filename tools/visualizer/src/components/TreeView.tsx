@@ -1,11 +1,11 @@
 import {
-  useOntology,
+  useTaxonomy,
   passesSelection,
   selectionFor,
   FilterBar,
 } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
-import type { FocusTarget, FilterState, PinState, DimensionId } from '@temporal-architect/graph-view'
+import type { FocusTarget, FilterState, AxisLocks, AxisId } from '@temporal-architect/graph-view'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
@@ -27,16 +27,16 @@ interface TreeViewProps {
   onShowInGraph?: (name: string, defType: string) => void
   filter: FilterState
   onFilterChange: (next: FilterState) => void
-  pins: PinState
-  onPinsChange: (next: PinState) => void
-  chain: readonly string[]
-  onChainChange?: (next: readonly string[]) => void
+  locks: AxisLocks
+  onLocksChange: (next: AxisLocks) => void
+  axes: readonly string[]
+  onAxesChange?: (next: readonly string[]) => void
   searchQuery: string
   searchActive: boolean
   onSearchChange: (query: string, active: boolean) => void
   pendingFocus: TreeFocus | null
   onFocusConsumed: () => void
-  overriddenPins: Set<DimensionId>
+  overriddenLocks: Set<AxisId>
   onOverriddenPinsConsumed: () => void
 }
 
@@ -46,19 +46,19 @@ export function TreeView({
   onShowInGraph,
   filter,
   onFilterChange,
-  pins,
-  onPinsChange,
-  chain,
-  onChainChange,
+  locks,
+  onLocksChange,
+  axes,
+  onAxesChange,
   searchQuery,
   searchActive,
   onSearchChange,
   pendingFocus,
   onFocusConsumed,
-  overriddenPins,
+  overriddenLocks,
   onOverriddenPinsConsumed,
 }: TreeViewProps) {
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
   const treeItemRefs = React.useRef<(HTMLDivElement | null)[]>([])
@@ -78,13 +78,13 @@ export function TreeView({
   }, [ast])
 
 
-  // Pin-override flash: clear the overridden-pins set after ~600ms so
+  // Pin-override flash: clear the overridden-locks set after ~600ms so
   // the visual flash plays once per focus transition.
   React.useEffect(() => {
-    if (overriddenPins.size === 0) return
+    if (overriddenLocks.size === 0) return
     const timer = setTimeout(onOverriddenPinsConsumed, 600)
     return () => clearTimeout(timer)
-  }, [overriddenPins, onOverriddenPinsConsumed])
+  }, [overriddenLocks, onOverriddenPinsConsumed])
 
   // Build reverse reference index for contextual navigation
   const navIndex = React.useMemo(() => {
@@ -239,11 +239,11 @@ export function TreeView({
     // dimension map. This used to be a second hand-written implementation of
     // both axes' empty/absent semantics, so a descriptor change moved the graph
     // and left the tree behind.
-    // Only the axes this view shows filter (D66): the chain's descriptors, as
-    // in the graph view.
-    const axes = chain.flatMap(id => { const d = ontology.descriptorFor(id); return d ? [d] : [] })
+    // Only the axes this view shows filter (D66): their descriptors, as in
+    // the graph view.
+    const shown = axes.flatMap(id => { const d = taxonomy.axisFor(id); return d ? [d] : [] })
     const filtered = ast.definitions.filter((def): def is Definition =>
-      passesSelection(filter, axes, dim =>
+      passesSelection(filter, shown, dim =>
         dim === DEF_TYPE_DIMENSION ? def.type
         : dim === SOURCE_FILE_DIMENSION ? def.sourceFile
         : undefined))
@@ -255,7 +255,7 @@ export function TreeView({
     })
 
     return filtered
-  }, [ast.definitions, filter, chain, ontology])
+  }, [ast.definitions, filter, axes, taxonomy])
 
   // Search matches against the *visible* definition set. Matches outside
   // the visible set (hidden by file/type filters) are surfaced as
@@ -384,7 +384,7 @@ export function TreeView({
   // visible. We only need to scroll to it and flash.
   React.useEffect(() => {
     if (!pendingFocus) return
-    // This view pins a name with the kind axis it knows.
+    // This view locks a name with the kind axis it knows.
     const { name } = pendingFocus
     const defType = pendingFocus.values[DEF_TYPE_DIMENSION] ?? ''
     // Defer to let visibleDefinitions reflect any filter change that
@@ -512,11 +512,11 @@ export function TreeView({
           values={valuesByDimension}
           filter={filter}
           onFilterChange={onFilterChange}
-          pins={pins}
-          onPinsChange={onPinsChange}
-          chain={chain}
-          onChainChange={onChainChange}
-          overriddenPins={overriddenPins}
+          locks={locks}
+          onLocksChange={onLocksChange}
+          axes={axes}
+          onAxesChange={onAxesChange}
+          overriddenLocks={overriddenLocks}
           search={{ query: searchQuery, active: searchActive }}
           onSearchChange={next => onSearchChange(next.query, next.active)}
           searchInputRef={searchInputRef}

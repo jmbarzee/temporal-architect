@@ -2,7 +2,7 @@
 // bucket per value. A scalar reads node metadata and the graph's
 // structure, nothing else, and answers in [0, 1]; the axis maps that interval
 // onto a span. Three are built in and read only structure; a host may
-// declare more through its ontology, with access to its own payload.
+// declare more through its taxonomy, with access to its own payload.
 
 import type { ReadableGraph } from './model'
 import { isContainment } from './model'

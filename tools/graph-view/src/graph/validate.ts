@@ -11,7 +11,7 @@
 
 import type { Graph, GraphEdge } from './model'
 import { relationOf } from './model'
-import type { Ontology } from './ontology'
+import type { Taxonomy } from './taxonomy'
 
 export type GraphDiagnosticCode =
   | 'edge-id-duplicate'
@@ -36,10 +36,10 @@ export interface GraphDiagnostic {
 
 const RELATIONS = new Set(['containment', 'dependency'])
 
-export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic[] {
+export function validateGraph(graph: Graph, taxonomy: Taxonomy): GraphDiagnostic[] {
   const out: GraphDiagnostic[] = []
-  const declaredTypes = new Map(ontology.edgeTypes.map(e => [e.id, e]))
-  const declaredValues = new Set(ontology.styleValues)
+  const declaredTypes = new Map(taxonomy.edgeTypes.map(e => [e.id, e]))
+  const declaredValues = new Set(taxonomy.styleValues)
 
   // Nodes: keyed by their own id, a parent that exists, a style value the
   // taxonomy declares.
@@ -50,7 +50,7 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
     if (node.parentId !== undefined && !graph.nodes.has(node.parentId)) {
       out.push({ severity: 'error', code: 'parent-missing', nodeId: node.id, message: `node ${JSON.stringify(node.id)} names parent ${JSON.stringify(node.parentId)}, which is not in the graph` })
     }
-    const value = ontology.valueFor(node)
+    const value = taxonomy.styleValueOf(node)
     if (value !== undefined && !declaredValues.has(value)) {
       out.push({ severity: 'warning', code: 'node-value-undeclared', nodeId: node.id, message: `node ${JSON.stringify(node.id)} sits at ${JSON.stringify(value)} on the style axis, which the taxonomy does not declare; it draws in the fallback style` })
     }
@@ -85,7 +85,7 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
     }
     let typeId: string | undefined
     try {
-      typeId = ontology.classifyEdge(edge, ontology.valueFor(src), ontology.valueFor(tgt))
+      typeId = taxonomy.classifyEdge(edge, taxonomy.styleValueOf(src), taxonomy.styleValueOf(tgt))
     } catch (e) {
       out.push({ severity: 'error', code: 'edge-type-rule-threw', edgeId: edge.id, message: `the taxonomy's classifyEdge threw on edge ${JSON.stringify(edge.id)}: ${e instanceof Error ? e.message : String(e)}` })
       continue

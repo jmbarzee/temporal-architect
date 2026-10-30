@@ -23,7 +23,7 @@ import type { NodeType } from '../adapter/node-types'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import { edgeTypeFor } from '../adapter/edge-types'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_TAXONOMY } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
@@ -93,13 +93,13 @@ const ALL_DEF_TYPES = ALL_NODE_TYPES.map(defTypeOf)
 function edgeLine(e: GraphEdge): string {
   const src = BY_ID.get(e.sourceId)
   const tgt = BY_ID.get(e.targetId)
-  const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
-  const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
+  const srcValue = src && DEFAULT_TAXONOMY.styleValueOf(src)
+  const tgtValue = tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)
   return `${edgeTypeFor(e, srcValue, tgtValue)}|${relationOf(e)}|${e.sourceId} -> ${e.targetId}`
 }
 
 function state(types: string[], files: string[]): Json {
-  const vg = computeVisibleGraph(SOURCE, filterOfSets(new Set(types), new Set(files)), DEFAULT_ONTOLOGY)
+  const vg = computeVisibleGraph(SOURCE, filterOfSets(new Set(types), new Set(files)), DEFAULT_TAXONOMY)
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     graduatedEdges: sorted(vg.visibleEdges.map(edgeLine)),

@@ -38,7 +38,7 @@ A `mirror` intent (force one view's filters onto the other, ignoring pins) is de
 
 The reconciler is the single function responsible for producing the destination view's filter state on every switch. Its signature, conceptually:
 
-    reconcileFilter({ destination, source, pins, transition, axes }) → { filter, overriddenPins }   // axes: the destination view's chain (D75)
+    reconcileFilter({ destination, source, pins, transition, axes }) → { filter, overriddenLocks }   // axes: the destination view's chain (D75)
 
 It is the only consumer of `ViewTransition`. Switch-trigger code at the call sites is responsible for naming the intent; the reconciler owns the rules. This collapses the previously-duplicated filter-expansion logic in `TreeView` and `GraphView` into one shared module.
 
@@ -109,6 +109,8 @@ This design satisfies two competing intuitions:
 - A power user maintaining asymmetric configurations (e.g., Tree narrowed to one file as a drilldown; Graph wide as a map) needs the views to diverge. A pin on the dimension to hold steady gives this with one click.
 
 ### Per-Dimension Pinning
+
+In the library's API a pinned axis is a **lock** — `locks` / `onLocksChange` on the views and the bar, `AxisLocks`, `lockedFor`, `withLock`, `overriddenLocks` — so that "pinned" names one thing, a node held in place (D76). This document keeps the product's word, pin, for the toggle the user sees.
 
 Each axis section in a view's filter bar carries a **pin icon**. A pin freezes its axis at its current value:
 

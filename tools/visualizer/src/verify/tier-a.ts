@@ -20,8 +20,8 @@ import { computeVisibleGraph } from '@temporal-architect/graph-view/components/g
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
 import { SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
-import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
-import { NEUTRAL_STROKE } from '@temporal-architect/graph-view/graph/taxonomy'
+import { DEFAULT_TAXONOMY } from '../adapter/node-types'
+import { NEUTRAL_STROKE } from '@temporal-architect/graph-view/graph/shapes'
 import type { Json } from './snapshot'
 import { histogram, sorted, sortedRecord } from './snapshot'
 
@@ -65,8 +65,8 @@ function nodeRow(n: GraphNode): Json {
 function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): string {
   const src = nodeOf(e.sourceId)
   const tgt = nodeOf(e.targetId)
-  const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
-  const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
+  const srcValue = src && DEFAULT_TAXONOMY.styleValueOf(src)
+  const tgtValue = tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)
   const parts = [
     edgeTypeFor(e, srcValue, tgtValue),
     relationOf(e),
@@ -84,7 +84,7 @@ function visibleState(
   visibleTypes: ReadonlySet<string>,
   selectedFiles: ReadonlySet<string>,
 ): Json {
-  const vg = computeVisibleGraph(sim, filterOfSets(visibleTypes, selectedFiles), DEFAULT_ONTOLOGY)
+  const vg = computeVisibleGraph(sim, filterOfSets(visibleTypes, selectedFiles), DEFAULT_TAXONOMY)
   const nodeOf = (id: string) => sim.getNode(id)
   return {
     visibleNodeCount: vg.visibleNodes.length,
@@ -97,17 +97,17 @@ function visibleState(
     // function the view calls, over the visible nodes and the edges the
     // simulation springs — pinned, not re-derived (REVIEW_7 C5).
     controls: (() => {
-      const resolved = resolvePhysics(defaultParamsFor(DEFAULT_ONTOLOGY), DEFAULT_ONTOLOGY)
+      const resolved = resolvePhysics(defaultParamsFor(DEFAULT_TAXONOMY), DEFAULT_TAXONOMY)
       const p = presentSetsOf(vg.visibleNodes, sprungEdges(sim.edges, vg.visibleIds), resolved, nodeOf)
       return { push: sorted(p.push), bandX: sorted(p.bandX), bandY: sorted(p.bandY), springs: sorted(p.springs) }
     })(),
     // The highlight as drawn (D59, D60): `highlightOf` — the library's walk,
     // the host's hook, the derived edges — for the first visible node of each
     // style value, per state.
-    hookedHighlights: sortedRecord(DEFAULT_ONTOLOGY.styleValues.flatMap(value => {
-      const first = vg.visibleNodes.find(n => DEFAULT_ONTOLOGY.valueFor(n) === value)
+    hookedHighlights: sortedRecord(DEFAULT_TAXONOMY.styleValues.flatMap(value => {
+      const first = vg.visibleNodes.find(n => DEFAULT_TAXONOMY.styleValueOf(n) === value)
       if (!first) return []
-      const lit = highlightOf(DEFAULT_ONTOLOGY, first, 'downstream', { visibleNodes: vg.visibleNodes, visibleEdges: vg.visibleEdges, visibleIds: vg.visibleIds, getNode: nodeOf })
+      const lit = highlightOf(DEFAULT_TAXONOMY, first, 'downstream', { visibleNodes: vg.visibleNodes, visibleEdges: vg.visibleEdges, visibleIds: vg.visibleIds, getNode: nodeOf })
       return [[value, { from: first.id, nodes: sorted(lit.nodes), edges: sorted(lit.edges) }] as const]
     })),
   }
@@ -160,7 +160,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       byEdgeType: histogram(graph.edges.map(e => {
         const src = nodeOf(e.sourceId)
         const tgt = nodeOf(e.targetId)
-        return edgeTypeFor(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt))
+        return edgeTypeFor(e, src && DEFAULT_TAXONOMY.styleValueOf(src), tgt && DEFAULT_TAXONOMY.styleValueOf(tgt))
       })),
       // The stroke each edge draws with, read the way the canvas reads it —
       // the type's stroke through the taxonomy (D57, D58): the composition
@@ -168,9 +168,9 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       byStroke: histogram(graph.edges.map(e => {
         const src = nodeOf(e.sourceId)
         const tgt = nodeOf(e.targetId)
-        const type = DEFAULT_ONTOLOGY.classifyEdge(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt))
+        const type = DEFAULT_TAXONOMY.classifyEdge(e, src && DEFAULT_TAXONOMY.styleValueOf(src), tgt && DEFAULT_TAXONOMY.styleValueOf(tgt))
         // An unclassified edge draws in the neutral stroke, as the view does.
-        const st = type === undefined ? NEUTRAL_STROKE : DEFAULT_ONTOLOGY.edgeStrokeFor(type)
+        const st = type === undefined ? NEUTRAL_STROKE : DEFAULT_TAXONOMY.edgeStrokeFor(type)
         return `${st.color.light}/${st.color.dark}|${st.dash.join(',')}|${st.width}`
       })),
     },
@@ -178,19 +178,19 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
     // the control surface, and the spring categories some edge falls in under
     // it — the declared table's on the style axis, the pair rule's elsewhere.
     // The ceiling arithmetic, pinned per fixture (Unit 4e).
-    axes: axisOptions(DEFAULT_ONTOLOGY, graph).map(o => ({
+    axes: axisOptions(DEFAULT_TAXONOMY, graph).map(o => ({
       axis: o.mapping.dimension,
       pushTokens: o.pushTokens,
       pullTokens: o.pullTokens,
       fits: fitsCeiling(o),
       presentSprings: sorted(presentSpringCategories(
-        resolveSprings(pairTuning(o.mapping), DEFAULT_ONTOLOGY), graph.edges, nodeOf,
+        resolveSprings(pairTuning(o.mapping), DEFAULT_TAXONOMY), graph.edges, nodeOf,
       )),
     })),
     // The hover box's context line per node (D59, B35): the taxonomy's hook
     // read against the fixture's own payloads, or its default — the parent's
     // name — where the hook says nothing.
-    contextLines: sortedRecord(nodes.map(n => { const c = DEFAULT_ONTOLOGY.contextLine(n, n.parentId ? nodeOf(n.parentId) : undefined); return [n.id, c === undefined ? '' : typeof c === 'string' ? c : [...c]] as const })),
+    contextLines: sortedRecord(nodes.map(n => { const c = DEFAULT_TAXONOMY.contextLine(n, n.parentId ? nodeOf(n.parentId) : undefined); return [n.id, c === undefined ? '' : typeof c === 'string' ? c : [...c]] as const })),
     // Every built-in scalar's value per node over the whole graph (R8, R9) —
     // reach is the same function topological gravity reads over the visible
     // subgraph, so its rows here and `downstreamScores` there must agree

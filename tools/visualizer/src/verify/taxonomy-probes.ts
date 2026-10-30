@@ -20,18 +20,18 @@ import { computeVisibleGraph } from '@temporal-architect/graph-view/components/g
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
 import { payloadString, relationOf } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType, TemporalNodeStyle } from '../adapter/node-types'
-import type { NodeStyle } from '@temporal-architect/graph-view/graph/taxonomy'
-import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
-import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
+import type { NodeStyle } from '@temporal-architect/graph-view/graph/shapes'
+import { ALL_NODE_TYPES, DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY, DEFAULT_TAXONOMY_SPEC } from '../adapter/node-types'
+import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
 import {
   createDimensionalMapping,
   identityMapping,
   internValue,
-} from '@temporal-architect/graph-view/graph/dimension'
-import type { AxisNamer } from '@temporal-architect/graph-view/graph/dimension'
+} from '@temporal-architect/graph-view/graph/axis'
+import type { AxisNamer } from '@temporal-architect/graph-view/graph/axis'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
-import { foldReheatPolicy } from '@temporal-architect/graph-view/graph/dimension'
+import { foldReheatPolicy } from '@temporal-architect/graph-view/graph/axis'
 import { bandFor, chargeFor, coreRadiusFor, mappedAxis, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { dimensionsFor } from '../adapter/build'
 import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
@@ -88,32 +88,32 @@ const ALT_SOURCE = sourceOf(ALT_NODES)
  */
 const ALT_VALUES: string[] = ['worker', 'workflow', 'activity']
 const alternate = (id: NodeType, overrides: Partial<TemporalNodeStyle>): NodeStyle => ({ id, ...NODE_TYPE_REGISTRY[id], ...overrides })
-const ALTERNATE = createOntology({
-  styleDimension: TEMPORAL_TYPE_DIMENSION,
+const ALTERNATE = createTaxonomy({
+  styleAxis: TEMPORAL_TYPE_DIMENSION,
   styleLabel: 'Tier',
   values: [
     alternate('worker', { abbreviation: 'T2', defType: ALT_DEF_TYPE.worker, summaryKind: 'degree' }),
     alternate('workflow', { abbreviation: 'T3', defType: ALT_DEF_TYPE.workflow }),
     alternate('activity', { abbreviation: 'T4', defType: ALT_DEF_TYPE.activity }),
   ],
-  filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
+  filterAxes: DEFAULT_TAXONOMY.filterAxes,
   // Only the shipped edge types that run between values this taxonomy declares:
   // an edge type to a value nobody declared is refused at construction.
-  edgeTypes: DEFAULT_ONTOLOGY.edgeTypes.filter(e => ALT_VALUES.includes(e.sourceType) && ALT_VALUES.includes(e.targetType)),
-  classifyEdge: DEFAULT_ONTOLOGY.classifyEdge,
+  edgeTypes: DEFAULT_TAXONOMY.edgeTypes.filter(e => ALT_VALUES.includes(e.sourceValue) && ALT_VALUES.includes(e.targetValue)),
+  classifyEdge: DEFAULT_TAXONOMY.classifyEdge,
   scalars: [],
   fallbackStyle: NODE_TYPE_REGISTRY.activity,
 })
 
-function visible(ontology: typeof DEFAULT_ONTOLOGY, source: typeof SOURCE, types: string[]): Json {
-  const vg = computeVisibleGraph(source, filterOfSets(new Set(types), new Set<string>()), ontology)
+function visible(taxonomy: typeof DEFAULT_TAXONOMY, source: typeof SOURCE, types: string[]): Json {
+  const vg = computeVisibleGraph(source, filterOfSets(new Set(types), new Set<string>()), taxonomy)
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     summaries: sorted([...vg.nodeSummaries].map(([id, s]) => `${id}=${s}`)),
     graduatedEdges: sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${relationOf(e)}`)),
     // The hover box's context line per visible node — the taxonomy's hook, or
     // its default, the parent's name (D59).
-    contextLines: sorted(vg.visibleNodes.map(n => `${n.id}=${ontology.contextLine(n, n.parentId ? source.getNode(n.parentId) : undefined) ?? ''}`)),
+    contextLines: sorted(vg.visibleNodes.map(n => `${n.id}=${taxonomy.contextLine(n, n.parentId ? source.getNode(n.parentId) : undefined) ?? ''}`)),
   }
 }
 
@@ -135,12 +135,12 @@ const CHAIN_EDGES: GraphEdge[] = [
   { id: 'd1', sourceId: 'act2', targetId: 'wf', relation: 'dependency' },
 ]
 const CHAIN = (() => { const byId = new Map(CHAIN_NODES.map(n => [n.id, n])); return { nodes: CHAIN_NODES, edges: CHAIN_EDGES, getNode: (id: string) => byId.get(id) } })()
-const SPLICING = createOntology({
-  ...DEFAULT_ONTOLOGY_SPEC,
+const SPLICING = createTaxonomy({
+  ...DEFAULT_TAXONOMY_SPEC,
   values: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t], ...(t === 'workflow' ? { whenHidden: 'splice' as const } : {}) })),
 })
-function hiddenPolicy(ontology: typeof DEFAULT_ONTOLOGY): Json {
-  const vg = computeVisibleGraph(CHAIN, filterOfSets(new Set(['workerDef', 'activityDef']), new Set<string>()), ontology)
+function hiddenPolicy(taxonomy: typeof DEFAULT_TAXONOMY): Json {
+  const vg = computeVisibleGraph(CHAIN, filterOfSets(new Set(['workerDef', 'activityDef']), new Set<string>()), taxonomy)
   return sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${relationOf(e)}`))
 }
 
@@ -169,7 +169,7 @@ function collision(callFirst: boolean): Json {
   ]
   const edges = callFirst ? [...contain, call, ...backs] : [...contain, ...backs, call]
   const byId = new Map(nodes.map(n => [n.id, n]))
-  const vg = computeVisibleGraph({ nodes, edges, getNode: (id: string) => byId.get(id) }, filterOfSets(new Set(['workerDef', 'workflowDef', 'nexusServiceDef']), new Set<string>()), DEFAULT_ONTOLOGY)
+  const vg = computeVisibleGraph({ nodes, edges, getNode: (id: string) => byId.get(id) }, filterOfSets(new Set(['workerDef', 'workflowDef', 'nexusServiceDef']), new Set<string>()), DEFAULT_TAXONOMY)
   return sorted(vg.visibleEdges.filter(e => relationOf(e) === 'dependency').map(edgeLine))
 }
 
@@ -193,7 +193,7 @@ function cycle(): Json {
     { id: 'd2', sourceId: 'pong', targetId: 'ping', relation: 'dependency' },
   ]
   const byId = new Map(nodes.map(n => [n.id, n]))
-  const vg = computeVisibleGraph({ nodes, edges, getNode: (id: string) => byId.get(id) }, filterOfSets(new Set(['workerDef', 'workflowDef']), new Set<string>()), DEFAULT_ONTOLOGY)
+  const vg = computeVisibleGraph({ nodes, edges, getNode: (id: string) => byId.get(id) }, filterOfSets(new Set(['workerDef', 'workflowDef']), new Set<string>()), DEFAULT_TAXONOMY)
   return sorted(vg.visibleEdges.map(edgeLine))
 }
 
@@ -272,8 +272,8 @@ function mappingProbes(): Json {
  */
 function prototypeNamedValues(): Json {
   const NAMES = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']
-  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
-  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const params = defaultParamsFor(DEFAULT_TAXONOMY)
+  const resolved = resolvePhysics(params, DEFAULT_TAXONOMY)
   // An ARRAY of rows, each carrying its own name, because the row keys are the
   // very prototype names being probed. As an object this dropped `__proto__`
   // twice: `rows['__proto__'] = …` invokes the setter, and even built with
@@ -284,20 +284,20 @@ function prototypeNamedValues(): Json {
   const rows: Json[] = []
   for (const name of NAMES) {
     const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
-    const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
+    const style = DEFAULT_TAXONOMY.nodeStyleOf(subject)
     const node = subject
     const band = bandFor(mappedAxis(resolved.bandY), node)
     rows.push({
       name,
-      styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
+      styleIsFallback: style === DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: {} }),
       styleLabel: style.label,
       charge: chargeFor(resolved.push, node),
       coreRadius: coreRadiusFor(resolved.push, node),
       chargeIsFinite: Number.isFinite(chargeFor(resolved.push, node)),
       band: `${band.min}..${band.max}`,
       // D39 fixed the style lookup and the force lookups and missed this one.
-      abbreviation: DEFAULT_ONTOLOGY.abbreviationFor(name),
-      abbreviationIsString: typeof DEFAULT_ONTOLOGY.abbreviationFor(name) === 'string',
+      abbreviation: DEFAULT_TAXONOMY.abbreviationFor(name),
+      abbreviationIsString: typeof DEFAULT_TAXONOMY.abbreviationFor(name) === 'string',
     })
   }
   return rows
@@ -309,7 +309,7 @@ function prototypeNamedValues(): Json {
  *
  * The injection probe below drives `computeVisibleGraph` through two taxonomies
  * and goldens that the answers differ. That covers styling and filtering and
- * nothing else, so the review was able to pin `Simulation` to the first ontology
+ * nothing else, so the review was able to pin `Simulation` to the first taxonomy
  * it ever saw, and to pin `resolveEdgeType`, with every gate green: the argument
  * "supply a different container and the answer must change" was only ever being
  * made for one consumer.
@@ -320,7 +320,7 @@ function prototypeNamedValues(): Json {
  * rather than captured ones.
  */
 function physicsInjection(): Json {
-  const fromDefault = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const fromDefault = defaultParamsFor(DEFAULT_TAXONOMY)
   const fromAlternate = defaultParamsFor(ALTERNATE)
   const worker = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
 
@@ -328,18 +328,18 @@ function physicsInjection(): Json {
   // no node in the shipped domain carries, so a consumer that ignored the
   // supplied container and used the shipped one would score these nodes; one
   // that honours it finds nothing and returns the absent-value physics.
-  const OTHER_AXIS = createOntology({
-    styleDimension: 'zone',
+  const OTHER_AXIS = createTaxonomy({
+    styleAxis: 'zone',
     styleLabel: 'Zone',
     values: [
       { id: 'north', ...NODE_TYPE_REGISTRY.worker, abbreviation: 'N' },
       { id: 'south', ...NODE_TYPE_REGISTRY.activity, abbreviation: 'S' },
     ],
-    filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
+    filterAxes: DEFAULT_TAXONOMY.filterAxes,
     // Its own edge table and rule, so the spring rows below can only come out
     // right by reading the container.
     edgeTypes: [{
-      id: 'zoneLink', label: 'N↔S', sourceType: 'north', targetType: 'south',
+      id: 'zoneLink', label: 'N↔S', sourceValue: 'north', targetValue: 'south',
       relation: 'dependency',
       physics: { strength: 0.7, distance: 123 }, tooltip: 'zone link',
       style: { color: { light: '#000000', dark: '#FFFFFF' }, alpha: 1, dash: [], width: 1 },
@@ -360,13 +360,13 @@ function physicsInjection(): Json {
     },
     // And so must the key space the maps are built over.
     chargeKeys: {
-      shipped: sorted([...resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push.byBucket.keys()]),
+      shipped: sorted([...resolvePhysics(fromDefault, DEFAULT_TAXONOMY).push.byBucket.keys()]),
       otherAxis: sorted([...resolvePhysics(zoned, OTHER_AXIS).push.byBucket.keys()]),
     },
     // And the spring table: categories and physics from the container's own
     // edge types, through its own rule.
     springKeys: {
-      shipped: sorted(DEFAULT_ONTOLOGY.edgeTypes.map(e => e.id).filter(id => resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).spring.describe(id) !== undefined)),
+      shipped: sorted(DEFAULT_TAXONOMY.edgeTypes.map(e => e.id).filter(id => resolvePhysics(fromDefault, DEFAULT_TAXONOMY).spring.describe(id) !== undefined)),
       otherAxis: sorted(OTHER_AXIS.edgeTypes.map(e => e.id).filter(id => resolvePhysics(zoned, OTHER_AXIS).spring.describe(id) !== undefined)),
     },
     zoneSpring: (() => {
@@ -377,22 +377,22 @@ function physicsInjection(): Json {
     // shipped one. Both rows are needed: the first proves the container is read,
     // the second proves the shipped one is genuinely not consulted.
     northNodeUnderOwnTaxonomy: chargeFor(resolvePhysics(zoned, OTHER_AXIS).push, northNode),
-    northNodeUnderShippedTaxonomy: chargeFor(resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push, northNode),
+    northNodeUnderShippedTaxonomy: chargeFor(resolvePhysics(fromDefault, DEFAULT_TAXONOMY).push, northNode),
     // The alternate taxonomy from the injection probe keeps the shipped axis but
     // restyles it, so the physics MUST agree with the shipped one here — a probe
     // that reported a difference for every alternate would prove nothing.
-    workerChargeShipped: chargeFor(resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push, worker),
+    workerChargeShipped: chargeFor(resolvePhysics(fromDefault, DEFAULT_TAXONOMY).push, worker),
     workerChargeAlternate: chargeFor(resolvePhysics(fromAlternate, ALTERNATE).push, worker),
 
     // The axis has exactly one source, so a container derived by spreading
     // cannot end up disagreeing with itself. Before `styleAxis()` this row read
-    // `sourceFile` while `valueFor` still answered on the type axis.
+    // `sourceFile` while `styleValueOf` still answered on the type axis.
     derivedBySpreadStaysConsistent: (() => {
-      const derived = { ...DEFAULT_ONTOLOGY } as typeof DEFAULT_ONTOLOGY
+      const derived = { ...DEFAULT_TAXONOMY } as typeof DEFAULT_TAXONOMY
       return {
         axisAfterSpread: derived.styleAxis(),
         stillResolvesTheSameStyle:
-          derived.resolveNodeStyle(worker) === DEFAULT_ONTOLOGY.resolveNodeStyle(worker),
+          derived.nodeStyleOf(worker) === DEFAULT_TAXONOMY.nodeStyleOf(worker),
         physicsAgreesWithStyling:
           defaultParamsFor(derived).pair.mapping.dimension === derived.styleAxis(),
       }
@@ -413,7 +413,7 @@ function physicsInjection(): Json {
  * axes, so a changed policy or a changed combination rule turns the golden red.
  */
 function reheatPolicy(): Json {
-  const dims = DEFAULT_ONTOLOGY.filterDimensions
+  const dims = DEFAULT_TAXONOMY.filterAxes
   const declared: Record<string, Json> = {}
   for (const d of dims) {
     declared[d.id] = {
@@ -446,17 +446,17 @@ function reheatPolicy(): Json {
 
 /** What the search matches on: the name unless the host's hook says otherwise. */
 function searchText(): Json {
-  const byCode = createOntology({ ...DEFAULT_ONTOLOGY_SPEC, searchText: n => `${payloadString(n, 'code') ?? ''} ${n.name}`.trim() })
+  const byCode = createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, searchText: n => `${payloadString(n, 'code') ?? ''} ${n.name}`.trim() })
   const coded = { ...NODES[1], payload: { code: 'WF-7' } }
   return {
-    default: DEFAULT_ONTOLOGY.searchText(NODES[1]),
+    default: DEFAULT_TAXONOMY.searchText(NODES[1]),
     hooked: byCode.searchText(coded),
     hookedWithoutCode: byCode.searchText(NODES[1]),
   }
 }
 
-export function ontologyProbes(): Json {
-  const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
+export function taxonomyProbes(): Json {
+  const fallback = DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
     searchText: searchText(),
     mappings: mappingProbes(),
@@ -480,22 +480,22 @@ export function ontologyProbes(): Json {
     // A miss must be stable, not a fresh object each time: the draw loop resolves
     // per node per frame and callers compare styles by reference.
     fallbackIsStable:
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }) ===
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }),
+      DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }) ===
+      DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }),
     // A node with no value on the style axis at all — the other half of the
     // guard, and the one a dimension model makes reachable for the first time.
     absentValueResolvesToFallback:
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }) === fallback,
+      DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: {} }) === fallback,
     // A declared key must NOT reach the fallback: it resolves to its own entry
     // (defaults filled in, so the resolved style is a new object, not the
     // declared one), and to the same object every time.
     declaredKeyResolvesToItself: (() => {
       const worker = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
-      const style = DEFAULT_ONTOLOGY.resolveNodeStyle(worker)
+      const style = DEFAULT_TAXONOMY.nodeStyleOf(worker)
       return {
         sameLabel: style.label === NODE_TYPE_REGISTRY.worker.label,
         sameFill: style.color.light.fill === NODE_TYPE_REGISTRY.worker.color.light.fill,
-        stable: DEFAULT_ONTOLOGY.styleOf('worker') === DEFAULT_ONTOLOGY.resolveNodeStyle(worker),
+        stable: DEFAULT_TAXONOMY.styleOf('worker') === DEFAULT_TAXONOMY.nodeStyleOf(worker),
       }
     })(),
 
@@ -505,16 +505,16 @@ export function ontologyProbes(): Json {
     // container still decides is what the visible set *means*: the same node
     // ids summarize differently under the two taxonomies, which is the second.
     injection: {
-      shippedNodesOnShippedKeys: visible(DEFAULT_ONTOLOGY, SOURCE, ['workerDef', 'workflowDef']),
+      shippedNodesOnShippedKeys: visible(DEFAULT_TAXONOMY, SOURCE, ['workerDef', 'workflowDef']),
       shippedNodesOnAlternateKeys: visible(ALTERNATE, SOURCE, ['tier-2', 'tier-3']),
       alternateNodesOnAlternateKeys: visible(ALTERNATE, ALT_SOURCE, ['tier-2', 'tier-3']),
-      alternateNodesUnderShippedTaxonomy: visible(DEFAULT_ONTOLOGY, ALT_SOURCE, ['tier-2', 'tier-3']),
+      alternateNodesUnderShippedTaxonomy: visible(DEFAULT_TAXONOMY, ALT_SOURCE, ['tier-2', 'tier-3']),
     },
     // The hidden-node policy is the taxonomy's (D59, B16): the same chain, the
     // same hidden value, two answers — ascended edges under the shipped
     // policy, one spliced edge under a taxonomy that says `splice`.
     hiddenPolicy: {
-      ascend: hiddenPolicy(DEFAULT_ONTOLOGY),
+      ascend: hiddenPolicy(DEFAULT_TAXONOMY),
       splice: hiddenPolicy(SPLICING),
       collisionCallFirst: collision(true),
       collisionCallLast: collision(false),

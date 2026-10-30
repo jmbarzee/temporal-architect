@@ -9,8 +9,8 @@
 
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
-import type { DimensionDescriptor } from '@temporal-architect/graph-view/graph/dimension'
-import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
+import type { AxisDescriptor } from '@temporal-architect/graph-view/graph/axis'
+import { DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY, DEFAULT_TAXONOMY_SPEC } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
 import {
   Simulation, axisOptions, defaultParamsFor, fitsCeiling, layoutAxisKey, layoutAxisOptions, pairTuning, retunedFor,
@@ -19,8 +19,8 @@ import {
 import { isScalarTuning } from '@temporal-architect/graph-view/graph/scalar'
 import type { ForceParams, SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { resolvePhysics, springFor } from '@temporal-architect/graph-view/graph/forces'
-import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import { createDimensionalMapping, identityMapping } from '@temporal-architect/graph-view/graph/dimension'
+import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
+import { createDimensionalMapping, identityMapping } from '@temporal-architect/graph-view/graph/axis'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import { filterOfSets } from './filter-states'
@@ -70,14 +70,14 @@ function without(graph: Graph, file: string): Graph {
 }
 
 function fileAxisParams(graph: Graph): ForceParams {
-  const option = axisOptions(DEFAULT_ONTOLOGY, graph).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)
+  const option = axisOptions(DEFAULT_TAXONOMY, graph).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)
   if (!option) throw new Error('tuning-probes: the fixture offers no file axis')
-  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const params = defaultParamsFor(DEFAULT_TAXONOMY)
   return { ...params, pair: withPushOverride(pairTuning(option.mapping), 'nexus.twf', { charge: -123, coreRadius: 45 }) }
 }
 
 const pushRow = (params: ForceParams, bucket: string): Json => {
-  const v = resolvePhysics(params, DEFAULT_ONTOLOGY).push.byBucket.get(bucket)
+  const v = resolvePhysics(params, DEFAULT_TAXONOMY).push.byBucket.get(bucket)
   return v ? { charge: v.charge, coreRadius: v.coreRadius } : 'absent'
 }
 
@@ -87,7 +87,7 @@ const pushRow = (params: ForceParams, bucket: string): Json => {
  * on its first tick. Two seeded simulations on one graph, one overridden.
  */
 function overrides(graph: Graph): Json {
-  const base = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const base = defaultParamsFor(DEFAULT_TAXONOMY)
   const tuned: ForceParams = {
     ...base,
     pair: withSpringOverride(
@@ -95,10 +95,10 @@ function overrides(graph: Graph): Json {
       'linkWorkflowToActivity', { strength: 0.33, distance: 77 },
     ),
   }
-  const resolved = resolvePhysics(tuned, DEFAULT_ONTOLOGY)
-  const declared = resolvePhysics(base, DEFAULT_ONTOLOGY)
+  const resolved = resolvePhysics(tuned, DEFAULT_TAXONOMY)
+  const declared = resolvePhysics(base, DEFAULT_TAXONOMY)
   const firstTick = (params: ForceParams): [number, number] => {
-    const sim = new Simulation(graph, params, mulberry32(SEED), DEFAULT_ONTOLOGY)
+    const sim = new Simulation(graph, params, mulberry32(SEED), DEFAULT_TAXONOMY)
     sim.tick()
     const n = sim.nodes.find(x => x.dimensions.temporalType === 'workflow')
     return n ? [n.vx, n.vy] : [NaN, NaN]
@@ -125,25 +125,25 @@ function overrides(graph: Graph): Json {
 function retune(graph: Graph): Json {
   const params = fileAxisParams(graph)
   const reversed: Graph = { ...graph, nodes: new Map([...graph.nodes].reverse()) }
-  const dropped = retunedFor(params, DEFAULT_ONTOLOGY, without(graph, 'task-queues.twf'))
-  const fileless = retunedFor(params, DEFAULT_ONTOLOGY, graphOf([syntheticNode('x', 'workflow', undefined)], []))
+  const dropped = retunedFor(params, DEFAULT_TAXONOMY, without(graph, 'task-queues.twf'))
+  const fileless = retunedFor(params, DEFAULT_TAXONOMY, graphOf([syntheticNode('x', 'workflow', undefined)], []))
   const big = manyFiles(30)
-  const bigOption = axisOptions(DEFAULT_ONTOLOGY, big).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)
-  const outgrown = retunedFor(params, DEFAULT_ONTOLOGY, big)
+  const bigOption = axisOptions(DEFAULT_TAXONOMY, big).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)
+  const outgrown = retunedFor(params, DEFAULT_TAXONOMY, big)
   // A taxonomy with three of the seven types, derived from the spec (not by
   // spreading the built container): the style axis is the same, its buckets
   // are not, and the override on a surviving value must survive with it.
-  const three = createOntology({
-    ...DEFAULT_ONTOLOGY_SPEC,
+  const three = createTaxonomy({
+    ...DEFAULT_TAXONOMY_SPEC,
     values: [
       { id: 'worker', ...NODE_TYPE_REGISTRY.worker },
       { id: 'workflow', ...NODE_TYPE_REGISTRY.workflow },
       { id: 'activity', ...NODE_TYPE_REGISTRY.activity },
     ],
     // The edge types among those three values: one to a value nobody declared is refused.
-    edgeTypes: DEFAULT_ONTOLOGY_SPEC.edgeTypes.filter(e => ['worker', 'workflow', 'activity'].includes(e.sourceType) && ['worker', 'workflow', 'activity'].includes(e.targetType)),
+    edgeTypes: DEFAULT_TAXONOMY_SPEC.edgeTypes.filter(e => ['worker', 'workflow', 'activity'].includes(e.sourceValue) && ['worker', 'workflow', 'activity'].includes(e.targetValue)),
   })
-  const styled = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const styled = defaultParamsFor(DEFAULT_TAXONOMY)
   const styledTuned: ForceParams = {
     ...styled,
     pair: withPushOverride(styled.pair, 'worker', { charge: -1, coreRadius: 2 }),
@@ -151,8 +151,8 @@ function retune(graph: Graph): Json {
   }
   const swapped = retunedFor(styledTuned, three, graph)
   return {
-    unchangedGraphReturnsSameObject: retunedFor(params, DEFAULT_ONTOLOGY, graph) === params,
-    reorderedNodesReturnSameObject: retunedFor(params, DEFAULT_ONTOLOGY, reversed) === params,
+    unchangedGraphReturnsSameObject: retunedFor(params, DEFAULT_TAXONOMY, graph) === params,
+    reorderedNodesReturnSameObject: retunedFor(params, DEFAULT_TAXONOMY, reversed) === params,
     fileDropped: {
       buckets: dropped.pair.mapping.buckets.map(b => b.id),
       overrideKept: dropped.pair.push.has('nexus.twf'),
@@ -169,17 +169,17 @@ function retune(graph: Graph): Json {
     // while the value survives, and falls back to the style axis with nothing
     // overridden when the axis vanishes or outgrows the ceiling — on X too.
     bandAxes: (() => {
-      const fileOption = axisOptions(DEFAULT_ONTOLOGY, graph).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)
+      const fileOption = axisOptions(DEFAULT_TAXONOMY, graph).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)
       if (!fileOption) return 'no file axis'
       const tuned: ForceParams = {
-        ...defaultParamsFor(DEFAULT_ONTOLOGY),
+        ...defaultParamsFor(DEFAULT_TAXONOMY),
         bandX: withOverride({ mapping: fileOption.mapping, overrides: new Map() }, 'nexus.twf', { min: -1, max: 1 }),
         bandY: withOverride({ mapping: fileOption.mapping, overrides: new Map() }, 'nexus.twf', { min: -2, max: 2 }),
       }
-      const same = retunedFor(tuned, DEFAULT_ONTOLOGY, graph)
-      const droppedFile = retunedFor(tuned, DEFAULT_ONTOLOGY, without(graph, 'task-queues.twf'))
-      const gone = retunedFor(tuned, DEFAULT_ONTOLOGY, graphOf([syntheticNode('x', 'workflow', undefined)], []))
-      const grown = retunedFor(tuned, DEFAULT_ONTOLOGY, manyFiles(30))
+      const same = retunedFor(tuned, DEFAULT_TAXONOMY, graph)
+      const droppedFile = retunedFor(tuned, DEFAULT_TAXONOMY, without(graph, 'task-queues.twf'))
+      const gone = retunedFor(tuned, DEFAULT_TAXONOMY, graphOf([syntheticNode('x', 'workflow', undefined)], []))
+      const grown = retunedFor(tuned, DEFAULT_TAXONOMY, manyFiles(30))
       return {
         sameGraphReturnsSameObject: same === tuned,
         fileDropped: { xBuckets: mapped(droppedFile.bandX).mapping.buckets.map(b => b.id), yBuckets: mapped(droppedFile.bandY).mapping.buckets.map(b => b.id), xOverrideKept: mapped(droppedFile.bandX).overrides.has('nexus.twf'), yOverrideKept: mapped(droppedFile.bandY).overrides.has('nexus.twf') },
@@ -188,10 +188,10 @@ function retune(graph: Graph): Json {
         // A scalar axis has no buckets: a graph change keeps it by reference; a
         // taxonomy that does not know the scalar falls it back to the style identity.
         scalar: (() => {
-          const onReach: ForceParams = { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandY: { scalar: 'reach' } }
-          const kept = retunedFor(onReach, DEFAULT_ONTOLOGY, without(graph, 'task-queues.twf'))
+          const onReach: ForceParams = { ...defaultParamsFor(DEFAULT_TAXONOMY), bandY: { scalar: 'reach' } }
+          const kept = retunedFor(onReach, DEFAULT_TAXONOMY, without(graph, 'task-queues.twf'))
           const unknown: ForceParams = { ...onReach, bandY: { scalar: 'not-a-scalar', span: { zero: 1, one: -1 } } }
-          const fell = retunedFor(unknown, DEFAULT_ONTOLOGY, graph)
+          const fell = retunedFor(unknown, DEFAULT_TAXONOMY, graph)
           return { graphChangeKeepsIt: kept.bandY === onReach.bandY, unknownScalarFallsBack: !isScalarTuning(fell.bandY) && (fell.bandY as { mapping: { dimension: string } }).mapping.dimension === 'temporalType' }
         })(),
       }
@@ -201,7 +201,7 @@ function retune(graph: Graph): Json {
       bandBuckets: mapped(swapped.bandY).mapping.buckets.map(b => b.id),
       pushOverrideKept: swapped.pair.push.has('worker'),
       bandOverrideKept: mapped(swapped.bandY).overrides.has('worker'),
-      sameTaxonomyReturnsSameObject: retunedFor(styledTuned, DEFAULT_ONTOLOGY, graph) === styledTuned,
+      sameTaxonomyReturnsSameObject: retunedFor(styledTuned, DEFAULT_TAXONOMY, graph) === styledTuned,
     },
   }
 }
@@ -214,24 +214,24 @@ function retune(graph: Graph): Json {
  */
 function foreignAxisPhysics(graph: Graph): Json {
   const params = fileAxisParams(graph)
-  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
-  const typical = resolvePhysics({ ...params, pair: pairTuning(params.pair.mapping) }, DEFAULT_ONTOLOGY).push.byBucket.get('task-queues.twf')
-  const fallback = DEFAULT_ONTOLOGY.styleOf('not-a-style-key').physics
+  const resolved = resolvePhysics(params, DEFAULT_TAXONOMY)
+  const typical = resolvePhysics({ ...params, pair: pairTuning(params.pair.mapping) }, DEFAULT_TAXONOMY).push.byBucket.get('task-queues.twf')
+  const fallback = DEFAULT_TAXONOMY.styleOf('not-a-style-key').physics
   return {
     buckets: sortedRecord([...resolved.push.byBucket].map(([k, v]) => [k, { charge: v.charge, coreRadius: v.coreRadius }] as const)),
     typicalIsNotTheFallback: typical !== undefined && (typical.charge !== fallback.charge || typical.coreRadius !== fallback.coreRadius),
     typicalIsTheDeclaredMean: (() => {
-      const keys = DEFAULT_ONTOLOGY.styleValues
-      const mean = keys.reduce((s, k) => s + DEFAULT_ONTOLOGY.styleOf(k).physics.charge, 0) / keys.length
+      const keys = DEFAULT_TAXONOMY.styleValues
+      const mean = keys.reduce((s, k) => s + DEFAULT_TAXONOMY.styleOf(k).physics.charge, 0) / keys.length
       return typical !== undefined && Math.abs(typical.charge - mean) < 1e-9
     })(),
     springIsTypical: (() => {
-      const ids = sorted(axisOptions(DEFAULT_ONTOLOGY, graph).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)!.mapping.buckets.map(b => b.id))
+      const ids = sorted(axisOptions(DEFAULT_TAXONOMY, graph).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)!.mapping.buckets.map(b => b.id))
       const edge: GraphEdge = { id: 's', sourceId: 'a', targetId: 'b', relation: 'dependency' }
       const a = syntheticNode('a', 'workflow', ids[0])
       const b = syntheticNode('b', 'activity', ids[0])
       const s = springFor(resolved.spring, edge, a, b)
-      const declared = DEFAULT_ONTOLOGY.edgeTypes
+      const declared = DEFAULT_TAXONOMY.edgeTypes
       const mean = declared.reduce((t, e) => t + e.physics.strength, 0) / declared.length
       return { key: s.key ?? '(unbucketed)', strengthIsDeclaredMean: Math.abs(s.strength - mean) < 1e-9 }
     })(),
@@ -239,15 +239,15 @@ function foreignAxisPhysics(graph: Graph): Json {
 }
 
 /** The filter axes the shipped spec declares — optional in the library's shape, always present in this host's. */
-function shippedFilters(): readonly DimensionDescriptor[] {
-  const declared = DEFAULT_ONTOLOGY_SPEC.filterDimensions
+function shippedFilters(): readonly AxisDescriptor[] {
+  const declared = DEFAULT_TAXONOMY_SPEC.filterAxes
   if (!declared) throw new Error('tuning-probes: the shipped spec declares no filter axes')
   return declared
 }
 
 /** A host rule that answers an id its table does not declare gets no category: the edge is sprung as typical and named by `validateGraph`, never thrown on. */
 function membership(): Json {
-  const rogue = createOntology({ ...DEFAULT_ONTOLOGY_SPEC, classifyEdge: () => 'notDeclaredAnywhere' })
+  const rogue = createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, classifyEdge: () => 'notDeclaredAnywhere' })
   const params = defaultParamsFor(rogue)
   const spring = resolvePhysics(params, rogue).spring
   const edge: GraphEdge = { id: 'r', sourceId: 'a', targetId: 'b', relation: 'dependency' }
@@ -271,14 +271,14 @@ function visibilityPolicy(): Json {
   const noKind: SimNode = { ...withKind, id: 'n', dimensions: { ...withKind.dimensions } }
   delete (noKind.dimensions as Record<string, string>)[DEF_TYPE_DIMENSION]
   const source = { nodes: [withKind, noKind], edges: [], getNode: (id: string) => (id === 'k' ? withKind : id === 'n' ? noKind : undefined) }
-  const allKinds = new Set(DEFAULT_ONTOLOGY.styleValues.map(k => NODE_TYPE_REGISTRY[k as NodeType].defType))
+  const allKinds = new Set(DEFAULT_TAXONOMY.styleValues.map(k => NODE_TYPE_REGISTRY[k as NodeType].defType))
   const filter = filterOfSets(allKinds, new Set<string>())
-  const lenient = createOntology({
-    ...DEFAULT_ONTOLOGY_SPEC,
-    filterDimensions: shippedFilters().map(d => d.id === DEF_TYPE_DIMENSION ? { ...d, absentMeans: 'visible' as const } : d),
+  const lenient = createTaxonomy({
+    ...DEFAULT_TAXONOMY_SPEC,
+    filterAxes: shippedFilters().map(d => d.id === DEF_TYPE_DIMENSION ? { ...d, absentMeans: 'visible' as const } : d),
   })
   return {
-    shipped: sorted(computeVisibleGraph(source, filter, DEFAULT_ONTOLOGY).visibleIds),
+    shipped: sorted(computeVisibleGraph(source, filter, DEFAULT_TAXONOMY).visibleIds),
     lenient: sorted(computeVisibleGraph(source, filter, lenient).visibleIds),
   }
 }
@@ -289,13 +289,13 @@ function coherence(): Json {
     try { f(); return 'NOT REFUSED' } catch (err) { return err instanceof Error ? err.message : String(err) }
   }
   const namer = { id: 'probe', label: 'Probe', labelFor: (v: string) => v, abbreviationFor: (v: string) => v.slice(0, 2) }
-  const spec = DEFAULT_ONTOLOGY_SPEC
+  const spec = DEFAULT_TAXONOMY_SPEC
   return {
-    duplicateValue: refusal(() => createOntology({ ...spec, values: [...spec.values, spec.values[0]] })),
-    edgeEndpointUndeclared: refusal(() => createOntology({ ...spec, edgeTypes: [...spec.edgeTypes, { ...spec.edgeTypes[0], id: 'ghostLink', sourceType: 'ghost' }] })),
-    duplicateEdgeType: refusal(() => createOntology({ ...spec, edgeTypes: [...spec.edgeTypes, spec.edgeTypes[0]] })),
-    duplicateFilterAxis: refusal(() => createOntology({ ...spec, filterDimensions: [...shippedFilters(), shippedFilters()[0]] })),
-    crossedBand: refusal(() => createOntology({ ...spec, values: spec.values.map((v, i) => i === 0 ? { ...v, physics: { ...v.physics, band: { ...v.physics?.band, y: { min: 10, max: -10 } } } } : v) })),
+    duplicateValue: refusal(() => createTaxonomy({ ...spec, values: [...spec.values, spec.values[0]] })),
+    edgeEndpointUndeclared: refusal(() => createTaxonomy({ ...spec, edgeTypes: [...spec.edgeTypes, { ...spec.edgeTypes[0], id: 'ghostLink', sourceValue: 'ghost' }] })),
+    duplicateEdgeType: refusal(() => createTaxonomy({ ...spec, edgeTypes: [...spec.edgeTypes, spec.edgeTypes[0]] })),
+    duplicateFilterAxis: refusal(() => createTaxonomy({ ...spec, filterAxes: [...shippedFilters(), shippedFilters()[0]] })),
+    crossedBand: refusal(() => createTaxonomy({ ...spec, values: spec.values.map((v, i) => i === 0 ? { ...v, physics: { ...v.physics, band: { ...v.physics?.band, y: { min: 10, max: -10 } } } } : v) })),
     duplicateBucketId: refusal(() => createDimensionalMapping({ id: 'm', label: 'M', dimension: 'probe', buckets: [
       { id: 'a', label: 'A', abbreviation: 'A', values: ['v1'] }, { id: 'a', label: 'A', abbreviation: 'A', values: ['v2'] }] })),
     emptyBucket: refusal(() => createDimensionalMapping({ id: 'm', label: 'M', dimension: 'probe', buckets: [{ id: 'e', label: 'E', abbreviation: 'E', values: [] }] })),
@@ -315,24 +315,24 @@ function plainAxis(): Json {
     return term === undefined ? n : { ...n, dimensions: { ...n.dimensions, term } }
   }
   const graph = graphOf([withTerm('n1', 'spring'), withTerm('n2', 'autumn'), withTerm('n3', 'spring')], [])
-  const options = axisOptions(DEFAULT_ONTOLOGY, graph)
+  const options = axisOptions(DEFAULT_TAXONOMY, graph)
   const term = options.find(o => o.mapping.dimension === 'term')
-  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const params = defaultParamsFor(DEFAULT_TAXONOMY)
   const onTerm: ForceParams = { ...params, pair: pairTuning(term!.mapping), bandY: { mapping: term!.mapping, overrides: new Map() } }
   const warnings: string[] = []
   const warn = console.warn
   console.warn = (...args: unknown[]) => { warnings.push(String(args[0])) }
   let kept: ForceParams, fallen: ForceParams
   try {
-    kept = retunedFor(onTerm, DEFAULT_ONTOLOGY, graph)
-    fallen = retunedFor(onTerm, DEFAULT_ONTOLOGY, graphOf([withTerm('n1', undefined)], []))
+    kept = retunedFor(onTerm, DEFAULT_TAXONOMY, graph)
+    fallen = retunedFor(onTerm, DEFAULT_TAXONOMY, graphOf([withTerm('n1', undefined)], []))
   } finally {
     console.warn = warn
   }
   return {
     offered: options.map(o => `${o.mapping.dimension}=${o.mapping.label}:${o.mapping.buckets.map(b => `${b.id}/${b.abbreviation}`).join(',')}`),
     keptOnTerm: kept.pair.mapping.dimension === 'term' && (!isScalarTuning(kept.bandY) && kept.bandY.mapping.dimension === 'term'),
-    fellBackToStyle: fallen.pair.mapping.dimension === DEFAULT_ONTOLOGY.styleAxis() && (!isScalarTuning(fallen.bandY) && fallen.bandY.mapping.dimension === DEFAULT_ONTOLOGY.styleAxis()),
+    fellBackToStyle: fallen.pair.mapping.dimension === DEFAULT_TAXONOMY.styleAxis() && (!isScalarTuning(fallen.bandY) && fallen.bandY.mapping.dimension === DEFAULT_TAXONOMY.styleAxis()),
     saidOnce: warnings.length,
     said: warnings.map(w => w.replace(/^\[graph\] /, '')),
   }
@@ -357,7 +357,7 @@ export function tuningProbes(): Json {
 // to the option's own key — so the dropdown can never show a value the params
 // do not hold.
 function layoutAxisKeys(graph: Graph): Json {
-  const options = layoutAxisOptions(axisOptions(DEFAULT_ONTOLOGY, graph), DEFAULT_ONTOLOGY)
+  const options = layoutAxisOptions(axisOptions(DEFAULT_TAXONOMY, graph), DEFAULT_TAXONOMY)
   const keys = options.map(layoutAxisKey)
   const tunings = options.map(o => o.kind === 'scalar' ? { scalar: o.scalar.id } : { mapping: o.option.mapping, overrides: new Map() })
   return {

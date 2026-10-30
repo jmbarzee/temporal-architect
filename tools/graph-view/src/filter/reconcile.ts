@@ -2,7 +2,7 @@
 // filter looks like after a view switch. Every switch site in the host shell
 // routes through it.
 //
-// Pure: destination filter, source filter, destination pins, the transition
+// Pure: destination filter, source filter, destination locks, the transition
 // intent, and the axes' descriptors in. A new filter out, plus which pinned axes
 // had to be overridden (drives the pin-flash animation).
 //
@@ -15,7 +15,7 @@
 
 import type {
   FilterState,
-  PinState,
+  AxisLocks,
   ViewTransition,
   ReconcileResult,
   FilterDimension,
@@ -23,35 +23,35 @@ import type {
 } from './types'
 import {
   filterStatesEqual,
-  pinnedFor,
+  lockedFor,
   selectionFor,
   withSelection,
 } from './types'
-import type { ResolvedDimensionDescriptor } from '../graph/dimension'
+import type { ResolvedAxisDescriptor } from '../graph/axis'
 
-/** What a reconciliation reads: the destination view's filter, pins and the axes it shows, the source view's filter, and the transition. */
+/** What a reconciliation reads: the destination view's filter, locks and the axes it shows, the source view's filter, and the transition. */
 export interface ReconcileInput {
   /** The view being switched to: its filter as it stands. */
   destination: FilterState
   /** The view being switched from. Read on a manual switch; a focus reads only the destination. */
   source: FilterState
-  /** The destination's pins. */
-  pins: PinState
+  /** The destination's locks. */
+  locks: AxisLocks
   transition: ViewTransition
   /**
    * The axes the destination view SHOWS — its chain, not every declared
    * axis: an axis the user removed from the bar is not filtering there, and
    * adopting a selection on it would revive what they reset.
    */
-  axes: readonly ResolvedDimensionDescriptor[]
+  axes: readonly ResolvedAxisDescriptor[]
 }
 
-export function reconcileFilter({ destination, source, pins, transition, axes }: ReconcileInput): ReconcileResult {
+export function reconcileFilter({ destination, source, locks, transition, axes }: ReconcileInput): ReconcileResult {
   switch (transition.kind) {
     case 'manual':
-      return reconcileManual(destination, source, pins, axes)
+      return reconcileManual(destination, source, locks, axes)
     case 'focus':
-      return reconcileFocus(destination, pins, transition.target, axes)
+      return reconcileFocus(destination, locks, transition.target, axes)
   }
 }
 
@@ -72,15 +72,15 @@ export function reconcileFilter({ destination, source, pins, transition, axes }:
 function reconcileManual(
   destFilter: FilterState,
   sourceFilter: FilterState,
-  destPins: PinState,
-  dimensions: readonly ResolvedDimensionDescriptor[],
+  destPins: AxisLocks,
+  dimensions: readonly ResolvedAxisDescriptor[],
 ): ReconcileResult {
   let next = destFilter
   for (const dim of dimensions) {
-    if (pinnedFor(destPins, dim.id)) continue
+    if (lockedFor(destPins, dim.id)) continue
     next = withSelection(next, dim.id, selectionFor(sourceFilter, dim.id))
   }
-  return { filter: next, overriddenPins: new Set<FilterDimension>() }
+  return { filter: next, overriddenLocks: new Set<FilterDimension>() }
 }
 
 /**
@@ -101,9 +101,9 @@ function reconcileManual(
  */
 function reconcileFocus(
   destFilter: FilterState,
-  destPins: PinState,
+  destPins: AxisLocks,
   target: FocusTarget,
-  dimensions: readonly ResolvedDimensionDescriptor[],
+  dimensions: readonly ResolvedAxisDescriptor[],
 ): ReconcileResult {
   let next = destFilter
   const overridden = new Set<FilterDimension>()
@@ -117,11 +117,11 @@ function reconcileFocus(
     if (dim.focus === 'whenActive' && current.size === 0) continue
 
     next = withSelection(next, dim.id, new Set([...current, value]))
-    if (pinnedFor(destPins, dim.id)) overridden.add(dim.id)
+    if (lockedFor(destPins, dim.id)) overridden.add(dim.id)
   }
 
   return {
     filter: filterStatesEqual(next, destFilter) ? destFilter : next,
-    overriddenPins: overridden,
+    overriddenLocks: overridden,
   }
 }
