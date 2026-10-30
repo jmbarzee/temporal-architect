@@ -313,6 +313,61 @@
       ],
       "zone": []
     },
+    "groupEmphasis": {
+      "emphasised": [
+        [
+          "g",
+          2.2
+        ],
+        [
+          "h",
+          2.2
+        ]
+      ],
+      "plain": [
+        [
+          "g",
+          1
+        ],
+        [
+          "h",
+          2.2
+        ]
+      ]
+    },
+    "linkedViews": {
+      "emptySetsAreUnchanged": true,
+      "focus": {
+        "file": [
+          "f1",
+          "f2"
+        ],
+        "kind": [
+          "a",
+          "b"
+        ],
+        "overrode": [
+          "file"
+        ],
+        "reported": [
+          "file"
+        ]
+      },
+      "manual": {
+        "fileKeptByLock": [
+          "f1"
+        ],
+        "kind": [
+          "a",
+          "b"
+        ],
+        "sourceUntouched": true
+      },
+      "unchangedIsSameObject": true,
+      "unshownAxisLeftAlone": [
+        "f2"
+      ]
+    },
     "minimal": {
       "descriptors": {
         "kind": {
@@ -966,6 +1021,22 @@
           }
         }
       }
+    },
+    "splitChipSnap": {
+      "absentValue": [
+        "department",
+        "faculty"
+      ],
+      "split": [
+        "course",
+        "department",
+        "faculty"
+      ],
+      "warnedOnce": 1,
+      "whole": [
+        "department",
+        "faculty"
+      ]
     },
     "stackBand": [
       {
@@ -3383,6 +3454,16 @@
     "variableFor": "--gv-node-nexus-endpoint"
   },
   "seamProbes": {
+    "barCallbackAlone": {
+      "pinToggles": 0
+    },
+    "barChrome": {
+      "directForOne": true,
+      "menuForSeveral": true,
+      "schemeOnRoot": true,
+      "systemResolvesLight": true,
+      "themedRoot": true
+    },
     "barChromePins": {
       "pinToggles": 2
     },
@@ -3550,6 +3631,14 @@
           }
         }
       }
+    },
+    "groupLegend": {
+      "bareHasNoCheckbox": true,
+      "checkboxes": 3,
+      "checked": 2,
+      "notShownNotes": 1,
+      "rows": 3,
+      "swatchColour": true
     },
     "hostHalf": {
       "decomposition-sample": {

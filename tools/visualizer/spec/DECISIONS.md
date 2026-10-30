@@ -2872,3 +2872,91 @@ which the construction check now accepts since orientation tells two types
 apart. The six fixture goldens and `edge-types` are byte-identical: the
 hosts' classifiers were rewritten to declarations with the fixtures as the
 oracle.
+
+**D78 — Unit 20, the bar and the second view (#209 Set 2).**
+The second unit of the fourth run: what a host with a second view had to
+write by hand, the library now does.
+
+1. **The lock toggles appear when asked.** Shown when the host controls
+   `locks` with `onLocksChange` or asks through `chrome.locks`; the callback
+   alone no longer shows them — the README's convention is "the callback
+   alone to be told", and a one-view host has nothing to lock against — and
+   neither does a value without its callback, which would be dead toggles.
+   The catalog, whose details panel disabled "Show only" while the campus
+   axis was locked, drops its locks with the toggles: one view has nothing
+   to lock against, so under the new default the lock could never be set.
+2. **The bar carries its theme.** `FilterBar` takes `theme` (a choice, or
+   the resolved theme a pane hands it; default `system`), resolves it as the
+   pane does and puts the scheme's variables and `data-theme` on its own
+   root, so a second view's bar needs no wrapper.
+3. **`useLinkedViews`.** One record per view — filter, locks, axes, the
+   locks the last focus overrode — with each view's props (`of(view)`), the
+   switch (`switchTo(to, transition, from)`: adopt on manual except where
+   locked, widen on focus — into a `GraphView` too, whose `focus` prop then
+   centres), `updateFilter(view, fn)` and `updateFilters(fn)` for a host
+   rule or a prune, and `state` for persistence. The reducer behind it, `linkedSwitch`, is pure and pinned.
+   The first host's tree view migrates onto it: its shell loses six states,
+   the reconcile call and the overridden-pins plumbing. `GraphView` accepts
+   `overriddenLocks` so the hook's props spread onto it too.
+4. **Axes are ids everywhere.** `reconcileFilter({ …, taxonomy, axes })`,
+   `hiddenMatchesOf({ nodes, filter, taxonomy, axes, visibleIds, matches,
+   valueOn? })` with `valueOn` defaulting to the node's `dimensions`, and
+   `passesSelection(filter, taxonomy, axes, valueOn)`; the view resolves
+   descriptors once per render through `passesDescriptors`, which stays off
+   the surface.
+5. **A split chip is snapped.** `defaultFilter` selects the whole of any
+   chip an `initialSelection` half-selects — selecting is the safe
+   direction — and warns once per taxonomy and chip. The catalog's
+   initial selection names whole chips.
+6. **`GroupLegend`, and the view owns emphasis.** `groupsControl(active,
+   control)` hands the host `emphasize(id | null)`; `activeGroupsOf` glows
+   that group stronger, so a host no longer rebuilds its `groups` on hover.
+   `GroupLegend` is the legend both hosts had written: items, the active
+   groups' colours, a toggle, the emphasis. The catalog mounts it; the
+   first host's decomposition modal is more than a legend and keeps its own.
+7. **The add-axis menu.** With more than one axis available, "+" opens a
+   menu of their labels instead of adding the first. Writing its probe found
+   that a bar reading values off `graph` computed them for the shown axes
+   only, so it never offered a removed axis back; it now reads every
+   declared axis.
+8. **Every README code block compiles.** The published-types gate compiles
+   each ```tsx block of the README against the shipped declarations, not
+   only the first, so the two-view example above is checked.
+
+**Golden change (§8.2).** `static` alone: new rows pin `linkedSwitch`
+(adopt, lock, focus, unchanged identity), the split-chip snap, emphasis
+through `activeGroupsOf`, the bar's lock-toggle default and the add menu's
+markup, and `GroupLegend`'s markup; rows that called `reconcileFilter`,
+`hiddenMatchesOf` and `passesSelection` move to the new signatures with the
+same answers. The six fixture goldens and `edge-types` are byte-identical.
+
+**Review (the unit's fan-out).** Six finders, each finding checked by a
+skeptic: twenty confirmed, three refuted, all twenty closed in the unit.
+Three were real: `switchTo` committed a value update, so a write queued in
+the same tick — a bar's own, or an `updateFilter` just before — was
+overwritten (now a functional update that composes); the pane's
+graph-change re-seed compared against the raw `initialSelection` rather
+than the snapped seed, so a host that mounts empty was seeded unsnapped
+(both sides now read `defaultFilter`); and the add-axis menu was clipped by
+the bar's own `overflow: hidden`, so a third item was never reachable (the
+clip is gone). The hook also re-seeds the views it seeded itself when a
+later graph arrives, as the pane does; two empty overridden-lock sets are
+no change; the host's overridden locks fold into the view's own flash as an
+event rather than re-lighting on every render; lock toggles need the
+callback too, since a value without one is read-only; the menu closes when
+fewer than two axes remain and on Escape; the snap judges a chip as the bar
+does (a chosen value the graph lacks counts); the legend's note reads "not
+shown" and it clears its emphasis on unmount; the tree's hidden-match tally
+is the library's `hiddenMatchesOf`, so both views badge the same chip; and
+the words — the snap sentence on the function not the prop, the scheme
+helpers back in the README, JSDoc on the hook and its types, "lock" where
+"pin" lingered, the catalog's reasons stated as they were.
+
+**Measured.** Surface 90 + 98 names (nine added: `GroupLegend`,
+`useLinkedViews`, and the types `GroupLegendProps`, `GroupsControl`,
+`HiddenMatchesInput`, `LinkedViewProps`, `LinkedViewState`, `LinkedViews`,
+`LinkedViewsOptions`); leak 0 of 0; total vocabulary 1059 of 1059;
+boundary 0; forbidden patterns 0 new (the hook builds its records from a
+typed loop, not a cast); 7/7 goldens with `static` regenerated under this
+decision; both published-type gates clean, the README's two code blocks
+compiled; the catalog typechecked.

@@ -85,23 +85,26 @@ symlinkSync(join(PKG_ROOT, 'node_modules'), join(tmp, 'node_modules'), 'dir')
 writeFileSync(join(tmp, 'consumer.ts'),
   `import * as lib from ${JSON.stringify('./pkg/' + typesEntry.replace(/^\.\//, '').replace(/\.d\.ts$/, ''))}\n` +
   `export const _keep: keyof typeof lib | undefined = undefined\n`)
-// The README's quick start compiles against the same copy: the first ```tsx
-// block, its package import pointed at the artifact, its stylesheet import
-// dropped (a stylesheet has no type-checker). A README that names a prop the
-// surface lost fails here, not in a reader's editor.
+// The README's code compiles against the same copy: every ```tsx block, its
+// package import pointed at the artifact, its stylesheet import dropped (a
+// stylesheet has no type-checker). A README that names a prop the surface
+// lost fails here, not in a reader's editor.
 const readme = readFileSync(join(PKG_ROOT, 'README.md'), 'utf8')
-const quick = /```tsx\n([\s\S]*?)```/.exec(readme)
-if (!quick) { console.error('dts gate: README.md has no ```tsx quick-start block.'); process.exit(1) }
-writeFileSync(join(tmp, 'quickstart.tsx'), quick[1]
-  .split('\n').filter(line => !/\.css['"]/.test(line)).join('\n')
-  .replace(/'@temporal-architect\/graph-view'/g, JSON.stringify('./pkg/' + typesEntry.replace(/^\.\//, '').replace(/\.d\.ts$/, ''))))
+const blocks = [...readme.matchAll(/```tsx\n([\s\S]*?)```/g)].map(m => m[1])
+if (blocks.length === 0) { console.error('dts gate: README.md has no ```tsx block.'); process.exit(1) }
+const pkgImport = JSON.stringify('./pkg/' + typesEntry.replace(/^\.\//, '').replace(/\.d\.ts$/, ''))
+const readmeFiles = blocks.map((code, i) => {
+  const name = `readme-${i + 1}.tsx`
+  writeFileSync(join(tmp, name), code.split('\n').filter(line => !/\.css['"]/.test(line)).join('\n').replace(/'@temporal-architect\/graph-view'/g, pkgImport))
+  return name
+})
 writeFileSync(join(tmp, 'tsconfig.json'), JSON.stringify({
   compilerOptions: { strict: true, skipLibCheck: false, noEmit: true, module: 'esnext', target: 'es2020', moduleResolution: 'bundler', jsx: 'react-jsx', types: [] },
-  files: ['consumer.ts', 'quickstart.tsx'],
+  files: ['consumer.ts', ...readmeFiles],
 }, null, 2))
 try {
   execFileSync(join(PKG_ROOT, 'node_modules', '.bin', 'tsc'), ['-p', join(tmp, 'tsconfig.json')], { stdio: 'pipe', cwd: tmp })
-  console.log(`published types: consumer compile clean outside the repository (skipLibCheck off); ${shipped.length} declaration file(s) shipped, none private; the README's quick start compiles`)
+  console.log(`published types: consumer compile clean outside the repository (skipLibCheck off); ${shipped.length} declaration file(s) shipped, none private; the README's ${readmeFiles.length} code block(s) compile`)
 } catch (err) {
   console.error(((err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? '')).trim())
   console.error('\nFAIL published types: a consumer outside this repository cannot compile against the artifact.')

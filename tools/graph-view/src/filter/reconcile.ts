@@ -27,7 +27,8 @@ import {
   selectionFor,
   withSelection,
 } from './types'
-import type { ResolvedAxisDescriptor } from '../graph/axis'
+import type { AxisId, ResolvedAxisDescriptor } from '../graph/axis'
+import type { Taxonomy } from '../graph/taxonomy'
 
 /** What a reconciliation reads: the destination view's filter, locks and the axes it shows, the source view's filter, and the transition. */
 export interface ReconcileInput {
@@ -38,20 +39,31 @@ export interface ReconcileInput {
   /** The destination's locks. */
   locks: AxisLocks
   transition: ViewTransition
+  /** Resolves the axes' policies. */
+  taxonomy: Pick<Taxonomy, 'axisFor'>
   /**
-   * The axes the destination view SHOWS — its chain, not every declared
-   * axis: an axis the user removed from the bar is not filtering there, and
-   * adopting a selection on it would revive what they reset.
+   * The axes the destination view SHOWS, by id — not every declared axis:
+   * an axis the user removed from the bar is not filtering there, and
+   * adopting a selection on it would revive what they reset. One the
+   * taxonomy does not declare is skipped.
    */
-  axes: readonly ResolvedAxisDescriptor[]
+  axes: readonly AxisId[]
 }
 
-export function reconcileFilter({ destination, source, locks, transition, axes }: ReconcileInput): ReconcileResult {
+/**
+ * The destination view's filter after a switch: on a manual switch it adopts
+ * the source's selections on the axes it shows, except where locked; on a
+ * focus it widens just enough to show the target, overriding locks, which
+ * come back in `overriddenLocks` for the bar to flash. The same filter object
+ * comes back when nothing changed.
+ */
+export function reconcileFilter({ destination, source, locks, transition, taxonomy, axes }: ReconcileInput): ReconcileResult {
+  const descriptors = axes.flatMap(id => { const d = taxonomy.axisFor(id); return d ? [d] : [] })
   switch (transition.kind) {
     case 'manual':
-      return reconcileManual(destination, source, locks, axes)
+      return reconcileManual(destination, source, locks, descriptors)
     case 'focus':
-      return reconcileFocus(destination, locks, transition.target, axes)
+      return reconcileFocus(destination, locks, transition.target, descriptors)
   }
 }
 

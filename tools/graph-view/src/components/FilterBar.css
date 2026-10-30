@@ -6,7 +6,7 @@
   border-radius: 10px;
   margin-bottom: 20px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
+  /* No overflow clip: the add-axis menu hangs below the bar. */
 }
 
 /* Transition indicator: a subtle flash when the host says its data reloaded */
@@ -335,6 +335,38 @@
   display: flex;
   align-items: center;
   padding: 0 6px;
+  position: relative;
+}
+
+/* The menu of axes to add, when more than one is available. */
+.gv-header-chain-menu {
+  position: absolute;
+  top: 100%;
+  left: 6px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 4px;
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 6px;
+  box-shadow: var(--gv-tooltip-shadow);
+}
+
+.gv-header-chain-menu-item {
+  border: 0;
+  background: transparent;
+  color: var(--gv-color-text);
+  text-align: left;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.gv-header-chain-menu-item:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
 }
 
 /* Also the empty-chain state: with every axis removed the bar collapses

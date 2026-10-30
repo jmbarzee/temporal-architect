@@ -1,6 +1,7 @@
 BAND_FRAME
 FilterBar
 GraphView
+GroupLegend
 NEUTRAL_STROKE
 TaxonomyContext
 copyGroups
@@ -54,10 +55,17 @@ type GraphNode
 type GraphViewChrome
 type GraphViewHandle
 type GraphViewProps
+type GroupLegendProps
+type GroupsControl
 type HiddenMatches
+type HiddenMatchesInput
 type Highlight
 type HighlightDirection
 type HighlightGraph
+type LinkedViewProps
+type LinkedViewState
+type LinkedViews
+type LinkedViewsOptions
 type NodeAction
 type NodeGroup
 type NodeStyle
@@ -82,6 +90,7 @@ type ThemeChoice
 type ThemedColor
 type ViewTransition
 useHostTheme
+useLinkedViews
 useTaxonomy
 validateGraph
 valuesOn

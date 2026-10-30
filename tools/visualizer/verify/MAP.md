@@ -46,7 +46,7 @@ which is worth noticing rather than assuming.
 | `types/parser-graph.ts` | shim | 3 | **7** files |
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
 | `verify/contract-probes.ts` | neither | 22 | `verify/static-golden.ts` |
-| `verify/defaults-probes.ts` | neither | 15 | `verify/static-golden.ts` |
+| `verify/defaults-probes.ts` | neither | 19 | `verify/static-golden.ts` |
 | `verify/filter-states.ts` | neither | 14 | **7** files |
 | `verify/fixtures.ts` | neither | 10 | **6** files |
 | `verify/force-probes.ts` | neither | 28 | `verify/static-golden.ts` |
@@ -56,7 +56,7 @@ which is worth noticing rather than assuming.
 | `verify/rng.ts` | neither | 1 | **5** files |
 | `verify/scalar-probes.ts` | neither | 13 | `verify/static-golden.ts` |
 | `verify/scheme-probes.ts` | neither | 17 | `verify/static-golden.ts` |
-| `verify/seam-probes.ts` | neither | 14 | `verify/static-golden.ts` |
+| `verify/seam-probes.ts` | neither | 19 | `verify/static-golden.ts` |
 | `verify/snapshot.ts` | neither |  | **17** files |
 | `verify/static-golden.ts` | neither | 24 | `verify/main.ts` |
 | `verify/synthetic-visible.ts` | neither | 32 | `verify/static-golden.ts` |
@@ -75,6 +75,7 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/GraphControlPanel.tsx` | manifest |  | **5** files |
 | `../graph-view/components/GraphView.tsx` | manifest |  | `../graph-view/index.ts` |
 | `../graph-view/components/GravityControls.tsx` | manifest |  | **4** files |
+| `../graph-view/components/GroupLegend.tsx` | manifest |  | `verify/seam-probes.ts`, `../graph-view/index.ts` |
 | `../graph-view/components/LockToggle.tsx` | manifest |  | `../graph-view/components/FilterBar.tsx` |
 | `../graph-view/components/PushPullControls.tsx` | manifest |  | `verify/view-probes.ts`, `../graph-view/components/GraphControlPanel.tsx` |
 | `../graph-view/components/SpringControls.tsx` | manifest |  | `../graph-view/components/PushPullControls.tsx` |
@@ -87,33 +88,35 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/controls/bucketColor.ts` | manifest |  | `../graph-view/components/AxisControls.tsx`, `../graph-view/components/ChargeControls.tsx`, `../graph-view/components/SpringControls.tsx` |
 | `../graph-view/components/graph-view/focus.ts` | manifest |  | `verify/contract-probes.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
 | `../graph-view/components/graph-view/present.ts` | manifest |  | **4** files |
-| `../graph-view/components/graph-view/useControllable.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx`, `../graph-view/components/graph-view/useRecentlyChanged.ts` |
+| `../graph-view/components/graph-view/useControllable.ts` | manifest |  | **4** files |
 | `../graph-view/components/graph-view/useHighlight.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useIsomorphicLayoutEffect.ts` | manifest |  | `../graph-view/components/GraphView.tsx`, `../graph-view/components/graph-view/useTheme.ts` |
+| `../graph-view/components/graph-view/useLinkedViews.ts` | manifest |  | `../graph-view/index.ts` |
 | `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulation.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulationLoop.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useTaxonomy.ts` | manifest |  | **10** files |
-| `../graph-view/components/graph-view/useTheme.ts` | manifest |  | `verify/scheme-probes.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
+| `../graph-view/components/graph-view/useTheme.ts` | manifest |  | **4** files |
 | `../graph-view/components/graph-view/useViewport.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useVisibleGraph.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/visibleGraph.ts` | manifest |  | **9** files |
 | `../graph-view/components/icons/SearchIcon.tsx` | manifest |  | `../graph-view/components/FilterBar.tsx` |
-| `../graph-view/filter/reconcile.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
+| `../graph-view/filter/linked.ts` | manifest |  | `verify/defaults-probes.ts`, `../graph-view/components/graph-view/useLinkedViews.ts` |
+| `../graph-view/filter/reconcile.ts` | manifest |  | **4** files |
 | `../graph-view/filter/toggle.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/FilterBar.tsx`, `../graph-view/index.ts` |
-| `../graph-view/filter/types.ts` | manifest |  | **13** files |
-| `../graph-view/graph/axis.ts` | manifest |  | **25** files |
+| `../graph-view/filter/types.ts` | manifest |  | **16** files |
+| `../graph-view/graph/axis.ts` | manifest |  | **27** files |
 | `../graph-view/graph/forces.ts` | manifest |  | **21** files |
-| `../graph-view/graph/groups.ts` | manifest |  | **5** files |
+| `../graph-view/graph/groups.ts` | manifest |  | **7** files |
 | `../graph-view/graph/highlight.ts` | manifest |  | `verify/contract-probes.ts`, `verify/tier-a.ts`, `../graph-view/components/graph-view/useHighlight.ts` |
-| `../graph-view/graph/model.ts` | manifest |  | **28** files |
+| `../graph-view/graph/model.ts` | manifest |  | **29** files |
 | `../graph-view/graph/node-scale.ts` | manifest |  | **4** files |
 | `../graph-view/graph/rng.ts` | manifest |  | **4** files |
 | `../graph-view/graph/scalar.ts` | manifest |  | **11** files |
-| `../graph-view/graph/scheme.ts` | manifest |  | **10** files |
+| `../graph-view/graph/scheme.ts` | manifest |  | **11** files |
 | `../graph-view/graph/shapes.ts` | manifest |  | **11** files |
 | `../graph-view/graph/simulation.ts` | manifest |  | **29** files |
-| `../graph-view/graph/taxonomy.ts` | manifest |  | **25** files |
+| `../graph-view/graph/taxonomy.ts` | manifest |  | **28** files |
 | `../graph-view/graph/validate.ts` | manifest |  | **4** files |
 | `../graph-view/graph/viewport.ts` | manifest |  | **4** files |
 | `../graph-view/index.ts` | manifest |  | **13** files |

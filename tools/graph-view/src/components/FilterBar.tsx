@@ -1,5 +1,5 @@
 // The filter bar: one section of chips per axis in the axes, each with its
-// pin and its remove control, the search control, and a slot at the bottom
+// lock and its remove control, the search control, and a slot at the bottom
 // the host fills with its findings. A host with more than one view renders
 // it in each, so the views' toolbars stay in lockstep.
 //
@@ -13,6 +13,9 @@ import { countsOn, valuesOn } from '../graph/axis'
 import type { Graph } from '../graph/model'
 import type { Taxonomy } from '../graph/taxonomy'
 import { useControllable, useStable } from './graph-view/useControllable'
+import { useTheme } from './graph-view/useTheme'
+import type { ThemeChoice } from './graph-view/useTheme'
+import { schemeVars } from '../graph/scheme'
 import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
 import type { RecentlyChanged } from './graph-view/useRecentlyChanged'
 
@@ -37,7 +40,7 @@ import { toggleGroup } from '../filter/toggle'
 import { LockToggle } from './LockToggle'
 import { SearchIcon } from './icons/SearchIcon'
 
-const NO_PINS: ReadonlySet<string> = new Set()
+const NO_LOCKS: ReadonlySet<string> = new Set()
 
 /** The search control's state: the query, and whether the control is open. */
 export interface SearchState { query: string; active: boolean }
@@ -48,19 +51,26 @@ export interface SearchState { query: string; active: boolean }
  * else the pane supplies for its own bar has a default here, so a host's
  * second view renders the same bar without rebuilding the pane's internals.
  */
-/** Which of the bar's own controls are offered; every part is on by default. */
+/** Which of the bar's own controls are offered: the search on by default, the lock toggles when the host controls `locks` or asks here. */
 export interface FilterBarChrome {
   /** The search control. */
   search?: boolean
-  /** The pin toggle on each axis — meaningful only to a host with a second view to pin against. */
+  /** The lock toggle on each axis — meaningful only to a host with a second view to lock against. */
   locks?: boolean
 }
 
 export interface FilterBarProps {
   /** The taxonomy, when not supplied through `TaxonomyContext`. */
   taxonomy?: Taxonomy
-  /** Which controls are offered. Default: everything; locks only when the host engages them (`locks` or `onLocksChange`). */
+  /** Which controls are offered. Default: the search; the lock toggles when the host controls `locks` with `onLocksChange`. */
   chrome?: FilterBarChrome
+  /**
+   * The bar's theme: a choice, or the resolved theme a pane hands it.
+   * Default `system` — the nearest ancestor's `data-theme`, else the OS. The
+   * bar carries the scheme's variables and its `data-theme` on its own root,
+   * so its chips read their tints without a wrapper.
+   */
+  theme?: ThemeChoice
   /** Chip badge counts per axis and value, read by the host off its own data. Absent: the graph's entity counts (the copies of one `copyKey` once) when `graph` is given, else no badges. */
   counts?: ReadonlyMap<string, ReadonlyMap<string, number>>
   /**
@@ -74,10 +84,10 @@ export interface FilterBarProps {
   graph?: Graph
   filter: FilterState
   onFilterChange: (next: FilterState) => void
-  /** Which axes are locked. Default: the bar's own, none locked, with no toggles shown unless `chrome.locks` asks. */
+  /** Which axes are locked. Controlling it with `onLocksChange` shows the lock toggles; a value without its callback is read-only and shows none unless `chrome.locks` asks. */
   locks?: AxisLocks
   onLocksChange?: (next: AxisLocks) => void
-  /** Axes a focus just overrode the pin of. The bar flashes them once, for 600 ms, whenever the value changes; the host need not clear it. */
+  /** Axes a focus just overrode the lock of. The bar flashes them once, for 600 ms, whenever the value changes; the host need not clear it. */
   overriddenLocks?: ReadonlySet<FilterDimension>
   /** The values that just turned on, per axis — drives the chip flash. Default: tracked here from the filter's changes. */
   recentlyChanged?: RecentlyChanged
@@ -111,6 +121,7 @@ const LOOKS = {
 export function FilterBar({
   taxonomy: taxonomyProp,
   chrome,
+  theme: themeChoice = 'system',
   counts: hostCounts,
   values: hostValues,
   graph,
@@ -118,7 +129,7 @@ export function FilterBar({
   onFilterChange,
   locks: locksProp,
   onLocksChange,
-  overriddenLocks = NO_PINS,
+  overriddenLocks = NO_LOCKS,
   recentlyChanged: hostRecentlyChanged,
   search: searchProp,
   onSearchChange,
@@ -142,19 +153,19 @@ export function FilterBar({
   const filter = useStable(filterProp, filterStatesEqual)
   const [rawLocks, setLocks] = useControllable(locksProp, onLocksChange, () => new Map<string, boolean>())
   const locks = useStable(rawLocks, locksEqual)
-  const showLocks = chrome?.locks ?? (locksProp !== undefined || onLocksChange !== undefined)
+  const showLocks = chrome?.locks ?? (locksProp !== undefined && onLocksChange !== undefined)
   const showSearch = chrome?.search ?? true
-  // The pin flash is the bar's: a new set of overridden locks lights them for
+  // The lock flash is the bar's: a new set of overridden locks lights them for
   // 600 ms and goes out by itself, so a host passes the reconciler's answer
   // and nothing more.
-  const [flashing, setFlashing] = React.useState<ReadonlySet<string>>(NO_PINS)
+  const [flashing, setFlashing] = React.useState<ReadonlySet<string>>(NO_LOCKS)
   React.useEffect(() => {
     // Every change sets the state, the empty one included: the cleanup has
     // already cancelled the previous timer, so an empty set arriving mid-flash
     // must put the light out itself.
     setFlashing(overriddenLocks)
     if (overriddenLocks.size === 0) return
-    const timer = setTimeout(() => setFlashing(NO_PINS), 600)
+    const timer = setTimeout(() => setFlashing(NO_LOCKS), 600)
     return () => clearTimeout(timer)
   }, [overriddenLocks])
   // The whole-bar flash likewise: once per change of the value, not for as
@@ -173,11 +184,21 @@ export function FilterBar({
   const { query: searchQuery, active: searchActive } = search
   const ownInputRef = React.useRef<HTMLInputElement>(null)
   const searchInputRef = hostInputRef ?? ownInputRef
+  // The bar's own theme and scheme, on its root: a second view's bar needs
+  // no wrapper to read its tints, and a pane's bar is handed the resolved one.
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  const theme = useTheme(rootRef, themeChoice)
+  const schemeStyle = React.useMemo(() => schemeVars(taxonomy, theme) as React.CSSProperties, [taxonomy, theme])
+  // The add-axis menu, open while the user picks among several.
+  const [addOpen, setAddOpen] = React.useState(false)
+  const labelOf = (id: string) => taxonomy.axisFor(id)?.label ?? id
   const tracked = useRecentlyChanged(filter)
   const recentlyChanged = hostRecentlyChanged ?? tracked
+  // Values for every declared axis, not only the shown ones: an axis the user
+  // removed is offered back by "+" only if its values are known.
   const valuesByDimension = React.useMemo(
-    () => hostValues ?? new Map(axes.map(d => [d, graph ? valuesOn(graph.nodes, d) : []])),
-    [hostValues, graph, axes],
+    () => hostValues ?? new Map([...new Set([...taxonomy.filterAxes.map(d => d.id), ...axes])].map(d => [d, graph ? valuesOn(graph.nodes, d) : []])),
+    [hostValues, graph, axes, taxonomy],
   )
   const counts = React.useMemo(
     () => hostCounts ?? (graph ? countsOn(graph.nodes, axes) : undefined),
@@ -200,6 +221,9 @@ export function FilterBar({
   const available = taxonomy.filterAxes
     .map(d => d.id)
     .filter(id => !axes.includes(id) && (valuesByDimension.get(id)?.length ?? 0) > 0)
+  // The menu is for a choice: with fewer than two to choose from it closes,
+  // so a stale open flag cannot show it again on a later render.
+  React.useEffect(() => { if (available.length < 2) setAddOpen(false) }, [available.length])
 
   const toggleSearch = () => {
     if (searchActive) {
@@ -211,7 +235,7 @@ export function FilterBar({
   }
 
   return (
-    <div className={`gv-canvas-header${refreshing ? ' refresh-flash' : ''}`}>
+    <div className={`gv-canvas-header${refreshing ? ' refresh-flash' : ''}`} ref={rootRef} data-theme={theme} style={schemeStyle}>
       {axes.map(dimension => {
         const descriptor = taxonomy.axisFor(dimension)
         if (!descriptor) return null
@@ -318,9 +342,20 @@ export function FilterBar({
         <div className="gv-header-chain-add">
           <button
             className="gv-header-chain-add-button"
-            onClick={() => setAxes([...axes, available[0]!])}
-            title={`Add the ${taxonomy.axisFor(available[0]!)?.label ?? available[0]} filter`}
+            onClick={() => (available.length === 1 ? setAxes([...axes, available[0]!]) : setAddOpen(open => !open))}
+            title={available.length === 1 ? `Add the ${labelOf(available[0]!)} filter` : 'Add a filter'}
+            aria-haspopup={available.length > 1 ? 'menu' : undefined}
+            aria-expanded={available.length > 1 ? addOpen : undefined}
           >+</button>
+          {addOpen && available.length > 1 && (
+            <div className="gv-header-chain-menu" role="menu" onKeyDown={e => { if (e.key === 'Escape') setAddOpen(false) }}>
+              {available.map(id => (
+                <button key={id} role="menuitem" className="gv-header-chain-menu-item" onClick={() => { setAxes([...axes, id]); setAddOpen(false) }}>
+                  {labelOf(id)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

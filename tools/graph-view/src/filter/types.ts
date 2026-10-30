@@ -12,7 +12,7 @@
 //
 // The search query lives outside a FilterState because it is globally shared.
 
-import type { AxisId, ResolvedAxisDescriptor } from '../graph/axis'
+import type { AxisId, AxisValues, ResolvedAxisDescriptor } from '../graph/axis'
 import { valuesOn } from '../graph/axis'
 import type { Graph } from '../graph/model'
 import type { Taxonomy } from '../graph/taxonomy'
@@ -151,8 +151,38 @@ export type ReconcileResult = {
  */
 export function defaultFilter(taxonomy: Pick<Taxonomy, 'filterAxes'>, graph: Pick<Graph, 'nodes'>): FilterState {
   const out = new Map<AxisId, Selection>()
-  for (const d of taxonomy.filterAxes) out.set(d.id, new Set(d.initialSelection(valuesOn(graph.nodes, d.id))))
+  for (const d of taxonomy.filterAxes) {
+    const values = valuesOn(graph.nodes, d.id)
+    const chosen = new Set(d.initialSelection(values))
+    // The bar toggles a chip's values as a unit, so a selection that splits
+    // one would show the chip as on with half its nodes hidden, and the
+    // first click would turn the whole chip off. Snap to the whole chip —
+    // selecting is the safe direction — and say so once per chip.
+    const present = new Set(values)
+    for (const chip of d.chipsFor(values)) {
+      const mine = chip.values.filter(v => present.has(v))
+      const on = mine.filter(v => chosen.has(v))
+      // Judged as the bar judges it: any value of the chip chosen — a value the
+      // graph lacks included — reads as on.
+      if (!chip.values.some(v => chosen.has(v)) || on.length === mine.length) continue
+      for (const v of mine) chosen.add(v)
+      warnSplitChip(taxonomy, d.id, chip.id, mine.filter(v => !on.includes(v)))
+    }
+    out.set(d.id, chosen)
+  }
   return out
+}
+
+// Once per taxonomy and chip, not per process: a second taxonomy with the
+// same split is a second mistake.
+const warnedSplits = new WeakMap<object, Set<string>>()
+function warnSplitChip(taxonomy: object, axis: AxisId, chip: string, added: readonly string[]): void {
+  let warned = warnedSplits.get(taxonomy)
+  if (!warned) { warned = new Set(); warnedSplits.set(taxonomy, warned) }
+  const key = `${axis}\u0000${chip}`
+  if (warned.has(key)) return
+  warned.add(key)
+  console.warn(`[filter] the initial selection on axis ${JSON.stringify(axis)} splits the chip ${JSON.stringify(chip)}; the whole chip is selected (${added.map(v => JSON.stringify(v)).join(', ')} added). Choose a selection the chips can show.`)
 }
 
 // The records below are built from entries, not by assignment: an axis id is
@@ -211,7 +241,8 @@ export function matchesFocus(node: { dimensions: Readonly<Record<string, string>
 }
 
 /**
- * Does a subject pass the selection, given a way to read its value per axis?
+ * Does a subject pass the selection on the axes a view shows, given a way to
+ * read its value per axis?
  *
  * The policy — what an empty selection means, what an absent value means — is
  * here once, read from each axis's descriptor. The *projection* is the caller's,
@@ -219,9 +250,24 @@ export function matchesFocus(node: { dimensions: Readonly<Record<string, string>
  * other views may hold records with named fields. Those are different shapes,
  * so sharing the accessor would mean inventing a fake dimension map for one of
  * them. Sharing the policy is the part that matters: two views of one product
- * that each wrote their own copy disagreed about what the filter meant.
+ * that each wrote their own copy disagreed about what the filter meant. An
+ * axis the taxonomy does not declare filters nothing.
  */
 export function passesSelection(
+  filter: FilterState,
+  taxonomy: Pick<Taxonomy, 'axisFor'>,
+  axes: readonly AxisId[],
+  valueOn: (axis: AxisId) => string | undefined,
+): boolean {
+  for (const id of axes) {
+    const d = taxonomy.axisFor(id)
+    if (d && !passesDescriptors(filter, [d], valueOn)) return false
+  }
+  return true
+}
+
+/** `passesSelection` over descriptors already resolved — the view's hot path, which resolves them once per render. */
+export function passesDescriptors(
   filter: FilterState,
   dimensions: readonly ResolvedAxisDescriptor[],
   valueOn: (dimension: string) => string | undefined,
@@ -252,20 +298,29 @@ export interface HiddenMatches {
   hiddenByAxis: ReadonlyMap<AxisId, ReadonlyMap<string, number>>
 }
 
+/** What `hiddenMatchesOf` reads. */
+export interface HiddenMatchesInput<N extends { id: string; dimensions?: AxisValues }> {
+  /** Every node the search ran over, visible or not. */
+  nodes: Iterable<N>
+  filter: FilterState
+  taxonomy: Pick<Taxonomy, 'axisFor'>
+  /** The axes the view shows, in order: the first one a hidden match fails is the chip it is counted on. */
+  axes: readonly AxisId[]
+  visibleIds: ReadonlySet<string>
+  matches: (node: N) => boolean
+  /** A node's value on an axis. Default: its `dimensions`. */
+  valueOn?: (node: N, axis: AxisId) => string | undefined
+}
+
 /**
  * Split a search's matches by the filter, the way the pane does under its
  * own bar: a match the filter shows lights up, a match it hides is counted
  * on the chip hiding it — the first axis in `axes` the node fails, under the
  * node's value there — so a host's second bar can wear the same badges.
  */
-export function hiddenMatchesOf<N extends { id: string }>(
-  nodes: Iterable<N>,
-  filter: FilterState,
-  axes: readonly ResolvedAxisDescriptor[],
-  visibleIds: ReadonlySet<string>,
-  matches: (node: N) => boolean,
-  valueOn: (node: N, dimension: AxisId) => string | undefined,
-): HiddenMatches {
+export function hiddenMatchesOf<N extends { id: string; dimensions?: AxisValues }>({ nodes, filter, taxonomy, axes, visibleIds, matches, valueOn }: HiddenMatchesInput<N>): HiddenMatches {
+  const read = valueOn ?? ((node: N, axis: AxisId) => node.dimensions?.[axis])
+  const descriptors = axes.flatMap(id => { const d = taxonomy.axisFor(id); return d ? [d] : [] })
   const visible = new Set<string>()
   let hiddenCount = 0
   const hiddenByAxis = new Map<AxisId, Map<string, number>>()
@@ -273,8 +328,8 @@ export function hiddenMatchesOf<N extends { id: string }>(
     if (!matches(node)) continue
     if (visibleIds.has(node.id)) { visible.add(node.id); continue }
     hiddenCount++
-    const failing = axes.find(d => !passesSelection(filter, [d], dim => valueOn(node, dim)))
-    const value = failing ? valueOn(node, failing.id) : undefined
+    const failing = descriptors.find(d => !passesDescriptors(filter, [d], dim => read(node, dim)))
+    const value = failing ? read(node, failing.id) : undefined
     if (!failing || value === undefined) continue
     const tally = hiddenByAxis.get(failing.id) ?? new Map<string, number>()
     tally.set(value, (tally.get(value) ?? 0) + 1)

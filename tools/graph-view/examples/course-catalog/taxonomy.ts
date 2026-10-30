@@ -187,8 +187,11 @@ const FILTERS: readonly AxisDescriptor[] = [
     // style axis, which this is; its chips group three values into two.
     emptyMeans: 'none',
     chipsFor: values => ENTITY_CHIPS.filter(c => c.values.some(v => values.includes(v))),
-    // Opens on departments and courses, not on every entity.
-    initialSelection: () => ['department', 'course'],
+    // Opens on everything but labs. The selection names whole chips: the
+    // Organisation chip covers `faculty` and `department`, so `department`
+    // alone would split it and the library would select the whole chip anyway,
+    // with a warning.
+    initialSelection: () => ['faculty', 'department', 'course'],
   },
   {
     id: CAMPUS,

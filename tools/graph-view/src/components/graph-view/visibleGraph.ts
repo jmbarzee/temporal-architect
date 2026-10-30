@@ -26,7 +26,7 @@ import type { ResolvedAxisDescriptor } from '../../graph/axis'
 import type { EdgeTypeId } from '../../graph/shapes'
 import type { PhysicsSubject } from '../../graph/forces'
 import type { FilterState } from '../../filter/types'
-import { passesSelection } from '../../filter/types'
+import { passesDescriptors } from '../../filter/types'
 
 export interface VisibleGraph {
   visibleNodes: SimNode[]
@@ -162,7 +162,7 @@ function computeGraphNodeSummary(
 }
 
 /**
- * `passesSelection` for a graph node, projected through the taxonomy, on the
+ * `passesDescriptors` for a graph node, projected through the taxonomy, on the
  * axes given — the view's chain. Every declared axis is the default for a
  * caller that shows them all.
  */
@@ -172,7 +172,7 @@ export function passesFilter(
   taxonomy: Taxonomy,
   axes: readonly ResolvedAxisDescriptor[] = taxonomy.filterAxes,
 ): boolean {
-  return passesSelection(filter, axes, dim => taxonomy.valueOn(node, dim))
+  return passesDescriptors(filter, axes, dim => taxonomy.valueOn(node, dim))
 }
 
 /**

@@ -201,9 +201,10 @@ Everything else is optional.
   (`{ query, active }`) and the theme choice each follow the React convention:
   pass the value and its callback to control it, neither to let the view keep
   it, the callback alone to be told. `defaultFilter(taxonomy, graph)` is the
-  filter the view starts from: a host that controls the filter seeds its
-  state with it, and a host that leaves the filter to the view but wants
-  another start passes that as the `defaultFilter` prop. `filterToJSON` /
+  filter the view starts from — an `initialSelection` that splits a chip is
+  snapped to the whole chip, with a warning: a host that controls the filter
+  seeds its state with it, and a host that leaves the filter to the view but
+  wants another start passes that as the `defaultFilter` prop. `filterToJSON` /
   `filterFromJSON` and `locksToJSON` / `locksFromJSON` carry a filter and its
   locks to a URL or a store and back.
 - **Selection and focus.** `selectedId` controls the selection: while it is
@@ -220,11 +221,14 @@ Everything else is optional.
   the copies of one `copyKey` once),
   `findings` under the bar, `groups` to glow (each with a `color` or the
   palette's), `groupsControl` for a legend inside the pane (anchor it under
-  `--gv-toolbar-height`), a `nodeAction` for the hover box (`{ label,
-  onSelect }`, or a function of the node answering one or null), `controls`
+  `--gv-toolbar-height`, and handed the groups as drawn and `emphasize`;
+  `GroupLegend` is one — items, the active groups, a toggle and the
+  emphasis), a `nodeAction` for the hover box (`{ label, onSelect }`, or a
+  function of the node answering one or null), `controls`
   and `themeToggle` to hide the panel and the theme button, `chrome` to turn
-  off the search control, the lock toggles (off by default until the host
-  engages locks), the Fit / Play / count cluster, the diagnostics list, the
+  off the search control, the lock toggles (off until the host controls
+  `locks` with `onLocksChange`), the Fit / Play / count cluster, the
+  diagnostics list, the
   shortcuts panel, the hover box's direction line or the double-click zoom,
   `searchTitle` and `searchPlaceholder` for the host's own words,
   `className`, `style`, and `positions` (a kept layout).
@@ -251,28 +255,68 @@ Everything else is optional.
 
 ## Two views sharing a bar
 
-A host with a second view renders `FilterBar` outside the pane with the same
-filter state and its callback, and the `taxonomy` (a prop, or the context):
-give it the `graph` (or the `values` per axis) and the counts, the chips'
-flash, the search, the axes and the locks default — the lock toggles appear
-only when the host passes `locks` or `onLocksChange`. What the pane computes
-for its own bar is exported for the second: `countsOn(nodes, axes)` for the
-badges and `hiddenMatchesOf(nodes, filter, axes, visibleIds, matches,
-valueOn)` for the search's hidden-match badges.
-`reconcileFilter({ destination, source, locks, transition, axes })` adopts one
-view's filter into the other's on a manual switch, respecting locks, and
-widens it for a focus; `axes` is the axes the destination view shows, not every
-declared axis. The bar flashes the locks a focus overrode by itself when
-`overriddenLocks` changes. `passesSelection`, `selectionFor`, `withSelection`,
-`withLock`, `toggleGroup` and `filterStatesEqual` are the filter operations
-the bar itself uses; `toggleValue` flips one value for a host's own control.
-A focus into the graph is `focusNode(id)` or the `focus` prop; a focus into
-the other view is the host's (`matchesFocus(node, target)` finds the node a
-`FocusTarget`'s values name). Chips rendered outside the pane need the
-scheme's variables on an ancestor — `schemeVars(taxonomy, theme)` inline, or
-`schemeStylesheet(taxonomy)` mounted once — and the theme the pane resolves
-(`onThemeResolved`) belongs on the bar's own wrapper as `data-theme`, never
-on an ancestor of the pane.
+A host with a second view gives both views one state through `useLinkedViews`
+and renders `FilterBar` in the view that is not a `GraphView`. The hook owns
+each view's filter, locks and axes, hands each view its props, reconciles on a
+switch, and records the locks a focus overrode so the bar flashes them:
+
+```tsx
+import React from 'react'
+import { FilterBar, GraphView, passesSelection, useLinkedViews } from '@temporal-architect/graph-view'
+import type { FocusRequest, Graph, GraphNode, Taxonomy } from '@temporal-architect/graph-view'
+
+type View = 'list' | 'graph'
+
+export function TwoViews({ taxonomy, graph }: { taxonomy: Taxonomy; graph: Graph }) {
+  const [view, setView] = React.useState<View>('list')
+  const [focus, setFocus] = React.useState<FocusRequest | null>(null)
+  const seq = React.useRef(0)
+  const linked = useLinkedViews({ taxonomy, views: ['list', 'graph'], graph })
+  const list = linked.of('list')
+  const shown = graph.nodes.filter(n => passesSelection(list.filter, taxonomy, list.axes, axis => taxonomy.valueOn(n, axis)))
+  // A focus into either view widens the destination's filter through the hook;
+  // the graph view also gets the request, which centres on and selects the node.
+  const show = (target: View, node: GraphNode) => {
+    linked.switchTo(target, { kind: 'focus', target: { values: node.dimensions } }, view)
+    if (target === 'graph') setFocus({ id: node.id, key: ++seq.current })
+    setView(target)
+  }
+  return view === 'graph'
+    ? <GraphView graph={graph} taxonomy={taxonomy} {...linked.of('graph')} focus={focus} nodeAction={{ label: 'Show in list', onSelect: node => show('list', node) }} />
+    : (
+      <div>
+        <FilterBar taxonomy={taxonomy} graph={graph} {...list} />
+        <ul>{shown.map(n => <li key={n.id} onDoubleClick={() => show('graph', n)}>{n.name}</li>)}</ul>
+      </div>
+    )
+}
+```
+
+`linked.of(view)` is the view's `filter`, `locks`, `axes`, their callbacks and
+`overriddenLocks`; `linked.switchTo(to, transition, from)` adopts on a manual
+switch (except where locked) and widens on a focus — into a `GraphView` too,
+whose `focus` prop then centres; `linked.updateFilter(view, fn)` rewrites one
+view's filter and `linked.updateFilters(fn)` every view's (a stale value
+pruned when the data changes); `linked.state` is everything, for a host that
+persists it. The bar
+carries its own theme and scheme (`theme`, default `system`), so it needs no
+wrapper; give it the `graph` (or the `values` per axis) and, if the host reads
+its own data, the `counts`. The lock toggles appear only when `locks` is
+controlled with its callback — `useLinkedViews` does — or `chrome.locks` asks.
+
+What the pane computes for its own bar is exported for the second view:
+`passesSelection(filter, taxonomy, axes, valueOn)` decides visibility on the
+axes the view shows, `countsOn(nodes, axes)` the badges,
+`hiddenMatchesOf({ nodes, filter, taxonomy, axes, visibleIds, matches })` the
+search's hidden-match badges. `reconcileFilter({ destination, source, locks,
+transition, taxonomy, axes })` is the switch the hook makes; `axes` are ids.
+`selectionFor`, `withSelection`, `withLock`, `toggleGroup` and
+`filterStatesEqual` are the filter operations the bar itself uses;
+`toggleValue` flips one value for a host's own control. A focus into the graph
+is `focusNode(id)` or the `focus` prop; a focus into the other view is the
+host's (`matchesFocus(node, target)` finds the node a `FocusTarget`'s values
+name). The theme the pane resolves (`onThemeResolved`) is for the host's own
+chrome, never for a `data-theme` on an ancestor of the pane.
 
 ## Theming
 
@@ -285,7 +329,10 @@ redeclaring it on an ancestor. Each style value's fill and border are
 published on the pane under the name `taxonomy.colorVar(value)` answers —
 `--gv-node-` and the value id in kebab case (`nexusEndpoint` →
 `--gv-node-nexus-endpoint`), or a numbered name when the id kebab-cases to
-nothing or to another value's — and `-border` for the border. Default rest
+nothing or to another value's — and `-border` for the border. A host's own
+chrome beside the pane reads the same tints through `schemeVars(taxonomy,
+theme)` inline, or `schemeStylesheet(taxonomy)` mounted once, with the theme
+`onThemeResolved` hands it. Default rest
 bands are laid in `BAND_FRAME` (world units: the hierarchy axis from −300 to
 400, x from 0 to 380); a band a host declares is read in the same units.
 

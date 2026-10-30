@@ -12,6 +12,7 @@ import { activeGroupsOf } from '@temporal-architect/graph-view/graph/groups'
 import type { NodeGroup } from '@temporal-architect/graph-view/graph/groups'
 import { TaxonomyContext } from '@temporal-architect/graph-view/components/graph-view/useTaxonomy'
 import { FilterBar } from '@temporal-architect/graph-view/components/FilterBar'
+import { GroupLegend } from '@temporal-architect/graph-view/components/GroupLegend'
 import { filterOfSets } from './filter-states'
 import { valuesOn } from '@temporal-architect/graph-view/graph/axis'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
@@ -135,6 +136,52 @@ function barChromePins(): Json {
   return { pinToggles: pinToggles(html) }
 }
 
+/** The callback alone does not show the lock toggles: a one-view host that listens has nothing to lock against. */
+function barCallbackAlone(): Json {
+  const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
+  if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
+  const graph = buildFixtureGraph(fixture)
+  const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY },
+    React.createElement(FilterBar, { graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, onLocksChange: noop })))
+  return { pinToggles: pinToggles(html) }
+}
+/** The bar carries its own theme and scheme on its root; "+" adds the one available axis directly and opens a menu for several. */
+function barChrome(): Json {
+  const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
+  if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
+  const graph = buildFixtureGraph(fixture)
+  const render = (axes: readonly string[], theme?: 'light' | 'dark') => renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY },
+    React.createElement(FilterBar, { graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, axes, onAxesChange: noop, theme })))
+  const all = DEFAULT_TAXONOMY.filterAxes.map(d => d.id)
+  const dark = render(all, 'dark')
+  return {
+    themedRoot: /class="gv-canvas-header[^"]*"[^>]*data-theme="dark"/.test(dark) || /data-theme="dark"[^>]*class="gv-canvas-header/.test(dark),
+    schemeOnRoot: dark.includes(DEFAULT_TAXONOMY.colorVar(DEFAULT_TAXONOMY.styleValues[0]) + ':'),
+    systemResolvesLight: /data-theme="light"/.test(render(all)),
+    menuForSeveral: /title="Add a filter"/.test(render([])) && all.length > 1,
+    directForOne: /title="Add the [^"]+ filter"/.test(render(all.slice(1))),
+  }
+}
+/** The legend: a row per item, the drawn colour on its swatch, a note for an item on but hidden by the filter, checkboxes only with a toggle. */
+function groupLegend(): Json {
+  const active = [{ id: 'g', color: '#123456', strength: 1, nodeIds: new Set(['a']) }]
+  const html = renderToStaticMarkup(React.createElement(GroupLegend, {
+    title: 'Groups', items: [{ id: 'g', label: 'G' }, { id: 'h', label: 'H' }, { id: 'i', label: 'I' }], active, enabled: new Set(['g', 'h']), onToggle: noop,
+  }))
+  const bare = renderToStaticMarkup(React.createElement(GroupLegend, { items: [{ id: 'g', label: 'G' }], active: [] }))
+  return {
+    rows: (html.match(/gv-group-legend-row/g) ?? []).length,
+    checkboxes: (html.match(/type="checkbox"/g) ?? []).length,
+    checked: (html.match(/checked=""/g) ?? []).length,
+    notShownNotes: (html.match(/not shown/g) ?? []).length,
+    swatchColour: html.includes('#123456'),
+    bareHasNoCheckbox: !bare.includes('type="checkbox"'),
+  }
+}
+
 export function seamProbes(): Json {
-  return { viewHalf: viewHalf(), hostHalf: hostHalf(), counts: counts(), barRendered: barRendered(), barFromGraph: barFromGraph(), barWithoutPins: barWithoutPins(), barChromePins: barChromePins() }
+  return {
+    viewHalf: viewHalf(), hostHalf: hostHalf(), counts: counts(), barRendered: barRendered(), barFromGraph: barFromGraph(), barWithoutPins: barWithoutPins(), barChromePins: barChromePins(),
+    barCallbackAlone: barCallbackAlone(), barChrome: barChrome(), groupLegend: groupLegend(),
+  }
 }

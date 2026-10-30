@@ -60,7 +60,7 @@ export const NODE_FOCUS_STRENGTH = 2.2
 export interface NodeGroup {
   id: string
   nodeIds: ReadonlySet<string>
-  /** Whether the host emphasises this group (its legend row is hovered); the view glows it stronger. */
+  /** Whether the host emphasises this group; the view glows it stronger. A host's legend inside the pane uses `groupsControl`'s `emphasize` instead and leaves this out. */
   emphasized?: boolean
   /** The glow's colour, hex or rgb(); absent, the palette's slot for this group's place in the list. */
   color?: string
@@ -80,14 +80,14 @@ export interface ActiveGroup {
  * in the host's list in the theme's palette — so hiding one group recolours
  * none of the others.
  */
-export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: ReadonlySet<string>, theme: Theme = 'dark'): ActiveGroup[] {
+export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: ReadonlySet<string>, theme: Theme = 'dark', emphasized: string | null = null): ActiveGroup[] {
   const palette = GROUP_PALETTE[theme]
   const out: ActiveGroup[] = []
   groups.forEach((g, i) => {
     const nodeIds = new Set<string>()
     for (const id of g.nodeIds) if (visibleIds.has(id)) nodeIds.add(id)
     if (nodeIds.size === 0) return
-    out.push({ id: g.id, strength: g.emphasized ? HOVER_STRENGTH : 1, nodeIds, color: g.color ?? palette[i % palette.length] })
+    out.push({ id: g.id, strength: g.emphasized || g.id === emphasized ? HOVER_STRENGTH : 1, nodeIds, color: g.color ?? palette[i % palette.length] })
   })
   return out
 }

@@ -26,7 +26,7 @@
 //     does to a filter, who answers to a focus, what the nodes say per axis.
 
 import { countsOn, defaultFilter, hiddenMatchesOf, matchesFocus, passesSelection, reconcileFilter } from '@temporal-architect/graph-view'
-import type { FilterState, FocusTarget, AxisLocks, ViewTransition } from '@temporal-architect/graph-view'
+import type { AxisId, FilterState, FocusTarget, AxisLocks, ViewTransition } from '@temporal-architect/graph-view'
 import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { Taxonomy, TaxonomySpec } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { AxisDescriptor, Relation } from '@temporal-architect/graph-view/graph/axis'
@@ -40,6 +40,10 @@ import type { ScalarAxis } from '@temporal-architect/graph-view/graph/scalar'
 import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
 import { layoutFrame, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { validateGraph } from '@temporal-architect/graph-view/graph/validate'
+import { linkedSwitch } from '@temporal-architect/graph-view/filter/linked'
+import type { LinkedViewState } from '@temporal-architect/graph-view/filter/linked'
+import { selectionFor } from '@temporal-architect/graph-view/filter/types'
+import { activeGroupsOf } from '@temporal-architect/graph-view/graph/groups'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 
@@ -419,13 +423,13 @@ const POOL: readonly GraphNode[] = [
  * the filter passes but the caller hides is counted and tallies on no axis.
  */
 function hiddenMatches(): Json {
-  const axes = MINIMAL.filterAxes
+  const axes = MINIMAL.filterAxes.map(d => d.id)
   const kindThenZone = axes
   const zoneThenKind = [...axes].reverse()
   const filter = selection(['a', 'b'], ['east'])
-  const shown = (f: FilterState, chain: typeof axes) => new Set(POOL.filter(n => passesSelection(f, chain, dim => n.dimensions[dim])).map(n => n.id))
-  const split = (f: FilterState, chain: typeof axes, visible: ReadonlySet<string>) => {
-    const r = hiddenMatchesOf(POOL, f, chain, visible, n => n.name.includes('api'), (n, dim) => n.dimensions[dim])
+  const shown = (f: FilterState, chain: readonly AxisId[]) => new Set(POOL.filter(n => passesSelection(f, MINIMAL, chain, dim => n.dimensions[dim])).map(n => n.id))
+  const split = (f: FilterState, chain: readonly AxisId[], visible: ReadonlySet<string>) => {
+    const r = hiddenMatchesOf({ nodes: POOL, filter: f, taxonomy: MINIMAL, axes: chain, visibleIds: visible, matches: n => n.name.includes('api') })
     return { visible: sorted(r.visible), hiddenCount: r.hiddenCount, hiddenByAxis: nested(r.hiddenByAxis) }
   }
   return {
@@ -436,7 +440,7 @@ function hiddenMatches(): Json {
     // Every axis passes, the caller's visible set is empty: all counted, none tallied.
     hiddenByCaller: split(selection(['a', 'b', 'c'], []), kindThenZone, new Set()),
     noMatch: (() => {
-      const r = hiddenMatchesOf(POOL, filter, kindThenZone, shown(filter, kindThenZone), () => false, (n, dim) => n.dimensions[dim])
+      const r = hiddenMatchesOf({ nodes: POOL, filter, taxonomy: MINIMAL, axes: kindThenZone, visibleIds: shown(filter, kindThenZone), matches: () => false })
       return { visible: sorted(r.visible), hiddenCount: r.hiddenCount, hiddenByAxis: nested(r.hiddenByAxis) }
     })(),
   }
@@ -449,9 +453,9 @@ function hiddenMatches(): Json {
  * axes it had to override.
  */
 function reconciling(): Json {
-  const axes = MINIMAL.filterAxes
+  const axes = MINIMAL.filterAxes.map(d => d.id)
   const row = (destination: FilterState, source: FilterState, locks: AxisLocks, transition: ViewTransition, over = axes): Json => {
-    const r = reconcileFilter({ destination, source, locks, transition, axes: over })
+    const r = reconcileFilter({ destination, source, locks, transition, taxonomy: MINIMAL, axes: over })
     return {
       ...(filterRow(r.filter) as { [k: string]: Json }),
       overriddenLocks: sorted(r.overriddenLocks),
@@ -470,7 +474,7 @@ function reconciling(): Json {
       nonePinned: row(dest, source, pinned(false, false), { kind: 'manual' }),
       allPinned: row(dest, source, pinned(true, true), { kind: 'manual' }),
       // An axis the destination does not show is not adopted, pinned or not.
-      overOneAxis: row(dest, source, pinned(false, false), { kind: 'manual' }, axes.filter(a => a.id === KIND)),
+      overOneAxis: row(dest, source, pinned(false, false), { kind: 'manual' }, axes.filter(a => a === KIND)),
     },
     focus: {
       // Kind widens always; zone widens only when a selection is already active (here, it is not).
@@ -485,7 +489,7 @@ function reconciling(): Json {
       // An axis the target says nothing about, or says undefined about, is left alone.
       silentAxisUntouched: row(selection(['a'], ['east']), source, pinned(false, false), focus({ [KIND]: 'b', [ZONE]: undefined })),
       // An axis the destination does not show is not widened.
-      overOneAxis: row(selection(['a'], ['east']), source, pinned(false, false), focus({ [KIND]: 'b', [ZONE]: 'west' }), axes.filter(a => a.id === KIND)),
+      overOneAxis: row(selection(['a'], ['east']), source, pinned(false, false), focus({ [KIND]: 'b', [ZONE]: 'west' }), axes.filter(a => a === KIND)),
     },
   }
 }
@@ -530,10 +534,92 @@ function countsByCopy(): Json {
   return { kind: sortedRecord([...counts.get('kind')!]), dept: sortedRecord([...counts.get('dept')!]) }
 }
 
+const PROBE_COLOUR = { light: { fill: '#111111', border: '#222222' }, dark: { fill: '#333333', border: '#444444' } }
+
+/**
+ * The linked-views reducer: a manual switch adopts the source's selections on
+ * the destination's shown axes except where locked; a focus widens the
+ * destination and records the locks it overrode; a switch that changes
+ * nothing returns the same state object; an axis the destination does not
+ * show is left alone.
+ */
+function linkedViews(): Json {
+  const taxonomy = createTaxonomy({
+    styleAxis: 'kind',
+    values: [{ id: 'a', label: 'A', color: PROBE_COLOUR }, { id: 'b', label: 'B', color: PROBE_COLOUR }],
+    edgeTypes: [],
+    filterAxes: [{ id: 'kind', label: 'Kind', emptyMeans: 'none' }, { id: 'file', label: 'File', emptyMeans: 'all' }],
+  })
+  type Views = 'list' | 'graph'
+  const state: Readonly<Record<Views, LinkedViewState>> = {
+    list: { filter: new Map([['kind', new Set(['a'])], ['file', new Set(['f1'])]]), locks: new Map([['file', true]]), axes: ['kind', 'file'], overriddenLocks: new Set<string>() },
+    graph: { filter: new Map([['kind', new Set(['a', 'b'])], ['file', new Set(['f2'])]]), locks: new Map<string, boolean>(), axes: ['kind'], overriddenLocks: new Set<string>() },
+  }
+  const sel = (s: Readonly<Record<Views, LinkedViewState>>, view: Views, axis: string) => sorted(selectionFor(s[view].filter, axis))
+  const manual = linkedSwitch(state, taxonomy, 'list', 'graph', { kind: 'manual' })
+  const focus = linkedSwitch(state, taxonomy, 'list', 'graph', { kind: 'focus', target: { values: { kind: 'b', file: 'f2' } } })
+  const again = linkedSwitch(manual.state, taxonomy, 'list', 'graph', { kind: 'manual' })
+  const intoGraph = linkedSwitch(state, taxonomy, 'graph', 'list', { kind: 'manual' })
+  // Two empty overridden sets of different identity are no change.
+  const fresh: Readonly<Record<Views, LinkedViewState>> = { ...manual.state, list: { ...manual.state.list, overriddenLocks: new Set<string>() } }
+  const freshAgain = linkedSwitch(fresh, taxonomy, 'list', 'graph', { kind: 'manual' })
+  return {
+    emptySetsAreUnchanged: freshAgain.state === fresh,
+    manual: { kind: sel(manual.state, 'list', 'kind'), fileKeptByLock: sel(manual.state, 'list', 'file'), sourceUntouched: manual.state.graph === state.graph },
+    focus: { kind: sel(focus.state, 'list', 'kind'), file: sel(focus.state, 'list', 'file'), overrode: sorted(focus.state.list.overriddenLocks), reported: sorted(focus.result.overriddenLocks) },
+    unshownAxisLeftAlone: sel(intoGraph.state, 'graph', 'file'),
+    unchangedIsSameObject: again.state === manual.state,
+  }
+}
+
+/** A chip half-selected at seeding is snapped whole, with one warning; a selection along chip lines is kept as given. */
+function splitChipSnap(): Json {
+  const chips = (values: readonly string[]) => [
+    { id: 'org', label: 'Org', values: ['faculty', 'department'] },
+    { id: 'course', label: 'Course', values: ['course'] },
+  ].filter(c => c.values.some(v => values.includes(v)))
+  const build = (initial: readonly string[]) => createTaxonomy({
+    styleAxis: 'entity',
+    values: ['faculty', 'department', 'course'].map(id => ({ id, label: id, color: PROBE_COLOUR })),
+    edgeTypes: [],
+    filterAxes: [{ id: 'entity', label: 'Show', emptyMeans: 'none', chipsFor: chips, initialSelection: () => initial }],
+  })
+  const nodes = ['faculty', 'department', 'course'].map(v => ({ id: v, name: v, dimensions: { entity: v } }))
+  const warned: string[] = []
+  const original = console.warn
+  console.warn = (msg: unknown) => { warned.push(String(msg)) }
+  try {
+    const split = build(['department', 'course'])
+    const first = sorted(selectionFor(defaultFilter(split, { nodes }), 'entity'))
+    defaultFilter(split, { nodes })
+    // Once per taxonomy and chip: the second seeding of the same taxonomy says nothing more.
+    const warnedOnce = warned.filter(w => w.includes('splits the chip')).length
+    const partial = nodes.filter(n => n.id !== 'faculty')
+    return {
+      split: first,
+      warnedOnce,
+      // A chip chosen through a value the graph lacks reads as on to the bar, so its present values are added too.
+      absentValue: sorted(selectionFor(defaultFilter(build(['faculty']), { nodes: partial }), 'entity')),
+      whole: sorted(selectionFor(defaultFilter(build(['faculty', 'department']), { nodes }), 'entity')),
+    }
+  } finally { console.warn = original }
+}
+
+/** The group the view's control emphasises glows stronger; one the host marks `emphasized` still does. */
+function groupEmphasis(): Json {
+  const groups = [{ id: 'g', nodeIds: new Set(['a']) }, { id: 'h', nodeIds: new Set(['a']), emphasized: true }]
+  const plain = activeGroupsOf(groups, new Set(['a']), 'light')
+  const emphasised = activeGroupsOf(groups, new Set(['a']), 'light', 'g')
+  return { plain: plain.map(g => [g.id, g.strength]), emphasised: emphasised.map(g => [g.id, g.strength]) }
+}
+
 export function defaultsProbes(): Json {
   return {
     minimal: minimal(),
     countsByCopy: countsByCopy(),
+    linkedViews: linkedViews(),
+    splitChipSnap: splitChipSnap(),
+    groupEmphasis: groupEmphasis(),
     typicalSpring: typicalSpring(),
     defaultFilter: defaultFilterRow(),
     containment: containment(),

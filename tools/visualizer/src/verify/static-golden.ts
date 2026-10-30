@@ -151,12 +151,14 @@ const INTENTS: [string, ViewTransition][] = [
   ['focus:noSourceFile', { kind: 'focus', target: { values: { [DEF_TYPE_DIMENSION]: 'activityDef' } } }],
 ]
 
+const DEFAULT_AXES = DEFAULT_TAXONOMY.filterAxes.map(d => d.id)
+
 function reconcileMatrix(): Json {
   const rows: [string, Json][] = []
   for (const [destName, dest] of DEST_STATES) {
     for (const [pinName, pins] of PIN_STATES) {
       for (const [intentName, intent] of INTENTS) {
-        const result = reconcileFilter({ destination: dest, source: SOURCE_STATE, locks: pins, transition: intent, axes: DEFAULT_TAXONOMY.filterAxes })
+        const result = reconcileFilter({ destination: dest, source: SOURCE_STATE, locks: pins, transition: intent, taxonomy: DEFAULT_TAXONOMY, axes: DEFAULT_AXES })
         rows.push([`${destName} · ${pinName} · ${intentName}`, {
           selectedFiles: sorted(selectionFor(result.filter, SOURCE_FILE_DIMENSION)),
           visibleTypes: sorted(selectionFor(result.filter, DEF_TYPE_DIMENSION)),
@@ -213,12 +215,12 @@ function filterSetIdentity(): Json {
   }
   record(`toggleFile(${FILE_A}) [off]`, toggleValue(current, SOURCE_FILE_DIMENSION, FILE_A))
   record('reconcile(manual, unpinned)', reconcileFilter({
-    destination: current, source: SOURCE_STATE, locks: NO_PINS, transition: { kind: 'manual' }, axes: DEFAULT_TAXONOMY.filterAxes,
+    destination: current, source: SOURCE_STATE, locks: NO_PINS, transition: { kind: 'manual' }, taxonomy: DEFAULT_TAXONOMY, axes: DEFAULT_AXES,
   }).filter)
   // Reconciling against itself changes nothing, so the dest object comes back
   // by reference and no dimension's identity moves.
   record('reconcile(manual, self)', reconcileFilter({
-    destination: current, source: current, locks: NO_PINS, transition: { kind: 'manual' }, axes: DEFAULT_TAXONOMY.filterAxes,
+    destination: current, source: current, locks: NO_PINS, transition: { kind: 'manual' }, taxonomy: DEFAULT_TAXONOMY, axes: DEFAULT_AXES,
   }).filter)
 
   return steps

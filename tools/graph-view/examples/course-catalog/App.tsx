@@ -1,17 +1,16 @@
 // The host shell, leaning on the view's defaults. It controls the state its own
 // panel writes (the filter) or follows (the selection, which closing the panel
-// clears), observes the one its panel reads (the pins), hands the theme choice
-// in from the URL, asks the view to reveal a node by naming it (`focus`), and
-// leaves the chain of axes and the search to the view. It supplies what only
-// the host can know — chip counts, findings, programme groups, and what "Open
-// details" does.
+// clears), hands the theme choice in from the URL, asks the view to reveal a
+// node by naming it (`focus`), and leaves the axes, the locks and the search to
+// the view. It supplies what only the host can know — chip counts, findings,
+// programme groups, and what "Open details" does.
 
 import React from 'react'
 import {
-  GraphView, TaxonomyContext, copyGroups, defaultFilter, nodesById, payloadNumber, payloadString, lockedFor, schemeVars, selectionFor, withSelection,
+  GraphView, GroupLegend, TaxonomyContext, copyGroups, defaultFilter, nodesById, payloadNumber, payloadString, schemeVars, selectionFor, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
-  ActiveGroup, FilterState, FocusRequest, Graph, GraphNode, NodeGroup, AxisLocks, Selection, Theme, ThemeChoice,
+  FilterState, FocusRequest, Graph, GraphNode, NodeGroup, Selection, Theme, ThemeChoice,
 } from '@temporal-architect/graph-view'
 import { catalog } from './data'
 import type { Campus, Catalog } from './data'
@@ -59,8 +58,11 @@ function findingsOf(data: Catalog): string[] {
 }
 const FINDINGS = findingsOf(catalog)
 
+/** The legend's rows: every programme the catalog offers, drawn or not. */
+const PROGRAMMES = catalog.programmes.map(p => ({ id: p.id, label: p.name }))
+
 /** A programme glows over every copy of its courses and their labs. */
-function programmeGroups(g: Graph, enabled: ReadonlySet<string>, hovered: string | null): NodeGroup[] {
+function programmeGroups(g: Graph, enabled: ReadonlySet<string>): NodeGroup[] {
   const copies = copyGroups(g)
   return catalog.programmes.filter(p => enabled.has(p.id)).map(p => {
     const ids = new Set<string>()
@@ -69,18 +71,15 @@ function programmeGroups(g: Graph, enabled: ReadonlySet<string>, hovered: string
       if (node) for (const copy of copies.get(node.copyKey ?? node.id) ?? []) ids.add(copy)
     }
     for (const n of g.nodes) if (n.parentId && ids.has(n.parentId)) ids.add(n.id)
-    return { id: p.id, nodeIds: ids, emphasized: hovered === p.id }
+    return { id: p.id, nodeIds: ids }
   })
 }
 
 export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice }) {
   // Controlled: the details panel's "Show only <campus>" writes the filter.
   const [filter, setFilter] = React.useState<FilterState>(() => defaultFilter(taxonomy, graph))
-  // Uncontrolled but observed: the view keeps the pins, the panel reads one.
-  const [pins, setPins] = React.useState<AxisLocks>(() => new Map())
   const [themeChoice, setThemeChoice] = React.useState<ThemeChoice>(initialTheme)
   const [enabled, setEnabled] = React.useState<ReadonlySet<string>>(() => new Set(catalog.programmes.map(p => p.id)))
-  const [hovered, setHovered] = React.useState<string | null>(null)
   const [details, setDetails] = React.useState<GraphNode | null>(null)
   // Controlled: the panel's close clears it, and the view selects what it says.
   const [selected, setSelected] = React.useState<GraphNode | null>(null)
@@ -93,7 +92,7 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
   const [theme, setTheme] = React.useState<Theme>('light')
 
   const counts = React.useMemo(() => countsOf(catalog, selectionFor(filter, CAMPUS)), [filter])
-  const groups = React.useMemo(() => programmeGroups(graph, enabled, hovered), [enabled, hovered])
+  const groups = React.useMemo(() => programmeGroups(graph, enabled), [enabled])
 
   /** Ask the view to reveal `node`: it widens the filter just enough, centres and selects. */
   const reveal = (node: GraphNode) => setFocus({ id: node.id, key: ++focusSeq.current })
@@ -108,7 +107,16 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
             counts={counts}
             findings={FINDINGS.length > 0 && <Findings messages={FINDINGS} />}
             groups={groups}
-            groupsControl={active => <ProgrammeLegend active={active} enabled={enabled} onToggle={id => setEnabled(prev => toggled(prev, id))} onHover={setHovered} />}
+            groupsControl={(active, control) => (
+              <GroupLegend
+                title="Degree programmes"
+                items={PROGRAMMES}
+                active={active}
+                enabled={enabled}
+                onToggle={id => setEnabled(prev => toggled(prev, id))}
+                onEmphasize={control.emphasize}
+              />
+            )}
             nodeAction={{ label: 'Open details', onSelect: setDetails }}
             onNodeActivate={setDetails}
             theme={themeChoice}
@@ -116,7 +124,6 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
             onThemeResolved={setTheme}
             filter={filter}
             onFilterChange={setFilter}
-            onLocksChange={setPins}
             selectedId={selected?.id ?? null}
             onSelectionChange={setSelected}
             focus={focus}
@@ -126,7 +133,6 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
           <Details
             node={details}
             theme={theme}
-            campusPinned={lockedFor(pins, CAMPUS)}
             onReveal={reveal}
             onOnlyCampus={onlyCampus}
             onClose={() => { setDetails(null); setSelected(null) }}
@@ -152,30 +158,6 @@ function Findings({ messages }: { messages: readonly string[] }) {
   )
 }
 
-function ProgrammeLegend({ active, enabled, onToggle, onHover }: {
-  active: readonly ActiveGroup[]
-  enabled: ReadonlySet<string>
-  onToggle: (id: string) => void
-  onHover: (id: string | null) => void
-}) {
-  return (
-    <div className="catalog-legend" onMouseLeave={() => onHover(null)}>
-      <div className="catalog-legend-title">Degree programmes</div>
-      {catalog.programmes.map(p => {
-        const drawn = active.find(a => a.id === p.id)
-        return (
-          <label key={p.id} className="catalog-legend-row" onMouseEnter={() => onHover(p.id)}>
-            <input type="checkbox" checked={enabled.has(p.id)} onChange={() => onToggle(p.id)} />
-            <span className="catalog-swatch" style={{ background: drawn?.color ?? 'transparent' }} />
-            {p.name}
-            {enabled.has(p.id) && !drawn && <span className="catalog-muted"> (filtered out)</span>}
-          </label>
-        )
-      })}
-    </div>
-  )
-}
-
 /**
  * What "Open details" shows: the node the view hands over, and its listings —
  * the nodes that share its copy key — for the records the node does not carry.
@@ -185,10 +167,9 @@ function ProgrammeLegend({ active, enabled, onToggle, onHover }: {
  * "host theme" the view reads for `system`, and the choice would stop following
  * the OS.
  */
-function Details({ node, theme, campusPinned, onReveal, onOnlyCampus, onClose }: {
+function Details({ node, theme, onReveal, onOnlyCampus, onClose }: {
   node: GraphNode
   theme: Theme
-  campusPinned: boolean
   onReveal: (node: GraphNode) => void
   onOnlyCampus: (campus: string) => void
   onClose: () => void
@@ -213,9 +194,7 @@ function Details({ node, theme, campusPinned, onReveal, onOnlyCampus, onClose }:
         {campus && <><dt>Campus</dt><dd>{CAMPUS_LABEL[campus]}</dd></>}
       </dl>
       {campus && (
-        <button disabled={campusPinned} title={campusPinned ? 'The campus filter is pinned' : undefined} onClick={() => onOnlyCampus(campus)}>
-          Show only {CAMPUS_LABEL[campus]}
-        </button>
+        <button onClick={() => onOnlyCampus(campus)}>Show only {CAMPUS_LABEL[campus]}</button>
       )}
       {course?.requires && (
         <>

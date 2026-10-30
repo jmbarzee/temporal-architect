@@ -6,7 +6,7 @@ import './GraphView.css'
 import { nodesById, readableGraph, isContainment, withContainmentEdges } from '../graph/model'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import type { FilterState, AxisLocks } from '../filter/types'
-import { defaultFilter, filterStatesEqual, hiddenMatchesOf, listEqual, locksEqual, passesSelection, selectionFor, selectionsEqual, withSelection } from '../filter/types'
+import { defaultFilter, filterStatesEqual, hiddenMatchesOf, listEqual, locksEqual, passesDescriptors, selectionFor, selectionsEqual, withSelection } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
@@ -53,11 +53,17 @@ export interface Position { x: number; y: number }
 /** The host's action for a node, offered in the hover box: its label, and what it does with the host's own node. */
 export interface NodeAction { label: string; onSelect: (node: GraphNode) => void }
 
+/** What `groupsControl` may ask of the view. */
+export interface GroupsControl {
+  /** Emphasise one group (a legend row under the pointer), or none; the view glows it stronger. */
+  emphasize(id: string | null): void
+}
+
 /** Which parts of the pane's own chrome are offered; every part is on by default. */
 export interface GraphViewChrome {
   /** The search control in the bar. */
   search?: boolean
-  /** The lock toggle on each axis. Default: only when the host engages locks (`locks` or `onLocksChange`). */
+  /** The lock toggle on each axis. Default: only when the host controls `locks` with `onLocksChange` — a one-view host has nothing to lock against, and a value without its callback is read-only. */
   locks?: boolean
   /** The Fit / theme / Play cluster and the node count. */
   transport?: boolean
@@ -74,7 +80,7 @@ export interface GraphViewChrome {
 /**
  * What a host may ask of a mounted view. `focusNode` is the whole focus
  * recipe in one call: widen the filter just enough on the axes shown
- * (overriding a pin, which flashes), centre on the node once the layout has
+ * (overriding a lock, which flashes), centre on the node once the layout has
  * settled, and select it.
  */
 export interface GraphViewHandle {
@@ -117,15 +123,15 @@ export interface GraphViewProps {
   findings?: React.ReactNode
   /** Groups to glow, over the whole graph; the view restricts them to the visible set and colours them. */
   groups?: readonly NodeGroup[]
-  /** The host's control for its groups (a legend, a modal), rendered inside the pane — which sets `--gv-toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included. */
-  groupsControl?: (active: readonly ActiveGroup[]) => React.ReactNode
+  /** The host's control for its groups (`GroupLegend`, or its own), rendered inside the pane — which sets `--gv-toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included, and the view's `emphasize`. */
+  groupsControl?: (active: readonly ActiveGroup[], control: GroupsControl) => React.ReactNode
   /** The host's action for a node, offered in the hover box: one for every node, or the host's answer per node (null for none). */
   nodeAction?: NodeAction | ((node: GraphNode) => NodeAction | null)
   /** Whether the control panel (the forces, the node scale) is offered. Default true. */
   controls?: boolean
   /** Whether the Auto / Light / Dark button is offered. Default true. */
   themeToggle?: boolean
-  /** Which parts of the pane's chrome are offered. Default: everything, locks only when engaged. */
+  /** Which parts of the pane's chrome are offered. Default: everything, the lock toggles only when `locks` is controlled with its callback. */
   chrome?: GraphViewChrome
   /** The search control's title and placeholder, for a host with its own words. */
   searchTitle?: string
@@ -162,9 +168,11 @@ export interface GraphViewProps {
    * chosen its start, so a later graph re-seeds nothing.
    */
   defaultFilter?: FilterState
-  /** Which axes are pinned against a cross-view adoption. Default: none. */
+  /** Which axes are locked against a cross-view adoption. Default: none. Controlling it with `onLocksChange` shows the lock toggles. */
   locks?: AxisLocks
   onLocksChange?: (next: AxisLocks) => void
+  /** The locks a host-side focus into this view overrode (`useLinkedViews`'s `switchTo`); flashed once, beside the view's own. */
+  overriddenLocks?: ReadonlySet<string>
   /** The axes shown, in order. Default: every declared filter axis. Editable in the bar unless controlled without a callback. */
   axes?: readonly string[]
   onAxesChange?: (next: readonly string[]) => void
@@ -216,7 +224,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   className,
   style,
   filter: filterProp, onFilterChange, defaultFilter: defaultFilterProp,
-  locks: locksProp, onLocksChange,
+  locks: locksProp, onLocksChange, overriddenLocks: hostOverridden,
   axes: hostAxes, onAxesChange,
   search: searchProp, onSearchChange,
   theme: themeProp, onThemeChange,
@@ -254,11 +262,13 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     if (before === hostGraph) return
     seededFromRef.current = hostGraph
     if (defaultFilterProp !== undefined) return
+    // The seeds are `defaultFilter`'s — snapped to whole chips — on both sides.
+    const opened = defaultFilter(taxonomy, before)
+    const seed = defaultFilter(taxonomy, hostGraph)
     let next = filter
     for (const d of taxonomy.filterAxes) {
-      const opened = new Set(d.initialSelection(valuesOn(before.nodes, d.id)))
-      if (!selectionsEqual(selectionFor(filter, d.id), opened)) continue
-      next = withSelection(next, d.id, new Set(d.initialSelection(valuesOn(hostGraph.nodes, d.id))))
+      if (!selectionsEqual(selectionFor(filter, d.id), selectionFor(opened, d.id))) continue
+      next = withSelection(next, d.id, selectionFor(seed, d.id))
     }
     if (next !== filter) { filterRef.current = next; setFilter(next) }
   }, [hostGraph]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -279,7 +289,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   )
   const show = {
     search: chrome?.search ?? true,
-    locks: chrome?.locks ?? (locksProp !== undefined || onLocksChange !== undefined),
+    locks: chrome?.locks ?? (locksProp !== undefined && onLocksChange !== undefined),
     transport: chrome?.transport ?? true,
     diagnostics: chrome?.diagnostics ?? true,
     shortcuts: chrome?.shortcuts ?? true,
@@ -413,6 +423,12 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const timer = setTimeout(() => setFlashLocks(NO_FLASH), 600)
     return () => clearTimeout(timer)
   }, [flashLocks])
+  // The host's overridden locks (a focus it reconciled itself) are an event,
+  // not a value: folded into the view's own flash when they arrive, so the one
+  // timer puts both out and an old set never re-lights.
+  React.useEffect(() => {
+    if (hostOverridden && hostOverridden.size > 0) setFlashLocks(prev => new Set([...prev, ...hostOverridden]))
+  }, [hostOverridden])
 
   // Stale-file cleanup is now owned by the host shell (it touches both views'
   // filters consistently when the AST changes).
@@ -508,10 +524,12 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     activePullEdge, setActivePullEdge,
   } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph, taxonomy, selectedNodeId)
 
-  // The groups as drawn: the
-  // host's, restricted to the visible set and coloured in order. Drives the
-  // canvas glow and the host's control.
-  const activeGroups = React.useMemo(() => activeGroupsOf(groups ?? [], visibleIds, theme), [groups, visibleIds, theme])
+  // The groups as drawn: the host's, restricted to the visible set and
+  // coloured in order, the one its control emphasises glowing stronger.
+  // Drives the canvas glow and the host's control.
+  const [emphasizedGroup, setEmphasizedGroup] = React.useState<string | null>(null)
+  const groupsHandle = React.useMemo<GroupsControl>(() => ({ emphasize: setEmphasizedGroup }), [])
+  const activeGroups = React.useMemo(() => activeGroupsOf(groups ?? [], visibleIds, theme, emphasizedGroup), [groups, visibleIds, theme, emphasizedGroup])
 
   // Canvas glow set: the active groups with the group under the hovered/selected
   // node strengthened, so one group surfaces from many faint ones as the pointer
@@ -535,10 +553,9 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const lq = searchQuery.toLowerCase()
     const sim = simRef.current
     if (!sim) return { visibleMatchIds: new Set<string>(), hiddenMatchCount: 0, hiddenMatches: none }
-    const split = hiddenMatchesOf(sim.nodes, filter, filterAxes, visibleIds,
-      node => taxonomy.searchText(node).toLowerCase().includes(lq), (node, dim) => taxonomy.valueOn(node, dim))
+    const split = hiddenMatchesOf({ nodes: sim.nodes, filter, taxonomy, axes, visibleIds, matches: node => taxonomy.searchText(node).toLowerCase().includes(lq) })
     return { visibleMatchIds: split.visible, hiddenMatchCount: split.hiddenCount, hiddenMatches: split.hiddenByAxis }
-  }, [searchQuery, visibleIds, filter, filterAxes, taxonomy])
+  }, [searchQuery, visibleIds, filter, axes, taxonomy])
 
   // Physics loop + filter-driven reheats. Owns the RAF tick (with one-shot
   // initial fit, cross-view center, fps, and stability stop), the hover tooltip
@@ -648,7 +665,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   }
 
   // What a host may ask of the mounted view. `focusNode` is the whole focus
-  // recipe: widen the filter just enough on the axes shown (a pin it
+  // recipe: widen the filter just enough on the axes shown (a lock it
   // overrides flashes), then centre on and select the node once the layout
   // has settled — the loop consumes the request after its warm-up.
   const visibleNodesRef = useLatest(visibleNodes)
@@ -656,12 +673,12 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const node = graphIndex.get(id)
     if (!node) return false
     const base = filterRef.current
-    const result = reconcileFilter({ destination: base, source: base, locks, transition: { kind: 'focus', target: { values: node.dimensions } }, axes: filterAxes })
+    const result = reconcileFilter({ destination: base, source: base, locks, transition: { kind: 'focus', target: { values: node.dimensions } }, taxonomy, axes })
     if (result.filter !== base) { filterRef.current = result.filter; setFilter(result.filter) }
     if (result.overriddenLocks.size > 0) setFlashLocks(result.overriddenLocks)
     // Whether the widened filter shows the node: a value absent on a hiding
     // axis cannot be revealed by widening, and the host should know.
-    const shown = passesSelection(result.filter, filterAxes, dim => taxonomy.valueOn(node, dim))
+    const shown = passesDescriptors(result.filter, filterAxes, dim => taxonomy.valueOn(node, dim))
     if (!shown) return false
     pendingCenterRef.current = { nodeId: id }
     if (!running) {
@@ -669,7 +686,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       setRunning(true)
     }
     return true
-  }, [graphIndex, filterRef, locks, filterAxes, setFilter, running, setRunning, simRef, pendingCenterRef, taxonomy])
+  }, [graphIndex, filterRef, locks, axes, filterAxes, setFilter, running, setRunning, simRef, pendingCenterRef, taxonomy])
   // The declarative focus. A request is new when its id or key differs from
   // the last one; it waits until its node is in the graph, then runs the
   // focus recipe once and reports whether the node could be shown. A null
@@ -900,6 +917,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
         <div className="gv-graph-toolbar">
           <FilterBar
             chrome={{ search: show.search, locks: show.locks }}
+            theme={theme}
             counts={counts}
             values={valuesByDimension}
             filter={filter}
@@ -993,7 +1011,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       />}
 
       {/* The host's control for its groups (top-left), handed the groups as drawn. */}
-      {groupsControl?.(activeGroups)}
+      {groupsControl?.(activeGroups, groupsHandle)}
 
       {/* Shortcuts panel */}
       {show.shortcuts && shortcutsOpen && (

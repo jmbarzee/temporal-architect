@@ -10,7 +10,7 @@ import {
   lockedFor,
   withSelection,
   GraphView,
-  reconcileFilter,
+  useLinkedViews,
   themeChoiceOf,
   useHostTheme,
   schemeVars,
@@ -19,11 +19,9 @@ import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions
 import { useEditorTheme } from '../theme/useEditorTheme'
 import { loadState, saveState, type StorageConfig } from '../adapter/storage'
 import type {
-  FilterState,
   FocusRequest,
   GraphNode,
   AxisLocks,
-  AxisId,
   ThemeChoice,
 } from '@temporal-architect/graph-view'
 import React from 'react'
@@ -130,6 +128,7 @@ export const NavigationContext = React.createContext<NavigationContextType>({
 
 
 type ActiveView = 'tree' | 'graph'
+const VIEWS: readonly ActiveView[] = ['tree', 'graph']
 
 // A view switch as this host states it: a focus carries the target's name as
 // well as its values, because the tree finds a definition by name. The library's
@@ -182,29 +181,26 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
   )
 
-  // Per-view structural filter state, lifted from each view so the
-  // reconciler at switch time has access to both.
-  const [treeFilter, setTreeFilter] = React.useState<FilterState>(() =>
-    filterFromJSON(persisted.treeFilter) ?? startingFilter()
-  )
-  const [graphFilter, setGraphFilter] = React.useState<FilterState>(() =>
-    filterFromJSON(persisted.graphFilter) ?? startingFilter()
-  )
-
-  // Per-view pin state — when a dimension is pinned, the manual reconciler
-  // skips it; focus transitions can still override pins (with a flash).
-  // Which axes each view shows, in order (R17-R19). The default is the host's
+  // Each view's filter, locks and shown axes, and what a switch between the two
+  // does to them, live in the library's `useLinkedViews`. A view starts from its
+  // persisted state, else the default filter (narrowed to the focused file), the
+  // default locks and — the hook's default — every declared axis in the host's
   // declared order, so "default displayed filters" is configurable by declaring
-  // a different taxonomy rather than by a setting.
-  const DEFAULT_CHAIN = React.useMemo(
-    () => DEFAULT_TAXONOMY.filterAxes.map(d => d.id), [])
-  const [treeChain, setTreeChain] = React.useState<readonly string[]>(
-    () => persisted.treeChain ?? DEFAULT_CHAIN)
-  const [graphChain, setGraphChain] = React.useState<readonly string[]>(
-    () => persisted.graphChain ?? DEFAULT_CHAIN)
-
-  const [treePins, setTreePins] = React.useState<AxisLocks>(() => (locksFromJSON(persisted.treePins) ?? DEFAULT_PINS))
-  const [graphPins, setGraphPins] = React.useState<AxisLocks>(() => (locksFromJSON(persisted.graphPins) ?? DEFAULT_PINS))
+  // a different taxonomy rather than by a setting (R17-R19).
+  const linked = useLinkedViews({
+    taxonomy: DEFAULT_TAXONOMY,
+    views: VIEWS,
+    graph: model.graph,
+    initial: view => {
+      const saved = view === 'tree'
+        ? { filter: persisted.treeFilter, locks: persisted.treePins, axes: persisted.treeChain }
+        : { filter: persisted.graphFilter, locks: persisted.graphPins, axes: persisted.graphChain }
+      return { filter: filterFromJSON(saved.filter) ?? startingFilter(), locks: locksFromJSON(saved.locks) ?? DEFAULT_PINS, axes: saved.axes }
+    },
+  })
+  const { switchTo, updateFilter, updateFilters } = linked
+  const treeFilter = linked.state.tree.filter
+  const graphFilter = linked.state.graph.filter
 
   const graphCounts = React.useMemo(() => definitionCounts(ast, selectionFor(graphFilter, SOURCE_FILE_DIMENSION)), [ast, graphFilter])
 
@@ -245,17 +241,12 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const schemeStyle = React.useMemo(() => schemeVars(DEFAULT_TAXONOMY, hostTheme) as React.CSSProperties, [hostTheme])
   const [searchActive, setSearchActive] = React.useState<boolean>(false)
 
-  // Pending-focus target for a focus into the Tree. Reconciler has already
+  // Pending-focus target for a focus into the Tree. The hook has already
   // expanded the Tree's filter by the time this is set; the Tree consumes it
-  // for scroll/flash only. (A focus into the Graph is `graphFocus` below:
-  // the view does its own reconcile.)
+  // for scroll/flash only, and its bar flashes any lock the focus overrode.
+  // (A focus into the Graph is `graphFocus` below: the view does its own
+  // reconcile and flashes its own locks.)
   const [pendingFocus, setPendingFocus] = React.useState<TreeFocus | null>(null)
-
-  // Pin-override metadata: which dimensions the most recent focus
-  // transition bypassed in the Tree. The Tree consumes this on render
-  // to flash its pin icon, then calls back to clear. The Graph view keeps its
-  // own: `focusNode` flashes any pin it overrides.
-  const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<AxisId>>(new Set())
 
   // The node a cross-view focus asked the Graph view to reveal, centre and
   // select. The view applies a request whenever it changes, including one set
@@ -267,17 +258,18 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // Persist on every relevant state change. localStorage in standalone;
   // vscode.setState in webview (via the storage shim).
   React.useEffect(() => {
+    const { tree, graph } = linked.state
     saveState(STORAGE, {
-      treeFilter: filterToJSON(treeFilter),
-      graphFilter: filterToJSON(graphFilter),
-      treeChain: [...treeChain],
-      graphChain: [...graphChain],
-      treePins: locksToJSON(treePins),
-      graphPins: locksToJSON(graphPins),
+      treeFilter: filterToJSON(tree.filter),
+      graphFilter: filterToJSON(graph.filter),
+      treeChain: [...tree.axes],
+      graphChain: [...graph.axes],
+      treePins: locksToJSON(tree.locks),
+      graphPins: locksToJSON(graph.locks),
       searchQuery,
       graphTheme,
     })
-  }, [treeFilter, graphFilter, treePins, graphPins, treeChain, graphChain, searchQuery, graphTheme])
+  }, [linked.state, searchQuery, graphTheme])
 
   // Stale file cleanup: when the AST changes, remove any selectedFiles
   // entries that no longer exist in either view. Pins are not touched —
@@ -288,38 +280,32 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     for (const def of ast.definitions) {
       if (def.sourceFile) allFiles.add(def.sourceFile)
     }
-    const prune = (prev: FilterState): FilterState => {
-      const pruned = new Set([...selectionFor(prev, SOURCE_FILE_DIMENSION)].filter(f => allFiles.has(f)))
-      if (pruned.size === selectionFor(prev, SOURCE_FILE_DIMENSION).size) return prev
-      return withSelection(prev, SOURCE_FILE_DIMENSION, pruned)
-    }
-    setTreeFilter(prune)
-    setGraphFilter(prune)
-  }, [ast.definitions])
+    updateFilters(filter => {
+      const pruned = new Set([...selectionFor(filter, SOURCE_FILE_DIMENSION)].filter(f => allFiles.has(f)))
+      if (pruned.size === selectionFor(filter, SOURCE_FILE_DIMENSION).size) return filter
+      return withSelection(filter, SOURCE_FILE_DIMENSION, pruned)
+    })
+  }, [ast.definitions, updateFilters])
 
   // Focused-file auto-tracking (Tree only, preserves prior behavior).
   // When the editor's focused file changes, narrow the Tree to it — but
   // only when the Tree's files dimension is unpinned, since a pinned
   // user explicitly opted out of tracking.
-  const treeFilePinned = lockedFor(treePins, SOURCE_FILE_DIMENSION)
-  const treeShowsFiles = treeChain.includes(SOURCE_FILE_DIMENSION)
+  const treeFilePinned = lockedFor(linked.state.tree.locks, SOURCE_FILE_DIMENSION)
+  const treeShowsFiles = linked.state.tree.axes.includes(SOURCE_FILE_DIMENSION)
   React.useEffect(() => {
     if (treeFilePinned) return
-    // Do not repopulate an axis the Tree has removed — same reason as the
-    // reconciler above.
+    // Do not repopulate an axis the Tree has removed — same reason a switch
+    // reconciles only the axes the destination shows.
     if (!treeShowsFiles) return
-    if (ast.focusedFile) {
-      setTreeFilter(prev => {
-        const next = new Set([ast.focusedFile!])
-        if (selectionFor(prev, SOURCE_FILE_DIMENSION).size === 1 && selectionFor(prev, SOURCE_FILE_DIMENSION).has(ast.focusedFile!)) return prev
-        return withSelection(prev, SOURCE_FILE_DIMENSION, next)
-      })
-    }
+    const focused = ast.focusedFile
+    if (!focused) return
+    updateFilter('tree', filter => withSelection(filter, SOURCE_FILE_DIMENSION, new Set([focused])))
     // Depends on the file axis's pin, NOT the whole AxisLocks. Widening it to
     // the Map when pins became Maps meant pinning the KIND axis produced a new
     // Map, re-ran this effect, and silently reset the Tree's file selection to
     // the focused file.
-  }, [ast.focusedFile, treeFilePinned, treeShowsFiles])
+  }, [ast.focusedFile, treeFilePinned, treeShowsFiles, updateFilter])
 
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -369,40 +355,19 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
       return
     }
 
-    const dest = target === 'tree' ? treeFilter : graphFilter
-    const source = target === 'tree' ? graphFilter : treeFilter
-    const destPins = target === 'tree' ? treePins : graphPins
-
-    // Reconcile only the axes the DESTINATION displays.
-    //
-    // Passing every declared axis made removal non-durable: the reconciler
-    // re-imported the other view's selection for an axis this view had removed,
-    // so the next switch silently re-filtered the graph with no chip on screen
-    // and no way to reach it — the exact invisible state D44 removes an axis to
-    // prevent. An axis this view does not show is not filtering here, so there
-    // is nothing for a manual adopt or a focus expansion to do.
-    const destChain = target === 'tree' ? treeChain : graphChain
-    const destDimensions = destChain
-      .map(id => DEFAULT_TAXONOMY.axisFor(id))
-      .filter((d): d is NonNullable<typeof d> => d !== undefined)
-
-    const { filter: newFilter, overriddenLocks } =
-      reconcileFilter({ destination: dest, source, locks: destPins, transition, axes: destDimensions })
-
+    // Into the Tree, manual or focus: the hook reconciles the Tree's filter on
+    // the axes the Tree shows, and the locks a focus overrode reach the Tree's
+    // bar, which flashes them. Into the Graph (manual only, from here): the
+    // Graph adopts the Tree's selections except where it is locked.
     if (target === 'tree') {
-      if (newFilter !== dest) setTreeFilter(newFilter)
-      setTreeOverriddenPins(overriddenLocks)
-    } else if (newFilter !== dest) {
-      setGraphFilter(newFilter)
+      switchTo('tree', transition, 'graph')
+      if (transition.kind === 'focus') setPendingFocus(transition.target)
+    } else {
+      switchTo('graph', { kind: 'manual' }, 'tree')
+      setGraphEverShown(true)
     }
-
-    if (transition.kind === 'focus') {
-      setPendingFocus(transition.target)
-    }
-
-    if (target === 'graph') setGraphEverShown(true)
     setActiveView(target)
-  }, [activeView, treeFilter, graphFilter, treePins, graphPins, historyMode, model.graph])
+  }, [activeView, historyMode, model.graph, switchTo])
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
@@ -437,10 +402,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const handleSearchChange = React.useCallback((query: string, active: boolean) => {
     setSearchQuery(query)
     setSearchActive(active)
-  }, [])
-
-  const clearTreeOverriddenPins = React.useCallback(() => {
-    setTreeOverriddenPins(prev => prev.size === 0 ? prev : new Set())
   }, [])
 
   // When the Tree's file filter narrows to exactly one file, open it in
@@ -500,19 +461,12 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               active={activeView === 'tree'}
               ast={ast}
               onShowInGraph={showInGraph}
-              filter={treeFilter}
-              onFilterChange={setTreeFilter}
-              locks={treePins}
-              onLocksChange={setTreePins}
-              axes={treeChain}
-              onAxesChange={setTreeChain}
+              {...linked.of('tree')}
               searchQuery={searchQuery}
               searchActive={searchActive}
               onSearchChange={handleSearchChange}
               pendingFocus={pendingFocus}
               onFocusConsumed={clearPendingFocus}
-              overriddenLocks={treeOverriddenPins}
-              onOverriddenPinsConsumed={clearTreeOverriddenPins}
             />
           </div>
         )}
@@ -539,12 +493,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               nodeAction={historyMode ? undefined : { label: 'Show in Tree', onSelect: showInTree }}
               theme={graphTheme}
               onThemeChange={setGraphTheme}
-              filter={graphFilter}
-              onFilterChange={setGraphFilter}
-              locks={graphPins}
-              onLocksChange={setGraphPins}
-              axes={graphChain}
-              onAxesChange={setGraphChain}
+              {...linked.of('graph')}
               search={{ query: searchQuery, active: searchActive }}
               onSearchChange={next => handleSearchChange(next.query, next.active)}
             />
