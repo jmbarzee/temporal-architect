@@ -82,7 +82,8 @@ export function scalarProbes(): Json {
   const upRadial = frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'reach' }, true)
   const downRadial = frameFor(graph, DEFAULT_ONTOLOGY, { scalar: 'reach', span: { zero: -420, one: 420 } }, true)
 
-  const outOfRange: ScalarAxis = { id: 'two', label: 'Two', tooltip: 'probe', compute: g => new Map([...g.nodes].map(n => [n.id, 2])) }
+  // `normalize: 'none'` is what puts the answer under the [0, 1] contract; by default the frame divides by the largest and 2 is not out of range.
+  const outOfRange: ScalarAxis = { id: 'two', label: 'Two', tooltip: 'probe', normalize: 'none', compute: g => new Map([...g.nodes].map(n => [n.id, 2])) }
   const notANumber: ScalarAxis = { id: 'nan', label: 'NaN', tooltip: 'probe', compute: g => new Map([...g.nodes].map(n => [n.id, Number.NaN])) }
 
   return {

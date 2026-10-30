@@ -47,6 +47,11 @@ export function useSimulation(
   const simRef = React.useRef<Simulation | null>(null)
   const prevGraphRef = React.useRef<Graph | null>(null)
   const warnedRef = React.useRef(false)
+  // A taxonomy rebuilt on every render rebuilds the simulation on every
+  // render; three identities inside two seconds is that, said once.
+  const ontologyChanges = React.useRef<number[]>([])
+  const warnedOntologyRef = React.useRef(false)
+  const prevOntologyRef = React.useRef<Ontology | null>(null)
   const dragNodeRef = React.useRef<string | null>(null)
   const [running, setRunning] = React.useState(true)
   // Lazy initializer, and `ontology` has to be read before it: the starting
@@ -81,6 +86,17 @@ export function useSimulation(
       console.warn('[graph] the graph\'s identity changed but its shape did not; the view rebuilt its simulation for nothing. Keep one graph object until its nodes or edges change.')
     }
     prevGraphRef.current = graph
+    if (prevOntologyRef.current !== null && prevOntologyRef.current !== ontology && !warnedOntologyRef.current) {
+      const now = typeof performance !== 'undefined' ? performance.now() : 0
+      const recent = ontologyChanges.current.filter(t => now - t < 2000)
+      recent.push(now)
+      ontologyChanges.current = recent
+      if (recent.length >= 3) {
+        warnedOntologyRef.current = true
+        console.warn('[graph] the taxonomy\'s identity changed three times in two seconds; the view rebuilds its simulation for each. Build the ontology once, outside render.')
+      }
+    }
+    prevOntologyRef.current = ontology
     // Where nodes start: the host's kept layout under the previous
     // simulation's, so a graph update keeps the layout the user has.
     const start = new Map<string, { x: number; y: number }>(positions ?? [])

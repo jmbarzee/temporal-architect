@@ -10,7 +10,7 @@
 // wants to refuse a bad graph before mounting calls it itself.
 
 import type { Graph, GraphEdge } from './model'
-import { RELATION_DIMENSION } from './dimension'
+import { relationOf } from './model'
 import type { Ontology } from './ontology'
 
 export type GraphDiagnosticCode =
@@ -18,11 +18,12 @@ export type GraphDiagnosticCode =
   | 'edge-endpoint-missing'
   | 'edge-relation-unknown'
   | 'edge-type-rule-threw'
-  | 'edge-type-undeclared'
+  | 'edge-type-unclassified'
   | 'edge-type-relation-mismatch'
   | 'parent-missing'
   | 'containment-parent-mismatch'
   | 'node-value-undeclared'
+  | 'node-key-mismatch'
 
 export interface GraphDiagnostic {
   /** An error names something the view cannot draw as given; a warning, something it draws but the host should know. */
@@ -40,8 +41,12 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
   const declaredTypes = new Map(ontology.edgeTypes.map(e => [e.id, e]))
   const declaredValues = new Set(ontology.styleValues)
 
-  // Nodes: a parent that exists, a style value the taxonomy declares.
-  for (const node of graph.nodes.values()) {
+  // Nodes: keyed by their own id, a parent that exists, a style value the
+  // taxonomy declares.
+  for (const [key, node] of graph.nodes) {
+    if (key !== node.id) {
+      out.push({ severity: 'warning', code: 'node-key-mismatch', nodeId: node.id, message: `node ${JSON.stringify(node.id)} is keyed as ${JSON.stringify(key)} in the graph's map; the view reads it by its id` })
+    }
     if (node.parentId !== undefined && !graph.nodes.has(node.parentId)) {
       out.push({ severity: 'error', code: 'parent-missing', nodeId: node.id, message: `node ${JSON.stringify(node.id)} names parent ${JSON.stringify(node.parentId)}, which is not in the graph` })
     }
@@ -51,8 +56,8 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
     }
   }
 
-  // Edges: unique ids, both ends present, a known relation, a declared type
-  // whose relation is the edge's.
+  // Edges: unique ids, both ends present, a known relation, a type (when one
+  // classifies) whose relation is the edge's.
   const seenIds = new Set<string>()
   const containers = new Map<string, Set<string>>()
   for (const edge of graph.edges) {
@@ -68,26 +73,27 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
       out.push({ severity: 'error', code: 'edge-endpoint-missing', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} names ${missing.map(m => JSON.stringify(m)).join(' and ')}, not in the graph` })
       continue
     }
-    const relation = edge.dimensions[RELATION_DIMENSION]
-    if (relation === undefined || !RELATIONS.has(relation)) {
-      out.push({ severity: 'error', code: 'edge-relation-unknown', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has relation ${JSON.stringify(relation)}; the engine knows "containment" and "dependency"` })
+    if (edge.relation !== undefined && !RELATIONS.has(edge.relation)) {
+      out.push({ severity: 'error', code: 'edge-relation-unknown', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has relation ${JSON.stringify(edge.relation)}; the engine knows "containment" and "dependency"` })
       continue
     }
+    const relation = relationOf(edge)
     if (relation === 'containment') {
       const set = containers.get(edge.sourceId) ?? new Set<string>()
       set.add(edge.targetId)
       containers.set(edge.sourceId, set)
     }
-    let typeId: string
+    let typeId: string | undefined
     try {
-      typeId = ontology.resolveEdgeType(edge, ontology.valueFor(src), ontology.valueFor(tgt))
+      typeId = ontology.classifyEdge(edge, ontology.valueFor(src), ontology.valueFor(tgt))
     } catch (e) {
-      out.push({ severity: 'error', code: 'edge-type-rule-threw', edgeId: edge.id, message: `the taxonomy's edge rule threw on edge ${JSON.stringify(edge.id)}: ${e instanceof Error ? e.message : String(e)}` })
+      out.push({ severity: 'error', code: 'edge-type-rule-threw', edgeId: edge.id, message: `the taxonomy's classifyEdge threw on edge ${JSON.stringify(edge.id)}: ${e instanceof Error ? e.message : String(e)}` })
       continue
     }
-    const declared = declaredTypes.get(typeId)
+    const declared = typeId === undefined ? undefined : declaredTypes.get(typeId)
     if (!declared) {
-      out.push({ severity: 'error', code: 'edge-type-undeclared', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} resolves to type ${JSON.stringify(typeId)}, which edgeTypes does not declare` })
+      const said = typeId === undefined ? 'no declared type runs between its endpoints' : `classifyEdge answered ${JSON.stringify(typeId)}, which edgeTypes does not declare`
+      out.push({ severity: 'warning', code: 'edge-type-unclassified', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has no type: ${said}; it draws in the neutral stroke with the typical spring` })
       continue
     }
     if (declared.relation !== relation) {

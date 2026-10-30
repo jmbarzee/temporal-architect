@@ -8,7 +8,6 @@
 // a hidden-match badge) comes in as `searchExtra`.
 
 import { useOntology } from './graph-view/useOntology'
-import { colorVar } from '../graph/scheme'
 import type { DimensionValue } from '../graph/dimension'
 import { countsOn, valuesOn } from '../graph/dimension'
 import type { Graph } from '../graph/model'
@@ -17,13 +16,12 @@ import { useControllable } from './graph-view/useControllable'
 import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
 
 // A chip's tint names a style value; one that names nothing declared is a
-// host bug, said once per chip on the console rather than thrown in render,
-// and the chip draws neutral.
-const UNDECLARED_TINTS = new Set<string>()
-function tintOf(chipId: string, tint: DimensionValue, ontology: Ontology): DimensionValue {
+// host bug, said once per chip and per bar on the console rather than thrown
+// in render, and the chip draws neutral.
+function tintOf(chipId: string, tint: DimensionValue, ontology: Ontology, said: Set<string>): DimensionValue {
   if (ontology.styleValues.includes(tint)) return tint
-  if (!UNDECLARED_TINTS.has(chipId)) {
-    UNDECLARED_TINTS.add(chipId)
+  if (!said.has(chipId)) {
+    said.add(chipId)
     console.error(`[filter] chip ${JSON.stringify(chipId)} borrows the colour of ${JSON.stringify(tint)}, which the taxonomy does not declare`)
   }
   return tint
@@ -120,6 +118,7 @@ export function FilterBar({
 }: FilterBarProps) {
   const ontology = useOntology()
   if (!hostValues && !graph) throw new Error('FilterBar needs the values each axis offers: pass `values`, or the `graph` to read them off.')
+  const undeclaredTints = React.useRef(new Set<string>())
   const [chain, setChain] = useControllable(hostChain, onChainChange, () => ontology.filterDimensions.map(d => d.id))
   const chainEditable = hostChain === undefined || onChainChange !== undefined
   const [search, setSearch] = useControllable(searchProp, onSearchChange, () => ({ query: '', active: false }))
@@ -169,7 +168,9 @@ export function FilterBar({
         const descriptor = ontology.descriptorFor(dimension)
         if (!descriptor) return null
         const look = lookFor(dimension, descriptor)
-        const chips = descriptor.chipsFor(look.values)
+        // A chip none of whose values the data presents is not offered, whoever built it.
+        const present = new Set(look.values)
+        const chips = descriptor.chipsFor(look.values).filter(c => c.values.some(v => present.has(v)))
         // No values to offer: render the header and its remove control anyway,
         // so an axis that is filtering is always visible and always removable.
         // Vanishing is what made a third axis dangerous rather than merely
@@ -208,7 +209,7 @@ export function FilterBar({
                     <button
                       key={chip.id}
                       className={cls}
-                      style={chip.tint ? ({ ['--gv-chip-tint' as string]: `var(${colorVar(tintOf(chip.id, chip.tint, ontology))})` } as React.CSSProperties) : undefined}
+                      style={chip.tint ? ({ ['--gv-chip-tint' as string]: `var(${ontology.colorVar(tintOf(chip.id, chip.tint, ontology, undeclaredTints.current))})` } as React.CSSProperties) : undefined}
                       onClick={() => onFilterChange(toggleGroup(filter, dimension, chip.values))}
                       title={chip.tooltip ?? (isActive ? `Hide ${chip.label.toLowerCase()}` : `Show ${chip.label.toLowerCase()}`)}
                     >

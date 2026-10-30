@@ -1,14 +1,16 @@
 // The colour scheme's declared invariants, each with a reader (D57): the
-// custom-property naming rule, the colour normaliser's table, the inline
+// custom-property naming rule and the names a taxonomy publishes under it, the
+// colour normaliser's table, the inline
 // variables a pane carries under the default palette and under a second one,
 // and the stroke every edge type declares. Colour values appear here as a
 // host's declaration — what the pane publishes — not as a rendering claim;
 // what the canvas does with them is Gate 5's.
 
 import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
+import { ALL_EDGE_TYPES } from '../adapter/edge-types'
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
 import type { NodeStyle } from '@temporal-architect/graph-view/graph/taxonomy'
-import { THEMES, cssSuffix, colorVar, rgbOf, schemeVars, withAlpha } from '@temporal-architect/graph-view/graph/scheme'
+import { THEMES, cssSuffix, rgbOf, schemeVars, withAlpha } from '@temporal-architect/graph-view/graph/scheme'
 import { themeChoiceOf, themeOfMarker } from '@temporal-architect/graph-view/components/graph-view/useTheme'
 import type { ThemeMarker } from '@temporal-architect/graph-view/components/graph-view/useTheme'
 import type { Json } from './snapshot'
@@ -42,7 +44,20 @@ export function schemeProbes(): Json {
     // The naming rule: kebab-case of the value id, so `--color-nexus-endpoint`
     // is derived, never stored.
     suffixes: sortedRecord(['namespace', 'nexusEndpoint', 'nexusService', 'twoWords', 'ALLCAPS', 'with space', 'a1B2'].map(v => [v, cssSuffix(v)] as const)),
-    variableFor: colorVar('nexusEndpoint'),
+    variableFor: DEFAULT_ONTOLOGY.colorVar('nexusEndpoint'),
+    // The name each value is published under (the taxonomy's `colorVar`): the
+    // kebab suffix where it is unique and non-empty, a numbered name by
+    // declaration position where it is empty (`研究室`) or another value's
+    // (`nexusEndpoint` and `nexus-endpoint`; `café` and `cafè`). Nothing is
+    // refused; any string a host's data produces is a value.
+    colorVarNames: (() => {
+      const extra = ['nexus-endpoint', '研究室', 'café', 'cafè']
+      const ontology = createOntology({
+        ...DEFAULT_ONTOLOGY_SPEC,
+        values: [...DEFAULT_ONTOLOGY_SPEC.values, ...extra.map(id => ({ id, ...NODE_TYPE_REGISTRY.nexusEndpoint }))],
+      })
+      return sortedRecord(['nexusEndpoint', ...extra].map(v => [v, ontology.colorVar(v)] as const))
+    })(),
     // What the canvas can read, and what it does with what it cannot (T6):
     // never a throw, a neutral instead.
     normaliser: sortedRecord(['#abc', '#AABBCC', 'rgb(1, 2, 3)', 'rgba(4,5,6,0.5)', 'rgb(7 8 9 / 50%)', 'not-a-colour', 'var(--x)', ''].map(c => {
@@ -60,13 +75,10 @@ export function schemeProbes(): Json {
       light: e.style.color.light, dark: e.style.color.dark, alpha: e.style.alpha, dash: [...e.style.dash], width: e.style.width,
     }] as const)),
     strokeForUnknown: (() => { try { DEFAULT_ONTOLOGY.edgeStrokeFor('not-a-type'); return 'returned' } catch (e) { return (e as Error).message } })(),
-    // What the taxonomy refuses at construction (D58): two values sharing a
-    // custom-property name, a value with none, a colour no reader can parse.
+    // What the taxonomy refuses at construction (D58): a colour no reader can parse.
     refusals: {
-      sharedSuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: [...DEFAULT_ONTOLOGY_SPEC.values, { id: 'nexus-endpoint', ...NODE_TYPE_REGISTRY.nexusEndpoint }] })),
-      emptySuffix: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: [...DEFAULT_ONTOLOGY_SPEC.values, { id: '工作流', ...NODE_TYPE_REGISTRY.workflow }] })),
       namedColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: DEFAULT_ONTOLOGY_SPEC.values.map(v => v.id === 'worker' ? { ...v, color: { light: { fill: 'slategray', border: '#000' }, dark: v.color.dark } } : v) })),
-      cssVariableColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, edgeTypes: DEFAULT_ONTOLOGY_SPEC.edgeTypes.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
+      cssVariableColour: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, edgeTypes: ALL_EDGE_TYPES.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
       // A hidden-node policy outside its two values (D60): refused, not read as ascend.
       badWhenHidden: thrown(() => createOntology({ ...DEFAULT_ONTOLOGY_SPEC, values: DEFAULT_ONTOLOGY_SPEC.values.map(v => v.id === 'worker' ? { ...v, whenHidden: String('Splice') as NodeStyle['whenHidden'] } : v) })),
     },

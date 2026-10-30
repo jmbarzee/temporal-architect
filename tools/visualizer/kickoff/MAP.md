@@ -11,9 +11,9 @@ which is worth noticing rather than assuming.
 | file | zone | leak | imported by |
 |---|---|---:|---|
 | `App.tsx` | neither | 5 | `main.tsx` |
-| `adapter/build.ts` | shim | 56 | **6** files |
+| `adapter/build.ts` | shim | 55 | **6** files |
 | `adapter/dimensions.ts` | shim | 3 | **12** files |
-| `adapter/edge-types.ts` | shim | 176 | **6** files |
+| `adapter/edge-types.ts` | shim | 176 | **7** files |
 | `adapter/groups.ts` | shim | 2 | `components/GroupsModal.tsx`, `components/WorkflowCanvas.tsx`, `verify/seam-probes.ts` |
 | `adapter/node-type-styles.ts` | shim | 2 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
 | `adapter/node-types.ts` | shim | 133 | **19** files |
@@ -45,26 +45,26 @@ which is worth noticing rather than assuming.
 | `types/decomposition.ts` | shim | 3 | **7** files |
 | `types/parser-graph.ts` | shim | 3 | **7** files |
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
-| `verify/contract-probes.ts` | neither | 16 | `verify/static-golden.ts` |
-| `verify/defaults-probes.ts` | neither | 10 | `verify/static-golden.ts` |
+| `verify/contract-probes.ts` | neither | 15 | `verify/static-golden.ts` |
+| `verify/defaults-probes.ts` | neither | 14 | `verify/static-golden.ts` |
 | `verify/filter-states.ts` | neither | 14 | **7** files |
 | `verify/fixtures.ts` | neither | 10 | **6** files |
 | `verify/force-probes.ts` | neither | 28 | `verify/static-golden.ts` |
 | `verify/host-probes.ts` | neither | 2 | `verify/static-golden.ts` |
 | `verify/integrity-probes.ts` | neither | 10 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
-| `verify/ontology-probes.ts` | neither | 85 | `verify/static-golden.ts` |
+| `verify/ontology-probes.ts` | neither | 84 | `verify/static-golden.ts` |
 | `verify/rng.ts` | neither | 1 | **5** files |
 | `verify/scalar-probes.ts` | neither | 12 | `verify/static-golden.ts` |
-| `verify/scheme-probes.ts` | neither | 15 | `verify/static-golden.ts` |
+| `verify/scheme-probes.ts` | neither | 17 | `verify/static-golden.ts` |
 | `verify/seam-probes.ts` | neither | 10 | `verify/static-golden.ts` |
 | `verify/snapshot.ts` | neither |  | **17** files |
 | `verify/static-golden.ts` | neither | 24 | `verify/main.ts` |
-| `verify/synthetic-visible.ts` | neither | 33 | `verify/static-golden.ts` |
+| `verify/synthetic-visible.ts` | neither | 32 | `verify/static-golden.ts` |
 | `verify/tier-a.ts` | neither | 13 | **5** files |
 | `verify/tier-b.ts` | neither | 6 | `verify/main.ts` |
-| `verify/tier-c.ts` | neither | 17 | `verify/main.ts` |
-| `verify/tuning-probes.ts` | neither | 73 | `verify/contract-probes.ts`, `verify/static-golden.ts` |
+| `verify/tier-c.ts` | neither | 16 | `verify/main.ts` |
+| `verify/tuning-probes.ts` | neither | 74 | `verify/contract-probes.ts`, `verify/static-golden.ts` |
 | `verify/view-probes.ts` | neither | 13 | `verify/static-golden.ts` |
 | `../graph-view/components/AxisControls.tsx` | manifest |  | `../graph-view/components/GravityControls.tsx` |
 | `../graph-view/components/CanvasErrorBoundary.tsx` | manifest |  | `../graph-view/components/GraphView.tsx` |
@@ -88,7 +88,8 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/graph-view/present.ts` | manifest |  | **4** files |
 | `../graph-view/components/graph-view/useControllable.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useHighlight.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
-| `../graph-view/components/graph-view/useOntology.ts` | manifest |  | **9** files |
+| `../graph-view/components/graph-view/useIsomorphicLayoutEffect.ts` | manifest |  | `../graph-view/components/GraphView.tsx`, `../graph-view/components/graph-view/useTheme.ts` |
+| `../graph-view/components/graph-view/useOntology.ts` | manifest |  | **10** files |
 | `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulation.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useSimulationLoop.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
@@ -100,18 +101,18 @@ which is worth noticing rather than assuming.
 | `../graph-view/filter/reconcile.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
 | `../graph-view/filter/toggle.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/FilterBar.tsx`, `../graph-view/index.ts` |
 | `../graph-view/filter/types.ts` | manifest |  | **12** files |
-| `../graph-view/graph/dimension.ts` | manifest |  | **29** files |
-| `../graph-view/graph/forces.ts` | manifest |  | **20** files |
+| `../graph-view/graph/dimension.ts` | manifest |  | **25** files |
+| `../graph-view/graph/forces.ts` | manifest |  | **21** files |
 | `../graph-view/graph/groups.ts` | manifest |  | **5** files |
 | `../graph-view/graph/highlight.ts` | manifest |  | `verify/contract-probes.ts`, `verify/tier-a.ts`, `../graph-view/components/graph-view/useHighlight.ts` |
 | `../graph-view/graph/model.ts` | manifest |  | **28** files |
 | `../graph-view/graph/node-scale.ts` | manifest |  | **4** files |
 | `../graph-view/graph/ontology.ts` | manifest |  | **24** files |
 | `../graph-view/graph/rng.ts` | manifest |  | **4** files |
-| `../graph-view/graph/scalar.ts` | manifest |  | **10** files |
-| `../graph-view/graph/scheme.ts` | manifest |  | **12** files |
-| `../graph-view/graph/simulation.ts` | manifest |  | **28** files |
-| `../graph-view/graph/taxonomy.ts` | manifest |  | **9** files |
+| `../graph-view/graph/scalar.ts` | manifest |  | **11** files |
+| `../graph-view/graph/scheme.ts` | manifest |  | **9** files |
+| `../graph-view/graph/simulation.ts` | manifest |  | **29** files |
+| `../graph-view/graph/taxonomy.ts` | manifest |  | **11** files |
 | `../graph-view/graph/validate.ts` | manifest |  | **4** files |
 | `../graph-view/graph/viewport.ts` | manifest |  | **4** files |
 | `../graph-view/index.ts` | manifest |  | **13** files |

@@ -10,11 +10,10 @@
 import type { DimensionalMapping } from '../../graph/dimension'
 import { isIdentityMapping } from '../../graph/dimension'
 import type { Ontology } from '../../graph/ontology'
-import { colorVar } from '../../graph/scheme'
 
 export const NEUTRAL_BUCKET_COLOR = 'var(--gv-color-text-muted)'
 
 export function bucketColor(ontology: Ontology, mapping: DimensionalMapping, bucketId: string): string {
   const styled = mapping.dimension === ontology.styleAxis() && isIdentityMapping(mapping)
-  return styled ? `var(${colorVar(bucketId)})` : NEUTRAL_BUCKET_COLOR
+  return styled ? `var(${ontology.colorVar(bucketId)})` : NEUTRAL_BUCKET_COLOR
 }

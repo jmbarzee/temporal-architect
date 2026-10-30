@@ -2,9 +2,9 @@
 // weigh, how they filter. Everything the view knows about the domain comes
 // through `ontology` below.
 
-import { createOntology, payloadNumber, payloadString, RELATION_DIMENSION } from '@temporal-architect/graph-view'
+import { createOntology, isContainment, payloadNumber, payloadString } from '@temporal-architect/graph-view'
 import type {
-  DimensionDescriptor, EdgeStroke, EdgeType, FilterChip, GraphNode, Highlight, HighlightGraph,
+  DimensionDescriptor, EdgeStroke, EdgeType, FilterChip, GraphEdge, GraphNode, Highlight, HighlightGraph,
   NodeStyle, OntologySpec, ReadableGraph, ScalarAxis,
 } from '@temporal-architect/graph-view'
 import type { Campus } from './data'
@@ -71,6 +71,8 @@ const CONTAINS: EdgeStroke = {
   dash: [3, 4],
   width: 1,
 }
+// A containment type is classified by its pair alone — a child's tier and its
+// container's — so the library derives which one a containment edge is.
 const contains = (id: string, label: string, child: Entity, parent: Entity, strength: number, distance: number): EdgeType => ({
   id,
   label,
@@ -134,16 +136,16 @@ export const EDGE_TYPES: readonly EdgeType[] = [
   },
 ]
 
-const CONTAINMENT_BY_CHILD: Record<string, string> = { department: 'deptInFaculty', course: 'courseInDept', lab: 'labInCourse' }
-
 /**
- * Containment classifies by the child's tier. A dependency classifies by the
- * edge's own `requirement` alone: the rule must answer for any endpoint pair,
- * because an edge into a hidden course is re-pointed at its department.
+ * The tie-breaker the declared pairs cannot settle: three dependency types run
+ * between a course and a course, and only the edge's own `requirement` tells
+ * them apart. It answers for every dependency, whatever its endpoints (a lab
+ * can require a course or another lab), and says nothing for a containment
+ * edge, so the declared pairs above decide that.
  */
-function resolveEdgeType(edge: { dimensions: Readonly<Record<string, string>> }, src: string | undefined): string {
-  if (edge.dimensions[RELATION_DIMENSION] === 'containment') return CONTAINMENT_BY_CHILD[src ?? ''] ?? 'courseInDept'
-  const kind = edge.dimensions[REQUIREMENT]
+function classifyEdge(edge: GraphEdge): string | undefined {
+  if (isContainment(edge)) return undefined
+  const kind = edge.dimensions?.[REQUIREMENT]
   return kind === 'corequisite' || kind === 'recommended' ? kind : 'prerequisite'
 }
 
@@ -198,6 +200,8 @@ const FILTERS: readonly DimensionDescriptor[] = [
 // ── Scalars, hover line, highlight ──────────────────────────────────────────
 
 
+// A scalar answers raw numbers — the payload's value above its floor — and the
+// frame divides by the largest, so the heaviest course sits at 1.
 function scalarOf(id: string, label: string, tooltip: string, key: string, floor: number): ScalarAxis {
   return {
     id,
@@ -207,10 +211,9 @@ function scalarOf(id: string, label: string, tooltip: string, key: string, floor
       const raw = new Map<string, number>()
       for (const n of graph.nodes) {
         const v = payloadNumber(n, key)
-        if (v !== undefined) raw.set(n.id, v)
+        if (v !== undefined) raw.set(n.id, v - floor)
       }
-      const max = Math.max(floor + 1, ...raw.values())
-      return new Map([...raw].map(([id, v]) => [id, (v - floor) / (max - floor)]))
+      return raw
     },
   }
 }
@@ -244,7 +247,7 @@ function highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): H
   }
   const members = new Set(nodes)
   for (const e of graph.visibleEdges) {
-    if (e.dimensions[RELATION_DIMENSION] === 'dependency' && members.has(e.sourceId)) nodes.add(e.targetId)
+    if (!isContainment(e) && members.has(e.sourceId)) nodes.add(e.targetId)
   }
   return { nodes }
 }
@@ -255,7 +258,7 @@ export const spec: OntologySpec = {
   values: VALUES,
   filterDimensions: FILTERS,
   edgeTypes: EDGE_TYPES,
-  resolveEdgeType,
+  classifyEdge,
   scalars: SCALARS,
   contextLine,
   highlight,

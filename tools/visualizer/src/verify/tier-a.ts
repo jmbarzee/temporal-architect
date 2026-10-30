@@ -5,12 +5,11 @@
 // exact rationals). Byte-identical is the contract.
 
 import { DISPATCH_DIMENSION } from '../adapter/edge-types'
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
 import { filterOfSets } from './filter-states'
 import { buildGraph } from '../adapter/build'
 import { edgeTypeFor } from '../adapter/edge-types'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
-import { copyGroups, copyKeyOf, payloadString } from '@temporal-architect/graph-view/graph/model'
+import { copyGroups, copyKeyOf, payloadString, relationOf } from '@temporal-architect/graph-view/graph/model'
 import { Simulation, axisOptions, fitsCeiling, pairTuning, defaultParamsFor, sprungEdges } from '@temporal-architect/graph-view/graph/simulation'
 import { presentSpringCategories, resolveSprings, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { presentSetsOf } from '@temporal-architect/graph-view/components/graph-view/present'
@@ -22,6 +21,7 @@ import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
 import { SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { NEUTRAL_STROKE } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { Json } from './snapshot'
 import { histogram, sorted, sortedRecord } from './snapshot'
 
@@ -69,12 +69,12 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
   const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
   const parts = [
     edgeTypeFor(e, srcValue, tgtValue),
-    e.dimensions[RELATION_DIMENSION],
+    relationOf(e),
     `${e.sourceId} -> ${e.targetId}`,
   ]
   const ep = payloadString(e, 'nexusEndpoint')
   if (ep !== undefined) parts.push(`ep=${ep}`)
-  const dispatch = e.dimensions[DISPATCH_DIMENSION]
+  const dispatch = e.dimensions?.[DISPATCH_DIMENSION]
   if (dispatch !== undefined) parts.push(`dispatch=${dispatch}`)
   return parts.join('|')
 }
@@ -168,7 +168,9 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       byStroke: histogram(graph.edges.map(e => {
         const src = nodeOf(e.sourceId)
         const tgt = nodeOf(e.targetId)
-        const st = DEFAULT_ONTOLOGY.edgeStrokeFor(DEFAULT_ONTOLOGY.resolveEdgeType(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt)))
+        const type = DEFAULT_ONTOLOGY.classifyEdge(e, src && DEFAULT_ONTOLOGY.valueFor(src), tgt && DEFAULT_ONTOLOGY.valueFor(tgt))
+        // An unclassified edge draws in the neutral stroke, as the view does.
+        const st = type === undefined ? NEUTRAL_STROKE : DEFAULT_ONTOLOGY.edgeStrokeFor(type)
         return `${st.color.light}/${st.color.dark}|${st.dash.join(',')}|${st.width}`
       })),
     },

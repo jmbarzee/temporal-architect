@@ -23,7 +23,7 @@
 //      iteration to amplify a last-place difference, rounds identically
 //      everywhere.
 
-import { RELATION_DIMENSION, createDimensionalMapping } from '@temporal-architect/graph-view/graph/dimension'
+import { createDimensionalMapping } from '@temporal-architect/graph-view/graph/dimension'
 import {
   applyBandGravity,
   resolvePhysics,
@@ -118,17 +118,17 @@ function probe(run: (nodes: SimNode[], params: ForceParams, rng: () => number) =
 }
 
 const PROBE_EDGES: GraphEdge[] = [
-  { id: 'p0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'p1', sourceId: 'op', targetId: 'nx', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'p2', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
-  { id: 'p3', sourceId: 'ns', targetId: 'ep', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
-  { id: 'p4', sourceId: 'wf', targetId: 'op', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'p0', sourceId: 'wf', targetId: 'wk', relation: 'containment' },
+  { id: 'p1', sourceId: 'op', targetId: 'nx', relation: 'containment' },
+  { id: 'p2', sourceId: 'wf', targetId: 'act', relation: 'dependency' },
+  { id: 'p3', sourceId: 'ns', targetId: 'ep', relation: 'dependency' },
+  { id: 'p4', sourceId: 'wf', targetId: 'op', relation: 'dependency' },
   // The coincident pair, so the link force takes its degenerate branch too.
-  { id: 'p5', sourceId: 'dupA', targetId: 'dupB', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'p5', sourceId: 'dupA', targetId: 'dupB', relation: 'dependency' },
 ]
 
 /** An edge from the undeclared node, for the probes that add one. */
-const UNKNOWN_EDGE: GraphEdge = { id: 'pu', sourceId: 'unknown', targetId: 'wf', dimensions: { [RELATION_DIMENSION]: 'dependency' } }
+const UNKNOWN_EDGE: GraphEdge = { id: 'pu', sourceId: 'unknown', targetId: 'wf', relation: 'dependency' }
 
 /** The probe nodes and edges as a frame reads them. */
 function probeGraph(nodes: SimNode[]) {

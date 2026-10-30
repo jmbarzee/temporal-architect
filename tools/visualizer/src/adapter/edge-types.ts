@@ -27,7 +27,7 @@ import type { NodeType } from './node-types'
  */
 export const DISPATCH_DIMENSION: DimensionId = 'dispatch'
 export function dispatchOf(edge: Pick<GraphEdge, 'dimensions'>): DimensionValue | undefined {
-  return edge.dimensions[DISPATCH_DIMENSION]
+  return edge.dimensions?.[DISPATCH_DIMENSION]
 }
 // This domain's edge categories. The *shape* is library-owned (`./taxonomy`);
 // what is declared here is the closed set of ids this deployment model has, and
@@ -62,6 +62,7 @@ export interface TemporalEdgeType extends EdgeType {
   targetType: NodeType
   // Declared by every entry here, where the library lets a type leave them out.
   physics: SpringPhysics
+  style: EdgeStroke
   tooltip: string
 }
 
@@ -132,14 +133,18 @@ export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
     physics: { strength: 1.50, distance: 470 }, style: EP_COMPOSITION, tooltip: 'Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)' },
 ]
 
-// Resolve an edge to its category. Preserves the prioritized rule order of the
-// engine's former `edgeCategory` chain exactly: containment edges stratify by
-// their nexus / L3 / L4 endpoints; dependency edges stratify by tier and, for
-// the workflow ↔ operation pair, by direction. Unmatched cases fall through to
-// the broadest category in each branch (Worker↔Namespace containment;
-// Workflow↔Activity dep).
+// The taxonomy's `classifyEdge`: the tie-breaker the declared pairs cannot
+// settle. The library classifies an edge by the declared type whose relation
+// and endpoint values match its own, and several of this host's types share a
+// pair (a signal send and a child call run between the same two values), so
+// the host says which one an edge is. Preserves the prioritized rule order
+// of the engine's former `edgeCategory` chain exactly: containment edges
+// stratify by their nexus / L3 / L4 endpoints; dependency edges stratify by
+// tier and, for the workflow ↔ operation pair, by direction. Unmatched cases
+// fall through to the broadest category in each branch (Worker↔Namespace
+// containment; Workflow↔Activity dep).
 export function edgeTypeFor(
-  edge: Pick<GraphEdge, 'dimensions'>,
+  edge: Pick<GraphEdge, 'relation' | 'dimensions'>,
   src: DimensionValue | undefined,
   tgt: DimensionValue | undefined,
 ): EdgeTypeId {

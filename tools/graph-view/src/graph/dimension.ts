@@ -122,8 +122,13 @@ export interface DimensionDescriptor {
    * only if a selection is already active.
    */
   focus?: 'always' | 'whenActive'
-  /** What a change on this axis does to the running simulation, field by field. */
-  reheat?: Partial<ReheatPolicy>
+  /**
+   * Whether a change on this axis keeps the user's pan and zoom. Default: an
+   * allow-list refits the camera to the new extent (and seeds revealed nodes
+   * at their ancestors); a narrowing axis keeps the camera and reheats in
+   * place.
+   */
+  keepCamera?: boolean
   /**
    * How this axis's available values group into chips. Not one chip per
    * value: a chip may cover several values. Takes the available values
@@ -134,8 +139,10 @@ export interface DimensionDescriptor {
   chipsFor?(values: readonly DimensionValue[]): readonly FilterChip[]
   /** A value's display name. Absent: the style's label on the style axis, else the value itself. */
   labelFor?(value: DimensionValue): string
-  /** One or two characters for a token. Absent: the style's abbreviation on the style axis, else the value's first two characters. */
+  /** One or two characters for a token. Absent: the style's abbreviation on the style axis, else the first two characters of `labelFor`'s answer. */
   abbreviationFor?(value: DimensionValue): string
+  /** A chip's hover text, when the label alone does not identify the value (a file's full path under its basename). Absent: none. */
+  tooltipFor?(value: DimensionValue): string
   /**
    * The values selected when the view first opens, given the values the
    * graph presents on this axis. Absent: every value on an allow-list,
@@ -157,7 +164,9 @@ export interface ResolvedDimensionDescriptor extends AxisNamer {
   emptyMeans: 'all' | 'none'
   absentMeans: 'visible' | 'hidden'
   focus: 'always' | 'whenActive'
+  /** What a change on this axis asks of the simulation — derived from `emptyMeans` and `keepCamera`. */
   reheat: ReheatPolicy
+  tooltipFor?(value: DimensionValue): string
   chipsFor(values: readonly DimensionValue[]): readonly FilterChip[]
   initialSelection(values: readonly DimensionValue[]): readonly DimensionValue[]
   presentation: 'chip' | 'tag'
@@ -180,26 +189,24 @@ export function resolveDescriptor(d: DimensionDescriptor, style: StyleNamer): Re
   const allow = d.emptyMeans === 'none'
   const onStyle = d.id === style.axis
   const labelFor = d.labelFor ?? (onStyle ? style.labelFor : (v: DimensionValue) => v)
-  const abbreviationFor = d.abbreviationFor ?? (onStyle ? style.abbreviationFor : (v: DimensionValue) => v.slice(0, 2))
+  const abbreviationFor = d.abbreviationFor ?? (onStyle ? style.abbreviationFor : (v: DimensionValue) => labelFor(v).slice(0, 2))
+  const keepCamera = d.keepCamera ?? !allow
   return {
     id: d.id,
     label: d.label,
     emptyMeans: d.emptyMeans,
     absentMeans: d.absentMeans ?? (allow ? 'hidden' : 'visible'),
     focus: d.focus ?? (allow ? 'always' : 'whenActive'),
-    reheat: {
-      alpha: d.reheat?.alpha ?? (allow ? 0.5 : 0.3),
-      seedRevealed: d.reheat?.seedRevealed ?? allow,
-      refit: d.reheat?.refit ?? allow,
-      resume: d.reheat?.resume ?? true,
-    },
+    reheat: { alpha: allow ? 0.5 : 0.3, seedRevealed: !keepCamera, refit: !keepCamera, resume: true },
     labelFor,
     abbreviationFor,
+    tooltipFor: d.tooltipFor,
     chipsFor: d.chipsFor ?? (values => values.map(v => ({
       id: v,
       label: labelFor(v),
       icon: onStyle ? style.iconFor(v) || undefined : undefined,
       tint: onStyle ? v : undefined,
+      tooltip: d.tooltipFor?.(v),
       values: [v],
     }))),
     initialSelection: d.initialSelection ?? (values => (allow ? values : [])),
@@ -438,17 +445,9 @@ export function foldReheatPolicy(
 }
 
 /**
- * The one axis every edge carries, and the only axis the library declares:
- * the engine ships the code that reads it — edge graduation, highlighting and
- * spring resolution all branch on `relation`.
- *
- *   relation — 'containment' | 'dependency'. The structural meaning of the edge.
- *
- * Every other axis, on nodes and on edges, is the host's own, named by the
- * host; the library reads them only through the descriptors and the rules
- * the host declares.
+ * The structural meaning of an edge — the one fact about an edge the engine
+ * reads for itself (graduation, highlighting and spring resolution branch on
+ * it). It is a field of the edge, not an axis: every axis, on nodes and on
+ * edges, is the host's own.
  */
-export const RELATION_DIMENSION: DimensionId = 'relation'
-
-/** The two values the relation axis takes. */
 export type Relation = 'containment' | 'dependency'

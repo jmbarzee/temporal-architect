@@ -9,6 +9,7 @@
 
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
+import type { DimensionDescriptor } from '@temporal-architect/graph-view/graph/dimension'
 import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
 import {
@@ -19,7 +20,7 @@ import { isScalarTuning } from '@temporal-architect/graph-view/graph/scalar'
 import type { ForceParams, SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { resolvePhysics, springFor } from '@temporal-architect/graph-view/graph/forces'
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
-import { RELATION_DIMENSION, createDimensionalMapping, identityMapping } from '@temporal-architect/graph-view/graph/dimension'
+import { createDimensionalMapping, identityMapping } from '@temporal-architect/graph-view/graph/dimension'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import { filterOfSets } from './filter-states'
@@ -57,7 +58,7 @@ function manyFiles(n: number): Graph {
   const edges: GraphEdge[] = []
   for (let i = 0; i < n; i++) {
     nodes.push(syntheticNode(`n${i}`, 'workflow', `f${i}.twf`))
-    if (i > 0) edges.push({ id: `e${i}`, sourceId: `n${i - 1}`, targetId: `n${i}`, dimensions: { [RELATION_DIMENSION]: 'dependency' } })
+    if (i > 0) edges.push({ id: `e${i}`, sourceId: `n${i - 1}`, targetId: `n${i}`, relation: 'dependency' })
   }
   return graphOf(nodes, edges)
 }
@@ -226,7 +227,7 @@ function foreignAxisPhysics(graph: Graph): Json {
     })(),
     springIsTypical: (() => {
       const ids = sorted(axisOptions(DEFAULT_ONTOLOGY, graph).find(o => o.mapping.dimension === SOURCE_FILE_DIMENSION)!.mapping.buckets.map(b => b.id))
-      const edge: GraphEdge = { id: 's', sourceId: 'a', targetId: 'b', dimensions: { [RELATION_DIMENSION]: 'dependency' } }
+      const edge: GraphEdge = { id: 's', sourceId: 'a', targetId: 'b', relation: 'dependency' }
       const a = syntheticNode('a', 'workflow', ids[0])
       const b = syntheticNode('b', 'activity', ids[0])
       const s = springFor(resolved.spring, edge, a, b)
@@ -237,15 +238,25 @@ function foreignAxisPhysics(graph: Graph): Json {
   }
 }
 
-/** A host rule that returns an id its table does not declare is a host bug, and it throws — in `springFor`, before any tick. */
+/** The filter axes the shipped spec declares — optional in the library's shape, always present in this host's. */
+function shippedFilters(): readonly DimensionDescriptor[] {
+  const declared = DEFAULT_ONTOLOGY_SPEC.filterDimensions
+  if (!declared) throw new Error('tuning-probes: the shipped spec declares no filter axes')
+  return declared
+}
+
+/** A host rule that answers an id its table does not declare gets no category: the edge is sprung as typical and named by `validateGraph`, never thrown on. */
 function membership(): Json {
-  const rogue = createOntology({ ...DEFAULT_ONTOLOGY_SPEC, resolveEdgeType: () => 'notDeclaredAnywhere' })
+  const rogue = createOntology({ ...DEFAULT_ONTOLOGY_SPEC, classifyEdge: () => 'notDeclaredAnywhere' })
   const params = defaultParamsFor(rogue)
   const spring = resolvePhysics(params, rogue).spring
-  const edge: GraphEdge = { id: 'r', sourceId: 'a', targetId: 'b', dimensions: { [RELATION_DIMENSION]: 'dependency' } }
+  const edge: GraphEdge = { id: 'r', sourceId: 'a', targetId: 'b', relation: 'dependency' }
+  // A rogue id from the host's rule is no category: the edge is sprung as
+  // typical rather than throwing in the force loop.
   let message = 'DID NOT THROW'
-  try { springFor(spring, edge, syntheticNode('a', 'workflow', undefined), syntheticNode('b', 'activity', undefined)) } catch (err) { message = err instanceof Error ? err.message : String(err) }
-  return { throws: message !== 'DID NOT THROW', message }
+  let key: string | null = null
+  try { key = springFor(spring, edge, syntheticNode('a', 'workflow', undefined), syntheticNode('b', 'activity', undefined)).key ?? null } catch (err) { message = err instanceof Error ? err.message : String(err) }
+  return { throws: message !== 'DID NOT THROW', message, key }
 }
 
 /**
@@ -264,7 +275,7 @@ function visibilityPolicy(): Json {
   const filter = filterOfSets(allKinds, new Set<string>())
   const lenient = createOntology({
     ...DEFAULT_ONTOLOGY_SPEC,
-    filterDimensions: DEFAULT_ONTOLOGY_SPEC.filterDimensions.map(d => d.id === DEF_TYPE_DIMENSION ? { ...d, absentMeans: 'visible' as const } : d),
+    filterDimensions: shippedFilters().map(d => d.id === DEF_TYPE_DIMENSION ? { ...d, absentMeans: 'visible' as const } : d),
   })
   return {
     shipped: sorted(computeVisibleGraph(source, filter, DEFAULT_ONTOLOGY).visibleIds),
@@ -283,7 +294,7 @@ function coherence(): Json {
     duplicateValue: refusal(() => createOntology({ ...spec, values: [...spec.values, spec.values[0]] })),
     edgeEndpointUndeclared: refusal(() => createOntology({ ...spec, edgeTypes: [...spec.edgeTypes, { ...spec.edgeTypes[0], id: 'ghostLink', sourceType: 'ghost' }] })),
     duplicateEdgeType: refusal(() => createOntology({ ...spec, edgeTypes: [...spec.edgeTypes, spec.edgeTypes[0]] })),
-    duplicateFilterAxis: refusal(() => createOntology({ ...spec, filterDimensions: [...spec.filterDimensions, spec.filterDimensions[0]] })),
+    duplicateFilterAxis: refusal(() => createOntology({ ...spec, filterDimensions: [...shippedFilters(), shippedFilters()[0]] })),
     crossedBand: refusal(() => createOntology({ ...spec, values: spec.values.map((v, i) => i === 0 ? { ...v, physics: { ...v.physics, band: { ...v.physics?.band, y: { min: 10, max: -10 } } } } : v) })),
     duplicateBucketId: refusal(() => createDimensionalMapping({ id: 'm', label: 'M', dimension: 'probe', buckets: [
       { id: 'a', label: 'A', abbreviation: 'A', values: ['v1'] }, { id: 'a', label: 'A', abbreviation: 'A', values: ['v2'] }] })),

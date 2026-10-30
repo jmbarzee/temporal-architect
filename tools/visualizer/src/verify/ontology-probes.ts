@@ -14,12 +14,11 @@
 //      past the container again, the two rows below stop disagreeing and this
 //      probe goes red.
 
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
 import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
 import { filterOfSets } from './filter-states'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
-import { payloadString } from '@temporal-architect/graph-view/graph/model'
+import { payloadString, relationOf } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType, TemporalNodeStyle } from '../adapter/node-types'
 import type { NodeStyle } from '@temporal-architect/graph-view/graph/taxonomy'
 import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
@@ -70,8 +69,8 @@ const ALT_NODES: SimNode[] = NODES.map(n => {
   return node(n.id, t, n.parentId, ALT_DEF_TYPE[t])
 })
 const EDGES: GraphEdge[] = [
-  { id: 'c0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'd0', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'c0', sourceId: 'wf', targetId: 'wk', relation: 'containment' },
+  { id: 'd0', sourceId: 'wf', targetId: 'act', relation: 'dependency' },
 ]
 const sourceOf = (nodes: SimNode[]) => {
   const byId = new Map(nodes.map(n => [n.id, n]))
@@ -101,7 +100,7 @@ const ALTERNATE = createOntology({
   // Only the shipped edge types that run between values this taxonomy declares:
   // an edge type to a value nobody declared is refused at construction.
   edgeTypes: DEFAULT_ONTOLOGY.edgeTypes.filter(e => ALT_VALUES.includes(e.sourceType) && ALT_VALUES.includes(e.targetType)),
-  resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
+  classifyEdge: DEFAULT_ONTOLOGY.classifyEdge,
   scalars: [],
   fallbackStyle: NODE_TYPE_REGISTRY.activity,
 })
@@ -111,7 +110,7 @@ function visible(ontology: typeof DEFAULT_ONTOLOGY, source: typeof SOURCE, types
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     summaries: sorted([...vg.nodeSummaries].map(([id, s]) => `${id}=${s}`)),
-    graduatedEdges: sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${e.dimensions[RELATION_DIMENSION]}`)),
+    graduatedEdges: sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${relationOf(e)}`)),
     // The hover box's context line per visible node — the taxonomy's hook, or
     // its default, the parent's name (D59).
     contextLines: sorted(vg.visibleNodes.map(n => `${n.id}=${ontology.contextLine(n, n.parentId ? source.getNode(n.parentId) : undefined) ?? ''}`)),
@@ -129,11 +128,11 @@ const CHAIN_NODES: SimNode[] = [
   node('act2', 'activity', 'wk'),
 ]
 const CHAIN_EDGES: GraphEdge[] = [
-  { id: 'c0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c1', sourceId: 'act', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c2', sourceId: 'act2', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'd0', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
-  { id: 'd1', sourceId: 'act2', targetId: 'wf', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+  { id: 'c0', sourceId: 'wf', targetId: 'wk', relation: 'containment' },
+  { id: 'c1', sourceId: 'act', targetId: 'wk', relation: 'containment' },
+  { id: 'c2', sourceId: 'act2', targetId: 'wk', relation: 'containment' },
+  { id: 'd0', sourceId: 'wf', targetId: 'act', relation: 'dependency' },
+  { id: 'd1', sourceId: 'act2', targetId: 'wf', relation: 'dependency' },
 ]
 const CHAIN = (() => { const byId = new Map(CHAIN_NODES.map(n => [n.id, n])); return { nodes: CHAIN_NODES, edges: CHAIN_EDGES, getNode: (id: string) => byId.get(id) } })()
 const SPLICING = createOntology({
@@ -142,7 +141,7 @@ const SPLICING = createOntology({
 })
 function hiddenPolicy(ontology: typeof DEFAULT_ONTOLOGY): Json {
   const vg = computeVisibleGraph(CHAIN, filterOfSets(new Set(['workerDef', 'activityDef']), new Set<string>()), ontology)
-  return sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${e.dimensions[RELATION_DIMENSION]}`))
+  return sorted(vg.visibleEdges.map(e => `${e.sourceId} -> ${e.targetId}|${relationOf(e)}`))
 }
 
 // Two graduated edges landing on one pair (D60): a call edge carrying
@@ -151,7 +150,7 @@ function hiddenPolicy(ontology: typeof DEFAULT_ONTOLOGY): Json {
 // source side to the same caller. The one carrying metadata keeps precedence
 // whichever the parser emits first — the rule the fixtures pinned, said
 // without a payload key.
-const edgeLine = (e: GraphEdge) => `${e.sourceId} -> ${e.targetId}|${e.dimensions[RELATION_DIMENSION]}${e.payload ? '|meta=' + Object.keys(e.payload).sort().join(',') : ''}`
+const edgeLine = (e: GraphEdge) => `${e.sourceId} -> ${e.targetId}|${relationOf(e)}${e.payload ? '|meta=' + Object.keys(e.payload).sort().join(',') : ''}`
 function collision(callFirst: boolean): Json {
   const nodes: SimNode[] = [
     node('wk', 'worker'),
@@ -160,18 +159,18 @@ function collision(callFirst: boolean): Json {
     node('op', 'nexusOperation', 'svc'),
     node('backing', 'workflow', 'wk'),
   ]
-  const call: GraphEdge = { id: 'call', sourceId: 'caller', targetId: 'op', dimensions: { [RELATION_DIMENSION]: 'dependency' }, payload: { route: 'ep' } }
-  const backs: GraphEdge[] = [{ id: 'backs', sourceId: 'op', targetId: 'backing', dimensions: { [RELATION_DIMENSION]: 'dependency' } }]
+  const call: GraphEdge = { id: 'call', sourceId: 'caller', targetId: 'op', relation: 'dependency', payload: { route: 'ep' } }
+  const backs: GraphEdge[] = [{ id: 'backs', sourceId: 'op', targetId: 'backing', relation: 'dependency' }]
   const contain: GraphEdge[] = [
-    { id: 'c1', sourceId: 'caller', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-    { id: 'c2', sourceId: 'svc', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-    { id: 'c3', sourceId: 'op', targetId: 'svc', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-    { id: 'c4', sourceId: 'backing', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+    { id: 'c1', sourceId: 'caller', targetId: 'wk', relation: 'containment' },
+    { id: 'c2', sourceId: 'svc', targetId: 'wk', relation: 'containment' },
+    { id: 'c3', sourceId: 'op', targetId: 'svc', relation: 'containment' },
+    { id: 'c4', sourceId: 'backing', targetId: 'wk', relation: 'containment' },
   ]
   const edges = callFirst ? [...contain, call, ...backs] : [...contain, ...backs, call]
   const byId = new Map(nodes.map(n => [n.id, n]))
   const vg = computeVisibleGraph({ nodes, edges, getNode: (id: string) => byId.get(id) }, filterOfSets(new Set(['workerDef', 'workflowDef', 'nexusServiceDef']), new Set<string>()), DEFAULT_ONTOLOGY)
-  return sorted(vg.visibleEdges.filter(e => e.dimensions[RELATION_DIMENSION] === 'dependency').map(edgeLine))
+  return sorted(vg.visibleEdges.filter(e => relationOf(e) === 'dependency').map(edgeLine))
 }
 
 // Two hidden spliced nodes that call each other, and a visible caller into the
@@ -185,13 +184,13 @@ function cycle(): Json {
     node('pong', 'nexusOperation', 'svc'),
   ]
   const edges: GraphEdge[] = [
-    { id: 'c1', sourceId: 'caller', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-    { id: 'c2', sourceId: 'svc', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-    { id: 'c3', sourceId: 'ping', targetId: 'svc', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-    { id: 'c4', sourceId: 'pong', targetId: 'svc', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-    { id: 'd0', sourceId: 'caller', targetId: 'ping', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
-    { id: 'd1', sourceId: 'ping', targetId: 'pong', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
-    { id: 'd2', sourceId: 'pong', targetId: 'ping', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
+    { id: 'c1', sourceId: 'caller', targetId: 'wk', relation: 'containment' },
+    { id: 'c2', sourceId: 'svc', targetId: 'wk', relation: 'containment' },
+    { id: 'c3', sourceId: 'ping', targetId: 'svc', relation: 'containment' },
+    { id: 'c4', sourceId: 'pong', targetId: 'svc', relation: 'containment' },
+    { id: 'd0', sourceId: 'caller', targetId: 'ping', relation: 'dependency' },
+    { id: 'd1', sourceId: 'ping', targetId: 'pong', relation: 'dependency' },
+    { id: 'd2', sourceId: 'pong', targetId: 'ping', relation: 'dependency' },
   ]
   const byId = new Map(nodes.map(n => [n.id, n]))
   const vg = computeVisibleGraph({ nodes, edges, getNode: (id: string) => byId.get(id) }, filterOfSets(new Set(['workerDef', 'workflowDef']), new Set<string>()), DEFAULT_ONTOLOGY)
@@ -345,7 +344,7 @@ function physicsInjection(): Json {
       physics: { strength: 0.7, distance: 123 }, tooltip: 'zone link',
       style: { color: { light: '#000000', dark: '#FFFFFF' }, alpha: 1, dash: [], width: 1 },
     }],
-    resolveEdgeType: () => 'zoneLink',
+    classifyEdge: () => 'zoneLink',
     scalars: [],
     fallbackStyle: NODE_TYPE_REGISTRY.activity,
   })

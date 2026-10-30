@@ -21,7 +21,7 @@ import type { DimensionDescriptor, DimensionId, DimensionMap, DimensionValue, Re
 import { hasOwn, resolveDescriptor } from './dimension'
 import type { GraphEdge, GraphNode } from './model'
 import type { EdgeType, EdgeTypeId, NodeStyle, ResolvedEdgeType, ResolvedNodeStyle } from './taxonomy'
-import { resolveEdgeType as resolveEdgeTypeDefaults, resolveNodeStyle as resolveNodeStyleDefaults, typicalSpringOf } from './taxonomy'
+import { NEUTRAL_STROKE, resolveEdgeType as resolveEdgeTypeDefaults, resolveNodeStyle as resolveNodeStyleDefaults, typicalSpringOf } from './taxonomy'
 import type { ScalarAxis } from './scalar'
 import type { EdgeStroke } from './scheme'
 import { cssSuffix, isSchemeColor } from './scheme'
@@ -87,8 +87,16 @@ export interface Ontology {
   readonly edgeTypes: readonly ResolvedEdgeType[]
   /** Every computed scalar a layout axis may key on: the built-ins, then the host's. */
   readonly scalars: readonly ScalarAxis[]
-  /** How the canvas strokes an edge of this type. Loud for an id the host did not declare. */
+  /** How the canvas strokes an edge of this type; the neutral stroke, said once, for an id the taxonomy does not declare. */
   edgeStrokeFor(id: EdgeTypeId): EdgeStroke
+  /**
+   * The custom property a value's fill is published under (`-border` for its
+   * border): `--gv-node-` and the value id in kebab case, or a numbered name
+   * when the id kebab-cases to nothing or to another value's name. The one
+   * way to learn the name; a host's CSS reads it through `schemeVars` or
+   * `schemeStylesheet`.
+   */
+  colorVar(value: DimensionValue): string
   /** The hover box's context line(s) for a node — the host's, or its parent's name. */
   contextLine(node: GraphNode, parent: GraphNode | undefined): string | readonly string[] | undefined
   /** What the search control matches against for a node — the host's text, or the name. */
@@ -113,15 +121,14 @@ export interface Ontology {
   /** The same as `styleOf`, addressed by a node. The hot-path entry point. */
   resolveNodeStyle(subject: StyleSubject): ResolvedNodeStyle
   /**
-   * The host's rule for which type an edge on the style axis belongs to,
-   * given its two endpoint values. The engine reads the axis and hands the
-   * values over, so the rule never decides which dimension to look at — and it
-   * applies only while springs key on the style axis unmapped; any other
-   * (axis, mapping) resolves through the library's pair rule. The values
-   * are read live from the endpoint nodes, never cached on the edge: a
-   * denormalized copy goes stale the moment graduation re-points an edge.
+   * Which declared edge type an edge is, given the style values of its two
+   * ORIGINAL endpoints — the host's `classifyEdge` first, then the one
+   * declared type whose relation and endpoint values match in either
+   * orientation; undefined when neither names one. Classified once, on the
+   * original endpoints; the type is carried through graduation, so a
+   * re-pointed edge keeps its stroke and its spring.
    */
-  resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
+  classifyEdge(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId | undefined
   /** Which of two graduated edges on one visible pair survives: the host's choice, or the one kept so far. */
   collapse(kept: GraphEdge, candidate: GraphEdge): GraphEdge
 }
@@ -149,9 +156,17 @@ export interface OntologySpec {
    */
   fallbackStyle?: Omit<NodeStyle, 'id'>
   edgeTypes: readonly EdgeType[]
-  /** The rule: which declared edge type an edge is, given its endpoints' style values. */
-  resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
-  filterDimensions: readonly DimensionDescriptor[]
+  /**
+   * The host's say in classifying an edge, given the style values of its
+   * original endpoints: an id to use, or undefined to let the declared types
+   * decide (the one whose relation and endpoint values match, in either
+   * orientation). Required only when two declared types run between the
+   * same values with the same relation — a call and a signal between the
+   * same two nodes, say — since nothing else can tell them apart.
+   */
+  classifyEdge?: (edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined) => EdgeTypeId | undefined
+  /** The axes the filter bar offers. Absent, the style axis alone, as an allow-list. */
+  filterDimensions?: readonly DimensionDescriptor[]
   /**
    * Computed scalars this host adds to the built-ins: each reads node
    * metadata — its own payload included — and the graph's structure, and
@@ -213,17 +228,17 @@ export function createOntology(spec: OntologySpec): Ontology {
     if (valueSet.has(v)) problems.push(`style value ${JSON.stringify(v)} is declared twice`)
     valueSet.add(v)
   }
-  // The custom-property name is derived from the value id (kebab case), so two
-  // ids may share one — and one may be empty. Refuse both: the canvas and a
-  // token would read the same value differently.
-  const bySuffix = new Map<string, DimensionValue>()
-  for (const v of valueSet) {
-    const suffix = cssSuffix(v)
-    if (suffix === '') problems.push(`style value ${JSON.stringify(v)} has no custom-property name (its id kebab-cases to nothing)`)
-    const other = bySuffix.get(suffix)
-    if (other !== undefined) problems.push(`style values ${JSON.stringify(other)} and ${JSON.stringify(v)} share the custom-property name --gv-node-${suffix}`)
-    bySuffix.set(suffix, v)
-  }
+  // The custom-property name is the value id in kebab case where that is
+  // unique and non-empty; a value whose id kebab-cases to nothing or to
+  // another value's name takes a numbered one, so any string a host's data
+  // produces is a value.
+  const suffixCount = new Map<string, number>()
+  for (const v of values) suffixCount.set(cssSuffix(v), (suffixCount.get(cssSuffix(v)) ?? 0) + 1)
+  const suffixOf = new Map<DimensionValue, string>()
+  values.forEach((v, i) => {
+    const kebab = cssSuffix(v)
+    suffixOf.set(v, kebab !== '' && suffixCount.get(kebab) === 1 ? kebab : `v${i + 1}`)
+  })
   // Every colour must be a form every reader parses without a browser (hex or
   // rgb()); the canvas would otherwise ignore it silently.
   const colour = (where: string, c: string) => { if (!isSchemeColor(c)) problems.push(`${where} is ${JSON.stringify(c)}, not a hex or rgb() colour`) }
@@ -248,20 +263,34 @@ export function createOntology(spec: OntologySpec): Ontology {
   const fallbackSpec = spec.fallbackStyle ?? DEFAULT_FALLBACK
   checkStyle('fallbackStyle', fallbackSpec)
   const edgeIds = new Set<EdgeTypeId>()
+  // The pair a type runs between, unordered: what classifies an edge when the
+  // host's rule says nothing, so two types on one pair need that rule.
+  const pairKey = (relation: string, a: DimensionValue, b: DimensionValue) => JSON.stringify(a <= b ? [relation, a, b] : [relation, b, a])
+  const byPair = new Map<string, EdgeTypeId[]>()
   for (const e of spec.edgeTypes) {
     if (edgeIds.has(e.id)) problems.push(`edge type ${JSON.stringify(e.id)} is declared twice`)
     edgeIds.add(e.id)
-    colour(`edgeTypes.${e.id}.style.color.light`, e.style.color.light)
-    colour(`edgeTypes.${e.id}.style.color.dark`, e.style.color.dark)
+    if (e.style?.color?.light !== undefined) colour(`edgeTypes.${e.id}.style.color.light`, e.style.color.light)
+    if (e.style?.color?.dark !== undefined) colour(`edgeTypes.${e.id}.style.color.dark`, e.style.color.dark)
     for (const end of ['sourceType', 'targetType'] as const) {
       if (!valueSet.has(e[end])) problems.push(`edgeTypes.${e.id}.${end} is ${JSON.stringify(e[end])}, which values does not declare`)
     }
     if (e.relation !== 'containment' && e.relation !== 'dependency') {
       problems.push(`edgeTypes.${e.id}.relation is ${JSON.stringify(e.relation)}, not 'containment' or 'dependency'`)
     }
+    const key = pairKey(e.relation, e.sourceType, e.targetType)
+    const sharing = byPair.get(key) ?? []
+    sharing.push(e.id)
+    byPair.set(key, sharing)
   }
+  if (!spec.classifyEdge) {
+    for (const [key, ids] of byPair) {
+      if (ids.length > 1) problems.push(`edge types ${ids.map(id => JSON.stringify(id)).join(' and ')} run between the same values with the same relation (${JSON.parse(key)[0]}); give classifyEdge to tell them apart`)
+    }
+  }
+  const filterDimensions = spec.filterDimensions ?? [{ id: spec.styleDimension, label: spec.styleLabel ?? spec.styleDimension, emptyMeans: 'none' as const }]
   const axisIds = new Set<DimensionId>()
-  for (const d of spec.filterDimensions) {
+  for (const d of filterDimensions) {
     if (axisIds.has(d.id)) problems.push(`filter dimension ${JSON.stringify(d.id)} is declared twice`)
     axisIds.add(d.id)
     if (d.emptyMeans !== 'all' && d.emptyMeans !== 'none') {
@@ -289,10 +318,21 @@ export function createOntology(spec: OntologySpec): Ontology {
   const typical = typicalSpringOf(spec.edgeTypes)
   const edgeTypes = spec.edgeTypes.map(e => resolveEdgeTypeDefaults(e, typical))
   const strokeById = new Map(edgeTypes.map(e => [e.id, e.style] as const))
+  const unstroked = new Set<string>()
   const edgeStrokeFor = (id: EdgeTypeId): EdgeStroke => {
     const stroke = strokeById.get(id)
-    if (!stroke) throw new Error(`edge type ${JSON.stringify(id)} has no stroke: the taxonomy does not declare it`)
-    return stroke
+    if (stroke) return stroke
+    if (!unstroked.has(id)) {
+      unstroked.add(id)
+      console.warn(`[graph] edge type ${JSON.stringify(id)} has no stroke: the taxonomy does not declare it; drawing it neutral`)
+    }
+    return NEUTRAL_STROKE
+  }
+  const classifyEdge = (edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId | undefined => {
+    const said = spec.classifyEdge?.(edge, src, tgt)
+    if (said !== undefined) return said
+    if (src === undefined || tgt === undefined) return undefined
+    return byPair.get(pairKey(edge.relation === 'containment' ? 'containment' : 'dependency', src, tgt))?.[0]
   }
 
   // Warn once per unrecognized value, and once PER ONTOLOGY: this resolves per
@@ -328,12 +368,12 @@ export function createOntology(spec: OntologySpec): Ontology {
     abbreviationFor,
     iconFor: (value: DimensionValue) => (hasOwn(styles, value) ? styles[value].icon : ''),
   }
-  const filterDimensions = spec.filterDimensions.map(d => resolveDescriptor(d, namer))
-  const byDimension = new Map(filterDimensions.map(d => [d.id, d]))
+  const resolvedDimensions = filterDimensions.map(d => resolveDescriptor(d, namer))
+  const byDimension = new Map(resolvedDimensions.map(d => [d.id, d]))
   return {
     styleAxis: () => styleDimension,
     styleLabel: () => spec.styleLabel ?? styleDimension,
-    filterDimensions,
+    filterDimensions: resolvedDimensions,
     descriptorFor: id => byDimension.get(id),
     valueOn: (subject, dimension) => subject.dimensions[dimension],
     abbreviationFor,
@@ -341,12 +381,13 @@ export function createOntology(spec: OntologySpec): Ontology {
     edgeTypes,
     scalars,
     edgeStrokeFor,
+    colorVar: value => `--gv-node-${suffixOf.get(value) ?? (cssSuffix(value) || 'undeclared')}`,
     styleOf,
     valueFor,
     // Hot path: one property read, one record lookup, one branch. No allocation
     // — this runs per node per frame in the draw loop.
     resolveNodeStyle: subject => styleOf(valueFor(subject)),
-    resolveEdgeType: spec.resolveEdgeType,
+    classifyEdge,
     collapse: spec.collapse ?? (kept => kept),
     contextLine: spec.contextLine ?? ((_node, parent) => parent?.name),
     searchText: spec.searchText ?? (node => node.name),

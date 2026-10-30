@@ -1,7 +1,6 @@
 // Graph data model for the force-directed graph view.
 
 import type { DimensionMap, Relation } from './dimension'
-import { RELATION_DIMENSION } from './dimension'
 
 export interface GraphNode {
   /**
@@ -112,14 +111,16 @@ export interface GraphEdge {
   sourceId: string
   targetId: string
   /**
-   * Where this edge sits on every axis it has a value for. The library declares
-   * one, `RELATION_DIMENSION`, whose value must be `containment` or `dependency`
-   * (`relationOf` throws on anything else, at the first read); a host adds its
-   * own (a call kind, say). A containment edge runs
-   * from the child (`sourceId`) to its container (`targetId`), and the child's
-   * `parentId` names that container.
+   * What the edge means to the engine: a `containment` edge runs from a node
+   * to its container and is drawn dashed and undirected; a `dependency` edge
+   * is directed, walked by the highlight and re-pointed when an end is
+   * hidden. Absent, `dependency`. The containment edge from a node to its
+   * `parentId` is derived; a host may list containment edges of its own,
+   * which are drawn and sprung but never walked as the parent.
    */
-  dimensions: DimensionMap
+  relation?: Relation
+  /** Where this edge sits on the host's own axes (a call kind, say). Absent, none. */
+  dimensions?: DimensionMap
   /**
    * Metadata the host owns and the library does not interpret — the same
    * contract as `GraphNode.payload`. Per-call-site detail that is not identity
@@ -128,20 +129,14 @@ export interface GraphEdge {
   payload?: Readonly<Record<string, unknown>>
 }
 
-/**
- * The edge's relation, as one of the two values the engine knows. Closed and
- * loud: an edge with no relation, or a misspelt one, is a host bug, and letting
- * it classify as a dependency would give it a real spring with no error.
- */
-export function relationOf(edge: Pick<GraphEdge, 'dimensions'>): Relation {
-  const r = edge.dimensions[RELATION_DIMENSION]
-  if (r === 'containment' || r === 'dependency') return r
-  throw new Error(`edge relation ${JSON.stringify(r)} is not one the engine knows; expected "containment" or "dependency"`)
+/** The edge's relation: as declared, or `dependency`. A misspelt relation is `validateGraph`'s to name. */
+export function relationOf(edge: Pick<GraphEdge, 'relation'>): Relation {
+  return edge.relation === 'containment' ? 'containment' : 'dependency'
 }
 
 /** Does this edge express containment (as opposed to a dependency)? */
-export function isContainment(edge: Pick<GraphEdge, 'dimensions'>): boolean {
-  return relationOf(edge) === 'containment'
+export function isContainment(edge: Pick<GraphEdge, 'relation'>): boolean {
+  return edge.relation === 'containment'
 }
 
 /**
@@ -156,14 +151,16 @@ export function withContainmentEdges(graph: Graph): Graph {
   const ids = new Set<string>()
   for (const e of graph.edges) {
     ids.add(e.id)
-    if (e.dimensions[RELATION_DIMENSION] === 'containment' && e.targetId === graph.nodes.get(e.sourceId)?.parentId) listed.add(e.sourceId)
+    if (e.relation === 'containment' && e.targetId === graph.nodes.get(e.sourceId)?.parentId) listed.add(e.sourceId)
   }
   const added: GraphEdge[] = []
   for (const node of graph.nodes.values()) {
     if (node.parentId === undefined || !graph.nodes.has(node.parentId) || listed.has(node.id)) continue
-    const id = `in:${node.id}`
-    if (ids.has(id)) continue
-    added.push({ id, sourceId: node.id, targetId: node.parentId, dimensions: { [RELATION_DIMENSION]: 'containment' } })
+    // `in:<node>`, or the first free numbered variant when a host edge took it.
+    let id = `in:${node.id}`
+    for (let n = 2; ids.has(id); n++) id = `in:${node.id}#${n}`
+    ids.add(id)
+    added.push({ id, sourceId: node.id, targetId: node.parentId, relation: 'containment' })
   }
   return added.length === 0 ? graph : { nodes: graph.nodes, edges: [...graph.edges, ...added] }
 }
@@ -185,9 +182,10 @@ export function readableGraph(graph: Graph): ReadableGraph {
   return { nodes: [...graph.nodes.values()], edges: graph.edges, getNode: id => graph.nodes.get(id) }
 }
 
+/** The host's graph: its nodes by id, and its edges. Read, never written, by the view. */
 export interface Graph {
-  nodes: Map<string, GraphNode>
-  edges: GraphEdge[]
+  nodes: ReadonlyMap<string, GraphNode>
+  edges: readonly GraphEdge[]
 }
 
 /**

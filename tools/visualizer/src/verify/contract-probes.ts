@@ -16,7 +16,6 @@ import { activeGroupsOf } from '@temporal-architect/graph-view/graph/groups'
 import { highlightOf } from '@temporal-architect/graph-view/graph/highlight'
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
 import type { HighlightDirection } from '@temporal-architect/graph-view/graph/ontology'
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
 import { graphShapeEquals } from '@temporal-architect/graph-view/graph/model'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
 import { DEFAULT_ONTOLOGY, DEFAULT_ONTOLOGY_SPEC } from '../adapter/node-types'
@@ -29,7 +28,7 @@ const SEED = 0xc0de
 
 const graphOf = (nodes: GraphNode[], edges: GraphEdge[]): Graph => ({ nodes: new Map(nodes.map(n => [n.id, n])), edges })
 const dependency = (id: string, sourceId: string, targetId: string): GraphEdge =>
-  ({ id, sourceId, targetId, dimensions: { [RELATION_DIMENSION]: 'dependency' } })
+  ({ id, sourceId, targetId, relation: 'dependency' })
 
 /**
  * Two of three nodes given a position, the second one a child of the first: the

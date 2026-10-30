@@ -15,7 +15,6 @@ import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import { resolveSprings } from '@temporal-architect/graph-view/graph/forces'
 import { pairTuning, styleIdentityMapping } from '@temporal-architect/graph-view/graph/simulation'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
 import type { Relation } from '@temporal-architect/graph-view/graph/dimension'
 import type { Json } from './snapshot'
 
@@ -37,10 +36,8 @@ export function tierC(): Json {
             id: 'synthetic',
             sourceId: 'src',
             targetId: 'tgt',
-            dimensions: {
-              [RELATION_DIMENSION]: edgeType,
-              ...(dispatchKind ? { [DISPATCH_DIMENSION]: dispatchKind } : {}),
-            },
+            relation: edgeType,
+            ...(dispatchKind ? { dimensions: { [DISPATCH_DIMENSION]: dispatchKind } } : {}),
           }
           const key = `${edgeType}|${src}|${tgt}|${dispatchKind ?? '-'}`
           // The one classifier (D57): a stroke is the resolved type's, so the
@@ -61,7 +58,7 @@ export function tierC(): Json {
         id: 'synthetic',
         sourceId: 'src',
         targetId: 'tgt',
-        dimensions: { [RELATION_DIMENSION]: 'dependency' },
+        relation: 'dependency',
         payload: { nexusEndpoint: 'SomeEndpoint' },
       }
       withEndpoint[`dependency|${src}|${tgt}|ep`] = edgeTypeFor(edge, src, tgt)

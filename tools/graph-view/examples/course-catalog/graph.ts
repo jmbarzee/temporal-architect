@@ -2,7 +2,6 @@
 // department, course listing and lab; a cross-listed course becomes one node
 // per listing, sharing a `copyKey`.
 
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view'
 import type { Catalog, Requirement } from './data'
 import { CAMPUS, ENTITY, REQUIREMENT } from './ontology'
@@ -18,7 +17,8 @@ export function buildGraph(catalog: Catalog): Graph {
   const byCode = new Map<string, string>()
 
   // Containment is `parentId` and nothing else: the library derives the
-  // containment edge from it, so only dependencies are listed as edges.
+  // containment edge from it, so only dependencies are listed as edges — and
+  // a dependency is the relation an edge has when it says none.
   const add = (node: GraphNode) => { nodes.set(node.id, node) }
   const depends = (from: string, req: Requirement) => {
     const to = byCode.get(req.code)
@@ -27,7 +27,7 @@ export function buildGraph(catalog: Catalog): Graph {
       id: `${req.kind}:${from}->${to}`,
       sourceId: from,
       targetId: to,
-      dimensions: { [RELATION_DIMENSION]: 'dependency', [REQUIREMENT]: req.kind },
+      dimensions: { [REQUIREMENT]: req.kind },
     })
   }
 

@@ -134,11 +134,14 @@ export interface SpringPhysics {
 }
 
 /**
- * One kind of edge, as a host declares it: which values it runs between, which
- * relation it expresses, how it is stroked, and — optionally — its spring and
- * its hover text. A spring left out starts from the typical spring, the mean
- * of the declared ones (or a middling one when none is declared); a tooltip
- * left out is the label.
+ * One kind of edge, as a host declares it: which values it runs between and
+ * which relation it expresses, and — optionally — how it is stroked, its
+ * spring and its hover text. An edge is classified as the one declared type
+ * whose relation and endpoint values match its own, in either orientation,
+ * unless the taxonomy's `classifyEdge` says otherwise. A stroke left out is
+ * the neutral stroke, field by field; a spring left out starts from the
+ * typical spring, the mean of the declared ones (or a middling one when none
+ * is declared); a tooltip left out is the label.
  */
 export interface EdgeType {
   /** Stable id — also the override key in the spring tuning. */
@@ -146,33 +149,41 @@ export interface EdgeType {
   /** Short control-panel label. */
   label: string
   /**
-   * Canonical endpoint values on the style axis — these drive the split-colour
-   * token (source | target). Values rather than declared types, because the
-   * engine resolves an edge's type from where its endpoint *nodes* sit, not
-   * from anything cached on the edge.
+   * The endpoint values on the style axis this type runs between — read off
+   * the edge's original endpoint nodes when an edge is classified, and the
+   * two halves of the split-colour token. Values, not types: the engine
+   * resolves an edge's type from where its nodes sit.
    */
   sourceType: DimensionValue
   targetType: DimensionValue
-  /** Which relation an edge of this type expresses; an edge must resolve to a type of its own relation. */
+  /** Which relation an edge of this type expresses; an edge is classified only as a type of its own relation. */
   relation: 'containment' | 'dependency'
   /** Declared stiffness / rest length — what the type resolves to until tuned. */
   physics?: SpringPhysics
-  /** How the canvas strokes an edge of this type, in both themes. */
-  style: EdgeStroke
+  /** How the canvas strokes an edge of this type, in both themes; any field left out is the neutral stroke's. */
+  style?: Partial<EdgeStroke>
   tooltip?: string
 }
 
 /** An edge type with its defaults filled in — what `Ontology.edgeTypes` carries. */
 export interface ResolvedEdgeType extends EdgeType {
   physics: SpringPhysics
+  style: EdgeStroke
   tooltip: string
 }
 
+/** The stroke an edge type starts from, and the stroke of an edge no type claims: a quiet, solid grey. */
+export const NEUTRAL_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.7, dash: [], width: 1.2 }
+
 // ── Defaults ────────────────────────────────────────────────────────────────
 
-/** The vertical extent the declared values' bands are laid along, top to bottom. */
-const STACK = { top: -300, bottom: 400 } as const
-const DEFAULT_BAND_X: Band = { min: 0, max: 380 }
+/**
+ * The frame the default rest bands are laid in, in world units: the
+ * hierarchy axis runs from `top` (the first declared value) to `bottom` (the
+ * last), and every value spreads across `x`. A host that declares a band of
+ * its own writes it in these units.
+ */
+export const BAND_FRAME = { top: -300, bottom: 400, x: { min: 0, max: 380 } as Band } as const
 const DEFAULT_RADIUS = 12
 /** The spring a type starts from when no declared type carries one. */
 export const MIDDLING_SPRING: SpringPhysics = { strength: 0.5, distance: 120 }
@@ -184,9 +195,9 @@ export const MIDDLING_SPRING: SpringPhysics = { strength: 0.5, distance: 120 }
  * could never rest in. One value alone takes the whole stack.
  */
 export function stackBand(i: number, n: number): Band {
-  if (n <= 1) return { min: STACK.top, max: STACK.bottom }
-  const gap = (STACK.bottom - STACK.top) / (n - 1)
-  const centre = STACK.top + gap * i
+  if (n <= 1) return { min: BAND_FRAME.top, max: BAND_FRAME.bottom }
+  const gap = (BAND_FRAME.bottom - BAND_FRAME.top) / (n - 1)
+  const centre = BAND_FRAME.top + gap * i
   const half = gap * 0.6
   return { min: Math.round(centre - half), max: Math.round(centre + half) }
 }
@@ -207,7 +218,7 @@ export function resolveNodeStyle(style: NodeStyle, i: number, n: number): Resolv
       charge: style.physics?.charge ?? -40 * r,
       coreRadius: style.physics?.coreRadius ?? 4 * r,
       band: {
-        x: style.physics?.band?.x ?? { ...DEFAULT_BAND_X },
+        x: style.physics?.band?.x ?? { ...BAND_FRAME.x },
         y: style.physics?.band?.y ?? stackBand(i, n),
       },
     },
@@ -232,5 +243,10 @@ export function typicalSpringOf(types: readonly EdgeType[]): SpringPhysics {
 }
 
 export function resolveEdgeType(type: EdgeType, typical: SpringPhysics): ResolvedEdgeType {
-  return { ...type, physics: type.physics ?? { ...typical }, tooltip: type.tooltip ?? type.label }
+  return {
+    ...type,
+    physics: type.physics ?? { ...typical },
+    style: { ...NEUTRAL_STROKE, ...type.style, color: { ...NEUTRAL_STROKE.color, ...type.style?.color } },
+    tooltip: type.tooltip ?? type.label,
+  }
 }

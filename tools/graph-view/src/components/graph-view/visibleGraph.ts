@@ -50,7 +50,7 @@ export interface VisibleGraph {
  */
 export interface VisibleGraphSource extends ReadableGraph {
   nodes: SimNode[]
-  edges: GraphEdge[]
+  edges: readonly GraphEdge[]
   getNode: (id: string) => SimNode | undefined
 }
 
@@ -91,7 +91,7 @@ function resolveDepEndpoint(
   nodeId: string,
   visible: boolean,
   side: 'src' | 'tgt',
-  sim: { edges: GraphEdge[] },
+  sim: { edges: readonly GraphEdge[] },
   visibleIds: Set<string>,
   getNode: (id: string) => SimNode | undefined,
   ontology: Ontology,
@@ -189,7 +189,7 @@ function classifyEdges(sim: VisibleGraphSource, ontology: Ontology): Map<string,
     const tgt = sim.getNode(edge.targetId)
     let id: EdgeTypeId | undefined
     try {
-      id = ontology.resolveEdgeType(edge, src && ontology.valueFor(src), tgt && ontology.valueFor(tgt))
+      id = ontology.classifyEdge(edge, src && ontology.valueFor(src), tgt && ontology.valueFor(tgt))
     } catch {
       id = undefined
     }

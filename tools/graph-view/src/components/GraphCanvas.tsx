@@ -14,6 +14,7 @@ import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
 import type { Ontology } from '../graph/ontology'
 import { useOntology } from './graph-view/useOntology'
 import type { EdgeStroke, Theme } from '../graph/scheme'
+import { NEUTRAL_STROKE } from '../graph/taxonomy'
 import { withAlpha } from '../graph/scheme'
 import type { ForceSection } from './GraphControlPanel'
 import type { GravityHover } from './GravityControls'
@@ -121,7 +122,6 @@ function cssVar(el: Element | null, name: string, fallback: string): string {
 // What an edge draws as when the view's stroke map has no entry for it — a
 // state the view does not produce (the map is built from the same edge array
 // this canvas is given), kept quiet because this runs in the draw loop.
-const NEUTRAL_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.5, dash: [], width: 1.3 }
 
 const ARROWHEAD_SIZE = 8
 const CULL_MARGIN = 100

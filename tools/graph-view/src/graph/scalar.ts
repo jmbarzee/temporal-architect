@@ -13,12 +13,16 @@ export interface ScalarAxis {
   readonly label: string
   readonly tooltip: string
   /**
-   * One value per node in [0, 1] — the frame refuses anything else, loudly.
-   * A node absent from the map has no value on this axis and rests at the
-   * axis's centre, the same answer as a node in no bucket on a mapped axis.
-   * A true 0 is a value, and the built-ins answer it as one.
+   * One value per node — any finite number, which the frame divides by the
+   * largest so the axis spans [0, 1] (`normalize: 'none'` says the values
+   * already do, and the frame refuses one outside it, loudly). A node absent
+   * from the map has no value on this axis and rests at the axis's centre,
+   * the same answer as a node in no bucket on a mapped axis. A true 0 is a
+   * value, and the built-ins answer it as one.
    */
   compute(graph: ReadableGraph): Map<string, number>
+  /** How the frame maps the answers onto [0, 1]: by the largest (the default), or not at all. */
+  readonly normalize?: 'max' | 'none'
 }
 
 /**
@@ -140,9 +144,11 @@ export function computeContainmentDepth(graph: ReadableGraph): Map<string, numbe
   return normalized(depth)
 }
 
-// Divide by the maximum so the answer spans [0, 1]; a maximum of 0 is a true
-// 0 for every node, not an absence — the span's zero end, not the centre.
-function normalized(values: Map<string, number>): Map<string, number> {
+/**
+ * Divide by the maximum so the answer spans [0, 1]; a maximum of 0 is a true
+ * 0 for every node, not an absence — the span's zero end, not the centre.
+ */
+export function normalized(values: Map<string, number>): Map<string, number> {
   let max = 0
   for (const v of values.values()) if (v > max) max = v
   const scores = new Map<string, number>()
@@ -155,6 +161,7 @@ export const downstreamReach: ScalarAxis = {
   label: 'Reach',
   tooltip: 'Downstream reach: how many dependency levels deep a node’s subtree runs, propagated up containment; leaves at 0',
   compute: computeDownstreamReach,
+  normalize: 'none',
 }
 
 export const degree: ScalarAxis = {
@@ -162,6 +169,7 @@ export const degree: ScalarAxis = {
   label: 'Degree',
   tooltip: 'Dependency edges in and out, as a fraction of the busiest node’s',
   compute: computeDegree,
+  normalize: 'none',
 }
 
 export const containmentDepth: ScalarAxis = {
@@ -169,6 +177,7 @@ export const containmentDepth: ScalarAxis = {
   label: 'Depth',
   tooltip: 'Containment depth: 0 at the top of the hierarchy, 1 at the deepest node',
   compute: computeContainmentDepth,
+  normalize: 'none',
 }
 
 /** The scalars every host gets: structural, so they need no domain knowledge. */

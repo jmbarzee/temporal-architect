@@ -1,7 +1,8 @@
+BAND_FRAME
 FilterBar
 GraphView
+NEUTRAL_STROKE
 OntologyContext
-RELATION_DIMENSION
 copyGroups
 copyKeyOf
 createOntology

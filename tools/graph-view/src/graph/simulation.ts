@@ -520,7 +520,7 @@ export function sprungEdges(edges: readonly GraphEdge[], visibleIds: ReadonlySet
 
 export class Simulation {
   nodes: SimNode[]
-  edges: GraphEdge[]
+  edges: readonly GraphEdge[]
   params: ForceParams
   alpha: number
 

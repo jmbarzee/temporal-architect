@@ -17,6 +17,7 @@ import type { GraphEdge } from './model'
 import { relationOf } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange, LayoutTuning } from './simulation'
 import type { ScalarAxis, ScalarSpan } from './scalar'
+import { normalized } from './scalar'
 import { isScalarTuning } from './scalar'
 import type { ReadableGraph } from './model'
 import type { Ontology } from './ontology'
@@ -313,7 +314,11 @@ const AT_CENTRE = { lo: 0, hi: 0 }
 // Loud, because a value outside the contract would become a rest point or a
 // ring radius and nothing downstream could tell it from a real one.
 function checkedScores(scalar: ScalarAxis, graph: ReadableGraph): Map<string, number> {
-  const scores = scalar.compute(graph)
+  const raw = scalar.compute(graph)
+  for (const [id, s] of raw) {
+    if (!Number.isFinite(s)) throw new Error(`scalar ${JSON.stringify(scalar.id)} answered ${String(s)} for node ${JSON.stringify(id)}; a scalar answers a finite number`)
+  }
+  const scores = scalar.normalize === 'none' ? raw : normalized(raw)
   for (const [id, s] of scores) {
     if (!(Number.isFinite(s) && s >= 0 && s <= 1)) {
       throw new Error(`scalar ${JSON.stringify(scalar.id)} answered ${String(s)} for node ${JSON.stringify(id)}; a scalar answers in [0, 1]`)
@@ -533,10 +538,9 @@ export interface ResolvedSprings {
   readonly mapping: DimensionalMapping
   /**
    * The category of an edge from its endpoints' bucket ids, or undefined when
-   * an endpoint is unbucketed — only the pair rule answers that way; the host's
-   * rule answers for every value. Throws when the host's rule returns an id its
-   * table does not declare: that is a host bug, and an edge silently without
-   * pull would surface it somewhere far from the cause.
+   * an endpoint is unbucketed, or — on the style axis — when no declared type
+   * runs between the edge's endpoint values and the taxonomy's `classifyEdge`
+   * names none; such an edge is sprung as typical and drawn neutral.
    */
   classify(edge: GraphEdge, src: string | undefined, tgt: string | undefined): EdgeTypeId | undefined
   /** Effective physics: the override where one exists, else the declared or typical spring. */
@@ -551,15 +555,11 @@ export function resolveSprings(pair: PairTuning, ontology: Ontology): ResolvedSp
     const table = new Map(ontology.edgeTypes.map(e => [e.id, e]))
     return {
       mapping,
+      // An edge no declared type claims has no category here: it draws neutral
+      // and is sprung as typical, and `validateGraph` has named it.
       classify: (edge, src, tgt) => {
-        const id = ontology.resolveEdgeType(edge, src, tgt)
-        if (!table.has(id)) {
-          throw new Error(
-            `edge type ${JSON.stringify(id)} is resolved by the taxonomy's rule but has no ` +
-            'entry in its edgeTypes; the two must be kept in step.',
-          )
-        }
-        return id
+        const id = ontology.classifyEdge(edge, src, tgt)
+        return id !== undefined && table.has(id) ? id : undefined
       },
       physicsFor: id => overrides.get(id) ?? table.get(id)?.physics ?? ABSENT_EDGE_PHYSICS,
       describe: id => table.get(id),
@@ -713,7 +713,7 @@ export function applyChargeForce(
 // high-degree node anchors and its lighter neighbours orbit — the standard fix
 // for stiff-spring oscillation under explicit Euler integration.
 export function applyLinkForce(
-  activeEdges: GraphEdge[],
+  activeEdges: readonly GraphEdge[],
   nodeMap: Map<string, SimNode>,
   params: LinkParams,
   categoryOf: (edge: GraphEdge) => EdgeCategory,

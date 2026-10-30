@@ -14,9 +14,9 @@
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
 import type { OntologySpec } from '@temporal-architect/graph-view/graph/ontology'
 import type { NodeStyle, EdgeType } from '@temporal-architect/graph-view/graph/taxonomy'
-import type { DimensionDescriptor } from '@temporal-architect/graph-view/graph/dimension'
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
+import type { DimensionDescriptor, Relation } from '@temporal-architect/graph-view/graph/dimension'
 import type { Graph, GraphEdge } from '@temporal-architect/graph-view/graph/model'
+import { relationOf } from '@temporal-architect/graph-view/graph/model'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import { validateGraph, dropInvalid } from '@temporal-architect/graph-view/graph/validate'
@@ -35,23 +35,26 @@ const body = (label: string, abbreviation: string, tier: number): Omit<NodeStyle
   physics: { charge: -300, coreRadius: 30, band: { x: { min: -100, max: 100 }, y: { min: tier * 100, max: tier * 100 + 50 } } },
 })
 const style = (id: string, ...rest: Parameters<typeof body>): NodeStyle => ({ id, ...body(...rest) })
-const edgeType = (id: string, relation: 'containment' | 'dependency', dash: number[]): EdgeType => ({
+const edgeType = (id: string, relation: Relation, dash: number[]): EdgeType => ({
   id, label: id, sourceType: 'leaf', targetType: relation === 'containment' ? 'box' : 'leaf', relation,
   physics: { strength: 0.5, distance: 80 }, style: { color: { light: '#888888', dark: '#aaaaaa' }, alpha: 0.8, dash, width: 1 }, tooltip: id,
 })
 const axis = (id: string, empty: 'all' | 'none'): DimensionDescriptor => ({ id, label: id, emptyMeans: empty })
 
-/** A containment edge is `contains`; a dependency is `signals` or `calls` by its own axis; two spellings are deliberately wrong. */
+/**
+ * A containment edge is `contains`; a dependency is `signals` or `calls` by its own axis; two spellings are deliberately wrong.
+ * `calls` and `signals` run between the same two values, so the rule is the tie-breaker the declared pairs cannot be.
+ */
 const SPEC: OntologySpec = {
   styleDimension: KIND, styleLabel: 'Kind',
   values: [style('box', 'Box', 'Bx', 0), style('leaf', 'Leaf', 'Lf', 1)],
   filterDimensions: [axis(KIND, 'none'), axis(ZONE, 'all')],
   edgeTypes: [edgeType('contains', 'containment', [4, 4]), edgeType('calls', 'dependency', []), edgeType('signals', 'dependency', [2, 2])],
-  resolveEdgeType: edge => {
-    const kind = edge.dimensions[EDGE_KIND]
+  classifyEdge: edge => {
+    const kind = edge.dimensions?.[EDGE_KIND]
     if (kind === 'mismatch') return 'calls'            // a containment edge answered as a dependency type
-    if (kind === 'bogus') return 'nonesuch'            // an id the table does not declare
-    if (edge.dimensions[RELATION_DIMENSION] === 'containment') return 'contains'
+    if (kind === 'bogus') return 'nonesuch'            // an id the table does not declare: a warning, and the edge draws neutral
+    if (relationOf(edge) === 'containment') return 'contains'
     return kind === 'signals' ? 'signals' : 'calls'
   },
   scalars: [],
@@ -59,7 +62,7 @@ const SPEC: OntologySpec = {
 }
 const ONTOLOGY = createOntology(SPEC)
 /** The same taxonomy, preferring a signal over a call when two graduated edges collide. */
-const PREFER_SIGNALS = createOntology({ ...SPEC, collapse: (kept, candidate) => candidate.dimensions[EDGE_KIND] === 'signals' ? candidate : kept })
+const PREFER_SIGNALS = createOntology({ ...SPEC, collapse: (kept, candidate) => candidate.dimensions?.[EDGE_KIND] === 'signals' ? candidate : kept })
 
 function node(id: string, kind: string, zone: string, parentId?: string): SimNode {
   return {
@@ -69,10 +72,10 @@ function node(id: string, kind: string, zone: string, parentId?: string): SimNod
   }
 }
 function dep(id: string, sourceId: string, targetId: string, kind: 'calls' | 'signals' | 'bogus' | 'mismatch'): GraphEdge {
-  return { id, sourceId, targetId, dimensions: { [RELATION_DIMENSION]: 'dependency', [EDGE_KIND]: kind } }
+  return { id, sourceId, targetId, relation: 'dependency', dimensions: { [EDGE_KIND]: kind } }
 }
 function contains(id: string, child: string, box: string, kind?: 'mismatch'): GraphEdge {
-  return { id, sourceId: child, targetId: box, dimensions: { [RELATION_DIMENSION]: 'containment', ...(kind ? { [EDGE_KIND]: kind } : {}) } }
+  return { id, sourceId: child, targetId: box, relation: 'containment', ...(kind ? { dimensions: { [EDGE_KIND]: kind } } : {}) }
 }
 const source = (nodes: SimNode[], edges: GraphEdge[]) => {
   const byId = new Map(nodes.map(n => [n.id, n]))
@@ -127,7 +130,8 @@ function validation(): Json {
     contains('cw', 'w', 'b1', 'mismatch'),
     dep('ok', 'x', 'w', 'calls'),
     dep('missing', 'x', 'nobody', 'calls'),
-    { id: 'friend', sourceId: 'x', targetId: 'w', dimensions: { [RELATION_DIMENSION]: 'friendship' } },
+    // A relation spelling the type refuses, as a host's untyped data may carry.
+    { id: 'friend', sourceId: 'x', targetId: 'w', relation: 'friendship' as unknown as Relation },
     dep('bogus', 'w', 'x', 'bogus'),
     dep('ok', 'w', 'x', 'calls'),
   ]

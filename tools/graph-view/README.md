@@ -24,8 +24,9 @@ is a release decision.
 
 ## Install (once published)
 
-`react` and `react-dom` are peer dependencies (`^18 || ^19`). Import the
-stylesheet once — it carries the design tokens and every component's rules.
+`react` and `react-dom` are peer dependencies (`^18 || ^19`). The package is
+ESM only. Import the stylesheet once — it carries the design tokens and every
+component's rules.
 
 ## Quick start
 
@@ -34,7 +35,7 @@ three nodes, the view. The block below is compiled against the shipped
 declarations by the artifact gate, so it cannot drift from the surface.
 
 ```tsx
-import { createOntology, GraphView, RELATION_DIMENSION } from '@temporal-architect/graph-view'
+import { createOntology, GraphView } from '@temporal-architect/graph-view'
 import type { Graph, GraphNode } from '@temporal-architect/graph-view'
 import '@temporal-architect/graph-view/styles.css'
 
@@ -47,13 +48,10 @@ const ontology = createOntology({
       color: { light: { fill: '#0F766E', border: '#134E4A' }, dark: { fill: '#2DD4BF', border: '#0F766E' } } },
   ],
   edgeTypes: [
-    { id: 'owns', label: 'owns', sourceType: 'service', targetType: 'team', relation: 'containment',
-      style: { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.4, dash: [3, 4], width: 1 } },
+    { id: 'owns', label: 'owns', sourceType: 'service', targetType: 'team', relation: 'containment' },
     { id: 'calls', label: 'calls', sourceType: 'service', targetType: 'service', relation: 'dependency',
-      style: { color: { light: '#0F766E', dark: '#5EEAD4' }, alpha: 0.8, dash: [], width: 1.5 } },
+      style: { color: { light: '#0F766E', dark: '#5EEAD4' }, width: 1.5 } },
   ],
-  resolveEdgeType: edge => (edge.dimensions[RELATION_DIMENSION] === 'containment' ? 'owns' : 'calls'),
-  filterDimensions: [{ id: 'kind', label: 'Kind', emptyMeans: 'none' }],
 })
 
 const nodes: GraphNode[] = [
@@ -63,7 +61,7 @@ const nodes: GraphNode[] = [
 ]
 const graph: Graph = {
   nodes: new Map(nodes.map(n => [n.id, n])),
-  edges: [{ id: 'checkout→ledger', sourceId: 'checkout', targetId: 'ledger', dimensions: { [RELATION_DIMENSION]: 'dependency' } }],
+  edges: [{ id: 'checkout→ledger', sourceId: 'checkout', targetId: 'ledger' }],
 }
 
 export function App() {
@@ -76,7 +74,10 @@ export function App() {
 ```
 
 The containment edges from each service to its team are derived from
-`parentId`; the filter, the pins, the chain of axes, the search and the theme
+`parentId`; the edge between the services is a dependency unless it says
+otherwise, and is classified as `calls` because that is the one declared type
+between two services; the filter axis is the style axis unless others are
+declared; the filter, the pins, the chain of axes, the search and the theme
 are the view's own until the host asks for them.
 
 ## The taxonomy
@@ -99,30 +100,38 @@ never by spreading the built object.
   `summaryKind` to `degree` (`children` counts what a node contains, in the
   hover box). `fallbackStyle` draws a value nobody declared; `styleLabel`
   names the axis in the controls.
-- **Edge types and the rule.** Each `EdgeType` has an `id`, a `label`, its
-  canonical `sourceType` and `targetType` (style values), its `relation`
-  (`containment` or `dependency`) and a `style` (colour per theme, alpha,
-  dash, width); `physics` (a spring's strength and rest length) defaults to
-  the mean of the declared springs, `tooltip` to the label.
-  `resolveEdgeType(edge, sourceValue, targetValue)` is the host's rule for
-  which type an edge is; the engine reads the values live off the endpoint
-  nodes, so the rule must answer for the pairs its graph produces and for a
-  graduated edge whose end moved to a visible ancestor.
-- **Filter axes.** Each `DimensionDescriptor` is an `id`, a `label` and what
-  an empty selection means: `none` (an allow-list: nothing selected shows
+- **Edge types and classification.** Each `EdgeType` has an `id`, a `label`,
+  the `sourceType` and `targetType` (style values) it runs between and its
+  `relation` (`containment` or `dependency`); `style` (colour per theme,
+  alpha, dash, width) defaults field by field to the neutral stroke,
+  `physics` (a spring's strength and rest length) to the mean of the declared
+  springs, `tooltip` to the label. An edge is classified once, on the style
+  values of its original endpoints, as the one declared type whose relation
+  and endpoints match in either orientation, and keeps that type when
+  graduation re-points it. Two declared types on one pair — a call and a
+  signal between two workflows — need the host's `classifyEdge(edge,
+  sourceValue, targetValue)`, which answers an id or lets the declared types
+  decide. An edge no type claims draws in the neutral stroke with the typical
+  spring, and `validateGraph` says so.
+- **Filter axes.** `filterDimensions` defaults to the style axis as an
+  allow-list. Each `DimensionDescriptor` is an `id`, a `label` and what an
+  empty selection means: `none` (an allow-list: nothing selected shows
   nothing) or `all` (a narrowing axis: nothing selected shows everything).
-  The policies follow — a node with no value on the axis, how a focus expands
-  it, how a change reheats the layout — and may be overridden field by field
-  (`absentMeans`, `focus`, `reheat`). `chipsFor(values)` groups values into
-  chips (default one per value; on the style axis they wear the value's icon
-  and tint), `labelFor` and `abbreviationFor` name values (default the
-  style's names on the style axis, the value itself elsewhere),
-  `initialSelection(values)` is the first open's selection (default every
-  value on an allow-list, none on a narrowing axis), `presentation` is
-  `chip` or `tag`.
+  The policies follow — a node with no value on the axis (`absentMeans`), how
+  a focus expands it (`focus`), whether a change keeps the camera
+  (`keepCamera`: a narrowing axis does, an allow-list refits) — and may be
+  overridden. `chipsFor(values)` groups values into chips (default one per
+  value; on the style axis they wear the value's icon and tint; a chip none
+  of whose values the data presents is not offered), `labelFor`,
+  `abbreviationFor` and `tooltipFor` name values (defaults: the style's names
+  on the style axis, the value itself elsewhere, the abbreviation from the
+  label, no tooltip), `initialSelection(values)` is the first open's
+  selection (default every value on an allow-list, none on a narrowing
+  axis), `presentation` is `chip` or `tag`.
 - **Scalars and hooks.** `scalars` adds computed axes (`id`, `label`,
-  `tooltip`, `compute(graph)` answering per node in [0, 1]) to the built-in
-  reach, degree and depth. `contextLine(node, parent)` is the hover box's
+  `tooltip`, `compute(graph)` answering a number per node, divided by the
+  largest unless `normalize: 'none'`) to the built-in reach, degree and
+  depth. `contextLine(node, parent)` is the hover box's
   line under the name (default the parent's name); `searchText(node)` is
   what the search matches on (default the name); `highlight(active, base,
   graph, direction)` may widen or replace the transitive walk; `collapse(kept,
@@ -140,8 +149,11 @@ engine compares them and never parses one.
   is two nodes sharing a `copyKey`: the library indexes the copies
   (`copyGroups`), draws their halo and counts them in the hover box. A host may
   list containment edges of its own between any two nodes.
-- **Every edge carries `relation`** (`RELATION_DIMENSION`: `containment` or
-  `dependency`); a host adds axes of its own to edges and nodes alike. Any
+- **An edge's `relation`** is `containment` or `dependency` (the default). A
+  containment edge from a node to its `parentId` is derived; one a host lists
+  itself, to any node, is drawn dashed and sprung but never walked as the
+  parent, and `validateGraph` names one that contradicts `parentId`. A host
+  adds axes of its own to edges and nodes alike through `dimensions`; any
   axis the nodes carry can be pushed, pulled and laid out on.
 - **Adornments.** A node may carry `badges` (short texts drawn as chips above
   it) and a `ring` (`dashed`, for a node set apart).
@@ -191,12 +203,14 @@ Everything else is optional.
 
 ## Two views sharing a bar
 
-A host with a second view renders `FilterBar` outside the pane with the same
-filter state: give it the `graph` (or the `values` per axis) and it defaults
-the rest. `reconcileFilter(dest, source, pins, transition, axes)` adopts one
+A host with a second view renders `FilterBar` outside the pane, under the same
+`OntologyContext.Provider`, with the same filter and pin state and their
+callbacks: give it the `graph` (or the `values` per axis) and the counts, the
+chips' flash, the search and the chain default. `reconcileFilter(dest, source, pins, transition, axes)` adopts one
 view's filter into the other's on a manual switch, respecting pins;
-`passesSelection`, `selectionFor`, `withSelection`, `withPin`, `toggleGroup`
-and `toggleValue` are the filter operations the bar itself uses. A focus into
+`passesSelection`, `selectionFor`, `withSelection`, `withPin` and
+`toggleGroup` are the filter operations the bar itself uses; `toggleValue`
+flips one value for a host's own control. A focus into
 the graph is `focusNode(id)`; a focus into the other view is the host's.
 Chips rendered outside the pane need the scheme's variables on an ancestor:
 `schemeVars(ontology, theme)` inline, or `schemeStylesheet(ontology)` mounted
@@ -210,7 +224,12 @@ token the components read is a `--gv-*` custom property declared in the
 stylesheet per theme (`--gv-color-bg`, `--gv-color-text`, `--gv-accent`,
 `--gv-font-sans`, …), and every class is `gv-*`; a host overrides a token by
 redeclaring it on an ancestor. Each style value's fill and border are
-published as `--gv-node-<value>` and `--gv-node-<value>-border` on the pane.
+published on the pane under the name `ontology.colorVar(value)` answers —
+`--gv-node-` and the value id in kebab case (`nexusEndpoint` →
+`--gv-node-nexus-endpoint`), or a numbered name when the id kebab-cases to
+nothing or to another value's — and `-border` for the border. Default rest
+bands are laid in `BAND_FRAME` (world units: the hierarchy axis from −300 to
+400, x from 0 to 380); a band a host declares is read in the same units.
 
 ## Collapse rules
 

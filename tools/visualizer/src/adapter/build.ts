@@ -21,7 +21,6 @@ import type {
 } from '../types/parser-graph'
 // The axes this domain projects a node onto. Names, not concepts, belong to the
 // host: the library never mentions any of these ids.
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type {
   Graph,
@@ -242,19 +241,19 @@ function parserEdgeToViewEdge(
   // stays its owning service.
   const relation: Relation =
     pe.kind === 'containment' || pe.kind === 'nexusRoute' ? 'containment' : 'dependency'
-  const dimensions: Record<string, string> = { [RELATION_DIMENSION]: relation }
-  // The producer's kind, verbatim, on every dependency edge. It used to be
-  // carried only when it was `signalSend` — the one value the spring classifier
-  // needed — which made the field a flag in disguise. As an open axis it is
-  // what lets 4c resolve springs from dispatch rather than from endpoint types
-  // alone (T14's sixteenth case).
-  if (relation === 'dependency') dimensions[DISPATCH_DIMENSION] = pe.kind
   const out: GraphEdge = {
     id: `e${seq}`,
     sourceId: pe.from,
     targetId: pe.to,
-    dimensions,
+    relation,
   }
+  // The producer's kind, verbatim, on every dependency edge. It used to be
+  // carried only when it was `signalSend` — the one value the spring classifier
+  // needed — which made the field a flag in disguise. As an open axis it is
+  // what lets 4c resolve springs from dispatch rather than from endpoint types
+  // alone (T14's sixteenth case). A containment edge dispatches nothing, so it
+  // carries no axes at all.
+  if (relation === 'dependency') out.dimensions = { [DISPATCH_DIMENSION]: pe.kind }
   // Which endpoint routed the call is per call site, not identity and not an
   // axis — the same operation is reachable through two endpoints in different
   // namespaces — so it rides as host-owned payload.
@@ -277,6 +276,6 @@ function coarsenedEdgeToViewEdge(
     id: `e${seq}`,
     sourceId: ce.from,
     targetId: ce.to,
-    dimensions: { [RELATION_DIMENSION]: 'dependency' },
+    relation: 'dependency',
   }
 }

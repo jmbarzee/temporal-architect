@@ -16,10 +16,9 @@
 // Positions are irrelevant to the derivation and are all zero.
 
 import { DISPATCH_DIMENSION } from '../adapter/edge-types'
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
 import { filterOfSets } from './filter-states'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
-import { copyKeyOf } from '@temporal-architect/graph-view/graph/model'
+import { copyKeyOf, relationOf } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
@@ -63,22 +62,22 @@ const NODES: SimNode[] = [
 ]
 
 const EDGES: GraphEdge[] = [
-  { id: 'c0', sourceId: 'wk', targetId: 'ns', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c1', sourceId: 'wkB', targetId: 'ns', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c2', sourceId: 'svc', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c3', sourceId: 'ep', targetId: 'ns', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c4', sourceId: 'caller', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c0', sourceId: 'wk', targetId: 'ns', relation: 'containment' },
+  { id: 'c1', sourceId: 'wkB', targetId: 'ns', relation: 'containment' },
+  { id: 'c2', sourceId: 'svc', targetId: 'wk', relation: 'containment' },
+  { id: 'c3', sourceId: 'ep', targetId: 'ns', relation: 'containment' },
+  { id: 'c4', sourceId: 'caller', targetId: 'wk', relation: 'containment' },
   // Two tiers deep: operation -> service -> worker -> namespace.
-  { id: 'c5', sourceId: 'op', targetId: 'svc', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c6', sourceId: 'backing', targetId: 'wkB', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c7', sourceId: 'act', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c8', sourceId: 'actCopy', targetId: 'wkB', dimensions: { [RELATION_DIMENSION]: 'containment' } },
-  { id: 'c9', sourceId: 'op', targetId: 'ep', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'c5', sourceId: 'op', targetId: 'svc', relation: 'containment' },
+  { id: 'c6', sourceId: 'backing', targetId: 'wkB', relation: 'containment' },
+  { id: 'c7', sourceId: 'act', targetId: 'wk', relation: 'containment' },
+  { id: 'c8', sourceId: 'actCopy', targetId: 'wkB', relation: 'containment' },
+  { id: 'c9', sourceId: 'op', targetId: 'ep', relation: 'containment' },
   // The call path the splice rule rewrites: caller -> op -> backing.
-  { id: 'd0', sourceId: 'caller', targetId: 'op', dimensions: { [RELATION_DIMENSION]: 'dependency' }, payload: { nexusEndpoint: 'ep' } },
-  { id: 'd1', sourceId: 'op', targetId: 'backing', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
-  { id: 'd2', sourceId: 'caller', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
-  { id: 'd3', sourceId: 'caller', targetId: 'backing', dimensions: { [RELATION_DIMENSION]: 'dependency', [DISPATCH_DIMENSION]: 'signalSend' } },
+  { id: 'd0', sourceId: 'caller', targetId: 'op', relation: 'dependency', payload: { nexusEndpoint: 'ep' } },
+  { id: 'd1', sourceId: 'op', targetId: 'backing', relation: 'dependency' },
+  { id: 'd2', sourceId: 'caller', targetId: 'act', relation: 'dependency' },
+  { id: 'd3', sourceId: 'caller', targetId: 'backing', relation: 'dependency', dimensions: { [DISPATCH_DIMENSION]: 'signalSend' } },
 ]
 
 const BY_ID = new Map(NODES.map(node => [node.id, node]))
@@ -96,7 +95,7 @@ function edgeLine(e: GraphEdge): string {
   const tgt = BY_ID.get(e.targetId)
   const srcValue = src && DEFAULT_ONTOLOGY.valueFor(src)
   const tgtValue = tgt && DEFAULT_ONTOLOGY.valueFor(tgt)
-  return `${edgeTypeFor(e, srcValue, tgtValue)}|${e.dimensions[RELATION_DIMENSION]}|${e.sourceId} -> ${e.targetId}`
+  return `${edgeTypeFor(e, srcValue, tgtValue)}|${relationOf(e)}|${e.sourceId} -> ${e.targetId}`
 }
 
 function state(types: string[], files: string[]): Json {

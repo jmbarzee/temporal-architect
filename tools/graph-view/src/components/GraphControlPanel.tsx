@@ -15,7 +15,7 @@ import { Slider } from './controls/Slider'
 import { EquationSection } from './controls/EquationSection'
 import { PopProvider } from './controls/PopContext'
 import type { AxisOption, LayoutAxisOption } from '../graph/simulation'
-import { colorVar } from '../graph/scheme'
+import { useOntology } from './graph-view/useOntology'
 import type { DimensionalMapping } from '../graph/dimension'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
@@ -302,10 +302,11 @@ function SliderRow({ def, value, onChange, nodeType }: {
   onChange: (v: number) => void
   nodeType?: DimensionValue
 }) {
+  const ontology = useOntology()
   const display = def.step < 1 ? String(value) : String(Math.round(value))
   // A typed row reads its colour from the pane's inline variables.
   const typed = nodeType
-    ? { className: 'gv-graph-control-slider gv-graph-control-typed-row', style: { ['--gv-type-color' as string]: `var(${colorVar(nodeType)})` } as React.CSSProperties }
+    ? { className: 'gv-graph-control-slider gv-graph-control-typed-row', style: { ['--gv-type-color' as string]: `var(${ontology.colorVar(nodeType)})` } as React.CSSProperties }
     : { className: 'gv-graph-control-slider', style: undefined }
 
   return (

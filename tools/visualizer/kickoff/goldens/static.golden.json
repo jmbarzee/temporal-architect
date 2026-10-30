@@ -444,6 +444,228 @@
         }
       }
     },
+    "pass2": {
+      "cameraPolicy": {
+        "allowDefault": {
+          "alpha": 0.5,
+          "refit": true,
+          "resume": true,
+          "seedRevealed": true
+        },
+        "allowKeeps": {
+          "alpha": 0.5,
+          "refit": false,
+          "resume": true,
+          "seedRevealed": false
+        },
+        "narrowDefault": {
+          "alpha": 0.3,
+          "refit": false,
+          "resume": true,
+          "seedRevealed": false
+        },
+        "narrowRefits": {
+          "alpha": 0.3,
+          "refit": true,
+          "resume": true,
+          "seedRevealed": true
+        }
+      },
+      "classification": {
+        "containmentAsDeclared": "in",
+        "containmentReversed": "in",
+        "containmentWithNoType": null,
+        "dependencyOnTheSamePair": "links",
+        "dependencyReversed": "links",
+        "endpointWithNoValue": null,
+        "uncovered": null,
+        "validation": [
+          {
+            "code": "edge-type-unclassified",
+            "message": "edge \"uncovered\" has no type: no declared type runs between its endpoints; it draws in the neutral stroke with the typical spring",
+            "severity": "warning",
+            "subject": "uncovered"
+          }
+        ]
+      },
+      "derivedIds": {
+        "oneTaken": [
+          "in:x: x -> q (dependency)",
+          "in:x#2: x -> p (containment)"
+        ],
+        "twoTaken": [
+          "in:x: x -> q (dependency)",
+          "in:x#2: q -> x (dependency)",
+          "in:x#3: x -> p (containment)"
+        ]
+      },
+      "filterAxes": {
+        "labelled": [
+          {
+            "absentMeans": "hidden",
+            "chips": [
+              {
+                "icon": null,
+                "id": "a",
+                "label": "Alpha",
+                "tint": "a"
+              },
+              {
+                "icon": null,
+                "id": "b",
+                "label": "Beta",
+                "tint": "b"
+              }
+            ],
+            "emptyMeans": "none",
+            "focus": "always",
+            "id": "kind",
+            "initialSelection": [
+              "a",
+              "b"
+            ],
+            "label": "Kind",
+            "reheat": {
+              "alpha": 0.5,
+              "refit": true,
+              "resume": true,
+              "seedRevealed": true
+            }
+          }
+        ],
+        "unlabelled": [
+          {
+            "absentMeans": "hidden",
+            "chips": [
+              {
+                "icon": null,
+                "id": "a",
+                "label": "Alpha",
+                "tint": "a"
+              },
+              {
+                "icon": null,
+                "id": "b",
+                "label": "Beta",
+                "tint": "b"
+              }
+            ],
+            "emptyMeans": "none",
+            "focus": "always",
+            "id": "kind",
+            "initialSelection": [
+              "a",
+              "b"
+            ],
+            "label": "kind",
+            "reheat": {
+              "alpha": 0.5,
+              "refit": true,
+              "resume": true,
+              "seedRevealed": true
+            }
+          }
+        ]
+      },
+      "keyMismatch": [
+        {
+          "code": "node-key-mismatch",
+          "message": "node \"y\" is keyed as \"x\" in the graph's map; the view reads it by its id",
+          "severity": "warning",
+          "subject": "y"
+        }
+      ],
+      "names": {
+        "abbreviationFromLabel": "No",
+        "abbreviationFromValue": "ut",
+        "chipWithTooltip": [
+          {
+            "id": "util",
+            "label": "util",
+            "tooltip": "src/util.ts"
+          }
+        ],
+        "chipWithout": [
+          {
+            "id": "x",
+            "label": "North campus",
+            "tooltip": null
+          }
+        ],
+        "noTooltipFor": null,
+        "tooltipFor": "src/util.ts"
+      },
+      "rawScalar": {
+        "allZero": {
+          "a": 0,
+          "b": 0
+        },
+        "builtIns": {
+          "degree": "none",
+          "depth": "none",
+          "reach": "none"
+        },
+        "noneRefusesRaw": "scalar \"rawNone\" answered 2 for node \"a\"; a scalar answers in [0, 1]",
+        "normalized": {
+          "a": 0.5,
+          "b": 1
+        },
+        "restsOfNoneInUnit": {
+          "a": 25,
+          "b": 50
+        },
+        "restsOfRaw": {
+          "a": 50,
+          "b": 100
+        }
+      },
+      "sharedPair": {
+        "oppositeOrientation": "taxonomy is incoherent: edge types \"x\" and \"y\" run between the same values with the same relation (dependency); give classifyEdge to tell them apart",
+        "otherRelation": "returned",
+        "pairWhenItSaysNothing": "calls",
+        "sameOrientation": "taxonomy is incoherent: edge types \"calls\" and \"signals\" run between the same values with the same relation (dependency); give classifyEdge to tell them apart",
+        "tieBreakerFirst": "signals",
+        "withTieBreaker": "returned"
+      },
+      "strokes": {
+        "neutral": {
+          "alpha": 0.7,
+          "color": {
+            "dark": "#64748B",
+            "light": "#94A3B8"
+          },
+          "dash": [],
+          "width": 1.2
+        },
+        "omitted": {
+          "alpha": 0.7,
+          "color": {
+            "dark": "#64748B",
+            "light": "#94A3B8"
+          },
+          "dash": [],
+          "width": 1.2
+        },
+        "omittedEqualsNeutral": true,
+        "partial": {
+          "alpha": 0.7,
+          "color": {
+            "dark": "#64748B",
+            "light": "#94A3B8"
+          },
+          "dash": [],
+          "width": 3
+        },
+        "partialIsNeutralWithWidth": true
+      },
+      "unknownStroke": {
+        "equalsNeutral": true,
+        "threw": false,
+        "warnings": [
+          "[graph] edge type \"nope\" has no stroke: the taxonomy does not declare it; drawing it neutral"
+        ]
+      }
+    },
     "stackBand": [
       {
         "i": 0,
@@ -1725,11 +1947,12 @@
         "error edge-id-duplicate ok",
         "error edge-relation-unknown friend",
         "error edge-type-relation-mismatch cw",
-        "error edge-type-undeclared bogus",
         "error parent-missing y",
+        "warning edge-type-unclassified bogus",
         "warning node-value-undeclared q"
       ],
       "drawnEdges": [
+        "bogus: w -> x",
         "c1: x -> b1",
         "ok: x -> w"
       ],
@@ -2788,7 +3011,7 @@
   "scalarProbes": {
     "contract": {
       "duplicateId": "taxonomy is incoherent: scalar \"reach\" is declared twice (the built-ins are reach, degree and depth)",
-      "notANumber": "scalar \"nan\" answered NaN for node \"activity:AlertTimeout/worker:checkoutWorker/namespace:orders\"; a scalar answers in [0, 1]",
+      "notANumber": "scalar \"nan\" answered NaN for node \"activity:AlertTimeout/worker:checkoutWorker/namespace:orders\"; a scalar answers a finite number",
       "outOfRange": "scalar \"two\" answered 2 for node \"activity:AlertTimeout/worker:checkoutWorker/namespace:orders\"; a scalar answers in [0, 1]",
       "unknownScalar": "layout axis names scalar \"not-a-scalar\", which the taxonomy does not declare"
     },
@@ -2871,6 +3094,13 @@
       "bogus": "system",
       "dark": "dark",
       "light": "light"
+    },
+    "colorVarNames": {
+      "cafè": "--gv-node-v11",
+      "café": "--gv-node-v10",
+      "nexus-endpoint": "--gv-node-v8",
+      "nexusEndpoint": "--gv-node-v2",
+      "研究室": "--gv-node-v9"
     },
     "defaultVars": {
       "dark": {
@@ -2970,9 +3200,7 @@
     "refusals": {
       "badWhenHidden": "taxonomy is incoherent: values.worker.whenHidden is \"Splice\", not 'ascend' or 'splice'",
       "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex or rgb() colour",
-      "emptySuffix": "taxonomy is incoherent: style value \"工作流\" has no custom-property name (its id kebab-cases to nothing)",
-      "namedColour": "taxonomy is incoherent: values.worker.color.light.fill is \"slategray\", not a hex or rgb() colour",
-      "sharedSuffix": "taxonomy is incoherent: style values \"nexusEndpoint\" and \"nexus-endpoint\" share the custom-property name --gv-node-nexus-endpoint"
+      "namedColour": "taxonomy is incoherent: values.worker.color.light.fill is \"slategray\", not a hex or rgb() colour"
     },
     "secondScheme": {
       "allDiffer": true,
@@ -3008,7 +3236,7 @@
         "r": 11
       }
     },
-    "strokeForUnknown": "edge type \"not-a-type\" has no stroke: the taxonomy does not declare it",
+    "strokeForUnknown": "returned",
     "strokes": {
       "linkEndpointToNamespace": {
         "alpha": 0.35,
@@ -3941,8 +4169,9 @@
       "unique": true
     },
     "membership": {
-      "message": "edge type \"notDeclaredAnywhere\" is resolved by the taxonomy's rule but has no entry in its edgeTypes; the two must be kept in step.",
-      "throws": true
+      "key": null,
+      "message": "DID NOT THROW",
+      "throws": false
     },
     "overrides": {
       "firstTickBase": [

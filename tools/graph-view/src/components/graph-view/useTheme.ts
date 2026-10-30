@@ -9,6 +9,7 @@
 // follow the same answer the canvas draws with — one resolver, not two.
 
 import React from 'react'
+import { useIsomorphicLayoutEffect } from './useIsomorphicLayoutEffect'
 import type { Theme } from '../../graph/scheme'
 
 export type ThemeChoice = 'system' | Theme
@@ -53,7 +54,9 @@ export function hostTheme(el: Element | null): Theme {
  */
 export function useHostTheme(ref: React.RefObject<HTMLElement | null>): Theme {
   const [host, setHost] = React.useState<Theme>(() => hostTheme(ref.current))
-  React.useEffect(() => {
+  // A layout effect: the ref is empty on the first render, so the first
+  // answer is read once the element exists and before anything is painted.
+  useIsomorphicLayoutEffect(() => {
     const read = () => setHost(hostTheme(ref.current))
     read()
     if (typeof MutationObserver === 'undefined') return

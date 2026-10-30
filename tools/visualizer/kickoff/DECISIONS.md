@@ -2563,3 +2563,79 @@ does not, the README can produce a host, and what is deferred is filed.
 artifact gate. Total vocabulary 1090 / 1090; leak 0; boundary 0.
 
 — 2026-10-28 — agent
+
+**D74 — Unit 16, the second pass's footguns, the taxonomy's classification and the graph model (API_WORK_2.md Sets 1–3).**
+The second cold review's blocker and the two breaking model changes it
+asked for, in one unit so each host migrates once.
+
+1. **The uncontrolled filter follows the graph (1.1).** An axis that still
+   holds the selection it opened with is re-seeded from a new graph; an axis
+   the user changed keeps their selection. A host that mounts with an empty
+   graph while its data loads is no longer left blank for good, and a value
+   first seen later is not born hidden.
+2. **The keyboard leaves the browser's and the host's keys alone (1.2).** A
+   chord (Cmd, Ctrl, Alt) is never the pane's; Tab cycles nodes only while
+   the pane itself is focused, in either scope, so a keyboard user can
+   always reach the host's controls; Escape is cancelled only when something
+   here closes.
+3. **Outputs are the host's objects, after mount (1.4, 1.5).** Every
+   callback looks a node up in the host's graph, never the view's validated
+   copy; nothing fires for the empty state the view mounts in.
+4. **Quiet where it threw or guessed (1.6–1.10).** `edgeStrokeFor` answers
+   the neutral stroke with one warning for an undeclared type; the host's
+   theme is read in a layout effect so the first paint is right; a derived
+   containment edge whose id a host edge took is numbered (`in:x#2`), not
+   skipped; the tint warning is per bar; a taxonomy whose identity changes
+   three times in two seconds is reported once.
+5. **Edges classify themselves (2.1).** An edge is the one declared type
+   whose relation and endpoint values match its own and its original
+   endpoints', in either orientation; the host's rule, now `classifyEdge`,
+   is an optional tie-breaker that construction demands only when two
+   declared types share a pair. The catalog's second table is gone; the
+   visualizer keeps its ladder as the tie-breaker its fifteen types need. An
+   edge no type claims is a warning (`edge-type-unclassified`), drawn
+   neutral and sprung typical, where it was an error that dropped the edge.
+   The README and the `Ontology` doc now say what the code did since D66:
+   classified once, on the original endpoints, carried through graduation.
+6. **Any string is a value (2.2).** The custom-property name is the value's
+   kebab case where that is unique and non-empty, and a numbered name
+   (`--gv-node-v3`) otherwise; `Ontology.colorVar(value)` is the one way to
+   learn it, and the module-level `colorVar` is gone. `'研究室'` builds.
+7. **Fewer required fields (2.3–2.8).** An edge type's `style` defaults
+   field by field to `NEUTRAL_STROKE`; `filterDimensions` to the style axis
+   as an allow-list; `reheat` is replaced by `keepCamera` (the simulation's
+   internals stay internal — `ReheatPolicy` remains exported because the
+   resolved descriptor carries it, a deviation from the plan's 6.3);
+   `abbreviationFor` derives from `labelFor`, `tooltipFor` is new, and a
+   chip none of whose values the data presents is not offered; a scalar
+   returns raw numbers and the frame normalises them unless it says
+   `normalize: 'none'`; `BAND_FRAME` names the frame bands are laid in.
+8. **`relation` is a field (3.1).** `GraphEdge.relation?: Relation`,
+   defaulting to `dependency`; `RELATION_DIMENSION` is gone and
+   `GraphEdge.dimensions` holds only the host's axes. A containment edge the
+   host lists itself is drawn and sprung, never walked as the parent, and
+   named when it contradicts `parentId` (3.2, kept as the plan recommended).
+   `Graph` is `ReadonlyMap` and `readonly GraphEdge[]`, and a map key that is
+   not its node's id is named (`node-key-mismatch`) (3.3).
+
+**Golden change (§8.2).** `static` alone — the six fixture goldens are
+byte-identical, the first host's edges classifying as before through its
+tie-breaker. `defaultsProbes.pass2` is new (classification by pair in both
+orientations and the warning for an uncovered pair, the shared-pair refusal,
+the stroke defaults, `filterDimensions` defaulted, `keepCamera` → the reheat
+fields, `tooltipFor` and the abbreviation from the label, a raw scalar
+normalised, the unknown stroke, `node-key-mismatch`, the numbered derived
+ids). `integrityProbes.validation`: the `bogus` edge is `warning
+edge-type-unclassified` and now drawn. `scalarProbes.contract.notANumber`
+reads the split message ("a finite number"). `schemeProbes.refusals` loses
+`sharedSuffix` and `emptySuffix`, which no longer refuse, for
+`colorVarNames` (`nexusEndpoint` and `nexus-endpoint` both numbered,
+`研究室`, `café`, `cafè` numbered). `schemeProbes.strokeForUnknown` returns.
+`tuningProbes.membership` no longer throws and records the category a rogue
+id gets: none.
+
+**Measured.** Surface 72 (−`RELATION_DIMENSION`, +`BAND_FRAME`,
+`NEUTRAL_STROKE`). Total vocabulary 1089 / 1090 (the ceiling follows at the
+unit boundary); leak 0; boundary 0.
+
+— 2026-10-30 — agent

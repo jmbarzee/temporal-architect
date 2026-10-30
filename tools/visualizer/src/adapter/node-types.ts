@@ -496,7 +496,7 @@ export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   values: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t] })),
   filterDimensions: FILTER_DIMENSIONS,
   edgeTypes: ALL_EDGE_TYPES,
-  resolveEdgeType: edgeTypeFor,
+  classifyEdge: edgeTypeFor,
   contextLine: contextLineFor,
   highlight: highlightFor,
   // Two graduated edges on one pair: the one carrying routing metadata

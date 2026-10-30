@@ -6,7 +6,7 @@ import './GraphView.css'
 import { readableGraph, isContainment, withContainmentEdges } from '../graph/model'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import type { FilterState, PinState } from '../filter/types'
-import { defaultFilter, passesSelection } from '../filter/types'
+import { defaultFilter, passesSelection, selectionFor, selectionsEqual, withSelection } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
@@ -40,6 +40,7 @@ import { useSimulation } from './graph-view/useSimulation'
 import { useVisibleGraph } from './graph-view/useVisibleGraph'
 import { useSimulationLoop } from './graph-view/useSimulationLoop'
 import { useControllable, useLatest } from './graph-view/useControllable'
+import { useIsomorphicLayoutEffect } from './graph-view/useIsomorphicLayoutEffect'
 import { validateGraph, dropInvalid } from '../graph/validate'
 import type { GraphDiagnostic } from '../graph/validate'
 
@@ -131,10 +132,6 @@ export interface GraphViewProps {
 
 const NO_FLASH: ReadonlySet<string> = new Set()
 
-// A layout effect where there is a layout: on a server render there is none,
-// and React says so on the console for every `useLayoutEffect` it meets.
-const useIsomorphicLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect
-
 export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(function GraphView({
   graph: hostGraph,
   ontology: ontologyProp,
@@ -166,6 +163,23 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // State the host may control or leave to the view: the filter, the pins,
   // the chain of axes shown, the search control, the theme choice.
   const [filter, setFilter] = useControllable(filterProp, onFilterChange, () => defaultFilter(ontology, hostGraph))
+  // A graph that changes while an axis still holds the selection it opened
+  // with re-seeds that axis from the new graph: a host that mounts empty
+  // while its data loads is not left blank, and a value first seen later is
+  // not born hidden. An axis the user has changed keeps their selection.
+  const seededFromRef = React.useRef(hostGraph)
+  React.useEffect(() => {
+    const before = seededFromRef.current
+    if (before === hostGraph) return
+    seededFromRef.current = hostGraph
+    let next = filter
+    for (const d of ontology.filterDimensions) {
+      const opened = new Set(d.initialSelection(valuesOn(before.nodes.values(), d.id)))
+      if (!selectionsEqual(selectionFor(filter, d.id), opened)) continue
+      next = withSelection(next, d.id, new Set(d.initialSelection(valuesOn(hostGraph.nodes.values(), d.id))))
+    }
+    if (next !== filter) setFilter(next)
+  }, [hostGraph]) // eslint-disable-line react-hooks/exhaustive-deps
   const [pins, setPins] = useControllable(pinsProp, onPinsChange, () => new Map<string, boolean>())
   const [chain, setChain] = useControllable(hostChain, onChainChange, () => ontology.filterDimensions.map(d => d.id))
   const chainEditable = hostChain === undefined || onChainChange !== undefined
@@ -430,18 +444,24 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   })
 
   // What the host hears: the selection, the hover, a double-click and the
-  // resolved theme. Read through refs, so a host passing a fresh function
-  // each render is not re-notified of an unchanged value.
+  // resolved theme — always the host's own node objects, never the view's
+  // copies. Read through refs, so a host passing a fresh function each render
+  // is not re-notified of an unchanged value; nothing fires for the empty
+  // state the view mounts in.
   const onSelectionChangeRef = useLatest(onSelectionChange)
   const onHoverRef = useLatest(onHover)
   const onNodeActivateRef = useLatest(onNodeActivate)
   const onThemeResolvedRef = useLatest(onThemeResolved)
+  const mountedRef = React.useRef(false)
   React.useEffect(() => {
-    onSelectionChangeRef.current?.(selectedNodeId === null ? null : graph.nodes.get(selectedNodeId) ?? null)
+    if (!mountedRef.current) return
+    onSelectionChangeRef.current?.(selectedNodeId === null ? null : hostGraph.nodes.get(selectedNodeId) ?? null)
   }, [selectedNodeId]) // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-    onHoverRef.current?.(hoveredNodeId === null ? null : graph.nodes.get(hoveredNodeId) ?? null)
+    if (!mountedRef.current) return
+    onHoverRef.current?.(hoveredNodeId === null ? null : hostGraph.nodes.get(hoveredNodeId) ?? null)
   }, [hoveredNodeId]) // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { mountedRef.current = true }, [])
   React.useEffect(() => { onThemeResolvedRef.current?.(theme) }, [theme]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Double-click node: center and zoom to neighbors, and tell the host.
@@ -450,7 +470,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     if (!sim) return
     const node = sim.getNode(id)
     if (!node) return
-    const hostNode = graph.nodes.get(id)
+    const hostNode = hostGraph.nodes.get(id)
     if (hostNode) onNodeActivateRef.current?.(hostNode)
     const neighborIds = new Set<string>([id])
     for (const edge of sim.edges) {
@@ -459,7 +479,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     }
     const neighbors = sim.nodes.filter(n => neighborIds.has(n.id))
     fit(neighbors, 80)
-  }, [fit, graph])
+  }, [fit, hostGraph])
 
   // Fit-to-view
   const handleFitToView = React.useCallback(() => {
@@ -560,6 +580,9 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // activates the button, not the simulation, and Tab from a control moves
   // focus.
   const handleKey = React.useCallback((e: KeyboardEvent) => {
+    // A chord is the browser's or the host's (find, zoom, the host's own
+    // shortcuts): never this pane's.
+    if (e.metaKey || e.ctrlKey || e.altKey) return
     const target = e.target instanceof Element ? e.target : null
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
     const onControl = target !== null && target !== containerRef.current &&
@@ -568,9 +591,10 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
 
     switch (e.key) {
       case 'Tab': {
-        // On the pane, Tab cycles nodes only while the pane itself is focused;
-        // from anywhere else it moves focus as it always does.
-        if (keyboard === 'pane' && target !== containerRef.current) return
+        // Tab cycles nodes only while the pane itself is focused, in either
+        // scope; from the page it moves focus as it always does, so a keyboard
+        // user can always reach the host's controls.
+        if (target !== containerRef.current) return
         e.preventDefault()
         const count = visibleNodes.length
         if (count === 0) return
@@ -587,11 +611,11 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
         break
       }
       case 'Escape': {
-        e.preventDefault()
-        if (shortcutsOpen) { setShortcutsOpen(false); break }
-        if (searchActive) { toggleSearch(); break }
-        if (selectedNodeId) { setSelectedNodeId(null); break }
-        // Nothing left to close: on the pane, give focus back to the host.
+        // Cancelled only when something here closes; otherwise the key is the
+        // host's. With nothing left to close, the pane gives focus back.
+        if (shortcutsOpen) { e.preventDefault(); setShortcutsOpen(false); break }
+        if (searchActive) { e.preventDefault(); toggleSearch(); break }
+        if (selectedNodeId) { e.preventDefault(); setSelectedNodeId(null); break }
         if (keyboard === 'pane') containerRef.current?.blur()
         break
       }
@@ -656,8 +680,8 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // The hover box hands the host its own node object, never the simulation's copy.
   const hostCrossView = React.useMemo(() => crossView && {
     label: crossView.label,
-    onFocus: (node: GraphNode) => crossView.onFocus(graph.nodes.get(node.id) ?? node),
-  }, [crossView, graph])
+    onFocus: (node: GraphNode) => crossView.onFocus(hostGraph.nodes.get(node.id) ?? node),
+  }, [crossView, hostGraph])
 
   const nodeCount = visibleNodes.length
   const edgeCount = visibleEdges.length

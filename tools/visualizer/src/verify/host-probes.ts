@@ -15,11 +15,11 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  createOntology, OntologyContext, GraphView, RELATION_DIMENSION,
+  createOntology, OntologyContext, GraphView, isContainment,
 } from '@temporal-architect/graph-view'
 import type {
   OntologySpec, NodeStyle, EdgeType, DimensionDescriptor, ScalarAxis, ReadableGraph,
-  Graph, GraphNode, GraphEdge, ThemedColor, EdgeStroke,
+  Graph, GraphNode, GraphEdge, Relation, ThemedColor, EdgeStroke,
 } from '@temporal-architect/graph-view'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
@@ -37,7 +37,7 @@ const body = (label: string, abbreviation: string, icon: string, tier: number, r
 const style = (id: string, ...rest: Parameters<typeof body>): NodeStyle => ({ id, ...body(...rest) })
 const fallback = body('Unknown', 'Un', '?', 2, 8)
 const stroke: EdgeStroke = { color: { light: '#888888', dark: '#aaaaaa' }, alpha: 0.8, dash: [], width: 1 }
-const edgeType = (id: string, relation: 'containment' | 'dependency', src: string, tgt: string): EdgeType => ({
+const edgeType = (id: string, relation: Relation, src: string, tgt: string): EdgeType => ({
   id, label: id, sourceType: src, targetType: tgt, relation, physics: { strength: 0.5, distance: 80 }, style: relation === 'containment' ? { ...stroke, dash: [4, 4] } : stroke, tooltip: id,
 })
 // The minimal declaration: the policies follow from what an empty selection means.
@@ -47,7 +47,7 @@ const fanOut: ScalarAxis = {
   id: 'fanOut', label: 'Fan-out', tooltip: 'calls made, as a share of the most',
   compute(graph: ReadableGraph) {
     const out = new Map<string, number>()
-    for (const e of graph.edges) if (e.dimensions[RELATION_DIMENSION] === 'dependency') out.set(e.sourceId, (out.get(e.sourceId) ?? 0) + 1)
+    for (const e of graph.edges) if (!isContainment(e)) out.set(e.sourceId, (out.get(e.sourceId) ?? 0) + 1)
     const max = Math.max(1, ...out.values())
     return new Map([...graph.nodes].map(n => [n.id, (out.get(n.id) ?? 0) / max]))
   },
@@ -57,7 +57,7 @@ const spec: OntologySpec = {
   values: [style('cluster', 'Cluster', 'Cl', 'C', 0, 20), style('service', 'Service', 'Sv', 'S', 1, 14), style('pod', 'Pod', 'Pd', 'P', 2, 8)],
   filterDimensions: [axis(ZONE, 'Zone', 'all'), axis(KIND, 'Kind', 'none')],
   edgeTypes: [edgeType('contains', 'containment', 'pod', 'service'), edgeType('calls', 'dependency', 'pod', 'pod')],
-  resolveEdgeType: edge => (edge.dimensions[RELATION_DIMENSION] === 'containment' ? 'contains' : 'calls'),
+  classifyEdge: edge => (isContainment(edge) ? 'contains' : 'calls'),
   scalars: [fanOut],
   fallbackStyle: fallback,
 }
@@ -65,8 +65,8 @@ const spec: OntologySpec = {
 function node(id: string, kind: string, zone: string, parentId?: string): GraphNode {
   return { id, name: id, dimensions: { [KIND]: kind, [ZONE]: zone }, ring: !parentId && kind !== 'cluster' ? 'dashed' : undefined, copyKey: id, parentId }
 }
-function edge(id: string, sourceId: string, targetId: string, relation: 'containment' | 'dependency'): GraphEdge {
-  return { id, sourceId, targetId, dimensions: { [RELATION_DIMENSION]: relation } }
+function edge(id: string, sourceId: string, targetId: string, relation: Relation): GraphEdge {
+  return { id, sourceId, targetId, relation }
 }
 function graphOf(): Graph {
   const nodes = [node('c1', 'cluster', 'east'), node('s1', 'service', 'east', 'c1'), node('s2', 'service', 'west', 'c1'),
