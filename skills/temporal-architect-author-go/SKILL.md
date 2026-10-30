@@ -61,6 +61,7 @@ Load only what the current layer needs.
 | DSL | Go | File |
 |-----|----|------|
 | `workflow Name(...)` | workflow function | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | ID function, called by every start and sender | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
 | `activity Name(...)` | activity function / method | [activity-def.md](./reference/activity-def.md) |
 | `worker`, namespace worker `options:` | `worker.New`, `worker.Options` | [worker.md](./reference/worker.md) |
 | `nexus service Name:` | Nexus service + handlers | [nexus-service-def.md](./reference/nexus-service-def.md) |
@@ -68,7 +69,7 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `workflow.ExecuteChildWorkflow` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` | child: confirm start, skip result | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `NexusClient.ExecuteOperation` | [nexus.md](./reference/nexus.md) |
-| `signal handle.Name(args)` | `SignalChildWorkflow` | [signal-send.md](./reference/signal-send.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `SignalChildWorkflow` / `SignalExternalWorkflow` | [signal-send.md](./reference/signal-send.md) |
 | `signal Name(params):` | signal channel + selector | [signal-handler.md](./reference/signal-handler.md) |
 | `query Name(params) -> (T):` | `workflow.SetQueryHandler` | [query-handler.md](./reference/query-handler.md) |
 | `update Name(params) -> (T):` | `workflow.SetUpdateHandler` | [update-handler.md](./reference/update-handler.md) |

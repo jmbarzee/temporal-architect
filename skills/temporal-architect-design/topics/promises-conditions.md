@@ -20,7 +20,7 @@ await timeout
 
 The main use is start-now, wait-later: start operations, do other work, then collect results (`ParallelProcessing`). A promise can also be an `await one` case (`p -> result:`), racing a timer or signal (`TimedOperation`, `ResilientProcess`).
 
-A workflow-bound promise is also a signal target — see [signals-queries-updates.md](./signals-queries-updates.md#sending-a-signal-to-a-child-workflow).
+A workflow-bound promise is also a signal target — see [signals-queries-updates.md](./signals-queries-updates.md#sending-a-signal-to-another-workflow).
 
 ## Conditions and the state block
 

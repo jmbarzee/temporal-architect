@@ -43,7 +43,7 @@ Atomically completes the current run and starts a new one with fresh history.
 
 A long-lived workflow that *is* a business entity (user, account, subscription). Structure (`UserEntity`): `signal`/`query`/`update` handlers first — the parser rejects a handler declared after a body statement — then load the entity if the input was null, then `for: await one:` over signals and a periodic `timer`, persisting after changes and calling `continue_as_new(id, state)` past a threshold.
 
-Clients start it with a deterministic ID (`"user-{userId}"`, input state `null`) and interact by that ID through signals, queries, and updates; it runs until a signal (`Deactivate`) closes it.
+Its `id_scheme: "user-{userId}"` lets clients and other workflows reconstruct the ID ([workflow-id-schemes.md](./workflow-id-schemes.md)); clients start it with input state `null` and interact by that ID through signals, queries, and updates; it runs until a signal (`Deactivate`) closes it.
 
 | Entity workflow | Process workflow |
 |-----------------|------------------|

@@ -41,7 +41,7 @@ A child that fails (after its retries) fails the parent; shape that with the chi
 
 ## Workflow ID Design
 
-The child's workflow **ID** is set in SDK code, not TWF; `workflow_id_reuse_policy` is a TWF call option:
+A start never writes an ID. When a child's ID must be reconstructed later, declare it on the child type's `id_scheme:` ([workflow-id-schemes.md](./workflow-id-schemes.md)); otherwise the SDK generates one. `workflow_id_reuse_policy` stays a call option:
 
 | Policy | Behavior when the ID already exists |
 |--------|-------------------------------------|
@@ -50,13 +50,7 @@ The child's workflow **ID** is set in SDK code, not TWF; `workflow_id_reuse_poli
 | `REJECT_DUPLICATE` | Error |
 | `TERMINATE_IF_RUNNING` | Terminate the running one, start new |
 
-Derive IDs from business entities so they are deterministic and collision-free:
-
-- Parent + child identifier: `"{parent_id}-child-{item.id}"`
-- Business entity: `"order-{order.id}"` — never a static `"process-order"` shared by all orders
-- With an attempt counter: `"op-{data.id}-attempt-{attemptCount}"`
-
-A deterministic ID makes the start idempotent: starting a child whose ID is still running fails (`WorkflowExecutionAlreadyStarted`); for a closed one, the reuse policy decides.
+A schemed start is idempotent: starting a child whose ID is still running fails (`WorkflowExecutionAlreadyStarted`); for a closed one, the reuse policy decides.
 
 ## Decomposition and Testing
 

@@ -74,6 +74,7 @@ Produce or review `.twf`; `temporal-architect` routes implementation, so don't s
 | Workflow Boundaries | Activity vs child workflow vs Nexus | [workflow-boundaries.md](./reference/workflow-boundaries.md) |
 | Primitives Reference | Which Temporal primitive, and its topic | [primitives-reference.md](./reference/primitives-reference.md) |
 | Signal vs Update | External input into a workflow | [signals-queries-updates.md](./topics/signals-queries-updates.md) |
+| Workflow ID Schemes | A workflow whose ID is reconstructed later; signalling a workflow you hold no handle to | [workflow-id-schemes.md](./topics/workflow-id-schemes.md) |
 | Anti-Patterns | Common design mistakes | [anti-patterns.md](./reference/anti-patterns.md) |
 | `.twf` Conventions | Package-per-directory layout, impl-link header | [twf-conventions.md](./reference/twf-conventions.md) |
 | Packages & Imports | Cross-package references | [packages.md](./topics/packages.md) |
