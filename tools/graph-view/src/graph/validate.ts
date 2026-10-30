@@ -6,11 +6,12 @@
 // declare: each used to be either dropped in silence or thrown from inside a
 // render memo, where no boundary catches it and the host's whole tree
 // unmounts. Here they are diagnostics. The view runs this once per graph,
-// shows the list inside its own pane, and draws what remains; a host that
-// wants to refuse a bad graph before mounting calls it itself.
+// shows the list inside its own pane, hands it to `onDiagnostics`, and draws
+// what remains; a host that wants to refuse a bad graph before mounting calls
+// it itself.
 
-import type { Graph, GraphEdge } from './model'
-import { relationOf } from './model'
+import type { Graph, GraphEdge, GraphNode } from './model'
+import { nodesById, relationOf } from './model'
 import type { Taxonomy } from './taxonomy'
 
 export type GraphDiagnosticCode =
@@ -23,7 +24,7 @@ export type GraphDiagnosticCode =
   | 'parent-missing'
   | 'containment-parent-mismatch'
   | 'node-value-undeclared'
-  | 'node-key-mismatch'
+  | 'node-id-duplicate'
 
 export interface GraphDiagnostic {
   /** An error names something the view cannot draw as given; a warning, something it draws but the host should know. */
@@ -36,18 +37,31 @@ export interface GraphDiagnostic {
 
 const RELATIONS = new Set(['containment', 'dependency'])
 
+/**
+ * Every defect in a host's graph, as data: errors for what the view cannot
+ * draw as given (a duplicated node id, a dangling endpoint, an unknown
+ * relation, a type whose relation is not the edge's, a parent not in the
+ * graph) and warnings for what it draws but the host should know (an
+ * unclassified edge, an undeclared style value, containment edges that
+ * contradict `parentId`). Pure; the same graph and taxonomy give the same
+ * list, in graph order.
+ */
 export function validateGraph(graph: Graph, taxonomy: Taxonomy): GraphDiagnostic[] {
   const out: GraphDiagnostic[] = []
   const declaredTypes = new Map(taxonomy.edgeTypes.map(e => [e.id, e]))
   const declaredValues = new Set(taxonomy.styleValues)
+  const byId = nodesById(graph.nodes)
 
-  // Nodes: keyed by their own id, a parent that exists, a style value the
-  // taxonomy declares.
-  for (const [key, node] of graph.nodes) {
-    if (key !== node.id) {
-      out.push({ severity: 'warning', code: 'node-key-mismatch', nodeId: node.id, message: `node ${JSON.stringify(node.id)} is keyed as ${JSON.stringify(key)} in the graph's map; the view reads it by its id` })
+  // Nodes: one per id, a parent that exists, a style value the taxonomy
+  // declares.
+  const seenNodes = new Set<string>()
+  for (const node of graph.nodes) {
+    if (seenNodes.has(node.id)) {
+      out.push({ severity: 'error', code: 'node-id-duplicate', nodeId: node.id, message: `node id ${JSON.stringify(node.id)} is used more than once; the view draws the first` })
+      continue
     }
-    if (node.parentId !== undefined && !graph.nodes.has(node.parentId)) {
+    seenNodes.add(node.id)
+    if (node.parentId !== undefined && !byId.has(node.parentId)) {
       out.push({ severity: 'error', code: 'parent-missing', nodeId: node.id, message: `node ${JSON.stringify(node.id)} names parent ${JSON.stringify(node.parentId)}, which is not in the graph` })
     }
     const value = taxonomy.styleValueOf(node)
@@ -66,8 +80,8 @@ export function validateGraph(graph: Graph, taxonomy: Taxonomy): GraphDiagnostic
       continue
     }
     seenIds.add(edge.id)
-    const src = graph.nodes.get(edge.sourceId)
-    const tgt = graph.nodes.get(edge.targetId)
+    const src = byId.get(edge.sourceId)
+    const tgt = byId.get(edge.targetId)
     if (!src || !tgt) {
       const missing = [!src && edge.sourceId, !tgt && edge.targetId].filter((x): x is string => typeof x === 'string')
       out.push({ severity: 'error', code: 'edge-endpoint-missing', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} names ${missing.map(m => JSON.stringify(m)).join(' and ')}, not in the graph` })
@@ -92,7 +106,7 @@ export function validateGraph(graph: Graph, taxonomy: Taxonomy): GraphDiagnostic
     }
     const declared = typeId === undefined ? undefined : declaredTypes.get(typeId)
     if (!declared) {
-      const said = typeId === undefined ? 'no declared type runs between its endpoints' : `classifyEdge answered ${JSON.stringify(typeId)}, which edgeTypes does not declare`
+      const said = typeId === undefined ? 'no declared type fits its endpoints and values' : `classifyEdge answered ${JSON.stringify(typeId)}, which edgeTypes does not declare`
       out.push({ severity: 'warning', code: 'edge-type-unclassified', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has no type: ${said}; it draws in the neutral stroke with the typical spring` })
       continue
     }
@@ -104,7 +118,7 @@ export function validateGraph(graph: Graph, taxonomy: Taxonomy): GraphDiagnostic
   // The two readings of containment agree: a node that lists containment
   // edges of its own lists one to its parent. A node listing none gets that
   // edge derived from `parentId`; a node with no parent may list what it likes.
-  for (const node of graph.nodes.values()) {
+  for (const node of byId.values()) {
     const viaEdges = containers.get(node.id)
     if (node.parentId !== undefined && viaEdges !== undefined && !viaEdges.has(node.parentId)) {
       out.push({ severity: 'warning', code: 'containment-parent-mismatch', nodeId: node.id, message: `node ${JSON.stringify(node.id)} has containment edges to ${[...viaEdges].map(c => JSON.stringify(c)).join(' and ')} but its parentId is ${JSON.stringify(node.parentId)}` })
@@ -114,23 +128,28 @@ export function validateGraph(graph: Graph, taxonomy: Taxonomy): GraphDiagnostic
 }
 
 /**
- * The graph with every edge an error names removed and every parent an error
- * names cleared — what the view draws when the host's graph has defects. The
+ * The graph with every node and edge an error names removed and every parent
+ * an error names cleared — what the view draws when the host's graph has
+ * defects. A duplicated id keeps its first node and its first edge. The
  * host's objects are not mutated; a graph with no errors is returned as is.
  */
 export function dropInvalid(graph: Graph, diagnostics: readonly GraphDiagnostic[]): Graph {
   const badEdges = new Set<string>()
   const badParents = new Set<string>()
+  const duplicateNodes = new Set<string>()
   for (const d of diagnostics) {
     if (d.severity !== 'error') continue
     if (d.edgeId !== undefined) badEdges.add(d.edgeId)
     if (d.code === 'parent-missing' && d.nodeId !== undefined) badParents.add(d.nodeId)
+    if (d.code === 'node-id-duplicate' && d.nodeId !== undefined) duplicateNodes.add(d.nodeId)
   }
-  if (badEdges.size === 0 && badParents.size === 0) return graph
-  const nodes = new Map(graph.nodes)
-  for (const id of badParents) {
-    const node = nodes.get(id)
-    if (node) nodes.set(id, { ...node, parentId: undefined })
+  if (badEdges.size === 0 && badParents.size === 0 && duplicateNodes.size === 0) return graph
+  const seenNodes = new Set<string>()
+  const nodes: GraphNode[] = []
+  for (const node of graph.nodes) {
+    if (duplicateNodes.has(node.id) && seenNodes.has(node.id)) continue
+    seenNodes.add(node.id)
+    nodes.push(badParents.has(node.id) ? { ...node, parentId: undefined } : node)
   }
   // A duplicated id names every edge carrying it; the first keeps its place.
   const kept = new Set<string>()

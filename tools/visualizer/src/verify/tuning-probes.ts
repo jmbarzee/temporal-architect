@@ -45,7 +45,7 @@ function multifile(): Graph {
 }
 
 function graphOf(nodes: GraphNode[], edges: GraphEdge[]): Graph {
-  return { nodes: new Map(nodes.map(n => [n.id, n])), edges }
+  return { nodes, edges }
 }
 
 export function syntheticNode(id: string, nodeType: NodeType, sourceFile: string | undefined): GraphNode {
@@ -64,7 +64,7 @@ function manyFiles(n: number): Graph {
 }
 
 function without(graph: Graph, file: string): Graph {
-  const keep = [...graph.nodes.values()].filter(n => n.dimensions[SOURCE_FILE_DIMENSION] !== file)
+  const keep = graph.nodes.filter(n => n.dimensions[SOURCE_FILE_DIMENSION] !== file)
   const ids = new Set(keep.map(n => n.id))
   return graphOf(keep, graph.edges.filter(e => ids.has(e.sourceId) && ids.has(e.targetId)))
 }
@@ -124,7 +124,7 @@ function overrides(graph: Graph): Json {
  */
 function retune(graph: Graph): Json {
   const params = fileAxisParams(graph)
-  const reversed: Graph = { ...graph, nodes: new Map([...graph.nodes].reverse()) }
+  const reversed: Graph = { ...graph, nodes: [...graph.nodes].reverse() }
   const dropped = retunedFor(params, DEFAULT_TAXONOMY, without(graph, 'task-queues.twf'))
   const fileless = retunedFor(params, DEFAULT_TAXONOMY, graphOf([syntheticNode('x', 'workflow', undefined)], []))
   const big = manyFiles(30)

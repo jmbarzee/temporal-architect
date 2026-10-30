@@ -1,5 +1,55 @@
 {
   "contractProbes": {
+    "filterJson": {
+      "instancesRefused": [
+        true,
+        true,
+        true
+      ],
+      "json": {
+        "file": [],
+        "kind": [
+          "workflow",
+          "activity"
+        ]
+      },
+      "locks": {
+        "file": false,
+        "kind": true
+      },
+      "locksRefused": [
+        true,
+        true
+      ],
+      "locksRoundTrip": true,
+      "protoKey": [
+        "__proto__",
+        "kind"
+      ],
+      "refused": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "roundTrip": true
+    },
+    "focusRequest": {
+      "bothNull": true,
+      "nullAndRequest": false,
+      "otherId": false,
+      "sameIdNewKey": false,
+      "sameIdNoKey": true,
+      "sameIdSameKey": true
+    },
+    "graphEquality": {
+      "edgeValue": false,
+      "movedValue": false,
+      "newPayloadObject": false,
+      "renamed": false,
+      "reordered": false,
+      "sameContent": true
+    },
     "graphShape": {
       "edgeRemoved": false,
       "parentChanged": false,
@@ -246,6 +296,15 @@
         "parentWithoutEdges": []
       }
     },
+    "countsByCopy": {
+      "dept": {
+        "a": 2,
+        "b": 1
+      },
+      "kind": {
+        "course": 2
+      }
+    },
     "defaultFilter": {
       "kind": [
         "a",
@@ -482,7 +541,7 @@
         "validation": [
           {
             "code": "edge-type-unclassified",
-            "message": "edge \"uncovered\" has no type: no declared type runs between its endpoints; it draws in the neutral stroke with the typical spring",
+            "message": "edge \"uncovered\" has no type: no declared type fits its endpoints and values; it draws in the neutral stroke with the typical spring",
             "severity": "warning",
             "subject": "uncovered"
           }
@@ -499,6 +558,14 @@
           "in:x#3: x -> p (containment)"
         ]
       },
+      "duplicateNodeId": [
+        {
+          "code": "node-id-duplicate",
+          "message": "node id \"x\" is used more than once; the view draws the first",
+          "severity": "error",
+          "subject": "x"
+        }
+      ],
       "filterAxes": {
         "labelled": [
           {
@@ -567,14 +634,6 @@
           }
         ]
       },
-      "keyMismatch": [
-        {
-          "code": "node-key-mismatch",
-          "message": "node \"y\" is keyed as \"x\" in the graph's map; the view reads it by its id",
-          "severity": "warning",
-          "subject": "y"
-        }
-      ],
       "names": {
         "abbreviationFromLabel": "No",
         "abbreviationFromValue": "ut",
@@ -620,10 +679,10 @@
         }
       },
       "sharedPair": {
-        "oppositeOrientation": "taxonomy is incoherent: edge types \"x\" and \"y\" run between the same values with the same relation (dependency); give classifyEdge to tell them apart",
+        "oppositeOrientation": "returned",
         "otherRelation": "returned",
         "pairWhenItSaysNothing": "calls",
-        "sameOrientation": "taxonomy is incoherent: edge types \"calls\" and \"signals\" run between the same values with the same relation (dependency); give classifyEdge to tell them apart",
+        "sameOrientation": "taxonomy is incoherent: edge types \"calls\" and \"signals\" run between the same values with the same relation (dependency) and nothing tells them apart; give one a match on an edge axis, declare them in opposite orientations, or give classifyEdge",
         "tieBreakerFirst": "signals",
         "withTieBreaker": "returned"
       },
@@ -3022,6 +3081,17 @@
       "absentRingAtCentre": true,
       "presentRestAtOne": true,
       "presentRingOutermost": false
+    },
+    "rangeNormalisation": {
+      "flat": {
+        "a": 0,
+        "b": 0
+      },
+      "spread": {
+        "a": 0,
+        "b": 0.5,
+        "c": 1
+      }
     }
   },
   "schemeProbes": {
@@ -3135,8 +3205,8 @@
     },
     "refusals": {
       "badWhenHidden": "taxonomy is incoherent: values.worker.whenHidden is \"Splice\", not 'ascend' or 'splice'",
-      "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex or rgb() colour",
-      "namedColour": "taxonomy is incoherent: values.worker.color.light.fill is \"slategray\", not a hex or rgb() colour"
+      "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex, rgb() or hsl() colour",
+      "namedColour": "taxonomy is incoherent: values.worker.color.light.fill is \"slategray\", not a hex, rgb() or hsl() colour"
     },
     "secondScheme": {
       "allDiffer": true,
@@ -4130,6 +4200,18 @@
         "act2 -> wk|containment"
       ]
     },
+    "hslColour": {
+      "border": [
+        26,
+        51,
+        77
+      ],
+      "fill": [
+        51,
+        102,
+        153
+      ]
+    },
     "injection": {
       "alternateNodesOnAlternateKeys": {
         "contextLines": [
@@ -4220,6 +4302,24 @@
         "stringPassesThrough": true
       },
       "intersectingBucketsRefused": "dimensional mapping \"probe:overlapping\" is incoherent: \"b\" is in both ab and bc. A value in two buckets has no defined answer for which one tunes it."
+    },
+    "matchClassification": {
+      "emptyMatchRefused": "refused",
+      "fallback": "plain",
+      "matched": "signal",
+      "matchedReverse": "signal",
+      "onlyMatchedMet": "onlyMatched",
+      "onlyMatchedUnmet": null,
+      "reverseOrientation": "reverse",
+      "ruleSeesDeclared": {
+        "answer": "two",
+        "handed": [
+          "one"
+        ]
+      },
+      "twoAlikeRefused": "refused",
+      "twoAlikeWithRule": "built",
+      "unmatchedValue": "plain"
     },
     "physicsInjection": {
       "axes": {

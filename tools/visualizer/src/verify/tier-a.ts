@@ -7,9 +7,8 @@
 import { DISPATCH_DIMENSION } from '../adapter/edge-types'
 import { filterOfSets } from './filter-states'
 import { buildGraph } from '../adapter/build'
-import { edgeTypeFor } from '../adapter/edge-types'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
-import { copyGroups, copyKeyOf, payloadString, relationOf } from '@temporal-architect/graph-view/graph/model'
+import { copyGroups, copyKeyOf, nodesById, payloadString, relationOf } from '@temporal-architect/graph-view/graph/model'
 import { Simulation, axisOptions, fitsCeiling, pairTuning, defaultParamsFor, sprungEdges } from '@temporal-architect/graph-view/graph/simulation'
 import { presentSpringCategories, resolveSprings, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { presentSetsOf } from '@temporal-architect/graph-view/components/graph-view/present'
@@ -17,6 +16,7 @@ import { highlightOf } from '@temporal-architect/graph-view/graph/highlight'
 import { BUILT_IN_SCALARS } from '@temporal-architect/graph-view/graph/scalar'
 import { readableGraph } from '@temporal-architect/graph-view/graph/model'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
+import type { ContextLine } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { Fixture } from './fixtures'
 import { ALL_TYPES_STATE, TYPE_STATES, fileStates } from './filter-states'
 import { SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
@@ -25,10 +25,25 @@ import { NEUTRAL_STROKE } from '@temporal-architect/graph-view/graph/shapes'
 import type { Json } from './snapshot'
 import { histogram, sorted, sortedRecord } from './snapshot'
 
+/** What an edge no type claims is called in a row; the shipped table claims every edge a fixture has. */
+const UNCLASSIFIED = '(unclassified)'
+
+/**
+ * A context line as a row. The library lets a host answer with any element; this
+ * host answers with text, so anything else is a drift the harness names rather
+ * than records.
+ */
+function contextLineRow(line: ContextLine): Json {
+  if (line === undefined || line === null) return ''
+  if (typeof line === 'string') return line
+  if (Array.isArray(line) && line.every((l): l is string => typeof l === 'string')) return [...line]
+  throw new Error('tier-a: the taxonomy answered a context line that is not text')
+}
+
 /** Every source file the graph's nodes carry, sorted — the file chips' domain. */
 export function allFilesOf(graph: Graph): string[] {
   const files = new Set<string>()
-  for (const node of graph.nodes.values()) {
+  for (const node of graph.nodes) {
     const file = node.dimensions[SOURCE_FILE_DIMENSION]
     if (file) files.add(file)
   }
@@ -68,7 +83,7 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
   const srcValue = src && DEFAULT_TAXONOMY.styleValueOf(src)
   const tgtValue = tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)
   const parts = [
-    edgeTypeFor(e, srcValue, tgtValue),
+    DEFAULT_TAXONOMY.classifyEdge(e, srcValue, tgtValue) ?? UNCLASSIFIED,
     relationOf(e),
     `${e.sourceId} -> ${e.targetId}`,
   ]
@@ -120,8 +135,9 @@ export interface TierA {
 }
 
 export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
-  const nodeOf = (id: string) => graph.nodes.get(id)
-  const nodes = [...graph.nodes.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  const byId = nodesById(graph.nodes)
+  const nodeOf = (id: string) => byId.get(id)
+  const nodes = [...graph.nodes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const edgeLines = sorted(graph.edges.map(e => edgeLine(e, nodeOf)))
 
   const states: [string, Json][] = []
@@ -147,7 +163,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
   return {
     fixture: fixture.name,
     graph: {
-      nodeCount: graph.nodes.size,
+      nodeCount: graph.nodes.length,
       edgeCount: graph.edges.length,
       sourceFiles: allFilesOf(graph),
       nodes: nodes.map(nodeRow),
@@ -160,7 +176,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       byEdgeType: histogram(graph.edges.map(e => {
         const src = nodeOf(e.sourceId)
         const tgt = nodeOf(e.targetId)
-        return edgeTypeFor(e, src && DEFAULT_TAXONOMY.styleValueOf(src), tgt && DEFAULT_TAXONOMY.styleValueOf(tgt))
+        return DEFAULT_TAXONOMY.classifyEdge(e, src && DEFAULT_TAXONOMY.styleValueOf(src), tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)) ?? UNCLASSIFIED
       })),
       // The stroke each edge draws with, read the way the canvas reads it —
       // the type's stroke through the taxonomy (D57, D58): the composition
@@ -190,7 +206,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
     // The hover box's context line per node (D59, B35): the taxonomy's hook
     // read against the fixture's own payloads, or its default — the parent's
     // name — where the hook says nothing.
-    contextLines: sortedRecord(nodes.map(n => { const c = DEFAULT_TAXONOMY.contextLine(n, n.parentId ? nodeOf(n.parentId) : undefined); return [n.id, c === undefined ? '' : typeof c === 'string' ? c : [...c]] as const })),
+    contextLines: sortedRecord(nodes.map(n => [n.id, contextLineRow(DEFAULT_TAXONOMY.contextLine(n, n.parentId ? nodeOf(n.parentId) : undefined))] as const)),
     // Every built-in scalar's value per node over the whole graph (R8, R9) —
     // reach is the same function topological gravity reads over the visible
     // subgraph, so its rows here and `downstreamScores` there must agree

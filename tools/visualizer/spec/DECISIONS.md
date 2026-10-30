@@ -2763,3 +2763,112 @@ by hand so its rows read as before.
 leak 0; boundary 0.
 
 — 2026-10-30 — agent
+
+**D77 — Unit 19, the state contracts and the model (#209 Sets 1 and 3).**
+The first unit of the fourth run, from the third cold review (#209's first
+comment): the view's state props behave as React users expect, and the model
+stops asking the host to build what the view can build.
+
+1. **The selection is controlled or it is the view's.** While `selectedId`
+   is defined the view shows it and nothing else; every selection the user
+   makes — a click, Enter, Escape, a search pick, a focus landing, the handle
+   — goes through one path that reports it (`onSelectionChange`) and, when
+   the view owns the state, applies it. The host is never told of a change it
+   made itself. The view's own selection clears, and reports null, when its
+   node leaves the graph; a controlled one is the host's to keep or drop.
+2. **Filters compare by content.** The loop decides "did this axis change?"
+   with `selectionsEqual`, and the view keeps the previous filter, locks and
+   axes objects while the next are equal (`useStable`), so a host that
+   rebuilds a filter from a URL or a store on every render reheats nothing
+   and refits nothing. Identity-preserving helpers are the cheap path, not
+   the contract. `filterToJSON` / `filterFromJSON` and `locksToJSON` /
+   `locksFromJSON` carry a filter and its locks out and back; the first
+   host's storage shim was the duplicate.
+3. **A focus request is a value.** `focus: { id, key? }` replaces `focusId`:
+   compared by value, so a re-render is not a new ask and a host repeats a
+   request by changing `key`; kept pending until its node is in the graph,
+   so a deep link into a pane whose data has not loaded is honoured when it
+   does; `onFocusResult(request, shown)` reports the outcome. Null withdraws
+   a waiting request.
+4. **An uncontrolled start.** `defaultFilter` is also a prop: the filter the
+   view's own state starts from, for a host whose start depends on its own
+   state. A host that gives it has chosen its start, so the graph-change
+   re-seed (D74) is skipped for it.
+5. **The identity rules, right and complete.** `graphEquals` (was
+   `graphShapeEquals`) compares every node and edge field — values by
+   content, payloads by identity — so a host that changed a name is not told
+   it rebuilt for nothing. The README's Identity paragraph covers the
+   taxonomy (the churn warning existed; the sentence did not).
+6. **`onDiagnostics`.** The graph's diagnostics reach the host whenever
+   they are recomputed, the first graph's included. The pane's list stays
+   on by default: in the first host the defects are the design author's own.
+7. **`Graph.nodes` is an array.** In layout order; the view indexes it, and
+   `nodesById` does the same for a host. `node-key-mismatch` goes;
+   `node-id-duplicate` (an error; the first node stands) replaces it.
+8. **Declarative classification.** `EdgeType.match` names the values an edge
+   must carry on the host's edge axes to be that type. Among the declared
+   types of the edge's relation on its endpoint pair, those whose `match` is
+   absent or satisfied fit; a satisfied `match` beats none, the declared
+   orientation beats the reverse, declaration order settles the rest; nothing
+   fitting is unclassified. Two types with the same orientation and the same
+   (or no) `match` are refused at construction unless `classifyEdge` is
+   given. The host's rule receives the declared answer as its fourth
+   argument and may keep it, replace it, or supply one where there is none,
+   so it needs no "declared pair?" guard of its own (the first host's
+   migration wrote one; it is gone). Both hosts' classifiers shrink to their
+   exceptions: the first host's, a pair the table does not declare and a
+   signal send on any pair; the catalog's, a lab's requirement by the edge's
+   own kind. An empty `match` is refused: it would be "specific" and leave
+   the type without one unreachable.
+9. **Smaller promises kept.** `countsOn` counts entities (`copyKey ?? id`),
+   not copies. `summaryKind: 'none'` hides the connections row.
+   `AxisDescriptor.iconFor` gives a chip its glyph without a `chipsFor`.
+   `ScalarAxis.normalize: 'range'` maps the smallest answer to 0. `contextLine`
+   may answer elements, and `nodeAction` may be a function of the node.
+   Colours may be `hsl()`. The README carries a table of the style defaults
+   so a host stops restating them. `toggleValue` returns to the surface
+   (#209 Decision 10; D76 had removed it while the README kept naming it).
+
+**Review (the unit's fan-out).** Six finders with orthogonal mandates, each
+finding checked by a skeptic: sixteen confirmed, all closed in the unit.
+Two were real defects in the new effects — the physics loop held a stale
+`requestSelect`, so a focus landing just after a graph change could report
+the old graph's node (now read through refs; the callback is identity-stable),
+and a focus landing in the same commit as the graph-change re-seed built on
+the render's filter and undid the seed (both writes now build on the filter
+as last written). One in the bar: `useRecentlyChanged` keyed its effect on
+filter identity while comparing by content, so a host rebuilding an equal
+filter cancelled the flash timer and left the chips lit (stabilised; the bar
+now compares filter, locks and axes by content as the pane does). The rest:
+an id the graph does not hold is ignored by `requestSelect` rather than
+selected-and-reported-null; `filterFromJSON` / `locksFromJSON` accept only a
+plain record (a Map or Date was an empty filter) and the writers build records
+from entries (an axis named `__proto__` vanished); an empty `match` is
+refused; the catalog's lab rule keeps the edge's kind; and the words — a
+superseded focus request is withdrawn unreported, `max` refuses a negative
+answer, counts are entity counts, `iconSize` is rounded, the first host's
+signal-send exception, the catalog README's seams. No probe reaches the two
+effect-ordering defects without a DOM; the rest gained rows.
+
+**Measured.** Surface 90 + 89 names (nine added: `filterToJSON`,
+`filterFromJSON`, `locksToJSON`, `locksFromJSON`, `nodesById`, `toggleValue`,
+`ContextLine`, `FocusRequest`, `NodeAction`); leak 0 of 0; total vocabulary
+1059, ceiling ratcheted from 1089 (the classifier rewrite removed thirty
+domain words from the first host); boundary 0; forbidden patterns 0 new;
+7/7 goldens with `static` regenerated under this decision; both
+published-type gates clean; the catalog typechecked by a new Makefile target
+(it had three latent type errors nothing checked).
+
+**Golden change (§8.2).** `static` alone. New rows under the contract,
+taxonomy, scalar and defaults probes pin the above: the field comparison
+(`graphEquality`; the older `graphShape` rows are unchanged), the filter and
+lock JSON round trips, `match` classification with its refusal and the
+declared answer handed to the host's rule, counts by copy, an `hsl()`
+colour, a duplicate node id (replacing the `keyMismatch` row, whose code is
+gone), and range normalisation. Four existing rows move with the library's
+words: the unclassified-edge message, the shared-pair refusal message, the
+colour refusal message (now naming `hsl()`), and `sharedPair.oppositeOrientation`,
+which the construction check now accepts since orientation tells two types
+apart. The six fixture goldens and `edge-types` are byte-identical: the
+hosts' classifiers were rewritten to declarations with the fixtures as the
+oracle.

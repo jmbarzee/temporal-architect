@@ -16,7 +16,7 @@ import type { TaxonomySpec } from '@temporal-architect/graph-view/graph/taxonomy
 import type { NodeStyle, EdgeType } from '@temporal-architect/graph-view/graph/shapes'
 import type { AxisDescriptor, Relation } from '@temporal-architect/graph-view/graph/axis'
 import type { Graph, GraphEdge } from '@temporal-architect/graph-view/graph/model'
-import { relationOf } from '@temporal-architect/graph-view/graph/model'
+import { nodesById, relationOf } from '@temporal-architect/graph-view/graph/model'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import { validateGraph, dropInvalid } from '@temporal-architect/graph-view/graph/validate'
@@ -135,13 +135,14 @@ function validation(): Json {
     dep('bogus', 'w', 'x', 'bogus'),
     dep('ok', 'w', 'x', 'calls'),
   ]
-  const graph: Graph = { nodes: new Map(nodes.map(n => [n.id, n])), edges }
+  const graph: Graph = { nodes, edges }
+  const original = nodesById(graph.nodes)
   const diagnostics = validateGraph(graph, ONTOLOGY)
   const drawn = dropInvalid(graph, diagnostics)
   return {
     diagnostics: sorted(diagnostics.map(d => `${d.severity} ${d.code} ${d.edgeId ?? d.nodeId ?? ''}`)),
     drawnEdges: sorted(drawn.edges.map(line)),
-    parentsCleared: sorted([...drawn.nodes.values()].filter(n => graph.nodes.get(n.id)?.parentId !== n.parentId).map(n => n.id)),
+    parentsCleared: sorted(drawn.nodes.filter(n => original.get(n.id)?.parentId !== n.parentId).map(n => n.id)),
     cleanGraphIsSame: dropInvalid(graph, []) === graph,
   }
 }

@@ -11,9 +11,9 @@ which is worth noticing rather than assuming.
 | file | zone | leak | imported by |
 |---|---|---:|---|
 | `App.tsx` | neither | 5 | `main.tsx` |
-| `adapter/build.ts` | shim | 55 | **6** files |
+| `adapter/build.ts` | shim | 56 | **6** files |
 | `adapter/dimensions.ts` | shim | 3 | **12** files |
-| `adapter/edge-types.ts` | shim | 176 | **7** files |
+| `adapter/edge-types.ts` | shim | 145 | **7** files |
 | `adapter/groups.ts` | shim | 2 | `components/GroupsModal.tsx`, `components/WorkflowCanvas.tsx`, `verify/seam-probes.ts` |
 | `adapter/node-type-styles.ts` | shim | 2 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
 | `adapter/node-types.ts` | shim | 133 | **19** files |
@@ -45,7 +45,7 @@ which is worth noticing rather than assuming.
 | `types/decomposition.ts` | shim | 3 | **7** files |
 | `types/parser-graph.ts` | shim | 3 | **7** files |
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
-| `verify/contract-probes.ts` | neither | 15 | `verify/static-golden.ts` |
+| `verify/contract-probes.ts` | neither | 22 | `verify/static-golden.ts` |
 | `verify/defaults-probes.ts` | neither | 15 | `verify/static-golden.ts` |
 | `verify/filter-states.ts` | neither | 14 | **7** files |
 | `verify/fixtures.ts` | neither | 10 | **6** files |
@@ -54,14 +54,14 @@ which is worth noticing rather than assuming.
 | `verify/integrity-probes.ts` | neither | 10 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
 | `verify/rng.ts` | neither | 1 | **5** files |
-| `verify/scalar-probes.ts` | neither | 12 | `verify/static-golden.ts` |
+| `verify/scalar-probes.ts` | neither | 13 | `verify/static-golden.ts` |
 | `verify/scheme-probes.ts` | neither | 17 | `verify/static-golden.ts` |
 | `verify/seam-probes.ts` | neither | 14 | `verify/static-golden.ts` |
 | `verify/snapshot.ts` | neither |  | **17** files |
 | `verify/static-golden.ts` | neither | 24 | `verify/main.ts` |
 | `verify/synthetic-visible.ts` | neither | 32 | `verify/static-golden.ts` |
-| `verify/taxonomy-probes.ts` | neither | 84 | `verify/static-golden.ts` |
-| `verify/tier-a.ts` | neither | 13 | **5** files |
+| `verify/taxonomy-probes.ts` | neither | 85 | `verify/static-golden.ts` |
+| `verify/tier-a.ts` | neither | 14 | **5** files |
 | `verify/tier-b.ts` | neither | 6 | `verify/main.ts` |
 | `verify/tier-c.ts` | neither | 16 | `verify/main.ts` |
 | `verify/tuning-probes.ts` | neither | 74 | `verify/contract-probes.ts`, `verify/static-golden.ts` |
@@ -85,8 +85,9 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/controls/Slider.tsx` | manifest |  | **4** files |
 | `../graph-view/components/controls/SubTab.tsx` | manifest |  | `../graph-view/components/GravityControls.tsx`, `../graph-view/components/PushPullControls.tsx` |
 | `../graph-view/components/controls/bucketColor.ts` | manifest |  | `../graph-view/components/AxisControls.tsx`, `../graph-view/components/ChargeControls.tsx`, `../graph-view/components/SpringControls.tsx` |
+| `../graph-view/components/graph-view/focus.ts` | manifest |  | `verify/contract-probes.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
 | `../graph-view/components/graph-view/present.ts` | manifest |  | **4** files |
-| `../graph-view/components/graph-view/useControllable.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
+| `../graph-view/components/graph-view/useControllable.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx`, `../graph-view/components/graph-view/useRecentlyChanged.ts` |
 | `../graph-view/components/graph-view/useHighlight.ts` | manifest |  | `../graph-view/components/GraphView.tsx` |
 | `../graph-view/components/graph-view/useIsomorphicLayoutEffect.ts` | manifest |  | `../graph-view/components/GraphView.tsx`, `../graph-view/components/graph-view/useTheme.ts` |
 | `../graph-view/components/graph-view/useRecentlyChanged.ts` | manifest |  | `../graph-view/components/FilterBar.tsx`, `../graph-view/components/GraphView.tsx` |
@@ -100,7 +101,7 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/icons/SearchIcon.tsx` | manifest |  | `../graph-view/components/FilterBar.tsx` |
 | `../graph-view/filter/reconcile.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
 | `../graph-view/filter/toggle.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/FilterBar.tsx`, `../graph-view/index.ts` |
-| `../graph-view/filter/types.ts` | manifest |  | **12** files |
+| `../graph-view/filter/types.ts` | manifest |  | **13** files |
 | `../graph-view/graph/axis.ts` | manifest |  | **25** files |
 | `../graph-view/graph/forces.ts` | manifest |  | **21** files |
 | `../graph-view/graph/groups.ts` | manifest |  | **5** files |
@@ -109,10 +110,10 @@ which is worth noticing rather than assuming.
 | `../graph-view/graph/node-scale.ts` | manifest |  | **4** files |
 | `../graph-view/graph/rng.ts` | manifest |  | **4** files |
 | `../graph-view/graph/scalar.ts` | manifest |  | **11** files |
-| `../graph-view/graph/scheme.ts` | manifest |  | **9** files |
+| `../graph-view/graph/scheme.ts` | manifest |  | **10** files |
 | `../graph-view/graph/shapes.ts` | manifest |  | **11** files |
 | `../graph-view/graph/simulation.ts` | manifest |  | **29** files |
-| `../graph-view/graph/taxonomy.ts` | manifest |  | **24** files |
+| `../graph-view/graph/taxonomy.ts` | manifest |  | **25** files |
 | `../graph-view/graph/validate.ts` | manifest |  | **4** files |
 | `../graph-view/graph/viewport.ts` | manifest |  | **4** files |
 | `../graph-view/index.ts` | manifest |  | **13** files |

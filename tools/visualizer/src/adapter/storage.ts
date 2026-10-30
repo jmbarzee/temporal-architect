@@ -5,8 +5,9 @@
 //   2. VS Code webview (src/webview.tsx) — uses vscode.setState/getState
 //      since localStorage is often restricted by webview CSP.
 //
-// Both backends serialize the same shape; Set<string> fields are stored
-// as plain arrays.
+// Both backends serialize the same shape; a filter is stored as the library's
+// `filterToJSON` writes it (each axis's selection an array of strings) and read
+// back through `filterFromJSON`.
 
 /**
  * Where and how this state is persisted — supplied by the host.
@@ -37,7 +38,7 @@ export interface StorageConfig {
  */
 const STATE_VERSION = 2
 
-/** A selection per axis, Sets flattened to arrays for JSON. */
+/** A selection per axis, as the library's `filterToJSON` writes it and `filterFromJSON` reads it. */
 export type PersistedFilter = Record<string, string[]>
 
 /** A pin per axis. */

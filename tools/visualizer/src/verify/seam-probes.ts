@@ -97,7 +97,7 @@ function barRendered(): Json {
       search: { query: '', active: false }, onSearchChange: noop, searchInputRef: React.createRef<HTMLInputElement>(),
       searchTitle: 'Search', searchPlaceholder: 'Search',
       axes: [SOURCE_FILE_DIMENSION, DEF_TYPE_DIMENSION],
-      values: new Map(DEFAULT_TAXONOMY.filterAxes.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
+      values: new Map(DEFAULT_TAXONOMY.filterAxes.map(d => [d.id, valuesOn(graph.nodes, d.id)])),
       findings: React.createElement('div', { 'data-probe': 'findings' }),
     })))
   return { badges: badgesOf(html), findingsSlot: html.includes('data-probe="findings"'), pinToggles: pinToggles(html) }

@@ -1,7 +1,7 @@
 // Force-directed simulation engine.
 
 import type { GraphNode, GraphEdge, Graph } from './model'
-import { readableGraph } from './model'
+import { nodesById, readableGraph } from './model'
 import type { EdgeTypeId, SpringPhysics } from './shapes'
 import {
   applyChargeForce,
@@ -202,10 +202,11 @@ export function fitsCeiling(option: AxisOption): boolean {
 export function axisOptions(taxonomy: Taxonomy, graph: Graph): AxisOption[] {
   const mappings: DimensionalMapping[] = [styleIdentityMapping(taxonomy)]
   for (const dimension of nodeAxes(taxonomy, graph)) {
-    const values = valuesOn(graph.nodes.values(), dimension)
+    const values = valuesOn(graph.nodes, dimension)
     if (values.length > 0) mappings.push(identityMapping(namerFor(taxonomy, dimension), values))
   }
-  const nodeOf = (id: string) => graph.nodes.get(id)
+  const byId = nodesById(graph.nodes)
+  const nodeOf = (id: string) => byId.get(id)
   return mappings.map(mapping => ({
     mapping,
     pushTokens: mapping.buckets.length,
@@ -228,7 +229,7 @@ function nodeAxes(taxonomy: Taxonomy, graph: Graph): AxisId[] {
     if (seen.has(d.id)) continue
     seen.add(d.id); out.push(d.id)
   }
-  for (const node of graph.nodes.values()) {
+  for (const node of graph.nodes) {
     for (const dimension of Object.keys(node.dimensions)) {
       if (seen.has(dimension)) continue
       seen.add(dimension); out.push(dimension)
@@ -288,10 +289,11 @@ function sameBuckets(a: DimensionalMapping, b: DimensionalMapping): boolean {
  */
 export function retunedFor(params: ForceParams, taxonomy: Taxonomy, graph: Graph): ForceParams {
   const style = taxonomy.styleAxis()
-  const nodeOf = (id: string) => graph.nodes.get(id)
+  const byId = nodesById(graph.nodes)
+  const nodeOf = (id: string) => byId.get(id)
   const refreshed = (m: DimensionalMapping): DimensionalMapping | undefined => {
     if (m.dimension === style) return styleIdentityMapping(taxonomy)
-    const values = valuesOn(graph.nodes.values(), m.dimension)
+    const values = valuesOn(graph.nodes, m.dimension)
     return values.length === 0 ? undefined : identityMapping(namerFor(taxonomy, m.dimension), values)
   }
   // One rule for every tuning: re-bucket; fall back to the style axis with
@@ -589,7 +591,7 @@ export class Simulation {
     // bucket sits at the axis's centre, or at the origin.
     this.nodes = []
     this.nodeMap = new Map()
-    const seedNodes = [...graph.nodes.values()]
+    const seedNodes = graph.nodes
     this.frame = layoutFrame(readableGraph(graph), this.resolved)
     for (const node of seedNodes) {
       const given = positions?.get(node.id)

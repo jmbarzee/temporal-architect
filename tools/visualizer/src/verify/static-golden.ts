@@ -47,14 +47,17 @@ function nodeTypeRows(): Json {
   // that has to.
   return sortedRecord(
     ALL_NODE_TYPES.map(t => {
-      const d = NODE_TYPE_REGISTRY[t]
+      // The host's own fields off the registry; everything the library may
+      // default, resolved through the taxonomy as the engine reads it.
+      const h = NODE_TYPE_REGISTRY[t]
+      const d = DEFAULT_TAXONOMY.styleOf(t)
       return [t, {
         label: d.label,
         icon: d.icon,
-        defType: d.defType,
-        ladder: d.ladder,
-        tier: d.tier,
-        defaultVisible: d.defaultVisible,
+        defType: h.defType,
+        ladder: h.ladder,
+        tier: h.tier,
+        defaultVisible: h.defaultVisible,
         sliderLabel: sliderLabelFor(t),
         size: { r: d.size.r, iconSize: d.size.iconSize },
         physics: {

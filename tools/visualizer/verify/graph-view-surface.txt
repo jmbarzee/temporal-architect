@@ -7,11 +7,16 @@ copyGroups
 countsOn
 createTaxonomy
 defaultFilter
+filterFromJSON
 filterStatesEqual
+filterToJSON
 hiddenMatchesOf
 isContainment
 lockedFor
+locksFromJSON
+locksToJSON
 matchesFocus
+nodesById
 passesSelection
 payloadNumber
 payloadString
@@ -21,6 +26,7 @@ schemeVars
 selectionFor
 themeChoiceOf
 toggleGroup
+toggleValue
 type ActiveGroup
 type AxisDescriptor
 type AxisId
@@ -30,6 +36,7 @@ type AxisValue
 type AxisValues
 type Band
 type ColorPair
+type ContextLine
 type EdgeStroke
 type EdgeType
 type EdgeTypeId
@@ -37,6 +44,7 @@ type FilterBarChrome
 type FilterBarProps
 type FilterChip
 type FilterState
+type FocusRequest
 type FocusTarget
 type Graph
 type GraphDiagnostic
@@ -50,6 +58,7 @@ type HiddenMatches
 type Highlight
 type HighlightDirection
 type HighlightGraph
+type NodeAction
 type NodeGroup
 type NodeStyle
 type Position

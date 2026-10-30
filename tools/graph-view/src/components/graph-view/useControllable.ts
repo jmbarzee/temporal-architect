@@ -24,6 +24,17 @@ export function useControllable<T>(
   return [controlled ? value : own, set]
 }
 
+/**
+ * The previous value for as long as the next is equal to it, so a host that
+ * rebuilds a value each render (a filter parsed from a URL) does not read as
+ * a change downstream: memos and effects key on the object this returns.
+ */
+export function useStable<T>(value: T, equals: (a: T, b: T) => boolean): T {
+  const ref = React.useRef(value)
+  if (ref.current !== value && !equals(ref.current, value)) ref.current = value
+  return ref.current
+}
+
 /** The latest value of a callback prop, read from an effect or a handler without being a dependency. */
 export function useLatest<T>(value: T): React.MutableRefObject<T> {
   const ref = React.useRef(value)

@@ -6,12 +6,18 @@
 import React from 'react'
 import type { FilterState } from '../../filter/types'
 import { filterStatesEqual, selectionFor } from '../../filter/types'
+import { useStable } from './useControllable'
 
 /** The values that just turned on, per axis. */
 export type RecentlyChanged = ReadonlyMap<string, ReadonlySet<string>>
 const NONE: RecentlyChanged = new Map()
 
-export function useRecentlyChanged(filter: FilterState): RecentlyChanged {
+export function useRecentlyChanged(rawFilter: FilterState): RecentlyChanged {
+  // One object per content change, so the effect below re-runs — and its
+  // cleanup cancels the timer — only for a real change: a host rebuilding an
+  // equal filter each render once cancelled the flash's timer and left the
+  // chips lit until the next real change.
+  const filter = useStable(rawFilter, filterStatesEqual)
   const prevFilterRef = React.useRef<FilterState>(filter)
   const [recentlyChanged, setRecentlyChanged] = React.useState<RecentlyChanged>(NONE)
   React.useEffect(() => {

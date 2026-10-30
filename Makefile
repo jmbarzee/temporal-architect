@@ -175,7 +175,7 @@ publish-npm-libs:
 .PHONY: test vet typecheck typecheck-visualizer typecheck-graph-view verify-visualizer gates-visualizer buildlib-graph-view check-visualizer
 
 ## Run every typecheck gate
-typecheck: typecheck-graph-view typecheck-visualizer
+typecheck: typecheck-graph-view typecheck-visualizer typecheck-catalog
 
 ## The visualizer's TypeScript program reaches the library's source, whose files
 ## resolve React from the sibling's own node_modules: with the sibling not
@@ -193,6 +193,10 @@ typecheck-visualizer: tools/graph-view/node_modules/.package-lock.json
 ## Typecheck the graph-view library on its own (strict tsc, no emit)
 typecheck-graph-view: tools/graph-view/node_modules/.package-lock.json
 	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit
+
+## Typecheck the library's example host, which the library's own program does not include
+typecheck-catalog: tools/graph-view/node_modules/.package-lock.json
+	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit -p examples/course-catalog/tsconfig.json
 
 ## Compare the visualizer goldens against the committed baseline
 verify-visualizer:
@@ -227,7 +231,7 @@ buildlib-graph-view:
 # aggregate is what runs at every commit boundary, so a library-build break
 # would have sat green locally and surfaced only in CI after a push. CI was
 # always covered (`make build`); the local loop was the half that lied.
-check-visualizer: typecheck-graph-view typecheck-visualizer gates-visualizer verify-visualizer buildlib-graph-view buildlib-visualizer
+check-visualizer: typecheck-graph-view typecheck-visualizer typecheck-catalog gates-visualizer verify-visualizer buildlib-graph-view buildlib-visualizer
 
 ## Run Go tests
 # tools/sampler is its own module (resolved against ../lsp via the repo-root

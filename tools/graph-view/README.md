@@ -60,7 +60,7 @@ const nodes: GraphNode[] = [
   { id: 'ledger', name: 'Ledger', dimensions: { kind: 'service' }, parentId: 'payments' },
 ]
 const graph: Graph = {
-  nodes: new Map(nodes.map(n => [n.id, n])),
+  nodes,
   edges: [{ id: 'checkout→ledger', sourceId: 'checkout', targetId: 'ledger' }],
 }
 
@@ -91,28 +91,43 @@ never by spreading the built object.
 - **The style axis and its values.** `styleAxis` names the axis every
   node is styled on; `values` lists its values, top of the hierarchy first.
   A `NodeStyle` needs its `id`, `label` and `color` (fill and border, per
-  theme, hex or `rgb()`). The rest defaults: `abbreviation` to the label's
-  first two characters, `icon` to none, `size.r` to 12, `physics.charge` to
-  −40 r and `coreRadius` to 4 r, the rest band on the hierarchy axis to the
-  value's slice of a stack by its position in the order, `whenHidden` to
-  `ascend` (a dependency edge touching a hidden node re-points to its nearest
-  visible ancestor; `splice` follows the node's own edges through),
-  `summaryKind` to `degree` (`children` counts what a node contains, in the
-  hover box). `fallbackStyle` draws a value nobody declared; `styleLabel`
-  names the axis in the controls.
+  theme: hex, `rgb()` or `hsl()`); everything else has a default, and a
+  value that restates one says nothing:
+
+  | field | default |
+  |---|---|
+  | `abbreviation` | the label's first two characters |
+  | `icon` | none |
+  | `size.r` / `size.iconSize` | 12 / nine tenths of `r`, rounded, at least 9 |
+  | `physics.charge` / `physics.coreRadius` | −40 r / 4 r |
+  | `physics.band.y` | the value's slice of the stack, by its position in the order |
+  | `physics.band.x` | 0 to 380 (`BAND_FRAME.x`) |
+  | `whenHidden` | `ascend`: a dependency edge touching a hidden node re-points to its nearest visible ancestor; `splice` follows the node's own edges through |
+  | `summaryKind` | `degree` (`→3 ←2` in the hover box); `children` counts what the node contains; `none` shows neither |
+
+  `fallbackStyle` draws a value nobody declared; `styleLabel` names the axis
+  in the controls.
 - **Edge types and classification.** Each `EdgeType` has an `id`, a `label`,
   the `sourceValue` and `targetValue` (style values) it runs between and its
   `relation` (`containment` or `dependency`); `style` (colour per theme,
   alpha, dash, width) defaults field by field to the neutral stroke,
   `physics` (a spring's strength and rest length) to the mean of the declared
   springs, `tooltip` to the label. An edge is classified once, on the style
-  values of its original endpoints, as the one declared type whose relation
-  and endpoints match in either orientation, and keeps that type when
-  graduation re-points it. Two declared types on one pair — a call and a
-  signal between two workflows — need the host's `classifyEdge(edge,
-  sourceValue, targetValue)`, which answers an id or lets the declared types
-  decide. An edge no type claims draws in the neutral stroke with the typical
-  spring, and `validateGraph` says so.
+  values of its original endpoints: the declared type of its relation whose
+  endpoints match in either orientation and whose `match` — values the edge
+  itself must carry on the host's edge axes — its `dimensions` satisfy. Two
+  types on one pair are told apart by `match` (a call and a signal between
+  two services, by the edge's `kind`), with the type that declares none as
+  the fallback, or by their declared orientation: a satisfied `match` beats
+  the pair alone, the declared orientation beats the reverse, and declaration
+  order settles the rest. Two types nothing tells apart are refused at
+  construction unless the host gives `classifyEdge(edge, sourceValue,
+  targetValue, declared)`, which sees what the declarations answered and may
+  keep it, replace it, or supply a type where they answered none — the
+  exceptions declarations cannot express. An edge keeps its type when
+  graduation re-points it; an edge no type claims
+  draws in the neutral stroke with the typical spring, and `validateGraph`
+  says so.
 - **Filter axes.** `filterAxes` defaults to the style axis as an
   allow-list. Each `AxisDescriptor` is an `id`, a `label` and what an
   empty selection means: `none` (an allow-list: nothing selected shows
@@ -123,23 +138,28 @@ never by spreading the built object.
   overridden. `chipsFor(values)` groups values into chips (default one per
   value; on the style axis they wear the value's icon and tint; a chip none
   of whose values the data presents is not offered), `labelFor`,
-  `abbreviationFor` and `tooltipFor` name values (defaults: the style's names
-  on the style axis, the value itself elsewhere, the abbreviation from the
-  label, no tooltip), `initialSelection(values)` is the first open's
-  selection (default every value on an allow-list, none on a narrowing
-  axis), `presentation` is `chip` or `tag`.
+  `abbreviationFor`, `iconFor` and `tooltipFor` name and adorn values
+  (defaults: the style's names and icon on the style axis, the value itself
+  and no icon elsewhere, the abbreviation from the label, no tooltip),
+  `initialSelection(values)` is the first open's selection (default every
+  value on an allow-list, none on a narrowing axis), `presentation` is
+  `chip` or `tag`.
 - **Scalars and hooks.** `scalars` adds computed axes (`id`, `label`,
-  `tooltip`, `compute(graph)` answering a number per node, divided by the
-  largest unless `normalize: 'none'`) to the built-in reach, degree and
-  depth. `contextLine(node, parent)` is the hover box's
-  line under the name (default the parent's name); `searchText(node)` is
+  `tooltip`, `compute(graph)` answering a number per node; `normalize` maps
+  the answers onto [0, 1]: `max` divides by the largest and refuses a
+  negative, `range` puts the smallest at 0 and the largest at 1, `none`
+  trusts them) to the built-in
+  reach, degree and depth. `contextLine(node, parent)` is the hover box's
+  line or lines under the name, text or elements (default the parent's
+  name); `searchText(node)` is
   what the search matches on (default the name); `highlight(active, base,
   graph, direction)` may widen or replace the transitive walk; `collapse(kept,
   candidate)` picks which of two graduated edges on one visible pair survives.
 
 ## The graph
 
-`Graph` is `nodes` (a `Map` by id) and `edges`. Both carry `dimensions`, a map
+`Graph` is `nodes` (an array, in layout order; the view indexes it, and
+`nodesById` does the same for a host) and `edges`. Both carry `dimensions`, a map
 from axis to value, and an opaque `payload` the view never reads
 (`payloadString` and `payloadNumber` read it for you). Ids are opaque: the
 engine compares them and never parses one.
@@ -157,14 +177,18 @@ engine compares them and never parses one.
   axis the nodes carry can be pushed, pulled and laid out on.
 - **Adornments.** A node may carry `badges` (short texts drawn as chips above
   it) and a `ring` (`dashed`, for a node set apart).
-- **Identity.** Keep one `graph` object until its nodes or edges change: a new
-  object of the same shape rebuilds the layout for nothing, and the view says
-  so once. A changed graph keeps the positions of the nodes it still has.
+- **Identity.** Keep one `graph` object until something in it changes: a new
+  object equal to the last rebuilds the layout for nothing, and the view says
+  so once. The same for the taxonomy — build it once, outside render; the
+  view warns when its identity churns. The filter, locks and axes are
+  compared by content, so a host may rebuild those each render. A changed
+  graph keeps the positions of the nodes it still has.
 - **Validation.** `validateGraph(graph, taxonomy)` names every defect — a
   dangling endpoint, an unknown relation, a type the rule returns that the
-  table lacks, a duplicate id, a parent not in the graph. The view runs it,
-  lists the findings under the bar and draws what remains; a host that wants
-  to refuse a bad graph calls it first.
+  table lacks, a duplicate node or edge id, a parent not in the graph. The
+  view runs it, lists the findings under the bar, hands them to
+  `onDiagnostics` and draws what remains; a host that wants to refuse a bad
+  graph calls it first.
 
 ## The view
 
@@ -177,16 +201,27 @@ Everything else is optional.
   (`{ query, active }`) and the theme choice each follow the React convention:
   pass the value and its callback to control it, neither to let the view keep
   it, the callback alone to be told. `defaultFilter(taxonomy, graph)` is the
-  filter the view starts from, for a host that controls it.
-- **Selection and focus.** `selectedId` controls the selection
-  (`onSelectionChange` is its callback; a click still reports, and the host
-  answers by setting the prop). `focusId` reveals, centres and selects a node
-  whenever it changes — the declarative form of the handle's `focusNode`, for
-  a pane that mounts lazily.
-- **Inputs.** `counts` (chip badges; the graph's node counts unless given),
+  filter the view starts from: a host that controls the filter seeds its
+  state with it, and a host that leaves the filter to the view but wants
+  another start passes that as the `defaultFilter` prop. `filterToJSON` /
+  `filterFromJSON` and `locksToJSON` / `locksFromJSON` carry a filter and its
+  locks to a URL or a store and back.
+- **Selection and focus.** `selectedId` controls the selection: while it is
+  defined the view shows it and nothing else, `onSelectionChange` reports the
+  selections the user makes (never one the host made), and the host answers
+  by setting the prop, or not. Absent, the view keeps the selection and still
+  reports. `focus={{ id, key }}` reveals, centres and selects a node — the
+  declarative form of the handle's `focusNode`, for a pane that mounts lazily
+  or whose data arrives late. It is compared by value, so a new `id` or `key`
+  is a new request; it waits until its node is in the graph; and
+  `onFocusResult(request, shown)` says whether the filter could show the
+  node. Null, or a newer request, withdraws a waiting one unreported.
+- **Inputs.** `counts` (chip badges; the graph's entity counts unless given,
+  the copies of one `copyKey` once),
   `findings` under the bar, `groups` to glow (each with a `color` or the
   palette's), `groupsControl` for a legend inside the pane (anchor it under
-  `--gv-toolbar-height`), a `nodeAction` action for the hover box, `controls`
+  `--gv-toolbar-height`), a `nodeAction` for the hover box (`{ label,
+  onSelect }`, or a function of the node answering one or null), `controls`
   and `themeToggle` to hide the panel and the theme button, `chrome` to turn
   off the search control, the lock toggles (off by default until the host
   engages locks), the Fit / Play / count cluster, the diagnostics list, the
@@ -194,7 +229,9 @@ Everything else is optional.
   `searchTitle` and `searchPlaceholder` for the host's own words,
   `className`, `style`, and `positions` (a kept layout).
 - **Outputs.** `onSelectionChange(node | null)`, `onNodeActivate(node)` on a
-  double-click, `onHover(node | null)`, `onThemeResolved(theme)`. The resolved
+  double-click, `onHover(node | null)`, `onThemeResolved(theme)`,
+  `onDiagnostics(diagnostics)` whenever the graph's defects are recomputed
+  (the first graph's included). The resolved
   theme is for the host's own chrome beside the pane, never for a `data-theme`
   on an ancestor of it: the pane reads that ancestor to resolve `system`, so
   writing the answer there locks it.
@@ -229,7 +266,7 @@ declared axis. The bar flashes the locks a focus overrode by itself when
 `overriddenLocks` changes. `passesSelection`, `selectionFor`, `withSelection`,
 `withLock`, `toggleGroup` and `filterStatesEqual` are the filter operations
 the bar itself uses; `toggleValue` flips one value for a host's own control.
-A focus into the graph is `focusNode(id)` or the `focusId` prop; a focus into
+A focus into the graph is `focusNode(id)` or the `focus` prop; a focus into
 the other view is the host's (`matchesFocus(node, target)` finds the node a
 `FocusTarget`'s values name). Chips rendered outside the pane need the
 scheme's variables on an ancestor — `schemeVars(taxonomy, theme)` inline, or

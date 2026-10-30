@@ -12,7 +12,7 @@ import type { AxisValue } from '../graph/axis'
 import { countsOn, valuesOn } from '../graph/axis'
 import type { Graph } from '../graph/model'
 import type { Taxonomy } from '../graph/taxonomy'
-import { useControllable } from './graph-view/useControllable'
+import { useControllable, useStable } from './graph-view/useControllable'
 import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
 import type { RecentlyChanged } from './graph-view/useRecentlyChanged'
 
@@ -31,7 +31,7 @@ import { selectionFor } from '../filter/types'
 import React from 'react'
 import './FilterBar.css'
 import type { ResolvedAxisDescriptor } from '../graph/axis'
-import { lockedFor, withLock, withSelection } from '../filter/types'
+import { filterStatesEqual, listEqual, lockedFor, locksEqual, withLock, withSelection } from '../filter/types'
 import type { FilterState, AxisLocks, FilterDimension } from '../filter/types'
 import { toggleGroup } from '../filter/toggle'
 import { LockToggle } from './LockToggle'
@@ -61,7 +61,7 @@ export interface FilterBarProps {
   taxonomy?: Taxonomy
   /** Which controls are offered. Default: everything; locks only when the host engages them (`locks` or `onLocksChange`). */
   chrome?: FilterBarChrome
-  /** Chip badge counts per axis and value, read by the host off its own data. Absent: the graph's node counts when `graph` is given, else no badges. */
+  /** Chip badge counts per axis and value, read by the host off its own data. Absent: the graph's entity counts (the copies of one `copyKey` once) when `graph` is given, else no badges. */
   counts?: ReadonlyMap<string, ReadonlyMap<string, number>>
   /**
    * Values available per axis — the one source every axis's chips are built
@@ -114,7 +114,7 @@ export function FilterBar({
   counts: hostCounts,
   values: hostValues,
   graph,
-  filter,
+  filter: filterProp,
   onFilterChange,
   locks: locksProp,
   onLocksChange,
@@ -137,7 +137,11 @@ export function FilterBar({
   if (!taxonomy) throw new Error('FilterBar has no taxonomy: pass `taxonomy`, or mount it inside <TaxonomyContext.Provider value={…}>.')
   if (!hostValues && !graph) throw new Error('FilterBar needs the values each axis offers: pass `values`, or the `graph` to read them off.')
   const undeclaredTints = React.useRef(new Set<string>())
-  const [locks, setLocks] = useControllable(locksProp, onLocksChange, () => new Map<string, boolean>())
+  // The filter, locks and axes compared by content, as the pane compares
+  // them: a host rebuilding one each render changes nothing here.
+  const filter = useStable(filterProp, filterStatesEqual)
+  const [rawLocks, setLocks] = useControllable(locksProp, onLocksChange, () => new Map<string, boolean>())
+  const locks = useStable(rawLocks, locksEqual)
   const showLocks = chrome?.locks ?? (locksProp !== undefined || onLocksChange !== undefined)
   const showSearch = chrome?.search ?? true
   // The pin flash is the bar's: a new set of overridden locks lights them for
@@ -162,7 +166,8 @@ export function FilterBar({
     const timer = setTimeout(() => setRefreshing(false), 600)
     return () => clearTimeout(timer)
   }, [refreshFlash])
-  const [axes, setAxes] = useControllable(hostAxes, onAxesChange, () => taxonomy.filterAxes.map(d => d.id))
+  const [rawAxes, setAxes] = useControllable(hostAxes, onAxesChange, () => taxonomy.filterAxes.map(d => d.id))
+  const axes = useStable(rawAxes, listEqual)
   const axesEditable = hostAxes === undefined || onAxesChange !== undefined
   const [search, setSearch] = useControllable(searchProp, onSearchChange, () => ({ query: '', active: false }))
   const { query: searchQuery, active: searchActive } = search
@@ -171,11 +176,11 @@ export function FilterBar({
   const tracked = useRecentlyChanged(filter)
   const recentlyChanged = hostRecentlyChanged ?? tracked
   const valuesByDimension = React.useMemo(
-    () => hostValues ?? new Map(axes.map(d => [d, graph ? valuesOn(graph.nodes.values(), d) : []])),
+    () => hostValues ?? new Map(axes.map(d => [d, graph ? valuesOn(graph.nodes, d) : []])),
     [hostValues, graph, axes],
   )
   const counts = React.useMemo(
-    () => hostCounts ?? (graph ? countsOn(graph.nodes.values(), axes) : undefined),
+    () => hostCounts ?? (graph ? countsOn(graph.nodes, axes) : undefined),
     [hostCounts, graph, axes],
   )
 

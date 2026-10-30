@@ -1,11 +1,12 @@
-// useHighlight — selection / hover / preview-highlight concern for the Graph View.
+// useHighlight — hover / keyboard-focus / preview-highlight concern for the
+// Graph View.
 //
-// Owns the interaction state (hovered, selected, keyboard-focused, shift-held)
-// and the control-panel preview state (active section / charge / gravity / pull
-// edge), tracks the Shift key, derives the transitive-dependency highlight sets,
-// and resets selection when the underlying graph changes. It reads the visible
-// subgraph + a `getNode` accessor as inputs (the explicit data link to the sim);
-// it never touches simRef directly.
+// Owns the hover and keyboard-focus state and the control-panel preview state
+// (active section / charge / gravity / pull edge), tracks the Shift key, and
+// derives the transitive-dependency highlight sets from the active node. The
+// selection is the view's (or the host's) and comes in as an input; so do the
+// visible subgraph and a `getNode` accessor (the explicit data link to the
+// sim). It never touches simRef directly.
 
 import React from 'react'
 import type { SimNode } from '../../graph/simulation'
@@ -19,8 +20,6 @@ import type { GravityHover } from '../GravityControls'
 export interface HighlightController {
   hoveredNodeId: string | null
   setHoveredNodeId: React.Dispatch<React.SetStateAction<string | null>>
-  selectedNodeId: string | null
-  setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>
   focusedIndex: number
   setFocusedIndex: React.Dispatch<React.SetStateAction<number>>
   shiftHeld: boolean
@@ -42,13 +41,14 @@ export function useHighlight(
   visibleEdges: GraphEdge[],
   visibleIds: Set<string>,
   getNode: (id: string) => SimNode | undefined,
-  // Changes whenever the underlying graph is rebuilt; clears selection so a
-  // stale id never lingers across graphs (was inline in the sim-rebuild effect).
+  // Changes whenever the underlying graph is rebuilt; clears the hover and
+  // the keyboard focus so a stale id never lingers across graphs.
   resetKey: unknown,
   taxonomy: Taxonomy,
+  /** The selected node — the view's own or the host's — which the highlight walks from when nothing is hovered. */
+  selectedNodeId: string | null,
 ): HighlightController {
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null)
-  const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
   const [shiftHeld, setShiftHeld] = React.useState(false)
 
@@ -58,9 +58,8 @@ export function useHighlight(
   const [activeGravityBucket, setActiveGravityBucket] = React.useState<GravityHover | null>(null)
   const [activePullEdge, setActivePullEdge] = React.useState<string | null>(null)
 
-  // Reset selection/hover/focus when the graph is rebuilt.
+  // Reset hover and keyboard focus when the graph is rebuilt.
   React.useEffect(() => {
-    setSelectedNodeId(null)
     setHoveredNodeId(null)
     setFocusedIndex(-1)
   }, [resetKey])
@@ -97,7 +96,6 @@ export function useHighlight(
 
   return {
     hoveredNodeId, setHoveredNodeId,
-    selectedNodeId, setSelectedNodeId,
     focusedIndex, setFocusedIndex,
     shiftHeld,
     focusedNodeId,

@@ -1,6 +1,10 @@
 import {
   selectionFor,
   defaultFilter,
+  filterFromJSON,
+  filterToJSON,
+  locksFromJSON,
+  locksToJSON,
   TaxonomyContext,
   copyGroups,
   lockedFor,
@@ -13,9 +17,10 @@ import {
 } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { useEditorTheme } from '../theme/useEditorTheme'
-import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../adapter/storage'
+import { loadState, saveState, type StorageConfig } from '../adapter/storage'
 import type {
   FilterState,
+  FocusRequest,
   GraphNode,
   AxisLocks,
   AxisId,
@@ -144,42 +149,16 @@ const DEFAULT_PINS: AxisLocks = new Map([
   [DEF_TYPE_DIMENSION, false],
 ])
 
-// Both directions iterate whatever axes the value carries, rather than naming
-// two. Naming them would still have *typechecked* against the axis-keyed
-// `Record<string, …>` — it would simply have persisted two axes called
-// `selectedFiles` and `visibleTypes`, which on reload is an empty allow-list on
-// the real type axis, i.e. a blank graph. The version guard in storage.ts is the
-// backstop; being generic here is the fix.
-function persistedToFilter(p: PersistedFilter | undefined, fallback: FilterState): FilterState {
-  if (!p) return fallback
-  return new Map(Object.entries(p).map(([dimension, values]) => [dimension, new Set(values)]))
-}
-
-function filterToPersisted(f: FilterState): PersistedFilter {
-  const out: PersistedFilter = {}
-  for (const [dimension, values] of f) out[dimension] = Array.from(values)
-  return out
-}
-
-function persistedToPins(p: PersistedPins | undefined, fallback: AxisLocks): AxisLocks {
-  if (!p) return fallback
-  return new Map(Object.entries(p))
-}
-
-function pinsToPersisted(pins: AxisLocks): PersistedPins {
-  const out: PersistedPins = {}
-  for (const [dimension, pinned] of pins) out[dimension] = pinned
-  return out
-}
-
 export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
   // History mode: a graph-only payload (e.g. the sampler's observed graph) has
   // no AST definitions. The Tree view has nothing to render, so we hide its tab
   // and default to the Graph view.
   const historyMode = ast.definitions.length === 0
-  // Load persisted state once on mount. Sets are restored as Set<string>
-  // from their array representation.
+  // Load persisted state once on mount. A filter reads back through the
+  // library's `filterFromJSON`, which refuses a stored value that is not a
+  // filter, and the view then starts from its default; a stale shape never gets
+  // that far — the version guard in storage.ts discards it.
   const persisted = React.useMemo(() => loadState(STORAGE), [])
 
   const [activeView, setActiveView] = React.useState<ActiveView>(historyMode ? 'graph' : 'tree')
@@ -206,10 +185,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // Per-view structural filter state, lifted from each view so the
   // reconciler at switch time has access to both.
   const [treeFilter, setTreeFilter] = React.useState<FilterState>(() =>
-    persistedToFilter(persisted.treeFilter, startingFilter())
+    filterFromJSON(persisted.treeFilter) ?? startingFilter()
   )
   const [graphFilter, setGraphFilter] = React.useState<FilterState>(() =>
-    persistedToFilter(persisted.graphFilter, startingFilter())
+    filterFromJSON(persisted.graphFilter) ?? startingFilter()
   )
 
   // Per-view pin state — when a dimension is pinned, the manual reconciler
@@ -224,8 +203,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const [graphChain, setGraphChain] = React.useState<readonly string[]>(
     () => persisted.graphChain ?? DEFAULT_CHAIN)
 
-  const [treePins, setTreePins] = React.useState<AxisLocks>(() => persistedToPins(persisted.treePins, DEFAULT_PINS))
-  const [graphPins, setGraphPins] = React.useState<AxisLocks>(() => persistedToPins(persisted.graphPins, DEFAULT_PINS))
+  const [treePins, setTreePins] = React.useState<AxisLocks>(() => (locksFromJSON(persisted.treePins) ?? DEFAULT_PINS))
+  const [graphPins, setGraphPins] = React.useState<AxisLocks>(() => (locksFromJSON(persisted.graphPins) ?? DEFAULT_PINS))
 
   const graphCounts = React.useMemo(() => definitionCounts(ast, selectionFor(graphFilter, SOURCE_FILE_DIMENSION)), [ast, graphFilter])
 
@@ -268,7 +247,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   // Pending-focus target for a focus into the Tree. Reconciler has already
   // expanded the Tree's filter by the time this is set; the Tree consumes it
-  // for scroll/flash only. (A focus into the Graph is `graphFocusId` below:
+  // for scroll/flash only. (A focus into the Graph is `graphFocus` below:
   // the view does its own reconcile.)
   const [pendingFocus, setPendingFocus] = React.useState<TreeFocus | null>(null)
 
@@ -279,21 +258,22 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<AxisId>>(new Set())
 
   // The node a cross-view focus asked the Graph view to reveal, centre and
-  // select. The view applies it whenever it changes to an id, including the one
-  // set before it mounted (it mounts lazily on first show). Leaving the Graph
-  // resets it, so asking for the same node twice is a change both times.
-  const [graphFocusId, setGraphFocusId] = React.useState<string | null>(null)
+  // select. The view applies a request whenever it changes, including one set
+  // before it mounted (it mounts lazily on first show). Each request carries a
+  // fresh `key`, so asking for the same node twice is a change both times.
+  const [graphFocus, setGraphFocus] = React.useState<FocusRequest | null>(null)
+  const graphFocusSeq = React.useRef(0)
 
   // Persist on every relevant state change. localStorage in standalone;
   // vscode.setState in webview (via the storage shim).
   React.useEffect(() => {
     saveState(STORAGE, {
-      treeFilter: filterToPersisted(treeFilter),
-      graphFilter: filterToPersisted(graphFilter),
+      treeFilter: filterToJSON(treeFilter),
+      graphFilter: filterToJSON(graphFilter),
       treeChain: [...treeChain],
       graphChain: [...graphChain],
-      treePins: pinsToPersisted(treePins),
-      graphPins: pinsToPersisted(graphPins),
+      treePins: locksToJSON(treePins),
+      graphPins: locksToJSON(graphPins),
       searchQuery,
       graphTheme,
     })
@@ -381,14 +361,13 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // pin it overrides and centres on the node when handed its id.
     if (target === 'graph' && transition.kind === 'focus') {
       const { name, values } = transition.target
-      const node = [...model.graph.nodes.values()].find(n =>
+      const node = model.graph.nodes.find(n =>
         n.name === name && n.dimensions[DEF_TYPE_DIMENSION] === values[DEF_TYPE_DIMENSION])
-      setGraphFocusId(node?.id ?? null)
+      setGraphFocus(node ? { id: node.id, key: ++graphFocusSeq.current } : null)
       setGraphEverShown(true)
       setActiveView('graph')
       return
     }
-    if (target === 'tree') setGraphFocusId(null)
 
     const dest = target === 'tree' ? treeFilter : graphFilter
     const source = target === 'tree' ? graphFilter : treeFilter
@@ -540,7 +519,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
         {graphEverShown && (
           <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
             <GraphView
-              focusId={graphFocusId}
+              focus={graphFocus}
               keyboard={activeView === 'graph' ? 'global' : 'none'}
               graph={model.graph}
               counts={graphCounts}

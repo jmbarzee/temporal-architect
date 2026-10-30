@@ -12,7 +12,7 @@ import { Simulation, defaultParamsFor, retunedFor } from '../../graph/simulation
 import { defaultRng } from '../../graph/rng'
 import type { ForceParams, SimNode } from '../../graph/simulation'
 import type { Graph } from '../../graph/model'
-import { graphShapeEquals } from '../../graph/model'
+import { graphEquals } from '../../graph/model'
 import type { Taxonomy } from '../../graph/taxonomy'
 
 export interface SimulationController {
@@ -79,11 +79,11 @@ export function useSimulation(
   // mapping has nothing left to detect.
   React.useEffect(() => {
     const prev = simRef.current
-    // A new graph object of the same shape rebuilds the simulation for
+    // A new graph object equal to the last rebuilds the simulation for
     // nothing; said once, because the fix is on the host's side (memoise).
-    if (prev && prevGraphRef.current && prevGraphRef.current !== graph && !warnedRef.current && graphShapeEquals(prevGraphRef.current, graph)) {
+    if (prev && prevGraphRef.current && prevGraphRef.current !== graph && !warnedRef.current && graphEquals(prevGraphRef.current, graph)) {
       warnedRef.current = true
-      console.warn('[graph] the graph\'s identity changed but its shape did not; the view rebuilt its simulation for nothing. Keep one graph object until its nodes or edges change.')
+      console.warn('[graph] the graph\'s identity changed but nothing in it did; the view rebuilt its simulation for nothing. Keep one graph object until its nodes or edges change.')
     }
     prevGraphRef.current = graph
     if (prevOntologyRef.current !== null && prevOntologyRef.current !== taxonomy && !warnedOntologyRef.current) {

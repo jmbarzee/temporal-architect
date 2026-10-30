@@ -11,7 +11,7 @@
 // the engine reads, in which every field is present. `createTaxonomy` turns
 // the one into the other once, so the draw loop never asks "was this given?".
 
-import type { AxisValue } from './axis'
+import type { AxisId, AxisValue } from './axis'
 import type { EdgeStroke, ThemedColor } from './scheme'
 
 // ── Node styles ─────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ export interface Band { min: number; max: number }
  *
  *   - `abbreviation`: the first two characters of the label.
  *   - `icon`: none.
- *   - `size.r`: 12; `size.iconSize`: nine tenths of the radius, at least 9.
+ *   - `size.r`: 12; `size.iconSize`: nine tenths of the radius, rounded, at least 9.
  *   - `physics.charge`: −40 × r; `physics.coreRadius`: 4 × r.
  *   - `physics.band.y`: the value's slice of the stack, by position — the
  *     first value's band at the top of the canvas, the last at the bottom,
@@ -135,13 +135,17 @@ export interface SpringPhysics {
 
 /**
  * One kind of edge, as a host declares it: which values it runs between and
- * which relation it expresses, and — optionally — how it is stroked, its
- * spring and its hover text. An edge is classified as the one declared type
- * whose relation and endpoint values match its own, in either orientation,
- * unless the taxonomy's `classifyEdge` says otherwise. A stroke left out is
- * the neutral stroke, field by field; a spring left out starts from the
- * typical spring, the mean of the declared ones (or a middling one when none
- * is declared); a tooltip left out is the label.
+ * which relation it expresses, optionally which values the edge itself must
+ * carry (`match`), and — optionally — how it is stroked, its spring and its
+ * hover text. An edge is classified as the declared type of its relation
+ * that runs between its endpoints' values, in either orientation, and whose
+ * `match` (if any) its own values satisfy; a satisfied `match` beats a type
+ * without one, the declared orientation beats the reverse, and declaration
+ * order settles the rest — unless the taxonomy's `classifyEdge` says
+ * otherwise. A stroke left out is the neutral stroke, field by field; a
+ * spring left out starts from the typical spring, the mean of the declared
+ * ones (or a middling one when none is declared); a tooltip left out is the
+ * label.
  */
 export interface EdgeType {
   /** Stable id — also the override key in the spring tuning. */
@@ -158,6 +162,14 @@ export interface EdgeType {
   targetValue: AxisValue
   /** Which relation an edge of this type expresses; an edge is classified only as a type of its own relation. */
   relation: 'containment' | 'dependency'
+  /**
+   * Values the edge itself must carry on the host's edge axes to be this
+   * type — how two types on one pair are told apart (a call and a signal
+   * between the same two values, by the edge's `dispatch`). An edge lacking
+   * one of these values is not this type. Absent, the pair alone decides,
+   * and this type is the fallback for a pair other types `match` on.
+   */
+  match?: Readonly<Record<AxisId, AxisValue>>
   /** Declared stiffness / rest length — what the type resolves to until tuned. */
   physics?: SpringPhysics
   /** How the canvas strokes an edge of this type, in both themes; any field left out is the neutral stroke's. */

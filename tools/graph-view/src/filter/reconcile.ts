@@ -62,8 +62,8 @@ export function reconcileFilter({ destination, source, locks, transition, axes }
  * Built with `withSelection`, which is what makes this correct rather than
  * merely shorter. The previous version cloned the whole filter and then
  * reassigned the unpinned axes, so **every axis came back with a fresh `Set`** —
- * including pinned ones, and including axes whose content had not changed. Since
- * `useSimulationLoop` decides "did this axis change?" by `prev === next`, any
+ * including pinned ones, and including axes whose content had not changed. The
+ * loop then decided "did this axis change?" by `prev === next`, so any
  * manual switch that altered one axis also fired the *other* axis's change path:
  * for the type axis that meant an ancestor-seed, a reheat to 0.5, and
  * `initialFitDone = false`, i.e. the user's pan and zoom silently discarded on a

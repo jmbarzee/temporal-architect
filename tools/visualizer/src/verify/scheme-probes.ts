@@ -93,7 +93,7 @@ export function schemeProbes(): Json {
     },
     // A persisted choice outside the three is system, not a throw in render (D4).
     choices: { dark: themeChoiceOf('dark'), light: themeChoiceOf('light'), bogus: themeChoiceOf('bogus'), absent: themeChoiceOf(undefined) },
-    // Sizes ride the same object: the registry's, per value (R11, D14).
-    sizes: sortedRecord(ALL_NODE_TYPES.map(t => [t, { r: NODE_TYPE_REGISTRY[t].size.r, iconSize: NODE_TYPE_REGISTRY[t].size.iconSize }] as const)),
+    // Sizes ride the same object: the taxonomy's, per value (R11, D14).
+    sizes: sortedRecord(ALL_NODE_TYPES.map(t => [t, { r: DEFAULT_TAXONOMY.styleOf(t).size.r, iconSize: DEFAULT_TAXONOMY.styleOf(t).size.iconSize }] as const)),
   }
 }

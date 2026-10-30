@@ -22,7 +22,6 @@ import { copyKeyOf, relationOf } from '@temporal-architect/graph-view/graph/mode
 import type { NodeType } from '../adapter/node-types'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
-import { edgeTypeFor } from '../adapter/edge-types'
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_TAXONOMY } from '../adapter/node-types'
 import { dimensionsFor } from '../adapter/build'
 import type { Json } from './snapshot'
@@ -95,7 +94,7 @@ function edgeLine(e: GraphEdge): string {
   const tgt = BY_ID.get(e.targetId)
   const srcValue = src && DEFAULT_TAXONOMY.styleValueOf(src)
   const tgtValue = tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)
-  return `${edgeTypeFor(e, srcValue, tgtValue)}|${relationOf(e)}|${e.sourceId} -> ${e.targetId}`
+  return `${DEFAULT_TAXONOMY.classifyEdge(e, srcValue, tgtValue) ?? '(unclassified)'}|${relationOf(e)}|${e.sourceId} -> ${e.targetId}`
 }
 
 function state(types: string[], files: string[]): Json {

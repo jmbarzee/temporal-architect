@@ -1,8 +1,9 @@
 // Computed scalars — a layout axis backed by a number per node rather than a
 // bucket per value. A scalar reads node metadata and the graph's
-// structure, nothing else, and answers in [0, 1]; the axis maps that interval
-// onto a span. Three are built in and read only structure; a host may
-// declare more through its taxonomy, with access to its own payload.
+// structure, nothing else, and answers a number per node; the frame maps the
+// answers onto [0, 1] as the scalar's `normalize` says, and the axis maps
+// that interval onto a span. Three are built in and read only structure; a
+// host may declare more through its taxonomy, with access to its own payload.
 
 import type { ReadableGraph } from './model'
 import { isContainment } from './model'
@@ -13,16 +14,22 @@ export interface ScalarAxis {
   readonly label: string
   readonly tooltip: string
   /**
-   * One value per node — any finite number, which the frame divides by the
-   * largest so the axis spans [0, 1] (`normalize: 'none'` says the values
-   * already do, and the frame refuses one outside it, loudly). A node absent
-   * from the map has no value on this axis and rests at the axis's centre,
-   * the same answer as a node in no bucket on a mapped axis. A true 0 is a
-   * value, and the built-ins answer it as one.
+   * One value per node — a finite number, which the frame maps onto [0, 1]
+   * as `normalize` says: non-negative under `max`, any under `range`,
+   * already in [0, 1] under `none`. A node absent from the map has no value
+   * on this axis and rests at the axis's centre, the same answer as a node
+   * in no bucket on a mapped axis. A true 0 is a value, and the built-ins
+   * answer it as one.
    */
   compute(graph: ReadableGraph): Map<string, number>
-  /** How the frame maps the answers onto [0, 1]: by the largest (the default), or not at all. */
-  readonly normalize?: 'max' | 'none'
+  /**
+   * How the frame maps the answers onto [0, 1]: `max` (the default) divides
+   * by the largest, so 0 stays 0 and a negative answer is refused, loudly;
+   * `range` puts the smallest at 0 and the largest at 1, whatever their
+   * sign; `none` says the answers already lie in [0, 1], and the frame
+   * refuses one outside it.
+   */
+  readonly normalize?: 'max' | 'range' | 'none'
 }
 
 /**
@@ -153,6 +160,18 @@ export function normalized(values: Map<string, number>): Map<string, number> {
   for (const v of values.values()) if (v > max) max = v
   const scores = new Map<string, number>()
   for (const [id, v] of values) scores.set(id, max === 0 ? 0 : v / max)
+  return scores
+}
+
+/**
+ * Map the smallest answer to 0 and the largest to 1; answers all alike are a
+ * true 0 for every node — the span's zero end, not the centre.
+ */
+export function rangeNormalized(values: Map<string, number>): Map<string, number> {
+  let min = Infinity, max = -Infinity
+  for (const v of values.values()) { if (v < min) min = v; if (v > max) max = v }
+  const scores = new Map<string, number>()
+  for (const [id, v] of values) scores.set(id, max > min ? (v - min) / (max - min) : 0)
   return scores
 }
 

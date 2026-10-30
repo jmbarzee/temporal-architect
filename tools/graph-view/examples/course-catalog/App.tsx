@@ -1,17 +1,17 @@
 // The host shell, leaning on the view's defaults. It controls the state its own
 // panel writes (the filter) or follows (the selection, which closing the panel
 // clears), observes the one its panel reads (the pins), hands the theme choice
-// in from the URL, asks the view to reveal a node by naming it (`focusId`), and
+// in from the URL, asks the view to reveal a node by naming it (`focus`), and
 // leaves the chain of axes and the search to the view. It supplies what only
 // the host can know — chip counts, findings, programme groups, and what "Open
 // details" does.
 
 import React from 'react'
 import {
-  GraphView, TaxonomyContext, copyGroups, defaultFilter, payloadNumber, payloadString, lockedFor, schemeVars, selectionFor, withSelection,
+  GraphView, TaxonomyContext, copyGroups, defaultFilter, nodesById, payloadNumber, payloadString, lockedFor, schemeVars, selectionFor, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
-  ActiveGroup, FilterState, Graph, GraphNode, NodeGroup, AxisLocks, Selection, Theme, ThemeChoice,
+  ActiveGroup, FilterState, FocusRequest, Graph, GraphNode, NodeGroup, AxisLocks, Selection, Theme, ThemeChoice,
 } from '@temporal-architect/graph-view'
 import { catalog } from './data'
 import type { Campus, Catalog } from './data'
@@ -21,7 +21,8 @@ import type { Entity } from './taxonomy'
 import './app.css'
 
 const graph = buildGraph(catalog)
-const nodeByCode = new Map([...graph.nodes.values()].map(n => [payloadString(n, 'code') ?? n.id, n]))
+const nodeById = nodesById(graph.nodes)
+const nodeByCode = new Map(graph.nodes.map(n => [payloadString(n, 'code') ?? n.id, n]))
 const copies = copyGroups(graph)
 
 /** Chip badges: distinct catalog entries per value — a cross-listed course counts once. */
@@ -67,7 +68,7 @@ function programmeGroups(g: Graph, enabled: ReadonlySet<string>, hovered: string
       const node = nodeByCode.get(code)
       if (node) for (const copy of copies.get(node.copyKey ?? node.id) ?? []) ids.add(copy)
     }
-    for (const n of g.nodes.values()) if (n.parentId && ids.has(n.parentId)) ids.add(n.id)
+    for (const n of g.nodes) if (n.parentId && ids.has(n.parentId)) ids.add(n.id)
     return { id: p.id, nodeIds: ids, emphasized: hovered === p.id }
   })
 }
@@ -83,10 +84,10 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
   const [details, setDetails] = React.useState<GraphNode | null>(null)
   // Controlled: the panel's close clears it, and the view selects what it says.
   const [selected, setSelected] = React.useState<GraphNode | null>(null)
-  // A request, not a state: the view applies it when it changes to an id, and
-  // the host takes it back, so asking again for the same node asks again.
-  const [focusId, setFocusId] = React.useState<string | null>(null)
-  React.useEffect(() => { if (focusId) setFocusId(null) }, [focusId])
+  // A request, not a state: the view applies it when it changes, and each ask
+  // carries a fresh `key`, so asking again for the same node asks again.
+  const [focus, setFocus] = React.useState<FocusRequest | null>(null)
+  const focusSeq = React.useRef(0)
 
   // The side panel follows the pane's theme: the view reports the one it drew in.
   const [theme, setTheme] = React.useState<Theme>('light')
@@ -95,7 +96,7 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
   const groups = React.useMemo(() => programmeGroups(graph, enabled, hovered), [enabled, hovered])
 
   /** Ask the view to reveal `node`: it widens the filter just enough, centres and selects. */
-  const reveal = (node: GraphNode) => setFocusId(node.id)
+  const reveal = (node: GraphNode) => setFocus({ id: node.id, key: ++focusSeq.current })
   const onlyCampus = (campus: string) => setFilter(f => withSelection(f, CAMPUS, new Set([campus])))
 
   return (
@@ -118,7 +119,7 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
             onLocksChange={setPins}
             selectedId={selected?.id ?? null}
             onSelectionChange={setSelected}
-            focusId={focusId}
+            focus={focus}
           />
         </div>
         {details && (
@@ -195,7 +196,7 @@ function Details({ node, theme, campusPinned, onReveal, onOnlyCampus, onClose }:
   const entity = node.dimensions[ENTITY] as Entity | undefined
   const campus = node.dimensions[CAMPUS] as Campus | undefined
   const scheme = React.useMemo(() => schemeVars(taxonomy, theme) as React.CSSProperties, [theme])
-  const listings = [...(copies.get(node.copyKey ?? node.id) ?? [node.id])].flatMap(id => graph.nodes.get(id) ?? [])
+  const listings = [...(copies.get(node.copyKey ?? node.id) ?? [node.id])].flatMap(id => nodeById.get(id) ?? [])
   const first = listings[0]
   const course = catalog.courses.find(c => c.id === (first && payloadString(first, 'courseId')))
   const credits = first && payloadNumber(first, 'credits')

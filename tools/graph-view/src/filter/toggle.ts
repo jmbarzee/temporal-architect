@@ -2,11 +2,8 @@
 //
 // Pure, and deliberately outside the component. Each reducer rebuilds only the
 // Set for the axis it edits; every other axis is passed through by reference,
-// which `withSelection` guarantees. Consumers memoise on Set *identity* (see
-// `useVisibleGraph`'s deps and `useSimulationLoop`'s `prev === next`
-// comparisons), so preserving the untouched axes' references is load-bearing
-// behaviour rather than an optimisation — a reducer that rebuilt them all would
-// re-run edge graduation and reheat the layout on every unrelated edit.
+// which `withSelection` guarantees, so a no-op edit changes no identity and the
+// view's memos have nothing to recompute.
 
 import type { AxisId } from '../graph/axis'
 import type { FilterState } from './types'

@@ -80,7 +80,11 @@ const WORKFLOW_TO_ACTIVITY: EdgeStroke = { color: { light: '#4A8BC2', dark: '#7C
 const NEXUS_CALL: EdgeStroke           = { color: { light: '#F472B6', dark: '#F9A8D4' }, alpha: 0.85, dash: [], width: 1.5 }
 
 // One entry per edge category. Order is the control-panel token order (emergent
-// positioning makes it cosmetic); the matcher below does not depend on it.
+// positioning makes it cosmetic). The library classifies an edge by this table
+// alone: the declared type of its relation that runs between its endpoints'
+// values (either orientation, the declared one first — which is what tells
+// Wf→Op from Op→Wf), and of those the one whose `match` its own values satisfy
+// before one with none (which is what tells a signal send from a child call).
 export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
   { id: 'linkNsToNs', label: 'NS↔NS', sourceValue: 'namespace', targetValue: 'namespace',
     relation: 'dependency',
@@ -114,7 +118,7 @@ export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
   // never waits on the receiver's handler — so the layout should let them drift
   // apart rather than clamp them together the way a child-workflow call does.
   { id: 'linkSignalSend', label: 'Wf→Sig', sourceValue: 'workflow', targetValue: 'workflow',
-    relation: 'dependency',
+    relation: 'dependency', match: { [DISPATCH_DIMENSION]: 'signalSend' },
     physics: { strength: 0.30, distance: 520 }, style: WORKFLOW_DEPENDENCY, tooltip: 'Workflow → Workflow signal send (fire-and-forget)' },
   { id: 'linkWorkflowToActivity', label: 'Wf↔Act', sourceValue: 'workflow', targetValue: 'activity',
     relation: 'dependency',
@@ -133,46 +137,38 @@ export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
     physics: { strength: 1.50, distance: 470 }, style: EP_COMPOSITION, tooltip: 'Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)' },
 ]
 
-// The taxonomy's `classifyEdge`: the tie-breaker the declared pairs cannot
-// settle. The library classifies an edge by the declared type whose relation
-// and endpoint values match its own, and several of this host's types share a
-// pair (a signal send and a child call run between the same two values), so
-// the host says which one an edge is. Preserves the prioritized rule order
-// of the engine's former `edgeCategory` chain exactly: containment edges
-// stratify by their nexus / L3 / L4 endpoints; dependency edges stratify by
-// tier and, for the workflow ↔ operation pair, by direction. Unmatched cases
-// fall through to the broadest category in each branch (Worker↔Namespace
-// containment; Workflow↔Activity dep).
+// The taxonomy's `classifyEdge`: only what the declarations cannot express,
+// given what they answered. An edge on a pair the table declares is the
+// table's (`declared`). An edge on a pair the table does not declare takes
+// the broadest type of the tier it touches — the end of the engine's former
+// `edgeCategory` chain, in its order. Containment: a workflow or activity end
+// is Wk↔Wf / Wk↔Act, anything else NS↔Wk. Dependency: a namespace end is
+// NS↔NS, a worker end Wk↔Wk, an operation→operation call the Wf→Op spring,
+// anything else Wf↔Act. No parser edge lands here (the engine classifies an
+// edge once, on its original endpoints); the harness's graduated-edge rows,
+// which classify at the new ends, and Tier C do.
+//
+// And a signal send is the signal-send type on any pair, not only the
+// workflow → workflow pair the table's `match` reaches (the parser emits no
+// other; Tier C pins it).
 export function edgeTypeFor(
   edge: Pick<GraphEdge, 'relation' | 'dimensions'>,
   src: AxisValue | undefined,
   tgt: AxisValue | undefined,
-): EdgeTypeId {
-  const has = (a: AxisValue, b: AxisValue) =>
-    (src === a && tgt === b) || (src === b && tgt === a)
-
-  let id: EdgeTypeId
+  // The declarations' answer, as the library hands it: a string, since the
+  // library knows no host's union.
+  declared: string | undefined,
+): string | undefined {
+  if (!isContainment(edge) && dispatchOf(edge) === 'signalSend') return 'linkSignalSend'
+  if (declared !== undefined) return declared
+  const touches = (v: AxisValue) => src === v || tgt === v
   if (isContainment(edge)) {
-    if (has('nexusOperation', 'nexusEndpoint')) id = 'linkEndpointToOperation'
-    else if (has('nexusOperation', 'nexusService')) id = 'linkNexusToOperation'
-    else if (has('worker', 'nexusService')) id = 'linkWorkerToNexus'
-    else if (has('nexusEndpoint', 'namespace')) id = 'linkEndpointToNamespace'
-    else if (src === 'workflow' || tgt === 'workflow') id = 'linkWorkerToWorkflow'
-    else if (src === 'activity' || tgt === 'activity') id = 'linkWorkerToActivity'
-    else id = 'linkNsToWorker'
-  } else {
-    // Checked before the node-type rules: a signal send is workflow → workflow
-    // like a child-workflow call, so the endpoint types alone cannot tell them
-    // apart. Only the parser's dispatch kind can.
-    if (dispatchOf(edge) === 'signalSend') id = 'linkSignalSend'
-    else if (src === 'namespace' || tgt === 'namespace') id = 'linkNsToNs'
-    else if (src === 'worker' || tgt === 'worker') id = 'linkWorkerToWorker'
-    else if (src === 'workflow' && tgt === 'nexusOperation') id = 'linkWorkflowToOperation'
-    else if (src === 'nexusOperation' && tgt === 'workflow') id = 'linkOperationToWorkflow'
-    else if (has('nexusOperation', 'nexusOperation')) id = 'linkWorkflowToOperation'
-    else if (has('nexusOperation', 'activity')) id = 'linkOperationToActivity'
-    else if (has('workflow', 'workflow')) id = 'linkWorkflowToWorkflow'
-    else id = 'linkWorkflowToActivity'
+    if (touches('workflow')) return 'linkWorkerToWorkflow'
+    if (touches('activity')) return 'linkWorkerToActivity'
+    return 'linkNsToWorker'
   }
-  return id
+  if (touches('namespace')) return 'linkNsToNs'
+  if (touches('worker')) return 'linkWorkerToWorker'
+  if (src === 'nexusOperation' && tgt === 'nexusOperation') return 'linkWorkflowToOperation'
+  return 'linkWorkflowToActivity'
 }

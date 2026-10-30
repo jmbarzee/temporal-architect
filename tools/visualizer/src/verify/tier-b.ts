@@ -102,7 +102,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // run: it fires only when a filter toggle reveals a node. Two more draws. The
   // point is far outside every band on both axes, so the clamp into the frame
   // is what the row pins — an in-band point made it a no-op.
-  const first = [...graph.nodes.keys()].sort()[0]
+  const first = graph.nodes.map(n => n.id).sort()[0]
   const seedAtProbe = (() => {
     const sim = seededSimulation(graph)
     if (first === undefined) return null

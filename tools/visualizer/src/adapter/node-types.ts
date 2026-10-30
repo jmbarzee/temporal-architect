@@ -47,7 +47,6 @@ import type {
   Taxonomy,
   TaxonomySpec,
   NodeStyle,
-  ResolvedNodeStyle,
   AxisDescriptor,
   FilterChip,
 } from '@temporal-architect/graph-view'
@@ -98,16 +97,12 @@ export interface TemporalNodeStyle extends NodeStyle {
   defaultVisible: boolean
 }
 
-// The horizontal rest band every type shares by default: what the one global X
-// window used to be. Per type now, so a host can give a type its own, and so
-// the X axis is the same kind of thing as the Y axis (T22).
-const X_WINDOW = { min: 0, max: 380 }
-
-// A registry entry: the style less the id its position gives it, and with every
-// field the library would default written out — this domain declares each one
-// per type, and what reads the registry (the theme, the static golden) takes
-// them as given instead of resolving them.
-type RegistryEntry = Omit<ResolvedNodeStyle, 'id'> & Pick<TemporalNodeStyle, 'defType' | 'ladder' | 'tier' | 'defaultVisible'>
+// A registry entry: the style less the id its position gives it. Every entry
+// names its abbreviation and glyph, which the control tokens and chips read
+// off it; the rest is declared only where it differs from the library's
+// default, so a reader wanting a resolved value goes through the taxonomy
+// (`styleOf`), not this object.
+type RegistryEntry = Omit<TemporalNodeStyle, 'id' | 'abbreviation' | 'icon'> & Required<Pick<NodeStyle, 'abbreviation' | 'icon'>>
 
 export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
   namespace: {
@@ -117,17 +112,16 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'namespaceDef',
     ladder: 'main',
     tier: 'container',
-    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#475569', border: '#1E293B' }, // slate-600
       dark:  { fill: '#94A3B8', border: '#475569' }, // slate-400
     },
-    size: { r: 20, iconSize: 18 },
+    size: { r: 20 },
     physics: {
       charge: -850,
       coreRadius: 85,
-      band: { x: X_WINDOW, y: { min: -340, max: -120 } },  // container band (shared with nexusEndpoint)
+      band: { y: { min: -340, max: -120 } },  // container band (shared with nexusEndpoint)
     },
     summaryKind: 'children',
   },
@@ -139,17 +133,16 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'nexusEndpointDef',
     ladder: 'nexus',
     tier: 'container',
-    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#9F1239', border: '#4C0519' }, // rose-900 — deep, sits just under namespace
       dark:  { fill: '#BE123C', border: '#881337' }, // rose-700 — lighter on dark
     },
-    size: { r: 15, iconSize: 14 },
+    size: { r: 15 },
     physics: {
       charge: -900,
       coreRadius: 64,
-      band: { x: X_WINDOW, y: { min: -340, max: -120 } },  // container band aligned with namespace
+      band: { y: { min: -340, max: -120 } },  // container band aligned with namespace
     },
     summaryKind: 'none',
   },
@@ -161,17 +154,16 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'workerDef',
     ladder: 'main',
     tier: 'host',
-    whenHidden: 'ascend',
     defaultVisible: true,
     color: {
       light: { fill: '#94A3B8', border: '#475569' }, // slate-400
       dark:  { fill: '#CBD5E1', border: '#64748B' }, // slate-300
     },
-    size: { r: 20, iconSize: 18 },
+    size: { r: 20 },
     physics: {
       charge: -770,
       coreRadius: 72,
-      band: { x: X_WINDOW, y: { min: -200, max: 120 } },   // host band (shared with nexusService)
+      band: { y: { min: -200, max: 120 } },   // host band (shared with nexusService)
     },
     summaryKind: 'children',
   },
@@ -183,17 +175,16 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'nexusServiceDef',
     ladder: 'nexus',
     tier: 'host',
-    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#DB2777', border: '#831843' }, // pink-600
       dark:  { fill: '#EC4899', border: '#9D174D' }, // pink-500
     },
-    size: { r: 20, iconSize: 18 },
+    size: { r: 20 },
     physics: {
       charge: -760,
       coreRadius: 54,
-      band: { x: X_WINDOW, y: { min: -200, max: 120 } },   // host band aligned with worker
+      band: { y: { min: -200, max: 120 } },   // host band aligned with worker
     },
     summaryKind: 'children',
   },
@@ -205,7 +196,6 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'workflowDef',
     ladder: 'main',
     tier: 'orchestrator',
-    whenHidden: 'ascend',
     defaultVisible: true,
     color: {
       light: { fill: '#8B7EC8', border: '#5D4F95' },
@@ -215,9 +205,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     physics: {
       charge: -360,
       coreRadius: 38,
-      band: { x: X_WINDOW, y: { min: 100, max: 460 } },    // orchestrator band (shared with nexusOperation)
+      band: { y: { min: 100, max: 460 } },    // orchestrator band (shared with nexusOperation)
     },
-    summaryKind: 'degree',
   },
 
   nexusOperation: {
@@ -237,9 +226,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     physics: {
       charge: -560,
       coreRadius: 58,
-      band: { x: X_WINDOW, y: { min: 100, max: 460 } },    // orchestrator band aligned with workflow
+      band: { y: { min: 100, max: 460 } },    // orchestrator band aligned with workflow
     },
-    summaryKind: 'degree',
   },
 
   activity: {
@@ -249,7 +237,6 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'activityDef',
     ladder: 'main',
     tier: 'leaf',
-    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#7CB9E8', border: '#4A8BC2' },
@@ -259,9 +246,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     physics: {
       charge: -190,
       coreRadius: 20,
-      band: { x: X_WINDOW, y: { min: 170, max: 500 } },
+      band: { y: { min: 170, max: 500 } },
     },
-    summaryKind: 'degree',
   },
 }
 
@@ -307,7 +293,6 @@ const FALLBACK_NODE_STYLE: Omit<TemporalNodeStyle, 'id'> = {
   defType: 'unknownDef',
   ladder: 'main',
   tier: 'leaf',
-  whenHidden: 'ascend',
   defaultVisible: false,
   color: {
     light: { fill: '#CBD5E1', border: '#94A3B8' },
@@ -317,7 +302,7 @@ const FALLBACK_NODE_STYLE: Omit<TemporalNodeStyle, 'id'> = {
   physics: {
     charge: -300,
     coreRadius: 30,
-    band: { x: X_WINDOW, y: { min: 100, max: 460 } },
+    band: { y: { min: 100, max: 460 } },
   },
   summaryKind: 'none',
 }
@@ -370,18 +355,13 @@ const FILTER_DIMENSIONS: AxisDescriptor[] = [
     // expands only an active selection, a change reheats in place and keeps the
     // user's pan and zoom — are exactly the policies this axis wants.
     emptyMeans: 'all',
-    // One chip per file, in whatever order the graph yielded them.
-    chipsFor: values => values.map(v => ({
-      id: v,
-      label: v.split('/').pop() ?? v,
-      // The full path: the label is only the basename, and two files with the
-      // same basename in different directories are otherwise identical chips.
-      tooltip: v,
-      icon: '\u{1F4C4}',
-      values: [v],
-    })),
+    // One chip per file, in whatever order the graph yielded them, labelled by
+    // the basename and abbreviated from it.
     labelFor: v => v.split('/').pop() ?? v,
-    abbreviationFor: v => (v.split('/').pop() ?? v).slice(0, 2),
+    // The full path: the label is only the basename, and two files with the
+    // same basename in different directories are otherwise identical chips.
+    tooltipFor: v => v,
+    iconFor: () => '\u{1F4C4}',
   },
   {
     id: DEF_TYPE_DIMENSION,

@@ -17,7 +17,7 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  createTaxonomy, TaxonomyContext, GraphView, FilterBar, defaultFilter, isContainment,
+  createTaxonomy, TaxonomyContext, GraphView, FilterBar, defaultFilter, isContainment, nodesById,
 } from '@temporal-architect/graph-view'
 import type {
   TaxonomySpec, NodeStyle, EdgeType, AxisDescriptor, ScalarAxis, ReadableGraph,
@@ -75,7 +75,7 @@ function graphOf(): Graph {
     node('p1', 'pod', 'east', 's1'), node('p2', 'pod', 'east', 's1'), node('p3', 'pod', 'west', 's2')]
   const edges = [edge('e1', 's1', 'c1', 'containment'), edge('e2', 's2', 'c1', 'containment'), edge('e3', 'p1', 's1', 'containment'),
     edge('e4', 'p2', 's1', 'containment'), edge('e5', 'p3', 's2', 'containment'), edge('e6', 'p1', 'p3', 'dependency'), edge('e7', 'p1', 'p2', 'dependency'), edge('e8', 's1', 's2', 'dependency')]
-  return { nodes: new Map(nodes.map(n => [n.id, n])), edges }
+  return { nodes, edges }
 }
 
 /** The class attribute of the first element in the markup: the view's root. */
@@ -103,7 +103,8 @@ export function hostProbes(): Json {
   // its values off, and nothing about pins.
   const barProp = renderToStaticMarkup(
     React.createElement(FilterBar, { taxonomy, graph, filter: defaultFilter(taxonomy, graph), onFilterChange: () => {} }))
-  const scalar = fanOut.compute({ nodes: [...graph.nodes.values()], edges: graph.edges, getNode: id => graph.nodes.get(id) })
+  const byId = nodesById(graph.nodes)
+  const scalar = fanOut.compute({ nodes: graph.nodes, edges: graph.edges, getNode: id => byId.get(id) })
   return {
     keys: [...taxonomy.styleValues],
     podFill: taxonomy.styleOf('pod').color.light.fill,

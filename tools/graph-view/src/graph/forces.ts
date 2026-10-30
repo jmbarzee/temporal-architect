@@ -17,7 +17,7 @@ import type { GraphEdge } from './model'
 import { relationOf } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange, LayoutTuning } from './simulation'
 import type { ScalarAxis, ScalarSpan } from './scalar'
-import { normalized } from './scalar'
+import { normalized, rangeNormalized } from './scalar'
 import { isScalarTuning } from './scalar'
 import type { ReadableGraph } from './model'
 import type { Taxonomy } from './taxonomy'
@@ -318,7 +318,7 @@ function checkedScores(scalar: ScalarAxis, graph: ReadableGraph): Map<string, nu
   for (const [id, s] of raw) {
     if (!Number.isFinite(s)) throw new Error(`scalar ${JSON.stringify(scalar.id)} answered ${String(s)} for node ${JSON.stringify(id)}; a scalar answers a finite number`)
   }
-  const scores = scalar.normalize === 'none' ? raw : normalized(raw)
+  const scores = scalar.normalize === 'none' ? raw : scalar.normalize === 'range' ? rangeNormalized(raw) : normalized(raw)
   for (const [id, s] of scores) {
     if (!(Number.isFinite(s) && s >= 0 && s <= 1)) {
       throw new Error(`scalar ${JSON.stringify(scalar.id)} answered ${String(s)} for node ${JSON.stringify(id)}; a scalar answers in [0, 1]`)

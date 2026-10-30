@@ -130,7 +130,7 @@ const node = (id: string, kind: string, zone?: string, parentId?: string): Graph
   ({ id, name: id, dimensions: zone === undefined ? { [KIND]: kind } : { [KIND]: kind, [ZONE]: zone }, ...(parentId !== undefined ? { parentId } : {}) })
 const contains = (id: string, child: string, parent: string): GraphEdge =>
   ({ id, sourceId: child, targetId: parent, relation: 'containment' })
-const graphOf = (nodes: GraphNode[], edges: GraphEdge[] = []): Graph => ({ nodes: new Map(nodes.map(n => [n.id, n])), edges })
+const graphOf = (nodes: GraphNode[], edges: GraphEdge[] = []): Graph => ({ nodes, edges })
 
 /** An allow-list opens with every value the graph presents; a narrowing axis, with none. */
 function defaultFilterRow(): Json {
@@ -194,7 +194,7 @@ const reheatRow = (d: { reheat: { alpha: number; seedRevealed: boolean; refit: b
   ({ alpha: d.reheat.alpha, seedRevealed: d.reheat.seedRevealed, refit: d.reheat.refit, resume: d.reheat.resume })
 
 /**
- * No `classifyEdge` at all: an edge is the one declared type whose relation and
+ * No `classifyEdge` at all: an edge is the declared type whose relation and
  * endpoint values match its own, in either orientation. An edge between values
  * no type covers has no type — a warning, not an error, and it draws neutral.
  */
@@ -225,8 +225,9 @@ function classification(): Json {
 
 /**
  * Two declared types on one relation and one pair cannot be told apart by the
- * pair, so construction refuses them unless the host gives `classifyEdge`; and
- * the host's answer is consulted first, the declared pair deciding when it says nothing.
+ * pair, so construction refuses them unless the pair's two types differ in
+ * orientation or in `match`, or the host gives `classifyEdge`; and the host's
+ * answer is consulted first, the declared pair deciding when it says nothing.
  */
 function sharedPair(): Json {
   const calls = unstyled('calls', 'dependency', 'c', 'c')
@@ -354,7 +355,7 @@ function rawScalar(): Json {
   const rests = (id: string) => {
     const params = { ...defaultParamsFor(taxonomy), bandY: { scalar: id, span: { zero: 0, one: 100 } } }
     const frame = layoutFrame(readableGraph(graph), resolvePhysics(params, taxonomy))
-    return sortedRecord([...graph.nodes.values()].map(n => [n.id, frame.rest('y', n).lo] as const))
+    return sortedRecord(graph.nodes.map(n => [n.id, frame.rest('y', n).lo] as const))
   }
   return {
     builtIns: sortedRecord(BUILT_IN_SCALARS.map(s => [s.id, s.normalize ?? 'max'] as const)),
@@ -366,10 +367,9 @@ function rawScalar(): Json {
   }
 }
 
-/** A Map keyed by something other than the node's own id is a warning: the view reads the node by its id. */
-function keyMismatch(): Json {
-  const graph: Graph = { nodes: new Map([['x', node('y', 'a')]]), edges: [] }
-  return diagnosticRows(graph, createTaxonomy(bareSpec([])))
+/** Two nodes with one id are an error: the view draws the first and names the second. */
+function duplicateNodeId(): Json {
+  return diagnosticRows(graphOf([node('x', 'a'), node('x', 'b')]), createTaxonomy(bareSpec([])))
 }
 
 /** A derived containment edge takes the first free numbered variant of `in:<id>` when a host edge has the plain one. */
@@ -393,7 +393,7 @@ function pass2(): Json {
     cameraPolicy: cameraPolicy(),
     names: names(),
     rawScalar: rawScalar(),
-    keyMismatch: keyMismatch(),
+    duplicateNodeId: duplicateNodeId(),
     derivedIds: derivedIds(),
   }
 }
@@ -520,9 +520,20 @@ function pass2b(): Json {
   return { hiddenMatches: hiddenMatches(), reconciling: reconciling(), focusMatching: focusMatching(), counting: counting() }
 }
 
+/** Copies of one entity count once on a chip; a node without a key is its own entity. */
+function countsByCopy(): Json {
+  const counts = countsOn([
+    { id: 'x1', copyKey: 'x', dimensions: { kind: 'course', dept: 'a' } },
+    { id: 'x2', copyKey: 'x', dimensions: { kind: 'course', dept: 'b' } },
+    { id: 'y', dimensions: { kind: 'course', dept: 'a' } },
+  ], ['kind', 'dept'])
+  return { kind: sortedRecord([...counts.get('kind')!]), dept: sortedRecord([...counts.get('dept')!]) }
+}
+
 export function defaultsProbes(): Json {
   return {
     minimal: minimal(),
+    countsByCopy: countsByCopy(),
     typicalSpring: typicalSpring(),
     defaultFilter: defaultFilterRow(),
     containment: containment(),

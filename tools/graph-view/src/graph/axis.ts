@@ -142,6 +142,8 @@ export interface AxisDescriptor {
   abbreviationFor?(value: AxisValue): string
   /** A chip's hover text, when the label alone does not identify the value (a file's full path under its basename). Absent: none. */
   tooltipFor?(value: AxisValue): string
+  /** A value's glyph, drawn on its chip. Absent: the style's icon on the style axis, none elsewhere. */
+  iconFor?(value: AxisValue): string
   /**
    * The values selected when the view first opens, given the values the
    * graph presents on this axis. Absent: every value on an allow-list,
@@ -166,6 +168,8 @@ export interface ResolvedAxisDescriptor extends AxisNamer {
   /** What a change on this axis asks of the simulation — derived from `emptyMeans` and `keepCamera`. */
   reheat: ReheatPolicy
   tooltipFor?(value: AxisValue): string
+  /** A value's glyph, or '' for none. */
+  iconFor(value: AxisValue): string
   chipsFor(values: readonly AxisValue[]): readonly FilterChip[]
   initialSelection(values: readonly AxisValue[]): readonly AxisValue[]
   presentation: 'chip' | 'tag'
@@ -190,6 +194,7 @@ export function resolveDescriptor(d: AxisDescriptor, style: StyleNamer): Resolve
   const labelFor = d.labelFor ?? (onStyle ? style.labelFor : (v: AxisValue) => v)
   const abbreviationFor = d.abbreviationFor ?? (onStyle ? style.abbreviationFor : (v: AxisValue) => labelFor(v).slice(0, 2))
   const keepCamera = d.keepCamera ?? !allow
+  const iconFor = d.iconFor ?? (onStyle ? style.iconFor : () => '')
   return {
     id: d.id,
     label: d.label,
@@ -200,10 +205,11 @@ export function resolveDescriptor(d: AxisDescriptor, style: StyleNamer): Resolve
     labelFor,
     abbreviationFor,
     tooltipFor: d.tooltipFor,
+    iconFor,
     chipsFor: d.chipsFor ?? (values => values.map(v => ({
       id: v,
       label: labelFor(v),
-      icon: onStyle ? style.iconFor(v) || undefined : undefined,
+      icon: iconFor(v) || undefined,
       tint: onStyle ? v : undefined,
       tooltip: d.tooltipFor?.(v),
       values: [v],
@@ -373,19 +379,29 @@ export function valuesOn(
 }
 
 /**
- * How many subjects carry each value on each of the given axes — the chip
- * badges' numbers when a host does not supply its own reading. An axis no
- * subject has a value on gets an empty map, never a missing one.
+ * How many entities carry each value on each of the given axes — the chip
+ * badges' numbers when a host does not supply its own reading. The copies of
+ * one entity (`copyKey`) count once; a subject with neither key nor id counts
+ * as itself. An axis no subject has a value on gets an empty map, never a
+ * missing one.
  */
 export function countsOn(
-  subjects: Iterable<{ dimensions: AxisValues }>,
+  subjects: Iterable<{ dimensions: AxisValues; id?: string; copyKey?: string }>,
   dimensions: readonly AxisId[],
 ): ReadonlyMap<AxisId, ReadonlyMap<AxisValue, number>> {
+  const counted = new Map<AxisId, Map<AxisValue, Set<string>>>(dimensions.map(d => [d, new Map()]))
   const out = new Map<AxisId, Map<AxisValue, number>>(dimensions.map(d => [d, new Map()]))
+  let anonymous = 0
   for (const s of subjects) {
+    const key = s.copyKey ?? s.id ?? `\u0000${anonymous++}`
     for (const d of dimensions) {
       const v = s.dimensions[d]
       if (v === undefined) continue
+      const keys = counted.get(d)!
+      let seen = keys.get(v)
+      if (!seen) { seen = new Set(); keys.set(v, seen) }
+      if (seen.has(key)) continue
+      seen.add(key)
       const m = out.get(d)!
       m.set(v, (m.get(v) ?? 0) + 1)
     }

@@ -4,13 +4,11 @@
 // every consumer had one branch per axis and a third axis meant a third branch
 // everywhere; now it is a map over whatever axes the host declares.
 //
-// **Set identity is load-bearing here, not an optimisation.**
-// `useVisibleGraph` memoises on the Set reference and `useSimulationLoop`
-// compares `prev === next` to decide whether an axis changed. So every operation
-// in this module is copy-on-write: the axis being edited gets a new Set, and
-// every other axis keeps its *exact* instance. A helper that rebuilt the whole
-// record would re-run edge graduation and reheat the layout on every unrelated
-// edit — silently, since the output is identical.
+// Every operation here is copy-on-write: the axis being edited gets a new
+// Set, every other axis keeps its exact instance, and a no-op edit returns the
+// same state. The view compares selections by content, so a host that rebuilds
+// a filter from a URL or a store is not read as a change — identity is the
+// cheap path, not the contract.
 //
 // The search query lives outside a FilterState because it is globally shared.
 
@@ -98,6 +96,19 @@ export function filterStatesEqual(a: FilterState, b: FilterState): boolean {
   return true
 }
 
+/** Structural equality of two lock maps. */
+export function locksEqual(a: AxisLocks, b: AxisLocks): boolean {
+  if (a === b) return true
+  if (a.size !== b.size) return false
+  for (const [k, v] of a) if (b.get(k) !== v) return false
+  return true
+}
+
+/** Element-wise equality of two lists of ids. */
+export function listEqual(a: readonly string[], b: readonly string[]): boolean {
+  return a === b || (a.length === b.length && a.every((v, i) => v === b[i]))
+}
+
 /** Flip one axis's pin, copy-on-write. */
 export function withLock(pins: AxisLocks, dim: AxisId, value: boolean): AxisLocks {
   const out = new Map(pins)
@@ -140,7 +151,54 @@ export type ReconcileResult = {
  */
 export function defaultFilter(taxonomy: Pick<Taxonomy, 'filterAxes'>, graph: Pick<Graph, 'nodes'>): FilterState {
   const out = new Map<AxisId, Selection>()
-  for (const d of taxonomy.filterAxes) out.set(d.id, new Set(d.initialSelection(valuesOn(graph.nodes.values(), d.id))))
+  for (const d of taxonomy.filterAxes) out.set(d.id, new Set(d.initialSelection(valuesOn(graph.nodes, d.id))))
+  return out
+}
+
+// The records below are built from entries, not by assignment: an axis id is
+// a host string, and `out['__proto__'] = …` on a literal sets the prototype
+// instead of a key, so that axis would vanish from the stored text.
+
+/** A filter as plain data — each axis's selected values in an array — for a URL, a store or a saved layout. */
+export function filterToJSON(filter: FilterState): Record<AxisId, string[]> {
+  return Object.fromEntries([...filter].map(([dim, selection]) => [dim, [...selection]]))
+}
+
+/** What JSON.parse produces: a plain object, not a Map, a Set, a Date or an instance — whose entries are its own keys. */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+/**
+ * The filter `filterToJSON` wrote, or undefined when `value` is not that
+ * shape — stored data is not trusted to be, and a host falls back to its
+ * default rather than to a filter that means something else.
+ */
+export function filterFromJSON(value: unknown): FilterState | undefined {
+  if (!isPlainRecord(value)) return undefined
+  const out = new Map<AxisId, Selection>()
+  for (const [dim, values] of Object.entries(value)) {
+    if (!Array.isArray(values) || !values.every((v): v is string => typeof v === 'string')) return undefined
+    out.set(dim, new Set(values))
+  }
+  return out
+}
+
+/** Locks as plain data — a boolean per axis — beside `filterToJSON`. */
+export function locksToJSON(locks: AxisLocks): Record<AxisId, boolean> {
+  return Object.fromEntries([...locks])
+}
+
+/** The locks `locksToJSON` wrote, or undefined when `value` is not that shape. */
+export function locksFromJSON(value: unknown): AxisLocks | undefined {
+  if (!isPlainRecord(value)) return undefined
+  const out = new Map<AxisId, boolean>()
+  for (const [dim, locked] of Object.entries(value)) {
+    if (typeof locked !== 'boolean') return undefined
+    out.set(dim, locked)
+  }
   return out
 }
 

@@ -23,6 +23,7 @@ import type { NodeType, TemporalNodeStyle } from '../adapter/node-types'
 import type { NodeStyle } from '@temporal-architect/graph-view/graph/shapes'
 import { ALL_NODE_TYPES, DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY, DEFAULT_TAXONOMY_SPEC } from '../adapter/node-types'
 import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
+import { rgbOf } from '@temporal-architect/graph-view/graph/scheme'
 import {
   createDimensionalMapping,
   identityMapping,
@@ -455,10 +456,71 @@ function searchText(): Json {
   }
 }
 
+/**
+ * Declarative classification: on one pair, a type whose `match` the edge
+ * satisfies beats the fallback that declares none; the declared orientation
+ * beats the reverse; an edge no type fits is unclassified; two types nothing
+ * tells apart are refused at construction unless the host's rule is given;
+ * and the host's rule is handed the declared answer.
+ */
+function matchClassification(): Json {
+  const colour = { light: { fill: '#111111', border: '#222222' }, dark: { fill: '#333333', border: '#444444' } }
+  const base = {
+    styleAxis: 'kind',
+    values: [{ id: 'a', label: 'A', color: colour }, { id: 'b', label: 'B', color: colour }],
+  }
+  const taxonomy = createTaxonomy({
+    ...base,
+    edgeTypes: [
+      { id: 'plain', label: 'plain', sourceValue: 'a', targetValue: 'b', relation: 'dependency' },
+      { id: 'signal', label: 'signal', sourceValue: 'a', targetValue: 'b', relation: 'dependency', match: { via: 'signal' } },
+      { id: 'reverse', label: 'reverse', sourceValue: 'b', targetValue: 'a', relation: 'dependency' },
+      { id: 'onlyMatched', label: 'only', sourceValue: 'a', targetValue: 'a', relation: 'dependency', match: { via: 'x' } },
+    ],
+  })
+  const edge = (dimensions?: Record<string, string>): GraphEdge => ({ id: 'e', sourceId: 's', targetId: 't', relation: 'dependency', dimensions })
+  const twoAlike = [
+    { id: 'one', label: '1', sourceValue: 'a', targetValue: 'b', relation: 'dependency' as const },
+    { id: 'two', label: '2', sourceValue: 'a', targetValue: 'b', relation: 'dependency' as const },
+  ]
+  const outcome = (build: () => unknown): string => {
+    try { build(); return 'built' } catch (e) { return /nothing tells them apart/.test(e instanceof Error ? e.message : '') ? 'refused' : 'other error' }
+  }
+  const handed: Array<string | undefined> = []
+  const withRule = createTaxonomy({ ...base, edgeTypes: twoAlike, classifyEdge: (_e, _s, _t, declared) => { handed.push(declared); return 'two' } })
+  return {
+    fallback: taxonomy.classifyEdge(edge(), 'a', 'b') ?? null,
+    matched: taxonomy.classifyEdge(edge({ via: 'signal' }), 'a', 'b') ?? null,
+    unmatchedValue: taxonomy.classifyEdge(edge({ via: 'other' }), 'a', 'b') ?? null,
+    reverseOrientation: taxonomy.classifyEdge(edge(), 'b', 'a') ?? null,
+    matchedReverse: taxonomy.classifyEdge(edge({ via: 'signal' }), 'b', 'a') ?? null,
+    onlyMatchedUnmet: taxonomy.classifyEdge(edge(), 'a', 'a') ?? null,
+    onlyMatchedMet: taxonomy.classifyEdge(edge({ via: 'x' }), 'a', 'a') ?? null,
+    twoAlikeRefused: outcome(() => createTaxonomy({ ...base, edgeTypes: twoAlike })),
+    emptyMatchRefused: (() => {
+      try { createTaxonomy({ ...base, edgeTypes: [{ id: 'e', label: 'e', sourceValue: 'a', targetValue: 'b', relation: 'dependency', match: {} }] }); return 'built' }
+      catch (e) { return /match is empty/.test(e instanceof Error ? e.message : '') ? 'refused' : 'other error' }
+    })(),
+    twoAlikeWithRule: outcome(() => createTaxonomy({ ...base, edgeTypes: twoAlike, classifyEdge: () => 'one' })),
+    ruleSeesDeclared: { answer: withRule.classifyEdge(edge(), 'a', 'b') ?? null, handed: handed.map(h => h ?? null) },
+  }
+}
+
+/** A colour written as hsl() is a scheme colour, read as the channels a browser would give. */
+function hslColour(): Json {
+  const colour = { light: { fill: 'hsl(210, 50%, 40%)', border: 'hsl(210deg 50% 20% / 0.5)' }, dark: { fill: '#333333', border: '#444444' } }
+  const taxonomy = createTaxonomy({ styleAxis: 'kind', values: [{ id: 'a', label: 'A', color: colour }], edgeTypes: [] })
+  const fill = rgbOf(taxonomy.styleOf('a').color.light.fill)
+  const border = rgbOf(taxonomy.styleOf('a').color.light.border)
+  return { fill: fill ? [...fill] : null, border: border ? [...border] : null }
+}
+
 export function taxonomyProbes(): Json {
   const fallback = DEFAULT_TAXONOMY.nodeStyleOf({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
   return {
     searchText: searchText(),
+    matchClassification: matchClassification(),
+    hslColour: hslColour(),
     mappings: mappingProbes(),
     prototypeNamedValues: prototypeNamedValues(),
     reheatPolicy: reheatPolicy(),

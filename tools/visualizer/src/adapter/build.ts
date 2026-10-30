@@ -22,6 +22,7 @@ import type {
 // The axes this domain projects a node onto. Names, not concepts, belong to the
 // host: the library never mentions any of these ids.
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
+import { nodesById } from '@temporal-architect/graph-view'
 import type {
   Graph,
   GraphEdge,
@@ -152,7 +153,7 @@ function displayNameFor(nodeType: NodeType, definitionName: string): string {
 export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
   const astLookup = buildAstLookup(ast)
 
-  const nodes = new Map<string, GraphNode>()
+  const nodes: GraphNode[] = []
   const edges: GraphEdge[] = []
   let edgeSeq = 0
 
@@ -169,7 +170,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
     const { kind, name } = splitDefinitionKey(pn.definition)
     const nodeType = nodeTypeFromKind(kind)
     const ast = astLookup.get(pn.definition)
-    nodes.set(pn.id, {
+    nodes.push({
       id: pn.id,
       dimensions: dimensionsFor(nodeType, ast?.sourceFile),
       name: displayNameFor(nodeType, name),
@@ -198,12 +199,13 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
   // This fold is the host's: the library draws every edge it is given, two
   // edges between one pair being two facts (D66). What is NOT folded is two
   // kinds between one pair — a call and a signal both show.
+  const byId = nodesById(nodes)
   const seenEdges = new Set<string>()
   for (const pe of parserGraph.edges) {
     const key = `${pe.from}\u0000${pe.to}\u0000${pe.kind}`
     if (seenEdges.has(key)) continue
     seenEdges.add(key)
-    const view = parserEdgeToViewEdge(pe, nodes, edgeSeq++)
+    const view = parserEdgeToViewEdge(pe, byId, edgeSeq++)
     if (view) edges.push(view)
   }
 
@@ -212,7 +214,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
     const key = `${ce.from}\u0000${ce.to}\u0000coarsened`
     if (seenEdges.has(key)) continue
     seenEdges.add(key)
-    const view = coarsenedEdgeToViewEdge(ce, nodes, edgeSeq++)
+    const view = coarsenedEdgeToViewEdge(ce, byId, edgeSeq++)
     if (view) edges.push(view)
   }
 

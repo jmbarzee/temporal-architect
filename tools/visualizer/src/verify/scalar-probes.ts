@@ -11,6 +11,7 @@ import type { Taxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { ForceParams } from '@temporal-architect/graph-view/graph/simulation'
 import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
 import type { ScalarAxis } from '@temporal-architect/graph-view/graph/scalar'
+import { rangeNormalized } from '@temporal-architect/graph-view/graph/scalar'
 import { RADIAL_R_MAX, RADIAL_R_MIN, defaultSpan, layoutFrame, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import { FIXTURES } from './fixtures'
 import { buildFixtureGraph } from './tier-a'
@@ -41,7 +42,7 @@ function withScalar(scalar: ScalarAxis): Taxonomy {
 
 export function scalarProbes(): Json {
   const graph = nexus()
-  const nodes = [...graph.nodes.values()]
+  const nodes = graph.nodes
   const ids = nodes.map(n => n.id).sort()
 
   // A host scalar reading its own payload: the id's length, as a fraction of
@@ -87,6 +88,11 @@ export function scalarProbes(): Json {
 
   return {
     defaultSpan: { x: { ...defaultSpan(DEFAULT_TAXONOMY, 'x') }, y: { ...defaultSpan(DEFAULT_TAXONOMY, 'y') } },
+    // `range` puts the smallest answer at 0 and the largest at 1; answers all alike are 0.
+    rangeNormalisation: {
+      spread: sortedRecord([...rangeNormalized(new Map([['a', 2], ['b', 4], ['c', 6]]))]),
+      flat: sortedRecord([...rangeNormalized(new Map([['a', 3], ['b', 3]]))]),
+    },
     contract: {
       outOfRange: thrown(() => frameFor(graph, withScalar(outOfRange), { scalar: 'two' })),
       notANumber: thrown(() => frameFor(graph, withScalar(notANumber), { scalar: 'nan' })),

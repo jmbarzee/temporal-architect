@@ -89,6 +89,7 @@ export const EDGE_TYPES: readonly EdgeType[] = [
   contains('courseInDept', 'Co→Dp', 'course', 'department', 0.5, 200),
   contains('labInCourse', 'Lb→Co', 'lab', 'course', 0.9, 60),
   {
+    // No `match`: the course–course edge that is neither of the two below.
     id: 'prerequisite',
     label: 'Pre',
     sourceValue: 'course',
@@ -110,6 +111,7 @@ export const EDGE_TYPES: readonly EdgeType[] = [
     sourceValue: 'course',
     targetValue: 'course',
     relation: 'dependency',
+    match: { [REQUIREMENT]: 'corequisite' },
     physics: { strength: 1.2, distance: 120 },
     tooltip: 'Taken in the same term',
     style: {
@@ -125,6 +127,7 @@ export const EDGE_TYPES: readonly EdgeType[] = [
     sourceValue: 'course',
     targetValue: 'course',
     relation: 'dependency',
+    match: { [REQUIREMENT]: 'recommended' },
     physics: { strength: 0.2, distance: 420 },
     tooltip: 'Recommended background',
     style: {
@@ -137,14 +140,15 @@ export const EDGE_TYPES: readonly EdgeType[] = [
 ]
 
 /**
- * The tie-breaker the declared pairs cannot settle: three dependency types run
- * between a course and a course, and only the edge's own `requirement` tells
- * them apart. It answers for every dependency, whatever its endpoints (a lab
- * can require a course or another lab), and says nothing for a containment
- * edge, so the declared pairs above decide that.
+ * The one exception the declarations cannot express: a lab can require a
+ * course or another lab, and no type declares a pair with a lab on a
+ * dependency — the edge's own `requirement` says which kind it is, a
+ * prerequisite when it says nothing. Everything else is the declarations',
+ * handed in as `declared`: containment by its pair, a course's requirement by
+ * its pair and `requirement`.
  */
-function classifyEdge(edge: GraphEdge): string | undefined {
-  if (isContainment(edge)) return undefined
+function classifyEdge(edge: GraphEdge, src: string | undefined, tgt: string | undefined, declared: string | undefined): string | undefined {
+  if (declared !== undefined || isContainment(edge) || (src !== 'lab' && tgt !== 'lab')) return declared
   const kind = edge.dimensions?.[REQUIREMENT]
   return kind === 'corequisite' || kind === 'recommended' ? kind : 'prerequisite'
 }
@@ -200,18 +204,20 @@ const FILTERS: readonly AxisDescriptor[] = [
 // ── Scalars, hover line, highlight ──────────────────────────────────────────
 
 
-// A scalar answers raw numbers — the payload's value above its floor — and the
-// frame divides by the largest, so the heaviest course sits at 1.
-function scalarOf(id: string, label: string, tooltip: string, key: string, floor: number): ScalarAxis {
+// A scalar answers the payload's raw number and the frame maps it onto [0, 1]:
+// by the largest (the default), so the heaviest course sits at 1, or by the
+// range, so the lowest level sits at 0.
+function scalarOf(id: string, label: string, tooltip: string, key: string, normalize?: ScalarAxis['normalize']): ScalarAxis {
   return {
     id,
     label,
     tooltip,
+    normalize,
     compute(graph: ReadableGraph) {
       const raw = new Map<string, number>()
       for (const n of graph.nodes) {
         const v = payloadNumber(n, key)
-        if (v !== undefined) raw.set(n.id, v - floor)
+        if (v !== undefined) raw.set(n.id, v)
       }
       return raw
     },
@@ -219,8 +225,8 @@ function scalarOf(id: string, label: string, tooltip: string, key: string, floor
 }
 
 const SCALARS: readonly ScalarAxis[] = [
-  scalarOf('credits', 'Credits', 'Credit weight, as a share of the heaviest course', 'credits', 0),
-  scalarOf('level', 'Level', 'Course level (1xx … 3xx), lowest at 0', 'level', 1),
+  scalarOf('credits', 'Credits', 'Credit weight, as a share of the heaviest course', 'credits'),
+  scalarOf('level', 'Level', 'Course level (1xx … 3xx), lowest at 0', 'level', 'range'),
 ]
 
 function contextLine(node: GraphNode, parent: GraphNode | undefined): string | undefined {
