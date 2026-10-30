@@ -38,7 +38,7 @@ A `mirror` intent (force one view's filters onto the other, ignoring pins) is de
 
 The reconciler is the single function responsible for producing the destination view's filter state on every switch. Its signature, conceptually:
 
-    reconcileFilter(destFilter, sourceFilter, destPins, intent, axes) → { filter, overriddenPins }
+    reconcileFilter({ destination, source, pins, transition, axes }) → { filter, overriddenPins }   // axes: the destination view's chain (D75)
 
 It is the only consumer of `ViewTransition`. Switch-trigger code at the call sites is responsible for naming the intent; the reconciler owns the rules. This collapses the previously-duplicated filter-expansion logic in `TreeView` and `GraphView` into one shared module.
 

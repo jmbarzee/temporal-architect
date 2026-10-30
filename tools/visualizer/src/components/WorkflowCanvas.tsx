@@ -15,12 +15,9 @@ import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions
 import { useEditorTheme } from '../theme/useEditorTheme'
 import { loadState, saveState, type PersistedFilter, type PersistedPins, type StorageConfig } from '../adapter/storage'
 import type {
-  FocusTarget,
   FilterState,
   GraphNode,
-  GraphViewHandle,
   PinState,
-  ViewTransition,
   DimensionId,
   ThemeChoice,
 } from '@temporal-architect/graph-view'
@@ -32,7 +29,7 @@ import type { ParserGraph } from '../types/parser-graph'
 import { EMPTY_PARSER_GRAPH } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
 import type { DecompositionParams } from './protocol'
-import { TreeView } from './TreeView'
+import { TreeView, type TreeFocus } from './TreeView'
 import { GroupsModal } from './GroupsModal'
 import { ErrorBars } from './ErrorBars'
 import { useGraphModel, definitionCounts } from '../adapter/useGraphModel'
@@ -128,6 +125,11 @@ export const NavigationContext = React.createContext<NavigationContextType>({
 
 
 type ActiveView = 'tree' | 'graph'
+
+// A view switch as this host states it: a focus carries the target's name as
+// well as its values, because the tree finds a definition by name. The library's
+// `ViewTransition` takes any such transition, the name riding along unread.
+type HostTransition = { kind: 'manual' } | { kind: 'focus'; target: TreeFocus }
 
 // This host's persistence identity. It lives here, outside the §6.5 manifest,
 // because a storage key naming a product and the global a webview caches its API
@@ -266,9 +268,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   // Pending-focus target for a focus into the Tree. Reconciler has already
   // expanded the Tree's filter by the time this is set; the Tree consumes it
-  // for scroll/flash only. (A focus into the Graph is `pendingGraphFocusId`
-  // below: the view does its own reconcile.)
-  const [pendingFocus, setPendingFocus] = React.useState<FocusTarget | null>(null)
+  // for scroll/flash only. (A focus into the Graph is `graphFocusId` below:
+  // the view does its own reconcile.)
+  const [pendingFocus, setPendingFocus] = React.useState<TreeFocus | null>(null)
 
   // Pin-override metadata: which dimensions the most recent focus
   // transition bypassed in the Tree. The Tree consumes this on render
@@ -276,11 +278,11 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // own: `focusNode` flashes any pin it overrides.
   const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<DimensionId>>(new Set())
 
-  // The Graph view's handle, and the node a cross-view focus asked it to reveal.
-  // The view mounts lazily on first show, so the handle can be null on the tick
-  // the request is made: the id waits here until the ref exists.
-  const graphRef = React.useRef<GraphViewHandle>(null)
-  const [pendingGraphFocusId, setPendingGraphFocusId] = React.useState<string | null>(null)
+  // The node a cross-view focus asked the Graph view to reveal, centre and
+  // select. The view applies it whenever it changes to an id, including the one
+  // set before it mounted (it mounts lazily on first show). Leaving the Graph
+  // resets it, so asking for the same node twice is a change both times.
+  const [graphFocusId, setGraphFocusId] = React.useState<string | null>(null)
 
   // Persist on every relevant state change. localStorage in standalone;
   // vscode.setState in webview (via the storage shim).
@@ -367,7 +369,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // The single entry point for all view switches. Reads the transition
   // intent, runs the reconciler, applies the result, and flips the
   // active view. See spec § View Transitions.
-  const switchView = React.useCallback((target: ActiveView, transition: ViewTransition) => {
+  const switchView = React.useCallback((target: ActiveView, transition: HostTransition) => {
     // History mode has no Tree view; never switch to it (defensive — the
     // Tree tab button and "Show in Tree" affordances are hidden anyway).
     if (target === 'tree' && historyMode) return
@@ -376,17 +378,17 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     if (target === activeView && transition.kind === 'manual') return
 
     // A focus into the Graph: the view reconciles its own filter, flashes any
-    // pin it overrides and centres on the node when asked. Find the node and
-    // ask once the view is mounted and shown.
+    // pin it overrides and centres on the node when handed its id.
     if (target === 'graph' && transition.kind === 'focus') {
       const { name, values } = transition.target
       const node = [...model.graph.nodes.values()].find(n =>
         n.name === name && n.dimensions[DEF_TYPE_DIMENSION] === values[DEF_TYPE_DIMENSION])
-      setPendingGraphFocusId(node?.id ?? null)
+      setGraphFocusId(node?.id ?? null)
       setGraphEverShown(true)
       setActiveView('graph')
       return
     }
+    if (target === 'tree') setGraphFocusId(null)
 
     const dest = target === 'tree' ? treeFilter : graphFilter
     const source = target === 'tree' ? graphFilter : treeFilter
@@ -406,7 +408,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
       .filter((d): d is NonNullable<typeof d> => d !== undefined)
 
     const { filter: newFilter, overriddenPins } =
-      reconcileFilter(dest, source, destPins, transition, destDimensions)
+      reconcileFilter({ destination: dest, source, pins: destPins, transition, axes: destDimensions })
 
     if (target === 'tree') {
       if (newFilter !== dest) setTreeFilter(newFilter)
@@ -452,15 +454,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   }, [ast.definitions, switchView])
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
-
-  // Ask the Graph view to focus the requested node once its handle exists.
-  React.useEffect(() => {
-    if (pendingGraphFocusId === null) return
-    const handle = graphRef.current
-    if (!handle) return
-    handle.focusNode(pendingGraphFocusId)
-    setPendingGraphFocusId(null)
-  }, [pendingGraphFocusId, graphEverShown])
 
   const handleSearchChange = React.useCallback((query: string, active: boolean) => {
     setSearchQuery(query)
@@ -547,7 +540,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
         {graphEverShown && (
           <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
             <GraphView
-              ref={graphRef}
+              focusId={graphFocusId}
               keyboard={activeView === 'graph' ? 'global' : 'none'}
               graph={model.graph}
               counts={graphCounts}

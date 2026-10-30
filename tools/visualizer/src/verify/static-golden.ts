@@ -141,11 +141,11 @@ const INTENTS: [string, ViewTransition][] = [
   // A focus onto a hidden type carrying a file the dest does not have. The
   // asymmetry this exists to pin: the type expands unconditionally, the file
   // expands only when the file filter is already active (T8).
-  ['focus:newType+newFile', { kind: 'focus', target: { name: 'X', values: { [DEF_TYPE_DIMENSION]: 'activityDef', [SOURCE_FILE_DIMENSION]: FILE_B } } }],
+  ['focus:newType+newFile', { kind: 'focus', target: { values: { [DEF_TYPE_DIMENSION]: 'activityDef', [SOURCE_FILE_DIMENSION]: FILE_B } } }],
   // A focus onto a type that is already visible in every dest state above but
   // one — the "nothing to do" path, which must return the dest object itself.
-  ['focus:existingType', { kind: 'focus', target: { name: 'X', values: { [DEF_TYPE_DIMENSION]: 'workflowDef' } } }],
-  ['focus:noSourceFile', { kind: 'focus', target: { name: 'X', values: { [DEF_TYPE_DIMENSION]: 'activityDef' } } }],
+  ['focus:existingType', { kind: 'focus', target: { values: { [DEF_TYPE_DIMENSION]: 'workflowDef' } } }],
+  ['focus:noSourceFile', { kind: 'focus', target: { values: { [DEF_TYPE_DIMENSION]: 'activityDef' } } }],
 ]
 
 function reconcileMatrix(): Json {
@@ -153,7 +153,7 @@ function reconcileMatrix(): Json {
   for (const [destName, dest] of DEST_STATES) {
     for (const [pinName, pins] of PIN_STATES) {
       for (const [intentName, intent] of INTENTS) {
-        const result = reconcileFilter(dest, SOURCE_STATE, pins, intent, DEFAULT_ONTOLOGY.filterDimensions)
+        const result = reconcileFilter({ destination: dest, source: SOURCE_STATE, pins, transition: intent, axes: DEFAULT_ONTOLOGY.filterDimensions })
         rows.push([`${destName} · ${pinName} · ${intentName}`, {
           selectedFiles: sorted(selectionFor(result.filter, SOURCE_FILE_DIMENSION)),
           visibleTypes: sorted(selectionFor(result.filter, DEF_TYPE_DIMENSION)),
@@ -209,14 +209,14 @@ function filterSetIdentity(): Json {
     record(`toggleTypeGroup(${chip.id})`, toggleGroup(current, DEF_TYPE_DIMENSION, chip.types))
   }
   record(`toggleFile(${FILE_A}) [off]`, toggleValue(current, SOURCE_FILE_DIMENSION, FILE_A))
-  record('reconcile(manual, unpinned)', reconcileFilter(
-    current, SOURCE_STATE, NO_PINS, { kind: 'manual' }, DEFAULT_ONTOLOGY.filterDimensions,
-  ).filter)
+  record('reconcile(manual, unpinned)', reconcileFilter({
+    destination: current, source: SOURCE_STATE, pins: NO_PINS, transition: { kind: 'manual' }, axes: DEFAULT_ONTOLOGY.filterDimensions,
+  }).filter)
   // Reconciling against itself changes nothing, so the dest object comes back
   // by reference and no dimension's identity moves.
-  record('reconcile(manual, self)', reconcileFilter(
-    current, current, NO_PINS, { kind: 'manual' }, DEFAULT_ONTOLOGY.filterDimensions,
-  ).filter)
+  record('reconcile(manual, self)', reconcileFilter({
+    destination: current, source: current, pins: NO_PINS, transition: { kind: 'manual' }, axes: DEFAULT_ONTOLOGY.filterDimensions,
+  }).filter)
 
   return steps
 }

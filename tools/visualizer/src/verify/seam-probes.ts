@@ -80,6 +80,9 @@ function badgesOf(html: string): Json {
   return sortedRecord(Object.entries(badges))
 }
 
+/** How many pin toggles the markup carries: one per axis shown, when the bar offers them. */
+const pinToggles = (html: string): number => (html.match(/class="gv-pin-toggle[ "]/g) ?? []).length
+
 /** The bar as rendered with the host's counts in its badges and its findings in the slot. */
 function barRendered(): Json {
   const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
@@ -90,14 +93,14 @@ function barRendered(): Json {
     React.createElement(FilterBar, {
       counts: definitionCounts(fixture.ast, new Set()),
       filter, onFilterChange: noop, pins: new Map<string, boolean>(), onPinsChange: noop,
-      overriddenPins: new Set<string>(), recentlyChanged: new Set<string>(),
+      overriddenPins: new Set<string>(),
       search: { query: '', active: false }, onSearchChange: noop, searchInputRef: React.createRef<HTMLInputElement>(),
       searchTitle: 'Search', searchPlaceholder: 'Search',
       chain: [SOURCE_FILE_DIMENSION, DEF_TYPE_DIMENSION],
       values: new Map(DEFAULT_ONTOLOGY.filterDimensions.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
       findings: React.createElement('div', { 'data-probe': 'findings' }),
     })))
-  return { badges: badgesOf(html), findingsSlot: html.includes('data-probe="findings"') }
+  return { badges: badgesOf(html), findingsSlot: html.includes('data-probe="findings"'), pinToggles: pinToggles(html) }
 }
 
 /** The bar given the graph and nothing else of its own: values and badge counts are read off the nodes. */
@@ -109,9 +112,29 @@ function barFromGraph(): Json {
     React.createElement(FilterBar, {
       graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, pins: new Map<string, boolean>(), onPinsChange: noop,
     })))
-  return { badges: badgesOf(html) }
+  return { badges: badgesOf(html), pinToggles: pinToggles(html) }
+}
+
+/** The same bar with no pins and no way to change them: the host has no second view to pin against, and the toggles are absent. */
+function barWithoutPins(): Json {
+  const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
+  if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
+  const graph = buildFixtureGraph(fixture)
+  const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: DEFAULT_ONTOLOGY },
+    React.createElement(FilterBar, { graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop })))
+  return { badges: badgesOf(html), pinToggles: pinToggles(html), pinTogglesAbsent: !html.includes('gv-pin-toggle') }
+}
+
+/** The same bar with no pins but `chrome.pins` asking for the toggles: the host's say-so outranks the default. */
+function barChromePins(): Json {
+  const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
+  if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
+  const graph = buildFixtureGraph(fixture)
+  const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: DEFAULT_ONTOLOGY },
+    React.createElement(FilterBar, { graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, chrome: { pins: true } })))
+  return { pinToggles: pinToggles(html) }
 }
 
 export function seamProbes(): Json {
-  return { viewHalf: viewHalf(), hostHalf: hostHalf(), counts: counts(), barRendered: barRendered(), barFromGraph: barFromGraph() }
+  return { viewHalf: viewHalf(), hostHalf: hostHalf(), counts: counts(), barRendered: barRendered(), barFromGraph: barFromGraph(), barWithoutPins: barWithoutPins(), barChromePins: barChromePins() }
 }

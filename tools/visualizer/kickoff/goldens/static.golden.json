@@ -666,6 +666,248 @@
         ]
       }
     },
+    "pass2b": {
+      "counting": {
+        "noNodeCarries": {
+          "campus": {},
+          "kind": {
+            "a": 2,
+            "b": 1,
+            "c": 2
+          }
+        },
+        "noNodes": {
+          "kind": {},
+          "zone": {}
+        },
+        "oneAxis": {
+          "zone": {
+            "east": 2,
+            "west": 2
+          }
+        },
+        "twoAxes": {
+          "kind": {
+            "a": 2,
+            "b": 1,
+            "c": 2
+          },
+          "zone": {
+            "east": 2,
+            "west": 2
+          }
+        }
+      },
+      "focusMatching": {
+        "axisTheNodeLacks": false,
+        "empty": true,
+        "everyValue": true,
+        "nameNotRead": true,
+        "oneOfTwoWrong": false,
+        "oneValue": true,
+        "undefinedIgnored": true
+      },
+      "hiddenMatches": {
+        "hiddenByCaller": {
+          "hiddenByAxis": {},
+          "hiddenCount": 3,
+          "visible": []
+        },
+        "kindFirst": {
+          "hiddenByAxis": {
+            "kind": {
+              "c": 1
+            },
+            "zone": {
+              "west": 1
+            }
+          },
+          "hiddenCount": 2,
+          "visible": [
+            "api-1"
+          ]
+        },
+        "noMatch": {
+          "hiddenByAxis": {},
+          "hiddenCount": 0,
+          "visible": []
+        },
+        "zoneFirst": {
+          "hiddenByAxis": {
+            "zone": {
+              "west": 2
+            }
+          },
+          "hiddenCount": 2,
+          "visible": [
+            "api-1"
+          ]
+        }
+      },
+      "reconciling": {
+        "focus": {
+          "alreadyShown": {
+            "keptKindSet": true,
+            "keptZoneSet": true,
+            "kind": [
+              "a"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": true,
+            "zone": [
+              "east"
+            ]
+          },
+          "overOneAxis": {
+            "keptKindSet": false,
+            "keptZoneSet": true,
+            "kind": [
+              "a",
+              "b"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": false,
+            "zone": [
+              "east"
+            ]
+          },
+          "overridesBoth": {
+            "keptKindSet": false,
+            "keptZoneSet": false,
+            "kind": [
+              "a",
+              "b"
+            ],
+            "overriddenPins": [
+              "kind",
+              "zone"
+            ],
+            "returnedDestination": false,
+            "zone": [
+              "east",
+              "west"
+            ]
+          },
+          "overridesPinnedKind": {
+            "keptKindSet": false,
+            "keptZoneSet": true,
+            "kind": [
+              "a",
+              "b"
+            ],
+            "overriddenPins": [
+              "kind"
+            ],
+            "returnedDestination": false,
+            "zone": []
+          },
+          "overridesPinnedZone": {
+            "keptKindSet": true,
+            "keptZoneSet": false,
+            "kind": [
+              "a"
+            ],
+            "overriddenPins": [
+              "zone"
+            ],
+            "returnedDestination": false,
+            "zone": [
+              "east",
+              "west"
+            ]
+          },
+          "silentAxisUntouched": {
+            "keptKindSet": false,
+            "keptZoneSet": true,
+            "kind": [
+              "a",
+              "b"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": false,
+            "zone": [
+              "east"
+            ]
+          },
+          "widensActiveZone": {
+            "keptKindSet": true,
+            "keptZoneSet": false,
+            "kind": [
+              "a"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": false,
+            "zone": [
+              "east",
+              "west"
+            ]
+          },
+          "widensAllowList_zoneEmptyUntouched": {
+            "keptKindSet": false,
+            "keptZoneSet": true,
+            "kind": [
+              "a",
+              "b"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": false,
+            "zone": []
+          }
+        },
+        "manual": {
+          "allPinned": {
+            "keptKindSet": true,
+            "keptZoneSet": true,
+            "kind": [
+              "a"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": true,
+            "zone": [
+              "east"
+            ]
+          },
+          "nonePinned": {
+            "keptKindSet": false,
+            "keptZoneSet": false,
+            "kind": [
+              "b",
+              "c"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": false,
+            "zone": [
+              "west"
+            ]
+          },
+          "overOneAxis": {
+            "keptKindSet": false,
+            "keptZoneSet": true,
+            "kind": [
+              "b",
+              "c"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": false,
+            "zone": [
+              "east"
+            ]
+          },
+          "pinnedKept_unpinnedAdopted": {
+            "keptKindSet": true,
+            "keptZoneSet": false,
+            "kind": [
+              "a"
+            ],
+            "overriddenPins": [],
+            "returnedDestination": false,
+            "zone": [
+              "west"
+            ]
+          }
+        }
+      }
+    },
     "stackBand": [
       {
         "i": 0,
@@ -1832,6 +2074,10 @@
     "}"
   ],
   "hostProbes": {
+    "barProp": {
+      "pinToggles": 0,
+      "rendered": true
+    },
     "callsStroke": [],
     "keys": [
       "cluster",
@@ -1842,8 +2088,10 @@
       "panelAbsent": true,
       "rootClass": "gv-graph-view probe-host",
       "schemeKept": true,
+      "searchAbsent": true,
       "styleMerged": true,
       "themeButtonAbsent": true,
+      "transportAbsent": true,
       "withoutProvider": true
     },
     "podFill": "#336699",
@@ -1864,7 +2112,8 @@
         "west"
       ],
       "files": [],
-      "panelPresent": true
+      "panelPresent": true,
+      "pinToggles": 0
     },
     "scalar": {
       "c1": 0,
@@ -3377,6 +3626,9 @@
     "variableFor": "--gv-node-nexus-endpoint"
   },
   "seamProbes": {
+    "barChromePins": {
+      "pinToggles": 2
+    },
     "barFromGraph": {
       "badges": {
         "Activities": "9",
@@ -3385,7 +3637,8 @@
         "Workers": "5",
         "Workflows": "8",
         "nexus.twf": "37"
-      }
+      },
+      "pinToggles": 2
     },
     "barRendered": {
       "badges": {
@@ -3396,7 +3649,20 @@
         "Workflows": "8",
         "nexus.twf": "30"
       },
-      "findingsSlot": true
+      "findingsSlot": true,
+      "pinToggles": 2
+    },
+    "barWithoutPins": {
+      "badges": {
+        "Activities": "9",
+        "Namespaces": "5",
+        "Nexus": "10",
+        "Workers": "5",
+        "Workflows": "8",
+        "nexus.twf": "37"
+      },
+      "pinToggles": 0,
+      "pinTogglesAbsent": true
     },
     "counts": {
       "decomposition-sample": {
@@ -4291,12 +4557,13 @@
   },
   "viewProbes": {
     "focus": {
-      "nameAndValue": true,
-      "nameOnly": true,
+      "everyValueMatches": true,
+      "oneValueMismatches": false,
       "undefinedValueIgnored": true,
-      "valueNodeLacks": false,
-      "wrongName": false,
-      "wrongValue": false
+      "valueAbsent": false,
+      "valueMatch": true,
+      "valueMismatch": false,
+      "valuesOnly": true
     },
     "offered": {
       "allTypes": {

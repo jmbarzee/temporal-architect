@@ -6,7 +6,7 @@ import './GraphView.css'
 import { readableGraph, isContainment, withContainmentEdges } from '../graph/model'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import type { FilterState, PinState } from '../filter/types'
-import { defaultFilter, passesSelection, selectionFor, selectionsEqual, withSelection } from '../filter/types'
+import { defaultFilter, hiddenMatchesOf, passesSelection, selectionFor, selectionsEqual, withSelection } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
 import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
@@ -47,6 +47,24 @@ import type { GraphDiagnostic } from '../graph/validate'
 /** A node's position in the layout, in world units. */
 export interface Position { x: number; y: number }
 
+/** Which parts of the pane's own chrome are offered; every part is on by default. */
+export interface GraphViewChrome {
+  /** The search control in the bar. */
+  search?: boolean
+  /** The pin toggle on each axis. Default: only when the host engages pins (`pins` or `onPinsChange`). */
+  pins?: boolean
+  /** The Fit / theme / Play cluster and the node count. */
+  transport?: boolean
+  /** The pane's own list of the graph's defects under the bar. */
+  diagnostics?: boolean
+  /** The shortcuts panel and the `?` key that opens it. */
+  shortcuts?: boolean
+  /** The "dependencies / dependents" line in the hover box. */
+  directionLine?: boolean
+  /** Centre and zoom to a node's neighbours on double-click. */
+  activateZoom?: boolean
+}
+
 /**
  * What a host may ask of a mounted view. `focusNode` is the whole focus
  * recipe in one call: widen the filter just enough on the axes shown
@@ -54,8 +72,10 @@ export interface Position { x: number; y: number }
  * settled, and select it.
  */
 export interface GraphViewHandle {
-  /** Reveal, centre and select a node by id. False when the id is not in the graph. */
+  /** Reveal, centre and select a node by id. False when the id is not in the graph or the filter cannot be widened to show it. */
   focusNode(id: string): boolean
+  /** Select a node, or clear the selection. */
+  select(id: string | null): void
   /** Frame the visible nodes. */
   fit(): void
   /** Every node's position, by id — a layout the host may keep and hand back as `positions`. */
@@ -99,6 +119,21 @@ export interface GraphViewProps {
   controls?: boolean
   /** Whether the Auto / Light / Dark button is offered. Default true. */
   themeToggle?: boolean
+  /** Which parts of the pane's chrome are offered. Default: everything, pins only when engaged. */
+  chrome?: GraphViewChrome
+  /** The search control's title and placeholder, for a host with its own words. */
+  searchTitle?: string
+  searchPlaceholder?: string
+  /** The selected node, when the host controls the selection; `onSelectionChange` is its callback. */
+  selectedId?: string | null
+  /**
+   * A node to reveal, centre and select whenever this changes to an id — the
+   * declarative form of the handle's `focusNode`, for a host whose pane
+   * mounts lazily and has no handle yet when the request is made. A change
+   * is the request: a host that focuses the same node twice sets null in
+   * between.
+   */
+  focusId?: string | null
   /** Added to the root's class list; the root keeps its own. */
   className?: string
   /** Merged onto the root's style; the scheme's variables stay. */
@@ -144,6 +179,11 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   crossView,
   controls = true,
   themeToggle = true,
+  chrome,
+  searchTitle = 'Search nodes (/)',
+  searchPlaceholder = 'Search nodes...',
+  selectedId,
+  focusId,
   className,
   style,
   filter: filterProp, onFilterChange,
@@ -193,6 +233,15 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     () => chain.flatMap(id => { const d = ontology.descriptorFor(id); return d ? [d] : [] }),
     [chain, ontology],
   )
+  const show = {
+    search: chrome?.search ?? true,
+    pins: chrome?.pins ?? (pinsProp !== undefined || onPinsChange !== undefined),
+    transport: chrome?.transport ?? true,
+    diagnostics: chrome?.diagnostics ?? true,
+    shortcuts: chrome?.shortcuts ?? true,
+    directionLine: chrome?.directionLine ?? true,
+    activateZoom: chrome?.activateZoom ?? true,
+  }
   // The host's graph, checked once: every defect named, the edges an
   // error names left out of what is drawn, the list shown under the bar.
   const diagnostics = React.useMemo(() => validateGraph(hostGraph, ontology), [hostGraph, ontology])
@@ -413,22 +462,9 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const lq = searchQuery.toLowerCase()
     const sim = simRef.current
     if (!sim) return { visibleMatchIds: new Set<string>(), hiddenMatchCount: 0, hiddenMatches: none }
-
-    const visible = new Set<string>()
-    let hidden = 0
-    const byAxis = new Map<string, Map<string, number>>()
-    for (const node of sim.nodes) {
-      if (!ontology.searchText(node).toLowerCase().includes(lq)) continue
-      if (visibleIds.has(node.id)) { visible.add(node.id); continue }
-      hidden++
-      const failing = filterAxes.find(d => !passesSelection(filter, [d], dim => ontology.valueOn(node, dim)))
-      const value = failing ? ontology.valueOn(node, failing.id) : undefined
-      if (!failing || value === undefined) continue
-      const tally = byAxis.get(failing.id) ?? new Map<string, number>()
-      tally.set(value, (tally.get(value) ?? 0) + 1)
-      byAxis.set(failing.id, tally)
-    }
-    return { visibleMatchIds: visible, hiddenMatchCount: hidden, hiddenMatches: byAxis }
+    const split = hiddenMatchesOf(sim.nodes, filter, filterAxes, visibleIds,
+      node => ontology.searchText(node).toLowerCase().includes(lq), (node, dim) => ontology.valueOn(node, dim))
+    return { visibleMatchIds: split.visible, hiddenMatchCount: split.hiddenCount, hiddenMatches: split.hiddenByAxis }
   }, [searchQuery, visibleIds, filter, filterAxes, ontology])
 
   // Physics loop + filter-driven reheats. Owns the RAF tick (with one-shot
@@ -477,9 +513,10 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       if (edge.sourceId === id) neighborIds.add(edge.targetId)
       if (edge.targetId === id) neighborIds.add(edge.sourceId)
     }
+    if (!show.activateZoom) return
     const neighbors = sim.nodes.filter(n => neighborIds.has(n.id))
     fit(neighbors, 80)
-  }, [fit, hostGraph])
+  }, [fit, hostGraph, show.activateZoom])
 
   // Fit-to-view
   const handleFitToView = React.useCallback(() => {
@@ -543,21 +580,37 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // overrides flashes), then centre on and select the node once the layout
   // has settled — the loop consumes the request after its warm-up.
   const visibleNodesRef = useLatest(visibleNodes)
+  const focusNodeById = React.useCallback((id: string): boolean => {
+    const node = graph.nodes.get(id)
+    if (!node) return false
+    const result = reconcileFilter({ destination: filter, source: filter, pins, transition: { kind: 'focus', target: { values: node.dimensions } }, axes: filterAxes })
+    if (result.filter !== filter) setFilter(result.filter)
+    if (result.overriddenPins.size > 0) setFlashPins(result.overriddenPins)
+    // Whether the widened filter shows the node: a value absent on a hiding
+    // axis cannot be revealed by widening, and the host should know.
+    const shown = passesSelection(result.filter, filterAxes, dim => ontology.valueOn(node, dim))
+    if (!shown) return false
+    pendingCenterRef.current = { nodeId: id }
+    if (!running) {
+      simRef.current?.reheat(0.1)
+      setRunning(true)
+    }
+    return true
+  }, [graph, filter, pins, filterAxes, setFilter, running, setRunning, simRef, pendingCenterRef, ontology])
+  // The declarative focus: applied whenever the host names a node, including
+  // the one it named before this pane mounted.
+  React.useEffect(() => {
+    if (focusId) focusNodeById(focusId)
+  }, [focusId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The controlled selection: the view selects what the host says whenever
+  // `selectedId` changes; a click still fires `onSelectionChange`, and the host
+  // answers by setting the prop.
+  React.useEffect(() => {
+    if (selectedId !== undefined) setSelectedNodeId(selectedId)
+  }, [selectedId]) // eslint-disable-line react-hooks/exhaustive-deps
   React.useImperativeHandle(ref, () => ({
-    focusNode: (id: string) => {
-      const node = graph.nodes.get(id)
-      if (!node) return false
-      const target = { name: node.name, values: node.dimensions }
-      const result = reconcileFilter(filter, filter, pins, { kind: 'focus', target }, filterAxes)
-      if (result.filter !== filter) setFilter(result.filter)
-      if (result.overriddenPins.size > 0) setFlashPins(result.overriddenPins)
-      pendingCenterRef.current = { nodeId: id }
-      if (!running) {
-        simRef.current?.reheat(0.1)
-        setRunning(true)
-      }
-      return true
-    },
+    focusNode: focusNodeById,
+    select: (id: string | null) => setSelectedNodeId(id),
     fit: () => fit(visibleNodesRef.current),
     getPositions: () => new Map((simRef.current?.nodes ?? []).map(n => [n.id, { x: n.x, y: n.y }])),
     setPositions: (next: ReadonlyMap<string, Position>) => {
@@ -571,7 +624,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       sim.reheat(0.1)
       setRunning(true)
     },
-  }), [graph, filter, pins, filterAxes, setFilter, running, fit, setRunning, simRef, pendingCenterRef, visibleNodesRef])
+  }), [focusNodeById, fit, setRunning, setSelectedNodeId, simRef, visibleNodesRef])
 
   // Keyboard, scoped by `keyboard`: on the pane, the focusable root
   // handles the keys that reach it; globally, the window does — a tab shell
@@ -664,6 +717,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
         break
       }
       case '?': {
+        if (!show.shortcuts) break
         e.preventDefault()
         setShortcutsOpen(prev => !prev)
         break
@@ -746,6 +800,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
           visibleIds={visibleIds}
           viewport={viewport}
           shiftHeld={shiftHeld}
+          directionLine={show.directionLine}
           copies={copies}
           nodeSummaries={nodeSummaries}
           crossView={hostCrossView}
@@ -760,6 +815,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       <div className="gv-graph-overlay" ref={toolbarRef}>
         <div className="gv-graph-toolbar">
           <FilterBar
+            chrome={{ search: show.search, pins: show.pins }}
             counts={counts}
             values={valuesByDimension}
             filter={filter}
@@ -773,15 +829,15 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
             search={search}
             onSearchChange={setSearch}
             searchInputRef={searchInputRef}
-            searchTitle="Search nodes (/)"
-            searchPlaceholder="Search nodes..."
+            searchTitle={searchTitle}
+            searchPlaceholder={searchPlaceholder}
             searchExtra={searchExtra}
             hiddenMatches={hiddenMatches}
             findings={findings}
           />
         </div>
 
-        {diagnostics.length > 0 && <GraphDiagnostics diagnostics={diagnostics} />}
+        {show.diagnostics && diagnostics.length > 0 && <GraphDiagnostics diagnostics={diagnostics} />}
 
         {/* Search results dropdown */}
         {visibleMatchIds && visibleMatchIds.size > 0 && searchActive && (
@@ -802,14 +858,14 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
 
       {/* Bottom-left: node/edge counts (shifts right when the shortcuts panel
           is open so they don't overlap). */}
-      <div className={`gv-graph-bottom-left${shortcutsOpen ? ' shifted' : ''}`}>
+      {show.transport && <div className={`gv-graph-bottom-left${shortcutsOpen ? ' shifted' : ''}`}>
         <span className="gv-graph-count">
           {nodeCount} node{nodeCount !== 1 ? 's' : ''}, {edgeCount} edge{edgeCount !== 1 ? 's' : ''}
         </span>
-      </div>
+      </div>}
 
       {/* Bottom-center: simulation controls + live fps. */}
-      <div className="gv-graph-bottom-center">
+      {show.transport && <div className="gv-graph-bottom-center">
         <button className="gv-graph-toolbar-btn" onClick={handleFitToView} title="Fit to view (F)">Fit</button>
         {themeToggle && (
           <button
@@ -831,7 +887,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
         {/* Always rendered (reserving its width) so toggling Play/Pause never
             shifts the centred cluster; hidden when the simulation is paused. */}
         <span className={`gv-graph-count-fps${running ? '' : ' hidden'}`} title="Simulation frames per second">{fps} fps</span>
-      </div>
+      </div>}
 
       {/* Control panel */}
       {controls && <GraphControlPanel
@@ -856,7 +912,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       {groupsControl?.(activeGroups)}
 
       {/* Shortcuts panel */}
-      {shortcutsOpen && (
+      {show.shortcuts && shortcutsOpen && (
         <div className="gv-graph-shortcuts-panel">
           <div className="gv-graph-shortcuts-title">
             Keyboard Shortcuts
@@ -908,6 +964,8 @@ interface GraphHoverTooltipProps {
   visibleIds: Set<string>
   viewport: Viewport
   shiftHeld: boolean
+  /** Whether the "dependencies / dependents" line is shown. */
+  directionLine: boolean
   /** Every node's copies by their shared key, over the whole graph. */
   copies: ReadonlyMap<string, ReadonlySet<string>>
   nodeSummaries: Map<string, string>
@@ -919,7 +977,7 @@ interface GraphHoverTooltipProps {
   onMouseLeave: () => void
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, copies, nodeSummaries, crossView, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, directionLine, copies, nodeSummaries, crossView, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
   // Before the early returns: this is a hook, and the component bails out four
   // different ways below.
   const ontology = useOntology()
@@ -995,7 +1053,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
           {incoming > 0 && <span className="gv-tooltip-conn-in">←{incoming}</span>}
         </div>
       )}
-      <div className="gv-tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
+      {directionLine && <div className="gv-tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>}
       {crossView && (
         <button
           className="gv-tooltip-cross-view"

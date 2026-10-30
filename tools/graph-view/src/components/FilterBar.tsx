@@ -7,13 +7,14 @@
 // no axis. A view-specific adornment on the search control (a match counter,
 // a hidden-match badge) comes in as `searchExtra`.
 
-import { useOntology } from './graph-view/useOntology'
+import { OntologyContext } from './graph-view/useOntology'
 import type { DimensionValue } from '../graph/dimension'
 import { countsOn, valuesOn } from '../graph/dimension'
 import type { Graph } from '../graph/model'
 import type { Ontology } from '../graph/ontology'
 import { useControllable } from './graph-view/useControllable'
 import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
+import type { RecentlyChanged } from './graph-view/useRecentlyChanged'
 
 // A chip's tint names a style value; one that names nothing declared is a
 // host bug, said once per chip and per bar on the console rather than thrown
@@ -47,7 +48,19 @@ export interface SearchState { query: string; active: boolean }
  * else the pane supplies for its own bar has a default here, so a host's
  * second view renders the same bar without rebuilding the pane's internals.
  */
+/** Which of the bar's own controls are offered; every part is on by default. */
+export interface FilterBarChrome {
+  /** The search control. */
+  search?: boolean
+  /** The pin toggle on each axis — meaningful only to a host with a second view to pin against. */
+  pins?: boolean
+}
+
 export interface FilterBarProps {
+  /** The taxonomy, when not supplied through `OntologyContext`. */
+  ontology?: Ontology
+  /** Which controls are offered. Default: everything; pins only when the host engages them (`pins` or `onPinsChange`). */
+  chrome?: FilterBarChrome
   /** Chip badge counts per axis and value, read by the host off its own data. Absent: the graph's node counts when `graph` is given, else no badges. */
   counts?: ReadonlyMap<string, ReadonlyMap<string, number>>
   /**
@@ -61,12 +74,13 @@ export interface FilterBarProps {
   graph?: Graph
   filter: FilterState
   onFilterChange: (next: FilterState) => void
-  pins: PinState
-  onPinsChange: (next: PinState) => void
-  /** Axes a focus just overrode the pin of — drives the pin flash. Default: none. */
+  /** Which axes are pinned. Default: the bar's own, none pinned, with no toggles shown unless `chrome.pins` asks. */
+  pins?: PinState
+  onPinsChange?: (next: PinState) => void
+  /** Axes a focus just overrode the pin of. The bar flashes them once, for 600 ms, whenever the value changes; the host need not clear it. */
   overriddenPins?: ReadonlySet<FilterDimension>
-  /** `<axis>:<value>` keys that just turned on — drives the chip flash. Default: tracked here from the filter's changes. */
-  recentlyChanged?: ReadonlySet<string>
+  /** The values that just turned on, per axis — drives the chip flash. Default: tracked here from the filter's changes. */
+  recentlyChanged?: RecentlyChanged
   /** The search control. Default: the bar's own, closed and empty. */
   search?: SearchState
   onSearchChange?: (next: SearchState) => void
@@ -84,8 +98,8 @@ export interface FilterBarProps {
   onChainChange?: (next: readonly string[]) => void
   /** The host's findings bars, rendered under the chips. */
   findings?: React.ReactNode
-  /** Flash the whole bar once — a host signals that its data was reloaded. */
-  refreshFlash?: boolean
+  /** Flash the whole bar once whenever this value changes to something truthy — a counter a host bumps when its data reloads. */
+  refreshFlash?: boolean | number
 }
 
 /** The classes a section's chips wear, by the axis's declared presentation. */
@@ -95,12 +109,14 @@ const LOOKS = {
 } as const
 
 export function FilterBar({
+  ontology: ontologyProp,
+  chrome,
   counts: hostCounts,
   values: hostValues,
   graph,
   filter,
   onFilterChange,
-  pins,
+  pins: pinsProp,
   onPinsChange,
   overriddenPins = NO_PINS,
   recentlyChanged: hostRecentlyChanged,
@@ -116,9 +132,36 @@ export function FilterBar({
   chain: hostChain,
   onChainChange,
 }: FilterBarProps) {
-  const ontology = useOntology()
+  const fromContext = React.useContext(OntologyContext)
+  const ontology = ontologyProp ?? fromContext
+  if (!ontology) throw new Error('FilterBar has no taxonomy: pass `ontology`, or mount it inside <OntologyContext.Provider value={…}>.')
   if (!hostValues && !graph) throw new Error('FilterBar needs the values each axis offers: pass `values`, or the `graph` to read them off.')
   const undeclaredTints = React.useRef(new Set<string>())
+  const [pins, setPins] = useControllable(pinsProp, onPinsChange, () => new Map<string, boolean>())
+  const showPins = chrome?.pins ?? (pinsProp !== undefined || onPinsChange !== undefined)
+  const showSearch = chrome?.search ?? true
+  // The pin flash is the bar's: a new set of overridden pins lights them for
+  // 600 ms and goes out by itself, so a host passes the reconciler's answer
+  // and nothing more.
+  const [flashing, setFlashing] = React.useState<ReadonlySet<string>>(NO_PINS)
+  React.useEffect(() => {
+    // Every change sets the state, the empty one included: the cleanup has
+    // already cancelled the previous timer, so an empty set arriving mid-flash
+    // must put the light out itself.
+    setFlashing(overriddenPins)
+    if (overriddenPins.size === 0) return
+    const timer = setTimeout(() => setFlashing(NO_PINS), 600)
+    return () => clearTimeout(timer)
+  }, [overriddenPins])
+  // The whole-bar flash likewise: once per change of the value, not for as
+  // long as a boolean stays set.
+  const [refreshing, setRefreshing] = React.useState(false)
+  React.useEffect(() => {
+    if (!refreshFlash) return
+    setRefreshing(true)
+    const timer = setTimeout(() => setRefreshing(false), 600)
+    return () => clearTimeout(timer)
+  }, [refreshFlash])
   const [chain, setChain] = useControllable(hostChain, onChainChange, () => ontology.filterDimensions.map(d => d.id))
   const chainEditable = hostChain === undefined || onChainChange !== undefined
   const [search, setSearch] = useControllable(searchProp, onSearchChange, () => ({ query: '', active: false }))
@@ -163,7 +206,7 @@ export function FilterBar({
   }
 
   return (
-    <div className={`gv-canvas-header${refreshFlash ? ' refresh-flash' : ''}`}>
+    <div className={`gv-canvas-header${refreshing ? ' refresh-flash' : ''}`}>
       {chain.map(dimension => {
         const descriptor = ontology.descriptorFor(dimension)
         if (!descriptor) return null
@@ -196,7 +239,7 @@ export function FilterBar({
                 )}
                 {chips.map(chip => {
                   const isActive = chip.values.some(v => selection.has(v))
-                  const isChanged = chip.values.some(v => recentlyChanged.has(`${dimension}:${v}`))
+                  const isChanged = chip.values.some(v => recentlyChanged.get(dimension)?.has(v))
                   const hiddenCount = chip.values.reduce((sum, v) => sum + (look.hidden?.get(v) ?? 0), 0)
                   const count = look.counts === undefined ? undefined : chip.values.reduce((sum, v) => sum + (look.counts!.get(v) ?? 0), 0)
                   const cls = [
@@ -225,12 +268,14 @@ export function FilterBar({
                   )
                 })}
               </div>
-              <PinToggle
-                pinned={pinned}
-                onClick={() => onPinsChange(withPin(pins, dimension, !pinned))}
-                flashing={overriddenPins.has(dimension)}
-                label={descriptor.label}
-              />
+              {showPins && (
+                <PinToggle
+                  pinned={pinned}
+                  onClick={() => setPins(withPin(pins, dimension, !pinned))}
+                  flashing={flashing.has(dimension)}
+                  label={descriptor.label}
+                />
+              )}
               {chainEditable && (
                 <button
                   className="gv-header-chain-remove"
@@ -276,7 +321,7 @@ export function FilterBar({
 
       <div className="gv-header-divider" />
 
-      <div className="gv-header-controls-section">
+      {showSearch && <div className="gv-header-controls-section">
         <div className={`gv-header-search ${searchActive ? 'active' : ''}`}>
           <button className="gv-header-search-toggle" onClick={toggleSearch} title={searchTitle}>
             <SearchIcon size={14} />
@@ -294,7 +339,7 @@ export function FilterBar({
           )}
           {searchExtra}
         </div>
-      </div>
+      </div>}
 
       {findings}
     </div>

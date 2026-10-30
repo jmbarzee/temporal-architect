@@ -178,12 +178,21 @@ Everything else is optional.
   pass the value and its callback to control it, neither to let the view keep
   it, the callback alone to be told. `defaultFilter(ontology, graph)` is the
   filter the view starts from, for a host that controls it.
+- **Selection and focus.** `selectedId` controls the selection
+  (`onSelectionChange` is its callback; a click still reports, and the host
+  answers by setting the prop). `focusId` reveals, centres and selects a node
+  whenever it changes — the declarative form of the handle's `focusNode`, for
+  a pane that mounts lazily.
 - **Inputs.** `counts` (chip badges; the graph's node counts unless given),
   `findings` under the bar, `groups` to glow (each with a `color` or the
   palette's), `groupsControl` for a legend inside the pane (anchor it under
   `--gv-toolbar-height`), a `crossView` action for the hover box, `controls`
-  and `themeToggle` to hide the panel and the theme button, `className`,
-  `style`, and `positions` (a kept layout).
+  and `themeToggle` to hide the panel and the theme button, `chrome` to turn
+  off the search control, the pin toggles (off by default until the host
+  engages pins), the Fit / Play / count cluster, the diagnostics list, the
+  shortcuts panel, the hover box's direction line or the double-click zoom,
+  `searchTitle` and `searchPlaceholder` for the host's own words,
+  `className`, `style`, and `positions` (a kept layout).
 - **Outputs.** `onSelectionChange(node | null)`, `onNodeActivate(node)` on a
   double-click, `onHover(node | null)`, `onThemeResolved(theme)`. The resolved
   theme is for the host's own chrome beside the pane, never for a `data-theme`
@@ -191,9 +200,11 @@ Everything else is optional.
   writing the answer there locks it.
 - **The handle.** Through a ref, `focusNode(id)` reveals, centres and selects
   a node in one call — it widens the filter on the axes shown, flashes a pin
-  it overrides, and centres once the layout has settled; `fit()` frames the
-  visible set; `getPositions()` and `setPositions()` carry a layout out and
-  back in.
+  it overrides, and centres once the layout has settled — and answers
+  whether the node ended visible (a value absent on a hiding axis cannot be
+  revealed); `select(id | null)` sets or clears the selection; `fit()` frames
+  the visible set; `getPositions()` and `setPositions()` carry a layout out
+  and back in.
 - **Keyboard.** `keyboard` scopes the shortcuts: `pane` (the default — the
   focusable root handles the keys that reach it, so a page keeps Tab and
   Space for its own controls), `global` (the window — a page that is the
@@ -203,18 +214,28 @@ Everything else is optional.
 
 ## Two views sharing a bar
 
-A host with a second view renders `FilterBar` outside the pane, under the same
-`OntologyContext.Provider`, with the same filter and pin state and their
-callbacks: give it the `graph` (or the `values` per axis) and the counts, the
-chips' flash, the search and the chain default. `reconcileFilter(dest, source, pins, transition, axes)` adopts one
-view's filter into the other's on a manual switch, respecting pins;
-`passesSelection`, `selectionFor`, `withSelection`, `withPin` and
-`toggleGroup` are the filter operations the bar itself uses; `toggleValue`
-flips one value for a host's own control. A focus into
-the graph is `focusNode(id)`; a focus into the other view is the host's.
-Chips rendered outside the pane need the scheme's variables on an ancestor:
-`schemeVars(ontology, theme)` inline, or `schemeStylesheet(ontology)` mounted
-once.
+A host with a second view renders `FilterBar` outside the pane with the same
+filter state and its callback, and the `ontology` (a prop, or the context):
+give it the `graph` (or the `values` per axis) and the counts, the chips'
+flash, the search, the chain and the pins default — the pin toggles appear
+only when the host passes `pins` or `onPinsChange`. What the pane computes
+for its own bar is exported for the second: `countsOn(nodes, axes)` for the
+badges and `hiddenMatchesOf(nodes, filter, axes, visibleIds, matches,
+valueOn)` for the search's hidden-match badges.
+`reconcileFilter({ destination, source, pins, transition, axes })` adopts one
+view's filter into the other's on a manual switch, respecting pins, and
+widens it for a focus; `axes` is the destination view's chain, not every
+declared axis. The bar flashes the pins a focus overrode by itself when
+`overriddenPins` changes. `passesSelection`, `selectionFor`, `withSelection`,
+`withPin`, `toggleGroup` and `filterStatesEqual` are the filter operations
+the bar itself uses; `toggleValue` flips one value for a host's own control.
+A focus into the graph is `focusNode(id)` or the `focusId` prop; a focus into
+the other view is the host's (`matchesFocus(node, target)` finds the node a
+`FocusTarget`'s values name). Chips rendered outside the pane need the
+scheme's variables on an ancestor — `schemeVars(ontology, theme)` inline, or
+`schemeStylesheet(ontology)` mounted once — and the theme the pane resolves
+(`onThemeResolved`) belongs on the bar's own wrapper as `data-theme`, never
+on an ancestor of the pane.
 
 ## Theming
 

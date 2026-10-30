@@ -7,15 +7,17 @@
 // mounts the chrome and the canvas but builds no simulation (that is an
 // effect), so the count row and the hover box are not what it can see.
 //
-// Two mounts. The smallest host: `graph` and nothing else, inside the
-// provider — every state prop left to the view. And the other way in: the
+// Three mounts. The smallest host: `graph` and nothing else, inside the
+// provider — every state prop left to the view. The other way in: the
 // taxonomy as a prop with no provider, the control panel and the theme button
-// left out, a class and a style handed to the root.
+// left out, the search, the transport cluster, the defect list and the
+// shortcuts left out of the chrome, a class and a style handed to the root.
+// And the bar alone: `ontology` and `graph`, no provider and no pins.
 
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  createOntology, OntologyContext, GraphView, isContainment,
+  createOntology, OntologyContext, GraphView, FilterBar, defaultFilter, isContainment,
 } from '@temporal-architect/graph-view'
 import type {
   OntologySpec, NodeStyle, EdgeType, DimensionDescriptor, ScalarAxis, ReadableGraph,
@@ -80,6 +82,8 @@ function graphOf(): Graph {
 const rootClassOf = (html: string): string | null => /^<div class="([^"]*)"/.exec(html)?.[1] ?? null
 /** The view's control panel, by the root class it carries. */
 const PANEL = 'gv-graph-control-panel'
+/** How many pin toggles the markup carries. */
+const pinToggles = (html: string): number => (html.match(/class="gv-pin-toggle[ "]/g) ?? []).length
 
 export function hostProbes(): Json {
   const ontology = createOntology(spec)
@@ -93,7 +97,12 @@ export function hostProbes(): Json {
   const withProp = renderToStaticMarkup(
     React.createElement(GraphView, {
       graph, ontology, controls: false, themeToggle: false, className: 'probe-host', style: { minHeight: 1 },
+      chrome: { search: false, transport: false, diagnostics: false, shortcuts: false },
     }))
+  // The bar on its own: the taxonomy as a prop, no provider, the graph to read
+  // its values off, and nothing about pins.
+  const barProp = renderToStaticMarkup(
+    React.createElement(FilterBar, { ontology, graph, filter: defaultFilter(ontology, graph), onFilterChange: () => {} }))
   const scalar = fanOut.compute({ nodes: [...graph.nodes.values()], edges: graph.edges, getNode: id => graph.nodes.get(id) })
   return {
     keys: [...ontology.styleValues],
@@ -106,6 +115,8 @@ export function hostProbes(): Json {
       files: sorted([...html.matchAll(/class="gv-header-file-name">([^<]*)</g)].map(m => m[1])),
       chipCounts: sorted([...html.matchAll(/class="gv-header-chip-count">([^<]*)</g)].map(m => m[1])),
       panelPresent: html.includes(PANEL),
+      // The view offers pin toggles only to a host that engages pins.
+      pinToggles: pinToggles(html),
     },
     ontologyProp: {
       withoutProvider: withProp.includes('<canvas'),
@@ -114,6 +125,12 @@ export function hostProbes(): Json {
       schemeKept: withProp.includes('--gv-node-'),
       themeButtonAbsent: !withProp.includes('aria-label="Colour scheme"'),
       panelAbsent: !withProp.includes(PANEL),
+      searchAbsent: !withProp.includes('gv-header-search'),
+      transportAbsent: !withProp.includes('gv-graph-bottom-center'),
+    },
+    barProp: {
+      rendered: barProp.includes('gv-canvas-header'),
+      pinToggles: pinToggles(barProp),
     },
   }
 }

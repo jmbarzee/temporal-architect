@@ -1,15 +1,17 @@
-// The host shell, leaning on the view's defaults. It controls the one piece of
-// state its own panel writes (the filter), observes the one its panel reads
-// (the pins), hands the theme choice in from the URL, and leaves the chain of
-// axes and the search to the view. It supplies what only the host can know —
-// chip counts, findings, programme groups, and what "Open details" does.
+// The host shell, leaning on the view's defaults. It controls the state its own
+// panel writes (the filter) or follows (the selection, which closing the panel
+// clears), observes the one its panel reads (the pins), hands the theme choice
+// in from the URL, asks the view to reveal a node by naming it (`focusId`), and
+// leaves the chain of axes and the search to the view. It supplies what only
+// the host can know — chip counts, findings, programme groups, and what "Open
+// details" does.
 
 import React from 'react'
 import {
   GraphView, OntologyContext, copyGroups, copyKeyOf, defaultFilter, payloadNumber, payloadString, pinnedFor, schemeVars, selectionFor, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
-  ActiveGroup, FilterState, Graph, GraphNode, GraphViewHandle, NodeGroup, PinState, Selection, Theme, ThemeChoice,
+  ActiveGroup, FilterState, Graph, GraphNode, NodeGroup, PinState, Selection, Theme, ThemeChoice,
 } from '@temporal-architect/graph-view'
 import { catalog } from './data'
 import type { Campus, Catalog } from './data'
@@ -79,7 +81,12 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
   const [enabled, setEnabled] = React.useState<ReadonlySet<string>>(() => new Set(catalog.programmes.map(p => p.id)))
   const [hovered, setHovered] = React.useState<string | null>(null)
   const [details, setDetails] = React.useState<GraphNode | null>(null)
-  const graphRef = React.useRef<GraphViewHandle>(null)
+  // Controlled: the panel's close clears it, and the view selects what it says.
+  const [selected, setSelected] = React.useState<GraphNode | null>(null)
+  // A request, not a state: the view applies it when it changes to an id, and
+  // the host takes it back, so asking again for the same node asks again.
+  const [focusId, setFocusId] = React.useState<string | null>(null)
+  React.useEffect(() => { if (focusId) setFocusId(null) }, [focusId])
 
   // The side panel follows the pane's theme: the view reports the one it drew in.
   const [theme, setTheme] = React.useState<Theme>('light')
@@ -88,7 +95,7 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
   const groups = React.useMemo(() => programmeGroups(graph, enabled, hovered), [enabled, hovered])
 
   /** Ask the view to reveal `node`: it widens the filter just enough, centres and selects. */
-  const reveal = (node: GraphNode) => { graphRef.current?.focusNode(node.id) }
+  const reveal = (node: GraphNode) => setFocusId(node.id)
   const onlyCampus = (campus: string) => setFilter(f => withSelection(f, CAMPUS, new Set([campus])))
 
   return (
@@ -96,7 +103,6 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
       <div className="catalog-app">
         <div className="catalog-pane">
           <GraphView
-            ref={graphRef}
             graph={graph}
             counts={counts}
             findings={FINDINGS.length > 0 && <Findings messages={FINDINGS} />}
@@ -110,6 +116,9 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
             filter={filter}
             onFilterChange={setFilter}
             onPinsChange={setPins}
+            selectedId={selected?.id ?? null}
+            onSelectionChange={setSelected}
+            focusId={focusId}
           />
         </div>
         {details && (
@@ -119,7 +128,7 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
             campusPinned={pinnedFor(pins, CAMPUS)}
             onReveal={reveal}
             onOnlyCampus={onlyCampus}
-            onClose={() => setDetails(null)}
+            onClose={() => { setDetails(null); setSelected(null) }}
           />
         )}
       </div>

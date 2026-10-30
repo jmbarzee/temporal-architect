@@ -46,7 +46,7 @@ which is worth noticing rather than assuming.
 | `types/parser-graph.ts` | shim | 3 | **7** files |
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
 | `verify/contract-probes.ts` | neither | 15 | `verify/static-golden.ts` |
-| `verify/defaults-probes.ts` | neither | 14 | `verify/static-golden.ts` |
+| `verify/defaults-probes.ts` | neither | 15 | `verify/static-golden.ts` |
 | `verify/filter-states.ts` | neither | 14 | **7** files |
 | `verify/fixtures.ts` | neither | 10 | **6** files |
 | `verify/force-probes.ts` | neither | 28 | `verify/static-golden.ts` |
@@ -57,7 +57,7 @@ which is worth noticing rather than assuming.
 | `verify/rng.ts` | neither | 1 | **5** files |
 | `verify/scalar-probes.ts` | neither | 12 | `verify/static-golden.ts` |
 | `verify/scheme-probes.ts` | neither | 17 | `verify/static-golden.ts` |
-| `verify/seam-probes.ts` | neither | 10 | `verify/static-golden.ts` |
+| `verify/seam-probes.ts` | neither | 14 | `verify/static-golden.ts` |
 | `verify/snapshot.ts` | neither |  | **17** files |
 | `verify/static-golden.ts` | neither | 24 | `verify/main.ts` |
 | `verify/synthetic-visible.ts` | neither | 32 | `verify/static-golden.ts` |

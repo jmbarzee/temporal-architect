@@ -20,9 +20,13 @@
 //     declared pair, a stroke left to the neutral one, a filter axis left to
 //     the style axis, a camera policy stated outright, a scalar answering raw
 //     numbers — and the refusals and warnings that stand in for what it
-//     might get wrong.
+//     might get wrong;
+//   - `pass2b`: the filter functions a host's second view shares with the pane —
+//     where a search's matches land under a filter, what a switch or a focus
+//     does to a filter, who answers to a focus, what the nodes say per axis.
 
-import { defaultFilter } from '@temporal-architect/graph-view'
+import { countsOn, defaultFilter, hiddenMatchesOf, matchesFocus, passesSelection, reconcileFilter } from '@temporal-architect/graph-view'
+import type { FilterState, FocusTarget, PinState, ViewTransition } from '@temporal-architect/graph-view'
 import { createOntology } from '@temporal-architect/graph-view/graph/ontology'
 import type { Ontology, OntologySpec } from '@temporal-architect/graph-view/graph/ontology'
 import type { DimensionDescriptor, Relation } from '@temporal-architect/graph-view/graph/dimension'
@@ -394,6 +398,128 @@ function pass2(): Json {
   }
 }
 
+// ── Pass 2b: the filter functions a host's second view shares ──────────────
+
+const selection = (kind: string[], zone: string[]): FilterState => new Map([[KIND, new Set(kind)], [ZONE, new Set(zone)]])
+const pinned = (kind: boolean, zone: boolean): PinState => new Map([[KIND, kind], [ZONE, zone]])
+const nested = (m: ReadonlyMap<string, ReadonlyMap<string, number>>): Json =>
+  sortedRecord([...m].map(([axis, tally]) => [axis, sortedRecord([...tally])] as const))
+const filterRow = (f: FilterState): Json => ({ kind: sorted(f.get(KIND) ?? []), zone: sorted(f.get(ZONE) ?? []) })
+
+/** The graph the rows below read: three kinds, two zones, a node with no zone, and names to search. */
+const POOL: readonly GraphNode[] = [
+  node('api-1', 'a', 'east'), node('api-2', 'b', 'west'), node('api-3', 'c', 'west'),
+  node('db-1', 'a', 'east'), node('db-2', 'c'),
+]
+
+/**
+ * A search's matches split by the filter: the ones it shows, the ones it hides
+ * counted on the first axis of the chain each fails, under its value there.
+ * Which node is visible is the caller's (the view's visible set), so a match
+ * the filter passes but the caller hides is counted and tallies on no axis.
+ */
+function hiddenMatches(): Json {
+  const axes = MINIMAL.filterDimensions
+  const kindThenZone = axes
+  const zoneThenKind = [...axes].reverse()
+  const filter = selection(['a', 'b'], ['east'])
+  const shown = (f: FilterState, chain: typeof axes) => new Set(POOL.filter(n => passesSelection(f, chain, dim => n.dimensions[dim])).map(n => n.id))
+  const split = (f: FilterState, chain: typeof axes, visible: ReadonlySet<string>) => {
+    const r = hiddenMatchesOf(POOL, f, chain, visible, n => n.name.includes('api'), (n, dim) => n.dimensions[dim])
+    return { visible: sorted(r.visible), hiddenCount: r.hiddenCount, hiddenByAxis: nested(r.hiddenByAxis) }
+  }
+  return {
+    // api-1 shows; api-2 fails on zone (west); api-3 fails on kind (c) first.
+    kindFirst: split(filter, kindThenZone, shown(filter, kindThenZone)),
+    // The chain's order decides the chip: api-3 fails on zone (west) first now.
+    zoneFirst: split(filter, zoneThenKind, shown(filter, zoneThenKind)),
+    // Every axis passes, the caller's visible set is empty: all counted, none tallied.
+    hiddenByCaller: split(selection(['a', 'b', 'c'], []), kindThenZone, new Set()),
+    noMatch: (() => {
+      const r = hiddenMatchesOf(POOL, filter, kindThenZone, shown(filter, kindThenZone), () => false, (n, dim) => n.dimensions[dim])
+      return { visible: sorted(r.visible), hiddenCount: r.hiddenCount, hiddenByAxis: nested(r.hiddenByAxis) }
+    })(),
+  }
+}
+
+/**
+ * The one options object. A manual switch keeps a pinned axis and adopts the
+ * source's on the others, only over the axes it is handed; a focus widens the
+ * destination just enough on each axis the target names, and reports the pinned
+ * axes it had to override.
+ */
+function reconciling(): Json {
+  const axes = MINIMAL.filterDimensions
+  const row = (destination: FilterState, source: FilterState, pins: PinState, transition: ViewTransition, over = axes): Json => {
+    const r = reconcileFilter({ destination, source, pins, transition, axes: over })
+    return {
+      ...(filterRow(r.filter) as { [k: string]: Json }),
+      overriddenPins: sorted(r.overriddenPins),
+      returnedDestination: r.filter === destination,
+      keptKindSet: r.filter.get(KIND) === destination.get(KIND),
+      keptZoneSet: r.filter.get(ZONE) === destination.get(ZONE),
+    }
+  }
+  const dest = selection(['a'], ['east'])
+  const source = selection(['b', 'c'], ['west'])
+  const focus = (values: FocusTarget['values']) => ({ kind: 'focus', target: { values } }) as const
+  return {
+    manual: {
+      // Kind pinned: kept as it was; zone not: adopted.
+      pinnedKept_unpinnedAdopted: row(dest, source, pinned(true, false), { kind: 'manual' }),
+      nonePinned: row(dest, source, pinned(false, false), { kind: 'manual' }),
+      allPinned: row(dest, source, pinned(true, true), { kind: 'manual' }),
+      // An axis the destination does not show is not adopted, pinned or not.
+      overOneAxis: row(dest, source, pinned(false, false), { kind: 'manual' }, axes.filter(a => a.id === KIND)),
+    },
+    focus: {
+      // Kind widens always; zone widens only when a selection is already active (here, it is not).
+      widensAllowList_zoneEmptyUntouched: row(selection(['a'], []), source, pinned(false, false), focus({ [KIND]: 'b', [ZONE]: 'west' })),
+      widensActiveZone: row(selection(['a'], ['east']), source, pinned(false, false), focus({ [KIND]: 'a', [ZONE]: 'west' })),
+      // A pinned axis is overridden, and reported.
+      overridesPinnedKind: row(selection(['a'], []), source, pinned(true, false), focus({ [KIND]: 'b' })),
+      overridesPinnedZone: row(selection(['a'], ['east']), source, pinned(false, true), focus({ [ZONE]: 'west' })),
+      overridesBoth: row(selection(['a'], ['east']), source, pinned(true, true), focus({ [KIND]: 'b', [ZONE]: 'west' })),
+      // Already shown: the destination itself comes back.
+      alreadyShown: row(selection(['a'], ['east']), source, pinned(true, true), focus({ [KIND]: 'a', [ZONE]: 'east' })),
+      // An axis the target says nothing about, or says undefined about, is left alone.
+      silentAxisUntouched: row(selection(['a'], ['east']), source, pinned(false, false), focus({ [KIND]: 'b', [ZONE]: undefined })),
+      // An axis the destination does not show is not widened.
+      overOneAxis: row(selection(['a'], ['east']), source, pinned(false, false), focus({ [KIND]: 'b', [ZONE]: 'west' }), axes.filter(a => a.id === KIND)),
+    },
+  }
+}
+
+/** Who answers to a focus: every value it names, on the node's own dimensions; a name it may carry is not read. */
+function focusMatching(): Json {
+  const node = { dimensions: { [KIND]: 'a', [ZONE]: 'east' } }
+  const withName: FocusTarget & { name: string } = { name: 'something else', values: { [KIND]: 'a' } }
+  return {
+    empty: matchesFocus(node, { values: {} }),
+    oneValue: matchesFocus(node, { values: { [KIND]: 'a' } }),
+    everyValue: matchesFocus(node, { values: { [KIND]: 'a', [ZONE]: 'east' } }),
+    oneOfTwoWrong: matchesFocus(node, { values: { [KIND]: 'a', [ZONE]: 'west' } }),
+    undefinedIgnored: matchesFocus(node, { values: { [KIND]: 'a', [ZONE]: undefined } }),
+    axisTheNodeLacks: matchesFocus(node, { values: { other: 'x' } }),
+    nameNotRead: matchesFocus(node, withName),
+  }
+}
+
+/** What the nodes say per axis: each axis asked for, a node counted on the value it carries, one with none on no value. */
+function counting(): Json {
+  return {
+    twoAxes: nested(countsOn(POOL, [KIND, ZONE])),
+    oneAxis: nested(countsOn(POOL, [ZONE])),
+    // An axis no node carries is asked for and comes back empty.
+    noNodeCarries: nested(countsOn(POOL, [KIND, 'campus'])),
+    noNodes: nested(countsOn([], [KIND, ZONE])),
+  }
+}
+
+function pass2b(): Json {
+  return { hiddenMatches: hiddenMatches(), reconciling: reconciling(), focusMatching: focusMatching(), counting: counting() }
+}
+
 export function defaultsProbes(): Json {
   return {
     minimal: minimal(),
@@ -402,5 +528,6 @@ export function defaultsProbes(): Json {
     containment: containment(),
     stackBand: stackBands(),
     pass2: pass2(),
+    pass2b: pass2b(),
   }
 }

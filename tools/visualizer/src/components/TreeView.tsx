@@ -16,6 +16,9 @@ import { ErrorBars } from './ErrorBars'
 import { definitionCounts } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
 
+/** Where a focus into the tree lands: the library's target, plus the name this view finds a definition by. */
+export type TreeFocus = FocusTarget & { name: string }
+
 interface TreeViewProps {
   // Whether this view is the active tab. Both views stay mounted (keep-alive),
   // so the inactive one must not respond to global keyboard shortcuts.
@@ -31,7 +34,7 @@ interface TreeViewProps {
   searchQuery: string
   searchActive: boolean
   onSearchChange: (query: string, active: boolean) => void
-  pendingFocus: FocusTarget | null
+  pendingFocus: TreeFocus | null
   onFocusConsumed: () => void
   overriddenPins: Set<DimensionId>
   onOverriddenPinsConsumed: () => void
@@ -64,15 +67,13 @@ export function TreeView({
   const [expandedDefs, setExpandedDefs] = React.useState<Set<string>>(new Set())
   const [flashKey, setFlashKey] = React.useState<string | null>(null)
 
-  // Transition indicator: flash header when AST updates
-  const [refreshFlash, setRefreshFlash] = React.useState(false)
+  // Transition indicator: flash header when AST updates. A counter the bar
+  // flashes on once per change and puts out itself — a flag the host switched
+  // back off would cancel the bar's own timer and leave the flash lit.
+  const [refreshFlash, setRefreshFlash] = React.useState(0)
   const prevAstRef = React.useRef(ast)
   React.useEffect(() => {
-    if (prevAstRef.current !== ast && prevAstRef.current !== null) {
-      setRefreshFlash(true)
-      const timer = setTimeout(() => setRefreshFlash(false), 600)
-      return () => clearTimeout(timer)
-    }
+    if (prevAstRef.current !== ast && prevAstRef.current !== null) setRefreshFlash(n => n + 1)
     prevAstRef.current = ast
   }, [ast])
 

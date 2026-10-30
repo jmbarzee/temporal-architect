@@ -69,16 +69,17 @@ export function viewProbes(): Json {
       defaultTypes: offered(graph, allTypes.filter(t => NODE_TYPE_REGISTRY[ALL_NODE_TYPES.find(k => NODE_TYPE_REGISTRY[k].defType === t)!].defaultVisible)),
       none: offered(graph, []),
     },
-    // The focus matcher (D59): a name alone, a name with a value, a wrong value, a value the node lacks.
+    // The focus matcher (D59), on values alone: an empty target, a value the node has, a wrong one, one it lacks, every value of several.
     focus: (() => {
-      const node = { name: 'A', dimensions: { kind: 'k1', file: 'f1' } }
+      const node = { dimensions: { kind: 'k1', file: 'f1' } }
       return {
-        nameOnly: matchesFocus(node, { name: 'A', values: {} }),
-        nameAndValue: matchesFocus(node, { name: 'A', values: { kind: 'k1' } }),
-        wrongValue: matchesFocus(node, { name: 'A', values: { kind: 'k2' } }),
-        undefinedValueIgnored: matchesFocus(node, { name: 'A', values: { kind: undefined } }),
-        valueNodeLacks: matchesFocus(node, { name: 'A', values: { other: 'x' } }),
-        wrongName: matchesFocus(node, { name: 'B', values: {} }),
+        valuesOnly: matchesFocus(node, { values: {} }),
+        valueMatch: matchesFocus(node, { values: { kind: 'k1' } }),
+        valueMismatch: matchesFocus(node, { values: { kind: 'k2' } }),
+        undefinedValueIgnored: matchesFocus(node, { values: { kind: undefined } }),
+        valueAbsent: matchesFocus(node, { values: { other: 'x' } }),
+        everyValueMatches: matchesFocus(node, { values: { kind: 'k1', file: 'f1' } }),
+        oneValueMismatches: matchesFocus(node, { values: { kind: 'k1', file: 'f2' } }),
       }
     })(),
   }

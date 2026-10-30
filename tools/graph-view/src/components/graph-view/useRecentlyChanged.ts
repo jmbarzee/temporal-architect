@@ -1,24 +1,31 @@
-// The chip-flash set: the `<dimension>:<value>` keys that just turned on in the
-// filter, cleared ~450ms later. Derived from the filter alone, so it is the
-// view's and not the host's. Keyed by looping the filter's own axes rather than
-// naming two: emitting `file:`/`type:` while the bar read `sourceFile:`/
-// `defType:` once left the flash silently dead in both views — no error, no
-// gate, just an effect that stopped happening.
+// The chip-flash set: per axis, the values that just turned on in the filter,
+// cleared ~450ms later. Derived from the filter alone, so it is the view's and
+// not the host's, and keyed by axis and value rather than a joined string, so
+// a value containing the separator cannot be mistaken for another's.
 
 import React from 'react'
 import type { FilterState } from '../../filter/types'
 import { filterStatesEqual, selectionFor } from '../../filter/types'
 
-export function useRecentlyChanged(filter: FilterState): Set<string> {
+/** The values that just turned on, per axis. */
+export type RecentlyChanged = ReadonlyMap<string, ReadonlySet<string>>
+const NONE: RecentlyChanged = new Map()
+
+export function useRecentlyChanged(filter: FilterState): RecentlyChanged {
   const prevFilterRef = React.useRef<FilterState>(filter)
-  const [recentlyChanged, setRecentlyChanged] = React.useState<Set<string>>(new Set())
+  const [recentlyChanged, setRecentlyChanged] = React.useState<RecentlyChanged>(NONE)
   React.useEffect(() => {
     const prev = prevFilterRef.current
     if (filterStatesEqual(prev, filter)) return
-    const changed = new Set<string>()
+    const changed = new Map<string, Set<string>>()
     for (const [dimension, values] of filter) {
       const before = selectionFor(prev, dimension)
-      for (const v of values) if (!before.has(v)) changed.add(`${dimension}:${v}`)
+      for (const v of values) {
+        if (before.has(v)) continue
+        const set = changed.get(dimension) ?? new Set<string>()
+        set.add(v)
+        changed.set(dimension, set)
+      }
     }
     prevFilterRef.current = filter
     // Set on every change, empty included: a removal-only change that arrived
@@ -26,7 +33,7 @@ export function useRecentlyChanged(filter: FilterState): Set<string> {
     // old set lit.
     setRecentlyChanged(changed)
     if (changed.size === 0) return
-    const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)
+    const timer = setTimeout(() => setRecentlyChanged(NONE), 450)
     return () => clearTimeout(timer)
   }, [filter])
   return recentlyChanged

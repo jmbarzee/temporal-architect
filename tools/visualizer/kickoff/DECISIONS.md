@@ -2639,3 +2639,65 @@ id gets: none.
 unit boundary); leak 0; boundary 0.
 
 — 2026-10-30 — agent
+
+**D75 — Unit 17, the component contract's second pass and the bar (API_WORK_2.md Sets 4–5).**
+The selection a host could not control, the chrome it could not turn off,
+and the bar a second view had to rebuild around.
+
+1. **Selection and focus, declaratively (4.1, 4.3, 4.4).** `selectedId`
+   controls the selection, `onSelectionChange` being its callback, and
+   `select(id | null)` is on the handle. `focusId` is the declarative
+   `focusNode`: applied whenever it changes, including the id a host named
+   before a lazily mounted pane existed, so the visualizer's queue goes.
+   `focusNode` answers whether the node ended visible — a value absent on a
+   hiding axis cannot be revealed by widening — instead of always true.
+2. **The chrome, part by part (4.2).** `chrome: { search, pins, transport,
+   diagnostics, shortcuts, directionLine, activateZoom }`, every part on by
+   default except the pin toggles, which appear only when the host engages
+   pins (`pins` or `onPinsChange`) — a single-view host has nothing to pin
+   against. `searchTitle` and `searchPlaceholder` pass through to the bar.
+3. **The bar stands on its own (5.1–5.3, 5.6).** `FilterBar` takes
+   `ontology` as a prop or from the context; `pins` and `onPinsChange` are
+   optional, with no toggles unless given; it flashes the pins a focus
+   overrode by itself when `overriddenPins` changes, and flashes the whole
+   bar once per change of `refreshFlash`, a counter, not for as long as a
+   boolean stays set; `recentlyChanged` is a map from axis to values, not a
+   joined string a value could forge. `countsOn` and `hiddenMatchesOf` are
+   exported, the latter the pane's own split of a search's matches into the
+   shown and the hidden-per-chip, so a second bar wears the same badges from
+   one call.
+4. **`reconcileFilter` takes an options object (5.4):** `{ destination,
+   source, pins, transition, axes }`, the two filters named rather than
+   adjacent, and `axes` documented as the destination view's chain — passing
+   every declared axis revives selections the bar reset.
+5. **`FocusTarget` is its values (5.5).** The reconciler read nothing else;
+   `matchesFocus` matches on them and is exported for a host's own view. The
+   first host carries the name its tree needs in a type of its own.
+6. **The theme recipe for an outside bar (5.7)** is in the README: the
+   resolved theme goes on the bar's own wrapper, never on an ancestor of the
+   pane.
+
+**Golden change (§8.2).** `static` alone, additive but for one renamed
+block — the six fixture goldens byte-identical. `defaultsProbes.pass2b` is
+new (`hiddenMatches` on a small graph with the chain in both orders,
+`reconciling` for a manual switch and a focus through the options object,
+`focusMatching` on values with a name present and ignored, `counting` over
+two axes). `hostProbes.ontologyProp` gains `searchAbsent` and
+`transportAbsent`, `hostProbes.rendered` a `pinToggles: 0`, and
+`hostProbes.barProp` is new (the bar with `ontology` as a prop and no
+Provider). `seamProbes` gains `pinToggles` on both bar renders and
+`barWithoutPins` and `barChromePins`. `viewProbes.focus` is re-keyed for a
+matcher that reads values alone (`nameOnly`, `wrongName` and their kin
+become `valuesOnly`, `valueMatch`, `valueMismatch`, `valueAbsent`,
+`everyValueMatches`, `oneValueMismatches`).
+
+**Measured.** Surface 80 (+`countsOn`, `filterStatesEqual`,
+`hiddenMatchesOf`, `matchesFocus`, `FilterBarChrome`, `GraphViewChrome`,
+`HiddenMatches`, `ReconcileInput`). Total vocabulary 1089 / 1089; leak 0;
+boundary 0. Two things the migration found: the first host's bar flash was
+a boolean the host toggled, which cancelled the bar's own timer and left the
+flash lit a quarter of the time — it is a counter now; and `focusId` is a
+request, not a state, so a host focusing the same node twice sets null in
+between, which the prop's doc now says.
+
+— 2026-10-30 — agent

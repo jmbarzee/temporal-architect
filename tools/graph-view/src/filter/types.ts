@@ -110,14 +110,12 @@ export function pinnedFor(pins: PinState, dim: DimensionId): boolean {
 }
 
 /**
- * Where a focus transition wants to land.
- *
- * `values` is per-axis rather than the old named `defType` / `sourceFile` pair,
- * so a new axis needs no change here. An axis the target says nothing about is
- * simply absent, which the reconciler reads as "no expansion needed".
+ * Where a focus transition wants to land: the target's value per axis. An
+ * axis the target says nothing about is absent, which the reconciler reads
+ * as "no expansion needed". A host that also needs the target's name for a
+ * view of its own carries it in a type of its own.
  */
 export type FocusTarget = {
-  name: string
   values: Readonly<Record<DimensionId, string | undefined>>
 }
 
@@ -146,9 +144,8 @@ export function defaultFilter(ontology: Pick<Ontology, 'filterDimensions'>, grap
   return out
 }
 
-/** Whether a node answers to a focus target: the name, and every value the target names. */
-export function matchesFocus(node: { name: string; dimensions: Readonly<Record<string, string>> }, target: FocusTarget): boolean {
-  if (node.name !== target.name) return false
+/** Whether a node answers to a focus target: every value the target names. */
+export function matchesFocus(node: { dimensions: Readonly<Record<string, string>> }, target: FocusTarget): boolean {
   for (const [dim, value] of Object.entries(target.values)) {
     if (value !== undefined && node.dimensions[dim] !== value) return false
   }
@@ -185,4 +182,45 @@ export function passesSelection(
     if (!selection.has(value)) return false
   }
   return true
+}
+
+/** Search matches split by the filter: the visible ones, and the hidden ones tallied on the chip hiding each. */
+export interface HiddenMatches {
+  /** The ids of the matching nodes the filter shows. */
+  visible: Set<string>
+  /** How many matching nodes the filter hides. */
+  hiddenCount: number
+  /** The hidden matches per axis and value — on the first axis in the chain each node fails, under its value there. */
+  hiddenByAxis: ReadonlyMap<DimensionId, ReadonlyMap<string, number>>
+}
+
+/**
+ * Split a search's matches by the filter, the way the pane does under its
+ * own bar: a match the filter shows lights up, a match it hides is counted
+ * on the chip hiding it — the first axis in `axes` the node fails, under the
+ * node's value there — so a host's second bar can wear the same badges.
+ */
+export function hiddenMatchesOf<N extends { id: string }>(
+  nodes: Iterable<N>,
+  filter: FilterState,
+  axes: readonly ResolvedDimensionDescriptor[],
+  visibleIds: ReadonlySet<string>,
+  matches: (node: N) => boolean,
+  valueOn: (node: N, dimension: DimensionId) => string | undefined,
+): HiddenMatches {
+  const visible = new Set<string>()
+  let hiddenCount = 0
+  const hiddenByAxis = new Map<DimensionId, Map<string, number>>()
+  for (const node of nodes) {
+    if (!matches(node)) continue
+    if (visibleIds.has(node.id)) { visible.add(node.id); continue }
+    hiddenCount++
+    const failing = axes.find(d => !passesSelection(filter, [d], dim => valueOn(node, dim)))
+    const value = failing ? valueOn(node, failing.id) : undefined
+    if (!failing || value === undefined) continue
+    const tally = hiddenByAxis.get(failing.id) ?? new Map<string, number>()
+    tally.set(value, (tally.get(value) ?? 0) + 1)
+    hiddenByAxis.set(failing.id, tally)
+  }
+  return { visible, hiddenCount, hiddenByAxis }
 }
