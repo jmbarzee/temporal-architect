@@ -1,4 +1,4 @@
-/* Global styles for the TWF Visualizer host: the reset, the host's block tokens, the page. The chrome's tokens are the library's (@temporal-architect/graph-view). */
+/* Global styles for the TWF Visualizer host: the reset, the host's block tokens, the page. The chrome's tokens are the library's (@temporal-architect/graph-view), published as --gv-*; the host reads them under the plain names aliased below. */
 
 * {
   box-sizing: border-box;
@@ -9,15 +9,15 @@
 :root,
 [data-theme="light"] {
   /* The host's own block tokens; the chrome's are the library's (tokens.css).
-     The scheme's --node-<suffix> variables for the host's own CSS are published
+     The scheme's --gv-node-<suffix> variables for the host's own CSS are published
      on :root by mountNodeTypeStyles(); the graph pane carries them inline in its
-     resolved theme (D57, D58). */
+     resolved theme. */
   --color-workflow: #8B7EC8;
   --color-activity: #7CB9E8;
   --color-signal: #E8A0BF;
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
-  /* The findings palette: the error and warning bars are the host's (D61), so
+  /* The findings palette: the error and warning bars are the host's, so
      their colours are too. The warning hue sits apart from the error hue so a
      validator warning reads apart from a parse failure at a glance. */
   --color-error: #dc2626;
@@ -29,6 +29,19 @@
   --warning-bg: #fffbeb;
   --warning-border: #fde68a;
   --warning-accent: #d97706;
+  /* The library's chrome tokens, read here under their plain names. Declared
+     once per theme block so each re-resolves against its own themed root: an
+     alias set only on :root would carry the light value into a dark pane. */
+  --accent: var(--gv-accent);
+  --color-bg: var(--gv-color-bg);
+  --color-bg-gradient: var(--gv-color-bg-gradient);
+  --color-border: var(--gv-color-border);
+  --color-surface: var(--gv-color-surface);
+  --color-text: var(--gv-color-text);
+  --color-text-muted: var(--gv-color-text-muted);
+  --focus-ring-color: var(--gv-focus-ring-color);
+  --font-mono: var(--gv-font-mono);
+  --font-sans: var(--gv-font-sans);
 }
 
 .vscode-dark,
@@ -43,6 +56,17 @@
   --warning-bg: #422006;
   --warning-border: #78350f;
   --warning-accent: #fbbf24;
+  /* The same aliases, re-resolved against this dark root. */
+  --accent: var(--gv-accent);
+  --color-bg: var(--gv-color-bg);
+  --color-bg-gradient: var(--gv-color-bg-gradient);
+  --color-border: var(--gv-color-border);
+  --color-surface: var(--gv-color-surface);
+  --color-text: var(--gv-color-text);
+  --color-text-muted: var(--gv-color-text-muted);
+  --focus-ring-color: var(--gv-focus-ring-color);
+  --font-mono: var(--gv-font-mono);
+  --font-sans: var(--gv-font-sans);
 }
 
 

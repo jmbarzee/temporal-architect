@@ -5,7 +5,6 @@
 // spring-specific math (split-colour tokens from the resolved spring
 // categories, signed-response curves) and feeds presentational data into the
 // primitives.
-// See GRAPH_VIEW.md § Control Panel.
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
@@ -13,7 +12,7 @@ import { withSpringOverride } from '../graph/simulation'
 import type { ResolvedPhysics } from '../graph/forces'
 import type { EdgeCategoryDescription } from '../graph/forces'
 
-import { useOntology } from './graph-view/useOntology'
+import { useTaxonomy } from './graph-view/useTaxonomy'
 import { bucketColor } from './controls/bucketColor'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
@@ -41,7 +40,7 @@ function describedCategories(spring: ResolvedPhysics['spring'], present: Readonl
 
 interface SpringControlProps {
   params: ForceParams
-  /** The dense tables the kernels read, resolved once by the view (T25). */
+  /** The dense tables the kernels read, resolved once by the view. */
   resolved: ResolvedPhysics
   /** The categories some edge of the graph falls in — the only ones worth a token. */
   present: ReadonlySet<string>
@@ -57,7 +56,7 @@ interface SpringControlProps {
 // x = rest length, y = stiffness (k). Each edge category is a draggable
 // split-colour token; dragging sets both rest and k at once.
 export function SpringMap({ params, resolved, present, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
   const { spring } = resolved
   const shown = describedCategories(spring, present)
   const tokens: MapToken[] = shown.map(c => {
@@ -66,9 +65,9 @@ export function SpringMap({ params, resolved, present, onParamChange, hoveredEdg
       id: c.id,
       x: ph.distance,
       y: ph.strength,
-      colorA: bucketColor(ontology, spring.mapping, c.sourceType),
-      colorB: bucketColor(ontology, spring.mapping, c.targetType),
-      outline: c.category === 'containment' ? 'dashed' : 'solid',
+      colorA: bucketColor(taxonomy, spring.mapping, c.sourceValue),
+      colorB: bucketColor(taxonomy, spring.mapping, c.targetValue),
+      outline: c.relation === 'containment' ? 'dashed' : 'solid',
       label: c.label,
       tooltip: c.tooltip,
     }
@@ -121,7 +120,7 @@ function springResponse(d: number, kEff: number, restEff: number, exp: number): 
 }
 
 export function SpringCurves({ params, resolved, present, onParamChange, hoveredEdge, onHoverEdge }: SpringControlProps) {
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
   const { spring } = resolved
   const shown = React.useMemo(() => describedCategories(spring, present), [spring, present])
   const pull = params.pullMultiplier
@@ -156,16 +155,16 @@ export function SpringCurves({ params, resolved, present, onParamChange, hovered
 
     const built = sampled.map(({ edge, restEff, pts }) => ({
       id: edge.id,
-      color: bucketColor(ontology, spring.mapping, edge.sourceType),
+      color: bucketColor(taxonomy, spring.mapping, edge.sourceValue),
       markerX: xFor(restEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-    // `ontology` belongs here: the body reads it for the split-colour tokens.
+    // `taxonomy` belongs here: the body reads it for the split-colour tokens.
     // Its sibling ChargeCurves already listed it, and the asymmetry was the bug
     // — a taxonomy swap left these curves drawn in the previous taxonomy's
     // colours, on its edge set, with no error.
-  }, [spring, shown, pull, dist, exp, ontology])
+  }, [spring, shown, pull, dist, exp, taxonomy])
 
   return (
     <ForceCurves

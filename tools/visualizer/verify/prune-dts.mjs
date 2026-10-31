@@ -1,9 +1,9 @@
 // The published declarations are what the entry reaches, and nothing else.
 //
 // vite-plugin-dts emits a `.d.ts` for every included source file (its
-// `rollupTypes` is a no-op in this version, T31), so the tarball would ship the
+// `rollupTypes` is a no-op in this version), so the tarball would ship the
 // declarations of modules the entry never exports — the force model among them —
-// and host-side declarations whose imports leave the package (REVIEW_8 C8). This
+// and host-side declarations whose imports leave the package. This
 // walks the relative imports from the entry's declaration and deletes every
 // `.d.ts` (and its map) it does not reach. Run by `build:lib`, so the artifact is
 // pruned whether or not a gate runs after it.

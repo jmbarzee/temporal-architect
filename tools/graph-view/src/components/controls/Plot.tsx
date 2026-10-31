@@ -24,11 +24,11 @@ export function Plot({
   children: React.ReactNode
 }) {
   return (
-    <div className="ctl-plot">
-      {yLabel !== undefined && <div className="ctl-plot-ylabel">{yLabel}</div>}
-      {ySlider !== undefined && <div className="ctl-plot-yslider">{ySlider}</div>}
-      <div className="ctl-plot-main">{children}</div>
-      {bottom !== undefined && <div className="ctl-plot-bottom">{bottom}</div>}
+    <div className="gv-ctl-plot">
+      {yLabel !== undefined && <div className="gv-ctl-plot-ylabel">{yLabel}</div>}
+      {ySlider !== undefined && <div className="gv-ctl-plot-yslider">{ySlider}</div>}
+      <div className="gv-ctl-plot-main">{children}</div>
+      {bottom !== undefined && <div className="gv-ctl-plot-bottom">{bottom}</div>}
     </div>
   )
 }

@@ -29,7 +29,7 @@ export function FormulaValue({ id, children }: { id: string; children: React.Rea
   const { popped, setPopped } = usePop()
   return (
     <span
-      className={`ctl-formula-value${popped === id ? ' active' : ''}`}
+      className={`gv-ctl-formula-value${popped === id ? ' active' : ''}`}
       onMouseEnter={() => setPopped(id)}
       onMouseLeave={() => setPopped(null)}
     >

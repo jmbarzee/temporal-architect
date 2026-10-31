@@ -1,9 +1,8 @@
 // Push-section controls: a 2D "charge map" (the control) and a read-only
 // charge-falloff visualization (the read-out), linked by a shared hovered-type
-// state (the DimensionValue). Thin wrappers over the shared ForceMap2D / ForceCurves
+// state (the AxisValue). Thin wrappers over the shared ForceMap2D / ForceCurves
 // primitives — this file owns only the charge-specific math (one solid token
-// per node type, inverse-power falloff curves). See GRAPH_VIEW.md § Control
-// Panel → PUSH.
+// per node type, inverse-power falloff curves).
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
@@ -11,7 +10,7 @@ import { withPushOverride } from '../graph/simulation'
 import { pushForKey } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
 
-import { useOntology } from './graph-view/useOntology'
+import { useTaxonomy } from './graph-view/useTaxonomy'
 import { bucketColor } from './controls/bucketColor'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
@@ -30,9 +29,9 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 interface ChargeControlProps {
   params: ForceParams
-  /** The dense tables the kernels read, resolved once by the view (T25). */
+  /** The dense tables the kernels read, resolved once by the view. */
   resolved: ResolvedPhysics
-  /** The push buckets some visible node falls in — the only ones worth a token (R35). */
+  /** The push buckets some visible node falls in — the only ones worth a token. */
   present: ReadonlySet<string>
   onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active bucket on the push axis — links the map, the curves, and the canvas.
@@ -45,15 +44,15 @@ interface ChargeControlProps {
 // y = charge magnitude, x = core radius. One solid token per bucket of the push
 // axis. Dragging sets both the (negative) charge and the core radius at once.
 export function ChargeMap({ params, resolved, present, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
   const { push } = resolved
-  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  // Only the buckets the visible set holds; the tuning keeps the rest.
   const shown = push.mapping.buckets.filter(b => present.has(b.id))
   const tokens: MapToken[] = shown.map(b => ({
     id: b.id,
     x: pushForKey(push, b.id).coreRadius,
     y: Math.abs(pushForKey(push, b.id).charge),
-    colorA: bucketColor(ontology, push.mapping, b.id),
+    colorA: bucketColor(taxonomy, push.mapping, b.id),
     outline: 'solid',
     label: b.abbreviation,
     tooltip: `${b.label} repulsion charge & core radius`,
@@ -100,9 +99,9 @@ export function ChargeMap({ params, resolved, present, onParamChange, hoveredBuc
 // radius marked on the distance axis. The global `exp` (chargeExponent) is the
 // slider beneath.
 export function ChargeCurves({ params, resolved, present, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
   const { push } = resolved
-  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  // Only the buckets the visible set holds; the tuning keeps the rest.
   const shown = push.mapping.buckets.filter(b => present.has(b.id))
   const pushMul = params.pushMultiplier
   const crMul = params.coreRadiusMultiplier
@@ -137,12 +136,12 @@ export function ChargeCurves({ params, resolved, present, onParamChange, hovered
 
     const built = sampled.map(({ type, rEff, pts }) => ({
       id: type,
-      color: bucketColor(ontology, push.mapping, type),
+      color: bucketColor(taxonomy, push.mapping, type),
       markerX: xFor(rEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-  }, [params, pushMul, push, crMul, exp, ontology, present])
+  }, [params, pushMul, push, crMul, exp, taxonomy, present])
 
   return (
     <ForceCurves

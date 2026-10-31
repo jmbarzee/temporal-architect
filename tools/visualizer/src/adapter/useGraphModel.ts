@@ -3,13 +3,13 @@
 // (process-level file errors, the AST's diagnostics, and the graph-stage
 // findings lifted into the same shape). Nothing here depends on the
 // simulation or the DOM; the view takes the result as props and never sees
-// the AST or the parser graph (D41, D61).
+// the AST or the parser graph.
 
 import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import { buildGraph } from './build'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type { Graph } from '@temporal-architect/graph-view'
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing

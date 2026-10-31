@@ -1,9 +1,8 @@
 // One layout axis of the Gravity tab — X or Y — as a sub-tab body: which
 // mapping or scalar the axis keys on, one column per bucket carrying the bucket's rest
-// band as two handles (R30), the axis's own strength in the left gutter (R32),
-// and the band force curve beneath (R33). Both axes are this one component:
-// they are the same kind of thing (T22), so they get the same surface.
-// See GRAPH_VIEW.md § Control Panel → GRAVITY.
+// band as two handles, the axis's own strength in the left gutter,
+// and the band force curve beneath. Both axes are this one component:
+// they are the same kind of thing, so they get the same surface.
 
 import React from 'react'
 import type { ForceParams, LayoutAxisOption, AxisTuning, BandRange, LayoutTuning } from '../graph/simulation'
@@ -11,7 +10,7 @@ import { TOKEN_CEILING, layoutAxisKey, mappedTuning, withOverride } from '../gra
 import type { ScalarSpan } from '../graph/scalar'
 import type { ResolvedAxis, ResolvedPhysics } from '../graph/forces'
 import { bandRangeFor, isScalarAxis } from '../graph/forces'
-import { useOntology } from './graph-view/useOntology'
+import { useTaxonomy } from './graph-view/useTaxonomy'
 import { bucketColor } from './controls/bucketColor'
 import { Plot } from './controls/Plot'
 import { Slider } from './controls/Slider'
@@ -32,9 +31,9 @@ interface AxisControlsProps {
   axis: LayoutAxis
   params: ForceParams
   resolved: ResolvedPhysics
-  /** Every axis this one may key on: mappings whose bucket count fits the ceiling, and computed scalars (R28). */
+  /** Every axis this one may key on: mappings whose bucket count fits the ceiling, and computed scalars. */
   axes: readonly LayoutAxisOption[]
-  /** The buckets some visible node falls in on this axis — the only columns worth drawing (R35). */
+  /** The buckets some visible node falls in on this axis — the only columns worth drawing. */
   present: ReadonlySet<string>
   onParamChange: (patch: Partial<ForceParams>) => void
   onRelayout: (patch: Partial<ForceParams>) => void
@@ -82,7 +81,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const snap = (v: number, step: number) => Math.round(v / step) * step
 
 export function AxisControls({ axis, params, resolved, axes, present, onParamChange, onRelayout, hovered, onHover }: AxisControlsProps) {
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
   const key = tuningKey(axis)
   const tuning: LayoutTuning = params[key]
   const table = axis === 'x' ? resolved.bandX : resolved.bandY
@@ -103,17 +102,17 @@ export function AxisControls({ axis, params, resolved, axes, present, onParamCha
   }
 
   return (
-    <div className={`gravity-section-tools${strength > 0 && !ignored ? '' : ' inactive'}`}>
-      {/* The equation varies by kind (R29): outside a band, or away from the scalar's point. */}
+    <div className={`gv-gravity-section-tools${strength > 0 && !ignored ? '' : ' inactive'}`}>
+      {/* The equation varies by kind: outside a band, or away from the scalar's point. */}
       <Equation>{isScalarAxis(table)
         ? <>F = <FormulaValue id={`bandStrength${label}`}>strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup>, d = |p − p<sub>0</sub> − s·(p<sub>1</sub> − p<sub>0</sub>)|</>
         : <>F = <FormulaValue id={`bandStrength${label}`}>strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
 
-      <div className="axis-row">
-        <label className="axis-label" htmlFor={`gravity-axis-${axis}`}>axis</label>
+      <div className="gv-axis-row">
+        <label className="gv-axis-label" htmlFor={`gravity-axis-${axis}`}>axis</label>
         <select
           id={`gravity-axis-${axis}`}
-          className="axis-select"
+          className="gv-axis-select"
           value={current}
           title={`What the ${label} axis keys on: one column per bucket of a mapping, or a computed scalar as a gradient`}
           onChange={e => onAxisChange(e.target.value)}
@@ -124,7 +123,7 @@ export function AxisControls({ axis, params, resolved, axes, present, onParamCha
                 {o.option.pushTokens > TOKEN_CEILING ? `${o.option.mapping.label} — ${o.option.pushTokens} columns (max ${TOKEN_CEILING})` : `${o.option.mapping.label} (${o.option.pushTokens})`}
               </option>)}
         </select>
-        {ignored && <span className="axis-note">ignored in radial</span>}
+        {ignored && <span className="gv-axis-note">ignored in radial</span>}
       </div>
 
       {/* The resolved axis decides the kind; the tuning is narrowed to match, loudly. */}
@@ -151,7 +150,7 @@ export function AxisControls({ axis, params, resolved, axes, present, onParamCha
           onBand={(bucket, next) => onParamChange(tuningPatch(axis, withOverride(mappedTuning(tuning), bucket, next)))}
           hovered={hovered}
           onHover={onHover}
-          color={bucket => bucketColor(ontology, mappedTuning(tuning).mapping, bucket)}
+          color={bucket => bucketColor(taxonomy, mappedTuning(tuning).mapping, bucket)}
         />
       )}
 
@@ -161,7 +160,7 @@ export function AxisControls({ axis, params, resolved, axes, present, onParamCha
 }
 
 // A scalar axis as a control: a gradient from the end where a score of 0
-// rests to the end where 1 rests, in place of the columns (R31). The two ends
+// rests to the end where 1 rests, in place of the columns. The two ends
 // are handles that move freely — past each other flips the axis. Where each
 // node sits along it is the scalar's answer, not the user's.
 function ScalarPlot({ axis, radial, label, tooltip, span, strength, onStrength, onSpan }: {
@@ -207,8 +206,8 @@ function ScalarPlot({ axis, radial, label, tooltip, span, strength, onStrength, 
   const gradientId = React.useId()
   const handle = (end: keyof ScalarSpan, y: number) => (
     <g key={end}>
-      <text x={PL + 10} y={y + 4} textAnchor="middle" className="gravity-band-label">{end === 'zero' ? '0' : '1'}</text>
-      <circle cx={x} cy={y} r={DOT_R} className="gravity-band-dot gravity-scalar-dot"
+      <text x={PL + 10} y={y + 4} textAnchor="middle" className="gv-gravity-band-label">{end === 'zero' ? '0' : '1'}</text>
+      <circle cx={x} cy={y} r={DOT_R} className="gv-gravity-band-dot gv-gravity-scalar-dot"
         onPointerDown={e => handleDown(e, end)} onPointerMove={handleMove} onPointerUp={handleUp}>
         <title>{`where a score of ${end === 'zero' ? 0 : 1} rests on ${axisLabel}: ${span[end]}`}</title>
       </circle>
@@ -228,26 +227,26 @@ function ScalarPlot({ axis, radial, label, tooltip, span, strength, onStrength, 
           popId={`bandStrength${axisLabel}`}
         />
       }
-      bottom={<div className="ctl-plot-xlabel">{radial && axis === 'y' ? 'ring: the span’s low end innermost' : `${axisLabel} position: ${label}, 0 → 1`}</div>}
+      bottom={<div className="gv-ctl-plot-xlabel">{radial && axis === 'y' ? 'ring: the span’s low end innermost' : `${axisLabel} position: ${label}, 0 → 1`}</div>}
     >
       <svg
         ref={svgRef}
-        className="gravity-band-svg"
+        className="gv-gravity-band-svg"
         viewBox={`0 0 ${AP_W} ${AP_H}`}
         role="group"
         aria-label={`${axisLabel} axis: ${label}, a computed scalar; drag the 0 and 1 ends`}
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1={y0} x2="0" y2={y1} gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="var(--color-text-muted)" stopOpacity="0.15" />
-            <stop offset="1" stopColor="var(--color-text)" stopOpacity="0.55" />
+            <stop offset="0" stopColor="var(--gv-color-text-muted)" stopOpacity="0.15" />
+            <stop offset="1" stopColor="var(--gv-color-text)" stopOpacity="0.55" />
           </linearGradient>
         </defs>
-        <rect x={PL} y={PT} width={PR - PL} height={PB - PT} className="gravity-band-bg" />
+        <rect x={PL} y={PT} width={PR - PL} height={PB - PT} className="gv-gravity-band-bg" />
         <title>{tooltip}</title>
-        <rect x={PL + 24} y={Math.min(y0, y1)} width={PR - PL - 48} height={Math.abs(y1 - y0)} fill={`url(#${gradientId})`} className="gravity-scalar-gradient" />
-        <text x={x} y={PT - 6} textAnchor="middle" className="gravity-band-label">{label}</text>
-        <line x1={x} y1={PT} x2={x} y2={PB} className="gravity-band-track" />
+        <rect x={PL + 24} y={Math.min(y0, y1)} width={PR - PL - 48} height={Math.abs(y1 - y0)} fill={`url(#${gradientId})`} className="gv-gravity-scalar-gradient" />
+        <text x={x} y={PT - 6} textAnchor="middle" className="gv-gravity-band-label">{label}</text>
+        <line x1={x} y1={PT} x2={x} y2={PB} className="gv-gravity-band-track" />
         {handle('zero', y0)}
         {handle('one', y1)}
       </svg>
@@ -270,7 +269,7 @@ function AxisPlot({ axis, radial, tuning, table, present, strength, onStrength, 
 }) {
   const svgRef = React.useRef<SVGSVGElement>(null)
   const dragRef = React.useRef<{ bucket: string; edge: 'min' | 'max' } | null>(null)
-  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  // Only the buckets the visible set holds; the tuning keeps the rest.
   const buckets = tuning.mapping.buckets.filter(b => present.has(b.id))
   const colX = (i: number) => PL + ((i + 0.5) / Math.max(1, buckets.length)) * (PR - PL)
   const label = axis.toUpperCase()
@@ -324,18 +323,18 @@ function AxisPlot({ axis, radial, tuning, table, present, strength, onStrength, 
         // In radial, Y reads each bucket's band CENTRE as its ring (width is
         // ignored, equal centres share a ring); the label says so in the same
         // slot, so the body does not change height when the mode flips.
-        <div className="ctl-plot-xlabel">{radial && axis === 'y' ? 'ring: the band centre, innermost first' : `${label} position`}</div>
+        <div className="gv-ctl-plot-xlabel">{radial && axis === 'y' ? 'ring: the band centre, innermost first' : `${label} position`}</div>
       }
     >
       <svg
         ref={svgRef}
-        className="gravity-band-svg"
+        className="gv-gravity-band-svg"
         viewBox={`0 0 ${AP_W} ${AP_H}`}
         role="group"
         aria-label={`${label} axis: one column per bucket, its rest band as two handles`}
       >
-        <rect x={PL} y={PT} width={PR - PL} height={PB - PT} className="gravity-band-bg" />
-        <g className="gravity-band-stripes">
+        <rect x={PL} y={PT} width={PR - PL} height={PB - PT} className="gv-gravity-band-bg" />
+        <g className="gv-gravity-band-stripes">
           {buckets.map((b, i) => {
             const r = bandRangeFor(table, b.id)
             const yTop = yForWorld(axis, r.min)
@@ -346,7 +345,7 @@ function AxisPlot({ axis, radial, tuning, table, present, strength, onStrength, 
                 key={b.id}
                 x={colX(i) - half} y={yTop} width={half * 2} height={Math.max(0, yBot - yTop)}
                 fill={color(b.id)}
-                className={`gravity-band-stripe${anyHovered && !isHovered(b.id) ? ' dim' : ''}${isHovered(b.id) ? ' active' : ''}`}
+                className={`gv-gravity-band-stripe${anyHovered && !isHovered(b.id) ? ' dim' : ''}${isHovered(b.id) ? ' active' : ''}`}
               />
             )
           })}
@@ -360,17 +359,17 @@ function AxisPlot({ axis, radial, tuning, table, present, strength, onStrength, 
           return (
             <g
               key={b.id}
-              className={`gravity-band-col${anyHovered && !isHovered(b.id) ? ' dim' : ''}${isHovered(b.id) ? ' active' : ''}`}
+              className={`gv-gravity-band-col${anyHovered && !isHovered(b.id) ? ' dim' : ''}${isHovered(b.id) ? ' active' : ''}`}
               onPointerEnter={() => onHover({ axis, bucket: b.id })}
               onPointerLeave={() => { if (!dragRef.current) onHover(null) }}
             >
               <title>{b.label}</title>
-              <text x={x} y={PT - 6} textAnchor="middle" className="gravity-band-label" style={{ fill: c }}>{b.abbreviation}</text>
-              <line x1={x} y1={PT} x2={x} y2={PB} className="gravity-band-track" />
-              <line x1={x} y1={yTop} x2={x} y2={yBot} stroke={c} className="gravity-band-stem" />
-              <circle cx={x} cy={yTop} r={DOT_R} fill={c} className="gravity-band-dot"
+              <text x={x} y={PT - 6} textAnchor="middle" className="gv-gravity-band-label" style={{ fill: c }}>{b.abbreviation}</text>
+              <line x1={x} y1={PT} x2={x} y2={PB} className="gv-gravity-band-track" />
+              <line x1={x} y1={yTop} x2={x} y2={yBot} stroke={c} className="gv-gravity-band-stem" />
+              <circle cx={x} cy={yTop} r={DOT_R} fill={c} className="gv-gravity-band-dot"
                 onPointerDown={e => handleDown(e, b.id, 'min')} onPointerMove={handleMove} onPointerUp={handleUp} />
-              <circle cx={x} cy={yBot} r={DOT_R} fill={c} className="gravity-band-dot"
+              <circle cx={x} cy={yBot} r={DOT_R} fill={c} className="gv-gravity-band-dot"
                 onPointerDown={e => handleDown(e, b.id, 'max')} onPointerMove={handleMove} onPointerUp={handleUp} />
             </g>
           )
@@ -398,7 +397,7 @@ function AxisCurve({ axis, params, onParamChange }: {
     const py = CURVE_H - CURVE_TOP_PAD - f * (CURVE_H - 2 * CURVE_TOP_PAD)
     return `${px.toFixed(1)},${py.toFixed(1)}`
   }).join(' ')
-  const curves: CurveItem[] = [{ id: axis, points, color: 'var(--color-text)', label: axis.toUpperCase() }]
+  const curves: CurveItem[] = [{ id: axis, points, color: 'var(--gv-color-text)', label: axis.toUpperCase() }]
   return (
     <ForceCurves
       curves={curves}

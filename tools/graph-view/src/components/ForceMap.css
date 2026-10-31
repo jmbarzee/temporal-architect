@@ -1,4 +1,4 @@
-/* Force map / force curves (spring + charge maps) — extracted from styles/index.css (issue #56). */
+/* Force map / force curves (spring + charge maps). */
 /* ── 2D force map + force curves (shared) ──────────────────────────────────
    The 2D map (control) and the force-curve viz (read-out), shared by both the
    Pull tab (spring map: split-colour edge tokens) and the Push tab (charge
@@ -8,9 +8,9 @@
    up with the plot structurally — no magic inset percentages. Tokens that
    reach a plot edge spill out via `overflow: visible` rather than clipping.
    A split token (Pull) draws two half-circle <path>s; a solid token (Push)
-   draws a single filled <circle>; both share the .spring-token-outline ring. */
+   draws a single filled <circle>; both share the .gv-spring-token-outline ring. */
 
-.spring-map-svg {
+.gv-spring-map-svg {
   grid-area: plot;
   display: block;
   width: 100%;
@@ -20,53 +20,53 @@
 }
 
 /* Axis labels for the curves (Graph) layout; the y-labels read bottom-to-top. */
-.spring-axis-label {
-  color: var(--color-text-muted);
+.gv-spring-axis-label {
+  color: var(--gv-color-text-muted);
   align-self: center;
   justify-self: center;
 }
 
-.spring-curves-axis-x { grid-area: axisX; }
+.gv-spring-curves-axis-x { grid-area: axisX; }
 
-.spring-curves-axis-y {
+.gv-spring-curves-axis-y {
   grid-area: axisY;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
 }
 
-.spring-plot-bg { fill: var(--color-bg); opacity: 0.5; }
-.spring-grid { stroke: var(--color-border); stroke-width: 1; opacity: 0.6; }
+.gv-spring-plot-bg { fill: var(--gv-color-bg); opacity: 0.5; }
+.gv-spring-grid { stroke: var(--gv-color-border); stroke-width: 1; opacity: 0.6; }
 
 /* Spring map tokens */
-.spring-token { cursor: grab; }
-.spring-token:active { cursor: grabbing; }
-.spring-token.dim { opacity: 0.3; }
+.gv-spring-token { cursor: grab; }
+.gv-spring-token:active { cursor: grabbing; }
+.gv-spring-token.dim { opacity: 0.3; }
 
-.spring-token-outline {
-  stroke: var(--color-text);
+.gv-spring-token-outline {
+  stroke: var(--gv-color-text);
   stroke-opacity: 0.55;
   stroke-width: 1.2;
 }
 
-.spring-token.active .spring-token-outline {
+.gv-spring-token.active .gv-spring-token-outline {
   stroke-opacity: 0.95;
   stroke-width: 1.8;
 }
 
-.spring-token-label {
+.gv-spring-token-label {
   font-size: 11px;
-  fill: var(--color-text-muted);
+  fill: var(--gv-color-text-muted);
   pointer-events: none;
   user-select: none;
 }
 
-.spring-token.active .spring-token-label {
-  fill: var(--color-text);
+.gv-spring-token.active .gv-spring-token-label {
+  fill: var(--gv-color-text);
   font-weight: 600;
 }
 
 /* Force-curve visualization */
-.spring-curves {
+.gv-spring-curves {
   display: grid;
   grid-template-columns: 16px 1fr;   /* axisY | plot */
   grid-template-rows: 1fr 18px auto;  /* plot | axisX | exp */
@@ -78,7 +78,7 @@
   margin-top: 10px;
 }
 
-.spring-curves-svg {
+.gv-spring-curves-svg {
   grid-area: plot;
   display: block;
   width: 100%;
@@ -87,32 +87,32 @@
 }
 
 /* Light value-anchored gridlines on the curves (the Graph). */
-.ctl-grid-line { stroke: var(--color-border); stroke-width: 1; opacity: 0.35; pointer-events: none; }
+.gv-ctl-grid-line { stroke: var(--gv-color-border); stroke-width: 1; opacity: 0.35; pointer-events: none; }
 
-.spring-curve-frame { fill: none; stroke: var(--color-border); stroke-width: 1; }
-.spring-curve-baseline { stroke: var(--color-border); stroke-width: 1; }
+.gv-spring-curve-frame { fill: none; stroke: var(--gv-color-border); stroke-width: 1; }
+.gv-spring-curve-baseline { stroke: var(--gv-color-border); stroke-width: 1; }
 
-.spring-curve-restmark {
-  stroke: var(--color-text-muted);
+.gv-spring-curve-restmark {
+  stroke: var(--gv-color-text-muted);
   stroke-width: 1;
   stroke-dasharray: 2 2;
   opacity: 0.6;
 }
 
-.spring-curve-label {
-  font-family: var(--font-mono);
+.gv-spring-curve-label {
+  font-family: var(--gv-font-mono);
   font-size: 10px;
   font-weight: 600;
   pointer-events: none;
   user-select: none;
 }
 
-.spring-curve-line { fill: none; stroke-width: 1.25; opacity: 0.3; }
-.spring-curve-hit { fill: none; stroke: transparent; stroke-width: 8; cursor: pointer; }
-.spring-curve.active .spring-curve-line { opacity: 1; stroke-width: 2; }
-.spring-curve.dim .spring-curve-line { opacity: 0.15; }
+.gv-spring-curve-line { fill: none; stroke-width: 1.25; opacity: 0.3; }
+.gv-spring-curve-hit { fill: none; stroke: transparent; stroke-width: 8; cursor: pointer; }
+.gv-spring-curve.active .gv-spring-curve-line { opacity: 1; stroke-width: 2; }
+.gv-spring-curve.dim .gv-spring-curve-line { opacity: 0.15; }
 
-.spring-curves-exp {
+.gv-spring-curves-exp {
   grid-area: exp;
   display: flex;
   flex-direction: column;
@@ -121,5 +121,5 @@
   margin-top: 8px;
 }
 
-.spring-exp-label { color: var(--color-text-muted); }
+.gv-spring-exp-label { color: var(--gv-color-text-muted); }
 

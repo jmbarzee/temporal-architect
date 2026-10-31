@@ -4,9 +4,9 @@
 // chunk -> division options -> sections, and a read-only parameter readout.
 // It mirrors GraphControlPanel's collapse/tab structure and reuses its CSS.
 
-// Borrows the library's panel chrome — `.graph-control-panel*`, `.switch*` and
-// the `--toolbar-height` the pane sets on its root — by class name, which no
-// gate can see (REVIEW_8 C9). A rename inside the library's GraphControlPanel.css
+// Borrows the library's panel chrome — `.gv-graph-control-panel*`, `.gv-switch*` and
+// the `--gv-toolbar-height` the pane sets on its root — by class name, which no
+// gate can see. A rename inside the library's GraphControlPanel.css
 // lands here first.
 import React from 'react'
 import './GroupsModal.css'
@@ -142,13 +142,13 @@ export function GroupsModal({
   }
 
   return (
-    <div className={`groups-modal graph-control-panel ${open ? 'open' : ''}`}>
+    <div className={`groups-modal gv-graph-control-panel ${open ? 'open' : ''}`}>
       {/* Header: collapse toggle + the master glow switch. The switch is always
           shown (collapsed or open) so the overlay can be turned on/off without
           expanding the panel. */}
       <div className="groups-modal-header">
         <button
-          className="graph-control-panel-toggle"
+          className="gv-graph-control-panel-toggle"
           onClick={handleToggleOpen}
           title="Toggle decomposition groups panel"
         >
@@ -159,7 +159,7 @@ export function GroupsModal({
             omitted so no dead control is offered. */}
         {hasChunks && (
           <label
-            className={`switch${selection.glowEnabled ? ' on' : ''}`}
+            className={`gv-switch${selection.glowEnabled ? ' on' : ''}`}
             title="Show group glow on the canvas"
           >
             <input
@@ -168,18 +168,18 @@ export function GroupsModal({
               onChange={e => handleGlowToggle(e.target.checked)}
               aria-label="Show group glow"
             />
-            <span className="switch-track"><span className="switch-knob" /></span>
+            <span className="gv-switch-track"><span className="gv-switch-knob" /></span>
           </label>
         )}
       </div>
 
       {open && (
-        <div className="graph-control-panel-body">
-          <div className="graph-control-tabs" role="tablist">
+        <div className="gv-graph-control-panel-body">
+          <div className="gv-graph-control-tabs" role="tablist">
             <button
               role="tab"
               aria-selected={tab === 'groups'}
-              className={`graph-control-tab${tab === 'groups' ? ' active' : ''}`}
+              className={`gv-graph-control-tab${tab === 'groups' ? ' active' : ''}`}
               onClick={() => setTab('groups')}
             >
               Groups
@@ -187,7 +187,7 @@ export function GroupsModal({
             <button
               role="tab"
               aria-selected={tab === 'params'}
-              className={`graph-control-tab${tab === 'params' ? ' active' : ''}`}
+              className={`gv-graph-control-tab${tab === 'params' ? ' active' : ''}`}
               onClick={() => setTab('params')}
             >
               Params

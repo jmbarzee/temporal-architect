@@ -1,7 +1,7 @@
 import React from 'react'
-import { DEF_TYPE_DIMENSION } from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
 import { SingleGearIcon, InterlockingGearsIcon } from './GearIcons'
-import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
+import { ALL_NODE_TYPES, DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 // --- Core types ---
 
 export interface PrimitiveTheme {
@@ -63,10 +63,10 @@ export interface DefTypeConfig {
 // Generate DEF_TYPE_CONFIGS from the taxonomy so icon, label, and defaultOn
 // stay in sync with the entries without a separate hand-maintained list.
 //
-// Resolved through the ontology rather than by indexing the registry object.
-// The difference is not cosmetic: `styleForKey` answers a key it does not know
+// Resolved through the taxonomy rather than by indexing the registry object.
+// The difference is not cosmetic: `styleOf` answers a value it does not know
 // with the declared neutral style, where `REGISTRY[t]` returns `undefined` and
-// the failure surfaces later as a blank icon or an unreadable label (T16).
+// the failure surfaces later as a blank icon or an unreadable label.
 //
 // The plural label follows standard English: 'y' → 'ies', else append 's'.
 function pluralize(label: string): string {
@@ -110,13 +110,10 @@ export interface ViewFilterEntry {
  * The chip layer, derived from the kind axis's descriptor.
  *
  * Declared once, in `adapter/node-types.ts`, and projected here into the shape
- * the tree view already consumes. It was briefly declared in BOTH places, and
- * the total-vocabulary ceiling caught that within a minute (+23) — a grouping
- * stored twice is exactly the shape PLAN §6.6 is about, and having a counter
- * notice it is the point of D40.
+ * the tree view already consumes: a grouping stored twice drifts.
  */
 export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] =
-  (DEFAULT_ONTOLOGY.descriptorFor(DEF_TYPE_DIMENSION)?.chipsFor([]) ?? []).map(chip => ({
+  (DEFAULT_TAXONOMY.axisFor(DEF_TYPE_DIMENSION)?.chipsFor([]) ?? []).map(chip => ({
     id: chip.id,
     icon: chip.icon ?? '',
     label: chip.label,

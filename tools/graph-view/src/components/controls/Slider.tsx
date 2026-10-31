@@ -35,8 +35,8 @@ export function Slider({
 }: SliderProps) {
   const { popped } = usePop()
   const isPopped = popId !== undefined && popped === popId
-  const cls = `ctl-slider ctl-slider-${orientation === 'vertical' ? 'v' : 'h'}`
-    + (isPopped ? ' ctl-slider-popped' : '')
+  const cls = `gv-ctl-slider gv-ctl-slider-${orientation === 'vertical' ? 'v' : 'h'}`
+    + (isPopped ? ' gv-ctl-slider-popped' : '')
     + (className ? ' ' + className : '')
   return (
     <input

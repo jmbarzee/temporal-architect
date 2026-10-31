@@ -1,10 +1,10 @@
-/* Gravity controls — extracted from styles/index.css (issue #56). */
+/* Gravity controls. */
 /* ── Gravity tab ────────────────────────────────────────────────────────────
    Three sub-tabs: X Axis and Y Axis (the same per-axis surface: a mapping, a
    column per bucket with its rest band as two handles, the strength, the force
    curve) and Topological. Y's sub-tab carries the Radial switch, Topological's
    its on/off switch. */
-.gravity-controls {
+.gv-gravity-controls {
   margin-top: 8px;
   display: flex;
   flex-direction: column;
@@ -16,15 +16,15 @@
    text colour) and the inline on/off switch each tab carries. */
 
 /* The active body's tools dim (but stay usable) when its force switch is off. */
-.gravity-section-tools {
+.gv-gravity-section-tools {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.gravity-section-tools.inactive { opacity: 0.5; }
+.gv-gravity-section-tools.inactive { opacity: 0.5; }
 
 /* Axis plot svg (the rest of the layout is the shared <Plot> shell). */
-.gravity-band-svg {
+.gv-gravity-band-svg {
   display: block;
   width: 100%;
   height: auto;
@@ -32,55 +32,55 @@
   touch-action: none;
 }
 
-.gravity-band-bg { fill: var(--color-bg); opacity: 0.5; }
+.gv-gravity-band-bg { fill: var(--gv-color-bg); opacity: 0.5; }
 
 /* Rest-region stripes — behind and non-interactive, so handles stay grabbable. */
-.gravity-band-stripes { pointer-events: none; }
-.gravity-band-stripe { opacity: 0.16; }
-.gravity-band-stripe.dim { opacity: 0.05; }
-.gravity-band-stripe.active { opacity: 0.30; }
+.gv-gravity-band-stripes { pointer-events: none; }
+.gv-gravity-band-stripe { opacity: 0.16; }
+.gv-gravity-band-stripe.dim { opacity: 0.05; }
+.gv-gravity-band-stripe.active { opacity: 0.30; }
 
 /* Per-type vertical slider controls, on top of the stripes. */
-.gravity-band-track { stroke: var(--color-border); stroke-width: 1; opacity: 0.5; }
-.gravity-band-stem { stroke-width: 2; opacity: 0.7; }
-.gravity-band-dot { cursor: ns-resize; stroke: var(--color-surface); stroke-width: 1; }
-.gravity-band-label { font-family: var(--font-sans); font-size: 11px; }
-.gravity-band-col.dim { opacity: 0.35; }
+.gv-gravity-band-track { stroke: var(--gv-color-border); stroke-width: 1; opacity: 0.5; }
+.gv-gravity-band-stem { stroke-width: 2; opacity: 0.7; }
+.gv-gravity-band-dot { cursor: ns-resize; stroke: var(--gv-color-surface); stroke-width: 1; }
+.gv-gravity-band-label { font-family: var(--gv-font-sans); font-size: 11px; }
+.gv-gravity-band-col.dim { opacity: 0.35; }
 
-.gravity-topo {
+.gv-gravity-topo {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.gravity-slider-row {
+.gv-gravity-slider-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.gravity-topo-curve {
+.gv-gravity-topo-curve {
   display: block;
   width: 100%;
   height: auto;
   margin-top: 2px;
 }
 
-.gravity-topo-curve-line {
+.gv-gravity-topo-curve-line {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--gv-accent);
   stroke-width: 1.5;
 }
 
-.gravity-topo-curve-axis {
-  font-family: var(--font-sans);
+.gv-gravity-topo-curve-axis {
+  font-family: var(--gv-font-sans);
   font-size: 10px;
-  fill: var(--color-text-muted);
+  fill: var(--gv-color-text-muted);
 }
 
 /* A short note beside a control, e.g. "ignored in radial". */
-.axis-note { font-size: 11px; color: var(--color-text-muted); font-family: var(--font-sans); }
+.gv-axis-note { font-size: 11px; color: var(--gv-color-text-muted); font-family: var(--gv-font-sans); }
 
 /* A scalar axis: the span's gradient and its two end handles. */
-.gravity-scalar-gradient { pointer-events: none; }
-.gravity-scalar-dot { fill: var(--color-text); }
+.gv-gravity-scalar-gradient { pointer-events: none; }
+.gv-gravity-scalar-dot { fill: var(--gv-color-text); }

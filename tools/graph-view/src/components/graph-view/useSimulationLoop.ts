@@ -6,14 +6,15 @@
 // inputs (the explicit data links) rather than owning any of them.
 
 import type { FilterState } from '../../filter/types'
-import { selectionFor } from '../../filter/types'
-import { foldReheatPolicy } from '../../graph/dimension'
+import { selectionFor, selectionsEqual } from '../../filter/types'
+import { foldReheatPolicy } from '../../graph/axis'
+import type { ResolvedAxisDescriptor } from '../../graph/axis'
 import { passesFilter } from './visibleGraph'
 import React from 'react'
 import type { Simulation, SimNode } from '../../graph/simulation'
 import type { Viewport } from '../../graph/viewport'
 import { fitToView } from '../../graph/viewport'
-import { useOntology } from './useOntology'
+import type { Taxonomy } from '../../graph/taxonomy'
 
 export interface SimulationLoopParams {
   simRef: React.MutableRefObject<Simulation | null>
@@ -23,23 +24,26 @@ export interface SimulationLoopParams {
   visibleNodes: SimNode[]
   downstreamScores: Map<string, number>
   filter: FilterState
+  /** The axes the view filters on — its chain; a change elsewhere in the filter moves nothing here. */
+  axes: readonly ResolvedAxisDescriptor[]
   hoveredNodeId: string | null
   selectedNodeId: string | null
   containerRef: React.RefObject<HTMLDivElement>
   initialFitDone: React.MutableRefObject<boolean>
   pendingCenterRef: React.MutableRefObject<{ nodeId: string } | null>
   setViewport: React.Dispatch<React.SetStateAction<Viewport>>
-  setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>
+  /** Select a node the way the user would — the focus recipe's landing. */
+  setSelectedNodeId: (id: string | null) => void
+  taxonomy: Taxonomy
 }
 
 export function useSimulationLoop({
   simRef, running, setRunning,
   visibleIds, visibleNodes, downstreamScores,
-  filter,
+  filter, axes,
   hoveredNodeId, selectedNodeId,
-  containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
+  containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId, taxonomy,
 }: SimulationLoopParams): { fps: number } {
-  const ontology = useOntology()
   // Frame-rate indicator. Updated ~2×/sec from the loop.
   const [fps, setFps] = React.useState(0)
   const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
@@ -126,7 +130,7 @@ export function useSimulationLoop({
   // React to a filter change, per axis, using that axis's declared reheat policy.
   //
   // This was two hand-written effects — one for types, one for files — and their
-  // differences were the trap (T9). They differ on three of four fields, and the
+  // differences were the trap. They differ on three of four fields, and the
   // one they AGREE on is the one a careless generalisation drops: both call
   // `setRunning(true)`, and omitting it leaves the canvas frozen after every
   // toggle. Writing `resume` out per axis is what keeps that a decision rather
@@ -144,21 +148,21 @@ export function useSimulationLoop({
     if (!sim) { prevFilter.current = filter; return }
 
     const { alpha, seedRevealed, refit, resume } = foldReheatPolicy(
-      ontology.filterDimensions.filter(
-        dim => selectionFor(prev, dim.id) !== selectionFor(filter, dim.id),
+      axes.filter(
+        dim => !selectionsEqual(selectionFor(prev, dim.id), selectionFor(filter, dim.id)),
       ),
     )
 
     if (alpha > 0) {
       if (seedRevealed) {
         for (const node of sim.nodes) {
-          if (!passesFilter(node, filter, ontology)) continue
-          if (passesFilter(node, prev, ontology)) continue
+          if (!passesFilter(node, filter, taxonomy, axes)) continue
+          if (passesFilter(node, prev, taxonomy, axes)) continue
           let ancestorId = node.parentId
           while (ancestorId) {
             const ancestor = sim.getNode(ancestorId)
             if (!ancestor) break
-            if (passesFilter(ancestor, filter, ontology)) {
+            if (passesFilter(ancestor, filter, taxonomy, axes)) {
               sim.seedAt(node.id, ancestor.x, ancestor.y)
               break
             }

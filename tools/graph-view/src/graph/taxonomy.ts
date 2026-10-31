@@ -1,126 +1,471 @@
-// The definition *shapes* a taxonomy is expressed in.
+// The taxonomy, as an injected container rather than an imported singleton.
 //
-// This is the library half of the registries. The shapes live here; the entries
-// — which node types exist, what they are called, what colour they are — live
-// with the host, and reach the engine through an `Ontology`. That split is the
-// whole point: a host declares its own values against these shapes and gets the
-// full graph engine, without the library knowing a single one of its type names.
+// The library owns the *shape* of a taxonomy, a host supplies the *entries*,
+// and every consumer resolves through the container it is handed, so the
+// graph engine can be pointed at a different taxonomy without editing the
+// engine.
 //
-// What that means concretely, and what it cost to get here: the fields below are
-// the ones with no domain in them. Two fields did have a domain and are *not*
-// here — `ladder` and `tier`, both of which named tiers of one specific
-// deployment model. Each already documented itself as docs-only or
-// registry-private, so neither had a reader in the engine to break; a host that
-// wants them declares them on its own entry type, which extends these.
+// Two properties matter more than the shape itself:
+//
+//   - **Resolution never throws.** A lookup miss returns a declared fallback.
+//     An unguarded miss is a `TypeError` inside a requestAnimationFrame
+//     callback, which React error boundaries do not cover: the canvas freezes
+//     on its last good frame with no error UI and no console boundary. It
+//     looks like a hang, not a lookup failure.
+//   - **Resolution allocates nothing.** It sits in the per-frame draw loop and
+//     the O(n²) charge loop, so it is a record lookup and a branch, never a
+//     constructed object. Every default is filled in here, once, at
+//     construction.
 
-import type { DimensionValue } from './dimension'
-import type { EdgeStroke, ThemedColor } from './scheme'
+import type { ReactNode } from 'react'
+import type { AxisDescriptor, AxisId, AxisValues, AxisValue, ResolvedAxisDescriptor } from './axis'
+import { hasOwn, resolveDescriptor } from './axis'
+import type { GraphEdge, GraphNode } from './model'
+import type { EdgeType, EdgeTypeId, NodeStyle, ResolvedEdgeType, ResolvedNodeStyle } from './shapes'
+import { NEUTRAL_STROKE, edgePairs, endpointValues, resolveEdgeType as resolveEdgeTypeDefaults, resolveNodeStyle as resolveNodeStyleDefaults } from './shapes'
+import type { ResolvedScalarAxis, ScalarAxis } from './scalar'
+import type { EdgeStroke } from './scheme'
+import { cssSuffix, isSchemeColor } from './scheme'
+import { BUILT_IN_SCALARS, resolveScalarAxis } from './scalar'
 
-// ── Node styles ─────────────────────────────────────────────────────────────
-
-/**
- * How one value on the style axis is drawn, sized, and physically weighted.
- *
- * Reached through `Ontology.resolveNodeStyle`, never by key lookup from the
- * engine — a miss has to resolve to a declared fallback rather than throw,
- * because the resolution happens per node per frame inside the draw loop where
- * an exception stops the canvas repainting for good (T4).
- */
-export interface NodeTypeDefinition {
-  /** Display name, e.g. "Endpoint". */
-  label: string
-  /** Single glyph shown inside the canvas node and in tree-view chips. */
-  icon: string
-  /** Whether this value is visible when the graph first loads. */
-  defaultVisible: boolean
-  /**
-   * What a dependency edge touching a HIDDEN node of this value does (D59):
-   * `ascend` re-points the endpoint to the node's nearest visible ancestor;
-   * `splice` follows the node's own dependency edges through to the far
-   * side, so caller → hidden → callee draws as caller → callee.
-   */
-  whenHidden: 'ascend' | 'splice'
-
-  // --- Visual ---
-  /** Fill and border in both themes; the canvas reads `color[theme]`. */
-  color: ThemedColor
-  size: {
-    /** Circle radius in world units. Hit-test radius = r + 4. */
-    r: number
-    /** Font size for the icon glyph (px). */
-    iconSize: number
-  }
-
-  // --- Physics ---
-  physics: {
-    /**
-     * Default repulsion charge. Negative = repulsion. The starting point for
-     * the value the user tunes at runtime via the control panel.
-     */
-    charge: number
-    /**
-     * Default core radius (charge softening, as a length). A pair of nodes
-     * softens its charge by the squared average of the two endpoints'
-     * effective core radii (`coreRadiusMultiplier × coreRadius`), added to d².
-     * Larger = gentler, wider plateau.
-     */
-    coreRadius: number
-    /**
-     * Default rest bands, one per layout axis, inside which this value feels
-     * no gravity. `y` is the hierarchy (negative = top of canvas); `x` bounds
-     * the horizontal spread. The simulation seeds nodes inside their bands on
-     * creation, so the structure is visible before the first tick — which also
-     * makes this the seeding function, not only the gravity target (T2).
-     */
-    band: { x: { min: number; max: number }; y: { min: number; max: number } }
-  }
-
-  // --- Summary ---
-  /**
-   * The glanceable summary for a node of this value: the children it contains,
-   * counted per style value and named by that value's abbreviation
-   * (`2 Wk · 1 Ep`); its dependency degree (`→3 ←2`); or nothing.
-   */
-  summaryKind: 'children' | 'degree' | 'none'
+/** A highlight: the node ids lit and the edge ids lit. Edges absent means "every visible edge between lit nodes". */
+export interface Highlight {
+  readonly nodes: ReadonlySet<string>
+  readonly edges?: ReadonlySet<string>
 }
 
-// ── Edge types ──────────────────────────────────────────────────────────────
-
-export type EdgeCategoryKind = 'containment' | 'dependency'
-
-/**
- * Stable id for one edge category.
- *
- * A string, not a union, and that is the library's whole position on edge
- * vocabulary: it is the override key in the spring tuning and the hover-link
- * key across the spring map, curves, and canvas, so it has to be something a
- * host can extend. A host narrows it to its own union.
- */
-export type EdgeTypeId = string
-
-/** One spring: stiffness (k) and rest length. */
-export interface SpringPhysics {
-  strength: number
-  distance: number
+/** What a highlight rule may read: the visible graph, and a lookup for any node. */
+export interface HighlightGraph {
+  readonly visibleNodes: readonly GraphNode[]
+  readonly visibleEdges: readonly GraphEdge[]
+  readonly visibleIds: ReadonlySet<string>
+  getNode(id: string): GraphNode | undefined
 }
 
-export interface EdgeTypeDefinition {
-  /** Stable id — also the override key in the spring tuning. */
-  id: EdgeTypeId
-  /** Short control-panel label. */
-  label: string
+/** Which way a highlight walks from its node: what it depends on, or what depends on it. */
+export type HighlightDirection = 'downstream' | 'upstream'
+
+/** The minimum a consumer needs of a node in order to resolve its style. */
+export type StyleSubject = { values: AxisValues }
+
+/** What the hover box shows under a node's name: one line, or several — text or a host's own elements. */
+export type ContextLine = ReactNode | readonly ReactNode[]
+
+/**
+ * The built taxonomy: what the view resolves every style, edge type, axis
+ * policy and host hook through. Built once by `createTaxonomy`; derive a
+ * variant from the spec, never by spreading this object.
+ *
+ * What a host reads: `filterAxes`, `axisFor` and `valueOn` to filter its own
+ * records the way the view does; `styleOf`, `styleValues` and `colorVar` for
+ * chrome of its own in the scheme's colours; `edgeTypes` for a legend;
+ * `searchText` to match as the view matches. The rest is the engine's
+ * interface — resolution for the draw loop — and a host has no call to read
+ * it (#195 is the opaque form).
+ */
+export interface Taxonomy {
   /**
-   * Canonical endpoint values on the style axis — these drive the split-colour
-   * token (source | target). Values rather than declared types, because the
-   * engine resolves an edge's category from where its endpoint *nodes* sit,
-   * not from anything cached on the edge (B14).
+   * The axis this taxonomy resolves style on.
+   *
+   * One axis, named once. Every other feature elects its own — the physics reads
+   * its axis off the force params, filters read theirs off the filter — and no
+   * feature composes two.
+   *
+   * A method, not a field, and that is a correctness property rather than a
+   * style choice: a container derived by spreading (`{ ...taxonomy,
+   * styleAxis: 'other' }`) would rewrite a field and leave the closures
+   * answering on the old axis — an object that disagrees with itself, the
+   * draw loop reading one half and the physics the other. With one source
+   * there is nothing to override out of step.
    */
-  sourceType: DimensionValue
-  targetType: DimensionValue
-  category: EdgeCategoryKind
-  /** Declared stiffness / rest length — what the category resolves to until tuned. */
-  physics: SpringPhysics
-  /** How the canvas strokes an edge of this type, in both themes (D57). */
-  style: EdgeStroke
-  tooltip: string
+  styleAxis(): AxisId
+  /** The style axis's display name, for a control that names axes. */
+  styleLabel(): string
+  /**
+   * The axes a filter may operate on, with their per-axis policies,
+   * every default filled in. Host-declared, like the entries: which axes
+   * exist is a domain fact. The engine reads only the policies and never
+   * enumerates the ids.
+   */
+  readonly filterAxes: readonly ResolvedAxisDescriptor[]
+  /** One axis's policies, or undefined if the host does not declare it. */
+  axisFor(axis: AxisId): ResolvedAxisDescriptor | undefined
+  /**
+   * The value a subject presents on one axis — read off its values, for
+   * every axis alike. An axis that is a projection of another is materialized
+   * by the host when it builds the node, so nothing here knows which axes are
+   * derived.
+   */
+  valueOn(subject: StyleSubject, axis: AxisId): AxisValue | undefined
+  /** Every style value, in declaration order (top of the hierarchy first). */
+  readonly styleValues: readonly AxisValue[]
+  /** Every edge type, in control-panel order, its defaults filled in. */
+  readonly edgeTypes: readonly ResolvedEdgeType[]
+  /** Every computed scalar a layout axis may key on, its words filled in: the built-ins, then the host's. */
+  readonly scalars: readonly ResolvedScalarAxis[]
+  /** How the canvas strokes an edge of this type; the neutral stroke, said once, for an id the taxonomy does not declare. */
+  edgeStrokeFor(id: EdgeTypeId): EdgeStroke
+  /**
+   * The custom property a value's fill is published under (`-border` for its
+   * border): `--gv-node-` and the value id in kebab case, or a numbered name
+   * when the id kebab-cases to nothing or to another value's name. The one
+   * way to learn the name; a host's CSS reads it through `schemeVars` or
+   * `schemeStylesheet`.
+   */
+  colorVar(value: AxisValue): string
+  /** The hover box's context line(s) for a node — the host's, or its parent's name. */
+  contextLine(node: GraphNode, parent: GraphNode | undefined): ContextLine
+  /** What the search control matches against for a node — the host's text, or the name. */
+  searchText(node: GraphNode): string
+  /** The highlight for an active node — the host's refinement of the library's transitive walk in the given direction. */
+  highlight(active: GraphNode, base: Highlight, graph: HighlightGraph, direction: HighlightDirection): Highlight
+
+  /**
+   * Style, size, physics and summary metadata for a value. Never throws — a
+   * value the taxonomy does not declare, and an ABSENT value, both resolve to
+   * the fallback.
+   */
+  styleOf(value: AxisValue | undefined): ResolvedNodeStyle
+  /** Where a node sits on the style axis, or undefined if it sits nowhere. */
+  styleValueOf(subject: StyleSubject): AxisValue | undefined
+  /**
+   * Short label for a value — one or two characters. Control surfaces render a
+   * token per value and have no room for a full name. A value the taxonomy
+   * does not declare abbreviates to its own first two characters.
+   */
+  abbreviationFor(value: AxisValue): string
+  /** The same as `styleOf`, addressed by a node. The hot-path entry point. */
+  nodeStyleOf(subject: StyleSubject): ResolvedNodeStyle
+  /**
+   * Which declared edge type an edge is, given the style values of its two
+   * ORIGINAL endpoints: the declared type of the edge's relation that runs
+   * between those values in either orientation and whose `match` the edge's
+   * own values satisfy (a satisfied `match` over none, the declared
+   * orientation over the reverse, then declaration order), handed to the
+   * spec's `classifyEdge`, which may keep it, replace it, or supply one where
+   * there is none; undefined when neither names one. Classified once, on
+   * the original endpoints; the type is carried through graduation, so a
+   * re-pointed edge keeps its stroke and its spring.
+   */
+  edgeTypeOf(edge: GraphEdge, src: AxisValue | undefined, tgt: AxisValue | undefined): EdgeTypeId | undefined
+  /** Which of two graduated edges on one visible pair survives: the host's choice, or the one kept so far. */
+  collapse(kept: GraphEdge, candidate: GraphEdge): GraphEdge
+}
+
+/**
+ * What a host declares in order to build an `Taxonomy`: the style axis and
+ * its values, the edge types and the rule that classifies an edge, the filter
+ * axes. Everything with a sensible default is optional.
+ */
+export interface TaxonomySpec {
+  /** The axis every node's style is read on. */
+  styleAxis: AxisId
+  /** The style axis's display name. Absent, the axis id. */
+  styleLabel?: string
+  /**
+   * The style values, top of the hierarchy first. The order places each
+   * value's rest band down the stack when it declares none, and orders the
+   * control surfaces and the hover box's child counts.
+   */
+  styles: readonly NodeStyle[]
+  /**
+   * Drawn for a value the taxonomy does not declare, and for a node with no
+   * value on the style axis. Absent, a grey disc with a question mark that
+   * rests anywhere in the stack.
+   */
+  fallbackStyle?: Omit<NodeStyle, 'id'>
+  /** The edge types, in control-panel order. Absent, none: every edge draws untyped in its relation's stroke, and `validateGraph` says so. */
+  edgeTypes?: readonly EdgeType[]
+  /**
+   * The host's say in classifying an edge, given the style values of its
+   * original endpoints and `declared` — the type the declarations answer (by
+   * relation, endpoint pair, `match` and orientation), or undefined: an id
+   * to use, or undefined to keep the declared answer. For the exceptions the
+   * declarations cannot express — a type that also runs between pairs it
+   * does not declare, say: `(edge, src, tgt, declared) => declared ?? …`.
+   * Required only when two declared types on one pair share an orientation
+   * and a `match`.
+   */
+  classifyEdge?: (edge: GraphEdge, src: AxisValue | undefined, tgt: AxisValue | undefined, declared: EdgeTypeId | undefined) => EdgeTypeId | undefined
+  /** The axes the filter bar offers. Absent, the style axis alone, as an allow-list. */
+  filterAxes?: readonly AxisDescriptor[]
+  /**
+   * Computed scalars this host adds to the built-ins: each reads node
+   * metadata — its own payload included — and the graph's structure, and
+   * answers a number per node, which the frame maps onto [0, 1] the way the
+   * scalar's `normalize` says. Absent, the built-ins alone.
+   */
+  scalars?: readonly ScalarAxis[]
+  /**
+   * The hover box's context under the name: what a host wants said there —
+   * addressing metadata from its own payload, a parent by another name, an
+   * origin — as one line or several. Absent, the line is the parent's name.
+   */
+  contextLine?: (node: GraphNode, parent: GraphNode | undefined) => ContextLine
+  /**
+   * What the search control matches a node on, case-insensitively: a code
+   * from the payload beside the name, say. Absent, the name.
+   */
+  searchText?: (node: GraphNode) => string
+  /**
+   * The highlight for an active node: given the library's transitive walk
+   * from it in `direction`, the host may widen it (members it relates by
+   * metadata) or replace it. Absent, the walk is the highlight.
+   */
+  highlight?: (active: GraphNode, base: Highlight, graph: HighlightGraph, direction: HighlightDirection) => Highlight
+  /**
+   * When two dependency edges each lose an end to a hidden node and come to
+   * run between the same two visible nodes, which of the two originals the
+   * drawn edge stands for. Both arguments are the host's own edges, so
+   * a host whose edges carry routing metadata may prefer the one that does.
+   * Absent, the one met first in the host's edge order is kept. Two edges
+   * whose ends are both visible are never collapsed.
+   */
+  collapse?: (kept: GraphEdge, candidate: GraphEdge) => GraphEdge
+}
+
+/** The style for a value the taxonomy does not declare, when the host declares none. */
+const DEFAULT_FALLBACK: Omit<NodeStyle, 'id'> = {
+  label: 'Unknown',
+  icon: '?',
+  color: { light: { fill: '#CBD5E1', border: '#94A3B8' }, dark: { fill: '#64748B', border: '#94A3B8' } },
+  size: { r: 10 },
+  summaryKind: 'none',
+}
+
+/**
+ * Build the container, refusing an incoherent spec: a value declared twice, an
+ * edge type declared twice, running between values nobody declared or naming
+ * no value at an end, a filter axis declared twice, a colour no reader can
+ * parse, a band whose ends cross, a policy outside its vocabulary, a scalar
+ * id already taken. Every problem is named at once, by its path in the spec.
+ * To derive a variant, build one from a spec (`createTaxonomy({ ...spec, … })`);
+ * spreading the built object copies closures that still read the original's
+ * fields.
+ */
+export function createTaxonomy(spec: TaxonomySpec): Taxonomy {
+  const problems: string[] = []
+  const values = spec.styles.map(v => v.id)
+  const valueSet = new Set<AxisValue>()
+  for (const v of values) {
+    if (valueSet.has(v)) problems.push(`style value ${JSON.stringify(v)} is declared twice`)
+    valueSet.add(v)
+  }
+  // The custom-property name is the value id in kebab case where that is
+  // unique and non-empty; a value whose id kebab-cases to nothing or to
+  // another value's name takes a numbered one, so any string a host's data
+  // produces is a value.
+  const suffixCount = new Map<string, number>()
+  for (const v of values) suffixCount.set(cssSuffix(v), (suffixCount.get(cssSuffix(v)) ?? 0) + 1)
+  const suffixOf = new Map<AxisValue, string>()
+  values.forEach((v, i) => {
+    const kebab = cssSuffix(v)
+    suffixOf.set(v, kebab !== '' && suffixCount.get(kebab) === 1 ? kebab : `v${i + 1}`)
+  })
+  // Every colour must be a form every reader parses without a browser (hex,
+  // rgb() or hsl()); the canvas would otherwise ignore it silently.
+  const colour = (where: string, c: string) => { if (!isSchemeColor(c)) problems.push(`${where} is ${JSON.stringify(c)}, not a hex, rgb() or hsl() colour`) }
+  const band = (where: string, b: { min: number; max: number } | undefined) => {
+    if (b && !(b.min <= b.max)) problems.push(`${where} runs from ${b.min} to ${b.max}; a band's min must not exceed its max`)
+  }
+  const checkStyle = (where: string, style: Omit<NodeStyle, 'id'>) => {
+    for (const theme of ['light', 'dark'] as const) {
+      colour(`${where}.color.${theme}.fill`, style.color[theme].fill)
+      colour(`${where}.color.${theme}.border`, style.color[theme].border)
+    }
+    if (style.whenHidden !== undefined && style.whenHidden !== 'ascend' && style.whenHidden !== 'splice') {
+      problems.push(`${where}.whenHidden is ${JSON.stringify(style.whenHidden)}, not 'ascend' or 'splice'`)
+    }
+    if (style.summaryKind !== undefined && style.summaryKind !== 'children' && style.summaryKind !== 'degree' && style.summaryKind !== 'none') {
+      problems.push(`${where}.summaryKind is ${JSON.stringify(style.summaryKind)}, not 'children', 'degree' or 'none'`)
+    }
+    band(`${where}.physics.band.x`, style.physics?.band?.x)
+    band(`${where}.physics.band.y`, style.physics?.band?.y)
+  }
+  for (const v of spec.styles) checkStyle(`styles.${v.id}`, v)
+  const fallbackSpec = spec.fallbackStyle ?? DEFAULT_FALLBACK
+  checkStyle('fallbackStyle', fallbackSpec)
+  const edgeIds = new Set<EdgeTypeId>()
+  // The pair a type runs between, unordered: what classifies an edge when the
+  // host's rule says nothing. Two types on one pair are told apart by their
+  // `match`, by their orientation, or by the host's rule — or refused.
+  const pairKey = (relation: string, a: AxisValue, b: AxisValue) => JSON.stringify(a <= b ? [relation, a, b] : [relation, b, a])
+  const byPair = new Map<string, EdgeType[]>()
+  const declaredEdgeTypes = spec.edgeTypes ?? []
+  for (const e of declaredEdgeTypes) {
+    if (edgeIds.has(e.id)) problems.push(`edge type ${JSON.stringify(e.id)} is declared twice`)
+    edgeIds.add(e.id)
+    if (e.style?.color?.light !== undefined) colour(`edgeTypes.${e.id}.style.color.light`, e.style.color.light)
+    if (e.style?.color?.dark !== undefined) colour(`edgeTypes.${e.id}.style.color.dark`, e.style.color.dark)
+    for (const end of ['sourceValue', 'targetValue'] as const) {
+      const declared = endpointValues(e[end])
+      if (declared.length === 0) problems.push(`edgeTypes.${e.id}.${end} names no value; name at least one`)
+      declared.forEach((v, i) => {
+        if (!valueSet.has(v)) problems.push(`edgeTypes.${e.id}.${end}${declared.length > 1 ? `[${i}]` : ''} is ${JSON.stringify(v)}, which styles does not declare`)
+      })
+    }
+    if (e.relation !== 'containment' && e.relation !== 'dependency') {
+      problems.push(`edgeTypes.${e.id}.relation is ${JSON.stringify(e.relation)}, not 'containment' or 'dependency'`)
+    }
+    if (e.match !== undefined) {
+      // An empty match would be "specific" and win every edge on its pair,
+      // leaving a type without one unreachable; it is refused, not read as absent.
+      if (Object.keys(e.match).length === 0) problems.push(`edgeTypes.${e.id}.match is empty; leave it out`)
+      for (const [axis, value] of Object.entries(e.match)) {
+        if (typeof value !== 'string') problems.push(`edgeTypes.${e.id}.match.${axis} is ${JSON.stringify(value)}, not a value`)
+      }
+    }
+    // Indexed under every pair it runs between; a type on several pairs is
+    // a candidate on each.
+    for (const [s, t] of edgePairs(e)) {
+      const key = pairKey(e.relation, s, t)
+      const sharing = byPair.get(key) ?? []
+      if (!sharing.includes(e)) sharing.push(e)
+      byPair.set(key, sharing)
+    }
+  }
+  // Two types nothing tells apart: the same orientation and the same `match`
+  // (or none). Only the host's rule can settle those.
+  const sameMatch = (a: EdgeType, b: EdgeType): boolean => {
+    if (a.match === undefined || b.match === undefined) return a.match === b.match
+    const keys = Object.keys(a.match)
+    return keys.length === Object.keys(b.match).length && keys.every(k => a.match![k] === b.match![k])
+  }
+  if (!spec.classifyEdge) {
+    const sameOrientedPair = (a: EdgeType, b: EdgeType): boolean => edgePairs(a).some(([s, t]) => edgePairs(b).some(([s2, t2]) => s === s2 && t === t2))
+    const said = new Set<string>()
+    for (const [key, types] of byPair) {
+      for (let i = 0; i < types.length; i++) {
+        for (let j = i + 1; j < types.length; j++) {
+          const a = types[i], b = types[j]
+          const once = `${a.id}\u0000${b.id}`
+          if (said.has(once) || !sameOrientedPair(a, b) || !sameMatch(a, b)) continue
+          said.add(once)
+          problems.push(`edge types ${JSON.stringify(a.id)} and ${JSON.stringify(b.id)} run between the same values with the same relation (${JSON.parse(key)[0]}) and nothing tells them apart; give one a match on an edge axis, declare them in opposite orientations, or give classifyEdge`)
+        }
+      }
+    }
+  }
+  const filterAxes = spec.filterAxes ?? [{ id: spec.styleAxis, label: spec.styleLabel ?? spec.styleAxis, emptyMeans: 'none' as const }]
+  const axisIds = new Set<AxisId>()
+  for (const d of filterAxes) {
+    if (axisIds.has(d.id)) problems.push(`filter axis ${JSON.stringify(d.id)} is declared twice`)
+    axisIds.add(d.id)
+    if (d.emptyMeans !== 'all' && d.emptyMeans !== 'none') {
+      problems.push(`filterAxes.${d.id}.emptyMeans is ${JSON.stringify(d.emptyMeans)}, not 'all' or 'none'`)
+    }
+  }
+  const scalars = [...BUILT_IN_SCALARS, ...(spec.scalars ?? [])].map(resolveScalarAxis)
+  const scalarIds = new Set<string>()
+  for (const sc of scalars) {
+    if (scalarIds.has(sc.id)) problems.push(`scalar ${JSON.stringify(sc.id)} is declared twice (the built-ins are reach, degree and depth)`)
+    scalarIds.add(sc.id)
+  }
+  if (problems.length > 0) throw new Error(`taxonomy is incoherent: ${problems.join('; ')}`)
+
+  // Every default filled in once. The styles are one object per value for
+  // the life of the container: the draw loop compares them by reference.
+  const n = spec.styles.length
+  const styles: Record<AxisValue, ResolvedNodeStyle> = Object.create(null)
+  spec.styles.forEach((v, i) => { styles[v.id] = resolveNodeStyleDefaults(v, i, n) })
+  // The fallback rests anywhere in the stack: it is nobody's tier.
+  const fallback = resolveNodeStyleDefaults({ id: '', ...fallbackSpec }, 0, 1)
+  if (n > 0 && fallbackSpec.physics?.band?.y === undefined) {
+    fallback.physics.band.y = { min: styles[values[0]].physics.band.y.min, max: styles[values[n - 1]].physics.band.y.max }
+  }
+  const edgeTypes = declaredEdgeTypes.map(resolveEdgeTypeDefaults)
+  const strokeById = new Map(edgeTypes.map(e => [e.id, e.style] as const))
+  const unstroked = new Set<string>()
+  const edgeStrokeFor = (id: EdgeTypeId): EdgeStroke => {
+    const stroke = strokeById.get(id)
+    if (stroke) return stroke
+    if (!unstroked.has(id)) {
+      unstroked.add(id)
+      console.warn(`[graph] edge type ${JSON.stringify(id)} has no stroke: the taxonomy does not declare it; drawing it neutral`)
+    }
+    return NEUTRAL_STROKE
+  }
+  const satisfies = (edge: GraphEdge, match: Readonly<Record<AxisId, AxisValue>>): boolean => {
+    for (const axis of Object.keys(match)) if (edge.values?.[axis] !== match[axis]) return false
+    return true
+  }
+  // What the declarations say an edge is: every type of its relation on its
+  // endpoint pair that the edge fits — its `match` absent or satisfied. A
+  // satisfied match beats the pair alone; the declared orientation beats the
+  // reverse; declaration order settles the rest.
+  const declaredTypeOf = (edge: GraphEdge, src: AxisValue | undefined, tgt: AxisValue | undefined): EdgeTypeId | undefined => {
+    if (src === undefined || tgt === undefined) return undefined
+    const candidates = byPair.get(pairKey(edge.relation === 'containment' ? 'containment' : 'dependency', src, tgt))
+    if (candidates === undefined) return undefined
+    const fits = candidates.filter(t => t.match === undefined || satisfies(edge, t.match))
+    const specific = fits.filter(t => t.match !== undefined)
+    const pool = specific.length > 0 ? specific : fits
+    const oriented = pool.filter(t => edgePairs(t).some(([s, g]) => s === src && g === tgt))
+    return (oriented[0] ?? pool[0])?.id
+  }
+  // The host's rule sees the declared answer and may keep it, replace it, or
+  // supply one where there is none — no "declared pair?" guard of its own.
+  const edgeTypeOf = (edge: GraphEdge, src: AxisValue | undefined, tgt: AxisValue | undefined): EdgeTypeId | undefined => {
+    const declared = declaredTypeOf(edge, src, tgt)
+    return spec.classifyEdge?.(edge, src, tgt, declared) ?? declared
+  }
+
+  // Warn once per unrecognized value, and once PER ONTOLOGY: this resolves per
+  // node per frame, so a warning on every miss buries the first under sixty a
+  // second — but a process-global set would also silence a second taxonomy that
+  // is missing the same value, which is a different bug being hidden by the
+  // de-duplication meant for the first.
+  const warned = new Set<string>()
+  const styleOf = (value: AxisValue | undefined): ResolvedNodeStyle => {
+    // `hasOwn`, not a plain index: values are host-supplied strings, and
+    // `styles['constructor']` on a table with a prototype would walk the chain
+    // and return the `Object` function. The table has no prototype, and the
+    // check keeps that from mattering.
+    const style = value !== undefined && hasOwn(styles, value) ? styles[value] : undefined
+    if (style !== undefined) return style
+    const label = value ?? '<absent>'
+    if (!warned.has(label)) {
+      warned.add(label)
+      console.warn(
+        `[graph] no style declared for value ${JSON.stringify(label)}; using the fallback. ` +
+        'The graph will render, but this node is drawn with placeholder styling.',
+      )
+    }
+    return fallback
+  }
+  const { styleAxis } = spec
+  const styleValueOf = (subject: StyleSubject): AxisValue | undefined => subject.values[styleAxis]
+  const abbreviationFor = (value: AxisValue): string =>
+    hasOwn(styles, value) ? styles[value].abbreviation : value.slice(0, 2)
+  const namer = {
+    axis: styleAxis,
+    labelFor: (value: AxisValue) => (hasOwn(styles, value) ? styles[value].label : value),
+    abbreviationFor,
+    iconFor: (value: AxisValue) => (hasOwn(styles, value) ? styles[value].icon : ''),
+  }
+  const resolvedAxes = filterAxes.map(d => resolveDescriptor(d, namer))
+  const byAxis = new Map(resolvedAxes.map(d => [d.id, d]))
+  return {
+    styleAxis: () => styleAxis,
+    styleLabel: () => spec.styleLabel ?? styleAxis,
+    filterAxes: resolvedAxes,
+    axisFor: id => byAxis.get(id),
+    valueOn: (subject, axis) => subject.values[axis],
+    abbreviationFor,
+    styleValues: values,
+    edgeTypes,
+    scalars,
+    edgeStrokeFor,
+    colorVar: value => `--gv-node-${suffixOf.get(value) ?? (cssSuffix(value) || 'undeclared')}`,
+    styleOf,
+    styleValueOf,
+    // Hot path: one property read, one record lookup, one branch. No allocation
+    // — this runs per node per frame in the draw loop.
+    nodeStyleOf: subject => styleOf(styleValueOf(subject)),
+    edgeTypeOf,
+    collapse: spec.collapse ?? (kept => kept),
+    contextLine: spec.contextLine ?? ((_node, parent) => parent?.name),
+    searchText: spec.searchText ?? (node => node.name),
+    highlight: spec.highlight ?? ((_active, base) => base),
+  }
 }

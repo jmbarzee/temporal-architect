@@ -1,7 +1,6 @@
 // Canvas-based graph renderer with mouse interaction.
-// Implements GRAPH_VIEW.md § Visual Encoding, § Viewport Controls, § Interaction States.
 
-import { isContainment } from '../graph/model'
+import { copyKeyOf, isContainment } from '../graph/model'
 import React from 'react'
 import type { GraphEdge } from '../graph/model'
 import type { ForceParams, SimNode } from '../graph/simulation'
@@ -12,9 +11,10 @@ import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
 import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
-import type { Ontology } from '../graph/ontology'
-import { useOntology } from './graph-view/useOntology'
+import type { Taxonomy } from '../graph/taxonomy'
+import { useTaxonomy } from './graph-view/useTaxonomy'
 import type { EdgeStroke, Theme } from '../graph/scheme'
+import { NEUTRAL_STROKE } from '../graph/shapes'
 import { withAlpha } from '../graph/scheme'
 import type { ForceSection } from './GraphControlPanel'
 import type { GravityHover } from './GravityControls'
@@ -28,9 +28,9 @@ const DIM_ALPHA = 0.2
 // readable without losing the hover/search focus effect when no glow is shown.
 const DIM_ALPHA_GROUPS = 0.5
 
-// Decomposition group glow (drawn behind everything; see GRAPH_VIEW.md
-// § Decomposition Group Overlay). A member's halo extends GROUP_GLOW_PAD screen
-// px beyond its node body so adjacent members' halos overlap and fuse.
+// Decomposition group glow (drawn behind everything). A member's halo extends
+// GROUP_GLOW_PAD screen px beyond its node body so adjacent members' halos
+// overlap and fuse.
 const GROUP_GLOW_PAD = 16
 const GROUP_GLOW_CENTER_ALPHA = 0.42
 const GROUP_GLOW_EDGE_ALPHA = 0.16
@@ -66,14 +66,9 @@ function labelFont(px: number): string {
   return `600 ${px.toFixed(1)}px ${ICON_FONT_FAMILY}`
 }
 
-// Cardinality badge for a parameterized-family representative node (issue
-// #100, collapsed-representative rendering). The parser hands the family down
-// as one node whose id/definition keep the full templated name; its
-// `templateParams` list names the `{param}` holes. We render one `× {param}`
-// chip per param, stacked in a row above the node, to signal that this single
-// node stands for a family that fans out once per param. Ghost-node depth is
-// out of scope this cycle (deferred → #129). Static nodes have no
-// `templateParams` and draw exactly as before.
+// Badges: a host's short texts drawn as a row of chips above the node, as
+// given — a cardinality, a tag, a count. A node with none draws without the
+// row.
 const BADGE_FONT_PX = 9
 const BADGE_PAD_X = 4          // horizontal text padding inside a chip
 const BADGE_PAD_Y = 2          // vertical text padding inside a chip
@@ -85,9 +80,6 @@ const BADGE_FILL = '#7C3AED'
 const BADGE_TEXT_COLOR = '#FFFFFF'
 function badgeFont(px: number): string {
   return `600 ${px.toFixed(1)}px ${ICON_FONT_FAMILY}`
-}
-function badgeChipText(param: string): string {
-  return `× ${param}` // "× org"
 }
 // Rounded-rect path helper (arcTo keeps it compatible without relying on
 // CanvasRenderingContext2D.roundRect being present).
@@ -103,12 +95,12 @@ function roundRectPath(
   ctx.arcTo(x, y, x + w, y, rr)
   ctx.closePath()
 }
-// Total extra screen height a node's cardinality badge occupies above the
-// body at the given size multiplier, or 0 when there is no badge. Used both to
-// place the chip row and to grow the hit radius so the badge is part of the
-// node's clickable target.
-function badgeExtent(node: { templateParams?: string[] }, mul: number): number {
-  if (!node.templateParams || node.templateParams.length === 0) return 0
+// Total extra screen height a node's badge row occupies above the body at the
+// given size multiplier, or 0 when there is none. Used both to place the chip
+// row and to grow the hit radius so the badges are part of the node's
+// clickable target.
+function badgeExtent(node: { badges?: readonly string[] }, mul: number): number {
+  if (!node.badges || node.badges.length === 0) return 0
   const chipH = BADGE_FONT_PX * mul + BADGE_PAD_Y * 2 * mul
   return BADGE_NODE_GAP * mul + chipH
 }
@@ -116,10 +108,9 @@ function badgeExtent(node: { templateParams?: string[] }, mul: number): number {
 
 // Read a CSS custom property with a fallback, resolved against a specific
 // element. We resolve against the canvas (not `document.documentElement`)
-// because the dark theme is applied via a `.vscode-dark` class on `<body>`,
-// which is *below* `<html>` — reading from the root would always yield the
-// light value and leave labels near-invisible on the dark VS Code background.
-// The canvas is a descendant of the themed element, so it inherits the right
+// because the theme is declared on the pane's root, below `<html>` — reading
+// from the document root would yield the host's value, not the pane's. The
+// canvas is a descendant of the themed element, so it inherits the right
 // value in either theme.
 function cssVar(el: Element | null, name: string, fallback: string): string {
   const target = el ?? (typeof document !== 'undefined' ? document.documentElement : null)
@@ -130,8 +121,7 @@ function cssVar(el: Element | null, name: string, fallback: string): string {
 
 // What an edge draws as when the view's stroke map has no entry for it — a
 // state the view does not produce (the map is built from the same edge array
-// this canvas is given), kept quiet because this runs in the draw loop (T4).
-const NEUTRAL_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.5, dash: [], width: 1.3 }
+// this canvas is given), kept quiet because this runs in the draw loop.
 
 const ARROWHEAD_SIZE = 8
 const CULL_MARGIN = 100
@@ -144,7 +134,7 @@ const DETAIL_REDUCE_SCALE = 0.1   // drop decorative rings below this scale
 // group, the color to glow them, and a strength multiplier (hovered groups glow
 // stronger). ActiveGroup from graph/groups.ts is structurally assignable.
 export interface GroupGlow {
-  nodeIds: Set<string>
+  nodeIds: ReadonlySet<string>
   color: string
   strength: number
 }
@@ -165,16 +155,18 @@ interface GraphCanvasProps {
   hoveredNodeId: string | null
   selectedNodeId: string | null
   focusedNodeId: string | null
-  searchMatchIds: Set<string> | null
+  searchMatchIds: ReadonlySet<string> | null
   running: boolean
   forceParams: ForceParams
-  /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw (T25). */
+  /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw. */
   resolved: ResolvedPhysics
   /** The band overlay as data — stripes per axis, rings — computed by the view in the forces' frame. */
   overlay: BandOverlay
-  /** The theme the pane draws in, and every visible edge's stroke, resolved once by the view (D57, T25). */
+  /** The theme the pane draws in, and every visible edge's stroke, resolved once by the view. */
   theme: Theme
   edgeStrokes: ReadonlyMap<GraphEdge, EdgeStroke>
+  /** Lane offsets in screen pixels for edges that share a pair of endpoints, by edge id; absent means on the line. */
+  edgeOffsets: ReadonlyMap<string, number>
   activeSection: ForceSection
   activePushBucket: string | null
   activeGravityBucket: GravityHover | null
@@ -184,11 +176,31 @@ interface GraphCanvasProps {
   groupGlows: GroupGlow[]
 }
 
+/**
+ * Shift a segment sideways into its lane: parallel edges between one pair of
+ * nodes would otherwise draw on top of each other and read as one. The
+ * perpendicular is taken in a fixed orientation of the pair (lower id first),
+ * so the two directions of a pair take distinct lanes rather than the same
+ * one mirrored.
+ */
+function laneOffset(
+  edge: GraphEdge, offset: number, sx: number, sy: number, tx: number, ty: number,
+): [number, number, number, number] {
+  if (!offset) return [sx, sy, tx, ty]
+  const forward = edge.sourceId < edge.targetId
+  const dx = forward ? tx - sx : sx - tx
+  const dy = forward ? ty - sy : sy - ty
+  const len = Math.hypot(dx, dy) || 1
+  const nx = (-dy / len) * offset
+  const ny = (dx / len) * offset
+  return [sx + nx, sy + ny, tx + nx, ty + ny]
+}
+
 // All data the draw function needs, stored in a ref to avoid effect teardown
 interface DrawData {
   // Read by the loop rather than closed over: drawData.current is rewritten
   // every render, a closure is not.
-  ontology: Ontology
+  taxonomy: Taxonomy
   nodes: SimNode[]
   edges: GraphEdge[]
   nodeMap: Map<string, SimNode>
@@ -199,12 +211,13 @@ interface DrawData {
   hoveredNodeId: string | null
   selectedNodeId: string | null
   focusedNodeId: string | null
-  searchMatchIds: Set<string> | null
+  searchMatchIds: ReadonlySet<string> | null
   forceParams: ForceParams
   resolved: ResolvedPhysics
   overlay: BandOverlay
   theme: Theme
   edgeStrokes: ReadonlyMap<GraphEdge, EdgeStroke>
+  edgeOffsets: ReadonlyMap<string, number>
   activeSection: ForceSection
   activePushBucket: string | null
   activeGravityBucket: GravityHover | null
@@ -226,7 +239,7 @@ export function GraphCanvas({
   onDoubleClickNode, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-  running, forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket,
+  running, forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket,
   activeGravityBucket, activePullEdge, nodeScale, groupGlows,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
@@ -247,45 +260,44 @@ export function GraphCanvas({
     return m
   }, [nodes])
 
-  // IDs of nodes whose definition appears more than once in the visible set.
+  // IDs of nodes whose entity appears more than once in the visible set.
   // Computed from the visible `nodes` prop so the halo tracks the current filter.
   const dupNodeIds = React.useMemo(() => {
-    const countByDefKey = new Map<string, number>()
-    for (const n of nodes) countByDefKey.set(n.definitionKey, (countByDefKey.get(n.definitionKey) ?? 0) + 1)
+    const countByKey = new Map<string, number>()
+    for (const n of nodes) countByKey.set(copyKeyOf(n), (countByKey.get(copyKeyOf(n)) ?? 0) + 1)
     const result = new Set<string>()
     for (const n of nodes) {
-      if ((countByDefKey.get(n.definitionKey) ?? 0) > 1) result.add(n.id)
+      if ((countByKey.get(copyKeyOf(n)) ?? 0) > 1) result.add(n.id)
     }
     return result
   }, [nodes])
 
-  // The definitionKey of the currently active (hovered or selected) node,
-  // when that node belongs to a duplicate group. Used by the draw loop to
-  // light up all sister copies with the duplicate halo, not just the active
-  // node itself.
+  // The copy key of the currently active (hovered or selected) node, when
+  // that node has copies. Used by the draw loop to light up every copy with
+  // the halo, not just the active node itself.
   const activeDupDefKey = React.useMemo(() => {
     const activeId = hoveredNodeId ?? selectedNodeId
     if (!activeId) return null
     const activeNode = nodeMap.get(activeId)
     if (!activeNode || !dupNodeIds.has(activeId)) return null
-    return activeNode.definitionKey
+    return copyKeyOf(activeNode)
   }, [hoveredNodeId, selectedNodeId, nodeMap, dupNodeIds])
 
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
 
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
-    ontology,
+    taxonomy,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
-    ontology,
+    taxonomy,
     nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
-    forceParams, resolved, overlay, theme, edgeStrokes, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
+    forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   }
 
@@ -311,12 +323,12 @@ export function GraphCanvas({
       // convert to world units by dividing by scale, plus a small slop. A
       // cardinality badge (parameterized family) sits above the body, so grow
       // the target by its extent to keep the badge part of the clickable node.
-      const screenR = ontology.resolveNodeStyle(n).size.r * mul + badgeExtent(n, mul)
+      const screenR = taxonomy.nodeStyleOf(n).size.r * mul + badgeExtent(n, mul)
       const r = screenR / viewport.scale + 4
       if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n
     }
     return null
-  }, [nodes, viewport, nodeScale, ontology])
+  }, [nodes, viewport, nodeScale, taxonomy])
 
   // Mouse handlers
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
@@ -437,9 +449,9 @@ export function GraphCanvas({
       // Resolve theme-tracking colours every frame. Cheap (CSS lookup +
       // string trim per draw) and guarantees the canvas text follows a
       // theme switch without needing a full effect teardown.
-      // Dedicated, high-contrast label colour (darker than --color-text in
+      // Dedicated, high-contrast label colour (darker than --gv-color-text in
       // light themes, brighter in dark) so node names pop off the background.
-      const labelColor = cssVar(canvas, '--color-graph-label', '#0f172a')
+      const labelColor = cssVar(canvas, '--gv-color-graph-label', '#0f172a')
       // Dim variant keeps the same hue, just at low alpha. We synthesise it
       // by appending an alpha to the resolved hex when possible; otherwise
       // fall back to the existing rgba grey.
@@ -502,7 +514,7 @@ export function GraphCanvas({
           const node = d.nodeMap.get(id)
           if (!node) continue
           const [sx, sy] = worldToScreen(vp, node.x, node.y)
-          const gr = d.ontology.resolveNodeStyle(node).size.r * mul + GROUP_GLOW_PAD * glowSwell(g.strength)
+          const gr = d.taxonomy.nodeStyleOf(node).size.r * mul + GROUP_GLOW_PAD * glowSwell(g.strength)
           if (sx + gr < 0 || sx - gr > w || sy + gr < 0 || sy - gr > h) continue
           const a = Math.min(0.92, GROUP_GLOW_CENTER_ALPHA * g.strength)
           const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, gr)
@@ -524,8 +536,9 @@ export function GraphCanvas({
         const tgt = d.nodeMap.get(edge.targetId)
         if (!src || !tgt) continue
 
-        const [sx, sy] = worldToScreen(vp, src.x, src.y)
-        const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
+        const [sx0, sy0] = worldToScreen(vp, src.x, src.y)
+        const [tx0, ty0] = worldToScreen(vp, tgt.x, tgt.y)
+        const [sx, sy, tx, ty] = laneOffset(edge, d.edgeOffsets.get(edge.id) ?? 0, sx0, sy0, tx0, ty0)
 
         if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
           Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
@@ -559,7 +572,7 @@ export function GraphCanvas({
           const angle = Math.atan2(ty - sy, tx - sx)
           // Stop the arrowhead at the target's on-screen edge (screen radius =
           // def.r × nodeSizeMul(scale)) so it tracks the zoom-scaled node body.
-          const tgtR = d.ontology.resolveNodeStyle(tgt).size.r * nodeSizeMul(vp.scale, d.nodeScale)
+          const tgtR = d.taxonomy.nodeStyleOf(tgt).size.r * nodeSizeMul(vp.scale, d.nodeScale)
           const offset = tgtR + 2
           const ax = tx - Math.cos(angle) * offset
           const ay = ty - Math.sin(angle) * offset
@@ -620,7 +633,7 @@ export function GraphCanvas({
           const baseAlpha = highlighted ? 0.28 : 0.05
           const stepAlpha = highlighted ? 0.06 : 0.015
 
-          const color = d.ontology.resolveNodeStyle(node).color[d.theme].fill
+          const color = d.taxonomy.nodeStyleOf(node).color[d.theme].fill
           ctx.strokeStyle = color
 
           const effectiveCharge = Math.abs(chargeFor(d.resolved.push, node)) * pushMul
@@ -672,12 +685,12 @@ export function GraphCanvas({
       if (pullActive || activePullKey) {
         const distMul = d.forceParams.distanceMultiplier
         // Tension palette drawn from the app's own colours (theme-aware) so the
-        // highlight reads as part of the visualizer, not a generic stoplight:
+        // highlight reads as part of the view, not a generic stoplight:
         // amber = stretched, cool blue = compressed, calm
         // timer-teal = near rest.
-        const tensionStretch = cssVar(canvas, '--tension-stretch', '#d97706')
-        const tensionCompress = cssVar(canvas, '--tension-compress', '#7CB9E8')
-        const tensionRest = cssVar(canvas, '--tension-rest', '#7EC8B8')
+        const tensionStretch = cssVar(canvas, '--gv-tension-stretch', '#d97706')
+        const tensionCompress = cssVar(canvas, '--gv-tension-compress', '#7CB9E8')
+        const tensionRest = cssVar(canvas, '--gv-tension-rest', '#7EC8B8')
         for (const edge of d.edges) {
           const src = d.nodeMap.get(edge.sourceId)
           const tgt = d.nodeMap.get(edge.targetId)
@@ -686,8 +699,9 @@ export function GraphCanvas({
           const cat = springFor(d.resolved.spring, edge, src, tgt)
           if (activePullKey && cat.key !== activePullKey) continue
 
-          const [sx, sy] = worldToScreen(vp, src.x, src.y)
-          const [tx, ty] = worldToScreen(vp, tgt.x, tgt.y)
+          const [sx0, sy0] = worldToScreen(vp, src.x, src.y)
+          const [tx0, ty0] = worldToScreen(vp, tgt.x, tgt.y)
+          const [sx, sy, tx, ty] = laneOffset(edge, d.edgeOffsets.get(edge.id) ?? 0, sx0, sy0, tx0, ty0)
           if (Math.max(sx, tx) < -CULL_MARGIN || Math.min(sx, tx) > w + CULL_MARGIN ||
             Math.max(sy, ty) < -CULL_MARGIN || Math.min(sy, ty) > h + CULL_MARGIN) continue
 
@@ -776,7 +790,7 @@ export function GraphCanvas({
         const hover = d.activeGravityBucket
         const fillOf = (bucket: string | undefined): string => {
           const color = bucket !== undefined ? d.overlay.colors.get(bucket) : undefined
-          return color ?? cssVar(canvas, '--color-text-muted', '#94A3B8')
+          return color ?? cssVar(canvas, '--gv-color-text-muted', '#94A3B8')
         }
         const drawnOn = (axis: 'x' | 'y') => hover !== null && hover.axis === axis &&
           (axis === 'y' && d.overlay.rings.length > 0
@@ -810,11 +824,11 @@ export function GraphCanvas({
             const isDimmed = highlight && !isActive
             const color = fillOf(buckets[0])
             if (gradient) {
-              // A scalar axis: one gradient from its 0 end to its 1 end (R31).
+              // A scalar axis: one gradient from its 0 end to its 1 end.
               const z = toScreen(gradient.zero), o = toScreen(gradient.one)
               const g = coord === 'y' ? ctx.createLinearGradient(0, z, 0, o) : ctx.createLinearGradient(z, 0, o, 0)
-              g.addColorStop(0, cssVar(canvas, '--color-text-muted', '#94A3B8'))
-              g.addColorStop(1, cssVar(canvas, '--color-text', '#1E293B'))
+              g.addColorStop(0, cssVar(canvas, '--gv-color-text-muted', '#94A3B8'))
+              g.addColorStop(1, cssVar(canvas, '--gv-color-text', '#1E293B'))
               ctx.fillStyle = g
               ctx.globalAlpha = 0.12
             } else {
@@ -851,12 +865,12 @@ export function GraphCanvas({
       // label may collide with a node drawn later in the same loop.
       const nodeCircles = d.nodes.map(n => {
         const [nx, ny] = worldToScreen(vp, n.x, n.y)
-        return { x: nx, y: ny, r: d.ontology.resolveNodeStyle(n).size.r * mul }
+        return { x: nx, y: ny, r: d.taxonomy.nodeStyleOf(n).size.r * mul }
       })
 
       for (const node of d.nodes) {
         const [sx, sy] = worldToScreen(vp, node.x, node.y)
-        const def = d.ontology.resolveNodeStyle(node)
+        const def = d.taxonomy.nodeStyleOf(node)
         const r = def.size.r * mul
         const hw = r  // nodes are circles: half-width = half-height = r
 
@@ -895,7 +909,7 @@ export function GraphCanvas({
         }
 
         // Orphan indicator — dropped at very low zoom (decorative noise at that scale)
-        if (node.orphan && vp.scale >= DETAIL_REDUCE_SCALE) {
+        if (node.ring === 'dashed' && vp.scale >= DETAIL_REDUCE_SCALE) {
           ctx.save()
           ctx.setLineDash([3, 3])
           ctx.strokeStyle = fill
@@ -906,9 +920,9 @@ export function GraphCanvas({
           ctx.restore()
         }
 
-        // No search-match ring. Per spec § Search Behavior, search is
-        // expressed as opacity only (full vs. DIM_ALPHA above) — the
-        // ring vocabulary is reserved for other decoration.
+        // No search-match ring: search is expressed as opacity only (full vs.
+        // DIM_ALPHA above) — the ring vocabulary is reserved for other
+        // decoration.
 
         // Duplicate halo — colored ring in the node's own fill color drawn on
         // every visible copy of a definition whenever ANY of those copies is
@@ -920,7 +934,7 @@ export function GraphCanvas({
         // selection ring) and uses a slightly thinner stroke so the two rings
         // read as distinct even when they appear together.
         const dupHaloActive = d.activeDupDefKey !== null &&
-          node.definitionKey === d.activeDupDefKey &&
+          copyKeyOf(node) === d.activeDupDefKey &&
           vp.scale >= DETAIL_REDUCE_SCALE
         if (dupHaloActive) {
           ctx.save()
@@ -963,13 +977,11 @@ export function GraphCanvas({
 
         ctx.globalAlpha = 1
 
-        // Cardinality badge — a `× {param}` chip row above a parameterized
-        // family's representative node (issue #100). Gated on the same
-        // elision scale as icons/labels: at very low zoom the chips are noise.
-        // Static nodes (no templateParams) skip this entirely and render as
-        // before.
+        // Badges — the host's chip row above the node. Gated on the same
+        // elision scale as icons and labels: at very low zoom the chips are
+        // noise. A node with none draws without the row.
         if (
-          node.templateParams && node.templateParams.length > 0 &&
+          node.badges && node.badges.length > 0 &&
           vp.scale >= LABEL_ELIDE_SCALE
         ) {
           const badgePx = BADGE_FONT_PX * mul
@@ -981,8 +993,8 @@ export function GraphCanvas({
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
           // Measure each chip, then centre the whole row horizontally on the node.
-          const chips = node.templateParams.map(p => {
-            const text = badgeChipText(p)
+          const chips = node.badges.map(p => {
+            const text = p
             return { text, w: ctx.measureText(text).width + padX * 2 }
           })
           const totalW = chips.reduce((s, c) => s + c.w, 0) + gap * (chips.length - 1)
@@ -1057,7 +1069,7 @@ export function GraphCanvas({
   }, [size]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={containerRef} className="graph-canvas-container">
+    <div ref={containerRef} className="gv-graph-canvas-container">
       <canvas
         ref={canvasRef}
         style={{ width: size.w, height: size.h }}
