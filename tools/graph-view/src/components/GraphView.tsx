@@ -9,7 +9,7 @@ import type { Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
 import { isIdentityMapping } from '../graph/dimension'
 import type { FocusTarget } from '../filter/types'
-import { matchesFocus } from '../filter/types'
+import { matchesFocus, passesSelection } from '../filter/types'
 import type { PresentSets } from './graph-view/present'
 import { presentSetsOf } from './graph-view/present'
 import type { EdgeStroke } from '../graph/scheme'
@@ -273,25 +273,32 @@ export function GraphView({
   // active we return a Set even if empty so the canvas dims everything —
   // an empty search with a query is "no matches yet, all non-matching",
   // not "no search active".
-  const { visibleMatchIds, hiddenMatchCount } = React.useMemo(() => {
-    if (!searchQuery) return { visibleMatchIds: null as Set<string> | null, hiddenMatchCount: 0 }
+  // Hidden matches are counted on the chip hiding them (§ Search and Hidden
+  // Matches): the first declared axis the node fails, under its value there —
+  // the same precedence the tree's bar uses, so the two bars read alike.
+  const { visibleMatchIds, hiddenMatchCount, hiddenMatches } = React.useMemo(() => {
+    const none = new Map<string, ReadonlyMap<string, number>>()
+    if (!searchQuery) return { visibleMatchIds: null as Set<string> | null, hiddenMatchCount: 0, hiddenMatches: none }
     const lq = searchQuery.toLowerCase()
     const sim = simRef.current
-    if (!sim) return { visibleMatchIds: new Set<string>(), hiddenMatchCount: 0 }
+    if (!sim) return { visibleMatchIds: new Set<string>(), hiddenMatchCount: 0, hiddenMatches: none }
 
     const visible = new Set<string>()
     let hidden = 0
+    const byAxis = new Map<string, Map<string, number>>()
     for (const node of sim.nodes) {
-      if (node.name.toLowerCase().includes(lq)) {
-        if (visibleIds.has(node.id)) {
-          visible.add(node.id)
-        } else {
-          hidden++
-        }
-      }
+      if (!node.name.toLowerCase().includes(lq)) continue
+      if (visibleIds.has(node.id)) { visible.add(node.id); continue }
+      hidden++
+      const failing = ontology.filterDimensions.find(d => !passesSelection(filter, [d], dim => ontology.valueOn(node, dim)))
+      const value = failing ? ontology.valueOn(node, failing.id) : undefined
+      if (!failing || value === undefined) continue
+      const tally = byAxis.get(failing.id) ?? new Map<string, number>()
+      tally.set(value, (tally.get(value) ?? 0) + 1)
+      byAxis.set(failing.id, tally)
     }
-    return { visibleMatchIds: visible, hiddenMatchCount: hidden }
-  }, [searchQuery, visibleIds])
+    return { visibleMatchIds: visible, hiddenMatchCount: hidden, hiddenMatches: byAxis }
+  }, [searchQuery, visibleIds, filter, ontology])
 
   // Physics loop + filter-driven reheats. Owns the RAF tick (with one-shot
   // initial fit, cross-view center, fps, and stability stop), the hover tooltip
@@ -575,6 +582,7 @@ export function GraphView({
             searchTitle="Search nodes (/)"
             searchPlaceholder="Search nodes..."
             searchExtra={searchExtra}
+            hiddenMatches={hiddenMatches}
             findings={findings}
           />
         </div>

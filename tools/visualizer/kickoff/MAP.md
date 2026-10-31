@@ -15,7 +15,7 @@ which is worth noticing rather than assuming.
 | `adapter/edge-types.ts` | shim | 176 | **6** files |
 | `adapter/groups.ts` | shim | 2 | `components/GroupsModal.tsx`, `components/WorkflowCanvas.tsx`, `verify/seam-probes.ts` |
 | `adapter/node-type-styles.ts` | shim | 2 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
-| `adapter/node-types.ts` | shim | 148 | **18** files |
+| `adapter/node-types.ts` | shim | 149 | **18** files |
 | `adapter/storage.ts` | shim |  | `components/WorkflowCanvas.tsx` |
 | `adapter/useGraphModel.ts` | shim | 6 | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx`, `verify/seam-probes.ts` |
 | `components/ErrorBars.tsx` | neither |  | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx` |

@@ -45,7 +45,7 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 | field | value |
 |---|---|
 | Runaway ceiling | **300 commits** on `main..HEAD` (enforced; KICKOFF §2.4) |
-| Commits so far | 106 (`main..HEAD`, the whole stack) |
+| Commits so far | 112 (`main..HEAD`, the whole stack; ceiling 300) |
 | Token / wall-clock budget | unset (advisory only) |
 
 ---
@@ -54,17 +54,17 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 9 — Spec alignment** (open on `visualizer/dimensions-unit-9` from unit-8 @ `d71fc2e`; D63 at `4541295`; its review is in (REVIEW_9, 63 findings) and its fixes land after unit-8's close merges in) |
-| Last completed unit | **Unit 8 — The move + packaging** ([PR #177](https://github.com/jmbarzee/temporal-architect/pull/177)) |
+| Current unit | **none** — Units 0–9 are closed and the handoff is written: `kickoff/HANDOFF.md` (KICKOFF §2.5), with the elegance pass (PLAN §6.7) |
+| Last completed unit | **Unit 9 — Spec alignment** ([PR #178](https://github.com/jmbarzee/temporal-architect/pull/178)) |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-9` (from unit-8 @ `d71fc2e`, [PR #178](https://github.com/jmbarzee/temporal-architect/pull/178)); the stack below it: unit-8 (#177) → unit-7 (#175) → unit-6 (#174) → unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
-| Run state | running |
+| Unit branch | `visualizer/dimensions-unit-9` (from unit-8 @ `d71fc2e`, [PR #178](https://github.com/jmbarzee/temporal-architect/pull/178), closed — the top of the stack); the stack below it: unit-8 (#177) → unit-7 (#175) → unit-6 (#174) → unit-5b (#173) → unit-5a (#171) → unit-4 (#169) → unit-3 (#161) → unit-2 → unit-1 → unit-0 → composable-dimensions. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, #160 -> unit-1, #161 -> unit-2, Unit 4's -> unit-3. Nothing needs to merge for the run to continue. |
+| Run state | **complete** — every unit closed, every PR open and stacked, the handoff written; merging is the human's (§7.1) |
 
 ## Counters
 
 | counter | current | target |
 |---|---|---|
-| A — requirements covered | **36** (R4, R5, R6, R7, R8, R9, R10, R11, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34, R35, R36, R38, R39, R40, R41) + R1 partial | 42 |
+| A — requirements covered | **42** (R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, R16, R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31, R32, R33, R34, R35, R36, R37, R38, R39, R40, R41, R42) | 42 |
 | B — blast-radius sites migrated | **36** | 38 |
 | C — leaks in the manifest | **0** | 0 |
 | Gate 6 — import-boundary violations | **0** | 0 |
@@ -185,10 +185,6 @@ eight edges are Unit 8's move list: `FilterBar.tsx` -> `types/ast`;
 `types/decomposition`, `protocol`, `GroupsModal`, `adapter/useGraphModel`;
 `groups.ts` -> `types/decomposition`.
 
-At the close (D64) the total is **1103**: the two gear comments restored in
-the host's theme — vocabulary the move had scrubbed to keep the library at 0,
-back where the words belong. The ratchet is set to **0** / **1103** / **0**.
-
 **Unit 8.** Counter A: R36, R38, R39, R40, R41 — 31 -> 36. Counter B: none
 assigned, none moved — 36.
 
@@ -204,16 +200,23 @@ with that reason: nothing moved into the shim and nothing grew. At the close
 vocabulary the move had scrubbed to keep the library at 0, back where the words
 belong. The ratchet is set to **0** / **1103** / **0**.
 
+**Unit 9.** Counter A: R42 — 36 -> 37; at the handoff the five rows Units 1–2
+satisfied and never ticked (R1, R2, R3, R12, R37) are closed against the tree
+— **42 of 42**. Counter B: none assigned, none moved —
+36. Counter C unchanged at **0**; the total 1103 -> **1104** (D65: the ladder
+named in words in the registry's header). The ratchet is set to **0** /
+**1104** / **0**.
+
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 8 close | pass — both packages; the visualizer's path map reaches the library's source |
+| 1 `tsc --noEmit` | Unit 9 close | pass — both packages; the visualizer's path map reaches the library's source |
 | 2 `npm run build:lib` | Unit 8 close | pass — both packages; the visualizer's artifact bundles the library and its `lib.d.ts` names it nowhere |
 | 2b `npm run dts-gate` | Unit 8 close | pass — the artifact gate, both packages (D64): `build:lib` prunes to what the entry reaches (the library 47 → 15 files, the visualizer 29 → 10), a consumer compiles against a copy outside the repository with `skipLibCheck` off, no shipped declaration imports outside its package or is a private module, and the published stylesheet carries the tokens once per theme. Before that — consumer compile clean, `skipLibCheck` off; 10 declaration files reachable from `lib.d.ts`, none private |
-| 3 `npm run verify` | Unit 8 close | pass — 7/7 goldens match through the alias, every row byte-identical across the move (D62); `static` gains `seamProbes` and `hostProbes` (D64); at the Unit 7 close: every graduated-edge row, summary, Tier B and Tier C row byte-identical across the unit (D59, D60); Tier A gains `contextLines` and, per state, `controls` and `hookedHighlights` (each carrying the whole highlight through `highlightOf`); `static` gains `hiddenPolicy`, `viewProbes` and the `badWhenHidden` refusal |
-| 4 `npm run leak-gate` | Unit 8 close | pass — **0 / 0** over `tools/graph-view/src`, every shipped extension measured; **total 1103 / 1103** (D62's twelve import lines naming the package; D64's two gear comments restored in the host) |
-| 5 browser pass | Unit 8 close | pass — five fixtures in both themes through the library from source (`unit-8-*.png`, `unit-8-*-dark.png`, retaken after the review fixes), panel open, 0 console errors, every count the fixture's full total with every chip on; by hand on nexus: the tokens resolve from the library's stylesheet, chips tint, the Groups control present, and the dev server rebuilt across the package boundary on save |
+| 3 `npm run verify` | Unit 9 close | pass — 7/7 goldens match, no row moves in Unit 9; through the alias, every row byte-identical across the move (D62); `static` gains `seamProbes` and `hostProbes` (D64); at the Unit 7 close: every graduated-edge row, summary, Tier B and Tier C row byte-identical across the unit (D59, D60); Tier A gains `contextLines` and, per state, `controls` and `hookedHighlights` (each carrying the whole highlight through `highlightOf`); `static` gains `hiddenPolicy`, `viewProbes` and the `badWhenHidden` refusal |
+| 4 `npm run leak-gate` | Unit 9 close | pass — **0 / 0** over `tools/graph-view/src`, every shipped extension measured; **total 1104 / 1104** (D65's one word in the registry's header; (D62's twelve import lines naming the package; D64's two gear comments restored in the host) |
+| 5 browser pass | Unit 9 close | pass — by hand on nexus at the default filter, searching "Payment": Namespaces 1, Nexus 4, Activities 5 on the chips and `+10` on the search control, 0 errors (the Graph's per-chip hidden-match badges, REVIEW_9 C1); at the Unit 8 close, five fixtures in both themes through the library from source (`unit-8-*.png`, `unit-8-*-dark.png`, retaken after the review fixes), panel open, 0 console errors, every count the fixture's full total with every chip on; by hand on nexus: the tokens resolve from the library's stylesheet, chips tint, the Groups control present, and the dev server rebuilt across the package boundary on save |
 | 5 browser pass (Unit 7) | Unit 7 close | pass — five fixtures in both themes with a chip toggled off and the toggle asserted to change the counts (`unit-7-*.png`, `unit-7-*-dark.png`; the Nexus chip on the three fixtures that carry it, the Workers chip on stress and decomposition via `--only`), 0 console errors; by hand on nexus: the panel opened on Push first, then the Nexus chip off — tokens 20 → 10, curves 22 → 12, the curves following the toggle (REVIEW_7 C1) |
 | 5 browser pass (Unit 6) | Unit 6 close | pass — five fixtures in both themes with the theme pinned (`unit-6-*.png`, `unit-6-*-dark.png`; `screenshot.mjs` emulates the preference and fails a wrong-theme capture), 0 console errors; by hand on nexus in a dark host: Auto, Light and Dark, the pane light in every token inside the dark shell, chips tinting from the taxonomy in both panes, the choice persisted |
 | 5 browser pass (Unit 5b) | Unit 5b close | pass — five fixtures, 0 console errors, panel-open captures on Gravity / Y Axis / Reach (`unit-5b-*`, via `screenshot.mjs --tab/--subtab/--select`); by hand on nexus and stress: Reach on Y, the 1 handle dragged past the 0 handle, radial, Degree on X, both axes back to Type, and exponent 3 on Reach after the cap — no bounce |
@@ -221,8 +224,8 @@ belong. The ratchet is set to **0** / **1103** / **0**.
 | 5 browser pass (Unit 4) | Unit 4 close | pass — five fixtures, counts identical to Units 0–3, 0 application errors; the Push/Pull tab exercised by hand on multifile: Type → File → Pull, tokens fan out, layout reheats, dropdown reads `Type (7 · 13) \| File (2 · 4) \| Kind (7 · 12)`; a second capture per fixture with the panel open (`unit-4-<fixture>-controls.png`), after the review noted the first set showed it collapsed |
 | 6 `npm run boundary-gate` | Unit 8 close | pass — **0 / 0** across the package boundary, both directions, every edge resolved — relative paths, the alias, the harness as a barrel, stylesheet references, bundler globs, undeclared bare specifiers, path maps in the library's configs (D64); at the Unit 7 close **8 / 8**: the gate now counts an import that resolves to a shim component, and the two edges it had been blind to are `GraphView` → `GroupsModal`, `protocol` (REVIEW_7 C6) |
 | + `npm run pattern-gate` | Unit 8 close | pass — 5 allowlisted (three entries in two files, renamed as their files moved), 0 new |
-| + `npm run map -- --check` | Unit 8 close | pass — up to date, over both trees, the edges into the library restored (D64) |
-| + `npm run surface-gate` | Unit 8 close | pass — 90 names on `src/lib.ts` and 57 on the library's entry, as committed; `export *` refused |
+| + `npm run map -- --check` | Unit 9 close | pass — up to date, over both trees, the edges into the library restored (D64) |
+| + `npm run surface-gate` | Unit 9 close | pass — 90 names on `src/lib.ts` and 57 on the library's entry, as committed; `export *` refused |
 
 All of it runs as one command: `make check-visualizer` from the repo root.
 
@@ -241,9 +244,9 @@ Status: blank = not started · `wip` · `done`.
 
 | R | requirement | unit | proving gate |
 |---|---|---|---|
-| R1 | Ontology: dimensions, keys, values | 1, 2 | 1 + 3 | `wip` — the container and its four seams land in Unit 1; dimensions themselves are Unit 2 |
-| R2 | Nodes carry a dimension map | 2 | 3 |
-| R3 | Host-owned node payload field | 2 | 1 |
+| R1 | Ontology: dimensions, keys, values | 1, 2 | 1 + 3 | `done` — `OntologySpec` declares the style axis, its keys and the filter dimensions; `createOntology` is the one container (Units 1–2; the row was never ticked — closed at the handoff) |
+| R2 | Nodes carry a dimension map | 2 | 3 | `done` — `GraphNode.dimensions: DimensionMap`; every Tier A row reads it (Unit 2; ticked at the handoff) |
+| R3 | Host-owned node payload field | 2 | 1 | `done` — `GraphNode.payload`, opaque to the library, read only by the host's hooks (Unit 2; ticked at the handoff) |
 | R4 | Edge type from node-dimension combinations | 4 | covered (4) — Tier C byte-identical through the dimensional path; Tier A `axes` rows pin the pair rule per fixture |
 | R5 | Edges carry `relation` / `dispatch` dimensions | 4 | covered (4) — Tier A edge lines carry both |
 | R6 | Common filter interface + staple filters | 3 | covered (3) — descriptors + chain |
@@ -252,7 +255,7 @@ Status: blank = not started · `wip` · `done`.
 | R9 | Computed scalars may traverse the graph | 5b | 3 | `done` — D55; reach, degree and depth read `ReadableGraph` |
 | R10 | Colour scheme input, light **and** dark | 6 | 5 | `done` — the taxonomy's `color.{light,dark}` per value and a stroke per edge type (D57); the pane's resolved theme (D58); Gate 5 in both themes |
 | R11 | Base node sizes carried by the colour-scheme input | 6 | 5 | `done` — `size` beside `color` on the same object (D14, D57); `schemeProbes.sizes` |
-| R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw |
+| R12 | Dimensional mapping, non-intersecting enforced | 2 | 1 + runtime throw | `done` — `createDimensionalMapping` throws on a value in two buckets (dimension.ts); `tuningProbes.refusals` pins the duplicate-id and empty-bucket refusals, the intersection refusal itself is not pinned by name (a one-line probe, recommended in HANDOFF) |
 | R13 | Default force dimension configurable | 4 | covered (4) — Gate 5 verified (axis dropdown) |
 | R14 | Default filters/selections configurable | 3 | covered (3) — default selections from the taxonomy |
 | R15 | Default colours configurable | 6 | 5 | `done` — through `OntologySpec`, on the library's entry (D64); `schemeProbes.secondScheme` builds a second palette and `static.hostProbes` a second host; npm publication is deferred (D62) |
@@ -277,12 +280,12 @@ Status: blank = not started · `wip` · `done`.
 | R34 | Misc section retained | 4 | covered (4) — Gate 5 verified, untouched |
 | R35 | Post-filter set determines offered controls | 7 | 5 |
 | R36 | Library in a sibling folder, buildable, extractable | 8 | 2 + 6 | `done` — `tools/graph-view/`, its own manifest, lockfile, build and artifact gate (a consumer compiles against a copy outside the repository); consumed from source by the visualizer (D62); a second host declares, builds and mounts through the entry alone (`static.hostProbes`, D64) |
-| R37 | Shim first-class, own folder | 2 | 6 |
+| R37 | Shim first-class, own folder | 2 | 6 | `done` — `src/adapter/` (build, the taxonomy, edge rules, groups, persistence, the graph model hook), the host half Gate 6 names (Unit 2; ticked at the handoff) |
 | R38 | Zero Temporal information or types in the library | 8 | 4 + 6 | `done` — leak 0 and boundary 0 over the library's own tree, across a package boundary (D61, D62) |
 | R39 | No parser changes | all | `git diff --stat tools/lsp tools/wire-types` empty | `done` — empty over the whole stack at the Unit 8 close |
 | R40 | No new dependencies | all | `package.json` / lockfile diff | `done` — the visualizer's manifest unchanged; the sibling's dependencies a subset of it, pinned to the same versions (D62) |
 | R41 | Does everything it did before | 8 | every golden green + Gate 5 | `done` — 7/7 goldens byte-identical and Gate 5 on every fixture in both themes through the library (D62) |
-| R42 | Spec aligned to the new model | 9 | review |
+| R42 | Spec aligned to the new model | 9 | review | `done` — D63 and D65; the four specs in the model's words, every sentence that names a behaviour read against the code by three lenses (REVIEW_9), the seven the code lacks pointing at their issues; not split (D8) |
 
 **Twenty of these are provable only by Gate 5**, the manual browser pass. That is
 the honest cost of a UI requirement set; see KICKOFF §2.1's caveat. Gate 5 has
@@ -302,6 +305,7 @@ explicit pass criteria and a committed screenshot — use them.
 | **6 — Colour scheme + node sizes** | 4 (`ba93f11`…`4f3c543` + the record) | R10, R11, R15, R16, R21 | B22, B23, B25, B29, B30 | 54 (ceiling 54) | [REVIEW_6.md](reviews/REVIEW_6.md) — 42 findings, 17 clusters, both blockers and every major resolved |
 | **7 — Post-filter-scoped controls** | 4 (`13edaea`…`a57ad8b` + the record) | R35 | B16, B17, B35 | 4 (ceiling 4) | [REVIEW_7.md](reviews/REVIEW_7.md) — 33 findings, 9 clusters, every blocker and major resolved; one minor filed (#176) |
 | **8 — The move + packaging** | 3 (`2e065a5`, `d71fc2e`, `45f559a` + the record) | R36, R38, R39, R40, R41 | — | 0 (ceiling 0) | [REVIEW_8.md](reviews/REVIEW_8.md) — 62 findings, 27 clusters, every blocker and major resolved or filed (#179, #187) |
+| **9 — Spec alignment** | 2 (`4541295`, `54395cb` + the record) | R42 | — | 0 (ceiling 0) | [REVIEW_9.md](reviews/REVIEW_9.md) — 63 findings, 30 clusters, every blocker and major resolved in the text or filed (#180–#186) |
 
 ---
 
@@ -321,6 +325,16 @@ should be read:
 2. **Rule 8 failed on the run that introduced it** (F17): I wrote "isolation
    applies to every stage that mutates" and then did not set it on the verifiers.
    A rule in a document is not a rule until something executes it.
+
+**Unit 9 is closed** on `visualizer/dimensions-unit-9`, branched from unit-8
+@ `d71fc2e`; [PR #178](https://github.com/jmbarzee/temporal-architect/pull/178) (base
+`visualizer/dimensions-unit-8`, per D36). Commits: `4541295` (D63, the
+rewrite), the merge of unit-8's close (`ce4cf84`), the review fixes `54395cb`
+(D65), then the record. `REVIEW_9.md`: 63 findings in 30 clusters, every
+blocker and major resolved in the text — the spec now says what the code
+does, and says where it does not and which issue carries it (#180–#186) —
+and one built, the Graph's per-chip hidden-match badges. Last checkpoint:
+the commit that adds this paragraph.
 
 **Unit 8 is closed** on `visualizer/dimensions-unit-8`, branched from unit-7
 @ `88dc801`; [PR #177](https://github.com/jmbarzee/temporal-architect/pull/177) (base
@@ -736,6 +750,18 @@ side-effect import nothing read (REVIEW_8 C8, C10). The gate now compiles a
 copy of the artifact outside the repository and reads the artifact's own
 stylesheet. The artifact is the claim; the build directory is not it.
 
+**F29 — A spec aligned to a model by rewriting is still a spec read once.**
+D63 rewrote the three specs in the model's words — tier for level, dimension
+map for type string, the hooks, the split — and carried every sentence that
+named a behaviour as it stood: per-chip badges the Graph never drew,
+live-reload continuity no code implements, an empty state one view has,
+seeding at an ancestor the simulation snaps into a band, a tooltip item that
+is not shown. Three lenses reading the same text against the code found 63
+of them (REVIEW_9), seven of which the code never had. The model's sentences
+had been measured; the product's had been edited. F24 for a spec unit: a
+sentence that names a behaviour is a measurement, whether or not the words
+around it changed.
+
 ---
 
 ## Open questions
@@ -824,3 +850,7 @@ that is a change to an [immutable] document and therefore not mine to make.
 | A host-only install compiled the library's source with 77 swallowed type errors | Unit 8 review (C7) | every compile target depends on the sibling's install | 8 |
 | The seams D61 cut had no pin; the entry was one host's import list | Unit 8 review (C21, C18) | `static.seamProbes`; `static.hostProbes` — a second host through the entry alone | 8 |
 | The flash hook left a set lit after a removal-only change within the pending clear | Unit 8 review (C24) | the set written on every change | 8 |
+| The spec promised per-chip hidden-match badges in the Graph; the Graph had one `+N` on the search control | Unit 9 review (C1) | built — `hiddenMatches` per axis and value in both views; Gate 5 by hand (Namespaces 1, Nexus 4, Activities 5, `+10`) | 9 |
+| Sentences stating behaviours the code lacks — live reload continuity, an empty state, the keyboard model, the focus sequence, packaged names, the `?` badge, animated transitions — stood as behaviour | Unit 9 review (C2, C3, C12, C13, C21, C24) | each hedged in the text with its issue (#180–#186); the alignment review (T30) is the standing check | 9 |
+| The graduation examples table stated categories the rule does not produce and omitted ones it does | Unit 9 review (C11) | the table's rows are measured from the goldens' `visibleSubgraph`, every edge type with its count | 9 |
+| D63's own claims (a labelled shape table, shared sizes, the Unit 3 date, TREE_VIEW's fields) did not hold | Unit 9 review (C5, C19, record-11) | corrected in D65 §4; F29 | 9 |
