@@ -90,7 +90,7 @@ The skills turn `.twf` into a deterministic harness for an AI agent — letting 
 - **[temporal-architect-author-go](./skills/temporal-architect-author-go/SKILL.md)** — Generate Go code from a `.twf` design using the Temporal Go SDK.
 - **[temporal-architect-author-infra](./skills/temporal-architect-author-infra/SKILL.md)** — Provision the control-plane resources a design needs — namespaces, Nexus endpoints, search attributes — via the Temporal Cloud Terraform provider or self-hosted `tcld` / `temporal operator`.
 
-The skills assume `twf` is **on PATH** (the extension puts it there on activation; otherwise use any install line above). An agent reads architecture through `twf graph --json`; the visualizer GUI stays human-facing via the `twf.visualize` command — it is not a CLI the agent drives.
+The skills assume `twf` is **on PATH** (the extension puts it there on activation; otherwise use any install line above). An agent reads architecture through `twf graph --json`; the visual view stays human-facing — the `twf.visualize` command inside the editor, or `twf-view` (`brew install jmbarzee/twf/twf-view`), the live visualizer host, as a standalone view outside one.
 
 <details>
 <summary><strong>Planned skills</strong></summary>
