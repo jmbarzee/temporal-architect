@@ -15,7 +15,7 @@
 /* Tree-view filter bar: flat sticky bar with translucent backdrop —
    visually matches the Graph view's overlay treatment. Stays anchored
    to the top of the scroll container as the user scrolls definitions. */
-.workflow-canvas > .canvas-header {
+.workflow-canvas > .gv-canvas-header {
   position: sticky;
   top: 0;
   z-index: 10;

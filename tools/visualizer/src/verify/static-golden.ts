@@ -33,7 +33,7 @@ import { toggleValue, toggleGroup } from '@temporal-architect/graph-view/filter/
 import type { FilterState, PinState, ViewTransition } from '@temporal-architect/graph-view/filter/types'
 import { selectionFor } from '@temporal-architect/graph-view/filter/types'
 import type { Json } from './snapshot'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { sorted, sortedRecord } from './snapshot'
 
 // ── Registries ──────────────────────────────────────────────────────────────

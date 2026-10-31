@@ -20,7 +20,7 @@
 // speed at rest. Both are chaotic float-derived aggregates over the full run, and
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
-import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
+import { filterOfSets } from './filter-states'
 import { bandCenters, bandOverlay, layoutFrame, mappedAxis, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
 import type { BandStripe } from '@temporal-architect/graph-view/graph/forces'
 import type { Graph } from '@temporal-architect/graph-view/graph/model'

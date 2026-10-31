@@ -43,8 +43,10 @@ import '@temporal-architect/graph-view/styles.css'
 - `Graph` — `nodes` and `edges`, each carrying `dimensions` and an opaque
   `payload` the view never reads. Every edge carries `relation`
   (`containment` or `dependency`); a containment edge runs from the child to
-  its container, and the child's `parentId` is that container. `duplicateGroups`
-  indexes nodes by `definitionKey`.
+  its container, and the child's `parentId` is that container. Nodes that are
+  copies of one entity share a `copyKey`; the library indexes them
+  (`copyGroups`), draws their halo and counts them in the hover box. A node
+  may carry `badges` (short texts drawn as chips above it) and a `ring`.
 - `GraphView` — the component. It needs an `OntologyContext.Provider` above it,
   a parent that is a flex column with a height (the pane fills what it is
   given and renders at zero height otherwise), and the `graph`, the filter

@@ -1,5 +1,4 @@
 // Graph data model for the force-directed graph view.
-// Derived from GRAPH_VIEW.md § Graph Data Model.
 
 import type { DimensionMap } from './dimension'
 import { RELATION_DIMENSION } from './dimension'
@@ -38,31 +37,49 @@ export interface GraphNode {
    * from one lookup, and the view reads this one where it needs a parent at
    * O(1) (the ancestor walk, reach, seeding) and the edges where it needs the
    * children (summaries, graduation, drawing). Two readings of one fact, kept
-   * in step by the host that writes them (D64).
+   * in step by the host that writes them.
    */
   parentId?: string
-  /** True when no parent in the hierarchy (uninstantiated definition). */
-  orphan: boolean
+  /**
+   * A mark the host puts on a node that is set apart: a dashed ring drawn
+   * around it. What "set apart" means is the host's — say, a node that
+   * has no container. Absent, no ring.
+   */
+  ring?: 'dashed'
 
   /**
-   * Stable identifier shared across every copy of the same underlying
-   * definition. One definition instantiated in three places produces three
-   * nodes with three distinct `id`s but a single `definitionKey`. Used to look
-   * up sister copies for the duplicate-highlight interaction, and as the
-   * grouping key for `Graph.duplicateGroups`.
-   *
+   * The key every copy of one underlying entity shares. One entity placed in
+   * three containers produces three nodes with three `id`s and one `copyKey`;
+   * the view draws the copies with a halo, lights them together, and counts
+   * them in the hover box ("copy 2 of 3"). Absent, the node is its own key.
    * Like `id`, opaque: the host decides how to derive it.
    */
-  definitionKey: string
+  copyKey?: string
 
   /**
-   * Template holes of a parameterized family of nodes, in first-appearance
-   * order (e.g. `fabric-shard-{org}` → `['org']`). The producer collapses the
-   * family to one representative node; this drives the cardinality badge.
-   * Display-only metadata, never identity. Absent/`[]` means a static node
-   * (renders unchanged).
+   * Short texts drawn as chips above the node, as given — a cardinality, a
+   * tag, a count. Display only, never identity. Absent or empty, no chips.
    */
-  templateParams?: string[]
+  badges?: readonly string[]
+}
+
+/** The key a node's copies share: its `copyKey`, or its own id. */
+export const copyKeyOf = (node: Pick<GraphNode, 'id' | 'copyKey'>): string => node.copyKey ?? node.id
+
+/**
+ * Every node id by the key it shares with its copies, over a whole graph —
+ * the index the view and a host's group overlay read. Derived here from the
+ * nodes, once per graph, rather than supplied beside them.
+ */
+export function copyGroups(graph: Pick<Graph, 'nodes'>): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>()
+  for (const node of graph.nodes.values()) {
+    const key = copyKeyOf(node)
+    const group = out.get(key)
+    if (group) group.add(node.id)
+    else out.set(key, new Set([node.id]))
+  }
+  return out
 }
 
 /**
@@ -90,7 +107,7 @@ export interface GraphEdge {
    * Where this edge sits on every axis it has a value for. The library declares
    * one, `RELATION_DIMENSION`, whose value must be `containment` or `dependency`
    * (`relationOf` throws on anything else, at the first read); a host adds its
-   * own — the first host's `dispatch`, its call kind. A containment edge runs
+   * own (a call kind, say). A containment edge runs
    * from the child (`sourceId`) to its container (`targetId`), and the child's
    * `parentId` names that container.
    */
@@ -103,7 +120,6 @@ export interface GraphEdge {
   payload?: Readonly<Record<string, unknown>>
 }
 
-/** Does this edge express containment (as opposed to a dependency)? */
 /**
  * The edge's relation, as one of the two values the engine knows. Closed and
  * loud: an edge with no relation, or a misspelt one, is a host bug, and letting
@@ -115,6 +131,7 @@ export function relationOf(edge: Pick<GraphEdge, 'dimensions'>): EdgeCategoryKin
   throw new Error(`edge relation ${JSON.stringify(r)} is not one the engine knows; expected "containment" or "dependency"`)
 }
 
+/** Does this edge express containment (as opposed to a dependency)? */
 export function isContainment(edge: Pick<GraphEdge, 'dimensions'>): boolean {
   return relationOf(edge) === 'containment'
 }
@@ -139,12 +156,4 @@ export function readableGraph(graph: Graph): ReadableGraph {
 export interface Graph {
   nodes: Map<string, GraphNode>
   edges: GraphEdge[]
-  /**
-   * `definitionKey` → every node id that carries it: the index of the key the
-   * nodes already hold, built by the host once all nodes exist. A singleton
-   * has one entry; a definition deployed in three places has three. The view
-   * reads it for the duplicate halo and the hover box's "copy N of M", and the
-   * first host for its group overlay.
-   */
-  duplicateGroups: Map<string, Set<string>>
 }

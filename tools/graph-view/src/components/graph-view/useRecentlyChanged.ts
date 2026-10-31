@@ -23,7 +23,7 @@ export function useRecentlyChanged(filter: FilterState): Set<string> {
     prevFilterRef.current = filter
     // Set on every change, empty included: a removal-only change that arrived
     // while an earlier flash was pending used to cancel its timer and leave the
-    // old set lit (REVIEW_8 C24).
+    // old set lit.
     setRecentlyChanged(changed)
     if (changed.size === 0) return
     const timer = setTimeout(() => setRecentlyChanged(new Set()), 450)

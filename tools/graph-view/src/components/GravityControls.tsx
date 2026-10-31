@@ -2,12 +2,11 @@
 // axes, each the same surface (`AxisControls`): a mapping, one column per
 // bucket with its rest band as two handles (or, on a scalar axis, a gradient
 // with its two ends), the axis's strength, the force
-// curve beneath. Y carries the Radial switch — the way radial mode is entered
-// (R27): Y's bands become rings about the origin and X is ignored. Topological
+// curve beneath. Y carries the Radial switch — the way radial mode is entered:
+// Y's bands become rings about the origin and X is ignored. Topological
 // keeps its own switch: a depth→pull curve plus strength/exp sliders. Center
 // gravity is the unexplained baseline (active when both axes are at zero
 // strength and Topological is off), so it has no control here.
-// See GRAPH_VIEW spec § Gravity / Control Panel.
 
 import React from 'react'
 import type { PresentSets } from './GraphControlPanel'
@@ -25,11 +24,11 @@ export type { GravityHover, LayoutAxis } from './AxisControls'
 
 interface GravityControlProps {
   params: ForceParams
-  /** The dense tables the kernels read, resolved once by the view (T25). */
+  /** The dense tables the kernels read, resolved once by the view. */
   resolved: ResolvedPhysics
   /** Every axis X or Y may key on: mappings with their bucket count, and computed scalars. */
   axes: readonly LayoutAxisOption[]
-  /** The band buckets some visible node falls in, per axis — the only columns worth drawing (R35). */
+  /** The band buckets some visible node falls in, per axis — the only columns worth drawing. */
   present: Pick<PresentSets, 'bandX' | 'bandY'>
   onParamChange: (patch: Partial<ForceParams>) => void
   onRelayout: (partial: Partial<ForceParams>) => void
@@ -42,7 +41,7 @@ type GravitySub = 'x' | 'y' | 'topological'
 export function GravityControls({ params, resolved, axes, onParamChange, onRelayout, hovered, onHover, present }: GravityControlProps) {
   const [sub, setSub] = React.useState<GravitySub>('y')
   return (
-    <div className="gravity-controls">
+    <div className="gv-gravity-controls">
       <SubTabs label="Gravity">
         <SubTab label="X Axis" active={sub === 'x'} onSelect={() => setSub('x')} />
         <SubTab label="Y Axis" active={sub === 'y'} onSelect={() => setSub('y')}
@@ -61,11 +60,11 @@ export function GravityControls({ params, resolved, axes, onParamChange, onRelay
             onParamChange={onParamChange} onRelayout={onRelayout} hovered={hovered} onHover={onHover} />
         </SubTabBody>
         <SubTabBody active={sub === 'topological'}>
-          <div className={`gravity-section-tools gravity-topo${params.topologicalEnabled ? '' : ' inactive'}`}>
+          <div className={`gv-gravity-section-tools gv-gravity-topo${params.topologicalEnabled ? '' : ' inactive'}`}>
             <Equation>{<>F = <FormulaValue id="topoStrength">strength</FormulaValue> × depth<sup><FormulaValue id="topoExp">exp</FormulaValue></sup> × d</>}</Equation>
             <TopologicalCurve exp={params.gravityTopologicalExp} />
-            <div className="gravity-slider-row">
-              <label className="graph-control-slider-label">strength</label>
+            <div className="gv-gravity-slider-row">
+              <label className="gv-graph-control-slider-label">strength</label>
               <Slider
                 min={0} max={2} step={0.02}
                 value={params.gravityTopological}
@@ -73,8 +72,8 @@ export function GravityControls({ params, resolved, axes, onParamChange, onRelay
                 popId="topoStrength"
               />
             </div>
-            <div className="gravity-slider-row">
-              <label className="graph-control-slider-label">exp</label>
+            <div className="gv-gravity-slider-row">
+              <label className="gv-graph-control-slider-label">exp</label>
               <Slider
                 min={1} max={6} step={0.1}
                 value={params.gravityTopologicalExp}
@@ -93,9 +92,9 @@ export function GravityControls({ params, resolved, axes, onParamChange, onRelay
 // click stops here), so the state stays legible while another body is shown.
 function ForceSwitch({ label, enabled, onToggle }: { label: string; enabled: boolean; onToggle: (v: boolean) => void }) {
   return (
-    <label className={`switch${enabled ? ' on' : ''}`} onClick={e => e.stopPropagation()} title={label}>
+    <label className={`gv-switch${enabled ? ' on' : ''}`} onClick={e => e.stopPropagation()} title={label}>
       <input type="checkbox" checked={enabled} onChange={e => onToggle(e.target.checked)} aria-label={label} />
-      <span className="switch-track"><span className="switch-knob" /></span>
+      <span className="gv-switch-track"><span className="gv-switch-knob" /></span>
     </label>
   )
 }
@@ -120,11 +119,11 @@ function TopologicalCurve({ exp }: { exp: number }) {
     return `${(x0 + s * (x1 - x0)).toFixed(1)},${(y1 - w * (y1 - y0)).toFixed(1)}`
   }).join(' ')
   return (
-    <svg className="gravity-topo-curve" viewBox={`0 0 ${TC_W} ${TC_H}`} role="img" aria-label="Depth-to-pull contrast curve">
-      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} className="spring-curve-frame" />
-      <polyline points={points} className="gravity-topo-curve-line" />
-      <text x={(x0 + x1) / 2} y={TC_H - 1} textAnchor="middle" className="gravity-topo-curve-axis">depth</text>
-      <text x={5} y={yMid} textAnchor="middle" className="gravity-topo-curve-axis" transform={`rotate(-90 5 ${yMid})`}>pull</text>
+    <svg className="gv-gravity-topo-curve" viewBox={`0 0 ${TC_W} ${TC_H}`} role="img" aria-label="Depth-to-pull contrast curve">
+      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} className="gv-spring-curve-frame" />
+      <polyline points={points} className="gv-gravity-topo-curve-line" />
+      <text x={(x0 + x1) / 2} y={TC_H - 1} textAnchor="middle" className="gv-gravity-topo-curve-axis">depth</text>
+      <text x={5} y={yMid} textAnchor="middle" className="gv-gravity-topo-curve-axis" transform={`rotate(-90 5 ${yMid})`}>pull</text>
     </svg>
   )
 }

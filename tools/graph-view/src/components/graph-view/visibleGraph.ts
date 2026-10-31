@@ -11,9 +11,9 @@
 // visibility predicate and the summary dispatch resolve through the container.
 //
 // Nothing here names a value: the hidden-node policy is the taxonomy's
-// (`whenHidden`, D59), the summaries read its abbreviations (D58), and which
-// of two graduated edges on one pair survives is the taxonomy's `collapse`
-// (D66). An edge with both ends visible is never collapsed and keeps its id:
+// (`whenHidden`), the summaries read its abbreviations, and which
+// of two graduated edges on one pair survives is the taxonomy's `collapse`.
+// An edge with both ends visible is never collapsed and keeps its id:
 // two edges between the same two visible nodes are two facts, and the
 // payload is not read here or anywhere else in the library.
 
@@ -36,7 +36,7 @@ export interface VisibleGraph {
    * Each visible edge's type, by its id, resolved once from the ORIGINAL
    * edge's endpoints: a graduated edge carries the type of the edge it stands
    * for, so the host's rule never meets an endpoint pair its model does not
-   * produce (D66). Undefined for an edge whose type the taxonomy does not
+   * produce. Undefined for an edge whose type the taxonomy does not
    * declare — `validateGraph` names those; here they draw neutral.
    */
   edgeTypes: Map<string, EdgeTypeId | undefined>
@@ -82,11 +82,11 @@ function findNearestVisibleAncestor(
 
 // Resolve a dependency-edge endpoint to one or more visible node ids. Default:
 // "if visible keep, else walk to nearest visible ancestor". A value whose
-// declared policy is `splice` (D59, B16) follows the hidden node's own
+// declared policy is `splice` follows the hidden node's own
 // dependency edges through to the far side instead, so caller → hidden →
 // callee draws as caller → callee. A hidden node is passed through at most
 // once per resolution (`visited`): hidden spliced nodes may call each other,
-// and a cycle among them used to recurse without end (REVIEW_7 C3).
+// and a cycle among them used to recurse without end.
 function resolveDepEndpoint(
   nodeId: string,
   visible: boolean,
@@ -132,7 +132,7 @@ function computeGraphNodeSummary(
 
   if (summaryKind === 'children') {
     // The contained children, counted per style value in the taxonomy's own
-    // order and named by its abbreviation — nothing here knows a value (R16).
+    // order and named by its abbreviation — nothing here knows a value.
     const counts = new Map<string, number>()
     for (const e of visibleEdges) {
       if (!isContainment(e) || e.targetId !== node.id) continue
@@ -219,7 +219,7 @@ export function computeVisibleGraph(
 
   // Graduate edges across hidden nodes. Two passes over the host's edges: the
   // ones drawn as given first, then the projections, because a projection
-  // that lands on a pair an original edge already connects is dropped (D66) —
+  // that lands on a pair an original edge already connects is dropped —
   // the original stands for that reach, whichever order the host listed them.
   const getNode = (id: string) => sim.getNode(id)
   const kept: GraphEdge[] = []
@@ -266,8 +266,8 @@ export function computeVisibleGraph(
         const key = `${rs}→${rt}`
         if (originalPairs.has(key)) continue
         // Two graduated edges on one pair stand for two paths through hidden
-        // nodes that now read as one reach; the taxonomy says which survives
-        // (D66), and the one met first does when it does not say.
+        // nodes that now read as one reach; the taxonomy says which survives,
+        // and the one met first does when it does not say.
         const existing = graduated.get(key)
         if (existing && ontology.collapse(existing.origin, edge) === existing.origin) continue
         graduated.set(key, { origin: edge, edge: { ...edge, sourceId: rs, targetId: rt, id: `grad:${key}` } })

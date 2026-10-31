@@ -24,7 +24,7 @@ export interface SimulationLoopParams {
   visibleNodes: SimNode[]
   downstreamScores: Map<string, number>
   filter: FilterState
-  /** The axes the view filters on — its chain (D66); a change elsewhere in the filter moves nothing here. */
+  /** The axes the view filters on — its chain; a change elsewhere in the filter moves nothing here. */
   axes: readonly DimensionDescriptor[]
   hoveredNodeId: string | null
   selectedNodeId: string | null
@@ -129,7 +129,7 @@ export function useSimulationLoop({
   // React to a filter change, per axis, using that axis's declared reheat policy.
   //
   // This was two hand-written effects — one for types, one for files — and their
-  // differences were the trap (T9). They differ on three of four fields, and the
+  // differences were the trap. They differ on three of four fields, and the
   // one they AGREE on is the one a careless generalisation drops: both call
   // `setRunning(true)`, and omitting it leaves the canvas frozen after every
   // toggle. Writing `resume` out per axis is what keeps that a decision rather

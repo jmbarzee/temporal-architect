@@ -1,5 +1,5 @@
 import React from 'react'
-import { DEF_TYPE_DIMENSION } from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
 import { SingleGearIcon, InterlockingGearsIcon } from './GearIcons'
 import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 // --- Core types ---

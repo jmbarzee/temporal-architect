@@ -2,7 +2,7 @@
 // once, and the three readers that turn them into pixels: the custom-property
 // name a value's colour is published under, the inline variables a pane
 // carries for the resolved theme, and a colour normaliser for the canvas,
-// which cannot throw (T4) and so reads only the forms the taxonomy admits (T6).
+// which cannot throw and so reads only the forms the taxonomy admits.
 
 import type { DimensionValue } from './dimension'
 import type { Ontology } from './ontology'
@@ -44,11 +44,12 @@ export function cssSuffix(value: DimensionValue): string {
 }
 
 /**
- * The custom property a value's fill is published under (`--node-<suffix>`;
- * `-border` for its border). Its own prefix: the chrome's tokens are
- * `--color-*`, and a value id may be anything a host names (D58).
+ * The custom property a value's fill is published under (`--gv-node-<suffix>`;
+ * `-border` for its border). The `gv-` prefix keeps it from a host's own
+ * properties, and its own `node-` stem apart from the chrome's tokens
+ * (`--gv-color-*`): a value id may be anything a host names.
  */
-export const colorVar = (value: DimensionValue): string => `--node-${cssSuffix(value)}`
+export const colorVar = (value: DimensionValue): string => `--gv-node-${cssSuffix(value)}`
 
 /**
  * The inline custom properties a pane carries for one theme: every style
@@ -95,8 +96,8 @@ const REFUSED = new Set<string>()
 /**
  * A colour at an alpha, as `rgba()`, for a canvas gradient or fill. A colour
  * outside the scheme's forms becomes a neutral grey, said once per colour on
- * the console — never a throw, because this runs inside the draw loop (T4,
- * T6). Unreachable for a taxonomy's colours, which are refused at
+ * the console — never a throw, because this runs inside the draw loop.
+ * Unreachable for a taxonomy's colours, which are refused at
  * construction; it guards the library's own group palette and any caller
  * that bypasses the taxonomy.
  */
@@ -114,9 +115,10 @@ export function withAlpha(color: string, alpha: number): string {
 
 /**
  * A stylesheet for a host's own CSS: every style value's fill and border on
- * `:root`, and the dark values that differ under the host's dark selectors.
- * The pane does not read this — it carries `schemeVars` inline — so a host
- * that styles nothing of its own by node type never needs it.
+ * `:root`, and the dark values that differ under `[data-theme="dark"]` — the
+ * one selector the library themes by. The pane does not read this — it
+ * carries `schemeVars` inline — so a host that styles nothing of its own by
+ * node value never needs it.
  */
 export function schemeStylesheet(ontology: Ontology): string {
   const lightVars: string[] = []
@@ -130,6 +132,6 @@ export function schemeStylesheet(ontology: Ontology): string {
     if (dark.border !== light.border) darkVars.push(`  ${v}-border: ${dark.border};`)
   }
   const parts: string[] = [`:root {\n${lightVars.join('\n')}\n}`]
-  if (darkVars.length > 0) parts.push(`.vscode-dark,\n[data-theme="dark"] {\n${darkVars.join('\n')}\n}`)
+  if (darkVars.length > 0) parts.push(`[data-theme="dark"] {\n${darkVars.join('\n')}\n}`)
   return parts.join('\n')
 }

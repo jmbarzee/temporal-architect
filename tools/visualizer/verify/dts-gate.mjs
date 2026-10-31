@@ -106,11 +106,32 @@ if (!existsSync(cssPath)) { console.error(`FAIL ${relative(PKG_ROOT, cssPath)} i
 else {
   const css = readFileSync(cssPath, 'utf8')
   // The themed tokens once per theme block; the fonts, which no theme changes, once.
-  for (const [token, expected] of [['--accent:', 2], ['--color-bg:', 2], ['--font-sans:', 1]]) {
+  for (const [token, expected] of [['--gv-accent:', 2], ['--gv-color-bg:', 2], ['--gv-font-sans:', 1]]) {
     const n = (css.match(new RegExp(token.replace(/[-:]/g, '\\$&'), 'g')) ?? []).length
     if (n !== expected) { console.error(`FAIL published stylesheet: ${token} declared ${n} time(s), expected ${expected} — the token sheet is missing or doubled.`); failed = true }
   }
   if (!failed) console.log('published stylesheet: the design tokens are declared, once per theme where themed')
+}
+
+// 5. No project record reaches a consumer's IDE hover. The doc comments ship
+//    with the declarations; a decision, trap or review id, a plan section or
+//    the kickoff folder named in one of them means nothing outside this
+//    repository. Only comments are read, so an identifier in code is not a hit.
+const RECORD = /\b(?:D\d{1,3}|T\d{1,2}|B\d{1,2}|R\d{1,2}|C\d{1,2}|REVIEW_\d+)\b|PLAN §|KICKOFF/
+const records = []
+for (const file of shipped) {
+  const text = readFileSync(file, 'utf8')
+  for (const comment of text.match(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g) ?? []) {
+    const m = RECORD.exec(comment)
+    if (m) records.push(`${relative(PKG_ROOT, file)}: ${JSON.stringify(m[0])} in ${JSON.stringify(comment.replace(/\s+/g, ' ').slice(0, 80))}`)
+  }
+}
+if (records.length) {
+  console.error('FAIL published declarations carry project records in their doc comments:')
+  for (const r of records) console.error('  ' + r)
+  failed = true
+} else {
+  console.log(`published docs: no project record in ${shipped.length} declaration file(s)`)
 }
 
 process.exit(failed ? 1 : 0)

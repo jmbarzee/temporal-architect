@@ -79,7 +79,7 @@ export function useHighlight(
     : null
 
   // Transitive dependency highlighting: a directional walk from the active
-  // node, which the host may widen or replace through its taxonomy (D59) —
+  // node, which the host may widen or replace through its taxonomy —
   // a value that relates to others by its own metadata says so there, not
   // here. Sister copies are intentionally NOT added (the canvas draws their
   // duplicate halo separately).

@@ -2,8 +2,7 @@
 // charge-falloff visualization (the read-out), linked by a shared hovered-type
 // state (the DimensionValue). Thin wrappers over the shared ForceMap2D / ForceCurves
 // primitives — this file owns only the charge-specific math (one solid token
-// per node type, inverse-power falloff curves). See GRAPH_VIEW.md § Control
-// Panel → PUSH.
+// per node type, inverse-power falloff curves).
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
@@ -30,9 +29,9 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 interface ChargeControlProps {
   params: ForceParams
-  /** The dense tables the kernels read, resolved once by the view (T25). */
+  /** The dense tables the kernels read, resolved once by the view. */
   resolved: ResolvedPhysics
-  /** The push buckets some visible node falls in — the only ones worth a token (R35). */
+  /** The push buckets some visible node falls in — the only ones worth a token. */
   present: ReadonlySet<string>
   onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active bucket on the push axis — links the map, the curves, and the canvas.
@@ -47,7 +46,7 @@ interface ChargeControlProps {
 export function ChargeMap({ params, resolved, present, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
   const ontology = useOntology()
   const { push } = resolved
-  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  // Only the buckets the visible set holds; the tuning keeps the rest.
   const shown = push.mapping.buckets.filter(b => present.has(b.id))
   const tokens: MapToken[] = shown.map(b => ({
     id: b.id,
@@ -102,7 +101,7 @@ export function ChargeMap({ params, resolved, present, onParamChange, hoveredBuc
 export function ChargeCurves({ params, resolved, present, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
   const ontology = useOntology()
   const { push } = resolved
-  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  // Only the buckets the visible set holds; the tuning keeps the rest.
   const shown = push.mapping.buckets.filter(b => present.has(b.id))
   const pushMul = params.pushMultiplier
   const crMul = params.coreRadiusMultiplier

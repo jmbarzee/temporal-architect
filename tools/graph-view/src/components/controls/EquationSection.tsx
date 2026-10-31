@@ -12,17 +12,17 @@ export function EquationSection({ subtitle, equation, onHover, children }: {
 }) {
   return (
     <div
-      className="graph-control-equation-section"
+      className="gv-graph-control-equation-section"
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
     >
       {subtitle && (
-        <div className="graph-control-equation-header">
-          <span className="graph-control-equation-subtitle">({subtitle})</span>
+        <div className="gv-graph-control-equation-header">
+          <span className="gv-graph-control-equation-subtitle">({subtitle})</span>
         </div>
       )}
       <Equation>{equation}</Equation>
-      <div className="graph-control-equation-body">
+      <div className="gv-graph-control-equation-body">
         {children}
       </div>
     </div>

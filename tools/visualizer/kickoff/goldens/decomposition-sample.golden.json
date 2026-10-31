@@ -93,7 +93,7 @@
     },
     "fixture": "decomposition-sample",
     "graph": {
-      "duplicateGroups": {
+      "copyGroups": {
         "activity:AlertComplianceViolation": [
           "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination"
         ],
@@ -286,7 +286,7 @@
       "nodeCount": 37,
       "nodes": [
         {
-          "definitionKey": "activity:AlertComplianceViolation",
+          "copyKey": "activity:AlertComplianceViolation",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -294,11 +294,11 @@
           },
           "id": "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination",
           "name": "AlertComplianceViolation",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:ApplyDocumentReview",
+          "copyKey": "activity:ApplyDocumentReview",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -306,11 +306,11 @@
           },
           "id": "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination",
           "name": "ApplyDocumentReview",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:AuthenticateResume",
+          "copyKey": "activity:AuthenticateResume",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -318,11 +318,11 @@
           },
           "id": "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination",
           "name": "AuthenticateResume",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:CalculateDTIAndLTV",
+          "copyKey": "activity:CalculateDTIAndLTV",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -330,11 +330,11 @@
           },
           "id": "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination",
           "name": "CalculateDTIAndLTV",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:CheckDocumentExpiration",
+          "copyKey": "activity:CheckDocumentExpiration",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -342,11 +342,11 @@
           },
           "id": "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination",
           "name": "CheckDocumentExpiration",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:DeliverDisclosure",
+          "copyKey": "activity:DeliverDisclosure",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -354,11 +354,11 @@
           },
           "id": "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination",
           "name": "DeliverDisclosure",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:EvaluateDocumentCompleteness",
+          "copyKey": "activity:EvaluateDocumentCompleteness",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -366,11 +366,11 @@
           },
           "id": "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination",
           "name": "EvaluateDocumentCompleteness",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:EvaluateEligibility",
+          "copyKey": "activity:EvaluateEligibility",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -378,11 +378,11 @@
           },
           "id": "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination",
           "name": "EvaluateEligibility",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:GenerateLoanEstimate",
+          "copyKey": "activity:GenerateLoanEstimate",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -390,11 +390,11 @@
           },
           "id": "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination",
           "name": "GenerateLoanEstimate",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:HandoffToClosing",
+          "copyKey": "activity:HandoffToClosing",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -402,11 +402,11 @@
           },
           "id": "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination",
           "name": "HandoffToClosing",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:LoadApplicationState",
+          "copyKey": "activity:LoadApplicationState",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -414,11 +414,11 @@
           },
           "id": "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination",
           "name": "LoadApplicationState",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:LockRate",
+          "copyKey": "activity:LockRate",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -426,11 +426,11 @@
           },
           "id": "activity:LockRate/worker:loanWorker/namespace:loanOrigination",
           "name": "LockRate",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:MarkConditionCleared",
+          "copyKey": "activity:MarkConditionCleared",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -438,11 +438,11 @@
           },
           "id": "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination",
           "name": "MarkConditionCleared",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:NotifyBorrowerMilestone",
+          "copyKey": "activity:NotifyBorrowerMilestone",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -450,11 +450,11 @@
           },
           "id": "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination",
           "name": "NotifyBorrowerMilestone",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:NotifyConditionsAssigned",
+          "copyKey": "activity:NotifyConditionsAssigned",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -462,11 +462,11 @@
           },
           "id": "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination",
           "name": "NotifyConditionsAssigned",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:PullCredit",
+          "copyKey": "activity:PullCredit",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -474,11 +474,11 @@
           },
           "id": "activity:PullCredit/worker:loanWorker/namespace:loanOrigination",
           "name": "PullCredit",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:RecordAuditEvent",
+          "copyKey": "activity:RecordAuditEvent",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -486,11 +486,11 @@
           },
           "id": "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination",
           "name": "RecordAuditEvent",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:RecordCondition",
+          "copyKey": "activity:RecordCondition",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -498,11 +498,11 @@
           },
           "id": "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination",
           "name": "RecordCondition",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:RunAutomatedUnderwriting",
+          "copyKey": "activity:RunAutomatedUnderwriting",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -510,11 +510,11 @@
           },
           "id": "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination",
           "name": "RunAutomatedUnderwriting",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:SaveApplicationStep",
+          "copyKey": "activity:SaveApplicationStep",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -522,11 +522,11 @@
           },
           "id": "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination",
           "name": "SaveApplicationStep",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:SendAdverseActionNotice",
+          "copyKey": "activity:SendAdverseActionNotice",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -534,11 +534,11 @@
           },
           "id": "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination",
           "name": "SendAdverseActionNotice",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:SendConditionReminder",
+          "copyKey": "activity:SendConditionReminder",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -546,11 +546,11 @@
           },
           "id": "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination",
           "name": "SendConditionReminder",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:SendDocumentRefreshAlert",
+          "copyKey": "activity:SendDocumentRefreshAlert",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -558,11 +558,11 @@
           },
           "id": "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination",
           "name": "SendDocumentRefreshAlert",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:SendLockExpirationAlert",
+          "copyKey": "activity:SendLockExpirationAlert",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -570,11 +570,11 @@
           },
           "id": "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination",
           "name": "SendLockExpirationAlert",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:SendNudgeEmail",
+          "copyKey": "activity:SendNudgeEmail",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -582,11 +582,11 @@
           },
           "id": "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination",
           "name": "SendNudgeEmail",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:StoreDocument",
+          "copyKey": "activity:StoreDocument",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -594,11 +594,11 @@
           },
           "id": "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination",
           "name": "StoreDocument",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:ValidateConditionClearance",
+          "copyKey": "activity:ValidateConditionClearance",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -606,11 +606,11 @@
           },
           "id": "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateConditionClearance",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:ValidateDocument",
+          "copyKey": "activity:ValidateDocument",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -618,11 +618,11 @@
           },
           "id": "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateDocument",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:ValidateStep",
+          "copyKey": "activity:ValidateStep",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -630,11 +630,11 @@
           },
           "id": "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateStep",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "activity:VerifyTridCompliance",
+          "copyKey": "activity:VerifyTridCompliance",
           "dimensions": {
             "defType": "activityDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -642,11 +642,11 @@
           },
           "id": "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination",
           "name": "VerifyTridCompliance",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "namespace:loanOrigination",
+          "copyKey": "namespace:loanOrigination",
           "dimensions": {
             "defType": "namespaceDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -654,10 +654,10 @@
           },
           "id": "namespace:loanOrigination",
           "name": "loanOrigination",
-          "orphan": false
+          "ring": null
         },
         {
-          "definitionKey": "worker:loanWorker",
+          "copyKey": "worker:loanWorker",
           "dimensions": {
             "defType": "workerDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -665,12 +665,12 @@
           },
           "id": "worker:loanWorker/namespace:loanOrigination",
           "name": "loanWorker",
-          "orphan": false,
           "parentId": "namespace:loanOrigination",
-          "queue": "loan-origination"
+          "queue": "loan-origination",
+          "ring": null
         },
         {
-          "definitionKey": "workflow:ConditionLoop",
+          "copyKey": "workflow:ConditionLoop",
           "dimensions": {
             "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -678,11 +678,11 @@
           },
           "id": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
           "name": "ConditionLoop",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "workflow:DocumentCollection",
+          "copyKey": "workflow:DocumentCollection",
           "dimensions": {
             "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -690,11 +690,11 @@
           },
           "id": "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination",
           "name": "DocumentCollection",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "workflow:IntakeWizard",
+          "copyKey": "workflow:IntakeWizard",
           "dimensions": {
             "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -702,11 +702,11 @@
           },
           "id": "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination",
           "name": "IntakeWizard",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "workflow:LoanLifecycle",
+          "copyKey": "workflow:LoanLifecycle",
           "dimensions": {
             "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -714,11 +714,11 @@
           },
           "id": "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination",
           "name": "LoanLifecycle",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         },
         {
-          "definitionKey": "workflow:RateLockMonitor",
+          "copyKey": "workflow:RateLockMonitor",
           "dimensions": {
             "defType": "workflowDef",
             "sourceFile": "resumable-loan-application.twf",
@@ -726,8 +726,8 @@
           },
           "id": "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination",
           "name": "RateLockMonitor",
-          "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination"
+          "parentId": "worker:loanWorker/namespace:loanOrigination",
+          "ring": null
         }
       ],
       "sourceFiles": [

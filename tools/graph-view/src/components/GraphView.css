@@ -1,55 +1,55 @@
-/* Graph view: overlay, bottom controls, tooltip, search, shortcuts — extracted from styles/index.css (issue #56). */
+/* Graph view: overlay, bottom controls, tooltip, search, shortcuts. */
 /* === Graph View === */
-.graph-view {
+.gv-graph-view {
   flex: 1;
   position: relative;
-  background: var(--color-bg-gradient);
+  background: var(--gv-color-bg-gradient);
   overflow: hidden;
 }
 
-/* The pane is focusable when its keyboard is scoped to it (D66): the ring
+/* The pane is focusable when its keyboard is scoped to it: the ring
    says the shortcuts are live; Escape with nothing to close gives focus back. */
-.graph-view:focus-visible {
-  outline: 2px solid var(--focus-ring-color);
+.gv-graph-view:focus-visible {
+  outline: 2px solid var(--gv-focus-ring-color);
   outline-offset: -2px;
 }
 
-/* The pane's own diagnostics: what the host's graph got wrong, under the bar
-   (D66). Errors name edges the view does not draw; warnings, things it draws
+/* The pane's own diagnostics: what the host's graph got wrong, under the bar.
+   Errors name edges the view does not draw; warnings, things it draws
    but the host should know. */
-.graph-diagnostics {
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+.gv-graph-diagnostics {
+  background: color-mix(in srgb, var(--gv-color-surface) 92%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-border);
-  border-left: 3px solid var(--diagnostic-warning);
-  font-family: var(--font-sans);
+  border-bottom: 1px solid var(--gv-color-border);
+  border-left: 3px solid var(--gv-diagnostic-warning);
+  font-family: var(--gv-font-sans);
   font-size: 12px;
-  color: var(--color-text);
+  color: var(--gv-color-text);
 }
-.graph-diagnostics.has-errors { border-left-color: var(--diagnostic-error); }
-.graph-diagnostics > summary {
+.gv-graph-diagnostics.has-errors { border-left-color: var(--gv-diagnostic-error); }
+.gv-graph-diagnostics > summary {
   cursor: pointer;
   padding: 4px 12px;
-  color: var(--diagnostic-warning);
+  color: var(--gv-diagnostic-warning);
   font-weight: 500;
 }
-.graph-diagnostics.has-errors > summary { color: var(--diagnostic-error); }
-.graph-diagnostics > ul {
+.gv-graph-diagnostics.has-errors > summary { color: var(--gv-diagnostic-error); }
+.gv-graph-diagnostics > ul {
   margin: 0;
   padding: 2px 12px 8px 28px;
   max-height: 160px;
   overflow-y: auto;
 }
-.graph-diagnostic { margin: 2px 0; }
-.graph-diagnostic code { font-family: var(--font-mono); font-size: 11px; margin-right: 6px; }
-.graph-diagnostic.error code { color: var(--diagnostic-error); }
-.graph-diagnostic.warning code { color: var(--diagnostic-warning); }
+.gv-graph-diagnostic { margin: 2px 0; }
+.gv-graph-diagnostic code { font-family: var(--gv-font-mono); font-size: 11px; margin-right: 6px; }
+.gv-graph-diagnostic.error code { color: var(--gv-diagnostic-error); }
+.gv-graph-diagnostic.warning code { color: var(--gv-diagnostic-warning); }
 
 /* Floating overlay: filter bar + toolbar + errors header. Sits above
    the full-viewport canvas so zoomed content can extend visibly under
-   the overlay edges (spec § Overlay Layout). */
-.graph-overlay {
+   the overlay edges. */
+.gv-graph-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -65,19 +65,19 @@
   pointer-events: none;
 }
 
-.graph-overlay > * {
+.gv-graph-overlay > * {
   pointer-events: auto;
 }
 
 /* Filter bar context override: flat bar (no card radius/shadow/margin)
    and translucent backdrop so canvas content is visible underneath. */
-.graph-view .canvas-header {
+.gv-graph-view .gv-canvas-header {
   border-radius: 0;
   border: none;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--gv-color-border);
   box-shadow: none;
   margin-bottom: 0;
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  background: color-mix(in srgb, var(--gv-color-surface) 88%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -85,8 +85,8 @@
 /* Graph bottom controls — floating, anchored over the canvas. The left
    carries the node/edge counts; the centre carries the simulation controls
    and the live fps. */
-.graph-bottom-left,
-.graph-bottom-center {
+.gv-graph-bottom-left,
+.gv-graph-bottom-center {
   position: absolute;
   bottom: 12px;
   z-index: 10;
@@ -96,40 +96,40 @@
   pointer-events: auto;
 }
 
-.graph-bottom-left {
+.gv-graph-bottom-left {
   left: 12px;
   transition: left 0.2s ease;
 }
 
 /* Shift right of the keyboard-shortcuts panel when it's open. */
-.graph-bottom-left.shifted {
+.gv-graph-bottom-left.shifted {
   left: 224px;
 }
 
-.graph-bottom-center {
+.gv-graph-bottom-center {
   left: 50%;
   transform: translateX(-50%);
 }
 
-.graph-count {
+.gv-graph-count {
   font-size: 12px;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  color: var(--gv-color-text-muted);
+  font-family: var(--gv-font-mono);
   padding: 3px 8px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  background: color-mix(in srgb, var(--gv-color-surface) 80%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-.graph-count-fps {
+.gv-graph-count-fps {
   font-size: 12px;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  color: var(--gv-color-text-muted);
+  font-family: var(--gv-font-mono);
   opacity: 0.7;
   padding: 3px 8px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  background: color-mix(in srgb, var(--gv-color-surface) 80%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   /* Fixed slot + centred text so the readout's changing digit count never
@@ -141,40 +141,40 @@
 
 /* Paused: keep the box (and its reserved width) but make it invisible, so the
    Play/Pause button doesn't shift when ticking starts/stops. */
-.graph-count-fps.hidden {
+.gv-graph-count-fps.hidden {
   visibility: hidden;
 }
 
-.graph-toolbar-btn {
+.gv-graph-toolbar-btn {
   padding: 3px 10px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-muted);
-  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  color: var(--gv-color-text-muted);
+  background: color-mix(in srgb, var(--gv-color-surface) 85%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--gv-color-border);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
-  font-family: var(--font-sans);
+  font-family: var(--gv-font-sans);
 }
 
-.graph-toolbar-btn:hover {
-  color: var(--color-text);
-  border-color: var(--accent);
+.gv-graph-toolbar-btn:hover {
+  color: var(--gv-color-text);
+  border-color: var(--gv-accent);
 }
 
-.graph-toolbar-btn.active {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
+.gv-graph-toolbar-btn.active {
+  color: var(--gv-accent);
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
 }
 
 /* Graph Canvas Area — fills the full viewport. The floating overlay
    sits on top of this via z-index, with bleed-under as the affordance
    that zoomed content extends beyond the visible chrome. */
-.graph-canvas-area {
+.gv-graph-canvas-area {
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -183,88 +183,88 @@
 }
 
 /* Graph Canvas Container — immediately follows the toolbar */
-.graph-canvas-container {
+.gv-graph-canvas-container {
   flex: 1;
   position: relative;
   overflow: hidden;
 }
 
-.graph-canvas-container canvas {
+.gv-graph-canvas-container canvas {
   display: block;
   cursor: grab;
 }
 
-.graph-canvas-container canvas:active {
+.gv-graph-canvas-container canvas:active {
   cursor: grabbing;
 }
 
 /* Hover Info Tooltip */
-.graph-hover-tooltip {
+.gv-graph-hover-tooltip {
   position: absolute;
   transform: translate(14px, -50%);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
   border-radius: 6px;
   padding: 8px 10px;
-  /* Interactive: the tooltip carries a "Show in Tree" button, so it must
+  /* Interactive: the tooltip carries the host's cross-view button, so it must
      capture pointer events. A grace period in GraphView keeps it open while
      the pointer travels from the node onto it. */
   pointer-events: auto;
   z-index: 20;
   min-width: 140px;
   max-width: 220px;
-  box-shadow: var(--tooltip-shadow);
+  box-shadow: var(--gv-tooltip-shadow);
 }
 
-/* "Show in Tree" button inside the hover tooltip. */
-.tooltip-cross-view {
+/* The host's cross-view button inside the hover tooltip. */
+.gv-tooltip-cross-view {
   margin-top: 8px;
   width: 100%;
   padding: 4px 8px;
   font-size: 11px;
   font-weight: 500;
-  font-family: var(--font-sans);
-  color: var(--color-text-muted);
+  font-family: var(--gv-font-sans);
+  color: var(--gv-color-text-muted);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--gv-color-border);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
-.tooltip-cross-view:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
+.gv-tooltip-cross-view:hover {
+  color: var(--gv-accent);
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
 }
 
-.tooltip-identity {
+.gv-tooltip-identity {
   display: flex;
   align-items: center;
   gap: 5px;
   margin-bottom: 4px;
 }
 
-.tooltip-type-icon {
+.gv-tooltip-type-icon {
   font-size: 11px;
   line-height: 1;
   flex-shrink: 0;
 }
 
-.tooltip-name {
-  font-family: var(--font-mono);
+.gv-tooltip-name {
+  font-family: var(--gv-font-mono);
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--gv-color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.tooltip-parent {
+.gv-tooltip-parent {
   font-size: 11px;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  color: var(--gv-color-text-muted);
+  font-family: var(--gv-font-mono);
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -273,21 +273,21 @@
 
 /* Composition counts (the children a container holds) for container and
    host nodes — relocated here from the under-node badge. */
-.tooltip-summary {
+.gv-tooltip-summary {
   font-size: 11px;
-  color: var(--color-text);
-  font-family: var(--font-mono);
+  color: var(--gv-color-text);
+  font-family: var(--gv-font-mono);
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.tooltip-file {
+.gv-tooltip-file {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   opacity: 0.7;
-  font-family: var(--font-mono);
+  font-family: var(--gv-font-mono);
   margin-bottom: 6px;
   white-space: nowrap;
 }
@@ -297,31 +297,31 @@
    accent from the selection ring so the user can connect
    "purple lights up around the sister nodes when I hover this one"
    with "tooltip confirms there are multiple copies". */
-.tooltip-duplicates {
+.gv-tooltip-duplicates {
   font-size: 10px;
-  font-family: var(--font-mono);
+  font-family: var(--gv-font-mono);
   color: #8B7EC8;
   opacity: 0.85;
   margin-bottom: 6px;
   white-space: nowrap;
 }
 
-.tooltip-connections {
+.gv-tooltip-connections {
   display: flex;
   gap: 8px;
   margin-bottom: 4px;
 }
 
-.tooltip-conn-out,
-.tooltip-conn-in {
+.gv-tooltip-conn-out,
+.gv-tooltip-conn-in {
   font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--color-text);
+  font-family: var(--gv-font-mono);
+  color: var(--gv-color-text);
 }
 
-.tooltip-direction {
+.gv-tooltip-direction {
   font-size: 9px;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   opacity: 0.6;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -330,7 +330,7 @@
 
 
 /* Hidden match badge inside the shared search control */
-.header-search-badge {
+.gv-header-search-badge {
   padding: 1px 6px;
   font-size: 10px;
   font-weight: 600;
@@ -341,16 +341,16 @@
 }
 
 /* Graph Search Results Dropdown */
-.graph-search-results {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+.gv-graph-search-results {
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
   border-top: none;
   max-height: 200px;
   overflow-y: auto;
   flex-shrink: 0;
 }
 
-.graph-search-result {
+.gv-graph-search-result {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -360,35 +360,35 @@
   background: transparent;
   cursor: pointer;
   text-align: left;
-  font-family: var(--font-sans);
+  font-family: var(--gv-font-sans);
   font-size: 12px;
-  color: var(--color-text);
+  color: var(--gv-color-text);
   transition: background 0.1s;
 }
 
-.graph-search-result:hover {
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
+.gv-graph-search-result:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
 }
 
-.graph-search-result-type {
+.gv-graph-search-result-type {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   text-transform: uppercase;
   min-width: 60px;
 }
 
-.graph-search-result-name {
-  font-family: var(--font-mono);
+.gv-graph-search-result-name {
+  font-family: var(--gv-font-mono);
   font-weight: 500;
 }
 
 /* Shortcuts Panel */
-.graph-shortcuts-panel {
+.gv-graph-shortcuts-panel {
   position: absolute;
   bottom: 12px;
   left: 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 10;
@@ -396,51 +396,51 @@
   min-width: 200px;
 }
 
-.graph-shortcuts-title {
+.gv-graph-shortcuts-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--gv-color-text);
   margin-bottom: 8px;
 }
 
-.graph-shortcuts-close {
+.gv-graph-shortcuts-close {
   border: none;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   font-size: 16px;
   cursor: pointer;
   padding: 0 2px;
   line-height: 1;
 }
 
-.graph-shortcuts-list {
+.gv-graph-shortcuts-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.graph-shortcut-row {
+.gv-graph-shortcut-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.graph-shortcut-key {
-  font-family: var(--font-mono);
+.gv-graph-shortcut-key {
+  font-family: var(--gv-font-mono);
   font-size: 10px;
-  background: var(--key-bg);
-  border: 1px solid var(--color-border);
+  background: var(--gv-key-bg);
+  border: 1px solid var(--gv-color-border);
   border-radius: 3px;
   padding: 1px 5px;
   min-width: 80px;
-  color: var(--color-text);
+  color: var(--gv-color-text);
 }
 
-.graph-shortcut-desc {
+.gv-graph-shortcut-desc {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
 }
 

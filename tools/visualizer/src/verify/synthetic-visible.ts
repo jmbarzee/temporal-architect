@@ -17,8 +17,9 @@
 
 import { DISPATCH_DIMENSION } from '../adapter/edge-types'
 import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
-import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
+import { filterOfSets } from './filter-states'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
+import { copyKeyOf } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
 import type { SimNode } from '@temporal-architect/graph-view/graph/simulation'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
@@ -38,8 +39,8 @@ function n(
     id,
     dimensions: dimensionsFor(nodeType, sourceFile),
     name: id,
-    orphan: parentId === undefined,
-    definitionKey: `${nodeType}:${id}`,
+    ring: parentId === undefined ? 'dashed' : undefined,
+    copyKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
     x: 0, y: 0, vx: 0, vy: 0, pinned: false,
   }
@@ -57,8 +58,8 @@ const NODES: SimNode[] = [
   n('op', 'nexusOperation', 'svc', FILE_A),
   n('backing', 'workflow', 'wkB', FILE_B),
   n('act', 'activity', 'wk', FILE_A),
-  // Same definitionKey as `act` — a second deployment of one definition.
-  { ...n('actCopy', 'activity', 'wkB', FILE_B), definitionKey: 'activity:act' },
+  // Same copyKey as `act` — a second deployment of one definition.
+  { ...n('actCopy', 'activity', 'wkB', FILE_B), copyKey: 'activity:act' },
 ]
 
 const EDGES: GraphEdge[] = [
@@ -130,7 +131,7 @@ export function syntheticVisible(): Json {
       dimensions: { ...node.dimensions },
       parentId: node.parentId ?? null,
 
-      definitionKey: node.definitionKey,
+      copyKey: copyKeyOf(node),
     })),
     cases: sortedRecord(cases),
   }

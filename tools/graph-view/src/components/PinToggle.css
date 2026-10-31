@@ -1,11 +1,11 @@
-/* Filter pin toggles — extracted from styles/index.css (issue #56). */
+/* Filter pin toggles. */
 /* ===========================================================
    Shared-filter UI: pinning, search match counter,
    hidden-match badges, focus-transition animation, search dim
    =========================================================== */
 
 /* Per-dimension pin toggle on Files / Types sections */
-.pin-toggle {
+.gv-pin-toggle {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -16,27 +16,27 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: 5px;
-  color: var(--color-text-muted);
+  color: var(--gv-color-text-muted);
   cursor: pointer;
   opacity: 0.55;
   transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.pin-toggle:hover {
+.gv-pin-toggle:hover {
   opacity: 1;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-hover), transparent);
+  color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
 }
 
-.pin-toggle.pinned {
+.gv-pin-toggle.pinned {
   opacity: 1;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) var(--accent-tint-active), transparent);
-  border-color: color-mix(in srgb, var(--accent) var(--accent-tint-ring), transparent);
+  color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-active), transparent);
+  border-color: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-ring), transparent);
 }
 
 /* Pin override flash on focus transitions (~600ms) */
-.pin-toggle.flashing {
+.gv-pin-toggle.flashing {
   animation: pinFlash 0.6s ease;
 }
 

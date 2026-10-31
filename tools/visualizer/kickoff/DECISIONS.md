@@ -2168,3 +2168,127 @@ stands where the spliced call's projection used to be drawn over it. Every
 other row is byte-identical.
 
 — 2026-10-28 — agent
+
+**D67 — Unit 11, the first host removed from the library's model and
+behaviour (API_WORK.md Set 2, items 2.1–2.4).** Three readings agreed that
+the leak ratchet's zero was about words, not shapes: the library still carried
+the first host's two axes, its parser's node fields, its editor's theme
+classes and its two-view wording. Each is now the host's.
+
+1. **No library-declared node axis.** `DEF_TYPE_DIMENSION` and
+   `SOURCE_FILE_DIMENSION` are gone from the library, with `filterOfSets`;
+   `RELATION_DIMENSION` remains the one axis the library declares, because
+   its engine reads it. The first host declares its two ids in
+   `adapter/dimensions.ts` (the same strings, so persisted state is unchanged)
+   and pairs them in the harness's `filter-states.ts`. How an axis's chips
+   look is the descriptor's new `presentation: 'chip' | 'tag'` — the bar
+   names no axis, and the "everything included" state is drawn for an
+   `emptyMeans: 'all'` axis in either look. The hover box no longer prints a
+   file name read off a fixed axis; `contextLine` may return several lines
+   and a host that wants an origin shown puts it there.
+2. **Node identity in the library's own words.** `definitionKey` →
+   `copyKey?` (absent: the node is its own key); `orphan: boolean` → `ring?:
+   'dashed'`; `templateParams` → `badges?: readonly string[]`, drawn as
+   given. `Graph.duplicateGroups` is gone: `copyGroups(graph)` derives the
+   index inside the library, once per graph, and is exported for a host's own
+   overlays; `copyKeyOf(node)` is the key. The hover box says "the same
+   entity appears in more than one place". The first host writes `ring:
+   'dashed'` for the parser's orphans, `copyKey` from its definition field and
+   `× {param}` badges from its template holes.
+3. **The library reads one theme signal.** `useHostTheme` and
+   `schemeStylesheet` know only `data-theme`; the `.vscode-*` body classes,
+   the `.vscode-dark` selector in the tokens and the `--vscode-*` variables in
+   the bar's stylesheet are gone. The first host's shell reads the editor's
+   body classes itself (`theme/useEditorTheme.ts`) and sets `data-theme` on
+   its root, which is what the library sees.
+4. **One view's words.** The pin says a pinned axis is held as it is; the
+   bar's flash is "the host says its data reloaded"; the filter module speaks
+   of a host's views, not a tree and an AST.
+
+**Deferred within the set.** The CSS namespace (2.5) and the doc-comment
+sweep (2.6) follow in this unit as their own commits; the vocabulary drift
+(2.7) is folded into Set 3, where the spec's shape changes anyway.
+
+**Measured.** Total vocabulary 1104 → **1106**, ratcheted up with reason: two
+words in the host's new `adapter/dimensions.ts` and `theme/useEditorTheme.ts`
+headers; leak 0, boundary 0. The surface list loses the two axis constants
+and gains `copyGroups` and `copyKeyOf` (60 names).
+
+**Golden change (§8.2).** Expected and regenerated, six of seven goldens,
+every line count unchanged but `static`'s: node rows carry `ring` and
+`copyKey` where they carried `orphan` and `definitionKey`, `copyGroups` where
+the fixture rows carried `duplicateGroups`, `badges` where `templateParams`;
+`static` loses the `.vscode-dark` selector from the generated stylesheet row
+and reads its theme-marker rows against `data-theme` alone (five rows where
+there were seven). No edge, position, spring or summary row moves.
+
+— 2026-10-28 — agent
+
+**D68 — Unit 11b, the library's CSS in its own namespace (API_WORK.md 2.5).**
+Every custom property the library declares or sets and every class its
+components render gained the prefix `gv-` (`--gv-accent`, `--gv-color-text`,
+`--gv-toolbar-height`, `--gv-node-<value>`, `.gv-graph-view`,
+`.gv-header-type-tag`, `.gv-spring-token`, …): 32 tokens and 156 classes,
+names only, no rule's value changed — the library's stylesheets and
+components differ from before by the inserted prefix and nothing else, and
+the chrome is pixel-identical in both themes above the canvas. A host page's
+own `--accent` or `.header` no longer meets the library's.
+
+1. **The host reads the library's tokens through aliases**, declared once in
+   its `styles/index.css` for each theme block (`--color-text:
+   var(--gv-color-text)` and nine more), so its own rules are unchanged; the
+   catalog, being small, reads `--gv-*` directly. `--toolbar-height` is set
+   inline on the pane, so it is read as `--gv-toolbar-height` where it is
+   read, not aliased.
+2. **Modifier classes stay bare** (`active`, `selected`, `all-included`,
+   `pinned`, `flashing`, `hidden`, `has-errors`, `error`, `warning`,
+   `recently-changed`, `section-pinned`, `open`, `on`, `dim`, `inactive`,
+   `shifted`, `refresh-flash`): no stylesheet selects any of them except as a
+   compound with a prefixed class, and the first host's groups modal reuses
+   three of them beside its own. A host page with a bare `.hidden` rule would
+   still reach library elements; prefixing them is a follow-up. Keyframe
+   names, element ids and `data-*` attributes are also unprefixed.
+3. **The gates spell the new names**: the two artifact gates expect
+   `--gv-accent:`, `--gv-color-bg:` and `--gv-font-sans:`; the screenshot gate
+   and the harness probes select `.gv-…`.
+
+**Golden change (§8.2).** `static` alone: the 56 lines of the generated
+stylesheet row and the `schemeVars` records carry `--gv-node-*` for
+`--node-*`; stripping the prefix gives the committed file byte for byte. No
+class name appears in any golden, so no other row moves.
+
+— 2026-10-28 — agent
+
+**D69 — Unit 11c, the library's comments without the project's records (API_WORK.md 2.6).**
+The library's source carried 149 references in 36 files to things that exist
+only in this repository: decision, trap, blast-radius, requirement and review
+ids (`D57`, `T4`, `B14`, `R8`, `C8`, `REVIEW_8`), plan sections, the kickoff
+folder, the spec files (`GRAPH_VIEW.md`, `PRODUCT.md`), and the first host by
+name or by its adapter's paths. Every one is gone; where the id stood for a
+reason, the reason is written out in its place, and where it stood for
+nothing a consumer could act on, the clause is dropped. 41 files change and
+no code does: the diff is comment text, plus the two mid-file imports in
+`ontology.ts` moved to its head, the stacked JSDoc blocks on `styleAxis`
+reduced to one, the orphaned block above `StyleGroup` attached to what it
+describes, and the `isContainment` doc moved from `relationOf` to
+`isContainment`.
+
+1. **The artifact gate holds the line.** Both `dts-gate.mjs` files read every
+   comment in every shipped `.d.ts` and fail on a project record; the
+   library's also fails on "first host" and "the visualizer", which the
+   host's own gate may legitimately say. Only comments are read, so an
+   identifier in code is never a hit. Against the pre-sweep build the
+   library's gate reported fifteen hits in four files — the hovers a
+   consumer had been seeing.
+2. **The records stay where they belong.** `DECISIONS.md`, `API_WORK.md`
+   and the reviews still cite the code by path; the code no longer cites
+   them back. The host's source (`tools/visualizer/src`) keeps its
+   references — it is this repository's, and its gate checks ids only.
+3. **`total` does not move.** The leak gate's vocabulary ceiling counts the
+   first host's words in the library; the sweep removed only words the
+   registry does not count, so it stays 1106 / 1106.
+
+**Golden change (§8.2).** None — no behaviour, no shipped name, no stylesheet
+rule changed.
+
+— 2026-10-28 — agent

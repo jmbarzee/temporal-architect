@@ -16,7 +16,8 @@ import { presentSetsOf } from '@temporal-architect/graph-view/components/graph-v
 import { OntologyContext } from '@temporal-architect/graph-view/components/graph-view/useOntology'
 import { PushPullControls } from '@temporal-architect/graph-view/components/PushPullControls'
 import { GravityControls } from '@temporal-architect/graph-view/components/GravityControls'
-import { filterOfSets, matchesFocus } from '@temporal-architect/graph-view/filter/types'
+import { matchesFocus } from '@temporal-architect/graph-view/filter/types'
+import { filterOfSets } from './filter-states'
 import { FIXTURES } from './fixtures'
 import { buildFixtureGraph } from './tier-a'
 import { mulberry32 } from './rng'
@@ -53,8 +54,8 @@ function offered(graph: Graph, visibleTypes: string[]): Json {
     visibleNodes: vg.visibleNodes.length,
     // Push and pull tokens share one token element; both bodies are mounted,
     // so this is push + pull. Columns carry two handles each, on both axes.
-    tokens: count(pushPull, /class="spring-token(?: [^"]*)?"/g),
-    columnHandles: count(gravity, /class="gravity-band-dot(?: [^"]*)?"/g),
+    tokens: count(pushPull, /class="gv-spring-token(?: [^"]*)?"/g),
+    columnHandles: count(gravity, /class="gv-gravity-band-dot(?: [^"]*)?"/g),
     present: { push: present.push.size, springs: present.springs.size, bandX: present.bandX.size, bandY: present.bandY.size },
   }
 }

@@ -1231,35 +1231,34 @@
   },
   "generatedCss": [
     ":root {",
-    "  --node-namespace: #475569;",
-    "  --node-namespace-border: #1E293B;",
-    "  --node-nexus-endpoint: #9F1239;",
-    "  --node-nexus-endpoint-border: #4C0519;",
-    "  --node-worker: #94A3B8;",
-    "  --node-worker-border: #475569;",
-    "  --node-nexus-service: #DB2777;",
-    "  --node-nexus-service-border: #831843;",
-    "  --node-workflow: #8B7EC8;",
-    "  --node-workflow-border: #5D4F95;",
-    "  --node-nexus-operation: #F9A8D4;",
-    "  --node-nexus-operation-border: #BE185D;",
-    "  --node-activity: #7CB9E8;",
-    "  --node-activity-border: #4A8BC2;",
+    "  --gv-node-namespace: #475569;",
+    "  --gv-node-namespace-border: #1E293B;",
+    "  --gv-node-nexus-endpoint: #9F1239;",
+    "  --gv-node-nexus-endpoint-border: #4C0519;",
+    "  --gv-node-worker: #94A3B8;",
+    "  --gv-node-worker-border: #475569;",
+    "  --gv-node-nexus-service: #DB2777;",
+    "  --gv-node-nexus-service-border: #831843;",
+    "  --gv-node-workflow: #8B7EC8;",
+    "  --gv-node-workflow-border: #5D4F95;",
+    "  --gv-node-nexus-operation: #F9A8D4;",
+    "  --gv-node-nexus-operation-border: #BE185D;",
+    "  --gv-node-activity: #7CB9E8;",
+    "  --gv-node-activity-border: #4A8BC2;",
     "}",
-    ".vscode-dark,",
     "[data-theme=\"dark\"] {",
-    "  --node-namespace: #94A3B8;",
-    "  --node-namespace-border: #475569;",
-    "  --node-nexus-endpoint: #BE123C;",
-    "  --node-nexus-endpoint-border: #881337;",
-    "  --node-worker: #CBD5E1;",
-    "  --node-worker-border: #64748B;",
-    "  --node-nexus-service: #EC4899;",
-    "  --node-nexus-service-border: #9D174D;",
-    "  --node-workflow: #A89BD8;",
-    "  --node-workflow-border: #6B5BB0;",
-    "  --node-nexus-operation-border: #DB2777;",
-    "  --node-activity-border: #5DA8DD;",
+    "  --gv-node-namespace: #94A3B8;",
+    "  --gv-node-namespace-border: #475569;",
+    "  --gv-node-nexus-endpoint: #BE123C;",
+    "  --gv-node-nexus-endpoint-border: #881337;",
+    "  --gv-node-worker: #CBD5E1;",
+    "  --gv-node-worker-border: #64748B;",
+    "  --gv-node-nexus-service: #EC4899;",
+    "  --gv-node-nexus-service-border: #9D174D;",
+    "  --gv-node-workflow: #A89BD8;",
+    "  --gv-node-workflow-border: #6B5BB0;",
+    "  --gv-node-nexus-operation-border: #DB2777;",
+    "  --gv-node-activity-border: #5DA8DD;",
     "}"
   ],
   "hostProbes": {
@@ -2503,45 +2502,43 @@
     },
     "defaultVars": {
       "dark": {
-        "--node-activity": "#7CB9E8",
-        "--node-activity-border": "#5DA8DD",
-        "--node-namespace": "#94A3B8",
-        "--node-namespace-border": "#475569",
-        "--node-nexus-endpoint": "#BE123C",
-        "--node-nexus-endpoint-border": "#881337",
-        "--node-nexus-operation": "#F9A8D4",
-        "--node-nexus-operation-border": "#DB2777",
-        "--node-nexus-service": "#EC4899",
-        "--node-nexus-service-border": "#9D174D",
-        "--node-worker": "#CBD5E1",
-        "--node-worker-border": "#64748B",
-        "--node-workflow": "#A89BD8",
-        "--node-workflow-border": "#6B5BB0"
+        "--gv-node-activity": "#7CB9E8",
+        "--gv-node-activity-border": "#5DA8DD",
+        "--gv-node-namespace": "#94A3B8",
+        "--gv-node-namespace-border": "#475569",
+        "--gv-node-nexus-endpoint": "#BE123C",
+        "--gv-node-nexus-endpoint-border": "#881337",
+        "--gv-node-nexus-operation": "#F9A8D4",
+        "--gv-node-nexus-operation-border": "#DB2777",
+        "--gv-node-nexus-service": "#EC4899",
+        "--gv-node-nexus-service-border": "#9D174D",
+        "--gv-node-worker": "#CBD5E1",
+        "--gv-node-worker-border": "#64748B",
+        "--gv-node-workflow": "#A89BD8",
+        "--gv-node-workflow-border": "#6B5BB0"
       },
       "light": {
-        "--node-activity": "#7CB9E8",
-        "--node-activity-border": "#4A8BC2",
-        "--node-namespace": "#475569",
-        "--node-namespace-border": "#1E293B",
-        "--node-nexus-endpoint": "#9F1239",
-        "--node-nexus-endpoint-border": "#4C0519",
-        "--node-nexus-operation": "#F9A8D4",
-        "--node-nexus-operation-border": "#BE185D",
-        "--node-nexus-service": "#DB2777",
-        "--node-nexus-service-border": "#831843",
-        "--node-worker": "#94A3B8",
-        "--node-worker-border": "#475569",
-        "--node-workflow": "#8B7EC8",
-        "--node-workflow-border": "#5D4F95"
+        "--gv-node-activity": "#7CB9E8",
+        "--gv-node-activity-border": "#4A8BC2",
+        "--gv-node-namespace": "#475569",
+        "--gv-node-namespace-border": "#1E293B",
+        "--gv-node-nexus-endpoint": "#9F1239",
+        "--gv-node-nexus-endpoint-border": "#4C0519",
+        "--gv-node-nexus-operation": "#F9A8D4",
+        "--gv-node-nexus-operation-border": "#BE185D",
+        "--gv-node-nexus-service": "#DB2777",
+        "--gv-node-nexus-service-border": "#831843",
+        "--gv-node-worker": "#94A3B8",
+        "--gv-node-worker-border": "#475569",
+        "--gv-node-workflow": "#8B7EC8",
+        "--gv-node-workflow-border": "#5D4F95"
       }
     },
     "markers": {
-      "darkHost": "dark",
       "dataThemeDark": "dark",
+      "dataThemeLight": "light",
       "dataThemeOther": null,
-      "highContrastDark": "dark",
-      "highContrastLight": "light",
-      "lightHost": "light",
+      "noAttribute": null,
       "none": null
     },
     "normaliser": {
@@ -2603,7 +2600,7 @@
       "cssVariableColour": "taxonomy is incoherent: edgeTypes.linkNsToNs.style.color.light is \"var(--x)\", not a hex or rgb() colour",
       "emptySuffix": "taxonomy is incoherent: style value \"工作流\" has no custom-property name (its id kebab-cases to nothing)",
       "namedColour": "taxonomy is incoherent: nodeStyles.worker.color.light.fill is \"slategray\", not a hex or rgb() colour",
-      "sharedSuffix": "taxonomy is incoherent: style values \"nexusEndpoint\" and \"nexus-endpoint\" share the custom-property name --node-nexus-endpoint"
+      "sharedSuffix": "taxonomy is incoherent: style values \"nexusEndpoint\" and \"nexus-endpoint\" share the custom-property name --gv-node-nexus-endpoint"
     },
     "secondScheme": {
       "allDiffer": true,
@@ -2777,7 +2774,7 @@
       "twoWords": "two-words",
       "with space": "with-space"
     },
-    "variableFor": "--node-nexus-endpoint"
+    "variableFor": "--gv-node-nexus-endpoint"
   },
   "seamProbes": {
     "barRendered": {
@@ -3406,7 +3403,7 @@
     },
     "nodes": [
       {
-        "definitionKey": "namespace:ns",
+        "copyKey": "namespace:ns",
         "dimensions": {
           "defType": "namespaceDef",
           "sourceFile": "a.twf",
@@ -3416,7 +3413,7 @@
         "parentId": null
       },
       {
-        "definitionKey": "namespace:nsOrphan",
+        "copyKey": "namespace:nsOrphan",
         "dimensions": {
           "defType": "namespaceDef",
           "temporalType": "namespace"
@@ -3425,7 +3422,7 @@
         "parentId": null
       },
       {
-        "definitionKey": "worker:wk",
+        "copyKey": "worker:wk",
         "dimensions": {
           "defType": "workerDef",
           "sourceFile": "a.twf",
@@ -3435,7 +3432,7 @@
         "parentId": "ns"
       },
       {
-        "definitionKey": "worker:wkB",
+        "copyKey": "worker:wkB",
         "dimensions": {
           "defType": "workerDef",
           "sourceFile": "b.twf",
@@ -3445,7 +3442,7 @@
         "parentId": "ns"
       },
       {
-        "definitionKey": "nexusService:svc",
+        "copyKey": "nexusService:svc",
         "dimensions": {
           "defType": "nexusServiceDef",
           "sourceFile": "a.twf",
@@ -3455,7 +3452,7 @@
         "parentId": "wk"
       },
       {
-        "definitionKey": "nexusEndpoint:ep",
+        "copyKey": "nexusEndpoint:ep",
         "dimensions": {
           "defType": "nexusEndpointDef",
           "sourceFile": "a.twf",
@@ -3465,7 +3462,7 @@
         "parentId": "ns"
       },
       {
-        "definitionKey": "workflow:caller",
+        "copyKey": "workflow:caller",
         "dimensions": {
           "defType": "workflowDef",
           "sourceFile": "a.twf",
@@ -3475,7 +3472,7 @@
         "parentId": "wk"
       },
       {
-        "definitionKey": "nexusOperation:op",
+        "copyKey": "nexusOperation:op",
         "dimensions": {
           "defType": "nexusOperationDef",
           "sourceFile": "a.twf",
@@ -3485,7 +3482,7 @@
         "parentId": "svc"
       },
       {
-        "definitionKey": "workflow:backing",
+        "copyKey": "workflow:backing",
         "dimensions": {
           "defType": "workflowDef",
           "sourceFile": "b.twf",
@@ -3495,7 +3492,7 @@
         "parentId": "wkB"
       },
       {
-        "definitionKey": "activity:act",
+        "copyKey": "activity:act",
         "dimensions": {
           "defType": "activityDef",
           "sourceFile": "a.twf",
@@ -3505,7 +3502,7 @@
         "parentId": "wk"
       },
       {
-        "definitionKey": "activity:act",
+        "copyKey": "activity:act",
         "dimensions": {
           "defType": "activityDef",
           "sourceFile": "b.twf",

@@ -8,6 +8,8 @@
 // default selection.
 
 import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../adapter/node-types'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
+import type { FilterState } from '@temporal-architect/graph-view/filter/types'
 
 const defTypeOf = (t: (typeof ALL_NODE_TYPES)[number]) => NODE_TYPE_REGISTRY[t].defType
 
@@ -46,4 +48,13 @@ export function fileStates(allFiles: string[]): { name: string; selectedFiles: s
   for (const f of allFiles) states.push({ name: `files:${f}`, selectedFiles: [f] })
   if (allFiles.length > 1) states.push({ name: 'files:all', selectedFiles: [...allFiles] })
   return states
+}
+
+/**
+ * A filter from this host's two axes' selections — the shape the fixtures
+ * and probes are written in. Deliberately the one place the two ids are
+ * paired positionally; the library pairs nothing (D67).
+ */
+export function filterOfSets(types: ReadonlySet<string>, files: ReadonlySet<string>): FilterState {
+  return new Map([[DEF_TYPE_DIMENSION, types], [SOURCE_FILE_DIMENSION, files]])
 }

@@ -1,20 +1,20 @@
 /* Groups (decomposition) modal — extracted from styles/index.css (issue #56). */
 /* ---------------------------------------------------------------------------
-   Groups modal (decomposition overlay). Reuses the .graph-control-panel
+   Groups modal (decomposition overlay). Reuses the .gv-graph-control-panel
    collapse/tab chrome but anchors top-right (below the toolbar) instead of
    bottom-right; the Control Panel sits bottom-right, so the two never collide.
    See GRAPH_VIEW.md § Decomposition Group Overlay.
    --------------------------------------------------------------------------- */
 .groups-modal {
-  /* Anchored to the real bottom of the toolbar (measured into --toolbar-height
+  /* Anchored to the real bottom of the toolbar (measured into --gv-toolbar-height
      by GraphView) plus a gap, so it never rides up over a taller toolbar. The
      fallback covers the first paint before the measurement lands. */
-  top: calc(var(--toolbar-height, 48px) + 12px);
+  top: calc(var(--gv-toolbar-height, 48px) + 12px);
   right: 12px;
   bottom: auto;
   left: auto;
   /* Never extend past the bottom toolbar row; scroll the body instead. */
-  max-height: calc(100% - var(--toolbar-height, 48px) - 60px);
+  max-height: calc(100% - var(--gv-toolbar-height, 48px) - 60px);
 }
 
 .groups-modal.open {
@@ -29,7 +29,7 @@
   padding-right: 10px;
 }
 
-.groups-modal-header .graph-control-panel-toggle {
+.groups-modal-header .gv-graph-control-panel-toggle {
   flex: 1;
 }
 
@@ -121,7 +121,7 @@
 }
 
 /* Checks/radios pick up the app accent (same convention as
-   .graph-control-checkbox in the Control Panel) so they read as one UI. */
+   .gv-graph-control-checkbox in the Control Panel) so they read as one UI. */
 .groups-chunk-head input[type="checkbox"],
 .groups-option input[type="radio"] {
   accent-color: var(--color-workflow);

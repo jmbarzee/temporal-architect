@@ -12,12 +12,13 @@ which is worth noticing rather than assuming.
 |---|---|---:|---|
 | `App.tsx` | neither | 5 | `main.tsx` |
 | `adapter/build.ts` | shim | 56 | **6** files |
+| `adapter/dimensions.ts` | shim | 3 | **12** files |
 | `adapter/edge-types.ts` | shim | 176 | **6** files |
 | `adapter/groups.ts` | shim | 2 | `components/GroupsModal.tsx`, `components/WorkflowCanvas.tsx`, `verify/seam-probes.ts` |
 | `adapter/node-type-styles.ts` | shim | 2 | `App.tsx`, `lib.ts`, `verify/static-golden.ts` |
 | `adapter/node-types.ts` | shim | 149 | **18** files |
 | `adapter/storage.ts` | shim |  | `components/WorkflowCanvas.tsx` |
-| `adapter/useGraphModel.ts` | shim | 6 | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx`, `verify/seam-probes.ts` |
+| `adapter/useGraphModel.ts` | shim | 5 | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx`, `verify/seam-probes.ts` |
 | `components/ErrorBars.tsx` | neither |  | `components/TreeView.tsx`, `components/WorkflowCanvas.tsx` |
 | `components/GroupsModal.tsx` | neither | 8 | `components/WorkflowCanvas.tsx` |
 | `components/StyleGuide.tsx` | neither | 62 | `components/VisualizerHost.tsx`, `lib.ts` |
@@ -38,29 +39,30 @@ which is worth noticing rather than assuming.
 | `lib.ts` | neither | 24 | — |
 | `main.tsx` | neither |  | — |
 | `theme/GearIcons.tsx` | shim | 3 | `theme/temporal-theme.tsx` |
-| `theme/temporal-theme.tsx` | shim | 51 | **7** files |
+| `theme/temporal-theme.tsx` | shim | 50 | **7** files |
+| `theme/useEditorTheme.ts` | shim | 1 | `components/WorkflowCanvas.tsx` |
 | `types/ast.ts` | shim | 26 | **17** files |
 | `types/decomposition.ts` | shim | 3 | **7** files |
 | `types/parser-graph.ts` | shim | 3 | **7** files |
 | `types/payload.ts` | neither | 12 | `components/VisualizerHost.tsx`, `lib.ts`, `verify/fixtures.ts` |
-| `verify/filter-states.ts` | neither | 13 | `verify/tier-a.ts` |
+| `verify/filter-states.ts` | neither | 14 | **7** files |
 | `verify/fixtures.ts` | neither | 10 | **6** files |
 | `verify/force-probes.ts` | neither | 28 | `verify/static-golden.ts` |
 | `verify/host-probes.ts` | neither | 2 | `verify/static-golden.ts` |
 | `verify/integrity-probes.ts` | neither | 10 | `verify/static-golden.ts` |
 | `verify/main.ts` | neither |  | — |
-| `verify/ontology-probes.ts` | neither | 88 | `verify/static-golden.ts` |
+| `verify/ontology-probes.ts` | neither | 87 | `verify/static-golden.ts` |
 | `verify/rng.ts` | neither | 1 | **4** files |
 | `verify/scalar-probes.ts` | neither | 12 | `verify/static-golden.ts` |
 | `verify/scheme-probes.ts` | neither | 19 | `verify/static-golden.ts` |
 | `verify/seam-probes.ts` | neither | 8 | `verify/static-golden.ts` |
 | `verify/snapshot.ts` | neither |  | **15** files |
-| `verify/static-golden.ts` | neither | 25 | `verify/main.ts` |
+| `verify/static-golden.ts` | neither | 24 | `verify/main.ts` |
 | `verify/synthetic-visible.ts` | neither | 33 | `verify/static-golden.ts` |
-| `verify/tier-a.ts` | neither | 15 | **5** files |
-| `verify/tier-b.ts` | neither | 7 | `verify/main.ts` |
+| `verify/tier-a.ts` | neither | 13 | **5** files |
+| `verify/tier-b.ts` | neither | 6 | `verify/main.ts` |
 | `verify/tier-c.ts` | neither | 17 | `verify/main.ts` |
-| `verify/tuning-probes.ts` | neither | 76 | `verify/static-golden.ts` |
+| `verify/tuning-probes.ts` | neither | 75 | `verify/static-golden.ts` |
 | `verify/view-probes.ts` | neither | 13 | `verify/static-golden.ts` |
 | `../graph-view/components/AxisControls.tsx` | manifest |  | `../graph-view/components/GravityControls.tsx` |
 | `../graph-view/components/CanvasErrorBoundary.tsx` | manifest |  | `../graph-view/components/GraphView.tsx` |
@@ -94,12 +96,12 @@ which is worth noticing rather than assuming.
 | `../graph-view/components/icons/SearchIcon.tsx` | manifest |  | `../graph-view/components/FilterBar.tsx` |
 | `../graph-view/filter/reconcile.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/index.ts` |
 | `../graph-view/filter/toggle.ts` | manifest |  | `verify/static-golden.ts`, `../graph-view/components/FilterBar.tsx` |
-| `../graph-view/filter/types.ts` | manifest |  | **17** files |
-| `../graph-view/graph/dimension.ts` | manifest |  | **28** files |
+| `../graph-view/filter/types.ts` | manifest |  | **12** files |
+| `../graph-view/graph/dimension.ts` | manifest |  | **27** files |
 | `../graph-view/graph/forces.ts` | manifest |  | **20** files |
 | `../graph-view/graph/groups.ts` | manifest |  | **4** files |
 | `../graph-view/graph/highlight.ts` | manifest |  | `verify/tier-a.ts`, `../graph-view/components/graph-view/useHighlight.ts` |
-| `../graph-view/graph/model.ts` | manifest |  | **23** files |
+| `../graph-view/graph/model.ts` | manifest |  | **24** files |
 | `../graph-view/graph/node-scale.ts` | manifest |  | **4** files |
 | `../graph-view/graph/ontology.ts` | manifest |  | **16** files |
 | `../graph-view/graph/rng.ts` | manifest |  | **4** files |
@@ -109,7 +111,7 @@ which is worth noticing rather than assuming.
 | `../graph-view/graph/taxonomy.ts` | manifest |  | **9** files |
 | `../graph-view/graph/validate.ts` | manifest |  | `verify/integrity-probes.ts`, `../graph-view/components/GraphView.tsx`, `../graph-view/index.ts` |
 | `../graph-view/graph/viewport.ts` | manifest |  | **4** files |
-| `../graph-view/index.ts` | manifest |  | **11** files |
+| `../graph-view/index.ts` | manifest |  | **12** files |
 
 ## Files nothing imports
 
@@ -125,7 +127,7 @@ the third is F15, and no gate counts readers.
 A golden row keeps these looking alive (F15). Each one is either a symbol the
 product will read in a later unit, or dead code with a pin.
 
-- `src/verify/filter-states.ts` (neither) — verify/tier-a.ts
+- `src/verify/filter-states.ts` (neither) — verify/ontology-probes.ts, verify/seam-probes.ts, verify/synthetic-visible.ts, verify/tier-a.ts, verify/tier-b.ts, verify/tuning-probes.ts, verify/view-probes.ts
 - `src/verify/fixtures.ts` (neither) — verify/main.ts, verify/scalar-probes.ts, verify/seam-probes.ts, verify/tier-a.ts, verify/tuning-probes.ts, verify/view-probes.ts
 - `src/verify/force-probes.ts` (neither) — verify/static-golden.ts
 - `src/verify/host-probes.ts` (neither) — verify/static-golden.ts

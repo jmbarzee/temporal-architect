@@ -1,10 +1,10 @@
-// What the controls offer: only what the post-filter visible set holds (R35,
-// D59) — a push token per bucket some visible node falls in, a column per such
+// What the controls offer: only what the post-filter visible set holds — a
+// push token per bucket some visible node falls in, a column per such
 // bucket on each layout axis, and a pull token per spring category some edge
 // the simulation SPRINGS falls in. That last set is the simulation's own
 // predicate (`sprungEdges`), not the graduated edges the canvas draws: a
 // graduated edge is re-pointed for drawing and never sprung, so a token
-// classified over it would tune nothing (REVIEW_7 C9). One function, read by
+// classified over it would tune nothing. One function, read by
 // the view and by the harness, so the harness pins what the view offers
 // rather than re-deriving it.
 

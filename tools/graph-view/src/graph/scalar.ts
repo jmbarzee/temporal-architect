@@ -1,5 +1,5 @@
 // Computed scalars — a layout axis backed by a number per node rather than a
-// bucket per value (R8, R9). A scalar reads node metadata and the graph's
+// bucket per value. A scalar reads node metadata and the graph's
 // structure, nothing else, and answers in [0, 1]; the axis maps that interval
 // onto a span. Three are built in and read only structure; a host may
 // declare more through its ontology, with access to its own payload.
@@ -33,7 +33,7 @@ export interface ScalarSpan {
 }
 
 /**
- * A layout axis backed by a computed scalar (R8): which scalar, and — only
+ * A layout axis backed by a computed scalar: which scalar, and — only
  * once the user has dragged an end — its span. Absent, the span is the
  * taxonomy's (`defaultSpan`), so it follows the taxonomy as a band axis's
  * declared bands do; the tuning stores what the user decided, nothing else.

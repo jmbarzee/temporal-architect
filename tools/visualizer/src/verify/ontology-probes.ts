@@ -14,8 +14,9 @@
 //      past the container again, the two rows below stop disagreeing and this
 //      probe goes red.
 
-import { DEF_TYPE_DIMENSION, RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
-import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
+import { RELATION_DIMENSION } from '@temporal-architect/graph-view/graph/dimension'
+import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
+import { filterOfSets } from './filter-states'
 import { computeVisibleGraph } from '@temporal-architect/graph-view/components/graph-view/visibleGraph'
 import type { GraphEdge } from '@temporal-architect/graph-view/graph/model'
 import type { NodeType } from '../adapter/node-types'
@@ -47,8 +48,8 @@ function node(id: string, nodeType: NodeType, parentId?: string, defType?: strin
     // The adapter's projection, with the kind overridable for the alternate
     // taxonomy's nodes (its adapter would project differently).
     dimensions: defType === undefined ? dimensionsFor(nodeType, undefined) : { ...dimensionsFor(nodeType, undefined), [DEF_TYPE_DIMENSION]: defType },
-    name: id, orphan: parentId === undefined,
-    definitionKey: `${nodeType}:${id}`,
+    name: id, ring: parentId === undefined ? 'dashed' : undefined,
+    copyKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
     x: 0, y: 0, vx: 0, vy: 0, pinned: false,
   }

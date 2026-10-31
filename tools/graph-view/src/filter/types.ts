@@ -1,11 +1,10 @@
-// The shared filter model across Tree and Graph views.
+// The filter model a host's views share.
 //
-// A filter is a selection per axis: `Record<DimensionId, Set<string>>`. It was
-// two named fields (`selectedFiles`, `visibleTypes`), which is why every
-// consumer had a files branch and a types branch and a third axis meant a third
-// branch everywhere.
+// A filter is a selection per axis. It was two named fields once, which is why
+// every consumer had one branch per axis and a third axis meant a third branch
+// everywhere; now it is a map over whatever axes the host declares.
 //
-// **Set identity is load-bearing here, not an optimisation (T5).**
+// **Set identity is load-bearing here, not an optimisation.**
 // `useVisibleGraph` memoises on the Set reference and `useSimulationLoop`
 // compares `prev === next` to decide whether an axis changed. So every operation
 // in this module is copy-on-write: the axis being edited gets a new Set, and
@@ -13,11 +12,9 @@
 // record would re-run edge graduation and reheat the layout on every unrelated
 // edit — silently, since the output is identical.
 //
-// The search query lives outside a FilterState because it is globally shared
-// (spec § Search Scope).
+// The search query lives outside a FilterState because it is globally shared.
 
 import type { DimensionId, DimensionDescriptor } from '../graph/dimension'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 
 /** The chosen values on one axis. Empty means what the axis's descriptor says. */
 export type Selection = ReadonlySet<string>
@@ -29,10 +26,10 @@ export type Selection = ReadonlySet<string>
  * A string-keyed record permits `filter.selectedFiles` — it typechecks, returns
  * `undefined`, and every downstream `.has` throws or silently reports nothing.
  * That exact mistake survived the migration in **six** separate places (three
- * production, three in the harness), passing typecheck, all six gates and 7/7
- * goldens, and was caught only by loading the app. The domain has no axis called
+ * production, three in the harness), passing typecheck and every automated
+ * check, and was caught only by loading the app. The domain has no axis called
  * `selectedFiles`; a Map makes saying so unrepresentable instead of merely
- * wrong (PLAN §6.6's test).
+ * wrong.
  */
 export type FilterState = ReadonlyMap<DimensionId, Selection>
 
@@ -98,18 +95,6 @@ export function filterStatesEqual(a: FilterState, b: FilterState): boolean {
   return true
 }
 
-/**
- * Build a filter from the two well-known axes' selections.
- *
- * A convenience for call sites that still hold two named Sets — chiefly the
- * harness, whose fixtures are written per axis. Deliberately the ONLY place the
- * two ids are paired positionally, so a third axis does not need a third
- * positional argument threaded through every caller.
- */
-export function filterOfSets(types: Selection, files: Selection): FilterState {
-  return new Map([[DEF_TYPE_DIMENSION, types], [SOURCE_FILE_DIMENSION, files]])
-}
-
 /** Flip one axis's pin, copy-on-write. */
 export function withPin(pins: PinState, dim: DimensionId, value: boolean): PinState {
   const out = new Map(pins)
@@ -160,14 +145,11 @@ export function matchesFocus(node: { name: string; dimensions: Readonly<Record<s
  *
  * The policy — what an empty selection means, what an absent value means — is
  * here once, read from each axis's descriptor. The *projection* is the caller's,
- * and deliberately so: a graph node carries a dimension map, while a tree row is
- * an AST definition with named fields. Those are genuinely different shapes, so
- * sharing the accessor would mean inventing a fake dimension map for one of
- * them. Sharing the policy is the part that matters.
- *
- * The tree view used to reimplement all of it inline, hardcoding both axes —
- * so a descriptor change moved the graph and left the tree behind, and the two
- * halves of the same product disagreed about what the filter meant.
+ * and deliberately so: a graph node carries a dimension map, while a host's
+ * other views may hold records with named fields. Those are different shapes,
+ * so sharing the accessor would mean inventing a fake dimension map for one of
+ * them. Sharing the policy is the part that matters: two views of one product
+ * that each wrote their own copy disagreed about what the filter meant.
  */
 export function passesSelection(
   filter: FilterState,

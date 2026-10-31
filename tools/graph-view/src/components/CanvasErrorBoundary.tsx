@@ -6,7 +6,7 @@
 // catches such errors and renders a static fallback in place of what it
 // wraps, leaving the rest of the app interactive. The view mounts one around
 // the canvas and one around its own root, so no throw in the pane reaches the
-// host's tree (D66).
+// host's tree.
 
 import React from 'react'
 
@@ -42,9 +42,9 @@ export class CanvasErrorBoundary extends React.Component<
   render(): React.ReactNode {
     if (this.state.error) {
       return (
-        <div className="graph-canvas-error" role="alert">
+        <div className="gv-graph-canvas-error" role="alert">
           <p>The {this.props.what ?? 'graph canvas'} failed to render.</p>
-          <p className="graph-canvas-error-detail">{this.state.error.message}</p>
+          <p className="gv-graph-canvas-error-detail">{this.state.error.message}</p>
         </div>
       )
     }

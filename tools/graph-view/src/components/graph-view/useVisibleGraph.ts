@@ -19,7 +19,7 @@ export function useVisibleGraph(
   simRef: React.MutableRefObject<Simulation | null>,
   simVersion: number,
   filter: FilterState,
-  /** The axes the view shows — the only ones that filter (D66). */
+  /** The axes the view shows — the only ones that filter. */
   axes: readonly DimensionDescriptor[],
 ): VisibleGraph {
   const ontology = useOntology()

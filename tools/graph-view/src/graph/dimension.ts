@@ -37,25 +37,12 @@ export function internValue(parts: string | readonly string[]): DimensionValue {
   return typeof parts === 'string' ? parts : parts.join('\u0000')
 }
 
-/**
- * Everything the view layer needs to know about one axis, beyond its values.
- *
- * **It does not carry the values.** Those are derived, not declared: the style
- * axis's values come from the taxonomy, and the source-file axis's come from
- * scanning the graph. Declaring them here too would be the same fact in two
- * places with nothing enforcing agreement — the shape PLAN §6.6 exists to warn
- * about, and it would have been introduced on the very unit that recorded it.
- *
- * What it does carry is **policy**, and the policies are per-axis because the
- * two existing axes genuinely disagree on all three. A shared loop over
- * dimensions flattens them and silently changes behaviour (T7, T8, T9).
- */
 /** One button in a filter bar: a label, an optional glyph, and the values it toggles. */
 export interface FilterChip {
   id: string
   label: string
   icon?: string
-  /** A style value whose colour this chip wears, in the pane's theme (D57); none means neutral. */
+  /** A style value whose colour this chip wears, in the pane's theme; none means neutral. */
   tint?: DimensionValue
   /**
    * Hover text, when the label alone is not enough to identify the chip.
@@ -85,6 +72,18 @@ export interface AxisNamer {
   abbreviationFor(value: DimensionValue): string
 }
 
+/**
+ * Everything the view layer needs to know about one axis, beyond its values.
+ *
+ * **It does not carry the values.** Those are derived, not declared: the style
+ * axis's values come from the taxonomy, and the source-file axis's come from
+ * scanning the graph. Declaring them here too would be the same fact in two
+ * places with nothing enforcing agreement, free to drift apart unnoticed.
+ *
+ * What it does carry is **policy**, and the policies are per-axis because the
+ * two existing axes genuinely disagree on all three. A shared loop over
+ * dimensions flattens them and silently changes behaviour.
+ */
 export interface DimensionDescriptor extends AxisNamer {
   /**
    * What an EMPTY selection on this axis means.
@@ -92,7 +91,7 @@ export interface DimensionDescriptor extends AxisNamer {
    * The two existing axes disagree, deliberately: an empty type selection hides
    * everything, while an empty file selection shows everything — because adding
    * a file chip while the filter is off would otherwise activate the filter and
-   * hide every file but that one (T7).
+   * hide every file but that one.
    */
   emptyMeans: 'all' | 'none'
   /**
@@ -102,7 +101,7 @@ export interface DimensionDescriptor extends AxisNamer {
    */
   absentMeans: 'visible' | 'hidden'
   /**
-   * How far a focus transition expands this axis to reveal its target (T8).
+   * How far a focus transition expands this axis to reveal its target.
    *
    *   'always'     — add the target's value unconditionally (the type axis).
    *   'whenActive' — add it only if a selection is already active, because on an
@@ -112,7 +111,7 @@ export interface DimensionDescriptor extends AxisNamer {
    */
   focus: 'always' | 'whenActive'
   /**
-   * What a change on this axis does to the running simulation (T9).
+   * What a change on this axis does to the running simulation.
    *
    * Four independent fields rather than one "strength", because the two axes
    * differ on three of them and a descriptor derived from a careless reading of
@@ -134,15 +133,24 @@ export interface DimensionDescriptor extends AxisNamer {
    * How this axis's available values group into chips.
    *
    * Not one chip per value: a chip may cover several values, which is how one
-   * one chip may front several declared kinds. Host-declared because the grouping
+   * chip may front several declared values. Host-declared because the grouping
    * is a domain choice — but the *shape* is not, so the bar renders any axis
    * without knowing which one it is.
    *
    * Takes the available values rather than reading a declared list, because an
-   * axis's values are derived: files come from scanning the graph, kinds from
-   * the taxonomy. See the note on this interface about not storing them twice.
+   * axis's values are derived from the graph. See the note on this interface
+   * about not storing them twice.
    */
   chipsFor(values: readonly DimensionValue[]): readonly FilterChip[]
+  /**
+   * How the bar draws this axis's chips. `chip` (the default) is a tinted,
+   * glyph-led button that reads as a category; `tag` is a quieter, neutral
+   * label that reads as an origin — a file, a source, a place — and shows an
+   * "everything included" state when the selection is empty on an
+   * `emptyMeans: 'all'` axis. Presentation is the descriptor's, so no axis id
+   * is special to the bar.
+   */
+  presentation?: 'chip' | 'tag'
 }
 
 /** Where a node sits on one axis, or undefined when it carries no value there. */
@@ -305,21 +313,6 @@ export function valuesOn(
 }
 
 /**
- * The axis a node's originating file sits on.
- *
- * Declared by the library, unlike the axes a host invents, because the library
- * ships the filter that reads it: a chain that offers "filter by file" has to
- * agree with the host on which axis that is. Nothing about a file is
- * domain-specific — this is shared vocabulary, not borrowed vocabulary.
- *
- * Note its empty-set semantics are the *opposite* of the type axis's: an empty
- * file selection shows everything, because adding a file chip while the filter
- * is off would otherwise activate the filter and hide every file but that one
- * (T7).
- */
-export const SOURCE_FILE_DIMENSION: DimensionId = 'sourceFile'
-
-/**
  * Does this table declare `key` itself, rather than inheriting it?
  *
  * Every keyed lookup on a dimension value must go through this. Values are
@@ -337,19 +330,6 @@ export function hasOwn(table: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(table, key)
 }
 
-/**
- * The axis the visibility filter selects node kinds on.
- *
- * Its values are a host projection of the style axis — a style's kind, written
- * onto each node by the host's adapter when it builds the graph — which is what
- * lets two styles share a filter key, and one chip cover three declared kinds.
- * The engine reads it off the node like any other axis and never learns it is
- * derived. Library-declared for the same reason as the file axis: the library
- * ships the filter that reads it, so both halves have to agree on which axis
- * it is.
- */
-export const DEF_TYPE_DIMENSION: DimensionId = 'defType'
-
 /** What a filter change asks of the running simulation, folded across axes. */
 export interface ReheatPlan {
   alpha: number
@@ -365,9 +345,9 @@ export interface ReheatPlan {
  *
  * Pure and outside React so it can be goldened. It was inline in the loop hook,
  * where **no gate could reach it**: all four fields of a descriptor's `reheat`
- * could be inverted — including `resume: false`, the exact failure T9 names,
- * which freezes the canvas after every toggle — and typecheck, all six gates and
- * 7/7 goldens stayed green. Declared policy nothing reads is not policy.
+ * could be inverted — including `resume: false`, which freezes the canvas after
+ * every toggle — and every check stayed green. Declared policy nothing reads is
+ * not policy.
  *
  * Several axes can move at once (a view switch does exactly that), so the
  * policies combine rather than the last one winning: the strongest reheat, and
@@ -387,14 +367,14 @@ export function foldReheatPolicy(
 }
 
 /**
- * The one axis every edge carries. Library-declared, like the file and kind
- * axes, because the engine ships the code that reads it: edge graduation,
- * highlighting and spring resolution all branch on `relation`.
+ * The one axis every edge carries, and the only axis the library declares:
+ * the engine ships the code that reads it — edge graduation, highlighting and
+ * spring resolution all branch on `relation`.
  *
  *   relation — 'containment' | 'dependency'. The structural meaning of the edge.
  *
- * Anything else an edge carries is the host's. The first host adds `dispatch`,
- * its call kind, which only its own edge rules read — D48 said the engine read
- * it, and it no longer does (D64).
+ * Every other axis, on nodes and on edges, is the host's own, named by the
+ * host; the library reads them only through the descriptors and the rules
+ * the host declares.
  */
 export const RELATION_DIMENSION: DimensionId = 'relation'

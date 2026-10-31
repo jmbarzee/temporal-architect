@@ -134,5 +134,5 @@ export function dropInvalid(graph: Graph, diagnostics: readonly GraphDiagnostic[
     kept.add(e.id)
     edges.push(e)
   }
-  return { nodes, edges, duplicateGroups: graph.duplicateGroups }
+  return { nodes, edges }
 }

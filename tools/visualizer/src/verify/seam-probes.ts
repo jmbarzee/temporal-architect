@@ -12,8 +12,10 @@ import { activeGroupsOf } from '@temporal-architect/graph-view/graph/groups'
 import type { NodeGroup } from '@temporal-architect/graph-view/graph/groups'
 import { OntologyContext } from '@temporal-architect/graph-view/components/graph-view/useOntology'
 import { FilterBar } from '@temporal-architect/graph-view/components/FilterBar'
-import { filterOfSets } from '@temporal-architect/graph-view/filter/types'
-import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION, valuesOn } from '@temporal-architect/graph-view/graph/dimension'
+import { filterOfSets } from './filter-states'
+import { valuesOn } from '@temporal-architect/graph-view/graph/dimension'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
+import { copyGroups } from '@temporal-architect/graph-view/graph/model'
 import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY, ALL_NODE_TYPES } from '../adapter/node-types'
 import { definitionCounts } from '../adapter/useGraphModel'
 import { initialGroupSelection, initializedSelection, nodeGroupsOf } from '../adapter/groups'
@@ -43,14 +45,15 @@ function hostHalf(): Json {
   for (const fixture of FIXTURES) {
     if (!fixture.decomposition) continue
     const graph = buildFixtureGraph(fixture)
+    const copies = copyGroups(graph)
     const selection = initializedSelection(initialGroupSelection(), fixture.decomposition)
-    const groups = nodeGroupsOf(fixture.decomposition, selection, null, graph.duplicateGroups)
+    const groups = nodeGroupsOf(fixture.decomposition, selection, null, copies)
     const firstChunk = fixture.decomposition.chunks[0]?.id
-    const hovered = firstChunk ? nodeGroupsOf(fixture.decomposition, selection, { chunkId: firstChunk }, graph.duplicateGroups) : []
+    const hovered = firstChunk ? nodeGroupsOf(fixture.decomposition, selection, { chunkId: firstChunk }, copies) : []
     out[fixture.name] = {
       groups: groups.map(g => ({ id: g.id, size: g.nodeIds.size })),
       emphasizedUnderHover: sorted(hovered.filter(g => g.emphasized).map(g => g.id)),
-      off: nodeGroupsOf(fixture.decomposition, initialGroupSelection(), null, graph.duplicateGroups).length,
+      off: nodeGroupsOf(fixture.decomposition, initialGroupSelection(), null, copies).length,
     }
   }
   return out
@@ -88,7 +91,7 @@ function barRendered(): Json {
       findings: React.createElement('div', { 'data-probe': 'findings' }),
     })))
   const badges: Record<string, string> = {}
-  for (const m of html.matchAll(/class="header-(?:type-label|file-name)">([^<]*)<\/span><span class="header-chip-count">([^<]*)<\/span>/g)) badges[m[1]] = m[2]
+  for (const m of html.matchAll(/class="gv-header-(?:type-label|file-name)">([^<]*)<\/span><span class="gv-header-chip-count">([^<]*)<\/span>/g)) badges[m[1]] = m[2]
   return { badges: sortedRecord(Object.entries(badges)), findingsSlot: html.includes('data-probe="findings"') }
 }
 
