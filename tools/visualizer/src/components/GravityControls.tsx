@@ -1,6 +1,7 @@
 // Gravity-tab controls: three sub-tabs. X Axis and Y Axis are the two layout
 // axes, each the same surface (`AxisControls`): a mapping, one column per
-// bucket with its rest band as two handles, the axis's strength, the force
+// bucket with its rest band as two handles (or, on a scalar axis, a gradient
+// with its two ends), the axis's strength, the force
 // curve beneath. Y carries the Radial switch — the way radial mode is entered
 // (R27): Y's bands become rings about the origin and X is ignored. Topological
 // keeps its own switch: a depth→pull curve plus strength/exp sliders. Center
@@ -10,7 +11,7 @@
 
 import React from 'react'
 import './GravityControls.css'
-import type { ForceParams, AxisOption } from '../graph/simulation'
+import type { ForceParams, LayoutAxisOption } from '../graph/simulation'
 import type { ResolvedPhysics } from '../graph/forces'
 import { Slider } from './controls/Slider'
 import { Equation } from './controls/Equation'
@@ -25,8 +26,8 @@ interface GravityControlProps {
   params: ForceParams
   /** The dense tables the kernels read, resolved once by the view (T25). */
   resolved: ResolvedPhysics
-  /** Every mapping the graph admits, with its bucket count. */
-  axes: readonly AxisOption[]
+  /** Every axis X or Y may key on: mappings with their bucket count, and computed scalars. */
+  axes: readonly LayoutAxisOption[]
   onParamChange: (patch: Partial<ForceParams>) => void
   onRelayout: (partial: Partial<ForceParams>) => void
   hovered: GravityHover | null

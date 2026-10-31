@@ -15,9 +15,10 @@
 // separate blast-radius rows owned by later units.
 
 import { payloadString } from '../../graph/model'
+import { computeDownstreamReach } from '../../graph/scalar'
 import { isContainment } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
-import type { GraphEdge } from '../../graph/model'
+import type { GraphEdge, ReadableGraph } from '../../graph/model'
 import type { Ontology } from '../../graph/ontology'
 import type { DimensionDescriptor } from '../../graph/dimension'
 import type { PhysicsSubject } from '../../graph/forces'
@@ -36,7 +37,7 @@ export interface VisibleGraph {
  * The read-only slice of a Simulation this derivation needs. A `Simulation`
  * satisfies it structurally, so callers pass one directly.
  */
-export interface VisibleGraphSource {
+export interface VisibleGraphSource extends ReadableGraph {
   nodes: SimNode[]
   edges: GraphEdge[]
   getNode: (id: string) => SimNode | undefined
@@ -100,83 +101,6 @@ function resolveDepEndpoint(
   }
   const ancestor = findNearestVisibleAncestor(nodeId, visibleIds, getNode)
   return ancestor ? [ancestor] : []
-}
-
-// Per-node downstream-depth scores over the visible dependency subgraph,
-// propagated up the containment hierarchy (one rank per tier) so a container is
-// scored strictly higher than anything it hosts, then linearly normalized to
-// [0,1] by the top container. Keeps tiers ordered under topological gravity.
-function computeDownstreamScores(
-  visibleNodes: SimNode[],
-  visibleEdges: GraphEdge[],
-): Map<string, number> {
-  const adj = new Map<string, string[]>()
-  for (const e of visibleEdges) {
-    if (isContainment(e)) continue
-    const list = adj.get(e.sourceId)
-    if (list) list.push(e.targetId)
-    else adj.set(e.sourceId, [e.targetId])
-  }
-
-  const depths = new Map<string, number>()
-  let maxDepth = 0
-  for (const node of visibleNodes) {
-    const seen = new Set<string>([node.id])
-    let depth = 0
-    let frontier: string[] = [node.id]
-    while (frontier.length > 0) {
-      const next: string[] = []
-      for (const cur of frontier) {
-        const out = adj.get(cur)
-        if (!out) continue
-        for (const t of out) {
-          if (seen.has(t)) continue
-          seen.add(t)
-          next.push(t)
-        }
-      }
-      if (next.length > 0) depth++
-      frontier = next
-    }
-    depths.set(node.id, depth)
-    if (depth > maxDepth) maxDepth = depth
-  }
-
-  const scores = new Map<string, number>()
-  if (maxDepth === 0) return scores
-
-  // Propagate each node's depth up its containment chain, adding one rank per
-  // tier so a container *strictly* out-ranks everything it hosts (a namespace
-  // pulls harder than its deepest workflow, not merely equal). This keeps the
-  // tier order under topological gravity without leaning on band gravity to
-  // break ties. Early-out when an ancestor is already ranked higher (a deeper
-  // branch already propagated past it, so its own ancestors are too).
-  const byId = new Map(visibleNodes.map(n => [n.id, n]))
-  const effective = new Map<string, number>()
-  for (const node of visibleNodes) effective.set(node.id, depths.get(node.id) ?? 0)
-  for (const node of visibleNodes) {
-    const d = depths.get(node.id) ?? 0
-    if (d <= 0) continue
-    let pid = node.parentId
-    let bump = d
-    const guard = new Set<string>()
-    while (pid && !guard.has(pid)) {
-      guard.add(pid)
-      bump += 1
-      if ((effective.get(pid) ?? 0) >= bump) break
-      effective.set(pid, bump)
-      pid = byId.get(pid)?.parentId
-    }
-  }
-
-  // Normalize by the post-propagation max (the top container) so scores ∈ [0,1].
-  let maxEff = 0
-  for (const v of effective.values()) if (v > maxEff) maxEff = v
-  if (maxEff === 0) return scores
-  for (const [id, d] of effective) {
-    scores.set(id, d / maxEff)
-  }
-  return scores
 }
 
 // Glanceable per-node summary string, dispatched on the registry's summaryKind.
@@ -352,7 +276,9 @@ export function computeVisibleGraph(
     if (s) nodeSummaries.set(node.id, s)
   }
 
-  const downstreamScores = computeDownstreamScores(vNodes, vEdges)
+  // Reach over the VISIBLE subgraph, for topological gravity; the same scalar
+  // over the whole graph is a layout axis (graph/scalar.ts).
+  const downstreamScores = computeDownstreamReach({ nodes: vNodes, edges: vEdges, getNode: id => vNodeMap.get(id) })
 
   return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, nodeSummaries, downstreamScores }
 }

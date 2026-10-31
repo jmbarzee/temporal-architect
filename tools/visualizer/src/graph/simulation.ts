@@ -2,6 +2,7 @@
 // Implements GRAPH_VIEW.md § Layout: Force-Directed Simulation.
 
 import type { GraphNode, GraphEdge, Graph } from './model'
+import { readableGraph } from './model'
 import type { EdgeTypeId, SpringPhysics } from './taxonomy'
 import {
   applyChargeForce,
@@ -10,7 +11,6 @@ import {
   applyTopologicalGravity,
   applyCenterGravity,
   bandAxesActing,
-  bucketOf,
   layoutFrame,
   presentSpringCategories,
   topologicalActing,
@@ -19,7 +19,9 @@ import {
   springFor,
 } from './forces'
 import type { Rng } from './rng'
-import type { EdgeCategory, LayoutFrame, PhysicsSubject, ResolvedPhysics } from './forces'
+import type { EdgeCategory, LayoutFrame, LayoutSubject, ResolvedPhysics } from './forces'
+import type { ScalarAxis, ScalarTuning } from './scalar'
+import { isScalarTuning } from './scalar'
 import type { DimensionalMapping } from './dimension'
 import { identityMapping, valuesOn } from './dimension'
 import type { Ontology } from './ontology'
@@ -90,6 +92,20 @@ export function withOverride<T>(tuning: AxisTuning<T>, bucketId: string, value: 
   const overrides = new Map(tuning.overrides)
   overrides.set(bucketId, value)
   return { ...tuning, overrides }
+}
+
+/**
+ * What a layout axis keys on: a dimensional mapping with its overrides, or a
+ * computed scalar with its span (R28). The narrowers are two guards
+ * (`isScalarTuning`, `isScalarAxis`) and two loud casts for the callers that
+ * hold the kind already (`mappedTuning`, `mappedAxis`).
+ */
+export type LayoutTuning = AxisTuning<BandRange> | ScalarTuning
+
+/** The mapped half of a layout tuning; loud where a caller expects buckets and meets a scalar. */
+export function mappedTuning(t: LayoutTuning): AxisTuning<BandRange> {
+  if (isScalarTuning(t)) throw new Error(`expected a mapped axis, got scalar ${JSON.stringify(t.scalar)}`)
+  return t
 }
 
 /**
@@ -194,6 +210,29 @@ export function axisOptions(ontology: Ontology, graph: Graph): AxisOption[] {
   }))
 }
 
+/** One choice for a layout axis: a mapping (with its cost) or a computed scalar. */
+export type LayoutAxisOption =
+  | { readonly kind: 'mapping'; readonly option: AxisOption }
+  | { readonly kind: 'scalar'; readonly scalar: ScalarAxis }
+
+/** Every axis X or Y can key on: the mappings push/pull can (already measured), then every scalar the taxonomy knows. */
+export function layoutAxisOptions(axes: readonly AxisOption[], ontology: Ontology): LayoutAxisOption[] {
+  return [
+    ...axes.map(option => ({ kind: 'mapping' as const, option })),
+    ...ontology.scalars.map(scalar => ({ kind: 'scalar' as const, scalar })),
+  ]
+}
+
+/**
+ * The one spelling of a layout-axis choice, for the control that offers the
+ * options and reads the current one back: what the dropdown's values are and
+ * what the tuning answers to.
+ */
+export function layoutAxisKey(choice: LayoutTuning | LayoutAxisOption): string {
+  if ('kind' in choice) return choice.kind === 'scalar' ? `scalar:${choice.scalar.id}` : `mapping:${choice.option.mapping.dimension}`
+  return isScalarTuning(choice) ? `scalar:${choice.scalar}` : `mapping:${choice.mapping.dimension}`
+}
+
 /** Same axis, same buckets, same values — order-insensitive, since node order is not a fact about the graph. */
 function sameBuckets(a: DimensionalMapping, b: DimensionalMapping): boolean {
   const key = (m: DimensionalMapping) =>
@@ -238,9 +277,15 @@ export function retunedFor(params: ForceParams, ontology: Ontology, graph: Graph
     pushTokens: mapping.buckets.length,
     pullTokens: presentSpringCategories(resolveSprings(pairTuning(mapping), ontology), graph.edges, nodeOf).size,
   })
+  // A scalar axis has no buckets to go stale; it falls back only when the
+  // taxonomy no longer knows the scalar (a swap), with the style identity.
+  const refreshLayout = (tuning: LayoutTuning): LayoutTuning =>
+    isScalarTuning(tuning)
+      ? (ontology.scalars.some(sc => sc.id === tuning.scalar) ? tuning : identityTuning<BandRange>(ontology))
+      : refresh(tuning, m => ({ mapping: m, overrides: new Map() }), bucketsFit)
   const pair = refresh(params.pair, pairTuning, pairFits)
-  const bandX = refresh(params.bandX, m => ({ mapping: m, overrides: new Map() }), bucketsFit)
-  const bandY = refresh(params.bandY, m => ({ mapping: m, overrides: new Map() }), bucketsFit)
+  const bandX = refreshLayout(params.bandX)
+  const bandY = refreshLayout(params.bandY)
   return pair === params.pair && bandX === params.bandX && bandY === params.bandY ? params : { ...params, pair, bandX, bandY }
 }
 
@@ -266,7 +311,8 @@ export interface LinkParams {
   linkExponent: number       // power of displacement in spring force (1 = linear/Hooke)
 }
 
-// GRAVITY — anchoring. Each layout axis carries per-bucket rest bands (no force
+// GRAVITY — anchoring. Each layout axis carries per-bucket rest bands or a
+// scalar's points (no force
 // inside, pull toward the nearest edge outside), re-centred on the median of
 // the bands present so the stack sits on the origin without canvas-side
 // compensation. Plus the optional topological pull and the center baseline.
@@ -276,8 +322,8 @@ export interface GravityParams {
    * (T22). A strength of zero switches an axis off; when both are off and
    * topological gravity is too, center gravity is the baseline.
    */
-  bandX: AxisTuning<BandRange>
-  bandY: AxisTuning<BandRange>
+  bandX: LayoutTuning
+  bandY: LayoutTuning
   gravityX: number
   gravityY: number
   // Band falloff exponent applied to the displacement outside the rest band
@@ -482,7 +528,7 @@ export class Simulation {
     this.nodes = []
     this.nodeMap = new Map()
     const seedNodes = [...graph.nodes.values()]
-    this.frame = layoutFrame(seedNodes, this.resolved)
+    this.frame = layoutFrame(readableGraph(graph), this.resolved)
     for (const node of seedNodes) {
       const [x, y] = this.seedPosition(node, rng)
       const sim: SimNode = { ...node, x, y, vx: 0, vy: 0, pinned: false }
@@ -515,20 +561,15 @@ export class Simulation {
     return this.nodeMap.get(id)
   }
 
-  // A node's rest band on one axis in the frame: re-centred, or the centre
-  // itself for a node in no bucket.
-  private axisBand(node: PhysicsSubject, axis: 'x' | 'y'): { lo: number; hi: number } {
-    const table = axis === 'x' ? this.resolved.bandX : this.resolved.bandY
-    const center = axis === 'x' ? this.frame.centerX : this.frame.centerY
-    const bucket = bucketOf(table, node)
-    const band = bucket === undefined ? undefined : table.byBucket.get(bucket)
-    return band === undefined ? { lo: 0, hi: 0 } : { lo: band.min - center, hi: band.max - center }
+  // A node's rest interval on one axis in the frame — a re-centred band, a
+  // scalar's point, or the centre itself for a node with no value there.
+  private axisBand(node: LayoutSubject, axis: 'x' | 'y'): { lo: number; hi: number } {
+    return this.frame.rest(axis, node)
   }
 
-  private seedPosition(node: PhysicsSubject, rng: Rng): [number, number] {
+  private seedPosition(node: LayoutSubject, rng: Rng): [number, number] {
     if (this.params.radial) {
-      const bucket = bucketOf(this.resolved.bandY, node)
-      const r = (bucket === undefined ? undefined : this.frame.rings.get(bucket)) ?? 0
+      const r = this.frame.ringOf(node)
       const theta = rng() * Math.PI * 2
       return [r * Math.cos(theta), r * Math.sin(theta)]
     }
@@ -561,7 +602,7 @@ export class Simulation {
     applyLinkForce(activeEdges, this.nodeMap, this.params, this.edgeCategory, this.alpha, this.rng)
     const bands = bandAxesActing(this.params)
     const topo = topologicalActing(this.params)
-    if (bands) applyBandGravity(active, this.params, this.resolved, this.frame, this.alpha, this.rng)
+    if (bands) applyBandGravity(active, this.params, this.frame, this.alpha, this.rng)
     if (topo) applyTopologicalGravity(active, this.params, this.alpha, downstreamScores)
     if (!bands && !topo) {
       applyCenterGravity(active, this.params, this.alpha)
@@ -663,7 +704,7 @@ export class Simulation {
     // A patch may replace a whole tuning; the dense tables and the per-edge
     // classification follow it.
     this.resolved = resolvePhysics(this.params, this.ontology)
-    this.frame = layoutFrame(this.nodes, this.resolved)
+    this.frame = layoutFrame(this, this.resolved)
     this.springByEdge = null
   }
 
@@ -696,8 +737,7 @@ export class Simulation {
     let sx: number
     let sy: number
     if (this.params.radial) {
-      const bucket = bucketOf(this.resolved.bandY, node)
-      const r = (bucket === undefined ? undefined : this.frame.rings.get(bucket)) ?? Math.hypot(x, y)
+      const r = this.frame.ringOf(node)
       const theta = Math.atan2(y, x)
       sx = r * Math.cos(theta)
       sy = r * Math.sin(theta)

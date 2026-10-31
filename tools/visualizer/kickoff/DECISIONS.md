@@ -1256,3 +1256,161 @@ the per-type dual-range rules; `tuningProbes.overrides.firstTick*` follow the
 seed; `tuningProbes.retune.bandAxes` is new. Nothing else moves.
 
 — 2026-10-21 — agent
+
+**D55 — Computed scalar axes: a number per node as a layout axis (Unit 5b).**
+A layout axis may key on a computed scalar instead of a mapping (R8, R9,
+R28, R31). The model, chosen so that the scalar path is the band path with
+the bucket removed, not a second force:
+
+1. **The interface** (`graph/scalar.ts`): `ScalarAxis { id, label, tooltip,
+   compute(graph) }` answers one value per node in `[0, 1]` from a
+   `ReadableGraph { nodes, edges, getNode }` (model.ts — the one shape the
+   frame, the scalars and the view's visible-graph derivation read; a
+   `Simulation` satisfies it) — node metadata (a host's own payload
+   included) and the graph's structure, nothing else. A node absent
+   from the answer has no value on the axis and rests at its centre, as a
+   node in no bucket does. Three built-ins read only structure: **reach**
+   (the downstream-depth score topological gravity already computed, moved
+   here as `computeDownstreamReach` and read by the view over the visible
+   subgraph, by an axis over the whole graph), **degree** (dependency edges
+   in and out over the busiest node's) and **depth** (containment depth over
+   the deepest). A host adds its own through `OntologySpec.scalars`;
+   `createOntology` refuses a duplicate id. The ontology is not on the
+   public surface (C3), so this is not a surface change.
+2. **The tuning**: `LayoutTuning = AxisTuning<BandRange> | ScalarTuning`,
+   where `ScalarTuning { scalar, span: ScalarSpan }` and `ScalarSpan { zero,
+   one }` is where a score of 0 rests and where 1 rests, in world units.
+   Either may be the lower: the span reads like a chart's axis and flips by
+   dragging its ends past each other. `defaultSpan` is the declared bands'
+   extent on that axis centred on the origin, 1 at the top and at the right
+   — so a new scalar axis keeps the layout's scale and reads as a chart.
+3. **The frame answers per node** (`LayoutFrame.rest(axis, node)`,
+   `ringOf(node)`): a mapped axis's re-centred band, a scalar's point
+   `zero + s·(one − zero)`, or nothing. Scores are computed once per frame
+   over the WHOLE node set (D54's rule), so seed, force and overlay agree.
+   The kernel is one function, `pullToRest`, for both kinds: a scalar's rest
+   is a band of zero height, so the force is always on and the strength and
+   exponent sliders mean what they meant. In radial a scalar Y rings each
+   node by the `ringRadii` rule — the span's low end innermost — so radial is
+   a pure function of the cartesian rest on both kinds.
+4. **The overlay** is still data: a scalar axis is one stripe carrying
+   `gradient: ScalarSpan`, and the canvas draws it from the 0 end to the 1
+   end; a scalar Y in radial draws no rings (every node has its own).
+5. **The controls**: the axis dropdown lists the mappings that fit the
+   ceiling, then every scalar the taxonomy knows (R28 completed); the
+   equation varies by kind (R29 completed — `d = |p − p₀ − s·(p₁ − p₀)|`);
+   and `ScalarPlot` — a gradient between two free handles labelled 0 and 1 —
+   replaces the columns (R31). The pair axis stays mappings-only: push and
+   pull need buckets.
+6. **Retuning**: a scalar tuning has no buckets to go stale, so a graph
+   change keeps it by reference; a taxonomy that no longer knows the scalar
+   (a swap) falls it back to the style identity. Probed in
+   `tuningProbes.retune.bandAxes.scalar`.
+7. **Tier B's residence diagnostic** reads from the frame, so it typechecks
+   on either kind; the run it prints for is the default, mapped one.
+
+**Golden change (§8.2).** Tier A and Tier C byte-identical; Tier A gains
+`scalars` — every built-in's value per node per fixture. Tier B gains the
+short runs `yReach` and `yReachRadial` and the row `overlayScalarY`; every
+existing row is byte-identical (the `downstreamScores` rows prove the moved
+function is the same function). `static` gains `tuningProbes.retune
+.bandAxes.scalar`. Every line of every diff is an addition; the one removed
+line is the trailing comma a new sibling added. Nothing else moves.
+
+— 2026-10-21 — agent
+
+**D56 — What REVIEW_5b changed: a pull that reaches its rest and no further;
+one answer for a node with no value; a span the taxonomy owns until the user
+takes it; every scalar claim with a reader (Unit 5b close).** The five-lens
+review (39 findings, 16 clusters, 9 verified, 0 refuted) found one blocker in
+the model and the rest in what the gates could not see.
+
+1. **The pull is capped at the distance** (C13, the blocker). A scalar's
+   rest is a point, so the band force has no dead zone there: at exp ≥ 2 the
+   uncapped `|d|^exp` impulse overshot the point every tick and nodes bounced
+   up to the velocity ceiling (stress at exp 3, measured by the finder: mean
+   speed 47.7 after a nudge, 2163 sign reversals in 50 ticks; mapped Y at the
+   same exponent: 0.07 and 33). `bandForce` now returns at most `|d|` — the
+   pull reaches the rest, never beyond it — on both axes and on the ring, one
+   rule. At exp 1 with strength ≤ 0.25 the cap never binds, so no default
+   golden moves. Tier B's `scalarSettlesAtExp3` runs Y reach, X degree,
+   radial reach and mapped Y (the control) for the full run, a slider-sized
+   nudge and a quarter run, and pins that fewer than half the node-ticks
+   reverse and the mean speed is under 1: measured 0.000 reversals on every
+   fixture, speeds 0.001–0.9 (the uncapped force: 47.7).
+2. **One answer for no value** (C12, C1). `LayoutFrame.rest` and `ringOf`
+   answer the centre themselves ({0, 0} and 0) instead of an `undefined`
+   that seed, force and diagnostic each re-defaulted; in radial a node with
+   no value on Y now rests at the origin (the kernel skips its outward kick
+   there) where the force used to leave it wherever it was. The built-ins
+   answer a true 0 for every node when their maximum is 0 — a graph with no
+   dependency edges, or no containment — instead of an empty map the frame
+   read as absence and drew mid-gradient.
+3. **A span the taxonomy owns** (C9). `ScalarTuning.span` is optional —
+   absent until the user drags an end — and `resolvePhysics` fills it from
+   `defaultSpan`, which lives in forces.ts on the same `declaredBand` fold
+   (and the same empty answer) the band axes use. A scalar axis follows a
+   taxonomy whose declared bands change, as a band axis does (D47).
+4. **The [0, 1] contract has a reader** (C3). `layoutFrame` checks every
+   scalar answer once per frame — finite and in [0, 1] — and throws naming
+   the scalar and the node; `scalarProbes.contract` pins the message for 2,
+   for NaN, for a duplicate id and for an unknown scalar.
+5. **The host-scalar path has a reader** (C4). `scalarProbes.hostScalar`
+   declares a scalar through `OntologySpec.scalars` that reads its own
+   payload (the id's length), resolves it on Y and records every rest;
+   `noValue` pins the centre, on the axis and on the ring, for a scalar that
+   answers for half the nodes; `degenerateSpan` pins a zero-extent span;
+   `flippedSpan` pins that rests and rings mirror.
+6. **Scalar X, flipped and degenerate spans are pinned** (C2). Tier B gains
+   `xDegree`, `yReachFlipped` and `yReachFlippedRadial` short runs and
+   `overlayScalarYFlipped`; `scalarProbes.defaultSpan` records both axes'
+   defaults — 1 at the right, 1 at the top.
+7. **The view never holds a tuning the taxonomy refuses** (C5).
+   `useSimulation` retunes in render (`retunedFor` in a memo) and the raw
+   state catches up in an effect; the simulation takes its params in an
+   effect after that retune. The comment in `resolvePhysics` said the
+   fallback ran first; now it does.
+8. **One spelling of a layout-axis choice** (C7). `layoutAxisKey` is what
+   the dropdown offers and what a tuning answers to;
+   `tuningProbes.layoutAxisKeys` pins uniqueness and the round trip.
+   `AxisControls` branches on the resolved axis and narrows the tuning
+   loudly (`mappedTuning`); its silent `null` branch is gone.
+9. **No import cycle, no dead parameter** (C10). `ScalarSpan`,
+   `ScalarTuning` and `isScalarTuning` live in scalar.ts, which imports
+   only the model, so forces.ts imports no value from simulation.ts.
+   `applyBandGravity` and its radial half drop the `resolved` they never
+   read. `mappedAxis` has its production caller.
+10. **Reach answers for exactly the graph's nodes** (C11). The containment
+    walk reads `getNode` and stops at an ancestor the graph does not hold,
+    so over the visible subgraph the answer no longer carries hidden ids nor
+    normalises by them: the top visible node scores 1. All three built-ins
+    read through `ReadableGraph.getNode`.
+11. **The record** (C8). The spec's § Gravity names both kinds, calls the
+    topological quantity reach (the built-in it is), states the one-frame
+    rule in place of "each tick … the visible set", and says how the X plot
+    reads — a rotated chart, larger x higher, so 1 sits at the top of either
+    plot, and `AxisControls` now draws it so. The leak-ceiling gap (PLAN 80,
+    gate 180) is reconciled in PROGRESS. The scalar plot's gradient id is per
+    instance (C16); `screenshot.mjs` exits 1 when a panel step did not apply
+    (C15); the dts gate refuses a reachable `graph/ontology.d.ts` or
+    `graph/scalar.d.ts` (C14).
+12. **Deferred** (C6, minor). The view computes its own frame — and so a
+    selected scalar — beside the simulation's, as it resolves its own
+    physics; `layoutAxisOptions` now takes the axes the view measured, which
+    was the other half of that cluster. The double frame is filed as a
+    GitHub issue at close.
+
+**Golden change (§8.2).** Tier A: `visibleSubgraph.<state>.downstreamScores`
+in every state with a hidden tier loses the hidden ids and renormalises
+(point 10); `scalars.*` and every other row byte-identical. Tier C
+byte-identical. Tier B: every existing row byte-identical; new rows
+`afterShortRun.{xDegree,yReachFlipped,yReachFlippedRadial}`,
+`overlayScalarYFlipped`, `scalarSettlesAtExp3`, and `params` gains
+`settledSpeed` and `settledReversals`. `static`:
+`forceProbes.absentValue.bandRadial.velocities.unknown` moves from (0, 0) —
+the undeclared node is pulled to the origin now (point 2);
+`syntheticVisible.cases.*.downstreamScores` fill with zeros where they were
+`{}` (point 2) and the hidden-tier case renormalises (point 10); new
+`tuningProbes.layoutAxisKeys` and `scalarProbes`. Nothing else moves.
+
+— 2026-10-22 — agent

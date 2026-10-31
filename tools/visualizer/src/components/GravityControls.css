@@ -80,3 +80,7 @@
 
 /* A short note beside a control, e.g. "ignored in radial". */
 .axis-note { font-size: 11px; color: var(--color-text-muted); font-family: var(--font-sans); }
+
+/* A scalar axis: the span's gradient and its two end handles. */
+.gravity-scalar-gradient { pointer-events: none; }
+.gravity-scalar-dot { fill: var(--color-text); }

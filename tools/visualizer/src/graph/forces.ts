@@ -15,7 +15,10 @@ import type { DimensionId, DimensionValue } from './dimension'
 import { isIdentityMapping } from './dimension'
 import type { GraphEdge } from './model'
 import { relationOf } from './model'
-import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange } from './simulation'
+import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange, LayoutTuning } from './simulation'
+import type { ScalarAxis, ScalarSpan } from './scalar'
+import { isScalarTuning } from './scalar'
+import type { ReadableGraph } from './model'
 import type { Ontology } from './ontology'
 import type { DimensionalMapping } from './dimension'
 import type { EdgeCategoryKind, EdgeTypeDefinition, EdgeTypeId, SpringPhysics } from './taxonomy'
@@ -81,11 +84,31 @@ export interface ResolvedAxis<T> {
   readonly byBucket: ReadonlyMap<string, T>
 }
 
+/** A layout axis backed by a scalar: the scalar itself, and where its 0 and 1 rest. */
+export interface ResolvedScalarAxis {
+  readonly scalar: ScalarAxis
+  readonly span: ScalarSpan
+}
+
+/** A layout axis as the kernels see it: per-bucket bands, or a scalar over a span. */
+export type ResolvedLayoutAxis = ResolvedAxis<BandRange> | ResolvedScalarAxis
+
+export const isScalarAxis = (a: ResolvedLayoutAxis): a is ResolvedScalarAxis => 'scalar' in a
+
+/** The mapped half of a layout axis; loud where a caller expects buckets and meets a scalar. */
+export function mappedAxis(a: ResolvedLayoutAxis): ResolvedAxis<BandRange> {
+  if (isScalarAxis(a)) throw new Error(`expected a mapped axis, got scalar ${JSON.stringify(a.scalar.id)}`)
+  return a
+}
+
+/** What the layout frame needs of a node: its dimensions, and its id for a scalar's score. */
+export type LayoutSubject = PhysicsSubject & { id: string }
+
 export interface ResolvedPhysics {
   push: ResolvedAxis<PushPhysics>
-  /** The two layout axes' rest bands — the same shape, resolved the same way (T22). */
-  bandX: ResolvedAxis<BandRange>
-  bandY: ResolvedAxis<BandRange>
+  /** The two layout axes — the same shape, resolved the same way (T22); either may be a scalar (R28). */
+  bandX: ResolvedLayoutAxis
+  bandY: ResolvedLayoutAxis
   spring: ResolvedSprings
 }
 
@@ -120,6 +143,19 @@ function declaredBand(ontology: Ontology, values: readonly DimensionValue[], axi
   return values.length === 0 ? { ...ABSENT_VALUE_PHYSICS.band } : { min, max }
 }
 
+/**
+ * The span a scalar axis has until the user drags an end: the declared bands'
+ * extent on that axis (the same fold as `declaredBand`, over every declared
+ * value) centred on the origin, so the layout keeps its scale when an axis
+ * switches kind — and read like a chart: 1 at the top (screen y grows
+ * downward) and at the right.
+ */
+export function defaultSpan(ontology: Ontology, axis: 'x' | 'y'): ScalarSpan {
+  const extent = declaredBand(ontology, ontology.nodeTypeKeys, axis)
+  const half = (extent.max - extent.min) / 2
+  return axis === 'y' ? { zero: half, one: -half } : { zero: -half, one: half }
+}
+
 function resolveAxis<T>(
   mapping: DimensionalMapping,
   overrides: ReadonlyMap<string, T>,
@@ -145,10 +181,20 @@ export function resolvePhysics(params: ChargeParams & GravityParams & LinkParams
   const bandOn = (m: DimensionalMapping, axis: 'x' | 'y') => m.dimension === style
     ? (values: readonly DimensionValue[]) => declaredBand(ontology, values, axis)
     : () => declaredBand(ontology, ontology.nodeTypeKeys, axis)
+  const layout = (t: LayoutTuning, axis: 'x' | 'y'): ResolvedLayoutAxis => {
+    if (!isScalarTuning(t)) return resolveAxis(t.mapping, t.overrides, bandOn(t.mapping, axis))
+    const scalar = ontology.scalars.find(sc => sc.id === t.scalar)
+    // Loud: a tuning naming a scalar the taxonomy does not know is a host bug.
+    // The view never holds one — it reads params retuned for the taxonomy
+    // (`retunedFor` falls the axis back on a swap), so this is unreachable
+    // from the UI and fires only for a host that built the tuning by hand.
+    if (!scalar) throw new Error(`layout axis names scalar ${JSON.stringify(t.scalar)}, which the taxonomy does not declare`)
+    return { scalar, span: t.span ?? defaultSpan(ontology, axis) }
+  }
   return {
     push: resolveAxis(params.pair.mapping, params.pair.push, pushFor(params.pair.mapping)),
-    bandX: resolveAxis(params.bandX.mapping, params.bandX.overrides, bandOn(params.bandX.mapping, 'x')),
-    bandY: resolveAxis(params.bandY.mapping, params.bandY.overrides, bandOn(params.bandY.mapping, 'y')),
+    bandX: layout(params.bandX, 'x'),
+    bandY: layout(params.bandY, 'y'),
     spring: resolveSprings(params.pair, ontology),
   }
 }
@@ -244,23 +290,76 @@ export function ringRadii(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<Ba
 
 /**
  * The frame the band forces act in, computed over the simulation's WHOLE node
- * set: the median centre on each axis, and the ring radius per Y bucket. One
- * frame for seeding, the force and the overlay, so they agree by construction —
- * a frame over the visible subset would move with every filter toggle and
- * disagree with the seed (REVIEW_5a C1).
+ * set: for a mapped axis the median centre (and, on Y, the ring per bucket);
+ * for a scalar axis every node's score. One frame for seeding, the force and
+ * the overlay, so they agree by construction — a frame over the visible subset
+ * would move with every filter toggle and disagree with the seed (REVIEW_5a
+ * C1). It answers two questions per node: where it rests on an axis, and
+ * which ring it belongs on.
  */
 export interface LayoutFrame {
   readonly centerX: number
   readonly centerY: number
+  /** Ring radius per Y bucket (mapped Y only; a scalar Y rings per node). */
   readonly rings: ReadonlyMap<string, number>
+  /** A node's rest interval on an axis — a re-centred band, a scalar's point, or the centre itself for a node with no value there. */
+  rest(axis: 'x' | 'y', node: LayoutSubject): { lo: number; hi: number }
+  /** A node's ring radius in radial mode: its bucket's ring, its scalar's, or the centre (0) for a node with no value on Y. */
+  ringOf(node: LayoutSubject): number
 }
 
-export function layoutFrame(nodes: Iterable<PhysicsSubject>, resolved: ResolvedPhysics): LayoutFrame {
-  const all = [...nodes]
+const AT_CENTRE = { lo: 0, hi: 0 }
+
+// A scalar's answer, checked once per frame: every value finite and in [0, 1].
+// Loud, because a value outside the contract would become a rest point or a
+// ring radius and nothing downstream could tell it from a real one.
+function checkedScores(scalar: ScalarAxis, graph: ReadableGraph): Map<string, number> {
+  const scores = scalar.compute(graph)
+  for (const [id, s] of scores) {
+    if (!(Number.isFinite(s) && s >= 0 && s <= 1)) {
+      throw new Error(`scalar ${JSON.stringify(scalar.id)} answered ${String(s)} for node ${JSON.stringify(id)}; a scalar answers in [0, 1]`)
+    }
+  }
+  return scores
+}
+
+export function layoutFrame(graph: ReadableGraph, resolved: ResolvedPhysics): LayoutFrame {
+  const all = [...graph.nodes]
+  const centerFor = (a: ResolvedLayoutAxis) => (isScalarAxis(a) ? 0 : medianBandCenter(all, a))
+  const scoresFor = (a: ResolvedLayoutAxis) => (isScalarAxis(a) ? checkedScores(a.scalar, graph) : undefined)
+  const centerX = centerFor(resolved.bandX)
+  const centerY = centerFor(resolved.bandY)
+  const scoresX = scoresFor(resolved.bandX)
+  const scoresY = scoresFor(resolved.bandY)
+  const rings = isScalarAxis(resolved.bandY) ? new Map<string, number>() : ringRadii(all, resolved.bandY)
+  const restOn = (a: ResolvedLayoutAxis, center: number, scores: Map<string, number> | undefined, node: LayoutSubject) => {
+    if (isScalarAxis(a)) {
+      const s = scores?.get(node.id)
+      if (s === undefined) return AT_CENTRE
+      const p = a.span.zero + s * (a.span.one - a.span.zero)
+      return { lo: p, hi: p }
+    }
+    const bucket = bucketOf(a, node)
+    const band = bucket === undefined ? undefined : a.byBucket.get(bucket)
+    return band === undefined ? AT_CENTRE : { lo: band.min - center, hi: band.max - center }
+  }
   return {
-    centerX: medianBandCenter(all, resolved.bandX),
-    centerY: medianBandCenter(all, resolved.bandY),
-    rings: ringRadii(all, resolved.bandY),
+    centerX, centerY, rings,
+    rest: (axis, node) => axis === 'x' ? restOn(resolved.bandX, centerX, scoresX, node) : restOn(resolved.bandY, centerY, scoresY, node),
+    ringOf: node => {
+      if (isScalarAxis(resolved.bandY)) {
+        // The same rule as `ringRadii`: the low end of Y is the innermost
+        // ring — here the span's low end, whichever of 0 and 1 that is.
+        if (scoresY?.get(node.id) === undefined) return 0
+        const rest = restOn(resolved.bandY, centerY, scoresY, node)
+        const { zero, one } = resolved.bandY.span
+        const lo = Math.min(zero, one)
+        const extent = Math.abs(one - zero) || 1
+        return RADIAL_R_MIN + ((rest.lo - lo) / extent) * (RADIAL_R_MAX - RADIAL_R_MIN)
+      }
+      const bucket = bucketOf(resolved.bandY, node)
+      return (bucket === undefined ? undefined : rings.get(bucket)) ?? 0
+    },
   }
 }
 
@@ -273,11 +372,16 @@ export function topologicalActing(params: GravityParams): boolean {
   return params.topologicalEnabled && params.gravityTopological > 0
 }
 
-/** One stripe of the overlay: a band on an axis, and every present bucket that shares it. */
+/**
+ * One stripe of the overlay: a band on an axis and every present bucket that
+ * shares it — or, for a scalar axis, the whole span as one gradient (R31):
+ * no buckets to name, and `gradient` says which end is 0 and which is 1.
+ */
 export interface BandStripe {
   readonly lo: number
   readonly hi: number
   readonly buckets: readonly string[]
+  readonly gradient?: ScalarSpan
 }
 
 /**
@@ -324,6 +428,8 @@ export function bandOverlay(
   }
   if (!acting) return { acting, x: [], y: [], rings: [], colors }
   if (params.radial) {
+    // A scalar Y rings per node — continuous, so nothing discrete to draw.
+    if (isScalarAxis(resolved.bandY)) return { acting, x: [], y: [], rings: [], colors }
     const byRadius = new Map<number, string[]>()
     for (const [bucket, radius] of frame.rings) {
       const list = byRadius.get(radius)
@@ -333,10 +439,14 @@ export function bandOverlay(
     }
     return { acting, x: [], y: [], rings: [...byRadius].map(([radius, buckets]) => ({ radius, buckets })), colors }
   }
+  const stripesOn = (a: ResolvedLayoutAxis, center: number): BandStripe[] =>
+    isScalarAxis(a)
+      ? [{ lo: Math.min(a.span.zero, a.span.one), hi: Math.max(a.span.zero, a.span.one), buckets: [], gradient: a.span }]
+      : withColors(a, bandStripes(all, a, center))
   return {
     acting,
-    x: params.gravityX > 0 ? withColors(resolved.bandX, bandStripes(all, resolved.bandX, frame.centerX)) : [],
-    y: params.gravityY > 0 ? withColors(resolved.bandY, bandStripes(all, resolved.bandY, frame.centerY)) : [],
+    x: params.gravityX > 0 ? stripesOn(resolved.bandX, frame.centerX) : [],
+    y: params.gravityY > 0 ? stripesOn(resolved.bandY, frame.centerY) : [],
     rings: [],
     colors,
   }
@@ -654,28 +764,29 @@ export const RADIAL_R_MAX = 540
 export function applyBandGravity(
   active: SimNode[],
   params: GravityParams,
-  resolved: ResolvedPhysics,
   frame: LayoutFrame,
   alpha: number,
   rng: Rng,
 ): void {
   if (params.radial) {
-    applyBandGravityRadial(active, params, resolved, frame, alpha, rng)
+    applyBandGravityRadial(active, params, frame, alpha, rng)
     return
   }
   // The same rule on both axes: a strength of zero is an axis switched off.
-  if (params.gravityX > 0) pullToBands(active, resolved.bandX, 'x', frame.centerX, params.gravityX, params.gravityBandExp, alpha)
-  if (params.gravityY > 0) pullToBands(active, resolved.bandY, 'y', frame.centerY, params.gravityY, params.gravityBandExp, alpha)
+  if (params.gravityX > 0) pullToRest(active, 'x', frame, params.gravityX, params.gravityBandExp, alpha)
+  if (params.gravityY > 0) pullToRest(active, 'y', frame, params.gravityY, params.gravityBandExp, alpha)
 }
 
-// Pull every node outside its rest band on one axis back toward the nearest
-// band edge. Bands are re-centred on the frame's median, so the stack sits on
-// the origin. A node in no bucket has no band: its rest is the centre itself.
-function pullToBands(
+// Pull every node outside its rest interval on one axis back toward the
+// nearest edge of it. The frame answers the interval: a band re-centred on the
+// median, a scalar's point, or the centre itself for a node with no value. The
+// pull never carries a node past its rest in one tick: a point has no band to
+// absorb an overshoot, so an uncapped |d|^exp at exp > 1 bounced nodes across
+// it every tick up to the velocity ceiling (REVIEW_5b C13).
+function pullToRest(
   active: SimNode[],
-  axis: ResolvedAxis<BandRange>,
   coord: 'x' | 'y',
-  center: number,
+  frame: LayoutFrame,
   strength: number,
   exp: number,
   alpha: number,
@@ -683,25 +794,23 @@ function pullToBands(
   const velocity = coord === 'x' ? 'vx' : 'vy'
   for (const node of active) {
     if (node.pinned) continue
-    const bucket = bucketOf(axis, node)
-    const band = bucket === undefined ? undefined : axis.byBucket.get(bucket)
-    const lo = band === undefined ? 0 : band.min - center
-    const hi = band === undefined ? 0 : band.max - center
+    const { lo, hi } = frame.rest(coord, node)
     const p = node[coord]
     let target: number | null = null
     if (p < lo) target = lo
     else if (p > hi) target = hi
     if (target !== null) {
-      node[velocity] -= bandForce(p - target, exp) * alpha * strength
+      node[velocity] -= bandForce(p - target, exp, alpha * strength)
     }
   }
 }
 
-// Restoring force for the band springs: magnitude |d|^exp, signed toward the
-// band (exp = 1 is the linear/Hooke spring; exp > 1 is soft just outside the
-// band and stiff far out). Shared by both axes and the radial ring pull.
-function bandForce(d: number, exp: number): number {
-  return Math.sign(d) * Math.pow(Math.abs(d), exp)
+// Restoring impulse for the band springs: magnitude |d|^exp × scale, signed
+// toward the rest (exp = 1 is the linear/Hooke spring; exp > 1 is soft just
+// outside the band and stiff far out), and never more than |d| itself — the
+// pull reaches the rest, not beyond it. Shared by both axes and the ring pull.
+function bandForce(d: number, exp: number, scale: number): number {
+  return Math.sign(d) * Math.min(Math.pow(Math.abs(d), exp) * scale, Math.abs(d))
 }
 
 // Radial band gravity: the Y axis's present band centres map to target radii
@@ -711,29 +820,28 @@ function bandForce(d: number, exp: number): number {
 function applyBandGravityRadial(
   active: SimNode[],
   params: GravityParams,
-  resolved: ResolvedPhysics,
   frame: LayoutFrame,
   alpha: number,
   rng: Rng,
 ): void {
   const gy = params.gravityY
-  if (frame.rings.size === 0) return
   for (const node of active) {
     if (node.pinned) continue
-    const bucket = bucketOf(resolved.bandY, node)
-    const targetR = bucket === undefined ? undefined : frame.rings.get(bucket)
-    if (targetR === undefined) continue
+    const targetR = frame.ringOf(node)
     const r = Math.hypot(node.x, node.y)
     if (r < 1e-6) {
       // No defined direction at the origin — give a tiny outward kick so the
-      // ring pull has something to act on next tick.
-      node.vx += (rng() - 0.5)
-      node.vy += (rng() - 0.5)
+      // ring pull has something to act on next tick. A node whose ring IS the
+      // origin (no value on Y) is at rest there.
+      if (targetR > 0) {
+        node.vx += (rng() - 0.5)
+        node.vy += (rng() - 0.5)
+      }
       continue
     }
-    const f = bandForce(r - targetR, params.gravityBandExp)
-    node.vx -= (node.x / r) * f * alpha * gy
-    node.vy -= (node.y / r) * f * alpha * gy
+    const f = bandForce(r - targetR, params.gravityBandExp, alpha * gy)
+    node.vx -= (node.x / r) * f
+    node.vy -= (node.y / r) * f
   }
 }
 
