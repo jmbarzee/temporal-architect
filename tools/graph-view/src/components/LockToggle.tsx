@@ -22,8 +22,8 @@ export function LockToggle({ locked, onClick, flashing, label }: LockToggleProps
     ? `${label} filter locked — held as it is; click to unlock`
     : `${label} filter unlocked — click to lock and hold it as it is`
   const className = [
-    'gv-pin-toggle',
-    locked ? 'pinned' : '',
+    'gv-lock-toggle',
+    locked ? 'locked' : '',
     flashing ? 'flashing' : '',
   ].filter(Boolean).join(' ')
 
