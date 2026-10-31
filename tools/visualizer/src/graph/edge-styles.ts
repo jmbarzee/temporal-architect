@@ -10,7 +10,8 @@
 // minimal `{ nodeType }` shape the rules actually read, so callers may pass a
 // GraphNode, a SimNode, or a bare projection.
 
-import type { GraphEdge, NodeType } from './model'
+import type { DimensionValue } from './dimension'
+import type { GraphEdge } from './model'
 
 // Edge styles indexed by semantic role. The nexus family carries the pink
 // palette through every leg of a call:
@@ -40,8 +41,13 @@ export type EdgeStyleKey = keyof typeof EDGE_STYLE
 /** One resolved stroke style: colour, base alpha, dash pattern, line width. */
 export type EdgeStyle = (typeof EDGE_STYLE)[EdgeStyleKey]
 
-/** The endpoint shape the style rules read. */
-type StyleEndpoint = { nodeType: NodeType }
+/**
+ * The endpoint the style rules read: a resolved value on the taxonomy's axis,
+ * not a node. Passing the value rather than the node keeps this classifier out
+ * of the business of deciding which axis to read, and matches `edgeTypeFor` —
+ * the two disagree about enough already without disagreeing about their inputs.
+ */
+type StyleEndpoint = DimensionValue | undefined
 
 // Pick the right entry from EDGE_STYLE for a given edge.
 //
@@ -62,15 +68,15 @@ export function edgeStyleKeyFor(
   tgt: StyleEndpoint,
 ): EdgeStyleKey {
   if (edge.edgeType === 'containment') {
-    if (src.nodeType === 'nexusOperation' && tgt.nodeType === 'nexusService') {
+    if (src === 'nexusOperation' && tgt === 'nexusService') {
       return 'opContainment'
     }
     // op ↔ endpoint composition: visualized like opContainment (dashed,
     // nexus-family) but in the endpoint's deeper rose so the eye can tell
     // the two parents apart at a glance.
     if (
-      (src.nodeType === 'nexusOperation' && tgt.nodeType === 'nexusEndpoint') ||
-      (src.nodeType === 'nexusEndpoint' && tgt.nodeType === 'nexusOperation')
+      (src === 'nexusOperation' && tgt === 'nexusEndpoint') ||
+      (src === 'nexusEndpoint' && tgt === 'nexusOperation')
     ) {
       return 'epComposition'
     }
@@ -79,27 +85,27 @@ export function edgeStyleKeyFor(
   // Both directions of the workflow ↔ operation hop, plus spliced
   // caller → backing edges that retain the endpoint metadata.
   if (
-    src.nodeType === 'nexusOperation' || tgt.nodeType === 'nexusOperation' ||
+    src === 'nexusOperation' || tgt === 'nexusOperation' ||
     edge.nexusEndpoint != null
   ) {
     return 'nexusCall'
   }
-  if (src.nodeType === 'workflow' && tgt.nodeType === 'workflow') {
+  if (src === 'workflow' && tgt === 'workflow') {
     return 'workflowDep'
   }
   if (
-    (src.nodeType === 'workflow' && tgt.nodeType === 'activity') ||
-    (src.nodeType === 'activity' && tgt.nodeType === 'workflow')
+    (src === 'workflow' && tgt === 'activity') ||
+    (src === 'activity' && tgt === 'workflow')
   ) {
     return 'workflowToActivity'
   }
   // The two coarsened dependency cases: namespace↔namespace and worker↔worker.
   // These are the only non-nexus, non-workflow/activity dependency types that
   // warrant a distinct style; everything else gets the neutral default.
-  if (src.nodeType === 'namespace' || tgt.nodeType === 'namespace') {
+  if (src === 'namespace' || tgt === 'namespace') {
     return 'dependencyNsToNs'
   }
-  if (src.nodeType === 'worker' || tgt.nodeType === 'worker') {
+  if (src === 'worker' || tgt === 'worker') {
     return 'dependencyWkToWk'
   }
   return 'dependencyDefault'

@@ -15,10 +15,20 @@
 //      probe goes red.
 
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
-import type { GraphEdge, NodeType } from '../graph/model'
-import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../graph/node-types'
+import type { GraphEdge } from '../graph/model'
+import type { NodeType } from '../adapter/node-types'
+import { DEFAULT_ONTOLOGY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 import { createOntology } from '../graph/ontology'
+import {
+  createDimensionalMapping,
+  identityMapping,
+  internValue,
+} from '../graph/dimension'
+import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
+import { defaultParamsFor } from '../graph/simulation'
+import { bandFor, chargeFor, coreRadiusFor } from '../graph/forces'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
 
@@ -26,7 +36,8 @@ const UNDECLARED = 'notADeclaredKey' as NodeType
 
 function node(id: string, nodeType: NodeType, parentId?: string): SimNode {
   return {
-    id, nodeType, name: id, orphan: parentId === undefined,
+    id, dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
+    name: id, orphan: parentId === undefined,
     definitionKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
     x: 0, y: 0, vx: 0, vy: 0, pinned: false,
@@ -39,8 +50,8 @@ const NODES: SimNode[] = [
   node('act', 'activity', 'wk'),
 ]
 const EDGES: GraphEdge[] = [
-  { id: 'c0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk', sourceNodeType: 'workflow', targetNodeType: 'worker' },
-  { id: 'd0', edgeType: 'dependency', sourceId: 'wf', targetId: 'act', sourceNodeType: 'workflow', targetNodeType: 'activity' },
+  { id: 'c0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk' },
+  { id: 'd0', edgeType: 'dependency', sourceId: 'wf', targetId: 'act' },
 ]
 const BY_ID = new Map(NODES.map(n => [n.id, n]))
 const SOURCE = { nodes: NODES, edges: EDGES, getNode: (id: string) => BY_ID.get(id) }
@@ -52,6 +63,9 @@ const SOURCE = { nodes: NODES, edges: EDGES, getNode: (id: string) => BY_ID.get(
  * by its container, filtering on `tier-2` selects the worker.
  */
 const ALTERNATE = createOntology({
+  styleDimension: TEMPORAL_TYPE_DIMENSION,
+  abbreviations: { worker: 'T2', workflow: 'T3', activity: 'T4' },
+  styleGroups: [{ id: 'tiers', values: ['worker', 'workflow', 'activity'] }],
   nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
   nodeStyles: {
     worker: { ...NODE_TYPE_REGISTRY.worker, defType: 'tier-2', summaryKind: 'degree' },
@@ -71,9 +85,188 @@ function visible(ontology: typeof DEFAULT_ONTOLOGY, types: string[]): Json {
   }
 }
 
-export function ontologyProbes(): Json {
-  const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: UNDECLARED })
+/**
+ * The mapping primitive, including the case it refuses to build.
+ *
+ * "Result sets must be non-intersecting" is only a guarantee if something proves
+ * the refusal happens. A value in two buckets has no answer for which token
+ * tunes it, and without the throw the answer would silently be "whichever bucket
+ * was declared last" — a layout that depends on list order, found months later
+ * by someone alphabetising a declaration for readability.
+ */
+function mappingProbes(): Json {
+  const descriptor: DimensionDescriptor = {
+    id: 'probe', label: 'Probe',
+    values: ['a', 'b', 'c', 'd'],
+    emptyMeans: 'none', absentMeans: 'visible',
+    labelFor: v => v.toUpperCase(),
+    abbreviationFor: v => v.slice(0, 1).toUpperCase(),
+  }
+  const grouped = createDimensionalMapping({
+    id: 'probe:grouped', label: 'Grouped', dimension: 'probe',
+    buckets: [
+      { id: 'ab', label: 'A+B', values: ['a', 'b'] },
+      { id: 'cd', label: 'C+D', values: ['c', 'd'] },
+    ],
+  })
+  let refusal = 'NOT REFUSED — the guarantee is not enforced'
+  try {
+    createDimensionalMapping({
+      id: 'probe:overlapping', label: 'Overlapping', dimension: 'probe',
+      buckets: [
+        { id: 'ab', label: 'A+B', values: ['a', 'b'] },
+        { id: 'bc', label: 'B+C', values: ['b', 'c'] },
+      ],
+    })
+  } catch (err) {
+    refusal = err instanceof Error ? err.message : String(err)
+  }
   return {
+    identity: identityMapping(descriptor).buckets.map(b => `${b.id}=${b.label}:${b.values.join(',')}`),
+    grouped: {
+      buckets: grouped.buckets.map(b => `${b.id}:${b.values.join(',')}`),
+      // Every value resolves, and a value the mapping omits resolves to nothing
+      // rather than to an arbitrary bucket.
+      resolved: ['a', 'b', 'c', 'd', 'e'].map(v => `${v} -> ${grouped.bucketFor(v)?.id ?? 'none'}`),
+      absentResolves: grouped.bucketFor(undefined) === undefined,
+    },
+    intersectingBucketsRefused: refusal,
+    // Composite selections must fold to a stable string before they are used as
+    // a Set key, or they deduplicate by identity and degenerate to one entry per
+    // node — no type error, no crash, a silently different layout.
+    interning: {
+      stringPassesThrough: internValue('a') === 'a',
+      compositeIsStable: internValue(['a', 'b']) === internValue(['a', 'b']),
+      compositeIsDistinct: internValue(['a', 'b']) !== internValue(['a', 'c']),
+      deduplicatesInASet: new Set([internValue(['a', 'b']), internValue(['a', 'b'])]).size,
+    },
+  }
+}
+
+
+/**
+ * Dimension values that name `Object.prototype` members.
+ *
+ * Values are host-supplied strings, so nothing stops one being called
+ * `constructor`. A plain `table[key]` read resolves that up the prototype chain
+ * and returns the `Object` function — which is not `undefined`, so every
+ * `?? ABSENT_VALUE_PHYSICS.x` and `!== undefined` guard downstream accepts it
+ * as a declared value. The consequences are not local: the `Object` function
+ * enters the force arithmetic as NaN, and because charge couples a pair by the
+ * *average* of two charges, one such node takes the whole layout non-finite.
+ * `styleForKey` meanwhile returns the constructor as though it were a style,
+ * and the first read of `.size.r` throws inside the draw loop — the exact
+ * failure the required-fallback design exists to prevent.
+ *
+ * Every row below must show the fallback/absent answer, never an inherited one.
+ */
+function prototypeNamedValues(): Json {
+  const NAMES = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']
+  const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const rows: Record<string, Json> = {}
+  for (const name of NAMES) {
+    const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
+    const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
+    const node = subject
+    const band = bandFor(params, node)
+    rows[name] = {
+      styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
+      styleLabel: style.label,
+      charge: chargeFor(params, node),
+      coreRadius: coreRadiusFor(params, node),
+      chargeIsFinite: Number.isFinite(chargeFor(params, node)),
+      band: `${band.yMin}..${band.yMax}`,
+    }
+  }
+  return rows
+}
+
+
+/**
+ * The physics half of the container — the half no gate watched.
+ *
+ * The injection probe below drives `computeVisibleGraph` through two taxonomies
+ * and goldens that the answers differ. That covers styling and filtering and
+ * nothing else, so the review was able to pin `Simulation` to the first ontology
+ * it ever saw, and to pin `resolveEdgeType`, with every gate green: the argument
+ * "supply a different container and the answer must change" was only ever being
+ * made for one consumer.
+ *
+ * These rows make it for the other two. `defaultParamsFor` must derive its axis
+ * and its whole key space from the taxonomy it is handed, and `edgeCategory`
+ * must resolve springs through the supplied resolver rather than a captured one.
+ */
+function physicsInjection(): Json {
+  const fromDefault = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const fromAlternate = defaultParamsFor(ALTERNATE)
+  const worker = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }
+
+  // A taxonomy on a DIFFERENT axis entirely. Its charge map is keyed by values
+  // no node in the shipped domain carries, so a consumer that ignored the
+  // supplied container and used the shipped one would score these nodes; one
+  // that honours it finds nothing and returns the absent-value physics.
+  const OTHER_AXIS = createOntology({
+    styleDimension: 'zone',
+    abbreviations: { north: 'N', south: 'S' },
+    styleGroups: [{ id: 'zones', values: ['north', 'south'] }],
+    nodeTypeKeys: ['north', 'south'],
+    nodeStyles: {
+      north: { ...NODE_TYPE_REGISTRY.worker, defType: 'northDef' },
+      south: { ...NODE_TYPE_REGISTRY.activity, defType: 'southDef' },
+    },
+    edgeTypes: DEFAULT_ONTOLOGY.edgeTypes,
+    resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
+    fallbackStyle: NODE_TYPE_REGISTRY.activity,
+  })
+  const zoned = defaultParamsFor(OTHER_AXIS)
+  const northNode = { dimensions: { zone: 'north' } }
+
+  return {
+    // The axis itself must come from the container.
+    axes: {
+      shipped: fromDefault.chargeDimension,
+      otherAxis: zoned.chargeDimension,
+      differ: fromDefault.chargeDimension !== zoned.chargeDimension,
+    },
+    // And so must the key space the maps are built over.
+    chargeKeys: {
+      shipped: sorted(Object.keys(fromDefault.charge)),
+      otherAxis: sorted(Object.keys(zoned.charge)),
+    },
+    // A node on the other axis scores under ITS taxonomy and is absent under the
+    // shipped one. Both rows are needed: the first proves the container is read,
+    // the second proves the shipped one is genuinely not consulted.
+    northNodeUnderOwnTaxonomy: chargeFor(zoned, northNode),
+    northNodeUnderShippedTaxonomy: chargeFor(fromDefault, northNode),
+    // The alternate taxonomy from the injection probe keeps the shipped axis but
+    // restyles it, so the physics MUST agree with the shipped one here — a probe
+    // that reported a difference for every alternate would prove nothing.
+    workerChargeShipped: chargeFor(fromDefault, worker),
+    workerChargeAlternate: chargeFor(fromAlternate, worker),
+
+    // The axis has exactly one source, so a container derived by spreading
+    // cannot end up disagreeing with itself. Before `styleAxis()` this row read
+    // `sourceFile` while `valueFor` still answered on the type axis.
+    derivedBySpreadStaysConsistent: (() => {
+      const derived = { ...DEFAULT_ONTOLOGY } as typeof DEFAULT_ONTOLOGY
+      return {
+        axisAfterSpread: derived.styleAxis(),
+        stillResolvesTheSameStyle:
+          derived.resolveNodeStyle(worker).defType ===
+          DEFAULT_ONTOLOGY.resolveNodeStyle(worker).defType,
+        physicsAgreesWithStyling:
+          defaultParamsFor(derived).chargeDimension === derived.styleAxis(),
+      }
+    })(),
+  }
+}
+
+export function ontologyProbes(): Json {
+  const fallback = DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } })
+  return {
+    mappings: mappingProbes(),
+    prototypeNamedValues: prototypeNamedValues(),
+    physicsInjection: physicsInjection(),
     // What a miss resolves to, field by field. The `defType` matters most: it is
     // what the visibility predicate tests, so it decides whether an unrecognized
     // node is permanently visible, permanently hidden, or accidentally lumped in
@@ -93,11 +286,15 @@ export function ontologyProbes(): Json {
     // A miss must be stable, not a fresh object each time: the draw loop resolves
     // per node per frame and callers compare styles by reference.
     fallbackIsStable:
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: UNDECLARED }) ===
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: UNDECLARED }),
+      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }) ===
+      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: UNDECLARED } }),
+    // A node with no value on the style axis at all — the other half of the
+    // guard, and the one a dimension model makes reachable for the first time.
+    absentValueResolvesToFallback:
+      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }) === fallback,
     // A declared key must NOT reach the fallback.
     declaredKeyUnaffected:
-      DEFAULT_ONTOLOGY.resolveNodeStyle({ nodeType: 'worker' }) === NODE_TYPE_REGISTRY.worker,
+      DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }) === NODE_TYPE_REGISTRY.worker,
 
     // The seam, exercised. Same graph, same filter vocabulary, two taxonomies —
     // the answers must differ, or nothing is actually being injected.

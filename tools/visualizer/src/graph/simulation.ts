@@ -1,11 +1,8 @@
 // Force-directed simulation engine.
 // Implements GRAPH_VIEW.md § Layout: Force-Directed Simulation.
 
-import type { GraphNode, GraphEdge, Graph, NodeType } from './model'
-import { NODE_TYPE_REGISTRY } from './node-types'
-import { ALL_EDGE_TYPES } from './edge-types'
-import type { EdgeTypeId } from './edge-types'
-import { ALL_NODE_TYPES } from './node-types'
+import type { GraphNode, GraphEdge, Graph } from './model'
+import type { EdgeTypeId } from './taxonomy'
 import {
   applyChargeForce,
   applyLinkForce,
@@ -15,10 +12,8 @@ import {
   bandFor,
 } from './forces'
 import type { Rng } from './rng'
+import type { DimensionId, DimensionValue } from './dimension'
 import type { Ontology } from './ontology'
-
-// Re-export so callers that already import ALL_NODE_TYPES from simulation continue to work.
-export { ALL_NODE_TYPES } from './node-types'
 
 // The force helpers now live in ./forces; re-export them so existing consumers
 // (GraphCanvas, GraphControlPanel, ChargeControls) keep importing them here.
@@ -53,14 +48,16 @@ export interface SimNode extends GraphNode {
 // PUSH — repulsion. Per-type charge strength and core radius, the masters that
 // scale them, and the charge falloff exponent.
 export interface ChargeParams {
-  // Charge strength (repulsion, negative values), keyed by node type.
-  charge: Record<NodeType, number>
+  /** The axis charge and core radius key on. One axis, named once. */
+  chargeDimension: DimensionId
+  // Charge strength (repulsion, negative values), keyed by dimension value.
+  charge: Record<DimensionValue, number>
   // Core radius (charge softening, expressed as a length), keyed by node type.
   // Per pair, the softening added to dist² is the squared average of the two
   // endpoints' effective core radii (rEff = coreRadiusMultiplier × coreRadius).
   // A larger core radius spreads a type's repulsion over a wider, gentler
   // plateau near the centre instead of a sharp spike.
-  coreRadius: Record<NodeType, number>
+  coreRadius: Record<DimensionValue, number>
 
   pushMultiplier: number       // scales all charge (repulsion) forces
   coreRadiusMultiplier: number // scales all per-type core radii (charge softening)
@@ -87,6 +84,8 @@ export interface LinkParams {
 // centre drift, removing the need for canvas-side COM compensation. Plus the
 // optional downstream-reach vertical pull.
 export interface GravityParams {
+  /** The axis the per-value rest bands key on. */
+  bandDimension: DimensionId
   gravityX: number
   gravityY: number
   // Band falloff exponent applied to the displacement outside the rest band
@@ -115,8 +114,8 @@ export interface GravityParams {
   topologicalEnabled: boolean
   bandXMin: number
   bandXMax: number
-  // Per-type Y rest band [min, max], keyed by node type.
-  band: Record<NodeType, { min: number; max: number }>
+  // Per-value Y rest band [min, max].
+  band: Record<DimensionValue, { min: number; max: number }>
 }
 
 // DYNAMICS — how the simulation cools and damps over time.
@@ -154,70 +153,82 @@ export type ForceParams = ChargeParams & LinkParams & GravityParams & DynamicsPa
 // The per-category sliders all still work; these are starting points the
 // user can drag from. Ranges in GraphControlPanel.tsx are wide enough that
 // every default sits in a comfortable middle of its slider.
-export const DEFAULT_PARAMS: ForceParams = {
-  // Charges (all negative = repulsion). Per-type defaults captured from an
-  // interactive tuning session on the PUSH charge map: the container/host
-  // tiers (endpoint, namespace, worker, service) carry the heaviest repulsion
-  // so top-level nodes fan well apart, dropping off through the orchestrator
-  // tier (operation, workflow) down to activities. Sourced from the registry
-  // alongside each type's core radius.
-  charge: Object.fromEntries(
-    ALL_NODE_TYPES.map(t => [t, NODE_TYPE_REGISTRY[t].physics.charge]),
-  ) as Record<NodeType, number>,
+/**
+ * The starting parameters for a taxonomy.
+ *
+ * This was a module-load constant built from the shipped registry, which made
+ * the engine's defaults a property of one domain: importing the simulation
+ * imported that domain's charges, bands and spring categories, whether or not
+ * the caller ever used them. Deriving them from the supplied taxonomy instead
+ * is what lets a host bring its own values and get the same tuning surface.
+ *
+ * Note that this returns a **fresh** object per call, nested maps included. The
+ * old constant was shared, and `{ ...DEFAULT_PARAMS }` copied only the top
+ * level — so every "copy" aliased the same `charge`, `coreRadius`, `band`,
+ * `link` and `dist` objects, and an in-place write to any of them would have
+ * reached every other holder, including the module default itself. Nothing did
+ * that today (the control panel rebuilds each map immutably), which is exactly
+ * why it would have been a bad bug to acquire later rather than one to find.
+ */
+export function defaultParamsFor(ontology: Ontology): ForceParams {
+  const keys = ontology.nodeTypeKeys
+  const physicsOf = (key: DimensionValue) => ontology.styleForKey(key).physics
+  return {
+    // Both default to the axis the taxonomy resolves style on, so the layout
+    // keys on the same thing it is coloured by. Unit 4 makes this a choice.
+    chargeDimension: ontology.styleAxis(),
+    bandDimension: ontology.styleAxis(),
 
-  // Core radii (charge softening as a length), sourced from the registry.
-  coreRadius: Object.fromEntries(
-    ALL_NODE_TYPES.map(t => [t, NODE_TYPE_REGISTRY[t].physics.coreRadius]),
-  ) as Record<NodeType, number>,
+    // Charges (all negative = repulsion) and core radii (charge softening as a
+    // length), read off each value's declared physics. No cast: the maps are
+    // keyed by dimension value, which is what `nodeTypeKeys` already yields.
+    charge: Object.fromEntries(keys.map(k => [k, physicsOf(k).charge])),
+    coreRadius: Object.fromEntries(keys.map(k => [k, physicsOf(k).coreRadius])),
 
-  // Spring stiffness + rest length per edge category, sourced from the registry.
-  link: Object.fromEntries(
-    ALL_EDGE_TYPES.map(e => [e.id, e.physics.strength]),
-  ) as Record<EdgeTypeId, number>,
-  dist: Object.fromEntries(
-    ALL_EDGE_TYPES.map(e => [e.id, e.physics.distance]),
-  ) as Record<EdgeTypeId, number>,
+    // Spring stiffness + rest length per edge category.
+    link: Object.fromEntries(ontology.edgeTypes.map(e => [e.id, e.physics.strength])),
+    dist: Object.fromEntries(ontology.edgeTypes.map(e => [e.id, e.physics.distance])),
 
-  // Hierarchical gravity. Y bands carry the vertical structure of the
-  // layout — strong (gravityY = 0.145) and overlapping at the edges so
-  // adjacent tiers can soften their boundary instead of forming a hard
-  // stripe. The X band is asymmetric (0..380) because the canvas's
-  // initial fit-to-view re-centres anyway; what matters is the band
-  // width, which is generous enough to let wide fan-outs spread laterally.
-  gravityX: 0.05,
-  gravityY: 0.145,
-  gravityBandExp: 1,
-  // Off by default — the experiment lives behind a slider. When non-zero,
-  // every node with a positive downstream score gets an additional vy pull
-  // toward `bandMin - score * bandHeight`, layered additively on top of the
-  // per-type Y-band gravity above.
-  gravityDownstream: 0,
-  gravityTopologicalExp: 3,
-  gravityCenter: 0.05,
-  gravityMode: 'cartesian',
-  bandEnabled: true,
-  topologicalEnabled: false,
-  bandXMin:    0,
-  bandXMax:  380,
-  // Per-type Y rest bands, sourced from the registry.
-  band: Object.fromEntries(
-    ALL_NODE_TYPES.map(t => [t, { ...NODE_TYPE_REGISTRY[t].physics.yBand }]),
-  ) as Record<NodeType, { min: number; max: number }>,
+    // Hierarchical gravity. Y bands carry the vertical structure of the
+    // layout — strong (gravityY = 0.145) and overlapping at the edges so
+    // adjacent tiers can soften their boundary instead of forming a hard
+    // stripe. The X band is asymmetric (0..380) because the canvas's
+    // initial fit-to-view re-centres anyway; what matters is the band
+    // width, which is generous enough to let wide fan-outs spread laterally.
+    gravityX: 0.05,
+    gravityY: 0.145,
+    gravityBandExp: 1,
+    // Off by default — the experiment lives behind a slider. When non-zero,
+    // every node with a positive downstream score gets an additional vy pull
+    // toward `bandMin - score * bandHeight`, layered additively on top of the
+    // per-value Y-band gravity above.
+    gravityDownstream: 0,
+    gravityTopologicalExp: 3,
+    gravityCenter: 0.05,
+    gravityMode: 'cartesian',
+    bandEnabled: true,
+    topologicalEnabled: false,
+    bandXMin:    0,
+    bandXMax:  380,
+    // Per-value Y rest bands. Copied rather than referenced — the band objects
+    // belong to the taxonomy, and the params are the user's to tune.
+    band: Object.fromEntries(keys.map(k => [k, { ...physicsOf(k).yBand }])),
 
-  // Dynamics. alphaMin is well below the d3 default (0.001) so the
-  // simulation continues into its slow-cooling tail — layouts read as
-  // "settled" rather than freezing while springs are still measurably
-  // active. friction and cooling are stock.
-  alphaDecay:    0.005,
-  alphaMin:      0.0001,
-  velocityDecay: 0.4,
+    // Dynamics. alphaMin is well below the d3 default (0.001) so the
+    // simulation continues into its slow-cooling tail — layouts read as
+    // "settled" rather than freezing while springs are still measurably
+    // active. friction and cooling are stock.
+    alphaDecay:    0.005,
+    alphaMin:      0.0001,
+    velocityDecay: 0.4,
 
-  pushMultiplier:       0.4,
-  pullMultiplier:       0.6,
-  distanceMultiplier:   0.1,
-  coreRadiusMultiplier: 1.0,
-  chargeExponent:       0.7,  // acts on (dist² + softening); = old 1.4 with the /2 folded in
-  linkExponent:         1.0,
+    pushMultiplier:       0.4,
+    pullMultiplier:       0.6,
+    distanceMultiplier:   0.1,
+    coreRadiusMultiplier: 1.0,
+    chargeExponent:       0.7,  // acts on (dist² + softening); = old 1.4 with the /2 folded in
+    linkExponent:         1.0,
+  }
 }
 
 // Stability bounds — defenses against numerical instability cascades.
@@ -275,7 +286,7 @@ export class Simulation {
     rng: Rng,
     ontology: Ontology,
   ) {
-    this.params = { ...DEFAULT_PARAMS, ...params }
+    this.params = { ...defaultParamsFor(ontology), ...params }
     this.alpha = 1.0
     this.rng = rng
     this.ontology = ontology

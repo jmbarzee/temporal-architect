@@ -9,8 +9,10 @@
 import React from 'react'
 import './GravityControls.css'
 import type { ForceParams } from '../graph/simulation'
-import type { NodeType } from '../graph/model'
-import { NODE_TYPE_REGISTRY, MAIN_LADDER, NEXUS_LADDER, sliderLabelFor } from '../graph/node-types'
+
+import { useOntology } from './graph-view/useOntology'
+import type { Ontology } from '../graph/ontology'
+import type { DimensionValue } from '../graph/dimension'
 import { ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES, type CurveItem } from './ForceMap'
 import { Plot } from './controls/Plot'
 import { Slider } from './controls/Slider'
@@ -19,12 +21,18 @@ import { FormulaValue } from './controls/PopContext'
 
 // Column order: main ladder first, then the nexus ladder (after a gap). Both
 // derived from the node-type registry (family + tier) so a registry change
-// reflows the columns. Labels reuse the shared sliderLabelFor (no local copy).
-const COL_ORDER: NodeType[] = [...MAIN_LADDER, ...NEXUS_LADDER]
-const MAIN_COUNT = MAIN_LADDER.length
+// reflows the columns. Labels come from the taxonomy, which also decides how
+// the values group — the two runs used to be two imported ladder constants.
+function columnsFor(ontology: Ontology): { order: DimensionValue[]; firstGroupCount: number } {
+  const groups = ontology.styleGroups
+  return {
+    order: groups.flatMap(g => [...g.values]),
+    firstGroupCount: groups.length > 0 ? groups[0].values.length : 0,
+  }
+}
 
-function typeColor(t: NodeType): string {
-  return `var(--color-${NODE_TYPE_REGISTRY[t].color.cssVarSuffix})`
+function typeColor(ontology: Ontology, t: DimensionValue): string {
+  return `var(--color-${ontology.styleForKey(t).color.cssVarSuffix})`
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
@@ -34,8 +42,8 @@ interface GravityControlProps {
   params: ForceParams
   onParamChange: (patch: Partial<ForceParams>) => void
   onGravitySet: (partial: Partial<ForceParams>) => void
-  hoveredType: NodeType | null
-  onHoverType: (t: NodeType | null) => void
+  hoveredType: DimensionValue | null
+  onHoverType: (t: DimensionValue | null) => void
 }
 
 // ── Band "mini world view" geometry ──────────────────────────────────────────
@@ -55,17 +63,20 @@ const W_MIN = -600
 const W_MAX = 600
 const W_STEP = 10
 const DOT_R = 5
-const SLOTS = COL_ORDER.length + 1 // one gap between main and nexus ladders
 
 const yForWorld = (v: number) => PT + ((v - W_MIN) / (W_MAX - W_MIN)) * (PB - PT)
 const valForY = (y: number) => W_MIN + ((y - PT) / (PB - PT)) * (W_MAX - W_MIN)
 const xForWorld = (v: number) => PL + ((v - W_MIN) / (W_MAX - W_MIN)) * (PR - PL)
-const colSlot = (i: number) => (i < MAIN_COUNT ? i : i + 1)
-const colX = (i: number) => PL + ((colSlot(i) + 0.5) / SLOTS) * (PR - PL)
+// One empty slot between the two groups, so the ladders read as two runs.
+const colSlot = (i: number, firstGroupCount: number) => (i < firstGroupCount ? i : i + 1)
+const colX = (i: number, cols: { order: DimensionValue[]; firstGroupCount: number }) =>
+  PL + ((colSlot(i, cols.firstGroupCount) + 0.5) / (cols.order.length + 1)) * (PR - PL)
 
 function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: GravityControlProps) {
+  const ontology = useOntology()
+  const cols = columnsFor(ontology)
   const svgRef = React.useRef<SVGSVGElement>(null)
-  const dragRef = React.useRef<{ type: NodeType; edge: 'min' | 'max' } | null>(null)
+  const dragRef = React.useRef<{ type: DimensionValue; edge: 'min' | 'max' } | null>(null)
   const [xbandHover, setXbandHover] = React.useState(false)
 
   const userY = (e: React.PointerEvent): number => {
@@ -79,7 +90,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
     return pt.matrixTransform(ctm.inverse()).y
   }
 
-  const handleDown = (e: React.PointerEvent, type: NodeType, edge: 'min' | 'max') => {
+  const handleDown = (e: React.PointerEvent, type: DimensionValue, edge: 'min' | 'max') => {
     e.preventDefault()
     ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
     dragRef.current = { type, edge }
@@ -151,7 +162,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
 
         {/* Rest-region stripes — the mini world view, behind and inert. */}
         <g className="gravity-band-stripes">
-          {COL_ORDER.map(t => {
+          {cols.order.map(t => {
             const yTop = yForWorld(params.band[t].min)
             const yBot = yForWorld(params.band[t].max)
             const dim = hoveredType !== null && hoveredType !== t
@@ -160,7 +171,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
               <rect
                 key={t}
                 x={PL} y={yTop} width={PR - PL} height={Math.max(0, yBot - yTop)}
-                fill={typeColor(t)}
+                fill={typeColor(ontology, t)}
                 className={`gravity-band-stripe${dim ? ' dim' : ''}${active ? ' active' : ''}`}
               />
             )
@@ -174,13 +185,13 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
         </g>
 
         {/* Per-type vertical sliders (track + two handles), on top. */}
-        {COL_ORDER.map((t, i) => {
-          const x = colX(i)
+        {cols.order.map((t, i) => {
+          const x = colX(i, cols)
           const yTop = yForWorld(params.band[t].min)
           const yBot = yForWorld(params.band[t].max)
           const dim = hoveredType !== null && hoveredType !== t
           const active = hoveredType === t
-          const color = typeColor(t)
+          const color = typeColor(ontology, t)
           return (
             <g
               key={t}
@@ -188,7 +199,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
               onPointerEnter={() => onHoverType(t)}
               onPointerLeave={() => { if (!dragRef.current) onHoverType(null) }}
             >
-              <text x={x} y={PT - 6} textAnchor="middle" className="gravity-band-label" style={{ fill: color }}>{sliderLabelFor(t)}</text>
+              <text x={x} y={PT - 6} textAnchor="middle" className="gravity-band-label" style={{ fill: color }}>{ontology.abbreviationFor(t)}</text>
               <line x1={x} y1={PT} x2={x} y2={PB} className="gravity-band-track" />
               <line x1={x} y1={yTop} x2={x} y2={yBot} stroke={color} className="gravity-band-stem" />
               <circle

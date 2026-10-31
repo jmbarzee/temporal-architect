@@ -7,7 +7,7 @@
 // (which means hide-everything, not show-everything — T7) and the app's own
 // default selection.
 
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 
 const defTypeOf = (t: (typeof ALL_NODE_TYPES)[number]) => NODE_TYPE_REGISTRY[t].defType
 

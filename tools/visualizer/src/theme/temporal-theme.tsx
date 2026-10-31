@@ -1,6 +1,7 @@
 import React from 'react'
 import { SingleGearIcon, InterlockingGearsIcon } from '../components/icons/GearIcons'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
+import { ALL_NODE_TYPES, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import type { NodeType } from '../adapter/node-types'
 
 // --- Core types ---
 
@@ -60,8 +61,14 @@ export interface DefTypeConfig {
   defaultOn: boolean
 }
 
-// Generate DEF_TYPE_CONFIGS from the registry so icon, label, and defaultOn
-// stay in sync with node-types.ts without a separate hand-maintained list.
+// Generate DEF_TYPE_CONFIGS from the taxonomy so icon, label, and defaultOn
+// stay in sync with the entries without a separate hand-maintained list.
+//
+// Resolved through the ontology rather than by indexing the registry object.
+// The difference is not cosmetic: `styleForKey` answers a key it does not know
+// with the declared neutral style, where `REGISTRY[t]` returns `undefined` and
+// the failure surfaces later as a blank icon or an unreadable label (T16).
+//
 // The plural label follows standard English: 'y' → 'ies', else append 's'.
 function pluralize(label: string): string {
   const last = label.split(' ').pop() ?? label
@@ -69,12 +76,15 @@ function pluralize(label: string): string {
   return label + 's'
 }
 
-export const DEF_TYPE_CONFIGS: DefTypeConfig[] = ALL_NODE_TYPES.map(t => ({
-  type:      NODE_TYPE_REGISTRY[t].defType,
-  icon:      NODE_TYPE_REGISTRY[t].icon,
-  label:     pluralize(NODE_TYPE_REGISTRY[t].label),
-  defaultOn: NODE_TYPE_REGISTRY[t].defaultVisible,
-}))
+export const DEF_TYPE_CONFIGS: DefTypeConfig[] = ALL_NODE_TYPES.map(t => {
+  const style = DEFAULT_ONTOLOGY.styleForKey(t)
+  return {
+    type:      style.defType,
+    icon:      style.icon,
+    label:     pluralize(style.label),
+    defaultOn: style.defaultVisible,
+  }
+})
 
 export const DEF_TYPE_ORDER = new Map(DEF_TYPE_CONFIGS.map((cfg, i) => [cfg.type, i]))
 
@@ -107,12 +117,34 @@ export interface ViewFilterEntry {
   types: readonly string[]
 }
 
+/**
+ * The icon a chip borrows from the value it fronts.
+ *
+ * Typed `NodeType`, not `string`, and that is the whole point of the parameter.
+ * Resolving through the container was the B36 fix; taking a bare `string` while
+ * doing it would have been a regression, because the five call sites below are
+ * literals and `styleForKey` swallows an unknown key into a placeholder plus a
+ * `console.warn`. A typo would then survive typecheck, leak, boundary, pattern
+ * and every golden — its only trace a warning printed next to two intentional
+ * ones from the fixtures, which is indistinguishable from expected noise.
+ *
+ * Narrowing the parameter keeps the compile-time key check the direct property
+ * access used to give, without going back to indexing the registry object.
+ */
+const chipIcon = (key: NodeType): string => DEFAULT_ONTOLOGY.styleForKey(key).icon
+
+// Which chips exist, and how they group, is a domain choice — five chips over
+// seven filter keys, with the three nexus keys folded into one. That grouping
+// stays declared here. What changed is the *lookup*: these were five direct
+// property accesses (`NODE_TYPE_REGISTRY.namespace.icon`), which is the one
+// shape a dynamic-key generalization cannot follow, because the key is spelled
+// into the expression rather than passed to it (T16).
 export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] = [
-  { id: 'namespaceDef', icon: NODE_TYPE_REGISTRY.namespace.icon,     label: 'Namespaces', types: ['namespaceDef'] },
-  { id: 'workerDef',    icon: NODE_TYPE_REGISTRY.worker.icon,        label: 'Workers',    types: ['workerDef'] },
-  { id: 'nexus',        icon: NODE_TYPE_REGISTRY.nexusEndpoint.icon, label: 'Nexus',      types: NEXUS_GROUP_DEF_TYPES },
-  { id: 'workflowDef',  icon: NODE_TYPE_REGISTRY.workflow.icon,      label: 'Workflows',  types: ['workflowDef'] },
-  { id: 'activityDef',  icon: NODE_TYPE_REGISTRY.activity.icon,      label: 'Activities', types: ['activityDef'] },
+  { id: 'namespaceDef', icon: chipIcon('namespace'),     label: 'Namespaces', types: ['namespaceDef'] },
+  { id: 'workerDef',    icon: chipIcon('worker'),        label: 'Workers',    types: ['workerDef'] },
+  { id: 'nexus',        icon: chipIcon('nexusEndpoint'), label: 'Nexus',      types: NEXUS_GROUP_DEF_TYPES },
+  { id: 'workflowDef',  icon: chipIcon('workflow'),      label: 'Workflows',  types: ['workflowDef'] },
+  { id: 'activityDef',  icon: chipIcon('activity'),      label: 'Activities', types: ['activityDef'] },
 ]
 
 export const HANDLER_CONFIG = {

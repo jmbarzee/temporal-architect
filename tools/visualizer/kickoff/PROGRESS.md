@@ -54,10 +54,10 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 
 | field | value |
 |---|---|
-| Current unit | **Unit 2 — Dimension primitive + shim folder** (not started) |
-| Last completed unit | **Unit 1 — Inject the taxonomy** |
+| Current unit | **Unit 3 — N-dimensional filters + chain UI** (not started) |
+| Last completed unit | **Unit 2 — Dimension primitive + shim folder** (PR #160, REVIEW_2 closed) |
 | Feature branch | `visualizer/composable-dimensions` |
-| Unit branch | `visualizer/dimensions-unit-1` (PR open; Unit 0's PR #158 is green but unmerged, so this branch stacks on it) |
+| Unit branch | `visualizer/dimensions-unit-2`. The PRs **stack**: each targets its predecessor, not the feature branch (D36). #158 -> composable-dimensions, #159 -> unit-0, Unit 2's -> unit-1. Nothing needs to merge for the run to continue. |
 | Run state | running |
 
 ## Counters
@@ -65,35 +65,51 @@ most expensive. Target ~700k-900k per unit instead of 6.6M.
 | counter | current | target |
 |---|---|---|
 | A — requirements covered | 0 (R1 partial) | 42 |
-| B — blast-radius sites migrated | 4 | 38 |
-| C — leaks in the manifest | 583 | 0 |
-| Gate 6 — import-boundary violations | 11 | 0 |
+| B — blast-radius sites migrated | 13 | 38 |
+| C — leaks in the manifest | **209** | 0 |
+| Gate 6 — import-boundary violations | **8** | 0 |
 
 Unit 0 moves none of the three counters by design: it builds the means of
 measuring them. Counter A's R41 ("does everything it did before") closes at
 Unit 8, not here; Unit 0 only makes it checkable.
 
-Counter C ceiling for the next unit (Unit 2): **210** per `PLAN.md` §6.5's table
-— see OQ2, which is now live: §6.2's Unit 2 line says 150 instead. Taking §6.5's
-table as the gate ceiling and §6.2's number as the target.
-Gate 6 ceiling for Unit 2: **11**, and Unit 2 is where it should start falling —
-creating `src/adapter/` is what lets `build.ts` and `groups.ts` stop importing
-the wire types. Both ceilings live in `kickoff/gates.json`.
+Counter B this unit: B1, B2, B8, B9, B14, B18, B31, B32, B36 — Unit 2's whole
+declared blast radius, taking the counter 4 -> 13.
+
+Counter C landed at **209** against Unit 2's ceiling of **210** (OQ2 resolved as
+D38: §6.5's table binds the gate, §6.2's tighter 150 is the target and was not
+reached). Gate 6 landed at **8**, better than the 10 projected, because `build.ts`
+carried two violations of its own out of the manifest when it moved. Both ceilings
+are ratcheted in `kickoff/gates.json` (583 -> 210, 11 -> 8); the ratchet is
+one-way, so these are now the numbers Unit 3 must not exceed.
+
+Where the 374-line drop came from, honestly: most of it is **relocation**, not
+deletion — `edge-types.ts` (164), `node-types.ts` (103) and `build.ts` (59) left
+the manifest for `src/adapter/`, which is the point of the unit rather than a
+dodge, since the vocabulary genuinely belongs to the host. The part that is real
+deletion is `model.ts` 61 -> 12 and the `nodeDefType.ts` removal.
 
 ## Gate state
 
 | gate | last run | result |
 |---|---|---|
-| 1 `tsc --noEmit` | Unit 1 close | pass |
-| 2 `npm run build:lib` | Unit 1 close | pass |
-| 3 `npm run verify` | Unit 1 close | pass — 7/7 goldens match |
-| 4 `npm run leak-gate` | Unit 1 close | pass — 583 / ceiling 583 |
-| 5 browser pass | Unit 1 close | pass — five fixtures, node/edge counts identical to Unit 0 |
-| 6 `npm run boundary-gate` | Unit 1 close | pass — 11 / ceiling 11 |
-| + `npm run pattern-gate` | Unit 1 close | pass — 18 allowlisted, 0 new |
+| 1 `tsc --noEmit` | Unit 2 close | pass |
+| 2 `npm run build:lib` | Unit 2 close | pass |
+| 2b `npm run dts-gate` | Unit 2 close | pass — consumer compile clean, `skipLibCheck` off (**new**) |
+| 3 `npm run verify` | Unit 2 close | pass — 7/7 goldens match |
+| 4 `npm run leak-gate` | Unit 2 close | pass — **209 / 210**; shim 1068; **total 1277 / 1277** (new) |
+| 5 browser pass | Unit 2 close | pass — five fixtures, counts identical to Units 0 and 1, 0 application errors |
+| 6 `npm run boundary-gate` | Unit 2 close | pass — **8 / 8**, now resolving re-exports transitively |
+| + `npm run pattern-gate` | Unit 2 close | pass — 5 allowlisted, 0 new; now scans the shim too |
 
-All of it runs as one command: `make check-visualizer` from the repo root, which
-is also what `ci.yml` runs (in three steps, so a failure names itself).
+All of it runs as one command: `make check-visualizer` from the repo root.
+
+**Gate 2 was missing from that aggregate for the whole run until Unit 2e.** CI
+always ran it via `make build`, so nothing was genuinely unverified — but the
+local aggregate is what runs at every commit boundary, and calling it "all gates"
+was wrong. `buildlib-visualizer` is now part of the target. The lesson generalises
+past this instance: an aggregate command is a claim about coverage, and nothing
+was checking that claim against `VERIFICATION.md`'s list.
 
 ---
 
@@ -163,15 +179,44 @@ explicit pass criteria and a committed screenshot — use them.
 
 ## In-flight work
 
-*Nothing in flight. Units 0 and 1 are complete; Unit 2 is next and has not started.*
+**Nothing in flight. Unit 2 is closed.** Branch `visualizer/dimensions-unit-2`,
+[PR #160](https://github.com/jmbarzee/temporal-architect/pull/160) (base:
+`visualizer/dimensions-unit-1`, per D36). `REVIEW_2.md` records 31 findings, with
+the 1 blocker and all 14 majors resolved-with-sha.
 
-<!-- When a session is interrupted mid-unit, record:
-     - the unit, and which of its commits landed
-     - the exact next action
-     - the WIP commit sha (message prefix `WIP(<unit>):`) and whether it is red
--->
+**Read `REVIEW_2.md` before starting Unit 3, not just this file.** Its headline
+correction is the thing that changes how the next unit should be read: Unit 2's
+`583 -> 209` is **82% relocation, not deletion**, and the relocated vocabulary
+grew by 22 on the way across. The gates now measure that (D40's `totalCeiling`),
+but the lesson generalises — every remaining unit's leak drop should be stated as
+deleted-vs-moved, because the two are not the same accomplishment.
 
----
+**Two model-design records were added at this boundary** (`PLAN.md` §6.6 and
+§6.7). Read them before Unit 4, not after. §6.6 is a retro aimed at whatever
+writes the next plan of this kind: the three counters answer *does it work*,
+*did you touch it*, and *is the vocabulary gone* — **none of them can see
+shape**, so a model can satisfy all three and still store a fact twice with
+nothing enforcing agreement. §6.7 is the question to ask once Unit 9 closes,
+with one worked candidate.
+
+**Still open, and not decided by me:** whether Unit 3 absorbs the shape work its
+descriptor foundation implies, and whether Unit 4 is built with axis + mapping +
+table as one constructed value rather than as separate fields. Unit 4 as written
+adds a dimension *dropdown*, which moves the axis onto the same edit channel as
+`pushMultiplier` — so the choice is cheapest to make before Unit 4 exists, and
+the instance count grows from one to roughly five across 4 / 5a / 5b.
+
+**Exact next action: begin Unit 3** (`PLAN.md` §6.2, N-dimensional filters +
+chain UI). Its ceilings are already in `kickoff/gates.json` as the Unit 2 close
+values and ratchet again at the Unit 3 boundary: leak 210, total 1277, boundary
+8. Unit 3's §6.5 target is 195.
+
+Two carried items with named owners, so they are debt rather than drift:
+- **Unit 8** closes `GraphView -> adapter/useGraphModel`, the last manifest→shim
+  edge a props change removes (D41 — §6.3's precondition was knowingly unmet for
+  that one file).
+- **Unit 4** takes the absent-value physics policy (D31), the control surfaces'
+  unguarded param indexing, and the band-median/ring-guide disagreement.
 
 ## Discovered facts
 
@@ -276,6 +321,61 @@ agents, 6.24M tokens, 34 findings, 4 distinct defects. Roughly 7.5x cheaper for
 comparable yield. The schema field requiring each finder to report *what it broke
 and what the gate said* is doing the work — the two sharpest Unit 1 findings came
 from reviewers who sabotaged a value and watched the gates stay green.
+
+**F14 — `gh pr edit` silently no-ops on this repo (ALL flags); use `gh api -X PATCH`.**
+Retargeting #159 with `gh pr edit 159 --base visualizer/dimensions-unit-0` printed
+only a Projects-classic GraphQL deprecation warning, **exited 0, and changed
+nothing** — the PR still read `-> visualizer/composable-dimensions` at 68 files
+afterwards. `gh pr edit` resolves the PR through a GraphQL query that selects
+`projectCards`, and the deprecation breaks that path before the mutation runs.
+`gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f base=<branch>` works and
+returns the new `changed_files` to verify against. This matters because the
+zero exit code makes the failure invisible to a script: any automation that
+retargets a stack must assert the resulting base, not trust the status. See D36.
+
+*Widened at the Unit 2 close:* it is not just `--base`. `gh pr edit 160 --body`
+no-opped the same way — same warning, exit 0, body unchanged — which I only
+caught because F14 had already taught me to verify instead of trusting the exit
+code. The rule is therefore about the subcommand, not the flag: **use
+`gh api -X PATCH repos/<owner>/<repo>/pulls/<n>` for every PR mutation, and read
+back a field you just wrote.** `gh pr create` is unaffected (it took `--base`
+correctly for #160), as are `gh pr view` / `gh pr checks`.
+
+**F15 — A golden row keeps dead code looking alive; no gate counts readers.**
+`nodeDefType.ts` lost its last caller in Unit 2c and stayed in the tree for three
+commits with every gate green, because `static-golden.ts` still imported it and
+still goldened its output. The row passed, so the module read as load-bearing —
+the harness was the only consumer, and a harness-only consumer is
+indistinguishable from a real one at gate level. Gate 4 counts vocabulary and
+Gate 6 counts import *direction*; neither counts whether anything in the
+manifest actually reads a symbol. Generalises past this instance: any symbol the
+harness pins is invisible to the ratchets, so **deleting a call site is not the
+same as deleting a dependency**, and the lift to check is "who imports this that
+is not the harness". See D37.
+
+**F16 — `isolation: 'worktree'` covered only the stage I asked it to, and the
+review contaminated itself.** The Unit 2 fan-out set `isolation: 'worktree'` on
+the six finders and **not** on the fourteen verifiers, which therefore ran in the
+session's own worktree — the live one. Worse, several finders reported sibling
+edits appearing under them mid-run: a probe directory materialising and
+vanishing, one agent's patch reverted by another, a `filter/storage.ts` that one
+lens had moved showing up in another lens's `ls`.
+
+Two of the strongest agents diagnosed this themselves and re-ran everything
+against a `git archive HEAD` export in a scratchpad with `node_modules`
+symlinked, and said so unprompted — their numbers are the trustworthy ones.
+
+No damage reached the tree (`git status` clean, every gate green afterwards), but
+that was luck rather than design, and at least one finder's first run produced a
+spurious FAIL it correctly discarded.
+
+**The rule: a fan-out whose agents MUTATE the tree needs isolation on every
+stage, not only the stage that obviously edits.** A verifier told to "reproduce
+it" edits code by definition. And git-level isolation alone is not enough when
+agents also need `node_modules` and a build — the durable pattern is the one
+those two agents invented: export a pristine tree, symlink `node_modules`, run
+the gates there. Every gate script here resolves against its package root, so it
+works unmodified.
 
 ---
 

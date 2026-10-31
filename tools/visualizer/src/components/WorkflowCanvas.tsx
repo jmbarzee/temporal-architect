@@ -1,4 +1,6 @@
 import React from 'react'
+import { OntologyContext } from './graph-view/useOntology'
+import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
@@ -337,6 +339,11 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const shellClassName = className ? `view-shell ${className}` : 'view-shell'
 
   return (
+    // The host supplies the taxonomy. This component is outside the library's
+    // manifest, which is exactly why it is the one that names a domain: the
+    // engine below it resolves everything through the container and never
+    // imports the entries.
+    <OntologyContext.Provider value={DEFAULT_ONTOLOGY}>
     <DefinitionContext.Provider value={context}>
       <div className={shellClassName} style={style} onClick={onRefocus}>
         <div className="tab-bar">
@@ -415,5 +422,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
         )}
       </div>
     </DefinitionContext.Provider>
+    </OntologyContext.Provider>
   )
 }

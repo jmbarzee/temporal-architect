@@ -21,11 +21,11 @@
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
 import { bandCenters, bandFor } from '../graph/forces'
-import type { Graph, NodeType } from '../graph/model'
-import { DEFAULT_PARAMS, Simulation } from '../graph/simulation'
+import type { Graph } from '../graph/model'
+import { defaultParamsFor, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../graph/node-types'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, DEFAULT_ONTOLOGY } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 import { mulberry32 } from './rng'
@@ -50,7 +50,7 @@ export const TIER_B_PARAMS = {
 } as const
 
 /** A fresh, seeded simulation over a fixture's graph. */
-export function seededSimulation(graph: Graph, params: ForceParams = DEFAULT_PARAMS): Simulation {
+export function seededSimulation(graph: Graph, params: ForceParams = defaultParamsFor(DEFAULT_ONTOLOGY)): Simulation {
   return new Simulation(graph, params, mulberry32(TIER_B_PARAMS.rngSeed), DEFAULT_ONTOLOGY)
 }
 
@@ -74,10 +74,10 @@ function median(values: number[]): number {
  */
 function scenarios(): [string, ForceParams][] {
   return [
-    ['default', { ...DEFAULT_PARAMS }],
-    ['radial', { ...DEFAULT_PARAMS, gravityMode: 'radial' }],
-    ['topological', { ...DEFAULT_PARAMS, topologicalEnabled: true, gravityDownstream: 0.4 }],
-    ['centerOnly', { ...DEFAULT_PARAMS, bandEnabled: false, topologicalEnabled: false }],
+    ['default', defaultParamsFor(DEFAULT_ONTOLOGY)],
+    ['radial', { ...defaultParamsFor(DEFAULT_ONTOLOGY), gravityMode: 'radial' }],
+    ['topological', { ...defaultParamsFor(DEFAULT_ONTOLOGY), topologicalEnabled: true, gravityDownstream: 0.4 }],
+    ['centerOnly', { ...defaultParamsFor(DEFAULT_ONTOLOGY), bandEnabled: false, topologicalEnabled: false }],
   ]
 }
 
@@ -136,7 +136,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // on distinct centre *values* — several types deliberately share a band, so
   // with all 7 present there are only 4 distinct values.
   const centers = bandCenters(active, params)
-  const distinctTypesPresent = new Set<NodeType>(active.map(n => n.nodeType)).size
+  const distinctTypesPresent = new Set(active.map(n => DEFAULT_ONTOLOGY.valueFor(n))).size
 
   let maxAbs = 0
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity

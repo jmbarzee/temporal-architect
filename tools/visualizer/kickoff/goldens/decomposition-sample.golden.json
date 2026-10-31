@@ -241,336 +241,410 @@
       "nodes": [
         {
           "definitionKey": "activity:AlertComplianceViolation",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:AlertComplianceViolation/worker:loanWorker/namespace:loanOrigination",
           "name": "AlertComplianceViolation",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:ApplyDocumentReview",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ApplyDocumentReview/worker:loanWorker/namespace:loanOrigination",
           "name": "ApplyDocumentReview",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:AuthenticateResume",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:AuthenticateResume/worker:loanWorker/namespace:loanOrigination",
           "name": "AuthenticateResume",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:CalculateDTIAndLTV",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:CalculateDTIAndLTV/worker:loanWorker/namespace:loanOrigination",
           "name": "CalculateDTIAndLTV",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:CheckDocumentExpiration",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:CheckDocumentExpiration/worker:loanWorker/namespace:loanOrigination",
           "name": "CheckDocumentExpiration",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:DeliverDisclosure",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:DeliverDisclosure/worker:loanWorker/namespace:loanOrigination",
           "name": "DeliverDisclosure",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:EvaluateDocumentCompleteness",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:EvaluateDocumentCompleteness/worker:loanWorker/namespace:loanOrigination",
           "name": "EvaluateDocumentCompleteness",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:EvaluateEligibility",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:EvaluateEligibility/worker:loanWorker/namespace:loanOrigination",
           "name": "EvaluateEligibility",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:GenerateLoanEstimate",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:GenerateLoanEstimate/worker:loanWorker/namespace:loanOrigination",
           "name": "GenerateLoanEstimate",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:HandoffToClosing",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:HandoffToClosing/worker:loanWorker/namespace:loanOrigination",
           "name": "HandoffToClosing",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:LoadApplicationState",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:LoadApplicationState/worker:loanWorker/namespace:loanOrigination",
           "name": "LoadApplicationState",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:LockRate",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:LockRate/worker:loanWorker/namespace:loanOrigination",
           "name": "LockRate",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:MarkConditionCleared",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:MarkConditionCleared/worker:loanWorker/namespace:loanOrigination",
           "name": "MarkConditionCleared",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:NotifyBorrowerMilestone",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:NotifyBorrowerMilestone/worker:loanWorker/namespace:loanOrigination",
           "name": "NotifyBorrowerMilestone",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:NotifyConditionsAssigned",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:NotifyConditionsAssigned/worker:loanWorker/namespace:loanOrigination",
           "name": "NotifyConditionsAssigned",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:PullCredit",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:PullCredit/worker:loanWorker/namespace:loanOrigination",
           "name": "PullCredit",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:RecordAuditEvent",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:RecordAuditEvent/worker:loanWorker/namespace:loanOrigination",
           "name": "RecordAuditEvent",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:RecordCondition",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:RecordCondition/worker:loanWorker/namespace:loanOrigination",
           "name": "RecordCondition",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:RunAutomatedUnderwriting",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:RunAutomatedUnderwriting/worker:loanWorker/namespace:loanOrigination",
           "name": "RunAutomatedUnderwriting",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:SaveApplicationStep",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:SaveApplicationStep/worker:loanWorker/namespace:loanOrigination",
           "name": "SaveApplicationStep",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:SendAdverseActionNotice",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:SendAdverseActionNotice/worker:loanWorker/namespace:loanOrigination",
           "name": "SendAdverseActionNotice",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:SendConditionReminder",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:SendConditionReminder/worker:loanWorker/namespace:loanOrigination",
           "name": "SendConditionReminder",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:SendDocumentRefreshAlert",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:SendDocumentRefreshAlert/worker:loanWorker/namespace:loanOrigination",
           "name": "SendDocumentRefreshAlert",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:SendLockExpirationAlert",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:SendLockExpirationAlert/worker:loanWorker/namespace:loanOrigination",
           "name": "SendLockExpirationAlert",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:SendNudgeEmail",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:SendNudgeEmail/worker:loanWorker/namespace:loanOrigination",
           "name": "SendNudgeEmail",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:StoreDocument",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:StoreDocument/worker:loanWorker/namespace:loanOrigination",
           "name": "StoreDocument",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:ValidateConditionClearance",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidateConditionClearance/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateConditionClearance",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:ValidateDocument",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidateDocument/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateDocument",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:ValidateStep",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:ValidateStep/worker:loanWorker/namespace:loanOrigination",
           "name": "ValidateStep",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "activity:VerifyTridCompliance",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "activity"
+          },
           "id": "activity:VerifyTridCompliance/worker:loanWorker/namespace:loanOrigination",
           "name": "VerifyTridCompliance",
-          "nodeType": "activity",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "namespace:loanOrigination",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "namespace"
+          },
           "id": "namespace:loanOrigination",
           "name": "loanOrigination",
-          "nodeType": "namespace",
-          "orphan": false,
-          "sourceFile": "resumable-loan-application.twf"
+          "orphan": false
         },
         {
           "definitionKey": "worker:loanWorker",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "worker"
+          },
           "id": "worker:loanWorker/namespace:loanOrigination",
           "name": "loanWorker",
-          "nodeType": "worker",
           "orphan": false,
           "parentId": "namespace:loanOrigination",
-          "queue": "loan-origination",
-          "sourceFile": "resumable-loan-application.twf"
+          "queue": "loan-origination"
         },
         {
           "definitionKey": "workflow:ConditionLoop",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:ConditionLoop/worker:loanWorker/namespace:loanOrigination",
           "name": "ConditionLoop",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "workflow:DocumentCollection",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:DocumentCollection/worker:loanWorker/namespace:loanOrigination",
           "name": "DocumentCollection",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "workflow:IntakeWizard",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:IntakeWizard/worker:loanWorker/namespace:loanOrigination",
           "name": "IntakeWizard",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "workflow:LoanLifecycle",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:LoanLifecycle/worker:loanWorker/namespace:loanOrigination",
           "name": "LoanLifecycle",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         },
         {
           "definitionKey": "workflow:RateLockMonitor",
+          "dimensions": {
+            "sourceFile": "resumable-loan-application.twf",
+            "temporalType": "workflow"
+          },
           "id": "workflow:RateLockMonitor/worker:loanWorker/namespace:loanOrigination",
           "name": "RateLockMonitor",
-          "nodeType": "workflow",
           "orphan": false,
-          "parentId": "worker:loanWorker/namespace:loanOrigination",
-          "sourceFile": "resumable-loan-application.twf"
+          "parentId": "worker:loanWorker/namespace:loanOrigination"
         }
       ],
       "sourceFiles": [

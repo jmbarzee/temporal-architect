@@ -8,14 +8,14 @@
 // the reconciler's transition matrix, and the Set-identity trace that is the
 // only detector for the memoization trap (T5).
 
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_NODE_SCALE } from '../graph/node-types'
-import { DEFAULT_PARAMS } from '../graph/simulation'
+import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY, sliderLabelFor, DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { DEFAULT_NODE_SCALE } from '../graph/node-scale'
+import { defaultParamsFor } from '../graph/simulation'
 import { forceProbes } from './force-probes'
 import { syntheticVisible } from './synthetic-visible'
 import { ontologyProbes } from './ontology-probes'
-import { ALL_EDGE_TYPES } from '../graph/edge-types'
-import { buildNodeTypeCSS } from '../graph/node-type-styles'
-import { nodeTypeToDefType, defTypeToNodeType } from '../components/graph-view/nodeDefType'
+import { ALL_EDGE_TYPES } from '../adapter/edge-types'
+import { buildNodeTypeCSS } from '../adapter/node-type-styles'
 import { VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
 import { reconcileFilter } from '../filter/reconcile'
 import { toggleFileSelection, toggleTypeGroupSelection } from '../filter/toggle'
@@ -67,20 +67,21 @@ function edgeTypeRows(): Json {
 }
 
 /**
- * The lossy bridge between the two type vocabularies, including both silent
- * fallbacks. An unmapped key does not throw here — it quietly resolves to a
- * default, and that behaviour is now pinned rather than merely known (T19).
+ * The chip layer over the filter-key vocabulary.
+ *
+ * The lossy bridge this also used to pin is gone. Two module-load maps turned a
+ * value on the style axis into a filter key and back, each with a silent
+ * fallback that resolved an unrecognized input to a *real* type (T19) — so an
+ * unknown node was filtered and focused as though it were a workflow. Nothing
+ * calls them any more: every consumer resolves `defType` through the taxonomy,
+ * which answers a miss with the declared neutral style and warns once.
+ *
+ * The chip rows stay, because the folding is the half that is still live and
+ * still surprising: five chips cover seven filter keys, and one chip carries
+ * three of them.
  */
-function defTypeBridge(): Json {
+function filterChipLayer(): Json {
   return {
-    nodeTypeToDefType: sortedRecord(ALL_NODE_TYPES.map(t => [t, nodeTypeToDefType(t)] as const)),
-    defTypeToNodeType: sortedRecord(
-      ALL_NODE_TYPES.map(t => [NODE_TYPE_REGISTRY[t].defType, defTypeToNodeType(NODE_TYPE_REGISTRY[t].defType)] as const),
-    ),
-    unmappedFallbacks: {
-      nodeTypeToDefType: nodeTypeToDefType('no-such-node-type'),
-      defTypeToNodeType: defTypeToNodeType('noSuchDef'),
-    },
     filterChips: VIEW_FILTER_ENTRIES.map(e => ({
       id: e.id,
       label: e.label,
@@ -200,12 +201,12 @@ export function staticGolden(): Json {
     // The whole tuned parameter set. Without it a wholesale retune — every
     // scalar changed — is a change no gate can see, and the per-value maps are
     // the thing later units re-key by dimension.
-    defaultForceParams: { ...DEFAULT_PARAMS } as unknown as Json,
+    defaultForceParams: defaultParamsFor(DEFAULT_ONTOLOGY) as unknown as Json,
     defaultNodeScale: { ...DEFAULT_NODE_SCALE },
     forceProbes: forceProbes(),
     ontologyProbes: ontologyProbes(),
     syntheticVisible: syntheticVisible(),
-    defTypeBridge: defTypeBridge(),
+    filterChipLayer: filterChipLayer(),
     reconcileMatrix: reconcileMatrix(),
     filterSetIdentity: filterSetIdentity(),
     // Split into lines so a one-rule change is a one-line diff.

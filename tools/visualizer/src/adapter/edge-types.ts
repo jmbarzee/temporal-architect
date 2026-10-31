@@ -3,21 +3,29 @@
 // Before this, the edge taxonomy lived in two places that had to be kept in
 // sync by hand: the declarative `PULL_EDGES` table (control panel) and the
 // imperative `edgeCategory` if/else chain (forces), plus a third copy of the
-// per-edge default strengths/distances inlined in DEFAULT_PARAMS. This module
-// is the one source of truth: each entry carries the endpoint types, category,
-// the ForceParams keys it tunes, and its default physics. The control panel
-// derives `PULL_EDGES` from it, `forces.edgeCategory` resolves through
-// `edgeTypeFor`, and `DEFAULT_PARAMS` reads its link/dist defaults from it.
+// per-edge default strengths/distances inlined in the engine's starting
+// parameters. This module is the one source of truth: each entry carries the
+// endpoint values, category, the parameter keys it tunes, and its default
+// physics. The control panel derives its pull tokens from the taxonomy, and
+// `defaultParamsFor` reads the link/dist defaults off the same entries.
 //
 // Imports only *types* from ./simulation, so there is no runtime import cycle
 // (simulation -> edge-types is the value dependency, mirroring simulation -> forces).
 
-import type { NodeType, GraphEdge } from './model'
+import type { DimensionValue } from '../graph/dimension'
+import type { GraphEdge } from '../graph/model'
+import type { NodeType } from './node-types'
+import type { EdgeTypeDefinition } from '../graph/taxonomy'
 
-export type EdgeCategoryKind = 'containment' | 'dependency'
+// This domain's edge categories. The *shape* is library-owned (`./taxonomy`);
+// what is declared here is the closed set of ids this deployment model has, and
+// the endpoint values each one connects.
 
-// Stable id for each edge category — equal to the ForceParams stiffness key, so
+// Stable id for each edge category — equal to the parameter stiffness key, so
 // it doubles as the hover-link key across the spring map, curves, and canvas.
+// A narrowing of the library's open `EdgeTypeId`: the engine accepts any string
+// so a host can bring its own categories; this host's set is closed, and saying
+// so here is what makes the matcher below exhaustively checkable.
 export type EdgeTypeId =
   | 'linkNsToNs' | 'linkNsToWorker' | 'linkWorkerToWorker' | 'linkWorkerToWorkflow'
   | 'linkWorkerToActivity' | 'linkWorkerToNexus' | 'linkNexusToOperation'
@@ -25,26 +33,25 @@ export type EdgeTypeId =
   | 'linkWorkflowToOperation' | 'linkOperationToWorkflow' | 'linkOperationToActivity'
   | 'linkEndpointToOperation' | 'linkSignalSend'
 
-export interface EdgeTypeDefinition {
-  /** Stable id — also the key into the `link` / `dist` param maps and the
-   *  hover-link id across the spring map, curves, and canvas. */
+/**
+ * One of this domain's edge entries — the library shape with its open string
+ * fields narrowed to this domain's vocabulary.
+ *
+ * Extending rather than re-declaring is deliberate. The shape existed twice for
+ * a while, once here and once in the library, structurally identical and
+ * therefore silently interchangeable; the moment they drifted by one optional
+ * field, the mismatch would have surfaced as a value quietly missing at one end
+ * rather than as a type error (T19).
+ */
+export interface TemporalEdgeTypeDefinition extends EdgeTypeDefinition {
   id: EdgeTypeId
-  /** Short control-panel label, e.g. "Wk↔Wf" / "Wf→Op". */
-  label: string
-  /** Canonical endpoints — drive the split-colour token (source | target). */
   sourceType: NodeType
   targetType: NodeType
-  category: EdgeCategoryKind
-  /** True = the two directions are distinct categories (Wf→Op vs Op→Wf). */
-  directional: boolean
-  /** Default stiffness / rest length (the DEFAULT_PARAMS values live here). */
-  physics: { strength: number; distance: number }
-  tooltip: string
 }
 
 // One entry per edge category. Order is the control-panel token order (emergent
 // positioning makes it cosmetic); the matcher below does not depend on it.
-export const ALL_EDGE_TYPES: EdgeTypeDefinition[] = [
+export const ALL_EDGE_TYPES: TemporalEdgeTypeDefinition[] = [
   { id: 'linkNsToNs', label: 'NS↔NS', sourceType: 'namespace', targetType: 'namespace',
     category: 'dependency', directional: false,
     physics: { strength: 0.25, distance: 870 }, tooltip: 'Namespace ↔ Namespace dependency' },
@@ -96,9 +103,40 @@ export const ALL_EDGE_TYPES: EdgeTypeDefinition[] = [
     physics: { strength: 1.50, distance: 470 }, tooltip: 'Nexus endpoint ↔ Nexus operation (the endpoint fronts the operation)' },
 ]
 
-export const EDGE_TYPE_REGISTRY = Object.fromEntries(
+/**
+ * Definition lookup by id.
+ *
+ * A `Map`, not an object with a keyed-record type assertion. The assertion was
+ * claiming completeness it could not check: `Object.fromEntries` yields a string
+ * index, and asserting it into the closed union told the compiler every member
+ * is present rather than establishing it. A missing entry would then have typed
+ * as present and surfaced as `undefined` at a call site that believed otherwise.
+ *
+ * The Map is also immune to the prototype-key hazard D39 fixed elsewhere: a
+ * category named `constructor` cannot resolve to an inherited member here.
+ */
+const EDGE_TYPE_BY_ID = new Map<EdgeTypeId, TemporalEdgeTypeDefinition>(
   ALL_EDGE_TYPES.map(e => [e.id, e]),
-) as Record<EdgeTypeId, EdgeTypeDefinition>
+)
+
+/**
+ * Loud on a miss, deliberately — the same choice `nodeTypeFromKind` makes, and
+ * the one T19 contrasts favourably with the two silent fallbacks that used to
+ * sit in this data path. Structurally unreachable while every id the matcher
+ * assigns is a literal of the union and `ALL_EDGE_TYPES` names each one; the
+ * throw exists so that ceasing to be true is loud rather than `undefined`
+ * arriving somewhere that cannot represent it.
+ */
+function definitionFor(id: EdgeTypeId): TemporalEdgeTypeDefinition {
+  const def = EDGE_TYPE_BY_ID.get(id)
+  if (def === undefined) {
+    throw new Error(
+      `edge type ${JSON.stringify(id)} is declared in EdgeTypeId but has no entry ` +
+      'in ALL_EDGE_TYPES; the two must be kept in step.',
+    )
+  }
+  return def
+}
 
 // Resolve an edge to its category. Preserves the original prioritized rule order
 // from forces.edgeCategory exactly: containment edges stratify by their nexus /
@@ -106,11 +144,11 @@ export const EDGE_TYPE_REGISTRY = Object.fromEntries(
 // operation pair, by direction. Unmatched cases fall through to the broadest
 // category in each branch (Worker↔Namespace containment; Workflow↔Activity dep).
 export function edgeTypeFor(
-  edge: Pick<GraphEdge, 'edgeType' | 'sourceNodeType' | 'targetNodeType' | 'dispatchKind'>,
-): EdgeTypeDefinition {
-  const src = edge.sourceNodeType
-  const tgt = edge.targetNodeType
-  const has = (a: NodeType, b: NodeType) =>
+  edge: Pick<GraphEdge, 'edgeType' | 'dispatchKind'>,
+  src: DimensionValue | undefined,
+  tgt: DimensionValue | undefined,
+): TemporalEdgeTypeDefinition {
+  const has = (a: DimensionValue, b: DimensionValue) =>
     (src === a && tgt === b) || (src === b && tgt === a)
 
   let id: EdgeTypeId
@@ -136,5 +174,5 @@ export function edgeTypeFor(
     else if (has('workflow', 'workflow')) id = 'linkWorkflowToWorkflow'
     else id = 'linkWorkflowToActivity'
   }
-  return EDGE_TYPE_REGISTRY[id]
+  return definitionFor(id)
 }
