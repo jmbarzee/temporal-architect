@@ -10,8 +10,10 @@ import { buildGraph } from '../adapter/build'
 import { edgeTypeFor } from '../adapter/edge-types'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import { payloadString } from '../graph/model'
-import { Simulation, axisOptions, fitsCeiling, pairTuning } from '../graph/simulation'
-import { presentSpringCategories, resolveSprings } from '../graph/forces'
+import { Simulation, axisOptions, fitsCeiling, pairTuning, defaultParamsFor, sprungEdges } from '../graph/simulation'
+import { presentSpringCategories, resolveSprings, resolvePhysics } from '../graph/forces'
+import { presentSetsOf } from '../components/graph-view/present'
+import { highlightOf } from '../graph/highlight'
 import { BUILT_IN_SCALARS } from '../graph/scalar'
 import { readableGraph } from '../graph/model'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
@@ -90,6 +92,23 @@ function visibleState(
     graduatedEdges: sorted(vg.visibleEdges.map(e => edgeLine(e, nodeOf))),
     nodeSummaries: sortedRecord([...vg.nodeSummaries]),
     downstreamScores: sortedRecord([...vg.downstreamScores]),
+    // What the controls offer in this state (R35, D59): `presentSetsOf`, the
+    // function the view calls, over the visible nodes and the edges the
+    // simulation springs — pinned, not re-derived (REVIEW_7 C5).
+    controls: (() => {
+      const resolved = resolvePhysics(defaultParamsFor(DEFAULT_ONTOLOGY), DEFAULT_ONTOLOGY)
+      const p = presentSetsOf(vg.visibleNodes, sprungEdges(sim.edges, vg.visibleIds), resolved, nodeOf)
+      return { push: sorted(p.push), bandX: sorted(p.bandX), bandY: sorted(p.bandY), springs: sorted(p.springs) }
+    })(),
+    // The highlight as drawn (D59, D60): `highlightOf` — the library's walk,
+    // the host's hook, the derived edges — for the first visible node of each
+    // style value, per state.
+    hookedHighlights: sortedRecord(DEFAULT_ONTOLOGY.nodeTypeKeys.flatMap(value => {
+      const first = vg.visibleNodes.find(n => DEFAULT_ONTOLOGY.valueFor(n) === value)
+      if (!first) return []
+      const lit = highlightOf(DEFAULT_ONTOLOGY, first, 'downstream', { visibleNodes: vg.visibleNodes, visibleEdges: vg.visibleEdges, visibleIds: vg.visibleIds, getNode: nodeOf })
+      return [[value, { from: first.id, nodes: sorted(lit.nodes), edges: sorted(lit.edges) }] as const]
+    })),
   }
 }
 
@@ -165,6 +184,10 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
         resolveSprings(pairTuning(o.mapping), DEFAULT_ONTOLOGY), graph.edges, nodeOf,
       )),
     })),
+    // The hover box's context line per node (D59, B35): the taxonomy's hook
+    // read against the fixture's own payloads, or its default — the parent's
+    // name — where the hook says nothing.
+    contextLines: sortedRecord(nodes.map(n => [n.id, DEFAULT_ONTOLOGY.contextLine(n, n.parentId ? nodeOf(n.parentId) : undefined) ?? ''] as const)),
     // Every built-in scalar's value per node over the whole graph (R8, R9) —
     // reach is the same function topological gravity reads over the visible
     // subgraph, so its rows here and `downstreamScores` there must agree

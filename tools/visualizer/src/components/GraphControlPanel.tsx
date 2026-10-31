@@ -34,6 +34,9 @@ const CONTROL_TABS: { id: ControlTab; label: string }[] = [
   { id: 'misc', label: 'Misc' },
 ]
 
+export type { PresentSets } from './graph-view/present'
+import type { PresentSets } from './graph-view/present'
+
 interface GraphControlPanelProps {
   params: ForceParams
   /** The dense tables the kernels read, resolved once by the view (T25). */
@@ -53,8 +56,8 @@ interface GraphControlPanelProps {
   axes: readonly AxisOption[]
   /** Every axis X or Y may key on: those mappings, and the computed scalars. */
   layoutAxes: readonly LayoutAxisOption[]
-  /** The spring categories some edge of the graph falls in. */
-  presentSprings: ReadonlySet<string>
+  /** What the post-filter visible set holds, per control (R35): the only buckets and categories worth a token or a column. */
+  present: PresentSets
   onAxisChange: (mapping: DimensionalMapping) => void
   onActiveSection: (section: ForceSection) => void
   onActivePushBucket: (bucket: string | null) => void
@@ -138,7 +141,7 @@ const NODE_SCALE_SLIDERS: NodeScaleSliderDef[] = [
 ]
 
 export function GraphControlPanel({
-  params, resolved, onParamChange, onAdjust, onRelayout, axes, layoutAxes, presentSprings, onAxisChange,
+  params, resolved, onParamChange, onAdjust, onRelayout, axes, layoutAxes, present, onAxisChange,
   onActiveSection,
   onActivePushBucket, onActiveGravityBucket, onActivePullEdge,
   nodeScale, onNodeScaleChange,
@@ -221,7 +224,7 @@ export function GraphControlPanel({
                 params={params}
                 resolved={resolved}
                 axes={axes}
-                presentSprings={presentSprings}
+                present={present}
                 onParamChange={emitParamChange}
                 onAxisChange={onAxisChange}
                 onActiveSection={onActiveSection}
@@ -243,6 +246,7 @@ export function GraphControlPanel({
                   params={params}
                   resolved={resolved}
                   axes={layoutAxes}
+                  present={present}
                   onParamChange={emitParamChange}
                   onRelayout={onRelayout}
                   hovered={hoveredGravityBucket}

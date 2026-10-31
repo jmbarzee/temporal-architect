@@ -351,7 +351,7 @@ Every edge is stroked by its **resolved edge type** — the same classification 
 
 Edge opacity and thickness can be secondary signals — thicker or more opaque for higher-traffic connections if multiplicity data is available in the future.
 
-Nexus edges carry metadata (endpoint, service, operation) shown on hover. Hovering a nexus edge can highlight all edges sharing the same nexus scope (endpoint, service, or operation) to reveal shared routing.
+Nexus edges carry metadata (endpoint, service, operation) shown on hover. Hovering a nexus edge can highlight all edges sharing the same nexus scope (endpoint, service, or operation) to reveal shared routing. What a hidden node does to the dependency edges touching it is the taxonomy's per-value policy (`whenHidden`, D59): `ascend` re-points the edge to the nearest visible ancestor; `splice` — the operation's — follows the hidden node's own dependency edges through, so caller → operation → backing draws as caller → backing, and a spliced edge keeps precedence over an ascended one that lands on the same pair.
 
 ### Color
 
@@ -449,7 +449,9 @@ The panel is collapsed by default (progressive disclosure); the collapsed toggle
 
 **PUSH/PULL**
 
-The two pair forces share one tab. At its top, above the sub-tabs so it stays visible whichever force is being edited, an **axis** dropdown names the dimension both forces key on: push charges are per bucket of that axis, pull springs per pair of buckets. The default is the type axis (`temporalType`), where the host's hand-tuned spring table applies; any filter axis the graph carries (files, kinds) is offered too, bucketed by the values present. Below it, **Push** and **Pull** are sub-tabs styled like Gravity's Band/Topological — accent-underlined, bodies stacked in one cell so switching never resizes the panel — but without the on/off switches, since neither force has an off. Each body is its equation, its 2D map, and its force-curve read-out.
+The two pair forces share one tab. At its top, above the sub-tabs so it stays visible whichever force is being edited, an **axis** dropdown names the dimension both forces key on: push charges are per bucket of that axis, pull springs per pair of buckets — the tokens shown being those the visible set holds (R35, below), while the dropdown's counts measure the whole graph. The default is the type axis (`temporalType`), where the host's hand-tuned spring table applies; any filter axis the graph carries (files, kinds) is offered too, bucketed by the values present. Below it, **Push** and **Pull** are sub-tabs styled like Gravity's Band/Topological — accent-underlined, bodies stacked in one cell so switching never resizes the panel — but without the on/off switches, since neither force has an off. Each body is its equation, its 2D map, and its force-curve read-out.
+
+**What a control offers is what the visible set holds** (R35, D59): a push token per bucket some *visible* node falls in, a pull token per spring category some edge the simulation springs falls in — an original edge with both ends visible, since a graduated edge is drawn but never sprung — and on each layout axis a column per bucket some visible node falls in — toggling a chip off removes its tokens and columns, and a bucket's tuning is kept, unshown, for when it returns. The axis dropdowns alone measure the whole graph: an axis's usability does not flip with a filter.
 
 **The token ceiling.** An axis is offered only while its control surface stays usable: at most **24** push tokens (one per bucket) and 24 pull tokens (one per spring category some edge of the graph falls in). The dropdown shows each axis's cost beside its name — `File (3 · 8)` — and lists one that exceeds the ceiling disabled, with the count that disqualified it. Switching axes starts both forces from the declared (or typical) physics on the new buckets — a tuning keyed by one axis has no reading on another. When the graph changes, an axis bucketed by the values present is rebuilt for the new values with the tuning kept where its values survive; if the graph grows past the ceiling on the chosen axis, or the axis vanishes, the forces fall back to the type axis.
 
@@ -574,14 +576,14 @@ The control panel and canvas are linked: hovering a control section activates th
 |-----------------|-----------------|
 | **PUSH** | Charge field rings appear around all visible nodes |
 | **PULL** | Edges show tension colouring (teal/amber/blue). Hovering or dragging a spring-map token narrows this to just that edge category, drawn as a border. |
-| **GRAVITY** | Band rest regions appear — a stripe per band present on each acting axis (cartesian) or concentric rings (radial); a scalar axis shows as one gradient stripe from its 0 end to its 1 end, and in radial a scalar Y draws no rings (every node has its own). Hovering an axis-plot column narrows the highlight to that bucket on that axis. |
+| **GRAVITY** | Band rest regions appear — a stripe per band some node of the *whole* graph falls in on each acting axis (the overlay is the frame's, over the whole graph, D54; the panel's columns are the visible set's, R35) (cartesian) or concentric rings (radial); a scalar axis shows as one gradient stripe from its 0 end to its 1 end, and in radial a scalar Y draws no rings (every node has its own). Hovering an axis-plot column narrows the highlight to that bucket on that axis. |
 | **MISC** | No canvas force-field response — Dynamics is temporal, not spatial, and Node scaling redraws node sizes directly rather than previewing a force field |
 
 When the user stops hovering, the visualization fades.
 
 ### Per-Type Charge Highlighting
 
-Within the Push body, hovering an individual charge-map token (one per bucket of the chosen axis) highlights only that bucket's field rings and dims the others, and brightens that bucket's curve in the falloff plot. This lets the user see the reach and strength of one type's charge force in isolation — useful for understanding why nodes of different types settle at different distances.
+Within the Push body, hovering an individual charge-map token (one per bucket of the chosen axis that some visible node falls in) highlights only that bucket's field rings and dims the others, and brightens that bucket's curve in the falloff plot. This lets the user see the reach and strength of one type's charge force in isolation — useful for understanding why nodes of different types settle at different distances.
 
 ### Per-Bucket Band Highlighting
 
@@ -675,7 +677,7 @@ The `<parent context> · <task queue>` pattern for nexus types surfaces the two 
 
 ### Nexus Routing Association (Hover)
 
-The nexus family has transient hover behaviors that reveal routing relationships without persistent edges. These complement the standard transitive-dep highlight and apply automatically based on node type.
+The nexus family has transient hover behaviors that reveal routing relationships without persistent edges. These complement the standard transitive-dep highlight and apply automatically based on node type. They are the taxonomy's, not the library's (D59): the host's `highlight` hook refines the library's transitive walk for an active node, and its `contextLine` hook writes the hover box's context line — the library computes the walk and the parent's name, and asks.
 
 **Hover on a `nexusEndpoint` node:** Standard transitive-dep BFS does not apply — endpoints have no outgoing dependency edges (they are pure addressing aliases). Instead, the canvas highlights all visible `nexusCall` edges whose routing metadata names this endpoint, plus the source and target nodes of those edges. The endpoint's namespace parent is also highlighted for context. The result makes the "which calls route through this entry point?" question answerable at a glance — the fan-out shows every caller and every operation that a call through this endpoint reaches.
 

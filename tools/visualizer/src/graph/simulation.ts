@@ -361,7 +361,7 @@ export interface DynamicsParams {
 export type ForceParams = ChargeParams & LinkParams & GravityParams & DynamicsParams
 
 // Defaults are a hand-tuned baseline captured from interactive use across
-// the topic library and the example workflows. The model is intentionally
+// the topic library and the example graphs. The model is intentionally
 // charge-dominant: repulsion does most of the layout work, the per-type Y
 // bands hold the hierarchy, and the link springs act as short tethers
 // rather than rigid rods. Concretely:
@@ -464,6 +464,16 @@ const MAX_POSITION = 1e6
 // per-burst decay of `alpha / REHEAT_TICKS`, so a stronger kick moves nodes
 // *further* within the same window rather than dragging the tail out *longer*.
 const REHEAT_TICKS = 200
+
+/**
+ * The edges a visible set springs: the graph's own, with both ends visible.
+ * A graduated edge (re-pointed for drawing across a hidden node) is never
+ * sprung — so the controls read this same predicate to offer pull tokens
+ * (`components/graph-view/present.ts`), and nothing else restates it.
+ */
+export function sprungEdges(edges: readonly GraphEdge[], visibleIds: ReadonlySet<string>): GraphEdge[] {
+  return edges.filter(e => visibleIds.has(e.sourceId) && visibleIds.has(e.targetId))
+}
 
 export class Simulation {
   nodes: SimNode[]
@@ -590,9 +600,7 @@ export class Simulation {
       ? this.nodes.filter(n => visibleIds.has(n.id))
       : this.nodes
 
-    const activeEdges = visibleIds
-      ? this.edges.filter(e => visibleIds.has(e.sourceId) && visibleIds.has(e.targetId))
-      : this.edges
+    const activeEdges = visibleIds ? sprungEdges(this.edges, visibleIds) : this.edges
 
     // Forces — each scaled by the current alpha, mutating node velocities.
     // (Implemented in ./forces, one function per category.) Center gravity is

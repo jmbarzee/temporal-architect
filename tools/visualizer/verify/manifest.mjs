@@ -41,7 +41,7 @@ const GLOBS = [
  * named here. A new component joins the gates by existing; a new host file has
  * to be excluded on purpose.
  */
-const SHIM_COMPONENTS = [
+export const SHIM_COMPONENTS = [
   'src/components/GroupsModal.css',
   'src/components/GroupsModal.tsx',
   'src/components/StyleGuide.tsx',

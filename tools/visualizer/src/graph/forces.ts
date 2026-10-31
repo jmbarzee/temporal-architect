@@ -240,7 +240,7 @@ export function bandFor(band: ResolvedAxis<BandRange>, node: PhysicsSubject): Ba
  * is in no bucket: it has no band, joins no median, and sits at the axis's
  * centre.
  */
-export function presentBuckets(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>): string[] {
+export function presentBuckets<T>(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<T>): string[] {
   const seen = new Set<string>()
   for (const n of nodes) {
     const key = bucketOf(axis, n)

@@ -34,6 +34,8 @@ interface AxisControlsProps {
   resolved: ResolvedPhysics
   /** Every axis this one may key on: mappings whose bucket count fits the ceiling, and computed scalars (R28). */
   axes: readonly LayoutAxisOption[]
+  /** The buckets some visible node falls in on this axis — the only columns worth drawing (R35). */
+  present: ReadonlySet<string>
   onParamChange: (patch: Partial<ForceParams>) => void
   onRelayout: (patch: Partial<ForceParams>) => void
   hovered: GravityHover | null
@@ -79,7 +81,7 @@ const valForY = (axis: LayoutAxis, y: number) => {
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const snap = (v: number, step: number) => Math.round(v / step) * step
 
-export function AxisControls({ axis, params, resolved, axes, onParamChange, onRelayout, hovered, onHover }: AxisControlsProps) {
+export function AxisControls({ axis, params, resolved, axes, present, onParamChange, onRelayout, hovered, onHover }: AxisControlsProps) {
   const ontology = useOntology()
   const key = tuningKey(axis)
   const tuning: LayoutTuning = params[key]
@@ -143,6 +145,7 @@ export function AxisControls({ axis, params, resolved, axes, onParamChange, onRe
           radial={params.radial}
           tuning={mappedTuning(tuning)}
           table={table}
+          present={present}
           strength={strength}
           onStrength={v => onParamChange(strengthPatch(axis, v))}
           onBand={(bucket, next) => onParamChange(tuningPatch(axis, withOverride(mappedTuning(tuning), bucket, next)))}
@@ -252,11 +255,12 @@ function ScalarPlot({ axis, radial, label, tooltip, span, strength, onStrength, 
   )
 }
 
-function AxisPlot({ axis, radial, tuning, table, strength, onStrength, onBand, hovered, onHover, color }: {
+function AxisPlot({ axis, radial, tuning, table, present, strength, onStrength, onBand, hovered, onHover, color }: {
   axis: LayoutAxis
   radial: boolean
   tuning: AxisTuning<BandRange>
   table: ResolvedAxis<BandRange>
+  present: ReadonlySet<string>
   strength: number
   onStrength: (v: number) => void
   onBand: (bucket: string, next: BandRange) => void
@@ -266,8 +270,9 @@ function AxisPlot({ axis, radial, tuning, table, strength, onStrength, onBand, h
 }) {
   const svgRef = React.useRef<SVGSVGElement>(null)
   const dragRef = React.useRef<{ bucket: string; edge: 'min' | 'max' } | null>(null)
-  const buckets = tuning.mapping.buckets
-  const colX = (i: number) => PL + ((i + 0.5) / buckets.length) * (PR - PL)
+  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  const buckets = tuning.mapping.buckets.filter(b => present.has(b.id))
+  const colX = (i: number) => PL + ((i + 0.5) / Math.max(1, buckets.length)) * (PR - PL)
   const label = axis.toUpperCase()
 
   const userY = (e: React.PointerEvent): number => {

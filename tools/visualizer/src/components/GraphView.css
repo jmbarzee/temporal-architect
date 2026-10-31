@@ -232,7 +232,7 @@
   text-overflow: ellipsis;
 }
 
-/* Composition counts (workers/endpoints/registrations) for container and
+/* Composition counts (the children a container holds) for container and
    host nodes — relocated here from the under-node badge. */
 .tooltip-summary {
   font-size: 11px;
@@ -254,8 +254,8 @@
 }
 
 /* "copy N of M" line shown only when a definition is registered on
-   multiple workers and therefore renders as multiple nodes. Borrows the
-   workflow purple from the selection ring so the user can connect
+   multiple hosts and therefore renders as multiple nodes. Borrows the
+   accent from the selection ring so the user can connect
    "purple lights up around the sister nodes when I hover this one"
    with "tooltip confirms there are multiple copies". */
 .tooltip-duplicates {

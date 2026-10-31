@@ -33,7 +33,7 @@ export interface EdgeStroke {
 
 /**
  * The stem of a value's custom-property name: the value id in kebab case
- * (`nexusEndpoint` → `nexus-endpoint`). Derived, never stored.
+ * (`twoWords` → `two-words`). Derived, never stored.
  */
 export function cssSuffix(value: DimensionValue): string {
   return value
@@ -45,7 +45,7 @@ export function cssSuffix(value: DimensionValue): string {
 
 /**
  * The custom property a value's fill is published under (`--node-<suffix>`;
- * `-border` for its border). Its own namespace: the chrome's tokens are
+ * `-border` for its border). Its own prefix: the chrome's tokens are
  * `--color-*`, and a value id may be anything a host names (D58).
  */
 export const colorVar = (value: DimensionValue): string => `--node-${cssSuffix(value)}`

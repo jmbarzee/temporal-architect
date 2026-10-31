@@ -32,6 +32,8 @@ interface ChargeControlProps {
   params: ForceParams
   /** The dense tables the kernels read, resolved once by the view (T25). */
   resolved: ResolvedPhysics
+  /** The push buckets some visible node falls in — the only ones worth a token (R35). */
+  present: ReadonlySet<string>
   onParamChange: (patch: Partial<ForceParams>) => void
   // The hovered/active bucket on the push axis — links the map, the curves, and the canvas.
   hoveredBucket: string | null
@@ -42,10 +44,12 @@ interface ChargeControlProps {
 //
 // y = charge magnitude, x = core radius. One solid token per bucket of the push
 // axis. Dragging sets both the (negative) charge and the core radius at once.
-export function ChargeMap({ params, resolved, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
+export function ChargeMap({ params, resolved, present, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
   const ontology = useOntology()
   const { push } = resolved
-  const tokens: MapToken[] = push.mapping.buckets.map(b => ({
+  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  const shown = push.mapping.buckets.filter(b => present.has(b.id))
+  const tokens: MapToken[] = shown.map(b => ({
     id: b.id,
     x: pushForKey(push, b.id).coreRadius,
     y: Math.abs(pushForKey(push, b.id).charge),
@@ -95,22 +99,24 @@ export function ChargeMap({ params, resolved, onParamChange, hoveredBucket, onHo
 // distance (all-positive, baseline at the bottom of the frame), with the core
 // radius marked on the distance axis. The global `exp` (chargeExponent) is the
 // slider beneath.
-export function ChargeCurves({ params, resolved, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
+export function ChargeCurves({ params, resolved, present, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
   const ontology = useOntology()
   const { push } = resolved
+  // Only the buckets the visible set holds (R35); the tuning keeps the rest.
+  const shown = push.mapping.buckets.filter(b => present.has(b.id))
   const pushMul = params.pushMultiplier
   const crMul = params.coreRadiusMultiplier
   const exp = params.chargeExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const rEffs = push.mapping.buckets.map(b => crMul * pushForKey(push, b.id).coreRadius)
+    const rEffs = shown.map(b => crMul * pushForKey(push, b.id).coreRadius)
     const maxREff = Math.max(0, ...rEffs)
     // Show the falloff out to a few core radii so the plateau-then-drop shape
     // is legible even when the radii are small.
     const dMax = Math.max(150, maxREff * 4)
 
     let maxMag = 0
-    const sampled = push.mapping.buckets.map(({ id: t }) => {
+    const sampled = shown.map(({ id: t }) => {
       const q = Math.abs(pushForKey(push, t).charge) * pushMul
       const rEff = crMul * pushForKey(push, t).coreRadius
       const soft = rEff * rEff
@@ -136,7 +142,7 @@ export function ChargeCurves({ params, resolved, onParamChange, hoveredBucket, o
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-  }, [params, pushMul, push, crMul, exp, ontology])
+  }, [params, pushMul, push, crMul, exp, ontology, present])
 
   return (
     <ForceCurves
