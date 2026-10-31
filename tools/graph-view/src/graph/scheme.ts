@@ -4,12 +4,15 @@
 // carries for the resolved theme, and a colour normaliser for the canvas,
 // which cannot throw and so reads only the forms the taxonomy admits.
 
-import type { DimensionValue } from './dimension'
-import type { Ontology } from './ontology'
+import type { AxisValue } from './axis'
+import type { Taxonomy } from './taxonomy'
 
+/** The two themes every colour is declared in. */
 export type Theme = 'light' | 'dark'
+/** Both themes, in order. */
 export const THEMES: readonly Theme[] = ['light', 'dark']
 
+/** A fill and a border. */
 export interface ColorPair {
   /** Canvas fill colour. */
   readonly fill: string
@@ -35,7 +38,7 @@ export interface EdgeStroke {
  * The stem of a value's custom-property name: the value id in kebab case
  * (`twoWords` → `two-words`). Derived, never stored.
  */
-export function cssSuffix(value: DimensionValue): string {
+export function cssSuffix(value: AxisValue): string {
   return value
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .replace(/[^A-Za-z0-9]+/g, '-')
@@ -50,12 +53,12 @@ export function cssSuffix(value: DimensionValue): string {
  * tints and typed rows read, and they follow the resolved theme by being
  * recomputed, not overridden.
  */
-export function schemeVars(ontology: Ontology, theme: Theme): Record<string, string> {
+export function schemeVars(taxonomy: Taxonomy, theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {}
-  for (const key of ontology.styleValues) {
-    const c = ontology.styleOf(key).color[theme]
-    vars[ontology.colorVar(key)] = c.fill
-    vars[`${ontology.colorVar(key)}-border`] = c.border
+  for (const key of taxonomy.styleValues) {
+    const c = taxonomy.styleOf(key).color[theme]
+    vars[taxonomy.colorVar(key)] = c.fill
+    vars[`${taxonomy.colorVar(key)}-border`] = c.border
   }
   return vars
 }
@@ -63,12 +66,28 @@ export function schemeVars(ontology: Ontology, theme: Theme): Record<string, str
 const HEX3 = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i
 const HEX6 = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i
 const RGB = /^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i
+const HSL = /^hsla?\(\s*(-?[\d.]+)(?:deg)?\s*[, ]\s*([\d.]+)%\s*[, ]\s*([\d.]+)%\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i
+
+/** CSS's hsl → rgb, hue in degrees, saturation and lightness in percent, channels rounded to 0–255. */
+function hslToRgb(h: number, s: number, l: number): readonly [number, number, number] {
+  const sat = Math.min(100, Math.max(0, s)) / 100
+  const light = Math.min(100, Math.max(0, l)) / 100
+  const hue = ((h % 360) + 360) % 360
+  const chroma = (1 - Math.abs(2 * light - 1)) * sat
+  const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1))
+  const m = light - chroma / 2
+  const [r, g, b] =
+    hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0] : hue < 180 ? [0, chroma, x]
+    : hue < 240 ? [0, x, chroma] : hue < 300 ? [x, 0, chroma] : [chroma, 0, x]
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)]
+}
 
 /**
  * The red, green and blue of a scheme colour, or undefined. A scheme colour
- * is hex of either length or `rgb()`/`rgba()` — a form every reader can parse
- * without a browser, so the taxonomy can refuse anything else at
- * construction (`isSchemeColor`) and no reader meets a colour it cannot read.
+ * is hex of either length, `rgb()`/`rgba()` or `hsl()`/`hsla()` — a form
+ * every reader can parse without a browser, so the taxonomy can refuse
+ * anything else at construction (`isSchemeColor`) and no reader meets a
+ * colour it cannot read.
  */
 export function rgbOf(color: string): readonly [number, number, number] | undefined {
   const c = color.trim()
@@ -78,9 +97,12 @@ export function rgbOf(color: string): readonly [number, number, number] | undefi
   if (m) return [parseInt(m[1] + m[1], 16), parseInt(m[2] + m[2], 16), parseInt(m[3] + m[3], 16)]
   m = RGB.exec(c)
   if (m) return [Number(m[1]), Number(m[2]), Number(m[3])]
+  m = HSL.exec(c)
+  if (m) return hslToRgb(Number(m[1]), Number(m[2]), Number(m[3]))
   return undefined
 }
 
+/** Whether a colour is one every reader parses: hex, `rgb()` or `hsl()`. */
 export const isSchemeColor = (color: string): boolean => rgbOf(color) !== undefined
 
 const NEUTRAL: readonly [number, number, number] = [148, 163, 184]
@@ -108,23 +130,24 @@ export function withAlpha(color: string, alpha: number): string {
 
 /**
  * A stylesheet for a host's own CSS: every style value's fill and border on
- * `:root`, and the dark values that differ under `[data-theme="dark"]` — the
- * one selector the library themes by. The pane does not read this — it
- * carries `schemeVars` inline — so a host that styles nothing of its own by
- * node value never needs it.
+ * `:root`, and the dark values that differ under `darkSelector` — by default
+ * `[data-theme="dark"]`, the attribute the pane carries on its own root; a
+ * host that marks its theme another way names its own selector. The pane
+ * does not read this — it carries `schemeVars` inline — so a host that
+ * styles nothing of its own by node value never needs it.
  */
-export function schemeStylesheet(ontology: Ontology): string {
+export function schemeStylesheet(taxonomy: Taxonomy, darkSelector = '[data-theme="dark"]'): string {
   const lightVars: string[] = []
   const darkVars: string[] = []
-  for (const key of ontology.styleValues) {
-    const { light, dark } = ontology.styleOf(key).color
-    const v = ontology.colorVar(key)
+  for (const key of taxonomy.styleValues) {
+    const { light, dark } = taxonomy.styleOf(key).color
+    const v = taxonomy.colorVar(key)
     lightVars.push(`  ${v}: ${light.fill};`)
     lightVars.push(`  ${v}-border: ${light.border};`)
     if (dark.fill !== light.fill) darkVars.push(`  ${v}: ${dark.fill};`)
     if (dark.border !== light.border) darkVars.push(`  ${v}-border: ${dark.border};`)
   }
   const parts: string[] = [`:root {\n${lightVars.join('\n')}\n}`]
-  if (darkVars.length > 0) parts.push(`[data-theme="dark"] {\n${darkVars.join('\n')}\n}`)
+  if (darkVars.length > 0) parts.push(`${darkSelector} {\n${darkVars.join('\n')}\n}`)
   return parts.join('\n')
 }

@@ -1,19 +1,20 @@
 // useSimulation — the simulation spine for the Graph View.
 //
 // Owns the long-lived Simulation instance (simRef), its rebuild lifecycle and
-// version signal, the tunable forceParams, the running flag, and every handler
-// that mutates the sim (param/gravity edits, node drag, reheat, play/pause). It
+// version signal, the running flag, and every handler that mutates the sim
+// (param/gravity edits, node drag, reheat, play/pause). The force parameters
+// are the view's layout state, read here and written through its writer. It
 // exposes a narrow surface: the ref, a `getNode` accessor, the version (the data
 // link other hooks list in their deps), and the handlers. The RAF loop that
 // *drives* the sim is a separate hook (useSimulationLoop); this owns the instance.
 
 import React from 'react'
-import { Simulation, defaultParamsFor, retunedFor } from '../../graph/simulation'
+import { Simulation, retunedFor } from '../../graph/simulation'
 import { defaultRng } from '../../graph/rng'
 import type { ForceParams, SimNode } from '../../graph/simulation'
 import type { Graph } from '../../graph/model'
-import { graphShapeEquals } from '../../graph/model'
-import type { Ontology } from '../../graph/ontology'
+import { graphEquals } from '../../graph/model'
+import type { Taxonomy } from '../../graph/taxonomy'
 
 export interface SimulationController {
   simRef: React.MutableRefObject<Simulation | null>
@@ -34,7 +35,7 @@ export interface SimulationController {
 
 export function useSimulation(
   graph: Graph,
-  ontology: Ontology,
+  taxonomy: Taxonomy,
   // Where nodes start: the host's kept layout, by node id. Read when the
   // simulation is built; the previous simulation's positions take precedence
   // on a rebuild, so a graph update keeps the layout the user has.
@@ -42,7 +43,11 @@ export function useSimulation(
   // Called after each (re)creation with whether positions were carried over,
   // so the camera can keep its place when the layout kept its. Held in a ref
   // so its changing identity never re-triggers the rebuild.
-  onRebuild?: (continued: boolean) => void,
+  onRebuild: ((continued: boolean) => void) | undefined,
+  // The force parameters as the view's layout state holds them, and the
+  // writer every change goes through — the host's, when it controls the layout.
+  forces: ForceParams,
+  updateForces: (fn: (prev: ForceParams) => ForceParams) => void,
 ): SimulationController {
   const simRef = React.useRef<Simulation | null>(null)
   const prevGraphRef = React.useRef<Graph | null>(null)
@@ -51,24 +56,21 @@ export function useSimulation(
   // render; three identities inside two seconds is that, said once.
   const ontologyChanges = React.useRef<number[]>([])
   const warnedOntologyRef = React.useRef(false)
-  const prevOntologyRef = React.useRef<Ontology | null>(null)
+  const prevOntologyRef = React.useRef<Taxonomy | null>(null)
   const dragNodeRef = React.useRef<string | null>(null)
   const [running, setRunning] = React.useState(true)
-  // Lazy initializer, and `ontology` has to be read before it: the starting
-  // parameters are derived from the taxonomy now, so a module-load constant is
-  // no longer available to seed this with.
-  const [rawParams, setRawParams] = React.useState<ForceParams>(() => defaultParamsFor(ontology))
   // What the view and the simulation read: the parameters as retuned for the
   // graph and the taxonomy — `retunedFor` rebuilds any tuning whose buckets no
   // longer match (an axis bucketed by observed values after a file is added,
   // the style axis or a scalar axis after a taxonomy swap), keeps overrides
   // whose values survive, and returns the same object when nothing moved. It
   // runs in render so nothing downstream ever resolves a stale tuning against
-  // a new taxonomy; the state catches up in the effect below.
-  const forceParams = React.useMemo(() => retunedFor(rawParams, ontology, graph), [rawParams, ontology, graph])
+  // a new taxonomy; the layout state catches up in the effect below, through
+  // the view's writer, so a host that controls the layout hears the retune.
+  const forceParams = React.useMemo(() => retunedFor(forces, taxonomy, graph), [forces, taxonomy, graph])
   React.useEffect(() => {
-    if (forceParams !== rawParams) setRawParams(forceParams)
-  }, [forceParams, rawParams])
+    if (forceParams !== forces) updateForces(prev => (prev === forces ? forceParams : prev))
+  }, [forceParams, forces]) // eslint-disable-line react-hooks/exhaustive-deps
   const [simVersion, setSimVersion] = React.useState(0)
 
   const onRebuildRef = React.useRef(onRebuild)
@@ -79,33 +81,33 @@ export function useSimulation(
   // mapping has nothing left to detect.
   React.useEffect(() => {
     const prev = simRef.current
-    // A new graph object of the same shape rebuilds the simulation for
+    // A new graph object equal to the last rebuilds the simulation for
     // nothing; said once, because the fix is on the host's side (memoise).
-    if (prev && prevGraphRef.current && prevGraphRef.current !== graph && !warnedRef.current && graphShapeEquals(prevGraphRef.current, graph)) {
+    if (prev && prevGraphRef.current && prevGraphRef.current !== graph && !warnedRef.current && graphEquals(prevGraphRef.current, graph)) {
       warnedRef.current = true
-      console.warn('[graph] the graph\'s identity changed but its shape did not; the view rebuilt its simulation for nothing. Keep one graph object until its nodes or edges change.')
+      console.warn('[graph] the graph\'s identity changed but nothing in it did; the view rebuilt its simulation for nothing. Keep one graph object until its nodes or edges change.')
     }
     prevGraphRef.current = graph
-    if (prevOntologyRef.current !== null && prevOntologyRef.current !== ontology && !warnedOntologyRef.current) {
+    if (prevOntologyRef.current !== null && prevOntologyRef.current !== taxonomy && !warnedOntologyRef.current) {
       const now = typeof performance !== 'undefined' ? performance.now() : 0
       const recent = ontologyChanges.current.filter(t => now - t < 2000)
       recent.push(now)
       ontologyChanges.current = recent
       if (recent.length >= 3) {
         warnedOntologyRef.current = true
-        console.warn('[graph] the taxonomy\'s identity changed three times in two seconds; the view rebuilds its simulation for each. Build the ontology once, outside render.')
+        console.warn('[graph] the taxonomy\'s identity changed three times in two seconds; the view rebuilds its simulation for each. Build the taxonomy once, outside render.')
       }
     }
-    prevOntologyRef.current = ontology
+    prevOntologyRef.current = taxonomy
     // Where nodes start: the host's kept layout under the previous
     // simulation's, so a graph update keeps the layout the user has.
     const start = new Map<string, { x: number; y: number }>(positions ?? [])
     if (prev) for (const n of prev.nodes) start.set(n.id, { x: n.x, y: n.y })
-    simRef.current = new Simulation(graph, forceParams, defaultRng, ontology, start.size > 0 ? start : undefined)
+    simRef.current = new Simulation(graph, forceParams, defaultRng, taxonomy, start.size > 0 ? start : undefined)
     onRebuildRef.current?.(prev !== null)
     setRunning(true)
     setSimVersion(v => v + 1)
-  }, [graph, ontology]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [graph, taxonomy]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Every later change reaches the live simulation here, once, after the
   // retune above — never a raw patch the taxonomy could refuse.
@@ -120,8 +122,8 @@ export function useSimulation(
   // separate concern of onForceAdjust (so non-committing interactions can warm
   // the sim without writing a param).
   const onParamChange = React.useCallback((patch: Partial<ForceParams>) => {
-    setRawParams(prev => ({ ...prev, ...patch }))
-  }, [])
+    updateForces(prev => ({ ...prev, ...patch }))
+  }, [updateForces])
 
   const onForceAdjust = React.useCallback(() => {
     simRef.current?.nudge(0.3)
@@ -131,10 +133,10 @@ export function useSimulation(
   // Edits that relocate nodes — gravity's mode and toggles, the push/pull axis
   // — reheat harder than a numeric nudge.
   const onRelayout = React.useCallback((partial: Partial<ForceParams>) => {
-    setRawParams(prev => ({ ...prev, ...partial }))
+    updateForces(prev => ({ ...prev, ...partial }))
     simRef.current?.reheat(0.6)
     setRunning(true)
-  }, [])
+  }, [updateForces])
 
   const onNodeDragStart = React.useCallback((id: string, wx: number, wy: number) => {
     dragNodeRef.current = id

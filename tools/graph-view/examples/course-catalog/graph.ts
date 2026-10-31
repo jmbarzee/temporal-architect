@@ -4,14 +4,16 @@
 
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view'
 import type { Catalog, Requirement } from './data'
-import { CAMPUS, ENTITY, REQUIREMENT } from './ontology'
+import { CAMPUS, ENTITY, REQUIREMENT } from './taxonomy'
 
 const subjectOf = (code: string) => code.split(' ')[0]
 /** "MATH 210" → 2; "CHEM 101L" → 1. */
 const levelOf = (code: string) => Number(code.split(' ')[1]?.[0] ?? 0)
 
 export function buildGraph(catalog: Catalog): Graph {
-  const nodes = new Map<string, GraphNode>()
+  const nodes: GraphNode[] = []
+  /** Ids added so far, for the department lookup below. */
+  const ids = new Set<string>()
   const edges: GraphEdge[] = []
   /** Catalog code → node id, so requirements can resolve. */
   const byCode = new Map<string, string>()
@@ -19,7 +21,7 @@ export function buildGraph(catalog: Catalog): Graph {
   // Containment is `parentId` and nothing else: the library derives the
   // containment edge from it, so only dependencies are listed as edges — and
   // a dependency is the relation an edge has when it says none.
-  const add = (node: GraphNode) => { nodes.set(node.id, node) }
+  const add = (node: GraphNode) => { nodes.push(node); ids.add(node.id) }
   const depends = (from: string, req: Requirement) => {
     const to = byCode.get(req.code)
     if (!to) return // reported as a finding by the host shell
@@ -27,7 +29,7 @@ export function buildGraph(catalog: Catalog): Graph {
       id: `${req.kind}:${from}->${to}`,
       sourceId: from,
       targetId: to,
-      dimensions: { [REQUIREMENT]: req.kind },
+      values: { [REQUIREMENT]: req.kind },
     })
   }
 
@@ -36,7 +38,7 @@ export function buildGraph(catalog: Catalog): Graph {
       id: `faculty:${f.id}`,
       name: f.name,
       copyKey: `faculty:${f.id}`,
-      dimensions: { [ENTITY]: 'faculty' },
+      values: { [ENTITY]: 'faculty' },
       payload: { dean: f.dean },
     })
   }
@@ -46,20 +48,20 @@ export function buildGraph(catalog: Catalog): Graph {
       name: d.name,
       copyKey: `dept:${d.subject}`,
       parentId: `faculty:${d.faculty}`,
-      dimensions: { [ENTITY]: 'department' },
+      values: { [ENTITY]: 'department' },
       payload: { code: d.subject },
     })
   }
   for (const c of catalog.courses) {
     for (const code of c.listings) {
-      const dept = nodes.has(`dept:${subjectOf(code)}`) ? `dept:${subjectOf(code)}` : undefined
+      const dept = ids.has(`dept:${subjectOf(code)}`) ? `dept:${subjectOf(code)}` : undefined
       byCode.set(code, `course:${code}`)
       add({
         id: `course:${code}`,
         name: c.title,
         copyKey: `course:${c.id}`,
         parentId: dept,
-        dimensions: { [ENTITY]: 'course', [CAMPUS]: c.campus },
+        values: { [ENTITY]: 'course', [CAMPUS]: c.campus },
         payload: {
           code,
           credits: c.credits,
@@ -79,7 +81,7 @@ export function buildGraph(catalog: Catalog): Graph {
         name: lab.title,
         copyKey: `lab:${lab.code}`,
         parentId: `course:${c.listings[0]}`,
-        dimensions: { [ENTITY]: 'lab', [CAMPUS]: c.campus },
+        values: { [ENTITY]: 'lab', [CAMPUS]: c.campus },
         payload: {
           code: lab.code,
           credits: lab.credits,
