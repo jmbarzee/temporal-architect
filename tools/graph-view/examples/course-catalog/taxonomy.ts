@@ -4,7 +4,7 @@
 
 import { createTaxonomy, isContainment, payloadNumber, payloadString } from '@temporal-architect/graph-view'
 import type {
-  AxisDescriptor, EdgeStroke, EdgeType, FilterChip, GraphEdge, GraphNode, Highlight, HighlightGraph,
+  AxisDescriptor, EdgeType, FilterChip, GraphNode, Highlight, HighlightGraph,
   NodeStyle, TaxonomySpec, ReadableGraph, ScalarAxis,
 } from '@temporal-architect/graph-view'
 import type { Campus } from './data'
@@ -65,14 +65,9 @@ const styleOf = (id: Entity): NodeStyle => VALUES.find(v => v.id === id)!
 
 // ── Edges ───────────────────────────────────────────────────────────────────
 
-const CONTAINS: EdgeStroke = {
-  color: { light: '#94A3B8', dark: '#64748B' },
-  alpha: 0.35,
-  dash: [3, 4],
-  width: 1,
-}
 // A containment type is classified by its pair alone — a child's tier and its
-// container's — so the library derives which one a containment edge is.
+// container's — so the library derives which one a containment edge is. It
+// leaves its stroke out, which is the library's containment stroke.
 const contains = (id: string, label: string, child: Entity, parent: Entity, strength: number, distance: number): EdgeType => ({
   id,
   label,
@@ -80,7 +75,6 @@ const contains = (id: string, label: string, child: Entity, parent: Entity, stre
   targetValue: parent,
   relation: 'containment',
   physics: { strength, distance },
-  style: CONTAINS,
   tooltip: `${styleOf(child).label} in ${styleOf(parent).label}`,
 })
 
@@ -89,11 +83,12 @@ export const EDGE_TYPES: readonly EdgeType[] = [
   contains('courseInDept', 'Co→Dp', 'course', 'department', 0.5, 200),
   contains('labInCourse', 'Lb→Co', 'lab', 'course', 0.9, 60),
   {
-    // No `match`: the course–course edge that is neither of the two below.
+    // No `match`: the requirement that is neither of the two below. A lab can
+    // require a course or another lab, so each end is a course or a lab.
     id: 'prerequisite',
     label: 'Pre',
-    sourceValue: 'course',
-    targetValue: 'course',
+    sourceValue: ['course', 'lab'],
+    targetValue: ['course', 'lab'],
     relation: 'dependency',
     physics: { strength: 0.6, distance: 260 },
     tooltip: 'Must be passed first',
@@ -108,8 +103,8 @@ export const EDGE_TYPES: readonly EdgeType[] = [
     // Same endpoints as a prerequisite; only the edge's own `requirement` tells them apart.
     id: 'corequisite',
     label: 'Co-req',
-    sourceValue: 'course',
-    targetValue: 'course',
+    sourceValue: ['course', 'lab'],
+    targetValue: ['course', 'lab'],
     relation: 'dependency',
     match: { [REQUIREMENT]: 'corequisite' },
     physics: { strength: 1.2, distance: 120 },
@@ -124,8 +119,8 @@ export const EDGE_TYPES: readonly EdgeType[] = [
   {
     id: 'recommended',
     label: 'Rec',
-    sourceValue: 'course',
-    targetValue: 'course',
+    sourceValue: ['course', 'lab'],
+    targetValue: ['course', 'lab'],
     relation: 'dependency',
     match: { [REQUIREMENT]: 'recommended' },
     physics: { strength: 0.2, distance: 420 },
@@ -138,20 +133,6 @@ export const EDGE_TYPES: readonly EdgeType[] = [
     },
   },
 ]
-
-/**
- * The one exception the declarations cannot express: a lab can require a
- * course or another lab, and no type declares a pair with a lab on a
- * dependency — the edge's own `requirement` says which kind it is, a
- * prerequisite when it says nothing. Everything else is the declarations',
- * handed in as `declared`: containment by its pair, a course's requirement by
- * its pair and `requirement`.
- */
-function classifyEdge(edge: GraphEdge, src: string | undefined, tgt: string | undefined, declared: string | undefined): string | undefined {
-  if (declared !== undefined || isContainment(edge) || (src !== 'lab' && tgt !== 'lab')) return declared
-  const kind = edge.dimensions?.[REQUIREMENT]
-  return kind === 'corequisite' || kind === 'recommended' ? kind : 'prerequisite'
-}
 
 // ── Filter axes ─────────────────────────────────────────────────────────────
 
@@ -187,8 +168,11 @@ const FILTERS: readonly AxisDescriptor[] = [
     // style axis, which this is; its chips group three values into two.
     emptyMeans: 'none',
     chipsFor: values => ENTITY_CHIPS.filter(c => c.values.some(v => values.includes(v))),
-    // Opens on departments and courses, not on every entity.
-    initialSelection: () => ['department', 'course'],
+    // Opens on everything but labs. The selection names whole chips: the
+    // Organisation chip covers `faculty` and `department`, so `department`
+    // alone would split it and the library would select the whole chip anyway,
+    // with a warning.
+    initialSelection: () => ['faculty', 'department', 'course'],
   },
   {
     id: CAMPUS,
@@ -232,7 +216,7 @@ const SCALARS: readonly ScalarAxis[] = [
 function contextLine(node: GraphNode, parent: GraphNode | undefined): string | undefined {
   const code = payloadString(node, 'code')
   const credits = payloadNumber(node, 'credits')
-  switch (node.dimensions[ENTITY]) {
+  switch (node.values[ENTITY]) {
     case 'faculty': return payloadString(node, 'dean')
     case 'department': return [code, parent?.name].filter(Boolean).join(' · ')
     default: return [code, credits !== undefined ? `${credits} cr` : undefined, payloadString(node, 'term')].filter(Boolean).join(' · ')
@@ -245,7 +229,7 @@ function contextLine(node: GraphNode, parent: GraphNode | undefined): string | u
  * the library's walk.
  */
 function highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight {
-  if (active.dimensions[ENTITY] !== 'department') return base
+  if (active.values[ENTITY] !== 'department') return base
   const nodes = new Set(base.nodes)
   for (const n of graph.visibleNodes) {
     if (n.parentId === active.id) nodes.add(n.id)
@@ -261,10 +245,9 @@ function highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): H
 export const spec: TaxonomySpec = {
   styleAxis: ENTITY,
   styleLabel: 'Entity',
-  values: VALUES,
+  styles: VALUES,
   filterAxes: FILTERS,
   edgeTypes: EDGE_TYPES,
-  classifyEdge,
   scalars: SCALARS,
   contextLine,
   highlight,

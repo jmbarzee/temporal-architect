@@ -12,6 +12,7 @@ import { useStable } from './useControllable'
 export type RecentlyChanged = ReadonlyMap<string, ReadonlySet<string>>
 const NONE: RecentlyChanged = new Map()
 
+/** The values that just turned on in a filter, per axis, for about 450 ms — the bar's chip flash — derived from the filter alone. */
 export function useRecentlyChanged(rawFilter: FilterState): RecentlyChanged {
   // One object per content change, so the effect below re-runs — and its
   // cleanup cancels the timer — only for a real change: a host rebuilding an
@@ -24,19 +25,18 @@ export function useRecentlyChanged(rawFilter: FilterState): RecentlyChanged {
     const prev = prevFilterRef.current
     if (filterStatesEqual(prev, filter)) return
     const changed = new Map<string, Set<string>>()
-    for (const [dimension, values] of filter) {
-      const before = selectionFor(prev, dimension)
+    for (const [axis, values] of filter) {
+      const before = selectionFor(prev, axis)
       for (const v of values) {
         if (before.has(v)) continue
-        const set = changed.get(dimension) ?? new Set<string>()
+        const set = changed.get(axis) ?? new Set<string>()
         set.add(v)
-        changed.set(dimension, set)
+        changed.set(axis, set)
       }
     }
     prevFilterRef.current = filter
-    // Set on every change, empty included: a removal-only change that arrived
-    // while an earlier flash was pending used to cancel its timer and leave the
-    // old set lit.
+    // Set on every change, empty included, so a removal-only change that
+    // arrives while an earlier flash is pending does not leave the old set lit.
     setRecentlyChanged(changed)
     if (changed.size === 0) return
     const timer = setTimeout(() => setRecentlyChanged(NONE), 450)

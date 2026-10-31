@@ -1,11 +1,12 @@
 import {
   useTaxonomy,
+  hiddenMatchesOf,
   passesSelection,
   selectionFor,
   FilterBar,
 } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
-import type { FocusTarget, FilterState, AxisLocks, AxisId } from '@temporal-architect/graph-view'
+import type { AxisValues, FocusTarget, LinkedViewProps, Theme } from '@temporal-architect/graph-view'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
@@ -16,48 +17,45 @@ import { ErrorBars } from './ErrorBars'
 import { definitionCounts } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
 
+/** A definition's values on the axes it carries: its type, and its file when it has one. */
+function valuesOf(def: Definition): AxisValues {
+  return def.sourceFile === undefined
+    ? { [DEF_TYPE_DIMENSION]: def.type }
+    : { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.sourceFile }
+}
+
 /** Where a focus into the tree lands: the library's target, plus the name this view finds a definition by. */
 export type TreeFocus = FocusTarget & { name: string }
 
-interface TreeViewProps {
+// The filter, locks, axes (and the locks a focus overrode) and the shared
+// search are the shell's `linked.of('tree')`: the bar takes them as they come.
+interface TreeViewProps extends LinkedViewProps {
   // Whether this view is the active tab. Both views stay mounted (keep-alive),
   // so the inactive one must not respond to global keyboard shortcuts.
   active: boolean
   ast: TWFFile
   onShowInGraph?: (name: string, defType: string) => void
-  filter: FilterState
-  onFilterChange: (next: FilterState) => void
-  locks: AxisLocks
-  onLocksChange: (next: AxisLocks) => void
-  axes: readonly string[]
-  onAxesChange?: (next: readonly string[]) => void
-  searchQuery: string
-  searchActive: boolean
-  onSearchChange: (query: string, active: boolean) => void
+  /** What the bar's `system` theme resolves to: the host's own theme. */
+  systemTheme: Theme
   pendingFocus: TreeFocus | null
   onFocusConsumed: () => void
-  overriddenLocks: Set<AxisId>
-  onOverriddenPinsConsumed: () => void
 }
 
 export function TreeView({
   active,
   ast,
   onShowInGraph,
-  filter,
-  onFilterChange,
-  locks,
-  onLocksChange,
-  axes,
-  onAxesChange,
-  searchQuery,
-  searchActive,
-  onSearchChange,
+  systemTheme,
   pendingFocus,
   onFocusConsumed,
-  overriddenLocks,
-  onOverriddenPinsConsumed,
+  ...linked
 }: TreeViewProps) {
+  const { filter, axes, search, onSearchChange: onSearchState } = linked
+  const { query: searchQuery, active: searchActive } = search
+  const onSearchChange = React.useCallback(
+    (query: string, active: boolean) => onSearchState({ query, active }),
+    [onSearchState],
+  )
   const taxonomy = useTaxonomy()
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
@@ -77,14 +75,6 @@ export function TreeView({
     prevAstRef.current = ast
   }, [ast])
 
-
-  // Pin-override flash: clear the overridden-locks set after ~600ms so
-  // the visual flash plays once per focus transition.
-  React.useEffect(() => {
-    if (overriddenLocks.size === 0) return
-    const timer = setTimeout(onOverriddenPinsConsumed, 600)
-    return () => clearTimeout(timer)
-  }, [overriddenLocks, onOverriddenPinsConsumed])
 
   // Build reverse reference index for contextual navigation
   const navIndex = React.useMemo(() => {
@@ -236,17 +226,12 @@ export function TreeView({
   const visibleDefinitions = React.useMemo(() => {
     // Same policy as the graph, via passesSelection; only the projection is
     // local, because a definition has named fields where a graph node has a
-    // dimension map. This used to be a second hand-written implementation of
+    // `values` map. This used to be a second hand-written implementation of
     // both axes' empty/absent semantics, so a descriptor change moved the graph
     // and left the tree behind.
-    // Only the axes this view shows filter (D66): their descriptors, as in
-    // the graph view.
-    const shown = axes.flatMap(id => { const d = taxonomy.axisFor(id); return d ? [d] : [] })
+    // Only the axes this view shows filter, as in the graph view.
     const filtered = ast.definitions.filter((def): def is Definition =>
-      passesSelection(filter, shown, dim =>
-        dim === DEF_TYPE_DIMENSION ? def.type
-        : dim === SOURCE_FILE_DIMENSION ? def.sourceFile
-        : undefined))
+      passesSelection({ filter, taxonomy, axes, node: { values: valuesOf(def) } }))
 
     filtered.sort((a, b) => {
       const orderA = DEF_TYPE_ORDER.get(a.type) ?? 999
@@ -260,13 +245,12 @@ export function TreeView({
   // Search matches against the *visible* definition set. Matches outside
   // the visible set (hidden by file/type filters) are surfaced as
   // hidden-match badges on the corresponding filter controls below.
-  const { matchSet, matchIndices, hiddenMatchByType, hiddenMatchByFile } = React.useMemo(() => {
+  const { matchSet, matchIndices, hiddenMatches } = React.useMemo(() => {
     if (!searchQuery) {
       return {
         matchSet: null as Set<string> | null,
         matchIndices: [] as number[],
-        hiddenMatchByType: new Map<string, number>(),
-        hiddenMatchByFile: new Map<string, number>(),
+        hiddenMatches: new Map<string, ReadonlyMap<string, number>>(),
       }
     }
     const lq = searchQuery.toLowerCase()
@@ -278,22 +262,17 @@ export function TreeView({
         indices.push(i)
       }
     })
-    // Tally matches HIDDEN by structural filters, for badge overlays.
-    const byType = new Map<string, number>()
-    const byFile = new Map<string, number>()
-    for (const def of ast.definitions) {
-      if (!def.name.toLowerCase().includes(lq)) continue
-      const inType = selectionFor(filter, DEF_TYPE_DIMENSION).has(def.type)
-      const inFile = selectionFor(filter, SOURCE_FILE_DIMENSION).size === 0 || (def.sourceFile ? selectionFor(filter, SOURCE_FILE_DIMENSION).has(def.sourceFile) : true)
-      if (!inType) byType.set(def.type, (byType.get(def.type) ?? 0) + 1)
-      else if (!inFile && def.sourceFile) byFile.set(def.sourceFile, (byFile.get(def.sourceFile) ?? 0) + 1)
-    }
-    return { matchSet: set, matchIndices: indices, hiddenMatchByType: byType, hiddenMatchByFile: byFile }
-  }, [searchQuery, visibleDefinitions, ast.definitions, filter])
-  const hiddenMatches = React.useMemo(
-    () => new Map<string, ReadonlyMap<string, number>>([[SOURCE_FILE_DIMENSION, hiddenMatchByFile], [DEF_TYPE_DIMENSION, hiddenMatchByType]]),
-    [hiddenMatchByFile, hiddenMatchByType],
-  )
+    // Matches HIDDEN by the structural filters, counted on the chip hiding
+    // each — the library's split, so the tree badges the chip the graph would.
+    const split = hiddenMatchesOf({
+      nodes: ast.definitions.map(def => ({ id: defKey(def), def })),
+      filter, taxonomy, axes,
+      visibleIds: new Set(visibleDefinitions.map(defKey)),
+      matches: n => n.def.name.toLowerCase().includes(lq),
+      valueOn: (n, dim) => dim === DEF_TYPE_DIMENSION ? n.def.type : dim === SOURCE_FILE_DIMENSION ? n.def.sourceFile : undefined,
+    })
+    return { matchSet: set, matchIndices: indices, hiddenMatches: split.hiddenByAxis }
+  }, [searchQuery, visibleDefinitions, ast.definitions, filter, taxonomy, axes])
 
   // The findings and the chip counts, read off the AST for the shared bar.
   const errors = ast.errors || []
@@ -508,17 +487,10 @@ export function TreeView({
     <NavigationContext.Provider value={navigationValue}>
       <div className="workflow-canvas">
         <FilterBar
+          {...linked}
+          systemTheme={systemTheme}
           counts={counts}
           values={valuesByDimension}
-          filter={filter}
-          onFilterChange={onFilterChange}
-          locks={locks}
-          onLocksChange={onLocksChange}
-          axes={axes}
-          onAxesChange={onAxesChange}
-          overriddenLocks={overriddenLocks}
-          search={{ query: searchQuery, active: searchActive }}
-          onSearchChange={next => onSearchChange(next.query, next.active)}
           searchInputRef={searchInputRef}
           searchTitle="Search definitions"
           searchPlaceholder="Filter by name..."
