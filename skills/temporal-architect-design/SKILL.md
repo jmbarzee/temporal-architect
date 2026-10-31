@@ -53,7 +53,7 @@ workflow ProcessOrder(order: Order) -> (OrderResult):
 
 A clean `twf check` does not make a design correct: idempotency, concurrent-write races, and cross-file payload flow are invisible to the tooling. Before presenting, make one **fresh-eyes pass** — re-read the finished design as someone else's PR, setting the intent aside, or dispatch a reviewer that sees only the `.twf`.
 
-Grade it against [design-checklist.md](./reference/design-checklist.md). The design is ready only when every checklist item holds. Present a summary with the `.twf`: key workflows, activity purposes, notable decisions. For complex control flow, parallelism, or signal/timer races, suggest the TWF visualizer extension.
+Grade it against [design-checklist.md](./reference/design-checklist.md). The design is ready only when every checklist item holds. Present a summary with the `.twf`: key workflows, activity purposes, notable decisions. For complex control flow, parallelism, or signal/timer races, open the design in a visual view: `twf-view` — the live visualizer host — outside an editor (`brew install jmbarzee/twf/twf-view`, or `go install github.com/jmbarzee/temporal-architect-dist/packages/twf-view@latest`), or the TWF extension's visualizer inside VS Code / Cursor.
 
 ## `twf` CLI
 
