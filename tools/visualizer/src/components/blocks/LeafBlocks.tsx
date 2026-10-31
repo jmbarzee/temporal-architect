@@ -7,6 +7,8 @@ import type {
   SetStmt,
   UnsetStmt,
   SignalSendStmt,
+  SendHead,
+  Address,
 } from '../../types/ast'
 import { ContextualNavButtons } from './ContextualNav'
 // Return
@@ -133,16 +135,18 @@ export function SetBlock({ stmt }: { stmt: SetStmt }) {
   )
 }
 
-// Cross-workflow signal send — `signal handle.Name(args)`.
+// Cross-workflow signal send — `signal handle.Name(args)`, or
+// `signal Type.Name(args)` with an `id:` / `run_id:` address.
 //
 // Statement-only and fire-and-forget: the send resolves on acceptance, never on
 // the receiver's handler running, so there is no result to expand into. The
-// resolver follows the handle to its target workflow; when it resolves we offer
+// resolver follows the head to its target workflow; when it resolves we offer
 // a jump to that definition, and when it doesn't we mark it unresolved the same
-// way call blocks do.
+// way call blocks do. A type head's address trails the signature as a summary.
 export function SignalSendBlock({ stmt }: { stmt: SignalSendStmt }) {
   const target = stmt.resolved?.name
-  const signature = `${stmt.handle}.${stmt.signal}(${stmt.args || ''})`
+  const signature = `${formatSendHead(stmt.head)}.${stmt.signal}(${stmt.args || ''})`
+  const address = stmt.head.address && formatAddress(stmt.head.address)
 
   return (
     <div className={`block block-signal-send collapsed ${!target ? 'block-unresolved' : ''}`}>
@@ -151,10 +155,21 @@ export function SignalSendBlock({ stmt }: { stmt: SignalSendStmt }) {
         <span className="block-toggle-placeholder" />
         <span className="block-keyword">signal</span>
         <span className="block-signature" title={signature}>{signature}</span>
+        {address && <span className="block-summary" title={address}>{address}</span>}
         {!target && <span className="block-unresolved-badge">?</span>}
       </div>
     </div>
   )
+}
+
+function formatSendHead(head: SendHead): string {
+  if (head.kind === 'handle') return head.handle!
+  return head.package ? `${head.package}.${head.type}` : head.type!
+}
+
+function formatAddress({ id, runId }: Address): string {
+  const value = id.kind === 'literal' ? JSON.stringify(id.literal) : id.kind === 'parent' ? 'parent' : id.name!
+  return runId ? `id: ${value}  run_id: ${runId}` : `id: ${value}`
 }
 
 // Unset condition (set to false)

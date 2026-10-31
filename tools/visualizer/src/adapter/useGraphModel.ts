@@ -33,6 +33,20 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
     })
   }
   for (const u of pg.unresolved) {
+    // A target behind an import of a package outside the tree is carried
+    // unchecked, not broken: a hint, which the findings bars leave out.
+    if (u.reason === 'external') {
+      out.push({
+        severity: 'hint',
+        kind: 'graph',
+        code: 'EXTERNAL_REFERENCE',
+        message: `${u.kind} target ${JSON.stringify(u.name)} is in a package outside this tree (unchecked)`,
+        name: u.from,
+        start: { line: u.line, column: 0 },
+        end: { line: u.line, column: 0 },
+      })
+      continue
+    }
     const code = u.kind === 'signalSend' ? 'SIGNAL_TARGET_NOT_SAMPLED' : 'UNRESOLVED_REFERENCE'
     out.push({
       severity: 'warning',

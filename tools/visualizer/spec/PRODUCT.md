@@ -120,7 +120,7 @@ Badges are node **adornments** — small markers drawn beside a graph node, dist
 
 | Badge | Applies to | Meaning |
 |-------|-----------|---------|
-| `?` unresolved | — | **Deferred** ([#185](https://github.com/jmbarzee/temporal-architect/issues/185)): unresolved references reach the graph only as warnings in the findings bar; the tree's `?` badge (§ Border conventions) has no graph counterpart yet |
+| `?` unresolved | — | **Deferred** ([#185](https://github.com/jmbarzee/temporal-architect/issues/185)): unresolved references reach the graph only as warnings in the findings bar (one carried unchecked through an import of a package outside the tree is a hint, which the bars leave out); the tree's `?` badge (§ Border conventions) has no graph counterpart yet |
 | Orphan ring | Workers, orchestrators and leaves | A dashed ring around a node not contained by any parent (see GRAPH_VIEW.md § Orphan Definitions) |
 | Cardinality (`× {param}`) | Namespace / NexusEndpoint | The node is a parameterized family; the host writes one `× {param}` badge per entry in the node's `templateParams` wire field, and the library draws its badges as a chip row (chip count = array length, chip label = bare param name). See GRAPH_VIEW.md § Visual Encoding → Node Appearance. |
 

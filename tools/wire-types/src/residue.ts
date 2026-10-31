@@ -43,6 +43,9 @@ import type {
   RawStmtJSON,
   CommentJSON,
   SignalSendStmtJSON,
+  SendHeadJSON,
+  AddressJSON,
+  IDValueJSON,
   PromiseStmtJSON,
   SetStmtJSON,
   UnsetStmtJSON,
@@ -124,6 +127,10 @@ export type AsyncTargetKind =
   | "workflow"
   | "nexus"
   | "ident";
+/** SendHeadJSON.kind — SendHeadKind in ast/ast.go. */
+export type SendHeadKind = "type" | "handle";
+/** IDValueJSON.kind — IDKind in ast/ast.go. */
+export type IDKind = "literal" | "parent" | "name";
 /** OptionEntryJSON.valueType — see OptionEntry in ast/statements.go. */
 export type OptionValueType = "string" | "duration" | "number" | "bool" | "enum" | "list";
 
@@ -228,7 +235,16 @@ export type BreakStmt = BreakStmtJSON & { type: "break" };
 export type ContinueStmt = ContinueStmtJSON & { type: "continue" };
 export type RawStmt = RawStmtJSON & { type: "raw" };
 export type Comment = CommentJSON & { type: "comment" };
-export type SignalSendStmt = SignalSendStmtJSON & { type: "signalSend" };
+export type IDValue = Omit<IDValueJSON, "kind"> & { kind: IDKind };
+export type Address = Omit<AddressJSON, "id"> & { id: IDValue };
+export type SendHead = Omit<SendHeadJSON, "kind" | "address"> & {
+  kind: SendHeadKind;
+  address?: Address;
+};
+export type SignalSendStmt = Omit<SignalSendStmtJSON, "type" | "head"> & {
+  type: "signalSend";
+  head: SendHead;
+};
 export type PromiseStmt = Omit<PromiseStmtJSON, "type" | "target"> & {
   type: "promise";
   target: AsyncTarget;

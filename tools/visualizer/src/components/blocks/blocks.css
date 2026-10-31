@@ -1149,6 +1149,11 @@
   margin-bottom: 8px;
 }
 
+/* A one-line group with nothing to expand (id_scheme). */
+.declarations-header-static {
+  cursor: default;
+}
+
 .declarations-header {
   display: flex;
   align-items: center;
