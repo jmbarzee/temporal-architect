@@ -11,13 +11,13 @@
   /* The host's own block tokens; the chrome's are the library's (tokens.css).
      The scheme's --gv-node-<suffix> variables for the host's own CSS are published
      on :root by mountNodeTypeStyles(); the graph pane carries them inline in its
-     resolved theme (D57, D58). */
+     resolved theme. */
   --color-workflow: #8B7EC8;
   --color-activity: #7CB9E8;
   --color-signal: #E8A0BF;
   --color-timer: #7EC8B8;
   --color-control: #CBD5E1;
-  /* The findings palette: the error and warning bars are the host's (D61), so
+  /* The findings palette: the error and warning bars are the host's, so
      their colours are too. The warning hue sits apart from the error hue so a
      validator warning reads apart from a parse failure at a glance. */
   --color-error: #dc2626;
