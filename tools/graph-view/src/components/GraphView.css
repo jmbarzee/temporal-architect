@@ -1,0 +1,451 @@
+/* Graph view: overlay, bottom controls, tooltip, search, shortcuts. */
+/* === Graph View === */
+/* The pane fills what it is given: the remaining space of a flex column
+   (flex: 1, free to shrink), or the whole of a block with a height (height:
+   100%). A block with no height gives it none, and the view says so once. */
+.gv-graph-view {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  position: relative;
+  background: var(--gv-color-bg-gradient);
+  overflow: hidden;
+}
+
+/* The pane is focusable when its keyboard is scoped to it: the ring
+   says the shortcuts are live; Escape with nothing to close gives focus back. */
+.gv-graph-view:focus-visible {
+  outline: 2px solid var(--gv-focus-ring-color);
+  outline-offset: -2px;
+}
+
+/* The pane's own diagnostics: what the host's graph got wrong, under the bar.
+   Errors name edges the view does not draw; warnings, things it draws
+   but the host should know. */
+.gv-graph-diagnostics {
+  background: color-mix(in srgb, var(--gv-color-surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--gv-color-border);
+  border-left: 3px solid var(--gv-diagnostic-warning);
+  font-family: var(--gv-font-sans);
+  font-size: 12px;
+  color: var(--gv-color-text);
+}
+.gv-graph-diagnostics.has-errors { border-left-color: var(--gv-diagnostic-error); }
+.gv-graph-diagnostics > summary {
+  cursor: pointer;
+  padding: 4px 12px;
+  color: var(--gv-diagnostic-warning);
+  font-weight: 500;
+}
+.gv-graph-diagnostics.has-errors > summary { color: var(--gv-diagnostic-error); }
+.gv-graph-diagnostics > ul {
+  margin: 0;
+  padding: 2px 12px 8px 28px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.gv-graph-diagnostic { margin: 2px 0; }
+.gv-graph-diagnostic code { font-family: var(--gv-font-mono); font-size: 11px; margin-right: 6px; }
+.gv-graph-diagnostic.error code { color: var(--gv-diagnostic-error); }
+.gv-graph-diagnostic.warning code { color: var(--gv-diagnostic-warning); }
+
+/* Floating overlay: filter bar + toolbar + errors header. Sits above
+   the full-viewport canvas so zoomed content can extend visibly under
+   the overlay edges. */
+.gv-graph-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  /* Bounded so a long expanded error/warning list never covers the whole
+     canvas; the individual error bodies scroll internally past this. */
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  /* Don't intercept canvas pan/zoom in any transparent gaps within the
+     overlay — only the actual control elements should capture events. */
+  pointer-events: none;
+}
+
+.gv-graph-overlay > * {
+  pointer-events: auto;
+}
+
+/* Filter bar context override: flat bar (no card radius/shadow/margin)
+   and translucent backdrop so canvas content is visible underneath. */
+.gv-graph-view .gv-canvas-header {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--gv-color-border);
+  box-shadow: none;
+  margin-bottom: 0;
+  background: color-mix(in srgb, var(--gv-color-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Graph bottom controls — floating, anchored over the canvas. The left
+   carries the node/edge counts; the centre carries the simulation controls
+   and the live fps. */
+.gv-graph-bottom-left,
+.gv-graph-bottom-center {
+  position: absolute;
+  bottom: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.gv-graph-bottom-left {
+  left: 12px;
+  transition: left 0.2s ease;
+}
+
+/* Shift right of the keyboard-shortcuts panel when it's open. */
+.gv-graph-bottom-left.shifted {
+  left: 224px;
+}
+
+.gv-graph-bottom-center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.gv-graph-count {
+  font-size: 12px;
+  color: var(--gv-color-text-muted);
+  font-family: var(--gv-font-mono);
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--gv-color-surface) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.gv-graph-count-fps {
+  font-size: 12px;
+  color: var(--gv-color-text-muted);
+  font-family: var(--gv-font-mono);
+  opacity: 0.7;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--gv-color-surface) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Fixed slot + centred text so the readout's changing digit count never
+     nudges the neighbouring controls. */
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Paused: keep the box (and its reserved width) but make it invisible, so the
+   Play/Pause button doesn't shift when ticking starts/stops. */
+.gv-graph-count-fps.hidden {
+  visibility: hidden;
+}
+
+.gv-graph-toolbar-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gv-color-text-muted);
+  background: color-mix(in srgb, var(--gv-color-surface) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--gv-font-sans);
+}
+
+.gv-graph-toolbar-btn:hover {
+  color: var(--gv-color-text);
+  border-color: var(--gv-accent);
+}
+
+.gv-graph-toolbar-btn.active {
+  color: var(--gv-accent);
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+}
+
+/* Graph Canvas Area — fills the full viewport. The floating overlay
+   sits on top of this via z-index, with bleed-under as the affordance
+   that zoomed content extends beyond the visible chrome. */
+.gv-graph-canvas-area {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Graph Canvas Container — immediately follows the toolbar */
+.gv-graph-canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.gv-graph-canvas-container canvas {
+  display: block;
+  cursor: grab;
+}
+
+.gv-graph-canvas-container canvas:active {
+  cursor: grabbing;
+}
+
+/* Hover Info Tooltip */
+.gv-graph-hover-tooltip {
+  position: absolute;
+  transform: translate(14px, -50%);
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  /* Interactive: the tooltip carries the host's cross-view button, so it must
+     capture pointer events. A grace period in GraphView keeps it open while
+     the pointer travels from the node onto it. */
+  pointer-events: auto;
+  z-index: 20;
+  min-width: 140px;
+  max-width: 220px;
+  box-shadow: var(--gv-tooltip-shadow);
+}
+
+/* The host's cross-view button inside the hover tooltip. */
+.gv-tooltip-cross-view {
+  margin-top: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--gv-font-sans);
+  color: var(--gv-color-text-muted);
+  background: transparent;
+  border: 1px solid var(--gv-color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gv-tooltip-cross-view:hover {
+  color: var(--gv-accent);
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+}
+
+.gv-tooltip-identity {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.gv-tooltip-type-icon {
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.gv-tooltip-name {
+  font-family: var(--gv-font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gv-color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gv-tooltip-parent {
+  font-size: 11px;
+  color: var(--gv-color-text-muted);
+  font-family: var(--gv-font-mono);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Composition counts (the children a container holds) for container and
+   host nodes — relocated here from the under-node badge. */
+.gv-tooltip-summary {
+  font-size: 11px;
+  color: var(--gv-color-text);
+  font-family: var(--gv-font-mono);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gv-tooltip-file {
+  font-size: 10px;
+  color: var(--gv-color-text-muted);
+  opacity: 0.7;
+  font-family: var(--gv-font-mono);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+/* "copy N of M" line shown only when a definition is registered on
+   multiple hosts and therefore renders as multiple nodes. Borrows the
+   accent from the selection ring so the user can connect
+   "purple lights up around the sister nodes when I hover this one"
+   with "tooltip confirms there are multiple copies". */
+.gv-tooltip-duplicates {
+  font-size: 10px;
+  font-family: var(--gv-font-mono);
+  color: #8B7EC8;
+  opacity: 0.85;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.gv-tooltip-connections {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.gv-tooltip-conn-out,
+.gv-tooltip-conn-in {
+  font-size: 11px;
+  font-family: var(--gv-font-mono);
+  color: var(--gv-color-text);
+}
+
+.gv-tooltip-direction {
+  font-size: 9px;
+  color: var(--gv-color-text-muted);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+
+
+/* Hidden match badge inside the shared search control */
+.gv-header-search-badge {
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 8px;
+  margin-right: 4px;
+}
+
+/* Graph Search Results Dropdown */
+.gv-graph-search-results {
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.gv-graph-search-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--gv-font-sans);
+  font-size: 12px;
+  color: var(--gv-color-text);
+  transition: background 0.1s;
+}
+
+.gv-graph-search-result:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+}
+
+.gv-graph-search-result-type {
+  font-size: 10px;
+  color: var(--gv-color-text-muted);
+  text-transform: uppercase;
+  min-width: 60px;
+}
+
+.gv-graph-search-result-name {
+  font-family: var(--gv-font-mono);
+  font-weight: 500;
+}
+
+/* Shortcuts Panel */
+.gv-graph-shortcuts-panel {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  padding: 10px 14px;
+  min-width: 200px;
+}
+
+.gv-graph-shortcuts-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gv-color-text);
+  margin-bottom: 8px;
+}
+
+.gv-graph-shortcuts-close {
+  border: none;
+  background: transparent;
+  color: var(--gv-color-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.gv-graph-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gv-graph-shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gv-graph-shortcut-key {
+  font-family: var(--gv-font-mono);
+  font-size: 10px;
+  background: var(--gv-key-bg);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  min-width: 80px;
+  color: var(--gv-color-text);
+}
+
+.gv-graph-shortcut-desc {
+  font-size: 11px;
+  color: var(--gv-color-text-muted);
+}
+
