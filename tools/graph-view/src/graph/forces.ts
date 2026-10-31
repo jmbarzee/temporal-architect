@@ -16,18 +16,19 @@ import { isIdentityMapping } from './axis'
 import type { GraphEdge } from './model'
 import { relationOf } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange, LayoutTuning } from './simulation'
-import type { ScalarAxis, ScalarSpan } from './scalar'
+import type { ResolvedScalarAxis, ScalarAxis, ScalarSpan } from './scalar'
 import { normalized, rangeNormalized } from './scalar'
 import { isScalarTuning } from './scalar'
 import type { ReadableGraph } from './model'
 import type { Taxonomy } from './taxonomy'
-import type { DimensionalMapping } from './axis'
+import type { AxisMapping } from './axis'
 import type { EdgeTypeId, ResolvedEdgeType, SpringPhysics } from './shapes'
+import { MIDDLING_SPRING } from './shapes'
 import type { Relation } from './axis'
 import type { Rng } from './rng'
 
 /** The minimum a force needs of a node in order to look up its physics. */
-export type PhysicsSubject = { dimensions: Readonly<Record<AxisId, AxisValue>> }
+export type PhysicsSubject = { values: Readonly<Record<AxisId, AxisValue>> }
 
 // ── Per-value / per-edge accessors ──────────────────────────────────────────
 // Each force reads its per-value/per-edge numbers from the keyed param maps via
@@ -60,8 +61,7 @@ export const CORE_RADIUS_MIN = 2
  * *finite and bounded* — which is the guard's actual job, and the thing whose
  * absence produces a NaN four frames later or a hard throw — without inventing
  * a "non-participant" concept in the physics. Making absent values true
- * non-participants is a change to the force model, and is not made here. The
- * effect on neighbours is under golden, so the trade cannot drift silently.
+ * non-participants is a change to the force model, and is not made here.
  */
 export const ABSENT_VALUE_PHYSICS = {
   charge: 0,
@@ -80,20 +80,20 @@ export const ABSENT_VALUE_PHYSICS = {
 
 /** A per-bucket table, resolved from one axis's tuning and the taxonomy. */
 export interface ResolvedAxis<T> {
-  readonly mapping: DimensionalMapping
+  readonly mapping: AxisMapping
   readonly byBucket: ReadonlyMap<string, T>
 }
 
 /** A layout axis backed by a scalar: the scalar itself, and where its 0 and 1 rest. */
-export interface ResolvedScalarAxis {
-  readonly scalar: ScalarAxis
+export interface ResolvedScalarLayout {
+  readonly scalar: ResolvedScalarAxis
   readonly span: ScalarSpan
 }
 
 /** A layout axis as the kernels see it: per-bucket bands, or a scalar over a span. */
-export type ResolvedLayoutAxis = ResolvedAxis<BandRange> | ResolvedScalarAxis
+export type ResolvedLayoutAxis = ResolvedAxis<BandRange> | ResolvedScalarLayout
 
-export const isScalarAxis = (a: ResolvedLayoutAxis): a is ResolvedScalarAxis => 'scalar' in a
+export const isScalarAxis = (a: ResolvedLayoutAxis): a is ResolvedScalarLayout => 'scalar' in a
 
 /** The mapped half of a layout axis; loud where a caller expects buckets and meets a scalar. */
 export function mappedAxis(a: ResolvedLayoutAxis): ResolvedAxis<BandRange> {
@@ -101,7 +101,7 @@ export function mappedAxis(a: ResolvedLayoutAxis): ResolvedAxis<BandRange> {
   return a
 }
 
-/** What the layout frame needs of a node: its dimensions, and its id for a scalar's score. */
+/** What the layout frame needs of a node: its values, and its id for a scalar's score. */
 export type LayoutSubject = PhysicsSubject & { id: string }
 
 export interface ResolvedPhysics {
@@ -113,8 +113,8 @@ export interface ResolvedPhysics {
 }
 
 /** The bucket a node falls in on an axis, or undefined when it carries no value there. */
-export function bucketOf(on: { readonly mapping: DimensionalMapping }, node: PhysicsSubject): string | undefined {
-  return on.mapping.bucketFor(node.dimensions[on.mapping.dimension])?.id
+export function bucketOf(on: { readonly mapping: AxisMapping }, node: PhysicsSubject): string | undefined {
+  return on.mapping.bucketFor(node.values[on.mapping.axis])?.id
 }
 
 /**
@@ -157,7 +157,7 @@ export function defaultSpan(taxonomy: Taxonomy, axis: 'x' | 'y'): ScalarSpan {
 }
 
 function resolveAxis<T>(
-  mapping: DimensionalMapping,
+  mapping: AxisMapping,
   overrides: ReadonlyMap<string, T>,
   declared: (values: readonly AxisValue[]) => T,
 ): ResolvedAxis<T> {
@@ -175,10 +175,10 @@ export function resolvePhysics(params: ChargeParams & GravityParams & LinkParams
   // than from a lookup that would miss to the fallback style, once per bucket,
   // with a warning about placeholder styling that is not even true.
   const style = taxonomy.styleAxis()
-  const pushFor = (m: DimensionalMapping) => m.dimension === style
+  const pushFor = (m: AxisMapping) => m.axis === style
     ? (values: readonly AxisValue[]) => declaredPush(taxonomy, values)
     : () => declaredPush(taxonomy, taxonomy.styleValues)
-  const bandOn = (m: DimensionalMapping, axis: 'x' | 'y') => m.dimension === style
+  const bandOn = (m: AxisMapping, axis: 'x' | 'y') => m.axis === style
     ? (values: readonly AxisValue[]) => declaredBand(taxonomy, values, axis)
     : () => declaredBand(taxonomy, taxonomy.styleValues, axis)
   const layout = (t: LayoutTuning, axis: 'x' | 'y'): ResolvedLayoutAxis => {
@@ -395,8 +395,8 @@ export interface BandRing {
 }
 
 /**
- * The band overlay as data: what the canvas draws, decided here so a golden can
- * read it. Stripes only while that axis acts in cartesian; rings
+ * The band overlay as data: what the canvas draws, decided here, once.
+ * Stripes only while that axis acts in cartesian; rings
  * only while Y acts in radial — the same predicates the tick uses, so the
  * overlay never shows a force that does nothing. `colors` is the view's: one
  * per bucket, keyed by bucket id.
@@ -454,8 +454,7 @@ export function bandOverlay(
  * The overlay's stripes on one axis, as data: one per distinct band among the
  * buckets present, re-centred on the frame. Buckets that share a band share a
  * stripe (the default X window, two tiers on one Y band), so the overlay's
- * density reads as bands rather than bucket counts. Pure, so a golden can read
- * it.
+ * density reads as bands rather than bucket counts. Pure.
  */
 export function bandStripes(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>, center: number): BandStripe[] {
   const byBand = new Map<string, { lo: number; hi: number; buckets: string[] }>()
@@ -488,19 +487,6 @@ export const ABSENT_EDGE_PHYSICS: SpringPhysics = { strength: 0, distance: 0 }
  */
 export type EdgeCategoryDescription = Pick<ResolvedEdgeType, 'id' | 'label' | 'sourceValue' | 'targetValue' | 'relation' | 'tooltip'>
 
-/**
- * What a category starts from when nothing declared a spring for it: the mean
- * of the host's declared springs, so a bucket on a foreign axis is tuned from
- * this domain's scale rather than from a number out of another's. A host that
- * declares no springs gets the absent spring, which is inert.
- */
-export function typicalSpring(taxonomy: Taxonomy): SpringPhysics {
-  const declared = taxonomy.edgeTypes
-  if (declared.length === 0) return ABSENT_EDGE_PHYSICS
-  let strength = 0, distance = 0
-  for (const e of declared) { strength += e.physics.strength; distance += e.physics.distance }
-  return { strength: strength / declared.length, distance: distance / declared.length }
-}
 
 /**
  * The pair rule's category id: the relation and the unordered bucket pair,
@@ -530,20 +516,21 @@ function parsePairId(id: EdgeTypeId): [Relation, string, string] | undefined {
  * precedence no pair rule reproduces — two of its categories share endpoint
  * values and differ only on the edge's own dispatch. On any other
  * (axis, mapping) the library's pair rule applies: one category per unordered
- * bucket pair per relation, each the host's typical spring until tuned. The
+ * bucket pair per relation, each the middling spring until tuned. The
  * pair rule enumerates nothing: a category exists when an edge falls in it,
  * which is what a control surface shows and what the token ceiling counts.
  */
 export interface ResolvedSprings {
-  readonly mapping: DimensionalMapping
+  readonly mapping: AxisMapping
   /**
    * The category of an edge from its endpoints' bucket ids, or undefined when
    * an endpoint is unbucketed, or — on the style axis — when no declared type
-   * runs between the edge's endpoint values and the taxonomy's `classifyEdge`
-   * names none; such an edge is sprung as typical and drawn neutral.
+   * of the edge's relation runs between its endpoint values and the
+   * taxonomy's `classifyEdge` names none; such an edge pulls nothing and
+   * draws in its relation's default stroke.
    */
   classify(edge: GraphEdge, src: string | undefined, tgt: string | undefined): EdgeTypeId | undefined
-  /** Effective physics: the override where one exists, else the declared or typical spring. */
+  /** Effective physics: the override where one exists, else the declared spring — the middling spring, on a pair axis. */
   physicsFor(id: EdgeTypeId): SpringPhysics
   /** What a control surface shows for a category — the declared entry, or one synthesized from a pair id. */
   describe(id: EdgeTypeId): EdgeCategoryDescription | undefined
@@ -551,21 +538,26 @@ export interface ResolvedSprings {
 
 export function resolveSprings(pair: PairTuning, taxonomy: Taxonomy): ResolvedSprings {
   const { mapping, spring: overrides } = pair
-  if (mapping.dimension === taxonomy.styleAxis() && isIdentityMapping(mapping)) {
+  if (mapping.axis === taxonomy.styleAxis() && isIdentityMapping(mapping)) {
     const table = new Map(taxonomy.edgeTypes.map(e => [e.id, e]))
     return {
       mapping,
-      // An edge no declared type claims has no category here: it draws neutral
-      // and is sprung as typical, and `validateGraph` has named it.
+      // An edge no declared type of its relation claims has no category here:
+      // it pulls nothing and draws in its relation's stroke, and the
+      // diagnostics have named it.
       classify: (edge, src, tgt) => {
-        const id = taxonomy.classifyEdge(edge, src, tgt)
-        return id !== undefined && table.has(id) ? id : undefined
+        const id = taxonomy.edgeTypeOf(edge, src, tgt)
+        const type = id === undefined ? undefined : table.get(id)
+        return type !== undefined && type.relation === relationOf(edge) ? id : undefined
       },
       physicsFor: id => overrides.get(id) ?? table.get(id)?.physics ?? ABSENT_EDGE_PHYSICS,
       describe: id => table.get(id),
     }
   }
-  const typical = typicalSpring(taxonomy)
+  // Every pair category starts from the middling spring: the same start a
+  // declared type gets when it leaves its spring out, and no type's declared
+  // spring moves another's.
+  const typical = MIDDLING_SPRING
   const buckets = new Map(mapping.buckets.map(b => [b.id, b]))
   return {
     mapping,
@@ -665,7 +657,7 @@ export function applyChargeForce(
   const pushMul = params.pushMultiplier
   const chargeExp = params.chargeExponent
   // Per-node physics once, O(n), before the O(n²) pair loop reads it: each
-  // accessor is a dimension read and two map lookups, and the loop below would
+  // accessor is an axis read and two map lookups, and the loop below would
   // otherwise make four of those per pair.
   const n = active.length
   const charge = new Float64Array(n)

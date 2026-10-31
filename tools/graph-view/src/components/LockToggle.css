@@ -1,11 +1,11 @@
-/* Filter pin toggles. */
+/* The filter bar's lock toggles. */
 /* ===========================================================
-   Shared-filter UI: pinning, search match counter,
+   Shared-filter UI: locking, search match counter,
    hidden-match badges, focus-transition animation, search dim
    =========================================================== */
 
-/* Per-dimension pin toggle on Files / Types sections */
-.gv-pin-toggle {
+/* Per-axis lock toggle on the bar's sections */
+.gv-lock-toggle {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -22,25 +22,25 @@
   transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.gv-pin-toggle:hover {
+.gv-lock-toggle:hover {
   opacity: 1;
   color: var(--gv-accent);
   background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
 }
 
-.gv-pin-toggle.pinned {
+.gv-lock-toggle.locked {
   opacity: 1;
   color: var(--gv-accent);
   background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-active), transparent);
   border-color: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-ring), transparent);
 }
 
-/* Pin override flash on focus transitions (~600ms) */
-.gv-pin-toggle.flashing {
-  animation: pinFlash 0.6s ease;
+/* Lock override flash on focus transitions (~600ms) */
+.gv-lock-toggle.flashing {
+  animation: lockFlash 0.6s ease;
 }
 
-@keyframes pinFlash {
+@keyframes lockFlash {
   0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); transform: scale(1); }
   40%  { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); transform: scale(1.12); }
   100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); transform: scale(1); }

@@ -8,11 +8,14 @@
 import type { ReadableGraph } from './model'
 import { isContainment } from './model'
 
+/** A computed scalar a layout axis may key on: a number per node, read off the graph and mapped onto [0, 1]. */
 export interface ScalarAxis {
   /** Stable id — the tuning names the scalar by it. */
   readonly id: string
-  readonly label: string
-  readonly tooltip: string
+  /** The control's label. Default: the id. */
+  readonly label?: string
+  /** The control's hover text. Default: the label. */
+  readonly tooltip?: string
   /**
    * One value per node — a finite number, which the frame maps onto [0, 1]
    * as `normalize` says: non-negative under `max`, any under `range`,
@@ -30,6 +33,18 @@ export interface ScalarAxis {
    * refuses one outside it.
    */
   readonly normalize?: 'max' | 'range' | 'none'
+}
+
+/** A scalar with its words filled in — what `Taxonomy.scalars` carries. */
+export interface ResolvedScalarAxis extends ScalarAxis {
+  readonly label: string
+  readonly tooltip: string
+}
+
+/** A declared scalar with its defaults filled in: the id as label, the label as tooltip. */
+export function resolveScalarAxis(scalar: ScalarAxis): ResolvedScalarAxis {
+  const label = scalar.label ?? scalar.id
+  return { id: scalar.id, label, tooltip: scalar.tooltip ?? label, normalize: scalar.normalize, compute: graph => scalar.compute(graph) }
 }
 
 /**
@@ -175,6 +190,7 @@ export function rangeNormalized(values: Map<string, number>): Map<string, number
   return scores
 }
 
+/** The built-in reach scalar. */
 export const downstreamReach: ScalarAxis = {
   id: 'reach',
   label: 'Reach',
@@ -183,6 +199,7 @@ export const downstreamReach: ScalarAxis = {
   normalize: 'none',
 }
 
+/** The built-in degree scalar. */
 export const degree: ScalarAxis = {
   id: 'degree',
   label: 'Degree',
@@ -191,6 +208,7 @@ export const degree: ScalarAxis = {
   normalize: 'none',
 }
 
+/** The built-in depth scalar. */
 export const containmentDepth: ScalarAxis = {
   id: 'depth',
   label: 'Depth',

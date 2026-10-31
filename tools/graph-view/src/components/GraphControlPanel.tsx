@@ -16,7 +16,7 @@ import { EquationSection } from './controls/EquationSection'
 import { PopProvider } from './controls/PopContext'
 import type { AxisOption, LayoutAxisOption } from '../graph/simulation'
 import { useTaxonomy } from './graph-view/useTaxonomy'
-import type { DimensionalMapping } from '../graph/axis'
+import type { AxisMapping } from '../graph/axis'
 
 export type ForceSection = 'push' | 'pull' | 'gravity' | 'dynamics' | null
 
@@ -58,7 +58,7 @@ interface GraphControlPanelProps {
   layoutAxes: readonly LayoutAxisOption[]
   /** What the post-filter visible set holds, per control: the only buckets and categories worth a token or a column. */
   present: PresentSets
-  onAxisChange: (mapping: DimensionalMapping) => void
+  onAxisChange: (mapping: AxisMapping) => void
   onActiveSection: (section: ForceSection) => void
   onActivePushBucket: (bucket: string | null) => void
   onActiveGravityBucket: (hover: GravityHover | null) => void

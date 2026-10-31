@@ -7,10 +7,10 @@
 
 import React from 'react'
 import {
-  GraphView, GroupLegend, TaxonomyContext, copyGroups, defaultFilter, nodesById, payloadNumber, payloadString, schemeVars, selectionFor, withSelection,
+  GraphView, GroupLegend, TaxonomyContext, copyGroups, initialFilter, nodesById, payloadNumber, payloadString, schemeVars, selectionFor, useFocusRequest, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
-  FilterState, FocusRequest, Graph, GraphNode, NodeGroup, Selection, Theme, ThemeChoice,
+  AxisSelection, FilterState, Graph, GraphNode, NodeGroup, Theme, ThemeChoice,
 } from '@temporal-architect/graph-view'
 import { catalog } from './data'
 import type { Campus, Catalog } from './data'
@@ -25,7 +25,7 @@ const nodeByCode = new Map(graph.nodes.map(n => [payloadString(n, 'code') ?? n.i
 const copies = copyGroups(graph)
 
 /** Chip badges: distinct catalog entries per value — a cross-listed course counts once. */
-function countsOf(data: Catalog, campuses: Selection): ReadonlyMap<string, ReadonlyMap<string, number>> {
+function countsOf(data: Catalog, campuses: AxisSelection): ReadonlyMap<string, ReadonlyMap<string, number>> {
   const entity = new Map<string, number>([
     ['faculty', data.faculties.length],
     ['department', data.departments.length],
@@ -77,16 +77,15 @@ function programmeGroups(g: Graph, enabled: ReadonlySet<string>): NodeGroup[] {
 
 export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice }) {
   // Controlled: the details panel's "Show only <campus>" writes the filter.
-  const [filter, setFilter] = React.useState<FilterState>(() => defaultFilter(taxonomy, graph))
+  const [filter, setFilter] = React.useState<FilterState>(() => initialFilter(taxonomy, graph))
   const [themeChoice, setThemeChoice] = React.useState<ThemeChoice>(initialTheme)
   const [enabled, setEnabled] = React.useState<ReadonlySet<string>>(() => new Set(catalog.programmes.map(p => p.id)))
   const [details, setDetails] = React.useState<GraphNode | null>(null)
   // Controlled: the panel's close clears it, and the view selects what it says.
   const [selected, setSelected] = React.useState<GraphNode | null>(null)
   // A request, not a state: the view applies it when it changes, and each ask
-  // carries a fresh `key`, so asking again for the same node asks again.
-  const [focus, setFocus] = React.useState<FocusRequest | null>(null)
-  const focusSeq = React.useRef(0)
+  // is a fresh one, so asking again for the same node asks again.
+  const [focus, requestFocus] = useFocusRequest()
 
   // The side panel follows the pane's theme: the view reports the one it drew in.
   const [theme, setTheme] = React.useState<Theme>('light')
@@ -95,7 +94,7 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
   const groups = React.useMemo(() => programmeGroups(graph, enabled), [enabled])
 
   /** Ask the view to reveal `node`: it widens the filter just enough, centres and selects. */
-  const reveal = (node: GraphNode) => setFocus({ id: node.id, key: ++focusSeq.current })
+  const reveal = (node: GraphNode) => requestFocus(node.id)
   const onlyCampus = (campus: string) => setFilter(f => withSelection(f, CAMPUS, new Set([campus])))
 
   return (
@@ -174,8 +173,8 @@ function Details({ node, theme, onReveal, onOnlyCampus, onClose }: {
   onOnlyCampus: (campus: string) => void
   onClose: () => void
 }) {
-  const entity = node.dimensions[ENTITY] as Entity | undefined
-  const campus = node.dimensions[CAMPUS] as Campus | undefined
+  const entity = node.values[ENTITY] as Entity | undefined
+  const campus = node.values[CAMPUS] as Campus | undefined
   const scheme = React.useMemo(() => schemeVars(taxonomy, theme) as React.CSSProperties, [theme])
   const listings = [...(copies.get(node.copyKey ?? node.id) ?? [node.id])].flatMap(id => nodeById.get(id) ?? [])
   const first = listings[0]

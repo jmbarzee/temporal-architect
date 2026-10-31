@@ -1,10 +1,9 @@
-// Dimensions — the axes a node's identity is expressed on.
+// Axes — what a node's identity is expressed on.
 //
-// A node used to be one string. It is now a map of axis → value, and every
-// feature (colour, push/pull, each gravity axis, each filter in the chain)
-// elects exactly ONE axis to operate on. Features never sum, compose or rank
+// A node is a map of axis → value, and every feature (colour, push/pull,
+// each gravity axis, each filter axis) elects exactly ONE axis to operate on. Features never sum, compose or rank
 // across axes: that is what keeps the model explainable, and it is why nothing
-// here offers a way to combine two dimensions.
+// here offers a way to combine two axes.
 //
 // **Values are strings, and that is load-bearing rather than lazy.** Selections
 // end up as `Set` and `Map` keys in the force kernels, and a `Set` deduplicates
@@ -106,8 +105,8 @@ export interface ReheatPolicy {
  */
 export interface AxisDescriptor {
   id: AxisId
-  /** Human label for the axis itself, e.g. for a dropdown or a chip group. */
-  label: string
+  /** Human label for the axis itself, e.g. for a dropdown or a chip group. Default: the id. */
+  label?: string
   /**
    * What an EMPTY selection on this axis means: `none` hides everything (the
    * chips are an allow-list), `all` shows everything (the chips narrow).
@@ -116,11 +115,13 @@ export interface AxisDescriptor {
   /** What happens to a node carrying NO value on this axis while a selection is active. */
   absentMeans?: 'visible' | 'hidden'
   /**
-   * How far a focus transition expands this axis to reveal its target:
-   * `always` adds the target's value unconditionally; `whenActive` adds it
-   * only if a selection is already active.
+   * How a focus widens this axis to reveal its target: `always` adds the
+   * target's value; `whenActive` adds it only while a selection is active
+   * (on a narrowing axis, adding the first value would narrow everything to
+   * that one value — the opposite of a reveal). Default: `always` on an
+   * allow-list, `whenActive` on a narrowing axis.
    */
-  focus?: 'always' | 'whenActive'
+  widens?: 'always' | 'whenActive'
   /**
    * Whether a change on this axis keeps the user's pan and zoom. Default: an
    * allow-list refits the camera to the new extent (and seeds revealed nodes
@@ -147,7 +148,8 @@ export interface AxisDescriptor {
   /**
    * The values selected when the view first opens, given the values the
    * graph presents on this axis. Absent: every value on an allow-list,
-   * none on a narrowing axis. `defaultFilter` reads it.
+   * none on a narrowing axis. `initialFilter` reads it; a host that passes the
+   * `defaultFilter` prop has chosen its own start, and this is not consulted.
    */
   initialSelection?(values: readonly AxisValue[]): readonly AxisValue[]
   /**
@@ -164,9 +166,10 @@ export interface AxisDescriptor {
 export interface ResolvedAxisDescriptor extends AxisNamer {
   emptyMeans: 'all' | 'none'
   absentMeans: 'visible' | 'hidden'
-  focus: 'always' | 'whenActive'
-  /** What a change on this axis asks of the simulation — derived from `emptyMeans` and `keepCamera`. */
-  reheat: ReheatPolicy
+  /** How a focus widens this axis to reveal its target. */
+  widens: 'always' | 'whenActive'
+  /** Whether a change on this axis keeps the user's pan and zoom (a narrowing axis does; an allow-list refits). */
+  keepCamera: boolean
   tooltipFor?(value: AxisValue): string
   /** A value's glyph, or '' for none. */
   iconFor(value: AxisValue): string
@@ -197,11 +200,11 @@ export function resolveDescriptor(d: AxisDescriptor, style: StyleNamer): Resolve
   const iconFor = d.iconFor ?? (onStyle ? style.iconFor : () => '')
   return {
     id: d.id,
-    label: d.label,
+    label: d.label ?? d.id,
     emptyMeans: d.emptyMeans,
     absentMeans: d.absentMeans ?? (allow ? 'hidden' : 'visible'),
-    focus: d.focus ?? (allow ? 'always' : 'whenActive'),
-    reheat: { alpha: allow ? 0.5 : 0.3, seedRevealed: !keepCamera, refit: !keepCamera, resume: true },
+    widens: d.widens ?? (allow ? 'always' : 'whenActive'),
+    keepCamera,
     labelFor,
     abbreviationFor,
     tooltipFor: d.tooltipFor,
@@ -221,13 +224,13 @@ export function resolveDescriptor(d: AxisDescriptor, style: StyleNamer): Resolve
 
 /** Where a node sits on one axis, or undefined when it carries no value there. */
 export function valueOf(
-  dimensions: AxisValues,
-  dimension: AxisId,
+  values: AxisValues,
+  axis: AxisId,
 ): AxisValue | undefined {
-  return dimensions[dimension]
+  return values[axis]
 }
 
-// ── Dimensional mappings ────────────────────────────────────────────────────
+// ── Axis mappings ───────────────────────────────────────────────────────────
 
 /** One bucket of a mapping: a named group of source values. */
 export interface MappingBucket {
@@ -251,19 +254,20 @@ export interface MappingBucket {
  * surface until something collapses it — and a mapping is that something. The
  * existing example is three separate kinds folded into one filter chip.
  */
-export interface DimensionalMapping {
+export interface AxisMapping {
   id: string
   label: string
-  dimension: AxisId
+  axis: AxisId
   buckets: readonly MappingBucket[]
   /** The bucket a value belongs to, or undefined if the mapping omits it. */
   bucketFor(value: AxisValue | undefined): MappingBucket | undefined
 }
 
-export interface DimensionalMappingSpec {
+/** What `createAxisMapping` is given: the mapping's id, label, axis and buckets, before the buckets are checked for overlap. */
+export interface AxisMappingSpec {
   id: string
   label: string
-  dimension: AxisId
+  axis: AxisId
   buckets: readonly MappingBucket[]
 }
 
@@ -276,7 +280,7 @@ export interface DimensionalMappingSpec {
  * months later by someone reordering a list for readability. So it throws here,
  * loudly, at construction, rather than resolving arbitrarily per lookup.
  */
-export function createDimensionalMapping(spec: DimensionalMappingSpec): DimensionalMapping {
+export function createAxisMapping(spec: AxisMappingSpec): AxisMapping {
   const owner = new Map<AxisValue, string>()
   const collisions: string[] = []
   const ids = new Set<string>()
@@ -298,7 +302,7 @@ export function createDimensionalMapping(spec: DimensionalMappingSpec): Dimensio
   }
   if (collisions.length > 0) {
     throw new Error(
-      `dimensional mapping ${JSON.stringify(spec.id)} is incoherent: ` +
+      `axis mapping ${JSON.stringify(spec.id)} is incoherent: ` +
       collisions.join('; ') +
       '. A value in two buckets has no defined answer for which one tunes it.',
     )
@@ -311,7 +315,7 @@ export function createDimensionalMapping(spec: DimensionalMappingSpec): Dimensio
   return {
     id: spec.id,
     label: spec.label,
-    dimension: spec.dimension,
+    axis: spec.axis,
     buckets: spec.buckets,
     bucketFor: value => (value === undefined ? undefined : byValue.get(value)),
   }
@@ -326,16 +330,16 @@ export function createDimensionalMapping(spec: DimensionalMappingSpec): Dimensio
 export function identityMapping(
   axis: AxisNamer,
   values: readonly AxisValue[],
-): DimensionalMapping {
+): AxisMapping {
   // A namer answers per value and cannot see its neighbours, so two values may
   // abbreviate alike (two files whose names share a prefix). A token label that
   // is not unique within its own mapping is useless, so duplicates are numbered
   // here, where the whole set is visible.
   const seen = new Map<string, number>()
-  return createDimensionalMapping({
+  return createAxisMapping({
     id: `${axis.id}:identity`,
     label: axis.label,
-    dimension: axis.id,
+    axis: axis.id,
     buckets: values.map(value => {
       const base = axis.abbreviationFor(value)
       const n = (seen.get(base) ?? 0) + 1
@@ -356,7 +360,7 @@ export function identityMapping(
  * to buckets unchanged. Structural, not a flag: a flag would be a second fact
  * about the buckets with nothing holding it to the first.
  */
-export function isIdentityMapping(mapping: DimensionalMapping): boolean {
+export function isIdentityMapping(mapping: AxisMapping): boolean {
   return mapping.buckets.every(b => b.values.length === 1 && b.values[0] === b.id)
 }
 
@@ -367,12 +371,12 @@ export function isIdentityMapping(mapping: DimensionalMapping): boolean {
  * surface or a filter learns what an axis can take.
  */
 export function valuesOn(
-  subjects: Iterable<{ dimensions: AxisValues }>,
-  dimension: AxisId,
+  subjects: Iterable<{ values: AxisValues }>,
+  axis: AxisId,
 ): AxisValue[] {
   const seen = new Set<AxisValue>()
   for (const s of subjects) {
-    const v = s.dimensions[dimension]
+    const v = s.values[axis]
     if (v !== undefined) seen.add(v)
   }
   return [...seen]
@@ -386,16 +390,16 @@ export function valuesOn(
  * missing one.
  */
 export function countsOn(
-  subjects: Iterable<{ dimensions: AxisValues; id?: string; copyKey?: string }>,
-  dimensions: readonly AxisId[],
+  subjects: Iterable<{ values: AxisValues; id?: string; copyKey?: string }>,
+  axes: readonly AxisId[],
 ): ReadonlyMap<AxisId, ReadonlyMap<AxisValue, number>> {
-  const counted = new Map<AxisId, Map<AxisValue, Set<string>>>(dimensions.map(d => [d, new Map()]))
-  const out = new Map<AxisId, Map<AxisValue, number>>(dimensions.map(d => [d, new Map()]))
+  const counted = new Map<AxisId, Map<AxisValue, Set<string>>>(axes.map(d => [d, new Map()]))
+  const out = new Map<AxisId, Map<AxisValue, number>>(axes.map(d => [d, new Map()]))
   let anonymous = 0
   for (const s of subjects) {
     const key = s.copyKey ?? s.id ?? `\u0000${anonymous++}`
-    for (const d of dimensions) {
-      const v = s.dimensions[d]
+    for (const d of axes) {
+      const v = s.values[d]
       if (v === undefined) continue
       const keys = counted.get(d)!
       let seen = keys.get(v)
@@ -412,7 +416,7 @@ export function countsOn(
 /**
  * Does this table declare `key` itself, rather than inheriting it?
  *
- * Every keyed lookup on a dimension value must go through this. Values are
+ * Every keyed lookup on an axis value must go through this. Values are
  * host-supplied strings, so a plain `table[key]` read walks the prototype chain
  * and a value named `constructor`, `toString` or `__proto__` resolves to an
  * inherited member. That member is not `undefined`, which means every
@@ -427,6 +431,15 @@ export function hasOwn(table: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(table, key)
 }
 
+/**
+ * What a change on one axis asks of the simulation, from its two declared
+ * policies: an allow-list reheats harder; an axis that keeps the camera
+ * neither seeds revealed nodes at their ancestors nor refits.
+ */
+export function reheatOf(axis: Pick<ResolvedAxisDescriptor, 'emptyMeans' | 'keepCamera'>): ReheatPolicy {
+  return { alpha: axis.emptyMeans === 'none' ? 0.5 : 0.3, seedRevealed: !axis.keepCamera, refit: !axis.keepCamera, resume: true }
+}
+
 /** What a filter change asks of the running simulation, folded across axes. */
 export interface ReheatPlan extends ReheatPolicy {
   /** The axes that actually changed — empty means "do nothing". */
@@ -434,29 +447,25 @@ export interface ReheatPlan extends ReheatPolicy {
 }
 
 /**
- * Fold the per-axis reheat policies of every axis that changed.
- *
- * Pure and outside React so it can be goldened. It was inline in the loop hook,
- * where **no gate could reach it**: all four fields of a descriptor's `reheat`
- * could be inverted — including `resume: false`, which freezes the canvas after
- * every toggle — and every check stayed green. Declared policy nothing reads is
- * not policy.
- *
- * Several axes can move at once (a view switch does exactly that), so the
- * policies combine rather than the last one winning: the strongest reheat, and
- * any axis that wants seeding, refitting or resuming gets it.
+ * Fold the per-axis reheat policies of every axis that changed. Pure and
+ * outside React, so the harness pins it: a declared policy nothing reads is
+ * not policy. Several axes can move at once (a view switch does exactly
+ * that), so the policies combine rather than the last one winning: the
+ * strongest reheat, and any axis that wants seeding, refitting or resuming
+ * gets it.
  */
 export function foldReheatPolicy(
-  changedDimensions: readonly ResolvedAxisDescriptor[],
+  changedAxes: readonly ResolvedAxisDescriptor[],
 ): ReheatPlan {
   let alpha = 0, seedRevealed = false, refit = false, resume = false
-  for (const dim of changedDimensions) {
-    alpha = Math.max(alpha, dim.reheat.alpha)
-    seedRevealed = seedRevealed || dim.reheat.seedRevealed
-    refit = refit || dim.reheat.refit
-    resume = resume || dim.reheat.resume
+  for (const axis of changedAxes) {
+    const policy = reheatOf(axis)
+    alpha = Math.max(alpha, policy.alpha)
+    seedRevealed = seedRevealed || policy.seedRevealed
+    refit = refit || policy.refit
+    resume = resume || policy.resume
   }
-  return { alpha, seedRevealed, refit, resume, changed: changedDimensions.map(d => d.id) }
+  return { alpha, seedRevealed, refit, resume, changed: changedAxes.map(d => d.id) }
 }
 
 /**

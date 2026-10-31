@@ -134,7 +134,7 @@ const DETAIL_REDUCE_SCALE = 0.1   // drop decorative rings below this scale
 // group, the color to glow them, and a strength multiplier (hovered groups glow
 // stronger). ActiveGroup from graph/groups.ts is structurally assignable.
 export interface GroupGlow {
-  nodeIds: Set<string>
+  nodeIds: ReadonlySet<string>
   color: string
   strength: number
 }
@@ -155,7 +155,7 @@ interface GraphCanvasProps {
   hoveredNodeId: string | null
   selectedNodeId: string | null
   focusedNodeId: string | null
-  searchMatchIds: Set<string> | null
+  searchMatchIds: ReadonlySet<string> | null
   running: boolean
   forceParams: ForceParams
   /** Dense per-bucket tables for the overlays — resolved once by the view, not per draw. */
@@ -211,7 +211,7 @@ interface DrawData {
   hoveredNodeId: string | null
   selectedNodeId: string | null
   focusedNodeId: string | null
-  searchMatchIds: Set<string> | null
+  searchMatchIds: ReadonlySet<string> | null
   forceParams: ForceParams
   resolved: ResolvedPhysics
   overlay: BandOverlay

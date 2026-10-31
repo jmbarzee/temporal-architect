@@ -1,9 +1,9 @@
 // Public entry point for the graph-view library.
 //
-// A force-directed graph view with composable dimensions. A host declares its
+// A force-directed graph view with composable axes. A host declares its
 // taxonomy — the axes its nodes carry, the values on each, their colours, sizes
 // and physics, how edges classify — through `createTaxonomy(spec)`, builds a
-// `Graph` of nodes carrying dimension maps, and mounts `GraphView`. The view
+// `Graph` of nodes carrying their axis values, and mounts `GraphView`. The view
 // lays out, filters, highlights and tunes the graph without knowing what any of
 // it means. The surface is what a host needs to declare a taxonomy, build
 // a graph and mount the view: what a host imports plus the types its spec
@@ -23,16 +23,18 @@ export type { GroupLegendProps } from './components/GroupLegend'
 export { useLinkedViews } from './components/graph-view/useLinkedViews'
 export type { LinkedViewProps, LinkedViewState, LinkedViews, LinkedViewsOptions } from './components/graph-view/useLinkedViews'
 export type { FocusRequest } from './components/graph-view/focus'
+export { useFocusRequest } from './components/graph-view/useFocusRequest'
+export type { RecentlyChanged } from './components/graph-view/useRecentlyChanged'
 export { TaxonomyContext, useTaxonomy } from './components/graph-view/useTaxonomy'
 export { themeChoiceOf, useHostTheme } from './components/graph-view/useTheme'
 export type { ThemeChoice } from './components/graph-view/useTheme'
 export { reconcileFilter } from './filter/reconcile'
 export type { ReconcileInput } from './filter/reconcile'
 export { toggleGroup, toggleValue } from './filter/toggle'
-export { defaultFilter, filterFromJSON, filterStatesEqual, filterToJSON, hiddenMatchesOf, locksFromJSON, locksToJSON, matchesFocus, passesSelection, lockedFor, selectionFor, withLock, withSelection } from './filter/types'
-export type { FilterState, FocusTarget, HiddenMatches, HiddenMatchesInput, AxisLocks, ReconcileResult, Selection, ViewTransition } from './filter/types'
+export { initialFilter, filterFromJSON, filterStatesEqual, filterToJSON, hiddenMatchesOf, locksFromJSON, locksToJSON, matchesFocus, passesSelection, reseedFilter, lockedFor, selectionFor, withLock, withSelection } from './filter/types'
+export type { FilterState, FocusTarget, HiddenMatches, HiddenMatchesInput, AxisLocks, PassesSelectionInput, ReconcileResult, AxisSelection, ViewTransition } from './filter/types'
 export { countsOn, valuesOn } from './graph/axis'
-export type { AxisDescriptor, AxisId, AxisNamer, AxisValues, AxisValue, FilterChip, ReheatPolicy, Relation, ResolvedAxisDescriptor } from './graph/axis'
+export type { AxisDescriptor, AxisId, AxisNamer, AxisValues, AxisValue, FilterChip, Relation, ResolvedAxisDescriptor } from './graph/axis'
 export type { ActiveGroup, NodeGroup } from './graph/groups'
 export { copyGroups, isContainment, nodesById, payloadNumber, payloadString } from './graph/model'
 export type { Graph, GraphEdge, GraphNode, ReadableGraph } from './graph/model'
@@ -40,8 +42,10 @@ export { createTaxonomy } from './graph/taxonomy'
 export type { ContextLine, Highlight, HighlightDirection, HighlightGraph, StyleSubject, Taxonomy, TaxonomySpec } from './graph/taxonomy'
 export { schemeStylesheet, schemeVars } from './graph/scheme'
 export type { ColorPair, EdgeStroke, Theme, ThemedColor } from './graph/scheme'
-export type { ScalarAxis } from './graph/scalar'
+export type { ResolvedScalarAxis, ScalarAxis } from './graph/scalar'
+export { layoutFromJSON, layoutToJSON } from './graph/layout'
+export type { LayoutJSON, LayoutState, LayoutTuningJSON } from './graph/layout'
 export { validateGraph } from './graph/validate'
 export type { GraphDiagnostic, GraphDiagnosticCode } from './graph/validate'
-export { BAND_FRAME, NEUTRAL_STROKE } from './graph/shapes'
+export { BAND_FRAME, CONTAINMENT_STROKE, NEUTRAL_STROKE } from './graph/shapes'
 export type { Band, EdgeType, EdgeTypeId, NodeStyle, ResolvedEdgeType, ResolvedNodeStyle, SpringPhysics } from './graph/shapes'

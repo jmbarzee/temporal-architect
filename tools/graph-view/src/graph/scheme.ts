@@ -7,9 +7,12 @@
 import type { AxisValue } from './axis'
 import type { Taxonomy } from './taxonomy'
 
+/** The two themes every colour is declared in. */
 export type Theme = 'light' | 'dark'
+/** Both themes, in order. */
 export const THEMES: readonly Theme[] = ['light', 'dark']
 
+/** A fill and a border. */
 export interface ColorPair {
   /** Canvas fill colour. */
   readonly fill: string
@@ -99,6 +102,7 @@ export function rgbOf(color: string): readonly [number, number, number] | undefi
   return undefined
 }
 
+/** Whether a colour is one every reader parses: hex, `rgb()` or `hsl()`. */
 export const isSchemeColor = (color: string): boolean => rgbOf(color) !== undefined
 
 const NEUTRAL: readonly [number, number, number] = [148, 163, 184]
@@ -126,12 +130,13 @@ export function withAlpha(color: string, alpha: number): string {
 
 /**
  * A stylesheet for a host's own CSS: every style value's fill and border on
- * `:root`, and the dark values that differ under `[data-theme="dark"]` — the
- * one selector the library themes by. The pane does not read this — it
- * carries `schemeVars` inline — so a host that styles nothing of its own by
- * node value never needs it.
+ * `:root`, and the dark values that differ under `darkSelector` — by default
+ * `[data-theme="dark"]`, the attribute the pane carries on its own root; a
+ * host that marks its theme another way names its own selector. The pane
+ * does not read this — it carries `schemeVars` inline — so a host that
+ * styles nothing of its own by node value never needs it.
  */
-export function schemeStylesheet(taxonomy: Taxonomy): string {
+export function schemeStylesheet(taxonomy: Taxonomy, darkSelector = '[data-theme="dark"]'): string {
   const lightVars: string[] = []
   const darkVars: string[] = []
   for (const key of taxonomy.styleValues) {
@@ -143,6 +148,6 @@ export function schemeStylesheet(taxonomy: Taxonomy): string {
     if (dark.border !== light.border) darkVars.push(`  ${v}-border: ${dark.border};`)
   }
   const parts: string[] = [`:root {\n${lightVars.join('\n')}\n}`]
-  if (darkVars.length > 0) parts.push(`[data-theme="dark"] {\n${darkVars.join('\n')}\n}`)
+  if (darkVars.length > 0) parts.push(`${darkSelector} {\n${darkVars.join('\n')}\n}`)
   return parts.join('\n')
 }
