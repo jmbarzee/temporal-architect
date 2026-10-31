@@ -166,7 +166,7 @@ export function identityTuning<T>(taxonomy: Taxonomy): AxisTuning<T> {
  * below the centre, the tiers start pre-ordered and the force only has to
  * lift (mean 3.5, max 13). Uniform-within-band and a wider jitter were both
  * worse than the centre. The frame is unchanged by the bias, so seed and
- * force still agree; only where within the band a node starts moved (D54).
+ * force still agree; only where within the band a node starts moved.
  */
 export const SEED_BIAS = 0.35
 

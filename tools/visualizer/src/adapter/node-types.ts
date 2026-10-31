@@ -85,7 +85,7 @@ export interface TemporalNodeStyle extends NodeStyle {
    * 'orchestrator' — callable units that orchestrate work
    * 'leaf'         — leaf execution units
    *
-   * Read only by the static golden; sizing and summary kind come from the
+   * Documentation of the hierarchy; sizing and summary kind come from the
    * explicit style fields rather than from switching on this.
    */
   tier: 'container' | 'host' | 'orchestrator' | 'leaf'
@@ -347,10 +347,10 @@ const FILTER_DIMENSIONS: AxisDescriptor[] = [
     id: SOURCE_FILE_DIMENSION,
     label: 'File',
     // Quiet neutral tags, as an origin reads; the kind axis below wears the
-    // tinted chips (D67).
+    // tinted chips.
     presentation: 'tag',
     // Empty shows everything: adding the first file chip while the filter is
-    // off would otherwise activate the filter and hide every other file (T7).
+    // off would otherwise activate the filter and hide every other file.
     // A narrowing axis's defaults — a node with no file stays visible, a focus
     // expands only an active selection, a change reheats in place and keeps the
     // user's pan and zoom — are exactly the policies this axis wants.
@@ -394,7 +394,7 @@ function stripKindPrefix(s: string | undefined): string | undefined {
 }
 
 /**
- * The hover box's context line (D59, B35). The nexus values show their
+ * The hover box's context line. The nexus values show their
  * addressing metadata — `<parent context> · <task queue>` per the spec — read
  * from this domain's own payload keys, which the library never learns; every
  * other value shows its parent's name.
@@ -418,7 +418,7 @@ function contextLineFor(node: GraphNode, parent: GraphNode | undefined): string 
 }
 
 /**
- * The highlight for an active node (D59). An endpoint's highlight follows its
+ * The highlight for an active node. An endpoint's highlight follows its
  * routing metadata — every edge whose payload names it, and their visible
  * ends — instead of the dependency walk; a service's widens the walk with the
  * endpoints fronting its operations (the parser's nexusRoute edges, reached
@@ -482,7 +482,7 @@ export const DEFAULT_TAXONOMY_SPEC: TaxonomySpec = {
   // Two graduated edges on one pair: the one carrying routing metadata
   // survives, in either edge order, so an endpoint's highlight still finds
   // the edge it routed. Every payload this host writes on a dependency edge
-  // is that metadata, so "carries a payload" is the whole test (D60, D66).
+  // is that metadata, so "carries a payload" is the whole test.
   collapse: (kept, candidate) => {
     const carries = (e: GraphEdge) => e.payload !== undefined && Object.keys(e.payload).length > 0
     return carries(candidate) && !carries(kept) ? candidate : kept

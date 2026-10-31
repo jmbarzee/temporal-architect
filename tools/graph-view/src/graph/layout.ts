@@ -5,8 +5,8 @@
 //
 // The state is opaque to a host, and this module's declaration reaches none
 // of the engine's types: `ForceParams` and the force kernels are not part of
-// any surface (D53, D62), and the published-types gate holds that line. The
-// opening is `layout-internal.ts`, called by value from here and the view.
+// any surface (DESIGN.md, "The forces"). The opening is `layout-internal.ts`,
+// called by value from here and the view.
 
 import type { AxisId } from './axis'
 import { isPlainRecord } from '../json'
