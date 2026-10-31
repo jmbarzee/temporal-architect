@@ -6,15 +6,15 @@
 // inputs (the explicit data links) rather than owning any of them.
 
 import type { FilterState } from '../../filter/types'
-import { selectionFor } from '../../filter/types'
-import { foldReheatPolicy } from '../../graph/dimension'
-import type { DimensionDescriptor } from '../../graph/dimension'
+import { selectionFor, selectionsEqual } from '../../filter/types'
+import { foldReheatPolicy } from '../../graph/axis'
+import type { ResolvedAxisDescriptor } from '../../graph/axis'
 import { passesFilter } from './visibleGraph'
 import React from 'react'
 import type { Simulation, SimNode } from '../../graph/simulation'
 import type { Viewport } from '../../graph/viewport'
 import { fitToView } from '../../graph/viewport'
-import { useOntology } from './useOntology'
+import type { Taxonomy } from '../../graph/taxonomy'
 
 export interface SimulationLoopParams {
   simRef: React.MutableRefObject<Simulation | null>
@@ -25,14 +25,16 @@ export interface SimulationLoopParams {
   downstreamScores: Map<string, number>
   filter: FilterState
   /** The axes the view filters on — its chain; a change elsewhere in the filter moves nothing here. */
-  axes: readonly DimensionDescriptor[]
+  axes: readonly ResolvedAxisDescriptor[]
   hoveredNodeId: string | null
   selectedNodeId: string | null
   containerRef: React.RefObject<HTMLDivElement>
   initialFitDone: React.MutableRefObject<boolean>
   pendingCenterRef: React.MutableRefObject<{ nodeId: string } | null>
   setViewport: React.Dispatch<React.SetStateAction<Viewport>>
-  setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>
+  /** Select a node the way the user would — the focus recipe's landing. */
+  setSelectedNodeId: (id: string | null) => void
+  taxonomy: Taxonomy
 }
 
 export function useSimulationLoop({
@@ -40,9 +42,8 @@ export function useSimulationLoop({
   visibleIds, visibleNodes, downstreamScores,
   filter, axes,
   hoveredNodeId, selectedNodeId,
-  containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId,
+  containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId, taxonomy,
 }: SimulationLoopParams): { fps: number } {
-  const ontology = useOntology()
   // Frame-rate indicator. Updated ~2×/sec from the loop.
   const [fps, setFps] = React.useState(0)
   const fpsTrackRef = React.useRef({ frames: 0, lastStamp: 0 })
@@ -148,20 +149,20 @@ export function useSimulationLoop({
 
     const { alpha, seedRevealed, refit, resume } = foldReheatPolicy(
       axes.filter(
-        dim => selectionFor(prev, dim.id) !== selectionFor(filter, dim.id),
+        dim => !selectionsEqual(selectionFor(prev, dim.id), selectionFor(filter, dim.id)),
       ),
     )
 
     if (alpha > 0) {
       if (seedRevealed) {
         for (const node of sim.nodes) {
-          if (!passesFilter(node, filter, ontology, axes)) continue
-          if (passesFilter(node, prev, ontology, axes)) continue
+          if (!passesFilter(node, filter, taxonomy, axes)) continue
+          if (passesFilter(node, prev, taxonomy, axes)) continue
           let ancestorId = node.parentId
           while (ancestorId) {
             const ancestor = sim.getNode(ancestorId)
             if (!ancestor) break
-            if (passesFilter(ancestor, filter, ontology, axes)) {
+            if (passesFilter(ancestor, filter, taxonomy, axes)) {
               sim.seedAt(node.id, ancestor.x, ancestor.y)
               break
             }

@@ -11,21 +11,24 @@
 // This module imports only *types* from ./simulation, so there is no runtime
 // import cycle: `simulation -> forces` is the only value dependency.
 
-import type { DimensionId, DimensionValue } from './dimension'
-import { isIdentityMapping } from './dimension'
+import type { AxisId, AxisValue } from './axis'
+import { isIdentityMapping } from './axis'
 import type { GraphEdge } from './model'
 import { relationOf } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange, LayoutTuning } from './simulation'
-import type { ScalarAxis, ScalarSpan } from './scalar'
+import type { ResolvedScalarAxis, ScalarAxis, ScalarSpan } from './scalar'
+import { normalized, rangeNormalized } from './scalar'
 import { isScalarTuning } from './scalar'
 import type { ReadableGraph } from './model'
-import type { Ontology } from './ontology'
-import type { DimensionalMapping } from './dimension'
-import type { EdgeCategoryKind, EdgeTypeDefinition, EdgeTypeId, SpringPhysics } from './taxonomy'
+import type { Taxonomy } from './taxonomy'
+import type { AxisMapping } from './axis'
+import type { EdgeTypeId, ResolvedEdgeType, SpringPhysics } from './shapes'
+import { MIDDLING_SPRING } from './shapes'
+import type { Relation } from './axis'
 import type { Rng } from './rng'
 
 /** The minimum a force needs of a node in order to look up its physics. */
-export type PhysicsSubject = { dimensions: Readonly<Record<DimensionId, DimensionValue>> }
+export type PhysicsSubject = { values: Readonly<Record<AxisId, AxisValue>> }
 
 // ── Per-value / per-edge accessors ──────────────────────────────────────────
 // Each force reads its per-value/per-edge numbers from the keyed param maps via
@@ -58,8 +61,7 @@ export const CORE_RADIUS_MIN = 2
  * *finite and bounded* — which is the guard's actual job, and the thing whose
  * absence produces a NaN four frames later or a hard throw — without inventing
  * a "non-participant" concept in the physics. Making absent values true
- * non-participants is a change to the force model, and is not made here. The
- * effect on neighbours is under golden, so the trade cannot drift silently.
+ * non-participants is a change to the force model, and is not made here.
  */
 export const ABSENT_VALUE_PHYSICS = {
   charge: 0,
@@ -78,20 +80,20 @@ export const ABSENT_VALUE_PHYSICS = {
 
 /** A per-bucket table, resolved from one axis's tuning and the taxonomy. */
 export interface ResolvedAxis<T> {
-  readonly mapping: DimensionalMapping
+  readonly mapping: AxisMapping
   readonly byBucket: ReadonlyMap<string, T>
 }
 
 /** A layout axis backed by a scalar: the scalar itself, and where its 0 and 1 rest. */
-export interface ResolvedScalarAxis {
-  readonly scalar: ScalarAxis
+export interface ResolvedScalarLayout {
+  readonly scalar: ResolvedScalarAxis
   readonly span: ScalarSpan
 }
 
 /** A layout axis as the kernels see it: per-bucket bands, or a scalar over a span. */
-export type ResolvedLayoutAxis = ResolvedAxis<BandRange> | ResolvedScalarAxis
+export type ResolvedLayoutAxis = ResolvedAxis<BandRange> | ResolvedScalarLayout
 
-export const isScalarAxis = (a: ResolvedLayoutAxis): a is ResolvedScalarAxis => 'scalar' in a
+export const isScalarAxis = (a: ResolvedLayoutAxis): a is ResolvedScalarLayout => 'scalar' in a
 
 /** The mapped half of a layout axis; loud where a caller expects buckets and meets a scalar. */
 export function mappedAxis(a: ResolvedLayoutAxis): ResolvedAxis<BandRange> {
@@ -99,7 +101,7 @@ export function mappedAxis(a: ResolvedLayoutAxis): ResolvedAxis<BandRange> {
   return a
 }
 
-/** What the layout frame needs of a node: its dimensions, and its id for a scalar's score. */
+/** What the layout frame needs of a node: its values, and its id for a scalar's score. */
 export type LayoutSubject = PhysicsSubject & { id: string }
 
 export interface ResolvedPhysics {
@@ -111,8 +113,8 @@ export interface ResolvedPhysics {
 }
 
 /** The bucket a node falls in on an axis, or undefined when it carries no value there. */
-export function bucketOf(on: { readonly mapping: DimensionalMapping }, node: PhysicsSubject): string | undefined {
-  return on.mapping.bucketFor(node.dimensions[on.mapping.dimension])?.id
+export function bucketOf(on: { readonly mapping: AxisMapping }, node: PhysicsSubject): string | undefined {
+  return on.mapping.bucketFor(node.values[on.mapping.axis])?.id
 }
 
 /**
@@ -122,20 +124,20 @@ export function bucketOf(on: { readonly mapping: DimensionalMapping }, node: Phy
  * so a host reordering a bucket's values for readability moves nothing. With the
  * identity mapping every bucket has one value and the fold is the value.
  */
-function declaredPush(ontology: Ontology, values: readonly DimensionValue[]): PushPhysics {
+function declaredPush(taxonomy: Taxonomy, values: readonly AxisValue[]): PushPhysics {
   let charge = 0, coreRadius = 0
   for (const v of values) {
-    const ph = ontology.styleForKey(v).physics
+    const ph = taxonomy.styleOf(v).physics
     charge += ph.charge; coreRadius += ph.coreRadius
   }
   const n = Math.max(values.length, 1)
   return { charge: charge / n, coreRadius: coreRadius / n }
 }
 
-function declaredBand(ontology: Ontology, values: readonly DimensionValue[], axis: 'x' | 'y'): BandRange {
+function declaredBand(taxonomy: Taxonomy, values: readonly AxisValue[], axis: 'x' | 'y'): BandRange {
   let min = Infinity, max = -Infinity
   for (const v of values) {
-    const b = ontology.styleForKey(v).physics.band[axis]
+    const b = taxonomy.styleOf(v).physics.band[axis]
     min = Math.min(min, b.min); max = Math.max(max, b.max)
   }
   return values.length === 0 ? { ...ABSENT_VALUE_PHYSICS.band } : { min, max }
@@ -148,16 +150,16 @@ function declaredBand(ontology: Ontology, values: readonly DimensionValue[], axi
  * switches kind — and read like a chart: 1 at the top (screen y grows
  * downward) and at the right.
  */
-export function defaultSpan(ontology: Ontology, axis: 'x' | 'y'): ScalarSpan {
-  const extent = declaredBand(ontology, ontology.nodeTypeKeys, axis)
+export function defaultSpan(taxonomy: Taxonomy, axis: 'x' | 'y'): ScalarSpan {
+  const extent = declaredBand(taxonomy, taxonomy.styleValues, axis)
   const half = (extent.max - extent.min) / 2
   return axis === 'y' ? { zero: half, one: -half } : { zero: -half, one: half }
 }
 
 function resolveAxis<T>(
-  mapping: DimensionalMapping,
+  mapping: AxisMapping,
   overrides: ReadonlyMap<string, T>,
-  declared: (values: readonly DimensionValue[]) => T,
+  declared: (values: readonly AxisValue[]) => T,
 ): ResolvedAxis<T> {
   const byBucket = new Map<string, T>()
   for (const bucket of mapping.buckets) {
@@ -166,34 +168,34 @@ function resolveAxis<T>(
   return { mapping, byBucket }
 }
 
-export function resolvePhysics(params: ChargeParams & GravityParams & LinkParams, ontology: Ontology): ResolvedPhysics {
+export function resolvePhysics(params: ChargeParams & GravityParams & LinkParams, taxonomy: Taxonomy): ResolvedPhysics {
   // Declared physics belong to the style axis's values. A bucket on any other
   // axis — a file, a kind — is not a style key, so it starts from the host's
   // TYPICAL declared physics (the same fold, over every declared value) rather
   // than from a lookup that would miss to the fallback style, once per bucket,
   // with a warning about placeholder styling that is not even true.
-  const style = ontology.styleAxis()
-  const pushFor = (m: DimensionalMapping) => m.dimension === style
-    ? (values: readonly DimensionValue[]) => declaredPush(ontology, values)
-    : () => declaredPush(ontology, ontology.nodeTypeKeys)
-  const bandOn = (m: DimensionalMapping, axis: 'x' | 'y') => m.dimension === style
-    ? (values: readonly DimensionValue[]) => declaredBand(ontology, values, axis)
-    : () => declaredBand(ontology, ontology.nodeTypeKeys, axis)
+  const style = taxonomy.styleAxis()
+  const pushFor = (m: AxisMapping) => m.axis === style
+    ? (values: readonly AxisValue[]) => declaredPush(taxonomy, values)
+    : () => declaredPush(taxonomy, taxonomy.styleValues)
+  const bandOn = (m: AxisMapping, axis: 'x' | 'y') => m.axis === style
+    ? (values: readonly AxisValue[]) => declaredBand(taxonomy, values, axis)
+    : () => declaredBand(taxonomy, taxonomy.styleValues, axis)
   const layout = (t: LayoutTuning, axis: 'x' | 'y'): ResolvedLayoutAxis => {
     if (!isScalarTuning(t)) return resolveAxis(t.mapping, t.overrides, bandOn(t.mapping, axis))
-    const scalar = ontology.scalars.find(sc => sc.id === t.scalar)
+    const scalar = taxonomy.scalars.find(sc => sc.id === t.scalar)
     // Loud: a tuning naming a scalar the taxonomy does not know is a host bug.
     // The view never holds one — it reads params retuned for the taxonomy
     // (`retunedFor` falls the axis back on a swap), so this is unreachable
     // from the UI and fires only for a host that built the tuning by hand.
     if (!scalar) throw new Error(`layout axis names scalar ${JSON.stringify(t.scalar)}, which the taxonomy does not declare`)
-    return { scalar, span: t.span ?? defaultSpan(ontology, axis) }
+    return { scalar, span: t.span ?? defaultSpan(taxonomy, axis) }
   }
   return {
     push: resolveAxis(params.pair.mapping, params.pair.push, pushFor(params.pair.mapping)),
     bandX: layout(params.bandX, 'x'),
     bandY: layout(params.bandY, 'y'),
-    spring: resolveSprings(params.pair, ontology),
+    spring: resolveSprings(params.pair, taxonomy),
   }
 }
 
@@ -312,7 +314,11 @@ const AT_CENTRE = { lo: 0, hi: 0 }
 // Loud, because a value outside the contract would become a rest point or a
 // ring radius and nothing downstream could tell it from a real one.
 function checkedScores(scalar: ScalarAxis, graph: ReadableGraph): Map<string, number> {
-  const scores = scalar.compute(graph)
+  const raw = scalar.compute(graph)
+  for (const [id, s] of raw) {
+    if (!Number.isFinite(s)) throw new Error(`scalar ${JSON.stringify(scalar.id)} answered ${String(s)} for node ${JSON.stringify(id)}; a scalar answers a finite number`)
+  }
+  const scores = scalar.normalize === 'none' ? raw : scalar.normalize === 'range' ? rangeNormalized(raw) : normalized(raw)
   for (const [id, s] of scores) {
     if (!(Number.isFinite(s) && s >= 0 && s <= 1)) {
       throw new Error(`scalar ${JSON.stringify(scalar.id)} answered ${String(s)} for node ${JSON.stringify(id)}; a scalar answers in [0, 1]`)
@@ -389,8 +395,8 @@ export interface BandRing {
 }
 
 /**
- * The band overlay as data: what the canvas draws, decided here so a golden can
- * read it. Stripes only while that axis acts in cartesian; rings
+ * The band overlay as data: what the canvas draws, decided here, once.
+ * Stripes only while that axis acts in cartesian; rings
  * only while Y acts in radial — the same predicates the tick uses, so the
  * overlay never shows a force that does nothing. `colors` is the view's: one
  * per bucket, keyed by bucket id.
@@ -448,8 +454,7 @@ export function bandOverlay(
  * The overlay's stripes on one axis, as data: one per distinct band among the
  * buckets present, re-centred on the frame. Buckets that share a band share a
  * stripe (the default X window, two tiers on one Y band), so the overlay's
- * density reads as bands rather than bucket counts. Pure, so a golden can read
- * it.
+ * density reads as bands rather than bucket counts. Pure.
  */
 export function bandStripes(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>, center: number): BandStripe[] {
   const byBand = new Map<string, { lo: number; hi: number; buckets: string[] }>()
@@ -480,21 +485,8 @@ export const ABSENT_EDGE_PHYSICS: SpringPhysics = { strength: 0, distance: 0 }
  * a pair category synthesises it — and neither needs physics or a stroke here
  * (physics is `physicsFor`, and a pair is a spring, never a stroke).
  */
-export type EdgeCategoryDescription = Pick<EdgeTypeDefinition, 'id' | 'label' | 'sourceType' | 'targetType' | 'category' | 'tooltip'>
+export type EdgeCategoryDescription = Pick<ResolvedEdgeType, 'id' | 'label' | 'sourceValue' | 'targetValue' | 'relation' | 'tooltip'>
 
-/**
- * What a category starts from when nothing declared a spring for it: the mean
- * of the host's declared springs, so a bucket on a foreign axis is tuned from
- * this domain's scale rather than from a number out of another's. A host that
- * declares no springs gets the absent spring, which is inert.
- */
-export function typicalSpring(ontology: Ontology): SpringPhysics {
-  const declared = ontology.edgeTypes
-  if (declared.length === 0) return ABSENT_EDGE_PHYSICS
-  let strength = 0, distance = 0
-  for (const e of declared) { strength += e.physics.strength; distance += e.physics.distance }
-  return { strength: strength / declared.length, distance: distance / declared.length }
-}
 
 /**
  * The pair rule's category id: the relation and the unordered bucket pair,
@@ -502,11 +494,11 @@ export function typicalSpring(ontology: Ontology): SpringPhysics {
  * pair. Ids are keys, never labels; `describe` turns one back into something a
  * token can show.
  */
-function pairId(relation: EdgeCategoryKind, a: string, b: string): EdgeTypeId {
+function pairId(relation: Relation, a: string, b: string): EdgeTypeId {
   return JSON.stringify(a <= b ? [relation, a, b] : [relation, b, a])
 }
 
-function parsePairId(id: EdgeTypeId): [EdgeCategoryKind, string, string] | undefined {
+function parsePairId(id: EdgeTypeId): [Relation, string, string] | undefined {
   try {
     const t: unknown = JSON.parse(id)
     if (Array.isArray(t) && t.length === 3 && (t[0] === 'containment' || t[0] === 'dependency') &&
@@ -524,47 +516,48 @@ function parsePairId(id: EdgeTypeId): [EdgeCategoryKind, string, string] | undef
  * precedence no pair rule reproduces — two of its categories share endpoint
  * values and differ only on the edge's own dispatch. On any other
  * (axis, mapping) the library's pair rule applies: one category per unordered
- * bucket pair per relation, each the host's typical spring until tuned. The
+ * bucket pair per relation, each the middling spring until tuned. The
  * pair rule enumerates nothing: a category exists when an edge falls in it,
  * which is what a control surface shows and what the token ceiling counts.
  */
 export interface ResolvedSprings {
-  readonly mapping: DimensionalMapping
+  readonly mapping: AxisMapping
   /**
    * The category of an edge from its endpoints' bucket ids, or undefined when
-   * an endpoint is unbucketed — only the pair rule answers that way; the host's
-   * rule answers for every value. Throws when the host's rule returns an id its
-   * table does not declare: that is a host bug, and an edge silently without
-   * pull would surface it somewhere far from the cause.
+   * an endpoint is unbucketed, or — on the style axis — when no declared type
+   * of the edge's relation runs between its endpoint values and the
+   * taxonomy's `classifyEdge` names none; such an edge pulls nothing and
+   * draws in its relation's default stroke.
    */
   classify(edge: GraphEdge, src: string | undefined, tgt: string | undefined): EdgeTypeId | undefined
-  /** Effective physics: the override where one exists, else the declared or typical spring. */
+  /** Effective physics: the override where one exists, else the declared spring — the middling spring, on a pair axis. */
   physicsFor(id: EdgeTypeId): SpringPhysics
   /** What a control surface shows for a category — the declared entry, or one synthesized from a pair id. */
   describe(id: EdgeTypeId): EdgeCategoryDescription | undefined
 }
 
-export function resolveSprings(pair: PairTuning, ontology: Ontology): ResolvedSprings {
+export function resolveSprings(pair: PairTuning, taxonomy: Taxonomy): ResolvedSprings {
   const { mapping, spring: overrides } = pair
-  if (mapping.dimension === ontology.styleAxis() && isIdentityMapping(mapping)) {
-    const table = new Map(ontology.edgeTypes.map(e => [e.id, e]))
+  if (mapping.axis === taxonomy.styleAxis() && isIdentityMapping(mapping)) {
+    const table = new Map(taxonomy.edgeTypes.map(e => [e.id, e]))
     return {
       mapping,
+      // An edge no declared type of its relation claims has no category here:
+      // it pulls nothing and draws in its relation's stroke, and the
+      // diagnostics have named it.
       classify: (edge, src, tgt) => {
-        const id = ontology.resolveEdgeType(edge, src, tgt)
-        if (!table.has(id)) {
-          throw new Error(
-            `edge type ${JSON.stringify(id)} is resolved by the taxonomy's rule but has no ` +
-            'entry in its edgeTypes; the two must be kept in step.',
-          )
-        }
-        return id
+        const id = taxonomy.edgeTypeOf(edge, src, tgt)
+        const type = id === undefined ? undefined : table.get(id)
+        return type !== undefined && type.relation === relationOf(edge) ? id : undefined
       },
       physicsFor: id => overrides.get(id) ?? table.get(id)?.physics ?? ABSENT_EDGE_PHYSICS,
       describe: id => table.get(id),
     }
   }
-  const typical = typicalSpring(ontology)
+  // Every pair category starts from the middling spring: the same start a
+  // declared type gets when it leaves its spring out, and no type's declared
+  // spring moves another's.
+  const typical = MIDDLING_SPRING
   const buckets = new Map(mapping.buckets.map(b => [b.id, b]))
   return {
     mapping,
@@ -581,9 +574,9 @@ export function resolveSprings(pair: PairTuning, ontology: Ontology): ResolvedSp
       return {
         id,
         label: `${A.abbreviation}↔${B.abbreviation}`,
-        sourceType: a,
-        targetType: b,
-        category: relation,
+        sourceValue: a,
+        targetValue: b,
+        relation,
         physics: typical,
         tooltip: `${A.label} ↔ ${B.label} ${relation}`,
       }
@@ -664,7 +657,7 @@ export function applyChargeForce(
   const pushMul = params.pushMultiplier
   const chargeExp = params.chargeExponent
   // Per-node physics once, O(n), before the O(n²) pair loop reads it: each
-  // accessor is a dimension read and two map lookups, and the loop below would
+  // accessor is an axis read and two map lookups, and the loop below would
   // otherwise make four of those per pair.
   const n = active.length
   const charge = new Float64Array(n)
@@ -712,7 +705,7 @@ export function applyChargeForce(
 // high-degree node anchors and its lighter neighbours orbit — the standard fix
 // for stiff-spring oscillation under explicit Euler integration.
 export function applyLinkForce(
-  activeEdges: GraphEdge[],
+  activeEdges: readonly GraphEdge[],
   nodeMap: Map<string, SimNode>,
   params: LinkParams,
   categoryOf: (edge: GraphEdge) => EdgeCategory,

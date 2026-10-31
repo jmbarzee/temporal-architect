@@ -1,7 +1,7 @@
 {
   "name": "@temporal-architect/graph-view",
   "version": "0.0.0-dev",
-  "description": "A force-directed graph view with composable dimensions: a host declares the axes, values, colours and physics of its nodes and edges, and the view lays out, filters, highlights and tunes the graph without knowing what any of it means.",
+  "description": "A force-directed graph view with composable axes: a host declares the axes, values, colours and physics of its nodes and edges, and the view lays out, filters, highlights and tunes the graph without knowing what any of it means.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/tools/graph-view",
@@ -43,7 +43,6 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build:lib": "vite build --config vite.lib.config.ts && node verify/prune-dts.mjs",
-    "dts-gate": "node verify/dts-gate.mjs",
     "prepack": "cp ../../LICENSE LICENSE",
     "postpack": "rm -f LICENSE",
     "prepublishOnly": "npm run build:lib"

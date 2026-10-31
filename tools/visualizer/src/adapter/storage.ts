@@ -5,8 +5,11 @@
 //   2. VS Code webview (src/webview.tsx) — uses vscode.setState/getState
 //      since localStorage is often restricted by webview CSP.
 //
-// Both backends serialize the same shape; Set<string> fields are stored
-// as plain arrays.
+// Both backends serialize the same shape; a filter is stored as the library's
+// `filterToJSON` writes it (each axis's selection an array of strings) and read
+// back through `filterFromJSON`.
+
+import type { LayoutJSON } from '@temporal-architect/graph-view'
 
 /**
  * Where and how this state is persisted — supplied by the host.
@@ -25,7 +28,7 @@ export interface StorageConfig {
 
 /**
  * Bumped whenever the persisted SHAPE changes. A mismatch discards rather than
- * migrates (D4).
+ * migrates.
  *
  * Discarding is the right default because the payload is a UI preference, not
  * user data: the cost of losing it is one re-toggle, and the cost of
@@ -37,7 +40,7 @@ export interface StorageConfig {
  */
 const STATE_VERSION = 2
 
-/** A selection per axis, Sets flattened to arrays for JSON. */
+/** A selection per axis, as the library's `filterToJSON` writes it and `filterFromJSON` reads it. */
 export type PersistedFilter = Record<string, string[]>
 
 /** A pin per axis. */
@@ -49,12 +52,14 @@ export type PersistedState = {
   graphFilter?: PersistedFilter
   treePins?: PersistedPins
   graphPins?: PersistedPins
-  /** Which axes each view shows, in order (R17-R19). */
+  /** Which axes each view shows, in order. */
   treeChain?: string[]
   graphChain?: string[]
   searchQuery?: string
-  /** The graph pane's theme choice (R21); absent means system. Additive, so no version bump (D4). */
+  /** The graph pane's theme choice; absent means system. Additive, so no version bump. */
   graphTheme?: 'system' | 'light' | 'dark'
+  /** The graph pane's layout — force tuning and node scale — as the library's `layoutToJSON` writes it. Additive, so no version bump. */
+  graphLayout?: LayoutJSON
 }
 
 interface VsCodeApi {
@@ -94,7 +99,7 @@ function getVsCodeApi(config: StorageConfig): VsCodeApi | null {
   return null
 }
 
-/** Discard anything not written by this exact shape version (D4). */
+/** Discard anything not written by this exact shape version. */
 function accept(state: PersistedState | undefined): PersistedState {
   if (!state || state.version !== STATE_VERSION) return {}
   return state

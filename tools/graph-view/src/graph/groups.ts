@@ -16,6 +16,7 @@ import type { Theme } from './scheme'
 // stops deeper, so a glow reads on a pale canvas. Smarter assignment
 // (structural map-colouring, stable semantic hue) is deferred — see
 // https://github.com/jmbarzee/temporal-architect/issues/44.
+/** The cycling glow palette per theme; a group with no `color` of its own takes the slot for its place in the list. */
 export const GROUP_PALETTE: Readonly<Record<Theme, readonly string[]>> = {
   dark: [
     '#2DD4BF', // teal
@@ -54,22 +55,26 @@ const HOVER_STRENGTH = 2.2
 // the pointer surface, so the user can read which group any node belongs to
 // without hunting in the legend. It brightens *and* swells the group's glow
 // (see GROUP_GLOW_FOCUS_SWELL in GraphCanvas) so it clearly lifts out of the field.
+/** The glow strength of the group holding the hovered or selected node. */
 export const NODE_FOCUS_STRENGTH = 2.2
 
 /** A group as the host asks for it: over the whole graph, visible or not. */
 export interface NodeGroup {
   id: string
   nodeIds: ReadonlySet<string>
-  /** Whether the host emphasises this group (its legend row is hovered); the view glows it stronger. */
+  /** Whether the host emphasises this group; the view glows it stronger. A host's legend inside the pane uses `groupsControl`'s `emphasize` instead and leaves this out. */
   emphasized?: boolean
+  /** The glow's colour, hex or rgb(); absent, the palette's slot for this group's place in the list. */
+  color?: string
 }
 
 /** A group as drawn: the visible node ids it covers and its palette colour. */
 export interface ActiveGroup {
   id: string
   color: string
+  /** The glow's intensity: 1, or more for a group that is emphasised or holds the hovered or selected node. */
   strength: number
-  nodeIds: Set<string>
+  nodeIds: ReadonlySet<string>
 }
 
 /**
@@ -78,14 +83,14 @@ export interface ActiveGroup {
  * in the host's list in the theme's palette — so hiding one group recolours
  * none of the others.
  */
-export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: ReadonlySet<string>, theme: Theme = 'dark'): ActiveGroup[] {
+export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: ReadonlySet<string>, theme: Theme = 'dark', emphasized: string | null = null): ActiveGroup[] {
   const palette = GROUP_PALETTE[theme]
   const out: ActiveGroup[] = []
   groups.forEach((g, i) => {
     const nodeIds = new Set<string>()
     for (const id of g.nodeIds) if (visibleIds.has(id)) nodeIds.add(id)
     if (nodeIds.size === 0) return
-    out.push({ id: g.id, strength: g.emphasized ? HOVER_STRENGTH : 1, nodeIds, color: palette[i % palette.length] })
+    out.push({ id: g.id, strength: g.emphasized || g.id === emphasized ? HOVER_STRENGTH : 1, nodeIds, color: g.color ?? palette[i % palette.length] })
   })
   return out
 }
@@ -94,6 +99,7 @@ export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: Readonl
 // focused node ids (the node hovered or selected on the canvas), so that group
 // surfaces out of a field of many faint ones. Returns the same array when no
 // focus node lands in any group, so the common case allocates nothing.
+/** The active groups with any that holds one of the given nodes glowing at `NODE_FOCUS_STRENGTH`; the same array when none does. */
 export function boostGroupsForNodes(
   groups: ActiveGroup[],
   focusIds: Array<string | null>,

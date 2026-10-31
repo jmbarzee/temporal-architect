@@ -21,14 +21,14 @@ import type {
 } from '../types/parser-graph'
 // The axes this domain projects a node onto. Names, not concepts, belong to the
 // host: the library never mentions any of these ids.
-import { RELATION_DIMENSION } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
+import { nodesById } from '@temporal-architect/graph-view'
 import type {
   Graph,
   GraphEdge,
   GraphNode,
-  EdgeCategoryKind,
-  DimensionMap,
+  Relation,
+  AxisValues,
 } from '@temporal-architect/graph-view'
 import type { NodeType } from './node-types'
 import { NODE_TYPE_REGISTRY, TEMPORAL_TYPE_DIMENSION } from './node-types'
@@ -44,7 +44,7 @@ import { DISPATCH_DIMENSION } from './edge-types'
  * on every axis the host filters or lays out on, and which of those are
  * projections of which is the host's business.
  */
-export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): DimensionMap {
+export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined): AxisValues {
   const dims: Record<string, string> = {
     [TEMPORAL_TYPE_DIMENSION]: nodeType,
     [DEF_TYPE_DIMENSION]: NODE_TYPE_REGISTRY[nodeType].defType,
@@ -153,7 +153,7 @@ function displayNameFor(nodeType: NodeType, definitionName: string): string {
 export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
   const astLookup = buildAstLookup(ast)
 
-  const nodes = new Map<string, GraphNode>()
+  const nodes: GraphNode[] = []
   const edges: GraphEdge[] = []
   let edgeSeq = 0
 
@@ -170,11 +170,11 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
     const { kind, name } = splitDefinitionKey(pn.definition)
     const nodeType = nodeTypeFromKind(kind)
     const ast = astLookup.get(pn.definition)
-    nodes.set(pn.id, {
+    nodes.push({
       id: pn.id,
-      dimensions: dimensionsFor(nodeType, ast?.sourceFile),
+      values: dimensionsFor(nodeType, ast?.sourceFile),
       name: displayNameFor(nodeType, name),
-      // Per-domain display metadata the library must not interpret (R3). The
+      // Per-domain display metadata the library must not interpret. The
       // tooltip reads these back out by name; nothing in the engine does.
       payload: {
         worker: pn.worker,
@@ -184,7 +184,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
       parentId: parentByChild.get(pn.id),
       // The parser's orphan flag becomes the library's ring; its definition
       // key, the key every deployment copy of one definition shares; its
-      // template holes, one `× {param}` badge each (D67).
+      // template holes, one `× {param}` badge each.
       ring: pn.orphan ? 'dashed' : undefined,
       copyKey: pn.definition,
       badges: pn.templateParams?.map(p => `× ${p}`),
@@ -197,14 +197,15 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
   // Y, and how" (GRAPH_VIEW.md § Edges), so repeated call sites fold into one
   // edge here and the first keeps its routing payload as the representative.
   // This fold is the host's: the library draws every edge it is given, two
-  // edges between one pair being two facts (D66). What is NOT folded is two
+  // edges between one pair being two facts. What is NOT folded is two
   // kinds between one pair — a call and a signal both show.
+  const byId = nodesById(nodes)
   const seenEdges = new Set<string>()
   for (const pe of parserGraph.edges) {
     const key = `${pe.from}\u0000${pe.to}\u0000${pe.kind}`
     if (seenEdges.has(key)) continue
     seenEdges.add(key)
-    const view = parserEdgeToViewEdge(pe, nodes, edgeSeq++)
+    const view = parserEdgeToViewEdge(pe, byId, edgeSeq++)
     if (view) edges.push(view)
   }
 
@@ -213,7 +214,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
     const key = `${ce.from}\u0000${ce.to}\u0000coarsened`
     if (seenEdges.has(key)) continue
     seenEdges.add(key)
-    const view = coarsenedEdgeToViewEdge(ce, nodes, edgeSeq++)
+    const view = coarsenedEdgeToViewEdge(ce, byId, edgeSeq++)
     if (view) edges.push(view)
   }
 
@@ -240,21 +241,21 @@ function parserEdgeToViewEdge(
   // containment-style edge, matching the prior locally-derived edge. It
   // does NOT feed the parentByChild map, so the operation's parentId
   // stays its owning service.
-  const relation: EdgeCategoryKind =
+  const relation: Relation =
     pe.kind === 'containment' || pe.kind === 'nexusRoute' ? 'containment' : 'dependency'
-  const dimensions: Record<string, string> = { [RELATION_DIMENSION]: relation }
-  // The producer's kind, verbatim, on every dependency edge. It used to be
-  // carried only when it was `signalSend` — the one value the spring classifier
-  // needed — which made the field a flag in disguise. As an open axis it is
-  // what lets 4c resolve springs from dispatch rather than from endpoint types
-  // alone (T14's sixteenth case).
-  if (relation === 'dependency') dimensions[DISPATCH_DIMENSION] = pe.kind
   const out: GraphEdge = {
     id: `e${seq}`,
     sourceId: pe.from,
     targetId: pe.to,
-    dimensions,
+    relation,
   }
+  // The producer's kind, verbatim, on every dependency edge. It used to be
+  // carried only when it was `signalSend` — the one value the spring classifier
+  // needed — which made the field a flag in disguise. As an open axis it is
+  // what lets 4c resolve springs from dispatch rather than from endpoint types
+  // alone (T14's sixteenth case). A containment edge dispatches nothing, so it
+  // carries no axes at all.
+  if (relation === 'dependency') out.values = { [DISPATCH_DIMENSION]: pe.kind }
   // Which endpoint routed the call is per call site, not identity and not an
   // axis — the same operation is reachable through two endpoints in different
   // namespaces — so it rides as host-owned payload.
@@ -277,6 +278,6 @@ function coarsenedEdgeToViewEdge(
     id: `e${seq}`,
     sourceId: ce.from,
     targetId: ce.to,
-    dimensions: { [RELATION_DIMENSION]: 'dependency' },
+    relation: 'dependency',
   }
 }

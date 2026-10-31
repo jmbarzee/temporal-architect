@@ -6,11 +6,11 @@
 // frame.
 
 import type { FilterState } from '../../filter/types'
-import type { DimensionDescriptor } from '../../graph/dimension'
+import type { ResolvedAxisDescriptor } from '../../graph/axis'
 import React from 'react'
 import type { Simulation } from '../../graph/simulation'
 import { computeVisibleGraph, EMPTY_VISIBLE_GRAPH } from './visibleGraph'
-import { useOntology } from './useOntology'
+import type { Taxonomy } from '../../graph/taxonomy'
 import type { VisibleGraph } from './visibleGraph'
 
 export type { VisibleGraph } from './visibleGraph'
@@ -20,13 +20,13 @@ export function useVisibleGraph(
   simVersion: number,
   filter: FilterState,
   /** The axes the view shows — the only ones that filter. */
-  axes: readonly DimensionDescriptor[],
+  axes: readonly ResolvedAxisDescriptor[],
+  taxonomy: Taxonomy,
 ): VisibleGraph {
-  const ontology = useOntology()
   return React.useMemo<VisibleGraph>(() => {
     const sim = simRef.current
     if (!sim) return EMPTY_VISIBLE_GRAPH
-    return computeVisibleGraph(sim, filter, ontology, axes)
+    return computeVisibleGraph(sim, filter, taxonomy, axes)
     // `filter` is a strictly better signal than the Sets it replaced: every
     // operation on a FilterState is copy-on-write and returns the SAME object
     // when content is unchanged, so its identity means "some axis actually
@@ -34,5 +34,5 @@ export function useVisibleGraph(
     //
     // simVersion is the data link to useSimulation — it bumps on (re)creation so
     // this memo recomputes when the sim instance changes.
-  }, [filter, axes, simVersion, ontology]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filter, axes, simVersion, taxonomy]) // eslint-disable-line react-hooks/exhaustive-deps
 }

@@ -2,7 +2,7 @@
 // app, the published library, the verification bundle): the bare specifier is
 // the library's entry, from source; the deep form is the harness's road to its
 // internals; and React is deduped to this package's one copy, because the
-// library's files sit beside their own node_modules (D62, REVIEW_8 C23).
+// library's files sit beside their own node_modules (D62).
 import { resolve } from 'path'
 
 export function libraryResolve(dir: string) {

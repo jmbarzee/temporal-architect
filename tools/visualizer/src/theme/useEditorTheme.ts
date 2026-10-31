@@ -2,7 +2,7 @@
 // the body with `vscode-light`, `vscode-dark`, `vscode-high-contrast` (and
 // `vscode-high-contrast-light` beside it for a light high-contrast theme);
 // this hook reads those classes and follows them when they change. The
-// library knows nothing of the editor (D67): the shell turns the answer into
+// library knows nothing of the editor: the shell turns the answer into
 // a `data-theme` on its root, which is the one signal the library reads.
 
 import React from 'react'
