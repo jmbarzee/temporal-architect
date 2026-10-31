@@ -6,7 +6,7 @@
 
 // Borrows the library's panel chrome — `.gv-graph-control-panel*`, `.gv-switch*` and
 // the `--gv-toolbar-height` the pane sets on its root — by class name, which no
-// gate can see (REVIEW_8 C9). A rename inside the library's GraphControlPanel.css
+// gate can see. A rename inside the library's GraphControlPanel.css
 // lands here first.
 import React from 'react'
 import './GroupsModal.css'

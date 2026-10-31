@@ -6,7 +6,7 @@
   border-radius: 10px;
   margin-bottom: 20px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
+  /* No overflow clip: the add-axis menu hangs below the bar. */
 }
 
 /* Transition indicator: a subtle flash when the host says its data reloaded */
@@ -31,7 +31,7 @@
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.gv-tag-section.section-pinned {
+.gv-tag-section.section-locked {
   background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
   box-shadow: inset 2px 0 0 var(--gv-accent);
 }
@@ -192,7 +192,7 @@
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.gv-chip-section.section-pinned {
+.gv-chip-section.section-locked {
   background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
   box-shadow: inset 2px 0 0 var(--gv-accent);
 }
@@ -302,11 +302,11 @@
 }
 
 
-/* --- Filter chain controls ------------------------------------
-   The chain is an ordered list of axes; each section can be removed and a new
+/* --- The axes shown: their controls ---------------------------
+   The axes shown are an ordered list; each section can be removed and a new
    one appended. Deliberately neutral: these are structural affordances. */
 
-.gv-header-chain-remove {
+.gv-header-remove {
   border: none;
   background: transparent;
   color: var(--gv-color-text-muted);
@@ -320,26 +320,58 @@
 }
 
 /* Revealed on hover so the bar stays quiet until the user reaches for it. */
-.gv-tag-section:hover .gv-header-chain-remove,
-.gv-chip-section:hover .gv-header-chain-remove,
-.gv-header-chain-remove:focus-visible {
+.gv-tag-section:hover .gv-header-remove,
+.gv-chip-section:hover .gv-header-remove,
+.gv-header-remove:focus-visible {
   opacity: 1;
 }
 
-.gv-header-chain-remove:hover {
+.gv-header-remove:hover {
   background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
   color: var(--gv-color-text);
 }
 
-.gv-header-chain-add {
+.gv-header-add {
   display: flex;
   align-items: center;
   padding: 0 6px;
+  position: relative;
 }
 
-/* Also the empty-chain state: with every axis removed the bar collapses
+/* The menu of axes to add, when more than one is available. */
+.gv-header-add-menu {
+  position: absolute;
+  top: 100%;
+  left: 6px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 4px;
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 6px;
+  box-shadow: var(--gv-tooltip-shadow);
+}
+
+.gv-header-add-menu-item {
+  border: 0;
+  background: transparent;
+  color: var(--gv-color-text);
+  text-align: left;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.gv-header-add-menu-item:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+}
+
+/* Also the no-axes state: with every axis removed the bar collapses
    to this one button, which is the only way back. */
-.gv-header-chain-add-button {
+.gv-header-add-button {
   border: 1px dashed var(--gv-color-border);
   background: transparent;
   color: var(--gv-color-text-muted);
@@ -350,16 +382,16 @@
   border-radius: 4px;
 }
 
-.gv-header-chain-add-button:hover {
+.gv-header-add-button:hover {
   background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
   color: var(--gv-color-text);
   border-style: solid;
 }
 
-/* An axis in the chain with nothing to offer. It still renders — an axis that
+/* An axis shown with nothing to offer. It still renders — an axis that
    is filtering must always be visible and removable, and vanishing is what made
    an unrecognised axis dangerous rather than merely unsupported. */
-.gv-header-chain-empty {
+.gv-header-axis-empty {
   color: var(--gv-color-text-muted);
   font-size: 11px;
   font-style: italic;

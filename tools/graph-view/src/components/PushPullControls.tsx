@@ -8,7 +8,7 @@ import type { PresentSets } from './GraphControlPanel'
 import type { ForceParams, AxisOption } from '../graph/simulation'
 import { fitsCeiling, TOKEN_CEILING } from '../graph/simulation'
 import type { ResolvedPhysics } from '../graph/forces'
-import type { DimensionalMapping } from '../graph/axis'
+import type { AxisMapping } from '../graph/axis'
 import { ChargeMap, ChargeCurves } from './ChargeControls'
 import { SpringMap, SpringCurves } from './SpringControls'
 import { EquationSection } from './controls/EquationSection'
@@ -26,7 +26,7 @@ interface PushPullProps {
   /** What the visible set holds: push buckets and spring categories worth a token. */
   present: Pick<PresentSets, 'push' | 'springs'>
   onParamChange: (patch: Partial<ForceParams>) => void
-  onAxisChange: (mapping: DimensionalMapping) => void
+  onAxisChange: (mapping: AxisMapping) => void
   onActiveSection: (section: ForceSection) => void
   hoveredPushBucket: string | null
   onHoverPushBucket: (b: string | null) => void
@@ -66,7 +66,7 @@ export function PushPullControls({
   hoveredPushBucket, onHoverPushBucket, hoveredEdge, onHoverEdge,
 }: PushPullProps) {
   const [sub, setSub] = React.useState<PairForce>('push')
-  const current = params.pair.mapping.dimension
+  const current = params.pair.mapping.axis
   return (
     <div className="gv-pushpull-controls">
       {/* The axis both forces key on — above the sub-tabs so it stays visible
@@ -77,14 +77,14 @@ export function PushPullControls({
           id="pushpull-axis"
           className="gv-axis-select"
           value={current}
-          title="The dimension push and pull key on. Tokens are the visible set's: a push token per bucket some visible node falls in, a pull token per spring category some sprung edge falls in; the counts measure the whole graph"
+          title="The axis push and pull key on. Tokens are the visible set's: a push token per bucket some visible node falls in, a pull token per spring category some sprung edge falls in; the counts measure the whole graph"
           onChange={e => {
-            const option = axes.find(o => o.mapping.dimension === e.target.value)
+            const option = axes.find(o => o.mapping.axis === e.target.value)
             if (option) onAxisChange(option.mapping)
           }}
         >
           {axes.map(o => (
-            <option key={o.mapping.dimension} value={o.mapping.dimension} disabled={!fitsCeiling(o)}>
+            <option key={o.mapping.axis} value={o.mapping.axis} disabled={!fitsCeiling(o)}>
               {optionLabel(o)}
             </option>
           ))}

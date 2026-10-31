@@ -6,7 +6,7 @@
 // inputs (the explicit data links) rather than owning any of them.
 
 import type { FilterState } from '../../filter/types'
-import { selectionFor } from '../../filter/types'
+import { selectionFor, selectionsEqual } from '../../filter/types'
 import { foldReheatPolicy } from '../../graph/axis'
 import type { ResolvedAxisDescriptor } from '../../graph/axis'
 import { passesFilter } from './visibleGraph'
@@ -32,7 +32,8 @@ export interface SimulationLoopParams {
   initialFitDone: React.MutableRefObject<boolean>
   pendingCenterRef: React.MutableRefObject<{ nodeId: string } | null>
   setViewport: React.Dispatch<React.SetStateAction<Viewport>>
-  setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>
+  /** Select a node the way the user would — the focus recipe's landing. */
+  setSelectedNodeId: (id: string | null) => void
   taxonomy: Taxonomy
 }
 
@@ -148,7 +149,7 @@ export function useSimulationLoop({
 
     const { alpha, seedRevealed, refit, resume } = foldReheatPolicy(
       axes.filter(
-        dim => selectionFor(prev, dim.id) !== selectionFor(filter, dim.id),
+        dim => !selectionsEqual(selectionFor(prev, dim.id), selectionFor(filter, dim.id)),
       ),
     )
 
