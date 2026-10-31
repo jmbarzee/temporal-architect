@@ -22,7 +22,7 @@ import type { NodeType } from './node-types'
 
 /**
  * This host's second edge axis: the parser's call kind, written by `buildGraph`
- * and read by the edge rules below — and by nothing in the library (D64). A
+ * and read by the edge rules below — and by nothing in the library. A
  * containment edge carries none; it dispatches nothing.
  */
 export const DISPATCH_DIMENSION: AxisId = 'dispatch'
@@ -54,23 +54,24 @@ export type EdgeTypeId =
  * a while, once here and once in the library, structurally identical and
  * therefore silently interchangeable; the moment they drifted by one optional
  * field, the mismatch would have surfaced as a value quietly missing at one end
- * rather than as a type error (T19).
+ * rather than as a type error.
  */
 export interface TemporalEdgeType extends EdgeType {
   id: EdgeTypeId
   sourceValue: NodeType
   targetValue: NodeType
-  // Declared by every entry here, where the library lets a type leave them out.
+  // Declared by every entry here, where the library lets a type leave them out;
+  // `style` is left out by a containment type that takes the library's default.
   physics: SpringPhysics
-  style: EdgeStroke
+  style?: EdgeStroke
   tooltip: string
 }
 
-// How each category is stroked. The nexus family carries the pink palette
-// through every leg of a call; the two coarsened dependency cases get named
-// greys; containment is slate and dotted. Dark variants lift the greys and
-// deepen the pinks a step, as the node palette does.
-const CONTAINMENT: EdgeStroke          = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.35, dash: [3, 4], width: 1 }
+// How each category is stroked. The operation family carries the pink
+// palette through every leg of a call; the two coarsened dependency cases get
+// named greys; containment is the library's slate and dotted default, and the
+// two operation-side containments below are pink. Dark variants lift the greys
+// and deepen the pinks a step, as the node palette does.
 const OP_CONTAINMENT: EdgeStroke       = { color: { light: '#DB2777', dark: '#F472B6' }, alpha: 0.55, dash: [3, 4], width: 1.2 } // op → service
 const EP_COMPOSITION: EdgeStroke       = { color: { light: '#9F1239', dark: '#BE123C' }, alpha: 0.55, dash: [3, 4], width: 1.2 } // op → endpoint
 const NS_DEPENDENCY: EdgeStroke        = { color: { light: '#475569', dark: '#94A3B8' }, alpha: 0.85, dash: [], width: 1.8 }
@@ -91,25 +92,25 @@ export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
     physics: { strength: 0.25, distance: 870 }, style: NS_DEPENDENCY, tooltip: 'Namespace ↔ Namespace dependency' },
   { id: 'linkNsToWorker', label: 'NS↔Wk', sourceValue: 'namespace', targetValue: 'worker',
     relation: 'containment',
-    physics: { strength: 0.30, distance: 800 }, style: CONTAINMENT, tooltip: 'Namespace ↔ Worker containment' },
+    physics: { strength: 0.30, distance: 800 }, tooltip: 'Namespace ↔ Worker containment' },
   { id: 'linkWorkerToWorker', label: 'Wk↔Wk', sourceValue: 'worker', targetValue: 'worker',
     relation: 'dependency',
     physics: { strength: 0.30, distance: 720 }, style: WORKER_DEPENDENCY, tooltip: 'Worker ↔ Worker dependency' },
   { id: 'linkWorkerToWorkflow', label: 'Wk↔Wf', sourceValue: 'worker', targetValue: 'workflow',
     relation: 'containment',
-    physics: { strength: 0.55, distance: 190 }, style: CONTAINMENT, tooltip: 'Worker ↔ Workflow containment' },
+    physics: { strength: 0.55, distance: 190 }, tooltip: 'Worker ↔ Workflow containment' },
   { id: 'linkWorkerToActivity', label: 'Wk↔Act', sourceValue: 'worker', targetValue: 'activity',
     relation: 'containment',
-    physics: { strength: 0.35, distance: 210 }, style: CONTAINMENT, tooltip: 'Worker ↔ Activity containment' },
+    physics: { strength: 0.35, distance: 210 }, tooltip: 'Worker ↔ Activity containment' },
   { id: 'linkWorkerToNexus', label: 'Wk↔Nx', sourceValue: 'worker', targetValue: 'nexusService',
     relation: 'containment',
-    physics: { strength: 1.25, distance: 430 }, style: CONTAINMENT, tooltip: 'Worker ↔ Nexus service containment' },
+    physics: { strength: 1.25, distance: 430 }, tooltip: 'Worker ↔ Nexus service containment' },
   { id: 'linkNexusToOperation', label: 'Nx↔Op', sourceValue: 'nexusService', targetValue: 'nexusOperation',
     relation: 'containment',
     physics: { strength: 1.40, distance: 600 }, style: OP_CONTAINMENT, tooltip: 'Nexus service ↔ Nexus operation containment' },
   { id: 'linkEndpointToNamespace', label: 'Ep↔NS', sourceValue: 'nexusEndpoint', targetValue: 'namespace',
     relation: 'containment',
-    physics: { strength: 1.00, distance: 690 }, style: CONTAINMENT, tooltip: 'Nexus endpoint ↔ Namespace containment' },
+    physics: { strength: 1.00, distance: 690 }, tooltip: 'Nexus endpoint ↔ Namespace containment' },
   { id: 'linkWorkflowToWorkflow', label: 'Wf↔Wf', sourceValue: 'workflow', targetValue: 'workflow',
     relation: 'dependency',
     physics: { strength: 0.50, distance: 420 }, style: WORKFLOW_DEPENDENCY, tooltip: 'Workflow ↔ Workflow dependency' },

@@ -88,7 +88,7 @@ Each definition type has a dedicated color used consistently across both views. 
 
 Every color palette has a matching dark variant.
 
-**In the graph, the palette is the taxonomy's declaration** (D57): every style value carries its fill and border in both themes (`color.light`, `color.dark`) beside its size, and every edge type its stroke; the pane carries them as `--gv-node-<suffix>` custom properties in its resolved theme, and the filter chips borrow a value's colour as a tint. The tree's `--block-*` tokens are the host's own.
+**In the graph, the palette is the taxonomy's declaration**: every style value carries its fill and border in both themes (`color.light`, `color.dark`) beside its size, and every edge type its stroke; the pane carries them as `--gv-node-<suffix>` custom properties in its resolved theme, and the filter chips borrow a value's colour as a tint. The tree's `--block-*` tokens are the host's own.
 
 ### Icon system
 
@@ -96,8 +96,8 @@ Tree-block icons are defined in a central theme map (`temporal-theme.tsx`); grap
 
 ### Theming
 
-- Auto follows the host — an ancestor's `data-theme`, else the OS colour scheme — and is light when none says otherwise. The library reads only `data-theme`; this host translates the editor's body classes (`.vscode-dark`, the high-contrast classes) into a `data-theme` on its root (D67).
-- Dark theme activates via a `[data-theme="dark"]` attribute on an ancestor — set by the shell from the VS Code webview's body classes, or by any other host however it knows its theme; the graph pane also has its own choice — Auto / Light / Dark, persisted (R21) — carried as `data-theme` on the pane, so it can be dark in a light host and light in a dark one.
+- Auto follows the host — an ancestor's `data-theme`, else the OS colour scheme — and is light when none says otherwise. The library reads only `data-theme`; this host translates the editor's body classes (`.vscode-dark`, the high-contrast classes) into a `data-theme` on its root.
+- Dark theme activates via a `[data-theme="dark"]` attribute on an ancestor — set by the shell from the VS Code webview's body classes, or by any other host however it knows its theme; the graph pane also has its own choice — Auto / Light / Dark, persisted — carried as `data-theme` on the pane, so it can be dark in a light host and light in a dark one.
 - Hover brightness shifts direction between themes (`0.95` in light, `1.1` in dark).
 
 ### Border conventions

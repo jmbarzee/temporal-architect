@@ -3,12 +3,10 @@
 //
 // A dangling endpoint, an edge whose relation is neither of the two the engine
 // knows, an edge the host's rule classifies as a type its table does not
-// declare: each used to be either dropped in silence or thrown from inside a
-// render memo, where no boundary catches it and the host's whole tree
-// unmounts. Here they are diagnostics. The view runs this once per graph,
-// shows the list inside its own pane, hands it to `onDiagnostics`, and draws
-// what remains; a host that wants to refuse a bad graph before mounting calls
-// it itself.
+// declare: each is a diagnostic, as data, never a throw from inside a render.
+// The view runs this once per graph, shows the list inside its own pane, hands
+// it to `onDiagnostics`, and draws what remains; a host that wants to refuse a
+// bad graph before mounting calls it itself.
 
 import type { Graph, GraphEdge, GraphNode } from './model'
 import { nodesById, relationOf } from './model'
@@ -19,7 +17,9 @@ import type { Taxonomy } from './taxonomy'
  * an edge whose endpoint is not in the graph, an unknown relation, a type
  * whose relation is not the edge's, a rule that threw, a parent not in the
  * graph. Warnings: an edge no type claims, a style value the taxonomy does
- * not declare, containment edges that contradict `parentId`.
+ * not declare, containment edges that contradict `parentId`, derived
+ * containment edges no type claims (`containment-untyped`, from
+ * `derivedContainmentDiagnostics`).
  */
 export type GraphDiagnosticCode =
   | 'edge-id-duplicate'
@@ -32,6 +32,7 @@ export type GraphDiagnosticCode =
   | 'containment-parent-mismatch'
   | 'node-value-undeclared'
   | 'node-id-duplicate'
+  | 'containment-untyped'
 
 /** One defect in a host's graph, as data: its severity, its code, a message, and the node or edge it names. */
 export interface GraphDiagnostic {
@@ -107,15 +108,15 @@ export function validateGraph(graph: Graph, taxonomy: Taxonomy): GraphDiagnostic
     }
     let typeId: string | undefined
     try {
-      typeId = taxonomy.classifyEdge(edge, taxonomy.styleValueOf(src), taxonomy.styleValueOf(tgt))
+      typeId = taxonomy.edgeTypeOf(edge, taxonomy.styleValueOf(src), taxonomy.styleValueOf(tgt))
     } catch (e) {
-      out.push({ severity: 'error', code: 'edge-type-rule-threw', edgeId: edge.id, message: `the taxonomy's classifyEdge threw on edge ${JSON.stringify(edge.id)}: ${e instanceof Error ? e.message : String(e)}` })
+      out.push({ severity: 'error', code: 'edge-type-rule-threw', edgeId: edge.id, message: `the taxonomy's classifyEdge rule threw on edge ${JSON.stringify(edge.id)}: ${e instanceof Error ? e.message : String(e)}` })
       continue
     }
     const declared = typeId === undefined ? undefined : declaredTypes.get(typeId)
     if (!declared) {
       const said = typeId === undefined ? 'no declared type fits its endpoints and values' : `classifyEdge answered ${JSON.stringify(typeId)}, which edgeTypes does not declare`
-      out.push({ severity: 'warning', code: 'edge-type-unclassified', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has no type: ${said}; it draws in the neutral stroke with the typical spring` })
+      out.push({ severity: 'warning', code: 'edge-type-unclassified', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has no type: ${said}; it draws in its relation's default stroke and pulls nothing while push and pull key on the style axis` })
       continue
     }
     if (declared.relation !== relation) {
@@ -169,4 +170,40 @@ export function dropInvalid(graph: Graph, diagnostics: readonly GraphDiagnostic[
     edges.push(e)
   }
   return { nodes, edges }
+}
+
+/**
+ * The one warning the drawn graph adds to the host's: the containment edges
+ * the view derived from `parentId` that no declared containment type claims
+ * (a dependency type the host's rule answers does not count). They draw in
+ * the containment stroke and pull nothing while push and pull key on the
+ * style axis; a host that wants them typed declares a containment type
+ * between the child's value and the parent's.
+ */
+export function derivedContainmentDiagnostics(drawn: Graph, host: Graph, taxonomy: Taxonomy): GraphDiagnostic[] {
+  const listed = new Set<GraphEdge>(host.edges)
+  const byId = nodesById(drawn.nodes)
+  const untyped: string[] = []
+  for (const edge of drawn.edges) {
+    if (listed.has(edge) || relationOf(edge) !== 'containment') continue
+    const src = byId.get(edge.sourceId)
+    const tgt = byId.get(edge.targetId)
+    let typeId: string | undefined
+    try {
+      typeId = taxonomy.edgeTypeOf(edge, src && taxonomy.styleValueOf(src), tgt && taxonomy.styleValueOf(tgt))
+    } catch {
+      typeId = undefined
+    }
+    const declared = typeId === undefined ? undefined : taxonomy.edgeTypes.find(t => t.id === typeId)
+    if (declared === undefined || declared.relation !== 'containment') untyped.push(edge.id)
+  }
+  if (untyped.length === 0) return []
+  const shown = untyped.slice(0, 3).map(id => JSON.stringify(id)).join(', ')
+  const one = untyped.length === 1
+  return [{
+    severity: 'warning',
+    code: 'containment-untyped',
+    edgeId: untyped[0],
+    message: `${untyped.length} derived containment edge${one ? '' : 's'} (${shown}${untyped.length > 3 ? ', …' : ''}) ${one ? 'has' : 'have'} no type: no declared containment type runs between the child's value and the parent's; ${one ? 'it draws' : 'they draw'} in the containment stroke and pull${one ? 's' : ''} nothing while push and pull key on the style axis`,
+  }]
 }

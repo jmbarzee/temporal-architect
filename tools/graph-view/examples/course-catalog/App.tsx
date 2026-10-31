@@ -7,10 +7,10 @@
 
 import React from 'react'
 import {
-  GraphView, GroupLegend, TaxonomyContext, copyGroups, initialFilter, nodesById, payloadNumber, payloadString, schemeVars, selectionFor, withSelection,
+  GraphView, GroupLegend, TaxonomyContext, copyGroups, initialFilter, nodesById, payloadNumber, payloadString, schemeVars, selectionFor, useFocusRequest, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
-  AxisSelection, FilterState, FocusRequest, Graph, GraphNode, NodeGroup, Theme, ThemeChoice,
+  AxisSelection, FilterState, Graph, GraphNode, NodeGroup, Theme, ThemeChoice,
 } from '@temporal-architect/graph-view'
 import { catalog } from './data'
 import type { Campus, Catalog } from './data'
@@ -84,9 +84,8 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
   // Controlled: the panel's close clears it, and the view selects what it says.
   const [selected, setSelected] = React.useState<GraphNode | null>(null)
   // A request, not a state: the view applies it when it changes, and each ask
-  // carries a fresh `key`, so asking again for the same node asks again.
-  const [focus, setFocus] = React.useState<FocusRequest | null>(null)
-  const focusSeq = React.useRef(0)
+  // is a fresh one, so asking again for the same node asks again.
+  const [focus, requestFocus] = useFocusRequest()
 
   // The side panel follows the pane's theme: the view reports the one it drew in.
   const [theme, setTheme] = React.useState<Theme>('light')
@@ -95,7 +94,7 @@ export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice })
   const groups = React.useMemo(() => programmeGroups(graph, enabled), [enabled])
 
   /** Ask the view to reveal `node`: it widens the filter just enough, centres and selects. */
-  const reveal = (node: GraphNode) => setFocus({ id: node.id, key: ++focusSeq.current })
+  const reveal = (node: GraphNode) => requestFocus(node.id)
   const onlyCampus = (campus: string) => setFilter(f => withSelection(f, CAMPUS, new Set([campus])))
 
   return (

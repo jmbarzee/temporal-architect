@@ -14,14 +14,16 @@ import {
   themeChoiceOf,
   useHostTheme,
   schemeVars,
+  layoutFromJSON,
+  layoutToJSON,
 } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { useEditorTheme } from '../theme/useEditorTheme'
 import { loadState, saveState, type StorageConfig } from '../adapter/storage'
 import type {
-  FocusRequest,
   GraphNode,
   AxisLocks,
+  LayoutState,
   ThemeChoice,
 } from '@temporal-architect/graph-view'
 import React from 'react'
@@ -160,8 +162,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // that far — the version guard in storage.ts discards it.
   const persisted = React.useMemo(() => loadState(STORAGE), [])
 
-  const [activeView, setActiveView] = React.useState<ActiveView>(historyMode ? 'graph' : 'tree')
-
   // Keep-alive: the Graph view is mounted lazily (the first time it's shown)
   // and then kept mounted — hidden, not unmounted — when the user switches
   // away, so its viewport/layout survive a round-trip to the Tree view. We
@@ -170,7 +170,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const [graphEverShown, setGraphEverShown] = React.useState(historyMode)
 
   // The Graph view's inputs, read here off the payload: the graph built from
-  // the parser's deployment graph, the findings, the chip counts (D61). The
+  // the parser's deployment graph, the findings, the chip counts. The
   // view builds none of them and never sees the AST or the parser graph. Read
   // before the filters below: the filter a view starts from is the library's
   // default over this graph, narrowed to the focused file when there is one.
@@ -181,16 +181,20 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
   )
 
-  // Each view's filter, locks and shown axes, and what a switch between the two
-  // does to them, live in the library's `useLinkedViews`. A view starts from its
-  // persisted state, else the default filter (narrowed to the focused file), the
-  // default locks and — the hook's default — every declared axis in the host's
-  // declared order, so "default displayed filters" is configurable by declaring
-  // a different taxonomy rather than by a setting (R17-R19).
+  // Each view's filter, locks and shown axes, the view shown, the search they
+  // share, and what a switch between the two does to them, live in the
+  // library's `useLinkedViews`. A view starts from its persisted state, else
+  // the default filter (narrowed to the focused file), the default locks and —
+  // the hook's default — every declared axis in the host's declared order, so
+  // "default displayed filters" is configurable by declaring a different
+  // taxonomy rather than by a setting. The Graph is shown first
+  // when there is no Tree to show.
   const linked = useLinkedViews({
     taxonomy: DEFAULT_TAXONOMY,
     views: VIEWS,
     graph: model.graph,
+    start: historyMode ? 'graph' : 'tree',
+    initialSearch: { query: persisted.searchQuery ?? '', active: false },
     initial: view => {
       const saved = view === 'tree'
         ? { filter: persisted.treeFilter, locks: persisted.treePins, axes: persisted.treeChain }
@@ -198,7 +202,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
       return { filter: filterFromJSON(saved.filter) ?? startingFilter(), locks: locksFromJSON(saved.locks) ?? DEFAULT_PINS, axes: saved.axes }
     },
   })
-  const { switchTo, updateFilter, updateFilters } = linked
+  const { switchTo, focus, updateFilter, updateFilters } = linked
+  const activeView = linked.active
   const treeFilter = linked.state.tree.filter
   const graphFilter = linked.state.graph.filter
 
@@ -215,45 +220,45 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     setGroupHover(null)
   }, [decomposition])
   // Every node's deployment copies by their shared key, derived from the graph
-  // (D67); the group overlay maps a decomposition's members through it.
+  //; the group overlay maps a decomposition's members through it.
   const copies = React.useMemo(() => copyGroups(model.graph), [model.graph])
   const nodeGroups = React.useMemo(
     () => nodeGroupsOf(decomposition, groupSelection, groupHover, copies),
     [decomposition, groupSelection, groupHover, copies],
   )
 
-  // Globally-shared search state — one query applied identically to both
-  // views (spec § Search Scope). Search is non-destructive (dim, not hide)
-  // so sharing is safe.
-  const [searchQuery, setSearchQuery] = React.useState<string>(persisted.searchQuery ?? '')
+  // The search is one query applied identically to both views (spec § Search
+  // Scope), held by the hook — started from the persisted query — and handed
+  // to each view in `linked.of(view)`. Search is non-destructive (dim, not
+  // hide), so sharing is safe.
   const [graphTheme, setGraphTheme] = React.useState<ThemeChoice>(() => themeChoiceOf(persisted.graphTheme))
   // The host's theme for the whole canvas, and the scheme in it, carried as
   // custom properties on the root so every chip and token — the tree's too —
-  // reads the taxonomy's colours, not a mounted stylesheet (D58). The graph
+  // reads the taxonomy's colours, not a mounted stylesheet. The graph
   // pane overrides both with its own choice.
   const rootRef = React.useRef<HTMLDivElement>(null)
   // The editor's theme when this runs as a webview, else whatever an ancestor
   // declares or the OS prefers; set on the root as `data-theme`, the one
-  // signal the library reads (D67).
+  // signal the library reads.
   const editorTheme = useEditorTheme()
   const detectedTheme = useHostTheme(rootRef)
   const hostTheme = editorTheme ?? detectedTheme
   const schemeStyle = React.useMemo(() => schemeVars(DEFAULT_TAXONOMY, hostTheme) as React.CSSProperties, [hostTheme])
-  const [searchActive, setSearchActive] = React.useState<boolean>(false)
+
+  // The Graph pane's layout — the force tuning and the node scale. The pane
+  // starts from the persisted one (built once) and keeps its own; the host
+  // holds what it reports, for persistence. Until the pane reports, a stored
+  // layout stays the one persisted, so a session that never shows the Graph
+  // does not drop it.
+  const defaultLayout = React.useMemo(() => layoutFromJSON(persisted.graphLayout ?? {}, DEFAULT_TAXONOMY), [persisted])
+  const [layout, setLayout] = React.useState<LayoutState | undefined>(persisted.graphLayout === undefined ? undefined : defaultLayout)
 
   // Pending-focus target for a focus into the Tree. The hook has already
   // expanded the Tree's filter by the time this is set; the Tree consumes it
   // for scroll/flash only, and its bar flashes any lock the focus overrode.
-  // (A focus into the Graph is `graphFocus` below: the view does its own
-  // reconcile and flashes its own locks.)
+  // (A focus into the Graph is `linked.focus`: the view does its own
+  // reconcile, flashes its own locks and centres on the node.)
   const [pendingFocus, setPendingFocus] = React.useState<TreeFocus | null>(null)
-
-  // The node a cross-view focus asked the Graph view to reveal, centre and
-  // select. The view applies a request whenever it changes, including one set
-  // before it mounted (it mounts lazily on first show). Each request carries a
-  // fresh `key`, so asking for the same node twice is a change both times.
-  const [graphFocus, setGraphFocus] = React.useState<FocusRequest | null>(null)
-  const graphFocusSeq = React.useRef(0)
 
   // Persist on every relevant state change. localStorage in standalone;
   // vscode.setState in webview (via the storage shim).
@@ -266,10 +271,11 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
       graphChain: [...graph.axes],
       treePins: locksToJSON(tree.locks),
       graphPins: locksToJSON(graph.locks),
-      searchQuery,
+      searchQuery: linked.search.query,
       graphTheme,
+      ...(layout ? { graphLayout: layoutToJSON(layout) } : {}),
     })
-  }, [linked.state, searchQuery, graphTheme])
+  }, [linked.state, linked.search.query, graphTheme, layout])
 
   // Stale file cleanup: when the AST changes, remove any selectedFiles
   // entries that no longer exist in either view. Pins are not touched —
@@ -343,15 +349,17 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // by construction (Show in [view] is always cross-view).
     if (target === activeView && transition.kind === 'manual') return
 
-    // A focus into the Graph: the view reconciles its own filter, flashes any
-    // pin it overrides and centres on the node when handed its id.
+    // A focus into the Graph: the hook switches to it and hands the view a
+    // request, which reconciles its own filter, flashes any lock it overrides
+    // and centres on the node. A target with no node in the graph is a manual
+    // switch.
     if (target === 'graph' && transition.kind === 'focus') {
       const { name, values } = transition.target
       const node = model.graph.nodes.find(n =>
         n.name === name && n.values[DEF_TYPE_DIMENSION] === values[DEF_TYPE_DIMENSION])
-      setGraphFocus(node ? { id: node.id, key: ++graphFocusSeq.current } : null)
+      if (node) focus('graph', node)
+      else switchTo('graph')
       setGraphEverShown(true)
-      setActiveView('graph')
       return
     }
 
@@ -360,14 +368,13 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // bar, which flashes them. Into the Graph (manual only, from here): the
     // Graph adopts the Tree's selections except where it is locked.
     if (target === 'tree') {
-      switchTo('tree', transition, 'graph')
+      switchTo('tree', transition)
       if (transition.kind === 'focus') setPendingFocus(transition.target)
     } else {
-      switchTo('graph', { kind: 'manual' }, 'tree')
+      switchTo('graph')
       setGraphEverShown(true)
     }
-    setActiveView(target)
-  }, [activeView, historyMode, model.graph, switchTo])
+  }, [activeView, historyMode, model.graph, switchTo, focus])
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
@@ -398,11 +405,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   }, [ast.definitions, switchView])
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
-
-  const handleSearchChange = React.useCallback((query: string, active: boolean) => {
-    setSearchQuery(query)
-    setSearchActive(active)
-  }, [])
 
   // When the Tree's file filter narrows to exactly one file, open it in
   // the editor (VS Code webview behavior).
@@ -462,9 +464,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               ast={ast}
               onShowInGraph={showInGraph}
               {...linked.of('tree')}
-              searchQuery={searchQuery}
-              searchActive={searchActive}
-              onSearchChange={handleSearchChange}
+              systemTheme={hostTheme}
               pendingFocus={pendingFocus}
               onFocusConsumed={clearPendingFocus}
             />
@@ -473,7 +473,6 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
         {graphEverShown && (
           <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
             <GraphView
-              focus={graphFocus}
               keyboard={activeView === 'graph' ? 'global' : 'none'}
               graph={model.graph}
               counts={graphCounts}
@@ -493,9 +492,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               nodeAction={historyMode ? undefined : { label: 'Show in Tree', onSelect: showInTree }}
               theme={graphTheme}
               onThemeChange={setGraphTheme}
+              systemTheme={hostTheme}
+              defaultLayout={defaultLayout}
+              onLayoutChange={setLayout}
               {...linked.of('graph')}
-              search={{ query: searchQuery, active: searchActive }}
-              onSearchChange={next => handleSearchChange(next.query, next.active)}
             />
           </div>
         )}

@@ -15,9 +15,7 @@ export interface GraphNode {
    */
   id: string
   /**
-   * Where this node sits on every axis the taxonomy declares.
-   *
-   * This replaces the single type string a node used to carry. Features elect
+   * Where this node sits on every axis the taxonomy declares. Features elect
    * one axis each and read it from here; nothing composes across axes.
    */
   values: AxisValues

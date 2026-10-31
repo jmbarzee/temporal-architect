@@ -26,7 +26,7 @@ Review prompts referenced below live at `.claude/skills/dev-cycle/references/<na
 
 `graph-view` (`tools/graph-view/`) is the visualizer's engine in its own package: a
 force-directed graph view with composable dimensions that knows nothing of Temporal
-(the visualizer's gates hold its domain vocabulary at zero). The visualizer is its
+(it carries none of the Temporal vocabulary). The visualizer is its
 **host**: it adapts parser output into the library's `Graph`, declares the Temporal
 taxonomy through the library's `OntologySpec`, and consumes the library from source
 through its build's alias. The library's public entry (`tools/graph-view/src/index.ts`)

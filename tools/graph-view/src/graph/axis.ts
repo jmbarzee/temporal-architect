@@ -1,8 +1,7 @@
 // Axes — what a node's identity is expressed on.
 //
-// A node used to be one string. It is now a map of axis → value, and every
-// feature (colour, push/pull, each gravity axis, each filter axis)
-// elects exactly ONE axis to operate on. Features never sum, compose or rank
+// A node is a map of axis → value, and every feature (colour, push/pull,
+// each gravity axis, each filter axis) elects exactly ONE axis to operate on. Features never sum, compose or rank
 // across axes: that is what keeps the model explainable, and it is why nothing
 // here offers a way to combine two axes.
 //
@@ -106,8 +105,8 @@ export interface ReheatPolicy {
  */
 export interface AxisDescriptor {
   id: AxisId
-  /** Human label for the axis itself, e.g. for a dropdown or a chip group. */
-  label: string
+  /** Human label for the axis itself, e.g. for a dropdown or a chip group. Default: the id. */
+  label?: string
   /**
    * What an EMPTY selection on this axis means: `none` hides everything (the
    * chips are an allow-list), `all` shows everything (the chips narrow).
@@ -116,11 +115,13 @@ export interface AxisDescriptor {
   /** What happens to a node carrying NO value on this axis while a selection is active. */
   absentMeans?: 'visible' | 'hidden'
   /**
-   * How far a focus transition expands this axis to reveal its target:
-   * `always` adds the target's value unconditionally; `whenActive` adds it
-   * only if a selection is already active.
+   * How a focus widens this axis to reveal its target: `always` adds the
+   * target's value; `whenActive` adds it only while a selection is active
+   * (on a narrowing axis, adding the first value would narrow everything to
+   * that one value — the opposite of a reveal). Default: `always` on an
+   * allow-list, `whenActive` on a narrowing axis.
    */
-  focus?: 'always' | 'whenActive'
+  widens?: 'always' | 'whenActive'
   /**
    * Whether a change on this axis keeps the user's pan and zoom. Default: an
    * allow-list refits the camera to the new extent (and seeds revealed nodes
@@ -165,7 +166,8 @@ export interface AxisDescriptor {
 export interface ResolvedAxisDescriptor extends AxisNamer {
   emptyMeans: 'all' | 'none'
   absentMeans: 'visible' | 'hidden'
-  focus: 'always' | 'whenActive'
+  /** How a focus widens this axis to reveal its target. */
+  widens: 'always' | 'whenActive'
   /** Whether a change on this axis keeps the user's pan and zoom (a narrowing axis does; an allow-list refits). */
   keepCamera: boolean
   tooltipFor?(value: AxisValue): string
@@ -198,10 +200,10 @@ export function resolveDescriptor(d: AxisDescriptor, style: StyleNamer): Resolve
   const iconFor = d.iconFor ?? (onStyle ? style.iconFor : () => '')
   return {
     id: d.id,
-    label: d.label,
+    label: d.label ?? d.id,
     emptyMeans: d.emptyMeans,
     absentMeans: d.absentMeans ?? (allow ? 'hidden' : 'visible'),
-    focus: d.focus ?? (allow ? 'always' : 'whenActive'),
+    widens: d.widens ?? (allow ? 'always' : 'whenActive'),
     keepCamera,
     labelFor,
     abbreviationFor,
@@ -445,24 +447,19 @@ export interface ReheatPlan extends ReheatPolicy {
 }
 
 /**
- * Fold the per-axis reheat policies of every axis that changed.
- *
- * Pure and outside React so it can be goldened. It was inline in the loop hook,
- * where **no gate could reach it**: all four fields of a descriptor's `reheat`
- * could be inverted — including `resume: false`, which freezes the canvas after
- * every toggle — and every check stayed green. Declared policy nothing reads is
- * not policy.
- *
- * Several axes can move at once (a view switch does exactly that), so the
- * policies combine rather than the last one winning: the strongest reheat, and
- * any axis that wants seeding, refitting or resuming gets it.
+ * Fold the per-axis reheat policies of every axis that changed. Pure and
+ * outside React, so the harness pins it: a declared policy nothing reads is
+ * not policy. Several axes can move at once (a view switch does exactly
+ * that), so the policies combine rather than the last one winning: the
+ * strongest reheat, and any axis that wants seeding, refitting or resuming
+ * gets it.
  */
 export function foldReheatPolicy(
   changedAxes: readonly ResolvedAxisDescriptor[],
 ): ReheatPlan {
   let alpha = 0, seedRevealed = false, refit = false, resume = false
-  for (const dim of changedAxes) {
-    const policy = reheatOf(dim)
+  for (const axis of changedAxes) {
+    const policy = reheatOf(axis)
     alpha = Math.max(alpha, policy.alpha)
     seedRevealed = seedRevealed || policy.seedRevealed
     refit = refit || policy.refit

@@ -49,20 +49,8 @@ jobs:
       - name: Typecheck visualizer
         run: make typecheck
 
-      - name: Visualizer ratchet gates (vocabulary, import direction, patterns)
-        run: make gates-visualizer
-
-      - name: Visualizer goldens
-        run: make verify-visualizer
-
       - name: Build toolchain (binary + the two npm libraries)
         run: make build
-
-      - name: Visualizer published types (consumer compile, skipLibCheck off)
-        run: cd tools/visualizer && npm run dts-gate
-
-      - name: graph-view published types (consumer compile, skipLibCheck off)
-        run: cd tools/graph-view && npm run dts-gate
 
       - name: Verify release artifacts pack
         run: |

@@ -31,7 +31,7 @@
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.gv-tag-section.section-pinned {
+.gv-tag-section.section-locked {
   background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
   box-shadow: inset 2px 0 0 var(--gv-accent);
 }
@@ -192,7 +192,7 @@
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.gv-chip-section.section-pinned {
+.gv-chip-section.section-locked {
   background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
   box-shadow: inset 2px 0 0 var(--gv-accent);
 }

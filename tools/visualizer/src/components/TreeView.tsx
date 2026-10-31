@@ -6,7 +6,7 @@ import {
   FilterBar,
 } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
-import type { FocusTarget, LinkedViewProps } from '@temporal-architect/graph-view'
+import type { AxisValues, FocusTarget, LinkedViewProps, Theme } from '@temporal-architect/graph-view'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
@@ -17,20 +17,26 @@ import { ErrorBars } from './ErrorBars'
 import { definitionCounts } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
 
+/** A definition's values on the axes it carries: its type, and its file when it has one. */
+function valuesOf(def: Definition): AxisValues {
+  return def.sourceFile === undefined
+    ? { [DEF_TYPE_DIMENSION]: def.type }
+    : { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.sourceFile }
+}
+
 /** Where a focus into the tree lands: the library's target, plus the name this view finds a definition by. */
 export type TreeFocus = FocusTarget & { name: string }
 
-// The filter, locks and axes (and the locks a focus overrode) are the shell's
-// `linked.of('tree')`: the bar takes them as they come.
+// The filter, locks, axes (and the locks a focus overrode) and the shared
+// search are the shell's `linked.of('tree')`: the bar takes them as they come.
 interface TreeViewProps extends LinkedViewProps {
   // Whether this view is the active tab. Both views stay mounted (keep-alive),
   // so the inactive one must not respond to global keyboard shortcuts.
   active: boolean
   ast: TWFFile
   onShowInGraph?: (name: string, defType: string) => void
-  searchQuery: string
-  searchActive: boolean
-  onSearchChange: (query: string, active: boolean) => void
+  /** What the bar's `system` theme resolves to: the host's own theme. */
+  systemTheme: Theme
   pendingFocus: TreeFocus | null
   onFocusConsumed: () => void
 }
@@ -39,14 +45,17 @@ export function TreeView({
   active,
   ast,
   onShowInGraph,
-  searchQuery,
-  searchActive,
-  onSearchChange,
+  systemTheme,
   pendingFocus,
   onFocusConsumed,
   ...linked
 }: TreeViewProps) {
-  const { filter, axes } = linked
+  const { filter, axes, search, onSearchChange: onSearchState } = linked
+  const { query: searchQuery, active: searchActive } = search
+  const onSearchChange = React.useCallback(
+    (query: string, active: boolean) => onSearchState({ query, active }),
+    [onSearchState],
+  )
   const taxonomy = useTaxonomy()
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
@@ -220,12 +229,9 @@ export function TreeView({
     // `values` map. This used to be a second hand-written implementation of
     // both axes' empty/absent semantics, so a descriptor change moved the graph
     // and left the tree behind.
-    // Only the axes this view shows filter (D66), as in the graph view.
+    // Only the axes this view shows filter, as in the graph view.
     const filtered = ast.definitions.filter((def): def is Definition =>
-      passesSelection(filter, taxonomy, axes, dim =>
-        dim === DEF_TYPE_DIMENSION ? def.type
-        : dim === SOURCE_FILE_DIMENSION ? def.sourceFile
-        : undefined))
+      passesSelection({ filter, taxonomy, axes, node: { values: valuesOf(def) } }))
 
     filtered.sort((a, b) => {
       const orderA = DEF_TYPE_ORDER.get(a.type) ?? 999
@@ -482,10 +488,9 @@ export function TreeView({
       <div className="workflow-canvas">
         <FilterBar
           {...linked}
+          systemTheme={systemTheme}
           counts={counts}
           values={valuesByDimension}
-          search={{ query: searchQuery, active: searchActive }}
-          onSearchChange={next => onSearchChange(next.query, next.active)}
           searchInputRef={searchInputRef}
           searchTitle="Search definitions"
           searchPlaceholder="Filter by name..."

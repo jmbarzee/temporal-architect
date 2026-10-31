@@ -6,12 +6,12 @@ import './GraphView.css'
 import { nodesById, readableGraph, isContainment, withContainmentEdges } from '../graph/model'
 import type { Graph, GraphEdge, GraphNode } from '../graph/model'
 import type { FilterState, AxisLocks } from '../filter/types'
-import { initialFilter, filterStatesEqual, hiddenMatchesOf, listEqual, locksEqual, passesDescriptors, selectionFor, selectionsEqual, withSelection } from '../filter/types'
+import { initialFilter, filterStatesEqual, hiddenMatchesOf, listEqual, locksEqual, passesDescriptors, reseedFilter } from '../filter/types'
 import { reconcileFilter } from '../filter/reconcile'
-import type { Simulation } from '../graph/simulation'
+import type { ForceParams, Simulation } from '../graph/simulation'
 import { bandOverlay, layoutFrame, resolvePhysics } from '../graph/forces'
 import { countsOn, isIdentityMapping, valuesOn } from '../graph/axis'
-import type { AxisMapping } from '../graph/axis'
+import type { AxisId, AxisMapping } from '../graph/axis'
 import type { PresentSets } from './graph-view/present'
 import { presentSetsOf } from './graph-view/present'
 import type { EdgeStroke, Theme } from '../graph/scheme'
@@ -20,7 +20,10 @@ import { useTheme, THEME_CHOICES } from './graph-view/useTheme'
 import type { ThemeChoice } from './graph-view/useTheme'
 import { axisOptions, layoutAxisOptions, pairTuning, sprungEdges } from '../graph/simulation'
 import { copyGroups, copyKeyOf } from '../graph/model'
-import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
+import type { NodeScaleParams } from '../graph/node-scale'
+import { CONTAINMENT_STROKE, NEUTRAL_STROKE } from '../graph/shapes'
+import { defaultLayoutFor, layoutsEqual, makeLayout, openLayout } from '../graph/layout-internal'
+import type { LayoutState } from '../graph/layout'
 import { TaxonomyContext, useTaxonomy } from './graph-view/useTaxonomy'
 import type { Taxonomy } from '../graph/taxonomy'
 import { worldToScreen } from '../graph/viewport'
@@ -39,12 +42,12 @@ import { useHighlight } from './graph-view/useHighlight'
 import { useSimulation } from './graph-view/useSimulation'
 import { useVisibleGraph } from './graph-view/useVisibleGraph'
 import { useSimulationLoop } from './graph-view/useSimulationLoop'
-import { useControllable, useLatest, useStable } from './graph-view/useControllable'
+import { useControllable, useControlledWarning, useLatest, useStable } from './graph-view/useControllable'
 import { sameFocusRequest } from './graph-view/focus'
 import type { FocusRequest } from './graph-view/focus'
 export type { FocusRequest } from './graph-view/focus'
 import { useIsomorphicLayoutEffect } from './graph-view/useIsomorphicLayoutEffect'
-import { validateGraph, dropInvalid } from '../graph/validate'
+import { validateGraph, derivedContainmentDiagnostics, dropInvalid } from '../graph/validate'
 import type { GraphDiagnostic } from '../graph/validate'
 
 /** A node's position in the layout, in world units. */
@@ -143,6 +146,8 @@ export interface GraphViewProps {
    * does not. Absent, the view keeps the selection itself.
    */
   selectedId?: string | null
+  /** Where the view's own selection starts when the host does not control it. Read once. */
+  defaultSelectedId?: string | null
   /**
    * A request to reveal, centre and select a node — the declarative form of
    * the handle's `focusNode`. Compared by value: a new `id` or `key` is a new
@@ -158,10 +163,22 @@ export interface GraphViewProps {
   /** Merged onto the root's style; the scheme's variables stay. */
   style?: React.CSSProperties
 
-  /** The selection per axis. Default: `defaultFilter`, or `initialFilter(taxonomy, graph)`, re-seeded from each new graph on every axis still at the selection it opened with. */
+  /**
+   * The selection per axis. Controlled while defined: the view shows it and
+   * never rewrites it — a host that controls the filter re-seeds it for a
+   * new graph itself (`reseedFilter`). Absent, the view keeps the filter:
+   * `defaultFilter`, or `initialFilter(taxonomy, graph)` re-seeded from each
+   * new graph on every axis still at the selection it opened with.
+   */
   filter?: FilterState
-  /** Every change to the filter — the user's, and the view's own re-seed on a graph change. */
-  onFilterChange?: (next: FilterState) => void
+  /**
+   * Every change to the filter — the user's and, when the view keeps the
+   * filter itself, its own re-seed on a graph change. `touched` names the
+   * axes the user changed in the bar; a write of the view's own (its re-seed,
+   * a focus's widening) names none — so a host that controls the filter can
+   * keep the set `reseedFilter` takes.
+   */
+  onFilterChange?: (next: FilterState, touched: readonly AxisId[]) => void
   /**
    * Where the view's own filter starts when the host does not control it —
    * a start that depends on the host's state, which a descriptor's
@@ -169,20 +186,43 @@ export interface GraphViewProps {
    * chosen its start, so a later graph re-seeds nothing.
    */
   defaultFilter?: FilterState
-  /** Which axes are locked against a cross-view adoption. Default: none. Controlling it with `onLocksChange` shows the lock toggles. */
+  /** Which axes are locked against a cross-view adoption. Default: `defaultLocks`, else none. Controlling it with `onLocksChange` shows the lock toggles. */
   locks?: AxisLocks
   onLocksChange?: (next: AxisLocks) => void
+  /** Where the view's own locks start when the host does not control them. Read once. */
+  defaultLocks?: AxisLocks
   /** The locks a host-side focus into this view overrode (`useLinkedViews`'s `switchTo`); flashed once, beside the view's own. */
   overriddenLocks?: ReadonlySet<string>
-  /** The axes shown, in order. Default: every declared filter axis. Editable in the bar unless controlled without a callback. */
+  /** The axes shown, in order. Default: `defaultAxes`, else every declared filter axis. Editable in the bar unless controlled without a callback. */
   axes?: readonly string[]
   onAxesChange?: (next: readonly string[]) => void
-  /** The search control. Default: closed and empty. */
+  /** Where the view's own axes start when the host does not control them. Read once. */
+  defaultAxes?: readonly string[]
+  /** The search control. Default: `defaultSearch`, else closed and empty. */
   search?: SearchState
   onSearchChange?: (next: SearchState) => void
-  /** The pane's theme choice. Default: `system`. */
+  /** Where the view's own search starts when the host does not control it. Read once. */
+  defaultSearch?: SearchState
+  /** The pane's theme choice. Default: `defaultTheme`, else `system`. */
   theme?: ThemeChoice
   onThemeChange?: (next: ThemeChoice) => void
+  /** Where the view's own theme choice starts when the host does not control it. Read once. */
+  defaultTheme?: ThemeChoice
+  /** What `system` resolves to, for a host that knows its own theme. Given, the pane reads no ancestor's `data-theme` and no OS preference for it. */
+  systemTheme?: Theme
+  /**
+   * The layout — the force tuning and the node scale, as the user set them.
+   * Controlled while defined: the view reads it, retunes it for the graph and
+   * taxonomy it faces (a tuning on an axis the graph no longer carries
+   * returns to the style axis, reported through `onLayoutChange`), and
+   * otherwise never writes it. Absent, the view keeps the layout:
+   * `defaultLayout`, else the taxonomy's defaults.
+   */
+  layout?: LayoutState
+  /** Every change to the layout — the user's tuning in the control panel and the view's retune for a new graph or taxonomy. */
+  onLayoutChange?: (next: LayoutState) => void
+  /** Where the view's own layout starts when the host does not control it — `layoutFromJSON`'s answer, say. Read once. */
+  defaultLayout?: LayoutState
 
   /**
    * The selection the user made — a click, Enter, Escape, a search pick, a
@@ -223,16 +263,17 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   chrome,
   searchTitle = 'Search nodes (/)',
   searchPlaceholder = 'Search nodes...',
-  selectedId,
+  selectedId, defaultSelectedId = null,
   focus,
   onFocusResult,
   className,
   style,
   filter: filterProp, onFilterChange, defaultFilter: defaultFilterProp,
-  locks: locksProp, onLocksChange, overriddenLocks: hostOverridden,
-  axes: hostAxes, onAxesChange,
-  search: searchProp, onSearchChange,
-  theme: themeProp, onThemeChange,
+  locks: locksProp, onLocksChange, defaultLocks, overriddenLocks: hostOverridden,
+  axes: hostAxes, onAxesChange, defaultAxes,
+  search: searchProp, onSearchChange, defaultSearch,
+  theme: themeProp, onThemeChange, defaultTheme, systemTheme,
+  layout: layoutProp, onLayoutChange, defaultLayout,
   onSelectionChange, onNodeActivate, onHover, onThemeResolved, onDiagnostics,
 }: GraphViewProps, ref) {
   // The taxonomy: the prop, or the context. Neither is a wiring bug a
@@ -249,41 +290,53 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // the axes shown, the search control, the theme choice. The first three
   // are compared by content, so a host that rebuilds one each render is not
   // read as a change.
-  const [rawFilter, setFilter] = useControllable(filterProp, onFilterChange, () => defaultFilterProp ?? initialFilter(taxonomy, hostGraph))
+  // The filter's writes go through `writeFilter`, which tells the host which
+  // axes the user touched (the view's own writes touch none), and shadows
+  // `filterRef` so a write that follows another in one commit — the re-seed
+  // below, then a focus landing on the node that just arrived — builds on
+  // the earlier result rather than the render's value.
+  const [rawFilter, setFilterState] = useControllable(filterProp, undefined, () => defaultFilterProp ?? initialFilter(taxonomy, hostGraph), 'filter')
   const filter = useStable(rawFilter, filterStatesEqual)
-  // The filter as last WRITTEN, for a write that follows another in one
-  // commit — the re-seed below, then a focus landing on the node that just
-  // arrived: each builds on the other's result, not on the render's value,
-  // or the later write would undo the earlier one.
   const filterRef = useLatest(filter)
-  // A graph that changes while an axis still holds the selection it opened
-  // with re-seeds that axis from the new graph: a host that mounts empty
-  // while its data loads is not left blank, and a value first seen later is
-  // not born hidden. An axis the user has changed keeps their selection, and
-  // a host that gave `defaultFilter` chose its start: nothing is re-seeded.
+  const onFilterChangeRef = useLatest(onFilterChange)
+  // Whether a write reaches anyone: the view's own state, or a host that
+  // listens. A controlled filter without a callback is read-only.
+  const filterWritable = filterProp === undefined || onFilterChange !== undefined
+  const writeFilter = React.useCallback((next: FilterState, touched: readonly AxisId[]) => {
+    filterRef.current = next
+    setFilterState(next)
+    onFilterChangeRef.current?.(next, touched)
+  }, [filterRef, setFilterState, onFilterChangeRef])
+  // The axes the user has touched in the bar — state, not an inference: a
+  // selection that happens to equal a graph's opening one is not thereby
+  // untouched. A later graph re-seeds the rest.
+  const touchedRef = React.useRef(new Set<AxisId>())
+  const userWriteFilter = React.useCallback((next: FilterState, touched: readonly AxisId[]) => {
+    for (const axis of touched) touchedRef.current.add(axis)
+    writeFilter(next, touched)
+  }, [writeFilter])
+  // A graph that changes while the view keeps the filter itself re-seeds
+  // every axis the user has not touched: a host that mounts empty while its
+  // data loads is not left blank, and a value first seen later is not born
+  // hidden. The user's selections stand; a host that gave `defaultFilter`
+  // chose its start (read once, at mount); a host that controls the filter
+  // owns it, and the view never rewrites it.
+  const choseStartRef = React.useRef(defaultFilterProp !== undefined)
   const seededFromRef = React.useRef(hostGraph)
   React.useEffect(() => {
-    const before = seededFromRef.current
-    if (before === hostGraph) return
+    if (seededFromRef.current === hostGraph) return
     seededFromRef.current = hostGraph
-    if (defaultFilterProp !== undefined) return
-    // The seeds are `initialFilter`'s — snapped to whole chips — on both sides.
-    const opened = initialFilter(taxonomy, before)
-    const seed = initialFilter(taxonomy, hostGraph)
-    let next = filter
-    for (const d of taxonomy.filterAxes) {
-      if (!selectionsEqual(selectionFor(filter, d.id), selectionFor(opened, d.id))) continue
-      next = withSelection(next, d.id, selectionFor(seed, d.id))
-    }
-    if (next !== filter) { filterRef.current = next; setFilter(next) }
+    if (filterProp !== undefined || choseStartRef.current) return
+    const next = reseedFilter(filter, taxonomy, hostGraph, touchedRef.current)
+    if (next !== filter) writeFilter(next, [])
   }, [hostGraph]) // eslint-disable-line react-hooks/exhaustive-deps
-  const [rawLocks, setLocks] = useControllable(locksProp, onLocksChange, () => new Map<string, boolean>())
+  const [rawLocks, setLocks] = useControllable(locksProp, onLocksChange, () => defaultLocks ?? new Map<string, boolean>(), 'locks')
   const locks = useStable(rawLocks, locksEqual)
-  const [rawAxes, setAxes] = useControllable(hostAxes, onAxesChange, () => taxonomy.filterAxes.map(d => d.id))
+  const [rawAxes, setAxes] = useControllable(hostAxes, onAxesChange, () => defaultAxes ?? taxonomy.filterAxes.map(d => d.id), 'axes')
   const axes = useStable(rawAxes, listEqual)
   const axesEditable = hostAxes === undefined || onAxesChange !== undefined
-  const [search, setSearch] = useControllable(searchProp, onSearchChange, () => ({ query: '', active: false }))
-  const [themeChoice, setThemeChoice] = useControllable(themeProp, onThemeChange, () => 'system' as ThemeChoice)
+  const [search, setSearch] = useControllable(searchProp, onSearchChange, () => defaultSearch ?? { query: '', active: false }, 'search')
+  const [themeChoice, setThemeChoice] = useControllable(themeProp, onThemeChange, () => defaultTheme ?? 'system', 'theme')
   const searchQuery = search.query
   const searchActive = search.active
   // The axes this view filters on are those shown, in order: an axis the host
@@ -303,12 +356,16 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     controls: chrome?.controls ?? true,
     themeToggle: chrome?.themeToggle ?? true,
   }
-  // The host's graph, checked once: every defect named, the edges an
-  // error names left out of what is drawn, the list shown under the bar.
-  const diagnostics = React.useMemo(() => validateGraph(hostGraph, taxonomy), [hostGraph, taxonomy])
-  // What is drawn: the host's graph less what an error names, plus the
-  // containment edge each `parentId` implies where the host listed none.
-  const graph = React.useMemo(() => withContainmentEdges(dropInvalid(hostGraph, diagnostics)), [hostGraph, diagnostics])
+  // The host's graph, checked once: every defect named, the edges an error
+  // names left out of what is drawn, the containment edge each `parentId`
+  // implies added where the host listed none, and the one warning the drawn
+  // graph adds (a derived edge no type claims). The list is shown under the
+  // bar and handed to `onDiagnostics`.
+  const { diagnostics, graph } = React.useMemo(() => {
+    const own = validateGraph(hostGraph, taxonomy)
+    const drawn = withContainmentEdges(dropInvalid(hostGraph, own))
+    return { diagnostics: [...own, ...derivedContainmentDiagnostics(drawn, hostGraph, taxonomy)], graph: drawn }
+  }, [hostGraph, taxonomy])
   const graphIndex = React.useMemo(() => nodesById(graph.nodes), [graph])
   // The chip badges: the host's reading of its own data, or a count of the
   // graph's entities per axis and value.
@@ -348,6 +405,27 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  // A pane that measures no height while displayed draws nothing and says
+  // nothing: said once here, with the fix. A pane hidden by its host
+  // (`display: none`, a tab shell's other tab) has no offset parent and is
+  // not the case.
+  const saidZeroRef = React.useRef(false)
+  useIsomorphicLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const check = () => {
+      if (saidZeroRef.current || el.offsetParent === null) return
+      const { width, height } = el.getBoundingClientRect()
+      if (width > 0 && height === 0) {
+        saidZeroRef.current = true
+        console.warn('[graph-view] the pane measured 0 px tall: give its parent a height — the pane fills a flex column, or a block with a height.')
+      }
+    }
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const recentlyChanged = useRecentlyChanged(filter)
 
@@ -366,8 +444,28 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     if (!continued) initialFitDone.current = false
   }, [initialFitDone])
 
-  // Simulation spine: the instance, version signal, running flag, forceParams,
-  // and every sim-mutating handler.
+  // The layout: the host's while `layout` is defined, the view's own
+  // otherwise. Every write — the control panel's, a retune — goes through
+  // `updateLayout`, which composes two writes in one tick the way the filter's
+  // ref does, tells the host, and applies the write when the view owns it.
+  const [rawLayout, setLayout] = useControllable<LayoutState>(layoutProp, onLayoutChange, () => defaultLayout ?? defaultLayoutFor(taxonomy), 'layout')
+  // Compared by content, as the filter is: a host that re-reads its layout
+  // from JSON each render is not read as a change, and the retune does not
+  // write back every render.
+  const layout = openLayout(useStable(rawLayout, layoutsEqual))
+  const layoutRef = useLatest(layout)
+  const updateForces = React.useCallback((fn: (prev: ForceParams) => ForceParams) => {
+    const prev = layoutRef.current
+    const forces = fn(prev.forces)
+    if (forces === prev.forces) return
+    const next = makeLayout(forces, prev.nodeScale)
+    layoutRef.current = next
+    setLayout(next)
+  }, [layoutRef, setLayout])
+
+  // Simulation spine: the instance, version signal, running flag, the force
+  // parameters as retuned for this graph and taxonomy, and every
+  // sim-mutating handler.
   const {
     simRef,
     simVersion,
@@ -381,7 +479,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     onNodeDragMove: handleNodeDragMove,
     onNodeDragEnd: handleNodeDragEnd,
     onToggleRunning: handleToggleRunning,
-  } = useSimulation(graph, taxonomy, defaultPositions, onSimRebuild)
+  } = useSimulation(graph, taxonomy, defaultPositions, onSimRebuild, layout.forces, updateForces)
 
 
   // The dense per-bucket tables the kernels read, resolved once per
@@ -400,7 +498,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // The theme the pane draws in: the choice, or the host's for system. The
   // scheme rides inline as custom properties in that theme, and every
   // visible edge's stroke is resolved here once, not per frame.
-  const theme = useTheme(containerRef, themeChoice)
+  const theme = useTheme(containerRef, themeChoice, systemTheme)
   const schemeStyle = React.useMemo(() => schemeVars(taxonomy, theme) as React.CSSProperties, [taxonomy, theme])
   const overlay = React.useMemo(() => bandOverlay(graph.nodes, forceParams, resolved, frame,
     (axis, bucket) => axis.mapping.axis === taxonomy.styleAxis() && isIdentityMapping(axis.mapping)
@@ -414,13 +512,16 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     handleRelayout({ pair: pairTuning(mapping) })
   }, [forceParams.pair.mapping.axis, handleRelayout])
 
-  // Render-time node sizing (independent of the simulation). Tunable from the
-  // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
-  // touch ForceParams or reheat the layout.
-  const [nodeScale, setNodeScale] = React.useState<NodeScaleParams>(DEFAULT_NODE_SCALE)
+  // Render-time node sizing — the layout's other half, tunable from the
+  // Controls panel (Misc → Node scaling); a pure-render concern, so a change
+  // reheats nothing.
+  const nodeScale = layout.nodeScale
   const handleNodeScaleChange = React.useCallback((patch: Partial<NodeScaleParams>) => {
-    setNodeScale(prev => ({ ...prev, ...patch }))
-  }, [])
+    const prev = layoutRef.current
+    const next = makeLayout(prev.forces, { ...prev.nodeScale, ...patch })
+    layoutRef.current = next
+    setLayout(next)
+  }, [layoutRef, setLayout])
 
   // The locks a focus overrode flash once, for 600 ms, then clear. The view's
   // own state: a host never sees it.
@@ -437,23 +538,19 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     if (hostOverridden && hostOverridden.size > 0) setFlashLocks(prev => new Set([...prev, ...hostOverridden]))
   }, [hostOverridden])
 
-  // Stale-file cleanup is now owned by the host shell (it touches both views'
-  // filters consistently when the AST changes).
-
   // Visible subgraph derived from the live sim (filter + edge graduation +
   // summaries + downstream-depth scores), recomputed on filter / sim-rebuild.
   const { visibleNodes, visibleEdges, visibleIds, edgeTypes, nodeSummaries, downstreamScores } =
     useVisibleGraph(simRef, simVersion, filter, filterAxes, taxonomy)
 
   // Every visible edge's stroke, from the type the derivation resolved on the
-  // edge's ORIGINAL endpoints, once, not per frame. An edge
-  // whose type the taxonomy does not declare has no entry and draws neutral;
-  // `validateGraph` has already named it.
+  // edge's ORIGINAL endpoints, once, not per frame. An edge no type claims
+  // draws in its relation's default stroke; the diagnostics have named it.
   const edgeStrokes = React.useMemo(() => {
     const strokes = new Map<GraphEdge, EdgeStroke>()
     for (const edge of visibleEdges) {
       const type = edgeTypes.get(edge.id)
-      if (type !== undefined) strokes.set(edge, taxonomy.edgeStrokeFor(type))
+      strokes.set(edge, type !== undefined ? taxonomy.edgeStrokeFor(type) : isContainment(edge) ? CONTAINMENT_STROKE : NEUTRAL_STROKE)
     }
     return strokes
   }, [visibleEdges, edgeTypes, taxonomy])
@@ -494,7 +591,8 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   // applies it; a host that controls the selection answers by setting the
   // prop, or does not.
   const controlledSelection = selectedId !== undefined
-  const [ownSelected, setOwnSelected] = React.useState<string | null>(null)
+  useControlledWarning('selectedId', controlledSelection)
+  const [ownSelected, setOwnSelected] = React.useState<string | null>(defaultSelectedId)
   const selectedNodeId = controlledSelection ? selectedId : ownSelected
   const selectedRef = useLatest(selectedNodeId)
   const onSelectionChangeRef = useLatest(onSelectionChange)
@@ -529,7 +627,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     activePushBucket, setActivePushBucket,
     activeGravityBucket, setActiveGravityBucket,
     activePullEdge, setActivePullEdge,
-  } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph, taxonomy, selectedNodeId)
+  } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph, taxonomy, selectedNodeId, hostIndex)
 
   // The groups as drawn: the host's, restricted to the visible set and
   // coloured in order, the one its control emphasises glowing stronger.
@@ -560,9 +658,10 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const lq = searchQuery.toLowerCase()
     const sim = simRef.current
     if (!sim) return { visibleMatchIds: new Set<string>(), hiddenMatchCount: 0, hiddenMatches: none }
-    const split = hiddenMatchesOf({ nodes: sim.nodes, filter, taxonomy, axes, visibleIds, matches: node => taxonomy.searchText(node).toLowerCase().includes(lq) })
+    // The host's hook is handed the host's own node, never the simulation's copy.
+    const split = hiddenMatchesOf({ nodes: sim.nodes, filter, taxonomy, axes, visibleIds, matches: node => taxonomy.searchText(hostIndex.get(node.id) ?? node).toLowerCase().includes(lq) })
     return { visibleMatchIds: split.visible, hiddenMatchCount: split.hiddenCount, hiddenMatches: split.hiddenByAxis }
-  }, [searchQuery, visibleIds, filter, axes, taxonomy])
+  }, [searchQuery, visibleIds, filter, axes, taxonomy, hostIndex])
 
   // Physics loop + filter-driven reheats. Owns the RAF tick (with one-shot
   // initial fit, cross-view center, fps, and stability stop), the hover tooltip
@@ -680,12 +779,18 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const node = graphIndex.get(id)
     if (!node) return false
     const base = filterRef.current
-    const result = reconcileFilter({ destination: base, source: base, locks, transition: { kind: 'focus', target: { values: node.values } }, taxonomy, axes })
-    if (result.filter !== base) { filterRef.current = result.filter; setFilter(result.filter) }
-    if (result.overriddenLocks.size > 0) setFlashLocks(result.overriddenLocks)
-    // Whether the widened filter shows the node: a value absent on a hiding
-    // axis cannot be revealed by widening, and the host should know.
-    const shown = passesDescriptors(result.filter, filterAxes, dim => taxonomy.valueOn(node, dim))
+    // Widened by whole chips: the graph says which values each chip holds.
+    const result = reconcileFilter({ destination: base, source: base, locks, transition: { kind: 'focus', target: { values: node.values } }, taxonomy, axes, graph })
+    // A read-only filter (controlled, no callback) cannot be widened: the
+    // node is judged, centred and reported against the filter the view holds.
+    const applied = filterWritable ? result.filter : base
+    if (applied !== base) {
+      writeFilter(applied, [])
+      if (result.overriddenLocks.size > 0) setFlashLocks(result.overriddenLocks)
+    }
+    // Whether the filter shows the node: a value absent on a hiding axis
+    // cannot be revealed by widening, and the host should know.
+    const shown = passesDescriptors(applied, filterAxes, axis => taxonomy.valueOn(node, axis))
     if (!shown) return false
     pendingCenterRef.current = { nodeId: id }
     if (!running) {
@@ -693,7 +798,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
       setRunning(true)
     }
     return true
-  }, [graphIndex, filterRef, locks, axes, filterAxes, setFilter, running, setRunning, simRef, pendingCenterRef, taxonomy])
+  }, [graphIndex, graph, filterRef, filterWritable, writeFilter, locks, axes, filterAxes, running, setRunning, simRef, pendingCenterRef, taxonomy])
   // The declarative focus. A request is new when its id or key differs from
   // the last one; it waits until its node is in the graph, then runs the
   // focus recipe once and reports whether the node could be shown. A null
@@ -707,12 +812,24 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     lastFocusRef.current = focus
     pendingFocusRef.current = focus
   }, [focus])
+  // A request whose node is in the graph lands on the NEXT commit, not this
+  // one: a write the host or its hook queued in this same commit — the
+  // re-seed for the graph that brought the node — has reached a controlled
+  // filter by then, and the recipe builds on it instead of overwriting it.
+  const [landing, setLanding] = React.useState<FocusRequest | null>(null)
   React.useEffect(() => {
     const request = pendingFocusRef.current
     if (!request || !graphIndex.has(request.id)) return
     pendingFocusRef.current = null
-    onFocusResultRef.current?.(request, focusNodeById(request.id))
-  }, [focus, graphIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+    setLanding(request)
+  }, [focus, graphIndex])
+  React.useEffect(() => {
+    if (!landing) return
+    setLanding(null)
+    // Withdrawn meanwhile (null, or a newer request): not landed, not reported.
+    if (!sameFocusRequest(lastFocusRef.current, landing)) return
+    onFocusResultRef.current?.(landing, focusNodeById(landing.id))
+  }, [landing]) // eslint-disable-line react-hooks/exhaustive-deps
   React.useImperativeHandle(ref, () => ({
     focusNode: focusNodeById,
     select: requestSelect,
@@ -807,6 +924,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
         break
       }
       case '/': {
+        if (!show.search) break
         e.preventDefault()
         if (!searchActive) {
           setSearch({ query: searchQuery, active: true })
@@ -828,7 +946,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
         break
       }
     }
-  }, [keyboard, visibleNodes, focusedNodeId, selectedNodeId, requestSelect, searchActive, searchQuery, setSearch, shortcutsOpen, handleFitToView, handleToggleRunning]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [keyboard, visibleNodes, focusedNodeId, selectedNodeId, requestSelect, searchActive, searchQuery, setSearch, shortcutsOpen, show.search, show.shortcuts, handleFitToView, handleToggleRunning]) // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (keyboard !== 'global') return
     window.addEventListener('keydown', handleKey)
@@ -844,6 +962,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     const action = typeof nodeAction === 'function' ? nodeAction(host) : nodeAction ?? null
     return action && { label: action.label, onSelect: () => action.onSelect(host) }
   }, [nodeAction, hostIndex])
+  const hostNodeOf = React.useCallback((id: string) => hostIndex.get(id), [hostIndex])
 
   const nodeCount = visibleNodes.length
   const edgeCount = visibleEdges.length
@@ -912,6 +1031,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
           copies={copies}
           nodeSummaries={nodeSummaries}
           nodeAction={actionFor}
+          hostNodeOf={hostNodeOf}
           onMouseEnter={cancelHoverClear}
           onMouseLeave={() => handleHoverNode(null)}
         />
@@ -928,7 +1048,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
             counts={counts}
             values={valuesByAxis}
             filter={filter}
-            onFilterChange={setFilter}
+            onFilterChange={userWriteFilter}
             locks={locks}
             onLocksChange={setLocks}
             axes={axes}
@@ -1034,7 +1154,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
             <Shortcut keys="Arrow keys" desc="Pan viewport" />
             <Shortcut keys="+ / -" desc="Zoom in / out" />
             <Shortcut keys="F" desc="Fit to view" />
-            <Shortcut keys="/" desc="Open search" />
+            {show.search && <Shortcut keys="/" desc="Open search" />}
             <Shortcut keys="Space" desc="Toggle simulation" />
             <Shortcut keys="Shift + hover" desc="Upstream deps" />
             <Shortcut keys="?" desc="This panel" />
@@ -1080,13 +1200,15 @@ interface GraphHoverTooltipProps {
   nodeSummaries: Map<string, string>
   // The host's action for a node, when it offers one.
   nodeAction: (node: GraphNode) => NodeAction | null
+  /** The host's own node by id — what the taxonomy's `contextLine` is handed, never the simulation's copy. */
+  hostNodeOf: (id: string) => GraphNode | undefined
   // The tooltip is interactive: these keep it open while the pointer is over
   // it (so the cross-view button is clickable).
   onMouseEnter: () => void
   onMouseLeave: () => void
 }
 
-function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, directionLine, copies, nodeSummaries, nodeAction, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
+function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, viewport, shiftHeld, directionLine, copies, nodeSummaries, nodeAction, hostNodeOf, onMouseEnter, onMouseLeave }: GraphHoverTooltipProps) {
   // Before the early returns: this is a hook, and the component bails out four
   // different ways below.
   const taxonomy = useTaxonomy()
@@ -1098,18 +1220,18 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
 
   // The context under the name is the taxonomy's answer: a host that keys a
   // value's identity on its own metadata says so there, as one line or
-  // several; the library's default is the parent's name. The icon is the
-  // value's own.
-  const context = taxonomy.contextLine(node, node.parentId ? sim.getNode(node.parentId) : undefined)
+  // several; the library's default is the parent's name. The hook is handed
+  // the host's own node and parent. The icon is the value's own.
+  const parent = node.parentId === undefined ? undefined : hostNodeOf(node.parentId) ?? sim.getNode(node.parentId)
+  const context = taxonomy.contextLine(hostNodeOf(node.id) ?? node, parent)
   const contextLines: React.ReactNode[] = context === undefined || context === null ? []
     : Array.isArray(context) ? [...(context as readonly React.ReactNode[])] : [context as React.ReactNode]
   const action = nodeAction(node)
   const icon = taxonomy.nodeStyleOf(node).icon
 
   // The composition line for a node that summarises its children (counted
-  // per style value, named by its abbreviation). These used to render as a
-  // badge under the node; they now live in the box. Degree nodes are covered
-  // by the connection counts row below, so we don't duplicate them here.
+  // per style value, named by its abbreviation). Degree nodes are covered by
+  // the connection counts row below, so the box does not say it twice.
   const summaryKind = taxonomy.nodeStyleOf(node).summaryKind
   const compositionLine =
     summaryKind === 'children'

@@ -35,9 +35,8 @@ export function useRecentlyChanged(rawFilter: FilterState): RecentlyChanged {
       }
     }
     prevFilterRef.current = filter
-    // Set on every change, empty included: a removal-only change that arrived
-    // while an earlier flash was pending used to cancel its timer and leave the
-    // old set lit.
+    // Set on every change, empty included, so a removal-only change that
+    // arrives while an earlier flash is pending does not leave the old set lit.
     setRecentlyChanged(changed)
     if (changed.size === 0) return
     const timer = setTimeout(() => setRecentlyChanged(NONE), 450)

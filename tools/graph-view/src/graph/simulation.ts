@@ -19,7 +19,7 @@ import {
 } from './forces'
 import type { Rng } from './rng'
 import type { EdgeCategory, LayoutFrame, LayoutSubject, ResolvedPhysics } from './forces'
-import type { ScalarAxis, ScalarTuning } from './scalar'
+import type { ResolvedScalarAxis, ScalarTuning } from './scalar'
 import { isScalarTuning } from './scalar'
 import type { AxisNamer, AxisId, AxisValue, AxisMapping } from './axis'
 import { identityMapping, valuesOn } from './axis'
@@ -63,12 +63,10 @@ export interface BandRange { min: number; max: number }
  * Per-bucket tuning of one force along one axis.
  *
  * Three facts that must agree — which axis, how its values bucket, and the
- * per-bucket numbers — as ONE constructed value, so there is no second field for
- * them to disagree with. The axis and its table used to be two independent
- * fields (`chargeDimension` and `charge`), and that admitted the exact state
- * where, after a taxonomy swap, the axis was the new one and the table was
- * still keyed by the old, every lookup missed, and the layout silently
- * collapsed.
+ * per-bucket numbers — as ONE constructed value, so there is no second field
+ * for them to disagree with: an axis named apart from its table admits a
+ * table keyed by the previous axis, where every lookup misses and the layout
+ * collapses in silence.
  *
  * `overrides` holds **only what the user changed**, keyed by bucket id. Every
  * other bucket resolves to the taxonomy's declared physics at read time
@@ -168,7 +166,7 @@ export function identityTuning<T>(taxonomy: Taxonomy): AxisTuning<T> {
  * below the centre, the tiers start pre-ordered and the force only has to
  * lift (mean 3.5, max 13). Uniform-within-band and a wider jitter were both
  * worse than the centre. The frame is unchanged by the bias, so seed and
- * force still agree; only where within the band a node starts moved (D54).
+ * force still agree; only where within the band a node starts moved.
  */
 export const SEED_BIAS = 0.35
 
@@ -239,7 +237,7 @@ function nodeAxes(taxonomy: Taxonomy, graph: Graph): AxisId[] {
 }
 
 /** How an axis names itself and its values: its descriptor's way, or — for an axis no descriptor declares — the id and the value. */
-function namerFor(taxonomy: Taxonomy, axis: AxisId): AxisNamer {
+export function namerFor(taxonomy: Taxonomy, axis: AxisId): AxisNamer {
   return taxonomy.axisFor(axis) ?? {
     id: axis,
     label: axis,
@@ -251,7 +249,7 @@ function namerFor(taxonomy: Taxonomy, axis: AxisId): AxisNamer {
 /** One choice for a layout axis: a mapping (with its cost) or a computed scalar. */
 export type LayoutAxisOption =
   | { readonly kind: 'mapping'; readonly option: AxisOption }
-  | { readonly kind: 'scalar'; readonly scalar: ScalarAxis }
+  | { readonly kind: 'scalar'; readonly scalar: ResolvedScalarAxis }
 
 /** Every axis X or Y can key on: the mappings push/pull can (already measured), then every scalar the taxonomy knows. */
 export function layoutAxisOptions(axes: readonly AxisOption[], taxonomy: Taxonomy): LayoutAxisOption[] {
@@ -285,9 +283,21 @@ function sameBuckets(a: AxisMapping, b: AxisMapping): boolean {
  * are keyed by value, so they survive where the value does. A tuning whose
  * buckets did not change comes back by reference, so a caller can tell nothing
  * moved. An axis the graph no longer carries, or one that has grown past the
- * token ceiling, falls back to the style axis with nothing overridden.
+ * token ceiling, falls back to the style axis with nothing overridden. A graph
+ * with no nodes judges nothing: the parameters come back as they are, so a
+ * layout restored before the data arrives waits for it.
  */
 export function retunedFor(params: ForceParams, taxonomy: Taxonomy, graph: Graph): ForceParams {
+  // A scalar the taxonomy does not know falls back whatever the graph holds:
+  // the check reads only the taxonomy, so a stored layout naming a scalar
+  // since renamed never reaches the kernels, even while the graph is empty.
+  const knownScalar = (t: LayoutTuning): LayoutTuning =>
+    isScalarTuning(t) && !taxonomy.scalars.some(sc => sc.id === t.scalar) ? identityTuning<BandRange>(taxonomy) : t
+  if (graph.nodes.length === 0) {
+    const bandX = knownScalar(params.bandX)
+    const bandY = knownScalar(params.bandY)
+    return bandX === params.bandX && bandY === params.bandY ? params : { ...params, bandX, bandY }
+  }
   const style = taxonomy.styleAxis()
   const byId = nodesById(graph.nodes)
   const nodeOf = (id: string) => byId.get(id)
@@ -562,10 +572,9 @@ export class Simulation {
   // first use and dropped whenever the tables are re-resolved.
   private springByEdge: Map<string, EdgeCategory> | null = null
 
-  // `taxonomy` is REQUIRED, deliberately. It was defaulted first, and the single
-  // production construction site then quietly kept the shipped taxonomy while
-  // every component resolved through an injected one — a split-brain that no
-  // gate could see because both halves were individually correct.
+  // `taxonomy` is REQUIRED, deliberately: a default here would let one
+  // construction site resolve through a taxonomy every component ignores,
+  // a split no gate can see because both halves are individually correct.
   constructor(
     graph: Graph,
     params: Partial<ForceParams> | undefined,

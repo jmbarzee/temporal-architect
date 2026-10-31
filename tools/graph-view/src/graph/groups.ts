@@ -74,7 +74,7 @@ export interface ActiveGroup {
   color: string
   /** The glow's intensity: 1, or more for a group that is emphasised or holds the hovered or selected node. */
   strength: number
-  nodeIds: Set<string>
+  nodeIds: ReadonlySet<string>
 }
 
 /**
