@@ -9,6 +9,8 @@
 // `filterToJSON` writes it (each axis's selection an array of strings) and read
 // back through `filterFromJSON`.
 
+import type { LayoutJSON } from '@temporal-architect/graph-view'
+
 /**
  * Where and how this state is persisted — supplied by the host.
  *
@@ -56,6 +58,8 @@ export type PersistedState = {
   searchQuery?: string
   /** The graph pane's theme choice (R21); absent means system. Additive, so no version bump (D4). */
   graphTheme?: 'system' | 'light' | 'dark'
+  /** The graph pane's layout — force tuning and node scale — as the library's `layoutToJSON` writes it. Additive, so no version bump (D4). */
+  graphLayout?: LayoutJSON
 }
 
 interface VsCodeApi {

@@ -83,7 +83,7 @@ function edgeLine(e: GraphEdge, nodeOf: (id: string) => GraphNode | undefined): 
   const srcValue = src && DEFAULT_TAXONOMY.styleValueOf(src)
   const tgtValue = tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)
   const parts = [
-    DEFAULT_TAXONOMY.classifyEdge(e, srcValue, tgtValue) ?? UNCLASSIFIED,
+    DEFAULT_TAXONOMY.edgeTypeOf(e, srcValue, tgtValue) ?? UNCLASSIFIED,
     relationOf(e),
     `${e.sourceId} -> ${e.targetId}`,
   ]
@@ -176,7 +176,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       byEdgeType: histogram(graph.edges.map(e => {
         const src = nodeOf(e.sourceId)
         const tgt = nodeOf(e.targetId)
-        return DEFAULT_TAXONOMY.classifyEdge(e, src && DEFAULT_TAXONOMY.styleValueOf(src), tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)) ?? UNCLASSIFIED
+        return DEFAULT_TAXONOMY.edgeTypeOf(e, src && DEFAULT_TAXONOMY.styleValueOf(src), tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)) ?? UNCLASSIFIED
       })),
       // The stroke each edge draws with, read the way the canvas reads it —
       // the type's stroke through the taxonomy (D57, D58): the composition
@@ -184,7 +184,7 @@ export function tierA(fixture: Fixture, sim: Simulation, graph: Graph): Json {
       byStroke: histogram(graph.edges.map(e => {
         const src = nodeOf(e.sourceId)
         const tgt = nodeOf(e.targetId)
-        const type = DEFAULT_TAXONOMY.classifyEdge(e, src && DEFAULT_TAXONOMY.styleValueOf(src), tgt && DEFAULT_TAXONOMY.styleValueOf(tgt))
+        const type = DEFAULT_TAXONOMY.edgeTypeOf(e, src && DEFAULT_TAXONOMY.styleValueOf(src), tgt && DEFAULT_TAXONOMY.styleValueOf(tgt))
         // An unclassified edge draws in the neutral stroke, as the view does.
         const st = type === undefined ? NEUTRAL_STROKE : DEFAULT_TAXONOMY.edgeStrokeFor(type)
         return `${st.color.light}/${st.color.dark}|${st.dash.join(',')}|${st.width}`

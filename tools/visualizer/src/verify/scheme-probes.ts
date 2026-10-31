@@ -78,7 +78,7 @@ export function schemeProbes(): Json {
     // What the taxonomy refuses at construction (D58): a colour no reader can parse.
     refusals: {
       namedColour: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, styles: DEFAULT_TAXONOMY_SPEC.styles.map(v => v.id === 'worker' ? { ...v, color: { light: { fill: 'slategray', border: '#000' }, dark: v.color.dark } } : v) })),
-      cssVariableColour: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, edgeTypes: ALL_EDGE_TYPES.map((e, i) => (i === 0 ? { ...e, style: { ...e.style, color: { light: 'var(--x)', dark: e.style.color.dark } } } : e)) })),
+      cssVariableColour: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, edgeTypes: ALL_EDGE_TYPES.map((e, i) => (i === 0 ? { ...e, style: { ...DEFAULT_TAXONOMY.edgeStrokeFor(e.id), color: { light: 'var(--x)', dark: DEFAULT_TAXONOMY.edgeStrokeFor(e.id).color.dark } } } : e)) })),
       // A hidden-node policy outside its two values (D60): refused, not read as ascend.
       badWhenHidden: thrown(() => createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, styles: DEFAULT_TAXONOMY_SPEC.styles.map(v => v.id === 'worker' ? { ...v, whenHidden: String('Splice') as NodeStyle['whenHidden'] } : v) })),
     },

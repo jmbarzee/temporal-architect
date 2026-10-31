@@ -82,7 +82,7 @@ function badgesOf(html: string): Json {
 }
 
 /** How many pin toggles the markup carries: one per axis shown, when the bar offers them. */
-const pinToggles = (html: string): number => (html.match(/class="gv-pin-toggle[ "]/g) ?? []).length
+const pinToggles = (html: string): number => (html.match(/class="gv-lock-toggle[ "]/g) ?? []).length
 
 /** The bar as rendered with the host's counts in its badges and its findings in the slot. */
 function barRendered(): Json {
@@ -123,7 +123,7 @@ function barWithoutPins(): Json {
   const graph = buildFixtureGraph(fixture)
   const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY },
     React.createElement(FilterBar, { graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop })))
-  return { badges: badgesOf(html), pinToggles: pinToggles(html), pinTogglesAbsent: !html.includes('gv-pin-toggle') }
+  return { badges: badgesOf(html), pinToggles: pinToggles(html), pinTogglesAbsent: !html.includes('gv-lock-toggle') }
 }
 
 /** The same bar with no pins but `chrome.pins` asking for the toggles: the host's say-so outranks the default. */
@@ -179,9 +179,27 @@ function groupLegend(): Json {
   }
 }
 
+/** An axis the taxonomy does not declare renders as its header, a note and the remove control — no chips, no lock — so it is always visible and always removable. */
+function barUndeclaredAxis(): Json {
+  const fixture = FIXTURES.find(f => f.name === 'nexus-sample')
+  if (!fixture) throw new Error('seam-probes: the nexus fixture is missing')
+  const graph = buildFixtureGraph(fixture)
+  const html = renderToStaticMarkup(React.createElement(TaxonomyContext.Provider, { value: DEFAULT_TAXONOMY },
+    React.createElement(FilterBar, {
+      graph, filter: filterOfSets(defaultTypes, new Set<string>()), onFilterChange: noop, locks: new Map<string, boolean>(), onLocksChange: noop,
+      axes: [SOURCE_FILE_DIMENSION, 'bogus'], onAxesChange: noop,
+    })))
+  return {
+    labelShown: html.includes('>bogus<'),
+    noteShown: html.includes('not declared'),
+    removeControls: (html.match(/class="gv-header-remove"/g) ?? []).length,
+    pinToggles: pinToggles(html),
+  }
+}
+
 export function seamProbes(): Json {
   return {
     viewHalf: viewHalf(), hostHalf: hostHalf(), counts: counts(), barRendered: barRendered(), barFromGraph: barFromGraph(), barWithoutPins: barWithoutPins(), barChromePins: barChromePins(),
-    barCallbackAlone: barCallbackAlone(), barChrome: barChrome(), groupLegend: groupLegend(),
+    barCallbackAlone: barCallbackAlone(), barChrome: barChrome(), groupLegend: groupLegend(), barUndeclaredAxis: barUndeclaredAxis(),
   }
 }

@@ -18,7 +18,7 @@
 // payload is not read here or anywhere else in the library.
 
 import { computeDownstreamReach } from '../../graph/scalar'
-import { isContainment } from '../../graph/model'
+import { isContainment, relationOf } from '../../graph/model'
 import type { SimNode } from '../../graph/simulation'
 import type { GraphEdge, ReadableGraph } from '../../graph/model'
 import type { Taxonomy } from '../../graph/taxonomy'
@@ -86,7 +86,7 @@ function findNearestVisibleAncestor(
 // dependency edges through to the far side instead, so caller → hidden →
 // callee draws as caller → callee. A hidden node is passed through at most
 // once per resolution (`visited`): hidden spliced nodes may call each other,
-// and a cycle among them used to recurse without end.
+// and a cycle among them terminates.
 function resolveDepEndpoint(
   nodeId: string,
   visible: boolean,
@@ -163,8 +163,8 @@ function computeGraphNodeSummary(
 
 /**
  * `passesDescriptors` for a graph node, projected through the taxonomy, on the
- * axes given — the view's chain. Every declared axis is the default for a
- * caller that shows them all.
+ * axes given — the ones the view shows. Every declared axis is the default
+ * for a caller that shows them all.
  */
 export function passesFilter(
   node: PhysicsSubject,
@@ -172,7 +172,7 @@ export function passesFilter(
   taxonomy: Taxonomy,
   axes: readonly ResolvedAxisDescriptor[] = taxonomy.filterAxes,
 ): boolean {
-  return passesDescriptors(filter, axes, dim => taxonomy.valueOn(node, dim))
+  return passesDescriptors(filter, axes, axis => taxonomy.valueOn(node, axis))
 }
 
 /**
@@ -182,18 +182,19 @@ export function passesFilter(
  * no type here and draws neutral.
  */
 function classifyEdges(sim: VisibleGraphSource, taxonomy: Taxonomy): Map<string, EdgeTypeId | undefined> {
-  const declared = new Set(taxonomy.edgeTypes.map(e => e.id))
+  const declared = new Map(taxonomy.edgeTypes.map(e => [e.id, e]))
   const out = new Map<string, EdgeTypeId | undefined>()
   for (const edge of sim.edges) {
     const src = sim.getNode(edge.sourceId)
     const tgt = sim.getNode(edge.targetId)
     let id: EdgeTypeId | undefined
     try {
-      id = taxonomy.classifyEdge(edge, src && taxonomy.styleValueOf(src), tgt && taxonomy.styleValueOf(tgt))
+      id = taxonomy.edgeTypeOf(edge, src && taxonomy.styleValueOf(src), tgt && taxonomy.styleValueOf(tgt))
     } catch {
       id = undefined
     }
-    out.set(edge.id, id !== undefined && declared.has(id) ? id : undefined)
+    // A type of another relation than the edge's is no type for it: the edge draws in its relation's stroke, as the diagnostics say.
+    out.set(edge.id, id !== undefined && declared.get(id)?.relation === relationOf(edge) ? id : undefined)
   }
   return out
 }

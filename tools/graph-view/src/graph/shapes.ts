@@ -142,24 +142,25 @@ export interface SpringPhysics {
  * `match` (if any) its own values satisfy; a satisfied `match` beats a type
  * without one, the declared orientation beats the reverse, and declaration
  * order settles the rest — unless the taxonomy's `classifyEdge` says
- * otherwise. A stroke left out is the neutral stroke, field by field; a
- * spring left out starts from the typical spring, the mean of the declared
- * ones (or a middling one when none is declared); a tooltip left out is the
- * label.
+ * otherwise. A label left out is the id; a stroke left out is the neutral
+ * stroke (the containment stroke for a containment type), field by field; a
+ * spring left out is the middling spring; a tooltip left out is the label.
  */
 export interface EdgeType {
   /** Stable id — also the override key in the spring tuning. */
   id: EdgeTypeId
-  /** Short control-panel label. */
-  label: string
+  /** Short control-panel label. Default: the id. */
+  label?: string
   /**
-   * The endpoint values on the style axis this type runs between — read off
-   * the edge's original endpoint nodes when an edge is classified, and the
-   * two halves of the split-colour token. Values, not types: the engine
+   * The endpoint values on the style axis this type runs between — one
+   * value or several at each end: the type runs between every source value
+   * and every target value, in either orientation. Read off the edge's
+   * original endpoint nodes when an edge is classified; the first of each
+   * is the split-colour token's two halves. Values, not types: the engine
    * resolves an edge's type from where its nodes sit.
    */
-  sourceValue: AxisValue
-  targetValue: AxisValue
+  sourceValue: AxisValue | readonly AxisValue[]
+  targetValue: AxisValue | readonly AxisValue[]
   /** Which relation an edge of this type expresses; an edge is classified only as a type of its own relation. */
   relation: 'containment' | 'dependency'
   /**
@@ -172,20 +173,41 @@ export interface EdgeType {
   match?: Readonly<Record<AxisId, AxisValue>>
   /** Declared stiffness / rest length — what the type resolves to until tuned. */
   physics?: SpringPhysics
-  /** How the canvas strokes an edge of this type, in both themes; any field left out is the neutral stroke's. */
+  /** How the canvas strokes an edge of this type, in both themes; any field left out is its relation's default stroke's (`NEUTRAL_STROKE`, or `CONTAINMENT_STROKE` for a containment type). */
   style?: Partial<EdgeStroke>
+  /** The hover text for the type. Default: the label. */
   tooltip?: string
 }
 
 /** An edge type with its defaults filled in — what `Taxonomy.edgeTypes` carries. */
 export interface ResolvedEdgeType extends EdgeType {
+  label: string
+  /** The first declared source value — one half of the split-colour token. */
+  sourceValue: AxisValue
+  /** The first declared target value — the other half. */
+  targetValue: AxisValue
+  /** Every (source, target) pair the type runs between: each source value with each target value, in declaration order. */
+  pairs: readonly (readonly [AxisValue, AxisValue])[]
   physics: SpringPhysics
   style: EdgeStroke
   tooltip: string
 }
 
-/** The stroke an edge type starts from, and the stroke of an edge no type claims: a quiet, solid grey. */
+/** The stroke a dependency type starts from, and the stroke of a dependency edge no type claims: a quiet, solid grey. */
 export const NEUTRAL_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.7, dash: [], width: 1.2 }
+/** The stroke a containment type starts from, and the stroke of a containment edge no type claims: the same grey, faint and dashed. */
+export const CONTAINMENT_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#64748B' }, alpha: 0.35, dash: [3, 4], width: 1 }
+
+/** The values declared at one end of an edge type, as a list. */
+export function endpointValues(declared: AxisValue | readonly AxisValue[]): readonly AxisValue[] {
+  return typeof declared === 'string' ? [declared] : declared
+}
+
+/** Every (source, target) pair a type runs between: each source value with each target value, in declaration order. */
+export function edgePairs(type: Pick<EdgeType, 'sourceValue' | 'targetValue'>): readonly (readonly [AxisValue, AxisValue])[] {
+  const targets = endpointValues(type.targetValue)
+  return endpointValues(type.sourceValue).flatMap(s => targets.map(t => [s, t] as const))
+}
 
 // ── Defaults ────────────────────────────────────────────────────────────────
 
@@ -197,7 +219,7 @@ export const NEUTRAL_STROKE: EdgeStroke = { color: { light: '#94A3B8', dark: '#6
  */
 export const BAND_FRAME = { top: -300, bottom: 400, x: { min: 0, max: 380 } as Band } as const
 const DEFAULT_RADIUS = 12
-/** The spring a type starts from when no declared type carries one. */
+/** The spring a type starts from when it declares none. */
 export const MIDDLING_SPRING: SpringPhysics = { strength: 0.5, distance: 120 }
 
 /**
@@ -240,26 +262,22 @@ export function resolveNodeStyle(style: NodeStyle, i: number, n: number): Resolv
 }
 
 /**
- * The spring a type starts from when it declares none: the mean of the
- * declared springs, so the undeclared one is tuned from this host's scale
- * rather than from a number out of another's; the middling spring when no
- * type declares one.
+ * A declared edge type with its defaults filled in: the id as label, the
+ * first declared value at each end beside every pair, the middling spring,
+ * its relation's stroke field by field, the label as tooltip. The taxonomy
+ * has refused an end that names no value before this runs.
  */
-export function typicalSpringOf(types: readonly EdgeType[]): SpringPhysics {
-  let strength = 0, distance = 0, n = 0
-  for (const t of types) {
-    if (!t.physics) continue
-    strength += t.physics.strength; distance += t.physics.distance; n++
-  }
-  return n === 0 ? { ...MIDDLING_SPRING } : { strength: strength / n, distance: distance / n }
-}
-
-/** A declared edge type with its defaults filled in: the typical spring, the neutral stroke field by field, the label as tooltip. */
-export function resolveEdgeType(type: EdgeType, typical: SpringPhysics): ResolvedEdgeType {
+export function resolveEdgeType(type: EdgeType): ResolvedEdgeType {
+  const start = type.relation === 'containment' ? CONTAINMENT_STROKE : NEUTRAL_STROKE
+  const label = type.label ?? type.id
   return {
     ...type,
-    physics: type.physics ?? { ...typical },
-    style: { ...NEUTRAL_STROKE, ...type.style, color: { ...NEUTRAL_STROKE.color, ...type.style?.color } },
-    tooltip: type.tooltip ?? type.label,
+    label,
+    sourceValue: endpointValues(type.sourceValue)[0]!,
+    targetValue: endpointValues(type.targetValue)[0]!,
+    pairs: edgePairs(type),
+    physics: type.physics ?? { ...MIDDLING_SPRING },
+    style: { ...start, ...type.style, color: { ...start.color, ...type.style?.color } },
+    tooltip: type.tooltip ?? label,
   }
 }

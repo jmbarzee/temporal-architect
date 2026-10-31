@@ -83,7 +83,7 @@ const rootClassOf = (html: string): string | null => /^<div class="([^"]*)"/.exe
 /** The view's control panel, by the root class it carries. */
 const PANEL = 'gv-graph-control-panel'
 /** How many pin toggles the markup carries. */
-const pinToggles = (html: string): number => (html.match(/class="gv-pin-toggle[ "]/g) ?? []).length
+const pinToggles = (html: string): number => (html.match(/class="gv-lock-toggle[ "]/g) ?? []).length
 
 export function hostProbes(): Json {
   const taxonomy = createTaxonomy(spec)

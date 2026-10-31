@@ -101,7 +101,7 @@ const ALTERNATE = createTaxonomy({
   // Only the shipped edge types that run between values this taxonomy declares:
   // an edge type to a value nobody declared is refused at construction.
   edgeTypes: DEFAULT_TAXONOMY.edgeTypes.filter(e => ALT_VALUES.includes(e.sourceValue) && ALT_VALUES.includes(e.targetValue)),
-  classifyEdge: DEFAULT_TAXONOMY.classifyEdge,
+  classifyEdge: DEFAULT_TAXONOMY.edgeTypeOf,
   scalars: [],
   fallbackStyle: NODE_TYPE_REGISTRY.activity,
 })
@@ -425,7 +425,7 @@ function reheatPolicy(): Json {
       resume: policy.resume,
       emptyMeans: d.emptyMeans,
       absentMeans: d.absentMeans,
-      focus: d.focus,
+      focus: d.widens,
     }
   }
   // Every subset, because a view switch moves more than one axis at once and the
@@ -490,20 +490,20 @@ function matchClassification(): Json {
   const handed: Array<string | undefined> = []
   const withRule = createTaxonomy({ ...base, edgeTypes: twoAlike, classifyEdge: (_e, _s, _t, declared) => { handed.push(declared); return 'two' } })
   return {
-    fallback: taxonomy.classifyEdge(edge(), 'a', 'b') ?? null,
-    matched: taxonomy.classifyEdge(edge({ via: 'signal' }), 'a', 'b') ?? null,
-    unmatchedValue: taxonomy.classifyEdge(edge({ via: 'other' }), 'a', 'b') ?? null,
-    reverseOrientation: taxonomy.classifyEdge(edge(), 'b', 'a') ?? null,
-    matchedReverse: taxonomy.classifyEdge(edge({ via: 'signal' }), 'b', 'a') ?? null,
-    onlyMatchedUnmet: taxonomy.classifyEdge(edge(), 'a', 'a') ?? null,
-    onlyMatchedMet: taxonomy.classifyEdge(edge({ via: 'x' }), 'a', 'a') ?? null,
+    fallback: taxonomy.edgeTypeOf(edge(), 'a', 'b') ?? null,
+    matched: taxonomy.edgeTypeOf(edge({ via: 'signal' }), 'a', 'b') ?? null,
+    unmatchedValue: taxonomy.edgeTypeOf(edge({ via: 'other' }), 'a', 'b') ?? null,
+    reverseOrientation: taxonomy.edgeTypeOf(edge(), 'b', 'a') ?? null,
+    matchedReverse: taxonomy.edgeTypeOf(edge({ via: 'signal' }), 'b', 'a') ?? null,
+    onlyMatchedUnmet: taxonomy.edgeTypeOf(edge(), 'a', 'a') ?? null,
+    onlyMatchedMet: taxonomy.edgeTypeOf(edge({ via: 'x' }), 'a', 'a') ?? null,
     twoAlikeRefused: outcome(() => createTaxonomy({ ...base, edgeTypes: twoAlike })),
     emptyMatchRefused: (() => {
       try { createTaxonomy({ ...base, edgeTypes: [{ id: 'e', label: 'e', sourceValue: 'a', targetValue: 'b', relation: 'dependency', match: {} }] }); return 'built' }
       catch (e) { return /match is empty/.test(e instanceof Error ? e.message : '') ? 'refused' : 'other error' }
     })(),
     twoAlikeWithRule: outcome(() => createTaxonomy({ ...base, edgeTypes: twoAlike, classifyEdge: () => 'one' })),
-    ruleSeesDeclared: { answer: withRule.classifyEdge(edge(), 'a', 'b') ?? null, handed: handed.map(h => h ?? null) },
+    ruleSeesDeclared: { answer: withRule.edgeTypeOf(edge(), 'a', 'b') ?? null, handed: handed.map(h => h ?? null) },
   }
 }
 

@@ -11,6 +11,7 @@ import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view
 import type { NodeType } from '../adapter/node-types'
 import type { AxisDescriptor } from '@temporal-architect/graph-view/graph/axis'
 import { DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY, DEFAULT_TAXONOMY_SPEC } from '../adapter/node-types'
+import { ALL_EDGE_TYPES } from '../adapter/edge-types'
 import { dimensionsFor } from '../adapter/build'
 import {
   Simulation, axisOptions, defaultParamsFor, fitsCeiling, layoutAxisKey, layoutAxisOptions, pairTuning, retunedFor,
@@ -27,6 +28,7 @@ import { filterOfSets } from './filter-states'
 import { FIXTURES } from './fixtures'
 import { buildFixtureGraph } from './tier-a'
 import { mulberry32 } from './rng'
+import { MIDDLING_SPRING } from '@temporal-architect/graph-view/graph/shapes'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
 
@@ -141,7 +143,7 @@ function retune(graph: Graph): Json {
       { id: 'activity', ...NODE_TYPE_REGISTRY.activity },
     ],
     // The edge types among those three values: one to a value nobody declared is refused.
-    edgeTypes: DEFAULT_TAXONOMY_SPEC.edgeTypes.filter(e => ['worker', 'workflow', 'activity'].includes(e.sourceValue) && ['worker', 'workflow', 'activity'].includes(e.targetValue)),
+    edgeTypes: ALL_EDGE_TYPES.filter(e => ['worker', 'workflow', 'activity'].includes(e.sourceValue) && ['worker', 'workflow', 'activity'].includes(e.targetValue)),
   })
   const styled = defaultParamsFor(DEFAULT_TAXONOMY)
   const styledTuned: ForceParams = {
@@ -207,10 +209,11 @@ function retune(graph: Graph): Json {
 }
 
 /**
- * Off the style axis a bucket is not a style key. Its physics is the host's
- * typical declared value — the fold over every declared type — never the
- * fallback style's, and resolving it warns about nothing (the review found
- * every file bucket at the placeholder's -300/30 with a false warning each).
+ * Off the style axis a bucket is not a style key. Its push physics is the
+ * host's typical declared value — the fold over every declared style — never
+ * the fallback style's, and resolving it warns about nothing; its spring is
+ * the middling spring, the same start a declared type gets when it leaves
+ * its spring out, so no type's declared spring moves a pair category.
  */
 function foreignAxisPhysics(graph: Graph): Json {
   const params = fileAxisParams(graph)
@@ -231,9 +234,7 @@ function foreignAxisPhysics(graph: Graph): Json {
       const a = syntheticNode('a', 'workflow', ids[0])
       const b = syntheticNode('b', 'activity', ids[0])
       const s = springFor(resolved.spring, edge, a, b)
-      const declared = DEFAULT_TAXONOMY.edgeTypes
-      const mean = declared.reduce((t, e) => t + e.physics.strength, 0) / declared.length
-      return { key: s.key ?? '(unbucketed)', strengthIsDeclaredMean: Math.abs(s.strength - mean) < 1e-9 }
+      return { key: s.key ?? '(unbucketed)', strengthIsMiddling: Math.abs(s.strength - MIDDLING_SPRING.strength) < 1e-9 && Math.abs(s.distance - MIDDLING_SPRING.distance) < 1e-9 }
     })(),
   }
 }
@@ -245,14 +246,14 @@ function shippedFilters(): readonly AxisDescriptor[] {
   return declared
 }
 
-/** A host rule that answers an id its table does not declare gets no category: the edge is sprung as typical and named by `validateGraph`, never thrown on. */
+/** A host rule that answers an id its table does not declare gets no category: the edge pulls nothing and is named by `validateGraph`, never thrown on. */
 function membership(): Json {
   const rogue = createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, classifyEdge: () => 'notDeclaredAnywhere' })
   const params = defaultParamsFor(rogue)
   const spring = resolvePhysics(params, rogue).spring
   const edge: GraphEdge = { id: 'r', sourceId: 'a', targetId: 'b', relation: 'dependency' }
-  // A rogue id from the host's rule is no category: the edge is sprung as
-  // typical rather than throwing in the force loop.
+  // A rogue id from the host's rule is no category: the edge pulls nothing
+  // rather than throwing in the force loop.
   let message = 'DID NOT THROW'
   let key: string | null = null
   try { key = springFor(spring, edge, syntheticNode('a', 'workflow', undefined), syntheticNode('b', 'activity', undefined)).key ?? null } catch (err) { message = err instanceof Error ? err.message : String(err) }
@@ -289,7 +290,7 @@ function coherence(): Json {
     try { f(); return 'NOT REFUSED' } catch (err) { return err instanceof Error ? err.message : String(err) }
   }
   const namer = { id: 'probe', label: 'Probe', labelFor: (v: string) => v, abbreviationFor: (v: string) => v.slice(0, 2) }
-  const spec = DEFAULT_TAXONOMY_SPEC
+  const spec = { ...DEFAULT_TAXONOMY_SPEC, edgeTypes: ALL_EDGE_TYPES }
   return {
     duplicateValue: refusal(() => createTaxonomy({ ...spec, styles: [...spec.styles, spec.styles[0]] })),
     edgeEndpointUndeclared: refusal(() => createTaxonomy({ ...spec, edgeTypes: [...spec.edgeTypes, { ...spec.edgeTypes[0], id: 'ghostLink', sourceValue: 'ghost' }] })),

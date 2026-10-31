@@ -74,7 +74,7 @@ function nodeTypeRows(): Json {
 function edgeTypeRows(): Json {
   return sortedRecord(
     ALL_EDGE_TYPES.map(e => [e.id, {
-      label: e.label,
+      label: e.label ?? e.id,
       sourceValue: e.sourceValue,
       targetValue: e.targetValue,
       relation: e.relation,

@@ -10,7 +10,7 @@
 
 import React from 'react'
 import type { SimNode } from '../../graph/simulation'
-import type { GraphEdge } from '../../graph/model'
+import type { GraphEdge, GraphNode } from '../../graph/model'
 import { highlightOf } from '../../graph/highlight'
 import type { Taxonomy } from '../../graph/taxonomy'
 
@@ -47,6 +47,8 @@ export function useHighlight(
   taxonomy: Taxonomy,
   /** The selected node — the view's own or the host's — which the highlight walks from when nothing is hovered. */
   selectedNodeId: string | null,
+  /** The host's nodes by id: what the taxonomy's `highlight` hook is handed, never the simulation's copies. */
+  hostIndex: ReadonlyMap<string, GraphNode>,
 ): HighlightController {
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
@@ -90,9 +92,16 @@ export function useHighlight(
     const direction = shiftHeld ? 'upstream' as const : 'downstream' as const
     const activeNode = getNode(activeId)
     if (!activeNode) return { highlightedNodes: null as Set<string> | null, highlightedEdges: null as Set<string> | null }
-    const { nodes, edges } = highlightOf(taxonomy, activeNode, direction, { visibleNodes, visibleEdges, visibleIds, getNode })
+    // The host's hook sees the host's own nodes: the active one, the visible
+    // ones and any it looks up — the simulation's copies stay the view's.
+    const hostNode = (id: string) => hostIndex.get(id)
+    const { nodes, edges } = highlightOf(taxonomy, hostNode(activeId) ?? activeNode, direction, {
+      visibleNodes: visibleNodes.map(n => hostNode(n.id) ?? n),
+      visibleEdges, visibleIds,
+      getNode: id => hostNode(id) ?? getNode(id),
+    })
     return { highlightedNodes: nodes, highlightedEdges: edges }
-  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, getNode, taxonomy])
+  }, [hoveredNodeId, selectedNodeId, shiftHeld, visibleEdges, visibleIds, visibleNodes, getNode, taxonomy, hostIndex])
 
   return {
     hoveredNodeId, setHoveredNodeId,

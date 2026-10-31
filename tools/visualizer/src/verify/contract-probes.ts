@@ -20,6 +20,9 @@ import type { HighlightDirection } from '@temporal-architect/graph-view/graph/ta
 import { graphEquals, nodesById } from '@temporal-architect/graph-view/graph/model'
 import { filterFromJSON, filterStatesEqual, filterToJSON, locksFromJSON, locksToJSON } from '@temporal-architect/graph-view/filter/types'
 import { sameFocusRequest } from '@temporal-architect/graph-view/components/graph-view/focus'
+import { useLinkedViews } from '@temporal-architect/graph-view'
+import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
 import { DEFAULT_TAXONOMY, DEFAULT_TAXONOMY_SPEC } from '../adapter/node-types'
 import { mulberry32 } from './rng'
@@ -162,9 +165,31 @@ function focusRequest(): Json {
   }
 }
 
+/** The linked-views hook as it mounts: the view `start` names is active, the shared search starts where `initialSearch` says and reaches every view's props by one callback, no view has a focus request, and a view the hook was not given throws. */
+function linkedViewsHook(): Json {
+  type V = 'list' | 'graph' | 'other'
+  let seen: Json = null
+  function Probe() {
+    const linked = useLinkedViews<V>({ taxonomy: DEFAULT_TAXONOMY, views: ['list', 'graph'], start: 'graph', initialSearch: { query: 'wf', active: true } })
+    let unknown = 'returned'
+    try { linked.of('other') } catch (e) { unknown = e instanceof Error && /no view "other"/.test(e.message) ? 'threw' : 'other error' }
+    const list = linked.of('list')
+    seen = {
+      active: linked.active,
+      search: { query: linked.search.query, active: linked.search.active },
+      listSearchIsShared: list.search === linked.search && list.onSearchChange === linked.of('graph').onSearchChange,
+      listHasNoFocus: list.focus === null,
+      unknownView: unknown,
+    }
+    return null
+  }
+  renderToStaticMarkup(React.createElement(Probe))
+  return seen
+}
+
 export function contractProbes(): Json {
   return {
     positions: positions(), groupColour: groupColour(), highlightDirection: highlightDirection(), graphShape: graphShape(),
-    graphEquality: graphEquality(), filterJson: filterJson(), focusRequest: focusRequest(),
+    graphEquality: graphEquality(), filterJson: filterJson(), focusRequest: focusRequest(), linkedViewsHook: linkedViewsHook(),
   }
 }

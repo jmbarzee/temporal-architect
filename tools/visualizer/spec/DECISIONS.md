@@ -3036,3 +3036,151 @@ says the default re-seeds (and `onFilterChange` hears it), `defaultPositions`
 is read whenever the simulation is built, `chrome.themeToggle` sits inside
 the transport cluster, an error diagnostic may drop a node, and the README
 names `valuesOn` for a second view's values.
+
+**D80 — Unit 22, the host owns its state, the drawing's defaults, the words (#217).**
+One unit for the fourth cold review (#209, last comment): two blockers,
+eleven major, twelve minor, grouped on instruction into one migration of both
+hosts and one review fan-out. Two findings are deferred to issues (#215 edge
+outputs, #216 groups); every other finding lands here.
+
+1. **The host owns its state.** A controlled `filter` is never rewritten by
+   the view: the re-seed on a graph change runs only for the filter the view
+   keeps itself, and never when `defaultFilter` was given (read once, at
+   mount). The rule is one exported function, `reseedFilter(filter, taxonomy,
+   graph, touched)` — every axis the user has not touched takes the new
+   graph's opening selection — and which axes the user touched is state, not
+   an inference: the bar names the axis of every change it makes
+   (`onFilterChange`'s second argument), the view and `useLinkedViews` keep
+   the set, and a host that controls its filter keeps its own. The hook
+   re-seeds every view on a new `graph` (a filter `initial` gave counts as the
+   user's where it differs from the default), so the visualizer needs no
+   re-seed of its own; before, only the Graph pane's controlled filter was
+   re-seeded and the Tree drifted. Every controllable prop has a `default*` (`locks`,
+   `axes`, `search`, `theme`, `selectedId`, `layout` beside `filter`), read
+   once; a prop that flips between defined and undefined after the mount is
+   said once on the console. `of(view)` throws for a view the hook was not
+   given.
+2. **The layout is state.** `layout` / `onLayoutChange` / `defaultLayout`
+   under the controllable convention carry the force tuning and the node
+   scale; `layoutToJSON` and `layoutFromJSON(json, taxonomy)` carry them to a
+   store, and the JSON form — every field optional over the taxonomy's
+   defaults — is also how a host writes a start (`{ forces: { bandY: { scalar:
+   'credits' } } }`). `LayoutState` is opaque, a branded type whose
+   declaration reaches none of the engine's: the published-types gate refused
+   the first shape, `{ forces: ForceParams }`, because `ForceParams` and the
+   force kernels are not part of any surface (D53, D62), so the module is
+   split — `layout.ts` declares the state and the JSON shape with its fields
+   spelled out, `layout-internal.ts` opens it for the view and builds the
+   tunings. `retunedFor` leaves a tuning alone while the graph has no nodes,
+   so a layout restored before the data arrives waits for it; a tuning on an
+   axis other than the style axis is restored without buckets and completed
+   by the view from the graph, its overrides kept where their values survive.
+3. **The hook owns the switch.** `useLinkedViews` keeps the active view
+   (`active`, started at `start`) and the shared search (`search`, started at
+   `initialSearch`, in every view's props); `switchTo(to, transition?)` reads
+   the active view and makes `to` active; `focus(view, node)` is the focus
+   switch and a fresh request in `of(view).focus`, spent when the pane
+   reports it. `useFocusRequest()` is the counter every host wrote, for a host
+   without the hook.
+4. **The taxonomy.** An edge type's `sourceValue` and `targetValue` take a
+   value or several; the resolved type carries `pairs` (the cross product),
+   classification, the pair index, the orientation preference and the
+   "nothing tells them apart" refusal iterate them, and the refusals name an
+   array element by index. `CONTAINMENT_STROKE` is exported and is the stroke a
+   containment type starts from and an unclaimed containment edge draws in;
+   both hosts' identical copies are gone. A derived containment edge no type
+   claims is one warning, `containment-untyped`, after derivation. A spring
+   left out is the middling spring, whatever the neighbours declare
+   (`typicalSpringOf` is gone, and so is the forces' `typicalSpring`: a pair
+   category on an axis other than the style axis starts from the middling
+   spring too, so no type's declared spring moves another's anywhere). `label` defaults to the id on an edge type, an
+   axis descriptor and a scalar (`tooltip` to the label); `edgeTypes` may be
+   left out. The built method is `edgeTypeOf`; the spec hook stays
+   `classifyEdge`. The catalog's rule is gone (its three course types run
+   between course and lab at either end).
+5. **The view.** The taxonomy's hooks — `contextLine`, `searchText`,
+   `highlight` and what it looks up — are handed the host's own node objects,
+   as every output is. `systemTheme` says what `system` means, on the pane
+   and the bar; `schemeStylesheet` takes its dark selector. A focus given the
+   graph widens to the whole chip holding its value (`ReconcileInput.graph`;
+   the view and the hook pass theirs). The root carries `height: 100%` beside
+   `flex: 1`, and a pane that measures no height while displayed says so
+   once. An axis the taxonomy does not declare renders in the bar as its
+   header, a note and the remove control. `/` and its row in the shortcuts
+   panel follow `chrome.search`.
+6. **The helpers.** `passesSelection({ filter, taxonomy, axes, node,
+   valueOn? })` — the record unconstrained (a probe caught the first
+   signature refusing a host record without `values`, the case `valueOn` is
+   for); `overriddenLocks`, `HiddenMatches.visible` and `ActiveGroup.nodeIds`
+   are `ReadonlySet`.
+7. **The words.** Lock, not pin, for an axis (the bar's `section-locked`,
+   the toggle's `gv-lock-toggle` / `locked`, every parameter and doc comment);
+   "pinned" stays the word for a node held in place. Axis, not dim or chain or
+   dimension. `AxisDescriptor.focus` is `widens`. The README says
+   "diagnostics" for the view's own list. Shipped doc comments state
+   contracts, not history. A claim three places made — that an edge no type
+   claims pulls "the typical spring" — was false (on the style axis it is
+   sprung with the inert spring; on another axis it is sprung by its
+   endpoints' buckets, from the middling spring); the validator's message,
+   the README and the doc comments say so. The README gained an install command, the nine `chrome`
+   keys by name, prose for `useHostTheme`, `themeChoiceOf`, `useTaxonomy`,
+   `isContainment`, `RecentlyChanged` and both strokes, a Layout bullet, and a
+   two-view example on `linked.active` and `linked.focus`; `Taxonomy`'s doc
+   names the members a host reads.
+
+**Golden change (§8.2).** `static` only. New rows: `defaultsProbes.unit22`
+(pairs, relationStrokes, derivedLabels, reseeding, passesSelectionObject,
+focusChipSnap, layoutJson), `contractProbes.linkedViewsHook` and
+`seamProbes.barUndeclaredAxis`. `defaultsProbes.typicalSpring` is renamed
+`defaultSpring` and its value moves from the declared mean (0.6, 200) to the
+middling spring (0.5, 120). The `edge-type-unclassified` message in the
+`pass2` rows ends "draws in its relation's default stroke and pulls nothing
+while push and pull key on the style axis" for "draws in the neutral stroke
+with the typical spring". Two rows the review's middling-spring fix moves:
+`forceProbes.mappedAxisSprings.velocities` (eighteen numbers — every pair
+category on a mapped axis now starts from the middling spring, not the
+declared mean) and `tuningProbes.foreignAxisPhysics.springIsTypical`, whose
+`strengthIsDeclaredMean` is now `strengthIsMiddling`. The five fixture
+goldens and `edge-types` are unchanged: the visualizer's dropped containment
+stroke equals the default it now takes, and no fixture edge is reclassified.
+
+**Measured.** Surface 90 + 108 names (ten added: `reseedFilter`,
+`PassesSelectionInput`, `LayoutState`, `LayoutJSON`, `LayoutTuningJSON`,
+`layoutToJSON`, `layoutFromJSON`, `useFocusRequest`, `CONTAINMENT_STROKE`,
+`ResolvedScalarAxis`); leak 0 of 0; total vocabulary 1059 of 1059 (the
+migration's two added words — a comment's and an import's — paid for by a
+reworded comment); boundary 0; forbidden patterns 0 new; 7/7 goldens with
+`static` regenerated under this decision; the published-types gate clean with
+23 declaration files reachable and none private (the layout module's first
+shape reached 27, with the engine's), the README's two code blocks compiled,
+every shipped declaration documented, every README-named declaration on the
+surface; the catalog typechecked.
+
+**Review (the unit's fan-out).** Six finders, each finding checked by a
+skeptic: twenty confirmed (fourteen distinct), three refuted, all closed.
+The largest: the re-seed rule inferred "the user changed this axis" by
+comparing the selection with the previous graph's opening one, which a value
+leaving the graph and returning fools — so touched axes are explicit state
+(the bar names the axis of each write, the view and the hook keep the set,
+`reseedFilter` takes it, and the hook re-seeds every view). A focus request
+whose node arrives with a graph change now lands on the following commit,
+so a re-seed the host's hook queued in the same commit is what it builds on.
+The pane's own focus (the handle, the `focus` prop) passed no `graph` and
+split a chip the hook's did not. A layout read back from JSON was never a
+fixed point of the retune (the JSON form drops buckets), so a host keeping
+the JSON as its state wrote `onLayoutChange` every render: the layout is
+compared by content, as the filter is. The empty-graph early return in the
+retune let a stored layout naming an unknown scalar reach the kernels, which
+throw: the scalar check runs first. `typicalSpring` in the forces averaged
+the defaulted springs with the declared ones and so moved every pair category
+on another axis: gone, the middling spring everywhere. A type of another
+relation than the edge's no longer counts as its type — for the derived
+containment warning, the drawn stroke and the spring alike. `defaultFilter`
+is latched at mount; a read-only controlled filter is judged and centred as
+it stands, never reported widened; `systemTheme` stops the DOM read and the
+observer rather than discarding their answer; `views` is read once and `of`
+judges on the state the hook holds. Words: "pulls nothing" is true while
+push and pull key on the style axis and now says so (README, the validator,
+D80 itself); `overriddenLocks` is what the last switch overrode; the forces'
+comments, the README's `of(view)` sentence and three history-narrating
+comments were brought to the code.

@@ -94,7 +94,7 @@ function edgeLine(e: GraphEdge): string {
   const tgt = BY_ID.get(e.targetId)
   const srcValue = src && DEFAULT_TAXONOMY.styleValueOf(src)
   const tgtValue = tgt && DEFAULT_TAXONOMY.styleValueOf(tgt)
-  return `${DEFAULT_TAXONOMY.classifyEdge(e, srcValue, tgtValue) ?? '(unclassified)'}|${relationOf(e)}|${e.sourceId} -> ${e.targetId}`
+  return `${DEFAULT_TAXONOMY.edgeTypeOf(e, srcValue, tgtValue) ?? '(unclassified)'}|${relationOf(e)}|${e.sourceId} -> ${e.targetId}`
 }
 
 function state(types: string[], files: string[]): Json {

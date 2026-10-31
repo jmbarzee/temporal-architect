@@ -16,13 +16,14 @@ import { isIdentityMapping } from './axis'
 import type { GraphEdge } from './model'
 import { relationOf } from './model'
 import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange, LayoutTuning } from './simulation'
-import type { ScalarAxis, ScalarSpan } from './scalar'
+import type { ResolvedScalarAxis, ScalarAxis, ScalarSpan } from './scalar'
 import { normalized, rangeNormalized } from './scalar'
 import { isScalarTuning } from './scalar'
 import type { ReadableGraph } from './model'
 import type { Taxonomy } from './taxonomy'
 import type { AxisMapping } from './axis'
 import type { EdgeTypeId, ResolvedEdgeType, SpringPhysics } from './shapes'
+import { MIDDLING_SPRING } from './shapes'
 import type { Relation } from './axis'
 import type { Rng } from './rng'
 
@@ -85,15 +86,15 @@ export interface ResolvedAxis<T> {
 }
 
 /** A layout axis backed by a scalar: the scalar itself, and where its 0 and 1 rest. */
-export interface ResolvedScalarAxis {
-  readonly scalar: ScalarAxis
+export interface ResolvedScalarLayout {
+  readonly scalar: ResolvedScalarAxis
   readonly span: ScalarSpan
 }
 
 /** A layout axis as the kernels see it: per-bucket bands, or a scalar over a span. */
-export type ResolvedLayoutAxis = ResolvedAxis<BandRange> | ResolvedScalarAxis
+export type ResolvedLayoutAxis = ResolvedAxis<BandRange> | ResolvedScalarLayout
 
-export const isScalarAxis = (a: ResolvedLayoutAxis): a is ResolvedScalarAxis => 'scalar' in a
+export const isScalarAxis = (a: ResolvedLayoutAxis): a is ResolvedScalarLayout => 'scalar' in a
 
 /** The mapped half of a layout axis; loud where a caller expects buckets and meets a scalar. */
 export function mappedAxis(a: ResolvedLayoutAxis): ResolvedAxis<BandRange> {
@@ -488,19 +489,6 @@ export const ABSENT_EDGE_PHYSICS: SpringPhysics = { strength: 0, distance: 0 }
  */
 export type EdgeCategoryDescription = Pick<ResolvedEdgeType, 'id' | 'label' | 'sourceValue' | 'targetValue' | 'relation' | 'tooltip'>
 
-/**
- * What a category starts from when nothing declared a spring for it: the mean
- * of the host's declared springs, so a bucket on a foreign axis is tuned from
- * this domain's scale rather than from a number out of another's. A host that
- * declares no springs gets the absent spring, which is inert.
- */
-export function typicalSpring(taxonomy: Taxonomy): SpringPhysics {
-  const declared = taxonomy.edgeTypes
-  if (declared.length === 0) return ABSENT_EDGE_PHYSICS
-  let strength = 0, distance = 0
-  for (const e of declared) { strength += e.physics.strength; distance += e.physics.distance }
-  return { strength: strength / declared.length, distance: distance / declared.length }
-}
 
 /**
  * The pair rule's category id: the relation and the unordered bucket pair,
@@ -530,7 +518,7 @@ function parsePairId(id: EdgeTypeId): [Relation, string, string] | undefined {
  * precedence no pair rule reproduces — two of its categories share endpoint
  * values and differ only on the edge's own dispatch. On any other
  * (axis, mapping) the library's pair rule applies: one category per unordered
- * bucket pair per relation, each the host's typical spring until tuned. The
+ * bucket pair per relation, each the middling spring until tuned. The
  * pair rule enumerates nothing: a category exists when an edge falls in it,
  * which is what a control surface shows and what the token ceiling counts.
  */
@@ -539,11 +527,12 @@ export interface ResolvedSprings {
   /**
    * The category of an edge from its endpoints' bucket ids, or undefined when
    * an endpoint is unbucketed, or — on the style axis — when no declared type
-   * runs between the edge's endpoint values and the taxonomy's `classifyEdge`
-   * names none; such an edge is sprung as typical and drawn neutral.
+   * of the edge's relation runs between its endpoint values and the
+   * taxonomy's `classifyEdge` names none; such an edge pulls nothing and
+   * draws in its relation's default stroke.
    */
   classify(edge: GraphEdge, src: string | undefined, tgt: string | undefined): EdgeTypeId | undefined
-  /** Effective physics: the override where one exists, else the declared or typical spring. */
+  /** Effective physics: the override where one exists, else the declared spring — the middling spring, on a pair axis. */
   physicsFor(id: EdgeTypeId): SpringPhysics
   /** What a control surface shows for a category — the declared entry, or one synthesized from a pair id. */
   describe(id: EdgeTypeId): EdgeCategoryDescription | undefined
@@ -555,17 +544,22 @@ export function resolveSprings(pair: PairTuning, taxonomy: Taxonomy): ResolvedSp
     const table = new Map(taxonomy.edgeTypes.map(e => [e.id, e]))
     return {
       mapping,
-      // An edge no declared type claims has no category here: it draws neutral
-      // and is sprung as typical, and `validateGraph` has named it.
+      // An edge no declared type of its relation claims has no category here:
+      // it pulls nothing and draws in its relation's stroke, and the
+      // diagnostics have named it.
       classify: (edge, src, tgt) => {
-        const id = taxonomy.classifyEdge(edge, src, tgt)
-        return id !== undefined && table.has(id) ? id : undefined
+        const id = taxonomy.edgeTypeOf(edge, src, tgt)
+        const type = id === undefined ? undefined : table.get(id)
+        return type !== undefined && type.relation === relationOf(edge) ? id : undefined
       },
       physicsFor: id => overrides.get(id) ?? table.get(id)?.physics ?? ABSENT_EDGE_PHYSICS,
       describe: id => table.get(id),
     }
   }
-  const typical = typicalSpring(taxonomy)
+  // Every pair category starts from the middling spring: the same start a
+  // declared type gets when it leaves its spring out, and no type's declared
+  // spring moves another's.
+  const typical = MIDDLING_SPRING
   const buckets = new Map(mapping.buckets.map(b => [b.id, b]))
   return {
     mapping,

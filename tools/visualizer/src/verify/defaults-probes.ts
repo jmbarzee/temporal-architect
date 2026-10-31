@@ -10,8 +10,8 @@
 // every host that leans on it.
 //
 //   - `minimal`: every field a default fills in, per value, edge type and axis;
-//   - `typicalSpring`: an edge type with no spring starts from the mean of the
-//     declared ones;
+//   - `defaultSpring`: an edge type with no spring starts from the middling
+//     spring, whatever its neighbours declare;
 //   - `defaultFilter`: what a view opens with, per kind of axis;
 //   - `containment`: the edge the view derives from `parentId`, and what
 //     validation says of a host that also lists its own;
@@ -23,9 +23,13 @@
 //     might get wrong;
 //   - `pass2b`: the filter functions a host's second view shares with the pane —
 //     where a search's matches land under a filter, what a switch or a focus
-//     does to a filter, who answers to a focus, what the nodes say per axis.
+//     does to a filter, who answers to a focus, what the nodes say per axis;
+//   - `unit22`: a type on several values at each end, the relation strokes
+//     and the derived-containment warning, the labels a host may leave out,
+//     re-seeding, the object form of `passesSelection`, a focus widening by
+//     whole chips, and the layout as plain data.
 
-import { countsOn, initialFilter, hiddenMatchesOf, matchesFocus, passesSelection, reconcileFilter } from '@temporal-architect/graph-view'
+import { countsOn, initialFilter, hiddenMatchesOf, layoutFromJSON, layoutToJSON, matchesFocus, passesSelection, reconcileFilter, reseedFilter } from '@temporal-architect/graph-view'
 import type { AxisId, FilterState, FocusTarget, AxisLocks, ViewTransition } from '@temporal-architect/graph-view'
 import { createTaxonomy } from '@temporal-architect/graph-view/graph/taxonomy'
 import type { Taxonomy, TaxonomySpec } from '@temporal-architect/graph-view/graph/taxonomy'
@@ -34,16 +38,17 @@ import type { AxisDescriptor, Relation, ResolvedAxisDescriptor } from '@temporal
 import type { Graph, GraphEdge, GraphNode } from '@temporal-architect/graph-view/graph/model'
 import { readableGraph, withContainmentEdges } from '@temporal-architect/graph-view/graph/model'
 import type { EdgeStroke, ThemedColor } from '@temporal-architect/graph-view/graph/scheme'
-import { NEUTRAL_STROKE, stackBand } from '@temporal-architect/graph-view/graph/shapes'
+import { CONTAINMENT_STROKE, NEUTRAL_STROKE, stackBand } from '@temporal-architect/graph-view/graph/shapes'
 import type { EdgeType, NodeStyle, ResolvedNodeStyle } from '@temporal-architect/graph-view/graph/shapes'
 import { BUILT_IN_SCALARS, normalized } from '@temporal-architect/graph-view/graph/scalar'
 import type { ScalarAxis } from '@temporal-architect/graph-view/graph/scalar'
-import { defaultParamsFor } from '@temporal-architect/graph-view/graph/simulation'
+import { defaultParamsFor, retunedFor } from '@temporal-architect/graph-view/graph/simulation'
+import { openLayout } from '@temporal-architect/graph-view/graph/layout-internal'
 import { layoutFrame, resolvePhysics } from '@temporal-architect/graph-view/graph/forces'
-import { validateGraph } from '@temporal-architect/graph-view/graph/validate'
+import { derivedContainmentDiagnostics, validateGraph } from '@temporal-architect/graph-view/graph/validate'
 import { linkedSwitch } from '@temporal-architect/graph-view/filter/linked'
 import type { LinkedViewState } from '@temporal-architect/graph-view/filter/linked'
-import { selectionFor } from '@temporal-architect/graph-view/filter/types'
+import { changedAxes, selectionFor } from '@temporal-architect/graph-view/filter/types'
 import { activeGroupsOf } from '@temporal-architect/graph-view/graph/groups'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
@@ -109,7 +114,7 @@ function minimal(): Json {
     edgeTypes: sortedRecord(MINIMAL.edgeTypes.map(e => [e.id, { physics: { strength: e.physics.strength, distance: e.physics.distance }, tooltip: e.tooltip }] as const)),
     descriptors: sortedRecord(MINIMAL.filterAxes.map(d => [d.id, {
       absentMeans: d.absentMeans,
-      focus: d.focus,
+      focus: d.widens,
       reheat: reheatRow(d),
       presentation: d.presentation,
       chips: d.chipsFor(['a', 'b']).map(c => ({ id: c.id, label: c.label, icon: c.icon ?? null, tint: c.tint ?? null, values: [...c.values] })),
@@ -120,8 +125,8 @@ function minimal(): Json {
   }
 }
 
-/** Two of three edge types declare a spring; the third starts from their mean. */
-function typicalSpring(): Json {
+/** Two of three edge types declare a spring; the third starts from the middling spring, not from theirs. */
+function defaultSpring(): Json {
   const taxonomy = createTaxonomy(specOf([
     { ...bare('first', 'dependency', 'a', 'a'), physics: { strength: 0.4, distance: 100 } },
     { ...bare('second', 'dependency', 'b', 'b'), physics: { strength: 0.8, distance: 300 } },
@@ -212,7 +217,7 @@ function classification(): Json {
     unstyled('calls', 'dependency', 'c', 'c'),
   ]))
   const classify = (relation: Relation | undefined, src: string | undefined, tgt: string | undefined) =>
-    taxonomy.classifyEdge({ id: 'e', sourceId: 's', targetId: 't', ...(relation ? { relation } : {}) }, src, tgt) ?? null
+    taxonomy.edgeTypeOf({ id: 'e', sourceId: 's', targetId: 't', ...(relation ? { relation } : {}) }, src, tgt) ?? null
   const graph = graphOf(
     [node('na', 'a'), node('nb', 'b'), node('nc', 'c')],
     [dependency('ok', 'na', 'nb'), dependency('uncovered', 'na', 'nc')],
@@ -250,8 +255,8 @@ function sharedPair(): Json {
     // A containment type and a dependency type on one pair are two pairs.
     otherRelation: refusalOf(() => createTaxonomy(bareSpec([unstyled('in', 'containment', 'c', 'c'), calls]))),
     withTieBreaker: refusalOf(() => createTaxonomy({ ...bareSpec([calls, signals]), classifyEdge: () => 'signals' })),
-    tieBreakerFirst: tieBreaker.classifyEdge(edge({ [KIND]: 'signal' }), 'c', 'c') ?? null,
-    pairWhenItSaysNothing: tieBreaker.classifyEdge(edge(), 'c', 'c') ?? null,
+    tieBreakerFirst: tieBreaker.edgeTypeOf(edge({ [KIND]: 'signal' }), 'c', 'c') ?? null,
+    pairWhenItSaysNothing: tieBreaker.edgeTypeOf(edge(), 'c', 'c') ?? null,
   }
 }
 
@@ -297,7 +302,7 @@ function filterAxes(): Json {
     label: d.label,
     emptyMeans: d.emptyMeans,
     absentMeans: d.absentMeans,
-    focus: d.focus,
+    focus: d.widens,
     reheat: reheatRow(d),
     initialSelection: [...d.initialSelection(['a', 'b'])],
     chips: d.chipsFor(['a', 'b']).map(c => ({ id: c.id, label: c.label, icon: c.icon ?? null, tint: c.tint ?? null })),
@@ -430,7 +435,7 @@ function hiddenMatches(): Json {
   const kindThenZone = axes
   const zoneThenKind = [...axes].reverse()
   const filter = selection(['a', 'b'], ['east'])
-  const shown = (f: FilterState, chain: readonly AxisId[]) => new Set(POOL.filter(n => passesSelection(f, MINIMAL, chain, dim => n.values[dim])).map(n => n.id))
+  const shown = (f: FilterState, chain: readonly AxisId[]) => new Set(POOL.filter(n => passesSelection({ filter: f, taxonomy: MINIMAL, axes: chain, node: n })).map(n => n.id))
   const split = (f: FilterState, chain: readonly AxisId[], visible: ReadonlySet<string>) => {
     const r = hiddenMatchesOf({ nodes: POOL, filter: f, taxonomy: MINIMAL, axes: chain, visibleIds: visible, matches: n => n.name.includes('api') })
     return { visible: sorted(r.visible), hiddenCount: r.hiddenCount, hiddenByAxis: nested(r.hiddenByAxis) }
@@ -616,14 +621,176 @@ function groupEmphasis(): Json {
   return { plain: plain.map(g => [g.id, g.strength]), emphasised: emphasised.map(g => [g.id, g.strength]) }
 }
 
+// ── Unit 22 ───────────────────────────────────────────────────────────────────
+
+/** What building a spec answers: 'built', or the refusal's text without its preamble. */
+const outcomeOf = (run: () => unknown): string => {
+  try { run(); return 'built' } catch (e) { return e instanceof Error ? e.message.replace(/^taxonomy is incoherent: /, '') : 'other' }
+}
+const json = (value: unknown): Json => JSON.parse(JSON.stringify(value ?? null))
+
+/** A type on several values at each end runs between every pair, in either orientation; the first of each is its token's halves; an end naming no value, or an undeclared one, is refused. */
+function pairs(): Json {
+  const taxonomy = createTaxonomy(specOf([
+    { id: 'many', sourceValue: ['a', 'b'], targetValue: ['a', 'b'], relation: 'dependency' },
+    { id: 'one', sourceValue: 'a', targetValue: 'c', relation: 'dependency' },
+  ]))
+  const edge: GraphEdge = { id: 'e', sourceId: 's', targetId: 't' }
+  const many = taxonomy.edgeTypes.find(t => t.id === 'many')!
+  const ends: [string, string][] = [['a', 'a'], ['a', 'b'], ['b', 'a'], ['b', 'b'], ['a', 'c'], ['c', 'a'], ['c', 'c']]
+  return {
+    classified: sortedRecord(ends.map(([s, t]) => [`${s}->${t}`, taxonomy.edgeTypeOf(edge, s, t) ?? null] as const)),
+    pairs: many.pairs.map(([s, t]) => `${s}->${t}`),
+    token: [many.sourceValue, many.targetValue],
+    labelDefaultsToId: many.label === 'many' && many.tooltip === 'many',
+    emptyEndRefused: outcomeOf(() => createTaxonomy(specOf([{ id: 'none', sourceValue: [], targetValue: 'a', relation: 'dependency' }]))),
+    undeclaredInArrayRefused: outcomeOf(() => createTaxonomy(specOf([{ id: 'zz', sourceValue: ['a', 'zz'], targetValue: 'a', relation: 'dependency' }]))),
+    sharedOrientedPairRefused: outcomeOf(() => createTaxonomy(specOf([
+      { id: 'many', sourceValue: ['a', 'b'], targetValue: ['a', 'b'], relation: 'dependency' },
+      { id: 'ba', sourceValue: 'b', targetValue: 'a', relation: 'dependency' },
+    ]))),
+    oppositeOrientationBuilt: outcomeOf(() => createTaxonomy(specOf([
+      { id: 'ab', sourceValue: 'a', targetValue: ['b', 'c'], relation: 'dependency' },
+      { id: 'ba', sourceValue: 'b', targetValue: 'a', relation: 'dependency' },
+    ]))),
+  }
+}
+
+/** A containment type left unstyled wears the containment stroke and a dependency type the neutral one; a derived containment edge no type claims is one warning, none when a type claims it. */
+function relationStrokes(): Json {
+  const typed = createTaxonomy(specOf([
+    { id: 'in', sourceValue: 'b', targetValue: 'a', relation: 'containment' },
+    { id: 'calls', sourceValue: 'c', targetValue: 'c', relation: 'dependency' },
+  ]))
+  const untyped = createTaxonomy(specOf([{ id: 'calls', sourceValue: 'c', targetValue: 'c', relation: 'dependency' }]))
+  const stroke = (id: string) => strokeRow(typed.edgeTypes.find(t => t.id === id)!.style)
+  const same = (a: Json, b: Json) => JSON.stringify(a) === JSON.stringify(b)
+  const host = graphOf([node('p', 'a'), node('x', 'b', undefined, 'p'), node('y', 'b', undefined, 'p')])
+  const drawn = withContainmentEdges(host)
+  const rows = (t: Taxonomy) => derivedContainmentDiagnostics(drawn, host, t).map(d => ({ code: d.code, severity: d.severity, edgeId: d.edgeId ?? null, message: d.message }))
+  return {
+    containment: stroke('in'), containmentIsDefault: same(stroke('in'), strokeRow(CONTAINMENT_STROKE)),
+    dependency: stroke('calls'), dependencyIsDefault: same(stroke('calls'), strokeRow(NEUTRAL_STROKE)),
+    derivedUntyped: rows(untyped),
+    derivedTyped: rows(typed),
+    // A host that lists the containment edge itself is `validateGraph`'s to warn about, not this one's.
+    listedNotCounted: (() => { const listed = graphOf([...host.nodes], [contains('own', 'x', 'p')]); return derivedContainmentDiagnostics(withContainmentEdges(listed), listed, untyped).length })(),
+  }
+}
+
+/** What a host may leave out: the edge types, an edge type's label, a filter axis's label, a scalar's label and tooltip. */
+function derivedLabels(): Json {
+  const taxonomy = createTaxonomy({
+    styleAxis: KIND, styles: VALUES,
+    filterAxes: [{ id: ZONE, emptyMeans: 'all' }],
+    scalars: [{ id: 'fan', compute: () => new Map<string, number>() }],
+  })
+  const fan = taxonomy.scalars.find(s => s.id === 'fan')!
+  return {
+    noEdgeTypes: taxonomy.edgeTypes.length,
+    unclassified: taxonomy.edgeTypeOf({ id: 'e', sourceId: 's', targetId: 't' }, 'a', 'b') ?? null,
+    axisLabel: taxonomy.axisFor(ZONE)!.label,
+    scalar: { label: fan.label, tooltip: fan.tooltip },
+  }
+}
+
+const TWO_AXES = createTaxonomy({ styleAxis: KIND, styles: VALUES, filterAxes: [{ id: KIND, emptyMeans: 'none' }, { id: ZONE, emptyMeans: 'all' }] })
+
+/** Re-seeding: an axis the user has not touched takes the new graph's opening selection; a touched one keeps theirs, even where it equals a graph's opening selection; nothing moving is the same object. */
+function reseeding(): Json {
+  const before = graphOf([node('1', 'a', 'z1')])
+  const after = graphOf([node('1', 'a', 'z1'), node('2', 'b', 'z2')])
+  const opened = initialFilter(TWO_AXES, before)
+  const partial = selection(['a'], ['z1'])
+  const bothTouched = new Set([KIND, ZONE])
+  // The user deselected `b`; it left the graph and came back. Their {a} equals
+  // the intermediate graph's opening selection, and stands regardless.
+  const deselected = selection(['a'], [])
+  const gone = graphOf([node('1', 'a')])
+  const back = graphOf([node('1', 'a'), node('2', 'b')])
+  const afterGone = reseedFilter(deselected, TWO_AXES, gone, new Set([KIND]))
+  return {
+    opened: filterRow(opened),
+    reseeded: filterRow(reseedFilter(opened, TWO_AXES, after)),
+    touchedZoneKept: filterRow(reseedFilter(partial, TWO_AXES, after, new Set([ZONE]))),
+    untouchedFollows: filterRow(reseedFilter(partial, TWO_AXES, after)),
+    allTouchedIsSameObject: reseedFilter(partial, TWO_AXES, after, bothTouched) === partial,
+    sameGraphIsSameObject: reseedFilter(opened, TWO_AXES, before) === opened,
+    deselectionSurvivesReturn: filterRow(reseedFilter(afterGone, TWO_AXES, back, new Set([KIND]))),
+    changedAxes: sorted(changedAxes(opened, partial)),
+  }
+}
+
+/** `passesSelection` as an object: a node's `values` by default, a host record through `valueOn`, an undeclared axis filtering nothing. */
+function passesSelectionObject(): Json {
+  const filter = selection(['a'], ['z1'])
+  const axes = [KIND, ZONE, 'undeclared']
+  const pass = (n: GraphNode) => passesSelection({ filter, taxonomy: TWO_AXES, axes, node: n })
+  const record = { kind: 'a', where: 'z1' }
+  return {
+    nodeIn: pass(node('1', 'a', 'z1')),
+    nodeOtherZone: pass(node('2', 'a', 'z2')),
+    nodeNoZone: pass(node('3', 'a')),
+    nodeOtherKind: pass(node('4', 'b', 'z1')),
+    record: passesSelection({ filter, taxonomy: TWO_AXES, axes, node: record, valueOn: (r, axis) => (axis === KIND ? r.kind : axis === ZONE ? r.where : undefined) }),
+  }
+}
+
+/** A focus given the graph widens to the whole chip holding its target, as far as the graph presents it; without the graph, the value alone. */
+function focusChipSnap(): Json {
+  const chips = (values: readonly string[]) => [
+    { id: 'near', label: 'Zones 1–2', values: ['z1', 'z2'] },
+    { id: 'far', label: 'Zone 3', values: ['z3'] },
+  ].filter(c => c.values.some(v => values.includes(v)))
+  const taxonomy = createTaxonomy({ styleAxis: KIND, styles: VALUES, filterAxes: [{ id: ZONE, emptyMeans: 'none', chipsFor: chips }] })
+  const destination: FilterState = new Map([[ZONE, new Set(['z3'])]])
+  const input = { destination, source: destination, locks: new Map<string, boolean>(), transition: { kind: 'focus' as const, target: { values: { [ZONE]: 'z1' } } }, taxonomy, axes: [ZONE] }
+  const zone = (f: FilterState) => sorted(selectionFor(f, ZONE))
+  return {
+    withGraph: zone(reconcileFilter({ ...input, graph: graphOf([node('1', 'a', 'z1'), node('2', 'a', 'z2'), node('3', 'a', 'z3')]) }).filter),
+    chipPartlyPresent: zone(reconcileFilter({ ...input, graph: graphOf([node('1', 'a', 'z1'), node('3', 'a', 'z3')]) }).filter),
+    withoutGraph: zone(reconcileFilter(input).filter),
+  }
+}
+
+/** The layout as plain data: the defaults as JSON, a round trip, a partial over the defaults, a pending mapping completed by the graph, and the shapes refused. */
+function layoutJson(): Json {
+  const base = layoutFromJSON({}, TWO_AXES)!
+  const baseJson = layoutToJSON(base)
+  const partial = layoutFromJSON({
+    forces: { bandY: { scalar: 'degree' }, gravityY: 0.3, pair: { axis: ZONE, push: { z1: { charge: -10, coreRadius: 3 } } } },
+    nodeScale: { baseMul: 1 },
+  }, TWO_AXES)!
+  const pj = layoutToJSON(partial)
+  const forces = openLayout(partial).forces
+  const completed = retunedFor(forces, TWO_AXES, graphOf([node('1', 'a', 'z1'), node('2', 'b', 'z2')]))
+  return {
+    defaults: { pairAxis: baseJson.forces?.pair?.axis ?? null, bandX: json(baseJson.forces?.bandX), bandY: json(baseJson.forces?.bandY), fields: sorted(Object.keys(baseJson.forces ?? {})), nodeScale: json(baseJson.nodeScale) },
+    roundTrips: JSON.stringify(layoutToJSON(layoutFromJSON(baseJson, TWO_AXES)!)) === JSON.stringify(baseJson),
+    partial: { bandY: json(pj.forces?.bandY), gravityY: pj.forces?.gravityY ?? null, gravityX: pj.forces?.gravityX ?? null, pair: json(pj.forces?.pair), nodeScale: json(pj.nodeScale) },
+    pendingMappingWaitsForNodes: retunedFor(forces, TWO_AXES, graphOf([])) === forces,
+    completedBuckets: sorted(completed.pair.mapping.buckets.map(b => b.id)),
+    overrideSurvives: completed.pair.push.has('z1'),
+    badNumber: layoutFromJSON({ forces: { gravityY: 'x' } }, TWO_AXES) === undefined,
+    badPair: layoutFromJSON({ forces: { pair: { push: {} } } }, TWO_AXES) === undefined,
+    badScale: layoutFromJSON({ nodeScale: { baseMul: null } }, TWO_AXES) === undefined,
+    notARecord: layoutFromJSON([], TWO_AXES) === undefined,
+  }
+}
+
+function unit22(): Json {
+  return { pairs: pairs(), relationStrokes: relationStrokes(), derivedLabels: derivedLabels(), reseeding: reseeding(), passesSelectionObject: passesSelectionObject(), focusChipSnap: focusChipSnap(), layoutJson: layoutJson() }
+}
+
 export function defaultsProbes(): Json {
   return {
+    unit22: unit22(),
     minimal: minimal(),
     countsByCopy: countsByCopy(),
     linkedViews: linkedViews(),
     splitChipSnap: splitChipSnap(),
     groupEmphasis: groupEmphasis(),
-    typicalSpring: typicalSpring(),
+    defaultSpring: defaultSpring(),
     defaultFilter: initialFilterRow(),
     containment: containment(),
     stackBand: stackBands(),

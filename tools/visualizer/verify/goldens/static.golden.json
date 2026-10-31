@@ -76,6 +76,16 @@
         "downstream"
       ]
     },
+    "linkedViewsHook": {
+      "active": "graph",
+      "listHasNoFocus": true,
+      "listSearchIsShared": true,
+      "search": {
+        "active": true,
+        "query": "wf"
+      },
+      "unknownView": "threw"
+    },
     "positions": {
       "kept": {
         "a": [
@@ -312,6 +322,10 @@
         "c"
       ],
       "zone": []
+    },
+    "defaultSpring": {
+      "distance": 120,
+      "strength": 0.5
     },
     "groupEmphasis": {
       "emphasised": [
@@ -596,7 +610,7 @@
         "validation": [
           {
             "code": "edge-type-unclassified",
-            "message": "edge \"uncovered\" has no type: no declared type fits its endpoints and values; it draws in the neutral stroke with the typical spring",
+            "message": "edge \"uncovered\" has no type: no declared type fits its endpoints and values; it draws in its relation's default stroke and pulls nothing while push and pull key on the style axis",
             "severity": "warning",
             "subject": "uncovered"
           }
@@ -1124,9 +1138,211 @@
         "n": 7
       }
     ],
-    "typicalSpring": {
-      "distance": 200,
-      "strength": 0.6
+    "unit22": {
+      "derivedLabels": {
+        "axisLabel": "zone",
+        "noEdgeTypes": 0,
+        "scalar": {
+          "label": "fan",
+          "tooltip": "fan"
+        },
+        "unclassified": null
+      },
+      "focusChipSnap": {
+        "chipPartlyPresent": [
+          "z1",
+          "z3"
+        ],
+        "withGraph": [
+          "z1",
+          "z2",
+          "z3"
+        ],
+        "withoutGraph": [
+          "z1",
+          "z3"
+        ]
+      },
+      "layoutJson": {
+        "badNumber": true,
+        "badPair": true,
+        "badScale": true,
+        "completedBuckets": [
+          "z1",
+          "z2"
+        ],
+        "defaults": {
+          "bandX": {
+            "axis": "kind"
+          },
+          "bandY": {
+            "axis": "kind"
+          },
+          "fields": [
+            "alphaDecay",
+            "alphaMin",
+            "bandX",
+            "bandY",
+            "chargeExponent",
+            "coreRadiusMultiplier",
+            "distanceMultiplier",
+            "gravityBandExp",
+            "gravityCenter",
+            "gravityTopological",
+            "gravityTopologicalExp",
+            "gravityX",
+            "gravityY",
+            "linkExponent",
+            "pair",
+            "pullMultiplier",
+            "pushMultiplier",
+            "radial",
+            "topologicalEnabled",
+            "velocityDecay"
+          ],
+          "nodeScale": {
+            "baseMul": 0.6,
+            "maxZoomMul": 1.65,
+            "minZoomMul": 0.4
+          },
+          "pairAxis": "kind"
+        },
+        "notARecord": true,
+        "overrideSurvives": true,
+        "partial": {
+          "bandY": {
+            "scalar": "degree"
+          },
+          "gravityX": 0.05,
+          "gravityY": 0.3,
+          "nodeScale": {
+            "baseMul": 1,
+            "maxZoomMul": 1.65,
+            "minZoomMul": 0.4
+          },
+          "pair": {
+            "axis": "zone",
+            "push": {
+              "z1": {
+                "charge": -10,
+                "coreRadius": 3
+              }
+            }
+          }
+        },
+        "pendingMappingWaitsForNodes": true,
+        "roundTrips": true
+      },
+      "pairs": {
+        "classified": {
+          "a->a": "many",
+          "a->b": "many",
+          "a->c": "one",
+          "b->a": "many",
+          "b->b": "many",
+          "c->a": "one",
+          "c->c": null
+        },
+        "emptyEndRefused": "edgeTypes.none.sourceValue names no value; name at least one",
+        "labelDefaultsToId": true,
+        "oppositeOrientationBuilt": "built",
+        "pairs": [
+          "a->a",
+          "a->b",
+          "b->a",
+          "b->b"
+        ],
+        "sharedOrientedPairRefused": "edge types \"many\" and \"ba\" run between the same values with the same relation (dependency) and nothing tells them apart; give one a match on an edge axis, declare them in opposite orientations, or give classifyEdge",
+        "token": [
+          "a",
+          "a"
+        ],
+        "undeclaredInArrayRefused": "edgeTypes.zz.sourceValue[1] is \"zz\", which styles does not declare"
+      },
+      "passesSelectionObject": {
+        "nodeIn": true,
+        "nodeNoZone": true,
+        "nodeOtherKind": false,
+        "nodeOtherZone": false,
+        "record": true
+      },
+      "relationStrokes": {
+        "containment": {
+          "alpha": 0.35,
+          "color": {
+            "dark": "#64748B",
+            "light": "#94A3B8"
+          },
+          "dash": [
+            3,
+            4
+          ],
+          "width": 1
+        },
+        "containmentIsDefault": true,
+        "dependency": {
+          "alpha": 0.7,
+          "color": {
+            "dark": "#64748B",
+            "light": "#94A3B8"
+          },
+          "dash": [],
+          "width": 1.2
+        },
+        "dependencyIsDefault": true,
+        "derivedTyped": [],
+        "derivedUntyped": [
+          {
+            "code": "containment-untyped",
+            "edgeId": "in:x",
+            "message": "2 derived containment edges (\"in:x\", \"in:y\") have no type: no declared containment type runs between the child's value and the parent's; they draw in the containment stroke and pull nothing while push and pull key on the style axis",
+            "severity": "warning"
+          }
+        ],
+        "listedNotCounted": 1
+      },
+      "reseeding": {
+        "allTouchedIsSameObject": true,
+        "changedAxes": [
+          "zone"
+        ],
+        "deselectionSurvivesReturn": {
+          "kind": [
+            "a"
+          ],
+          "zone": []
+        },
+        "opened": {
+          "kind": [
+            "a"
+          ],
+          "zone": []
+        },
+        "reseeded": {
+          "kind": [
+            "a",
+            "b"
+          ],
+          "zone": []
+        },
+        "sameGraphIsSameObject": true,
+        "touchedZoneKept": {
+          "kind": [
+            "a",
+            "b"
+          ],
+          "zone": [
+            "z1"
+          ]
+        },
+        "untouchedFollows": {
+          "kind": [
+            "a",
+            "b"
+          ],
+          "zone": []
+        }
+      }
     }
   },
   "edgeTypes": {
@@ -1919,44 +2135,44 @@
       "nonFiniteNodeIds": [],
       "velocities": {
         "act": [
-          -27.50754,
-          -61.891965
+          -18.030321,
+          -40.568223
         ],
         "dupA": [
-          3.165494,
-          12.339095
+          0.410017,
+          1.598245
         ],
         "dupB": [
-          -3.165494,
-          -12.339095
+          -0.410017,
+          -1.598245
         ],
         "ep": [
-          -138.799965,
-          -15.422218
+          -79.211009,
+          -8.801223
         ],
         "ns": [
-          138.799965,
-          15.422218
+          79.211009,
+          8.801223
         ],
         "nx": [
-          -18.842668,
-          87.932451
+          -11.49713,
+          53.653274
         ],
         "op": [
-          -41.072492,
-          -32.745375
+          -27.908586,
+          -19.34727
         ],
         "unknown": [
           0,
           0
         ],
         "wf": [
-          26.550837,
-          -14.286934
+          17.898055,
+          -8.496066
         ],
         "wk": [
-          22.291847,
-          96.598002
+          13.752405,
+          59.593753
         ]
       }
     },
@@ -3490,6 +3706,12 @@
       "findingsSlot": true,
       "pinToggles": 2
     },
+    "barUndeclaredAxis": {
+      "labelShown": true,
+      "noteShown": true,
+      "pinToggles": 1,
+      "removeControls": 2
+    },
     "barWithoutPins": {
       "badges": {
         "Activities": "9",
@@ -4606,7 +4828,7 @@
       },
       "springIsTypical": {
         "key": "[\"dependency\",\"nexus.twf\",\"nexus.twf\"]",
-        "strengthIsDeclaredMean": true
+        "strengthIsMiddling": true
       },
       "typicalIsNotTheFallback": true,
       "typicalIsTheDeclaredMean": true
