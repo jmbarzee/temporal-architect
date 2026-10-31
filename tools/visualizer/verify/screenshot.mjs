@@ -133,6 +133,15 @@ const COUNTS = `
     return el ? el.textContent.trim() : 'counts not found'
   })()`
 
+// Open the control panel on its first tab; no-op when already open.
+const OPEN_CONTROLS = `
+  (() => {
+    const b = document.querySelector('.graph-control-panel-toggle')
+    if (!b) return 'no toggle'
+    if (b.textContent.trim().startsWith('▶')) b.click()
+    return 'open'
+  })()`
+
 const ERRORS_HOOK = `
   (() => {
     window.__twfErrors = [];
@@ -180,8 +189,16 @@ async function main() {
     const { data } = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
     const file = join(outDir, `${unit}-${fixture}.png`)
     writeFileSync(file, Buffer.from(data, 'base64'))
-    results.push({ fixture, counts, chips, errors, file })
-    console.log(`  ${fixture.padEnd(22)} ${counts.padEnd(20)} chips=${chips}  errors=${errors}`)
+    // A second capture with the control panel open: the requirements that live
+    // in the panel (its tabs, maps and curves) are otherwise invisible to this
+    // gate's evidence, which showed every panel collapsed.
+    const panel = await evalIn(OPEN_CONTROLS)
+    await sleep(800)
+    const errorsAfterPanel = await evalIn('JSON.stringify(window.__twfErrors || [])')
+    const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
+    writeFileSync(join(outDir, `${unit}-${fixture}-controls.png`), Buffer.from(shot.data, 'base64'))
+    results.push({ fixture, counts, chips, errors: errorsAfterPanel, file, panel })
+    console.log(`  ${fixture.padEnd(22)} ${counts.padEnd(20)} chips=${chips}  panel=${panel}  errors=${errorsAfterPanel}`)
   }
 
   console.log(`\nwrote ${results.length} screenshot(s) to ${outDir}/`)

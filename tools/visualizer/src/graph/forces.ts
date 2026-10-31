@@ -12,61 +12,17 @@
 // import cycle: `simulation -> forces` is the only value dependency.
 
 import type { DimensionId, DimensionValue } from './dimension'
-import { hasOwn } from './dimension'
+import { isIdentityMapping } from './dimension'
 import type { GraphEdge } from './model'
-import type { ChargeParams, LinkParams, GravityParams, SimNode } from './simulation'
-import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
+import { relationOf } from './model'
+import type { ChargeParams, LinkParams, GravityParams, SimNode, PairTuning, PushPhysics, BandRange } from './simulation'
+import type { Ontology } from './ontology'
+import type { DimensionalMapping } from './dimension'
+import type { EdgeCategoryKind, EdgeTypeDefinition, EdgeTypeId, SpringPhysics } from './taxonomy'
 import type { Rng } from './rng'
-
-/**
- * How an edge is mapped to its spring category. Supplied, not imported, and
- * given the endpoints rather than reading a cached copy off the edge — a
- * denormalized endpoint type is a second source of truth for a node's identity
- * and goes stale the moment graduation re-points an edge.
- */
-export type EdgeTypeResolver = (
-  edge: GraphEdge,
-  src: PhysicsSubject,
-  tgt: PhysicsSubject,
-) => EdgeTypeDefinition
 
 /** The minimum a force needs of a node in order to look up its physics. */
 export type PhysicsSubject = { dimensions: Readonly<Record<DimensionId, DimensionValue>> }
-
-/**
- * Where a node sits on the axis a force keys on, or undefined when it sits
- * nowhere on that axis. One axis per force, named by the params — features never
- * compose two.
- */
-function axisValue(node: PhysicsSubject, dimension: DimensionId): DimensionValue | undefined {
-  return node.dimensions[dimension]
-}
-
-/**
- * Read one entry out of a keyed param map.
- *
- * `Object.hasOwn`, not a plain index. Dimension values are host-supplied
- * strings, and a plain object's index read walks the prototype chain — so a
- * node whose value happens to be named `constructor` or `toString` resolves to
- * an inherited member instead of missing. That member is not `undefined`, so
- * every `?? ABSENT_VALUE_PHYSICS.x` guard downstream is bypassed by the value's
- * *name alone*, and the `Object` function itself enters the force arithmetic.
- *
- * It does not stay one bad node, either: charge couples a pair by the average
- * of the two endpoints' charges and a band contributes its centre to the median
- * the stack re-centres on, so a single NaN spreads across the layout.
- */
-function ownEntry<T>(table: Readonly<Record<DimensionValue, T>>, key: DimensionValue | undefined): T | undefined {
-  return key !== undefined && hasOwn(table, key) ? table[key] : undefined
-}
-
-function lookup<T>(
-  table: Readonly<Record<DimensionValue, T>>,
-  node: PhysicsSubject,
-  dimension: DimensionId,
-): T | undefined {
-  return ownEntry(table, axisValue(node, dimension))
-}
 
 // ── Per-value / per-edge accessors ──────────────────────────────────────────
 // Each force reads its per-value/per-edge numbers from the keyed param maps via
@@ -110,15 +66,112 @@ export const ABSENT_VALUE_PHYSICS = {
   yBand: { min: 0, max: 0 },
 } as const
 
-export function chargeFor(params: ChargeParams, node: PhysicsSubject): number {
-  return lookup(params.charge, node, params.chargeDimension) ?? ABSENT_VALUE_PHYSICS.charge
+// ── Resolved physics ──────────────────────────────────────────────────────────
+//
+// `AxisTuning` is sparse (only what the user changed) and the kernels are hot
+// (four reads per pair, O(n²)). So the tables are resolved ONCE per
+// (params, taxonomy) into dense per-bucket maps here, and the kernels read
+// those. Resolution is the only place the taxonomy's declared physics is
+// consulted for the forces, and it never runs inside a loop (T25).
+
+/** A per-bucket table, resolved from one axis's tuning and the taxonomy. */
+export interface ResolvedAxis<T> {
+  readonly mapping: DimensionalMapping
+  readonly byBucket: ReadonlyMap<string, T>
 }
 
-export function coreRadiusFor(params: ChargeParams, node: PhysicsSubject): number {
+export interface ResolvedPhysics {
+  push: ResolvedAxis<PushPhysics>
+  band: ResolvedAxis<BandRange>
+  spring: ResolvedSprings
+}
+
+/** The bucket a node falls in on an axis, or undefined when it carries no value there. */
+export function bucketOf(on: { readonly mapping: DimensionalMapping }, node: PhysicsSubject): string | undefined {
+  return on.mapping.bucketFor(node.dimensions[on.mapping.dimension])?.id
+}
+
+/**
+ * A bucket's declared physics is the fold of its values' declared physics.
+ *
+ * Mean for charge and core radius, union for the band — both order-independent,
+ * so a host reordering a bucket's values for readability moves nothing. With the
+ * identity mapping every bucket has one value and the fold is the value.
+ */
+function declaredPush(ontology: Ontology, values: readonly DimensionValue[]): PushPhysics {
+  let charge = 0, coreRadius = 0
+  for (const v of values) {
+    const ph = ontology.styleForKey(v).physics
+    charge += ph.charge; coreRadius += ph.coreRadius
+  }
+  const n = Math.max(values.length, 1)
+  return { charge: charge / n, coreRadius: coreRadius / n }
+}
+
+function declaredBand(ontology: Ontology, values: readonly DimensionValue[]): BandRange {
+  let min = Infinity, max = -Infinity
+  for (const v of values) {
+    const b = ontology.styleForKey(v).physics.yBand
+    min = Math.min(min, b.min); max = Math.max(max, b.max)
+  }
+  return values.length === 0 ? { ...ABSENT_VALUE_PHYSICS.yBand } : { min, max }
+}
+
+function resolveAxis<T>(
+  mapping: DimensionalMapping,
+  overrides: ReadonlyMap<string, T>,
+  declared: (values: readonly DimensionValue[]) => T,
+): ResolvedAxis<T> {
+  const byBucket = new Map<string, T>()
+  for (const bucket of mapping.buckets) {
+    byBucket.set(bucket.id, overrides.get(bucket.id) ?? declared(bucket.values))
+  }
+  return { mapping, byBucket }
+}
+
+export function resolvePhysics(params: ChargeParams & GravityParams & LinkParams, ontology: Ontology): ResolvedPhysics {
+  // Declared physics belong to the style axis's values. A bucket on any other
+  // axis — a file, a kind — is not a style key, so it starts from the host's
+  // TYPICAL declared physics (the same fold, over every declared value) rather
+  // than from a lookup that would miss to the fallback style, once per bucket,
+  // with a warning about placeholder styling that is not even true.
+  const style = ontology.styleAxis()
+  const pushFor = (m: DimensionalMapping) => m.dimension === style
+    ? (values: readonly DimensionValue[]) => declaredPush(ontology, values)
+    : () => declaredPush(ontology, ontology.nodeTypeKeys)
+  const bandFor = (m: DimensionalMapping) => m.dimension === style
+    ? (values: readonly DimensionValue[]) => declaredBand(ontology, values)
+    : () => declaredBand(ontology, ontology.nodeTypeKeys)
+  return {
+    push: resolveAxis(params.pair.mapping, params.pair.push, pushFor(params.pair.mapping)),
+    band: resolveAxis(params.band.mapping, params.band.overrides, bandFor(params.band.mapping)),
+    spring: resolveSprings(params.pair, ontology),
+  }
+}
+
+// ── Per-node accessors over the resolved tables ───────────────────────────────
+
+export function chargeFor(push: ResolvedAxis<PushPhysics>, node: PhysicsSubject): number {
+  const b = bucketOf(push, node)
+  return (b === undefined ? undefined : push.byBucket.get(b)?.charge) ?? ABSENT_VALUE_PHYSICS.charge
+}
+
+export function coreRadiusFor(push: ResolvedAxis<PushPhysics>, node: PhysicsSubject): number {
+  const b = bucketOf(push, node)
   return Math.max(
-    lookup(params.coreRadius, node, params.chargeDimension) ?? ABSENT_VALUE_PHYSICS.coreRadius,
+    (b === undefined ? undefined : push.byBucket.get(b)?.coreRadius) ?? ABSENT_VALUE_PHYSICS.coreRadius,
     CORE_RADIUS_MIN,
   )
+}
+
+/** One bucket's push physics, for a control surface that iterates buckets. */
+export function pushForKey(push: ResolvedAxis<PushPhysics>, bucketId: string): PushPhysics {
+  return push.byBucket.get(bucketId) ?? { charge: ABSENT_VALUE_PHYSICS.charge, coreRadius: ABSENT_VALUE_PHYSICS.coreRadius }
+}
+
+/** One bucket's rest band as declared/tuned, for a control surface that edits it. */
+export function bandRangeFor(band: ResolvedAxis<BandRange>, bucketId: string): BandRange {
+  return band.byBucket.get(bucketId) ?? { ...ABSENT_VALUE_PHYSICS.yBand }
 }
 
 export interface YBand {
@@ -126,55 +179,172 @@ export interface YBand {
   yMax: number
 }
 
-/** The rest band for a value. Control surfaces iterate values; forces take nodes. */
-export function bandForKey(params: GravityParams, key: DimensionValue | undefined): YBand {
-  const b = ownEntry(params.band, key) ?? ABSENT_VALUE_PHYSICS.yBand
+/** The rest band for a bucket. Control surfaces iterate buckets; forces take nodes. */
+export function bandForKey(band: ResolvedAxis<BandRange>, bucketId: string | undefined): YBand {
+  const b = (bucketId === undefined ? undefined : band.byBucket.get(bucketId)) ?? ABSENT_VALUE_PHYSICS.yBand
   return { yMin: b.min, yMax: b.max }
 }
 
-export function bandFor(params: GravityParams, node: PhysicsSubject): YBand {
-  return bandForKey(params, axisValue(node, params.bandDimension))
+export function bandFor(band: ResolvedAxis<BandRange>, node: PhysicsSubject): YBand {
+  return bandForKey(band, bucketOf(band, node))
+}
+
+// ── Resolved springs ──────────────────────────────────────────────────────────
+
+/**
+ * The spring for an edge whose endpoint the mapping does not bucket — the edge
+ * counterpart of ABSENT_VALUE_PHYSICS. Zero stiffness: the edge exerts no pull,
+ * which is the only honest answer when nothing says how strongly it should, and
+ * it keeps the kernel finite where `undefined` would write NaN into both
+ * endpoints on the first tick.
+ */
+export const ABSENT_EDGE_PHYSICS: SpringPhysics = { strength: 0, distance: 0 }
+
+/**
+ * What a category starts from when nothing declared a spring for it: the mean
+ * of the host's declared springs, so a bucket on a foreign axis is tuned from
+ * this domain's scale rather than from a number out of another's. A host that
+ * declares no springs gets the absent spring, which is inert.
+ */
+export function typicalSpring(ontology: Ontology): SpringPhysics {
+  const declared = ontology.edgeTypes
+  if (declared.length === 0) return ABSENT_EDGE_PHYSICS
+  let strength = 0, distance = 0
+  for (const e of declared) { strength += e.physics.strength; distance += e.physics.distance }
+  return { strength: strength / declared.length, distance: distance / declared.length }
 }
 
 /**
- * Spring parameters for an edge category the param maps do not declare — the
- * edge-side counterpart of ABSENT_VALUE_PHYSICS, and just as necessary: a
- * supplied taxonomy resolves edges to ITS category ids, and an id with no entry
- * in `params.link` reads `undefined`, which reaches `force` and writes NaN into
- * both endpoint velocities on the very first tick.
- *
- * Zero stiffness means the edge simply exerts no pull, which is the only honest
- * answer when nothing declared how strongly it should.
+ * The pair rule's category id: the relation and the unordered bucket pair,
+ * encoded so a bucket id containing any separator cannot collide with another
+ * pair. Ids are keys, never labels; `describe` turns one back into something a
+ * token can show.
  */
-export const ABSENT_EDGE_PHYSICS = {
-  strength: 0,
-  distance: 0,
-} as const
-
-interface EdgeCategory {
-  strength: number
-  distance: number
-  // The edge-type id identifying this category — lets callers (e.g. the canvas
-  // active-edge highlight) match an edge to the spring-map token tuning it.
-  key: EdgeTypeId
+function pairId(relation: EdgeCategoryKind, a: string, b: string): EdgeTypeId {
+  return JSON.stringify(a <= b ? [relation, a, b] : [relation, b, a])
 }
 
-// Categorize an edge into its spring parameters. The taxonomy and its
-// prioritized matching rules are supplied by the caller, so this module reads
-// live param values and knows nothing about which categories exist.
-export function edgeCategory(
-  params: LinkParams,
-  edge: GraphEdge,
-  src: PhysicsSubject,
-  tgt: PhysicsSubject,
-  resolveEdgeType: EdgeTypeResolver,
-): EdgeCategory {
-  const def = resolveEdgeType(edge, src, tgt)
-  return {
-    strength: params.link[def.id] ?? ABSENT_EDGE_PHYSICS.strength,
-    distance: params.dist[def.id] ?? ABSENT_EDGE_PHYSICS.distance,
-    key: def.id,
+function parsePairId(id: EdgeTypeId): [EdgeCategoryKind, string, string] | undefined {
+  try {
+    const t: unknown = JSON.parse(id)
+    if (Array.isArray(t) && t.length === 3 && (t[0] === 'containment' || t[0] === 'dependency') &&
+      typeof t[1] === 'string' && typeof t[2] === 'string') return [t[0], t[1], t[2]]
+  } catch { /* not a pair id */ }
+  return undefined
+}
+
+/**
+ * The spring table, resolved from the pair tuning and the taxonomy.
+ *
+ * Two classifiers can fill it, and which one is decided here, once, not per
+ * edge. On the style axis bucketed by identity, the host's declared table and
+ * its prioritized rule apply verbatim (D2): the hand-tuned springs, and a
+ * precedence no pair rule reproduces — two of its categories share endpoint
+ * values and differ only on the edge's own dispatch (T14). On any other
+ * (axis, mapping) the library's pair rule applies: one category per unordered
+ * bucket pair per relation, each the host's typical spring until tuned. The
+ * pair rule enumerates nothing: a category exists when an edge falls in it,
+ * which is what a control surface shows and what the token ceiling counts.
+ */
+export interface ResolvedSprings {
+  readonly mapping: DimensionalMapping
+  /**
+   * The category of an edge from its endpoints' bucket ids, or undefined when
+   * an endpoint is unbucketed — only the pair rule answers that way; the host's
+   * rule answers for every value. Throws when the host's rule returns an id its
+   * table does not declare: that is a host bug, and an edge silently without
+   * pull would surface it somewhere far from the cause.
+   */
+  classify(edge: GraphEdge, src: string | undefined, tgt: string | undefined): EdgeTypeId | undefined
+  /** Effective physics: the override where one exists, else the declared or typical spring. */
+  physicsFor(id: EdgeTypeId): SpringPhysics
+  /** What a control surface shows for a category — the declared entry, or one synthesized from a pair id. */
+  describe(id: EdgeTypeId): EdgeTypeDefinition | undefined
+}
+
+export function resolveSprings(pair: PairTuning, ontology: Ontology): ResolvedSprings {
+  const { mapping, spring: overrides } = pair
+  if (mapping.dimension === ontology.styleAxis() && isIdentityMapping(mapping)) {
+    const table = new Map(ontology.edgeTypes.map(e => [e.id, e]))
+    return {
+      mapping,
+      classify: (edge, src, tgt) => {
+        const id = ontology.resolveEdgeType(edge, src, tgt)
+        if (!table.has(id)) {
+          throw new Error(
+            `edge type ${JSON.stringify(id)} is resolved by the taxonomy's rule but has no ` +
+            'entry in its edgeTypes; the two must be kept in step.',
+          )
+        }
+        return id
+      },
+      physicsFor: id => overrides.get(id) ?? table.get(id)?.physics ?? ABSENT_EDGE_PHYSICS,
+      describe: id => table.get(id),
+    }
   }
+  const typical = typicalSpring(ontology)
+  const buckets = new Map(mapping.buckets.map(b => [b.id, b]))
+  return {
+    mapping,
+    classify: (edge, src, tgt) =>
+      src === undefined || tgt === undefined ? undefined : pairId(relationOf(edge), src, tgt),
+    physicsFor: id => overrides.get(id) ?? typical,
+    describe: id => {
+      const parsed = parsePairId(id)
+      if (!parsed) return undefined
+      const [relation, a, b] = parsed
+      const A = buckets.get(a)
+      const B = buckets.get(b)
+      if (!A || !B) return undefined
+      return {
+        id,
+        label: `${A.abbreviation}↔${B.abbreviation}`,
+        sourceType: a,
+        targetType: b,
+        category: relation,
+        physics: typical,
+        tooltip: `${A.label} ↔ ${B.label} ${relation}`,
+      }
+    },
+  }
+}
+
+/** The spring an edge is under: its category, if it has one, and the effective physics. */
+export interface EdgeCategory {
+  strength: number
+  distance: number
+  /**
+   * The category id — what the canvas's active-edge highlight matches to a
+   * spring-map token — or undefined for an edge with an unbucketed endpoint.
+   */
+  key: EdgeTypeId | undefined
+}
+
+export function springFor(spring: ResolvedSprings, edge: GraphEdge, src: PhysicsSubject, tgt: PhysicsSubject): EdgeCategory {
+  const key = spring.classify(edge, bucketOf(spring, src), bucketOf(spring, tgt))
+  const ph = key === undefined ? ABSENT_EDGE_PHYSICS : spring.physicsFor(key)
+  return { strength: ph.strength, distance: ph.distance, key }
+}
+
+/**
+ * The categories some edge of the graph falls in — one token each. Under the
+ * pair rule this is the only enumeration there is; under the declared table it
+ * is the subset the graph actually uses. O(edges), no table built.
+ */
+export function presentSpringCategories(
+  spring: ResolvedSprings,
+  edges: Iterable<GraphEdge>,
+  nodeOf: (id: string) => PhysicsSubject | undefined,
+): Set<EdgeTypeId> {
+  const present = new Set<EdgeTypeId>()
+  for (const edge of edges) {
+    const src = nodeOf(edge.sourceId)
+    const tgt = nodeOf(edge.targetId)
+    if (!src || !tgt) continue
+    const key = springFor(spring, edge, src, tgt).key
+    if (key !== undefined) present.add(key)
+  }
+  return present
 }
 
 // ── Coordinate adapter (for the deferred radial gravity mode, issue 51) ──────
@@ -204,14 +374,25 @@ export function fromPolar(r: number, theta: number): { x: number; y: number } {
 export function applyChargeForce(
   active: SimNode[],
   params: ChargeParams,
+  resolved: ResolvedPhysics,
   alpha: number,
   rng: Rng,
 ): void {
   const crMul = params.coreRadiusMultiplier
   const pushMul = params.pushMultiplier
   const chargeExp = params.chargeExponent
-  for (let i = 0; i < active.length; i++) {
-    for (let j = i + 1; j < active.length; j++) {
+  // Per-node physics once, O(n), before the O(n²) pair loop reads it: each
+  // accessor is a dimension read and two map lookups, and the loop below would
+  // otherwise make four of those per pair (T25).
+  const n = active.length
+  const charge = new Float64Array(n)
+  const rEff = new Float64Array(n)
+  for (let i = 0; i < n; i++) {
+    charge[i] = chargeFor(resolved.push, active[i])
+    rEff[i] = crMul * coreRadiusFor(resolved.push, active[i])
+  }
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
       const a = active[i]
       const b = active[j]
       let dx = b.x - a.x
@@ -228,13 +409,9 @@ export function applyChargeForce(
       }
       const rawDist = Math.sqrt(dist2)
       // Per-pair softening from the endpoints' core radii.
-      const rEffA = crMul * coreRadiusFor(params, a)
-      const rEffB = crMul * coreRadiusFor(params, b)
-      const rAvg = (rEffA + rEffB) / 2
+      const rAvg = (rEff[i] + rEff[j]) / 2
       const softening = rAvg * rAvg
-      const chargeA = chargeFor(params, a)
-      const chargeB = chargeFor(params, b)
-      const strength = (chargeA + chargeB) / 2
+      const strength = (charge[i] + charge[j]) / 2
       // Negate: strength is negative (convention), but force must be positive
       // for repulsion. The exponent acts on (dist² + softening) directly.
       const force = -(alpha * pushMul * strength / Math.pow(dist2 + softening, chargeExp))
@@ -256,9 +433,9 @@ export function applyLinkForce(
   activeEdges: GraphEdge[],
   nodeMap: Map<string, SimNode>,
   params: LinkParams,
+  categoryOf: (edge: GraphEdge) => EdgeCategory,
   alpha: number,
   rng: Rng,
-  resolveEdgeType: EdgeTypeResolver,
 ): void {
   const degree = new Map<string, number>()
   for (const edge of activeEdges) {
@@ -286,7 +463,7 @@ export function applyLinkForce(
       dist = 1
     }
 
-    const cat = edgeCategory(params, edge, source, target, resolveEdgeType)
+    const cat = categoryOf(edge)
     const restDist = cat.distance * distMul
     const disp = dist - restDist
     const absDisp = Math.abs(disp)
@@ -317,7 +494,7 @@ export const RADIAL_R_MAX = 540
 // Deliberately NOT deduplicated by centre value: several types share a band, so
 // the entry count and the distinct-value count differ (7 types, 4 distinct
 // centres).
-export function bandCenters(active: SimNode[], params: GravityParams): number[] {
+export function bandCenters(active: SimNode[], resolved: ResolvedPhysics): number[] {
   // Deduplicated by VALUE, which is why values are interned strings. A `Set`
   // deduplicates a string by value and an object by identity, so a composite
   // key here would collect one entry per node and move the median the whole
@@ -325,10 +502,10 @@ export function bandCenters(active: SimNode[], params: GravityParams): number[] 
   const seen = new Set<DimensionValue | undefined>()
   const centers: number[] = []
   for (const n of active) {
-    const key = axisValue(n, params.bandDimension)
+    const key = bucketOf(resolved.band, n)
     if (seen.has(key)) continue
     seen.add(key)
-    const b = bandForKey(params, key)
+    const b = bandForKey(resolved.band, key)
     centers.push((b.yMin + b.yMax) / 2)
   }
   return centers
@@ -338,8 +515,8 @@ export function bandCenters(active: SimNode[], params: GravityParams): number[] 
 // it keeps the band stack symmetric about the origin, so editing or toggling
 // bands doesn't shift the whole graph vertically (and it shares the origin with
 // center gravity, so swapping forces doesn't lurch the layout).
-function medianBandCenter(active: SimNode[], params: GravityParams): number {
-  const centers = bandCenters(active, params)
+function medianBandCenter(active: SimNode[], resolved: ResolvedPhysics): number {
+  const centers = bandCenters(active, resolved)
   if (centers.length === 0) return 0
   centers.sort((a, b) => a - b)
   const m = centers.length
@@ -356,11 +533,12 @@ function medianBandCenter(active: SimNode[], params: GravityParams): number {
 export function applyBandGravity(
   active: SimNode[],
   params: GravityParams,
+  resolved: ResolvedPhysics,
   alpha: number,
   rng: Rng,
 ): void {
   if (params.gravityMode === 'radial') {
-    applyBandGravityRadial(active, params, alpha, rng)
+    applyBandGravityRadial(active, params, resolved, alpha, rng)
     return
   }
 
@@ -369,7 +547,7 @@ export function applyBandGravity(
   const exp = params.gravityBandExp
   const xMin = params.bandXMin
   const xMax = params.bandXMax
-  const center = medianBandCenter(active, params)
+  const center = medianBandCenter(active, resolved)
   for (const node of active) {
     if (node.pinned) continue
     let xTarget: number | null = null
@@ -379,7 +557,7 @@ export function applyBandGravity(
       node.vx -= bandForce(node.x - xTarget, exp) * alpha * gx
     }
     // Band shifted so the stack is centred on the origin.
-    const band = bandFor(params, node)
+    const band = bandFor(resolved.band, node)
     const yMin = band.yMin - center
     const yMax = band.yMax - center
     let yTarget: number | null = null
@@ -404,15 +582,16 @@ function bandForce(d: number, exp: number): number {
 function applyBandGravityRadial(
   active: SimNode[],
   params: GravityParams,
+  resolved: ResolvedPhysics,
   alpha: number,
   rng: Rng,
 ): void {
   const gy = params.gravityY
   const center = new Map<DimensionValue | undefined, number>()
   for (const n of active) {
-    const key = axisValue(n, params.bandDimension)
+    const key = bucketOf(resolved.band, n)
     if (center.has(key)) continue
-    center.set(key, (b => (b.yMin + b.yMax) / 2)(bandForKey(params, key)))
+    center.set(key, (b => (b.yMin + b.yMax) / 2)(bandForKey(resolved.band, key)))
   }
   if (center.size === 0) return
   const centers = [...center.values()]
@@ -420,7 +599,7 @@ function applyBandGravityRadial(
   const span = Math.max(...centers) - lo || 1
   for (const node of active) {
     if (node.pinned) continue
-    const c = center.get(axisValue(node, params.bandDimension))
+    const c = center.get(bucketOf(resolved.band, node))
     if (c === undefined) continue
     const targetR = RADIAL_R_MIN + ((c - lo) / span) * (RADIAL_R_MAX - RADIAL_R_MIN)
     const r = Math.hypot(node.x, node.y)

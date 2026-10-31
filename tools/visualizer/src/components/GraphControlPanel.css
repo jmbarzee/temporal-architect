@@ -453,3 +453,70 @@
   margin-top: 4px;
 }
 
+/* ── Sub-tabs inside a force tab (Push/Pull, Gravity) ───────────────────────── */
+.force-subtabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.force-subtab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 4px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  user-select: none;
+}
+
+.force-subtab:hover { color: var(--color-text); }
+
+.force-subtab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-workflow);
+}
+
+.force-subtab-label { font-weight: 600; }
+
+/* Both sub-tab bodies stack in one grid cell so the panel sizes to the taller
+   body and never resizes when switching sub-tabs (mirrors .graph-control-sections). */
+.force-bodies { display: grid; }
+
+/* Stack both bodies; only hide the *inactive* one. Crucially we do NOT force the
+   active body `visibility: visible` — that would override the inherited `hidden`
+   from an inactive parent major-tab slot and paint the body over whatever
+   tab is actually showing. Instead the active body inherits visibility from its
+   major-tab slot (visible only when its tab is active). */
+.force-body {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.force-body:not(.active) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The axis both pair forces key on — a native select beside its label, centred
+   like Gravity's mode switch so the two force tabs open the same way. */
+.pushpull-controls { display: flex; flex-direction: column; gap: 6px; }
+.axis-row { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.axis-label { font-size: 12px; color: var(--color-text-muted); font-family: var(--font-sans); }
+.axis-select {
+  font-size: 12px;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+}

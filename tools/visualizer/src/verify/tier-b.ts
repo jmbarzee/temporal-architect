@@ -21,7 +21,7 @@
 // both are printed as diagnostics instead. See DECISIONS.md D24 and D26.
 
 import { filterOfSets } from '../filter/types'
-import { bandCenters, bandFor } from '../graph/forces'
+import { bandCenters, bandFor, resolvePhysics } from '../graph/forces'
 import type { Graph } from '../graph/model'
 import { defaultParamsFor, Simulation } from '../graph/simulation'
 import type { ForceParams, SimNode } from '../graph/simulation'
@@ -136,7 +136,8 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   // in the simulation notices. Asserted on the count of ENTRIES COLLECTED, never
   // on distinct centre *values* — several types deliberately share a band, so
   // with all 7 present there are only 4 distinct values.
-  const centers = bandCenters(active, params)
+  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
+  const centers = bandCenters(active, resolved)
   const distinctTypesPresent = new Set(active.map(n => DEFAULT_ONTOLOGY.valueFor(n))).size
 
   let maxAbs = 0
@@ -152,7 +153,7 @@ export function tierB(fixtureName: string, graph: Graph): Json {
   const shift = median(centers)
   let outsideBand = 0
   for (const n of active) {
-    const band = bandFor(params, n)
+    const band = bandFor(resolved.band, n)
     const slack = Math.abs(band.yMax - band.yMin) * TIER_B_PARAMS.bandTolerance
     if (!(n.y >= band.yMin - shift - slack && n.y <= band.yMax - shift + slack)) outsideBand++
   }

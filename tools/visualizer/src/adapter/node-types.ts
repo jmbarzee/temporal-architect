@@ -36,12 +36,11 @@ export type NodeType =
   | 'activity'
 
 import { createOntology } from '../graph/ontology'
-import type { Ontology } from '../graph/ontology'
+import type { Ontology, OntologySpec } from '../graph/ontology'
 import type { NodeTypeDefinition } from '../graph/taxonomy'
 import type { DimensionDescriptor, FilterChip } from '../graph/dimension'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../graph/dimension'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
-import { TEMPORAL_TYPE_DIMENSION } from './build'
 
 /**
  * A node style plus the two fields that are this domain's own.
@@ -51,7 +50,20 @@ import { TEMPORAL_TYPE_DIMENSION } from './build'
  * into `styleGroups` directly because the grouping below is derived from them,
  * and deriving it here is what keeps the ordering in one place.
  */
+/**
+ * The axis this domain styles and filters its node types on. The adapter writes
+ * it onto every node; nothing in the engine names it.
+ */
+export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
+
 export interface TemporalNodeTypeDefinition extends NodeTypeDefinition {
+  /**
+   * The value this type projects onto the kind axis — what the kind chips
+   * filter on. The adapter materializes it on each node at build time, so the
+   * engine reads it off the node's dimension map like any other axis and never
+   * learns that one axis is a function of another.
+   */
+  defType: string
   /**
    * Which conceptual ladder this node type belongs to.
    * 'main'  — standard deployment path (namespace → worker → workflow/activity)
@@ -336,6 +348,10 @@ const VIEW_FILTER_CHIPS: readonly FilterChip[] = [
   { id: 'activityDef', label: 'Activities', icon: NODE_TYPE_REGISTRY.activity.icon, values: ['activityDef'] },
 ]
 
+const KIND_ABBREV: Record<string, string> = Object.fromEntries(
+  ALL_NODE_TYPES.map(t => [NODE_TYPE_REGISTRY[t].defType, SLIDER_ABBREV[t]]),
+)
+
 const FILTER_DIMENSIONS: DimensionDescriptor[] = [
   {
     id: SOURCE_FILE_DIMENSION,
@@ -387,12 +403,22 @@ const FILTER_DIMENSIONS: DimensionDescriptor[] = [
     // folding is the domain choice this hook exists for.
     chipsFor: () => VIEW_FILTER_CHIPS,
     labelFor: v => v,
-    abbreviationFor: v => v.slice(0, 2),
+    // A kind is a type's projection, so it abbreviates as the type does. Two
+    // characters of the kind's own name collided ("wo" for two kinds, "ne" for
+    // three), which left push/pull tokens on this axis indistinguishable. A
+    // kind this registry does not know keeps the two-character fallback.
+    abbreviationFor: v => KIND_ABBREV[v] ?? v.slice(0, 2),
   },
 ]
 
-export const DEFAULT_ONTOLOGY: Ontology = createOntology({
+/**
+ * This domain's taxonomy, as a spec: exported so a variant can be built from it
+ * (`createOntology({ ...DEFAULT_ONTOLOGY_SPEC, … })`) rather than by spreading
+ * the built container, whose closures would still read these fields.
+ */
+export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   styleDimension: TEMPORAL_TYPE_DIMENSION,
+  styleLabel: 'Type',
   abbreviations: SLIDER_ABBREV,
   // The two ladders, as presentation grouping. A control surface lays the main
   // deployment path out in one run and the nexus addressing path in another.
@@ -404,7 +430,8 @@ export const DEFAULT_ONTOLOGY: Ontology = createOntology({
   filterDimensions: FILTER_DIMENSIONS,
   nodeStyles: NODE_TYPE_REGISTRY,
   edgeTypes: ALL_EDGE_TYPES,
-  resolveEdgeType: (edge, src, tgt) =>
-    edgeTypeFor(edge, src.dimensions[TEMPORAL_TYPE_DIMENSION], tgt.dimensions[TEMPORAL_TYPE_DIMENSION]),
+  resolveEdgeType: edgeTypeFor,
   fallbackStyle: FALLBACK_NODE_STYLE,
-})
+}
+
+export const DEFAULT_ONTOLOGY: Ontology = createOntology(DEFAULT_ONTOLOGY_SPEC)

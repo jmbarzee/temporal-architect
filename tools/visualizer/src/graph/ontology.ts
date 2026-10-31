@@ -19,11 +19,10 @@
 //     constructed object.
 
 import type { DimensionDescriptor, DimensionId, DimensionMap, DimensionValue } from './dimension'
-import { DEF_TYPE_DIMENSION } from './dimension'
 import { hasOwn } from './dimension'
 import type { GraphEdge } from './model'
 import type { NodeTypeDefinition } from './taxonomy'
-import type { EdgeTypeDefinition } from './taxonomy'
+import type { EdgeTypeDefinition, EdgeTypeId } from './taxonomy'
 
 /** The minimum a consumer needs of a node in order to resolve its style. */
 export type StyleSubject = { dimensions: DimensionMap }
@@ -53,6 +52,8 @@ export interface Ontology {
    * With one source there is nothing to override out of step.
    */
   styleAxis(): DimensionId
+  /** The style axis's display name, for a control that names axes. */
+  styleLabel(): string
   /**
    * The axes the filter chain may operate on, with their per-axis policies.
    *
@@ -63,14 +64,10 @@ export interface Ontology {
   /** One axis's policies, or undefined if the host does not declare it. */
   descriptorFor(dimension: DimensionId): DimensionDescriptor | undefined
   /**
-   * The value a subject presents on one axis — the single place the filter's
-   * one projection lives.
-   *
-   * Most axes are read straight off the node's dimension map. `defType` is not:
-   * its values are a *projection* of the style axis, which is what lets two
-   * declared kinds share a filter key and one chip cover three of them. Stating
-   * that here means the predicate, the reconciler and the chips all agree by
-   * construction instead of each re-deriving it.
+   * The value a subject presents on one axis — read off its dimension map, for
+   * every axis alike. An axis that is a projection of another (this domain's
+   * kind axis is a function of its type axis) is materialized by the host when
+   * it builds the node, so nothing here knows which axes are derived.
    */
   valueOn(subject: StyleSubject, dimension: DimensionId): DimensionValue | undefined
   /** Every node-type key, in declaration order (top of the hierarchy first). */
@@ -103,12 +100,15 @@ export interface Ontology {
   /** The same, addressed by a node. The hot-path entry point. */
   resolveNodeStyle(subject: StyleSubject): NodeTypeDefinition
   /**
-   * The spring category an edge belongs to, resolved from the edge and its two
-   * endpoints. The endpoints are passed rather than cached on the edge: a
-   * denormalized copy is a second source of truth for a node's identity, and it
-   * goes stale the moment an edge is re-pointed during graduation.
+   * The host's rule for which category an edge on the style axis belongs to,
+   * given its two endpoint values. The engine reads the axis and hands the
+   * values over, so the rule never decides which dimension to look at — and it
+   * applies only while springs key on the style axis unmapped; any other
+   * (axis, mapping) resolves through the library's pair rule (D2). The values
+   * are read live from the endpoint nodes, never cached on the edge: a
+   * denormalized copy goes stale the moment graduation re-points an edge.
    */
-  resolveEdgeType(edge: GraphEdge, src: StyleSubject, tgt: StyleSubject): EdgeTypeDefinition
+  resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
 }
 
 /** What a host declares in order to build one. */
@@ -120,13 +120,14 @@ export interface StyleGroup {
 
 export interface OntologySpec {
   styleDimension: DimensionId
+  styleLabel: string
   abbreviations: Readonly<Record<DimensionValue, string>>
   styleGroups: readonly StyleGroup[]
   nodeTypeKeys: readonly DimensionValue[]
   filterDimensions: readonly DimensionDescriptor[]
   nodeStyles: Readonly<Record<DimensionValue, NodeTypeDefinition>>
   edgeTypes: readonly EdgeTypeDefinition[]
-  resolveEdgeType(edge: GraphEdge, src: StyleSubject, tgt: StyleSubject): EdgeTypeDefinition
+  resolveEdgeType(edge: GraphEdge, src: DimensionValue | undefined, tgt: DimensionValue | undefined): EdgeTypeId
   /**
    * Returned for a key the host did not declare. Required, not optional: a
    * taxonomy that cannot say what an unknown value looks like has no answer for
@@ -135,8 +136,26 @@ export interface OntologySpec {
   fallbackStyle: NodeTypeDefinition
 }
 
+/**
+ * Build the container, refusing an incoherent spec.
+ *
+ * The style value set is declared in four places — `nodeTypeKeys`, the keys
+ * of `nodeStyles`, the values in `styleGroups`, the keys of `abbreviations` —
+ * and nothing but this check holds them together. A value in one list and not
+ * another used to resolve, silently, to the fallback style or to no bucket at
+ * all. To derive a variant, build one from a spec (`createOntology({ ...spec,
+ * … })`); spreading the built object copies closures that still read the
+ * original's fields.
+ */
 export function createOntology(spec: OntologySpec): Ontology {
   const { nodeStyles, fallbackStyle } = spec
+  const keys = new Set(spec.nodeTypeKeys)
+  const problems: string[] = []
+  for (const k of spec.nodeTypeKeys) if (!hasOwn(nodeStyles, k)) problems.push(`nodeTypeKeys lists ${JSON.stringify(k)} but nodeStyles declares no style for it`)
+  for (const k of Object.keys(nodeStyles)) if (!keys.has(k)) problems.push(`nodeStyles declares ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
+  for (const g of spec.styleGroups) for (const v of g.values) if (!keys.has(v)) problems.push(`styleGroups.${g.id} names ${JSON.stringify(v)}, which nodeTypeKeys does not list`)
+  for (const k of Object.keys(spec.abbreviations)) if (!keys.has(k)) problems.push(`abbreviations names ${JSON.stringify(k)}, which nodeTypeKeys does not list`)
+  if (problems.length > 0) throw new Error(`taxonomy is incoherent: ${problems.join('; ')}`)
   const byDimension = new Map(spec.filterDimensions.map(d => [d.id, d]))
   // Warn once per unrecognized key, and once PER ONTOLOGY: this resolves per
   // node per frame, so a warning on every miss buries the first under sixty a
@@ -168,12 +187,10 @@ export function createOntology(spec: OntologySpec): Ontology {
     subject.dimensions[styleDimension]
   return {
     styleAxis: () => styleDimension,
+    styleLabel: () => spec.styleLabel,
     filterDimensions: spec.filterDimensions,
     descriptorFor: id => byDimension.get(id),
-    valueOn: (subject, dimension) =>
-      dimension === DEF_TYPE_DIMENSION
-        ? styleForKey(valueFor(subject)).defType
-        : subject.dimensions[dimension],
+    valueOn: (subject, dimension) => subject.dimensions[dimension],
     // `hasOwn`, for the same reason as `styleForKey` (D39): a value named
     // `constructor` or `toString` resolves up the prototype chain, the `??`
     // never fires, and this returns a Function where a string is expected.

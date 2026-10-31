@@ -14,6 +14,7 @@
 //      past the container again, the two rows below stop disagreeing and this
 //      probe goes red.
 
+import { DEF_TYPE_DIMENSION, RELATION_DIMENSION } from '../graph/dimension'
 import { filterOfSets } from '../filter/types'
 import { computeVisibleGraph } from '../components/graph-view/visibleGraph'
 import type { GraphEdge } from '../graph/model'
@@ -29,16 +30,23 @@ import type { DimensionDescriptor } from '../graph/dimension'
 import type { SimNode } from '../graph/simulation'
 import { defaultParamsFor } from '../graph/simulation'
 import { foldReheatPolicy } from '../graph/dimension'
-import { bandFor, chargeFor, coreRadiusFor } from '../graph/forces'
-import { TEMPORAL_TYPE_DIMENSION } from '../adapter/build'
+import { bandFor, chargeFor, coreRadiusFor, resolvePhysics } from '../graph/forces'
+import { dimensionsFor } from '../adapter/build'
+import { TEMPORAL_TYPE_DIMENSION } from '../adapter/node-types'
 import type { Json } from './snapshot'
 import { sorted } from './snapshot'
 
 const UNDECLARED = 'notADeclaredKey' as NodeType
 
-function node(id: string, nodeType: NodeType, parentId?: string): SimNode {
+/** The alternate taxonomy's kind projection — its adapter would write these. */
+const ALT_DEF_TYPE: Record<string, string> = { worker: 'tier-2', workflow: 'tier-3', activity: 'tier-4' }
+
+function node(id: string, nodeType: NodeType, parentId?: string, defType?: string): SimNode {
   return {
-    id, dimensions: { [TEMPORAL_TYPE_DIMENSION]: nodeType },
+    id,
+    // The adapter's projection, with the kind overridable for the alternate
+    // taxonomy's nodes (its adapter would project differently).
+    dimensions: defType === undefined ? dimensionsFor(nodeType, undefined) : { ...dimensionsFor(nodeType, undefined), [DEF_TYPE_DIMENSION]: defType },
     name: id, orphan: parentId === undefined,
     definitionKey: `${nodeType}:${id}`,
     ...(parentId !== undefined ? { parentId } : {}),
@@ -51,37 +59,50 @@ const NODES: SimNode[] = [
   node('wf', 'workflow', 'wk'),
   node('act', 'activity', 'wk'),
 ]
+// The same three nodes as the alternate taxonomy's adapter would build them:
+// the kind axis is materialized by whoever builds the node (D50), so a
+// different projection is a different graph, not a different read.
+const ALT_NODES: SimNode[] = NODES.map(n => {
+  const t = n.dimensions[TEMPORAL_TYPE_DIMENSION] as NodeType
+  return node(n.id, t, n.parentId, ALT_DEF_TYPE[t])
+})
 const EDGES: GraphEdge[] = [
-  { id: 'c0', edgeType: 'containment', sourceId: 'wf', targetId: 'wk' },
-  { id: 'd0', edgeType: 'dependency', sourceId: 'wf', targetId: 'act' },
+  { id: 'c0', sourceId: 'wf', targetId: 'wk', dimensions: { [RELATION_DIMENSION]: 'containment' } },
+  { id: 'd0', sourceId: 'wf', targetId: 'act', dimensions: { [RELATION_DIMENSION]: 'dependency' } },
 ]
-const BY_ID = new Map(NODES.map(n => [n.id, n]))
-const SOURCE = { nodes: NODES, edges: EDGES, getNode: (id: string) => BY_ID.get(id) }
+const sourceOf = (nodes: SimNode[]) => {
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  return { nodes, edges: EDGES, getNode: (id: string) => byId.get(id) }
+}
+const SOURCE = sourceOf(NODES)
+const ALT_SOURCE = sourceOf(ALT_NODES)
 
 /**
- * A taxonomy that answers differently from the shipped one: it declares the same
- * keys but maps them to different filter keys entirely. Nothing about it is
+ * A taxonomy that answers differently from the shipped one: the same keys,
+ * restyled, with a different summary rule on the worker. Nothing about it is
  * domain-specific — that is the point. If the graph engine is genuinely driven
- * by its container, filtering on `tier-2` selects the worker.
+ * by its container, the worker's summary comes out as a degree under this one
+ * and a container count under the shipped one, on the same nodes.
  */
 const ALTERNATE = createOntology({
   styleDimension: TEMPORAL_TYPE_DIMENSION,
+  styleLabel: 'Tier',
   abbreviations: { worker: 'T2', workflow: 'T3', activity: 'T4' },
   styleGroups: [{ id: 'tiers', values: ['worker', 'workflow', 'activity'] }],
   nodeTypeKeys: ['worker', 'workflow', 'activity'] as NodeType[],
   filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
   nodeStyles: {
-    worker: { ...NODE_TYPE_REGISTRY.worker, defType: 'tier-2', summaryKind: 'degree' },
-    workflow: { ...NODE_TYPE_REGISTRY.workflow, defType: 'tier-3' },
-    activity: { ...NODE_TYPE_REGISTRY.activity, defType: 'tier-4' },
+    worker: { ...NODE_TYPE_REGISTRY.worker, defType: ALT_DEF_TYPE.worker, summaryKind: 'degree' },
+    workflow: { ...NODE_TYPE_REGISTRY.workflow, defType: ALT_DEF_TYPE.workflow },
+    activity: { ...NODE_TYPE_REGISTRY.activity, defType: ALT_DEF_TYPE.activity },
   } as Record<NodeType, (typeof NODE_TYPE_REGISTRY)['worker']>,
   edgeTypes: DEFAULT_ONTOLOGY.edgeTypes,
   resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
   fallbackStyle: NODE_TYPE_REGISTRY.activity,
 })
 
-function visible(ontology: typeof DEFAULT_ONTOLOGY, types: string[]): Json {
-  const vg = computeVisibleGraph(SOURCE, filterOfSets(new Set(types), new Set<string>()), ontology)
+function visible(ontology: typeof DEFAULT_ONTOLOGY, source: typeof SOURCE, types: string[]): Json {
+  const vg = computeVisibleGraph(source, filterOfSets(new Set(types), new Set<string>()), ontology)
   return {
     visibleNodeIds: sorted(vg.visibleIds),
     summaries: sorted([...vg.nodeSummaries].map(([id, s]) => `${id}=${s}`)),
@@ -110,8 +131,8 @@ function mappingProbes(): Json {
   const grouped = createDimensionalMapping({
     id: 'probe:grouped', label: 'Grouped', dimension: 'probe',
     buckets: [
-      { id: 'ab', label: 'A+B', values: ['a', 'b'] },
-      { id: 'cd', label: 'C+D', values: ['c', 'd'] },
+      { id: 'ab', label: 'A+B', abbreviation: 'AB', values: ['a', 'b'] },
+      { id: 'cd', label: 'C+D', abbreviation: 'CD', values: ['c', 'd'] },
     ],
   })
   let refusal = 'NOT REFUSED — the guarantee is not enforced'
@@ -119,8 +140,8 @@ function mappingProbes(): Json {
     createDimensionalMapping({
       id: 'probe:overlapping', label: 'Overlapping', dimension: 'probe',
       buckets: [
-        { id: 'ab', label: 'A+B', values: ['a', 'b'] },
-        { id: 'bc', label: 'B+C', values: ['b', 'c'] },
+        { id: 'ab', label: 'A+B', abbreviation: 'AB', values: ['a', 'b'] },
+        { id: 'bc', label: 'B+C', abbreviation: 'BC', values: ['b', 'c'] },
       ],
     })
   } catch (err) {
@@ -168,6 +189,7 @@ function mappingProbes(): Json {
 function prototypeNamedValues(): Json {
   const NAMES = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']
   const params = defaultParamsFor(DEFAULT_ONTOLOGY)
+  const resolved = resolvePhysics(params, DEFAULT_ONTOLOGY)
   // An ARRAY of rows, each carrying its own name, because the row keys are the
   // very prototype names being probed. As an object this dropped `__proto__`
   // twice: `rows['__proto__'] = …` invokes the setter, and even built with
@@ -180,14 +202,14 @@ function prototypeNamedValues(): Json {
     const subject = { dimensions: { [TEMPORAL_TYPE_DIMENSION]: name } }
     const style = DEFAULT_ONTOLOGY.resolveNodeStyle(subject)
     const node = subject
-    const band = bandFor(params, node)
+    const band = bandFor(resolved.band, node)
     rows.push({
       name,
       styleIsFallback: style === DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: {} }),
       styleLabel: style.label,
-      charge: chargeFor(params, node),
-      coreRadius: coreRadiusFor(params, node),
-      chargeIsFinite: Number.isFinite(chargeFor(params, node)),
+      charge: chargeFor(resolved.push, node),
+      coreRadius: coreRadiusFor(resolved.push, node),
+      chargeIsFinite: Number.isFinite(chargeFor(resolved.push, node)),
       band: `${band.yMin}..${band.yMax}`,
       // D39 fixed styleForKey and the force lookups and missed this one.
       abbreviation: DEFAULT_ONTOLOGY.abbreviationFor(name),
@@ -209,8 +231,9 @@ function prototypeNamedValues(): Json {
  * made for one consumer.
  *
  * These rows make it for the other two. `defaultParamsFor` must derive its axis
- * and its whole key space from the taxonomy it is handed, and `edgeCategory`
- * must resolve springs through the supplied resolver rather than a captured one.
+ * and its whole key space from the taxonomy it is handed, and `resolvePhysics`
+ * must build the spring table from the supplied taxonomy's edge types and rule
+ * rather than captured ones.
  */
 function physicsInjection(): Json {
   const fromDefault = defaultParamsFor(DEFAULT_ONTOLOGY)
@@ -223,16 +246,23 @@ function physicsInjection(): Json {
   // that honours it finds nothing and returns the absent-value physics.
   const OTHER_AXIS = createOntology({
     styleDimension: 'zone',
+    styleLabel: 'Zone',
     abbreviations: { north: 'N', south: 'S' },
     styleGroups: [{ id: 'zones', values: ['north', 'south'] }],
     nodeTypeKeys: ['north', 'south'],
     filterDimensions: DEFAULT_ONTOLOGY.filterDimensions,
     nodeStyles: {
-      north: { ...NODE_TYPE_REGISTRY.worker, defType: 'northDef' },
-      south: { ...NODE_TYPE_REGISTRY.activity, defType: 'southDef' },
+      north: NODE_TYPE_REGISTRY.worker,
+      south: NODE_TYPE_REGISTRY.activity,
     },
-    edgeTypes: DEFAULT_ONTOLOGY.edgeTypes,
-    resolveEdgeType: DEFAULT_ONTOLOGY.resolveEdgeType,
+    // Its own edge table and rule, so the spring rows below can only come out
+    // right by reading the container.
+    edgeTypes: [{
+      id: 'zoneLink', label: 'N↔S', sourceType: 'north', targetType: 'south',
+      category: 'dependency',
+      physics: { strength: 0.7, distance: 123 }, tooltip: 'zone link',
+    }],
+    resolveEdgeType: () => 'zoneLink',
     fallbackStyle: NODE_TYPE_REGISTRY.activity,
   })
   const zoned = defaultParamsFor(OTHER_AXIS)
@@ -241,25 +271,35 @@ function physicsInjection(): Json {
   return {
     // The axis itself must come from the container.
     axes: {
-      shipped: fromDefault.chargeDimension,
-      otherAxis: zoned.chargeDimension,
-      differ: fromDefault.chargeDimension !== zoned.chargeDimension,
+      shipped: fromDefault.pair.mapping.dimension,
+      otherAxis: zoned.pair.mapping.dimension,
+      differ: fromDefault.pair.mapping.dimension !== zoned.pair.mapping.dimension,
     },
     // And so must the key space the maps are built over.
     chargeKeys: {
-      shipped: sorted(Object.keys(fromDefault.charge)),
-      otherAxis: sorted(Object.keys(zoned.charge)),
+      shipped: sorted([...resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push.byBucket.keys()]),
+      otherAxis: sorted([...resolvePhysics(zoned, OTHER_AXIS).push.byBucket.keys()]),
     },
+    // And the spring table: categories and physics from the container's own
+    // edge types, through its own rule.
+    springKeys: {
+      shipped: sorted(DEFAULT_ONTOLOGY.edgeTypes.map(e => e.id).filter(id => resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).spring.describe(id) !== undefined)),
+      otherAxis: sorted(OTHER_AXIS.edgeTypes.map(e => e.id).filter(id => resolvePhysics(zoned, OTHER_AXIS).spring.describe(id) !== undefined)),
+    },
+    zoneSpring: (() => {
+      const ph = resolvePhysics(zoned, OTHER_AXIS).spring.physicsFor('zoneLink')
+      return { strength: ph.strength, distance: ph.distance }
+    })(),
     // A node on the other axis scores under ITS taxonomy and is absent under the
     // shipped one. Both rows are needed: the first proves the container is read,
     // the second proves the shipped one is genuinely not consulted.
-    northNodeUnderOwnTaxonomy: chargeFor(zoned, northNode),
-    northNodeUnderShippedTaxonomy: chargeFor(fromDefault, northNode),
+    northNodeUnderOwnTaxonomy: chargeFor(resolvePhysics(zoned, OTHER_AXIS).push, northNode),
+    northNodeUnderShippedTaxonomy: chargeFor(resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push, northNode),
     // The alternate taxonomy from the injection probe keeps the shipped axis but
     // restyles it, so the physics MUST agree with the shipped one here — a probe
     // that reported a difference for every alternate would prove nothing.
-    workerChargeShipped: chargeFor(fromDefault, worker),
-    workerChargeAlternate: chargeFor(fromAlternate, worker),
+    workerChargeShipped: chargeFor(resolvePhysics(fromDefault, DEFAULT_ONTOLOGY).push, worker),
+    workerChargeAlternate: chargeFor(resolvePhysics(fromAlternate, ALTERNATE).push, worker),
 
     // The axis has exactly one source, so a container derived by spreading
     // cannot end up disagreeing with itself. Before `styleAxis()` this row read
@@ -269,10 +309,9 @@ function physicsInjection(): Json {
       return {
         axisAfterSpread: derived.styleAxis(),
         stillResolvesTheSameStyle:
-          derived.resolveNodeStyle(worker).defType ===
-          DEFAULT_ONTOLOGY.resolveNodeStyle(worker).defType,
+          derived.resolveNodeStyle(worker) === DEFAULT_ONTOLOGY.resolveNodeStyle(worker),
         physicsAgreesWithStyling:
-          defaultParamsFor(derived).chargeDimension === derived.styleAxis(),
+          defaultParamsFor(derived).pair.mapping.dimension === derived.styleAxis(),
       }
     })(),
   }
@@ -329,14 +368,12 @@ export function ontologyProbes(): Json {
     prototypeNamedValues: prototypeNamedValues(),
     reheatPolicy: reheatPolicy(),
     physicsInjection: physicsInjection(),
-    // What a miss resolves to, field by field. The `defType` matters most: it is
-    // what the visibility predicate tests, so it decides whether an unrecognized
-    // node is permanently visible, permanently hidden, or accidentally lumped in
-    // with a real type.
+    // What a miss resolves to, field by field. Visibility is not among them any
+    // more: the kind axis is on the node (D50), so an unrecognized style key
+    // changes how a node is drawn and summarized, never whether it is shown.
     fallbackStyle: {
       label: fallback.label,
       icon: fallback.icon,
-      defType: fallback.defType,
       summaryKind: fallback.summaryKind,
       size: { r: fallback.size.r, iconSize: fallback.size.iconSize },
       physics: {
@@ -358,13 +395,16 @@ export function ontologyProbes(): Json {
     declaredKeyUnaffected:
       DEFAULT_ONTOLOGY.resolveNodeStyle({ dimensions: { [TEMPORAL_TYPE_DIMENSION]: 'worker' } }) === NODE_TYPE_REGISTRY.worker,
 
-    // The seam, exercised. Same graph, same filter vocabulary, two taxonomies —
-    // the answers must differ, or nothing is actually being injected.
+    // The seam, exercised. Visibility now reads the node (its adapter wrote the
+    // kind axis), so the shipped nodes are invisible under the alternate keys
+    // whichever taxonomy is supplied — that is the first pair. What the
+    // container still decides is what the visible set *means*: the same node
+    // ids summarize differently under the two taxonomies, which is the second.
     injection: {
-      shippedTaxonomyOnItsOwnKeys: visible(DEFAULT_ONTOLOGY, ['workerDef', 'workflowDef']),
-      shippedTaxonomyOnAlternateKeys: visible(DEFAULT_ONTOLOGY, ['tier-2', 'tier-3']),
-      alternateTaxonomyOnItsOwnKeys: visible(ALTERNATE, ['tier-2', 'tier-3']),
-      alternateTaxonomyOnShippedKeys: visible(ALTERNATE, ['workerDef', 'workflowDef']),
+      shippedNodesOnShippedKeys: visible(DEFAULT_ONTOLOGY, SOURCE, ['workerDef', 'workflowDef']),
+      shippedNodesOnAlternateKeys: visible(ALTERNATE, SOURCE, ['tier-2', 'tier-3']),
+      alternateNodesOnAlternateKeys: visible(ALTERNATE, ALT_SOURCE, ['tier-2', 'tier-3']),
+      alternateNodesUnderShippedTaxonomy: visible(DEFAULT_ONTOLOGY, ALT_SOURCE, ['tier-2', 'tier-3']),
     },
   }
 }

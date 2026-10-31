@@ -1,6 +1,7 @@
 // Graph View: force-directed visualization of definition relationships.
 // Wires together graph construction, simulation, viewport, rendering, and interaction.
 
+import { isContainment } from '../graph/model'
 import React from 'react'
 import './GraphView.css'
 import type { TWFFile } from '../types/ast'
@@ -10,9 +11,12 @@ import type { DecompositionParams } from './protocol'
 import type { CrossViewTarget } from './WorkflowCanvas'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
 import type { Simulation } from '../graph/simulation'
+import { presentSpringCategories, resolvePhysics, resolveSprings } from '../graph/forces'
+import { axisOptions, pairTuning } from '../graph/simulation'
+import type { DimensionalMapping } from '../graph/dimension'
 import type { GraphEdge } from '../graph/model'
 import { payloadString } from '../graph/model'
-import { SOURCE_FILE_DIMENSION } from '../graph/dimension'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION, valuesOn } from '../graph/dimension'
 import { DEFAULT_NODE_SCALE, type NodeScaleParams } from '../graph/node-scale'
 import { useOntology } from './graph-view/useOntology'
 import { worldToScreen } from '../graph/viewport'
@@ -132,11 +136,17 @@ export function GraphView({
   // partition) — everything derived straight from props, no sim/DOM.
   const {
     graph,
-    allFiles,
     recentlyChanged,
     errors,
     diagnostics,
   } = useGraphModel(ast, parserGraph, filter)
+
+  // What each filter axis can take, read off the graph: the engine declares no
+  // value vocabulary, so the bar learns an axis's domain from the nodes.
+  const valuesByDimension = React.useMemo(
+    () => new Map(ontology.filterDimensions.map(d => [d.id, valuesOn(graph.nodes.values(), d.id)])),
+    [graph, ontology],
+  )
 
   // Reset camera/fps coordination on each sim rebuild. Held by useSimulation
   // and invoked from its build effect (selection reset is owned by useHighlight,
@@ -155,12 +165,35 @@ export function GraphView({
     getNode: getSimNode,
     onParamChange: handleParamChange,
     onForceAdjust: handleForceAdjust,
-    onGravityChange: handleGravityChange,
+    onRelayout: handleRelayout,
     onNodeDragStart: handleNodeDragStart,
     onNodeDragMove: handleNodeDragMove,
     onNodeDragEnd: handleNodeDragEnd,
     onToggleRunning: handleToggleRunning,
   } = useSimulation(graph, onSimRebuild)
+
+  // The dense per-bucket tables the kernels read, resolved once per
+  // (params, taxonomy) here and handed to the canvas and every control (T25).
+  const resolved = React.useMemo(() => resolvePhysics(forceParams, ontology), [forceParams, ontology])
+
+  // What the push/pull tab offers: every axis this graph admits with its
+  // measured token cost, and the spring categories some edge falls in under
+  // the current one (the pull tokens). Both read the whole graph, not the
+  // visible subset — tuning covers what a filter may reveal next.
+  const axes = React.useMemo(() => axisOptions(ontology, graph), [ontology, graph])
+  // Classification does not depend on overrides, so this keys on the mapping
+  // and not on `resolved`, which is a new object after every slider edit.
+  const pairMapping = forceParams.pair.mapping
+  const presentSprings = React.useMemo(
+    () => presentSpringCategories(resolveSprings(pairTuning(pairMapping), ontology), graph.edges, id => graph.nodes.get(id)),
+    [pairMapping, ontology, graph],
+  )
+  // A new axis starts both pair forces from the taxonomy's declared physics on
+  // its buckets (D47: a tuning keyed by one axis has no reading on another).
+  const handleAxisChange = React.useCallback((mapping: DimensionalMapping) => {
+    if (mapping.dimension === pairMapping.dimension) return
+    handleRelayout({ pair: pairTuning(mapping) })
+  }, [pairMapping, handleRelayout])
 
   // Render-time node sizing (independent of the simulation). Tunable from the
   // Controls panel (Misc → Node scaling); a pure-render concern, so it doesn't
@@ -209,7 +242,7 @@ export function GraphView({
     focusedNodeId,
     highlightedNodes, highlightedEdges,
     activeSection, setActiveSection,
-    activeChargeType, setActiveChargeType,
+    activePushBucket, setActivePushBucket,
     activeGravityType, setActiveGravityType,
     activePullEdge, setActivePullEdge,
   } = useHighlight(visibleNodes, visibleEdges, visibleIds, getSimNode, graph)
@@ -350,10 +383,10 @@ export function GraphView({
     const { name, defType } = pendingFocus
     const sim = simRef.current
     if (sim) {
-      // Compared on the filter key both sides already speak, rather than
+      // Compared on the kind axis both sides already speak, rather than
       // round-tripping through the reverse bridge to compare type strings.
       const targetNode = sim.nodes.find(
-        n => n.name === name && ontology.resolveNodeStyle(n).defType === defType,
+        n => n.name === name && n.dimensions[DEF_TYPE_DIMENSION] === defType,
       )
       if (targetNode) {
         pendingCenterRef.current = { nodeId: targetNode.id }
@@ -490,8 +523,9 @@ export function GraphView({
             searchMatchIds={visibleMatchIds}
             running={running}
             forceParams={forceParams}
+            resolved={resolved}
             activeSection={activeSection}
-            activeChargeType={activeChargeType}
+            activePushBucket={activePushBucket}
             activeGravityType={activeGravityType}
             activePullEdge={activePullEdge}
             nodeScale={nodeScale}
@@ -520,7 +554,7 @@ export function GraphView({
         <div className="graph-toolbar" ref={toolbarRef}>
           <FilterBar
             ast={ast}
-            allFiles={allFiles}
+            valuesByDimension={valuesByDimension}
             filter={filter}
             onFilterChange={onFilterChange}
             pins={pins}
@@ -584,11 +618,15 @@ export function GraphView({
       {/* Control panel */}
       <GraphControlPanel
         params={forceParams}
+        resolved={resolved}
         onParamChange={handleParamChange}
         onAdjust={handleForceAdjust}
-        onGravityChange={handleGravityChange}
+        onRelayout={handleRelayout}
+        axes={axes}
+        presentSprings={presentSprings}
+        onAxisChange={handleAxisChange}
         onActiveSection={setActiveSection}
-        onActiveChargeType={setActiveChargeType}
+        onActivePushBucket={setActivePushBucket}
         onActiveGravityType={setActiveGravityType}
         onActivePullEdge={setActivePullEdge}
         nodeScale={nodeScale}
@@ -700,7 +738,8 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
   // per-type icon (★ for service, ☆ for operation, ⌖ for endpoint) is
   // more informative than the group chip icon. DEF_TYPE_CONFIGS still has
   // all 7 entries even though 3 are collapsed into one chip in the filter bar.
-  const cfg = DEF_TYPE_CONFIGS.find(c => c.type === ontology.resolveNodeStyle(node).defType)
+  const kind = node.dimensions[DEF_TYPE_DIMENSION]
+  const cfg = DEF_TYPE_CONFIGS.find(c => c.type === kind)
   const fileName = node.dimensions[SOURCE_FILE_DIMENSION]?.split('/').pop()
 
   // Composition counts for container/host nodes (e.g. "3 workers · 1 endpoint"
@@ -724,7 +763,7 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
 
   let outgoing = 0, incoming = 0
   for (const e of visibleEdges) {
-    if (e.edgeType === 'containment') continue
+    if (isContainment(e)) continue
     if (e.sourceId === hoveredNodeId) outgoing++
     if (e.targetId === hoveredNodeId) incoming++
   }
@@ -774,10 +813,10 @@ function GraphHoverTooltip({ hoveredNodeId, simRef, visibleEdges, visibleIds, vi
         </div>
       )}
       <div className="tooltip-direction">{shiftHeld ? 'dependents' : 'dependencies'}</div>
-      {onShowInTree && (
+      {onShowInTree && kind !== undefined && (
         <button
           className="tooltip-show-in-tree"
-          onClick={() => onShowInTree(node.name, ontology.resolveNodeStyle(node).defType)}
+          onClick={() => onShowInTree(node.name, kind)}
           title="Show in Tree view"
         >
           Show in Tree

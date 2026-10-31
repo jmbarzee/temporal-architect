@@ -7,10 +7,12 @@
 
 import React from 'react'
 import type { ForceParams } from '../graph/simulation'
+import { withPushOverride } from '../graph/simulation'
+import { pushForKey } from '../graph/forces'
+import type { ResolvedPhysics } from '../graph/forces'
 
-import type { DimensionValue } from '../graph/dimension'
-import type { Ontology } from '../graph/ontology'
 import { useOntology } from './graph-view/useOntology'
+import { bucketColor } from './controls/bucketColor'
 import { ForceMap2D, ForceCurves, CURVE_W, CURVE_H, CURVE_SAMPLES } from './ForceMap'
 import type { MapToken, CurveItem } from './ForceMap'
 
@@ -24,43 +26,41 @@ export const CORE_RADIUS_MIN_AXIS = 0
 export const CORE_RADIUS_MAX_AXIS = 100
 export const CORE_RADIUS_STEP = 1
 
-// Colour for one value on the style axis, resolved through the taxonomy rather
-// than looked up in a registry this component imports.
-function typeColor(ontology: Ontology, t: DimensionValue): string {
-  return `var(--color-${ontology.styleForKey(t).color.cssVarSuffix})`
-}
-
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 interface ChargeControlProps {
   params: ForceParams
+  /** The dense tables the kernels read, resolved once by the view (T25). */
+  resolved: ResolvedPhysics
   onParamChange: (patch: Partial<ForceParams>) => void
-  // The hovered/active node type — links the map, the curves, and the canvas.
-  hoveredType: DimensionValue | null
-  onHoverType: (t: DimensionValue | null) => void
+  // The hovered/active bucket on the push axis — links the map, the curves, and the canvas.
+  hoveredBucket: string | null
+  onHoverBucket: (b: string | null) => void
 }
 
 // ── 2D Charge Map ─────────────────────────────────────────────────────────────
 //
-// y = charge magnitude, x = core radius. One solid token per node type, coloured
-// by type. Dragging sets both the (negative) charge and the core radius at once.
-export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: ChargeControlProps) {
+// y = charge magnitude, x = core radius. One solid token per bucket of the push
+// axis. Dragging sets both the (negative) charge and the core radius at once.
+export function ChargeMap({ params, resolved, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
   const ontology = useOntology()
-  const tokens: MapToken[] = ontology.nodeTypeKeys.map(t => ({
-    id: t,
-    x: params.coreRadius[t],
-    y: Math.abs(params.charge[t]),
-    colorA: typeColor(ontology, t),
+  const { push } = resolved
+  const tokens: MapToken[] = push.mapping.buckets.map(b => ({
+    id: b.id,
+    x: pushForKey(push, b.id).coreRadius,
+    y: Math.abs(pushForKey(push, b.id).charge),
+    colorA: bucketColor(ontology, push.mapping, b.id),
     outline: 'solid',
-    label: ontology.abbreviationFor(t),
-    tooltip: `${ontology.styleForKey(t).label} repulsion charge & core radius`,
+    label: b.abbreviation,
+    tooltip: `${b.label} repulsion charge & core radius`,
   }))
 
   const handleDrag = (id: string, x: number, y: number) => {
     const t = id
     onParamChange({
-      charge: { ...params.charge, [t]: -y },        // store negative (repulsion)
-      coreRadius: { ...params.coreRadius, [t]: x },
+      // One override per bucket, carrying both numbers the token encodes;
+      // charge is stored negative (repulsion).
+      pair: withPushOverride(params.pair, t, { charge: -y, coreRadius: x }),
     })
   }
 
@@ -70,8 +70,8 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
       xAxis={{ min: CORE_RADIUS_MIN_AXIS, max: CORE_RADIUS_MAX_AXIS, step: CORE_RADIUS_STEP, label: 'core radius' }}
       yAxis={{ min: CHARGE_MAG_MIN, max: CHARGE_MAG_MAX, step: CHARGE_MAG_STEP, label: 'charge' }}
       onDrag={handleDrag}
-      hoveredId={hoveredType}
-      onHover={onHoverType}
+      hoveredId={hoveredBucket}
+      onHover={onHoverBucket}
       ariaLabel="Charge map: core radius versus charge magnitude"
       xSlider={{
         value: params.coreRadiusMultiplier, min: 0.1, max: 3, step: 0.05,
@@ -95,23 +95,24 @@ export function ChargeMap({ params, onParamChange, hoveredType, onHoverType }: C
 // distance (all-positive, baseline at the bottom of the frame), with the core
 // radius marked on the distance axis. The global `exp` (chargeExponent) is the
 // slider beneath.
-export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }: ChargeControlProps) {
+export function ChargeCurves({ params, resolved, onParamChange, hoveredBucket, onHoverBucket }: ChargeControlProps) {
   const ontology = useOntology()
-  const push = params.pushMultiplier
+  const { push } = resolved
+  const pushMul = params.pushMultiplier
   const crMul = params.coreRadiusMultiplier
   const exp = params.chargeExponent
 
   const { curves, dMax } = React.useMemo<{ curves: CurveItem[]; dMax: number }>(() => {
-    const rEffs = ontology.nodeTypeKeys.map(t => crMul * params.coreRadius[t])
+    const rEffs = push.mapping.buckets.map(b => crMul * pushForKey(push, b.id).coreRadius)
     const maxREff = Math.max(0, ...rEffs)
     // Show the falloff out to a few core radii so the plateau-then-drop shape
     // is legible even when the radii are small.
     const dMax = Math.max(150, maxREff * 4)
 
     let maxMag = 0
-    const sampled = ontology.nodeTypeKeys.map(t => {
-      const q = Math.abs(params.charge[t]) * push
-      const rEff = crMul * params.coreRadius[t]
+    const sampled = push.mapping.buckets.map(({ id: t }) => {
+      const q = Math.abs(pushForKey(push, t).charge) * pushMul
+      const rEff = crMul * pushForKey(push, t).coreRadius
       const soft = rEff * rEff
       const pts: { d: number; v: number }[] = []
       for (let i = 0; i <= CURVE_SAMPLES; i++) {
@@ -130,19 +131,19 @@ export function ChargeCurves({ params, onParamChange, hoveredType, onHoverType }
 
     const built = sampled.map(({ type, rEff, pts }) => ({
       id: type,
-      color: typeColor(ontology, type),
+      color: bucketColor(ontology, push.mapping, type),
       markerX: xFor(rEff),
       points: pts.map(p => `${xFor(p.d).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(' '),
     }))
     return { curves: built, dMax }
-  }, [params, push, crMul, exp, ontology])
+  }, [params, pushMul, push, crMul, exp, ontology])
 
   return (
     <ForceCurves
       curves={curves}
       xMax={dMax}
-      hoveredId={hoveredType}
-      onHover={onHoverType}
+      hoveredId={hoveredBucket}
+      onHover={onHoverBucket}
       xLabel="distance"
       yLabel="force"
       ariaLabel="Charge falloff curves"

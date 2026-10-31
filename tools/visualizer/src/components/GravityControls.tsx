@@ -6,6 +6,9 @@
 // baseline (active only when both toggles are off), so it has no control here.
 // See GRAPH_VIEW spec § Gravity / Control Panel.
 
+import { withOverride } from '../graph/simulation'
+import { bandRangeFor } from '../graph/forces'
+import type { ResolvedPhysics } from '../graph/forces'
 import React from 'react'
 import './GravityControls.css'
 import type { ForceParams } from '../graph/simulation'
@@ -18,6 +21,8 @@ import { Plot } from './controls/Plot'
 import { Slider } from './controls/Slider'
 import { Equation } from './controls/Equation'
 import { FormulaValue } from './controls/PopContext'
+import { bucketColor } from './controls/bucketColor'
+import { SubTabs, SubTab, SubTabBodies, SubTabBody } from './controls/SubTab'
 
 // Column order: main ladder first, then the nexus ladder (after a gap). Both
 // derived from the node-type registry (family + tier) so a registry change
@@ -31,15 +36,13 @@ function columnsFor(ontology: Ontology): { order: DimensionValue[]; firstGroupCo
   }
 }
 
-function typeColor(ontology: Ontology, t: DimensionValue): string {
-  return `var(--color-${ontology.styleForKey(t).color.cssVarSuffix})`
-}
-
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const snap = (v: number, step: number) => Math.round(v / step) * step
 
 interface GravityControlProps {
   params: ForceParams
+  /** The dense tables the kernels read, resolved once by the view (T25). */
+  resolved: ResolvedPhysics
   onParamChange: (patch: Partial<ForceParams>) => void
   onGravitySet: (partial: Partial<ForceParams>) => void
   hoveredType: DimensionValue | null
@@ -72,8 +75,9 @@ const colSlot = (i: number, firstGroupCount: number) => (i < firstGroupCount ? i
 const colX = (i: number, cols: { order: DimensionValue[]; firstGroupCount: number }) =>
   PL + ((colSlot(i, cols.firstGroupCount) + 0.5) / (cols.order.length + 1)) * (PR - PL)
 
-function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: GravityControlProps) {
+function GravityBandPlot({ params, resolved, onParamChange, hoveredType, onHoverType }: GravityControlProps) {
   const ontology = useOntology()
+  const { band } = resolved
   const cols = columnsFor(ontology)
   const svgRef = React.useRef<SVGSVGElement>(null)
   const dragRef = React.useRef<{ type: DimensionValue; edge: 'min' | 'max' } | null>(null)
@@ -98,12 +102,12 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
   const handleMove = (e: React.PointerEvent) => {
     const drag = dragRef.current
     if (!drag) return
-    const cur = params.band[drag.type]
+    const cur = bandRangeFor(band, drag.type)
     const v = clamp(snap(valForY(userY(e)), W_STEP), W_MIN, W_MAX)
     const next = drag.edge === 'min'
       ? { min: Math.min(v, cur.max - W_STEP), max: cur.max }
       : { min: cur.min, max: Math.max(v, cur.min + W_STEP) }
-    onParamChange({ band: { ...params.band, [drag.type]: next } })
+    onParamChange({ band: withOverride(params.band, drag.type, next) })
   }
   const handleUp = (e: React.PointerEvent) => {
     dragRef.current = null
@@ -163,15 +167,15 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
         {/* Rest-region stripes — the mini world view, behind and inert. */}
         <g className="gravity-band-stripes">
           {cols.order.map(t => {
-            const yTop = yForWorld(params.band[t].min)
-            const yBot = yForWorld(params.band[t].max)
+            const yTop = yForWorld(bandRangeFor(band, t).min)
+            const yBot = yForWorld(bandRangeFor(band, t).max)
             const dim = hoveredType !== null && hoveredType !== t
             const active = hoveredType === t
             return (
               <rect
                 key={t}
                 x={PL} y={yTop} width={PR - PL} height={Math.max(0, yBot - yTop)}
-                fill={typeColor(ontology, t)}
+                fill={bucketColor(ontology, band.mapping, t)}
                 className={`gravity-band-stripe${dim ? ' dim' : ''}${active ? ' active' : ''}`}
               />
             )
@@ -187,11 +191,11 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
         {/* Per-type vertical sliders (track + two handles), on top. */}
         {cols.order.map((t, i) => {
           const x = colX(i, cols)
-          const yTop = yForWorld(params.band[t].min)
-          const yBot = yForWorld(params.band[t].max)
+          const yTop = yForWorld(bandRangeFor(band, t).min)
+          const yBot = yForWorld(bandRangeFor(band, t).max)
           const dim = hoveredType !== null && hoveredType !== t
           const active = hoveredType === t
-          const color = typeColor(ontology, t)
+          const color = bucketColor(ontology, band.mapping, t)
           return (
             <g
               key={t}
@@ -220,7 +224,7 @@ function GravityBandPlot({ params, onParamChange, hoveredType, onHoverType }: Gr
 
 type GravitySub = 'band' | 'topological'
 
-export function GravityControls({ params, onParamChange, onGravitySet, hoveredType, onHoverType }: GravityControlProps) {
+export function GravityControls({ params, resolved, onParamChange, onGravitySet, hoveredType, onHoverType }: GravityControlProps) {
   const mode = params.gravityMode
   const [sub, setSub] = React.useState<GravitySub>('band')
   return (
@@ -244,26 +248,23 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
 
       {/* Sub-tabs — each carries its own enable switch, so both forces' on/off
           state is visible at all times even though only one body shows. */}
-      <div className="gravity-subtabs" role="tablist" aria-label="Gravity force">
-        <GravitySubTab label="Band" active={sub === 'band'} enabled={params.bandEnabled}
-          onSelect={() => setSub('band')} onToggle={v => onGravitySet({ bandEnabled: v })} />
-        <GravitySubTab label="Topological" active={sub === 'topological'} enabled={params.topologicalEnabled}
-          onSelect={() => setSub('topological')} onToggle={v => onGravitySet({ topologicalEnabled: v })} />
-      </div>
+      <SubTabs label="Gravity force">
+        <SubTab label="Band" active={sub === 'band'} onSelect={() => setSub('band')}
+          leading={<ForceSwitch label="Band" enabled={params.bandEnabled} onToggle={v => onGravitySet({ bandEnabled: v })} />} />
+        <SubTab label="Topological" active={sub === 'topological'} onSelect={() => setSub('topological')}
+          leading={<ForceSwitch label="Topological" enabled={params.topologicalEnabled} onToggle={v => onGravitySet({ topologicalEnabled: v })} />} />
+      </SubTabs>
 
-      {/* Both bodies are mounted and stacked in one grid cell; only the active
-          one is visible. The cell sizes to the taller body, so switching sub-tabs
-          never resizes the panel (same trick as the main force tabs). */}
-      <div className="gravity-bodies">
-        <div className={`gravity-body${sub === 'band' ? ' active' : ''}`} aria-hidden={sub !== 'band'}>
+      <SubTabBodies>
+        <SubTabBody active={sub === 'band'}>
           <div className={`gravity-section-tools${params.bandEnabled ? '' : ' inactive'}`}>
             <Equation>{<>F = <FormulaValue id="bandStrength">strength</FormulaValue> × d<sup><FormulaValue id="bandExp">exp</FormulaValue></sup></>}</Equation>
-            <GravityBandPlot params={params} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
+            <GravityBandPlot params={params} resolved={resolved} onParamChange={onParamChange} onGravitySet={onGravitySet} hoveredType={hoveredType} onHoverType={onHoverType} />
             <BandCurves params={params} onParamChange={onParamChange} />
           </div>
-        </div>
+        </SubTabBody>
 
-        <div className={`gravity-body${sub === 'topological' ? ' active' : ''}`} aria-hidden={sub !== 'topological'}>
+        <SubTabBody active={sub === 'topological'}>
           <div className={`gravity-section-tools gravity-topo${params.topologicalEnabled ? '' : ' inactive'}`}>
             <Equation>{<>F = <FormulaValue id="topoStrength">strength</FormulaValue> × depth<sup><FormulaValue id="topoExp">exp</FormulaValue></sup> × d</>}</Equation>
             <TopologicalCurve exp={params.gravityTopologicalExp} />
@@ -286,31 +287,21 @@ export function GravityControls({ params, onParamChange, onGravitySet, hoveredTy
               />
             </div>
           </div>
-        </div>
-      </div>
+        </SubTabBody>
+      </SubTabBodies>
     </div>
   )
 }
 
-// One gravity sub-tab: a sliding on/off switch plus a selectable label. The
-// switch toggles the force; clicking the label selects which body is shown.
-// They're independent (toggling doesn't switch the view) so both forces' state
-// stays legible while you tune one.
-function GravitySubTab({ label, active, enabled, onSelect, onToggle }: {
-  label: string
-  active: boolean
-  enabled: boolean
-  onSelect: () => void
-  onToggle: (v: boolean) => void
-}) {
+// A force's sliding on/off switch, led into its sub-tab. Toggling does not
+// select the tab (the click stops here), so both forces' state stays legible
+// while you tune one.
+function ForceSwitch({ label, enabled, onToggle }: { label: string; enabled: boolean; onToggle: (v: boolean) => void }) {
   return (
-    <div role="tab" aria-selected={active} className={`gravity-subtab${active ? ' active' : ''}`} onClick={onSelect}>
-      <label className={`switch${enabled ? ' on' : ''}`} onClick={e => e.stopPropagation()}>
-        <input type="checkbox" checked={enabled} onChange={e => onToggle(e.target.checked)} aria-label={`${label} gravity enabled`} />
-        <span className="switch-track"><span className="switch-knob" /></span>
-      </label>
-      <span className="gravity-subtab-label">{label}</span>
-    </div>
+    <label className={`switch${enabled ? ' on' : ''}`} onClick={e => e.stopPropagation()}>
+      <input type="checkbox" checked={enabled} onChange={e => onToggle(e.target.checked)} aria-label={`${label} gravity enabled`} />
+      <span className="switch-track"><span className="switch-knob" /></span>
+    </label>
   )
 }
 
