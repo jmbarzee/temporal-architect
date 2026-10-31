@@ -13,6 +13,19 @@ func ProcessOrder(ctx workflow.Context, order Order) (Result, error) {
 
 `workflow.Context` is always first and `error` always last: no DSL return type → `func Name(ctx workflow.Context, params...) error`; `-> (A, B)` → `(A, B, error)`.
 
+## `id_scheme:`
+
+```twf
+workflow ShipItem(order: Order, item: Item) -> (Shipment):
+    id_scheme: "ship-{order.id}-{item.id}"
+```
+
+```go
+func ShipItemID(orderID, itemID string) string { return fmt.Sprintf("ship-%s-%s", orderID, itemID) }
+```
+
+One ID function per scheme, beside the workflow, taking one argument per hole. Every start ([workflow-call.md](./workflow-call.md)), every constructed send ([signal-send.md](./signal-send.md#type-head-by-id)), and every client start calls it; never format the ID inline.
+
 ## Determinism constraints
 
 Every replay must produce the same commands in the same order; a violation fails the Workflow Task with a non-deterministic error, retried indefinitely until the code is fixed.

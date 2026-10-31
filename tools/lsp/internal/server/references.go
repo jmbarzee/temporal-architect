@@ -82,6 +82,10 @@ func nameOfNode(node ast.Node) (name, kind string) {
 			return n.Workflow.Resolved.Name, "workflow"
 		}
 		return n.Workflow.Name, "workflow"
+	case *ast.SignalSendStmt:
+		if n.Head.Kind == ast.SendHeadType {
+			return n.Head.Type.Name, "workflow"
+		}
 	case *ast.NexusCall:
 		if n.Service.Resolved != nil {
 			return n.Service.Resolved.Name, "nexus_service"
@@ -215,6 +219,10 @@ func collectRefsInStmts(stmts []ast.Statement, name, kind string, refs []ast.Nod
 			}
 		case *ast.WorkflowCall:
 			if kind == "workflow" && n.Workflow.Name == name {
+				refs = append(refs, n)
+			}
+		case *ast.SignalSendStmt:
+			if kind == "workflow" && n.Head.Kind == ast.SendHeadType && n.Head.Type.Name == name {
 				refs = append(refs, n)
 			}
 		case *ast.NexusCall:

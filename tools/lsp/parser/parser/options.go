@@ -261,6 +261,14 @@ func (p *Parser) parseOptionEntry(schema map[string]*optionSchema, callSiteOnly 
 		var ok bool
 		sch, ok = schema[key]
 		if !ok {
+			if _, isStart := schema["workflow_id_reuse_policy"]; isStart && key == "workflow_id" {
+				return nil, &ParseError{
+					Msg:    "a workflow start takes no workflow_id; the ID derives from the started type's id_scheme",
+					Line:   pos.Line,
+					Column: pos.Column,
+					code:   CodeIDAtStart,
+				}
+			}
 			if callSiteOnly[key] {
 				return nil, &ParseError{
 					Msg:    "call-site-only option key not allowed in default_options: " + key,

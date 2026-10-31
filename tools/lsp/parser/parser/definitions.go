@@ -7,7 +7,8 @@ import (
 
 // parseWorkflowDef parses:
 // WORKFLOW IDENT ARGS [ ARROW ARGS ] COLON NEWLINE
-// INDENT { signal_def | query_def | update_def } workflow_body DEDENT
+// INDENT [ id_scheme ] [ default_options ] [ state ]
+// { signal_def | query_def | update_def } workflow_body DEDENT
 func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume WORKFLOW
@@ -36,9 +37,16 @@ func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 		return nil, err
 	}
 
-	// Optional default_options block: the first body element, before state:.
-	// A definition's defaults are its external invocation contract, which reads
-	// above its internal state:.
+	// Optional id_scheme: line, the first body element: the type's ID is part of
+	// its identity, ahead of everything that describes how it is invoked.
+	p.skipBlankLinesAndComments()
+	idScheme, err := p.parseOptionalIDScheme(params.Literal)
+	if err != nil {
+		return nil, err
+	}
+
+	// Optional default_options block, before state:. A definition's defaults are
+	// its external invocation contract, which reads above its internal state:.
 	p.skipBlankLinesAndComments()
 	defaultOptions, err := p.parseDefaultOptions(OptionsContextWorkflowDefaults)
 	if err != nil {
@@ -59,6 +67,7 @@ func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 	var signals []*ast.SignalDecl
 	var queries []*ast.QueryDecl
 	var updates []*ast.UpdateDecl
+	var firstSend ast.Statement
 
 declLoop:
 	for {
@@ -67,16 +76,31 @@ declLoop:
 
 		switch p.current.Type {
 		case token.SIGNAL:
-			// A leading `signal` in this region is parsed as a signal
-			// declaration. A signal *send* (`signal handle.Name(args)`) is a
-			// body statement, so by design it cannot be the FIRST statement in
-			// a workflow: precede it with any statement to end this region. A
-			// comment does not suffice — comments are skipped above.
-			sig, err := parseSignalDecl(p)
+			// `signal IDENT` then `.` is a send — the body's first statement,
+			// which ends this region; `(` or `:` is a handler declaration.
+			pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
+			p.advance() // consume SIGNAL
+			name, err := p.expect(token.IDENT)
+			if err != nil {
+				return nil, err
+			}
+			if p.current.Type == token.DOT {
+				firstSend, err = parseSignalSendRest(p, pos, name)
+				if err != nil {
+					return nil, err
+				}
+				if err := p.checkMisplacedAddress(firstSend); err != nil {
+					return nil, err
+				}
+				break declLoop
+			}
+			sig, err := parseSignalDeclRest(p, pos, name)
 			if err != nil {
 				return nil, err
 			}
 			signals = append(signals, sig)
+		case token.ID_SCHEME:
+			return nil, p.misplacedIDScheme()
 		case token.QUERY:
 			q, err := parseQueryDecl(p)
 			if err != nil {
@@ -99,12 +123,16 @@ declLoop:
 	if err != nil {
 		return nil, err
 	}
+	if firstSend != nil {
+		body = append([]ast.Statement{firstSend}, body...)
+	}
 
 	return &ast.WorkflowDef{
 		Pos:            pos,
 		Name:           name.Literal,
 		Params:         params.Literal,
 		ReturnType:     returnType,
+		IDScheme:       idScheme,
 		DefaultOptions: defaultOptions,
 		State:          stateBlock,
 		Signals:        signals,
@@ -193,16 +221,9 @@ func (p *Parser) parseHandlerOptions(ctx OptionsContext) (*ast.OptionsBlock, err
 	return p.parseOptionsBlock(ctx)
 }
 
-// parseSignalDecl parses: SIGNAL IDENT [ ARGS ] COLON NEWLINE INDENT [options_block] body DEDENT
-func parseSignalDecl(p *Parser) (*ast.SignalDecl, error) {
-	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
-	p.advance() // consume SIGNAL
-
-	name, err := p.expect(token.IDENT)
-	if err != nil {
-		return nil, err
-	}
-
+// parseSignalDeclRest parses a signal declaration after its `signal` keyword and
+// name: [ ARGS ] COLON NEWLINE INDENT [options_block] body DEDENT
+func parseSignalDeclRest(p *Parser, pos ast.Pos, name token.Token) (*ast.SignalDecl, error) {
 	var params string
 	if p.current.Type == token.ARGS {
 		params = p.current.Literal

@@ -13,7 +13,7 @@ After parsing, the resolver performs symbol resolution:
    - Resolve workflow calls to workflow definitions
    - Resolve await targets to signal/update/activity/workflow/promise/condition declarations
    - Resolve `set`/`unset` targets to condition declarations
-   - Resolve cross-workflow signal sends: the handle must resolve to a workflow-bound `promise`, and the target workflow must declare the named signal
+   - Resolve cross-workflow signal sends: a handle head must resolve to a workflow-bound `promise`; a type head resolves like a workflow call (`UNDEFINED_WORKFLOW`), and a head through an unresolved import is carried unchecked (`Unresolved{Reason: "external"}`). The target workflow must declare the named signal (`UNDEFINED_SIGNAL` for a type head, `SIGNAL_SEND_UNDEFINED_SIGNAL` for a handle head)
    - Walk signal/query/update handler bodies and resolve references
 3. **Report errors:** Undefined references, duplicate definitions, etc.
 
@@ -45,6 +45,7 @@ Common error types:
 - Invalid await targets (e.g., awaiting a query)
 - Signal-send handle is not a workflow-bound promise (the handle must come from `promise h <- workflow X(args)`)
 - Signal name not declared by the target workflow (cross-workflow signal send)
+- Workflow-ID and addressed-send errors — see [Workflow IDs and Addressed Sends](#workflow-ids-and-addressed-sends)
 - Condition with result binding (conditions cannot have `-> result`)
 - `set`/`unset` on undefined condition
 - Worker references undefined workflow, activity, or nexus service
@@ -78,6 +79,30 @@ Common error types:
 - Call-site-only option key in a definition `default_options:` block (e.g. `parent_close_policy` in a workflow `default_options:` block — it describes a particular parent↔child invocation, not the workflow type, and is valid only at a call site)
 - Wrong value type for option key (e.g., number where duration expected)
 - Invalid enum value for option key (e.g., a value other than `abandon` / `warn_and_abandon` for `unfinished_policy`)
+
+### Workflow IDs and Addressed Sends
+
+Diagnostics for [`id_scheme:`](./01-workflows.md#id-scheme) and [addressed signal sends](./13-cross-workflow-signals.md).
+
+| Code | Trigger | Severity |
+|---|---|---|
+| `ID_SCHEME_MISPLACED` | `id_scheme` not at the head of a workflow body, or repeated | error |
+| `ID_SCHEME_MALFORMED` | hole root not a param; touching holes; no fixed text; stray brace | error |
+| `ID_VALUE_MALFORMED` | `id:` not one `STRING`, `parent`, or one path | error |
+| `ID_MIRROR_MISMATCH` | literal's fixed text or hole count differs from the scheme | error |
+| `NO_ID_SCHEME` | literal `id:` on a type with no scheme | error |
+| `TYPE_NEEDS_ID` | type head with no `id:` | error |
+| `HANDLE_TAKES_NO_ID` | address under a handle | error |
+| `ID_AT_START` | `id:`/`run_id:` under a start, or `workflow_id:` in a start's `options:` | error |
+| `ADDRESS_MISPLACED` | address under a non-send; `options:` under a send; `run_id:` without `id:` or under `id: parent`; `id: parent` in a sync nexus body; wrong order; quoted run ID | error |
+| `RESERVED_NAME` | `parent` as a param, binding, promise, or condition | error |
+| `NOT_A_PARENT` | `id: parent` type never starts the sender in the model | warning |
+| `STARTER_LACKS_SIGNAL` | another in-model starter of the sender lacks the handler sent via `id: parent` | warning |
+| `MIRROR_COPIED_FROM_SCHEME` | holes byte-equal to the scheme's and none rooted in the sender's params | hint |
+| `ID_SCHEME_OVERLAP` | two schemes in one namespace could produce the same ID | hint |
+
+An address on the send's own line (`signal X.Y() id: w`) is also `ADDRESS_MISPLACED`. A handler
+declaration after the first body statement is a targeted syntax error.
 
 ## Examples
 

@@ -62,8 +62,11 @@ func publishDiagnostics(context *glsp.Context, doc *Document) error {
 // suppress-by-code workflows, and external rule documentation links.
 func appendDiag(diags []protocol.Diagnostic, line, column int, severity, code, msg string) []protocol.Diagnostic {
 	sev := protocol.DiagnosticSeverityError
-	if severity == "warning" {
+	switch severity {
+	case "warning":
 		sev = protocol.DiagnosticSeverityWarning
+	case "hint":
+		sev = protocol.DiagnosticSeverityHint
 	}
 	d := protocol.Diagnostic{
 		Range:    posToRange(line, column),

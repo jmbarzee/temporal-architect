@@ -14,9 +14,10 @@
 - `workflow` - Workflow definition or child call
 - `activity` - Activity definition or call
 - `timer` - Durable sleep (used with `await`)
-- `signal` - Three uses, disambiguated by syntactic context: (a) handler declaration at the top of a workflow, (b) arrival target in `await`/`promise`/`await one` (`await signal Name`), (c) cross-workflow send statement with a dot-qualified handle target (`signal handle.Name(args)`). A `.` after the name marks a send; otherwise it is an arrival.
+- `signal` - Three uses, disambiguated by syntactic context: (a) handler declaration at the top of a workflow, (b) arrival target in `await`/`promise`/`await one` (`await signal Name`), (c) cross-workflow send statement (`signal Head.Name(args)`). After `signal IDENT`, a `.` means a send; `(` or `:` means a handler declaration. A send may therefore be the first body statement; a handler declaration after the first body statement is a targeted parse error.
 - `query` - Query declaration
 - `update` - Update declaration and await target
+- `id_scheme` - Workflow ID scheme, the first element of a workflow body (hard keyword; see [Workflow Definitions — ID Scheme](./01-workflows.md#id-scheme))
 
 **State and conditions:**
 - `state` - Workflow state declaration block
@@ -66,6 +67,13 @@
 **Soft keywords** (only special after `nexus`):
 - `service` - Nexus service (in top-level definition or worker reference)
 - `endpoint` - Nexus endpoint (in namespace block)
+
+**Signal-send address** (contextual — special only as address keys on the lines under a send; see [Cross-Workflow Signals](./13-cross-workflow-signals.md)):
+- `id` - Target workflow ID
+- `run_id` - Target run ID (optional)
+
+**Reserved names:**
+- `parent` - The only unquoted `id:` value, naming the sender's parent execution. Reserved as any name the resolver sees — a param, `->` binding, promise, or condition named `parent` is `RESERVED_NAME` — so `id: parent` has one meaning.
 
 **Configuration:**
 - `options` - Options block for activity/workflow/nexus calls

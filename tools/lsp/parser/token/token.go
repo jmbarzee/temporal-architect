@@ -34,6 +34,7 @@ const (
 	SIGNAL
 	QUERY
 	UPDATE
+	ID_SCHEME
 
 	// Keywords -- workflow call modifiers
 	DETACH
@@ -128,6 +129,7 @@ var tokenTable = [...]tokenInfo{
 	SIGNAL:          {"SIGNAL", true},
 	QUERY:           {"QUERY", true},
 	UPDATE:          {"UPDATE", true},
+	ID_SCHEME:       {"ID_SCHEME", true},
 	DETACH:          {"DETACH", true},
 	NEXUS:           {"NEXUS", true},
 	SYNC:            {"SYNC", true},

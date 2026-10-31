@@ -24,6 +24,7 @@ workflow LongRunningProcessor(processor: Processor):
 # --- Entity workflow pattern ---
 
 workflow UserEntity(userId: string, user: User):
+    id_scheme: "user-{userId}"
     signal UpdateProfile(data: ProfileData):
         user.profile = data
 

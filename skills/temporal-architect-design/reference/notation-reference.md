@@ -28,6 +28,8 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `for (x in collection):` | Bounded loop |
 | `for:` | Infinite loop (needs `close continue_as_new` or `close complete`) |
 | `switch (expr):` / `case val:` | Multi-branch conditional |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + indented `id:` | Signal a held child / any workflow by ID ([workflow-id-schemes.md](../topics/workflow-id-schemes.md)) |
+| `id_scheme: "prefix-{param.key}"` | How a workflow's ID derives from its inputs (first line of its body) |
 | `signal Name(params):` / `query Name(params) -> (Type):` / `update Name(params) -> (Type):` | Handlers (in a workflow, before the body) |
 | `nexus service Name:` | Nexus service definition (top level) |
 | `async OpName workflow WorkflowName` / `sync OpName(params) -> (Type):` | Async / sync Nexus operation (in a service body) |
@@ -56,7 +58,7 @@ A clean `twf check` requires none of these, but the design must reason about the
 | `workflow_id_reuse_policy` | workflow | Idempotency on retry: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, `TERMINATE_IF_RUNNING` |
 | `priority` | activity, workflow, nexus | Relative dispatch priority |
 
-- `task_queue` is not a Nexus call option — Nexus routing comes from the endpoint. The child-workflow **ID** is an SDK concern, not an option ([child-workflows.md](../topics/child-workflows.md#workflow-id-design)).
+- `task_queue` is not a Nexus call option — Nexus routing comes from the endpoint. A workflow **ID** is never a call option: a start's ID derives from the child type's `id_scheme:`, if it has one ([child-workflows.md](../topics/child-workflows.md#workflow-id-design)).
 - There is no `cron_schedule` key (rejected as `unknown option key`); recurring starts are Temporal Schedules, platform configuration outside TWF ([timers-scheduling.md](../topics/timers-scheduling.md#schedules-cron-workflows)).
 - **Handler declarations** take their own set: signal and update admit `unfinished_policy` (`abandon` | `warn_and_abandon`, the default); all three admit `description` ([signals-queries-updates.md](../topics/signals-queries-updates.md#handler-options)).
 - **Worker instantiations** in a `namespace` take their own set: `task_queue` (required) and `versioning` (`none` / `build_id` / `deployment`) as the design-level strategy key, plus the SDK union, accepted permissively ([task-queues.md](../topics/task-queues.md#worker-options)).

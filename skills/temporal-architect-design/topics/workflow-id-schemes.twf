@@ -1,0 +1,62 @@
+# Source: workflow-id-schemes.md
+# Patterns: id_scheme, constructed / learned / parent addressed sends, run_id
+
+# --- A schemed workflow: started as a child, signalled by senders that did not start it ---
+
+workflow ShipItem(order: Order, item: Item) -> (Shipment):
+    id_scheme: "ship-{order.id}-{item.id}"
+    signal Shipped(trackingId: string):
+        tracking = trackingId
+
+    activity CreateShipment(order, item) -> shipment
+    await signal Shipped
+    signal FulfillOrder.ItemShipped(item.id)
+        id: parent
+    close complete(Shipment{shipment.id, tracking})
+
+# The start writes no ID: ShipItem's follows from (order, item).
+workflow FulfillOrder(order: Order) -> (OrderResult):
+    signal ItemShipped(itemId: string):
+        shipped = shipped + 1
+
+    await all:
+        for (item in order.items):
+            workflow ShipItem(order, item)
+    close complete(OrderResult{shipped})
+
+# --- Constructed: the sender's own names fill the scheme's holes ---
+
+workflow RelayCarrierEvent(event: CarrierEvent):
+    signal ShipItem.Shipped(event.tracking)
+        id: "ship-{event.orderId}-{event.sku}"
+
+# --- Learned: a variable holds the whole ID; run_id pins one run ---
+
+workflow RedeliverTracking(orderId: string):
+    activity FindStuckShipment(orderId) -> stuck
+    signal ShipItem.Shipped(stuck.tracking)
+        id: stuck.workflowId
+        run_id: stuck.runId
+
+# --- Supporting activities ---
+
+activity CreateShipment(order: Order, item: Item) -> (Shipment):
+    return carrier.create(order, item)
+
+activity FindStuckShipment(orderId: string) -> (StuckShipment):
+    return db.findStuck(orderId)
+
+# --- Worker and namespace ---
+
+worker fulfillmentWorker:
+    workflow ShipItem
+    workflow FulfillOrder
+    workflow RelayCarrierEvent
+    workflow RedeliverTracking
+    activity CreateShipment
+    activity FindStuckShipment
+
+namespace fulfillment:
+    worker fulfillmentWorker
+        options:
+            task_queue: "fulfillment"

@@ -22,7 +22,7 @@ import (
 // (spec-builder, IDE clients, doc tooling, LLM consumers).
 //
 // The fields are deliberately small and orthogonal:
-//   - severity is "error" or "warning"
+//   - severity is "error", "warning", or "hint"
 //   - kind groups diagnostics by producing stage: "parse", "resolve",
 //     "validate", or "graph"
 //   - code is a symbolic, stable identifier within a kind (e.g. UNDEFINED_ACTIVITY)

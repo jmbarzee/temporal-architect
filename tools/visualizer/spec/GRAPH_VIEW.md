@@ -342,6 +342,7 @@ Each node displays **only its name** as a label — all other detail (compositio
 |----------------------------------|--------------|---------------------|
 | Dependency between peers (→)     | Solid        | Arrowhead           |
 | Nexus dependency (→ via nexus)   | Solid, distinct color | Arrowhead    |
+| Signal send (→ fire-and-forget)  | Long-dashed, signal red | Arrowhead  |
 | Containment (child ↔ container)  | Dashed       | None (undirected)   |
 
 Every edge is stroked by its **resolved edge type** — the same classification that picks its spring — through the stroke the taxonomy declares for that type (`EdgeType.style`: colour per theme, alpha, dash, width). There is one classifier: a spliced caller-to-backing edge, whose operation is filtered out, draws as the workflow dependency its type says it is.

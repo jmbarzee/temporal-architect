@@ -53,6 +53,16 @@ export function WorkflowContent({ def }: { def: WorkflowDef }) {
 
   return (
     <>
+      {/* ID scheme - the template every start and addressed send derives the ID from */}
+      {def.idScheme && (
+        <div className="block-declarations-group">
+          <div className="declarations-header declarations-header-static">
+            <span className="block-toggle-placeholder" />
+            <span className="declarations-label">id_scheme</span>
+            <span className="block-summary" title={def.idScheme.template}>{JSON.stringify(def.idScheme.template)}</span>
+          </div>
+        </div>
+      )}
       {/* State block - conditions and raw state declarations */}
       {hasState && (
         <div className="block-declarations-group">

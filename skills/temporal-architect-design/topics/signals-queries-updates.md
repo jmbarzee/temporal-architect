@@ -31,9 +31,9 @@ The handler also runs on every arrival whether or not the workflow is awaiting t
 | **Idempotency** | The same signal twice should give the same result |
 | **Validation** | Validate the payload; an invalid signal can corrupt workflow state |
 
-### Sending a signal to a child workflow
+### Sending a signal to another workflow
 
-A workflow can signal a child it started and still holds a handle to. The handle is a workflow-bound promise; the dot-qualified name selects a signal the target declares.
+The head of a send is a handle or a workflow type. A child the sender started and still holds is signalled through its handle, a workflow-bound promise; the dot-qualified name selects a signal the target declares.
 
 ```twf
 workflow OrderSaga(order: Order) -> (SagaResult):
@@ -53,7 +53,7 @@ workflow OrderSaga(order: Order) -> (SagaResult):
 - The handle must be **workflow-bound** (`promise h <- workflow X(args)`); a handle bound to a timer, signal, activity, etc. is an error.
 - The target workflow must **declare** the named signal, or it is an error.
 
-Use it to tell one saga child about an event another produced, or to push an event into a child without waiting for it to react. It is the only cross-workflow send the DSL models: workflows you did not start (ID-based sends), and cross-workflow queries and updates, are not modeled.
+Use it to tell one saga child about an event another produced, or to push an event into a child without waiting for it to react. Any other target — a workflow the sender did not start, or the sender's parent — is named by type and addressed by `id:` ([workflow-id-schemes.md](./workflow-id-schemes.md#addressing-a-send)). Queries and updates sent to another workflow are not modeled.
 
 ## Queries
 

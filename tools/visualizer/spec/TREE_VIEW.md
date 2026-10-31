@@ -178,11 +178,12 @@ Collapsed definition headers display a **summary annotation** — a short, muted
 ### Workflow (`workflowDef`)
 - Purple color palette, 2px solid border (heavier than call-level blocks)
 - Body uses `WorkflowContent` which renders (in order):
-  1. **State** — collapsible group showing conditions and raw state declarations
-  2. **Signals** — collapsible group of signal handler declarations (dashed border)
-  3. **Queries** — collapsible group of query handler declarations (dashed border)
-  4. **Updates** — collapsible group of update handler declarations (dashed border)
-  5. **Body statements** — the workflow's statement list rendered recursively
+  1. **ID scheme** — a one-line, non-expandable `id_scheme` row showing the quoted template, present only when the type declares one
+  2. **State** — collapsible group showing conditions and raw state declarations
+  3. **Signals** — collapsible group of signal handler declarations (dashed border)
+  4. **Queries** — collapsible group of query handler declarations (dashed border)
+  5. **Updates** — collapsible group of update handler declarations (dashed border)
+  6. **Body statements** — the workflow's statement list rendered recursively
 
 ### Activity (`activityDef`)
 - Blue color palette, 2px solid border
@@ -245,12 +246,15 @@ Statements are rendered by `StatementBlock` which routes to specialized block co
 | Close (fail) | `close fail` | Red/pink |
 | Close (continue as new) | `close continue_as_new` | Orange |
 | Promise | `promise` | Cyan/teal |
+| Signal send | `signal` | Red/pink |
 | Set | `set` | Subtle grey |
 | Unset | `unset` | Subtle grey |
 | Raw | (code text) | Light grey |
 | Break | `break` | Subtle grey |
 | Continue | `continue` | Subtle grey |
 | Comment | `comment` | Light grey |
+
+- **Signal send** shows its head — a handle, or a workflow type (package-qualified when the source qualifies it) — then `.Signal(args)`. A type head's address trails as a muted summary: `id: "<literal>"`, `id: parent`, or `id: <name>`, followed by `run_id: <name>` when pinned. A resolved send offers a jump to the target workflow; an unresolved one gets the `?` badge, except an external head (through an import of a package outside the tree), which is carried unchecked and marked neither way.
 
 
 ## Cross-reference resolution

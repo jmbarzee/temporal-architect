@@ -239,6 +239,12 @@ func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock
 	if p.current.Type == token.NEWLINE {
 		p.advance()
 	}
+	if isAddressKey(p.current) {
+		if ctx == OptionsContextWorkflow {
+			return nil, p.codedErrorf(CodeIDAtStart, "a workflow start takes no %s:; the ID derives from the started type's id_scheme", p.current.Literal)
+		}
+		return nil, p.codedErrorf(CodeAddressMisplaced, "%s: is an address key, valid only under a signal send", p.current.Literal)
+	}
 	// Expect DEDENT (outer)
 	if _, err := p.expect(token.DEDENT); err != nil {
 		return nil, err

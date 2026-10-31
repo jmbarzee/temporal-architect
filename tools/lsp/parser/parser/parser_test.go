@@ -2219,8 +2219,8 @@ func TestSignalSendStmt(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected SignalSendStmt, got %T", wf.Body[1])
 	}
-	if send.Handle.Name != "pay" {
-		t.Errorf("expected handle 'pay', got %q", send.Handle.Name)
+	if send.Head.Handle.Name != "pay" {
+		t.Errorf("expected handle 'pay', got %q", send.Head.Handle.Name)
 	}
 	if send.Signal != "OrderShipped" {
 		t.Errorf("expected signal 'OrderShipped', got %q", send.Signal)
@@ -2360,40 +2360,46 @@ func TestHandlerOptionsOnly(t *testing.T) {
 	}
 }
 
-func TestSignalSendAsFirstStatementUnsupported(t *testing.T) {
-	// By design a signal send cannot be the first statement in a workflow: the
-	// declaration region intercepts the leading `signal` and parses it as a
-	// (malformed) signal declaration. Putting any statement before it works.
-	input := `workflow Foo(x):
+func TestSignalSendAsFirstStatement(t *testing.T) {
+	// `signal IDENT` then `.` is a send even at the head of the body, after a
+	// comment, and after handler declarations; it ends the declaration region.
+	for name, input := range map[string]string{
+		"first": `workflow Foo(x):
     signal pay.OrderShipped(id)
-`
-	_, err := ParseFile(input)
-	if err == nil {
-		t.Fatal("expected error for signal send as first statement, got nil")
-	}
-
-	// Workaround: a leading statement ends the declaration region.
-	ok := `workflow Foo(x):
-    log(starting)
-    signal pay.OrderShipped(id)
-`
-	file, err := ParseFile(ok)
-	if err != nil {
-		t.Fatalf("unexpected error with leading statement: %v", err)
-	}
-	wf := file.Definitions[0].(*ast.WorkflowDef)
-	if _, ok := wf.Body[1].(*ast.SignalSendStmt); !ok {
-		t.Fatalf("expected SignalSendStmt at body[1], got %T", wf.Body[1])
-	}
-
-	// A leading comment does NOT work: the declaration region skips comments,
-	// so the signal is still intercepted as a declaration.
-	cmt := `workflow Foo(x):
+`,
+		"after comment": `workflow Foo(x):
     # kick things off
     signal pay.OrderShipped(id)
+`,
+		"after handler": `workflow Foo(x):
+    signal Done():
+        done = true
+    signal pay.OrderShipped(id)
+    log(sent)
+`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := ParseFile(input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			wf := file.Definitions[0].(*ast.WorkflowDef)
+			if _, ok := wf.Body[0].(*ast.SignalSendStmt); !ok {
+				t.Fatalf("expected SignalSendStmt at body[0], got %T", wf.Body[0])
+			}
+		})
+	}
+}
+
+func TestSignalHandlerAfterFirstStatement(t *testing.T) {
+	input := `workflow Foo(x):
+    log(starting)
+    signal Done():
+        done = true
 `
-	if _, err := ParseFile(cmt); err == nil {
-		t.Fatal("expected error for leading comment + signal send, got nil")
+	_, err := ParseFile(input)
+	if err == nil || !strings.Contains(err.Error(), "declare handlers before it") {
+		t.Fatalf("expected targeted handler-after-statement error, got %v", err)
 	}
 }
 

@@ -101,7 +101,8 @@ type WorkflowDef struct {
 	Name           string
 	Params         string        // opaque content inside parens
 	ReturnType     string        // opaque, optional
-	DefaultOptions *OptionsBlock // optional definition-level call-option defaults (first body element, before state:)
+	IDScheme       *IDScheme     // optional; the first body element
+	DefaultOptions *OptionsBlock // optional definition-level call-option defaults (after id_scheme:, before state:)
 	State          *StateBlock
 	Signals        []*SignalDecl
 	Queries        []*QueryDecl
@@ -467,19 +468,104 @@ type RawStmt struct {
 
 func (*RawStmt) stmtNode() {}
 
-// SignalSendStmt represents a cross-workflow signal send: signal handle.Name(args).
-// It is statement-only — never an AsyncTarget, await target, or promise RHS —
-// because a signal carries no return value (fire-and-forget). Handle is a
-// workflow-bound promise; it resolves to the *PromiseStmt so the resolver and
-// graph can follow it to the target workflow it was started against.
+// IDScheme is a workflow type's declared ID template: `id_scheme: "ship-{order.id}"`.
+// The ID derives from the workflow's params, so no start writes one.
+type IDScheme struct {
+	Pos
+	Template string   // the unquoted template text
+	Holes    []string // hole paths in order, each rooted at a param (e.g. "order.id")
+}
+
+// SignalSendStmt represents a cross-workflow signal send: signal Head.Name(args),
+// with an Address on the indented lines below a type head. It is statement-only —
+// never an AsyncTarget, await target, or promise RHS — because a signal carries
+// no return value (fire-and-forget).
 type SignalSendStmt struct {
 	Pos
-	Handle Ref[*PromiseStmt]
+	Head   SendHead
 	Signal string // signal name declared on the target workflow
 	Args   string // opaque parenthesized argument literal
 }
 
+// SendHeadKind says whether a send's head names a workflow type or a handle.
+type SendHeadKind string
+
+const (
+	SendHeadType   SendHeadKind = "type"   // a workflow type; requires an Address
+	SendHeadHandle SendHeadKind = "handle" // a workflow-bound promise; takes no Address
+)
+
+// SendHead is what a signal send names before `.Signal`. The parser classifies a
+// qualified head or one carrying an address as a type and a bare one as a handle;
+// the resolver corrects the kind once it knows which names are promises. Type is
+// the claimed type of the receiver: Temporal delivers by ID alone, so it names the
+// scheme a literal is checked against, the handler, and the graph edge's target.
+type SendHead struct {
+	Pos
+	Kind    SendHeadKind
+	Type    Ref[*WorkflowDef] // set when Kind is SendHeadType
+	Handle  Ref[*PromiseStmt] // set when Kind is SendHeadHandle
+	Address *Address
+	// External is set by the resolver when Type's qualifier is an import of a
+	// package absent from the tree; such a head is carried unchecked.
+	External bool
+}
+
+// Address is the indented `id:` / `run_id:` block under a type-headed send.
+type Address struct {
+	Pos
+	ID    IDValue
+	RunID string // optional path naming a variable that holds the run ID
+}
+
+// IDKind is the form of an `id:` value.
+type IDKind string
+
+const (
+	IDLiteral IDKind = "literal" // a quoted literal mirroring the type's scheme
+	IDParent  IDKind = "parent"  // the sender's parent execution
+	IDName    IDKind = "name"    // a path naming a variable holding the whole ID
+)
+
+// IDValue is the value of an address's `id:` line.
+type IDValue struct {
+	Pos
+	Kind    IDKind
+	Literal string   // IDLiteral: the unquoted literal
+	Parts   []string // IDLiteral: the hole paths, in the sender's own names
+	Name    string   // IDName: the path holding the whole ID
+}
+
 func (*SignalSendStmt) stmtNode() {}
+
+// DeclaresSignal reports whether the workflow declares a signal handler name.
+func (wf *WorkflowDef) DeclaresSignal(name string) bool {
+	for _, sig := range wf.Signals {
+		if sig.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// Target returns the workflow definition a send reaches: a type head's resolved
+// type, or the resolved workflow a handle's promise was started against. Nil
+// when the head did not resolve, or its type does not declare the signal.
+func (s *SignalSendStmt) Target() *WorkflowDef {
+	if s.Head.Kind == SendHeadType {
+		if wf := s.Head.Type.Resolved; wf != nil && wf.DeclaresSignal(s.Signal) {
+			return wf
+		}
+		return nil
+	}
+	if s.Head.Handle.Resolved == nil {
+		return nil
+	}
+	if wt, ok := s.Head.Handle.Resolved.Target.(*WorkflowTarget); ok {
+		return wt.Workflow.Resolved
+	}
+	return nil
+}
 
 type Comment struct {
 	Pos
