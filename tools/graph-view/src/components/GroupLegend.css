@@ -1,0 +1,21 @@
+/* The group legend: anchored under the bar inside the pane, in the pane's theme. */
+.gv-group-legend {
+  color: var(--gv-color-text);
+  position: absolute;
+  top: calc(var(--gv-toolbar-height, 0px) + 12px);
+  left: 12px;
+  z-index: 9;
+  padding: 8px 10px;
+  font-family: var(--gv-font-sans);
+  font-size: 12px;
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 8px;
+  box-shadow: var(--gv-tooltip-shadow);
+}
+.gv-group-legend-title { font-weight: 600; margin-bottom: 4px; }
+.gv-group-legend-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+label.gv-group-legend-row { cursor: pointer; }
+.gv-group-legend-row.off .gv-group-legend-label { color: var(--gv-color-text-muted); }
+.gv-group-legend-swatch { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--gv-color-border); flex: none; }
+.gv-group-legend-note { color: var(--gv-color-text-muted); font-size: 11px; }

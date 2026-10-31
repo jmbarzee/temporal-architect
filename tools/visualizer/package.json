@@ -1,7 +1,7 @@
 {
   "name": "@temporal-architect/visualizer",
   "version": "0.0.0-dev",
-  "description": "React component for visualizing Temporal system architecture — namespaces, workers, workflows, and Nexus — as an interactive tree and dependency graph.",
+  "description": "React component for visualizing Temporal system architecture \u2014 namespaces, workers, workflows, and Nexus \u2014 as an interactive tree and dependency graph.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/tools/visualizer",
@@ -47,7 +47,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:lib": "vite build --config vite.lib.config.ts",
+    "build:lib": "vite build --config vite.lib.config.ts && node verify/prune-dts.mjs",
     "preview": "vite preview",
     "prepack": "cp ../../LICENSE LICENSE && cp ../../docs/fragments/visualizer.md FRAGMENT.md",
     "postpack": "rm -f LICENSE FRAGMENT.md",

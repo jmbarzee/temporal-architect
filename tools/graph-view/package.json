@@ -1,0 +1,64 @@
+{
+  "name": "@temporal-architect/graph-view",
+  "version": "0.0.0-dev",
+  "description": "A force-directed graph view with composable axes: a host declares the axes, values, colours and physics of its nodes and edges, and the view lays out, filters, highlights and tunes the graph without knowing what any of it means.",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/tools/graph-view",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmbarzee/temporal-architect",
+    "directory": "tools/graph-view"
+  },
+  "bugs": {
+    "url": "https://github.com/jmbarzee/temporal-architect/issues"
+  },
+  "keywords": [
+    "graph",
+    "force-directed",
+    "visualization",
+    "react"
+  ],
+  "main": "./dist-lib/index.js",
+  "module": "./dist-lib/index.js",
+  "types": "./dist-lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-lib/index.d.ts",
+      "import": "./dist-lib/index.js"
+    },
+    "./styles.css": "./dist-lib/styles.css"
+  },
+  "files": [
+    "dist-lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:lib": "vite build --config vite.lib.config.ts && node verify/prune-dts.mjs",
+    "prepack": "cp ../../LICENSE LICENSE",
+    "postpack": "rm -f LICENSE",
+    "prepublishOnly": "npm run build:lib"
+  },
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.5",
+    "vite-plugin-dts": "^5.0.0"
+  }
+}
