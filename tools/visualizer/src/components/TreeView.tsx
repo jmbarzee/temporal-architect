@@ -2,11 +2,10 @@ import {
   useOntology,
   passesSelection,
   selectionFor,
-  useRecentlyChanged,
   FilterBar,
 } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
-import type { FocusTarget, FilterState, PinState, FilterDimension } from '@temporal-architect/graph-view'
+import type { FocusTarget, FilterState, PinState, DimensionId } from '@temporal-architect/graph-view'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
@@ -34,7 +33,7 @@ interface TreeViewProps {
   onSearchChange: (query: string, active: boolean) => void
   pendingFocus: FocusTarget | null
   onFocusConsumed: () => void
-  overriddenPins: Set<FilterDimension>
+  overriddenPins: Set<DimensionId>
   onOverriddenPinsConsumed: () => void
 }
 
@@ -77,7 +76,6 @@ export function TreeView({
     prevAstRef.current = ast
   }, [ast])
 
-  const recentlyChanged = useRecentlyChanged(filter)
 
   // Pin-override flash: clear the overridden-pins set after ~600ms so
   // the visual flash plays once per focus transition.
@@ -518,7 +516,6 @@ export function TreeView({
           chain={chain}
           onChainChange={onChainChange}
           overriddenPins={overriddenPins}
-          recentlyChanged={recentlyChanged}
           search={{ query: searchQuery, active: searchActive }}
           onSearchChange={next => onSearchChange(next.query, next.active)}
           searchInputRef={searchInputRef}

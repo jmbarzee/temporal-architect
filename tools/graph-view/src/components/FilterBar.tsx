@@ -187,6 +187,7 @@ export function FilterBar({
           <React.Fragment key={dimension}>
             <div className={`${look.sectionClass}${pinned ? ' section-pinned' : ''}`}>
               <div className={look.rowClass}>
+                <span className="gv-header-axis-label">{descriptor.label}</span>
                 {empty && (
                   <span className="gv-header-chain-empty" title={`${descriptor.label} has no values in this view`}>
                     no {descriptor.label.toLowerCase()} values

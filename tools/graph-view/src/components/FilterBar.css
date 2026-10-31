@@ -366,6 +366,17 @@
   padding: 3px 6px;
 }
 
+/* The axis's own name before its chips: a row reads as "Kind: …", not as a bare run of buttons. */
+.gv-header-axis-label {
+  color: var(--gv-color-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 4px 3px 2px;
+  align-self: center;
+  user-select: none;
+}
+
 /* The same third state on a chip-presentation axis: an `emptyMeans: 'all'`
    axis with nothing selected is matching everything, whichever look it wears. */
 .gv-header-type-tag.all-included {

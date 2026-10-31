@@ -2,7 +2,7 @@
 // weigh, how they filter. Everything the view knows about the domain comes
 // through `ontology` below.
 
-import { createOntology, payloadString, RELATION_DIMENSION } from '@temporal-architect/graph-view'
+import { createOntology, payloadNumber, payloadString, RELATION_DIMENSION } from '@temporal-architect/graph-view'
 import type {
   DimensionDescriptor, EdgeStroke, EdgeType, FilterChip, GraphNode, Highlight, HighlightGraph,
   NodeStyle, OntologySpec, ReadableGraph, ScalarAxis,
@@ -197,11 +197,6 @@ const FILTERS: readonly DimensionDescriptor[] = [
 
 // ── Scalars, hover line, highlight ──────────────────────────────────────────
 
-/** `payloadString` reads strings only; credits and level are numbers. */
-export function payloadNumber(node: { payload?: Readonly<Record<string, unknown>> }, key: string): number | undefined {
-  const v = node.payload?.[key]
-  return typeof v === 'number' ? v : undefined
-}
 
 function scalarOf(id: string, label: string, tooltip: string, key: string, floor: number): ScalarAxis {
   return {

@@ -6,7 +6,7 @@
 
 import React from 'react'
 import {
-  GraphView, OntologyContext, copyGroups, copyKeyOf, defaultFilter, payloadString, pinnedFor, schemeVars, selectionFor, withSelection,
+  GraphView, OntologyContext, copyGroups, copyKeyOf, defaultFilter, payloadNumber, payloadString, pinnedFor, schemeVars, selectionFor, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
   ActiveGroup, FilterState, Graph, GraphNode, GraphViewHandle, NodeGroup, PinState, Selection, Theme, ThemeChoice,
@@ -14,7 +14,7 @@ import type {
 import { catalog } from './data'
 import type { Campus, Catalog } from './data'
 import { buildGraph } from './graph'
-import { CAMPUS, CAMPUS_LABEL, ENTITY, ontology, payloadNumber } from './ontology'
+import { CAMPUS, CAMPUS_LABEL, ENTITY, ontology } from './ontology'
 import type { Entity } from './ontology'
 import './app.css'
 
