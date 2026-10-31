@@ -47,6 +47,22 @@ export interface HostActions {
   requestDecomposition?: (params: DecompositionParams) => void
 }
 
+/**
+ * The props the shell hands its render core. A host that substitutes its own
+ * core receives exactly this and nothing else, which is what keeps the shell —
+ * payload de-dupe, normalization, the error/empty/styleguide branches — reusable
+ * by a core that is not this one.
+ */
+export interface RenderCoreProps {
+  ast: TWFFile
+  parserGraph?: ParserGraph
+  decomposition?: Decomposition
+  onOpenFile?: (file: string) => void
+  onRefocus?: () => void
+  onRequestDecomposition?: (params: DecompositionParams) => void
+  style?: React.CSSProperties
+}
+
 export interface VisualizerHostProps {
   /** Where inbound payloads come from. */
   source: PayloadSource
@@ -61,6 +77,17 @@ export interface VisualizerHostProps {
   emptyState?: React.ReactNode
   /** Inline style applied to the visualizer's outer container. */
   style?: React.CSSProperties
+  /**
+   * The component the shell renders once it has an AST. Defaults to the
+   * bundled canvas.
+   *
+   * This is the seam that separates the *shell* from the *view*: everything the
+   * shell owns — transport de-dupe, payload normalization, the error, empty and
+   * styleguide branches — is domain-agnostic, while the default core is not. A
+   * host that wants the shell's lifecycle around a different view supplies one
+   * here instead of reimplementing the surrounding branches.
+   */
+  renderCore?: React.ComponentType<RenderCoreProps>
 }
 
 export function VisualizerHost({
@@ -68,6 +95,7 @@ export function VisualizerHost({
   actions,
   emptyState,
   style,
+  renderCore: RenderCore = WorkflowCanvas,
 }: VisualizerHostProps) {
   const [ast, setAst] = React.useState<TWFFile | null>(null)
   const [parserGraph, setParserGraph] = React.useState<ParserGraph | undefined>(undefined)
@@ -136,7 +164,7 @@ export function VisualizerHost({
   }
 
   return (
-    <WorkflowCanvas
+    <RenderCore
       ast={ast}
       parserGraph={parserGraph}
       decomposition={decomposition}

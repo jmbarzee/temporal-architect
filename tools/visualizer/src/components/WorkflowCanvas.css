@@ -50,8 +50,8 @@
 }
 
 .tab-bar-btn.active {
-  color: var(--color-workflow);
-  border-bottom-color: var(--color-workflow);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 /* Disabled tab (e.g. Tree in history mode): dimmed and non-interactive. The
@@ -63,14 +63,6 @@
 
 .tab-bar-btn:disabled:hover {
   color: var(--color-text-muted);
-  background: transparent;
-}
-
-.vscode-dark .tab-bar-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.vscode-dark .tab-bar-btn:disabled:hover {
   background: transparent;
 }
 

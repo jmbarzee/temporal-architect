@@ -13,8 +13,8 @@ This view serves goals 1–5 (individual definition questions) from [PRODUCT.md]
 - **React** + **TypeScript** + **Vite**, no additional UI libraries.
 - Two entry points into the same components: `src/main.tsx` → `src/App.tsx` is the standalone app (file upload, query-param loading); `src/lib.ts` is the published `@temporal-architect/visualizer` package surface that hosts (e.g. the VS Code extension, which lives in the distribution repo) mount. Both hand a `TWFFile` to `<WorkflowCanvas>`.
 - Shared wire/AST types in `src/types/`; theme configuration (icons, labels, CSS variable prefixes) in `src/theme/temporal-theme.tsx`.
-- Styles split between `src/styles/index.css` (global layout, header, theme variables) and `src/components/blocks/blocks.css` (block-level variables and styles). CSS variables give full light/dark support; dark activates via `.vscode-dark` or `[data-theme="dark"]`.
-- The tree view lives in `src/components/WorkflowCanvas.tsx` plus the block components under `src/components/blocks/`. The graph view (see [GRAPH_VIEW.md](./GRAPH_VIEW.md)) lives in `src/components/GraphView.tsx`, `src/components/graph-view/`, and `src/graph/`.
+- Styles split between `src/styles/index.css` (the host's global layout and block tokens; the chrome's design tokens are the graph-view library's `tokens.css`, published as `--gv-*` and aliased there to the plain names the host reads) and `src/components/blocks/blocks.css` (block-level variables and styles). CSS variables give full light/dark support; dark activates via `.vscode-dark` or `[data-theme="dark"]`.
+- The tree view lives in `src/components/WorkflowCanvas.tsx` plus the block components under `src/components/blocks/`. The graph view (see [GRAPH_VIEW.md](./GRAPH_VIEW.md)) is the sibling library `@temporal-architect/graph-view` (`tools/graph-view/src/`), which this package hosts: the adapter under `src/adapter/` builds its graph and declares the Temporal taxonomy.
 
 For the current file list, read `tools/visualizer/src/` — it is not mirrored here, so it cannot go stale.
 
@@ -30,7 +30,7 @@ For the current file list, read `tools/visualizer/src/` — it is not mirrored h
 
 ## Header and filtering
 
-The tree view uses the unified filter bar described in [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar. The bar contains file chips (with pin), type toggles (with pin), and a search input — visually identical to the graph view's filter bar. The structural filter dimensions (files, types) are per-view and reconciled on every view switch; the search query is globally shared.
+The tree view uses the unified filter bar described in [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Unified Filter Bar. The bar renders the host's declared axes — file chips and kind chips, each with its pin — and a search input, from the same component and descriptors as the graph view's bar. Each axis's selection is per-view and reconciled on every view switch; the search query is globally shared.
 
 Tree-view-specific behaviors:
 - Toggling a type off hides all definitions of that type from the list (no edge graduation — that's graph-specific).

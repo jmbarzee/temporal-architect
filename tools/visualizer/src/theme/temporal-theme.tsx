@@ -1,7 +1,7 @@
 import React from 'react'
-import { SingleGearIcon, InterlockingGearsIcon } from '../components/icons/GearIcons'
-import { ALL_NODE_TYPES, NODE_TYPE_REGISTRY } from '../graph/node-types'
-
+import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
+import { SingleGearIcon, InterlockingGearsIcon } from './GearIcons'
+import { ALL_NODE_TYPES, DEFAULT_TAXONOMY, NODE_TYPE_REGISTRY } from '../adapter/node-types'
 // --- Core types ---
 
 export interface PrimitiveTheme {
@@ -60,8 +60,14 @@ export interface DefTypeConfig {
   defaultOn: boolean
 }
 
-// Generate DEF_TYPE_CONFIGS from the registry so icon, label, and defaultOn
-// stay in sync with node-types.ts without a separate hand-maintained list.
+// Generate DEF_TYPE_CONFIGS from the taxonomy so icon, label, and defaultOn
+// stay in sync with the entries without a separate hand-maintained list.
+//
+// Resolved through the taxonomy rather than by indexing the registry object.
+// The difference is not cosmetic: `styleOf` answers a value it does not know
+// with the declared neutral style, where `REGISTRY[t]` returns `undefined` and
+// the failure surfaces later as a blank icon or an unreadable label.
+//
 // The plural label follows standard English: 'y' → 'ies', else append 's'.
 function pluralize(label: string): string {
   const last = label.split(' ').pop() ?? label
@@ -69,24 +75,17 @@ function pluralize(label: string): string {
   return label + 's'
 }
 
-export const DEF_TYPE_CONFIGS: DefTypeConfig[] = ALL_NODE_TYPES.map(t => ({
-  type:      NODE_TYPE_REGISTRY[t].defType,
-  icon:      NODE_TYPE_REGISTRY[t].icon,
-  label:     pluralize(NODE_TYPE_REGISTRY[t].label),
-  defaultOn: NODE_TYPE_REGISTRY[t].defaultVisible,
-}))
+export const DEF_TYPE_CONFIGS: DefTypeConfig[] = ALL_NODE_TYPES.map(t => {
+  const style = NODE_TYPE_REGISTRY[t]
+  return {
+    type:      style.defType,
+    icon:      style.icon,
+    label:     pluralize(style.label),
+    defaultOn: style.defaultVisible,
+  }
+})
 
 export const DEF_TYPE_ORDER = new Map(DEF_TYPE_CONFIGS.map((cfg, i) => [cfg.type, i]))
-
-// The three nexus def types are consolidated into a single "Nexus" filter
-// chip in both the graph view and the tree view. This constant names the group
-// so chip-toggle and recentlyChanged tracking can reference them without
-// repeating the literal strings. The individual entries remain in
-// DEF_TYPE_CONFIGS so the tree-view sort order and the shared filter
-// contract (visibleTypes Set) continue to use individual type keys.
-export const NEXUS_GROUP_DEF_TYPES = [
-  'nexusEndpointDef', 'nexusServiceDef', 'nexusOperationDef',
-] as const
 
 /**
  * One entry per filter chip shown in both the Tree and Graph filter bars.
@@ -107,13 +106,19 @@ export interface ViewFilterEntry {
   types: readonly string[]
 }
 
-export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] = [
-  { id: 'namespaceDef', icon: NODE_TYPE_REGISTRY.namespace.icon,     label: 'Namespaces', types: ['namespaceDef'] },
-  { id: 'workerDef',    icon: NODE_TYPE_REGISTRY.worker.icon,        label: 'Workers',    types: ['workerDef'] },
-  { id: 'nexus',        icon: NODE_TYPE_REGISTRY.nexusEndpoint.icon, label: 'Nexus',      types: NEXUS_GROUP_DEF_TYPES },
-  { id: 'workflowDef',  icon: NODE_TYPE_REGISTRY.workflow.icon,      label: 'Workflows',  types: ['workflowDef'] },
-  { id: 'activityDef',  icon: NODE_TYPE_REGISTRY.activity.icon,      label: 'Activities', types: ['activityDef'] },
-]
+/**
+ * The chip layer, derived from the kind axis's descriptor.
+ *
+ * Declared once, in `adapter/node-types.ts`, and projected here into the shape
+ * the tree view already consumes: a grouping stored twice drifts.
+ */
+export const VIEW_FILTER_ENTRIES: readonly ViewFilterEntry[] =
+  (DEFAULT_TAXONOMY.axisFor(DEF_TYPE_DIMENSION)?.chipsFor([]) ?? []).map(chip => ({
+    id: chip.id,
+    icon: chip.icon ?? '',
+    label: chip.label,
+    types: chip.values,
+  }))
 
 export const HANDLER_CONFIG = {
   signalDecl: { icon: THEME.signal.icon, keyword: 'signal', cssClass: 'declaration-signal' },
