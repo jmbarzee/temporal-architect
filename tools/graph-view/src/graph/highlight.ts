@@ -2,10 +2,10 @@
 
 import { isContainment } from './model'
 import type { GraphEdge, GraphNode } from './model'
-import type { Highlight, HighlightGraph, Ontology } from './ontology'
+import type { Highlight, HighlightGraph, Taxonomy } from './taxonomy'
 
-import type { HighlightDirection } from './ontology'
-export type { HighlightDirection } from './ontology'
+import type { HighlightDirection } from './taxonomy'
+export type { HighlightDirection } from './taxonomy'
 
 // BFS traversal of dependency edges (not containment) in the given direction.
 // Returns the set of transitively connected node IDs including the starting node.
@@ -63,13 +63,13 @@ export function getHighlightedEdgeIds(
  * the view's hook and the harness, so what is pinned is what is drawn.
  */
 export function highlightOf(
-  ontology: Ontology,
+  taxonomy: Taxonomy,
   active: GraphNode,
   direction: HighlightDirection,
   graph: HighlightGraph,
 ): { nodes: Set<string>; edges: Set<string> } {
   const walked = getTransitiveDeps(active.id, [...graph.visibleEdges], new Set(graph.visibleIds), direction)
-  const lit: Highlight = ontology.highlight(active, { nodes: walked }, graph, direction)
+  const lit: Highlight = taxonomy.highlight(active, { nodes: walked }, graph, direction)
   const nodes = new Set(lit.nodes)
   const edges = lit.edges ? new Set(lit.edges) : getHighlightedEdgeIds(nodes, [...graph.visibleEdges])
   return { nodes, edges }

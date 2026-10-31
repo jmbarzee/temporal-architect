@@ -1,7 +1,12 @@
 /* Graph view: overlay, bottom controls, tooltip, search, shortcuts. */
 /* === Graph View === */
+/* The pane fills what it is given: the remaining space of a flex column
+   (flex: 1, free to shrink), or the whole of a block with a height (height:
+   100%). A block with no height gives it none, and the view says so once. */
 .gv-graph-view {
   flex: 1;
+  min-height: 0;
+  height: 100%;
   position: relative;
   background: var(--gv-color-bg-gradient);
   overflow: hidden;

@@ -3,27 +3,38 @@
 //
 // A dangling endpoint, an edge whose relation is neither of the two the engine
 // knows, an edge the host's rule classifies as a type its table does not
-// declare: each used to be either dropped in silence or thrown from inside a
-// render memo, where no boundary catches it and the host's whole tree
-// unmounts. Here they are diagnostics. The view runs this once per graph,
-// shows the list inside its own pane, and draws what remains; a host that
-// wants to refuse a bad graph before mounting calls it itself.
+// declare: each is a diagnostic, as data, never a throw from inside a render.
+// The view runs this once per graph, shows the list inside its own pane, hands
+// it to `onDiagnostics`, and draws what remains; a host that wants to refuse a
+// bad graph before mounting calls it itself.
 
-import type { Graph, GraphEdge } from './model'
-import { RELATION_DIMENSION } from './dimension'
-import type { Ontology } from './ontology'
+import type { Graph, GraphEdge, GraphNode } from './model'
+import { nodesById, relationOf } from './model'
+import type { Taxonomy } from './taxonomy'
 
+/**
+ * The defects `validateGraph` names. Errors: a node or edge id used twice,
+ * an edge whose endpoint is not in the graph, an unknown relation, a type
+ * whose relation is not the edge's, a rule that threw, a parent not in the
+ * graph. Warnings: an edge no type claims, a style value the taxonomy does
+ * not declare, containment edges that contradict `parentId`, derived
+ * containment edges no type claims (`containment-untyped`, from
+ * `derivedContainmentDiagnostics`).
+ */
 export type GraphDiagnosticCode =
   | 'edge-id-duplicate'
   | 'edge-endpoint-missing'
   | 'edge-relation-unknown'
   | 'edge-type-rule-threw'
-  | 'edge-type-undeclared'
+  | 'edge-type-unclassified'
   | 'edge-type-relation-mismatch'
   | 'parent-missing'
   | 'containment-parent-mismatch'
   | 'node-value-undeclared'
+  | 'node-id-duplicate'
+  | 'containment-untyped'
 
+/** One defect in a host's graph, as data: its severity, its code, a message, and the node or edge it names. */
 export interface GraphDiagnostic {
   /** An error names something the view cannot draw as given; a warning, something it draws but the host should know. */
   severity: 'error' | 'warning'
@@ -35,24 +46,41 @@ export interface GraphDiagnostic {
 
 const RELATIONS = new Set(['containment', 'dependency'])
 
-export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic[] {
+/**
+ * Every defect in a host's graph, as data: errors for what the view cannot
+ * draw as given (a duplicated node id, a dangling endpoint, an unknown
+ * relation, a type whose relation is not the edge's, a parent not in the
+ * graph) and warnings for what it draws but the host should know (an
+ * unclassified edge, an undeclared style value, containment edges that
+ * contradict `parentId`). Pure; the same graph and taxonomy give the same
+ * list, in graph order.
+ */
+export function validateGraph(graph: Graph, taxonomy: Taxonomy): GraphDiagnostic[] {
   const out: GraphDiagnostic[] = []
-  const declaredTypes = new Map(ontology.edgeTypes.map(e => [e.id, e]))
-  const declaredValues = new Set(ontology.styleValues)
+  const declaredTypes = new Map(taxonomy.edgeTypes.map(e => [e.id, e]))
+  const declaredValues = new Set(taxonomy.styleValues)
+  const byId = nodesById(graph.nodes)
 
-  // Nodes: a parent that exists, a style value the taxonomy declares.
-  for (const node of graph.nodes.values()) {
-    if (node.parentId !== undefined && !graph.nodes.has(node.parentId)) {
+  // Nodes: one per id, a parent that exists, a style value the taxonomy
+  // declares.
+  const seenNodes = new Set<string>()
+  for (const node of graph.nodes) {
+    if (seenNodes.has(node.id)) {
+      out.push({ severity: 'error', code: 'node-id-duplicate', nodeId: node.id, message: `node id ${JSON.stringify(node.id)} is used more than once; the view draws the first` })
+      continue
+    }
+    seenNodes.add(node.id)
+    if (node.parentId !== undefined && !byId.has(node.parentId)) {
       out.push({ severity: 'error', code: 'parent-missing', nodeId: node.id, message: `node ${JSON.stringify(node.id)} names parent ${JSON.stringify(node.parentId)}, which is not in the graph` })
     }
-    const value = ontology.valueFor(node)
+    const value = taxonomy.styleValueOf(node)
     if (value !== undefined && !declaredValues.has(value)) {
       out.push({ severity: 'warning', code: 'node-value-undeclared', nodeId: node.id, message: `node ${JSON.stringify(node.id)} sits at ${JSON.stringify(value)} on the style axis, which the taxonomy does not declare; it draws in the fallback style` })
     }
   }
 
-  // Edges: unique ids, both ends present, a known relation, a declared type
-  // whose relation is the edge's.
+  // Edges: unique ids, both ends present, a known relation, a type (when one
+  // classifies) whose relation is the edge's.
   const seenIds = new Set<string>()
   const containers = new Map<string, Set<string>>()
   for (const edge of graph.edges) {
@@ -61,33 +89,34 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
       continue
     }
     seenIds.add(edge.id)
-    const src = graph.nodes.get(edge.sourceId)
-    const tgt = graph.nodes.get(edge.targetId)
+    const src = byId.get(edge.sourceId)
+    const tgt = byId.get(edge.targetId)
     if (!src || !tgt) {
       const missing = [!src && edge.sourceId, !tgt && edge.targetId].filter((x): x is string => typeof x === 'string')
       out.push({ severity: 'error', code: 'edge-endpoint-missing', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} names ${missing.map(m => JSON.stringify(m)).join(' and ')}, not in the graph` })
       continue
     }
-    const relation = edge.dimensions[RELATION_DIMENSION]
-    if (relation === undefined || !RELATIONS.has(relation)) {
-      out.push({ severity: 'error', code: 'edge-relation-unknown', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has relation ${JSON.stringify(relation)}; the engine knows "containment" and "dependency"` })
+    if (edge.relation !== undefined && !RELATIONS.has(edge.relation)) {
+      out.push({ severity: 'error', code: 'edge-relation-unknown', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has relation ${JSON.stringify(edge.relation)}; the engine knows "containment" and "dependency"` })
       continue
     }
+    const relation = relationOf(edge)
     if (relation === 'containment') {
       const set = containers.get(edge.sourceId) ?? new Set<string>()
       set.add(edge.targetId)
       containers.set(edge.sourceId, set)
     }
-    let typeId: string
+    let typeId: string | undefined
     try {
-      typeId = ontology.resolveEdgeType(edge, ontology.valueFor(src), ontology.valueFor(tgt))
+      typeId = taxonomy.edgeTypeOf(edge, taxonomy.styleValueOf(src), taxonomy.styleValueOf(tgt))
     } catch (e) {
-      out.push({ severity: 'error', code: 'edge-type-rule-threw', edgeId: edge.id, message: `the taxonomy's edge rule threw on edge ${JSON.stringify(edge.id)}: ${e instanceof Error ? e.message : String(e)}` })
+      out.push({ severity: 'error', code: 'edge-type-rule-threw', edgeId: edge.id, message: `the taxonomy's classifyEdge rule threw on edge ${JSON.stringify(edge.id)}: ${e instanceof Error ? e.message : String(e)}` })
       continue
     }
-    const declared = declaredTypes.get(typeId)
+    const declared = typeId === undefined ? undefined : declaredTypes.get(typeId)
     if (!declared) {
-      out.push({ severity: 'error', code: 'edge-type-undeclared', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} resolves to type ${JSON.stringify(typeId)}, which edgeTypes does not declare` })
+      const said = typeId === undefined ? 'no declared type fits its endpoints and values' : `classifyEdge answered ${JSON.stringify(typeId)}, which edgeTypes does not declare`
+      out.push({ severity: 'warning', code: 'edge-type-unclassified', edgeId: edge.id, message: `edge ${JSON.stringify(edge.id)} has no type: ${said}; it draws in its relation's default stroke and pulls nothing while push and pull key on the style axis` })
       continue
     }
     if (declared.relation !== relation) {
@@ -98,7 +127,7 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
   // The two readings of containment agree: a node that lists containment
   // edges of its own lists one to its parent. A node listing none gets that
   // edge derived from `parentId`; a node with no parent may list what it likes.
-  for (const node of graph.nodes.values()) {
+  for (const node of byId.values()) {
     const viaEdges = containers.get(node.id)
     if (node.parentId !== undefined && viaEdges !== undefined && !viaEdges.has(node.parentId)) {
       out.push({ severity: 'warning', code: 'containment-parent-mismatch', nodeId: node.id, message: `node ${JSON.stringify(node.id)} has containment edges to ${[...viaEdges].map(c => JSON.stringify(c)).join(' and ')} but its parentId is ${JSON.stringify(node.parentId)}` })
@@ -108,23 +137,28 @@ export function validateGraph(graph: Graph, ontology: Ontology): GraphDiagnostic
 }
 
 /**
- * The graph with every edge an error names removed and every parent an error
- * names cleared — what the view draws when the host's graph has defects. The
+ * The graph with every node and edge an error names removed and every parent
+ * an error names cleared — what the view draws when the host's graph has
+ * defects. A duplicated id keeps its first node and its first edge. The
  * host's objects are not mutated; a graph with no errors is returned as is.
  */
 export function dropInvalid(graph: Graph, diagnostics: readonly GraphDiagnostic[]): Graph {
   const badEdges = new Set<string>()
   const badParents = new Set<string>()
+  const duplicateNodes = new Set<string>()
   for (const d of diagnostics) {
     if (d.severity !== 'error') continue
     if (d.edgeId !== undefined) badEdges.add(d.edgeId)
     if (d.code === 'parent-missing' && d.nodeId !== undefined) badParents.add(d.nodeId)
+    if (d.code === 'node-id-duplicate' && d.nodeId !== undefined) duplicateNodes.add(d.nodeId)
   }
-  if (badEdges.size === 0 && badParents.size === 0) return graph
-  const nodes = new Map(graph.nodes)
-  for (const id of badParents) {
-    const node = nodes.get(id)
-    if (node) nodes.set(id, { ...node, parentId: undefined })
+  if (badEdges.size === 0 && badParents.size === 0 && duplicateNodes.size === 0) return graph
+  const seenNodes = new Set<string>()
+  const nodes: GraphNode[] = []
+  for (const node of graph.nodes) {
+    if (duplicateNodes.has(node.id) && seenNodes.has(node.id)) continue
+    seenNodes.add(node.id)
+    nodes.push(badParents.has(node.id) ? { ...node, parentId: undefined } : node)
   }
   // A duplicated id names every edge carrying it; the first keeps its place.
   const kept = new Set<string>()
@@ -136,4 +170,40 @@ export function dropInvalid(graph: Graph, diagnostics: readonly GraphDiagnostic[
     edges.push(e)
   }
   return { nodes, edges }
+}
+
+/**
+ * The one warning the drawn graph adds to the host's: the containment edges
+ * the view derived from `parentId` that no declared containment type claims
+ * (a dependency type the host's rule answers does not count). They draw in
+ * the containment stroke and pull nothing while push and pull key on the
+ * style axis; a host that wants them typed declares a containment type
+ * between the child's value and the parent's.
+ */
+export function derivedContainmentDiagnostics(drawn: Graph, host: Graph, taxonomy: Taxonomy): GraphDiagnostic[] {
+  const listed = new Set<GraphEdge>(host.edges)
+  const byId = nodesById(drawn.nodes)
+  const untyped: string[] = []
+  for (const edge of drawn.edges) {
+    if (listed.has(edge) || relationOf(edge) !== 'containment') continue
+    const src = byId.get(edge.sourceId)
+    const tgt = byId.get(edge.targetId)
+    let typeId: string | undefined
+    try {
+      typeId = taxonomy.edgeTypeOf(edge, src && taxonomy.styleValueOf(src), tgt && taxonomy.styleValueOf(tgt))
+    } catch {
+      typeId = undefined
+    }
+    const declared = typeId === undefined ? undefined : taxonomy.edgeTypes.find(t => t.id === typeId)
+    if (declared === undefined || declared.relation !== 'containment') untyped.push(edge.id)
+  }
+  if (untyped.length === 0) return []
+  const shown = untyped.slice(0, 3).map(id => JSON.stringify(id)).join(', ')
+  const one = untyped.length === 1
+  return [{
+    severity: 'warning',
+    code: 'containment-untyped',
+    edgeId: untyped[0],
+    message: `${untyped.length} derived containment edge${one ? '' : 's'} (${shown}${untyped.length > 3 ? ', …' : ''}) ${one ? 'has' : 'have'} no type: no declared containment type runs between the child's value and the parent's; ${one ? 'it draws' : 'they draw'} in the containment stroke and pull${one ? 's' : ''} nothing while push and pull key on the style axis`,
+  }]
 }

@@ -3,7 +3,7 @@
 // (process-level file errors, the AST's diagnostics, and the graph-stage
 // findings lifted into the same shape). Nothing here depends on the
 // simulation or the DOM; the view takes the result as props and never sees
-// the AST or the parser graph (D41, D61).
+// the AST or the parser graph.
 
 import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
