@@ -13,6 +13,7 @@ import React from 'react'
 import './FilterBar.css'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { FilterState, PinState, FilterDimension } from '../filter/types'
+import { toggleFileSelection, toggleTypeGroupSelection } from '../filter/toggle'
 import { PinToggle } from './PinToggle'
 import { SearchIcon } from './icons/GearIcons'
 import { VIEW_FILTER_ENTRIES } from '../theme/temporal-theme'
@@ -94,20 +95,10 @@ export function FilterBar({
     return { typeCounts, fileCounts }
   }, [ast.definitions, selectedFiles])
 
-  const toggleFile = (file: string) => {
-    const next = new Set(selectedFiles)
-    if (next.has(file)) next.delete(file)
-    else next.add(file)
-    onFilterChange({ ...filter, selectedFiles: next })
-  }
+  const toggleFile = (file: string) => onFilterChange(toggleFileSelection(filter, file))
 
-  const toggleTypeGroup = (types: readonly string[]) => {
-    const anyOn = types.some(t => visibleTypes.has(t))
-    const next = new Set(visibleTypes)
-    if (anyOn) for (const t of types) next.delete(t)
-    else for (const t of types) next.add(t)
-    onFilterChange({ ...filter, visibleTypes: next })
-  }
+  const toggleTypeGroup = (types: readonly string[]) =>
+    onFilterChange(toggleTypeGroupSelection(filter, types))
 
   const togglePinFiles = () => onPinsChange({ ...pins, files: !pins.files })
   const togglePinTypes = () => onPinsChange({ ...pins, types: !pins.types })

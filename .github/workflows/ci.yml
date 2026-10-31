@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, "visualizer/**"]
   push:
     branches: [main]
 
@@ -42,6 +42,15 @@ jobs:
 
       - name: Install dependencies
         run: cd tools/visualizer && npm ci
+
+      - name: Typecheck visualizer
+        run: make typecheck
+
+      - name: Visualizer ratchet gates (vocabulary, import direction, patterns)
+        run: make gates-visualizer
+
+      - name: Visualizer goldens
+        run: make verify-visualizer
 
       - name: Build toolchain (binary + visualizer lib)
         run: make build

@@ -14,6 +14,8 @@ import {
   applyCenterGravity,
   bandForType,
 } from './forces'
+import type { Rng } from './rng'
+import { defaultRng } from './rng'
 
 // Re-export so callers that already import ALL_NODE_TYPES from simulation continue to work.
 export { ALL_NODE_TYPES } from './node-types'
@@ -253,9 +255,15 @@ export class Simulation {
 
   private nodeMap: Map<string, SimNode>
 
-  constructor(graph: Graph, params?: Partial<ForceParams>) {
+  // Source of randomness for the degenerate-frame breakers and the position
+  // jitter. Defaults to the platform generator, so app behaviour is unchanged;
+  // the verification harness passes a seeded one to make a run reproducible.
+  private rng: Rng
+
+  constructor(graph: Graph, params?: Partial<ForceParams>, rng: Rng = defaultRng) {
     this.params = { ...DEFAULT_PARAMS, ...params }
     this.alpha = 1.0
+    this.rng = rng
 
     // Initialize SimNodes inside their Y bands so the first tick doesn't have
     // to violently relocate them to the hierarchy. X is jittered around 0
@@ -270,8 +278,8 @@ export class Simulation {
       const yJitter = Math.max(20, (band.yMax - band.yMin) / 2)
       const sim: SimNode = {
         ...node,
-        x: xCenter + (Math.random() - 0.5) * xJitter,
-        y: yCenter + (Math.random() - 0.5) * yJitter,
+        x: xCenter + (rng() - 0.5) * xJitter,
+        y: yCenter + (rng() - 0.5) * yJitter,
         vx: 0,
         vy: 0,
         pinned: false,
@@ -286,7 +294,7 @@ export class Simulation {
       if (node.parentId) {
         const parent = this.nodeMap.get(node.parentId)
         if (parent) {
-          node.x = parent.x + (Math.random() - 0.5) * 20
+          node.x = parent.x + (rng() - 0.5) * 20
         }
       }
     }
@@ -314,9 +322,9 @@ export class Simulation {
     // shaping forces (Band, Topological) gated by their toggles, with Center
     // gravity as the baseline when neither is active. The Cartesian/Radial mode
     // is read inside the band/topological forces.
-    applyChargeForce(active, this.params, this.alpha)
-    applyLinkForce(activeEdges, this.nodeMap, this.params, this.alpha)
-    if (this.params.bandEnabled) applyBandGravity(active, this.params, this.alpha)
+    applyChargeForce(active, this.params, this.alpha, this.rng)
+    applyLinkForce(activeEdges, this.nodeMap, this.params, this.alpha, this.rng)
+    if (this.params.bandEnabled) applyBandGravity(active, this.params, this.alpha, this.rng)
     if (this.params.topologicalEnabled) applyTopologicalGravity(active, this.params, this.alpha, downstreamScores)
     if (!this.params.bandEnabled && !this.params.topologicalEnabled) {
       applyCenterGravity(active, this.params, this.alpha)
@@ -425,8 +433,8 @@ export class Simulation {
     if (!node) return
     const band = bandForType(this.params, node.nodeType)
     const yClamped = Math.min(Math.max(y, band.yMin), band.yMax)
-    node.x = x + (Math.random() - 0.5) * 10
-    node.y = yClamped + (Math.random() - 0.5) * 10
+    node.x = x + (this.rng() - 0.5) * 10
+    node.y = yClamped + (this.rng() - 0.5) * 10
     node.vx = 0
     node.vy = 0
   }
