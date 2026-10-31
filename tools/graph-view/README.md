@@ -53,16 +53,32 @@ import '@temporal-architect/graph-view/styles.css'
   nodes sharing a `copyKey`, and the library indexes the copies
   (`copyGroups`), draws their halo and counts them in the hover box. A node
   may carry `badges` (short texts drawn as chips above it) and a `ring`.
-- `GraphView` — the component. It needs an `OntologyContext.Provider` above it,
-  a parent that is a flex column with a height (the pane fills what it is
-  given and renders at zero height otherwise), the `graph`, and the filter
-  state with its callbacks — `defaultFilter(ontology, graph)` is the state
-  to start from. The chip `counts` (the graph's node counts unless given),
-  the `chain` of axes shown (every declared axis unless given), the
-  `findings` under the bar and the `groups` to glow are optional. Filter
-  chips rendered outside the pane (a second view sharing the bar) need the
-  scheme's variables on an ancestor: `schemeVars(ontology, theme)` inline,
-  or `schemeStylesheet(ontology)` mounted once.
+- `GraphView` — the component. It needs the `graph`, a taxonomy (the
+  `ontology` prop, or an `OntologyContext.Provider` above), and a parent
+  that is a flex column with a height (the pane fills what it is given and
+  renders at zero height otherwise). Everything else is optional. The filter,
+  the pins, the chain of axes shown, the search control and the theme choice
+  each follow the React convention: pass the value and its callback to
+  control it, neither to let the view keep it, the callback alone to be
+  told. The chip `counts` (the graph's node counts unless given), the
+  `findings` under the bar, the `groups` to glow (each with a `color` or the
+  palette's), a `crossView` action for the hover box, `controls` and
+  `themeToggle` to hide the panel and the theme button, `className`, `style`
+  and `positions` (a kept layout) are inputs; `onSelectionChange`,
+  `onNodeActivate`, `onHover` and `onThemeResolved` are outputs. Through its
+  ref, `focusNode(id)` reveals, centres and selects a node in one call,
+  `fit()` frames the visible set, and `getPositions()` / `setPositions()`
+  carry a layout out and back in. The theme the pane resolves (`onThemeResolved`)
+  is for the host's own chrome beside the pane, never for a `data-theme` on an
+  ancestor of it: the pane reads that ancestor to resolve `system`, so writing
+  the answer there locks it. `keyboard` scopes the shortcuts: `pane`
+  (the focusable root), `global` (the window — a tab shell's active tab) or
+  `none`. Keep one `graph` object until its nodes or edges change: a new
+  object of the same shape rebuilds the layout for nothing, and the view
+  says so once; a changed graph keeps the positions of the nodes it still
+  has. Filter chips rendered outside the pane (`FilterBar`, for a second
+  view sharing the bar) take the `graph` or the `values` per axis, and
+  default the rest.
 
 `src/index.ts` names the whole surface; the tarball ships `dist-lib/`, this
 file and the licence.

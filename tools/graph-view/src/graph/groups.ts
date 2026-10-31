@@ -62,6 +62,8 @@ export interface NodeGroup {
   nodeIds: ReadonlySet<string>
   /** Whether the host emphasises this group (its legend row is hovered); the view glows it stronger. */
   emphasized?: boolean
+  /** The glow's colour, hex or rgb(); absent, the palette's slot for this group's place in the list. */
+  color?: string
 }
 
 /** A group as drawn: the visible node ids it covers and its palette colour. */
@@ -85,7 +87,7 @@ export function activeGroupsOf(groups: readonly NodeGroup[], visibleIds: Readonl
     const nodeIds = new Set<string>()
     for (const id of g.nodeIds) if (visibleIds.has(id)) nodeIds.add(id)
     if (nodeIds.size === 0) return
-    out.push({ id: g.id, strength: g.emphasized ? HOVER_STRENGTH : 1, nodeIds, color: palette[i % palette.length] })
+    out.push({ id: g.id, strength: g.emphasized ? HOVER_STRENGTH : 1, nodeIds, color: g.color ?? palette[i % palette.length] })
   })
   return out
 }

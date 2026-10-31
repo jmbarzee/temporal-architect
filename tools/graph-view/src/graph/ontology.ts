@@ -41,6 +41,9 @@ export interface HighlightGraph {
   getNode(id: string): GraphNode | undefined
 }
 
+/** Which way a highlight walks from its node: what it depends on, or what depends on it. */
+export type HighlightDirection = 'downstream' | 'upstream'
+
 /** The minimum a consumer needs of a node in order to resolve its style. */
 export type StyleSubject = { dimensions: DimensionMap }
 
@@ -88,8 +91,8 @@ export interface Ontology {
   edgeStrokeFor(id: EdgeTypeId): EdgeStroke
   /** The hover box's context line(s) for a node — the host's, or its parent's name. */
   contextLine(node: GraphNode, parent: GraphNode | undefined): string | readonly string[] | undefined
-  /** The highlight for an active node — the host's refinement of the library's transitive walk. */
-  highlight(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight
+  /** The highlight for an active node — the host's refinement of the library's transitive walk in the given direction. */
+  highlight(active: GraphNode, base: Highlight, graph: HighlightGraph, direction: HighlightDirection): Highlight
 
   /**
    * Style, size, physics and summary metadata for a value. Never throws — a
@@ -160,11 +163,11 @@ export interface OntologySpec {
    */
   contextLine?: (node: GraphNode, parent: GraphNode | undefined) => string | readonly string[] | undefined
   /**
-   * The highlight for an active node: given the library's transitive
-   * walk from it, the host may widen it (members it relates by metadata) or
-   * replace it. Absent, the walk is the highlight.
+   * The highlight for an active node: given the library's transitive walk
+   * from it in `direction`, the host may widen it (members it relates by
+   * metadata) or replace it. Absent, the walk is the highlight.
    */
-  highlight?: (active: GraphNode, base: Highlight, graph: HighlightGraph) => Highlight
+  highlight?: (active: GraphNode, base: Highlight, graph: HighlightGraph, direction: HighlightDirection) => Highlight
   /**
    * When two dependency edges each lose an end to a hidden node and come to
    * run between the same two visible nodes, which of the two originals the

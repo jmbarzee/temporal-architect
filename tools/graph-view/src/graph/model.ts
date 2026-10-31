@@ -180,3 +180,23 @@ export interface Graph {
   nodes: Map<string, GraphNode>
   edges: GraphEdge[]
 }
+
+/**
+ * Whether two graphs have the same nodes under the same parents and the same
+ * edges between the same ends — the shape a layout depends on. A new graph
+ * object of the same shape is the sign of a host rebuilding what it could
+ * have kept; the view says so once.
+ */
+export function graphShapeEquals(a: Graph, b: Graph): boolean {
+  if (a === b) return true
+  if (a.nodes.size !== b.nodes.size || a.edges.length !== b.edges.length) return false
+  for (const [id, node] of a.nodes) {
+    const other = b.nodes.get(id)
+    if (!other || other.parentId !== node.parentId) return false
+  }
+  for (let i = 0; i < a.edges.length; i++) {
+    const x = a.edges[i], y = b.edges[i]
+    if (x.id !== y.id || x.sourceId !== y.sourceId || x.targetId !== y.targetId) return false
+  }
+  return true
+}

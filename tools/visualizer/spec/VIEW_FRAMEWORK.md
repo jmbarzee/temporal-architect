@@ -66,6 +66,8 @@ The "Show in [view]" action is a contextual action available on any identifiable
    - **Graph View:** Centre the viewport on the target node and reheat so the layout settles around it. Framing the immediate neighbours, locking the viewport until the simulation stabilises, and the flash of step 5 are deferred — [#183](https://github.com/jmbarzee/temporal-architect/issues/183).
 5. **Flash target** (deferred, #183) — After the view has settled, briefly highlight the target item (a pulse or glow effect) to draw the eye.
 
+For the Graph view as destination, steps 2 to 4 are the view's own: the shell switches the tab, finds the node (the first deployment copy whose name and kind match) and calls `focusNode(id)` on the view's ref, which reconciles on the axes it shows, flashes the pins it overrode, and centres on and selects the node once the layout has settled (D71). The Tree view's steps stay the shell's, through `reconcileFilter` and the tree's own pending-focus state.
+
 ### Orientation
 
 The transition should go **local → context**, not context → find-the-needle. When navigating to the graph, the user first sees the target node, centred, then optionally zooms out to see the broader graph. When navigating to the tree, the user first sees the target block expanded and centered, then optionally scrolls to see siblings.

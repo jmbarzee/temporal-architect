@@ -47,7 +47,7 @@ function graphOf(nodes: GraphNode[], edges: GraphEdge[]): Graph {
   return { nodes: new Map(nodes.map(n => [n.id, n])), edges }
 }
 
-function syntheticNode(id: string, nodeType: NodeType, sourceFile: string | undefined): GraphNode {
+export function syntheticNode(id: string, nodeType: NodeType, sourceFile: string | undefined): GraphNode {
   return { id, dimensions: dimensionsFor(nodeType, sourceFile), name: id, ring: 'dashed', copyKey: `${nodeType}:${id}` }
 }
 

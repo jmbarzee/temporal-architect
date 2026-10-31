@@ -1,13 +1,15 @@
-// The host shell: owns every piece of state the view reads (filter, pins,
-// chain, search, theme, focus), and supplies what only the host can know —
+// The host shell, leaning on the view's defaults. It controls the one piece of
+// state its own panel writes (the filter), observes the one its panel reads
+// (the pins), hands the theme choice in from the URL, and leaves the chain of
+// axes and the search to the view. It supplies what only the host can know —
 // chip counts, findings, programme groups, and what "Open details" does.
 
 import React from 'react'
 import {
-  GraphView, OntologyContext, copyGroups, copyKeyOf, defaultFilter, payloadString, pinnedFor, reconcileFilter, schemeVars, selectionFor, useHostTheme, withSelection,
+  GraphView, OntologyContext, copyGroups, copyKeyOf, defaultFilter, payloadString, pinnedFor, schemeVars, selectionFor, withSelection,
 } from '@temporal-architect/graph-view'
 import type {
-  ActiveGroup, FilterState, FocusTarget, Graph, GraphNode, NodeGroup, PinState, Selection, Theme, ThemeChoice,
+  ActiveGroup, FilterState, Graph, GraphNode, GraphViewHandle, NodeGroup, PinState, Selection, Theme, ThemeChoice,
 } from '@temporal-architect/graph-view'
 import { catalog } from './data'
 import type { Campus, Catalog } from './data'
@@ -18,6 +20,7 @@ import './app.css'
 
 const graph = buildGraph(catalog)
 const nodeByCode = new Map([...graph.nodes.values()].map(n => [payloadString(n, 'code') ?? n.id, n]))
+const copies = copyGroups(graph)
 
 /** Chip badges: distinct catalog entries per value — a cross-listed course counts once. */
 function countsOf(data: Catalog, campuses: Selection): ReadonlyMap<string, ReadonlyMap<string, number>> {
@@ -67,76 +70,52 @@ function programmeGroups(g: Graph, enabled: ReadonlySet<string>, hovered: string
   })
 }
 
-const focusTargetOf = (n: GraphNode): FocusTarget => ({ name: n.name, values: n.dimensions })
-const NO_PINS = new Set<string>()
-
 export function App({ initialTheme = 'system' }: { initialTheme?: ThemeChoice }) {
+  // Controlled: the details panel's "Show only <campus>" writes the filter.
   const [filter, setFilter] = React.useState<FilterState>(() => defaultFilter(ontology, graph))
+  // Uncontrolled but observed: the view keeps the pins, the panel reads one.
   const [pins, setPins] = React.useState<PinState>(() => new Map())
-  const [chain, setChain] = React.useState<readonly string[]>(() => ontology.filterDimensions.map(d => d.id))
-  const [search, setSearch] = React.useState({ query: '', active: false })
   const [themeChoice, setThemeChoice] = React.useState<ThemeChoice>(initialTheme)
-  const [pendingFocus, setPendingFocus] = React.useState<FocusTarget | null>(null)
-  const [overriddenPins, setOverriddenPins] = React.useState<Set<string>>(NO_PINS)
   const [enabled, setEnabled] = React.useState<ReadonlySet<string>>(() => new Set(catalog.programmes.map(p => p.id)))
   const [hovered, setHovered] = React.useState<string | null>(null)
-  const [details, setDetails] = React.useState<FocusTarget | null>(null)
+  const [details, setDetails] = React.useState<GraphNode | null>(null)
+  const graphRef = React.useRef<GraphViewHandle>(null)
 
-  // The side panel and legend follow the pane's theme, so the shell resolves it the same way.
-  const rootRef = React.useRef<HTMLDivElement>(null)
-  const hostTheme = useHostTheme(rootRef)
-  const theme: Theme = themeChoice === 'system' ? hostTheme : themeChoice
-  const scheme = React.useMemo(() => schemeVars(ontology, theme) as React.CSSProperties, [theme])
+  // The side panel follows the pane's theme: the view reports the one it drew in.
+  const [theme, setTheme] = React.useState<Theme>('light')
 
   const counts = React.useMemo(() => countsOf(catalog, selectionFor(filter, CAMPUS)), [filter])
   const groups = React.useMemo(() => programmeGroups(graph, enabled, hovered), [enabled, hovered])
 
-  /** Widen the filter just enough to show `node`, then ask the view to centre on it. */
-  const reveal = (node: GraphNode) => {
-    const target = focusTargetOf(node)
-    const shown = chain.flatMap(id => ontology.descriptorFor(id) ?? [])
-    const result = reconcileFilter(filter, filter, pins, { kind: 'focus', target }, shown)
-    setFilter(result.filter)
-    setOverriddenPins(result.overriddenPins)
-    setPendingFocus(target)
-  }
+  /** Ask the view to reveal `node`: it widens the filter just enough, centres and selects. */
+  const reveal = (node: GraphNode) => { graphRef.current?.focusNode(node.id) }
   const onlyCampus = (campus: string) => setFilter(f => withSelection(f, CAMPUS, new Set([campus])))
-  // Stable: the view restarts its pin-flash timer whenever this identity changes.
-  const clearOverriddenPins = React.useCallback(() => setOverriddenPins(NO_PINS), [])
-  const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
 
   return (
     <OntologyContext.Provider value={ontology}>
-      <div ref={rootRef} className="catalog-app" data-theme={theme} style={scheme}>
+      <div className="catalog-app">
         <div className="catalog-pane">
           <GraphView
-            active
+            ref={graphRef}
             graph={graph}
             counts={counts}
             findings={FINDINGS.length > 0 && <Findings messages={FINDINGS} />}
             groups={groups}
             groupsControl={active => <ProgrammeLegend active={active} enabled={enabled} onToggle={id => setEnabled(prev => toggled(prev, id))} onHover={setHovered} />}
             crossView={{ label: 'Open details', onFocus: setDetails }}
+            onNodeActivate={setDetails}
             theme={themeChoice}
             onThemeChange={setThemeChoice}
+            onThemeResolved={setTheme}
             filter={filter}
             onFilterChange={setFilter}
-            pins={pins}
             onPinsChange={setPins}
-            chain={chain}
-            onChainChange={setChain}
-            searchQuery={search.query}
-            searchActive={search.active}
-            onSearchChange={(query, active) => setSearch({ query, active })}
-            pendingFocus={pendingFocus}
-            onFocusConsumed={clearPendingFocus}
-            overriddenPins={overriddenPins}
-            onOverriddenPinsConsumed={clearOverriddenPins}
           />
         </div>
         {details && (
           <Details
-            target={details}
+            node={details}
+            theme={theme}
             campusPinned={pinnedFor(pins, CAMPUS)}
             onReveal={reveal}
             onOnlyCampus={onlyCampus}
@@ -188,27 +167,34 @@ function ProgrammeLegend({ active, enabled, onToggle, onHover }: {
 }
 
 /**
- * What "Open details" shows. The view hands over a name and the node's
- * dimension map, not the node, so the host looks its own records up again.
+ * What "Open details" shows: the node the view hands over, and its listings —
+ * the nodes that share its copy key — for the records the node does not carry.
+ *
+ * The panel sits beside the view, not above it, so it carries the theme the
+ * view reported on its own element. On an ancestor of the view it would be the
+ * "host theme" the view reads for `system`, and the choice would stop following
+ * the OS.
  */
-function Details({ target, campusPinned, onReveal, onOnlyCampus, onClose }: {
-  target: FocusTarget
+function Details({ node, theme, campusPinned, onReveal, onOnlyCampus, onClose }: {
+  node: GraphNode
+  theme: Theme
   campusPinned: boolean
   onReveal: (node: GraphNode) => void
   onOnlyCampus: (campus: string) => void
   onClose: () => void
 }) {
-  const entity = target.values[ENTITY] as Entity | undefined
-  const campus = target.values[CAMPUS] as Campus | undefined
-  const listings = [...graph.nodes.values()].filter(n => n.name === target.name && n.dimensions[ENTITY] === entity)
+  const entity = node.dimensions[ENTITY] as Entity | undefined
+  const campus = node.dimensions[CAMPUS] as Campus | undefined
+  const scheme = React.useMemo(() => schemeVars(ontology, theme) as React.CSSProperties, [theme])
+  const listings = [...(copies.get(copyKeyOf(node)) ?? [node.id])].flatMap(id => graph.nodes.get(id) ?? [])
   const first = listings[0]
   const course = catalog.courses.find(c => c.id === (first && payloadString(first, 'courseId')))
   const credits = first && payloadNumber(first, 'credits')
   return (
-    <aside className="catalog-details">
+    <aside className="catalog-details" data-theme={theme} style={scheme}>
       <button className="catalog-close" onClick={onClose} aria-label="Close details">×</button>
       <div className="catalog-muted">{entity ? ontology.styleOf(entity).label : 'Unknown'}</div>
-      <h2>{target.name}</h2>
+      <h2>{node.name}</h2>
       <dl>
         {listings.length > 0 && <><dt>Listed as</dt><dd>{listings.map(n => payloadString(n, 'code')).filter(Boolean).join(', ') || '—'}</dd></>}
         {credits !== undefined && <><dt>Credits</dt><dd>{credits}</dd></>}

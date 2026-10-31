@@ -6,6 +6,11 @@
 // the visualizer; the row changes when the contract does. A server render
 // mounts the chrome and the canvas but builds no simulation (that is an
 // effect), so the count row and the hover box are not what it can see.
+//
+// Two mounts. The smallest host: `graph` and nothing else, inside the
+// provider — every state prop left to the view. And the other way in: the
+// taxonomy as a prop with no provider, the control panel and the theme button
+// left out, a class and a style handed to the root.
 
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -14,7 +19,7 @@ import {
 } from '@temporal-architect/graph-view'
 import type {
   OntologySpec, NodeStyle, EdgeType, DimensionDescriptor, ScalarAxis, ReadableGraph,
-  Graph, GraphNode, GraphEdge, FilterState, ThemedColor, EdgeStroke,
+  Graph, GraphNode, GraphEdge, ThemedColor, EdgeStroke,
 } from '@temporal-architect/graph-view'
 import type { Json } from './snapshot'
 import { sorted, sortedRecord } from './snapshot'
@@ -71,21 +76,24 @@ function graphOf(): Graph {
   return { nodes: new Map(nodes.map(n => [n.id, n])), edges }
 }
 
+/** The class attribute of the first element in the markup: the view's root. */
+const rootClassOf = (html: string): string | null => /^<div class="([^"]*)"/.exec(html)?.[1] ?? null
+/** The view's control panel, by the root class it carries. */
+const PANEL = 'gv-graph-control-panel'
+
 export function hostProbes(): Json {
   const ontology = createOntology(spec)
   const graph = graphOf()
-  const noop = () => {}
-  const filter: FilterState = new Map([[KIND, new Set(['cluster', 'service'])], [ZONE, new Set<string>()]])
+  // The smallest host: `graph`, under the provider. No `counts`, no `chain`, no
+  // `filter` — the view takes the graph's node counts, every declared axis in
+  // order, and the library's default filter.
   const html = renderToStaticMarkup(React.createElement(OntologyContext.Provider, { value: ontology },
+    React.createElement(GraphView, { graph })))
+  // The other way in: the taxonomy as a prop, no provider above.
+  const withProp = renderToStaticMarkup(
     React.createElement(GraphView, {
-      // No `counts` and no `chain`: this host takes the defaults — the graph's
-      // node counts, and every declared axis in order.
-      active: true, graph, theme: 'light', onThemeChange: noop,
-      filter, onFilterChange: noop, pins: new Map<string, boolean>(), onPinsChange: noop, onChainChange: noop,
-      searchQuery: '', searchActive: false, onSearchChange: noop, pendingFocus: null, onFocusConsumed: noop,
-      overriddenPins: new Set<string>(), onOverriddenPinsConsumed: noop,
-      crossView: { label: 'Elsewhere', onFocus: noop },
-    })))
+      graph, ontology, controls: false, themeToggle: false, className: 'probe-host', style: { minHeight: 1 },
+    }))
   const scalar = fanOut.compute({ nodes: [...graph.nodes.values()], edges: graph.edges, getNode: id => graph.nodes.get(id) })
   return {
     keys: [...ontology.styleValues],
@@ -97,6 +105,15 @@ export function hostProbes(): Json {
       chips: sorted([...html.matchAll(/class="gv-header-type-label">([^<]*)</g)].map(m => m[1])),
       files: sorted([...html.matchAll(/class="gv-header-file-name">([^<]*)</g)].map(m => m[1])),
       chipCounts: sorted([...html.matchAll(/class="gv-header-chip-count">([^<]*)</g)].map(m => m[1])),
+      panelPresent: html.includes(PANEL),
+    },
+    ontologyProp: {
+      withoutProvider: withProp.includes('<canvas'),
+      rootClass: rootClassOf(withProp),
+      styleMerged: withProp.includes('min-height:1px'),
+      schemeKept: withProp.includes('--gv-node-'),
+      themeButtonAbsent: !withProp.includes('aria-label="Colour scheme"'),
+      panelAbsent: !withProp.includes(PANEL),
     },
   }
 }

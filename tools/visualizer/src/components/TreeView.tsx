@@ -510,7 +510,7 @@ export function TreeView({
       <div className="workflow-canvas">
         <FilterBar
           counts={counts}
-          valuesByDimension={valuesByDimension}
+          values={valuesByDimension}
           filter={filter}
           onFilterChange={onFilterChange}
           pins={pins}
@@ -519,9 +519,8 @@ export function TreeView({
           onChainChange={onChainChange}
           overriddenPins={overriddenPins}
           recentlyChanged={recentlyChanged}
-          searchQuery={searchQuery}
-          searchActive={searchActive}
-          onSearchChange={onSearchChange}
+          search={{ query: searchQuery, active: searchActive }}
+          onSearchChange={next => onSearchChange(next.query, next.active)}
           searchInputRef={searchInputRef}
           searchTitle="Search definitions"
           searchPlaceholder="Filter by name..."

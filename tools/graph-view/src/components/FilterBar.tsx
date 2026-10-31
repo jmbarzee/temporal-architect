@@ -10,7 +10,11 @@
 import { useOntology } from './graph-view/useOntology'
 import { colorVar } from '../graph/scheme'
 import type { DimensionValue } from '../graph/dimension'
+import { countsOn, valuesOn } from '../graph/dimension'
+import type { Graph } from '../graph/model'
 import type { Ontology } from '../graph/ontology'
+import { useControllable } from './graph-view/useControllable'
+import { useRecentlyChanged } from './graph-view/useRecentlyChanged'
 
 // A chip's tint names a style value; one that names nothing declared is a
 // host bug, said once per chip on the console rather than thrown in render,
@@ -34,41 +38,51 @@ import { toggleGroup } from '../filter/toggle'
 import { PinToggle } from './PinToggle'
 import { SearchIcon } from './icons/SearchIcon'
 
-const NO_COUNTS: ReadonlyMap<string, number> = new Map()
+const NO_PINS: ReadonlySet<string> = new Set()
 
-interface FilterBarProps {
-  /** Chip badge counts per axis and value, read by the host off its own data. */
-  counts: ReadonlyMap<string, ReadonlyMap<string, number>>
-  /** Unique source files driving the file chips (each view computes its own). */
+/** The search control's state: the query, and whether the control is open. */
+export interface SearchState { query: string; active: boolean }
+
+/**
+ * The bar's inputs. The filter and its callback are the one requirement; the
+ * values each axis offers come from `values` or from `graph`, and everything
+ * else the pane supplies for its own bar has a default here, so a host's
+ * second view renders the same bar without rebuilding the pane's internals.
+ */
+export interface FilterBarProps {
+  /** Chip badge counts per axis and value, read by the host off its own data. Absent: the graph's node counts when `graph` is given, else no badges. */
+  counts?: ReadonlyMap<string, ReadonlyMap<string, number>>
+  /**
+   * Values available per axis — the one source every axis's chips are built
+   * from. Absent, read off `graph`; one of the two is required. An axis with
+   * no entry renders an empty, explicitly-disabled section rather than
+   * vanishing.
+   */
+  values?: ReadonlyMap<string, readonly string[]>
+  /** The graph the bar filters, when `values` is not read elsewhere. */
+  graph?: Graph
   filter: FilterState
   onFilterChange: (next: FilterState) => void
   pins: PinState
   onPinsChange: (next: PinState) => void
-  /** Dimensions a recent focus transition bypassed — drives the pin flash. */
-  overriddenPins: Set<FilterDimension>
-  /** File/type keys that just turned on — drives the chip flash animation. */
-  recentlyChanged: Set<string>
-  searchQuery: string
-  searchActive: boolean
-  onSearchChange: (query: string, active: boolean) => void
-  searchInputRef: React.RefObject<HTMLInputElement>
-  searchTitle: string
-  searchPlaceholder: string
+  /** Axes a focus just overrode the pin of — drives the pin flash. Default: none. */
+  overriddenPins?: ReadonlySet<FilterDimension>
+  /** `<axis>:<value>` keys that just turned on — drives the chip flash. Default: tracked here from the filter's changes. */
+  recentlyChanged?: ReadonlySet<string>
+  /** The search control. Default: the bar's own, closed and empty. */
+  search?: SearchState
+  onSearchChange?: (next: SearchState) => void
+  /** The search input, for a host that focuses it from its own shortcut. */
+  searchInputRef?: React.RefObject<HTMLInputElement>
+  searchTitle?: string
+  searchPlaceholder?: string
   /** View-specific search adornment rendered inside the search control. */
   searchExtra?: React.ReactNode
   /** Search matches hidden by a chip, per axis and value — the badge the chip hiding them wears. Optional. */
   hiddenMatches?: ReadonlyMap<string, ReadonlyMap<string, number>>
-  /** The axes shown, in order: editable, and may be empty. */
-  chain: readonly string[]
-  /**
-   * Values available per axis, read off the data by the host — the one source
-   * every axis's chips are built from, files and kinds included. Required:
-   * when it was optional, one mount omitted it and the kind axis silently
-   * stopped being re-addable there. An axis with no entry renders an empty,
-   * explicitly-disabled section rather than vanishing.
-   */
-  valuesByDimension: ReadonlyMap<string, readonly string[]>
-  /** Omitted by a host that does not want the chain edited in place. */
+  /** The axes shown, in order; may be empty. Default: every declared axis, editable in place. */
+  chain?: readonly string[]
+  /** Omitted by a host that controls the chain and does not want it edited in place. */
   onChainChange?: (next: readonly string[]) => void
   /** The host's findings bars, rendered under the chips. */
   findings?: React.ReactNode
@@ -83,28 +97,45 @@ const LOOKS = {
 } as const
 
 export function FilterBar({
-  counts,
+  counts: hostCounts,
+  values: hostValues,
+  graph,
   filter,
   onFilterChange,
   pins,
   onPinsChange,
-  overriddenPins,
-  recentlyChanged,
-  searchQuery,
-  searchActive,
+  overriddenPins = NO_PINS,
+  recentlyChanged: hostRecentlyChanged,
+  search: searchProp,
   onSearchChange,
-  searchInputRef,
-  searchTitle,
-  searchPlaceholder,
+  searchInputRef: hostInputRef,
+  searchTitle = 'Search (/)',
+  searchPlaceholder = 'Search…',
   searchExtra,
   hiddenMatches,
   findings,
   refreshFlash,
-  chain,
+  chain: hostChain,
   onChainChange,
-  valuesByDimension,
 }: FilterBarProps) {
   const ontology = useOntology()
+  if (!hostValues && !graph) throw new Error('FilterBar needs the values each axis offers: pass `values`, or the `graph` to read them off.')
+  const [chain, setChain] = useControllable(hostChain, onChainChange, () => ontology.filterDimensions.map(d => d.id))
+  const chainEditable = hostChain === undefined || onChainChange !== undefined
+  const [search, setSearch] = useControllable(searchProp, onSearchChange, () => ({ query: '', active: false }))
+  const { query: searchQuery, active: searchActive } = search
+  const ownInputRef = React.useRef<HTMLInputElement>(null)
+  const searchInputRef = hostInputRef ?? ownInputRef
+  const tracked = useRecentlyChanged(filter)
+  const recentlyChanged = hostRecentlyChanged ?? tracked
+  const valuesByDimension = React.useMemo(
+    () => hostValues ?? new Map(chain.map(d => [d, graph ? valuesOn(graph.nodes.values(), d) : []])),
+    [hostValues, graph, chain],
+  )
+  const counts = React.useMemo(
+    () => hostCounts ?? (graph ? countsOn(graph.nodes.values(), chain) : undefined),
+    [hostCounts, graph, chain],
+  )
 
   // What a section is made of: the values the host read off its data, their
   // counts and hidden matches, and the classes its declared presentation
@@ -113,7 +144,7 @@ export function FilterBar({
   // axis dangerous rather than merely unsupported.
   const lookFor = (dimension: string, descriptor?: ResolvedDimensionDescriptor) => ({
     values: [...(valuesByDimension.get(dimension) ?? [])],
-    counts: counts.get(dimension) ?? NO_COUNTS,
+    counts: counts?.get(dimension),
     hidden: hiddenMatches?.get(dimension),
     ...LOOKS[descriptor?.presentation ?? 'chip'],
   })
@@ -125,9 +156,9 @@ export function FilterBar({
 
   const toggleSearch = () => {
     if (searchActive) {
-      onSearchChange('', false)
+      setSearch({ query: '', active: false })
     } else {
-      onSearchChange(searchQuery, true)
+      setSearch({ query: searchQuery, active: true })
       setTimeout(() => searchInputRef.current?.focus(), 50)
     }
   }
@@ -165,7 +196,7 @@ export function FilterBar({
                   const isActive = chip.values.some(v => selection.has(v))
                   const isChanged = chip.values.some(v => recentlyChanged.has(`${dimension}:${v}`))
                   const hiddenCount = chip.values.reduce((sum, v) => sum + (look.hidden?.get(v) ?? 0), 0)
-                  const count = chip.values.reduce((sum, v) => sum + (look.counts.get(v) ?? 0), 0)
+                  const count = look.counts === undefined ? undefined : chip.values.reduce((sum, v) => sum + (look.counts!.get(v) ?? 0), 0)
                   const cls = [
                     look.chipClass,
                     allIncluded ? 'all-included' : (isActive ? look.activeClass : ''),
@@ -182,7 +213,7 @@ export function FilterBar({
                     >
                       {chip.icon && <span className={look.iconClass}>{chip.icon}</span>}
                       <span className={look.labelClass}>{chip.label}</span>
-                      <span className="gv-header-chip-count">{count}</span>
+                      {count !== undefined && <span className="gv-header-chip-count">{count}</span>}
                       {hiddenCount > 0 && (
                         <span className="gv-header-hidden-badge" title={`${hiddenCount} match${hiddenCount !== 1 ? 'es' : ''} hidden by this filter`}>
                           {hiddenCount}
@@ -198,7 +229,7 @@ export function FilterBar({
                 flashing={overriddenPins.has(dimension)}
                 label={descriptor.label}
               />
-              {onChainChange && (
+              {chainEditable && (
                 <button
                   className="gv-header-chain-remove"
                   onClick={() => {
@@ -220,7 +251,7 @@ export function FilterBar({
                         ? new Set<string>()
                         : new Set(chips.flatMap(c => [...c.values])),
                     ))
-                    onChainChange(chain.filter(d => d !== dimension))
+                    setChain(chain.filter(d => d !== dimension))
                   }}
                   title={`Remove the ${descriptor.label} filter`}
                 >×</button>
@@ -231,11 +262,11 @@ export function FilterBar({
         )
       })}
 
-      {onChainChange && available.length > 0 && (
+      {chainEditable && available.length > 0 && (
         <div className="gv-header-chain-add">
           <button
             className="gv-header-chain-add-button"
-            onClick={() => onChainChange([...chain, available[0]!])}
+            onClick={() => setChain([...chain, available[0]!])}
             title={`Add the ${ontology.descriptorFor(available[0]!)?.label ?? available[0]} filter`}
           >+</button>
         </div>
@@ -255,7 +286,7 @@ export function FilterBar({
               type="text"
               placeholder={searchPlaceholder}
               value={searchQuery}
-              onChange={e => onSearchChange(e.target.value, true)}
+              onChange={e => setSearch({ query: e.target.value, active: true })}
               onKeyDown={e => { if (e.key === 'Escape') toggleSearch() }}
             />
           )}

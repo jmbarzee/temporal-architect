@@ -26,6 +26,7 @@ type DimensionValue
 type EdgeStroke
 type EdgeType
 type EdgeTypeId
+type FilterBarProps
 type FilterChip
 type FilterDimension
 type FilterState
@@ -35,13 +36,17 @@ type GraphDiagnostic
 type GraphDiagnosticCode
 type GraphEdge
 type GraphNode
+type GraphViewHandle
+type GraphViewProps
 type Highlight
+type HighlightDirection
 type HighlightGraph
 type NodeGroup
 type NodeStyle
 type Ontology
 type OntologySpec
 type PinState
+type Position
 type ReadableGraph
 type ReconcileResult
 type ReheatPolicy
@@ -51,6 +56,7 @@ type ResolvedEdgeType
 type ResolvedNodeStyle
 type ScalarAxis
 type ScalarSpan
+type SearchState
 type Selection
 type SpringPhysics
 type StyleSubject
@@ -62,4 +68,5 @@ useHostTheme
 useOntology
 useRecentlyChanged
 validateGraph
+valuesOn
 withSelection
