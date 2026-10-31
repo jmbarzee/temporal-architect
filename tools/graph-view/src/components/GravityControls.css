@@ -1,0 +1,86 @@
+/* Gravity controls. */
+/* ── Gravity tab ────────────────────────────────────────────────────────────
+   Three sub-tabs: X Axis and Y Axis (the same per-axis surface: a mapping, a
+   column per bucket with its rest band as two handles, the strength, the force
+   curve) and Topological. Y's sub-tab carries the Radial switch, Topological's
+   its on/off switch. */
+.gv-gravity-controls {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Sub-tab bar — same underline-tab pattern as the main force tabs, but marked
+   as a sub-level by an accent-coloured underline (main tabs underline in the
+   text colour) and the inline on/off switch each tab carries. */
+
+/* The active body's tools dim (but stay usable) when its force switch is off. */
+.gv-gravity-section-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gv-gravity-section-tools.inactive { opacity: 0.5; }
+
+/* Axis plot svg (the rest of the layout is the shared <Plot> shell). */
+.gv-gravity-band-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+}
+
+.gv-gravity-band-bg { fill: var(--gv-color-bg); opacity: 0.5; }
+
+/* Rest-region stripes — behind and non-interactive, so handles stay grabbable. */
+.gv-gravity-band-stripes { pointer-events: none; }
+.gv-gravity-band-stripe { opacity: 0.16; }
+.gv-gravity-band-stripe.dim { opacity: 0.05; }
+.gv-gravity-band-stripe.active { opacity: 0.30; }
+
+/* Per-type vertical slider controls, on top of the stripes. */
+.gv-gravity-band-track { stroke: var(--gv-color-border); stroke-width: 1; opacity: 0.5; }
+.gv-gravity-band-stem { stroke-width: 2; opacity: 0.7; }
+.gv-gravity-band-dot { cursor: ns-resize; stroke: var(--gv-color-surface); stroke-width: 1; }
+.gv-gravity-band-label { font-family: var(--gv-font-sans); font-size: 11px; }
+.gv-gravity-band-col.dim { opacity: 0.35; }
+
+.gv-gravity-topo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gv-gravity-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gv-gravity-topo-curve {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 2px;
+}
+
+.gv-gravity-topo-curve-line {
+  fill: none;
+  stroke: var(--gv-accent);
+  stroke-width: 1.5;
+}
+
+.gv-gravity-topo-curve-axis {
+  font-family: var(--gv-font-sans);
+  font-size: 10px;
+  fill: var(--gv-color-text-muted);
+}
+
+/* A short note beside a control, e.g. "ignored in radial". */
+.gv-axis-note { font-size: 11px; color: var(--gv-color-text-muted); font-family: var(--gv-font-sans); }
+
+/* A scalar axis: the span's gradient and its two end handles. */
+.gv-gravity-scalar-gradient { pointer-events: none; }
+.gv-gravity-scalar-dot { fill: var(--gv-color-text); }

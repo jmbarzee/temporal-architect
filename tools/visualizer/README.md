@@ -3,6 +3,13 @@
 A React component for visualizing Temporal system architecture — namespaces,
 workers, workflows, and Nexus — as an interactive tree and dependency graph.
 
+The Graph view's engine — a force-directed graph view with composable
+axes that knows nothing of Temporal — is the sibling library
+[`@temporal-architect/graph-view`](../graph-view/README.md). This package is
+its first host: it reads parser output into the library's `Graph`, declares
+the Temporal taxonomy, and bundles the library into its own artifact, so
+consumers of this package install nothing else.
+
 This is the npm-publishable surface of the visualizer that ships inside the
 [Temporal Architect VS Code extension](https://github.com/jmbarzee/temporal-architect).
 Host applications can embed the same component directly in their own React apps —
@@ -150,6 +157,25 @@ import { Visualizer } from '@temporal-architect/visualizer'
 ```
 
 or load it dynamically with `{ ssr: false }`.
+
+## How the host is built
+
+- The adapter (`src/adapter/`) is the only reader of parser output. It builds
+  the library's `Graph`, writes the kind axis and the file axis onto nodes,
+  carries `relation` and `dispatch` on edges as values, and declares the
+  Temporal taxonomy — its hand-tuned spring table included — through the
+  library's `createTaxonomy`. The library itself knows nothing of Temporal
+  (see [`../graph-view/DESIGN.md`](../graph-view/DESIGN.md)).
+- The tree and the graph share one state through the library's
+  `useLinkedViews`: each view's filter, locks and axes, the view shown, the
+  search, and the focus a switch asks of the graph. What differs per view (the
+  tree's scroll and flash on a focus) stays here.
+- The theme is the editor's answer in a webview, else what the OS says; the
+  shell writes it as `data-theme` on its root for its own CSS and hands it to
+  the panes as `systemTheme`.
+- Persisted state (`src/adapter/storage.ts`) is versioned and discarded on a
+  shape mismatch, never migrated: a wrong migration would blank both views,
+  and the same key is read by the distribution repository's webview.
 
 ## Versioning
 
