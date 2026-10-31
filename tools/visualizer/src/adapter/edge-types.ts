@@ -79,6 +79,9 @@ const WORKER_DEPENDENCY: EdgeStroke    = { color: { light: '#64748B', dark: '#CB
 const WORKFLOW_DEPENDENCY: EdgeStroke  = { color: { light: '#8B7EC8', dark: '#A89BD8' }, alpha: 0.70, dash: [], width: 1.4 }
 const WORKFLOW_TO_ACTIVITY: EdgeStroke = { color: { light: '#4A8BC2', dark: '#7CB9E8' }, alpha: 0.70, dash: [], width: 1.4 }
 const NEXUS_CALL: EdgeStroke           = { color: { light: '#F472B6', dark: '#F9A8D4' }, alpha: 0.85, dash: [], width: 1.5 }
+// The signal palette of the tree's send block, long-dashed: fire-and-forget,
+// as a detached call is dashed in the tree (and longer than containment's dots).
+const SIGNAL_SEND: EdgeStroke          = { color: { light: '#DC2626', dark: '#FCA5A5' }, alpha: 0.75, dash: [8, 5], width: 1.4 }
 
 // One entry per edge category. Order is the control-panel token order (emergent
 // positioning makes it cosmetic). The library classifies an edge by this table
@@ -120,7 +123,7 @@ export const ALL_EDGE_TYPES: TemporalEdgeType[] = [
   // apart rather than clamp them together the way a child-workflow call does.
   { id: 'linkSignalSend', label: 'Wf→Sig', sourceValue: 'workflow', targetValue: 'workflow',
     relation: 'dependency', match: { [DISPATCH_DIMENSION]: 'signalSend' },
-    physics: { strength: 0.30, distance: 520 }, style: WORKFLOW_DEPENDENCY, tooltip: 'Workflow → Workflow signal send (fire-and-forget)' },
+    physics: { strength: 0.30, distance: 520 }, style: SIGNAL_SEND, tooltip: 'Workflow → Workflow signal send (fire-and-forget)' },
   { id: 'linkWorkflowToActivity', label: 'Wf↔Act', sourceValue: 'workflow', targetValue: 'activity',
     relation: 'dependency',
     physics: { strength: 1.90, distance: 40 }, style: WORKFLOW_TO_ACTIVITY, tooltip: 'Workflow ↔ Activity dependency' },
