@@ -20,7 +20,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@temporal-architect/graph-view": ["../graph-view/src/index.ts"],
+      "@temporal-architect/graph-view/*": ["../graph-view/src/*"]
     }
   },
   "include": ["src"],

@@ -1,24 +1,50 @@
+import {
+  selectionFor,
+  initialFilter,
+  filterFromJSON,
+  filterToJSON,
+  locksFromJSON,
+  locksToJSON,
+  TaxonomyContext,
+  copyGroups,
+  lockedFor,
+  withSelection,
+  GraphView,
+  useLinkedViews,
+  themeChoiceOf,
+  useHostTheme,
+  schemeVars,
+  layoutFromJSON,
+  layoutToJSON,
+} from '@temporal-architect/graph-view'
+import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
+import { useEditorTheme } from '../theme/useEditorTheme'
+import { loadState, saveState, type StorageConfig } from '../adapter/storage'
+import type {
+  GraphNode,
+  AxisLocks,
+  LayoutState,
+  ThemeChoice,
+} from '@temporal-architect/graph-view'
 import React from 'react'
-import { OntologyContext } from './graph-view/useOntology'
-import { DEFAULT_ONTOLOGY } from '../adapter/node-types'
+import { DEFAULT_TAXONOMY } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import { EMPTY_PARSER_GRAPH } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
 import type { DecompositionParams } from './protocol'
-import { TreeView } from './TreeView'
-import { GraphView } from './GraphView'
-import type { FilterState, PinState, ViewTransition, FilterDimension } from '../filter/types'
-import { reconcileFilter } from '../filter/reconcile'
-import { loadState, saveState, type PersistedFilter } from '../filter/storage'
-import { DEF_TYPE_CONFIGS } from '../theme/temporal-theme'
+import { TreeView, type TreeFocus } from './TreeView'
+import { GroupsModal } from './GroupsModal'
+import { ErrorBars } from './ErrorBars'
+import { useGraphModel, definitionCounts } from '../adapter/useGraphModel'
+import { initialGroupSelection, nodeGroupsOf, type GroupSelection, type GroupHover } from '../adapter/groups'
 
 interface WorkflowCanvasProps {
   /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
    * payload of the envelope) or constructed by a host application. The
-   * tree view consumes this directly; the graph view consults it as
-   * secondary input (sourceFile / hover details). */
+   * tree view consumes this directly; the graph view's chip counts and
+   * findings are read off it here. */
   ast: TWFFile
   /** Resolved deployment graph from `twf graph`. Primary input for the
    * graph view; the tree view doesn't consume it. Optional — when absent
@@ -102,42 +128,27 @@ export const NavigationContext = React.createContext<NavigationContextType>({
   navigateTo: () => {},
 })
 
-// Cross-view focus target — carries the visual-focus subject across a
-// focus transition. The filter expansion has already happened in the
-// reconciler by the time the destination view sees this; the view only
-// uses it to scroll/center/flash.
-export interface CrossViewTarget {
-  name: string
-  defType: string
-}
 
 type ActiveView = 'tree' | 'graph'
+const VIEWS: readonly ActiveView[] = ['tree', 'graph']
 
-const DEFAULT_VISIBLE_TYPES_ARRAY = DEF_TYPE_CONFIGS.filter(c => c.defaultOn).map(c => c.type)
+// A view switch as this host states it: a focus carries the target's name as
+// well as its values, because the tree finds a definition by name. The library's
+// `ViewTransition` takes any such transition, the name riding along unread.
+type HostTransition = { kind: 'manual' } | { kind: 'focus'; target: TreeFocus }
 
-function defaultFilter(ast: TWFFile): FilterState {
-  return {
-    selectedFiles: ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
-    visibleTypes: new Set(DEFAULT_VISIBLE_TYPES_ARRAY),
-  }
+// This host's persistence identity. It lives here, outside the §6.5 manifest,
+// because a storage key naming a product and the global a webview caches its API
+// on are host facts — the library owns the shape of what is persisted, not where.
+const STORAGE: StorageConfig = {
+  key: 'temporal-architect-visualizer-state',
+  hostApiGlobal: '__twfVsCodeApi',
 }
 
-const DEFAULT_PINS: PinState = { files: false, types: false }
-
-function persistedToFilter(p: PersistedFilter | undefined, fallback: FilterState): FilterState {
-  if (!p) return fallback
-  return {
-    selectedFiles: new Set(p.selectedFiles),
-    visibleTypes: new Set(p.visibleTypes),
-  }
-}
-
-function filterToPersisted(f: FilterState): PersistedFilter {
-  return {
-    selectedFiles: Array.from(f.selectedFiles),
-    visibleTypes: Array.from(f.visibleTypes),
-  }
-}
+const DEFAULT_PINS: AxisLocks = new Map([
+  [SOURCE_FILE_DIMENSION, false],
+  [DEF_TYPE_DIMENSION, false],
+])
 
 export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
@@ -145,11 +156,11 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // no AST definitions. The Tree view has nothing to render, so we hide its tab
   // and default to the Graph view.
   const historyMode = ast.definitions.length === 0
-  // Load persisted state once on mount. Sets are restored as Set<string>
-  // from their array representation.
-  const persisted = React.useMemo(() => loadState(), [])
-
-  const [activeView, setActiveView] = React.useState<ActiveView>(historyMode ? 'graph' : 'tree')
+  // Load persisted state once on mount. A filter reads back through the
+  // library's `filterFromJSON`, which refuses a stored value that is not a
+  // filter, and the view then starts from its default; a stale shape never gets
+  // that far — the version guard in storage.ts discards it.
+  const persisted = React.useMemo(() => loadState(STORAGE), [])
 
   // Keep-alive: the Graph view is mounted lazily (the first time it's shown)
   // and then kept mounted — hidden, not unmounted — when the user switches
@@ -158,81 +169,149 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // happens while it's visible (a hidden 0×0 container would fit to nothing).
   const [graphEverShown, setGraphEverShown] = React.useState(historyMode)
 
-  // Per-view structural filter state, lifted from each view so the
-  // reconciler at switch time has access to both.
-  const [treeFilter, setTreeFilter] = React.useState<FilterState>(() =>
-    persistedToFilter(persisted.treeFilter, defaultFilter(ast))
+  // The Graph view's inputs, read here off the payload: the graph built from
+  // the parser's deployment graph, the findings, the chip counts. The
+  // view builds none of them and never sees the AST or the parser graph. Read
+  // before the filters below: the filter a view starts from is the library's
+  // default over this graph, narrowed to the focused file when there is one.
+  const model = useGraphModel(ast, graphInput)
+  const startingFilter = () => withSelection(
+    initialFilter(DEFAULT_TAXONOMY, model.graph),
+    SOURCE_FILE_DIMENSION,
+    ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
   )
-  const [graphFilter, setGraphFilter] = React.useState<FilterState>(() =>
-    persistedToFilter(persisted.graphFilter, defaultFilter(ast))
+
+  // Each view's filter, locks and shown axes, the view shown, the search they
+  // share, and what a switch between the two does to them, live in the
+  // library's `useLinkedViews`. A view starts from its persisted state, else
+  // the default filter (narrowed to the focused file), the default locks and —
+  // the hook's default — every declared axis in the host's declared order, so
+  // "default displayed filters" is configurable by declaring a different
+  // taxonomy rather than by a setting. The Graph is shown first
+  // when there is no Tree to show.
+  const linked = useLinkedViews({
+    taxonomy: DEFAULT_TAXONOMY,
+    views: VIEWS,
+    graph: model.graph,
+    start: historyMode ? 'graph' : 'tree',
+    initialSearch: { query: persisted.searchQuery ?? '', active: false },
+    initial: view => {
+      const saved = view === 'tree'
+        ? { filter: persisted.treeFilter, locks: persisted.treePins, axes: persisted.treeChain }
+        : { filter: persisted.graphFilter, locks: persisted.graphPins, axes: persisted.graphChain }
+      return { filter: filterFromJSON(saved.filter) ?? startingFilter(), locks: locksFromJSON(saved.locks) ?? DEFAULT_PINS, axes: saved.axes }
+    },
+  })
+  const { switchTo, focus, updateFilter, updateFilters } = linked
+  const activeView = linked.active
+  const treeFilter = linked.state.tree.filter
+  const graphFilter = linked.state.graph.filter
+
+  const graphCounts = React.useMemo(() => definitionCounts(ast, selectionFor(graphFilter, SOURCE_FILE_DIMENSION)), [ast, graphFilter])
+
+  // The group overlay's selection and hover preview (GRAPH_VIEW.md
+  // § Decomposition Group Overlay) are the host's: what a group is comes from
+  // its decomposition, and the view draws what it is handed. Both reset when
+  // a new decomposition arrives.
+  const [groupSelection, setGroupSelection] = React.useState<GroupSelection>(() => initialGroupSelection(decomposition))
+  const [groupHover, setGroupHover] = React.useState<GroupHover | null>(null)
+  React.useEffect(() => {
+    setGroupSelection(initialGroupSelection(decomposition))
+    setGroupHover(null)
+  }, [decomposition])
+  // Every node's deployment copies by their shared key, derived from the graph
+  //; the group overlay maps a decomposition's members through it.
+  const copies = React.useMemo(() => copyGroups(model.graph), [model.graph])
+  const nodeGroups = React.useMemo(
+    () => nodeGroupsOf(decomposition, groupSelection, groupHover, copies),
+    [decomposition, groupSelection, groupHover, copies],
   )
 
-  // Per-view pin state — when a dimension is pinned, the manual reconciler
-  // skips it; focus transitions can still override pins (with a flash).
-  const [treePins, setTreePins] = React.useState<PinState>(() => persisted.treePins ?? DEFAULT_PINS)
-  const [graphPins, setGraphPins] = React.useState<PinState>(() => persisted.graphPins ?? DEFAULT_PINS)
+  // The search is one query applied identically to both views (spec § Search
+  // Scope), held by the hook — started from the persisted query — and handed
+  // to each view in `linked.of(view)`. Search is non-destructive (dim, not
+  // hide), so sharing is safe.
+  const [graphTheme, setGraphTheme] = React.useState<ThemeChoice>(() => themeChoiceOf(persisted.graphTheme))
+  // The host's theme for the whole canvas, and the scheme in it, carried as
+  // custom properties on the root so every chip and token — the tree's too —
+  // reads the taxonomy's colours, not a mounted stylesheet. The graph
+  // pane overrides both with its own choice.
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  // The editor's theme when this runs as a webview, else whatever an ancestor
+  // declares or the OS prefers; set on the root as `data-theme`, the one
+  // signal the library reads.
+  const editorTheme = useEditorTheme()
+  const detectedTheme = useHostTheme(rootRef)
+  const hostTheme = editorTheme ?? detectedTheme
+  const schemeStyle = React.useMemo(() => schemeVars(DEFAULT_TAXONOMY, hostTheme) as React.CSSProperties, [hostTheme])
 
-  // Globally-shared search state — one query applied identically to both
-  // views (spec § Search Scope). Search is non-destructive (dim, not hide)
-  // so sharing is safe.
-  const [searchQuery, setSearchQuery] = React.useState<string>(persisted.searchQuery ?? '')
-  const [searchActive, setSearchActive] = React.useState<boolean>(false)
+  // The Graph pane's layout — the force tuning and the node scale. The pane
+  // starts from the persisted one (built once) and keeps its own; the host
+  // holds what it reports, for persistence. Until the pane reports, a stored
+  // layout stays the one persisted, so a session that never shows the Graph
+  // does not drop it.
+  const defaultLayout = React.useMemo(() => layoutFromJSON(persisted.graphLayout ?? {}, DEFAULT_TAXONOMY), [persisted])
+  const [layout, setLayout] = React.useState<LayoutState | undefined>(persisted.graphLayout === undefined ? undefined : defaultLayout)
 
-  // Pending-focus target for cross-view nav. Reconciler has already
-  // expanded the destination's filter by the time this is set; the
-  // destination view consumes it for scroll/center/flash only.
-  const [pendingFocus, setPendingFocus] = React.useState<CrossViewTarget | null>(null)
-
-  // Pin-override metadata: which dimensions the most recent focus
-  // transition bypassed in each view. The view consumes this on render
-  // to flash its pin icon, then calls back to clear.
-  const [treeOverriddenPins, setTreeOverriddenPins] = React.useState<Set<FilterDimension>>(new Set())
-  const [graphOverriddenPins, setGraphOverriddenPins] = React.useState<Set<FilterDimension>>(new Set())
+  // Pending-focus target for a focus into the Tree. The hook has already
+  // expanded the Tree's filter by the time this is set; the Tree consumes it
+  // for scroll/flash only, and its bar flashes any lock the focus overrode.
+  // (A focus into the Graph is `linked.focus`: the view does its own
+  // reconcile, flashes its own locks and centres on the node.)
+  const [pendingFocus, setPendingFocus] = React.useState<TreeFocus | null>(null)
 
   // Persist on every relevant state change. localStorage in standalone;
   // vscode.setState in webview (via the storage shim).
   React.useEffect(() => {
-    saveState({
-      treeFilter: filterToPersisted(treeFilter),
-      graphFilter: filterToPersisted(graphFilter),
-      treePins,
-      graphPins,
-      searchQuery,
+    const { tree, graph } = linked.state
+    saveState(STORAGE, {
+      treeFilter: filterToJSON(tree.filter),
+      graphFilter: filterToJSON(graph.filter),
+      treeChain: [...tree.axes],
+      graphChain: [...graph.axes],
+      treePins: locksToJSON(tree.locks),
+      graphPins: locksToJSON(graph.locks),
+      searchQuery: linked.search.query,
+      graphTheme,
+      ...(layout ? { graphLayout: layoutToJSON(layout) } : {}),
     })
-  }, [treeFilter, graphFilter, treePins, graphPins, searchQuery])
+  }, [linked.state, linked.search.query, graphTheme, layout])
 
   // Stale file cleanup: when the AST changes, remove any selectedFiles
   // entries that no longer exist in either view. Pins are not touched —
-  // a user who pinned the files dimension still has the dimension pinned
+  // a user who pinned the files axis still has the axis pinned
   // even if its contents shrink to empty.
   React.useEffect(() => {
     const allFiles = new Set<string>()
     for (const def of ast.definitions) {
       if (def.sourceFile) allFiles.add(def.sourceFile)
     }
-    const prune = (prev: FilterState): FilterState => {
-      const pruned = new Set([...prev.selectedFiles].filter(f => allFiles.has(f)))
-      if (pruned.size === prev.selectedFiles.size) return prev
-      return { ...prev, selectedFiles: pruned }
-    }
-    setTreeFilter(prune)
-    setGraphFilter(prune)
-  }, [ast.definitions])
+    updateFilters(filter => {
+      const pruned = new Set([...selectionFor(filter, SOURCE_FILE_DIMENSION)].filter(f => allFiles.has(f)))
+      if (pruned.size === selectionFor(filter, SOURCE_FILE_DIMENSION).size) return filter
+      return withSelection(filter, SOURCE_FILE_DIMENSION, pruned)
+    })
+  }, [ast.definitions, updateFilters])
 
   // Focused-file auto-tracking (Tree only, preserves prior behavior).
   // When the editor's focused file changes, narrow the Tree to it — but
-  // only when the Tree's files dimension is unpinned, since a pinned
+  // only when the Tree's files axis is unpinned, since a pinned
   // user explicitly opted out of tracking.
+  const treeFilePinned = lockedFor(linked.state.tree.locks, SOURCE_FILE_DIMENSION)
+  const treeShowsFiles = linked.state.tree.axes.includes(SOURCE_FILE_DIMENSION)
   React.useEffect(() => {
-    if (treePins.files) return
-    if (ast.focusedFile) {
-      setTreeFilter(prev => {
-        const next = new Set([ast.focusedFile!])
-        if (prev.selectedFiles.size === 1 && prev.selectedFiles.has(ast.focusedFile!)) return prev
-        return { ...prev, selectedFiles: next }
-      })
-    }
-  }, [ast.focusedFile, treePins.files])
+    if (treeFilePinned) return
+    // Do not repopulate an axis the Tree has removed — same reason a switch
+    // reconciles only the axes the destination shows.
+    if (!treeShowsFiles) return
+    const focused = ast.focusedFile
+    if (!focused) return
+    updateFilter('tree', filter => withSelection(filter, SOURCE_FILE_DIMENSION, new Set([focused])))
+    // Depends on the file axis's pin, NOT the whole AxisLocks. Widening it to
+    // the Map when pins became Maps meant pinning the KIND axis produced a new
+    // Map, re-ran this effect, and silently reset the Tree's file selection to
+    // the focused file.
+  }, [ast.focusedFile, treeFilePinned, treeShowsFiles, updateFilter])
 
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -262,7 +341,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // The single entry point for all view switches. Reads the transition
   // intent, runs the reconciler, applies the result, and flips the
   // active view. See spec § View Transitions.
-  const switchView = React.useCallback((target: ActiveView, transition: ViewTransition) => {
+  const switchView = React.useCallback((target: ActiveView, transition: HostTransition) => {
     // History mode has no Tree view; never switch to it (defensive — the
     // Tree tab button and "Show in Tree" affordances are hidden anyway).
     if (target === 'tree' && historyMode) return
@@ -270,27 +349,32 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // by construction (Show in [view] is always cross-view).
     if (target === activeView && transition.kind === 'manual') return
 
-    const dest = target === 'tree' ? treeFilter : graphFilter
-    const source = target === 'tree' ? graphFilter : treeFilter
-    const destPins = target === 'tree' ? treePins : graphPins
+    // A focus into the Graph: the hook switches to it and hands the view a
+    // request, which reconciles its own filter, flashes any lock it overrides
+    // and centres on the node. A target with no node in the graph is a manual
+    // switch.
+    if (target === 'graph' && transition.kind === 'focus') {
+      const { name, values } = transition.target
+      const node = model.graph.nodes.find(n =>
+        n.name === name && n.values[DEF_TYPE_DIMENSION] === values[DEF_TYPE_DIMENSION])
+      if (node) focus('graph', node)
+      else switchTo('graph')
+      setGraphEverShown(true)
+      return
+    }
 
-    const { filter: newFilter, overriddenPins } = reconcileFilter(dest, source, destPins, transition)
-
+    // Into the Tree, manual or focus: the hook reconciles the Tree's filter on
+    // the axes the Tree shows, and the locks a focus overrode reach the Tree's
+    // bar, which flashes them. Into the Graph (manual only, from here): the
+    // Graph adopts the Tree's selections except where it is locked.
     if (target === 'tree') {
-      if (newFilter !== dest) setTreeFilter(newFilter)
-      setTreeOverriddenPins(overriddenPins)
+      switchTo('tree', transition)
+      if (transition.kind === 'focus') setPendingFocus(transition.target)
     } else {
-      if (newFilter !== dest) setGraphFilter(newFilter)
-      setGraphOverriddenPins(overriddenPins)
+      switchTo('graph')
+      setGraphEverShown(true)
     }
-
-    if (transition.kind === 'focus') {
-      setPendingFocus({ name: transition.target.name, defType: transition.target.defType })
-    }
-
-    if (target === 'graph') setGraphEverShown(true)
-    setActiveView(target)
-  }, [activeView, treeFilter, graphFilter, treePins, graphPins, historyMode])
+  }, [activeView, historyMode, model.graph, switchTo, focus])
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
@@ -300,39 +384,35 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     const def = ast.definitions.find(d => d.name === name && d.type === defType)
     switchView('graph', {
       kind: 'focus',
-      target: { name, defType, sourceFile: def?.sourceFile },
+      target: {
+        name,
+        values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
+      },
     })
   }, [ast.definitions, switchView])
 
-  const showInTree = React.useCallback((name: string, defType: string) => {
+  const showInTree = React.useCallback((node: GraphNode) => {
+    const name = node.name
+    const defType = node.values[DEF_TYPE_DIMENSION] ?? ''
     const def = ast.definitions.find(d => d.name === name && d.type === defType)
     switchView('tree', {
       kind: 'focus',
-      target: { name, defType, sourceFile: def?.sourceFile },
+      target: {
+        name,
+        values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
+      },
     })
   }, [ast.definitions, switchView])
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
 
-  const handleSearchChange = React.useCallback((query: string, active: boolean) => {
-    setSearchQuery(query)
-    setSearchActive(active)
-  }, [])
-
-  const clearTreeOverriddenPins = React.useCallback(() => {
-    setTreeOverriddenPins(prev => prev.size === 0 ? prev : new Set())
-  }, [])
-  const clearGraphOverriddenPins = React.useCallback(() => {
-    setGraphOverriddenPins(prev => prev.size === 0 ? prev : new Set())
-  }, [])
-
   // When the Tree's file filter narrows to exactly one file, open it in
   // the editor (VS Code webview behavior).
   React.useEffect(() => {
-    if (treeFilter.selectedFiles.size === 1 && onOpenFile) {
-      onOpenFile(treeFilter.selectedFiles.values().next().value!)
+    if (selectionFor(treeFilter, SOURCE_FILE_DIMENSION).size === 1 && onOpenFile) {
+      onOpenFile(selectionFor(treeFilter, SOURCE_FILE_DIMENSION).values().next().value!)
     }
-  }, [treeFilter.selectedFiles, onOpenFile])
+  }, [selectionFor(treeFilter, SOURCE_FILE_DIMENSION), onOpenFile])
 
   // Compose outer container className/style so consumers can layer overrides
   // without losing the built-in layout class.
@@ -343,9 +423,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // manifest, which is exactly why it is the one that names a domain: the
     // engine below it resolves everything through the container and never
     // imports the entries.
-    <OntologyContext.Provider value={DEFAULT_ONTOLOGY}>
+    <TaxonomyContext.Provider value={DEFAULT_TAXONOMY}>
     <DefinitionContext.Provider value={context}>
-      <div className={shellClassName} style={style} onClick={onRefocus}>
+      <div className={shellClassName} style={{ ...schemeStyle, ...(style) }} onClick={onRefocus} ref={rootRef} data-theme={hostTheme}>
         <div className="tab-bar">
           {/* In history mode there's no AST to render as a tree, so the Tree
               tab is disabled rather than hidden — the wrapping span carries the
@@ -383,45 +463,44 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               active={activeView === 'tree'}
               ast={ast}
               onShowInGraph={showInGraph}
-              filter={treeFilter}
-              onFilterChange={setTreeFilter}
-              pins={treePins}
-              onPinsChange={setTreePins}
-              searchQuery={searchQuery}
-              searchActive={searchActive}
-              onSearchChange={handleSearchChange}
+              {...linked.of('tree')}
+              systemTheme={hostTheme}
               pendingFocus={pendingFocus}
               onFocusConsumed={clearPendingFocus}
-              overriddenPins={treeOverriddenPins}
-              onOverriddenPinsConsumed={clearTreeOverriddenPins}
             />
           </div>
         )}
         {graphEverShown && (
           <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
             <GraphView
-              active={activeView === 'graph'}
-              ast={ast}
-              parserGraph={graphInput}
-              decomposition={decomposition}
-              onRequestDecomposition={onRequestDecomposition}
-              onShowInTree={historyMode ? undefined : showInTree}
-              filter={graphFilter}
-              onFilterChange={setGraphFilter}
-              pins={graphPins}
-              onPinsChange={setGraphPins}
-              searchQuery={searchQuery}
-              searchActive={searchActive}
-              onSearchChange={handleSearchChange}
-              pendingFocus={pendingFocus}
-              onFocusConsumed={clearPendingFocus}
-              overriddenPins={graphOverriddenPins}
-              onOverriddenPinsConsumed={clearGraphOverriddenPins}
+              keyboard={activeView === 'graph' ? 'global' : 'none'}
+              graph={model.graph}
+              counts={graphCounts}
+              findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} />}
+              groups={nodeGroups}
+              groupsControl={active => (
+                <GroupsModal
+                  decomposition={decomposition}
+                  selection={groupSelection}
+                  onSelectionChange={setGroupSelection}
+                  hover={groupHover}
+                  onHover={setGroupHover}
+                  activeGroups={active}
+                  onRequestDecomposition={onRequestDecomposition}
+                />
+              )}
+              nodeAction={historyMode ? undefined : { label: 'Show in Tree', onSelect: showInTree }}
+              theme={graphTheme}
+              onThemeChange={setGraphTheme}
+              systemTheme={hostTheme}
+              defaultLayout={defaultLayout}
+              onLayoutChange={setLayout}
+              {...linked.of('graph')}
             />
           </div>
         )}
       </div>
     </DefinitionContext.Provider>
-    </OntologyContext.Provider>
+    </TaxonomyContext.Provider>
   )
 }

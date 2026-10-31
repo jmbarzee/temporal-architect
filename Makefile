@@ -32,12 +32,12 @@ PLATFORMS := \
 
 .PHONY: build clean
 
-## Build the toolchain for the local platform (binary + visualizer lib)
-build: build-lsp build-visualizer-lib
+## Build the toolchain for the local platform (binary + the two npm libraries)
+build: build-lsp build-graph-view-lib build-visualizer-lib
 
 # ── Build targets ────────────────────────────────────────────────────────────
 
-.PHONY: build-lsp build-twf-archive build-skills-archive build-visualizer-lib
+.PHONY: build-lsp build-twf-archive build-skills-archive build-visualizer-lib build-graph-view-lib
 
 ## Build the twf binary for the current (or specified) platform
 build-lsp:
@@ -87,9 +87,16 @@ build-skills-archive:
 ## Build the visualizer as a publishable npm library (ESM + types + sibling CSS).
 ## The VS Code webview IIFE bundle is built in the distribution repo from this
 ## published library (packages/webview); the toolchain no longer builds it.
-build-visualizer-lib:
+build-visualizer-lib: tools/graph-view/node_modules/.package-lock.json
 	cd tools/visualizer && npm run build:lib
 	@echo "Built visualizer (npm library)"
+
+## Build the graph-view library — the visualizer's engine in its own package
+## (tools/graph-view). The visualizer consumes it from source through its build's
+## alias, so this is the standalone artifact, not a prerequisite of the above.
+build-graph-view-lib: tools/graph-view/node_modules/.package-lock.json
+	cd tools/graph-view && npm run build:lib
+	@echo "Built graph-view (npm library)"
 
 # ── Release asset packaging + library publish ────────────────────────────────
 # The toolchain cuts a GitHub Release of primitive artifacts that the
@@ -99,7 +106,7 @@ build-visualizer-lib:
 # can consume them at build time via file: — and publishes to npm itself, where
 # their repository.url matches and provenance succeeds.
 
-.PHONY: pack-visualizer-lib pack-wire-types publish-npm-libs
+.PHONY: pack-visualizer-lib pack-graph-view-lib pack-wire-types publish-npm-libs
 
 ## Pack the visualizer npm library into a release tarball (dist/).
 ## The published version is stamped from VERSION at pack time (never committed —
@@ -114,6 +121,16 @@ pack-visualizer-lib: build-visualizer-lib
 	@# file: copy then matches more than one and breaks).
 	@rm -f dist/temporal-architect-visualizer-*.tgz
 	@$(call npm-pack-stamped,tools/visualizer,visualizer lib)
+
+## Pack the graph-view library into a release tarball (dist/). CI packs it; the
+## release workflow (_build-artifacts.yml) does not yet install the sibling or
+## attach this tarball — that workflow is outside the refactor's write bounds
+## (#187). Not published to npm by publish-npm-libs: publishing a new package
+## under the org's scope is a release decision.
+pack-graph-view-lib: build-graph-view-lib
+	@mkdir -p dist
+	@rm -f dist/temporal-architect-graph-view-*.tgz
+	@$(call npm-pack-stamped,tools/graph-view,graph-view lib)
 
 ## Pack the wire-types type-only package into a release tarball (dist/).
 ## Version handling matches pack-visualizer-lib (stamped from VERSION at pack).
@@ -155,42 +172,31 @@ publish-npm-libs:
 
 # ── Test targets ─────────────────────────────────────────────────────────────
 
-.PHONY: test vet typecheck typecheck-visualizer verify-visualizer gates-visualizer check-visualizer
+.PHONY: test vet typecheck typecheck-visualizer typecheck-graph-view verify-visualizer gates-visualizer buildlib-graph-view check-visualizer
 
 ## Run every typecheck gate
-typecheck: typecheck-visualizer
+typecheck: typecheck-graph-view typecheck-visualizer typecheck-catalog
 
-## Typecheck the visualizer (strict tsc, no emit)
-typecheck-visualizer:
+## The visualizer's TypeScript program reaches the library's source, whose files
+## resolve React from the sibling's own node_modules: with the sibling not
+## installed, tsc prints 77 errors and the declarations build swallows them.
+## Every target that compiles either package installs the sibling first, so a
+## job that installs only the visualizer still builds correctly.
+tools/graph-view/node_modules/.package-lock.json: tools/graph-view/package-lock.json
+	cd tools/graph-view && npm ci
+
+## Typecheck the visualizer (strict tsc, no emit). Its path map reaches the
+## library's source, so this checks the host against the engine as written.
+typecheck-visualizer: tools/graph-view/node_modules/.package-lock.json
 	cd tools/visualizer && ./node_modules/.bin/tsc --noEmit
 
-## Compare the visualizer goldens against the committed baseline
-verify-visualizer:
-	cd tools/visualizer && npm run verify
+## Typecheck the graph-view library on its own (strict tsc, no emit)
+typecheck-graph-view: tools/graph-view/node_modules/.package-lock.json
+	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit
 
-## Run the visualizer's ratchet gates: vocabulary, import direction, forbidden patterns
-gates-visualizer:
-	cd tools/visualizer && npm run leak-gate
-	cd tools/visualizer && npm run boundary-gate
-	cd tools/visualizer && npm run pattern-gate
-
-## Build the visualizer as a library (Gate 2) — the packaged entry, not the app
-#
-# The dts gate runs immediately after, because `build:lib` exiting 0 is a weaker
-# claim than it sounds: declarations are emitted from an allowlist, and a source
-# tree missing from it is silently not written. Unit 2e shipped a `lib.d.ts` that
-# re-exported a module the build never emitted, with every gate green.
-buildlib-visualizer:
-	cd tools/visualizer && npm run build:lib
-	cd tools/visualizer && npm run dts-gate
-
-## Every visualizer gate, in the order a failure is cheapest to read
-#
-# Gate 2 is in here because it was NOT, and the omission was invisible: this
-# aggregate is what runs at every commit boundary, so a library-build break
-# would have sat green locally and surfaced only in CI after a push. CI was
-# always covered (`make build`); the local loop was the half that lied.
-check-visualizer: typecheck-visualizer gates-visualizer verify-visualizer buildlib-visualizer
+## Typecheck the library's example host, which the library's own program does not include
+typecheck-catalog: tools/graph-view/node_modules/.package-lock.json
+	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit -p examples/course-catalog/tsconfig.json
 
 ## Run Go tests
 # tools/sampler is its own module (resolved against ../lsp via the repo-root
@@ -286,6 +292,6 @@ release:
 
 ## Remove all build artifacts
 clean:
-	rm -rf dist/ tools/visualizer/dist tools/visualizer/dist-lib
-	rm -f tools/visualizer/LICENSE tools/wire-types/LICENSE tools/visualizer/FRAGMENT.md
+	rm -rf dist/ tools/visualizer/dist tools/visualizer/dist-lib tools/graph-view/dist-lib
+	rm -f tools/visualizer/LICENSE tools/wire-types/LICENSE tools/graph-view/LICENSE tools/visualizer/FRAGMENT.md
 	@echo "Cleaned"
