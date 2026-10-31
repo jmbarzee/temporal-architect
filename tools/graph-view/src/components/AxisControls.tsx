@@ -10,7 +10,7 @@ import { TOKEN_CEILING, layoutAxisKey, mappedTuning, withOverride } from '../gra
 import type { ScalarSpan } from '../graph/scalar'
 import type { ResolvedAxis, ResolvedPhysics } from '../graph/forces'
 import { bandRangeFor, isScalarAxis } from '../graph/forces'
-import { useOntology } from './graph-view/useOntology'
+import { useTaxonomy } from './graph-view/useTaxonomy'
 import { bucketColor } from './controls/bucketColor'
 import { Plot } from './controls/Plot'
 import { Slider } from './controls/Slider'
@@ -81,7 +81,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const snap = (v: number, step: number) => Math.round(v / step) * step
 
 export function AxisControls({ axis, params, resolved, axes, present, onParamChange, onRelayout, hovered, onHover }: AxisControlsProps) {
-  const ontology = useOntology()
+  const taxonomy = useTaxonomy()
   const key = tuningKey(axis)
   const tuning: LayoutTuning = params[key]
   const table = axis === 'x' ? resolved.bandX : resolved.bandY
@@ -150,7 +150,7 @@ export function AxisControls({ axis, params, resolved, axes, present, onParamCha
           onBand={(bucket, next) => onParamChange(tuningPatch(axis, withOverride(mappedTuning(tuning), bucket, next)))}
           hovered={hovered}
           onHover={onHover}
-          color={bucket => bucketColor(ontology, mappedTuning(tuning).mapping, bucket)}
+          color={bucket => bucketColor(taxonomy, mappedTuning(tuning).mapping, bucket)}
         />
       )}
 

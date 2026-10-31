@@ -4,7 +4,7 @@
 // `./taxonomy`; what is here is only the values: which node types this domain
 // has, what they are called, how they are drawn and physically weighted. That
 // is the direction the dependency has to run. Nothing in the engine imports
-// this file — everything resolves through the `Ontology` built at the bottom —
+// this file — everything resolves through the `Taxonomy` built at the bottom —
 // which is what lets the whole thing move out of the library without the engine
 // noticing.
 //
@@ -37,18 +37,17 @@ export type NodeType =
   | 'nexusOperation'
   | 'activity'
 
-import { createOntology, payloadString } from '@temporal-architect/graph-view'
+import { createTaxonomy, payloadString } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type {
   GraphEdge,
   GraphNode,
   Highlight,
   HighlightGraph,
-  Ontology,
-  OntologySpec,
+  Taxonomy,
+  TaxonomySpec,
   NodeStyle,
-  ResolvedNodeStyle,
-  DimensionDescriptor,
+  AxisDescriptor,
   FilterChip,
 } from '@temporal-architect/graph-view'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
@@ -63,13 +62,13 @@ export const TEMPORAL_TYPE_DIMENSION = 'temporalType'
  * A node style plus the fields that are this domain's own: the kind the type
  * projects onto, the two tiers of the deployment model it sits on, and whether
  * its kind is selected when the view first opens. The library reads none of
- * them; it reaches the style through the `Ontology`.
+ * them; it reaches the style through the `Taxonomy`.
  */
 export interface TemporalNodeStyle extends NodeStyle {
   /**
    * The value this type projects onto the kind axis — what the kind chips
    * filter on. The adapter materializes it on each node at build time, so the
-   * engine reads it off the node's dimension map like any other axis and never
+   * engine reads it off the node's values like any other axis and never
    * learns that one axis is a function of another.
    */
   defType: string
@@ -86,7 +85,7 @@ export interface TemporalNodeStyle extends NodeStyle {
    * 'orchestrator' — callable units that orchestrate work
    * 'leaf'         — leaf execution units
    *
-   * Read only by the static golden; sizing and summary kind come from the
+   * Documentation of the hierarchy; sizing and summary kind come from the
    * explicit style fields rather than from switching on this.
    */
   tier: 'container' | 'host' | 'orchestrator' | 'leaf'
@@ -98,16 +97,12 @@ export interface TemporalNodeStyle extends NodeStyle {
   defaultVisible: boolean
 }
 
-// The horizontal rest band every type shares by default: what the one global X
-// window used to be. Per type now, so a host can give a type its own, and so
-// the X axis is the same kind of thing as the Y axis (T22).
-const X_WINDOW = { min: 0, max: 380 }
-
-// A registry entry: the style less the id its position gives it, and with every
-// field the library would default written out — this domain declares each one
-// per type, and what reads the registry (the theme, the static golden) takes
-// them as given instead of resolving them.
-type RegistryEntry = Omit<ResolvedNodeStyle, 'id'> & Pick<TemporalNodeStyle, 'defType' | 'ladder' | 'tier' | 'defaultVisible'>
+// A registry entry: the style less the id its position gives it. Every entry
+// names its abbreviation and glyph, which the control tokens and chips read
+// off it; the rest is declared only where it differs from the library's
+// default, so a reader wanting a resolved value goes through the taxonomy
+// (`styleOf`), not this object.
+type RegistryEntry = Omit<TemporalNodeStyle, 'id' | 'abbreviation' | 'icon'> & Required<Pick<NodeStyle, 'abbreviation' | 'icon'>>
 
 export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
   namespace: {
@@ -117,17 +112,16 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'namespaceDef',
     ladder: 'main',
     tier: 'container',
-    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#475569', border: '#1E293B' }, // slate-600
       dark:  { fill: '#94A3B8', border: '#475569' }, // slate-400
     },
-    size: { r: 20, iconSize: 18 },
+    size: { r: 20 },
     physics: {
       charge: -850,
       coreRadius: 85,
-      band: { x: X_WINDOW, y: { min: -340, max: -120 } },  // container band (shared with nexusEndpoint)
+      band: { y: { min: -340, max: -120 } },  // container band (shared with nexusEndpoint)
     },
     summaryKind: 'children',
   },
@@ -139,17 +133,16 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'nexusEndpointDef',
     ladder: 'nexus',
     tier: 'container',
-    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#9F1239', border: '#4C0519' }, // rose-900 — deep, sits just under namespace
       dark:  { fill: '#BE123C', border: '#881337' }, // rose-700 — lighter on dark
     },
-    size: { r: 15, iconSize: 14 },
+    size: { r: 15 },
     physics: {
       charge: -900,
       coreRadius: 64,
-      band: { x: X_WINDOW, y: { min: -340, max: -120 } },  // container band aligned with namespace
+      band: { y: { min: -340, max: -120 } },  // container band aligned with namespace
     },
     summaryKind: 'none',
   },
@@ -161,17 +154,16 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'workerDef',
     ladder: 'main',
     tier: 'host',
-    whenHidden: 'ascend',
     defaultVisible: true,
     color: {
       light: { fill: '#94A3B8', border: '#475569' }, // slate-400
       dark:  { fill: '#CBD5E1', border: '#64748B' }, // slate-300
     },
-    size: { r: 20, iconSize: 18 },
+    size: { r: 20 },
     physics: {
       charge: -770,
       coreRadius: 72,
-      band: { x: X_WINDOW, y: { min: -200, max: 120 } },   // host band (shared with nexusService)
+      band: { y: { min: -200, max: 120 } },   // host band (shared with nexusService)
     },
     summaryKind: 'children',
   },
@@ -183,17 +175,16 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'nexusServiceDef',
     ladder: 'nexus',
     tier: 'host',
-    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#DB2777', border: '#831843' }, // pink-600
       dark:  { fill: '#EC4899', border: '#9D174D' }, // pink-500
     },
-    size: { r: 20, iconSize: 18 },
+    size: { r: 20 },
     physics: {
       charge: -760,
       coreRadius: 54,
-      band: { x: X_WINDOW, y: { min: -200, max: 120 } },   // host band aligned with worker
+      band: { y: { min: -200, max: 120 } },   // host band aligned with worker
     },
     summaryKind: 'children',
   },
@@ -205,7 +196,6 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'workflowDef',
     ladder: 'main',
     tier: 'orchestrator',
-    whenHidden: 'ascend',
     defaultVisible: true,
     color: {
       light: { fill: '#8B7EC8', border: '#5D4F95' },
@@ -215,9 +205,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     physics: {
       charge: -360,
       coreRadius: 38,
-      band: { x: X_WINDOW, y: { min: 100, max: 460 } },    // orchestrator band (shared with nexusOperation)
+      band: { y: { min: 100, max: 460 } },    // orchestrator band (shared with nexusOperation)
     },
-    summaryKind: 'degree',
   },
 
   nexusOperation: {
@@ -237,9 +226,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     physics: {
       charge: -560,
       coreRadius: 58,
-      band: { x: X_WINDOW, y: { min: 100, max: 460 } },    // orchestrator band aligned with workflow
+      band: { y: { min: 100, max: 460 } },    // orchestrator band aligned with workflow
     },
-    summaryKind: 'degree',
   },
 
   activity: {
@@ -249,7 +237,6 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     defType: 'activityDef',
     ladder: 'main',
     tier: 'leaf',
-    whenHidden: 'ascend',
     defaultVisible: false,
     color: {
       light: { fill: '#7CB9E8', border: '#4A8BC2' },
@@ -259,9 +246,8 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, RegistryEntry> = {
     physics: {
       charge: -190,
       coreRadius: 20,
-      band: { x: X_WINDOW, y: { min: 170, max: 500 } },
+      band: { y: { min: 170, max: 500 } },
     },
-    summaryKind: 'degree',
   },
 }
 
@@ -307,7 +293,6 @@ const FALLBACK_NODE_STYLE: Omit<TemporalNodeStyle, 'id'> = {
   defType: 'unknownDef',
   ladder: 'main',
   tier: 'leaf',
-  whenHidden: 'ascend',
   defaultVisible: false,
   color: {
     light: { fill: '#CBD5E1', border: '#94A3B8' },
@@ -317,7 +302,7 @@ const FALLBACK_NODE_STYLE: Omit<TemporalNodeStyle, 'id'> = {
   physics: {
     charge: -300,
     coreRadius: 30,
-    band: { x: X_WINDOW, y: { min: 100, max: 460 } },
+    band: { y: { min: 100, max: 460 } },
   },
   summaryKind: 'none',
 }
@@ -357,31 +342,26 @@ const KIND_ABBREV: Record<string, string> = Object.fromEntries(
   ALL_NODE_TYPES.map(t => [NODE_TYPE_REGISTRY[t].defType, NODE_TYPE_REGISTRY[t].abbreviation]),
 )
 
-const FILTER_DIMENSIONS: DimensionDescriptor[] = [
+const FILTER_DIMENSIONS: AxisDescriptor[] = [
   {
     id: SOURCE_FILE_DIMENSION,
     label: 'File',
     // Quiet neutral tags, as an origin reads; the kind axis below wears the
-    // tinted chips (D67).
+    // tinted chips.
     presentation: 'tag',
     // Empty shows everything: adding the first file chip while the filter is
-    // off would otherwise activate the filter and hide every other file (T7).
+    // off would otherwise activate the filter and hide every other file.
     // A narrowing axis's defaults — a node with no file stays visible, a focus
     // expands only an active selection, a change reheats in place and keeps the
     // user's pan and zoom — are exactly the policies this axis wants.
     emptyMeans: 'all',
-    // One chip per file, in whatever order the graph yielded them.
-    chipsFor: values => values.map(v => ({
-      id: v,
-      label: v.split('/').pop() ?? v,
-      // The full path: the label is only the basename, and two files with the
-      // same basename in different directories are otherwise identical chips.
-      tooltip: v,
-      icon: '\u{1F4C4}',
-      values: [v],
-    })),
+    // One chip per file, in whatever order the graph yielded them, labelled by
+    // the basename and abbreviated from it.
     labelFor: v => v.split('/').pop() ?? v,
-    abbreviationFor: v => (v.split('/').pop() ?? v).slice(0, 2),
+    // The full path: the label is only the basename, and two files with the
+    // same basename in different directories are otherwise identical chips.
+    tooltipFor: v => v,
+    iconFor: () => '\u{1F4C4}',
   },
   {
     id: DEF_TYPE_DIMENSION,
@@ -414,7 +394,7 @@ function stripKindPrefix(s: string | undefined): string | undefined {
 }
 
 /**
- * The hover box's context line (D59, B35). The nexus values show their
+ * The hover box's context line. The nexus values show their
  * addressing metadata — `<parent context> · <task queue>` per the spec — read
  * from this domain's own payload keys, which the library never learns; every
  * other value shows its parent's name.
@@ -423,7 +403,7 @@ function contextLineFor(node: GraphNode, parent: GraphNode | undefined): string 
   const parentName = parent?.name
   const queue = payloadString(node, 'queue')
   const hostWorker = payloadString(node, 'worker')
-  switch (node.dimensions[TEMPORAL_TYPE_DIMENSION]) {
+  switch (node.values[TEMPORAL_TYPE_DIMENSION]) {
     case 'nexusEndpoint':
       // The namespace is the endpoint's containment parent; the queue is
       // intrinsic display metadata.
@@ -438,7 +418,7 @@ function contextLineFor(node: GraphNode, parent: GraphNode | undefined): string 
 }
 
 /**
- * The highlight for an active node (D59). An endpoint's highlight follows its
+ * The highlight for an active node. An endpoint's highlight follows its
  * routing metadata — every edge whose payload names it, and their visible
  * ends — instead of the dependency walk; a service's widens the walk with the
  * endpoints fronting its operations (the parser's nexusRoute edges, reached
@@ -446,7 +426,7 @@ function contextLineFor(node: GraphNode, parent: GraphNode | undefined): string 
  * (namespace, queue)); every other value takes the walk as it is.
  */
 function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph): Highlight {
-  const value = active.dimensions[TEMPORAL_TYPE_DIMENSION]
+  const value = active.values[TEMPORAL_TYPE_DIMENSION]
   if (value === 'nexusEndpoint') {
     const nodes = new Set<string>([active.id])
     const edges = new Set<string>()
@@ -465,13 +445,13 @@ function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph)
     const nodes = new Set(base.nodes)
     const operationIds = new Set<string>()
     for (const n of graph.visibleNodes) {
-      if (n.dimensions[TEMPORAL_TYPE_DIMENSION] === 'nexusOperation' && n.parentId === active.id) operationIds.add(n.id)
+      if (n.values[TEMPORAL_TYPE_DIMENSION] === 'nexusOperation' && n.parentId === active.id) operationIds.add(n.id)
     }
     for (const edge of graph.visibleEdges) {
       // Resolved from the target node, not from a copy cached on the edge:
       // graduation re-points edges, and a cached endpoint type survives the
       // re-pointing while being wrong about it.
-      if (graph.getNode(edge.targetId)?.dimensions[TEMPORAL_TYPE_DIMENSION] !== 'nexusEndpoint') continue
+      if (graph.getNode(edge.targetId)?.values[TEMPORAL_TYPE_DIMENSION] !== 'nexusEndpoint') continue
       if (!operationIds.has(edge.sourceId)) continue
       if (graph.visibleIds.has(edge.targetId)) {
         nodes.add(edge.targetId)
@@ -486,23 +466,23 @@ function highlightFor(active: GraphNode, base: Highlight, graph: HighlightGraph)
 
 /**
  * This domain's taxonomy, as a spec: exported so a variant can be built from it
- * (`createOntology({ ...DEFAULT_ONTOLOGY_SPEC, … })`) rather than by spreading
+ * (`createTaxonomy({ ...DEFAULT_TAXONOMY_SPEC, … })`) rather than by spreading
  * the built container, whose closures would still read these fields.
  */
-export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
-  styleDimension: TEMPORAL_TYPE_DIMENSION,
+export const DEFAULT_TAXONOMY_SPEC: TaxonomySpec = {
+  styleAxis: TEMPORAL_TYPE_DIMENSION,
   styleLabel: 'Type',
   // Declaration order is top of the hierarchy first.
-  values: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t] })),
-  filterDimensions: FILTER_DIMENSIONS,
+  styles: ALL_NODE_TYPES.map(t => ({ id: t, ...NODE_TYPE_REGISTRY[t] })),
+  filterAxes: FILTER_DIMENSIONS,
   edgeTypes: ALL_EDGE_TYPES,
-  resolveEdgeType: edgeTypeFor,
+  classifyEdge: edgeTypeFor,
   contextLine: contextLineFor,
   highlight: highlightFor,
   // Two graduated edges on one pair: the one carrying routing metadata
   // survives, in either edge order, so an endpoint's highlight still finds
   // the edge it routed. Every payload this host writes on a dependency edge
-  // is that metadata, so "carries a payload" is the whole test (D60, D66).
+  // is that metadata, so "carries a payload" is the whole test.
   collapse: (kept, candidate) => {
     const carries = (e: GraphEdge) => e.payload !== undefined && Object.keys(e.payload).length > 0
     return carries(candidate) && !carries(kept) ? candidate : kept
@@ -510,4 +490,4 @@ export const DEFAULT_ONTOLOGY_SPEC: OntologySpec = {
   fallbackStyle: FALLBACK_NODE_STYLE,
 }
 
-export const DEFAULT_ONTOLOGY: Ontology = createOntology(DEFAULT_ONTOLOGY_SPEC)
+export const DEFAULT_TAXONOMY: Taxonomy = createTaxonomy(DEFAULT_TAXONOMY_SPEC)
