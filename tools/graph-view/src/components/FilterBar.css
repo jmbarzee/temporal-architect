@@ -1,0 +1,423 @@
+/* Shared filter bar: canvas header, chips, search. The findings bars rendered under it are the host's. */
+/* === Canvas Header === */
+.gv-canvas-header {
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  /* No overflow clip: the add-axis menu hangs below the bar. */
+}
+
+/* Transition indicator: a subtle flash when the host says its data reloaded */
+.gv-canvas-header.refresh-flash {
+  animation: refreshFlash 0.6s ease;
+}
+
+@keyframes refreshFlash {
+  0% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+  30% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-ring), transparent), 0 1px 4px rgba(0, 0, 0, 0.06); }
+  100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+}
+
+
+/* --- Files Section --- */
+.gv-tag-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gv-tag-section.section-locked {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
+  box-shadow: inset 2px 0 0 var(--gv-accent);
+}
+
+.gv-tag-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gv-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--gv-color-border);
+  border-radius: 6px;
+  font-family: var(--gv-font-mono);
+  font-size: 13px;
+  color: var(--gv-color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.gv-tag:hover {
+  border-color: var(--gv-accent);
+  color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+}
+
+.gv-tag.selected {
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-active), transparent);
+  color: var(--gv-accent);
+  font-weight: 500;
+}
+
+/* Third state: no files selected → all files implicitly included */
+.gv-tag.all-included {
+  border-color: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-ring), transparent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
+  color: var(--gv-color-text-muted);
+}
+
+.gv-tag.all-included:hover {
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-active), transparent);
+  color: var(--gv-accent);
+}
+
+.gv-tag-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.gv-tag-label {
+  line-height: 1;
+}
+
+/* --- Header Divider --- */
+.gv-header-divider {
+  height: 1px;
+  background: var(--gv-color-border);
+  margin: 0;
+}
+
+/* --- Controls Section --- */
+.gv-header-controls-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  gap: 12px;
+}
+
+/* --- Search --- */
+.gv-header-search {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  border: 1px solid transparent;
+}
+
+.gv-header-search.active {
+  border-color: var(--gv-color-border);
+  background: var(--gv-inset-bg);
+}
+
+.gv-header-search-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--gv-color-text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.gv-header-search:not(.active) .gv-header-search-toggle {
+  border: 1px solid var(--gv-color-border);
+}
+
+.gv-header-search-toggle:hover {
+  color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+}
+
+.gv-header-search-input {
+  width: 200px;
+  height: 32px;
+  padding: 0 10px 0 2px;
+  border: none;
+  background: transparent;
+  font-family: var(--gv-font-mono);
+  font-size: 13px;
+  color: var(--gv-color-text);
+  outline: none;
+  animation: searchExpand 0.2s ease;
+}
+
+.gv-header-search-input::placeholder {
+  color: var(--gv-color-text-muted);
+  opacity: 0.6;
+}
+
+@keyframes searchExpand {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 200px;
+    opacity: 1;
+  }
+}
+
+/* --- Definition Type Toggles --- */
+.gv-chip-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gv-chip-section.section-locked {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
+  box-shadow: inset 2px 0 0 var(--gv-accent);
+}
+
+.gv-chip-row {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--gv-color-border);
+  border-radius: 6px;
+  font-family: var(--gv-font-sans);
+  font-size: 13px;
+  color: var(--gv-color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.gv-chip-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.gv-chip-label {
+  line-height: 1;
+}
+
+/* Definition-count badge on the file and type chips — a muted count of the
+   top-level definitions the chip represents (type counts respect the file
+   filter; file counts are per-file totals). */
+.gv-header-chip-count {
+  font-family: var(--gv-font-mono);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* All filter chips share the same hover / active recipe — the only thing
+   that varies per type is which palette variable drives the colour. The
+   --gv-chip-tint and --gv-chip-tint-bg pair is set per chip class below; the
+   shared rules read those vars so adding a new node type is "set the two
+   vars" not "duplicate fifteen lines of CSS". */
+.gv-chip:hover {
+  border-color: var(--gv-chip-tint, var(--gv-color-border));
+  color: var(--gv-chip-tint, var(--gv-color-text-muted));
+  background: var(--gv-chip-tint-bg-hover, transparent);
+}
+.gv-chip.active {
+  border-color: var(--gv-chip-tint, var(--gv-color-border));
+  color: var(--gv-chip-tint, var(--gv-color-text-muted));
+  background: var(--gv-chip-tint-bg-active, transparent);
+  font-weight: 500;
+}
+
+/* A chip's tint is the style value it borrows (inline `--gv-chip-tint`, set by
+   the bar from the themed root's --gv-node-<suffix>); its hover and active
+   backgrounds are that tint mixed down to the theme's tint percentages, so
+   the bar needs no per-kind rule, no literal palette and no dark rule. */
+.gv-chip {
+  --gv-chip-tint-bg-hover: color-mix(in srgb, var(--gv-chip-tint, var(--gv-color-text-muted)) var(--gv-accent-tint-hover), transparent);
+  --gv-chip-tint-bg-active: color-mix(in srgb, var(--gv-chip-tint, var(--gv-color-text-muted)) var(--gv-accent-tint-active), transparent);
+}
+
+
+/* Tiny badge on file chips / type toggles showing how many search
+   matches are hidden by that filter. */
+.gv-header-hidden-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  font-family: var(--gv-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.16);
+  border-radius: 8px;
+  line-height: 1;
+}
+
+/* Filter chip / toggle animation when changed by a focus transition's
+   reconciler expansion (~400ms). */
+.gv-tag.recently-changed,
+.gv-chip.recently-changed {
+  animation: filterChipFlash 0.45s ease;
+}
+
+@keyframes filterChipFlash {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gv-accent) 50%, transparent); }
+  40%  { box-shadow: 0 0 0 4px color-mix(in srgb, var(--gv-accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gv-accent) 0%, transparent); }
+}
+
+
+/* --- The axes shown: their controls ---------------------------
+   The axes shown are an ordered list; each section can be removed and a new
+   one appended. Deliberately neutral: these are structural affordances. */
+
+.gv-header-remove {
+  border: none;
+  background: transparent;
+  color: var(--gv-color-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+
+/* Revealed on hover so the bar stays quiet until the user reaches for it. */
+.gv-tag-section:hover .gv-header-remove,
+.gv-chip-section:hover .gv-header-remove,
+.gv-header-remove:focus-visible {
+  opacity: 1;
+}
+
+.gv-header-remove:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+  color: var(--gv-color-text);
+}
+
+.gv-header-add {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  position: relative;
+}
+
+/* The menu of axes to add, when more than one is available. */
+.gv-header-add-menu {
+  position: absolute;
+  top: 100%;
+  left: 6px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 4px;
+  background: var(--gv-color-surface);
+  border: 1px solid var(--gv-color-border);
+  border-radius: 6px;
+  box-shadow: var(--gv-tooltip-shadow);
+}
+
+.gv-header-add-menu-item {
+  border: 0;
+  background: transparent;
+  color: var(--gv-color-text);
+  text-align: left;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.gv-header-add-menu-item:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+}
+
+/* Also the no-axes state: with every axis removed the bar collapses
+   to this one button, which is the only way back. */
+.gv-header-add-button {
+  border: 1px dashed var(--gv-color-border);
+  background: transparent;
+  color: var(--gv-color-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+
+.gv-header-add-button:hover {
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-hover), transparent);
+  color: var(--gv-color-text);
+  border-style: solid;
+}
+
+/* An axis shown with nothing to offer. It still renders — an axis that
+   is filtering must always be visible and removable, and vanishing is what made
+   an unrecognised axis dangerous rather than merely unsupported. */
+.gv-header-axis-empty {
+  color: var(--gv-color-text-muted);
+  font-size: 11px;
+  font-style: italic;
+  padding: 3px 6px;
+}
+
+/* The axis's own name before its chips: a row reads as "Kind: …", not as a bare run of buttons. */
+.gv-header-axis-label {
+  color: var(--gv-color-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 4px 3px 2px;
+  align-self: center;
+  user-select: none;
+}
+
+/* The same third state on a chip-presentation axis: an `emptyMeans: 'all'`
+   axis with nothing selected is matching everything, whichever look it wears. */
+.gv-chip.all-included {
+  border-color: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-ring), transparent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-weak), transparent);
+  color: var(--gv-color-text-muted);
+}
+.gv-chip.all-included:hover {
+  border-color: var(--gv-accent);
+  background: color-mix(in srgb, var(--gv-accent) var(--gv-accent-tint-active), transparent);
+  color: var(--gv-accent);
+}

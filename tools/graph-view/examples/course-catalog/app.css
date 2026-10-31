@@ -1,0 +1,55 @@
+/* The shell's own chrome. It reads the library's tokens (--gv-color-*, --gv-font-*,
+   --gv-accent) and the scheme's per-value variables (--gv-node-<value>). */
+
+html, body, #root { height: 100%; margin: 0; }
+
+.catalog-app {
+  height: 100%;
+  display: flex;
+  background: var(--gv-color-bg);
+  color: var(--gv-color-text);
+  font-family: var(--gv-font-sans);
+}
+/* The themed elements are the view's root and the side panel, not this shell:
+   an ancestor's `data-theme` is what the view reads as the host's. */
+.catalog-pane [data-theme="dark"], .catalog-details[data-theme="dark"] { color-scheme: dark; }
+
+/* GraphView fills a flex column with a definite height. */
+.catalog-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.catalog-muted { color: var(--gv-color-text-muted); }
+
+.catalog-findings {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #92400E;
+  background: #FEF3C7;
+  border-top: 1px solid var(--gv-color-border);
+}
+[data-theme="dark"] .catalog-findings { color: #FCD34D; background: #3A2A0C; }
+.catalog-findings summary { cursor: pointer; }
+.catalog-findings ul { margin: 6px 0 2px; padding-left: 18px; }
+
+.catalog-details {
+  position: relative;
+  width: 300px;
+  flex: none;
+  padding: 16px;
+  overflow: auto;
+  font-size: 13px;
+  color: var(--gv-color-text);
+  background: var(--gv-color-surface);
+  border-left: 1px solid var(--gv-color-border);
+}
+.catalog-details h2 { margin: 2px 0 12px; font-size: 18px; }
+.catalog-details h3 { margin: 16px 0 6px; font-size: 13px; }
+.catalog-details dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 12px; }
+.catalog-details dt { color: var(--gv-color-text-muted); }
+.catalog-details dd { margin: 0; }
+.catalog-close { position: absolute; top: 8px; right: 8px; border: none; background: none; font-size: 18px; color: inherit; cursor: pointer; }
+.catalog-requires { list-style: none; margin: 0; padding: 0; }
+.catalog-requires li { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+.catalog-requires button { margin-left: auto; }
+.catalog-req { font-size: 11px; padding: 1px 6px; border-radius: 8px; border: 1px solid var(--gv-color-border); }
+.catalog-req-prerequisite { color: var(--gv-node-course); border-color: var(--gv-node-course); }
+.catalog-missing { margin-left: auto; color: #B91C1C; font-size: 11px; }
