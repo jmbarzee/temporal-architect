@@ -1,8 +1,8 @@
 // The layout state opened: what the view reads and writes, and the JSON
 // readers that build the engine's tunings. Nothing here is on the surface:
-// `ForceParams` and the force kernels are not part of any surface (D53, D62),
-// and `layout.ts` — the public half — calls in by value only, so its
-// declaration reaches none of this.
+// `ForceParams` and the force kernels are not part of any surface (DESIGN.md,
+// "The forces"), and `layout.ts` — the public half — calls in by value only,
+// so its declaration reaches none of this.
 
 import type { AxisId } from './axis'
 import { identityMapping } from './axis'

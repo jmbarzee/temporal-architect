@@ -174,7 +174,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
       id: pn.id,
       values: dimensionsFor(nodeType, ast?.sourceFile),
       name: displayNameFor(nodeType, name),
-      // Per-domain display metadata the library must not interpret (R3). The
+      // Per-domain display metadata the library must not interpret. The
       // tooltip reads these back out by name; nothing in the engine does.
       payload: {
         worker: pn.worker,
@@ -184,7 +184,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
       parentId: parentByChild.get(pn.id),
       // The parser's orphan flag becomes the library's ring; its definition
       // key, the key every deployment copy of one definition shares; its
-      // template holes, one `× {param}` badge each (D67).
+      // template holes, one `× {param}` badge each.
       ring: pn.orphan ? 'dashed' : undefined,
       copyKey: pn.definition,
       badges: pn.templateParams?.map(p => `× ${p}`),
@@ -197,7 +197,7 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
   // Y, and how" (GRAPH_VIEW.md § Edges), so repeated call sites fold into one
   // edge here and the first keeps its routing payload as the representative.
   // This fold is the host's: the library draws every edge it is given, two
-  // edges between one pair being two facts (D66). What is NOT folded is two
+  // edges between one pair being two facts. What is NOT folded is two
   // kinds between one pair — a call and a signal both show.
   const byId = nodesById(nodes)
   const seenEdges = new Set<string>()

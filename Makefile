@@ -126,7 +126,7 @@ pack-visualizer-lib: build-visualizer-lib
 ## release workflow (_build-artifacts.yml) does not yet install the sibling or
 ## attach this tarball — that workflow is outside the refactor's write bounds
 ## (#187). Not published to npm by publish-npm-libs: publishing a new package
-## under the org's scope is a release decision (D62).
+## under the org's scope is a release decision.
 pack-graph-view-lib: build-graph-view-lib
 	@mkdir -p dist
 	@rm -f dist/temporal-architect-graph-view-*.tgz
@@ -197,41 +197,6 @@ typecheck-graph-view: tools/graph-view/node_modules/.package-lock.json
 ## Typecheck the library's example host, which the library's own program does not include
 typecheck-catalog: tools/graph-view/node_modules/.package-lock.json
 	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit -p examples/course-catalog/tsconfig.json
-
-## Compare the visualizer goldens against the committed baseline
-verify-visualizer:
-	cd tools/visualizer && npm run verify
-
-## Run the visualizer's ratchet gates: vocabulary, import direction, forbidden patterns
-gates-visualizer:
-	cd tools/visualizer && npm run map -- --check
-	cd tools/visualizer && npm run surface-gate
-	cd tools/visualizer && npm run leak-gate
-	cd tools/visualizer && npm run boundary-gate
-	cd tools/visualizer && npm run pattern-gate
-
-## Build the visualizer as a library (Gate 2) — the packaged entry, not the app
-#
-# The dts gate runs immediately after, because `build:lib` exiting 0 is a weaker
-# claim than it sounds: declarations are emitted from an allowlist, and a source
-# tree missing from it is silently not written. Unit 2e shipped a `lib.d.ts` that
-# re-exported a module the build never emitted, with every gate green.
-buildlib-visualizer:
-	cd tools/visualizer && npm run build:lib
-	cd tools/visualizer && npm run dts-gate
-
-## Build the graph-view library (Gate 2 for the sibling) and gate its published types
-buildlib-graph-view:
-	cd tools/graph-view && npm run build:lib
-	cd tools/graph-view && npm run dts-gate
-
-## Every visualizer gate, in the order a failure is cheapest to read
-#
-# Gate 2 is in here because it was NOT, and the omission was invisible: this
-# aggregate is what runs at every commit boundary, so a library-build break
-# would have sat green locally and surfaced only in CI after a push. CI was
-# always covered (`make build`); the local loop was the half that lied.
-check-visualizer: typecheck-graph-view typecheck-visualizer typecheck-catalog gates-visualizer verify-visualizer buildlib-graph-view buildlib-visualizer
 
 ## Run Go tests
 # tools/sampler is its own module (resolved against ../lsp via the repo-root

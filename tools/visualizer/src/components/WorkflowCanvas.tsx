@@ -170,7 +170,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const [graphEverShown, setGraphEverShown] = React.useState(historyMode)
 
   // The Graph view's inputs, read here off the payload: the graph built from
-  // the parser's deployment graph, the findings, the chip counts (D61). The
+  // the parser's deployment graph, the findings, the chip counts. The
   // view builds none of them and never sees the AST or the parser graph. Read
   // before the filters below: the filter a view starts from is the library's
   // default over this graph, narrowed to the focused file when there is one.
@@ -187,7 +187,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // the default filter (narrowed to the focused file), the default locks and —
   // the hook's default — every declared axis in the host's declared order, so
   // "default displayed filters" is configurable by declaring a different
-  // taxonomy rather than by a setting (R17-R19). The Graph is shown first
+  // taxonomy rather than by a setting. The Graph is shown first
   // when there is no Tree to show.
   const linked = useLinkedViews({
     taxonomy: DEFAULT_TAXONOMY,
@@ -220,7 +220,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     setGroupHover(null)
   }, [decomposition])
   // Every node's deployment copies by their shared key, derived from the graph
-  // (D67); the group overlay maps a decomposition's members through it.
+  //; the group overlay maps a decomposition's members through it.
   const copies = React.useMemo(() => copyGroups(model.graph), [model.graph])
   const nodeGroups = React.useMemo(
     () => nodeGroupsOf(decomposition, groupSelection, groupHover, copies),
@@ -234,12 +234,12 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const [graphTheme, setGraphTheme] = React.useState<ThemeChoice>(() => themeChoiceOf(persisted.graphTheme))
   // The host's theme for the whole canvas, and the scheme in it, carried as
   // custom properties on the root so every chip and token — the tree's too —
-  // reads the taxonomy's colours, not a mounted stylesheet (D58). The graph
+  // reads the taxonomy's colours, not a mounted stylesheet. The graph
   // pane overrides both with its own choice.
   const rootRef = React.useRef<HTMLDivElement>(null)
   // The editor's theme when this runs as a webview, else whatever an ancestor
   // declares or the OS prefers; set on the root as `data-theme`, the one
-  // signal the library reads (D67).
+  // signal the library reads.
   const editorTheme = useEditorTheme()
   const detectedTheme = useHostTheme(rootRef)
   const hostTheme = editorTheme ?? detectedTheme

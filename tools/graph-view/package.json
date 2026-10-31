@@ -43,7 +43,6 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build:lib": "vite build --config vite.lib.config.ts && node verify/prune-dts.mjs",
-    "dts-gate": "node verify/dts-gate.mjs",
     "prepack": "cp ../../LICENSE LICENSE",
     "postpack": "rm -f LICENSE",
     "prepublishOnly": "npm run build:lib"

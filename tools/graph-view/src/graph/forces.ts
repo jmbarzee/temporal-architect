@@ -61,8 +61,7 @@ export const CORE_RADIUS_MIN = 2
  * *finite and bounded* — which is the guard's actual job, and the thing whose
  * absence produces a NaN four frames later or a hard throw — without inventing
  * a "non-participant" concept in the physics. Making absent values true
- * non-participants is a change to the force model, and is not made here. The
- * effect on neighbours is under golden, so the trade cannot drift silently.
+ * non-participants is a change to the force model, and is not made here.
  */
 export const ABSENT_VALUE_PHYSICS = {
   charge: 0,
@@ -396,8 +395,8 @@ export interface BandRing {
 }
 
 /**
- * The band overlay as data: what the canvas draws, decided here so a golden can
- * read it. Stripes only while that axis acts in cartesian; rings
+ * The band overlay as data: what the canvas draws, decided here, once.
+ * Stripes only while that axis acts in cartesian; rings
  * only while Y acts in radial — the same predicates the tick uses, so the
  * overlay never shows a force that does nothing. `colors` is the view's: one
  * per bucket, keyed by bucket id.
@@ -455,8 +454,7 @@ export function bandOverlay(
  * The overlay's stripes on one axis, as data: one per distinct band among the
  * buckets present, re-centred on the frame. Buckets that share a band share a
  * stripe (the default X window, two tiers on one Y band), so the overlay's
- * density reads as bands rather than bucket counts. Pure, so a golden can read
- * it.
+ * density reads as bands rather than bucket counts. Pure.
  */
 export function bandStripes(nodes: Iterable<PhysicsSubject>, axis: ResolvedAxis<BandRange>, center: number): BandStripe[] {
   const byBand = new Map<string, { lo: number; hi: number; buckets: string[] }>()

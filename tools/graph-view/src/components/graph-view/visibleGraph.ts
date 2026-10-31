@@ -6,9 +6,9 @@
 // pair), classifies every edge once on its original endpoints, and computes
 // per-node summaries and downstream-reach scores.
 //
-// Lifted out of the hook so it is callable without React: the golden harness
-// snapshots it directly, and the taxonomy arrives as a parameter, so both the
-// visibility predicate and the summary dispatch resolve through the container.
+// Lifted out of the hook so it is callable without React, and the taxonomy
+// arrives as a parameter, so both the visibility predicate and the summary
+// dispatch resolve through the container.
 //
 // Nothing here names a value: the hidden-node policy is the taxonomy's
 // (`whenHidden`), the summaries read its abbreviations, and which

@@ -229,7 +229,7 @@ export function TreeView({
     // `values` map. This used to be a second hand-written implementation of
     // both axes' empty/absent semantics, so a descriptor change moved the graph
     // and left the tree behind.
-    // Only the axes this view shows filter (D66), as in the graph view.
+    // Only the axes this view shows filter, as in the graph view.
     const filtered = ast.definitions.filter((def): def is Definition =>
       passesSelection({ filter, taxonomy, axes, node: { values: valuesOf(def) } }))
 

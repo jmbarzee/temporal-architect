@@ -34,8 +34,7 @@ component's rules.
 ## Quick start
 
 The smallest host: a taxonomy of two values and two edge types, a graph of
-three nodes, the view. The block below is compiled against the shipped
-declarations by the artifact gate, so it cannot drift from the surface.
+three nodes, the view. The block below is the whole of it.
 
 ```tsx
 import { createTaxonomy, GraphView } from '@temporal-architect/graph-view'

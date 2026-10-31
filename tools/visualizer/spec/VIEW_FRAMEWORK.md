@@ -38,7 +38,7 @@ A `mirror` intent (force one view's filters onto the other, ignoring pins) is de
 
 The reconciler is the single function responsible for producing the destination view's filter state on every switch. Its signature, conceptually:
 
-    reconcileFilter({ destination, source, locks, transition, taxonomy, axes }) → { filter, overriddenLocks }   // axes: the ids the destination view shows (D78); `useLinkedViews` makes this call
+    reconcileFilter({ destination, source, locks, transition, taxonomy, axes }) → { filter, overriddenLocks }   // axes: the ids the destination view shows; `useLinkedViews` makes this call
 
 It is the only consumer of `ViewTransition`. Switch-trigger code at the call sites is responsible for naming the intent; the reconciler owns the rules. This collapses the previously-duplicated filter-expansion logic in `TreeView` and `GraphView` into one shared module.
 
@@ -66,7 +66,7 @@ The "Show in [view]" action is a contextual action available on any identifiable
    - **Graph View:** Centre the viewport on the target node and reheat so the layout settles around it. Framing the immediate neighbours, locking the viewport until the simulation stabilises, and the flash of step 5 are deferred — [#183](https://github.com/jmbarzee/temporal-architect/issues/183).
 5. **Flash target** (deferred, #183) — After the view has settled, briefly highlight the target item (a pulse or glow effect) to draw the eye.
 
-For the Graph view as destination, steps 2 to 4 are the view's own: the shell switches the tab, finds the node (the first deployment copy whose name and kind match) and calls `focusNode(id)` on the view's ref, which reconciles on the axes it shows, flashes the pins it overrode, and centres on and selects the node once the layout has settled (D71). The Tree view's steps stay the shell's, through `reconcileFilter` and the tree's own pending-focus state.
+For the Graph view as destination, steps 2 to 4 are the view's own: the shell switches the tab, finds the node (the first deployment copy whose name and kind match) and calls `focusNode(id)` on the view's ref, which reconciles on the axes it shows, flashes the pins it overrode, and centres on and selects the node once the layout has settled. The Tree view's steps stay the shell's, through `reconcileFilter` and the tree's own pending-focus state.
 
 ### Orientation
 
@@ -81,7 +81,7 @@ Filters remain authoritative. `focus(target)` never bypasses filters silently �
 
 ## Unified Filter Bar
 
-Both views display the same filter bar, rendered from the host's declared filter axes (R6, R14, R19) as the view's **axes** — those shown, in order, editable per view (R17): each axis is a row of chips with its lock and a `×`, shown on hover, that removes it (and stops it filtering); a `+` appears when a declared axis is not shown and adds it — a menu of them when several are available (D78); with every axis removed the bar is just `+` and the search (R18). The default axes are the host's declared order, File then Kind, so the `+` is absent by default.
+Both views display the same filter bar, rendered from the host's declared filter axes as the view's **axes** — those shown, in order, editable per view: each axis is a row of chips with its lock and a `×`, shown on hover, that removes it (and stops it filtering); a `+` appears when a declared axis is not shown and adds it — a menu of them when several are available; with every axis removed the bar is just `+` and the search. The default axes are the host's declared order, File then Kind, so the `+` is absent by default.
 
 ```
 [file chips...]                                          🔒 (×)
@@ -110,7 +110,7 @@ This design satisfies two competing intuitions:
 
 ### Per-Axis Pinning
 
-In the library's API a pinned axis is a **lock** — `locks` / `onLocksChange` on the views and the bar, `AxisLocks`, `lockedFor`, `withLock`, `overriddenLocks` — so that "pinned" names one thing, a node held in place (D76). This document keeps the product's word, pin, for the toggle the user sees.
+In the library's API a pinned axis is a **lock** — `locks` / `onLocksChange` on the views and the bar, `AxisLocks`, `lockedFor`, `withLock`, `overriddenLocks` — so that "pinned" names one thing, a node held in place. This document keeps the product's word, pin, for the toggle the user sees.
 
 Each axis section in a view's filter bar carries a **pin icon**. A pin freezes its axis at its current value:
 
@@ -120,7 +120,7 @@ Each axis section in a view's filter bar carries a **pin icon**. A pin freezes i
 
 `focus(target)` transitions may override a pin to expose the target (per § View Transitions). The pin state itself is not changed by the override; only that one transition bypasses it. The filter bar animation in step 3 of the `focus` sequence visibly flashes the overridden pin so the user sees what was bypassed.
 
-**Pin persistence:** pins are persisted with the rest of the pane's state — both views' filters, chains and pins, the search query, the graph's theme choice — under one versioned key (`localStorage` in the standalone app, the webview's `setState` in VS Code); a state of another version is discarded whole (D4). Pins also survive AST live-reload (see § Live Reload).
+**Pin persistence:** pins are persisted with the rest of the pane's state — both views' filters, chains and pins, the search query, the graph's theme choice — under one versioned key (`localStorage` in the standalone app, the webview's `setState` in VS Code); a state of another version is discarded whole. Pins also survive AST live-reload (see § Live Reload).
 
 ### Search Scope
 

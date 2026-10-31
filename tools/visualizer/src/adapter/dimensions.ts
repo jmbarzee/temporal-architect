@@ -1,6 +1,6 @@
 // This host's filter axes, by id. The library declares only `relation`, the
 // edge axis its engine reads; every node axis is the host's own, and these
-// two are the ones this host filters on (D67). The ids are the strings the
+// two are the ones this host filters on. The ids are the strings the
 // persisted filter state is keyed by, so they are unchanged from when the
 // library declared them.
 

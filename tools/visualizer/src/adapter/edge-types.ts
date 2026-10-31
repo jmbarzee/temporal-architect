@@ -22,7 +22,7 @@ import type { NodeType } from './node-types'
 
 /**
  * This host's second edge axis: the parser's call kind, written by `buildGraph`
- * and read by the edge rules below — and by nothing in the library (D64). A
+ * and read by the edge rules below — and by nothing in the library. A
  * containment edge carries none; it dispatches nothing.
  */
 export const DISPATCH_DIMENSION: AxisId = 'dispatch'
@@ -54,7 +54,7 @@ export type EdgeTypeId =
  * a while, once here and once in the library, structurally identical and
  * therefore silently interchangeable; the moment they drifted by one optional
  * field, the mismatch would have surfaced as a value quietly missing at one end
- * rather than as a type error (T19).
+ * rather than as a type error.
  */
 export interface TemporalEdgeType extends EdgeType {
   id: EdgeTypeId
