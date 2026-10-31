@@ -551,6 +551,7 @@ func Resolve(file *ast.File) []*ResolveError {
 					promises:   map[string]*ast.PromiseStmt{},
 					params:     ast.ParamNames(op.Params),
 				}
+				s.checkReservedIn(svc.SourceFile, []paramList{{op.Pos, op.Params}}, nil, [][]ast.Statement{op.Body})
 				syncCtx.resolveStatements(op.Body)
 			}
 		}
@@ -857,7 +858,7 @@ func (c *resolveCtx) resolveTypeSend(s *ast.SignalSendStmt) {
 	}
 	h.Type.Resolved = wf
 
-	if !declaresSignal(wf, s.Signal) {
+	if !wf.DeclaresSignal(s.Signal) {
 		c.errorf(ErrUndefinedSignal, s.Pos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wf.Name)
 	}
 	if h.Address != nil && h.Address.ID.Kind == ast.IDLiteral {
@@ -912,20 +913,11 @@ func (c *resolveCtx) resolveHandleSend(s *ast.SignalSendStmt) {
 		return
 	}
 
-	if declaresSignal(wt.Workflow.Resolved, s.Signal) {
+	if wt.Workflow.Resolved.DeclaresSignal(s.Signal) {
 		handle.Resolved = promise
 		return
 	}
 	c.errorf(ErrSignalSendUndefinedSignal, s.Pos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wt.Workflow.Resolved.Name)
-}
-
-func declaresSignal(wf *ast.WorkflowDef, name string) bool {
-	for _, sig := range wf.Signals {
-		if sig.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // errorf appends an error-severity ResolveError attributed to the enclosing
@@ -947,9 +939,39 @@ func (c *resolveCtx) errorf(kind ErrorKind, pos ast.Pos, name, format string, ar
 // the parent execution, never a variable.
 const reservedName = "parent"
 
+// paramList is an opaque parameter list and where it is declared.
+type paramList struct {
+	ast.Pos
+	params string
+}
+
 // checkReservedNames reports `parent` declared anywhere in a workflow — its
-// params, a handler's params, a condition, a promise, or a `->` binding.
+// params, a handler's params, a condition, or anything its bodies bind.
 func (s *state) checkReservedNames(wf *ast.WorkflowDef) {
+	params := []paramList{{wf.Pos, wf.Params}}
+	var conditions []*ast.ConditionDecl
+	if wf.State != nil {
+		conditions = wf.State.Conditions
+	}
+	var bodies [][]ast.Statement
+	for _, sig := range wf.Signals {
+		params = append(params, paramList{sig.Pos, sig.Params})
+		bodies = append(bodies, sig.Body)
+	}
+	for _, q := range wf.Queries {
+		params = append(params, paramList{q.Pos, q.Params})
+		bodies = append(bodies, q.Body)
+	}
+	for _, u := range wf.Updates {
+		params = append(params, paramList{u.Pos, u.Params})
+		bodies = append(bodies, u.Body)
+	}
+	s.checkReservedIn(wf.SourceFile, params, conditions, append(bodies, wf.Body))
+}
+
+// checkReservedIn reports `parent` named by a param, a condition, a promise, a
+// loop variable, or a `->` binding in bodies.
+func (s *state) checkReservedIn(file string, params []paramList, conditions []*ast.ConditionDecl, bodies [][]ast.Statement) {
 	report := func(pos ast.Pos, what string) {
 		s.errs = append(s.errs, &ResolveError{
 			Msg:    fmt.Sprintf("%q is reserved and cannot name a %s; `id: parent` addresses the parent execution", reservedName, what),
@@ -957,13 +979,8 @@ func (s *state) checkReservedNames(wf *ast.WorkflowDef) {
 			Column: pos.Column,
 			Kind:   ErrReservedName,
 			Name:   reservedName,
-			File:   wf.SourceFile,
+			File:   file,
 		})
-	}
-	checkParams := func(pos ast.Pos, params string) {
-		if ast.ParamNames(params)[reservedName] {
-			report(pos, "param")
-		}
 	}
 	checkBinding := func(pos ast.Pos, binding string) {
 		if binding != "" && ast.IDPathRoot(binding) == reservedName {
@@ -971,34 +988,26 @@ func (s *state) checkReservedNames(wf *ast.WorkflowDef) {
 		}
 	}
 
-	checkParams(wf.Pos, wf.Params)
-	if wf.State != nil {
-		for _, cond := range wf.State.Conditions {
-			if cond.Name == reservedName {
-				report(cond.Pos, "condition")
-			}
+	for _, pl := range params {
+		if ast.ParamNames(pl.params)[reservedName] {
+			report(pl.Pos, "param")
 		}
 	}
-	var bodies [][]ast.Statement
-	for _, sig := range wf.Signals {
-		checkParams(sig.Pos, sig.Params)
-		bodies = append(bodies, sig.Body)
+	for _, cond := range conditions {
+		if cond.Name == reservedName {
+			report(cond.Pos, "condition")
+		}
 	}
-	for _, q := range wf.Queries {
-		checkParams(q.Pos, q.Params)
-		bodies = append(bodies, q.Body)
-	}
-	for _, u := range wf.Updates {
-		checkParams(u.Pos, u.Params)
-		bodies = append(bodies, u.Body)
-	}
-	bodies = append(bodies, wf.Body)
 	for _, body := range bodies {
 		ast.WalkStatements(body, func(st ast.Statement) bool {
 			switch st := st.(type) {
 			case *ast.PromiseStmt:
 				if st.Name == reservedName {
 					report(st.Pos, "promise")
+				}
+			case *ast.ForStmt:
+				if ast.ParamNames(st.Variable)[reservedName] {
+					report(st.Pos, "loop variable")
 				}
 			case *ast.ActivityCall:
 				checkBinding(st.Pos, st.Result)

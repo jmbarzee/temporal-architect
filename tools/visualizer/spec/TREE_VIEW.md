@@ -254,7 +254,7 @@ Statements are rendered by `StatementBlock` which routes to specialized block co
 | Continue | `continue` | Subtle grey |
 | Comment | `comment` | Light grey |
 
-- **Signal send** shows its head — a handle, or a workflow type (package-qualified when the source qualifies it) — then `.Signal(args)`. A type head's address trails as a muted summary: `id: "<literal>"`, `id: parent`, or `id: <name>`, followed by `run_id: <name>` when pinned. A resolved send offers a jump to the target workflow; an unresolved one gets the `?` badge.
+- **Signal send** shows its head — a handle, or a workflow type (package-qualified when the source qualifies it) — then `.Signal(args)`. A type head's address trails as a muted summary: `id: "<literal>"`, `id: parent`, or `id: <name>`, followed by `run_id: <name>` when pinned. A resolved send offers a jump to the target workflow; an unresolved one gets the `?` badge, except an external head (through an import of a package outside the tree), which is carried unchecked and marked neither way.
 
 
 ## Cross-reference resolution

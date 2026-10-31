@@ -415,6 +415,11 @@ export interface SendHeadJSON {
   type?: string;
   handle?: string;
   address?: AddressJSON;
+  /**
+   * External is set on a type head through an import of a package absent
+   * from the tree: carried unchecked, so its target is never resolved.
+   */
+  external?: boolean;
 }
 /**
  * AddressJSON is the id: / run_id: block under a type-headed send.

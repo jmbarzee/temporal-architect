@@ -780,10 +780,11 @@ func marshalComment(s *Comment) (json.RawMessage, error) {
 func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
 	h := s.Head
 	hj := SendHeadJSON{
-		Kind:    string(h.Kind),
-		Line:    h.Line,
-		Column:  h.Column,
-		Address: marshalAddress(h.Address),
+		Kind:     string(h.Kind),
+		Line:     h.Line,
+		Column:   h.Column,
+		Address:  marshalAddress(h.Address),
+		External: h.External,
 	}
 	if h.Kind == SendHeadType {
 		hj.Package, hj.Type = h.Type.Package, h.Type.Name
@@ -1146,6 +1147,9 @@ type SendHeadJSON struct {
 	Type    string       `json:"type,omitempty"`
 	Handle  string       `json:"handle,omitempty"`
 	Address *AddressJSON `json:"address,omitempty"`
+	// External is set on a type head through an import of a package absent
+	// from the tree: carried unchecked, so its target is never resolved.
+	External bool `json:"external,omitempty"`
 }
 
 // AddressJSON is the id: / run_id: block under a type-headed send.

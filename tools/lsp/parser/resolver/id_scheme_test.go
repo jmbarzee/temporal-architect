@@ -114,6 +114,14 @@ func TestReservedNameDeclarations(t *testing.T) {
         condition parent
     activity Do(x)
 `,
+		"loop variable": `workflow W(items: Items):
+    for (parent in items):
+        activity Do(parent)
+`,
+		"sync nexus param": `nexus service Svc:
+    sync Op(parent: P) -> (R):
+        activity Do(parent)
+`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, e := range Resolve(mustParse(t, input)) {

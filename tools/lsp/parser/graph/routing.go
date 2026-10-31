@@ -132,7 +132,7 @@ func (g *Graph) emitWorkflowCall(
 // (fire-and-forget, no task_queue override), mirroring the asyncBacking edge.
 //
 // The target is the type head's resolved type, or the workflow a handle's
-// promise was started against (resolved only when the send is fully valid).
+// promise was started against, and only when it declares the signal.
 // When it is unresolved no edge is drawn and an Unresolved entry is recorded
 // instead of silently dropping the send; a type head through an import of a
 // package absent from the tree is recorded with Reason "external".
@@ -143,6 +143,7 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 		if s.Head.Kind == ast.SendHeadType {
 			u.Name = s.Head.Type.Name
 			if s.Head.External {
+				u.Name = s.Head.Type.Package + "." + u.Name
 				u.Reason = UnresolvedExternal
 			}
 		}

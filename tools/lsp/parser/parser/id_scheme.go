@@ -96,6 +96,9 @@ func isWorkflowStart(s ast.Statement) bool {
 	case *ast.PromiseStmt:
 		_, ok := s.Target.(*ast.WorkflowTarget)
 		return ok
+	case *ast.AwaitStmt:
+		_, ok := s.Target.(*ast.WorkflowTarget)
+		return ok
 	}
 	return false
 }

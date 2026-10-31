@@ -82,6 +82,26 @@ func TestAddressedSendParses(t *testing.T) {
 }
 
 // TestIDParseDiagnostics covers every parse-level code from the ID-scheme spec.
+func TestCommentAboveAddress(t *testing.T) {
+	input := `workflow W(a: A):
+    signal Child.Go()
+        # the child
+        id: "c-{a}"
+    close complete
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	body := file.Definitions[0].(*ast.WorkflowDef).Body
+	if len(body) != 2 {
+		t.Fatalf("body = %d statements, want the send and the close", len(body))
+	}
+	if a := body[0].(*ast.SignalSendStmt).Head.Address; a == nil || a.ID.Literal != "c-{a}" {
+		t.Errorf("address under a comment = %+v", a)
+	}
+}
+
 func TestIDParseDiagnostics(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -128,6 +148,10 @@ func TestIDParseDiagnostics(t *testing.T) {
     signal T.S()
         id: 42
 `, CodeIDValueMalformed},
+		{"id is a path under parent", `workflow W(a: A):
+    signal T.S()
+        id: parent.x
+`, CodeIDValueMalformed},
 		{"id literal stray brace", `workflow W(a: A):
     signal T.S()
         id: "t-{a"
@@ -142,6 +166,10 @@ func TestIDParseDiagnostics(t *testing.T) {
 `, CodeIDAtStart},
 		{"id under a promise-bound start", `workflow W(a: A):
     promise t <- workflow T(a)
+        id: "t-{a}"
+`, CodeIDAtStart},
+		{"id under an awaited start", `workflow W(a: A):
+    await workflow T(a)
         id: "t-{a}"
 `, CodeIDAtStart},
 		{"id after a start's options", `workflow W(a: A):

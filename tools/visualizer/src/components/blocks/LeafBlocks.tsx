@@ -142,21 +142,24 @@ export function SetBlock({ stmt }: { stmt: SetStmt }) {
 // the receiver's handler running, so there is no result to expand into. The
 // resolver follows the head to its target workflow; when it resolves we offer
 // a jump to that definition, and when it doesn't we mark it unresolved the same
-// way call blocks do. A type head's address trails the signature as a summary.
+// way call blocks do — unless the head is external, carried unchecked through an
+// import of a package outside the tree. A type head's address trails the
+// signature as a summary.
 export function SignalSendBlock({ stmt }: { stmt: SignalSendStmt }) {
   const target = stmt.resolved?.name
+  const unresolved = !target && !stmt.head.external
   const signature = `${formatSendHead(stmt.head)}.${stmt.signal}(${stmt.args || ''})`
   const address = stmt.head.address && formatAddress(stmt.head.address)
 
   return (
-    <div className={`block block-signal-send collapsed ${!target ? 'block-unresolved' : ''}`}>
+    <div className={`block block-signal-send collapsed ${unresolved ? 'block-unresolved' : ''}`}>
       {target && <ContextualNavButtons showDefinition={{ name: target, type: 'workflowDef' }} />}
       <div className="block-header">
         <span className="block-toggle-placeholder" />
         <span className="block-keyword">signal</span>
         <span className="block-signature" title={signature}>{signature}</span>
         {address && <span className="block-summary" title={address}>{address}</span>}
-        {!target && <span className="block-unresolved-badge">?</span>}
+        {unresolved && <span className="block-unresolved-badge">?</span>}
       </div>
     </div>
   )

@@ -538,12 +538,25 @@ type IDValue struct {
 
 func (*SignalSendStmt) stmtNode() {}
 
+// DeclaresSignal reports whether the workflow declares a signal handler name.
+func (wf *WorkflowDef) DeclaresSignal(name string) bool {
+	for _, sig := range wf.Signals {
+		if sig.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // Target returns the workflow definition a send reaches: a type head's resolved
 // type, or the resolved workflow a handle's promise was started against. Nil
-// when the head did not resolve.
+// when the head did not resolve, or its type does not declare the signal.
 func (s *SignalSendStmt) Target() *WorkflowDef {
 	if s.Head.Kind == SendHeadType {
-		return s.Head.Type.Resolved
+		if wf := s.Head.Type.Resolved; wf != nil && wf.DeclaresSignal(s.Signal) {
+			return wf
+		}
+		return nil
 	}
 	if s.Head.Handle.Resolved == nil {
 		return nil

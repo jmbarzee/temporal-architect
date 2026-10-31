@@ -110,16 +110,27 @@ func (p *Parser) parseOptionalAddress() (*ast.Address, error) {
 		return nil, nil
 	}
 	switch {
-	case p.peek.Type == token.OPTIONS:
-		p.advance()
-		return nil, p.codedErrorf(CodeAddressMisplaced, "a signal send takes no options:")
-	case p.peek.Type == token.IDENT && p.peek.Literal == "run_id":
-		p.advance()
-		return nil, p.codedErrorf(CodeAddressMisplaced, "run_id: follows an id: line")
-	case p.peek.Type != token.IDENT || p.peek.Literal != "id":
+	case p.peek.Type == token.COMMENT:
+		// Comments may sit above the address; nothing else is indented under a send.
+		p.advance() // consume INDENT
+		p.skipBlankLinesAndComments()
+		if p.current.Type == token.DEDENT {
+			p.advance()
+			return nil, nil
+		}
+	case p.peek.Type == token.OPTIONS || isAddressKey(p.peek):
+		p.advance() // consume INDENT
+	default:
 		return nil, nil
 	}
-	p.advance() // consume INDENT
+	switch {
+	case p.current.Type == token.OPTIONS:
+		return nil, p.codedErrorf(CodeAddressMisplaced, "a signal send takes no options:")
+	case p.current.Type == token.IDENT && p.current.Literal == "run_id":
+		return nil, p.codedErrorf(CodeAddressMisplaced, "run_id: follows an id: line")
+	case p.current.Type != token.IDENT || p.current.Literal != "id":
+		return nil, p.errorf("unexpected %q indented under a signal send", p.current.Literal)
+	}
 
 	addr := &ast.Address{Pos: ast.Pos{Line: p.current.Line, Column: p.current.Column}}
 	p.advance() // consume `id`
@@ -136,7 +147,10 @@ func (p *Parser) parseOptionalAddress() (*ast.Address, error) {
 		}
 		id.Kind, id.Literal, id.Parts = ast.IDLiteral, p.current.Literal, holes
 		p.advance()
-	case p.current.Type == token.IDENT && p.current.Literal == "parent" && p.peek.Type != token.DOT:
+	case p.current.Type == token.IDENT && p.current.Literal == "parent":
+		if p.peek.Type == token.DOT {
+			return nil, p.codedErrorf(CodeIDValueMalformed, "parent is reserved: id: parent takes no path")
+		}
 		if p.inSyncNexus {
 			return nil, p.codedErrorf(CodeAddressMisplaced, "id: parent is not allowed in a sync nexus operation body; it has no parent workflow")
 		}

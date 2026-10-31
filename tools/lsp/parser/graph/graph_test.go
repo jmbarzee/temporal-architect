@@ -515,6 +515,42 @@ namespace ecommerce:
 	}
 }
 
+// TestTypeHeadUndeclaredSignalUnresolved verifies a type head whose type does
+// not declare the signal draws no edge, as a handle head's does not.
+func TestTypeHeadUndeclaredSignalUnresolved(t *testing.T) {
+	src := `
+workflow Notifier(orderId: string):
+    signal ProcessPayment.Nope(orderId)
+        id: orderId
+
+workflow ProcessPayment(order: string) -> (string):
+    return order
+
+worker sagaWorker:
+    workflow Notifier
+    workflow ProcessPayment
+
+namespace ecommerce:
+    worker sagaWorker
+        options:
+            task_queue: "orders"
+`
+	file, parseErrs := parser.ParseFileAll(src)
+	if len(parseErrs) > 0 {
+		t.Fatalf("parse: %v", parseErrs[0])
+	}
+	resolver.Resolve(file) // reports UNDEFINED_SIGNAL
+	g := Extract(file)
+	for _, e := range g.Edges {
+		if e.Kind == EdgeSignalSend {
+			t.Errorf("expected no signalSend edge, got %+v", e)
+		}
+	}
+	if len(g.Unresolved) != 1 || g.Unresolved[0].Name != "ProcessPayment" {
+		t.Errorf("expected one Unresolved for ProcessPayment, got %+v", g.Unresolved)
+	}
+}
+
 // TestExternalTypeHeadUnresolvedReason verifies a type head through an import
 // of an absent package is recorded as Unresolved with Reason "external".
 func TestExternalTypeHeadUnresolvedReason(t *testing.T) {
@@ -540,7 +576,7 @@ namespace ns:
 	}
 	resolver.Resolve(file)
 	g := Extract(file)
-	if len(g.Unresolved) != 1 || g.Unresolved[0].Name != "ShipItem" || g.Unresolved[0].Reason != UnresolvedExternal {
-		t.Fatalf("expected one external Unresolved for ShipItem, got %+v", g.Unresolved)
+	if len(g.Unresolved) != 1 || g.Unresolved[0].Name != "shipping.ShipItem" || g.Unresolved[0].Reason != UnresolvedExternal {
+		t.Fatalf("expected one external Unresolved for shipping.ShipItem, got %+v", g.Unresolved)
 	}
 }
