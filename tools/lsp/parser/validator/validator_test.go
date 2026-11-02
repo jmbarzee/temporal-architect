@@ -279,7 +279,7 @@ namespace ns:
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
-	if !hasError(errs, `activity Target has task_queue "wrong-queue", but no worker on that queue registers it`) {
+	if !hasError(errs, `activity Target has task_queue "wrong-queue", but no worker on that queue in namespace ns registers it`) {
 		t.Error("expected error about explicit task_queue routing mismatch")
 	}
 }
@@ -334,7 +334,7 @@ namespace ns:
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
-	if !hasError(errs, `activity Unreachable is not on any worker polling task queue "main-queue"`) {
+	if !hasError(errs, `activity Unreachable is not on any worker polling task queue "main-queue" in namespace ns (inherited from workflow Caller)`) {
 		t.Error("expected error about implicit task queue routing mismatch")
 	}
 }
@@ -421,7 +421,7 @@ namespace ns:
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
-	if !hasError(errs, "no worker on that queue has service Svc") {
+	if !hasError(errs, `nexus endpoint Ep routes to task queue "q" in namespace ns, but no worker on that queue has service Svc`) {
 		t.Error("expected error about endpoint-service linkage")
 	}
 }

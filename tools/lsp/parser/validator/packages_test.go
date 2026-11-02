@@ -156,12 +156,12 @@ namespace bns:
 	}
 }
 
-// TestCrossPackageRoutingIndependent: alpha.Caller calls alpha.Charge, which is
-// NOT deployed on any worker on the caller's queue. A same-named activity in
-// beta IS deployed on a worker on an identically-named queue. Routing must be
-// judged per package, so the real mismatch (alpha.Charge undeployed) is
-// reported. Under the old bare-name keying beta's "Charge" registration would
-// satisfy the check and hide the mismatch.
+// TestCrossPackageRoutingIndependent: alpha.Caller calls alpha.Charge. The
+// only worker on the caller's (namespace, queue) — a shared worker owned by
+// beta — registers alpha.Caller and beta's same-named Charge, so only the
+// package separates them. Routing must be judged per package, so the real
+// mismatch (alpha.Charge undeployed) is reported; under bare-name keying beta's
+// "Charge" registration would hide it.
 func TestCrossPackageRoutingIndependent(t *testing.T) {
 	alpha := `package alpha
 
@@ -171,38 +171,34 @@ workflow Caller(x):
 
 activity Charge(x):
     return x
-
-worker aw:
-    workflow Caller
-
-namespace ans:
-    worker aw
-        options:
-            task_queue: "shared"
 `
 	beta := `package beta
+
+import "acme/alpha"
 
 activity Charge(x):
     return x
 
-worker bw:
+worker shared:
+    workflow alpha.Caller
     activity Charge
 
-namespace bns:
-    worker bw
+namespace prod:
+    worker shared
         options:
             task_queue: "shared"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
-	if !hasError(errs, `activity Charge is not on any worker polling task queue "shared" (inherited from workflow Caller)`) {
+	if !hasError(errs, `activity Charge is not on any worker polling task queue "shared" in namespace prod (inherited from workflow Caller)`) {
 		t.Fatalf("expected IMPLICIT_ROUTING_MISMATCH for alpha.Charge, got: %v", errs)
 	}
 }
 
 // TestCrossPackageEndpointServiceLinkage: a nexus endpoint routes to a queue
-// whose worker registers a same-named service from a DIFFERENT package than the
-// one the call targets. The linkage must be judged per package, so the mismatch
-// is reported. Endpoints themselves stay flat-global (bare name).
+// whose only worker registers a same-named service from a DIFFERENT package
+// than the one the call targets, so only the package separates them. The
+// linkage must be judged per package, so the mismatch is reported. Endpoints
+// themselves stay flat-global (bare name).
 func TestCrossPackageEndpointServiceLinkage(t *testing.T) {
 	alpha := `package alpha
 
@@ -212,19 +208,10 @@ nexus service Svc:
 workflow W():
     nexus Ep Svc.Op(x) -> result
     close complete(result)
-
-worker aw:
-    workflow W
-
-namespace ans:
-    worker aw
-        options:
-            task_queue: "q"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
 `
 	beta := `package beta
+
+import "acme/alpha"
 
 nexus service Svc:
     async Op workflow BW
@@ -232,18 +219,59 @@ nexus service Svc:
 workflow BW():
     close complete(0)
 
-worker bw:
+worker shared:
+    workflow alpha.W
     nexus service Svc
     workflow BW
 
-namespace bns:
-    worker bw
+namespace prod:
+    worker shared
+        options:
+            task_queue: "q"
+    nexus endpoint Ep
         options:
             task_queue: "q"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
-	if !hasError(errs, "no worker on that queue has service Svc") {
+	if !hasError(errs, `nexus endpoint Ep routes to task queue "q" in namespace prod, but no worker on that queue has service Svc`) {
 		t.Fatalf("expected ENDPOINT_SERVICE_LINKAGE mismatch for alpha.Svc, got: %v", errs)
+	}
+}
+
+// TestCrossPackageNamespaceSharesQueues: two packages each declare namespace
+// prod. A namespace is identified by its deploy name, so they are one
+// namespace, and their workers on the same queue with different type sets are
+// a TASK_QUEUE_MISMATCH — exactly as if one file declared both.
+func TestCrossPackageNamespaceSharesQueues(t *testing.T) {
+	alpha := `package alpha
+
+workflow A():
+    close complete()
+
+worker aw:
+    workflow A
+
+namespace prod:
+    worker aw
+        options:
+            task_queue: "shared"
+`
+	beta := `package beta
+
+workflow B():
+    close complete()
+
+worker bw:
+    workflow B
+
+namespace prod:
+    worker bw
+        options:
+            task_queue: "shared"
+`
+	errs := Validate(mustMergeAndResolve(t, alpha, beta))
+	if got := countKind(errs, ErrTaskQueueMismatch); got != 1 {
+		t.Fatalf("expected one TASK_QUEUE_MISMATCH on (prod, shared), got %d: %v", got, errs)
 	}
 }
 

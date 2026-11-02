@@ -1,7 +1,9 @@
 package validator
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
@@ -337,14 +339,17 @@ func (v *validationCtx) checkCoverage() {
 	checkUncovered(v.workers, instantiatedWorkers, "worker %s is not instantiated in any namespace", ErrUninstantiatedWorker, &v.errs)
 }
 
+// checkTaskQueueCoherence reports workers that share a (namespace, task queue)
+// pair. The namespace is keyed by deploy name, so two packages that each
+// declare the same namespace share its queues.
 func (v *validationCtx) checkTaskQueueCoherence() {
 	type queueInfo struct {
 		workerName string
 		workflows  map[pkgKey]bool
 		activities map[pkgKey]bool
 	}
+	queueWorkers := make(map[placement][]queueInfo)
 	for _, ns := range v.namespaces {
-		queueWorkers := make(map[string][]queueInfo)
 		for _, nw := range ns.Workers {
 			tq := extractTaskQueue(nw.Options)
 			if tq == "" {
@@ -362,35 +367,50 @@ func (v *validationCtx) checkTaskQueueCoherence() {
 			for _, ref := range w.Activities {
 				actSet[refKey(v, ref)] = true
 			}
-			queueWorkers[tq] = append(queueWorkers[tq], queueInfo{
+			at := placement{ns.Name, tq}
+			queueWorkers[at] = append(queueWorkers[at], queueInfo{
 				workerName: w.Name,
 				workflows:  wfSet,
 				activities: actSet,
 			})
 		}
-		for queue, infos := range queueWorkers {
-			if len(infos) < 2 {
-				continue
-			}
-			first := infos[0]
-			for _, other := range infos[1:] {
-				if sameSet(first.workflows, other.workflows) && sameSet(first.activities, other.activities) {
-					v.errs = append(v.errs, &Error{
-						Msg:      fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have identical type sets (redundant)", first.workerName, other.workerName, queue, ns.Name),
-						Severity: "warning",
-						Kind:     ErrTaskQueueIdentical,
-						Name:     queue,
-					})
-				} else {
-					v.errs = append(v.errs, &Error{
-						Msg:  fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have different type sets", first.workerName, other.workerName, queue, ns.Name),
-						Kind: ErrTaskQueueMismatch,
-						Name: queue,
-					})
-				}
+	}
+	for at, infos := range queueWorkers {
+		if len(infos) < 2 {
+			continue
+		}
+		first := infos[0]
+		for _, other := range infos[1:] {
+			if sameSet(first.workflows, other.workflows) && sameSet(first.activities, other.activities) {
+				v.errs = append(v.errs, &Error{
+					Msg:      fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have identical type sets (redundant)", first.workerName, other.workerName, at.queue, at.namespace),
+					Severity: "warning",
+					Kind:     ErrTaskQueueIdentical,
+					Name:     at.queue,
+				})
+			} else {
+				v.errs = append(v.errs, &Error{
+					Msg:  fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have different type sets", first.workerName, other.workerName, at.queue, at.namespace),
+					Kind: ErrTaskQueueMismatch,
+					Name: at.queue,
+				})
 			}
 		}
 	}
+}
+
+// placement is one (namespace, task queue) pair a definition is hosted on.
+// A task queue is scoped to its namespace, so routing matches on the pair.
+type placement struct {
+	namespace string // the namespace's deploy name — its runtime identity
+	queue     string
+}
+
+// caller is the hosted definition whose body holds a call site: a workflow,
+// or the nexus service of a sync operation.
+type caller struct {
+	kind string // "workflow" or "nexus service"
+	key  pkgKey
 }
 
 // walkAllBodies walks all workflow and nexus service sync op bodies,
@@ -400,38 +420,44 @@ func (v *validationCtx) walkAllBodies() {
 		return
 	}
 
-	for _, wf := range v.workflows {
-		v.walkStatements(wf.Body, wf)
+	for key, wf := range v.workflows {
+		from := caller{"workflow", key}
+		v.walkStatements(wf.Body, from)
 		for _, s := range wf.Signals {
-			v.walkStatements(s.Body, wf)
+			v.walkStatements(s.Body, from)
 		}
 		for _, q := range wf.Queries {
-			v.walkStatements(q.Body, wf)
+			v.walkStatements(q.Body, from)
 		}
 		for _, u := range wf.Updates {
-			v.walkStatements(u.Body, wf)
+			v.walkStatements(u.Body, from)
 		}
 	}
 
-	for _, svc := range v.nexusServices {
+	for key, svc := range v.nexusServices {
 		for _, op := range svc.Operations {
 			if op.OpType == ast.NexusOpSync {
-				v.walkStatements(op.Body, nil)
+				v.walkStatements(op.Body, caller{"nexus service", key})
 			}
 		}
 	}
 }
 
-// walkStatements walks a statement body. caller is the enclosing workflow whose
-// task queue an unqualified call inherits, or nil inside a nexus sync operation
-// (which has no inherited queue).
-func (v *validationCtx) walkStatements(stmts []ast.Statement, caller *ast.WorkflowDef) {
+// walkStatements walks a statement body, checking each call in it as made
+// from the hosted definition from.
+func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 	ast.WalkStatements(stmts, func(s ast.Statement) bool {
 		switch n := s.(type) {
 		case *ast.ActivityCall:
-			v.checkCallRouting("activity", refKey(v, n.Activity), n.Options, caller, n.Line, n.Column)
+			// An unresolved target is external or already reported as
+			// undefined, as for a nexus service below; it has no workers to find.
+			if a := n.Activity.Resolved; a != nil {
+				v.checkCallRouting("activity", refKey(v, n.Activity), n.Options, a.DefaultOptions, from, n.Line, n.Column)
+			}
 		case *ast.WorkflowCall:
-			v.checkCallRouting("workflow", refKey(v, n.Workflow), n.Options, caller, n.Line, n.Column)
+			if w := n.Workflow.Resolved; w != nil {
+				v.checkCallRouting("workflow", refKey(v, n.Workflow), n.Options, w.DefaultOptions, from, n.Line, n.Column)
+			}
 		case *ast.NexusCall:
 			// Only a service that resolved to a local definition can be checked
 			// for endpoint↔worker linkage. An unresolved service is either
@@ -454,143 +480,168 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, caller *ast.Workfl
 			// if the handle is never awaited. See TestSignalSendHandleCountsAsUse.
 		default:
 			if target := ast.AsyncTargetOf(s); target != nil {
-				v.walkAsyncTarget(target, s.NodeLine(), s.NodeColumn())
+				v.walkAsyncTarget(target, from, s.NodeLine(), s.NodeColumn())
 			}
 		}
 		return true
 	})
 }
 
-func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, line, column int) {
-	if nt, ok := target.(*ast.NexusTarget); ok && nt.Service.Resolved != nil {
+// walkAsyncTarget checks the call a promise, await, or await-one case makes.
+// An async target carries no call-site options, so it names a queue only
+// through its target's default_options.
+func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, line, column int) {
+	switch t := target.(type) {
+	case *ast.ActivityTarget:
+		if a := t.Activity.Resolved; a != nil {
+			v.checkCallRouting("activity", refKey(v, t.Activity), nil, a.DefaultOptions, from, line, column)
+		}
+	case *ast.WorkflowTarget:
+		if w := t.Workflow.Resolved; w != nil {
+			v.checkCallRouting("workflow", refKey(v, t.Workflow), nil, w.DefaultOptions, from, line, column)
+		}
+	case *ast.NexusTarget:
 		// See the NexusCall case in walkStatements: skip the linkage check for
 		// an unresolved (external / already-reported) service.
-		v.checkEndpointServiceLinkage(nt.Endpoint.Name, refKey(v, nt.Service), line, column)
+		if t.Service.Resolved != nil {
+			v.checkEndpointServiceLinkage(t.Endpoint.Name, refKey(v, t.Service), line, column)
+		}
 	}
 }
 
 // checkCallRouting validates that an activity or workflow call can reach its
-// target (identified by its resolved (package, name) key) via task queue
-// routing.
-func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts *ast.OptionsBlock, caller *ast.WorkflowDef, line, column int) {
-	if len(v.namespaces) == 0 {
-		return
+// target (identified by its resolved (package, name) key) from every
+// namespace the caller is hosted in. A task queue is scoped to its namespace,
+// so the target must be on a worker polling the routed queue in that same
+// namespace. An explicit task_queue — on the call, else in the target's
+// default_options — names a queue in each of the caller's namespaces; an
+// implicit call inherits each (namespace, queue) placement of its calling
+// workflow. Implicit calls from a sync nexus operation are not checked (#241),
+// nor from a placement missing its task_queue, which has none to inherit. An
+// unhosted caller is not checked — it has no namespace to route from and is
+// already reported as uncovered. defaults is the target's default_options.
+func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defaults *ast.OptionsBlock, from caller, line, column int) {
+	explicitTQ, source := extractTaskQueue(opts), ""
+	if explicitTQ == "" {
+		explicitTQ, source = extractTaskQueue(defaults), " (from its default_options)"
 	}
-
-	explicitTQ := extractTaskQueue(opts)
-
 	if explicitTQ != "" {
-		if v.typeOnQueue(kind, target, explicitTQ) {
-			return
-		}
-		v.errs = append(v.errs, &Error{
-			Msg:    fmt.Sprintf("%s %s has task_queue %q, but no worker on that queue registers it", kind, target.name, explicitTQ),
-			Line:   line,
-			Column: column,
-			Kind:   ErrExplicitRoutingMismatch,
-			Name:   target.name,
-		})
-		return
-	}
-
-	// Implicit routing: the call inherits the calling workflow's task queue.
-	if caller == nil {
-		return
-	}
-	callerQueues := v.taskQueuesForType("workflow", v.key(caller.Package, caller.Name))
-	if len(callerQueues) == 0 {
-		return
-	}
-
-	for _, tq := range callerQueues {
-		if !v.typeOnQueue(kind, target, tq) {
+		for _, ns := range v.callerNamespaces(from) {
+			if v.hostedOn(kind, target, placement{ns, explicitTQ}) {
+				continue
+			}
 			v.errs = append(v.errs, &Error{
-				Msg:    fmt.Sprintf("%s %s is not on any worker polling task queue %q (inherited from workflow %s)", kind, target.name, tq, caller.Name),
+				Msg:    fmt.Sprintf("%s %s has task_queue %q%s, but no worker on that queue in namespace %s registers it", kind, target.name, explicitTQ, source, ns),
 				Line:   line,
 				Column: column,
-				Kind:   ErrImplicitRoutingMismatch,
+				Kind:   ErrExplicitRoutingMismatch,
 				Name:   target.name,
 			})
 		}
+		return
+	}
+
+	if from.kind != "workflow" {
+		return
+	}
+	for _, at := range v.placementsOf(from.kind, from.key) {
+		if at.queue == "" || v.hostedOn(kind, target, at) {
+			continue
+		}
+		v.errs = append(v.errs, &Error{
+			Msg:    fmt.Sprintf("%s %s is not on any worker polling task queue %q in namespace %s (inherited from workflow %s)", kind, target.name, at.queue, at.namespace, from.key.name),
+			Line:   line,
+			Column: column,
+			Kind:   ErrImplicitRoutingMismatch,
+			Name:   target.name,
+		})
 	}
 }
 
-// typeOnQueue checks if a workflow or activity (identified by its (package,
-// name) key) is registered on any worker instantiated on the given task queue.
-func (v *validationCtx) typeOnQueue(kind string, target pkgKey, taskQueue string) bool {
+// placementsOf returns the distinct (namespace, task queue) pairs on which a
+// workflow, activity, or nexus service (identified by its (package, name) key)
+// is registered, sorted by namespace then queue. An instantiation without a
+// task_queue yields an empty queue: it is already a MISSING_TASK_QUEUE error,
+// but its namespace is still known.
+func (v *validationCtx) placementsOf(kind string, target pkgKey) []placement {
+	seen := make(map[placement]bool)
+	var placements []placement
 	for _, ns := range v.namespaces {
 		for _, nw := range ns.Workers {
-			nwTQ := extractTaskQueue(nw.Options)
-			if nwTQ != taskQueue {
+			if w := nw.Worker.Resolved; w == nil || !v.registers(w, kind, target) {
 				continue
 			}
-			w := nw.Worker.Resolved
-			if w == nil {
+			at := placement{ns.Name, extractTaskQueue(nw.Options)}
+			if !seen[at] {
+				seen[at] = true
+				placements = append(placements, at)
+			}
+		}
+	}
+	slices.SortFunc(placements, func(a, b placement) int {
+		return cmp.Or(cmp.Compare(a.namespace, b.namespace), cmp.Compare(a.queue, b.queue))
+	})
+	return placements
+}
+
+// hostedOn reports whether a workflow, activity, or nexus service (identified
+// by its (package, name) key) is registered on a worker polling at.queue in
+// namespace at.namespace.
+func (v *validationCtx) hostedOn(kind string, target pkgKey, at placement) bool {
+	for _, ns := range v.namespaces {
+		if ns.Name != at.namespace {
+			continue
+		}
+		for _, nw := range ns.Workers {
+			if extractTaskQueue(nw.Options) != at.queue {
 				continue
 			}
-			switch kind {
-			case "activity":
-				for _, ref := range w.Activities {
-					if refKey(v, ref) == target {
-						return true
-					}
-				}
-			case "workflow":
-				for _, ref := range w.Workflows {
-					if refKey(v, ref) == target {
-						return true
-					}
-				}
+			if w := nw.Worker.Resolved; w != nil && v.registers(w, kind, target) {
+				return true
 			}
 		}
 	}
 	return false
 }
 
-// taskQueuesForType returns all task queues that a given workflow or activity
-// (identified by its (package, name) key) is instantiated on across all
-// namespaces.
-func (v *validationCtx) taskQueuesForType(kind string, target pkgKey) []string {
-	seen := make(map[string]bool)
-	var queues []string
-	for _, ns := range v.namespaces {
-		for _, nw := range ns.Workers {
-			w := nw.Worker.Resolved
-			if w == nil {
-				continue
-			}
-			var found bool
-			switch kind {
-			case "workflow":
-				for _, ref := range w.Workflows {
-					if refKey(v, ref) == target {
-						found = true
-						break
-					}
-				}
-			case "activity":
-				for _, ref := range w.Activities {
-					if refKey(v, ref) == target {
-						found = true
-						break
-					}
-				}
-			}
-			if found {
-				tq := extractTaskQueue(nw.Options)
-				if tq != "" && !seen[tq] {
-					seen[tq] = true
-					queues = append(queues, tq)
-				}
-			}
+// callerNamespaces returns the distinct namespaces c is hosted in, sorted. A
+// call in c's body is made from each of them.
+func (v *validationCtx) callerNamespaces(c caller) []string {
+	var namespaces []string
+	for _, at := range v.placementsOf(c.kind, c.key) {
+		if len(namespaces) == 0 || namespaces[len(namespaces)-1] != at.namespace {
+			namespaces = append(namespaces, at.namespace)
 		}
 	}
-	return queues
+	return namespaces
 }
 
-// checkEndpointServiceLinkage verifies that the endpoint's task queue has a
-// worker that registers the given service (identified by its resolved
-// (package, name) key). The endpoint is looked up flat-global by bare name.
+// registers reports whether worker w registers the workflow, activity, or
+// nexus service identified by target.
+func (v *validationCtx) registers(w *ast.WorkerDef, kind string, target pkgKey) bool {
+	switch kind {
+	case "workflow":
+		return hasRef(v, w.Workflows, target)
+	case "activity":
+		return hasRef(v, w.Activities, target)
+	case "nexus service":
+		return hasRef(v, w.Services, target)
+	}
+	return false
+}
+
+// hasRef reports whether any of refs resolves to target.
+func hasRef[T interface {
+	comparable
+	ast.Packaged
+}](v *validationCtx, refs []ast.Ref[T], target pkgKey) bool {
+	return slices.ContainsFunc(refs, func(r ast.Ref[T]) bool { return refKey(v, r) == target })
+}
+
+// checkEndpointServiceLinkage verifies that a worker polling the endpoint's
+// task queue in the endpoint's own namespace registers the given service
+// (identified by its resolved (package, name) key). The endpoint is looked up
+// flat-global by bare name.
 func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkgKey, line, column int) {
 	ep, ok := v.allEndpoints[endpoint]
 	if !ok {
@@ -600,27 +651,12 @@ func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkg
 	if tq == "" {
 		return // missing task_queue — already reported in checkTaskQueueRequirements
 	}
-
-	for _, ns := range v.namespaces {
-		for _, nw := range ns.Workers {
-			nwTQ := extractTaskQueue(nw.Options)
-			if nwTQ != tq {
-				continue
-			}
-			w := nw.Worker.Resolved
-			if w == nil {
-				continue
-			}
-			for _, ref := range w.Services {
-				if refKey(v, ref) == service {
-					return // found a worker on the right queue with this service
-				}
-			}
-		}
+	if v.hostedOn("nexus service", service, placement{ep.Namespace, tq}) {
+		return
 	}
 
 	v.errs = append(v.errs, &Error{
-		Msg:    fmt.Sprintf("nexus endpoint %s routes to task queue %q, but no worker on that queue has service %s", endpoint, tq, service.name),
+		Msg:    fmt.Sprintf("nexus endpoint %s routes to task queue %q in namespace %s, but no worker on that queue has service %s", endpoint, tq, ep.Namespace, service.name),
 		Line:   line,
 		Column: column,
 		Kind:   ErrEndpointServiceLinkage,

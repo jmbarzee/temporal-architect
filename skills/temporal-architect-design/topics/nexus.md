@@ -24,7 +24,7 @@ Nexus adds routing and authorization overhead that only a namespace boundary jus
 | **Async Operation** | `async OpName workflow WorkflowName` | One-liner; delegates to a named workflow |
 | **Sync Operation** | `sync OpName(params) -> (Type):` | Inline body, workflow statement set |
 | **Service Registration** | `nexus service Name` (in `worker`) | The worker that serves it |
-| **Nexus Endpoint** | `nexus endpoint Name` (in `namespace`) | Requires `task_queue`; a worker on that queue must register the service |
+| **Nexus Endpoint** | `nexus endpoint Name` (in `namespace`) | Requires `task_queue`; a worker on that queue **in the endpoint's namespace** must register the service |
 | **Nexus Call** | `nexus Endpoint Service.Op(args)` | Endpoint, then `Service.Op` |
 
 **Deployment:** the endpoint lives in the **target** namespace, next to the worker that serves the service; the caller namespace hosts only the calling workflows and references the endpoint by name.

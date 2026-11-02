@@ -54,7 +54,7 @@ Common error types:
 - Namespace references undefined worker
 - Worker instantiation missing `task_queue` option
 - Nexus endpoint instantiation missing `task_queue` option
-- Workers on same task queue with different type sets
+- Workers on same task queue (within a namespace) with different type sets
 - Undefined nexus endpoint (hard error — endpoints are flat-global; a templated reference resolves by full templated name, so a mismatch or a static reference to a templated endpoint lands here)
 - Endpoint template param set not a superset of its owning namespace's (`ENDPOINT_PARAM_NOT_SUPERSET` — otherwise the endpoint's flat-global name collides across the family)
 - Unbound template param in a string option value (`UNBOUND_TEMPLATE_PARAM` — a `{param}` in a `STRING` option value must be bound by the enclosing namespace/endpoint identifier template, or its owning namespace's)
@@ -62,9 +62,9 @@ Common error types:
 - Nexus service has no matching operation
 - Detach nexus call with result binding
 - Async nexus operation references undefined workflow
-- Nexus endpoint routes to task queue with no worker registering the service
-- Explicit `task_queue` routing: target activity/workflow not on any worker polling that queue
-- Implicit task queue routing: called activity/workflow not on any worker polling the calling workflow's task queue
+- Nexus endpoint routes to task queue with no worker in the endpoint's namespace registering the service
+- Explicit `task_queue` routing (call site, else the target's `default_options:`): target activity/workflow not on any worker polling that queue in the caller's namespace(s)
+- Implicit task queue routing: for some (namespace, task queue) the calling workflow is hosted on, the called activity/workflow is not on any worker polling that queue in that namespace
 - Workflow/activity not registered on any instantiated worker (warning)
 - Nexus service not referenced by any worker (warning)
 - Worker not instantiated in any namespace (warning)
