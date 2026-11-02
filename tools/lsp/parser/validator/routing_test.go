@@ -489,25 +489,41 @@ namespace alpha:
 			},
 		},
 		{
-			name: "external or undefined targets are left to the resolver",
+			name: "external targets are not routing-checked, even beside a same-named local",
 			src: `package demo
 
 import "acme/other"
 
 workflow Parent():
     activity other.Act()
-    await activity other.Act2()
+    activity other.Act()
+        options:
+            task_queue: "elsewhere"
+    await activity other.Act()
     promise p <- workflow other.Child()
     await p
     close complete()
 
+workflow Child():
+    close complete()
+
+activity Act():
+    return 0
+
 worker parentWorker:
     workflow Parent
+
+worker localWorker:
+    workflow Child
+    activity Act
 
 namespace alpha:
     worker parentWorker
         options:
             task_queue: "shared"
+    worker localWorker
+        options:
+            task_queue: "local-q"
 `,
 		},
 		{

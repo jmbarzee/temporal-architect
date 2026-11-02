@@ -449,9 +449,15 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 	ast.WalkStatements(stmts, func(s ast.Statement) bool {
 		switch n := s.(type) {
 		case *ast.ActivityCall:
-			v.checkCallRouting("activity", refKey(v, n.Activity), n.Options, from, n.Line, n.Column)
+			// An unresolved target is external or already reported as
+			// undefined, as for a nexus service below; it has no workers to find.
+			if a := n.Activity.Resolved; a != nil {
+				v.checkCallRouting("activity", refKey(v, n.Activity), n.Options, a.DefaultOptions, from, n.Line, n.Column)
+			}
 		case *ast.WorkflowCall:
-			v.checkCallRouting("workflow", refKey(v, n.Workflow), n.Options, from, n.Line, n.Column)
+			if w := n.Workflow.Resolved; w != nil {
+				v.checkCallRouting("workflow", refKey(v, n.Workflow), n.Options, w.DefaultOptions, from, n.Line, n.Column)
+			}
 		case *ast.NexusCall:
 			// Only a service that resolved to a local definition can be checked
 			// for endpoint↔worker linkage. An unresolved service is either
@@ -487,9 +493,13 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, line, column int) {
 	switch t := target.(type) {
 	case *ast.ActivityTarget:
-		v.checkCallRouting("activity", refKey(v, t.Activity), nil, from, line, column)
+		if a := t.Activity.Resolved; a != nil {
+			v.checkCallRouting("activity", refKey(v, t.Activity), nil, a.DefaultOptions, from, line, column)
+		}
 	case *ast.WorkflowTarget:
-		v.checkCallRouting("workflow", refKey(v, t.Workflow), nil, from, line, column)
+		if w := t.Workflow.Resolved; w != nil {
+			v.checkCallRouting("workflow", refKey(v, t.Workflow), nil, w.DefaultOptions, from, line, column)
+		}
 	case *ast.NexusTarget:
 		// See the NexusCall case in walkStatements: skip the linkage check for
 		// an unresolved (external / already-reported) service.
@@ -509,13 +519,8 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 // workflow. Implicit calls from a sync nexus operation are not checked (#241),
 // nor from a placement missing its task_queue, which has none to inherit. An
 // unhosted caller is not checked — it has no namespace to route from and is
-// already reported as uncovered — nor is an external or undefined target,
-// which has no workers to find.
-func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts *ast.OptionsBlock, from caller, line, column int) {
-	defaults, ok := v.targetDefaults(kind, target)
-	if !ok {
-		return
-	}
+// already reported as uncovered. defaults is the target's default_options.
+func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defaults *ast.OptionsBlock, from caller, line, column int) {
 	explicitTQ, source := extractTaskQueue(opts), ""
 	if explicitTQ == "" {
 		explicitTQ, source = extractTaskQueue(defaults), " (from its default_options)"
@@ -551,22 +556,6 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts *ast.O
 			Name:   target.name,
 		})
 	}
-}
-
-// targetDefaults returns the default_options of the activity or workflow
-// definition target names, and whether target is a definition in this tree.
-func (v *validationCtx) targetDefaults(kind string, target pkgKey) (*ast.OptionsBlock, bool) {
-	switch kind {
-	case "activity":
-		if d := v.activities[target]; d != nil {
-			return d.DefaultOptions, true
-		}
-	case "workflow":
-		if d := v.workflows[target]; d != nil {
-			return d.DefaultOptions, true
-		}
-	}
-	return nil, false
 }
 
 // placementsOf returns the distinct (namespace, task queue) pairs on which a
