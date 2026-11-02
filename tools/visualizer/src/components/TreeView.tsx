@@ -39,7 +39,7 @@ interface TreeViewProps extends LinkedViewProps {
   // so the inactive one must not respond to global keyboard shortcuts.
   active: boolean
   ast: TWFFile
-  onShowInGraph?: (name: string, defType: string) => void
+  onShowInGraph?: (qualifiedName: string, defType: string) => void
   /** What the bar's `system` theme resolves to: the host's own theme. */
   systemTheme: Theme
   pendingFocus: TreeFocus | null

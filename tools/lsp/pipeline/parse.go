@@ -257,7 +257,8 @@ func setSourceFile(def ast.Definition, sourceFile string) {
 
 // setPackage stamps a definition with its owning package (the declaring file's
 // package clause; empty is the implicit default package). Runtime-only — the
-// resolver and graph read it, but it is not serialized. Mirrors setSourceFile.
+// resolver and graph read it, and the AST wire emits only the qualifiedName
+// derived from it, never the stamp itself. Mirrors setSourceFile.
 func setPackage(def ast.Definition, pkg string) {
 	switch d := def.(type) {
 	case *ast.WorkflowDef:

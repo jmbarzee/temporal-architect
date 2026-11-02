@@ -6,3 +6,7 @@ workflow ApplyManifest(manifest):
 
 activity KubectlApply(manifest):
     pass()
+
+# Same bare name as agent.Think: the two must stay apart.
+activity Think(manifest):
+    pass()

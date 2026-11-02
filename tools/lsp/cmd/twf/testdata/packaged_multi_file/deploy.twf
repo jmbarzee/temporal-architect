@@ -11,6 +11,7 @@ worker agentWorker:
 worker kubeWorker:
     workflow kube.ApplyManifest
     activity kube.KubectlApply
+    activity kube.Think
 
 namespace agents:
     worker agentWorker

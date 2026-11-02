@@ -228,11 +228,11 @@ func marshalOptionEntries(entries []*OptionEntry) []OptionEntryJSON {
 
 // qualifiedNameJSON is the qualifiedName a workflow / activity / nexus-service
 // DTO emits (issue #184): QualifiedName of the definition's runtime package
-// stamp, which every merge path (pipeline parseSources, the LSP workspace
-// merge) writes, so it equals the name element of the definition's graph node
-// ID. It is empty — and the omitempty field absent — for an unstamped
-// (default-package) definition, whose graph name is already the bare name, so
-// unpackaged output stays byte-identical. Workers and namespaces carry no such
+// stamp, which the pipeline's merge writes for every definition, so it equals
+// the name element of the definition's graph node ID. It is empty — and the
+// omitempty field absent — for an unstamped (default-package) definition,
+// whose graph name is already the bare name, so unpackaged output stays
+// byte-identical. Workers and namespaces carry no such
 // field: the graph keeps them bare.
 func qualifiedNameJSON(pkg, name string) string {
 	if pkg == "" {

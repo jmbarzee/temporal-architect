@@ -4,6 +4,10 @@ import { NavigationContext } from '../WorkflowCanvas'
 interface ContextualNavProps {
   defName?: string
   defType?: string
+  // The definition's qualified name (`qualifiedNameOf`), which "Show in Graph"
+  // focuses by; defaults to `defName`, which is already the qualified name for
+  // an unpackaged definition and for a worker or namespace.
+  qualifiedName?: string
   showDefinition?: { name: string; type: string }
 }
 
@@ -17,7 +21,7 @@ interface NavAction {
   targets: NavTarget[]
 }
 
-export function ContextualNavButtons({ defName, defType, showDefinition }: ContextualNavProps) {
+export function ContextualNavButtons({ defName, defType, qualifiedName, showDefinition }: ContextualNavProps) {
   const nav = React.useContext(NavigationContext)
   const actions: NavAction[] = []
 
@@ -54,7 +58,7 @@ export function ContextualNavButtons({ defName, defType, showDefinition }: Conte
 
   // "Show in Graph" for any definition
   const showGraph = defName && defType && nav.showInGraph
-    ? () => nav.showInGraph!(defName, defType)
+    ? () => nav.showInGraph!(qualifiedName ?? defName, defType)
     : null
 
   if (actions.length === 0 && !showGraph) return null

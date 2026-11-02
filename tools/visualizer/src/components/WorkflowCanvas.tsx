@@ -119,7 +119,8 @@ export interface NavigationContextType {
   workerOf: Map<string, string[]>
   namespaceOf: Map<string, string[]>
   navigateTo: (name: string, defType: string) => void
-  showInGraph?: (name: string, defType: string) => void
+  // Focus the Graph on a definition, named by its qualified name.
+  showInGraph?: (qualifiedName: string, defType: string) => void
 }
 
 export const NavigationContext = React.createContext<NavigationContextType>({
@@ -381,15 +382,15 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
   // Look up the target's sourceFile so the reconciler can expand the
-  // file filter if needed. The focus names the definition by its qualified
-  // name, which is the graph node's `name`: the tree hands over a bare
-  // definition name, the graph a node name already qualified.
-  const showInGraph = React.useCallback((name: string, defType: string) => {
-    const def = ast.definitions.find(d => d.name === name && d.type === defType)
+  // file filter if needed. Both directions name the definition by its
+  // qualified name, which is also its graph node's `name`, so same-named
+  // definitions in two packages stay apart.
+  const showInGraph = React.useCallback((qualifiedName: string, defType: string) => {
+    const def = ast.definitions.find(d => qualifiedNameOf(d) === qualifiedName && d.type === defType)
     switchView('graph', {
       kind: 'focus',
       target: {
-        name: def ? qualifiedNameOf(def) : name,
+        name: qualifiedName,
         values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
       },
     })

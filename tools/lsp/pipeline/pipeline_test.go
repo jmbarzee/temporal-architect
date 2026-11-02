@@ -432,9 +432,12 @@ func TestDecomposeOverlayParity(t *testing.T) {
 // alone, the test keys every definition as `${kind}:${qualifiedName ?? name}`
 // (workers, namespaces and endpoints bare; operations under their service's
 // key) and requires every graph node to join one — the join that gives a node
-// its sourceFile (file chip) and lets cross-view focus find it. The fixture
-// spans three packages in three files, one imported through a module path with
-// a `/v1` leaf, and an entry file holding only workers and a namespace.
+// its sourceFile (file chip) and lets cross-view focus find it. It mirrors
+// buildAstLookup in tools/visualizer/src/adapter/build.ts; change the two
+// together. The fixture spans three packages in three files, one imported
+// through a module path with a `/v1` leaf, and an entry file holding only
+// workers and a namespace; agent and kube each define an activity Think, which
+// must land on two keys.
 func TestPackagedGraphNodesJoinASTDefinitions(t *testing.T) {
 	payload, err := pipeline.Build([]string{testdata("packaged_multi_file")})
 	if err != nil {
@@ -492,6 +495,9 @@ func TestPackagedGraphNodesJoinASTDefinitions(t *testing.T) {
 			name = *d.QualifiedName
 		}
 		key := kind + ":" + name
+		if prev, dup := sourceFileByKey[key]; dup {
+			t.Errorf("definitions in %s and %s share key %q", prev, d.SourceFile, key)
+		}
 		sourceFileByKey[key] = d.SourceFile
 		for _, ep := range d.Endpoints {
 			sourceFileByKey["nexusEndpoint:"+ep.EndpointName] = d.SourceFile
@@ -513,7 +519,7 @@ func TestPackagedGraphNodesJoinASTDefinitions(t *testing.T) {
 	want := map[string]int{
 		"deploy.twf": 4, // namespace, two workers, nexus endpoint
 		"agent.twf":  4, // workflow, activity, nexus service, nexus operation
-		"kube.twf":   2, // workflow, activity
+		"kube.twf":   3, // workflow, two activities
 	}
 	if !reflect.DeepEqual(nodesPerFile, want) {
 		t.Errorf("graph nodes per source file = %v, want %v", nodesPerFile, want)

@@ -1,4 +1,5 @@
 import React from 'react'
+import { qualifiedNameOf } from '../../types/ast'
 import type { Definition, WorkflowDef, ActivityDef, WorkerDef, WorkerRef, NamespaceDef, NamespaceWorker, NamespaceEndpoint, NexusServiceDef, NexusOperation, SignalDecl, QueryDecl, UpdateDecl } from '../../types/ast'
 import { StatementBody } from './StatementBlock'
 import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
@@ -59,7 +60,7 @@ function WorkflowDefBlock({ def, controlledExpanded, onToggle }: { def: Workflow
   return (
     <HandlerContext.Provider value={handlerContext}>
       <div className={`block block-workflow ${expanded ? 'expanded' : 'collapsed'}`}>
-        <ContextualNavButtons defName={def.name} defType="workflowDef" />
+        <ContextualNavButtons defName={def.name} defType="workflowDef" qualifiedName={qualifiedNameOf(def)} />
         <div className="block-header" onClick={toggle}>
           <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
           <BlockIcon kind="workflow" />
@@ -86,7 +87,7 @@ function ActivityDefBlock({ def, controlledExpanded, onToggle }: { def: Activity
 
   return (
     <div className={`block block-activity-def ${expanded ? 'expanded' : 'collapsed'}`}>
-      <ContextualNavButtons defName={def.name} defType="activityDef" />
+      <ContextualNavButtons defName={def.name} defType="activityDef" qualifiedName={qualifiedNameOf(def)} />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <BlockIcon kind="activity" />
@@ -362,7 +363,7 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle }: { def: Nexu
 
   return (
     <div className={`block block-nexus-service-def ${expanded ? 'expanded' : 'collapsed'}`}>
-      <ContextualNavButtons defName={def.name} defType="nexusServiceDef" />
+      <ContextualNavButtons defName={def.name} defType="nexusServiceDef" qualifiedName={qualifiedNameOf(def)} />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <BlockIcon kind="nexusService" />
