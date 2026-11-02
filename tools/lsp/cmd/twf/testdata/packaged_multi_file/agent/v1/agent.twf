@@ -1,0 +1,16 @@
+package agent
+
+import "github.com/example/library-kube/twf/kube/v1"
+
+nexus service AgentService:
+    async StartAgent workflow RunAgent
+
+workflow RunAgent(id):
+    activity Think(id) -> plan
+    workflow kube.ApplyManifest(plan) -> applied
+        options:
+            task_queue: "kube"
+    close complete(applied)
+
+activity Think(id):
+    pass()

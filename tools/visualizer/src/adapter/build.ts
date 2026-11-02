@@ -13,6 +13,7 @@
 // that hover/details panels may want to surface in the future.
 
 import type { Definition, TWFFile } from '../types/ast'
+import { qualifiedNameOf } from '../types/ast'
 import type {
   CoarsenedEdge,
   NodeKind,
@@ -60,10 +61,13 @@ export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined
 // Parser node `definition` is `${nodeType}:${name}`, e.g.
 // `workflow:OrderWorkflow`. The view needs to join each graph node to its
 // AST counterpart for sourceFile (and, in the future, params / hover
-// content). Nexus operations and endpoints live nested inside their
-// service / namespace AST nodes — for those we map the qualified name to
-// the parent's source file, which is the file authors associate the
-// child with.
+// content). In a packaged design the name of a workflow, activity or nexus
+// service is qualified (`workflow:agent.RunAgent`), so those kinds key on
+// `qualifiedNameOf(def)`; workers, namespaces and endpoints are never
+// qualified and key on their bare names. Nexus operations and endpoints live
+// nested inside their service / namespace AST nodes — for those we map the
+// child's graph name (`${service}.${op}`, the service qualified) to the
+// parent's source file, which is the file authors associate the child with.
 
 type AstLookup = Map<string, { sourceFile?: string; def?: Definition }>
 
@@ -72,10 +76,10 @@ function buildAstLookup(ast: TWFFile): AstLookup {
   for (const def of ast.definitions ?? []) {
     switch (def.type) {
       case 'workflowDef':
-        m.set(`workflow:${def.name}`, { sourceFile: def.sourceFile, def })
+        m.set(`workflow:${qualifiedNameOf(def)}`, { sourceFile: def.sourceFile, def })
         break
       case 'activityDef':
-        m.set(`activity:${def.name}`, { sourceFile: def.sourceFile, def })
+        m.set(`activity:${qualifiedNameOf(def)}`, { sourceFile: def.sourceFile, def })
         break
       case 'workerDef':
         m.set(`worker:${def.name}`, { sourceFile: def.sourceFile, def })
@@ -88,9 +92,10 @@ function buildAstLookup(ast: TWFFile): AstLookup {
         break
       }
       case 'nexusServiceDef': {
-        m.set(`nexusService:${def.name}`, { sourceFile: def.sourceFile, def })
+        const service = qualifiedNameOf(def)
+        m.set(`nexusService:${service}`, { sourceFile: def.sourceFile, def })
         for (const op of def.operations ?? []) {
-          m.set(`nexusOperation:${def.name}.${op.name}`, { sourceFile: def.sourceFile, def })
+          m.set(`nexusOperation:${service}.${op.name}`, { sourceFile: def.sourceFile, def })
         }
         break
       }

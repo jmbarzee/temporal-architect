@@ -81,6 +81,12 @@ export interface WorkflowDefJSON {
   column: number /* int */;
   sourceFile?: string;
   name: string;
+  /**
+   * QualifiedName is the name element of this definition's graph node ID
+   * (`pkg.Name`); absent for a default-package definition, whose graph name
+   * is the bare Name. Join graph nodes to definitions on it (issue #184).
+   */
+  qualifiedName?: string;
   params: string;
   returnType?: string;
   idScheme?: IDSchemeJSON;
@@ -115,6 +121,12 @@ export interface ActivityDefJSON {
   column: number /* int */;
   sourceFile?: string;
   name: string;
+  /**
+   * QualifiedName is the name element of this definition's graph node ID
+   * (`pkg.Name`); absent for a default-package definition, whose graph name
+   * is the bare Name. Join graph nodes to definitions on it (issue #184).
+   */
+  qualifiedName?: string;
   params: string;
   returnType?: string;
   defaultOptions?: OptionsBlockJSON;
@@ -511,5 +523,12 @@ export interface NexusServiceDefJSON {
   column: number /* int */;
   sourceFile?: string;
   name: string;
+  /**
+   * QualifiedName is the name element of this definition's graph node ID
+   * (`pkg.Name`); absent for a default-package definition, whose graph name
+   * is the bare Name. Join graph nodes to definitions on it (issue #184).
+   * Its operations' graph names are `${qualifiedName ?? name}.${op}`.
+   */
+  qualifiedName?: string;
   operations?: (NexusOperationJSON | undefined)[];
 }

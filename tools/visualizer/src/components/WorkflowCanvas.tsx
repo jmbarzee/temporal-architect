@@ -30,6 +30,7 @@ import React from 'react'
 import { DEFAULT_TAXONOMY } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
+import { qualifiedNameOf } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import { EMPTY_PARSER_GRAPH } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
@@ -118,7 +119,8 @@ export interface NavigationContextType {
   workerOf: Map<string, string[]>
   namespaceOf: Map<string, string[]>
   navigateTo: (name: string, defType: string) => void
-  showInGraph?: (name: string, defType: string) => void
+  // Focus the Graph on a definition, named by its qualified name.
+  showInGraph?: (qualifiedName: string, defType: string) => void
 }
 
 export const NavigationContext = React.createContext<NavigationContextType>({
@@ -132,9 +134,10 @@ export const NavigationContext = React.createContext<NavigationContextType>({
 type ActiveView = 'tree' | 'graph'
 const VIEWS: readonly ActiveView[] = ['tree', 'graph']
 
-// A view switch as this host states it: a focus carries the target's name as
-// well as its values, because the tree finds a definition by name. The library's
-// `ViewTransition` takes any such transition, the name riding along unread.
+// A view switch as this host states it: a focus carries the target's qualified
+// name as well as its values, because the tree finds a definition, and the graph
+// a node, by that name. The library's `ViewTransition` takes any such
+// transition, the name riding along unread.
 type HostTransition = { kind: 'manual' } | { kind: 'focus'; target: TreeFocus }
 
 // This host's persistence identity. It lives here, outside the §6.5 manifest,
@@ -379,13 +382,15 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
   // Look up the target's sourceFile so the reconciler can expand the
-  // file filter if needed.
-  const showInGraph = React.useCallback((name: string, defType: string) => {
-    const def = ast.definitions.find(d => d.name === name && d.type === defType)
+  // file filter if needed. Both directions name the definition by its
+  // qualified name, which is also its graph node's `name`, so same-named
+  // definitions in two packages stay apart.
+  const showInGraph = React.useCallback((qualifiedName: string, defType: string) => {
+    const def = ast.definitions.find(d => qualifiedNameOf(d) === qualifiedName && d.type === defType)
     switchView('graph', {
       kind: 'focus',
       target: {
-        name,
+        name: qualifiedName,
         values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
       },
     })
@@ -394,7 +399,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const showInTree = React.useCallback((node: GraphNode) => {
     const name = node.name
     const defType = node.values[DEF_TYPE_DIMENSION] ?? ''
-    const def = ast.definitions.find(d => d.name === name && d.type === defType)
+    const def = ast.definitions.find(d => qualifiedNameOf(d) === name && d.type === defType)
     switchView('tree', {
       kind: 'focus',
       target: {

@@ -226,13 +226,32 @@ func marshalOptionEntries(entries []*OptionEntry) []OptionEntryJSON {
 	return result
 }
 
+// qualifiedNameJSON is the qualifiedName a workflow / activity / nexus-service
+// DTO emits (issue #184): QualifiedName of the definition's runtime package
+// stamp, which the pipeline's merge writes for every definition, so it equals
+// the name element of the definition's graph node ID. It is empty — and the
+// omitempty field absent — for an unstamped (default-package) definition,
+// whose graph name is already the bare name, so unpackaged output stays
+// byte-identical. Workers and namespaces carry no such field: the graph keeps
+// them bare.
+func qualifiedNameJSON(pkg, name string) string {
+	if pkg == "" {
+		return ""
+	}
+	return QualifiedName(pkg, name)
+}
+
 // WorkflowDefJSON is the JSON representation of WorkflowDef.
 type WorkflowDefJSON struct {
-	Type           string            `json:"type"`
-	Line           int               `json:"line"`
-	Column         int               `json:"column"`
-	SourceFile     string            `json:"sourceFile,omitempty"`
-	Name           string            `json:"name"`
+	Type       string `json:"type"`
+	Line       int    `json:"line"`
+	Column     int    `json:"column"`
+	SourceFile string `json:"sourceFile,omitempty"`
+	Name       string `json:"name"`
+	// QualifiedName is the name element of this definition's graph node ID
+	// (`pkg.Name`); absent for a default-package definition, whose graph name
+	// is the bare Name. Join graph nodes to definitions on it (issue #184).
+	QualifiedName  string            `json:"qualifiedName,omitempty"`
 	Params         string            `json:"params"`
 	ReturnType     string            `json:"returnType,omitempty"`
 	IDScheme       *IDSchemeJSON     `json:"idScheme,omitempty"`
@@ -264,6 +283,7 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 		Column:         w.Column,
 		SourceFile:     w.SourceFile,
 		Name:           w.Name,
+		QualifiedName:  qualifiedNameJSON(w.Package, w.Name),
 		Params:         w.Params,
 		ReturnType:     w.ReturnType,
 		DefaultOptions: marshalOptionsBlock(w.DefaultOptions),
@@ -309,11 +329,15 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 
 // ActivityDefJSON is the JSON representation of ActivityDef.
 type ActivityDefJSON struct {
-	Type           string            `json:"type"`
-	Line           int               `json:"line"`
-	Column         int               `json:"column"`
-	SourceFile     string            `json:"sourceFile,omitempty"`
-	Name           string            `json:"name"`
+	Type       string `json:"type"`
+	Line       int    `json:"line"`
+	Column     int    `json:"column"`
+	SourceFile string `json:"sourceFile,omitempty"`
+	Name       string `json:"name"`
+	// QualifiedName is the name element of this definition's graph node ID
+	// (`pkg.Name`); absent for a default-package definition, whose graph name
+	// is the bare Name. Join graph nodes to definitions on it (issue #184).
+	QualifiedName  string            `json:"qualifiedName,omitempty"`
 	Params         string            `json:"params"`
 	ReturnType     string            `json:"returnType,omitempty"`
 	DefaultOptions *OptionsBlockJSON `json:"defaultOptions,omitempty"`
@@ -327,6 +351,7 @@ func (a *ActivityDef) MarshalJSON() ([]byte, error) {
 		Column:         a.Column,
 		SourceFile:     a.SourceFile,
 		Name:           a.Name,
+		QualifiedName:  qualifiedNameJSON(a.Package, a.Name),
 		Params:         a.Params,
 		ReturnType:     a.ReturnType,
 		DefaultOptions: marshalOptionsBlock(a.DefaultOptions),
@@ -1233,21 +1258,27 @@ type NexusOperationJSON struct {
 
 // NexusServiceDefJSON is the JSON representation of NexusServiceDef.
 type NexusServiceDefJSON struct {
-	Type       string                `json:"type"`
-	Line       int                   `json:"line"`
-	Column     int                   `json:"column"`
-	SourceFile string                `json:"sourceFile,omitempty"`
-	Name       string                `json:"name"`
-	Operations []*NexusOperationJSON `json:"operations,omitempty"`
+	Type       string `json:"type"`
+	Line       int    `json:"line"`
+	Column     int    `json:"column"`
+	SourceFile string `json:"sourceFile,omitempty"`
+	Name       string `json:"name"`
+	// QualifiedName is the name element of this definition's graph node ID
+	// (`pkg.Name`); absent for a default-package definition, whose graph name
+	// is the bare Name. Join graph nodes to definitions on it (issue #184).
+	// Its operations' graph names are `${qualifiedName ?? name}.${op}`.
+	QualifiedName string                `json:"qualifiedName,omitempty"`
+	Operations    []*NexusOperationJSON `json:"operations,omitempty"`
 }
 
 func (n *NexusServiceDef) MarshalJSON() ([]byte, error) {
 	nj := NexusServiceDefJSON{
-		Type:       "nexusServiceDef",
-		Line:       n.Line,
-		Column:     n.Column,
-		SourceFile: n.SourceFile,
-		Name:       n.Name,
+		Type:          "nexusServiceDef",
+		Line:          n.Line,
+		Column:        n.Column,
+		SourceFile:    n.SourceFile,
+		Name:          n.Name,
+		QualifiedName: qualifiedNameJSON(n.Package, n.Name),
 	}
 	for _, op := range n.Operations {
 		opj := &NexusOperationJSON{

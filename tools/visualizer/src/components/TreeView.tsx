@@ -10,6 +10,7 @@ import type { AxisValues, FocusTarget, LinkedViewProps, Theme } from '@temporal-
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition, Statement, AsyncTarget } from '../types/ast'
+import { qualifiedNameOf } from '../types/ast'
 import type { CallerRef, NavigationContextType } from './WorkflowCanvas'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
@@ -24,7 +25,11 @@ function valuesOf(def: Definition): AxisValues {
     : { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.sourceFile }
 }
 
-/** Where a focus into the tree lands: the library's target, plus the name this view finds a definition by. */
+/**
+ * Where a focus into the tree lands: the library's target, plus the name this
+ * view finds a definition by — its qualified name (`qualifiedNameOf`), which is
+ * also its graph node's `name`. Bare when the definition is unpackaged.
+ */
 export type TreeFocus = FocusTarget & { name: string }
 
 // The filter, locks, axes (and the locks a focus overrode) and the shared
@@ -34,7 +39,7 @@ interface TreeViewProps extends LinkedViewProps {
   // so the inactive one must not respond to global keyboard shortcuts.
   active: boolean
   ast: TWFFile
-  onShowInGraph?: (name: string, defType: string) => void
+  onShowInGraph?: (qualifiedName: string, defType: string) => void
   /** What the bar's `system` theme resolves to: the host's own theme. */
   systemTheme: Theme
   pendingFocus: TreeFocus | null
@@ -334,9 +339,8 @@ export function TreeView({
     })
   }, [])
 
-  // Navigate to a definition by name+type: expand, scroll, flash
-  const navigateTo = React.useCallback((name: string, defType: string) => {
-    const index = visibleDefinitions.findIndex(d => d.name === name && d.type === defType)
+  // Reveal the visible definition at `index`: expand, scroll, flash
+  const revealAt = React.useCallback((index: number) => {
     if (index === -1) return
 
     const key = defKey(visibleDefinitions[index])
@@ -352,6 +356,12 @@ export function TreeView({
     setTimeout(() => setFlashKey(null), 1000)
   }, [visibleDefinitions])
 
+  // Navigate to a definition by bare name+type — the names statements and
+  // the reverse reference index carry.
+  const navigateTo = React.useCallback((name: string, defType: string) => {
+    revealAt(visibleDefinitions.findIndex(d => d.name === name && d.type === defType))
+  }, [visibleDefinitions, revealAt])
+
   const navigationValue = React.useMemo<NavigationContextType>(() => ({
     ...navIndex,
     navigateTo,
@@ -363,17 +373,17 @@ export function TreeView({
   // visible. We only need to scroll to it and flash.
   React.useEffect(() => {
     if (!pendingFocus) return
-    // This view locks a name with the kind axis it knows.
+    // This view locks a qualified name with the kind axis it knows.
     const { name } = pendingFocus
     const defType = pendingFocus.values[DEF_TYPE_DIMENSION] ?? ''
     // Defer to let visibleDefinitions reflect any filter change that
     // arrived in the same tick.
     const timer = setTimeout(() => {
-      navigateTo(name, defType)
+      revealAt(visibleDefinitions.findIndex(d => qualifiedNameOf(d) === name && d.type === defType))
       onFocusConsumed()
     }, 50)
     return () => clearTimeout(timer)
-  }, [pendingFocus, navigateTo, onFocusConsumed])
+  }, [pendingFocus, visibleDefinitions, revealAt, onFocusConsumed])
 
   // Tree keyboard navigation handler
   const handleTreeKeyDown = React.useCallback((e: React.KeyboardEvent) => {

@@ -83,17 +83,40 @@ type ImportDecl struct {
 // Package fields on the top-level definitions below are RUNTIME-ONLY stamps
 // (issue #109): the envelope merge records each definition's owning package so
 // the resolver and graph can key by (package, name) and encode the package
-// inside a node's name element via graph.QualifiedName. They are NEVER
-// serialized (the MarshalJSON methods in ast/json.go do not emit them), so
-// there is no wire-Schema change and unpackaged output stays byte-identical.
-// The empty string is the implicit default package. When a definition is
-// resolved without going through the merge (e.g. a single-file parse), the
-// stamp is empty and consumers fall back to File.Package.
+// inside a node's name element via QualifiedName. The raw stamp is NEVER
+// serialized; the workflow / activity / nexus-service MarshalJSON methods emit
+// only its derived qualifiedName, and only when the stamp is set, so
+// unpackaged output stays byte-identical. The empty string is the implicit
+// default package. When a definition is resolved without going through the
+// merge (e.g. a single-file parse), the stamp is empty: the resolver and graph
+// fall back to File.Package, but the wire emits no qualifiedName, so a consumer
+// joining the AST to the graph must take both from the merge (as every pipeline
+// path does).
 //
 // Packaged exposes that runtime package stamp so generic helpers can read it
 // off a Ref's resolved target without a per-type switch.
 type Packaged interface {
 	PackageName() string
+}
+
+// QualifiedName encodes a package qualifier INSIDE the name element of a
+// definition key — never as a new colon-segment. The graph's DefKey is
+// `${kind}:${name}` and the visualizer splits it on the FIRST colon (nexus
+// operations already use `.` inside the name), so the package must ride along
+// in the name as `pkg.Name`. The default (empty) package is elided, so this
+// returns the bare name for every unpackaged definition.
+//
+// It is the single source of the qualification rule: the graph builds its
+// workflow / activity / nexus-service node IDs with it, and the AST wire emits
+// the same string as each such definition's qualifiedName (issue #184), so a
+// consumer joins the two without re-deriving the rule. Endpoints deliberately
+// bypass it (see graph.EndpointID) to keep their flat-global identity, and
+// workers and namespaces keep bare-name identity.
+func QualifiedName(pkg, name string) string {
+	if pkg == "" {
+		return name
+	}
+	return pkg + "." + name
 }
 
 type WorkflowDef struct {
