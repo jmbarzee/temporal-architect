@@ -63,7 +63,7 @@ Common error types:
 - Detach nexus call with result binding
 - Async nexus operation references undefined workflow
 - Nexus endpoint routes to task queue with no worker in the endpoint's namespace registering the service
-- Explicit `task_queue` routing: target activity/workflow not on any worker polling that queue in the caller's namespace(s)
+- Explicit `task_queue` routing (call site, else the target's `default_options:`): target activity/workflow not on any worker polling that queue in the caller's namespace(s)
 - Implicit task queue routing: for some (namespace, task queue) the calling workflow is hosted on, the called activity/workflow is not on any worker polling that queue in that namespace
 - Workflow/activity not registered on any instantiated worker (warning)
 - Nexus service not referenced by any worker (warning)

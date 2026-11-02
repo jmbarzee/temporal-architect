@@ -199,7 +199,7 @@ tier, aggregating by `(from, to, tier)` and dropping self-loops.
 **Graph-stage diagnostics** ride in the envelope's `diagnostics` array
 under `kind: "graph"`. Today the only code is
 `DISPATCH_NO_REACHABLE_DEPLOYMENT` — a call whose task queue has no
-deployment polling it.
+deployment polling it in the routed namespace.
 
 ---
 
@@ -324,7 +324,7 @@ The complete list of `kind` + `code` combinations:
 
 **kind: `graph`**
 - `DISPATCH_NO_REACHABLE_DEPLOYMENT` — call site routes to a task
-  queue that no deployment polls
+  queue that no deployment in the routed namespace polls
 
 The authoritative wire contract is the Go DTO layer — this CLI's `envelope`,
 `graph`, and `decompose` packages (plus `parser/ast/json.go`). Its TypeScript

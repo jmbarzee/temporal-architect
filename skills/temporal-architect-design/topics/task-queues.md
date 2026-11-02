@@ -10,7 +10,7 @@ Workers group type registrations, task queues route work to them, and namespaces
 - A `namespace` instantiates workers, each with an `options:` block that requires `task_queue`, and exposes `nexus endpoint`s whose `task_queue` must match a worker registering the service in that namespace ([nexus.md](./nexus.md)).
 - The same worker can be instantiated in several namespaces (e.g. `prod` and `staging` on different queues). A task queue is scoped to its namespace: the same queue name in two namespaces is two queues.
 - Several workers may share a queue only if they register the **same** type set; the same type set on different queues is a tier the caller picks by queue.
-- A call's `task_queue` names a queue in the caller's own namespace (crossing namespaces is Nexus's job); without one, the call goes to the caller's own queue. Either way, some worker on that queue in the caller's namespace must register the target.
+- A call's `task_queue` (or its target's `default_options:` one) names a queue in the caller's own namespace (crossing namespaces is Nexus's job); without one, the call goes to the caller's own queue. Either way, some worker on that queue in the caller's namespace must register the target.
 - Names are plain identifiers except the namespace name, nexus endpoint name, and endpoint reference, which take the `deploy_name` form (hyphens, `{param}` holes; `twf spec tokens-and-keywords`).
 
 `twf check` enforces these — diagnostics in [common-errors.md](../reference/common-errors.md).

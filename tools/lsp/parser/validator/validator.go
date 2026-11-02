@@ -482,7 +482,8 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 }
 
 // walkAsyncTarget checks the call a promise, await, or await-one case makes.
-// An async target carries no options, so its routing is always implicit.
+// An async target carries no call-site options, so it names a queue only
+// through its target's default_options.
 func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, line, column int) {
 	switch t := target.(type) {
 	case *ast.ActivityTarget:
@@ -502,14 +503,15 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 // target (identified by its resolved (package, name) key) from every
 // namespace the caller is hosted in. A task queue is scoped to its namespace,
 // so the target must be on a worker polling the routed queue in that same
-// namespace. An explicit task_queue names a queue in each of the caller's
-// namespaces; an implicit call inherits each (namespace, queue) placement of
+// namespace. An explicit task_queue — on the call, else in the target's
+// default_options — names a queue in each of the caller's namespaces; an
+// implicit call inherits each (namespace, queue) placement of
 // its calling workflow. Implicit calls from a sync nexus operation are not
 // checked (#241), nor from a placement missing its task_queue, which has none
 // to inherit. An unhosted caller is not checked — it has no namespace to route
 // from and is already reported as uncovered.
 func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts *ast.OptionsBlock, from caller, line, column int) {
-	if explicitTQ := extractTaskQueue(opts); explicitTQ != "" {
+	if explicitTQ := v.namedQueue(kind, target, opts); explicitTQ != "" {
 		for _, ns := range v.callerNamespaces(from) {
 			if v.hostedOn(kind, target, placement{ns, explicitTQ}) {
 				continue
@@ -540,6 +542,26 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts *ast.O
 			Name:   target.name,
 		})
 	}
+}
+
+// namedQueue returns the task queue a call names: the call site's task_queue,
+// which overrides per key the target definition's default_options task_queue;
+// "" when neither names one and the call inherits its caller's queue.
+func (v *validationCtx) namedQueue(kind string, target pkgKey, opts *ast.OptionsBlock) string {
+	if tq := extractTaskQueue(opts); tq != "" {
+		return tq
+	}
+	switch kind {
+	case "activity":
+		if d := v.activities[target]; d != nil {
+			return extractTaskQueue(d.DefaultOptions)
+		}
+	case "workflow":
+		if d := v.workflows[target]; d != nil {
+			return extractTaskQueue(d.DefaultOptions)
+		}
+	}
+	return ""
 }
 
 // placementsOf returns the distinct (namespace, task queue) pairs on which a

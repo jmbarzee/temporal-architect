@@ -240,8 +240,10 @@ The resolver validates workers, namespaces, and nexus definitions:
 
 A task queue is scoped to its namespace, so call routing and endpoint linkage match on the
 (namespace, task queue) pair. Namespace identity is the deploy name; `package` has no bearing. A
-call's `task_queue` names a queue in the caller's own namespace — crossing a namespace boundary is
-Nexus's job. A caller on no instantiated worker gets no routing check (it already warns as uncovered).
+call's `task_queue` — from its `options:`, else the target's [`default_options:`](./06-statement-syntax.md#definition-default-options)
+— names a queue in the caller's own namespace; crossing a namespace boundary is Nexus's job. A call
+naming no queue inherits the caller's. A caller on no instantiated worker gets no routing check (it
+already warns as uncovered).
 
 ### Parameterized family resolution
 

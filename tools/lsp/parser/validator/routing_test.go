@@ -395,6 +395,98 @@ namespace tenant-{org}:
 			},
 		},
 		{
+			name: "default_options: sync and async calls route to the target's default queue",
+			src: `workflow Order(x: int):
+    activity Charge(x) -> y
+    promise p <- activity Charge(x)
+    await p
+    close complete(y)
+
+activity Charge(x: int) -> (int):
+    default_options:
+        task_queue: "payment-workers"
+    return x
+
+worker orderWorker:
+    workflow Order
+
+worker paymentWorker:
+    activity Charge
+
+namespace prod:
+    worker orderWorker
+        options:
+            task_queue: "orders"
+    worker paymentWorker
+        options:
+            task_queue: "payment-workers"
+`,
+		},
+		{
+			name: "default_options: target's default queue polled only in another namespace",
+			src: `workflow Order(x: int):
+    activity Charge(x) -> y
+    promise p <- activity Charge(x)
+    await p
+    close complete(y)
+
+activity Charge(x: int) -> (int):
+    default_options:
+        task_queue: "payment-workers"
+    return x
+
+worker orderWorker:
+    workflow Order
+
+worker paymentWorker:
+    activity Charge
+
+namespace prod:
+    worker orderWorker
+        options:
+            task_queue: "orders"
+
+namespace payments:
+    worker paymentWorker
+        options:
+            task_queue: "payment-workers"
+`,
+			want: []string{
+				`activity Charge has task_queue "payment-workers", but no worker on that queue in namespace prod registers it`,
+				`activity Charge has task_queue "payment-workers", but no worker on that queue in namespace prod registers it`,
+			},
+		},
+		{
+			name: "implicit: call in a signal handler body inherits the workflow's placement",
+			src: `workflow Parent():
+    signal Kick():
+        activity Act()
+    close complete()
+
+activity Act():
+    return 0
+
+worker parentWorker:
+    workflow Parent
+
+worker actWorker:
+    activity Act
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "shared"
+
+namespace beta:
+    worker actWorker
+        options:
+            task_queue: "shared"
+`,
+			want: []string{
+				`activity Act is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
+			},
+		},
+		{
 			name: "endpoint: service only on the endpoint's queue in another namespace",
 			src: `nexus service Svc:
     async Op workflow Backing
