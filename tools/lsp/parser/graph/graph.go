@@ -413,11 +413,11 @@ func (g *Graph) addDiagnostic(d Diagnostic) {
 	g.Diagnostics = append(g.Diagnostics, d)
 }
 
-func warningDispatchNoReachable(from, calleeKind, calleeName, queue string, line int) Diagnostic {
+func warningDispatchNoReachable(from, calleeKind, calleeName, namespace, queue string, line int) Diagnostic {
 	return Diagnostic{
 		Severity: SeverityWarning,
 		Code:     DiagDispatchNoReachableDeployment,
-		Message:  fmt.Sprintf("%s call to %q routes to task_queue %q but no deployment polls it", calleeKind, calleeName, queue),
+		Message:  fmt.Sprintf("%s call to %q routes to task_queue %q in namespace %s but no deployment polls it there", calleeKind, calleeName, queue, namespace),
 		From:     from,
 		Line:     line,
 	}

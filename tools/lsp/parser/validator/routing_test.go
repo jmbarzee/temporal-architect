@@ -269,6 +269,98 @@ namespace alpha:
 `,
 		},
 		{
+			name: "async: promise and await calls inherit the caller's namespace",
+			src: `workflow Parent():
+    promise p <- workflow Child()
+    await activity Act()
+    await p
+    close complete()
+
+workflow Child():
+    close complete()
+
+activity Act():
+    return 0
+
+worker parentWorker:
+    workflow Parent
+
+worker childWorker:
+    workflow Child
+    activity Act
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "shared"
+
+namespace beta:
+    worker childWorker
+        options:
+            task_queue: "shared"
+`,
+			want: []string{
+				`workflow Child is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
+				`activity Act is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
+			},
+		},
+		{
+			name: "explicit: caller's instantiation lacks task_queue but its namespace is known",
+			src: `workflow Parent():
+    workflow Child()
+        options:
+            task_queue: "nowhere"
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker childWorker:
+    workflow Child
+
+namespace alpha:
+    worker parentWorker
+    worker childWorker
+        options:
+            task_queue: "child-q"
+`,
+			want: []string{
+				`workflow Child has task_queue "nowhere", but no worker on that queue in namespace alpha registers it`,
+			},
+		},
+		{
+			name: "implicit: templated namespace is matched by its full spelling",
+			src: `workflow Parent():
+    workflow Child()
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker childWorker:
+    workflow Child
+
+namespace shard-{org}:
+    worker parentWorker
+        options:
+            task_queue: "q-{org}"
+
+namespace tenant-{org}:
+    worker childWorker
+        options:
+            task_queue: "q-{org}"
+`,
+			want: []string{
+				`workflow Child is not on any worker polling task queue "q-{org}" in namespace shard-{org} (inherited from workflow Parent)`,
+			},
+		},
+		{
 			name: "endpoint: service only on the endpoint's queue in another namespace",
 			src: `nexus service Svc:
     async Op workflow Backing

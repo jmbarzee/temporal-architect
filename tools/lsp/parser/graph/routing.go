@@ -8,9 +8,11 @@ import (
 // per the resolution rules in README.md § "Dispatch edges":
 //
 //   - activityCall / workflowCall with explicit task_queue: match
-//     callee deployments whose queue equals the literal.
-//   - activityCall / workflowCall implicit: match callee deployments
-//     whose queue equals *this* caller deployment's queue. The walk runs
+//     callee deployments in the caller deployment's namespace whose
+//     queue equals the literal.
+//   - activityCall / workflowCall implicit: match callee deployments in
+//     the caller deployment's namespace whose queue equals *this* caller
+//     deployment's queue. The walk runs
 //     once per caller deployment, so a definition hosted on two workers
 //     resolves twice, each against its own queue — not against the union.
 //   - nexusCall: match callee deployments whose queue == endpoint.queue
@@ -225,7 +227,7 @@ func (g *Graph) emitQueuedCall(
 			// already an error from the validator). Don't double-report.
 			return
 		}
-		g.addDiagnostic(warningDispatchNoReachable(callerID, calleeKind, calleeName, queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(callerID, calleeKind, calleeName, callerDep.NamespaceName, queue, line))
 	}
 }
 
@@ -280,7 +282,7 @@ func (g *Graph) emitNexusCall(
 	}
 
 	if !matched && ep.Queue != "" {
-		g.addDiagnostic(warningDispatchNoReachable(callerID, KindNexusOperation, opName, ep.Queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(callerID, KindNexusOperation, opName, ep.Namespace, ep.Queue, line))
 	}
 }
 
@@ -312,7 +314,7 @@ func (g *Graph) emitAsyncBacking(
 	}
 
 	if !matched && opDep.Queue != "" {
-		g.addDiagnostic(warningDispatchNoReachable(fromID, KindWorkflow, workflowName, opDep.Queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(fromID, KindWorkflow, workflowName, opDep.NamespaceName, opDep.Queue, line))
 	}
 }
 
