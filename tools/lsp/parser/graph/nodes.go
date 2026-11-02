@@ -8,7 +8,7 @@ import (
 // and resolve dispatch edges. Built once per Extract call.
 //
 // The workflow / activity / nexus-service maps are keyed by the definition's
-// QUALIFIED name (graph.QualifiedName(pkg, name)) so same-named definitions in
+// QUALIFIED name (ast.QualifiedName(pkg, name)) so same-named definitions in
 // different packages are distinct entries — the lockstep with the
 // package-aware resolver (issue #109). Endpoints stay flat-global; workers and
 // namespaces keep bare-name identity. filePkg is the merged file's package
@@ -107,12 +107,12 @@ func indexAST(file *ast.File) *astIndex {
 	return idx
 }
 
-// defQName is the qualified name of a definition — QualifiedName(effective
+// defQName is the qualified name of a definition — ast.QualifiedName(effective
 // package, name), where the effective package is the def's runtime stamp or the
 // file's package. It is the name element of every workflow / activity /
 // nexus-service (and derived nexus-operation) node ID.
 func (idx *astIndex) defQName(defPkg, name string) string {
-	return QualifiedName(pkgOf(defPkg, idx.filePkg), name)
+	return ast.QualifiedName(pkgOf(defPkg, idx.filePkg), name)
 }
 
 // hostedRefQName is the qualified target name of a worker registration ref: the
@@ -127,9 +127,9 @@ func hostedRefQName[T interface {
 }](r ast.Ref[T], idx *astIndex) string {
 	var zero T
 	if r.Resolved != zero {
-		return QualifiedName(pkgOf(r.Resolved.PackageName(), idx.filePkg), r.Name)
+		return ast.QualifiedName(pkgOf(r.Resolved.PackageName(), idx.filePkg), r.Name)
 	}
-	return QualifiedName(idx.filePkg, r.Name)
+	return ast.QualifiedName(idx.filePkg, r.Name)
 }
 
 // taskQueue extracts the task_queue value from an options block, or ""

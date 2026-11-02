@@ -73,7 +73,7 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			wn := wg.nodes[graph.DefKey(graph.KindWorkflow, graph.QualifiedName(pkgOf(d.Package, file.Package), d.Name))]
+			wn := wg.nodes[graph.DefKey(graph.KindWorkflow, ast.QualifiedName(pkgOf(d.Package, file.Package), d.Name))]
 			if wn == nil {
 				continue
 			}
@@ -91,12 +91,12 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 			wn.complexity = m.score()
 
 		case *ast.ActivityDef:
-			if wn := wg.nodes[graph.DefKey(graph.KindActivity, graph.QualifiedName(pkgOf(d.Package, file.Package), d.Name))]; wn != nil {
+			if wn := wg.nodes[graph.DefKey(graph.KindActivity, ast.QualifiedName(pkgOf(d.Package, file.Package), d.Name))]; wn != nil {
 				wn.complexity = measureBody(d.Body).score()
 			}
 
 		case *ast.NexusServiceDef:
-			svcQName := graph.QualifiedName(pkgOf(d.Package, file.Package), d.Name)
+			svcQName := ast.QualifiedName(pkgOf(d.Package, file.Package), d.Name)
 			for _, op := range d.Operations {
 				// Sync ops carry a body; async ones don't (base score).
 				if wn := wg.nodes[graph.DefKey(graph.KindNexusOperation, svcQName+"."+op.Name)]; wn != nil {

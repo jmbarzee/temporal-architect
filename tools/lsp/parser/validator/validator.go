@@ -94,7 +94,7 @@ func (k ErrorKind) String() string {
 
 // pkgKey is the composite (package, name) key under which package-scoped
 // definitions — workflows, activities, workers, namespaces, nexus services —
-// are stored. It mirrors resolver.pkgKey and graph's QualifiedName encoding so
+// are stored. It mirrors resolver.pkgKey and the graph's ast.QualifiedName encoding so
 // the validator judges coverage and duplication by the same (package, name)
 // identity the resolver and graph use (issue #113): two same-named definitions
 // in different packages are distinct keys. The empty package string is the

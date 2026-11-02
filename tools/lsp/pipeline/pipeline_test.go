@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -420,5 +421,118 @@ func TestDecomposeOverlayParity(t *testing.T) {
 				t.Errorf("overlay bytes differ between paths:\n pipeline: %s\n cli:      %s", gotJSON, wantJSON)
 			}
 		})
+	}
+}
+
+// TestPackagedGraphNodesJoinASTDefinitions pins the AST↔graph join the
+// visualizer performs (issues #184, #230). Graph node IDs fold a definition's
+// package into the name element (`workflow:agent.RunAgent`) while the AST name
+// stays bare, so the AST wire carries each packaged workflow / activity /
+// nexus-service definition's qualifiedName. Working from the marshaled payload
+// alone, the test keys every definition as `${kind}:${qualifiedName ?? name}`
+// (workers, namespaces and endpoints bare; operations under their service's
+// key) and requires every graph node to join one — the join that gives a node
+// its sourceFile (file chip) and lets cross-view focus find it. The fixture
+// spans three packages in three files, one imported through a module path with
+// a `/v1` leaf, and an entry file holding only workers and a namespace.
+func TestPackagedGraphNodesJoinASTDefinitions(t *testing.T) {
+	payload, err := pipeline.Build([]string{testdata("packaged_multi_file")})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if pipeline.HasErrors(payload.Diagnostics) {
+		t.Fatalf("fixture must check clean, got diagnostics: %+v", payload.Diagnostics)
+	}
+	out, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+
+	var wire struct {
+		AST struct {
+			Definitions []struct {
+				Type          string  `json:"type"`
+				Name          string  `json:"name"`
+				QualifiedName *string `json:"qualifiedName"`
+				SourceFile    string  `json:"sourceFile"`
+				Endpoints     []struct {
+					EndpointName string `json:"endpointName"`
+				} `json:"endpoints"`
+				Operations []struct {
+					Name string `json:"name"`
+				} `json:"operations"`
+			} `json:"definitions"`
+		} `json:"ast"`
+		Graph struct {
+			Nodes []struct {
+				ID         string `json:"id"`
+				Definition string `json:"definition"`
+			} `json:"nodes"`
+		} `json:"parserGraph"`
+	}
+	if err := json.Unmarshal(out, &wire); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+
+	kindOf := map[string]string{
+		"workflowDef":     "workflow",
+		"activityDef":     "activity",
+		"workerDef":       "worker",
+		"namespaceDef":    "namespace",
+		"nexusServiceDef": "nexusService",
+	}
+	sourceFileByKey := map[string]string{}
+	for _, d := range wire.AST.Definitions {
+		kind, ok := kindOf[d.Type]
+		if !ok {
+			t.Fatalf("unexpected definition type %q", d.Type)
+		}
+		name := d.Name
+		if d.QualifiedName != nil {
+			name = *d.QualifiedName
+		}
+		key := kind + ":" + name
+		sourceFileByKey[key] = d.SourceFile
+		for _, ep := range d.Endpoints {
+			sourceFileByKey["nexusEndpoint:"+ep.EndpointName] = d.SourceFile
+		}
+		for _, op := range d.Operations {
+			sourceFileByKey["nexusOperation:"+name+"."+op.Name] = d.SourceFile
+		}
+	}
+
+	nodesPerFile := map[string]int{}
+	for _, n := range wire.Graph.Nodes {
+		file, ok := sourceFileByKey[n.Definition]
+		if !ok {
+			t.Errorf("graph node %s: definition %q joins no AST definition", n.ID, n.Definition)
+			continue
+		}
+		nodesPerFile[file]++
+	}
+	want := map[string]int{
+		"deploy.twf": 4, // namespace, two workers, nexus endpoint
+		"agent.twf":  4, // workflow, activity, nexus service, nexus operation
+		"kube.twf":   2, // workflow, activity
+	}
+	if !reflect.DeepEqual(nodesPerFile, want) {
+		t.Errorf("graph nodes per source file = %v, want %v", nodesPerFile, want)
+	}
+}
+
+// TestUnpackagedDefinitionsOmitQualifiedName guards the byte-identical promise
+// for unpackaged designs: a definition with no package stamp emits no
+// qualifiedName, because its graph name is already the bare name.
+func TestUnpackagedDefinitionsOmitQualifiedName(t *testing.T) {
+	payload, err := pipeline.Build([]string{testdata("clean.twf")})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	out, err := json.Marshal(payload.AST)
+	if err != nil {
+		t.Fatalf("marshal AST: %v", err)
+	}
+	if strings.Contains(string(out), `"qualifiedName"`) {
+		t.Errorf("unpackaged AST JSON carries qualifiedName: %s", out)
 	}
 }

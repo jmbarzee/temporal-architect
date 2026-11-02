@@ -1,0 +1,8 @@
+package kube
+
+workflow ApplyManifest(manifest):
+    activity KubectlApply(manifest) -> result
+    close complete(result)
+
+activity KubectlApply(manifest):
+    pass()

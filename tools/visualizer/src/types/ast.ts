@@ -3,9 +3,10 @@
 // The structural shapes are generated from the Go DTO layer and live in
 // `@temporal-architect/wire-types` (single source of truth; CI-gated). This
 // file is a thin façade: it re-exports the ergonomic names the visualizer and
-// its npm consumers use, and adds the two loader-side shapes that are NOT part
-// of the wire contract (`FileError`, and the `TWFFile` wrapper that carries
-// extension-added fields).
+// its npm consumers use, adds the two loader-side shapes that are NOT part of
+// the wire contract (`FileError`, and the `TWFFile` wrapper that carries
+// extension-added fields), and `qualifiedNameOf`, the one reader of a
+// definition's graph identity.
 
 export type {
   Definition,
@@ -72,6 +73,15 @@ export type {
 } from '@temporal-architect/wire-types'
 
 import type { Definition, Diagnostic, SummaryMetadata } from '@temporal-architect/wire-types'
+
+// A definition's graph identity: the name element of its graph node ID, and so
+// the `name` of its view node. For a packaged workflow, activity or nexus
+// service that is the parser's `qualifiedName` (`pkg.Name`); for everything
+// else it is the bare name. The parser owns the qualification rule — read it
+// here, never rebuild it by joining a package onto a name.
+export function qualifiedNameOf(def: Definition): string {
+  return ('qualifiedName' in def ? def.qualifiedName : undefined) ?? def.name
+}
 
 // Per-file parse error (loader-side; not part of the twf wire contract).
 export interface FileError {
