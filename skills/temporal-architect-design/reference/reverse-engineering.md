@@ -50,7 +50,7 @@ Keep this distinct from the forward codegen fan-out ([#85](https://github.com/jm
 3. **Author the shared topology** in the `deploy` package ([above](#deployment-topology-during-recovery)).
 4. **Check the whole workspace**, not slice by slice, and iterate to clean — a package that checked alone can still surface cross-package resolution or coverage gaps.
 
-An `IMPLICIT_ROUTING_MISMATCH` means a call cannot reach any worker hosting its target. Go back to the code — usually a task-queue override, a default, or a configurator you had not traced — and fix the model to match the code, not the reverse. `twf graph` shows how the system is **wired**, never how much it **runs**: no timers, continue-as-new frequency, fan-out width, or volume. When a recovery serves a cost question, say so.
+An `IMPLICIT_ROUTING_MISMATCH` means a call cannot reach any worker hosting its target in the caller's namespace. Go back to the code — usually a task-queue override, a default, a client dialed to a different namespace, or a configurator you had not traced — and fix the model to match the code, not the reverse. `twf graph` shows how the system is **wired**, never how much it **runs**: no timers, continue-as-new frequency, fan-out width, or volume. When a recovery serves a cost question, say so.
 
 ## Reading strategy
 

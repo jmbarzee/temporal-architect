@@ -1,0 +1,377 @@
+package validator
+
+import (
+	"slices"
+	"testing"
+)
+
+// routingMsgs returns the messages of the routing and linkage errors in errs.
+func routingMsgs(errs []*Error) []string {
+	var msgs []string
+	for _, e := range errs {
+		switch e.Kind {
+		case ErrExplicitRoutingMismatch, ErrImplicitRoutingMismatch, ErrEndpointServiceLinkage:
+			msgs = append(msgs, e.Msg)
+		}
+	}
+	return msgs
+}
+
+// TestRoutingIsNamespaceScoped: a task queue is scoped to its namespace, so a
+// call or endpoint is satisfied only by a worker on the routed queue in the
+// namespace the call is made from (issue #231). Each case has one call site;
+// want is its complete, ordered list of routing diagnostics.
+func TestRoutingIsNamespaceScoped(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want []string
+	}{
+		{
+			name: "implicit: target only on the same-named queue in another namespace",
+			src: `package demo
+
+workflow Parent():
+    workflow Child()
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker childWorker:
+    workflow Child
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "shared"
+
+namespace beta:
+    worker childWorker
+        options:
+            task_queue: "shared"
+`,
+			want: []string{
+				`workflow Child is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
+			},
+		},
+		{
+			name: "implicit: caller in two namespaces, target in one",
+			src: `workflow Parent():
+    workflow Child()
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker fullWorker:
+    workflow Parent
+    workflow Child
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "shared"
+
+namespace beta:
+    worker fullWorker
+        options:
+            task_queue: "shared"
+`,
+			want: []string{
+				`workflow Child is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
+			},
+		},
+		{
+			name: "implicit: caller in two namespaces, target in both",
+			src: `workflow Parent():
+    workflow Child()
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker fullWorker:
+    workflow Parent
+    workflow Child
+
+namespace alpha:
+    worker fullWorker
+        options:
+            task_queue: "shared"
+
+namespace beta:
+    worker fullWorker
+        options:
+            task_queue: "shared"
+`,
+		},
+		{
+			name: "explicit: target's queue polled only outside the caller's namespace",
+			src: `workflow Parent():
+    workflow Child()
+        options:
+            task_queue: "child-q"
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker childWorker:
+    workflow Child
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "parent-q"
+
+namespace beta:
+    worker childWorker
+        options:
+            task_queue: "child-q"
+`,
+			want: []string{
+				`workflow Child has task_queue "child-q", but no worker on that queue in namespace alpha registers it`,
+			},
+		},
+		{
+			name: "explicit: one error per caller namespace missing the target",
+			src: `workflow Parent():
+    workflow Child()
+        options:
+            task_queue: "child-q"
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker childWorker:
+    workflow Child
+
+namespace gamma:
+    worker parentWorker
+        options:
+            task_queue: "parent-q"
+
+namespace beta:
+    worker parentWorker
+        options:
+            task_queue: "parent-q"
+    worker childWorker
+        options:
+            task_queue: "child-q"
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "parent-q"
+`,
+			want: []string{
+				`workflow Child has task_queue "child-q", but no worker on that queue in namespace alpha registers it`,
+				`workflow Child has task_queue "child-q", but no worker on that queue in namespace gamma registers it`,
+			},
+		},
+		{
+			name: "explicit: target's queue polled in the caller's namespace",
+			src: `workflow Parent():
+    workflow Child()
+        options:
+            task_queue: "child-q"
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker childWorker:
+    workflow Child
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "parent-q"
+    worker childWorker
+        options:
+            task_queue: "child-q"
+`,
+		},
+		{
+			name: "explicit from a sync nexus operation: target outside the service's namespace",
+			src: `nexus service Svc:
+    sync Op(x: int) -> (int):
+        activity Act(x) -> y
+            options:
+                task_queue: "act-q"
+        close complete(y)
+
+activity Act(x: int) -> (int):
+    return x
+
+worker svcWorker:
+    nexus service Svc
+
+worker actWorker:
+    activity Act
+
+namespace alpha:
+    worker svcWorker
+        options:
+            task_queue: "svc-q"
+
+namespace beta:
+    worker actWorker
+        options:
+            task_queue: "act-q"
+`,
+			want: []string{
+				`activity Act has task_queue "act-q", but no worker on that queue in namespace alpha registers it`,
+			},
+		},
+		{
+			name: "explicit from a sync nexus operation: target in the service's namespace",
+			src: `nexus service Svc:
+    sync Op(x: int) -> (int):
+        activity Act(x) -> y
+            options:
+                task_queue: "act-q"
+        close complete(y)
+
+activity Act(x: int) -> (int):
+    return x
+
+worker svcWorker:
+    nexus service Svc
+
+worker actWorker:
+    activity Act
+
+namespace alpha:
+    worker svcWorker
+        options:
+            task_queue: "svc-q"
+    worker actWorker
+        options:
+            task_queue: "act-q"
+`,
+		},
+		{
+			name: "endpoint: service only on the endpoint's queue in another namespace",
+			src: `nexus service Svc:
+    async Op workflow Backing
+
+workflow Backing():
+    close complete()
+
+workflow W():
+    nexus Ep Svc.Op() -> result
+    close complete(result)
+
+worker callerWorker:
+    workflow W
+
+worker svcWorker:
+    nexus service Svc
+    workflow Backing
+
+namespace a:
+    worker callerWorker
+        options:
+            task_queue: "wq"
+    nexus endpoint Ep
+        options:
+            task_queue: "q"
+
+namespace b:
+    worker svcWorker
+        options:
+            task_queue: "q"
+`,
+			want: []string{
+				`nexus endpoint Ep routes to task queue "q" in namespace a, but no worker on that queue has service Svc`,
+			},
+		},
+		{
+			name: "endpoint: service on the endpoint's queue in its namespace",
+			src: `nexus service Svc:
+    async Op workflow Backing
+
+workflow Backing():
+    close complete()
+
+workflow W():
+    nexus Ep Svc.Op() -> result
+    close complete(result)
+
+worker callerWorker:
+    workflow W
+
+worker svcWorker:
+    nexus service Svc
+    workflow Backing
+
+namespace a:
+    worker callerWorker
+        options:
+            task_queue: "wq"
+    worker svcWorker
+        options:
+            task_queue: "q"
+    nexus endpoint Ep
+        options:
+            task_queue: "q"
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := routingMsgs(Validate(mustParseAndResolve(t, tt.src)))
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("routing diagnostics:\n got  %q\n want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestUnhostedCallerNotRoutingChecked: a caller on no instantiated worker has
+// no namespace to route from, so even an explicit task_queue naming a queue no
+// worker polls draws no routing error — only the UNCOVERED_WORKFLOW warning.
+func TestUnhostedCallerNotRoutingChecked(t *testing.T) {
+	src := `workflow Parent():
+    workflow Child()
+        options:
+            task_queue: "nowhere-q"
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker childWorker:
+    workflow Child
+
+namespace alpha:
+    worker childWorker
+        options:
+            task_queue: "child-q"
+`
+	errs := Validate(mustParseAndResolve(t, src))
+	if got := routingMsgs(errs); len(got) != 0 {
+		t.Errorf("expected no routing diagnostics for an unhosted caller, got %q", got)
+	}
+	if got := countKind(errs, ErrUncoveredWorkflow); got != 1 {
+		t.Errorf("expected exactly one UNCOVERED_WORKFLOW, got %d: %v", got, errs)
+	}
+}

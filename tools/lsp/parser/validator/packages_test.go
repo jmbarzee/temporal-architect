@@ -158,9 +158,9 @@ namespace bns:
 
 // TestCrossPackageRoutingIndependent: alpha.Caller calls alpha.Charge, which is
 // NOT deployed on any worker on the caller's queue. A same-named activity in
-// beta IS deployed on a worker on an identically-named queue. Routing must be
-// judged per package, so the real mismatch (alpha.Charge undeployed) is
-// reported. Under the old bare-name keying beta's "Charge" registration would
+// beta IS deployed on a worker on an identically-named queue in the same
+// namespace, so only the package separates them. Routing must be judged per
+// package, so the real mismatch (alpha.Charge undeployed) is reported. Under the old bare-name keying beta's "Charge" registration would
 // satisfy the check and hide the mismatch.
 func TestCrossPackageRoutingIndependent(t *testing.T) {
 	alpha := `package alpha
@@ -175,7 +175,7 @@ activity Charge(x):
 worker aw:
     workflow Caller
 
-namespace ans:
+namespace prod:
     worker aw
         options:
             task_queue: "shared"
@@ -188,21 +188,22 @@ activity Charge(x):
 worker bw:
     activity Charge
 
-namespace bns:
+namespace prod:
     worker bw
         options:
             task_queue: "shared"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
-	if !hasError(errs, `activity Charge is not on any worker polling task queue "shared" (inherited from workflow Caller)`) {
+	if !hasError(errs, `activity Charge is not on any worker polling task queue "shared" in namespace prod (inherited from workflow Caller)`) {
 		t.Fatalf("expected IMPLICIT_ROUTING_MISMATCH for alpha.Charge, got: %v", errs)
 	}
 }
 
 // TestCrossPackageEndpointServiceLinkage: a nexus endpoint routes to a queue
 // whose worker registers a same-named service from a DIFFERENT package than the
-// one the call targets. The linkage must be judged per package, so the mismatch
-// is reported. Endpoints themselves stay flat-global (bare name).
+// one the call targets, in the same namespace, so only the package separates
+// them. The linkage must be judged per package, so the mismatch is reported.
+// Endpoints themselves stay flat-global (bare name).
 func TestCrossPackageEndpointServiceLinkage(t *testing.T) {
 	alpha := `package alpha
 
@@ -216,7 +217,7 @@ workflow W():
 worker aw:
     workflow W
 
-namespace ans:
+namespace prod:
     worker aw
         options:
             task_queue: "q"
@@ -236,13 +237,13 @@ worker bw:
     nexus service Svc
     workflow BW
 
-namespace bns:
+namespace prod:
     worker bw
         options:
             task_queue: "q"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
-	if !hasError(errs, "no worker on that queue has service Svc") {
+	if !hasError(errs, `nexus endpoint Ep routes to task queue "q" in namespace prod, but no worker on that queue has service Svc`) {
 		t.Fatalf("expected ENDPOINT_SERVICE_LINKAGE mismatch for alpha.Svc, got: %v", errs)
 	}
 }

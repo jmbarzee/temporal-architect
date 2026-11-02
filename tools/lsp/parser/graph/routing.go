@@ -166,10 +166,11 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 }
 
 // emitQueuedCall implements the shared activity/workflow dispatch
-// resolution. Explicit task_queue: the caller named the queue, so we
-// match callee deployments on that queue exactly. Implicit: the call
-// inherits the caller's queue, so we match the union of queues any
-// deployment of the caller's definition polls.
+// resolution. A task queue is scoped to its namespace, so a callee
+// deployment matches only within this caller deployment's namespace.
+// Explicit task_queue: the caller named the queue, so we match callee
+// deployments on that queue exactly. Implicit: the call inherits this
+// caller deployment's queue.
 //
 // When no callee deployment matches, no edge is emitted and a
 // DISPATCH_NO_REACHABLE_DEPLOYMENT diagnostic is added so the consumer
