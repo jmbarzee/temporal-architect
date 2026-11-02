@@ -114,7 +114,7 @@ function WorkerDefBlock({ def, controlledExpanded, onToggle }: { def: WorkerDef 
 
   return (
     <div className={`block block-worker-def ${expanded ? 'expanded' : 'collapsed'}`}>
-      <ContextualNavButtons defName={def.name} defType="workerDef" />
+      <ContextualNavButtons defName={def.name} defType="workerDef" qualifiedName={qualifiedNameOf(def)} />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <BlockIcon kind="worker" />
@@ -207,7 +207,7 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle }: { def: Namespa
 
   return (
     <div className={`block block-namespace-def ${expanded ? 'expanded' : 'collapsed'}`}>
-      <ContextualNavButtons defName={def.name} defType="namespaceDef" />
+      <ContextualNavButtons defName={def.name} defType="namespaceDef" qualifiedName={qualifiedNameOf(def)} />
       <div className="block-header" onClick={toggle}>
         <span className="block-toggle">{expanded ? '▼' : '▶'}</span>
         <BlockIcon kind="namespace" />

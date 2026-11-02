@@ -5,8 +5,7 @@ interface ContextualNavProps {
   defName?: string
   defType?: string
   // The definition's qualified name (`qualifiedNameOf`), which "Show in Graph"
-  // focuses by; defaults to `defName`, which is already the qualified name for
-  // an unpackaged definition and for a worker or namespace.
+  // focuses by; `defName` stays bare for the in-tree reference index.
   qualifiedName?: string
   showDefinition?: { name: string; type: string }
 }
@@ -57,8 +56,8 @@ export function ContextualNavButtons({ defName, defType, qualifiedName, showDefi
   }
 
   // "Show in Graph" for any definition
-  const showGraph = defName && defType && nav.showInGraph
-    ? () => nav.showInGraph!(qualifiedName ?? defName, defType)
+  const showGraph = qualifiedName && defType && nav.showInGraph
+    ? () => nav.showInGraph!(qualifiedName, defType)
     : null
 
   if (actions.length === 0 && !showGraph) return null

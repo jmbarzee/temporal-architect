@@ -232,8 +232,8 @@ func marshalOptionEntries(entries []*OptionEntry) []OptionEntryJSON {
 // the name element of the definition's graph node ID. It is empty — and the
 // omitempty field absent — for an unstamped (default-package) definition,
 // whose graph name is already the bare name, so unpackaged output stays
-// byte-identical. Workers and namespaces carry no such
-// field: the graph keeps them bare.
+// byte-identical. Workers and namespaces carry no such field: the graph keeps
+// them bare.
 func qualifiedNameJSON(pkg, name string) string {
 	if pkg == "" {
 		return ""
