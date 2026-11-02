@@ -232,7 +232,7 @@ The resolver validates workers, namespaces, and nexus definitions:
 - Worker instantiations missing `task_queue` option produce errors
 - Nexus endpoint instantiations missing `task_queue` option produce errors
 - Workers on the same task queue (within a namespace) with different type sets produce errors
-- Workers on the same task queue with identical type sets produce warnings (redundant)
+- Workers on the same task queue (within a namespace) with identical type sets produce warnings (redundant)
 - Nexus endpoint routing to a task queue where no worker in the endpoint's namespace registers the service produces errors
 - Defined workflows/activities not on any instantiated worker produce warnings (when namespaces exist)
 - Defined nexus services not referenced by any worker produce warnings (when namespaces exist)

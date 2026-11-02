@@ -504,10 +504,10 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 // so the target must be on a worker polling the routed queue in that same
 // namespace. An explicit task_queue names a queue in each of the caller's
 // namespaces; an implicit call inherits each (namespace, queue) placement of
-// its calling workflow (a sync nexus operation has no inherited queue, and a
-// placement missing its task_queue has none to inherit). An unhosted caller is
-// not checked — it has no namespace to route from and is already reported as
-// uncovered.
+// its calling workflow. Implicit calls from a sync nexus operation are not
+// checked (#241), nor from a placement missing its task_queue, which has none
+// to inherit. An unhosted caller is not checked — it has no namespace to route
+// from and is already reported as uncovered.
 func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts *ast.OptionsBlock, from caller, line, column int) {
 	if explicitTQ := extractTaskQueue(opts); explicitTQ != "" {
 		for _, ns := range v.callerNamespaces(from) {

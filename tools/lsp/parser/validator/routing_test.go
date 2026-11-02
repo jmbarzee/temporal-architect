@@ -467,3 +467,63 @@ namespace alpha:
 		t.Errorf("expected exactly one UNCOVERED_WORKFLOW, got %d: %v", got, errs)
 	}
 }
+
+// TestCoherenceIsNamespaceScoped: workers on a same-named queue are compared
+// only within one namespace. Different type sets on "shared" in two
+// namespaces are two queues and coherent; in one namespace they mismatch.
+func TestCoherenceIsNamespaceScoped(t *testing.T) {
+	const types = `workflow A():
+    close complete()
+
+workflow B():
+    close complete()
+
+worker aw:
+    workflow A
+
+worker bw:
+    workflow B
+`
+	tests := []struct {
+		name       string
+		namespaces string
+		want       int
+	}{
+		{
+			name: "two namespaces",
+			namespaces: `
+namespace alpha:
+    worker aw
+        options:
+            task_queue: "shared"
+
+namespace beta:
+    worker bw
+        options:
+            task_queue: "shared"
+`,
+			want: 0,
+		},
+		{
+			name: "one namespace",
+			namespaces: `
+namespace alpha:
+    worker aw
+        options:
+            task_queue: "shared"
+    worker bw
+        options:
+            task_queue: "shared"
+`,
+			want: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := Validate(mustParseAndResolve(t, types+tt.namespaces))
+			if got := countKind(errs, ErrTaskQueueMismatch); got != tt.want {
+				t.Errorf("TASK_QUEUE_MISMATCH count = %d, want %d: %v", got, tt.want, errs)
+			}
+		})
+	}
+}

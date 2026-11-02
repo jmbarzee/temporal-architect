@@ -12,9 +12,9 @@ import (
 //     queue equals the literal.
 //   - activityCall / workflowCall implicit: match callee deployments in
 //     the caller deployment's namespace whose queue equals *this* caller
-//     deployment's queue. The walk runs
-//     once per caller deployment, so a definition hosted on two workers
-//     resolves twice, each against its own queue — not against the union.
+//     deployment's queue. The walk runs once per caller deployment, so a
+//     definition hosted on two workers resolves twice, each against its
+//     own queue — not against the union.
 //   - nexusCall: match callee deployments whose queue == endpoint.queue
 //     AND whose namespace == endpoint.namespace; routing.nexusEndpoint
 //     carries the endpoint deployment ID.
