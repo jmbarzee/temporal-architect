@@ -505,19 +505,28 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 // so the target must be on a worker polling the routed queue in that same
 // namespace. An explicit task_queue — on the call, else in the target's
 // default_options — names a queue in each of the caller's namespaces; an
-// implicit call inherits each (namespace, queue) placement of
-// its calling workflow. Implicit calls from a sync nexus operation are not
-// checked (#241), nor from a placement missing its task_queue, which has none
-// to inherit. An unhosted caller is not checked — it has no namespace to route
-// from and is already reported as uncovered.
+// implicit call inherits each (namespace, queue) placement of its calling
+// workflow. Implicit calls from a sync nexus operation are not checked (#241),
+// nor from a placement missing its task_queue, which has none to inherit. An
+// unhosted caller is not checked — it has no namespace to route from and is
+// already reported as uncovered — nor is an external or undefined target,
+// which has no workers to find.
 func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts *ast.OptionsBlock, from caller, line, column int) {
-	if explicitTQ := v.namedQueue(kind, target, opts); explicitTQ != "" {
+	defaults, ok := v.targetDefaults(kind, target)
+	if !ok {
+		return
+	}
+	explicitTQ, source := extractTaskQueue(opts), ""
+	if explicitTQ == "" {
+		explicitTQ, source = extractTaskQueue(defaults), " (from its default_options)"
+	}
+	if explicitTQ != "" {
 		for _, ns := range v.callerNamespaces(from) {
 			if v.hostedOn(kind, target, placement{ns, explicitTQ}) {
 				continue
 			}
 			v.errs = append(v.errs, &Error{
-				Msg:    fmt.Sprintf("%s %s has task_queue %q, but no worker on that queue in namespace %s registers it", kind, target.name, explicitTQ, ns),
+				Msg:    fmt.Sprintf("%s %s has task_queue %q%s, but no worker on that queue in namespace %s registers it", kind, target.name, explicitTQ, source, ns),
 				Line:   line,
 				Column: column,
 				Kind:   ErrExplicitRoutingMismatch,
@@ -544,24 +553,20 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts *ast.O
 	}
 }
 
-// namedQueue returns the task queue a call names: the call site's task_queue,
-// which overrides per key the target definition's default_options task_queue;
-// "" when neither names one and the call inherits its caller's queue.
-func (v *validationCtx) namedQueue(kind string, target pkgKey, opts *ast.OptionsBlock) string {
-	if tq := extractTaskQueue(opts); tq != "" {
-		return tq
-	}
+// targetDefaults returns the default_options of the activity or workflow
+// definition target names, and whether target is a definition in this tree.
+func (v *validationCtx) targetDefaults(kind string, target pkgKey) (*ast.OptionsBlock, bool) {
 	switch kind {
 	case "activity":
 		if d := v.activities[target]; d != nil {
-			return extractTaskQueue(d.DefaultOptions)
+			return d.DefaultOptions, true
 		}
 	case "workflow":
 		if d := v.workflows[target]; d != nil {
-			return extractTaskQueue(d.DefaultOptions)
+			return d.DefaultOptions, true
 		}
 	}
-	return ""
+	return nil, false
 }
 
 // placementsOf returns the distinct (namespace, task queue) pairs on which a

@@ -452,9 +452,63 @@ namespace payments:
             task_queue: "payment-workers"
 `,
 			want: []string{
-				`activity Charge has task_queue "payment-workers", but no worker on that queue in namespace prod registers it`,
-				`activity Charge has task_queue "payment-workers", but no worker on that queue in namespace prod registers it`,
+				`activity Charge has task_queue "payment-workers" (from its default_options), but no worker on that queue in namespace prod registers it`,
+				`activity Charge has task_queue "payment-workers" (from its default_options), but no worker on that queue in namespace prod registers it`,
 			},
+		},
+		{
+			name: "default_options: a call-site task_queue overrides a workflow's default",
+			src: `workflow Parent():
+    workflow Child()
+        options:
+            task_queue: "child-q"
+    workflow Child()
+    close complete()
+
+workflow Child():
+    default_options:
+        task_queue: "nowhere"
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker childWorker:
+    workflow Child
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "parent-q"
+    worker childWorker
+        options:
+            task_queue: "child-q"
+`,
+			want: []string{
+				`workflow Child has task_queue "nowhere" (from its default_options), but no worker on that queue in namespace alpha registers it`,
+			},
+		},
+		{
+			name: "external or undefined targets are left to the resolver",
+			src: `package demo
+
+import "acme/other"
+
+workflow Parent():
+    activity other.Act()
+    await activity other.Act2()
+    promise p <- workflow other.Child()
+    await p
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "shared"
+`,
 		},
 		{
 			name: "implicit: call in a signal handler body inherits the workflow's placement",
