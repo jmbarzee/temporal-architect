@@ -305,12 +305,66 @@ namespace bad:
 
 	found := false
 	for _, d := range g.Diagnostics {
-		if d.Code == DiagDispatchNoReachableDeployment && strings.Contains(d.Message, "nonexistent") {
+		if d.Code == DiagDispatchNoReachableDeployment && strings.Contains(d.Message, `task_queue "nonexistent" in namespace bad`) {
 			found = true
 		}
 	}
 	if !found {
 		t.Errorf("expected DISPATCH_NO_REACHABLE_DEPLOYMENT diagnostic; got %+v", g.Diagnostics)
+	}
+}
+
+// TestNoReachableNexusDeploymentNamesEndpointNamespace: an unreachable nexus
+// call is diagnosed in the endpoint's namespace, not the caller's.
+func TestNoReachableNexusDeploymentNamesEndpointNamespace(t *testing.T) {
+	src := `
+nexus service Svc:
+    async Op workflow Backing
+
+workflow Backing():
+    close complete()
+
+workflow Caller():
+    nexus Ep Svc.Op() -> r
+    close complete(r)
+
+worker callerWorker:
+    workflow Caller
+
+worker svcWorker:
+    nexus service Svc
+    workflow Backing
+
+namespace callers:
+    worker callerWorker
+        options:
+            task_queue: "q"
+
+namespace services:
+    worker svcWorker
+        options:
+            task_queue: "svc-q"
+    nexus endpoint Ep
+        options:
+            task_queue: "q"
+`
+	file, parseErrs := parser.ParseFileAll(src)
+	if len(parseErrs) > 0 {
+		t.Fatalf("parse: %v", parseErrs[0])
+	}
+	if errs := resolver.Resolve(file); len(errs) > 0 {
+		t.Fatalf("resolve: %v", errs[0])
+	}
+	g := Extract(file)
+
+	found := false
+	for _, d := range g.Diagnostics {
+		if d.Code == DiagDispatchNoReachableDeployment && strings.Contains(d.Message, `task_queue "q" in namespace services`) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected DISPATCH_NO_REACHABLE_DEPLOYMENT in namespace services; got %+v", g.Diagnostics)
 	}
 }
 

@@ -54,7 +54,7 @@ Common error types:
 - Namespace references undefined worker
 - Worker instantiation missing `task_queue` option
 - Nexus endpoint instantiation missing `task_queue` option
-- Workers on same task queue with different type sets
+- Workers on same task queue (within a namespace) with different type sets
 - Undefined nexus endpoint (hard error — endpoints are flat-global; a templated reference resolves by full templated name, so a mismatch or a static reference to a templated endpoint lands here)
 - Endpoint template param set not a superset of its owning namespace's (`ENDPOINT_PARAM_NOT_SUPERSET` — otherwise the endpoint's flat-global name collides across the family)
 - Unbound template param in a string option value (`UNBOUND_TEMPLATE_PARAM` — a `{param}` in a `STRING` option value must be bound by the enclosing namespace/endpoint identifier template, or its owning namespace's)

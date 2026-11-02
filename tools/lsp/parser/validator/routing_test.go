@@ -89,6 +89,33 @@ namespace beta:
 			},
 		},
 		{
+			name: "implicit: two caller workers on one placement report once",
+			src: `workflow Parent():
+    workflow Child()
+    close complete()
+
+workflow Child():
+    close complete()
+
+worker parentWorker:
+    workflow Parent
+
+worker parentReplica:
+    workflow Parent
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "shared"
+    worker parentReplica
+        options:
+            task_queue: "shared"
+`,
+			want: []string{
+				`workflow Child is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
+			},
+		},
+		{
 			name: "implicit: caller in two namespaces, target in both",
 			src: `workflow Parent():
     workflow Child()
@@ -157,6 +184,9 @@ workflow Child():
 worker parentWorker:
     workflow Parent
 
+worker parentBatchWorker:
+    workflow Parent
+
 worker childWorker:
     workflow Child
 
@@ -177,6 +207,9 @@ namespace alpha:
     worker parentWorker
         options:
             task_queue: "parent-q"
+    worker parentBatchWorker
+        options:
+            task_queue: "parent-batch-q"
 `,
 			want: []string{
 				`workflow Child has task_queue "child-q", but no worker on that queue in namespace alpha registers it`,
@@ -305,11 +338,12 @@ namespace beta:
 			},
 		},
 		{
-			name: "explicit: caller's instantiation lacks task_queue but its namespace is known",
+			name: "caller's instantiation lacks task_queue: explicit checked in its namespace, implicit skipped",
 			src: `workflow Parent():
     workflow Child()
         options:
             task_queue: "nowhere"
+    workflow Child()
     close complete()
 
 workflow Child():
