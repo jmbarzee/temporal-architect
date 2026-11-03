@@ -7,10 +7,11 @@
 // become view nodes, parser edges become view edges, parser coarsened
 // edges become L2/L1 view edges. No dispatch / routing logic remains.
 //
-// `ast` is consulted for per-definition metadata the deployment graph
-// doesn't carry — most importantly `sourceFile` (which the per-file
-// filter chip reads), but also things like `params` and return types
-// that hover/details panels may want to surface in the future.
+// The AST, through `buildAstLookup`, is consulted for per-definition
+// metadata the deployment graph doesn't carry — most importantly
+// `sourceFile` (which the per-file filter chip reads), but also things like
+// `params` and return types that hover/details panels may want to surface
+// in the future.
 
 import type { Definition, TWFFile } from '../types/ast'
 import { qualifiedNameOf } from '../types/ast'
@@ -59,43 +60,44 @@ export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined
 // ---------------------------------------------------------------------------
 //
 // Parser node `definition` is `${nodeType}:${name}`, e.g.
-// `workflow:OrderWorkflow`. The view needs to join each graph node to its
-// AST counterpart for sourceFile (and, in the future, params / hover
-// content). In a packaged design the name of a workflow, activity or nexus
-// service is qualified (`workflow:agent.RunAgent`), so those kinds key on
-// `qualifiedNameOf(def)`; workers, namespaces and endpoints are never
-// qualified and key on their bare names. Nexus operations and endpoints live
-// nested inside their service / namespace AST nodes — for those we map the
-// child's graph name (`${service}.${op}`, the service qualified) to the
-// parent's source file, which is the file authors associate the child with.
+// `workflow:OrderWorkflow`. The host joins each graph node to the top-level
+// AST definition that owns it — for sourceFile here, and for the Tree
+// definition "Show in Tree" focuses. In a packaged design the name of a
+// workflow, activity or nexus service is qualified (`workflow:agent.RunAgent`),
+// so those kinds key on `qualifiedNameOf(def)`; workers, namespaces and
+// endpoints are never qualified and key on their bare names. Nexus operations
+// and endpoints live nested inside their service / namespace AST nodes — for
+// those we map the child's graph name (`${service}.${op}`, the service
+// qualified) to the parent definition, which is the one authors associate the
+// child with (#243).
 
-type AstLookup = Map<string, { sourceFile?: string; def?: Definition }>
+export type AstLookup = ReadonlyMap<string, Definition>
 
-function buildAstLookup(ast: TWFFile): AstLookup {
-  const m: AstLookup = new Map()
+export function buildAstLookup(ast: TWFFile): AstLookup {
+  const m = new Map<string, Definition>()
   for (const def of ast.definitions ?? []) {
     switch (def.type) {
       case 'workflowDef':
-        m.set(`workflow:${qualifiedNameOf(def)}`, { sourceFile: def.sourceFile, def })
+        m.set(`workflow:${qualifiedNameOf(def)}`, def)
         break
       case 'activityDef':
-        m.set(`activity:${qualifiedNameOf(def)}`, { sourceFile: def.sourceFile, def })
+        m.set(`activity:${qualifiedNameOf(def)}`, def)
         break
       case 'workerDef':
-        m.set(`worker:${def.name}`, { sourceFile: def.sourceFile, def })
+        m.set(`worker:${def.name}`, def)
         break
       case 'namespaceDef': {
-        m.set(`namespace:${def.name}`, { sourceFile: def.sourceFile, def })
+        m.set(`namespace:${def.name}`, def)
         for (const ep of def.endpoints ?? []) {
-          m.set(`nexusEndpoint:${ep.endpointName}`, { sourceFile: def.sourceFile, def })
+          m.set(`nexusEndpoint:${ep.endpointName}`, def)
         }
         break
       }
       case 'nexusServiceDef': {
         const service = qualifiedNameOf(def)
-        m.set(`nexusService:${service}`, { sourceFile: def.sourceFile, def })
+        m.set(`nexusService:${service}`, def)
         for (const op of def.operations ?? []) {
-          m.set(`nexusOperation:${service}.${op.name}`, { sourceFile: def.sourceFile, def })
+          m.set(`nexusOperation:${service}.${op.name}`, def)
         }
         break
       }
@@ -155,9 +157,7 @@ function displayNameFor(nodeType: NodeType, definitionName: string): string {
 // buildGraph
 // ---------------------------------------------------------------------------
 
-export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
-  const astLookup = buildAstLookup(ast)
-
+export function buildGraph(parserGraph: ParserGraph, astLookup: AstLookup): Graph {
   const nodes: GraphNode[] = []
   const edges: GraphEdge[] = []
   let edgeSeq = 0
@@ -174,10 +174,10 @@ export function buildGraph(parserGraph: ParserGraph, ast: TWFFile): Graph {
   for (const pn of parserGraph.nodes) {
     const { kind, name } = splitDefinitionKey(pn.definition)
     const nodeType = nodeTypeFromKind(kind)
-    const ast = astLookup.get(pn.definition)
+    const def = astLookup.get(pn.definition)
     nodes.push({
       id: pn.id,
-      values: dimensionsFor(nodeType, ast?.sourceFile),
+      values: dimensionsFor(nodeType, def?.sourceFile),
       name: displayNameFor(nodeType, name),
       // Per-domain display metadata the library must not interpret. The
       // tooltip reads these back out by name; nothing in the engine does.

@@ -24,6 +24,7 @@ import type {
   GraphNode,
   AxisLocks,
   LayoutState,
+  NodeAction,
   ThemeChoice,
 } from '@temporal-architect/graph-view'
 import React from 'react'
@@ -396,18 +397,26 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     })
   }, [ast.definitions, switchView])
 
-  const showInTree = React.useCallback((node: GraphNode) => {
-    const name = node.name
-    const defType = node.values[DEF_TYPE_DIMENSION] ?? ''
-    const def = ast.definitions.find(d => qualifiedNameOf(d) === name && d.type === defType)
-    switchView('tree', {
-      kind: 'focus',
-      target: {
-        name,
-        values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
-      },
-    })
-  }, [ast.definitions, switchView])
+  // "Show in Tree" on a node focuses the top-level definition that owns it,
+  // found by its copyKey: itself, or for a nexus operation / endpoint the
+  // service / namespace it is nested in (#243). The focus carries that
+  // definition's own type, so the reconcile widens the chip the Tree actually
+  // filters it by. A node with no owner — every node in history mode, whose AST
+  // is empty — is offered no button.
+  const showInTreeAction = React.useCallback((node: GraphNode): NodeAction | null => {
+    const def = node.copyKey === undefined ? undefined : model.ownerOf.get(node.copyKey)
+    if (!def) return null
+    return {
+      label: 'Show in Tree',
+      onSelect: () => switchView('tree', {
+        kind: 'focus',
+        target: {
+          name: qualifiedNameOf(def),
+          values: { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.sourceFile },
+        },
+      }),
+    }
+  }, [model.ownerOf, switchView])
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
 
@@ -494,7 +503,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
                   onRequestDecomposition={onRequestDecomposition}
                 />
               )}
-              nodeAction={historyMode ? undefined : { label: 'Show in Tree', onSelect: showInTree }}
+              nodeAction={showInTreeAction}
               theme={graphTheme}
               onThemeChange={setGraphTheme}
               systemTheme={hostTheme}
