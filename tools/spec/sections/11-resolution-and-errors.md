@@ -8,7 +8,7 @@ After parsing, the resolver performs symbol resolution:
 2. **Per-workflow resolution:**
    - Build signal/query/update maps for the workflow
    - Build condition map from `state:` block declarations
-   - Build promise set from `promise` statements in the workflow body
+   - Scope `promise` bindings lexically (see [Statement Syntax — Promise Statement](./06-statement-syntax.md#promise-statement)); a name out of scope is `UNDEFINED_PROMISE_OR_CONDITION`
    - Resolve activity calls to activity definitions
    - Resolve workflow calls to workflow definitions
    - Resolve await targets to signal/update/activity/workflow/promise/condition declarations
@@ -77,6 +77,7 @@ Common error types:
 - Unused import — a resolved import never referenced (warning)
 - Unknown option key in `options:` block (including handler `options:` blocks — e.g. `unfinished_policy` on a query handler, where only `description` is allowed)
 - Misplaced option key (`OPTION_MISPLACED`): a key its context cannot carry — `parent_close_policy` in a workflow `default_options:` block (it describes one parent↔child invocation, not the workflow type) or at a client start (no parent), and `workflow_id_conflict_policy` at a child start (a child start carries no conflict policy)
+- Duplicate option key (`DUPLICATE_OPTION_KEY`): a key repeated in one options block, nested blocks included
 - Wrong value type for option key (e.g., number where duration expected)
 - Invalid enum value for option key (e.g., a value other than `abandon` / `warn_and_abandon` for `unfinished_policy`)
 

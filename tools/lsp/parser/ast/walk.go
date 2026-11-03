@@ -61,66 +61,47 @@ func walkStatement(stmt Statement, fn func(Statement) bool, cfg *walkConfig) boo
 		}
 	}
 
-	switch s := stmt.(type) {
-	case *AwaitAllBlock:
-		for _, child := range s.Body {
-			if !walkStatement(child, fn, cfg) {
-				return false
-			}
-		}
-	case *AwaitOneBlock:
-		for _, c := range s.Cases {
-			if !walkStatement(c, fn, cfg) {
-				return false
-			}
-		}
-	case *AwaitOneCase:
-		if s.AwaitAll != nil {
-			for _, child := range s.AwaitAll.Body {
-				if !walkStatement(child, fn, cfg) {
-					return false
-				}
-			}
-		}
-		for _, child := range s.Body {
-			if !walkStatement(child, fn, cfg) {
-				return false
-			}
-		}
-	case *SwitchBlock:
-		for _, c := range s.Cases {
-			if !walkStatement(c, fn, cfg) {
-				return false
-			}
-		}
-		for _, child := range s.Default {
-			if !walkStatement(child, fn, cfg) {
-				return false
-			}
-		}
-	case *SwitchCase:
-		for _, child := range s.Body {
-			if !walkStatement(child, fn, cfg) {
-				return false
-			}
-		}
-	case *IfStmt:
-		for _, child := range s.Body {
-			if !walkStatement(child, fn, cfg) {
-				return false
-			}
-		}
-		for _, child := range s.ElseBody {
-			if !walkStatement(child, fn, cfg) {
-				return false
-			}
-		}
-	case *ForStmt:
-		for _, child := range s.Body {
+	for _, block := range ChildBlocks(stmt) {
+		for _, child := range block {
 			if !walkStatement(child, fn, cfg) {
 				return false
 			}
 		}
 	}
 	return true
+}
+
+// ChildBlocks returns the statement lists nested directly in stmt, in source
+// order: an if's then and else bodies, a for or await-all body, an await-one's
+// or switch's cases, a switch's default, a case's body (an await-one case's
+// nested await-all body first). A leaf statement has none.
+func ChildBlocks(stmt Statement) [][]Statement {
+	switch s := stmt.(type) {
+	case *AwaitAllBlock:
+		return [][]Statement{s.Body}
+	case *AwaitOneBlock:
+		cases := make([]Statement, len(s.Cases))
+		for i, c := range s.Cases {
+			cases[i] = c
+		}
+		return [][]Statement{cases}
+	case *AwaitOneCase:
+		if s.AwaitAll != nil {
+			return [][]Statement{s.AwaitAll.Body, s.Body}
+		}
+		return [][]Statement{s.Body}
+	case *SwitchBlock:
+		cases := make([]Statement, len(s.Cases))
+		for i, c := range s.Cases {
+			cases[i] = c
+		}
+		return [][]Statement{cases, s.Default}
+	case *SwitchCase:
+		return [][]Statement{s.Body}
+	case *IfStmt:
+		return [][]Statement{s.Body, s.ElseBody}
+	case *ForStmt:
+		return [][]Statement{s.Body}
+	}
+	return nil
 }

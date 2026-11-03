@@ -28,7 +28,7 @@ DURATION ::= NUMBER ('ms' | 's' | 'm' | 'h' | 'd')
 NUMBER ::= [0-9]+ ['.' [0-9]+]
 ```
 
-Options blocks use indentation-based nesting (same as the rest of TWF). Each key-value pair goes on its own line. Nested blocks (like `retry_policy`) use deeper indentation.
+Options blocks use indentation-based nesting (same as the rest of TWF). Each key-value pair goes on its own line. Nested blocks (like `retry_policy`) use deeper indentation. A key appears at most once per block; a repeat is `DUPLICATE_OPTION_KEY`.
 
 A `list_value` is a bracketed inline list. Its elements are `STRING`s only. An empty list `[]` is
 allowed (an explicit "none"). No trailing comma is permitted (matching `arg_list`). The whole list
@@ -238,6 +238,8 @@ nexus_target ::= 'nexus' IDENT IDENT '.' IDENT args
 ```
 
 Declares a non-blocking async operation. The `<-` operator visually distinguishes async declaration from sync result binding (`->`). Use `await` to wait for the promise later.
+
+A promise is in scope from its binding to the end of the block that binds it, nested blocks included — in a workflow body, a handler body, or a sync nexus operation body. A later binding of the same name shadows it from there on, and same-named promises in sibling blocks are distinct. A handler also sees the promises bound at the top level of its workflow body, wherever in that body they are bound (the last binding of a repeated name); the workflow body does not see a handler's.
 
 **Examples:**
 ```
