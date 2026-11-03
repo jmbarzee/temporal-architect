@@ -8,7 +8,7 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `workflow Name(args) -> result` | Call child workflow, bind result (multi-step with own failure boundary) |
 | `nexus Endpoint Service.Op(args) -> result` | Nexus operation call |
 | `detach workflow Name(args)` / `detach nexus Endpoint Service.Op(args)` | Fire-and-forget; the result can't be observed |
-| `promise p <- activity\|workflow\|nexus ...` | Start async (use when you need the result later); also `promise p <- timer(duration)`, `promise p <- signal Name` |
+| `promise p <- activity\|workflow\|nexus ...` | Start async (use when you need the result later); also `promise p <- timer(duration)`, `promise p <- signal Name`; in scope from its binding to the end of its block (handlers see the body's top-level promises) |
 | `await p -> result` | Await promise, bind result |
 | `await timer(duration)` | Durable sleep |
 | `await signal Name` / `await update Name` | Wait for a signal / update |
@@ -59,6 +59,7 @@ A clean `twf check` requires none of these, but the design must reason about the
 | `workflow_id_conflict_policy` | workflow (client start, defaults) | Start onto a *running* ID: `FAIL`, `USE_EXISTING`, `TERMINATE_EXISTING` ([workflow-id-schemes.md](../topics/workflow-id-schemes.md#start-collisions)) |
 | `priority` | activity, workflow, nexus | Relative dispatch priority |
 
+- Each key appears at most once per options block (`DUPLICATE_OPTION_KEY`).
 - **Start kind decides the workflow keys.** A child start (workflow body or handler) takes `parent_close_policy`, not `workflow_id_conflict_policy`; a client start (sync nexus body, `async` op) the reverse (`OPTION_MISPLACED`). Temporal's deprecated `TERMINATE_IF_RUNNING` is not a value: write `ALLOW_DUPLICATE` + `TERMINATE_EXISTING`.
 - `task_queue` is not a Nexus call option — Nexus routing comes from the endpoint. A workflow **ID** is never a call option: a start's ID derives from the child type's `id_scheme:`, if it has one ([child-workflows.md](../topics/child-workflows.md#workflow-id-design)).
 - There is no `cron_schedule` key (rejected as `unknown option key`); recurring starts are Temporal Schedules, platform configuration outside TWF ([timers-scheduling.md](../topics/timers-scheduling.md#schedules-cron-workflows)).

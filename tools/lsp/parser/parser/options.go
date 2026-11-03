@@ -133,9 +133,14 @@ var clientStartOptionSchema = schemaWith(workflowStartSchema, "workflow_id_confl
 var activityDefaultOptionSchema = activityOptionSchema
 var workflowDefaultOptionSchema = clientStartOptionSchema
 
-// CodeOptionMisplaced marks a known option key written where its context
-// cannot carry it.
-const CodeOptionMisplaced = "OPTION_MISPLACED"
+// Parse-error codes for option blocks.
+const (
+	// CodeOptionMisplaced marks a known option key written where its context
+	// cannot carry it.
+	CodeOptionMisplaced = "OPTION_MISPLACED"
+	// CodeDuplicateOptionKey marks a key repeated in one options block.
+	CodeDuplicateOptionKey = "DUPLICATE_OPTION_KEY"
+)
 
 // misplacedOption is the targeted error for a key a context rejects, in place
 // of the generic unknown-key error.
@@ -264,6 +269,7 @@ func (p *Parser) parseOptionsBlock(ctx OptionsContext) (*ast.OptionsBlock, error
 // nested schema only).
 func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, misplaced map[string]misplacedOption) ([]*ast.OptionEntry, error) {
 	var entries []*ast.OptionEntry
+	seen := make(map[string]bool)
 
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
 		// Comments may appear anywhere (spec §8): on their own line before, between,
@@ -277,6 +283,15 @@ func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, misplaced m
 		if err != nil {
 			return nil, err
 		}
+		if seen[entry.Key] {
+			return nil, &ParseError{
+				Msg:    "duplicate option key: " + entry.Key + "; an options block sets each key once",
+				Line:   entry.Line,
+				Column: entry.Column,
+				code:   CodeDuplicateOptionKey,
+			}
+		}
+		seen[entry.Key] = true
 		entries = append(entries, entry)
 	}
 

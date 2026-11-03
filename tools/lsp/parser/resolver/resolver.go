@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -478,13 +479,6 @@ func Resolve(file *ast.File) []*ResolveError {
 			}
 		}
 
-		promises := make(map[string]*ast.PromiseStmt)
-		for _, stmt := range wf.Body {
-			if p, ok := stmt.(*ast.PromiseStmt); ok {
-				promises[p.Name] = p
-			}
-		}
-
 		ctx := &resolveCtx{
 			s:          s,
 			ownPkg:     ownPkg,
@@ -493,21 +487,24 @@ func Resolve(file *ast.File) []*ResolveError {
 			queries:    queries,
 			updates:    updates,
 			conditions: conditions,
-			promises:   promises,
+			promises:   map[string]*ast.PromiseStmt{},
 			params:     ast.ParamNames(wf.Params),
 		}
 
 		s.checkReservedNames(wf)
+		// The body resolves first, so a handler's send to a body promise
+		// finds that promise's target already resolved.
+		ctx.resolveStatements(wf.Body)
+		handlerCtx := ctx.withPromises(topLevelPromises(wf.Body))
 		for _, sig := range wf.Signals {
-			ctx.withParams(sig.Params).resolveStatements(sig.Body)
+			handlerCtx.withParams(sig.Params).resolveStatements(sig.Body)
 		}
 		for _, q := range wf.Queries {
-			ctx.withParams(q.Params).resolveStatements(q.Body)
+			handlerCtx.withParams(q.Params).resolveStatements(q.Body)
 		}
 		for _, u := range wf.Updates {
-			ctx.withParams(u.Params).resolveStatements(u.Body)
+			handlerCtx.withParams(u.Params).resolveStatements(u.Body)
 		}
-		ctx.resolveStatements(wf.Body)
 	}
 
 	// Pass 2b: resolve nexus service operation bodies / async backing workflows.
@@ -679,27 +676,61 @@ func (c *resolveCtx) withParams(handlerParams string) *resolveCtx {
 	return &hc
 }
 
-func (c *resolveCtx) resolveStatements(stmts []ast.Statement) {
-	ast.WalkStatements(stmts, func(s ast.Statement) bool {
-		switch s := s.(type) {
-		case *ast.ActivityCall:
-			resolvePkgRef(c.s, c.ownPkg, &s.Activity, c.s.activities, "activity", ErrUndefinedActivity, c.file)
-		case *ast.WorkflowCall:
-			resolvePkgRef(c.s, c.ownPkg, &s.Workflow, c.s.workflows, "workflow", ErrUndefinedWorkflow, c.file)
-		case *ast.NexusCall:
-			c.resolveNexusRefs(&s.Endpoint, &s.Service, &s.Operation)
-		case *ast.SetStmt:
-			resolveLocalRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, c.file, &c.s.errs)
-		case *ast.UnsetStmt:
-			resolveLocalRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, c.file, &c.s.errs)
-		case *ast.SignalSendStmt:
-			c.resolveSignalSend(s)
+// withPromises returns a copy of c whose promises also include extra.
+func (c *resolveCtx) withPromises(extra map[string]*ast.PromiseStmt) *resolveCtx {
+	pc := *c
+	pc.promises = maps.Clone(c.promises)
+	maps.Copy(pc.promises, extra)
+	return &pc
+}
+
+// topLevelPromises returns the promises bound directly in a body, outside any
+// nested block: the ones a workflow's handlers see.
+func topLevelPromises(body []ast.Statement) map[string]*ast.PromiseStmt {
+	promises := make(map[string]*ast.PromiseStmt)
+	for _, s := range body {
+		if p, ok := s.(*ast.PromiseStmt); ok {
+			promises[p.Name] = p
 		}
-		return true
-	}, ast.WithAsyncTargets(func(target ast.AsyncTarget, parent ast.Statement) bool {
-		c.resolveAsyncTarget(target, parent.NodeLine(), parent.NodeColumn())
-		return true
-	}))
+	}
+	return promises
+}
+
+// resolveStatements resolves one block. A promise is in scope from its binding
+// to the end of the block that binds it, nested blocks included; a later
+// binding of the same name shadows it from there on.
+func (c *resolveCtx) resolveStatements(stmts []ast.Statement) {
+	bc := c.withPromises(nil)
+	for _, s := range stmts {
+		bc.resolveStatement(s)
+		if p, ok := s.(*ast.PromiseStmt); ok {
+			bc.promises[p.Name] = p
+		}
+	}
+}
+
+// resolveStatement resolves one statement's references, then its nested blocks.
+func (c *resolveCtx) resolveStatement(s ast.Statement) {
+	switch s := s.(type) {
+	case *ast.ActivityCall:
+		resolvePkgRef(c.s, c.ownPkg, &s.Activity, c.s.activities, "activity", ErrUndefinedActivity, c.file)
+	case *ast.WorkflowCall:
+		resolvePkgRef(c.s, c.ownPkg, &s.Workflow, c.s.workflows, "workflow", ErrUndefinedWorkflow, c.file)
+	case *ast.NexusCall:
+		c.resolveNexusRefs(&s.Endpoint, &s.Service, &s.Operation)
+	case *ast.SetStmt:
+		resolveLocalRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, c.file, &c.s.errs)
+	case *ast.UnsetStmt:
+		resolveLocalRef(&s.Condition, c.conditions, "condition", ErrUndefinedCondition, c.file, &c.s.errs)
+	case *ast.SignalSendStmt:
+		c.resolveSignalSend(s)
+	}
+	if target := ast.AsyncTargetOf(s); target != nil {
+		c.resolveAsyncTarget(target, s.NodeLine(), s.NodeColumn())
+	}
+	for _, block := range ast.ChildBlocks(s) {
+		c.resolveStatements(block)
+	}
 }
 
 // resolveNexusRefs validates and resolves a nexus call site's endpoint, service,
