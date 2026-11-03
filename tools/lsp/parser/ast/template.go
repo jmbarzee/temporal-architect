@@ -1,14 +1,14 @@
 package ast
 
-// ExtractTemplateParams returns the distinct template-hole identifiers in s —
-// the `{param}` holes — in order of first appearance. A name (or option-value
-// string) with no holes yields an empty slice, so callers that store the result
-// on a node emit no wire field for static names.
+// ExtractTemplateParams returns the distinct template-parameter identifiers in
+// s — the `{param}` parameters — in order of first appearance. A name (or
+// option-value string) with no parameters yields an empty slice, so callers
+// that store the result on a node emit no wire field for static names.
 //
-// A hole is `{` immediately followed by an identifier (letter or '_', then
+// A parameter is `{` immediately followed by an identifier (letter or '_', then
 // letters/digits/'_') and a closing `}`. A `{` that does not open a well-formed
-// hole is skipped, so this is safe to run over arbitrary option-value strings
-// (e.g. `Result{ok: true}` yields no params).
+// parameter is skipped, so this is safe to run over arbitrary option-value
+// strings (e.g. `Result{ok: true}` yields no params).
 func ExtractTemplateParams(s string) []string {
 	var params []string
 	seen := map[string]bool{}

@@ -189,7 +189,7 @@ export function buildGraph(parserGraph: ParserGraph, astLookup: AstLookup): Grap
       parentId: parentByChild.get(pn.id),
       // The parser's orphan flag becomes the library's ring; its definition
       // key, the key every deployment copy of one definition shares; its
-      // template holes, one `× {param}` badge each.
+      // template parameters, one `× {param}` badge each.
       ring: pn.orphan ? 'dashed' : undefined,
       copyKey: pn.definition,
       badges: pn.templateParams?.map(p => `× ${p}`),

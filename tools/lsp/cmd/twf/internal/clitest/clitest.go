@@ -1,4 +1,4 @@
-// Package clitest provides helpers shared by the twf command tests: stdout
+// Package clitest provides helpers shared by the twf command tests: output
 // capture and a working-directory-independent path into the shared testdata
 // tree. It is imported only from _test.go files, so it never lands in the
 // shipped binary.
@@ -13,18 +13,23 @@ import (
 // CaptureStdout runs fn with os.Stdout redirected to a pipe and returns
 // everything written to stdout as a string. This lets CLI commands that write
 // directly to fmt.Println be tested without subprocess overhead.
-func CaptureStdout(fn func()) (string, error) {
+func CaptureStdout(fn func()) (string, error) { return capture(&os.Stdout, fn) }
+
+// CaptureStderr is CaptureStdout for os.Stderr, where diagnostics go.
+func CaptureStderr(fn func()) (string, error) { return capture(&os.Stderr, fn) }
+
+func capture(f **os.File, fn func()) (string, error) {
 	r, w, err := os.Pipe()
 	if err != nil {
 		return "", err
 	}
-	old := os.Stdout
-	os.Stdout = w
+	old := *f
+	*f = w
 
 	fn()
 
 	w.Close()
-	os.Stdout = old
+	*f = old
 
 	var buf [1 << 20]byte
 	n, _ := r.Read(buf[:])

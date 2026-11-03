@@ -443,3 +443,34 @@ namespace payments:
 		}
 	}
 }
+
+// TestServiceCoherenceAcrossFamilySpellings: service sets are compared per
+// deploy key (#229), so two spellings of one family are one group, and the
+// message names both.
+func TestServiceCoherenceAcrossFamilySpellings(t *testing.T) {
+	input := strings.Replace(strings.Replace(coherenceFile([]string{"A", "SvcA"}, []string{"A", "SvcB"}),
+		`task_queue: "q"`, `task_queue: "sandbox-{sandboxId}"`, 1),
+		`task_queue: "q"`, `task_queue: "sandbox-{id}"`, 1)
+	want := `workers w1 and w2 on task queues "sandbox-{sandboxId}" and "sandbox-{id}" in namespace ns register different nexus service sets`
+	if got := coherenceMsgs(Validate(mustParseAndResolve(t, input))); !slices.Equal(got, []string{want}) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestNexusCallerCheckedOnTemplatedEndpointQueue: an endpoint whose task_queue
+// is templated (ENDPOINT_TASK_QUEUE_TEMPLATED) is skipped by linkage, but its
+// allowlist never reads the queue, so the caller check still runs.
+func TestNexusCallerCheckedOnTemplatedEndpointQueue(t *testing.T) {
+	input := strings.Replace(accessFile(`allowed_caller_namespaces: ["orders"]`, "shop"),
+		"    nexus endpoint PayEndpoint\n        options:\n            task_queue: \"payments\"\n",
+		"    nexus endpoint PayEndpoint\n        options:\n            task_queue: \"payments-{x}\"\n", 1)
+	file, err := parser.ParseFile(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.Resolve(file)
+	errs := Validate(file)
+	if len(callerErrs(errs)) != 1 || hasKind(errs, ErrEndpointServiceLinkage, "") {
+		t.Errorf("want one NEXUS_CALLER_NOT_ALLOWED and no linkage error, got %v", errs)
+	}
+}

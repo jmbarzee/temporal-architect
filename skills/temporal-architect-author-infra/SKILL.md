@@ -43,11 +43,11 @@ For existing infra, dispatch the shared [`project-discovery` subagent](../tempor
 |------------------|----------------------------|-----|
 | `namespace Name:` | `temporalcloud_namespace` | `tcld namespace create` / `temporal operator namespace create` |
 | `nexus endpoint Name` (`worker_target` = namespace + `task_queue`) | `temporalcloud_nexus_endpoint` (`worker_target { namespace_id, task_queue }`) | `tcld` / `temporal operator nexus endpoint create --target-namespace --target-task-queue` |
-| worker `task_queue` option | informs the endpoint's `worker_target.task_queue` | same |
+| worker `task_queue` option (static) | informs the endpoint's `worker_target.task_queue` | same |
 | custom search attribute *(not in `.twf`)* | `temporalcloud_namespace_search_attribute` | `temporal operator search-attribute create` |
 | endpoint `allowed_caller_namespaces` | `allowed_caller_namespaces` (namespace **IDs**) | `--allow-namespace` / `tcld nexus endpoint allowed-namespace` |
 
-Task queues are not resources: they exist once a worker polls them, and an endpoint's `worker_target` is what makes one routable for Nexus. The endpoint **name** is what caller code invokes, and the **target task queue** is what the handler worker polls; both must match the `.twf` and `author-go`'s output, or Nexus tasks route nowhere.
+Task queues are not resources: they exist once a worker polls them, and an endpoint's `worker_target` is what makes one routable for Nexus. Only a static queue fills `worker_target.task_queue`. A family queue (`"sandbox-{sandboxId}"`) names a set of runtime queues: nothing to provision, and never an endpoint target; Nexus reaches it through an async operation whose workflow routes on ([nexus.md](../temporal-architect-design/topics/nexus.md#fronting-a-worker-family)). The endpoint **name** is what caller code invokes, and the **target task queue** is what the handler worker polls; both must match the `.twf` and `author-go`'s output, or Nexus tasks route nowhere.
 
 ### Endpoint access policy
 
@@ -55,7 +55,7 @@ An endpoint's `allowed_caller_namespaces` lists `.twf` namespace **names**; Clou
 
 - **Absent on a Cloud target:** ask the user. Terraform requires the field, and Cloud's default allows no caller — never default to allow-all.
 - **`[]`:** no caller. Confirm the target accepts an empty set before relying on it.
-- **`{param}` entries:** one that shares a hole with the endpoint's or namespace's name expands with each family member; any other means every member, so the list grows when a tenant is onboarded (`tcld nexus endpoint allowed-namespace add`, or the matching Terraform change) — it is not fixed at provisioning.
+- **`{param}` entries:** one whose parameter is spelled like a parameter of the endpoint's or namespace's name expands with each family member; any other means every member, so the list grows when a tenant is onboarded (`tcld nexus endpoint allowed-namespace add`, or the matching Terraform change) — it is not fixed at provisioning.
 - **Self-hosted:** no built-in allowlist. Tell the user the declared policy is enforced only by a custom Authorizer, and then only best-effort on operation starts; never drop it silently.
 
 ### Not yet modeled in `.twf`

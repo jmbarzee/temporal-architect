@@ -19,8 +19,8 @@ func TestRescanDeployName(t *testing.T) {
 	}{
 		{"plain-ident", "orders:", "orders"},
 		{"hyphen", "fabric-shard:", "fabric-shard"},
-		{"single-hole", "fabric-shard-{org}:", "fabric-shard-{org}"},
-		{"hole-then-suffix", "fabric-shard-{org}-BootstrapShard rest", "fabric-shard-{org}-BootstrapShard"},
+		{"single-param", "fabric-shard-{org}:", "fabric-shard-{org}"},
+		{"param-then-suffix", "fabric-shard-{org}-BootstrapShard rest", "fabric-shard-{org}-BootstrapShard"},
 		{"stops-at-dot", "fabric.shard", "fabric"},
 		{"stops-at-space", "fabric-shard endpoint", "fabric-shard"},
 		{"stops-at-colon", "orders:", "orders"},
@@ -38,8 +38,8 @@ func TestRescanDeployName(t *testing.T) {
 	}
 }
 
-func TestRescanDeployNameMultipleHolesMidName(t *testing.T) {
-	// Holes after a leading segment, in order.
+func TestRescanDeployNameMultipleParamsMidName(t *testing.T) {
+	// Parameters after a leading segment, in order.
 	got, err := rescanFirst("shard-{region}-{org}:")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -53,16 +53,17 @@ func TestRescanDeployNameErrors(t *testing.T) {
 	cases := []struct {
 		name string
 		in   string
+		want string
 	}{
-		{"empty-hole", "foo-{}:"},
-		{"unterminated-hole", "foo-{org:"},
-		{"digit-start-hole", "foo-{1org}:"},
+		{"empty-param", "foo-{}:", "template parameter must contain an identifier"},
+		{"unterminated-param", "foo-{org:", "unterminated template parameter: expected '}'"},
+		{"digit-start-param", "foo-{1org}:", "template parameter must contain an identifier"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := rescanFirst(c.in)
-			if err == nil {
-				t.Errorf("RescanDeployName(%q): expected error, got nil", c.in)
+			if err == nil || err.Error() != c.want {
+				t.Errorf("RescanDeployName(%q): error %v, want %q", c.in, err, c.want)
 			}
 		})
 	}

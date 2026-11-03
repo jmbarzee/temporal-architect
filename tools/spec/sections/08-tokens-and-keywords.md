@@ -103,16 +103,16 @@ Identifiers start with a letter or underscore, followed by any combination of le
 Namespace names, nexus endpoint names, and the endpoint reference in a `nexus` call use a distinct
 **deployment-name** form rather than plain `IDENT`. It admits hyphens — real Temporal namespace and
 endpoint strings use them, and plain `IDENT` cannot spell `fabric-shard` — and inline `{param}`
-template holes, so a per-tenant family (`fabric-shard-{org}`) is expressible as one name:
+template parameters, so a per-tenant family (`fabric-shard-{org}`) is expressible as one name:
 
 ```
-template_hole ::= '{' IDENT '}'
-deploy_char   ::= [a-zA-Z0-9_-]
-deploy_name   ::= (letter | '_') deploy_char* (template_hole deploy_char*)*
+template_param ::= '{' IDENT '}'
+deploy_char    ::= [a-zA-Z0-9_-]
+deploy_name    ::= (letter | '_') deploy_char* (template_param deploy_char*)*
 ```
 
 A deployment name starts with a letter or underscore, ranges over the character class
-`[a-zA-Z0-9_-]`, and may interleave `{param}` template holes. Hyphens are admitted but a name may
+`[a-zA-Z0-9_-]`, and may interleave `{param}` template parameters. Hyphens are admitted but a name may
 **not** start with a hyphen; dots are **not** admitted (they collide with the package-leaf
 qualifier and the `service.operation` separator). A static, hyphen-free deployment name is a lexical
 subset of `IDENT`, so existing names tokenize and format byte-identically.
@@ -135,13 +135,12 @@ STRING ::= '"' [^"]* '"'
 
 A `list_value` (`'[' [ STRING (',' STRING)* ] ']'`, defined in [Statement Syntax](./06-statement-syntax.md)) is a compound option value rather than a single token: a bracketed, comma-separated inline list of `STRING` elements, empty list allowed, no trailing comma, no `NEWLINE` inside the brackets.
 
-`{param}` template holes (`template_hole`, above) are also recognized **inside `STRING` option
-values** — e.g. `task_queue: "fabric-shard-{org}-bootstrap"` — so a per-tenant namespace can name a
-per-tenant task queue. The hole denotes the same per-tenant dimension as an identically-named hole
-in the enclosing deployment name; see [Worker and Namespace Definitions](./03-workers-and-namespaces.md).
-Holes in the `STRING` elements of an endpoint's `allowed_caller_namespaces` list correlate with an
-identically-named hole in the endpoint's or its namespace's name, and otherwise range over the
-whole family; they need no binding.
+A name parameter reaches no `STRING` option value. Inside a worker `task_queue`, a `{param}` is an
+instance parameter declaring a per-instance worker family; an endpoint `task_queue` is static; in
+`worker_identity` it is free text. See [Worker and Namespace Definitions](./03-workers-and-namespaces.md#per-instance-worker-families).
+A `{param}` in an element of an endpoint's `allowed_caller_namespaces` list correlates by spelling
+with a parameter of the endpoint's or its namespace's name, and otherwise ranges over the whole
+family; see [Endpoint Options](./03-workers-and-namespaces.md#endpoint-options).
 
 ## Comments
 

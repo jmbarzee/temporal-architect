@@ -366,7 +366,7 @@ namespace alpha:
 			},
 		},
 		{
-			name: "implicit: templated namespace is matched by its full spelling",
+			name: "implicit: templated namespace is matched by its full spelling; its q-{org} is a family",
 			src: `workflow Parent():
     workflow Child()
     close complete()
@@ -391,7 +391,7 @@ namespace tenant-{org}:
             task_queue: "q-{org}"
 `,
 			want: []string{
-				`workflow Child is not on any worker polling task queue "q-{org}" in namespace shard-{org} (inherited from workflow Parent)`,
+				`workflow Child is not on any worker polling a queue of the shape of "q-{org}" in namespace shard-{org} (inherited from workflow Parent)`,
 			},
 		},
 		{

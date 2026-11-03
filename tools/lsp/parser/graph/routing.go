@@ -9,17 +9,19 @@ import (
 //
 //   - activityCall / workflowCall with explicit task_queue: match
 //     callee deployments in the caller deployment's namespace whose
-//     queue equals the literal.
+//     queue matches the literal (spec 03).
 //   - activityCall / workflowCall implicit: match callee deployments in
-//     the caller deployment's namespace whose queue equals *this* caller
-//     deployment's queue. The walk runs once per caller deployment, so a
-//     definition hosted on two workers resolves twice, each against its
-//     own queue — not against the union.
+//     the caller deployment's namespace whose queue has the deploy key of
+//     *this* caller deployment's queue. The walk runs once per caller
+//     deployment, so a definition hosted on two workers resolves twice,
+//     each against its own queue — not against the union.
 //   - nexusCall: match callee deployments whose queue == endpoint.queue
 //     AND whose namespace == endpoint.namespace; routing.nexusEndpoint
-//     carries the endpoint deployment ID.
+//     carries the endpoint deployment ID. A templated endpoint routes
+//     nowhere and draws nothing.
 //   - asyncBacking: emitted by the nexus service walk — operation
-//     deployment → workflow deployment on same queue and namespace.
+//     deployment → workflow deployment on the same deploy key and
+//     namespace.
 //
 // One edge per (caller deployment, matching callee deployment) pair.
 // When no callee matches, no edge; a DISPATCH_NO_REACHABLE_DEPLOYMENT
@@ -171,8 +173,9 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 // resolution. A task queue is scoped to its namespace, so a callee
 // deployment matches only within this caller deployment's namespace.
 // Explicit task_queue: the caller named the queue, so we match callee
-// deployments on that queue exactly. Implicit: the call inherits this
-// caller deployment's queue.
+// deployments whose queue matches it (spec 03 § Queue matching).
+// Implicit: the call inherits this caller deployment's queue and matches
+// callee deployments with the same deploy key.
 //
 // When no callee deployment matches, no edge is emitted and a
 // DISPATCH_NO_REACHABLE_DEPLOYMENT diagnostic is added so the consumer
@@ -184,49 +187,40 @@ func (g *Graph) emitQueuedCall(
 	edgeKind, calleeKind, calleeName string, opts *ast.OptionsBlock, line int,
 ) {
 	explicit := taskQueue(opts)
-	var queues []string
-	if explicit != "" {
-		queues = []string{explicit}
-	} else {
-		queues = []string{callerDep.Queue}
+	queue, polls := explicit, ast.ParseCallQueue(explicit).Matches
+	if explicit == "" {
+		queue, polls = callerDep.Queue, callerDep.queue.SameKey
+		if callerDep.queue.Form == ast.QueueMalformed {
+			// A malformed queue is already a resolve error and has no key
+			// to inherit. Don't double-report.
+			return
+		}
+	}
+	if queue == "" {
+		// No queue at all (caller deployment lacks task_queue,
+		// already an error from the validator). Don't double-report.
+		return
 	}
 
 	matched := false
-	for _, q := range queues {
-		if q == "" {
+	for _, calleeDep := range idx.deploymentsHosting(calleeKind, calleeName) {
+		if calleeDep.NamespaceName != callerDep.NamespaceName || !polls(calleeDep.queue) {
 			continue
 		}
-		for _, calleeDep := range idx.deploymentsHosting(calleeKind, calleeName) {
-			if calleeDep.NamespaceName != callerDep.NamespaceName {
-				continue
-			}
-			if calleeDep.Queue != q {
-				continue
-			}
-			edge := Edge{
-				From: callerID,
-				To:   HostedID(calleeKind, calleeName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
-				Kind: edgeKind,
-				Line: line,
-				Routing: &Routing{
-					Explicit: explicit,
-				},
-			}
-			g.Edges = append(g.Edges, edge)
-			matched = true
+		edge := Edge{
+			From: callerID,
+			To:   HostedID(calleeKind, calleeName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
+			Kind: edgeKind,
+			Line: line,
+			Routing: &Routing{
+				Explicit: explicit,
+			},
 		}
+		g.Edges = append(g.Edges, edge)
+		matched = true
 	}
 
 	if !matched {
-		queue := explicit
-		if queue == "" {
-			queue = callerDep.Queue
-		}
-		if queue == "" {
-			// No queue at all (caller deployment lacks task_queue,
-			// already an error from the validator). Don't double-report.
-			return
-		}
 		g.addDiagnostic(warningDispatchNoReachable(callerID, calleeKind, calleeName, callerDep.NamespaceName, queue, line))
 	}
 }
@@ -255,6 +249,9 @@ func (g *Graph) emitNexusCall(
 		g.Unresolved = append(g.Unresolved, Unresolved{
 			From: callerID, Name: nexusOpCallName(svcRef, opRef), Kind: EdgeNexusCall, Line: line,
 		})
+		return
+	}
+	if ep.templated {
 		return
 	}
 
@@ -290,17 +287,17 @@ func (g *Graph) emitNexusCall(
 // operation deployment's queue and namespace seed the lookup, matching
 // the dispatch semantics of an async nexus operation: when the
 // operation runs, Temporal starts the backing workflow on the same
-// task queue.
+// task queue, so the workflow deployment must have the same deploy key.
 func (g *Graph) emitAsyncBacking(
 	idx *astIndex, fromID string, opDep workerDeployment,
 	workflowName string, line int,
 ) {
+	if opDep.queue.Form == ast.QueueMalformed {
+		return // already a resolve error; it hosts nothing
+	}
 	matched := false
 	for _, calleeDep := range idx.deploymentsHosting(KindWorkflow, workflowName) {
-		if calleeDep.NamespaceName != opDep.NamespaceName {
-			continue
-		}
-		if calleeDep.Queue != opDep.Queue {
+		if calleeDep.NamespaceName != opDep.NamespaceName || !opDep.queue.SameKey(calleeDep.queue) {
 			continue
 		}
 		g.Edges = append(g.Edges, Edge{

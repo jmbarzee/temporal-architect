@@ -394,7 +394,7 @@ function stripKindPrefix(s: string | undefined): string | undefined {
 }
 
 /**
- * The hover box's context line. The nexus values show their
+ * The hover box's context line. Workers and the nexus values show their
  * addressing metadata — `<parent context> · <task queue>` per the spec — read
  * from this domain's own payload keys, which the library never learns; every
  * other value shows its parent's name.
@@ -404,9 +404,10 @@ function contextLineFor(node: GraphNode, parent: GraphNode | undefined): string 
   const queue = payloadString(node, 'queue')
   const hostWorker = payloadString(node, 'worker')
   switch (node.values[TEMPORAL_TYPE_DIMENSION]) {
+    case 'worker':
     case 'nexusEndpoint':
-      // The namespace is the endpoint's containment parent; the queue is
-      // intrinsic display metadata.
+      // The namespace is the containment parent; the queue is intrinsic
+      // display metadata.
       return [parentName, queue].filter(Boolean).join(' · ') || undefined
     case 'nexusService':
       return [stripKindPrefix(hostWorker), queue].filter(Boolean).join(' · ') || undefined

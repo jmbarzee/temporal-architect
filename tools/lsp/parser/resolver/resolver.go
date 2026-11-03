@@ -120,11 +120,15 @@ const (
 	// then collide across the namespace family (e.g. a static endpoint inside a
 	// `fabric-shard-{org}` namespace resolves to one name for every org).
 	ErrEndpointParamNotSuperset
-	// ErrUnboundTemplateParam: a `{param}` hole in an option-value string is not
-	// bound by the enclosing identifier template — the namespace template for a
-	// worker/namespace option, or the endpoint's own template or its owning
-	// namespace's for an endpoint option.
-	ErrUnboundTemplateParam
+
+	// --- Per-instance worker family errors (issue #229) ---
+
+	// ErrQueueTemplateMalformed: a worker task_queue with an instance parameter
+	// breaks a family rule (spec 03), so its placement drops out of routing.
+	ErrQueueTemplateMalformed
+	// ErrEndpointTaskQueueTemplated: an endpoint task_queue has a parameter; an
+	// endpoint targets one static queue in its namespace.
+	ErrEndpointTaskQueueTemplated
 )
 
 // ResolveError represents a resolution error with position info.
@@ -227,8 +231,10 @@ func (k ErrorKind) String() string {
 		return "UNRESOLVED_IMPORT"
 	case ErrEndpointParamNotSuperset:
 		return "ENDPOINT_PARAM_NOT_SUPERSET"
-	case ErrUnboundTemplateParam:
-		return "UNBOUND_TEMPLATE_PARAM"
+	case ErrQueueTemplateMalformed:
+		return "QUEUE_TEMPLATE_MALFORMED"
+	case ErrEndpointTaskQueueTemplated:
+		return "ENDPOINT_TASK_QUEUE_TEMPLATED"
 	}
 	return "UNKNOWN"
 }
@@ -410,20 +416,44 @@ func Resolve(file *ast.File) []*ResolveError {
 		}
 	}
 
-	// Parameterized-family binding: every {param} hole appearing in an option
-	// STRING value must be bound by the enclosing identifier template. A worker's
-	// options are bound by the owning namespace's template; an endpoint's options
-	// by its own template plus its owning namespace's. Static nodes have an empty
-	// binding set, so any hole in their option strings is unbound.
+	// Per-instance families (spec 03): a {param} in a worker task_queue is an
+	// instance parameter, and the queue must be a well-formed template. Name
+	// parameters bind nothing there. An endpoint task_queue is static.
 	for _, ns := range s.namespaces {
-		nsParams := ns.TemplateParams
 		for i := range ns.Workers {
-			s.checkOptionParams(ns.Workers[i].Options, nsParams, fmt.Sprintf("worker options in namespace %s", ns.Name), ns.SourceFile)
+			nw := &ns.Workers[i]
+			e := taskQueueEntry(nw.Options)
+			if e == nil {
+				continue
+			}
+			nw.TemplateParams = ast.ExtractTemplateParams(e.Value)
+			if q := ast.ParseDeployQueue(e.Value); q.Form == ast.QueueMalformed {
+				s.errs = append(s.errs, &ResolveError{
+					Msg:    fmt.Sprintf("task_queue %q of worker %s in namespace %s is not a well-formed template: %s", e.Value, nw.Worker.Name, ns.Name, q.Problem),
+					Line:   e.Line,
+					Column: e.Column,
+					Kind:   ErrQueueTemplateMalformed,
+					Name:   nw.Worker.Name,
+					File:   ns.SourceFile,
+				})
+			}
 		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
-			bound := append(append([]string(nil), nsParams...), ep.TemplateParams...)
-			s.checkOptionParams(ep.Options, bound, fmt.Sprintf("endpoint %s options", ep.EndpointName), ns.SourceFile)
+			e := taskQueueEntry(ep.Options)
+			if e == nil {
+				continue
+			}
+			if params := ast.ExtractTemplateParams(e.Value); len(params) > 0 {
+				s.errs = append(s.errs, &ResolveError{
+					Msg:    fmt.Sprintf("task_queue %q of nexus endpoint %s in namespace %s has a {%s} parameter: an endpoint targets one task queue in its namespace", e.Value, ep.EndpointName, ns.Name, params[0]),
+					Line:   e.Line,
+					Column: e.Column,
+					Kind:   ErrEndpointTaskQueueTemplated,
+					Name:   ep.EndpointName,
+					File:   ns.SourceFile,
+				})
+			}
 		}
 	}
 
@@ -1217,53 +1247,26 @@ func paramsNotIn(need, have []string) []string {
 	return missing
 }
 
-// checkOptionParams appends an ErrUnboundTemplateParam for every {param} hole in
-// a STRING option value (recursing into nested blocks) whose name is not in the
-// bound set. where labels the enclosing block for the diagnostic message.
-func (s *state) checkOptionParams(opts *ast.OptionsBlock, bound []string, where, file string) {
-	if opts == nil {
-		return
-	}
-	set := make(map[string]bool, len(bound))
-	for _, p := range bound {
-		set[p] = true
-	}
-	var scan func(entries []*ast.OptionEntry)
-	scan = func(entries []*ast.OptionEntry) {
-		for _, e := range entries {
-			if e.ValueType == "string" {
-				for _, hole := range ast.ExtractTemplateParams(e.Value) {
-					if !set[hole] {
-						s.errs = append(s.errs, &ResolveError{
-							Msg:    fmt.Sprintf("unbound template param {%s} in %s: option %q is not bound by any enclosing namespace/endpoint template", hole, where, e.Key),
-							Line:   e.Line,
-							Column: e.Column,
-							Kind:   ErrUnboundTemplateParam,
-							Name:   hole,
-							File:   file,
-						})
-					}
-				}
-			}
-			if len(e.Nested) > 0 {
-				scan(e.Nested)
-			}
-		}
-	}
-	scan(opts.Entries)
-}
-
 // endpointTaskQueue extracts the task_queue value from an options block, or ""
 // if absent. Nil-safe. Mirrors graph.taskQueue / validator.extractTaskQueue —
 // kept local so the resolver package doesn't take a cross-package dependency.
 func endpointTaskQueue(opts *ast.OptionsBlock) string {
+	if e := taskQueueEntry(opts); e != nil {
+		return e.Value
+	}
+	return ""
+}
+
+// taskQueueEntry returns the task_queue entry of an options block, or nil if
+// absent. Nil-safe.
+func taskQueueEntry(opts *ast.OptionsBlock) *ast.OptionEntry {
 	if opts == nil {
-		return ""
+		return nil
 	}
 	for _, e := range opts.Entries {
 		if e.Key == "task_queue" {
-			return e.Value
+			return e
 		}
 	}
-	return ""
+	return nil
 }

@@ -41,7 +41,7 @@ func (p *Parser) scan() token.Token {
 // pieces), then re-syncs current/peek from the lexer's new position.
 //
 // It returns the assembled name token (Literal = full name, Line/Column at the
-// name's start) and the distinct {param} template holes in order of first
+// name's start) and the distinct {param} template parameters in order of first
 // appearance (empty for a static name). On a malformed name it returns a
 // ParseError positioned at the name's start.
 func (p *Parser) expectDeployName() (token.Token, []string, error) {

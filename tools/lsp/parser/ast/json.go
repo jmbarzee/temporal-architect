@@ -429,9 +429,13 @@ func (w *WorkerDef) MarshalJSON() ([]byte, error) {
 
 // NamespaceWorkerJSON is the JSON representation of a worker instantiation in a namespace.
 type NamespaceWorkerJSON struct {
-	WorkerName     string            `json:"workerName"`
-	Line           int               `json:"line"`
-	Column         int               `json:"column"`
+	WorkerName string `json:"workerName"`
+	Line       int    `json:"line"`
+	Column     int    `json:"column"`
+	// TemplateParams is the distinct instance parameters in the task_queue, in
+	// order of first appearance. Omitted (omitempty) for a static queue so its
+	// output stays byte-identical.
+	TemplateParams []string          `json:"templateParams,omitempty"`
 	Options        *OptionsBlockJSON `json:"options,omitempty"`
 	ResolvedWorker *ResolvedRefJSON  `json:"resolvedWorker,omitempty"`
 }
@@ -442,7 +446,7 @@ type NamespaceEndpointJSON struct {
 	Line         int    `json:"line"`
 	Column       int    `json:"column"`
 	TaskQueue    string `json:"taskQueue,omitempty"`
-	// TemplateParams is the distinct {param} holes in the endpoint name, in order
+	// TemplateParams is the distinct {param} parameters in the endpoint name, in order
 	// of first appearance. Omitted (omitempty) for a static endpoint so its
 	// output stays byte-identical.
 	TemplateParams []string          `json:"templateParams,omitempty"`
@@ -456,7 +460,7 @@ type NamespaceDefJSON struct {
 	Column     int    `json:"column"`
 	SourceFile string `json:"sourceFile,omitempty"`
 	Name       string `json:"name"`
-	// TemplateParams is the distinct {param} holes in the namespace name, in
+	// TemplateParams is the distinct {param} parameters in the namespace name, in
 	// order of first appearance. Omitted (omitempty) for a static namespace so
 	// its output stays byte-identical.
 	TemplateParams []string                `json:"templateParams,omitempty"`
@@ -477,10 +481,11 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 	}
 	for _, w := range n.Workers {
 		wj := NamespaceWorkerJSON{
-			WorkerName: w.Worker.Name,
-			Line:       w.Line,
-			Column:     w.Column,
-			Options:    marshalOptionsBlock(w.Options),
+			WorkerName:     w.Worker.Name,
+			Line:           w.Line,
+			Column:         w.Column,
+			TemplateParams: w.TemplateParams,
+			Options:        marshalOptionsBlock(w.Options),
 		}
 		if w.Worker.Resolved != nil {
 			wj.ResolvedWorker = &ResolvedRefJSON{Name: w.Worker.Resolved.Name, Line: w.Worker.Resolved.Line, Column: w.Worker.Resolved.Column}

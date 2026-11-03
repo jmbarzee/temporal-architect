@@ -59,7 +59,12 @@ The two words for the hierarchy are **ladder** (main or nexus) and **tier** (con
 
 Each duplicate shares a stable `copyKey` — opaque to the engine, derived by whoever produced the graph (here the parser's `definition` field, with the parent service name folded in for operations as `Service.Op`). The library derives the index (`copyGroups(graph)`: key → every node id sharing it) once per graph and uses it during hover/select to keep sister copies visually grouped (see § Interaction States: Duplicate Highlighting); the host's group overlay reads the same index. Definitions that are not registered on any worker remain orphan singletons (one node, no parent); the host marks them with the library's dashed ring (`ring: 'dashed'`).
 
-**Parameterized-family nodes (`templateParams`).** The container-tier nodes `namespace` and `nexusEndpoint` carry an optional `templateParams: string[]` wire field (`graph.Node.TemplateParams`, JSON key `templateParams`, **omitted when empty**). It names the template holes of a parameterized family — e.g. `["org"]` for `fabric-shard-{org}`. Its sole role in the view is presentation: it drives the **collapsed representative + cardinality badge** rendering (§ Visual Encoding → Node Appearance). It does **not** participate in identity. A parameterized family's `id` and `definitionKey` still carry the complete templated name string with holes (e.g. `namespace:fabric-shard-{org}`, `nexusEndpoint:fabric-shard-{org}-BootstrapShard`), so cross-view selection, `duplicateGroups`, and the bare/flat-global identity of `namespace` and `nexusEndpoint` (§ Packages and Qualified Identity — these node types keep bare, flat-global identity) are all unaffected by the presence of holes. Because the field is omitted when empty, static `namespace`/`nexusEndpoint` nodes carry **byte-identical** wire to before this feature existed and render exactly as they do today (no badge, no collapse); the feature is purely additive.
+**Parameterized-family nodes (`templateParams`).** `namespace`, `nexusEndpoint` and worker nodes carry an optional `templateParams: string[]` wire field (`graph.Node.TemplateParams`, **omitted when empty**), naming a parameterized family's template parameters:
+
+- on a namespace or endpoint node, the parameters in the node's name — `["org"]` for `fabric-shard-{org}`;
+- on a worker node (`worker:<w>/namespace:<ns>`), its instance parameters, one worker queue per value — `["sandboxId"]` for task queue `sandbox-{sandboxId}`.
+
+Its sole role in the view is presentation: the **cardinality badge** (§ Visual Encoding → Node Appearance). It does **not** participate in identity. A namespace or endpoint family's `id` and `definitionKey` carry the full templated name (`namespace:fabric-shard-{org}`, `nexusEndpoint:fabric-shard-{org}-BootstrapShard`), and a worker family's carry no parameter at all, so cross-view selection, `duplicateGroups`, and the bare, flat-global identity of `namespace` and `nexusEndpoint` (§ Packages and Qualified Identity) are unaffected.
 
 ### Packages and Qualified Identity
 
@@ -330,11 +335,11 @@ Each node displays **only its name** as a label — all other detail (compositio
 
 **Zoom-responsive sizing.** Node bodies, icons, and labels are drawn in screen pixels but scale with zoom: on-screen size is `baseR × size × clamp(zoom, floor, cap)`. They shrink when zoomed out — so a zoomed-out graph reads as a clean constellation rather than a chaotic pile of full-size dots and overlapping labels — and are capped when zoomed in so they never dominate the canvas. The three knobs (`size`, `grow cap`, `shrink floor`) are **user-tunable** from the Controls panel (Misc → Node scaling, see § Control Panel) — e.g. lowering the grow cap makes nodes start shrinking at a lower zoom.
 
-**Parameterized-family nodes (cardinality badge).** A `namespace` or `nexusEndpoint` node whose wire carries a non-empty `templateParams: string[]` — a parameterized family such as `fabric-shard-{org}` — renders as a **single collapsed representative node**: the same shape, size, and colour as its static counterpart (rounded rectangle / large for a namespace; the endpoint container treatment for a `nexusEndpoint`), adorned with a **cardinality badge**. The badge is derived **only** from `templateParams`: one `× {param}` chip per entry — `× org` for `["org"]`; `× org` and `× region` for `["org","region"]` — so the chip count equals the array length and each chip label is the bare param name. A family with two holes shows two chips. The badge is a node **adornment**, sitting alongside the orphan ring (see [PRODUCT.md](./PRODUCT.md) § Node badges, and § Orphan Definitions here), **not** the node's name label: the label continues to show the full name string with holes included, subject to the same 15/12-character elision (§ Node Appearance). The hover tooltip's context line for these node types (§ Interaction States → Context line format) is unchanged in structure — the parameterized nature is already legible from the badge and the templated name.
+**Parameterized-family nodes (cardinality badge).** A node with `templateParams` (§ Graph Data Model) is drawn once, as its static counterpart is, with one `× {param}` chip per entry (`× org`, `× region` for `["org","region"]`). The chips are an **adornment** beside the orphan ring ([PRODUCT.md](./PRODUCT.md) § Node badges), **not** the name label; a namespace or endpoint label keeps its parameters, under the 15/12-character elision. The workflows, activities and nexus services a family worker hosts carry no chip: the family is the worker.
 
-*Static fallback.* When `templateParams` is absent (the field is omitted when empty), a `namespace`/`nexusEndpoint` node gets **no badge and no collapse treatment** — byte-identical wire, identical rendering to today. The feature is purely additive.
+*A worker instantiated more than once in a namespace* is one node: its chips are the union of its instantiations' parameters and its queue the first's, so a chip can sit beside a static queue in its context line (§ Interaction States → Context line format).
 
-*Deferred — ghost-node depth.* Per-instance ghost-node / expansion depth — showing a family's individual members (`fabric-shard-acme`, `fabric-shard-globex`, …) as their own nodes — is out of scope this cycle; a family renders as the collapsed representative + badge only. Deferred to [#129](https://github.com/jmbarzee/temporal-architect/issues/129).
+*Deferred:* drawing a family's members (`fabric-shard-acme`, `sandbox-8f3a`, …) as their own nodes — [#258](https://github.com/jmbarzee/temporal-architect/issues/258).
 
 ### Edge Appearance
 
@@ -667,13 +672,13 @@ The tooltip is **interactive**: it stays open while the pointer is over it (a sh
 |---|---|---|
 | Namespace | *(no context — top-level)* | — |
 | NexusEndpoint | `namespace · queue` | `ecommerce · payment-queue` |
-| Worker | parent namespace name | `ecommerce` |
+| Worker | `namespace · queue` | `aivearium · sandbox-{sandboxId}` |
 | NexusService | `worker · queue` | `paymentWorker · nexus-queue` |
 | Workflow | parent worker name | `paymentWorker` |
 | NexusOperation | `service · worker · queue` | `PaymentService · paymentWorker · nexus-queue` |
 | Activity | parent worker name | `paymentWorker` |
 
-The `<parent context> · <task queue>` pattern for nexus types surfaces the two most useful addressing identifiers — where does it live, and what queue routes calls to it — without requiring the user to hover sub-nodes or read the sidebar.
+The `<parent context> · <task queue>` pattern for workers and nexus types surfaces the two most useful addressing identifiers — where does it live, and what queue routes calls to it — without requiring the user to hover sub-nodes or read the sidebar.
 
 ### Nexus Routing Association (Hover)
 

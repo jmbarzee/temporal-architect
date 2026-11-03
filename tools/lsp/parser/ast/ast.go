@@ -181,8 +181,12 @@ func (d *WorkerDef) PackageName() string { return d.Package }
 // NamespaceWorker is a worker instantiation inside a namespace block.
 type NamespaceWorker struct {
 	Pos
-	Worker  Ref[*WorkerDef]
-	Options *OptionsBlock
+	Worker Ref[*WorkerDef]
+	// TemplateParams holds the distinct instance parameters in the task_queue,
+	// in order of first appearance (set by the resolver). Empty for a static
+	// queue, so its serialization stays byte-identical.
+	TemplateParams []string
+	Options        *OptionsBlock
 }
 
 // NamespaceEndpoint is a nexus endpoint instantiation inside a namespace block.
@@ -191,7 +195,7 @@ type NamespaceEndpoint struct {
 	EndpointName string
 	Namespace    string // set by resolver: name of the owning namespace
 	TaskQueue    string // set by resolver: endpoint's task_queue option
-	// TemplateParams holds the distinct {param} template holes in EndpointName,
+	// TemplateParams holds the distinct {param} template parameters in EndpointName,
 	// in order of first appearance (populated at parse time). Empty for a static
 	// endpoint name, so its serialization stays byte-identical.
 	TemplateParams []string
@@ -202,7 +206,7 @@ type NamespaceEndpoint struct {
 type NamespaceDef struct {
 	Pos
 	Name string
-	// TemplateParams holds the distinct {param} template holes in Name, in order
+	// TemplateParams holds the distinct {param} template parameters in Name, in order
 	// of first appearance (populated at parse time). Empty for a static namespace
 	// name, so its serialization stays byte-identical.
 	TemplateParams []string

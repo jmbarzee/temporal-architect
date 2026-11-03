@@ -62,7 +62,7 @@ namespace_entry ::= 'worker' IDENT NEWLINE [options_line]
 ```
 
 The namespace name and the nexus endpoint name are [`deploy_name`s](./08-tokens-and-keywords.md) —
-they name runtime deployment strings, so they admit hyphens and `{param}` template holes (see
+they name runtime deployment strings, so they admit hyphens and `{param}` template parameters (see
 *Parameterized namespaces and endpoints* below). The instantiated `worker` reference stays a plain
 `IDENT`: it is a code symbol, not a deployment string.
 
@@ -93,17 +93,17 @@ namespace staging:
 
 Real Temporal systems template `namespace` and `nexus endpoint` names per tenant — a
 `fabric-shard-{org}` namespace with a matching `fabric-shard-{org}-BootstrapShard` endpoint family,
-created dynamically at runtime. TWF models a family inline: a `{param}` template hole inside a
+created dynamically at runtime. TWF models a family inline: a `{param}` template parameter inside a
 [`deploy_name`](./08-tokens-and-keywords.md) marks the axis the family varies over.
 
 ```
 namespace fabric-shard-{org}:
     worker shardTypes
         options:
-            task_queue: "fabric-shard-{org}-bootstrap"
+            task_queue: "bootstrap"
     nexus endpoint fabric-shard-{org}-BootstrapShard
         options:
-            task_queue: "fabric-shard-{org}-bootstrap"
+            task_queue: "bootstrap"
 ```
 
 The semantics are **design-altitude**, not runtime string substitution:
@@ -111,19 +111,91 @@ The semantics are **design-altitude**, not runtime string substitution:
 - **`{param}` is a cardinality/correlation annotation, not a variable.** Nothing binds `{org}` to a
   concrete value. A `{org}` in a caller's identifier means "the org of this execution"; it annotates
   that the construct is a per-tenant *family* rather than a single static deployment.
-- **Token-equality is identity.** There is no declaration site. Every `{org}` in a file denotes the
-  same dimension, correlated by the token spelling alone. A declared axis primitive (which would add
-  typo/undefined-reference detection and correlation-by-definition) was considered and deferred to
-  **[#129](https://github.com/jmbarzee/temporal-architect/issues/129)**; inline templating is what
-  this surface ships.
-- **Reach: identifiers and string option values.** `{param}` is legal both in the namespace/endpoint
-  `deploy_name` and inside `STRING` option values (`task_queue: "fabric-shard-{org}-bootstrap"`). A
-  per-tenant namespace realistically needs a per-tenant task queue, so the hole must reach into the
-  string; a hole in a string denotes the same dimension as the identically-named hole in the
-  enclosing identifier.
+- **Token-equality is identity.** There is no declaration site. Every `{org}` in a namespace or
+  endpoint name denotes the same dimension, correlated by the token spelling alone. A declared axis
+  primitive (which would add typo/undefined-reference detection and correlation-by-definition) was
+  considered and deferred to **[#129](https://github.com/jmbarzee/temporal-architect/issues/129)**;
+  inline templating is what this surface ships.
+- **Reach: names only.** A name parameter never reaches an option string: a task queue is scoped to
+  its namespace, so `"bootstrap"` in `fabric-shard-acme` and in `fabric-shard-globex` are already
+  two queues. A `{param}` in a worker `task_queue` declares a
+  [per-instance worker family](#per-instance-worker-families), an endpoint `task_queue` is static,
+  and `worker_identity` is free text.
 
-A namespace or endpoint with no `{param}` holes is an ordinary static deployment and is unchanged.
+A namespace or endpoint with no `{param}` is an ordinary static deployment and is unchanged.
 See [Resolution](#resolution) below for the rules that keep a family coherent.
+
+## Per-instance worker families
+
+A `{param}` in a worker instantiation's `task_queue` is an **instance parameter**. It makes the
+instantiation a **per-instance worker family**: many workers, each polling its own concrete queue,
+one per value. This is Temporal's worker-specific task queue pattern: a sandbox sidecar, a host, a
+per-region fleet.
+
+```
+namespace aivearium:
+    worker sidecar
+        options:
+            task_queue: "sandbox-{sandboxId}"
+```
+
+A caller names a member with its own data, matched by shape (see [Queue matching](#queue-matching)):
+
+```
+activity RunTool(task.call) -> output
+    options:
+        task_queue: "sandbox-{lease.sandboxId}"
+        schedule_to_start_timeout: 30s
+        start_to_close_timeout: 5m
+```
+
+- **An annotation, never bound.** Like a name parameter, an instance parameter marks cardinality.
+- **Local to its instantiation.** Classification is per instantiation, and an instance parameter
+  correlates with nothing by spelling, not even a same-spelled name parameter; matching ignores
+  names, so a typo is harmless.
+- **Only `task_queue` declares one.** `worker_identity` may carry any `{param}` as free text.
+- **A bare parameter is legal.** `"{hostId}"` is the worker-specific pattern's natural form.
+- **Well formed, or `QUEUE_TEMPLATE_MALFORMED`** (resolve error). It reports the first rule broken,
+  in this order:
+  1. every brace group is an IDENT name (`{}` and `{a.b}` are not);
+  2. fixed text separates every two parameters;
+  3. no stray or unclosed brace;
+  4. the fixed text does not begin with a reserved prefix (`/_sys/`, `temporal-sys-per-ns-`);
+  5. the fixed text plus one byte per parameter fits in 1000 bytes.
+
+  A malformed placement still carries its instance parameters, and otherwise behaves like a
+  placement with an empty `task_queue` that draws no `MISSING_TASK_QUEUE`: calls that needed it
+  report their own routing errors.
+
+**Hazards.** All but the last are hints: the DSL cannot tell a short-lived instance, whose vanished
+poller is a lifecycle event, from a long-lived family, where it is an outage.
+
+- `INSTANCE_QUEUE_NO_START_TIMEOUT` — an activity call that names its queue reaches a family with
+  neither `schedule_to_start_timeout` nor `schedule_to_close_timeout`. A task for a vanished
+  instance waits until the caller's own timeout or cancellation.
+- `INSTANCE_FAMILY_HOSTS_WORKFLOW` — a family worker registers a workflow. Workflow tasks have no
+  schedule-to-start timeout, so an execution whose member is gone for good stalls until its own
+  timeout. Short-lived families should host workflows on a shared queue.
+- `INSTANCE_FAMILY_VERSIONED` — a family with `versioning: deployment` (a version accepts at most 100
+  distinct queues over its life) or `build_id` (an operator call per queue).
+- `INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE` (warning) — a family worker registers a Nexus service. No
+  endpoint can reach it.
+
+**Nexus endpoints target static queues.** An endpoint targets one concrete queue in its namespace,
+so a `{param}` in an endpoint `task_queue` is `ENDPOINT_TASK_QUEUE_TEMPLATED` (resolve error). To
+put a family behind Nexus, use a static endpoint whose **async** operation starts a workflow on a
+shared queue in the family's namespace, and have that workflow call the family. A caller in another
+namespace reaches a family the same way. A sync handler has no workflow context, and Nexus retries a
+start that misses its deadline, so a sync handler that routes on must be idempotent: a signal with an
+idempotent handler, an Update whose ID derives from the Nexus request ID, or (experimental) a
+standalone activity on the family queue whose activity ID derives from the request ID.
+
+**Limits are per instance.** `task_queue_activity_rate_limit` caps each member's queue, not the
+family.
+
+**Authorization is per namespace.** Temporal has no per-queue permission: a family worker's
+credentials reach everything in its namespace. A family beside untrusted code keeps the Temporal
+worker outside the trust boundary, or lives in its own namespace behind Nexus.
 
 ## Shared Workers: Joint Ownership
 
@@ -248,10 +320,10 @@ equivalent, so there it records design intent.
   entry `tenant-{org}` admits the family `tenant-{org}`, not a static `tenant-acme` and not
   `tenant-{tid}`; a concrete `tenant-acme` does not admit the family. This is a `.twf`
   modelling limit (spelling identity), not Temporal behavior.
-- **A `{param}` in an entry** correlates with an identically spelled hole in the endpoint's or
-  its namespace's name (`shard-{org}-ep` with `["tenant-{org}"]`: each shard admits its own
-  tenant), and otherwise ranges over the whole family (a static `platform` endpoint with
-  `["tenant-{org}"]` admits every tenant namespace).
+- **A `{param}` in an entry** correlates by spelling, without binding, with a parameter of the
+  endpoint's or its namespace's name: `shard-{org}-ep` with `["tenant-{org}"]` means each shard
+  admits its own tenant. With no such parameter it ranges over the whole family: a static
+  `platform` endpoint with `["tenant-{org}"]` admits every tenant namespace.
 
 A call whose origin namespace is not listed raises `NEXUS_CALLER_NOT_ALLOWED`; see
 [Nexus — Endpoint exposure and access](./04-nexus.md#endpoint-exposure-and-access).
@@ -265,9 +337,9 @@ The resolver validates workers, namespaces, and nexus definitions:
 - Namespace references to undefined workers produce errors
 - Worker instantiations missing `task_queue` option produce errors
 - Nexus endpoint instantiations missing `task_queue` option produce errors
-- Workers on the same task queue (within a namespace) with different workflow or activity sets produce errors
-- Workers on the same task queue (within a namespace) that both register nexus services but different ones produce errors. Only a worker registering a service polls the queue's Nexus tasks, so a worker registering none is not compared on services; a poller lacking a requested service fails the call with a non-retryable `NotFound`. Like the rest of coherence, this is a steady-state claim — it ignores worker-versioning rollouts
-- Workers on the same task queue (within a namespace) with identical workflow, activity, and service sets produce warnings (redundant)
+- Workers on the same task queue (same deploy key, within a namespace) with different workflow or activity sets produce errors
+- Workers on the same task queue (same deploy key, within a namespace) that both register nexus services but different ones produce errors. Only a worker registering a service polls the queue's Nexus tasks, so a worker registering none is not compared on services; a poller lacking a requested service fails the call with a non-retryable `NotFound`. Like the rest of coherence, this is a steady-state claim — it ignores worker-versioning rollouts
+- Workers on the same task queue (same deploy key, within a namespace) with identical workflow, activity, and service sets produce warnings (redundant)
 - A worker `nexus service` entry naming an operation produces an error (`WORKER_REGISTERS_OPERATION`)
 - A nexus call originating in a namespace its endpoint's `allowed_caller_namespaces` omits produces an error (`NEXUS_CALLER_NOT_ALLOWED`)
 - Nexus endpoint routing to a task queue where no worker in the endpoint's namespace registers the service produces errors
@@ -282,28 +354,64 @@ call's `task_queue` — from its `options:`, else the target's [`default_options
 naming no queue inherits the caller's. A caller on no instantiated worker gets no routing check (it
 already warns as uncovered).
 
+### Queue matching
+
+Each side parses a queue string one of three ways:
+
+| | Worker `task_queue` | Call site, `default_options:` |
+|---|---|---|
+| **opaque** — literal text | no IDENT parameter | no brace group; or a brace group that is not a dotted path, touching parameters, or a stray brace (`"q-{x.y}-{}"`) |
+| **parsed** | an IDENT parameter, well formed: a family, its parameters instance parameters | every brace group a dotted path, separated by fixed text: its parameters runtime parameters |
+| **error** | an IDENT parameter, malformed: `QUEUE_TEMPLATE_MALFORMED` | — |
+
+An endpoint `task_queue` is opaque, or `ENDPOINT_TASK_QUEUE_TEMPLATED`. An error outcome matches
+nothing, not even its own spelling.
+
+Two queues **match** when their spellings are identical, or when both parse with equal fixed text
+and parameters in the same positions. Parameter names never matter: `"sandbox-{lease.sandboxId}"`
+matches `"sandbox-{sandboxId}"`, and a parameter-free string matches only itself. Matching is
+strict: `"workers-{req.region}"` does not reach static `"workers-us"` and `"workers-eu"`; model such
+a set as a family or as static calls.
+
+A call-site queue that is exactly one runtime parameter (`"{lease.queue}"`) is **learned**: a name
+the caller got at runtime, as the worker-specific pattern hands queues around. It matches any
+family, and otherwise only its own spelling.
+
+A worker queue's **deploy key** is its fixed text with an anonymous marker per parameter; an opaque
+queue's key is its spelling, which never equals a family's. `"sandbox-{sandboxId}"` and
+`"sandbox-{id}"` share a key; the opaque `"sandbox-{}"` shares neither's.
+
+Each check uses one comparison:
+
+- **Explicit routing** — the call's effective queue matches a placement. It checks that the call can
+  name a polled queue, not which value it names.
+- **Implicit routing and coherence** — deploy keys are equal. One key is one family, so its
+  placements must register the same type set. Two bare families (`"{hostId}"`, `"{podId}"`) share a
+  key; give them distinct fixed text (`"host-{hostId}"`, `"pod-{podId}"`).
+- **Endpoint linkage** — spellings are equal.
+
+Coherence cannot see two placements with different keys that could still name one queue: a static
+`"sandbox-pool"` beside `"sandbox-{sandboxId}"`, for a sandbox with ID `pool`. When at least one is a
+family, that draws `TASK_QUEUE_OVERLAP` (hint). A bare-parameter family is exempt: it overlaps
+everything by construction.
+
 ### Parameterized family resolution
 
-When a namespace or endpoint name carries `{param}` template holes (see
-[Parameterized namespaces and endpoints](#parameterized-namespaces-and-endpoints)), the resolver
-applies these additional rules:
+When a namespace or endpoint name carries `{param}` parameters, or a worker `task_queue` instance
+parameters, the resolver applies these rules:
 
 - **Cardinality.** A node's **param set** is the set of *distinct* `{tokens}` in its identifier
-  (`fabric-shard-{org}` → `{org}`; `{region}-{org}` → `{region}, {org}`). This is the family's
-  cardinality — carried downstream as `templateParams` on the wire node and rendered as a `× org`
-  cardinality badge. A static node has an empty param set.
+  (`fabric-shard-{org}` → `{org}`; `{region}-{org}` → `{region}, {org}`), or for a worker
+  instantiation, the instance parameters in its `task_queue`. This is the family's cardinality —
+  carried downstream as `templateParams` on the wire node and rendered as a `× org` cardinality
+  badge. A static node has an empty param set.
 - **Endpoint param superset (error).** An endpoint's param set must be a **superset** of its owning
   namespace's. Otherwise the endpoint's flat-global name is shared across the whole family — a static
   `BootstrapShard` endpoint inside `fabric-shard-{org}` would resolve to one global name for every
   org, colliding. This raises `ENDPOINT_PARAM_NOT_SUPERSET`.
-- **Bound string params (error).** A `{param}` used inside a `STRING` option value must be **bound**
-  by the enclosing namespace/endpoint identifier template — or, for an endpoint option, by its owning
-  namespace's template. An unbound hole (`task_queue: "q-{shard}"` where no enclosing identifier
-  declares `{shard}`) raises `UNBOUND_TEMPLATE_PARAM`. List values are exempt: an
-  `allowed_caller_namespaces` entry's hole may range over a family (see *Endpoint Options*).
 - **Templated endpoint reference binding.** A templated endpoint reference in a `nexus` call resolves
-  through the existing flat-global endpoint registry by its **full templated name string** (holes
+  through the existing flat-global endpoint registry by its **full templated name string** (parameters
   matched by spelling), exactly as a static endpoint reference does. A reference whose full name
   matches no defined endpoint — including a static reference to a templated endpoint, or a
-  mismatched hole spelling — is the existing undefined-endpoint hard error. No new cross-file
+  mismatched parameter spelling — is the existing undefined-endpoint hard error. No new cross-file
   resolution machinery is introduced.

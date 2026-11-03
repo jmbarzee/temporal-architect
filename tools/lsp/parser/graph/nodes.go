@@ -1,6 +1,8 @@
 package graph
 
 import (
+	"slices"
+
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
@@ -36,8 +38,11 @@ type astIndex struct {
 type workerDeployment struct {
 	WorkerName    string
 	NamespaceName string
-	Queue         string
+	Queue         string    // the raw spelling, the worker node's display queue
+	queue         ast.Queue // Queue as the deploy side parses it, for routing
 	Line          int
+	// TemplateParams is the instantiation's instance parameters.
+	TemplateParams []string
 
 	// worker is non-nil when the named worker definition resolves;
 	// orphan-worker namespaces shouldn't really happen (the resolver
@@ -54,6 +59,9 @@ type endpointDeployment struct {
 	Queue          string
 	Line           int
 	TemplateParams []string
+	// templated marks a queue with a parameter, an ENDPOINT_TASK_QUEUE_TEMPLATED
+	// resolve error: the endpoint routes nowhere, so nothing is drawn through it.
+	templated bool
 }
 
 func indexAST(file *ast.File) *astIndex {
@@ -84,22 +92,27 @@ func indexAST(file *ast.File) *astIndex {
 
 	for _, ns := range idx.namespaces {
 		for _, nw := range ns.Workers {
+			queue := taskQueue(nw.Options)
 			idx.workerDeployments = append(idx.workerDeployments, workerDeployment{
-				WorkerName:    nw.Worker.Name,
-				NamespaceName: ns.Name,
-				Queue:         taskQueue(nw.Options),
-				Line:          nw.Line,
-				worker:        idx.workers[nw.Worker.Name],
+				WorkerName:     nw.Worker.Name,
+				NamespaceName:  ns.Name,
+				Queue:          queue,
+				queue:          ast.ParseDeployQueue(queue),
+				Line:           nw.Line,
+				TemplateParams: nw.TemplateParams,
+				worker:         idx.workers[nw.Worker.Name],
 			})
 		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
+			queue := taskQueue(ep.Options)
 			idx.endpointsByName[ep.EndpointName] = &endpointDeployment{
 				Name:           ep.EndpointName,
 				Namespace:      ns.Name,
-				Queue:          taskQueue(ep.Options),
+				Queue:          queue,
 				Line:           ep.Line,
 				TemplateParams: ep.TemplateParams,
+				templated:      len(ast.ExtractTemplateParams(queue)) > 0,
 			}
 		}
 	}
@@ -216,14 +229,26 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 	}
 
 	for _, wd := range idx.workerDeployments {
+		// A worker instantiated twice in one namespace is one node: it keeps
+		// the first instantiation's queue and unions the instance parameters.
+		id := WorkerID(wd.WorkerName, wd.NamespaceName)
+		if n := g.node(id); n != nil {
+			for _, p := range wd.TemplateParams {
+				if !slices.Contains(n.TemplateParams, p) {
+					n.TemplateParams = append(slices.Clip(n.TemplateParams), p)
+				}
+			}
+			continue
+		}
 		// Namespace membership is the worker→namespace containment edge
 		// (emitted in containment.go), not a denormalized field. Queue has
 		// no edge equivalent and is intrinsic to the worker deployment, so
 		// it stays.
 		g.addNode(Node{
-			ID:         WorkerID(wd.WorkerName, wd.NamespaceName),
-			Definition: DefKey(KindWorker, wd.WorkerName),
-			Queue:      wd.Queue,
+			ID:             id,
+			Definition:     DefKey(KindWorker, wd.WorkerName),
+			Queue:          wd.Queue,
+			TemplateParams: wd.TemplateParams,
 		})
 	}
 
