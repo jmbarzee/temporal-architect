@@ -39,3 +39,4 @@ The rubric for the [Design Review](../SKILL.md#design-review). `twf check` clear
 - [ ] Task queue separation matches scaling and isolation requirements
 - [ ] Namespace count justified by org / security / lifecycle / external-contract boundaries (default: one)
 - [ ] Cross-namespace calls go through Nexus endpoints
+- [ ] Every cross-team endpoint declares `allowed_caller_namespaces`, listing each calling namespace (its own too, if it calls itself)

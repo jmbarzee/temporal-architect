@@ -7,9 +7,9 @@ Workers group type registrations, task queues route work to them, and namespaces
 ## Workers and Namespaces
 
 - A `worker` is a **type set** — only `workflow`, `activity`, and `nexus service` entries, no deployment config. Worker names are `lowerCamelCase`; workflow/activity names stay `UpperCamelCase`.
-- A `namespace` instantiates workers, each with an `options:` block that requires `task_queue`, and exposes `nexus endpoint`s whose `task_queue` must match a worker registering the service in that namespace ([nexus.md](./nexus.md)).
+- A `namespace` instantiates workers, each with an `options:` block that requires `task_queue`, and exposes `nexus endpoint`s whose `task_queue` must match a worker registering the called service in that namespace — an endpoint exposes every service on its queue ([nexus.md](./nexus.md)).
 - The same worker can be instantiated in several namespaces (e.g. `prod` and `staging`). A task queue is scoped to its namespace: the same queue name in two namespaces is two queues.
-- Several workers may share a queue only if they register the **same** type set; the same type set on different queues is a tier the caller picks by queue.
+- Several workers may share a queue only if they register the **same** workflows and activities, and — among those that register nexus services — the same services (a worker with none polls no Nexus tasks); the same type set on different queues is a tier the caller picks by queue.
 - A call's `task_queue` (or its target's `default_options:` one) names a queue in the caller's own namespace (crossing namespaces is Nexus's job); without one, the call goes to the caller's own queue. Either way, some worker on a matching queue in the caller's namespace must register the target ([matching](#template-parameters-vs-runtime-interpolation)).
 - Names are plain identifiers except the namespace name, nexus endpoint name, and endpoint reference, which take the `deploy_name` form (hyphens, `{param}` template parameters; `twf spec tokens-and-keywords`).
 

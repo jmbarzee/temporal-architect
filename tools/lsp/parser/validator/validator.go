@@ -40,6 +40,7 @@ const (
 	ErrInstanceFamilyHostsWorkflow
 	ErrInstanceFamilyHostsNexusService
 	ErrInstanceFamilyVersioned
+	ErrNexusCallerNotAllowed
 )
 
 // Error represents a validation error with position info.
@@ -114,6 +115,8 @@ func (k ErrorKind) String() string {
 		return "ID_POLICY_WITHOUT_ID_SCHEME"
 	case ErrChildStartConflictMismatch:
 		return "CHILD_START_CONFLICT_MISMATCH"
+	case ErrNexusCallerNotAllowed:
+		return "NEXUS_CALLER_NOT_ALLOWED"
 	case ErrNexusRunWithoutIDScheme:
 		return "NEXUS_RUN_WITHOUT_ID_SCHEME"
 	case ErrTaskQueueOverlap:
@@ -230,8 +233,14 @@ func Validate(file *ast.File) []*Error {
 	}
 
 	// Build the flat-global endpoint map. Endpoints are never package-scoped —
-	// they share one cluster-global namespace, so a bare name is the key.
-	for _, ns := range v.namespaces {
+	// they share one cluster-global namespace, so a bare name is the key. Walk
+	// definitions in order so a duplicate name (already DUPLICATE_ENDPOINT)
+	// resolves to the same declaration on every run.
+	for _, def := range file.Definitions {
+		ns, ok := def.(*ast.NamespaceDef)
+		if !ok || v.namespaces[v.key(ns.Package, ns.Name)] != ns {
+			continue
+		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			v.allEndpoints[ep.EndpointName] = ep
@@ -252,8 +261,9 @@ func Validate(file *ast.File) []*Error {
 	v.checkTaskQueueOverlap()
 	v.checkInstanceFamilies()
 
-	// 5-6. Call routing + endpoint-service linkage (walks resolved bodies).
-	v.walkAllBodies()
+	// 5-6. Call routing, endpoint-service linkage, and endpoint caller
+	// allowlists (walks resolved bodies).
+	v.walkAllBodies(file.Definitions)
 
 	// 7. id: parent claims, id_scheme overlap and ID policies (definition order, for stable output).
 	v.checkParentSends(file.Definitions)
@@ -395,12 +405,18 @@ func (v *validationCtx) checkCoverage() {
 // are walked in the merged definition order — source order — so the first
 // instantiation on a key is the reference and each later one is where a report
 // lands (#248). A malformed queue has no key and is not compared.
+//
+// Every worker polls the queue's workflow and activity tasks, so their type
+// sets must match. Only a worker registering a nexus service polls its Nexus
+// tasks, so service sets are compared only among those workers: a poller
+// lacking a requested service fails the call with a non-retryable NotFound.
 func (v *validationCtx) checkTaskQueueCoherence() {
 	type queueInfo struct {
 		workerName string
 		queue      string
 		workflows  map[pkgKey]bool
 		activities map[pkgKey]bool
+		services   map[pkgKey]bool
 		file       string // SourceFile of the namespace holding the instantiation
 		ast.Pos           // the worker instantiation inside that namespace
 	}
@@ -415,14 +431,6 @@ func (v *validationCtx) checkTaskQueueCoherence() {
 			if tq == "" || !ok || w == nil {
 				continue
 			}
-			wfSet := make(map[pkgKey]bool)
-			for _, ref := range w.Workflows {
-				wfSet[refKey(v, ref)] = true
-			}
-			actSet := make(map[pkgKey]bool)
-			for _, ref := range w.Activities {
-				actSet[refKey(v, ref)] = true
-			}
 			at := groupKey{ns.Name, key}
 			if _, seen := queueWorkers[at]; !seen {
 				order = append(order, at)
@@ -430,8 +438,9 @@ func (v *validationCtx) checkTaskQueueCoherence() {
 			queueWorkers[at] = append(queueWorkers[at], queueInfo{
 				workerName: w.Name,
 				queue:      tq,
-				workflows:  wfSet,
-				activities: actSet,
+				workflows:  refSet(v, w.Workflows),
+				activities: refSet(v, w.Activities),
+				services:   refSet(v, w.Services),
 				file:       ns.SourceFile,
 				Pos:        nw.Pos,
 			})
@@ -440,33 +449,57 @@ func (v *validationCtx) checkTaskQueueCoherence() {
 	for _, at := range order {
 		infos := queueWorkers[at]
 		first := infos[0]
-		for _, other := range infos[1:] {
-			queues := fmt.Sprintf("task queue %q", first.queue)
-			if other.queue != first.queue {
-				queues = fmt.Sprintf("task queues %q and %q", first.queue, other.queue)
-			}
-			if sameSet(first.workflows, other.workflows) && sameSet(first.activities, other.activities) {
+		svcAnchor := -1
+		if len(first.services) > 0 {
+			svcAnchor = 0
+		}
+		for i := 1; i < len(infos); i++ {
+			other := infos[i]
+			report := func(kind ErrorKind, severity, format string, a queueInfo) {
+				queues := fmt.Sprintf("task queue %q", a.queue)
+				if other.queue != a.queue {
+					queues = fmt.Sprintf("task queues %q and %q", a.queue, other.queue)
+				}
 				v.errs = append(v.errs, &Error{
-					Msg:      fmt.Sprintf("workers %s and %s on %s in namespace %s have identical type sets (redundant)", first.workerName, other.workerName, queues, at.namespace),
+					Msg:      fmt.Sprintf(format, a.workerName, other.workerName, queues, at.namespace),
 					Line:     other.Line,
 					Column:   other.Column,
-					Severity: "warning",
-					Kind:     ErrTaskQueueIdentical,
-					Name:     first.queue,
+					Severity: severity,
+					Kind:     kind,
+					Name:     a.queue,
 					File:     other.file,
 				})
-			} else {
-				v.errs = append(v.errs, &Error{
-					Msg:    fmt.Sprintf("workers %s and %s on %s in namespace %s have different type sets", first.workerName, other.workerName, queues, at.namespace),
-					Line:   other.Line,
-					Column: other.Column,
-					Kind:   ErrTaskQueueMismatch,
-					Name:   first.queue,
-					File:   other.file,
-				})
+			}
+			if !sameSet(first.workflows, other.workflows) || !sameSet(first.activities, other.activities) {
+				report(ErrTaskQueueMismatch, "", "workers %s and %s on %s in namespace %s have different type sets", first)
+			}
+			if len(other.services) > 0 {
+				if svcAnchor < 0 {
+					svcAnchor = i
+				} else if !sameSet(infos[svcAnchor].services, other.services) {
+					report(ErrTaskQueueMismatch, "", "workers %s and %s on %s in namespace %s register different nexus service sets", infos[svcAnchor])
+				}
+			}
+			for _, earlier := range infos[:i] {
+				if sameSet(earlier.workflows, other.workflows) && sameSet(earlier.activities, other.activities) && sameSet(earlier.services, other.services) {
+					report(ErrTaskQueueIdentical, "warning", "workers %s and %s on %s in namespace %s have identical type sets (redundant)", earlier)
+					break
+				}
 			}
 		}
 	}
+}
+
+// refSet returns the resolved (package, name) keys of refs.
+func refSet[T interface {
+	comparable
+	ast.Packaged
+}](v *validationCtx, refs []ast.Ref[T]) map[pkgKey]bool {
+	set := make(map[pkgKey]bool, len(refs))
+	for _, ref := range refs {
+		set[refKey(v, ref)] = true
+	}
+	return set
 }
 
 // checkTaskQueueOverlap hints at two placements in one namespace whose deploy
@@ -614,31 +647,42 @@ type caller struct {
 	file string // SourceFile of the calling definition (#238)
 }
 
-// walkAllBodies walks all workflow and nexus service sync op bodies,
-// checking call routing and endpoint-service linkage.
-func (v *validationCtx) walkAllBodies() {
+// walkAllBodies walks all workflow and nexus service sync op bodies, in
+// definition order, checking call routing, endpoint-service linkage, and
+// endpoint caller allowlists. A duplicate definition (already reported by the
+// resolver) is walked once, as its canonical map entry.
+func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 	if len(v.namespaces) == 0 {
 		return
 	}
 
-	for key, wf := range v.workflows {
-		from := caller{"workflow", key, wf.SourceFile}
-		v.walkStatements(wf.Body, from)
-		for _, s := range wf.Signals {
-			v.walkStatements(s.Body, from)
-		}
-		for _, q := range wf.Queries {
-			v.walkStatements(q.Body, from)
-		}
-		for _, u := range wf.Updates {
-			v.walkStatements(u.Body, from)
-		}
-	}
-
-	for key, svc := range v.nexusServices {
-		for _, op := range svc.Operations {
-			if op.OpType == ast.NexusOpSync {
-				v.walkStatements(op.Body, caller{"nexus service", key, svc.SourceFile})
+	for _, def := range defs {
+		switch d := def.(type) {
+		case *ast.WorkflowDef:
+			key := v.key(d.Package, d.Name)
+			if v.workflows[key] != d {
+				continue
+			}
+			from := caller{"workflow", key, d.SourceFile}
+			v.walkStatements(d.Body, from)
+			for _, s := range d.Signals {
+				v.walkStatements(s.Body, from)
+			}
+			for _, q := range d.Queries {
+				v.walkStatements(q.Body, from)
+			}
+			for _, u := range d.Updates {
+				v.walkStatements(u.Body, from)
+			}
+		case *ast.NexusServiceDef:
+			key := v.key(d.Package, d.Name)
+			if v.nexusServices[key] != d {
+				continue
+			}
+			for _, op := range d.Operations {
+				if op.OpType == ast.NexusOpSync {
+					v.walkStatements(op.Body, caller{"nexus service", key, d.SourceFile})
+				}
 			}
 		}
 	}
@@ -669,6 +713,7 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 			if n.Service.Resolved != nil {
 				v.checkEndpointServiceLinkage(n.Endpoint.Name, refKey(v, n.Service), n.Line, n.Column, from.file)
 			}
+			v.checkCallerAllowed(n.Endpoint.Name, from, n.Line, n.Column)
 		case *ast.SignalSendStmt:
 			// A signal send is a *use* of its handle promise — no routing
 			// check applies (a signal is delivered to a child the sender
@@ -707,6 +752,7 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 		if t.Service.Resolved != nil {
 			v.checkEndpointServiceLinkage(t.Endpoint.Name, refKey(v, t.Service), line, column, from.file)
 		}
+		v.checkCallerAllowed(t.Endpoint.Name, from, line, column)
 	}
 }
 
@@ -919,6 +965,63 @@ func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkg
 		Name:   endpoint,
 		File:   file,
 	})
+}
+
+// checkCallerAllowed reports each namespace a nexus call is made from that the
+// endpoint's allowed_caller_namespaces omits. It needs only the endpoint and
+// the caller's namespaces, not the service: a call into an external service is
+// the cross-team case an allowlist exists for. Entries match namespace names
+// by spelling, {param}s included. An endpoint without the option declares no
+// policy and is not checked.
+func (v *validationCtx) checkCallerAllowed(endpoint string, from caller, line, column int) {
+	ep, ok := v.allEndpoints[endpoint]
+	if !ok {
+		return // endpoint not found — already reported by resolver
+	}
+	allowed, declared := allowedCallers(ep.Options)
+	if !declared {
+		return
+	}
+	for _, ns := range v.callerNamespaces(from) {
+		if slices.Contains(allowed, ns) {
+			continue
+		}
+		msg := fmt.Sprintf("nexus call through endpoint %s originates in namespace %s, which is not in its allowed_caller_namespaces %s", endpoint, ns, formatList(allowed))
+		if slices.ContainsFunc(allowed, func(e string) bool { return strings.HasPrefix(e, ns+".") }) {
+			msg += fmt.Sprintf("; did you mean %q? entries are .twf namespace names, not Cloud namespace IDs", ns)
+		}
+		v.errs = append(v.errs, &Error{
+			Msg:    msg,
+			Line:   line,
+			Column: column,
+			Kind:   ErrNexusCallerNotAllowed,
+			Name:   from.key.name,
+			File:   from.file,
+		})
+	}
+}
+
+// allowedCallers returns an endpoint's allowed_caller_namespaces entries and
+// whether the option is present at all (an empty list allows no caller).
+func allowedCallers(opts *ast.OptionsBlock) ([]string, bool) {
+	if opts == nil {
+		return nil, false
+	}
+	for _, e := range opts.Entries {
+		if e.Key == "allowed_caller_namespaces" {
+			return e.Values, true
+		}
+	}
+	return nil, false
+}
+
+// formatList renders list entries as they are written in .twf: ["a", "b"].
+func formatList(entries []string) string {
+	quoted := make([]string, len(entries))
+	for i, e := range entries {
+		quoted[i] = fmt.Sprintf("%q", e)
+	}
+	return "[" + strings.Join(quoted, ", ") + "]"
 }
 
 // extractTaskQueue walks an OptionsBlock to find the task_queue key.

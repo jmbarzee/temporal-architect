@@ -29,7 +29,7 @@ worker_def ::= 'worker' IDENT ':' NEWLINE
                INDENT worker_entry* DEDENT
 worker_entry ::= 'workflow' qualified_ref NEWLINE
                | 'activity' qualified_ref NEWLINE
-               | 'nexus' 'service' qualified_ref NEWLINE
+               | 'nexus' 'service' qualified_ref NEWLINE   # a trailing '.' IDENT is WORKER_REGISTERS_OPERATION
 
 namespace_def ::= 'namespace' deploy_name ':' NEWLINE
                   INDENT namespace_entry* DEDENT

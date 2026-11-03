@@ -138,6 +138,9 @@ A `list_value` (`'[' [ STRING (',' STRING)* ] ']'`, defined in [Statement Syntax
 A name parameter reaches no `STRING` option value. Inside a worker `task_queue`, a `{param}` is an
 instance parameter declaring a per-instance worker family; an endpoint `task_queue` is static; in
 `worker_identity` it is free text. See [Worker and Namespace Definitions](./03-workers-and-namespaces.md#per-instance-worker-families).
+A `{param}` in an element of an endpoint's `allowed_caller_namespaces` list correlates by spelling
+with a parameter of the endpoint's or its namespace's name, and otherwise ranges over the whole
+family; see [Endpoint Options](./03-workers-and-namespaces.md#endpoint-options).
 
 ## Comments
 

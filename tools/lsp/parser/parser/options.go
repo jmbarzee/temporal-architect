@@ -182,6 +182,9 @@ var nexusCallOptionSchema = map[string]*optionSchema{
 
 var endpointOptionSchema = map[string]*optionSchema{
 	"task_queue": {valueType: "string"},
+	// Caller namespaces allowed to call through the endpoint (Temporal Cloud's
+	// endpoint access policy). Entries are .twf namespace names.
+	"allowed_caller_namespaces": {valueType: "list"},
 }
 
 // unfinishedPolicyValues are the SDK HandlerUnfinishedPolicy enum, lowercased.

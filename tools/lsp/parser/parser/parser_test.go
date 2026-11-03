@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -2710,5 +2712,52 @@ func TestWorkflowCallRejectsCronSchedule(t *testing.T) {
 	}
 	if !strings.Contains(pe.Msg, "unknown option key") || !strings.Contains(pe.Msg, "cron_schedule") {
 		t.Errorf("unexpected error message: %q", pe.Msg)
+	}
+}
+
+// TestEndpointAllowedCallerNamespaces: an endpoint takes its caller allowlist
+// as a string list, {param}s allowed and [] meaning no caller (#235); a scalar
+// is a type error.
+func TestEndpointAllowedCallerNamespaces(t *testing.T) {
+	const tmpl = `namespace payments:
+    nexus endpoint PayEndpoint
+        options:
+            task_queue: "payments"
+            allowed_caller_namespaces: %s
+`
+	for _, list := range []string{`["orders", "tenant-{org}"]`, `[]`} {
+		file, err := ParseFile(fmt.Sprintf(tmpl, list))
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", list, err)
+		}
+		entry := file.Definitions[0].(*ast.NamespaceDef).Endpoints[0].Options.Entries[1]
+		if entry.Key != "allowed_caller_namespaces" || entry.ValueType != "list" {
+			t.Errorf("%s: got key %q type %q", list, entry.Key, entry.ValueType)
+		}
+	}
+	_, err := ParseFile(fmt.Sprintf(tmpl, `"orders"`))
+	if pe, ok := err.(*ParseError); !ok || pe.Msg != "expected list, got string" {
+		t.Errorf("scalar: got %v, want expected list, got string", err)
+	}
+}
+
+// TestWorkerServiceThirdSegmentKeepsWorker: `pkg.Svc.Op` in a worker parses —
+// the worker is kept with the whole service registered and the operation
+// recorded for the resolver to diagnose (#233).
+func TestWorkerServiceThirdSegmentKeepsWorker(t *testing.T) {
+	file, err := ParseFile(`worker wa:
+    nexus service pkg.Svc.OpA
+    nexus service Other
+`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	w := file.Definitions[0].(*ast.WorkerDef)
+	if len(w.Services) != 2 || w.Services[0].Package != "pkg" || w.Services[0].Name != "Svc" {
+		t.Fatalf("services = %+v", w.Services)
+	}
+	want := []ast.OperationMention{{Pos: ast.Pos{Line: 2, Column: 5}, ServiceIndex: 0, Op: "OpA"}}
+	if !reflect.DeepEqual(w.OperationMentions, want) {
+		t.Errorf("mentions = %+v, want %+v", w.OperationMentions, want)
 	}
 }

@@ -67,7 +67,7 @@ resource "temporalcloud_namespace_search_attribute" "order_status" {
 
 ## `temporalcloud_nexus_endpoint`
 
-`allowed_caller_namespaces` is the runtime access policy — only listed namespaces may invoke the endpoint ([not in `.twf`](../SKILL.md#not-yet-modeled-in-twf)).
+`allowed_caller_namespaces` is the runtime access policy — only listed namespaces may invoke the endpoint. It comes from the `.twf` endpoint's `allowed_caller_namespaces`, names mapped to IDs ([endpoint access policy](../SKILL.md#endpoint-access-policy)).
 
 ```hcl
 resource "temporalcloud_nexus_endpoint" "payments_endpoint" {

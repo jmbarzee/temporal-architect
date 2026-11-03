@@ -10,9 +10,9 @@ worker_def ::= 'worker' IDENT ':' NEWLINE
                worker_entry*
                DEDENT
 
-worker_entry ::= 'workflow' IDENT NEWLINE
-               | 'activity' IDENT NEWLINE
-               | 'nexus' 'service' IDENT NEWLINE
+worker_entry ::= 'workflow' qualified_ref NEWLINE
+               | 'activity' qualified_ref NEWLINE
+               | 'nexus' 'service' qualified_ref NEWLINE   # a trailing '.' IDENT is WORKER_REGISTERS_OPERATION
 ```
 
 Worker names use lowerCamelCase convention. Workers contain workflow, activity, and nexus service references — deployment configuration (task_queue, etc.) is specified when the worker is instantiated in a namespace block.
@@ -23,6 +23,13 @@ may carry an optional `pkg.` package qualifier (`workflow orders.ProcessOrder`,
 in another package. The qualifier is bare for same-package symbols; a qualified registration resolves against the
 imported package that owns the symbol, and an unresolved (external) import makes qualified
 registrations resolve as external.
+
+A `nexus service` entry registers the **whole** service — every operation it declares. A worker
+cannot register part of a service: Temporal workers register services, and Java and Python reject
+a service implementation missing any of its operations. An entry that names an operation
+(`nexus service Svc.OpA`, or `orders.Svc.OpA`) raises `WORKER_REGISTERS_OPERATION`; the worker
+keeps the whole service. Operations that must deploy apart belong to separate services, each on
+its own worker and task queue.
 
 **Example:**
 ```
@@ -113,7 +120,9 @@ The semantics are **design-altitude**, not runtime string substitution:
   its namespace, so `"bootstrap"` in `fabric-shard-acme` and in `fabric-shard-globex` are already
   two queues. A `{param}` in a worker `task_queue` declares a
   [per-instance worker family](#per-instance-worker-families), an endpoint `task_queue` is static,
-  and `worker_identity` is free text.
+  and `worker_identity` is free text. An endpoint's `allowed_caller_namespaces` entries are list
+  values, not option strings; a `{param}` in one correlates by spelling with a name parameter
+  without binding (see [Endpoint Options](#endpoint-options)).
 
 A namespace or endpoint with no `{param}` is an ordinary static deployment and is unchanged.
 See [Resolution](#resolution) below for the rules that keep a family coherent.
@@ -245,7 +254,7 @@ qualified registrations onto an instantiated worker count as *genuine* coverage:
 
 - A domain workflow/activity/nexus service registered by qualified ref onto the shared worker is
   **covered** — it does not raise `UNCOVERED_WORKFLOW`, `UNCOVERED_ACTIVITY`, or
-  `UNCOVERED_NEXUS_SERVICE`, and no placeholder worker is needed to silence such warnings.
+  `UNCOVERED_SERVICE`, and no placeholder worker is needed to silence such warnings.
 - The shared worker, being instantiated in the topology package's namespace, is not
   `UNINSTANTIATED_WORKER`.
 - A type that **nobody** registers still warns — the coverage signal is preserved, not suppressed.
@@ -293,6 +302,33 @@ Nexus endpoint instantiation options:
 | Key | Type |
 |-----|------|
 | `task_queue` | string (required) |
+| `allowed_caller_namespaces` | list of strings (namespace names; `{param}` allowed) |
+
+`.twf` models endpoints with a worker target, a `(namespace, task_queue)`; Temporal's external
+URL targets are not modelled.
+
+**`allowed_caller_namespaces`** is the endpoint's caller allowlist: the namespaces a `nexus` call
+through the endpoint may originate in. It is Temporal Cloud's endpoint access policy (Terraform
+`allowed_caller_namespaces`, `tcld --allow-namespace`); self-hosted Temporal has no built-in
+equivalent, so there it records design intent.
+
+- **Absent:** no policy is modelled and nothing is checked.
+- **`[]`:** no caller is allowed, as on Cloud by default.
+- **The endpoint's own namespace is not implicit.** A call from it must be listed, as Cloud
+  requires.
+- **Entries are `.twf` namespace names**, not Cloud namespace IDs. An entry naming a namespace
+  outside the design is accepted: callers may sit outside the analysed slice.
+- **Matching is by spelling,** `{param}`s included, as for templated endpoint references. An
+  entry `tenant-{org}` admits the family `tenant-{org}`, not a static `tenant-acme` and not
+  `tenant-{tid}`; a concrete `tenant-acme` does not admit the family. This is a `.twf`
+  modelling limit (spelling identity), not Temporal behavior.
+- **A `{param}` in an entry** correlates by spelling, without binding, with a parameter of the
+  endpoint's or its namespace's name: `shard-{org}-ep` with `["tenant-{org}"]` means each shard
+  admits its own tenant. With no such parameter it ranges over the whole family: a static
+  `platform` endpoint with `["tenant-{org}"]` admits every tenant namespace.
+
+A call whose origin namespace is not listed raises `NEXUS_CALLER_NOT_ALLOWED`; see
+[Nexus — Endpoint exposure and access](./04-nexus.md#endpoint-exposure-and-access).
 
 ## Resolution
 
@@ -303,8 +339,11 @@ The resolver validates workers, namespaces, and nexus definitions:
 - Namespace references to undefined workers produce errors
 - Worker instantiations missing `task_queue` option produce errors
 - Nexus endpoint instantiations missing `task_queue` option produce errors
-- Workers on the same task queue (same deploy key, within a namespace) with different type sets produce errors
-- Workers on the same task queue (same deploy key, within a namespace) with identical type sets produce warnings (redundant)
+- Workers on the same task queue (same deploy key, within a namespace) with different workflow or activity sets produce errors
+- Workers on the same task queue (same deploy key, within a namespace) that both register nexus services but different ones produce errors. Only a worker registering a service polls the queue's Nexus tasks, so a worker registering none is not compared on services; a poller lacking a requested service fails the call with a non-retryable `NotFound`. Like the rest of coherence, this is a steady-state claim — it ignores worker-versioning rollouts
+- Workers on the same task queue (same deploy key, within a namespace) with identical workflow, activity, and service sets produce warnings (redundant)
+- A worker `nexus service` entry naming an operation produces an error (`WORKER_REGISTERS_OPERATION`)
+- A nexus call originating in a namespace its endpoint's `allowed_caller_namespaces` omits produces an error (`NEXUS_CALLER_NOT_ALLOWED`)
 - Nexus endpoint routing to a task queue where no worker in the endpoint's namespace registers the service produces errors
 - Defined workflows/activities not on any instantiated worker produce warnings (when namespaces exist)
 - Defined nexus services not referenced by any worker produce warnings (when namespaces exist)

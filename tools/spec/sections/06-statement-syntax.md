@@ -54,7 +54,7 @@ matching](./03-workers-and-namespaces.md#queue-matching)). A value that is exact
 (`"{lease.queue}"`) is a learned queue, naming a member of a per-instance family. It is quoted
 because `task_queue` is a `STRING`, unlike a bare [learned `id:`](./13-cross-workflow-signals.md#type-head).
 
-Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types`. `non_retryable_error_types` takes a `list_value` of strings (error-type names that should never be retried); an empty list `[]` means "no non-retryable types". It is the only key that takes a list today.
+Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types`. `non_retryable_error_types` takes a `list_value` of strings (error-type names that should never be retried); an empty list `[]` means "no non-retryable types". The other list-valued key is the endpoint option `allowed_caller_namespaces` ([Workers and Namespaces](./03-workers-and-namespaces.md#endpoint-options)).
 
 Priority keys: `priority_key` (number, 1–n, lower = higher priority), `fairness_key` (string, fairness balancing key), `fairness_weight` (number, weight in [0.001, 1000])
 

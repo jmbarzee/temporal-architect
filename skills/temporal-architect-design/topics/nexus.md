@@ -23,11 +23,15 @@ Nexus adds routing and authorization overhead that only a namespace boundary jus
 | **Nexus Service** | `nexus service Name:` | Top-level; holds operations |
 | **Async Operation** | `async OpName workflow WorkflowName` | One-liner; delegates to a named workflow, which needs an `id_scheme:` (the start may be retried) |
 | **Sync Operation** | `sync OpName(params) -> (Type):` | Inline body, workflow statement set |
-| **Service Registration** | `nexus service Name` (in `worker`) | The worker that serves it |
-| **Nexus Endpoint** | `nexus endpoint Name` (in `namespace`) | Requires a static `task_queue`; a worker on that queue **in the endpoint's namespace** must register the service |
+| **Service Registration** | `nexus service Name` (in `worker`) | The worker that serves it — always the whole service (`Svc.Op` is `WORKER_REGISTERS_OPERATION`); operations that deploy apart are separate services |
+| **Nexus Endpoint** | `nexus endpoint Name` (in `namespace`) | Requires a static `task_queue`; a worker on that queue **in the endpoint's namespace** must register the service. Optional `allowed_caller_namespaces: [...]` |
 | **Nexus Call** | `nexus Endpoint Service.Op(args)` | Endpoint, then `Service.Op` |
 
 **Deployment:** the endpoint lives in the **target** namespace, next to the worker that serves the service; the caller namespace hosts only the calling workflows and references the endpoint by name.
+
+**Exposure:** an endpoint exposes **every** service registered on its queue — callers name the service per call. One service per endpoint therefore means one queue per endpoint. Several endpoints on one queue are allowed, but they expose the same services and do not separate access to them.
+
+**Access policy:** declare `allowed_caller_namespaces: ["orders", "billing"]` on every cross-team endpoint. A call from a namespace not listed — **including the endpoint's own** — is `NEXUS_CALLER_NOT_ALLOWED`. Absent means no policy is modelled; `[]` allows no caller. Entries are `.twf` namespace names (not Cloud IDs), matched by spelling: `tenant-{org}` admits the `tenant-{org}` family. When the endpoint's or its namespace's name has the same `{org}`, each member admits its own tenant; otherwise the entry admits every tenant. Temporal Cloud enforces the list; self-hosted has no built-in allowlist.
 
 ## Execution Modes
 

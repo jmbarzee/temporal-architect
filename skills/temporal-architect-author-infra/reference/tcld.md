@@ -42,7 +42,7 @@ temporal operator search-attribute create \
 
 ## Nexus Endpoints
 
-`--target-namespace` + `--target-task-queue` are the `.twf` endpoint's `worker_target`; `--allow-namespace` is the access policy ([not in `.twf`](../SKILL.md#not-yet-modeled-in-twf)).
+`--target-namespace` + `--target-task-queue` are the `.twf` endpoint's `worker_target`; `--allow-namespace` is the access policy, from the `.twf` endpoint's `allowed_caller_namespaces` ([endpoint access policy](../SKILL.md#endpoint-access-policy)).
 
 **Temporal Cloud (`tcld`):**
 

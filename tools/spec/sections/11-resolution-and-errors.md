@@ -28,7 +28,8 @@ is looked up in the package it names, and same-named symbols in different packag
 - A **bare or same-package** reference resolves exactly as it does today.
 - A package **qualifier** on a reference (`pkg.Name`) resolves against the imported package that
   owns the symbol. A qualifier with **no matching import** is a `QUALIFIED_REF_WITHOUT_IMPORT`
-  error; an import whose package is **absent from the tree** is an `UNRESOLVED_IMPORT` warning and
+  error — except on a worker `nexus service Svc.Op` entry whose qualifier is a same-package service
+  with that operation, which is `WORKER_REGISTERS_OPERATION` instead; an import whose package is **absent from the tree** is an `UNRESOLVED_IMPORT` warning and
   is **treated as external**, so qualified references through it resolve as external with no
   `UNDEFINED_*` error; an import that resolves but is never referenced is an `UNUSED_IMPORT` warning.
 
@@ -54,7 +55,9 @@ Common error types:
 - Namespace references undefined worker
 - Worker instantiation missing `task_queue` option
 - Nexus endpoint instantiation missing `task_queue` option
-- Workers on same task queue (same deploy key, within a namespace) with different type sets
+- Workers on same task queue (same deploy key, within a namespace) with different workflow or activity sets, or — among workers that register nexus services — different service sets
+- Worker `nexus service` entry naming an operation (`WORKER_REGISTERS_OPERATION` — a worker registers whole services)
+- Nexus call originating in a namespace its endpoint's `allowed_caller_namespaces` omits (`NEXUS_CALLER_NOT_ALLOWED`)
 - Undefined nexus endpoint (hard error — endpoints are flat-global; a templated reference resolves by full templated name, so a mismatch or a static reference to a templated endpoint lands here)
 - Endpoint template param set not a superset of its owning namespace's (`ENDPOINT_PARAM_NOT_SUPERSET` — otherwise the endpoint's flat-global name collides across the family)
 - Undefined nexus service (hard error — resolved per package, following any qualifier + import)

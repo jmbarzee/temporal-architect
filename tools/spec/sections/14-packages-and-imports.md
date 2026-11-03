@@ -83,7 +83,8 @@ recognized in these positions:
 - a signal send's workflow-type head — `signal orders.ShipItem.Shipped(t)` (a handle head is never
   qualified)
 - worker registration entries — `workflow orders.ProcessOrder`, `activity billing.ChargeCard`,
-  `nexus service orders.OrderService`
+  `nexus service orders.OrderService` (a third segment, `orders.OrderService.PlaceOrder`, names an
+  operation and is always `WORKER_REGISTERS_OPERATION`)
 - the nexus **service** reference — `nexus OrderEndpoint orders.OrderService.PlaceOrder(order)`
 - the backing-workflow reference of an async nexus operation — `async PlaceOrder workflow orders.ProcessOrder`
 
