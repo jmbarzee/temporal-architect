@@ -1,6 +1,9 @@
 package validator
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // deployTree spreads one deployment over files so that most errors name a
 // symbol defined in a file other than the one holding the error's position.
@@ -256,9 +259,58 @@ namespace ns:
 			if e.Kind != tt.kind {
 				continue
 			}
-			if e.File != "deploy.twf" || e.Line != tt.line || e.Column == 0 {
-				t.Errorf("%s at %s:%d:%d, want deploy.twf:%d", tt.kind, e.File, e.Line, e.Column, tt.line)
+			if e.File != "deploy.twf" || e.Line != tt.line || e.Column != 5 {
+				t.Errorf("%s at %s:%d:%d, want deploy.twf:%d:5", tt.kind, e.File, e.Line, e.Column, tt.line)
 			}
+		}
+	}
+}
+
+// TestTaskQueueCoherenceAcrossPackages: two packages each declare namespace
+// prod with a worker on queue q. The files are given in an order their base
+// names do not sort into (zeta before alpha), and the report lands on the
+// later instantiation in that source order: alpha.twf.
+func TestTaskQueueCoherenceAcrossPackages(t *testing.T) {
+	errs := Validate(mustMergeNamedAndResolve(t,
+		namedSource{"zeta.twf", `package a
+
+workflow A(x: int) -> (int):
+    return x
+
+worker wa:
+    workflow A
+
+namespace prod:
+    worker wa
+        options:
+            task_queue: "q"
+`},
+		namedSource{"alpha.twf", `package b
+
+workflow B(x: int) -> (int):
+    return x
+
+worker wb:
+    workflow B
+
+namespace prod:
+    worker wb
+        options:
+            task_queue: "q"
+`},
+	))
+	if countKind(errs, ErrTaskQueueMismatch) != 1 {
+		t.Fatalf("want one TASK_QUEUE_MISMATCH error; got %v", errs)
+	}
+	for _, e := range errs {
+		if e.Kind != ErrTaskQueueMismatch {
+			continue
+		}
+		if e.File != "alpha.twf" || e.Line != 10 || e.Column != 5 {
+			t.Errorf("TASK_QUEUE_MISMATCH at %s:%d:%d, want alpha.twf:10:5", e.File, e.Line, e.Column)
+		}
+		if want := `workers wa and wb on task queue "q"`; !strings.Contains(e.Msg, want) {
+			t.Errorf("TASK_QUEUE_MISMATCH %q, want it to name %s", e.Msg, want)
 		}
 	}
 }

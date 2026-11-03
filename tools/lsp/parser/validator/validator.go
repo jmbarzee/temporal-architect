@@ -216,7 +216,7 @@ func Validate(file *ast.File) []*Error {
 	v.checkCoverage()
 
 	// 4. Task queue coherence.
-	v.checkTaskQueueCoherence()
+	v.checkTaskQueueCoherence(file.Definitions)
 
 	// 5-6. Call routing + endpoint-service linkage (walks resolved bodies).
 	v.walkAllBodies()
@@ -355,9 +355,10 @@ func (v *validationCtx) checkCoverage() {
 
 // checkTaskQueueCoherence reports workers that share a (namespace, task queue)
 // pair. The namespace is keyed by deploy name, so two packages that each
-// declare the same namespace share its queues. Each report is positioned on the
-// later of the two worker instantiations, in source order (issue #248).
-func (v *validationCtx) checkTaskQueueCoherence() {
+// declare the same namespace share its queues. Namespaces are walked in the
+// merged definition order — source order — so the first instantiation on a
+// queue is the reference and each later one is where a report lands (#248).
+func (v *validationCtx) checkTaskQueueCoherence(defs []ast.Definition) {
 	type queueInfo struct {
 		workerName string
 		workflows  map[pkgKey]bool
@@ -366,7 +367,11 @@ func (v *validationCtx) checkTaskQueueCoherence() {
 		ast.Pos           // the worker instantiation inside that namespace
 	}
 	queueWorkers := make(map[placement][]queueInfo)
-	for _, ns := range v.namespaces {
+	for _, def := range defs {
+		ns, ok := def.(*ast.NamespaceDef)
+		if !ok {
+			continue
+		}
 		for _, nw := range ns.Workers {
 			tq := extractTaskQueue(nw.Options)
 			if tq == "" {
@@ -398,11 +403,6 @@ func (v *validationCtx) checkTaskQueueCoherence() {
 		if len(infos) < 2 {
 			continue
 		}
-		// Namespaces come out of a map, so sort into source order: the first
-		// instantiation is the reference, each later one is where a report lands.
-		slices.SortFunc(infos, func(a, b queueInfo) int {
-			return cmp.Or(cmp.Compare(a.file, b.file), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column))
-		})
 		first := infos[0]
 		for _, other := range infos[1:] {
 			if sameSet(first.workflows, other.workflows) && sameSet(first.activities, other.activities) {
