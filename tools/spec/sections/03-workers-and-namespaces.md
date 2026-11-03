@@ -120,7 +120,9 @@ The semantics are **design-altitude**, not runtime string substitution:
   its namespace, so `"bootstrap"` in `fabric-shard-acme` and in `fabric-shard-globex` are already
   two queues. A `{param}` in a worker `task_queue` declares a
   [per-instance worker family](#per-instance-worker-families), an endpoint `task_queue` is static,
-  and `worker_identity` is free text.
+  and `worker_identity` is free text. An endpoint's `allowed_caller_namespaces` entries are list
+  values, not option strings; a `{param}` in one correlates by spelling with a name parameter
+  without binding (see [Endpoint Options](#endpoint-options)).
 
 A namespace or endpoint with no `{param}` is an ordinary static deployment and is unchanged.
 See [Resolution](#resolution) below for the rules that keep a family coherent.
